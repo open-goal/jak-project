@@ -59,6 +59,18 @@ void CfgVtx::replace_succ_and_check(CfgVtx* old_succ, CfgVtx* new_succ) {
   assert(replaced);
 }
 
+void CfgVtx::remove_pred(CfgVtx* to_remove) {
+  bool found = false;
+  for (auto it = pred.begin(); it != pred.end(); it++) {
+    if (*it == to_remove) {
+      pred.erase(it);
+      found = true;
+      break;
+    }
+  }
+  assert(found);
+}
+
 /*!
  * Replace references to old_preds with a single new_pred.
  * Doesn't insert duplicates.
@@ -476,6 +488,18 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   // todo - check delay slots!
   if (!b0 || !b1 || !b2)
     return false;
+
+  bool debug = b0->to_string() == "Seq CONDNE104 ... Block 18100";
+
+  if (debug) {
+    fmt::print("try while: {} | {} | {}\n", b0->to_string(), b1->to_string(), b2->to_string());
+  }
+
+  if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
+    if (debug)
+      fmt::print("reject 1 {} {}\n", b0->end_branch.asm_branch, b1->end_branch.asm_branch);
+    return false;
+  }
 
   // check next and prev
   if (b0->next != b1)
@@ -910,26 +934,18 @@ bool ControlFlowGraph::find_infinite_continue() {
       int my_block = b0->get_first_block_id();
       int dest_block = b0->succ_branch->get_first_block_id();
 
-      fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
+      // fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
 
       if (b0->end_branch.asm_branch) {
         return true;
       }
       if (dest_block >= my_block) {
-        fmt::print("  Rejecting because destination block {} comes after me {}\n", dest_block,
-                   my_block);
         return true;
-      } else {
-        fmt::print("  Order OK {} -> {}\n", my_block, dest_block);
       }
 
       int prev_count = get_prev_count(b0, b0->succ_branch);
       if (prev_count == -1) {
-        fmt::print(
-            "  Rejecting because we can't find the destination in the current ungrouped sequence.");
         return true;
-      } else {
-        fmt::print("  Sequencing OK: {} prev's\n", prev_count);
       }
       replaced = true;
 
@@ -1105,8 +1121,17 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       return true;
     }
 
-    if (!b0->end_branch.asm_branch) {
+    if (!b0->end_branch.asm_branch || !b0->end_branch.has_branch) {
       return true;
+    }
+
+    if (b1->succ_branch == b1) {
+      // asm branch to yourself. just remove it.
+      b1->succ_branch = nullptr;
+      b1->end_branch.has_branch = false;
+      b1->remove_pred(b1);
+      replaced = true;
+      return false;
     }
 
     // don't want to combine two with an incoming edge in between.
@@ -1228,6 +1253,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       else {
         lg::error("unhandled sequences in clean_up_asm_branches likely seq: {} {}", !!b0_seq,
                   !!b1_seq);
+        lg::error("{} {}\n", b0->get_first_block_id(), b1->get_first_block_id());
       }
 
     } else {
@@ -1243,6 +1269,10 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         }
         // build new sequence
         replaced = true;
+        if (!b0->succ_branch) {
+          fmt::print("asm missing branch in block {}\n", b0->to_string());
+          assert(false);
+        }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
 
         auto* new_seq = alloc<SequenceVtx>();
@@ -1410,7 +1440,36 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         old_seq->parent_claim(seq);
 
         return false;
-      } else {
+      } else if (!b0_seq && b1_seq) {
+        replaced = true;
+        if (!b0->succ_branch) {
+          fmt::print("bad: {}\n", b0->to_string());
+        }
+        m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
+        auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
+        assert(old_seq);
+        if (b0->succ_branch) {
+          if (debug_asm_branch) {
+            fmt::print("  sbp: {}\n", !!b0->succ_branch->parent);
+            fmt::print("  sb: {}\n", b0->succ_branch->to_string());
+          }
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        for (auto* p : b0->pred) {
+          p->replace_succ_and_check(b0, old_seq);
+        }
+        old_seq->pred = b0->pred;
+        old_seq->prev = b0->prev;
+        if (old_seq->prev) {
+          old_seq->prev->next = old_seq;
+        }
+
+        old_seq->seq.insert(old_seq->seq.begin(), b0);
+        b0->parent_claim(old_seq);
+      }
+
+      else {
         lg::error("unhandled sequences in clean_up_asm_branches seq: {} {}", !!b0_seq, !!b1_seq);
       }
     }
@@ -1619,6 +1678,10 @@ bool ControlFlowGraph::find_cond_w_else(const CondWithElseLengthHack& hack) {
     auto* c0 = vtx;       // first condition
     auto* b0 = c0->next;  // first body
     if (!b0) {
+      return true;
+    }
+
+    if (b0->end_branch.asm_branch) {
       return true;
     }
 
@@ -1985,6 +2048,10 @@ bool ControlFlowGraph::find_cond_n_else() {
       return true;
     }
 
+    if (b0->end_branch.asm_branch) {
+      return true;
+    }
+
     //            printf("cne: c0 %s b0 %s\n", c0->to_string().c_str(), b0->to_string().c_str());
 
     // first condition should have the _option_ to fall through to first body
@@ -2053,6 +2120,10 @@ bool ControlFlowGraph::find_cond_n_else() {
         // if we are a not, we can have only one case. (I think).
         if (prev_condition->end_branch.kind == CfgVtx::DelaySlotKind::SET_REG_TRUE &&
             entries.size() > 1) {
+          return true;
+        }
+
+        if (prev_condition->end_branch.asm_branch) {
           return true;
         }
 
@@ -2727,11 +2798,11 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     }
 
     if (!changed) {
-      changed = changed || cfg->find_goto_not_end();
+      changed = changed || cfg->find_cond_w_empty_else();
     }
 
     if (!changed) {
-      changed = changed || cfg->find_cond_w_empty_else();
+      changed = changed || cfg->find_goto_not_end();
     }
 
     if (!changed) {

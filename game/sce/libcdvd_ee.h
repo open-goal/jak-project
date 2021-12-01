@@ -5,9 +5,6 @@
  * Stub implementation of the EE CD/DVD library
  */
 
-#ifndef JAK1_LIBCDVD_EE_H
-#define JAK1_LIBCDVD_EE_H
-
 // for sceCdInit
 #define SCECdINIT 0x00
 
@@ -34,5 +31,3 @@ int sceCdMmode(int media);
 int sceCdDiskReady(int mode);
 int sceCdGetDiskType();
 }  // namespace ee
-
-#endif  // JAK1_LIBCDVD_EE_H

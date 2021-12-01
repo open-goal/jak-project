@@ -3,7 +3,7 @@
  * This runs the IR2 analysis passes.
  */
 
-#include <common/link_types.h>
+#include "common/link_types.h"
 #include "ObjectFileDB.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
@@ -12,6 +12,8 @@
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/insert_lets.h"
+#include "decompiler/analysis/label_types.h"
+#include "decompiler/analysis/find_defstates.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/final_output.h"
@@ -20,8 +22,10 @@
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/static_refs.h"
 #include "decompiler/analysis/symbol_def_map.h"
+#include "decompiler/analysis/find_skelgroups.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/analysis/mips2c.h"
 
 namespace decompiler {
 
@@ -30,53 +34,124 @@ namespace decompiler {
  * At this point, we assume that the files are loaded and we've run find_code to locate all
  * functions, but nothing else.
  */
-void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
-                                         const Config& config,
-                                         bool skip_debug_output) {
+void ObjectFileDB::analyze_functions_ir2(
+    const std::string& output_dir,
+    const Config& config,
+    const std::unordered_set<std::string>& skip_functions,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
+  // First, do basic analysis on the top level:
   lg::info("Using IR2 analysis...");
+
   lg::info("Processing top-level functions...");
   ir2_top_level_pass(config);
-  lg::info("Processing basic blocks and control flow graph...");
-  ir2_basic_block_pass(config);
-  lg::info("Finding stack spills...");
-  ir2_stack_spill_slot_pass();
-  lg::info("Converting to atomic ops...");
-  ir2_atomic_op_pass(config);
+
+  int total_file_count = 0;
+  for (auto& f : obj_files_by_name) {
+    total_file_count += f.second.size();
+  }
+  int file_idx = 1;
+  for_each_obj([&](ObjectFileData& data) {
+    Timer file_timer;
+    fmt::print("[{:3d}/{}]------ {}\n", file_idx++, total_file_count, data.to_unique_name());
+    ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
+    ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
+    ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
+    ir2_setup_labels(config, data);
+    ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
+    try {
+      if (data.linked_data.functions_by_seg.size() == 3) {
+        run_defstate(data.linked_data.functions_by_seg.at(2).front(), skip_states);
+      }
+    } catch (const std::exception& e) {
+      lg::error("Failed to find defstates: {}", e.what());
+    }
+    try {
+      if (data.linked_data.functions_by_seg.size() == 3) {
+        run_defskelgroups(data.linked_data.functions_by_seg.at(2).front());
+      }
+    } catch (const std::exception& e) {
+      lg::error("Failed to find defskelgroups: {}", e.what());
+    }
+    ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config, data);
+    ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config, data);
+
+    ir2_insert_anonymous_functions(DEBUG_SEGMENT, data);
+    ir2_insert_anonymous_functions(MAIN_SEGMENT, data);
+    ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT, data);
+
+    ir2_run_mips2c(config, data);
+
+    ir2_symbol_definition_map(data);
+
+    if (!output_dir.empty()) {
+      ir2_write_results(output_dir, config, data);
+    } else {
+      if (!skip_functions.empty()) {
+        data.output_with_skips = ir2_final_out(data, skip_functions);
+      }
+      data.full_output = ir2_final_out(data);
+    }
+
+    for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
+
+    fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
+  });
 
   if (config.generate_symbol_definition_map) {
     lg::info("Generating symbol definition map...");
-    ir2_symbol_definition_map(output_dir);
+    map_builder.build_map();
+    std::string result = map_builder.convert_to_json();
+    auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
+    file_util::write_text_file(file_name, result);
   }
+}
 
-  lg::info("Running type analysis...");
-  ir2_type_analysis_pass(config);
-  lg::info("Register usage analysis...");
-  ir2_register_usage_pass();
-  lg::info("Variable analysis...");
-  ir2_variable_pass();
-  lg::info("Initial structuring...");
-  ir2_cfg_build_pass();
+void ObjectFileDB::ir2_do_segment_analysis_phase1(int seg,
+                                                  const Config& config,
+                                                  ObjectFileData& data) {
+  ir2_basic_block_pass(seg, config, data);
+  ir2_stack_spill_slot_pass(seg, data);
+  ir2_atomic_op_pass(seg, config, data);
+}
 
-  if (!skip_debug_output) {
-    lg::info("Storing temporary form result...");
-    ir2_store_current_forms();
+void ObjectFileDB::ir2_do_segment_analysis_phase2(int seg,
+                                                  const Config& config,
+                                                  ObjectFileData& data) {
+  ir2_type_analysis_pass(seg, config, data);
+  ir2_register_usage_pass(seg, data);
+  ir2_variable_pass(seg, data);
+  ir2_cfg_build_pass(seg, data);
+
+  ir2_build_expressions(seg, config, data);
+  ir2_rewrite_inline_asm_instructions(seg, data);
+
+  ir2_insert_lets(seg, data);
+}
+
+void ObjectFileDB::ir2_setup_labels(const Config& config, ObjectFileData& data) {
+  if (data.linked_data.segments == 3) {
+    std::unordered_map<std::string, LabelConfigInfo> config_labels;
+    auto config_it = config.label_types.find(data.to_unique_name());
+    if (config_it != config.label_types.end()) {
+      config_labels = config_it->second;
+    }
+    try {
+      data.linked_data.label_db =
+          std::make_unique<LabelDB>(config_labels, data.linked_data.labels, dts);
+      analyze_labels(data.linked_data.label_db.get(), &data.linked_data);
+    } catch (const std::exception& e) {
+      lg::die("Error parsing labels for {}: {}\n", data.to_unique_name(), e.what());
+    }
   }
+}
 
-  lg::info("Expression building...");
-  ir2_build_expressions(config);
-  lg::info("Re-writing inline asm instructions...");
-  ir2_rewrite_inline_asm_instructions();
-
-  lg::info("Inserting lets...");
-  ir2_insert_lets();
-
-  lg::info("Inserting anonymous function definitions...");
-  ir2_insert_anonymous_functions();
-
-  if (!output_dir.empty()) {
-    lg::info("Writing results...");
-    ir2_write_results(output_dir, config);
-  }
+void ObjectFileDB::ir2_run_mips2c(const Config& config, ObjectFileData& data) {
+  for_each_function_def_order_in_obj(data, [&](Function& func, int) {
+    if (config.hacks.mips2c_functions_by_name.count(func.name())) {
+      lg::info("MIPS2C on {}", func.name());
+      run_mips2c(&func);
+    }
+  });
 }
 
 /*!
@@ -120,7 +195,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
         func.guessed_name.unique_id = uid++;
         func.guessed_name.id_in_object = func_in_obj++;
         func.guessed_name.object_name = data.to_unique_name();
-        auto name = func.guessed_name.to_string();
+        auto name = func.name();
 
         switch (func.guessed_name.kind) {
           case FunctionName::FunctionKind::METHOD:
@@ -146,9 +221,22 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 
         unique_names.insert(name);
 
+        TypeSpec ts;
+        if (lookup_function_type(func.guessed_name, data.to_unique_name(), config, &ts)) {
+          func.type = ts;
+        } else {
+          func.type = TypeSpec("function");
+        }
+
         if (config.hacks.asm_functions_by_name.find(name) !=
             config.hacks.asm_functions_by_name.end()) {
           func.warnings.info("Flagged as asm by config");
+          func.suspected_asm = true;
+        }
+
+        if (config.hacks.mips2c_functions_by_name.find(name) !=
+            config.hacks.mips2c_functions_by_name.end()) {
+          func.warnings.info("Flagged as mips2c by config");
           func.suspected_asm = true;
         }
       }
@@ -158,7 +246,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   // we remember duplicates like this so we can warn on all occurances of the duplicate name
   for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
-    auto name = func.guessed_name.to_string();
+    auto name = func.name();
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
@@ -180,28 +268,14 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
  * - Analyze prologue and epilogue
  * - Build control flow graph
  */
-void ObjectFileDB::ir2_basic_block_pass(const Config& config) {
-  Timer timer;
-  // Main Pass over each function...
-  int total_basic_blocks = 0;
-  int total_functions = 0;
-  int functions_with_one_block = 0;
-  int inspect_methods = 0;
-  int suspected_asm = 0;
-  int failed_to_build_cfg = 0;
-
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    total_functions++;
+void ObjectFileDB::ir2_basic_block_pass(int seg, const Config& config, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     func.ir2.env.file = &data.linked_data;
     func.ir2.env.dts = &dts;
     func.ir2.env.func = &func;
 
     // first, find basic blocks.
-    auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
-    total_basic_blocks += blocks.size();
-    if (blocks.size() == 1) {
-      functions_with_one_block++;
-    }
+    auto blocks = find_blocks_in_function(data.linked_data, seg, func);
     func.basic_blocks = blocks;
 
     if (!func.suspected_asm) {
@@ -219,24 +293,21 @@ void ObjectFileDB::ir2_basic_block_pass(const Config& config) {
 
       // build a control flow graph, just looking at branch instructions.
       CondWithElseLengthHack hack;
-      auto lookup =
-          config.hacks.cond_with_else_len_by_func_name.find(func.guessed_name.to_string());
+      auto lookup = config.hacks.cond_with_else_len_by_func_name.find(func.name());
       if (lookup != config.hacks.cond_with_else_len_by_func_name.end()) {
         hack = lookup->second;
       }
 
       std::unordered_set<int> asm_br_blocks;
-      auto asm_lookup =
-          config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.guessed_name.to_string());
+      auto asm_lookup = config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.name());
       if (asm_lookup != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
         asm_br_blocks = asm_lookup->second;
       }
 
-      func.cfg = build_cfg(data.linked_data, segment_id, func, hack, asm_br_blocks);
+      func.cfg = build_cfg(data.linked_data, seg, func, hack, asm_br_blocks);
       if (!func.cfg->is_fully_resolved()) {
-        lg::warn("Function {} from {} failed to build control flow graph!",
-                 func.guessed_name.to_string(), data.to_unique_name());
-        failed_to_build_cfg++;
+        lg::warn("Function {} from {} failed to build control flow graph!", func.name(),
+                 data.to_unique_name());
       } else {
         func.cfg_ok = true;
       }
@@ -244,72 +315,42 @@ void ObjectFileDB::ir2_basic_block_pass(const Config& config) {
 
     if (func.suspected_asm) {
       func.warnings.info("Assembly Function");
-      suspected_asm++;
     }
   });
-
-  lg::info("Found {} basic blocks in {} functions in {:.2f} ms:", total_basic_blocks,
-           total_functions, timer.getMs());
-  lg::info(" {} functions ({:.2f}%) failed to build control flow graph", failed_to_build_cfg,
-           100.f * failed_to_build_cfg / total_functions);
-  lg::info(" {} functions ({:.2f}%) had exactly one basic block", functions_with_one_block,
-           100.f * functions_with_one_block / total_functions);
-  lg::info(" {} functions ({:.2f}%) were ignored as assembly", suspected_asm,
-           100.f * suspected_asm / total_functions);
-  lg::info(" {} functions ({:.2f}%) were inspect methods\n", inspect_methods,
-           100.f * inspect_methods / total_functions);
 }
 
-void ObjectFileDB::ir2_stack_spill_slot_pass() {
-  Timer timer;
-  int functions_with_spills = 0;
-  int total_slots = 0;
-  for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
+void ObjectFileDB::ir2_stack_spill_slot_pass(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (!func.cfg_ok) {
       return;
     }
     try {
       auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
-      auto map_size = spill_map.size();
-      if (map_size) {
-        functions_with_spills++;
-        total_slots += map_size;
-      }
       func.ir2.env.set_stack_spills(spill_map);
     } catch (std::exception& e) {
       func.warnings.general_warning("stack spill failed: {}", e.what());
     }
   });
-  lg::info("Analyzed stack spills: found {} functions with spills (total {} vars), took {:.2f} ms",
-           functions_with_spills, total_slots, timer.getMs());
 }
 
 /*!
  * Conversion of MIPS instructions into AtomicOps. The AtomicOps represent what we
  * think are IR of the original GOAL compiler.
  */
-void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
-  Timer timer;
-  int total_functions = 0;
-  int attempted = 0;
-  int successful = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (!func.cfg_ok) {
       return;
     }
-    (void)segment_id;
-    total_functions++;
     if (!func.suspected_asm) {
       func.ir2.atomic_ops_attempted = true;
-      attempted++;
       try {
-        bool inline_asm =
-            config.hacks.hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
-            config.hacks.hint_inline_assembly_functions.end();
+        bool inline_asm = config.hacks.hint_inline_assembly_functions.find(func.name()) !=
+                          config.hacks.hint_inline_assembly_functions.end();
 
         std::unordered_set<int> blocks_ending_in_asm_branch;
-        auto asm_branch_it = config.hacks.blocks_ending_in_asm_branch_by_func_name.find(
-            func.guessed_name.to_string());
+        auto asm_branch_it =
+            config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.name());
 
         if (asm_branch_it != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
           blocks_ending_in_asm_branch = asm_branch_it->second;
@@ -320,31 +361,17 @@ void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
         func.ir2.atomic_ops_succeeded = true;
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());
-        successful++;
       } catch (std::exception& e) {
-        lg::warn("Function {} from {} could not be converted to atomic ops: {}",
-                 func.guessed_name.to_string(), data.to_unique_name(), e.what());
+        lg::warn("Function {} from {} could not be converted to atomic ops: {}", func.name(),
+                 data.to_unique_name(), e.what());
         func.warnings.general_warning("Failed to convert to atomic ops: {}", e.what());
       }
     }
   });
-
-  lg::info("{}/{}/{} (successful/attempted/total) functions converted to Atomic Ops in {:.2f} ms",
-           successful, attempted, total_functions, timer.getMs());
-  lg::info("{:.2f}% were attempted, {:.2f}% of attempted succeeded\n",
-           100.f * attempted / total_functions, 100.f * successful / attempted);
 }
 
-void ObjectFileDB::ir2_symbol_definition_map(const std::string& output_dir) {
-  Timer timer;
-  SymbolMapBuilder map_builder;
-  for_each_obj([&](ObjectFileData& data) { map_builder.add_object(data); });
-  map_builder.build_map();
-  std::string result = map_builder.convert_to_json();
-  auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
-  file_util::write_text_file(file_name, result);
-
-  lg::info("Built symbol map in {:.2f} ms", timer.getMs());
+void ObjectFileDB::ir2_symbol_definition_map(ObjectFileData& data) {
+  map_builder.add_object(data);
 }
 
 template <typename Key, typename Value>
@@ -363,30 +390,18 @@ Value try_lookup(const std::unordered_map<Key, Value>& map, const Key& key) {
  * - Propagate types.
  * - NOTE: this will update register info usage more accurately for functions.
  */
-void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
-  Timer timer;
-  int total_functions = 0;
-  int non_asm_functions = 0;
-  int attempted_functions = 0;
-  int successful_functions = 0;
-
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
-    total_functions++;
+void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (!func.suspected_asm) {
-      non_asm_functions++;
       TypeSpec ts;
       if (lookup_function_type(func.guessed_name, data.to_unique_name(), config, &ts) &&
           func.ir2.atomic_ops_succeeded) {
         func.type = ts;
-        attempted_functions++;
         // try type analysis here.
-        auto func_name = func.guessed_name.to_string();
+        auto func_name = func.name();
         auto register_casts =
             try_lookup(config.register_type_casts_by_function_by_atomic_op_idx, func_name);
         func.ir2.env.set_type_casts(register_casts);
-        auto label_types = try_lookup(config.label_types, data.to_unique_name());
-        func.ir2.env.set_label_types(label_types);
         auto stack_casts =
             try_lookup(config.stack_type_casts_by_function_by_stack_offset, func_name);
         func.ir2.env.set_stack_casts(stack_casts);
@@ -402,33 +417,21 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
         func.ir2.env.set_stack_structure_hints(
             try_lookup(config.stack_structure_hints_by_function, func_name));
         if (run_type_analysis_ir2(ts, dts, func)) {
-          successful_functions++;
           func.ir2.env.types_succeeded = true;
         } else {
           func.warnings.type_prop_warning("Type analysis failed");
         }
       } else {
-        // lg::warn("Function {} didn't know its type", func.guessed_name.to_string());
-        func.warnings.type_prop_warning("Function {} has unknown type",
-                                        func.guessed_name.to_string());
+        lg::warn("Function {} didn't know its type", func.name());
+        func.warnings.type_prop_warning("Function {} has unknown type", func.name());
       }
     }
   });
-
-  lg::info("{}/{}/{}/{} (success/attempted/non-asm/total) in {:.2f} ms\n", successful_functions,
-           attempted_functions, non_asm_functions, total_functions, timer.getMs());
 }
 
-void ObjectFileDB::ir2_register_usage_pass() {
-  Timer timer;
-
-  int total_funcs = 0, analyzed_funcs = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
-    (void)data;
-    total_funcs++;
+void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
-      analyzed_funcs++;
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
 
       auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
@@ -449,7 +452,7 @@ void ObjectFileDB::ir2_register_usage_pass() {
 
         for (auto& x : dep_regs) {
           if ((x.get_kind() == Reg::VF && x.get_vf() != 0) || x.get_kind() == Reg::SPECIAL) {
-            lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
+            lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.name());
             func.warnings.bad_vf_dependency("{}", x.to_string());
             continue;
           }
@@ -463,51 +466,38 @@ void ObjectFileDB::ir2_register_usage_pass() {
             continue;
           }
 
-          lg::error("Bad register dependency on {} in {}", x.to_charp(),
-                    func.guessed_name.to_string());
+          lg::error("Bad register dependency on {} in {}", x.to_charp(), func.name());
           func.warnings.general_warning("Function may read a register that is not set: {}",
                                         x.to_string());
         }
       }
     }
   });
-
-  lg::info("{}/{} functions had register usage analyzed in {:.2f} ms\n", analyzed_funcs,
-           total_funcs, timer.getMs());
 }
 
-void ObjectFileDB::ir2_variable_pass() {
-  Timer timer;
-  int attempted = 0;
-  int successful = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
+void ObjectFileDB::ir2_variable_pass(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     (void)data;
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded && func.ir2.env.has_type_analysis()) {
       try {
-        attempted++;
         auto result =
             run_variable_renaming(func, func.ir2.env.reg_use(), *func.ir2.atomic_ops, dts);
         if (result.has_value()) {
-          successful++;
           func.ir2.env.set_local_vars(*result);
         }
       } catch (const std::exception& e) {
-        lg::warn("variable pass failed on {}: {}", func.guessed_name.to_string(), e.what());
+        lg::warn("variable pass failed on {}: {}", func.name(), e.what());
       }
     }
   });
-  lg::info("{}/{} functions out of attempted passed variable pass in {:.2f} ms\n", successful,
-           attempted, timer.getMs());
 }
 
-void ObjectFileDB::ir2_cfg_build_pass() {
+void ObjectFileDB::ir2_cfg_build_pass(int seg, ObjectFileData& data) {
   Timer timer;
   int total = 0;
   int attempted = 0;
   int successful = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     (void)data;
     total++;
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded && func.cfg->is_fully_resolved()) {
@@ -524,41 +514,31 @@ void ObjectFileDB::ir2_cfg_build_pass() {
       successful++;
     }
   });
-
-  lg::info("{}/{}/{} cfg build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
 }
 
-void ObjectFileDB::ir2_store_current_forms() {
-  Timer timer;
-  int total = 0;
-
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
+// void ObjectFileDB::ir2_store_current_forms(int seg) {
+//  Timer timer;
+//  int total = 0;
+//
+//  for_each_function_in_seg(seg, [&](Function& func, ObjectFileData& data) {
+//    (void)data;
+//
+//    if (func.ir2.top_form) {
+//      total++;
+//      func.ir2.debug_form_string =
+//          pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+//    }
+//  });
+//
+//  lg::info("Stored debug forms for {} functions in {:.2f} ms\n", total, timer.getMs());
+//}
+//
+void ObjectFileDB::ir2_build_expressions(int seg, const Config& config, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     (void)data;
-
-    if (func.ir2.top_form) {
-      total++;
-      func.ir2.debug_form_string =
-          pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
-    }
-  });
-
-  lg::info("Stored debug forms for {} functions in {:.2f} ms\n", total, timer.getMs());
-}
-
-void ObjectFileDB::ir2_build_expressions(const Config& config) {
-  Timer timer;
-  int total = 0;
-  int attempted = 0;
-  int successful = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
-    (void)data;
-    total++;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis() && func.ir2.env.has_local_vars() &&
         func.ir2.env.types_succeeded) {
-      attempted++;
-      auto name = func.guessed_name.to_string();
+      auto name = func.name();
       auto arg_config = config.function_arg_names.find(name);
       auto var_config = config.function_var_overrides.find(name);
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
@@ -569,94 +549,67 @@ void ObjectFileDB::ir2_build_expressions(const Config& config) {
                                      ? var_config->second
                                      : std::unordered_map<std::string, LocalVarOverride>{},
                                  dts)) {
-        successful++;
         func.ir2.print_debug_forms = true;
         func.ir2.expressions_succeeded = true;
       }
     }
   });
-
-  lg::info("{}/{}/{} expression build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
 }
 
-void ObjectFileDB::ir2_insert_lets() {
-  Timer timer;
-  LetStats combined_stats;
-  int attempted = 0;
-
-  for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
+void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (func.ir2.expressions_succeeded) {
-      attempted++;
-      combined_stats += insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+      try {
+        insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+      } catch (const std::exception& e) {
+        func.warnings.general_warning(
+            fmt::format("Error while inserting lets: {}. Make sure that the return type is not "
+                        "none if something is actually returned.",
+                        e.what()));
+      }
     }
   });
-
-  lg::info("Let pass on {} functions ({}/{} vars in lets) in {:.2f} ms\n", attempted,
-           combined_stats.vars_in_lets, combined_stats.total_vars, timer.getMs());
 }
 
-void ObjectFileDB::ir2_rewrite_inline_asm_instructions() {
-  Timer timer;
-  int total = 0;
-  int attempted = 0;
-  int successful = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
+void ObjectFileDB::ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     (void)data;
-    total++;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
-      attempted++;
       if (rewrite_inline_asm_instructions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
-        successful++;
         func.ir2.print_debug_forms = true;
       }
     }
   });
-
-  lg::info("{}/{}/{} rewrote inline-asm instructions in {:.2f} ms\n", successful, attempted, total,
-           timer.getMs());
 }
 
-void ObjectFileDB::ir2_insert_anonymous_functions() {
-  Timer timer;
-  int total = 0;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
+void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     (void)data;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
       try {
-        total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+        insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
       } catch (std::exception& e) {
         func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
-        lg::error("Function {} failed static ref: {}\n", func.guessed_name.to_string(), e.what());
+        lg::error("Function {} failed static ref: {}\n", func.name(), e.what());
       }
     }
   });
-
-  lg::info("Inserted {} anonymous functions in {:.2f} ms\n", total, timer.getMs());
 }
 
-void ObjectFileDB::ir2_write_results(const std::string& output_dir, const Config& config) {
-  Timer timer;
-  lg::info("Writing IR2 results to file...");
-  int total_files = 0;
-  int total_bytes = 0;
-  for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.has_any_functions()) {
-      // todo
-      total_files++;
-      auto file_text = ir2_to_file(obj, config);
-      total_bytes += file_text.length();
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
-      file_util::write_text_file(file_name, file_text);
+void ObjectFileDB::ir2_write_results(const std::string& output_dir,
+                                     const Config& config,
+                                     ObjectFileData& obj) {
+  if (obj.linked_data.has_any_functions()) {
+    // todo
 
-      auto final = ir2_final_out(obj);
-      auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
-      file_util::write_text_file(final_name, final);
-    }
-  });
-  lg::info("Wrote {} files ({:.2f} MB) in {:.2f} ms\n", total_files, total_bytes / float(1 << 20),
-           timer.getMs());
+    auto file_text = ir2_to_file(obj, config);
+    auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
+    file_util::write_text_file(file_name, file_text);
+
+    auto final = ir2_final_out(obj);
+    auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
+    file_util::write_text_file(final_name, final);
+  }
 }
 
 std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config) {
@@ -675,8 +628,8 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
       try {
         result += ir2_function_to_string(data, func, seg);
       } catch (std::exception& e) {
-        result += "Failed to write";
-        result += func.guessed_name.to_string();
+        result += "Failed to write ";
+        result += func.name();
         result += ": ";
         result += e.what();
         result += "\n";
@@ -799,7 +752,7 @@ void append_commented(std::string& line,
 std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function& func, int seg) {
   std::string result;
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-  result += "; .function " + func.guessed_name.to_string() + "\n";
+  result += "; .function " + func.name() + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
   if (func.warnings.has_warnings()) {
@@ -937,6 +890,10 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
     }
   }
 
+  if (func.mips2c_output) {
+    result += *func.mips2c_output;
+  }
+
   result += "\n";
 
   assert(total_instructions_printed == (func.end_word - func.start_word - 1));
@@ -998,6 +955,20 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
         return true;
       }
     }
+  } else if (name.kind == FunctionName::FunctionKind::NV_STATE) {
+    auto sym_type = dts.symbol_types.find(name.state_name);
+    if (sym_type == dts.symbol_types.end()) {
+      lg::error("Could not find symbol with name {} for state. This is likely a decompiler bug.",
+                name.state_name);
+      return false;
+    }
+    *result = get_state_handler_type(name.handler_kind, sym_type->second);
+    return true;
+  } else if (name.kind == FunctionName::FunctionKind::V_STATE) {
+    auto mi = dts.ts.lookup_method(name.type_name, name.state_name);
+    *result = get_state_handler_type(name.handler_kind,
+                                     mi.type.substitute_for_method_call(name.type_name));
+    return true;
   } else {
     assert(false);
   }

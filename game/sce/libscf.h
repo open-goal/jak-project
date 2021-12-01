@@ -1,7 +1,6 @@
 #pragma once
 
-#ifndef JAK1_LIBSCF_H
-#define JAK1_LIBSCF_H
+#include "common/common_types.h"
 
 #define SCE_JAPANESE_LANGUAGE 0
 #define SCE_ENGLISH_LANGUAGE 1
@@ -28,6 +27,17 @@ int sceScfGetAspect();
  * Return a SONY SCE_LANGUAGE value, which differs from GOAL.
  */
 int sceScfGetLanguage();
-}  // namespace ee
 
-#endif  // JAK1_LIBSCF_H
+struct sceCdCLOCK {
+  u8 stat;
+  u8 second;
+  u8 minute;
+  u8 hour;
+  u8 week;
+  u8 day;
+  u8 month;
+  u8 year;
+};
+
+void sceCdReadClock(sceCdCLOCK* result);
+}  // namespace ee

@@ -32,6 +32,7 @@ int run(int argc, char** argv) {
     // read as a DGO
     auto dgo = DgoReader(base, data);
     // write dgo description
+    file_util::create_dir_if_needed(out_path);
     file_util::write_text_file(file_util::combine_path(out_path, base + ".txt"),
                                dgo.description_as_json());
     // write files:

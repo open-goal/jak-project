@@ -65,7 +65,7 @@ void MakeSystem::load_project_file(const std::string& file_path) {
   // read the file
   auto data = m_goos.reader.read_from_file({file_path});
   // interpret it, which will call various handlers.
-  m_goos.eval(data, m_goos.global_environment.as_env());
+  m_goos.eval(data, m_goos.global_environment.as_env_ptr());
 }
 
 goos::Object MakeSystem::handle_defstep(const goos::Object& form,
@@ -109,7 +109,7 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
     m_output_to_step.insert({output, step});
   }
 
-  return goos::EmptyListObject::make_new();
+  return goos::Object::make_empty_list();
 }
 
 /*!
@@ -318,7 +318,11 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
         print_input(rule->input, '\n');
       } else {
         fmt::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
-        print_input(rule->input, '\r');
+        if (tool->name() == "goalc") {
+          print_input(rule->input, '\r');
+        } else {
+          print_input(rule->input, '\n');
+        }
       }
     }
   }

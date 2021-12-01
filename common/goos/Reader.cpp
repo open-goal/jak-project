@@ -11,6 +11,7 @@
 
 #include "Reader.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
 #include "third-party/fmt/core.h"
 #include <filesystem>
 #include "ReplUtils.h"
@@ -63,6 +64,7 @@ void TextStream::seek_past_whitespace_and_comments() {
       case ' ':
       case '\t':
       case '\n':
+      case '\r':
         // just a whitespace, eat it!
         read();
         break;
@@ -99,6 +101,27 @@ void TextStream::seek_past_whitespace_and_comments() {
       default:
         return;
     }
+  }
+}
+
+/*!
+ * Read encoding bytes on a TextStream and check if it's UTF-8.
+ * If it's not, you can choose to throw or not.
+ * If UTF-8 encoding is not detected, the stream is not advanced.
+ */
+void TextStream::read_utf8_encoding(bool throw_on_error) {
+  if (text_remains(2)) {
+    if ((u8)peek(0) == 0xEF && (u8)peek(1) == 0xBB && (u8)peek(2) == 0xBF) {
+      read();
+      read();
+      read();
+      return;
+    }
+  }
+
+  if (throw_on_error) {
+    throw std::runtime_error(
+        fmt::format("UTF-8 encoding not detected in {}", text->get_description()));
   }
 }
 
@@ -142,6 +165,26 @@ Reader::Reader() {
   m_valid_source_text_chars[(int)'\n'] = true;
   m_valid_source_text_chars[(int)'\t'] = true;
   m_valid_source_text_chars[(int)'\r'] = true;
+
+  // allow every character that gets transformed to something else
+  for (auto& remap : g_font_large_char_remap) {
+    for (auto rc : remap.chars) {
+      m_valid_source_text_chars[(u8)rc] = true;
+    }
+  }
+  for (auto& remap : g_font_large_string_replace) {
+    for (auto rc : remap.to) {
+      m_valid_source_text_chars[(u8)rc] = true;
+    }
+    for (auto rc : remap.from) {
+      m_valid_source_text_chars[(u8)rc] = true;
+    }
+  }
+  m_valid_source_text_chars[0] = false;
+}
+
+bool Reader::is_valid_source_char(char c) const {
+  return m_valid_source_text_chars[(u8)c];
 }
 
 /*!
@@ -163,7 +206,7 @@ std::optional<Object> Reader::read_from_stdin(const std::string& prompt, ReplWra
     db.insert(textFrag);
 
     // perform read
-    auto result = internal_read(textFrag);
+    auto result = internal_read(textFrag, false);
     db.link(result, textFrag, 0);
     return result;
   } else {
@@ -180,7 +223,7 @@ Object Reader::read_from_string(const std::string& str, bool add_top_level) {
   db.insert(textFrag);
 
   // perform read
-  auto result = internal_read(textFrag, add_top_level);
+  auto result = internal_read(textFrag, false, add_top_level);
   db.link(result, textFrag, 0);
   return result;
 }
@@ -188,11 +231,21 @@ Object Reader::read_from_string(const std::string& str, bool add_top_level) {
 /*!
  * Read a file
  */
-Object Reader::read_from_file(const std::vector<std::string>& file_path) {
-  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path));
+Object Reader::read_from_file(const std::vector<std::string>& file_path, bool check_encoding) {
+  std::string joined_name;
+
+  for (const auto& thing : file_path) {
+    if (!joined_name.empty()) {
+      joined_name += '/';
+    }
+
+    joined_name += thing;
+  }
+
+  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_name);
   db.insert(textFrag);
 
-  auto result = internal_read(textFrag);
+  auto result = internal_read(textFrag, check_encoding);
   db.link(result, textFrag, 0);
   return result;
 }
@@ -200,21 +253,34 @@ Object Reader::read_from_file(const std::vector<std::string>& file_path) {
 /*!
  * Common read for a SourceText
  */
-Object Reader::internal_read(std::shared_ptr<SourceText> text, bool add_top_level) {
-  // validate the input;
-  for (int offset = 0; offset < text->get_size(); offset++) {
-    if (!m_valid_source_text_chars[(u8)text->get_text()[offset]]) {
+Object Reader::internal_read(std::shared_ptr<SourceText> text,
+                             bool check_encoding,
+                             bool add_top_level) {
+  // verify UTF-8 encoding
+  if (check_encoding && (text->get_size() < 3 || (u8)text->get_text()[0] != 0xEF ||
+                         (u8)text->get_text()[1] != 0xBB || (u8)text->get_text()[2] != 0xBF)) {
+    throw std::runtime_error(
+        fmt::format("Text file {} has invalid encoding", text->get_description()));
+  }
+
+  // validate the input
+  for (int offset = check_encoding ? 3 : 0; offset < text->get_size(); offset++) {
+    if (!is_valid_source_char(text->get_text()[offset])) {
       // failed.
       int line_number = text->get_line_idx(offset) + 1;
       throw std::runtime_error(fmt::format("Invalid character found on line {} of {}: 0x{:x}",
                                            line_number, text->get_description(),
-                                           (u32)text->get_text()[offset]));
+                                           (u8)text->get_text()[offset]));
     }
   }
 
   // first create stream
   TextStream ts(text);
 
+  if (check_encoding) {
+    // discard the UTF-8 encoding bytes
+    ts.read_utf8_encoding(true);
+  }
   // clean up first whitespace
   ts.seek_past_whitespace_and_comments();
 
@@ -229,7 +295,7 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text, bool add_top_leve
 
 bool Reader::check_string_is_valid(const std::string& str) const {
   for (auto c : str) {
-    if (!m_valid_source_text_chars[(u8)c]) {
+    if (!is_valid_source_char(c)) {
       return false;
     }
   }
@@ -271,8 +337,7 @@ Token Reader::get_next_token(TextStream& stream) {
   // Second - not a special token, so we read until we get a character that ends the token.
   while (stream.text_remains()) {
     char next = stream.peek();
-    if (next == ' ' || next == '\n' || next == '\t' || next == ')' || next == ';' || next == '#' ||
-        next == '(') {
+    if (next == ' ' || next == '\n' || next == '\t' || next == ')' || next == ';' || next == '(') {
       return t;
     } else {
       // not the end, so add to token.
@@ -524,7 +589,7 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     db.link(rv, ts.text, start_offset);
     return rv;
   } else {
-    auto rv = build_list(objects);
+    auto rv = build_list(std::move(objects));
     db.link(rv, ts.text, start_offset);
     return rv;
   }

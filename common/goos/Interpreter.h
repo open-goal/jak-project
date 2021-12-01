@@ -13,7 +13,7 @@
 namespace goos {
 class Interpreter {
  public:
-  Interpreter();
+  Interpreter(const std::string& user_profile = "#f");
   ~Interpreter();
   void execute_repl(ReplWrapper& repl);
   void throw_eval_error(const Object& o, const std::string& err);
@@ -23,6 +23,7 @@ class Interpreter {
   void set_global_variable_to_symbol(const std::string& name, const std::string& value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
+  HeapObject* intern_ptr(const std::string& name);
   void disable_printfs();
   Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
   bool eval_symbol(const Object& sym,
@@ -127,6 +128,9 @@ class Interpreter {
   Object eval_load_file(const Object& form,
                         Arguments& args,
                         const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_try_load_file(const Object& form,
+                            Arguments& args,
+                            const std::shared_ptr<EnvironmentObject>& env);
   Object eval_print(const Object& form,
                     Arguments& args,
                     const std::shared_ptr<EnvironmentObject>& env);
@@ -211,6 +215,9 @@ class Interpreter {
   Object eval_string_to_symbol(const Object& form,
                                Arguments& args,
                                const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_get_env(const Object& form,
+                      Arguments& args,
+                      const std::shared_ptr<EnvironmentObject>& env);
 
   // specials
   Object eval_define(const Object& form,

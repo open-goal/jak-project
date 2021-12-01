@@ -17,6 +17,7 @@
 #include "kprint.h"
 #include "common/symbols.h"
 #include "common/goal_constants.h"
+#include "game/mips2c/mips2c_table.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -63,7 +64,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
 
     if (link_debug_printfs) {
       char* goal_name = object_file.cast<char>().c();
-      printf("link %s\n", goal_name);
+      printf("link %s\n", m_object_name);
       printf("link_control::begin %c%c%c%c\n", goal_name[0], goal_name[1], goal_name[2],
              goal_name[3]);
     }
@@ -785,6 +786,11 @@ void link_control::finish() {
   if (ofh->object_file_version == 3) {
     // todo check function type of entry
 
+    // setup mips2c functions
+    for (auto& x : Mips2C::gMips2CLinkCallbacks[m_object_name]) {
+      x();
+    }
+
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {
       call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
@@ -833,8 +839,10 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
 /*!
  * Wrapper so this can be called from GOAL. Not in original game.
  */
-u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags) {
-  return link_and_exec(Ptr<u8>(data), Ptr<char>(name).c(), size, Ptr<kheapinfo>(heap), flags)
+u64 link_and_exec_wrapper(u64* args) {
+  // data, name, size, heap, flags
+  return link_and_exec(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2], Ptr<kheapinfo>(args[3]),
+                       args[4])
       .offset;
 }
 
@@ -843,13 +851,10 @@ u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags) {
  * 47 -> output_load, output_true, execute, 8, force fast
  * 39 -> no 8 (s7)
  */
-uint64_t link_begin(uint64_t object_data,
-                    uint64_t name,
-                    int32_t size,
-                    uint64_t heap,
-                    uint32_t flags) {
-  saved_link_control.begin(Ptr<u8>(object_data), Ptr<char>(name).c(), size, Ptr<kheapinfo>(heap),
-                           flags);
+uint64_t link_begin(u64* args) {
+  // object data, name size, heap flags
+  saved_link_control.begin(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2],
+                           Ptr<kheapinfo>(args[3]), args[4]);
   auto work_result = saved_link_control.work();
   // if we managed to finish in one shot, take care of calling finish
   if (work_result) {

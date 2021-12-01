@@ -62,6 +62,15 @@
 (defsmacro cddr (x)
            `(cdr (cdr ,x)))
 
+(defsmacro cdddr (x)
+           `(cdr (cdr (cdr ,x))))
+
+(defsmacro caadr (x)
+  `(car (car (cdr ,x))))
+
+(defsmacro cadar (x)
+  `(car (cdr (car ,x))))
+
 (desfun first (x)
 	(car x))
 
@@ -110,11 +119,52 @@
         (#t (filter pred (cdr lst)))))
 
 (desfun assoc (x a)
-	(if (eq? (caar a) x)
-	    (car a)
-	    (assoc x (cdr a))
-	    )
+  (if (null? a)
+      '()
+      (if (eq? (caar a) x)
+          (car a)
+          (assoc x (cdr a))
+          )
+      )
 	)
+
+(desfun list (&rest items)
+  (apply (lambda (x) x) items)
+  )
+
+(desfun reverse (lst)
+  (if (null? lst)
+    '()
+    (let ((old-lst lst)
+          (new-lst '()))
+      (while (not (null? old-lst))
+        (set! new-lst (cons (car old-lst) new-lst))
+        (set! old-lst (cdr old-lst))
+        )
+      new-lst
+      )
+    )
+  )
+
+(desfun reverse-recursive (lst)
+  (if (null? lst)
+    '()
+    (let ((old-lst lst)
+          (new-lst '()))
+      (while (not (null? old-lst))
+        (let ((cur-obj (car old-lst)))
+          (set! new-lst (cons (if (pair? cur-obj)
+                                  (reverse-recursive cur-obj)
+                                  cur-obj
+                                  )
+                              new-lst))
+          (set! old-lst (cdr old-lst))
+          )
+        )
+      new-lst
+      )
+    )
+  )
 
 (defsmacro let (bindings &rest body)
   `((lambda ,(apply first bindings) ,@body)
@@ -238,7 +288,49 @@
   `(seval (desfun ,name ,args ,@body))
   )
 
+;;;;;;;;;;;;;;;;;;;
+;; enum stuff
+;;;;;;;;;;;;;;;;;;;
 
+(desfun enum-length (enum)
+  (length (get-enum-vals enum))
+  )
+
+(defsmacro doenum (bindings &rest body)
+  ;; (doenum (name-var val-var 'enum &rest result) &rest body)
+  
+  (with-gensyms (enum-vals)
+    `(let ((,enum-vals (get-enum-vals ,(third bindings))))
+        
+        (while (not (null? ,enum-vals))
+          (let ((,(first bindings) (caar ,enum-vals)) ;; name
+                (,(second bindings) (cdar ,enum-vals)) ;; value
+                )
+            ,@body
+            )
+          
+          (set! ,enum-vals (cdr ,enum-vals))
+          )
+        
+        ,@(cdddr bindings)
+        
+        )
+    )
+  
+  )
+
+(desfun enum-max (enum)
+  "get the highest value in an enum"
+  
+  (let ((max-val -999999999))
+    (doenum (name val enum)
+      (when (> val max-val)
+        (set! max-val val))
+      )
+
+    max-val
+    )
+  )
 
 
 ;; shortcut to quit GOOS
@@ -248,3 +340,26 @@
 
 ;; this is checked in a test to see if this file is loaded.
 (define __goos-lib-loaded__ #t)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; USER PROFILES      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; *user* is defined when goos starts!
+(when *user*
+  (fmt #t "Loading user scripts for user: {}...\n" *user*)
+  ;; i'm not sure what naming scheme to use here. user/<name>/user.gs?
+  ;; the GOAL one is loaded in Compiler.cpp
+  (load-file (fmt #f "goal_src/user/{}/user.gs" *user*))
+  )
+
+(defsmacro user? (&rest users)
+  (cond
+    ((null? users)            #f)
+    ((eq? *user* (car users)) #t)
+    (#t   `(user? ,@(cdr users)))
+    )
+  )
+
+

@@ -3,6 +3,10 @@ add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
+        dma/dma.cpp
+        dma/dma_copy.cpp
+        dma/gs.cpp
+
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
@@ -20,16 +24,19 @@ add_library(common
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
         util/BitUtils.cpp
+        util/compress.cpp
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
+        util/diff.cpp
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp
         util/print_float.cpp
-        )
+        util/FontUtils.cpp
+        util/image_loading.cpp)
 
-target_link_libraries(common fmt lzokay replxx)
+target_link_libraries(common fmt lzokay replxx libzstd_static)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32)

@@ -130,7 +130,11 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
-    get_objs_from_dgo(dgo, config);
+    try {
+      get_objs_from_dgo(dgo, config);
+    } catch (std::runtime_error& e) {
+      lg::warn("Error when reading DGOs: {}", e.what());
+    }
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());
@@ -163,6 +167,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   }
 
   dts.bad_format_strings = config.bad_format_strings;
+  dts.format_ops_with_dynamic_string_by_func_name =
+      config.hacks.format_ops_with_dynamic_string_by_func_name;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -211,8 +217,20 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
   // get all obj files...
   for (uint32_t i = 0; i < header.object_count; i++) {
     auto obj_header = reader.read<DgoHeader>();
-    assert(reader.bytes_left() >= obj_header.object_count);
     assert_string_empty_after(obj_header.name, 60);
+    if (i == header.object_count - 1) {
+      if (reader.bytes_left() == obj_header.object_count - 0x30) {
+        if (config.is_pal) {
+          lg::warn("Skipping {} because it is a broken PAL object", obj_header.name);
+          reader.ffwd(reader.bytes_left());
+          continue;
+        } else {
+          assert(false);
+        }
+      }
+    } else {
+      assert(reader.bytes_left() >= obj_header.object_count);
+    }
 
     if (std::string(obj_header.name).find("-ag") != std::string::npos) {
       lg::error(
@@ -242,6 +260,9 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     uint32_t obj_size,
                                     const std::string& dgo_name,
                                     const Config& config) {
+  if (config.banned_objects.find(obj_name) != config.banned_objects.end()) {
+    return;
+  }
   if (!config.allowed_objects.empty()) {
     if (config.allowed_objects.find(obj_name) == config.allowed_objects.end()) {
       return;
@@ -331,7 +352,7 @@ std::string ObjectFileDB::generate_dgo_listing() {
   for (const auto& name : dgo_names) {
     result += "(\"" + name + "\"\n";
     for (auto& obj_rec : obj_files_by_dgo[name]) {
-      auto obj = lookup_record(obj_rec);
+      auto& obj = lookup_record(obj_rec);
       std::string extension = ".o";
       if (obj.obj_version == 4 || obj.obj_version == 2) {
         extension = ".go";
@@ -363,7 +384,8 @@ std::string ObjectFileDB::generate_obj_listing() {
       std::string dgos = "[";
       for (auto& y : x.dgo_names) {
         assert(y.length() >= 5);
-        dgos += "\"" + y.substr(0, y.length() - 4) + "\", ";
+        std::string new_str = y == "NO-XGO" ? y : y.substr(0, y.length() - 4);
+        dgos += "\"" + new_str + "\", ";
       }
       dgos.pop_back();
       dgos.pop_back();
@@ -562,6 +584,7 @@ std::string ObjectFileDB::process_tpages() {
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
   int tpage_dir_count = 0;
+  u64 total_px = 0;
   Timer timer;
 
   std::string result;
@@ -570,6 +593,7 @@ std::string ObjectFileDB::process_tpages() {
       auto statistics = process_tpage(data);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+      total_px += statistics.num_px;
     } else if (data.name_in_dgo == "dir-tpages") {
       result = process_dir_tpages(data).to_source();
       tpage_dir_count++;
@@ -583,7 +607,7 @@ std::string ObjectFileDB::process_tpages() {
     return {};
   }
 
-  lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
+  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
            100.f * float(success) / float(total), timer.getMs());
   return result;
 }
@@ -679,7 +703,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
         func.guessed_name.unique_id = uid++;
         func.guessed_name.id_in_object = func_in_obj++;
         func.guessed_name.object_name = data.to_unique_name();
-        auto name = func.guessed_name.to_string();
+        auto name = func.name();
 
         if (unique_names.find(name) != unique_names.end()) {
           duplicated_functions[name].insert(data.to_unique_name());
@@ -698,7 +722,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 
   for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
-    auto name = func.guessed_name.to_string();
+    auto name = func.name();
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());

@@ -6,8 +6,12 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/find_defstates.cpp
+        analysis/find_skelgroups.cpp
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
+        analysis/label_types.cpp
+        analysis/mips2c.cpp
         analysis/reg_usage.cpp
         analysis/stack_spill.cpp
         analysis/static_refs.cpp
@@ -42,10 +46,12 @@ add_library(
         IR2/AtomicOpTypeAnalysis.cpp
         IR2/bitfields.cpp
         IR2/Env.cpp
+        IR2/ExpressionHelpers.cpp
         IR2/Form.cpp
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
         IR2/GenericElementMatcher.cpp
+        IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
         ObjectFile/LinkedObjectFile.cpp
@@ -57,12 +63,19 @@ add_library(
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
+        util/sparticle_decompile.cpp
         util/TP_Type.cpp
 
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
 
         config.cpp)
+
+if (UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+elseif (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
+endif ()
 
 target_link_libraries(decomp
         lzokay

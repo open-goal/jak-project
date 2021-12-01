@@ -1,0 +1,92 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: goal
+file_extensions:
+  - gc
+scope: source.goal
+contexts:
+  main:
+
+    # Important keywords for blocks/control flow/etc
+    - match: \b(?i:begin|block|return-from|cond|return|when|if|unless|let|else|while|rlet|countdown|dotimes|case)\b
+      scope: keyword.control.goal
+
+    # Less important keywords
+    - match: \b(?i:the-as|the|logior|logand|logtest\?|ash|cons|car|cdr|new|break|none|method-of-type|method-of-object|declare|declare-type|and|not|lambda|suspend)\s
+      scope: keyword.operator.goal
+
+    # Definition forms like (def thing value)
+    - match: \b(?i:(defun|defmacro|deftype|define|defconstant|defun-debug|define-extern))\s+([\w\-!?<>]*)
+      scope: meta.function.goal
+      captures:
+        1: keyword.declaration.function.goal
+        2: entity.name.function.goal
+
+    # Special case for defmethod
+    - match: \b(?i:(defmethod))\b\s+([\w\-!?<>]*)\b\s+([\w\-!?<>]*)
+      scope: meta.function.goal
+      captures:
+        1: keyword.declaration.function.goal
+        2: entity.name.function.goal
+        3: entity.name.class.lisgoalp
+
+     # Special case for set. Need a special case because of the !, and don't want to match reset!
+    - match: \b(?i:set!|neq\?|eq\?|zero\?)
+      scope: keyword.operator.goal
+
+    - match: (?i:->)
+      scope: keyword.operator.goal
+
+    # Quoted symbols. I abuse these as "parameter"
+    - match: (?i:'([\w\-!?<>]+))
+      scope: variable.parameter.goal
+
+    # Block comments
+    - match: '#\|'
+      scope: punctuation.definition.comment.begin.goal
+      push:
+        - meta_scope: comment.block.goal
+        - include: block-comment
+        - match: '\|#'
+          scope: punctuation.definition.comment.end.goal
+          pop: true
+
+    # Normal Comments
+    - match: (;).*$\n?
+      scope: comment.line.semicolon.goal
+      captures:
+        1: punctuation.definition.comment.goal
+
+     # Built-in, numeric type
+    - match: \b(uint128|int128|float|int64|uint64|int32|uint32|int16|uint16|int8|uint8|binteger|int|uint|pointer|array|inline-array)\b
+      scope: storage.type
+
+    - match: (?i:#t|#f|'\(\))
+      scope: constant.language.goal
+
+    - match: '(#)(\w|[\\+-=<>''."&#])+'
+      scope: constant.character.goal
+      captures:
+        1: constant.character.goal # change this to change the color of the prefix.
+
+    - match: (\*)(\S*)(\*)
+      scope: variable.function.goal
+
+    - match: :(\S*)
+      scope: variable.function.goal
+
+
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.goal
+      push:
+        - meta_scope: string.quoted.double.goal
+        - match: '"'
+          captures:
+            0: punctuation.definition.string.end.goal
+          pop: true
+        - match: \\.
+          scope: constant.character.escape.goal
+
+

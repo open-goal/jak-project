@@ -117,16 +117,45 @@
 ;; without executing anything, to find a process for instance.
 (define *null-kernel-context* (new 'static 'kernel-context))
 
-(#when PC_PORT
+(#cond 
+  (PC_PORT
+  
+  ;; similar thing for the scratchpad data.
+  (let* ((mem (new 'global 'array 'uint8 (* (+ 16 8) 1024)))
+         (aligned (logand (&+ mem 8192) (lognot 8191)))
+         )
+      (define *fake-scratchpad-data* aligned)
+    )
+  
   ;; We will move stacks on the scratchpad to here.
   ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
   ;; not overlapping. We can spare the 16k of memory.
-  (define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
+  (define *fake-scratchpad-stack* *fake-scratchpad-data*)
+  ;;(define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
   
-  ;; similar thing for the scratchpad data.
-  ;; in 
-  (define *fake-scratchpad-data*  (new 'global 'array 'uint8 (* 16 1024)))
+
+  (defmacro scratchpad-start()
+    '*fake-scratchpad-data*
+    )
   )
+  (else
+    (defmacro scratchpad-start ()
+      #x70000000
+      )
+    )
+  )
+
+(defmacro scratchpad-end ()
+  `(&+ (scratchpad-start) (* 16 1024))
+  )
+
+(defmacro in-scratchpad? (x)
+  `(and 
+     (>= (the-as int ,x) (scratchpad-start))
+     (< (the-as int ,x) (scratchpad-end))
+     )
+  )
+  
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -279,84 +308,7 @@
 ;; Each process-tree element has a process-mask which indicates what type of node it is.
 
 (defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
-  (let ((s4-0 arg1))
-    (if (= (logand #x1000000 (the-as int s4-0)) (process-mask death))
-        (format arg0 "death ")
-        )
-    (if (= (logand #x800000 (the-as int s4-0)) (process-mask attackable))
-        (format arg0 "attackable ")
-        )
-    (if (= (logand #x400000 (the-as int s4-0)) (process-mask projectile))
-        (format arg0 "projectile ")
-        )
-    (if (= (logand #x200000 (the-as int s4-0)) (process-mask entity))
-        (format arg0 "entity ")
-        )
-    (if (= (logand #x100000 (the-as int s4-0)) (process-mask ambient))
-        (format arg0 "ambient ")
-        )
-    (if (= (logand #x80000 (the-as int s4-0)) (process-mask platform))
-        (format arg0 "platform ")
-        )
-    (if (= (logand #x40000 (the-as int s4-0)) (process-mask camera))
-        (format arg0 "camera ")
-        )
-    (if (= (logand #x20000 (the-as int s4-0)) (process-mask enemy))
-        (format arg0 "enemy ")
-        )
-    (if (= (logand #x10000 (the-as int s4-0)) (process-mask collectable))
-        (format arg0 "collectable ")
-        )
-    (if (= (logand s4-0 (process-mask crate)) (process-mask crate))
-        (format arg0 "crate ")
-        )
-    (if (= (logand s4-0 (process-mask sidekick)) (process-mask sidekick))
-        (format arg0 "sidekick ")
-        )
-    (if (= (logand s4-0 (process-mask target)) (process-mask target))
-        (format arg0 "target ")
-        )
-    (if
-     (= (logand s4-0 (process-mask movie-subject)) (process-mask movie-subject))
-     (format arg0 "movie-subject ")
-     )
-    (if (= (logand s4-0 (process-mask movie)) (process-mask movie))
-        (format arg0 "movie ")
-        )
-    (if (= (logand s4-0 (process-mask going)) (process-mask going))
-        (format arg0 "going ")
-        )
-    (if (= (logand s4-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
-        (format arg0 "heap-shrunk ")
-        )
-    (if (= (logand s4-0 (process-mask process-tree)) (process-mask process-tree))
-        (format arg0 "process-tree ")
-        )
-    (if (= (logand s4-0 (process-mask sleep-code)) (process-mask sleep-code))
-        (format arg0 "sleep-code ")
-        )
-    (if (= (logand s4-0 (process-mask sleep)) (process-mask sleep))
-        (format arg0 "sleep ")
-        )
-    (if (= (logand s4-0 (process-mask actor-pause)) (process-mask actor-pause))
-        (format arg0 "actor-pause ")
-        )
-    (if (= (logand s4-0 (process-mask progress)) (process-mask progress))
-        (format arg0 "progress ")
-        )
-    (if (= (logand s4-0 (process-mask menu)) (process-mask menu))
-        (format arg0 "menu ")
-        )
-    (if (= (logand s4-0 (process-mask pause)) (process-mask pause))
-        (format arg0 "pause ")
-        )
-    (if (= (logand s4-0 (process-mask draw)) (process-mask draw))
-        (format arg0 "draw ")
-        )
-    (if (= (logand s4-0 (process-mask execute)) (process-mask execute))
-        (format arg0 "execute ")
-        )
-    )
+  (bit-enum->string process-mask arg1 arg0)
   arg1
   )
 
@@ -385,9 +337,9 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tname: ~S~%" (-> obj name))
   (format #t "~Tmask: #x~X~%" (-> obj mask))
-  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
-  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
-  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tparent: ~A~%" (ppointer->process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (ppointer->process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (ppointer->process (-> obj child)))
   obj
   )
 
@@ -471,9 +423,9 @@
   (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
   (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
   (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
-  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
-  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tparent: ~A~%" (ppointer->process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (ppointer->process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (ppointer->process (-> obj child)))
   (format #t "~Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
   (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
   (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
@@ -922,8 +874,8 @@
       ;; create each process
       (let ((old-bro (-> obj child))
             (next ((method-of-type process new) allocation process 'dead stack-size)))
-        (set! (-> obj child) (as-ppointer next))
-        (set! (-> next parent) (as-ppointer obj))
+        (set! (-> obj child) (process->ppointer next))
+        (set! (-> next parent) (process->ppointer obj))
         (set! (-> next pool) obj)
         (set! (-> next brother) old-bro)
         )
@@ -942,7 +894,7 @@
       (set! proc (the (pointer process-tree) (get-process *debug-dead-pool* type-to-make stack-size)))
       (when proc
         (format 0 "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"
-                type-to-make (as-process proc) (-> obj name))
+                type-to-make (ppointer->process proc) (-> obj name))
         )
       ;; there's a bug here. proc is a process here, but will be used as a process pointer.
       ;; let's just kill the program here.
@@ -958,7 +910,7 @@
        )
       (else
        (format 0 "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"
-               type-to-make (as-process proc) (-> obj name))
+               type-to-make (ppointer->process proc) (-> obj name))
        (the process #f)
        )
       )
@@ -1418,7 +1370,7 @@
         (let ((proc (-> gap next process))
               (size (gap-size obj gap)))
           (unless (zero? size)
-            (format #t "[kernel] Relocating process ~A by ~D.~%" proc (- size))
+            ;;(format #t "[kernel] Relocating process ~A by ~D.~%" proc (- size))
             (when (< size 0)
               ;; bug!
               (break)
@@ -2034,7 +1986,7 @@
   (break)
   )
 
-(defmethod new protect-frame ((allocation symbol) (type-to-make type) (func (function object)))
+(defmethod new protect-frame ((allocation symbol) (type-to-make type) (func (function none)))
   (let ((obj (the protect-frame (&+ allocation *gtype-basic-offset*))))
     (set! (-> obj type) type-to-make)
     (set! (-> obj name) 'protect-frame)
@@ -2084,12 +2036,12 @@
     ;; need to remove obj from its current parent
     (when parent
       (let ((proc (-> (-> parent) child)))
-        (if (eq? (as-process proc) obj)
+        (if (eq? (ppointer->process proc) obj)
             ;; case where we're the first child is easy!
             (set! (-> (-> parent) child) (-> obj brother))
             ;; otherwise, look through brothers to find us.
             (begin
-             (while (not (eq? (as-process (-> (-> proc) brother)) obj))
+             (while (not (eq? (ppointer->process (-> (-> proc) brother)) obj))
                (set! proc (-> (-> proc) brother))
                )
              ;; ok, got us, splice out of list.
@@ -2289,14 +2241,14 @@
                         )))
         ;; the function returned, either through a throw or through actually returning.
         ;; the status will give us a clue of what happened.
-        (cond 
-          ((= (-> pp status) 'initialize)
+        (case (-> pp status)
+          (('initialize)
            ;; we returned and didn't change status.
            (set! (-> pp status) 'initialize-dead)
            ;; this means we died, and we should be deactivated.
            (deactivate pp)
            )
-          ((= (-> pp status) 'initialize-go)
+          (('initialize-go)
            ;; we returned with a (suspend) or (go) ? not sure
            ;; either way, we're ready for next time!
            (set! (-> pp status) 'waiting-to-run)
@@ -2399,22 +2351,22 @@
 
 ;; The defstate macro isn't defined yet, so we do it manually.
 (define dead-state 
-    (new 'static 'state
-         :name #f
-         :next #f
-         :exit #f
-         :code #f
-         :trans #f
-         :post #f
-         :enter #f
-         :event #f))
+        (the (state process) (new 'static 'state
+                                  :name #f
+                                  :next #f
+                                  :exit #f
+                                  :code #f
+                                  :trans #f
+                                  :post #f
+                                  :enter #f
+                                  :event #f)))
 
-(set! (-> dead-state code) nothing)
+(set! (-> dead-state code) (the (function none :behavior process) nothing))
 
 
 ;; this is not yet defined.
-(define-extern entity-deactivate-handler (function process object none))
-(define entity-deactivate-handler (the (function process object none) nothing))
+(define-extern entity-deactivate-handler (function process entity none))
+(define entity-deactivate-handler (the (function process entity none) nothing))
 
 (define-extern process-disconnect (function process int))
 

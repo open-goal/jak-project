@@ -218,6 +218,7 @@ std::string Type::get_parent() const {
 bool Type::common_type_info_equal(const Type& other) const {
   // clang-format off
   return m_methods == other.m_methods &&
+         m_states == other.m_states &&
          m_new_method_info == other.m_new_method_info &&
          m_new_method_info_defined == other.m_new_method_info_defined &&
          m_parent == other.m_parent &&
@@ -225,6 +226,7 @@ bool Type::common_type_info_equal(const Type& other) const {
          m_allow_in_runtime == other.m_allow_in_runtime &&
          m_runtime_name == other.m_runtime_name &&
          m_is_boxed == other.m_is_boxed &&
+         m_generate_inspect == other.m_generate_inspect &&
          m_heap_base == other.m_heap_base;
   // clang-format on
 }
@@ -243,6 +245,25 @@ std::string Type::common_type_info_diff(const Type& other) const {
                               other.m_methods.at(i).name);
         result += m_methods.at(i).diff(other.m_methods.at(i));
         result += "\n";
+      }
+    }
+  }
+  if (m_states != other.m_states) {
+    result += "States are different:\n";
+    for (auto& ours : m_states) {
+      auto theirs = other.m_states.find(ours.first);
+      if (theirs == other.m_states.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", ours.first);
+      } else if (ours.second != theirs->second) {
+        result += fmt::format("  {} is defined differently: {} vs {}\n", ours.first,
+                              ours.second.print(), theirs->second.print());
+      }
+    }
+
+    for (auto& theirs : other.m_states) {
+      auto ours = m_states.find(theirs.first);
+      if (ours == m_states.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", theirs.first);
       }
     }
   }
@@ -271,6 +292,10 @@ std::string Type::common_type_info_diff(const Type& other) const {
   }
   if (m_heap_base != other.m_heap_base) {
     result += fmt::format("heap_base: {} vs. {}\n", m_heap_base, other.m_heap_base);
+  }
+  if (m_generate_inspect != other.m_generate_inspect) {
+    result +=
+        fmt::format("generate_inspect: {} vs. {}\n", m_generate_inspect, other.m_generate_inspect);
   }
   return result;
 }
@@ -379,6 +404,12 @@ std::string Type::print_method_info() const {
   }
 
   return result;
+}
+
+void Type::add_state(const std::string& name, const TypeSpec& type) {
+  if (!m_states.insert({name, type}).second) {
+    throw std::runtime_error(fmt::format("State {} is multiply defined", name));
+  }
 }
 
 std::string Type::incompatible_diff(const Type& other) const {
@@ -1047,7 +1078,23 @@ std::string EnumType::diff_impl(const Type& other_) const {
   }
 
   if (m_entries != other.m_entries) {
-    result += "Entries are different.\n";
+    result += "Entries are different:\n";
+    for (auto& ours : m_entries) {
+      auto theirs = other.m_entries.find(ours.first);
+      if (theirs == other.m_entries.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", ours.first);
+      } else if (ours.second != theirs->second) {
+        result += fmt::format("  {} is defined differently: {} vs {}\n", ours.first, ours.second,
+                              theirs->second);
+      }
+    }
+
+    for (auto& theirs : other.m_entries) {
+      auto ours = m_entries.find(theirs.first);
+      if (ours == m_entries.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", theirs.first);
+      }
+    }
   }
 
   return result;

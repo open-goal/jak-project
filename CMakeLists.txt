@@ -27,10 +27,16 @@ if(UNIX)
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
-        -Wsign-promo")
+        -Wsign-promo \
+        -fdiagnostics-color=always")
 else()
+    if(CMAKE_BUILD_TYPE MATCHES "Debug")
+      # This actually breaks some standard library things for some reason?
+      # message("Setting Flags to Enable Edit and Continue")
+      # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
+    endif()
     set(CMAKE_CXX_FLAGS "/EHsc")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
 endif(UNIX)
 
 if(WIN32)
@@ -44,6 +50,24 @@ if(ASAN_BUILD)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1")
     message(STATUS "Doing ASAN build")
 endif()
+
+# if(WIN32)
+#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/windows/)
+#   if(buildcache_program)
+#     message("Found Windows BuildCache, gonna use it!")
+#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
+#   else()
+#     message("Windows Buildcache not found!")
+#   endif()
+# else()
+#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/linux/)
+#   if(buildcache_program)
+#     message("Found Linux BuildCache, gonna use it!")
+#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
+#   else()
+#     message("Linux Buildcache not found!")
+#   endif()
+# endif()
 
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
@@ -74,12 +98,17 @@ add_subdirectory(decompiler)
 # build glfw library
 add_subdirectory(third-party/glfw)
 
+add_subdirectory(third-party/zstd)
+
 # build libzip
 add_subdirectory(third-party/11zip EXCLUDE_FROM_ALL)
 
-# build the game code in C++
+# build imgui
 include_directories(third-party/glad/include)
 include_directories(third-party/glfw/include)
+add_subdirectory(third-party/imgui)
+
+# build the game code in C++
 add_subdirectory(game)
 
 # build the compiler

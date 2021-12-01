@@ -5,9 +5,8 @@
  * Representation of a GOAL type in the type system.
  */
 
-#pragma once
-
 #include <string>
+#include <map>
 #include "common/util/assert.h"
 #include <unordered_map>
 #include "common/goal_constants.h"
@@ -82,12 +81,14 @@ class Type {
   const MethodInfo& add_method(const MethodInfo& info);
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
+  void add_state(const std::string& name, const TypeSpec& type);
 
   void disallow_in_runtime() { m_allow_in_runtime = false; }
 
   virtual ~Type() = default;
 
   const std::vector<MethodInfo>& get_methods_defined_for_type() const { return m_methods; }
+  const std::map<std::string, TypeSpec>& get_states_declared_for_type() const { return m_states; }
 
   const MethodInfo* get_new_method_defined_for_type() const {
     if (m_new_method_info_defined) {
@@ -101,14 +102,18 @@ class Type {
 
   int heap_base() const { return m_heap_base; }
 
+  bool gen_inspect() const { return m_generate_inspect; }
+
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);
   virtual std::string diff_impl(const Type& other) const = 0;
   std::string incompatible_diff(const Type& other) const;
 
   std::vector<MethodInfo> m_methods;
+  std::map<std::string, TypeSpec> m_states;
   MethodInfo m_new_method_info;
   bool m_new_method_info_defined = false;
+  bool m_generate_inspect = true;
 
   std::string m_parent;  // the parent type (is empty for none and object)
   std::string m_name;
@@ -274,6 +279,7 @@ class StructureType : public ReferenceType {
   bool is_packed() const { return m_pack; }
   bool is_allowed_misalign() const { return m_allow_misalign; };
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
+  void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
 
  protected:
   friend class TypeSystem;
@@ -341,6 +347,7 @@ class BitFieldType : public ValueType {
   bool operator==(const Type& other) const override;
   const std::vector<BitField>& fields() const { return m_fields; }
   std::string diff_impl(const Type& other) const override;
+  void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
 
  private:
   friend class TypeSystem;

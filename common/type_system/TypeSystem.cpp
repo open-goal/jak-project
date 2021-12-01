@@ -392,8 +392,12 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
     return kv->second.get();
   }
 
-  if (m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
+  auto fd = m_forward_declared_types.find(name);
+  if (fd != m_forward_declared_types.end()) {
     throw_typesystem_error("Type {} is not fully defined.\n", name);
+    // kind of a hack... if the type is forward-declared, look for the parent type and hope for the
+    // best.
+    // return lookup_type(fd->second);
   } else {
     throw_typesystem_error("Type {} is not defined.\n", name);
   }
@@ -525,8 +529,9 @@ MethodInfo TypeSystem::declare_method(Type* type,
       if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
         throw_typesystem_error(
             "The method {} of type {} was originally declared as {}, but has been "
-            "redeclared as {}\n",
-            method_name, type->get_name(), existing_info.type.print(), ts.print());
+            "redeclared as {}. Originally declared in {}\n",
+            method_name, type->get_name(), existing_info.type.print(), ts.print(),
+            existing_info.defined_in_type);
       }
 
       if ((existing_info.no_virtual || no_virtual) &&
@@ -655,6 +660,12 @@ bool TypeSystem::try_lookup_method(const std::string& type_name,
                                    MethodInfo* info) const {
   auto kv = m_types.find(type_name);
   if (kv == m_types.end()) {
+    // try to look up a forward declared type.
+    auto fwd_dec_type = lookup_type_allow_partial_def(type_name);
+    if (tc(TypeSpec("basic"), TypeSpec(fwd_dec_type->get_name()))) {
+      // only allow this for basics. It technically should be safe for structures as well.
+      return try_lookup_method(fwd_dec_type, method_name, info);
+    }
     return false;
   }
 
@@ -749,7 +760,7 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id
     }
   }
 
-  throw_typesystem_error("The method with id {} of type {} could not be found.\n", method_id,
+  throw_typesystem_error("The method with id {} of type {} could not be found.", method_id,
                          type_name);
 }
 
@@ -970,7 +981,7 @@ void TypeSystem::add_builtin_types() {
       ->set_runtime_type("float");
   add_builtin_value_type("float", "degrees", 4, false, false, RegClass::FLOAT)
       ->set_runtime_type("float");
-  add_builtin_value_type("uint64", "seconds", 8, false, false)->set_runtime_type("uint64");
+  add_builtin_value_type("int64", "seconds", 8, false, true)->set_runtime_type("int64");
 
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
   int_type->disallow_in_runtime();
@@ -1369,7 +1380,10 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
   }
 
   if (expected == "seconds") {
-    expected = "uint";
+    if (actual == "seconds") {
+      return true;
+    }
+    expected = "int";
   }
 
   if (expected == "degrees") {
@@ -1619,6 +1633,9 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   flags.methods = method_count;
 
   result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
+  if (!type->gen_inspect()) {
+    result.append(":no-inspect\n  ");
+  }
 
   std::string methods_string;
   auto new_info = type->get_new_method_defined_for_type();
@@ -1665,6 +1682,10 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       methods_string.append(fmt::format(":behavior {} ", *behavior));
     }
 
+    if (info.type.base_type() == "state") {
+      methods_string.append(":state ");
+    }
+
     methods_string.append(fmt::format("{})\n    ", info.id));
   }
 
@@ -1672,6 +1693,26 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     result.append("(:methods\n    ");
     result.append(methods_string);
     result.append(")\n  ");
+  }
+
+  std::string states_string;
+  for (auto& info : type->get_states_declared_for_type()) {
+    if (info.second.arg_count() > 1) {
+      states_string.append(fmt::format("    ({}", info.first));
+      for (size_t i = 0; i < info.second.arg_count() - 1; i++) {
+        states_string.push_back(' ');
+        states_string.append(info.second.get_arg(i).print());
+      }
+      states_string.append(")\n");
+    } else {
+      states_string.append(fmt::format("    {}\n", info.first));
+    }
+  }
+
+  if (!states_string.empty()) {
+    result.append("(:states\n");
+    result.append(states_string);
+    result.append("    )\n  ");
   }
 
   result.append(")\n");
@@ -1826,5 +1867,22 @@ bool TypeSystem::should_use_virtual_methods(const Type* type, int method_id) con
 }
 
 bool TypeSystem::should_use_virtual_methods(const TypeSpec& type, int method_id) const {
-  return should_use_virtual_methods(lookup_type(type), method_id);
+  auto it = m_types.find(type.base_type());
+  if (it != m_types.end()) {
+    // it's a fully defined type
+    return should_use_virtual_methods(it->second.get(), method_id);
+  } else {
+    // it's a partially defined type.
+    // for now, we will prohibit calling a method on something that's defined only as a structure
+    // because we don't know if it's actually a basic, and should use virtual methods.
+    auto fwd_dec_type = lookup_type_allow_partial_def(type);
+    if (fwd_dec_type->get_name() == "structure") {
+      throw_typesystem_error(
+          "Type {} was forward declared as structure and it is not safe to call a method.",
+          type.print());
+      return false;
+    } else {
+      return should_use_virtual_methods(fwd_dec_type, method_id);
+    }
+  }
 }

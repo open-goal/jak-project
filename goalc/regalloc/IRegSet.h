@@ -19,7 +19,7 @@
 
 class IRegSet {
  public:
-  IRegSet() = default;
+  IRegSet() { m_data.reserve(4); }
 
   /*!
    * Add the given ireg to the set.

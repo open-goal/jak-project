@@ -109,6 +109,10 @@
   `(#cond ((not ,clause) ,@body))
   )
 
+(defmacro #if (clause true false)
+  `(#cond (,clause ,true) (#t ,false))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TARGET CONTROL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -328,6 +332,28 @@
       ,@body)
   )
 
+(defmacro doarray (bindings &rest body)
+  "iterate over an array. usage: (doarray (<array entry name> <array>) <code>)"
+
+  (with-gensyms (len i)
+  (let ((val (first bindings))
+        (arr (second bindings)))
+
+        `(let* ((,len (-> ,arr length))
+                (,i 0)
+                (,val (-> ,arr ,i)))
+             (while (< ,i ,len)
+                ,@body
+                (1+! ,i)
+                (set! ,val (-> ,arr ,i))
+                )
+               )
+
+        )
+
+    )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 ;; NOTE : GOAL protected defs in a FIFO manner (this is FILO/LIFO), this should be fixed at some point
@@ -475,6 +501,13 @@
   `(neq? ,thing 0)
   )
 
+(defmacro not! (var)
+  `(set! ,var (not ,var)))
+(defmacro true! (var)
+  `(set! ,var #t))
+(defmacro false! (var)
+  `(set! ,var #f))
+
 (defmacro minmax (val minval maxval)
   `(max (min ,val ,maxval) ,minval)
   )
@@ -524,7 +557,7 @@
 
 (defmacro logtesta? (a b)
   "does a have ALL of the bits in b?"
-  `(= (logand ,a ,b) ,b)
+  `(= (logand ,b ,a) ,b)
   )
 
 (defmacro deref (t addr &rest fields)
@@ -704,6 +737,55 @@
 (defmacro make-group (name &key (verbose #f) &key (force #f))
   `(make ,(string-append "GROUP:" name) :verbose ,verbose :force ,force)
   )
+
+(defmacro rl ()
+  `(begin
+    (make-group "iso")
+    (lg)
+    (dbg)
+    )
+  )
+
+(defmacro mi ()
+  "Make ISO"
+  `(make-group "iso")
+  )
+
+(defmacro mh1 ()
+  "Make hub1"
+  `(make-group "hub1")
+  )
+;;;;;;;;;;;;;;;;;;;
+;; enum stuff
+;;;;;;;;;;;;;;;;;;;
+
+(defmacro enum->string (enum input)
+  "return the name of an enum value"
+
+  `(case ,input
+      ,@(apply (lambda (x) `(((,enum ,(car x) )) ,(symbol->string (car x) ) )) (reverse (get-enum-vals enum)))
+      (else "*unknown*")
+      )
+  )
+
+(defmacro bit-enum->string (enum input stream)
+  "print the enum bits in input to stream"
+
+  (with-gensyms (val str)
+    `(let ((,val ,input)
+           (,str ,stream))
+
+        ,@(apply (lambda (x)
+                    `(if (logtesta? ,val (,enum ,(car x)))
+                        (format ,str ,(fmt #f "{} " (car x)))
+                        )
+
+                    ) (reverse (get-enum-vals enum)))
+
+        )
+    )
+  )
+
 
 ;; load the default project
 (load-project "goal_src/game.gp")

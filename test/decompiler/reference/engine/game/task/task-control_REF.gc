@@ -35,30 +35,30 @@
   )
 
 ;; definition for method 9 of type task-cstage
-(defmethod get-game-task task-cstage ((obj task-cstage))
+(defmethod get-task task-cstage ((obj task-cstage))
   (-> obj game-task)
   )
 
 ;; definition for method 10 of type task-cstage
-(defmethod get-task-status task-cstage ((obj task-cstage))
+(defmethod get-status task-cstage ((obj task-cstage))
   (-> obj status)
   )
 
 ;; definition for method 12 of type task-cstage
 (defmethod closed? task-cstage ((obj task-cstage))
-  (nonzero? (logand (-> obj flags) (task-flags closed)))
+  (logtest? (-> obj flags) (task-flags closed))
   )
 
 ;; definition for method 13 of type task-cstage
 (defmethod closed-by-default? task-cstage ((obj task-cstage))
-  (nonzero? (logand (-> obj flags) (task-flags closed-by-default)))
+  (logtest? (-> obj flags) (task-flags closed-by-default))
   )
 
 ;; definition for method 11 of type task-cstage
 (defmethod task-available? task-cstage ((obj task-cstage) (arg0 task-control))
   (let ((a0-1 obj))
    (cond
-    ((nonzero? (logand (-> a0-1 flags) (task-flags closed)))
+    ((logtest? (-> a0-1 flags) (task-flags closed))
      #f
      )
     ((>=
@@ -116,42 +116,50 @@
   )
 
 ;; definition for method 9 of type task-control
+;; INFO: Return type mismatch int vs game-task.
 (defmethod current-task task-control ((obj task-control))
-  (the-as int (cond
-               ((= obj *null-task-control*)
-                (format
-                 0
-                 "ERROR<GMJ>: current-task received *null-task-control*~%"
-                 )
-                0
-                )
-               ((= (-> obj current-stage) -1)
-                0
-                )
-               (else
-                (the-as int (-> obj stage (-> obj current-stage) game-task))
-                )
-               )
+  (the-as game-task (cond
+                     ((= obj *null-task-control*)
+                      (format
+                       0
+                       "ERROR<GMJ>: current-task received *null-task-control*~%"
+                       )
+                      0
+                      )
+                     ((= (-> obj current-stage) -1)
+                      0
+                      )
+                     (else
+                      (the-as
+                       int
+                       (-> obj stage (-> obj current-stage) game-task)
+                       )
+                      )
+                     )
    )
   )
 
 ;; definition for method 10 of type task-control
+;; INFO: Return type mismatch int vs task-status.
 (defmethod current-status task-control ((obj task-control))
-  (the-as int (cond
-               ((= obj *null-task-control*)
-                (format
-                 0
-                 "ERROR<GMJ>: current-status received self of *null-task-control*~%~%"
-                 )
-                0
-                )
-               ((= (-> obj current-stage) -1)
-                0
-                )
-               (else
-                (the-as int (-> obj stage (-> obj current-stage) status))
-                )
-               )
+  (the-as task-status (cond
+                       ((= obj *null-task-control*)
+                        (format
+                         0
+                         "ERROR<GMJ>: current-status received self of *null-task-control*~%~%"
+                         )
+                        0
+                        )
+                       ((= (-> obj current-stage) -1)
+                        0
+                        )
+                       (else
+                        (the-as
+                         int
+                         (-> obj stage (-> obj current-stage) status)
+                         )
+                        )
+                       )
    )
   )
 
@@ -191,7 +199,7 @@
    (format
     0
     "ERROR<GMJ>: close-status! received non-existent task-cstage(~S ~S)--returning #t.~%"
-    (game-task->string (the-as game-task a0-2))
+    (game-task->string a0-2)
     (task-status->string arg0)
     )
    )
@@ -227,11 +235,9 @@
   (dotimes (s4-0 (-> obj stage length))
    (if (or (= arg0 'game) (let ((a0-4 (-> obj stage s4-0)))
                            (not
-                            (nonzero?
-                             (logand
-                              (-> a0-4 flags)
-                              (task-flags closed-by-default)
-                              )
+                            (logtest?
+                             (-> a0-4 flags)
+                             (task-flags closed-by-default)
                              )
                             )
                            )
@@ -239,7 +245,7 @@
     (open-task! (-> obj stage s4-0))
     )
    (let ((a0-10 (-> obj stage s4-0)))
-    (if (nonzero? (logand (-> a0-10 flags) (task-flags closed)))
+    (if (logtest? (-> a0-10 flags) (task-flags closed))
      (close-task! (-> obj stage s4-0))
      )
     )
@@ -263,7 +269,7 @@
      (= arg1 (-> obj stage v1-3 status))
      )
     (let ((a0-3 (-> obj stage v1-3)))
-     (return (nonzero? (logand (-> a0-3 flags) (task-flags closed))))
+     (return (logtest? (-> a0-3 flags) (task-flags closed)))
      )
     )
    )

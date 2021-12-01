@@ -165,11 +165,6 @@ class Env {
     return m_var_names.eliminated_move_op_ids.find(op_id) !=
            m_var_names.eliminated_move_op_ids.end();
   }
-  const std::unordered_map<std::string, LabelType>& label_types() const { return m_label_types; }
-
-  void set_label_types(const std::unordered_map<std::string, LabelType>& types) {
-    m_label_types = types;
-  }
 
   void set_stack_structure_hints(const std::vector<StackStructureHint>& hints);
   const std::vector<StackStructureEntry>& stack_structure_hints() const {
@@ -233,7 +228,6 @@ class Env {
   std::vector<StackStructureEntry> m_stack_structures;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;
-  std::unordered_map<std::string, LabelType> m_label_types;
 
   std::unordered_set<std::string> m_vars_defined_in_let;
   std::optional<TypeSpec> m_type_analysis_return_type;

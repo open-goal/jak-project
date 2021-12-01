@@ -48,9 +48,7 @@
 #include "game/overlord/stream.h"
 #include "game/overlord/sbank.h"
 
-#include "game/graphics/opengl.h"
 #include "game/graphics/gfx.h"
-#include "game/graphics/display.h"
 
 #include "game/system/vm/vm.h"
 #include "game/system/vm/dmac.h"
@@ -139,7 +137,7 @@ void ee_runner(SystemThreadInterface& iface) {
   lg::debug("[EE] Run!");
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
 
-  // prevent access to the first 1 MB of memory.
+  // prevent access to the first 512 kB of memory.
   // On the PS2 this is the kernel and can't be accessed either.
   // this may not work well on systems with a page size > 1 MB.
   mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
@@ -255,12 +253,12 @@ void dmac_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
 
   while (!iface.get_want_exit() && !VM::vm_want_exit()) {
-    for (int i = 0; i < 10; ++i) {
-      if (VM::dmac_ch[i]->chcr.str) {
-        lg::info("DMA detected on channel {}, clearing", i);
-        VM::dmac_ch[i]->chcr.str = 0;
-      }
-    }
+    //    for (int i = 0; i < 10; ++i) {
+    //      if (VM::dmac_ch[i]->chcr.str) {
+    //        // lg::info("DMA detected on channel {}, clearing", i);
+    //        VM::dmac_ch[i]->chcr.str = 0;
+    //      }
+    //    }
     // avoid running the DMAC on full blast (this does not sync to its clockrate)
     std::this_thread::sleep_for(std::chrono::microseconds(50));
   }
@@ -320,7 +318,7 @@ u32 exec_runtime(int argc, char** argv) {
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
     Gfx::Init();
-    Gfx::Loop([&tm]() { return !tm.all_threads_exiting(); });
+    Gfx::Loop([]() { return !MasterExit; });
     Gfx::Exit();
   }
 

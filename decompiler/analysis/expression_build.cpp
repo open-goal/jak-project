@@ -1,9 +1,9 @@
 #include "expression_build.h"
+#include "common/goos/PrettyPrinter.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
 
@@ -22,7 +22,9 @@ bool convert_to_expressions(
   // set argument names to some reasonable defaults. these will be used if the user doesn't
   // give us anything more specific.
   if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL ||
-      f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+      f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED ||
+      f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
     f.ir2.env.set_remap_for_function(f.type);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     auto method_type =
@@ -82,8 +84,31 @@ bool convert_to_expressions(
         }
       }
 
+      bool needs_cast = false;
       if (!dts.ts.tc(f.type.last_arg(), return_type)) {
         // we need to cast the final value.
+        needs_cast = true;
+
+      } else {
+        bool found_early_return = false;
+        for (auto e : new_entries) {
+          e->apply([&](FormElement* elt) {
+            auto as_ret = dynamic_cast<ReturnElement*>(elt);
+            if (as_ret) {
+              found_early_return = true;
+            }
+          });
+          if (found_early_return) {
+            break;
+          }
+        }
+
+        if (!found_early_return && f.type.last_arg() != return_type) {
+          needs_cast = true;
+        }
+      }
+
+      if (needs_cast) {
         auto to_cast = new_entries.back();
         auto as_cast = dynamic_cast<CastElement*>(to_cast);
         if (as_cast) {
@@ -132,16 +157,15 @@ bool convert_to_expressions(
         auto warn = fmt::format(
             "Function {} has a return type of none, but the expression builder found a return "
             "statement.",
-            f.guessed_name.to_string());
+            f.name());
         f.warnings.expression_build_warning(warn);
         lg::warn(warn);
-        return false;
       }
     }
 
   } catch (std::exception& e) {
-    f.warnings.expression_build_warning("In {}: {}", f.guessed_name.to_string(), e.what());
-    lg::warn("In {}: {}", f.guessed_name.to_string(), e.what());
+    f.warnings.expression_build_warning("In {}: {}", f.name(), e.what());
+    lg::warn("In {}: {}", f.name(), e.what());
     return false;
   }
 

@@ -34,6 +34,7 @@ set(RUNTIME_SOURCE
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/Deci2Server.cpp
+        system/newpad.cpp
         sce/libcdvd_ee.cpp
         sce/libscf.cpp
         sce/libdma.cpp
@@ -41,6 +42,7 @@ set(RUNTIME_SOURCE
         sce/libgraph.cpp
         sce/deci2.cpp
         sce/sif_ee.cpp
+        sce/sif_ee_memcard.cpp
         sce/iop.cpp
         sce/stubs.cpp
         kernel/asm_funcs.asm
@@ -57,6 +59,15 @@ set(RUNTIME_SOURCE
         kernel/kscheme.cpp
         kernel/ksocket.cpp
         kernel/ksound.cpp
+        mips2c/mips2c_table.cpp
+        mips2c/functions/draw_string.cpp
+        mips2c/functions/sky_tng.cpp
+        mips2c/functions/sparticle.cpp
+        mips2c/functions/sparticle_launcher.cpp
+        mips2c/functions/test_func.cpp
+        mips2c/functions/texture.cpp
+        mips2c/functions/tfrag.cpp
+        mips2c/functions/time_of_day.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp
@@ -73,6 +84,24 @@ set(RUNTIME_SOURCE
         overlord/stream.cpp
         graphics/gfx.cpp
         graphics/display.cpp
+        graphics/sceGraphicsInterface.cpp
+        graphics/opengl_renderer/BucketRenderer.cpp
+        graphics/opengl_renderer/debug_gui.cpp
+        graphics/opengl_renderer/DirectRenderer.cpp
+        graphics/opengl_renderer/dma_helpers.cpp
+        graphics/opengl_renderer/OpenGLRenderer.cpp
+        graphics/opengl_renderer/Profiler.cpp
+        graphics/opengl_renderer/Shader.cpp
+        graphics/opengl_renderer/SkyRenderer.cpp
+        graphics/opengl_renderer/SpriteRenderer.cpp
+        graphics/opengl_renderer/TextureUploadHandler.cpp
+        graphics/opengl_renderer/tfrag/BufferedRenderer.cpp
+        graphics/opengl_renderer/tfrag/program6_cpu.cpp
+        graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
+        graphics/opengl_renderer/tfrag/TFragment.cpp
+        graphics/texture/TextureConverter.cpp
+        graphics/texture/TexturePool.cpp
+        graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp)
 
@@ -80,7 +109,7 @@ set(RUNTIME_SOURCE
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw)
+target_link_libraries(runtime common fmt glfw imgui)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

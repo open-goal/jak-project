@@ -8,6 +8,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -22,7 +23,7 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
                                 const LinkedObjectFile* file);
-goos::Object decompile_at_label_with_hint(const LabelType& hint,
+goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
@@ -38,7 +39,8 @@ goos::Object decompile_structure(const TypeSpec& actual_type,
                                  const std::vector<DecompilerLabel>& labels,
                                  const std::vector<std::vector<LinkedWord>>& words,
                                  const TypeSystem& ts,
-                                 const LinkedObjectFile* file);
+                                 const LinkedObjectFile* file,
+                                 bool use_fancy_macros);
 goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<DecompilerLabel>& labels,
                             const std::vector<std::vector<LinkedWord>>& words,
@@ -97,11 +99,13 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
     const TypeSpec& type,
     const TypeSystem& ts,
     u64 value,
-    bool require_success);
+    bool require_success,
+    std::optional<int> offset);
 
 std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
                                                           const TypeSystem& ts,
                                                           u64 value);
 std::string decompile_int_enum_from_int(const TypeSpec& type, const TypeSystem& ts, u64 value);
-
+goos::Object bitfield_defs_print(const TypeSpec& type,
+                                 const std::vector<BitFieldConstantDef>& defs);
 }  // namespace decompiler

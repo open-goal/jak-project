@@ -93,7 +93,7 @@
   (set! (-> mem-use length) (max 58 (-> mem-use length)))
   (set! (-> mem-use data 57 name) "bsp-misc")
   (+! (-> mem-use data 57 count) 1)
-  (let ((v1-56 (* (-> obj unk-data-1-len) 4)))
+  (let ((v1-56 (* (-> obj texture-page-count) 4)))
     (+! (-> mem-use data 57 used) v1-56)
     (+! (-> mem-use data 57 total) (logand -16 (+ v1-56 15)))
     )
@@ -129,8 +129,8 @@
       (+! (-> mem-use data 57 used) v1-92)
       (+! (-> mem-use data 57 total) (logand -16 (+ v1-92 15)))
       )
-    ;; add unk-data-7 (reloated to boxes?)
-    (when (nonzero? (-> obj unk-data-7))
+    ;; add box indices
+    (when (nonzero? (-> obj split-box-indices))
       (set! (-> mem-use length) (max 58 (-> mem-use length)))
       (set! (-> mem-use data 57 name) "bsp-misc")
       (+! (-> mem-use data 57 count) 1)
@@ -141,8 +141,8 @@
       )
     )
 
-  ;; add unk-data-6
-  (when (nonzero? (-> obj unk-data-6))
+  ;; add actor-birth-order
+  (when (nonzero? (-> obj actor-birth-order))
     (set! (-> mem-use length) (max 58 (-> mem-use length)))
     (set! (-> mem-use data 57 name) "bsp-misc")
     (+! (-> mem-use data 57 count) 1)
@@ -298,37 +298,41 @@
         )
     )
 
-  ;; run the foreground system
-  (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame)))
-    ;; 0
-    (foreground-engine-execute
-     (-> obj level foreground-draw-engine 0)
-     s5-1
-     (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-     0
-     )
-    ;; 1
-    (foreground-engine-execute
-     (-> obj level foreground-draw-engine 1)
-     s5-1
-     (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-     1
-     )
-
-    ;; 2
-    (foreground-engine-execute
-     (-> obj level foreground-draw-engine 2)
-     s5-1
-     (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-     2
-     )
+  ;; run the foreground system (0 check added)
+  (when (nonzero? foreground-engine-execute)
+    (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame)))
+      ;; 0
+      (foreground-engine-execute
+        (-> obj level foreground-draw-engine 0)
+        s5-1
+        (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
+        0
+        )
+      ;; 1
+      (foreground-engine-execute
+        (-> obj level foreground-draw-engine 1)
+        s5-1
+        (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
+        1
+        )
+      
+      ;; 2
+      (foreground-engine-execute
+        (-> obj level foreground-draw-engine 2)
+        s5-1
+        (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
+        2
+        )
+      )
     )
+
   (none)
   )
 
-(defmethod dummy-15 bsp-header ((obj bsp-header) (arg0 object) (arg1 object))
-  "This is some sort of debugging thing. It calls dummy-15 on the drawables
+(defmethod debug-draw bsp-header ((obj bsp-header) (arg0 drawable) (arg1 display-frame))
+  "This is some sort of debugging thing. It calls debug-draw on the drawables
    with the scratchpad and vfs set up."
+   
   (let ((s4-0 (-> obj level)))
     ;; set up some stuff in the scratchpad
     (set! (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index) (-> s4-0 index))
@@ -372,7 +376,7 @@
                    )
         )
     (let ((a1-3 (-> obj drawable-trees)))
-      (dummy-15 a1-3 a1-3 arg1)
+      (debug-draw a1-3 a1-3 arg1)
       )
     (if *debug-segment*
         (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
@@ -384,10 +388,8 @@
   (none)
   )
 
-(defmethod dummy-14 bsp-header ((obj bsp-header))
-  "Also some sort of debug thing.
-   Calls dummy-14 on children with visible list and vfs set up
-   but no terrain-bsp"
+(defmethod collect-stats bsp-header ((obj bsp-header))
+  "Collect drawing statistics"
   (let ((v1-0 (-> obj level))
         (a2-0 (/ (+ (-> obj visible-list-length) 15) 16))
         )
@@ -420,7 +422,7 @@
       )
     )
   (if (nonzero? (-> obj drawable-trees))
-      (dummy-14 (-> obj drawable-trees))
+      (collect-stats (-> obj drawable-trees))
       )
   (none)
   )
@@ -482,40 +484,41 @@
 ;; Collision
 ;;;;;;;;;;;;;;;
 
-(defmethod dummy-11 bsp-header ((obj bsp-header) (arg0 int) (arg1 object))
+(defmethod collide-with-box bsp-header ((obj bsp-header) (arg0 int) (arg1 collide-list))
+  "Top level collision with a box function. I think the arg0 length doesn't really matter here."
   (+! (-> *collide-stats* calls) 1)
   (let ((s4-0 (-> obj drawable-trees)))
-   (dotimes (s3-0 (-> s4-0 length))
-    (dummy-11 (-> s4-0 data s3-0) arg0 arg1)
+    (dotimes (s3-0 (-> s4-0 length))
+      (collide-with-box (-> s4-0 data s3-0) arg0 arg1)
+      )
     )
-   )
   (none)
   )
 
-(defmethod dummy-12 bsp-header ((obj bsp-header) (arg0 int) (arg1 object))
+(defmethod collide-y-probe bsp-header ((obj bsp-header) (arg0 int) (arg1 collide-list))
   (+! (-> *collide-stats* calls) 1)
   (let ((s4-0 (-> obj drawable-trees)))
-   (dotimes (s3-0 (-> s4-0 length))
-    (dummy-12 (-> s4-0 data s3-0) arg0 arg1)
+    (dotimes (s3-0 (-> s4-0 length))
+      (collide-y-probe (-> s4-0 data s3-0) arg0 arg1)
+      )
     )
-   )
   (none)
   )
 
-(defmethod dummy-13 bsp-header ((obj bsp-header) (arg0 int) (arg1 object))
+(defmethod collide-ray bsp-header ((obj bsp-header) (arg0 int) (arg1 collide-list))
   (+! (-> *collide-stats* calls) 1)
   (let ((s4-0 (-> obj drawable-trees)))
-   (dotimes (s3-0 (-> s4-0 length))
-    (dummy-13 (-> s4-0 data s3-0) arg0 arg1)
+    (dotimes (s3-0 (-> s4-0 length))
+      (collide-ray (-> s4-0 data s3-0) arg0 arg1)
+      )
     )
-   )
   (none)
   )
 
-(defmethod dummy-17 bsp-header ((obj bsp-header) (arg0 sphere) (arg1 int) (arg2 ambient-list))
+(defmethod collect-ambients bsp-header ((obj bsp-header) (arg0 sphere) (arg1 int) (arg2 ambient-list))
   (let ((s3-0 (-> obj drawable-trees)))
     (dotimes (s2-0 (-> s3-0 length))
-      (dummy-17 (-> s3-0 data s2-0) arg0 arg1 arg2)
+      (collect-ambients (-> s3-0 data s2-0) arg0 arg1 arg2)
       )
     )
   (none)

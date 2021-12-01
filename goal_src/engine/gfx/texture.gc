@@ -799,9 +799,10 @@
    (first-chunk-idx-to-upload int)
    (tex-id uint)
    )
+  
+  
   (let ((total-upload-size 0))
-    (with-dma-buffer-add-bucket ((dma-buf (current-display-frame global-buf)) ;; the global DMA buffer
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) ;; the global DMA buffer
                                  bucket-idx)
 
       ;; default to segment 0 only (mode 0)
@@ -844,7 +845,7 @@
       (dotimes (upload-chunk-idx (the-as int chunk-count))
         ;; the destination of the chunk.
         (let ((current-dest-chunk
-               (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
+                (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
                 )
               )
           ;; now we see if we can get away with not uploading the chunk.
@@ -861,42 +862,57 @@
                 ((= (-> pool ids current-dest-chunk) tex-id)
                  ;; and the run ends, we found a chunk that's already loaded.
                  ;; so we upload the run:
-                 (upload-vram-data dma-buf
-                                   (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
-                                   (&+ tex-data (shl first-chunk-idx-to-upload 14))
-                                   (shl chunks-to-upload-count 5)
-                                   )
+                 (#when (not PC_PORT)
+                        (upload-vram-data dma-buf
+                                          (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
+                                          (&+ tex-data (shl first-chunk-idx-to-upload 14))
+                                          (shl chunks-to-upload-count 5)
+                                          )
+                        )
+                 
                  (+! total-upload-size chunks-to-upload-count)
                  ;; reset
                  (set! chunks-to-upload-count 0)
                  )
                 (else
-                 ;; the run continues!
-                 (set! (-> pool ids current-dest-chunk) tex-id)
-                 (set! chunks-to-upload-count (+ chunks-to-upload-count 1))
-                 )
+                  ;; the run continues!
+                  (set! (-> pool ids current-dest-chunk) tex-id)
+                  (set! chunks-to-upload-count (+ chunks-to-upload-count 1))
+                  )
                 )
               )
           )
         )
-
+      
       ;; if we finished with a run of "needs upload", set up the upload.
       (when (nonzero? chunks-to-upload-count)
-        (upload-vram-data
-         dma-buf
-         (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
-         (&+ tex-data (shl first-chunk-idx-to-upload 14))
-         (shl chunks-to-upload-count 5)
-         )
+        (#when (not PC_PORT)
+               (upload-vram-data
+                 dma-buf
+                 (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
+                 (&+ tex-data (shl first-chunk-idx-to-upload 14))
+                 (shl chunks-to-upload-count 5)
+                 )
+               )
         (+! total-upload-size chunks-to-upload-count)
         )
 
       ;; do a texflush
 
       ;; send gif (a+d)
-      (dma-buffer-add-gs-set dma-buf
-                          (texflush 1) ;; texflush
-                          )
+      (#when (not PC_PORT)
+             (dma-buffer-add-gs-set dma-buf
+                                    (texflush 1) ;; texflush
+                                    )
+             )
+      
+      ;; in PC PORT we just skip all that stuff and just send a pointer to the texture page and the mode.
+      (#when PC_PORT
+             (dma-buffer-add-cnt-vif2 dma-buf 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
+             (dma-buffer-add-uint64 dma-buf page)
+             (dma-buffer-add-uint64 dma-buf mode)
+             )
+
       )
     (shl total-upload-size 14)
     )
@@ -985,8 +1001,7 @@
    (need-tex symbol)
    )
   (let ((total-upload-size 0))
-   (with-dma-buffer-add-bucket ((dma-buf (current-display-frame global-buf))
-                                (current-display-frame bucket-group)
+   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
                                 bucket-idx)
 
      (set! tex-data (-> page segment 0 block-data)) ;; data in RAM
@@ -1006,9 +1021,7 @@
         (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
         )
        ;; can we possibly use existing data in VRAM?
-       (set! need-tex
-        (nonzero? (logand needed-mask (ash 1 upload-chunk-idx)))
-        )
+       (set! need-tex (logtest? needed-mask (ash 1 upload-chunk-idx)))
        ;; look for the start of a run of uploads.
        (if (zero? chunks-to-upload-count)
            (when (and (!= (-> pool ids current-dest-chunk) page-id) need-tex)
@@ -1581,10 +1594,10 @@
   (dotimes (v1-0 32)
     (let ((a2-0 (-> obj common-page v1-0)))
       (when (and (nonzero? a2-0) ;; known common texture page
-                 (nonzero? (logand (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
+                 (and (nonzero? a2-0) (logtest? (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
                  )
         ;; upload it!
-        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id bucket-65))
+        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id pre-sprite-textures))
         (return #f)
         )
       )
@@ -1599,8 +1612,7 @@
     ((zero? (-> obj index))
     ;; use bucket numbers for the 0th level
     ;; TFRAG
-    (with-dma-buffer-add-bucket ((v1-4 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-4 (-> (current-frame) global-buf))
                                  (bucket-id tfrag-tex0))
 
       (dma-buffer-add-cnt-vif2 v1-4 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1609,8 +1621,7 @@
       )
     ;; the rest are the same
     ;; PRIS
-    (with-dma-buffer-add-bucket ((v1-12 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-12 (-> (current-frame) global-buf))
                                  (bucket-id pris-tex0))
 
       (dma-buffer-add-cnt-vif2 v1-12 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1618,8 +1629,7 @@
                                        )
      )
     ;; SHRUB
-    (with-dma-buffer-add-bucket ((v1-20 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-20 (-> (current-frame) global-buf))
                                  (bucket-id shrub-tex0))
 
       (dma-buffer-add-cnt-vif2 v1-20 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1627,8 +1637,7 @@
                                        )
      )
     ;; ALPHA
-    (with-dma-buffer-add-bucket ((v1-28 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-28 (-> (current-frame) global-buf))
                                  (bucket-id alpha-tex0))
 
       (dma-buffer-add-cnt-vif2 v1-28 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1638,8 +1647,7 @@
     )
    (else
     ;; TFRAG
-    (with-dma-buffer-add-bucket ((v1-36 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-36 (-> (current-frame) global-buf))
                                  (bucket-id tfrag-tex1))
 
       (dma-buffer-add-cnt-vif2 v1-36 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1647,8 +1655,7 @@
                                       )
       )
     ;; PRIS
-    (with-dma-buffer-add-bucket ((v1-44 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-44 (-> (current-frame) global-buf))
                                  (bucket-id pris-tex1))
 
       (dma-buffer-add-cnt-vif2 v1-44 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1656,8 +1663,7 @@
                                        )
      )
     ;; SHRUB
-    (with-dma-buffer-add-bucket ((v1-52 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-52 (-> (current-frame) global-buf))
                                  (bucket-id shrub-tex1))
 
       (dma-buffer-add-cnt-vif2 v1-52 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1665,8 +1671,7 @@
                                        )
      )
     ;; ALPHA
-    (with-dma-buffer-add-bucket ((v1-60 (current-display-frame global-buf))
-                                 (current-display-frame bucket-group)
+    (with-dma-buffer-add-bucket ((v1-60 (-> (current-frame) global-buf))
                                  (bucket-id alpha-tex1))
 
       (dma-buffer-add-cnt-vif2 v1-60 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
@@ -1687,6 +1692,12 @@
 
 (defmethod upload-now! texture-page ((obj texture-page) (arg0 int))
   "Immediately upload the texture-page to the given buffer, using arg0 mode."
+
+  (#when PC_PORT
+    ;; load it to the PC Port's texture pool.
+    (__pc-texture-upload-now obj arg0)
+    )
+
   (let ((gp-0 *txt-dma-list*))
     ;; Set up the DMA buffer
     (let ((v1-0 gp-0))
@@ -1800,6 +1811,11 @@
   "Move a texture in VRAM. Unrelated to the texture-relocate-later, which moves textures in RAM.
    Will try to move the whole thing, including the clut, assuming you provide a destination for it.
    Note that this uses the format/width stuff properly, so it will be slower, but won't scramble your texture."
+
+  (#when PC_PORT
+    ;; as far as I know this is only used for fonts which have 1 mip level.
+    (__pc-texture-relocate (/ dest-loc 64) (-> tex dest 0) dest-fmt)
+    )
 
   ;; loop over mips
   (dotimes (mip-level (the-as int (-> tex num-mips)))
@@ -2081,6 +2097,7 @@
             )
           )
         )
+      ;; (format #t "relocate dests: ~A seg ~D from ~D to ~D~%" obj seg-id (-> obj segment seg-id dest) new-dest)
       (set! (-> obj segment seg-id dest) (the-as uint new-dest))
       )
     )
@@ -2089,11 +2106,12 @@
 
 (defmethod relocate texture-page ((obj texture-page) (arg0 kheap) (arg1 (pointer uint8)))
   "Add to VRAM and allocate links"
-  (tex-dbg "loaded tpage ~A ~A ~A ~A ~A~%" obj
-           (-> obj info file-name)
-           (-> obj info maya-file-name)
-           (-> obj info tool-debug)
-           (-> obj info mdb-file-name))
+  (tex-dbg "loaded tpage ~A~%" obj
+           ;;(-> obj info file-name)
+           ;;(-> obj info maya-file-name)
+           ;;(-> obj info tool-debug)
+           ;;(-> obj info mdb-file-name)
+           )
   (local-vars (s4-0 texture-page-dir-entry))
   (cond
     ((or (not obj)
@@ -2227,7 +2245,9 @@
   "Look up a texture by ID, loading it from debug network if its not loaded.
    Default allocates if it has to load, so it will permanently use VRAM"
   (let ((v1-0 (texture-page-login arg0 texture-page-default-allocate loading-level)))
-   (if (and v1-0 (< (-> arg0 index) (the-as uint (-> v1-0 page length))))
+   (when (and v1-0 (< (-> arg0 index) (the-as uint (-> v1-0 page length))))
+    ;;(format #t "texture:~%")
+    ;;(inspect (-> v1-0 page data (-> arg0 index)))
     (-> v1-0 page data (-> arg0 index))
     )
    )
@@ -2415,6 +2435,7 @@
   )
 
 ;; TODO adgif-shader<-texture-with-update!
+(def-mips2c adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
 
 (defun adgif-shader-login ((shader adgif-shader))
   "If not logged in already, link us and update from texture."

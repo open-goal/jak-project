@@ -69,7 +69,7 @@
 (defmethod get-bit bit-array ((obj bit-array) (idx int))
   "Is the bit at idx set or not?"
   (let ((v1-2 (-> obj bytes (/ idx 8))))
-    (nonzero? (logand v1-2 (ash 1 (logand idx 7))))
+    (logtest? v1-2 (ash 1 (logand idx 7)))
     )
   )
 
@@ -193,7 +193,7 @@
 
 ;; Vector of 4 signed words
 (deftype vector4w (structure)
-  ((data  int32 4 :score -9999 :offset-assert 0)
+  ((data  uint32 4 :score -9999 :offset-assert 0)
    (x     int32     :offset 0)
    (y     int32     :offset 4)
    (z     int32     :offset 8)
@@ -341,7 +341,7 @@
   )
 
 (deftype vector-array (inline-array-class)
-  (
+  ((data  vector  :inline :dynamic :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -389,6 +389,11 @@
   :flag-assert         #x900000010
   )
 
+(defmacro static-spherem (x y z r)
+  "actually makes a vector"
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
 (deftype box8s (structure)
   ((data   float 8       :offset-assert 0)
    (quad   uint128 2       :offset 0)
@@ -422,7 +427,7 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-   (debug-draw (_type_ vector) none 9)
+   (debug-draw (_type_ vector4w) none 9)
    (ray-capsule-intersect (_type_ vector vector) float 10)
    )
   )
@@ -438,7 +443,7 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-   (debug-draw (_type_ vector) none 9)
+   (debug-draw (_type_ vector4w) none 9)
    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
    )
   )
@@ -495,12 +500,12 @@
 (defmacro set-vector! (v xv yv zv wv)
   "Set all fields in a vector"
   (with-gensyms (vec)
-     `(let ((vec ,v))
-       (set! (-> vec x) ,xv)
-       (set! (-> vec y) ,yv)
-       (set! (-> vec z) ,zv)
-       (set! (-> vec w) ,wv)
-       vec
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
        )
      )
      )
@@ -571,6 +576,14 @@
   `(let ((temp (new 'stack 'vector4w)))
      (.svf temp ,vf)
      (format #t "~`vector4w`P~%" temp)
+     )
+  )
+
+(defmacro print-vf-dec (vf)
+  "Print out a vf register as 4x 32-bit base-10 integers"
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t " ~d ~d ~d ~d~%" (-> temp data 0) (-> temp data 1) (-> temp data 2) (-> temp data 3))
      )
   )
 

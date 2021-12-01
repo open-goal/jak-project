@@ -5,3 +5,1089 @@
 ;; name in dgo: drawable
 ;; dgos: GAME, ENGINE
 
+(defun sphere-in-view-frustum? ((arg0 sphere))
+  (local-vars (r0-0 uint128) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+   (init-vf0-vector)
+   (set! r0-0 (the uint128 0))
+   (let ((v1-0 *math-camera*))
+    (.lvf vf6 (&-> arg0 quad))
+    (.lvf vf1 (&-> v1-0 plane 0 quad))
+    (.lvf vf2 (&-> v1-0 plane 1 quad))
+    (.lvf vf3 (&-> v1-0 plane 2 quad))
+    (.lvf vf4 (&-> v1-0 plane 3 quad))
+    )
+   (.mul.x.vf acc vf1 vf6)
+   (.add.mul.y.vf acc vf2 vf6 acc)
+   (.add.mul.z.vf acc vf3 vf6 acc)
+   (.sub.mul.w.vf vf5 vf4 vf0 acc)
+   (.add.w.vf vf5 vf5 vf6)
+   (.mov v1-1 vf5)
+   (.pcgtw v1-2 r0-0 v1-1)
+   (.ppach v1-3 r0-0 v1-2)
+   (zero? (the-as int v1-3))
+   )
+  )
+
+(defun vis-cull ((id int))
+  "Is this thing visible? By draw-node id."
+  ;; todo
+  #t
+  
+  #|
+  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
+         (vis-byte (-> addr 0)) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< shifted 0)
+    )
+    |#
+  )
+
+(defun sphere-cull ((arg0 vector))
+  #t
+  ;; todo
+  )
+
+(defun real-main-draw-hook ()
+  (when *slow-frame-rate*
+    (dotimes (v1-2 #xc3500)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      )
+    )
+  "Function to be executed to set up for engine dma"
+  (set! *vu1-enable-user* *vu1-enable-user-menu*)
+  (set! *texture-enable-user* *texture-enable-user-menu*)
+
+  (when *debug-segment*
+   (when (or *stats-memory* *stats-memory-short*)
+    (dotimes (gp-0 (-> *level* length))
+     (let ((s5-0 (-> *level* level gp-0)))
+      (if (= (-> s5-0 status) 'active)
+       (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)
+       )
+      )
+     )
+    )
+   (reset! *dma-mem-usage*)
+   )
+
+  ;; todo debug memory
+  ;; todo shrub matrix
+  ;; todo generic init
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; texture uploads
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; tfrag
+
+  (when (logtest? *texture-enable-user* 1)
+   (dotimes (gp-1 (-> *level* length))
+    (let ((a1-2 (-> *level* level gp-1)))
+     (if (= (-> a1-2 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-2 0)
+      )
+     )
+    )
+   )
+
+  ;; pris
+
+  (when (logtest? *texture-enable-user* 2)
+   (dotimes (gp-2 (-> *level* length))
+    (let ((a1-3 (-> *level* level gp-2)))
+     (if (= (-> a1-3 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-3 1)
+      )
+     )
+    )
+   )
+
+  ;; shrub
+
+  (when (logtest? *texture-enable-user* 4)
+   (dotimes (gp-3 (-> *level* length))
+    (let ((a1-4 (-> *level* level gp-3)))
+     (if (= (-> a1-4 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-4 2)
+      )
+     )
+    )
+   )
+
+  ;; alpha and common.
+  (when (logtest? *texture-enable-user* 8)
+   (let ((uploaded-common #f))
+    (dotimes (gp-4 (-> *level* length))
+     (let ((a1-5 (-> *level* level gp-4)))
+      (when (= (-> a1-5 status) 'active)
+       (add-tex-to-dma! *texture-pool* a1-5 3)
+       (when (not uploaded-common)
+        (upload-one-common! *texture-pool* (-> *level* level0))
+        (set! uploaded-common #t)
+        )
+       )
+      )
+     )
+    (when (not uploaded-common)
+     (upload-one-common! *texture-pool* (-> *level* level0))
+     #t
+     )
+    )
+   )
+
+  ;; water.
+  (when (logtest? *texture-enable-user* 16)
+   (dotimes (gp-5 (-> *level* length))
+    (let ((a1-8 (-> *level* level gp-5)))
+     (if (= (-> a1-8 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-8 4)
+      )
+     )
+    )
+   )
+
+  ;; sky
+  ;; todo - disabled sky
+  (when (zero? (logand *vu1-enable-user* 8))
+    (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) (bucket-id sky-draw))
+      (dma-buffer-add-gs-set dma-buf
+                             (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+                             (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                             (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                             )
+      (screen-gradient
+        dma-buf
+        (-> *display* bg-clear-color 0)
+        (-> *display* bg-clear-color 1)
+        (-> *display* bg-clear-color 2)
+        (-> *display* bg-clear-color 3)
+        )
+      )
+    )
+  (when (logtest? *vu1-enable-user* 8)
+    (cond
+      ((and (-> *time-of-day-context* sky) *sky-drawn*)
+       (render-sky-tng *time-of-day-context*)
+       )
+      (else
+        ;; todo
+        )
+      )
+    )
+
+  ;; tod update
+  (update-time-of-day *time-of-day-context*)
+  ;; closest
+  ;; ocean
+  ;; merc
+  ;; init bg
+  (init-background)
+
+  ;; exec bg
+  (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen) frame))
+
+  ;; finish bg (most of the work is here)
+  (reset! (-> *perf-stats* data 3))
+  (finish-background)
+  (read! (-> *perf-stats* data 3))
+  (update-wait-stats (-> *perf-stats* data 3) (-> *background-work* wait-to-vu0) (the-as uint 0) (the-as uint 0))
+  
+  ;; 
+  (end-perf-stat-collection)
+  (when (not (paused?))
+    (when *stats-poly*
+      (dotimes (gp-8 (-> *level* length))
+        (let ((v1-193 (-> *level* level gp-8)))
+          (if (= (-> v1-193 status) 'active)
+              (collect-stats (-> v1-193 bsp))
+              )
+          )
+        )
+      (print-terrain-stats)
+      )
+    (if *display-perf-stats*
+        (print-perf-stats)
+        )
+    )
+  (start-perf-stat-collection)
+
+  ;; fg engine
+  ;; bones
+  ;; gmerc
+  ;; shadow
+  ;; eyes
+  (when (logtest? #x10000 *vu1-enable-user*)
+    (swap-fake-shadow-buffers)
+    (sprite-draw *display*)
+    )
+  ;; lots more in this function.
+  (when *debug-segment*
+    (debug-draw-actors *level* *display-actor-marks*)
+    ;; collide-shape-debug
+    )
+  (render-boundaries)
+  ;; boundaries
+  ;; touching
+  (actors-update *level*)
+  ;; collide stats
+
+  (none)
+  )
+
+(defun main-draw-hook ()
+  "Nice."
+  (real-main-draw-hook)
+  (none)
+  )
+
+(define *draw-hook* main-draw-hook)
+
+(defun debug-init-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
+  "Initialize a bucket for debug draw with the given zbuf and test settings"
+  (let* ((t0-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (v1-3 (-> t0-0 base))
+         )
+    (let* ((a3-3 t0-0)
+           (t1-0 (the-as object (-> a3-3 base)))
+           )
+      (set! (-> (the-as dma-packet t1-0) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t1-0) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t1-0) vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a3-3 base) (&+ (the-as pointer t1-0) 16))
+      )
+    (let* ((a3-4 t0-0)
+           (t1-2 (the-as object (-> a3-4 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t1-2) tag)
+       (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2)
+       )
+      (set! (-> (the-as gs-gif-tag t1-2) regs)
+       (new 'static 'gif-tag-regs
+            :regs0 (gif-reg-id a+d)
+            :regs1 (gif-reg-id a+d)
+            :regs2 (gif-reg-id a+d)
+            :regs3 (gif-reg-id a+d)
+            :regs4 (gif-reg-id a+d)
+            :regs5 (gif-reg-id a+d)
+            :regs6 (gif-reg-id a+d)
+            :regs7 (gif-reg-id a+d)
+            :regs8 (gif-reg-id a+d)
+            :regs9 (gif-reg-id a+d)
+            :regs10 (gif-reg-id a+d)
+            :regs11 (gif-reg-id a+d)
+            :regs12 (gif-reg-id a+d)
+            :regs13 (gif-reg-id a+d)
+            :regs14 (gif-reg-id a+d)
+            :regs15 (gif-reg-id a+d)
+            )
+       )
+      (set! (-> a3-4 base) (&+ (the-as pointer t1-2) 16))
+      )
+    (let* ((a3-5 t0-0)
+           (t1-4 (-> a3-5 base))
+           )
+      (set! (-> (the-as (pointer gs-zbuf) t1-4) 0) arg1)
+      (set! (-> (the-as (pointer gs-reg64) t1-4) 1) (gs-reg64 zbuf-1))
+      (set! (-> (the-as (pointer gs-test) t1-4) 2) arg2)
+      (set! (-> (the-as (pointer gs-reg64) t1-4) 3) (gs-reg64 test-1))
+      (set! (-> a3-5 base) (&+ t1-4 32))
+      )
+    (let ((a3-6 (-> t0-0 base)))
+      (let ((a1-4 (the-as object (-> t0-0 base))))
+        (set! (-> (the-as dma-packet a1-4) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> (the-as dma-packet a1-4) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet a1-4) vif1) (new 'static 'vif-tag))
+        (set! (-> t0-0 base) (&+ (the-as pointer a1-4) 16))
+        )
+      (dma-bucket-insert-tag
+       (-> *display* frames (-> *display* on-screen) frame bucket-group)
+       arg0
+       v1-3
+       (the-as (pointer dma-tag) a3-6)
+       )
+      )
+    )
+  (none)
+  )
+
+(define *screen-shot* #f)
+(defun display-frame-start ((disp display) (new-frame-idx int) (odd-even int))
+  "Set up a new frame. Call this before drawing anything.
+   new-frame-idx is the display frame that will be set up.
+   odd-even is the odd-even of the new frame"
+
+
+  ;; due to a HW bug in the PS2, you must set this.
+  ;;(set! (-> (the-as vif-bank #x10003c00) err me0) 1)
+
+  ;; figure out how fast we're going compared to the desired.
+  ;; larger = slower than we should.
+  ;; due to vsync, we should never go too fast.
+  (let ((time-ratio (the float
+                         (+ (/ (timer-count (the-as timer-bank #x10000800)) (the-as uint *ticks-per-frame*))
+                            1 ;; so we round up.
+                            )
+                         )
+
+          )
+        )
+
+    (let ((float-time-ratio (/ (the float (timer-count (the-as timer-bank #x10000800))) (the float *ticks-per-frame*))))
+      ;; on the PS2, if you have > 1/60 seconds between frames, it means you missed a vsync.
+      ;; this doesn't seem to be the case on my machine. It appears that glfwSwapBuffers sometimes returns ~1 ms early,
+      ;; making the next frame ~1 ms too long.
+
+      ;; to work around with, we internally run the game at 60 fps if it appears to be slightly too slow.
+      ;; if we actually do miss a frame, the time ratio will be around 2.
+
+      (#when PC_PORT
+        (if (< float-time-ratio 1.3)
+            (set! time-ratio 1.0)
+            )
+        #|
+        (if (> time-ratio 1.)
+            (format #t "LAG ~f frames~%" (- time-ratio 1.))
+            )
+        |#
+        )
+      )
+
+
+    ;; inform display system of our speed. This will adjust the scaling used in all physics calculations
+    (set-time-ratios *display* time-ratio)
+
+    ;; set our "old" counters.  In the event of a game load/save, these will not jump
+    (set! (-> disp old-base-frame-counter) (-> disp base-frame-counter))
+    (set! (-> disp old-game-frame-counter) (-> disp game-frame-counter))
+    (set! (-> disp old-real-frame-counter) (-> disp real-frame-counter))
+    (set! (-> disp old-integral-frame-counter) (-> disp integral-frame-counter))
+    (set! (-> disp old-real-integral-frame-counter) (-> disp real-integral-frame-counter))
+    (set! (-> disp old-part-frame-counter) (-> disp part-frame-counter))
+    (set! (-> disp old-actual-frame-counter) (-> disp actual-frame-counter))
+    (set! (-> disp old-real-actual-frame-counter) (-> disp real-actual-frame-counter))
+
+    ;; get the increment in seconds unit.
+    (let ((scaled-seconds (* (the int time-ratio) (the int (-> disp time-factor)))))
+      ;; tell the sparticle system
+      (set-particle-frame-time (min 12 scaled-seconds))
+
+      ;; the "not real" frame counters only count when unpaused
+      (when (not (paused?))
+        ;; these count by scaled time
+        (+! (-> disp base-frame-counter) scaled-seconds)
+        (+! (-> disp part-frame-counter) scaled-seconds)
+        ;; this counts actual frames, not seconds. Will count 2 frames if we lag
+        (+! (-> disp integral-frame-counter) (the int time-ratio))
+        ;; this counts actual frames, not doubling for lag. Will count 1 per frame drawn
+        (+! (-> disp actual-frame-counter) 1)
+        ;; game counter will count seconds that we're not in a movie
+        (if (not (movie?))
+            (+! (-> disp game-frame-counter) scaled-seconds)
+            )
+        )
+      ;; real counts like base, but increments when paused
+      (+! (-> disp real-frame-counter) scaled-seconds)
+      )
+    ;; actual frames, lag counts as 2x
+    (+! (-> disp real-integral-frame-counter) (the int time-ratio))
+    )
+  ;; actual real frames (for real)
+  (+! (-> disp real-actual-frame-counter) 1)
+
+  ;; reset the timer.
+  (timer-reset (the-as timer-bank #x10000800))
+
+  ;; take a screenshot, if desired
+  (when *screen-shot*
+    (if *debug-segment*
+        (store-image odd-even)
+        )
+    (set! *screen-shot* #f)
+    )
+
+  ;; set up the frame object.
+  (let ((new-frame (-> disp frames new-frame-idx frame)))
+    ;; profile setup
+    (when *debug-segment*
+      (dotimes (s2-0 2)
+        (reset (-> new-frame profile-bar s2-0))
+        )
+      )
+    ;; right now, the old frame is being rendered.
+    ;; if we set *sync-dma*, we will wait here until it finishes rendering.
+    (if *sync-dma*
+        (sync-path 0 0)
+        )
+
+    ;; reset the global dma buffer.
+    (let ((v1-56 (-> new-frame global-buf)))
+      (set! (-> v1-56 base) (-> v1-56 data))
+      (set! (-> v1-56 end) (&-> v1-56 data-buffer (-> v1-56 allocated-length)))
+      )
+
+    ;; reset the debug dma buffer
+    (when *debug-segment*
+      (let ((v1-59 (-> new-frame debug-buf)))
+        (set! (-> v1-59 base) (-> v1-59 data))
+        (set! (-> v1-59 end) (&-> v1-59 data-buffer (-> v1-59 allocated-length)))
+        )
+      )
+
+    ;; reset the calc buffer. This holds the buckets themselves and what is sent
+    ;; to actually draw the frame.
+    (let ((v1-60 (-> new-frame calc-buf)))
+      (set! (-> v1-60 base) (-> v1-60 data))
+      (set! (-> v1-60 end) (&-> v1-60 data-buffer (-> v1-60 allocated-length)))
+      )
+
+    ;; the default buffer holds a DMA chain to fully reset the GS.
+    ;; reinitialize it, just to be safe
+    (default-buffer-init *default-regs-buffer*)
+    ;; and add it to the very beginning of the calc buf
+    (let* ((v1-61 (-> new-frame calc-buf))
+           (a2-1 *default-regs-buffer*)
+           (a0-28 (the-as object (-> v1-61 base)))
+           )
+      (set! (-> (the-as dma-packet a0-28) dma)
+       (new 'static 'dma-tag
+            :id (dma-tag-id call)
+            :addr (the-as int (-> a2-1 data))
+            )
+       )
+      (set! (-> (the-as dma-packet a0-28) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet a0-28) vif1) (new 'static 'vif-tag))
+      (set! (-> v1-61 base) (&+ (the-as pointer a0-28) 16))
+      )
+
+    ;; could be used for debugging or something, but is set to nothing.
+    (*pre-draw-hook* (-> new-frame calc-buf))
+
+    ;; reset debugging stuff
+    (when (not (paused?))
+      (clear *stdcon1*)
+      (debug-reset-buffers)
+      )
+
+    ;; add the buckets
+    (set! (-> new-frame bucket-group)(dma-buffer-add-buckets (-> new-frame calc-buf) 69))
+    )
+
+  ;; initialize the debug bucket
+  (debug-init-buffer
+   (bucket-id debug-draw1)
+   (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
+   (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
+   )
+
+  ;; setup our drawing offset for even/odd offset
+  (set-draw-env-offset (-> disp frames new-frame-idx draw) 2048 2048 odd-even)
+
+  ;; read controllers
+  (service-cpads)
+  ;; now we are ready to run a frame!
+  (none)
+  )
+
+(defun display-frame-finish ((disp display))
+  "End drawing. Call this after drawing everything.
+   Note that this does not start a DMA transfer, just finishes up the buffered data for
+   the frame."
+  (let* ((this-frame (-> disp frames (-> disp on-screen) frame))
+         (this-calc-buf (-> this-frame calc-buf))
+         )
+    ;; post draw stuff
+    (tie-init-buffers this-calc-buf)
+    (merc-vu1-init-buffers)
+    (*post-draw-hook* (-> disp frames (-> disp on-screen) frame calc-buf))
+
+    ;; iterate through all buckets and append a final GS state reset.
+    (dotimes (bucket-idx 69)
+      (let* ((this-global-buf (-> this-frame global-buf))
+             (a2-0 (-> this-global-buf base))
+             )
+        ;; clear GS state after the bucket
+        (let* ((a0-3 this-global-buf)
+               (t0-0 *default-regs-buffer*)
+               (a1-0 (the-as object (-> a0-3 base)))
+               )
+          (set! (-> (the-as dma-packet a1-0) dma)
+           (new 'static 'dma-tag
+                :id (dma-tag-id call)
+                :addr (the-as int (-> t0-0 data))
+                )
+           )
+          (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :irq #x1))
+          (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
+          (set! (-> a0-3 base) (&+ (the-as pointer a1-0) 16))
+          )
+        (let ((a3-4 (-> this-global-buf base)))
+          (let ((a0-4 (the-as object (-> this-global-buf base))))
+            (set!
+             (-> (the-as dma-packet a0-4) dma)
+             (new 'static 'dma-tag :id (dma-tag-id next))
+             )
+            (set! (-> (the-as dma-packet a0-4) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet a0-4) vif1) (new 'static 'vif-tag))
+            (set! (-> this-global-buf base) (&+ (the-as pointer a0-4) 16))
+            )
+          (dma-bucket-insert-tag
+           (-> *display* frames (-> *display* on-screen) frame bucket-group)
+           (the-as bucket-id bucket-idx)
+           a2-0
+           (the-as (pointer dma-tag) a3-4)
+           )
+          )
+        )
+      )
+    ;; append a FLUSHE and IRQ to end the calc-buf
+    (let* ((v1-14 this-calc-buf)
+           (a0-10 (the-as object (-> v1-14 base)))
+           )
+      (set! (-> (the-as dma-packet a0-10) dma)
+       (new 'static 'dma-tag :id (dma-tag-id cnt))
+       )
+      (set! (-> (the-as dma-packet a0-10) vif0)
+       (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1)
+       )
+      (set! (-> (the-as dma-packet a0-10) vif1) (new 'static 'vif-tag :irq #x1))
+      (set! (-> v1-14 base) (&+ (the-as pointer a0-10) 16))
+      )
+    ;; patch the buckets. Now sending the calc buf will send everything!
+    (dma-buffer-patch-buckets (-> this-frame bucket-group) 69)
+    ;; append the final END.
+    (let* ((v1-15 this-calc-buf)
+           (a0-13 (the-as object (-> v1-15 base)))
+           )
+      (set! (-> (the-as dma-packet a0-13) dma)
+       (new 'static 'dma-tag :id (dma-tag-id end))
+       )
+      (set! (-> (the-as (pointer uint64) a0-13) 1) (the-as uint 0))
+      (set! (-> v1-15 base) (&+ (the-as pointer a0-13) 16))
+      )
+    ;; final cache flush after finishing DMA chains
+    (flush-cache 0)
+    ;; print debug stats.
+    (when (not (paused?))
+      (when *stats-buffer*
+        (let* ((global-buf (-> this-frame global-buf))
+               (calc-current (-> this-calc-buf base))
+               (calc-start (-> this-calc-buf data))
+               (global-current (-> global-buf base))
+               (global-start (-> global-buf data))
+               (global-end (-> global-buf end))
+               )
+          (format *stdcon* "~0kvu1 buf = ~d~%" (&- calc-current (the-as uint calc-start)))
+          (format *stdcon* "~0kglobal buf = ~d~%" (&- global-current (the-as uint global-start)))
+          (format *stdcon* "~0kbase = #x~x~%" global-current)
+          (format *stdcon* "~0kend = #x~x~%" global-end)
+          )
+        )
+      )
+    )
+  disp
+  )
+
+(defun determine-pause-mode ()
+  "Update pause system"
+
+  ;; debug frame advance
+  (when (and *debug-pause* (= *master-mode* 'pause))
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start r2))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start r2))
+    (while (and (= *master-mode* 'pause)
+                (zero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start r2)))
+                )
+      (sync-path 0 0)
+      (service-cpads)
+      )
+    (toggle-pause)
+    )
+  (when (or (not *progress-process*) (dummy-32 (-> *progress-process* 0)))
+    (if (or (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select r3 start)) ;; push pause
+            (and ;; controller lost
+             (logtest? (-> *cpad-list* cpads 0 valid) 128)
+             (= *master-mode* 'game)
+             (>= (the-as int (-> *display* base-frame-counter)) (the-as int (-> *game-info* blackout-time)))
+             ;; this is a hack. this is initialized to #x493e0. It prevents controller-loss pause from
+             ;; triggering in the first few seconds of gameplay.
+             (< #x49764 (the-as int (-> *display* real-frame-counter)))
+             )
+            (and (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r2)) ;; debug press
+                 (paused?)
+                 )
+            *pause-lock*
+            )
+        (toggle-pause)
+        )
+    )
+  ;; if we toggled out of pause, kill it.
+  (if (!= *master-mode* 'progress)
+      (deactivate-progress)
+      )
+  0
+  )
+
+(define *surrogate-dma-buffer* (the dma-buffer #f))
+
+(defmacro cpu-usage ()
+  "print out the cpu usage of the most recently rendered frame"
+  `(format #t "CPU: ~,,2f%~%frame-time: ~,,1fms~%"
+           (* 100. (/ (the float (-> (current-frame) run-time)) *ticks-per-frame*))
+           (* 1000. (/ 1. 60.) (/ (the float (-> (current-frame) run-time)) *ticks-per-frame*))
+           )
+  )
+
+(#when PC_PORT
+  (define *disasm-count* 0)
+
+  (defmacro disasm-next-dma (&key (count 1))
+    `(set! *disasm-count* ,count)
+    )
+  )
+
+(defun display-sync ((disp display))
+  "Switch frames! This assumes that you have called display-frame-finish on the current frame.
+   It will:
+    - wait for the current rendering frame to stop.
+    - do a vsync to get that frame on screen (possibly waiting up to 1 frame, if the prev frame
+                                              did not finish in time. This is why we drop to 30fps
+                                              as soon as we don't fit into 60 fps)
+    - start rendering the current frame
+    - initialize DMA buffers for the next frame drawing, advance to next frame"
+
+  ;; wait for rendering to finish.
+  (sync-path 0 0)
+  ;; remember when.
+  (set! (-> disp frames (-> disp on-screen) frame run-time)
+        (timer-count (the-as timer-bank #x10000800))
+        )
+
+  ;; now, do a vsync. If we finished rendering in time, this will just wait until the next.
+  (let ((frame-idx (-> disp on-screen))
+        (syncv-result (syncv 0))
+        )
+
+    ;; starting here, we are in a new frame
+    ;; syncv returns odd/even (if you miss multiple syncv's due to the sync-path above taking many
+    ;; frames, this will get us back on the correct field)
+    (set! *oddeven* syncv-result)
+
+    ;; if we need to change video modes:
+    (when (-> *video-parms* set-video-mode)
+      ;; to GS
+      (set-display2 *display* 0 512 (-> *video-parms* screen-sy) 2 49)
+      (set! (-> *video-parms* set-video-mode) #f)
+      ;; reset video mode is for changing ntsc/pal
+      (when (-> *video-parms* reset-video-mode)
+        (set! (-> *video-parms* reset-video-mode) #f)
+        ;; need to call reset-graph with some magic number
+        ;; also stash this parameter so that if things go really wrong and our DMA transfer
+        ;; times out, we can reset-graph to the appropriate video mode
+        (if (= (-> *setting-control* current video-mode) 'ntsc)
+            (set! *video-reset-parm* 2)
+            (set! *video-reset-parm* 3)
+            )
+        (reset-graph 0 1 *video-reset-parm* 1)
+        )
+      )
+
+    ;; setup the env (Sony functions)
+    (put-display-env (-> disp frames frame-idx display))
+    (put-draw-env (the-as (pointer gif-tag) (-> disp frames frame-idx gif)))
+
+    ;; begin rendering the next frame
+    (let ((dma-buf-to-send (-> disp frames frame-idx frame calc-buf)))
+      (when (nonzero? (dma-buffer-length dma-buf-to-send))
+        ;; was dma-send-chain originally.
+        (#when PC_PORT
+          (when (> *disasm-count* 0)
+            (disasm-dma-list (the-as dma-packet (-> dma-buf-to-send data-buffer)) 'details #t #t -1)
+            (-! *disasm-count* 1)
+            )
+          )
+        ;;(cpu-usage)
+        (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
+                               (cond
+                                 ;; some buffer for debugging, not used
+                                 (*surrogate-dma-buffer*
+                                  *surrogate-dma-buffer*
+                                  )
+                                 (else
+                                  (-> dma-buf-to-send data-buffer)
+                                  )
+                                 )
+                               )
+        )
+      )
+
+    (determine-pause-mode)
+
+    ;; update display frame
+    (let ((next-frame (+ frame-idx 1)))
+      (if (< 1 next-frame)
+          (set! next-frame 0)
+          )
+      (set! (-> disp last-screen) (-> disp on-screen))
+      (set! (-> disp on-screen) next-frame)
+
+      ;; initialize next frame
+      (display-frame-start disp next-frame syncv-result)
+      )
+    )
+  (none)
+  )
+
+(defun swap-display ((disp display))
+  "Swap frames! Synchronizes with rendering and vsync, kicks off the next render, and initializes the
+   to-draw frame"
+  (display-frame-finish disp)
+  (display-sync disp) ;; also starts next
+  )
+
+(defun dma-add-process-drawable-hud ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+  (set! (-> arg1 status) (logand -9 (-> arg1 status)))
+  (when (zero? (logand (-> arg1 status) 22))
+   ;; snip
+   (lod-set! arg1 0)
+   (logior! (-> arg1 status) 8)
+   ;;(draw-bones-hud arg1 arg3)
+   )
+  0
+  (none)
+  )
+
+(defun add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+  ((-> arg1 dma-add-func) arg0 arg1 arg2 arg3)
+  (none)
+  )
+
+(define-extern guard-band-cull (function vector symbol))
+
+(defun
+  dma-add-process-drawable
+  ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+  (local-vars (v1-37 float) (sv-16 process-drawable))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf2 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+   (init-vf0-vector)
+   (set! sv-16 arg0)
+   (set! (-> arg1 status) (logand -9 (-> arg1 status)))
+   (when (zero? (logand (-> arg1 status) 22))
+    (let ((s4-0 (the-as vector (+ 48 #x70000000)))
+          (s2-0 (the-as vu-lights (+ 64 #x70000000)))
+          (s3-0 *time-of-day-context*)
+          )
+     (.lvf vf16 (&-> arg1 origin quad))
+     (.lvf vf17 (&-> arg1 bounds quad))
+     (.mul.x.vf vf16 vf16 vf0 :mask #b1000)
+     (.add.vf vf16 vf16 vf17)
+     (.svf (&-> s4-0 quad) vf16)
+     (.lvf vf28 (&-> arg1 color-mult quad))
+     (.lvf vf29 (&-> arg1 color-emissive quad))
+     (when (sphere-in-view-frustum? (the-as sphere s4-0))
+      (case (-> arg1 global-effect)
+       ((3)
+         (when (not (-> s3-0 title-updated))
+          (set! (-> s3-0 title-updated) #t)
+          (let ((s0-0 (-> *math-camera* inv-camera-rot))
+                (a1-1 (new 'stack-no-clear 'vector))
+                (s1-0 (new 'stack-no-clear 'vector))
+                )
+           (set-vector! a1-1 0.612 0.5 -0.612 0.0)
+           (set-vector! s1-0 -0.696 0.174 0.696 0.0)
+           (vector-matrix*!
+            (the-as vector (-> s3-0 title-light-group))
+            a1-1
+            s0-0
+            )
+           (vector-matrix*!
+            (the-as vector (-> s3-0 title-light-group dir1))
+            s1-0
+            s0-0
+            )
+           )
+          (set-vector!
+           (-> *time-of-day-context* current-shadow)
+           0.612
+           -0.5
+           -0.612
+           1.0
+           )
+          )
+         (vu-lights<-light-group! s2-0 (-> s3-0 title-light-group))
+         )
+       (else
+        (let ((f28-0 (-> arg1 secondary-interp))
+              (f30-0 (-> arg1 current-secondary-interp))
+              (v1-17 (-> arg1 shadow-mask))
+              (a0-10 (-> arg1 level-index))
+              (s0-1 (-> s3-0 light-group (-> *target* draw light-index)))
+              (s1-1 (new 'stack-no-clear 'light-group))
+              )
+         (cond
+          ((= (-> arg1 light-index) 255)
+           )
+          ((= a0-10 2)
+           (set! s0-1 (-> s3-0 light-group (-> arg1 light-index)))
+           )
+          (else
+           (set! s0-1 (-> s3-0 moods a0-10 light-group (-> arg1 light-index)))
+           )
+          )
+         (when (not (or (= a0-10 2) (zero? v1-17)))
+          (let* ((a1-22 (-> s3-0 light-masks-0 a0-10))
+                 (a2-14 (-> s3-0 light-masks-1 a0-10))
+                 (f26-0 (-> s3-0 light-interp a0-10))
+                 (a0-13 (logand a1-22 v1-17))
+                 (v1-18 (logand a2-14 v1-17))
+                 )
+           (cond
+            ((and (zero? a0-13) (zero? v1-18))
+             )
+            (else
+             (set! f28-0 (cond
+                          ((and (nonzero? a0-13) (nonzero? v1-18))
+                           1.0
+                           )
+                          ((zero? a0-13)
+                           (quad-copy!
+                            (the-as pointer s1-1)
+                            (the-as pointer s0-1)
+                            12
+                            )
+                           (set! s0-1 s1-1)
+                           (set! (-> s0-1 dir1 levels x) 0.0)
+                           f26-0
+                           )
+                          (else
+                           (quad-copy!
+                            (the-as pointer s1-1)
+                            (the-as pointer s0-1)
+                            12
+                            )
+                           (set! s0-1 s1-1)
+                           (set! (-> s0-1 dir0 levels x) 0.0)
+                           (- 1.0 f26-0)
+                           )
+                          )
+              )
+             )
+            )
+           )
+          )
+         (if *teleport*
+          (set! f30-0 f28-0)
+          )
+         (when (not (or (paused?) (= f28-0 f30-0)))
+          (let ((f0-15 (- f30-0 f28-0)))
+           (set! f30-0 (cond
+                        ((< (fabs f0-15) 0.2)
+                         f28-0
+                         )
+                        ((< f0-15 0.0)
+                         (+ 0.2 f30-0)
+                         )
+                        (else
+                         (+ -0.2 f30-0)
+                         )
+                        )
+            )
+           )
+          (set! (-> arg1 current-secondary-interp) f30-0)
+          )
+         (cond
+          ((= f30-0 0.0)
+           (vu-lights<-light-group! s2-0 s0-1)
+           )
+          (else
+           (if (!= s0-1 s1-1)
+            (quad-copy! (the-as pointer s1-1) (the-as pointer s0-1) 12)
+            )
+           (let ((f0-20 (- 1.0 f30-0)))
+            (set! (-> s1-1 dir0 levels x) (* (-> s1-1 dir0 levels x) f0-20))
+            (set! (-> s1-1 dir0 levels y) (* (-> s1-1 dir0 levels y) f0-20))
+            (set! (-> s1-1 dir1 levels x) (* (-> s1-1 dir1 levels x) f0-20))
+            (set! (-> s1-1 dir1 levels y) (* (-> s1-1 dir1 levels y) f0-20))
+            (set! (-> s1-1 dir2 levels x) (* (-> s1-1 dir2 levels x) f0-20))
+            (set! (-> s1-1 dir2 levels y) (* (-> s1-1 dir2 levels y) f0-20))
+            )
+           (vu-lights<-light-group! s2-0 s1-1)
+           )
+          )
+         )
+        (.lvf vf2 (&-> s2-0 color 0 quad))
+        (.lvf vf3 (&-> s2-0 color 1 quad))
+        (.lvf vf4 (&-> s2-0 color 2 quad))
+        (.lvf vf5 (&-> s2-0 ambient quad))
+        (.mul.vf vf5 vf5 vf28)
+        (.mul.vf vf2 vf2 vf28)
+        (.mul.vf vf3 vf3 vf28)
+        (.mul.vf vf4 vf4 vf28)
+        (.add.vf vf5 vf5 vf29)
+        (.svf (&-> s2-0 color 0 quad) vf2)
+        (.svf (&-> s2-0 color 1 quad) vf3)
+        (.svf (&-> s2-0 color 2 quad) vf4)
+        (.svf (&-> s2-0 ambient quad) vf5)
+        (.mov v1-37 vf5)
+        )
+       )
+      (if *display-lights*
+       (add-debug-lights
+        #t
+        (bucket-id debug-draw0)
+        (the-as (inline-array light) (-> s3-0 light-group))
+        (-> arg1 origin)
+        )
+       )
+      (let ((at-0 *math-camera*))
+       (.lvf vf16 (&-> at-0 plane 0 quad))
+       (.lvf vf17 (&-> at-0 plane 1 quad))
+       (.lvf vf18 (&-> at-0 plane 2 quad))
+       (.lvf vf19 (&-> at-0 plane 3 quad))
+       (.lvf vf20 (&-> at-0 guard-plane 0 quad))
+       (.lvf vf21 (&-> at-0 guard-plane 1 quad))
+       (.lvf vf22 (&-> at-0 guard-plane 2 quad))
+       (.lvf vf23 (&-> at-0 guard-plane 3 quad))
+       (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
+       (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
+       (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
+       (.lvf vf27 (&-> at-0 camera-rot vector 3 quad))
+       )
+      (let ((v1-42 (the-as object (+ 176 #x70000000))))
+       (.lvf vf15 (&-> s4-0 quad))
+       (.mul.w.vf acc vf27 vf0)
+       (.add.mul.x.vf acc vf24 vf15 acc)
+       (.add.mul.y.vf acc vf25 vf15 acc)
+       (.add.mul.z.vf vf15 vf26 vf15 acc :mask #b111)
+       (.mul.vf vf28 vf15 vf15)
+       (.max.w.vf vf29 vf0 vf0)
+       (.add.y.vf acc vf28 vf28)
+       (.add.mul.z.vf vf28 vf29 vf28 acc :mask #b1)
+       (.sqrt.vf Q vf28 :ftf #b0)
+       (.sub.w.vf vf28 vf0 vf15 :mask #b1000)
+       (.wait.vf)
+       (.add.vf vf15 vf28 Q :mask #b1000)
+       (.svf (&-> (the-as vector v1-42) quad) vf15)
+       (when (< 0.0 (+ (-> (the-as vector v1-42) z) (-> arg1 bounds w)))
+        (let ((s3-1 0))
+         (let ((f30-1 (-> (the-as vector v1-42) w)))
+          (when (nonzero? (-> arg1 lod-set max-lod))
+           (cond
+            ((>= (-> arg1 force-lod) 0)
+             (set! s3-1 (-> arg1 force-lod))
+             (if (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) f30-1)
+              (return #f)
+              )
+             )
+            (else
+             (while
+              (and
+               (< s3-1 (-> arg1 lod-set max-lod))
+               (< (-> arg1 lod-set lod s3-1 dist) f30-1)
+               )
+              (+! s3-1 1)
+              )
+             )
+            )
+           )
+          (if
+           (and
+            (< (-> arg1 lod-set lod s3-1 dist) f30-1)
+            (< (-> arg1 force-lod) 0)
+            )
+           (return #f)
+           )
+          (let ((v1-64 (-> arg1 sink-group level))
+                (a0-26
+                 (+ (-> arg1 sink-group merc-sink foreground-texture-page) 6)
+                 )
+                )
+           (when (zero? (logand (-> arg1 status) 64))
+            (if (< f30-1 (-> v1-64 closest-object a0-26))
+             (set! (-> v1-64 closest-object a0-26) f30-1)
+             )
+            (when (and (!= a0-26 6) (!= (-> arg1 level-index) 2))
+             (let ((a1-45 (cond
+                           ((< 102400.0 f30-1)
+                            (-> arg1 mgeo header masks 0)
+                            )
+                           ((< 81920.0 f30-1)
+                            (-> arg1 mgeo header masks 1)
+                            )
+                           (else
+                            (-> arg1 mgeo header masks 2)
+                            )
+                           )
+                    )
+                   )
+              (logior! (-> v1-64 texture-mask a0-26) a1-45)
+              )
+             )
+            )
+           )
+          (if (or (guard-band-cull s4-0) (< f30-1 (* 1.2 (-> *math-camera* d))))
+           (logior! (-> arg1 status) 1)
+           (set! (-> arg1 status) (logand -2 (-> arg1 status)))
+           )
+          (logior! (-> arg1 status) 8)
+          (if (logtest? (-> arg1 status) 32)
+           (return #f)
+           )
+          ;(draw-bones arg1 arg3 f30-1)
+          )
+         (when (and (< s3-1 (-> arg1 cur-lod)) (logtest? (-> arg1 status) 128))
+          (let ((v1-82 *matrix-engine*))
+           (set! (-> v1-82 (-> v1-82 length)) (process->handle sv-16))
+           (+! (-> v1-82 length) 1)
+           )
+          )
+         (lod-set! arg1 s3-1)
+         )
+        )
+       )
+      )
+     )
+    )
+   0
+   (none)
+   )
+  )
+
+

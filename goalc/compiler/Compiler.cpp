@@ -11,8 +11,8 @@
 
 using namespace goos;
 
-Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
-    : m_debugger(&m_listener), m_repl(std::move(repl)) {
+Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
+    : m_goos(user_profile), m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -24,6 +24,11 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
+
+  if (user_profile != "#f") {
+    Object user_code = m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
+    compile_object_file(user_profile, user_code, false);
+  }
 
   // add built-in forms to symbol info
   for (auto& builtin : g_goal_forms) {
@@ -39,7 +44,7 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   setup_goos_forms();
 }
 
-ReplStatus Compiler::execute_repl(bool auto_listen) {
+ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   // init repl
   m_repl->print_welcome_message();
   auto examples = m_repl->examples;
@@ -53,24 +58,36 @@ ReplStatus Compiler::execute_repl(bool auto_listen) {
   m_repl->get_repl().set_highlighter_callback(
       std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
 
-  if (auto_listen) {
-    m_listener.connect_to_target();
+  std::string auto_input;
+  if (auto_debug || auto_listen) {
+    auto_input.append("(lt)");
+  }
+  if (auto_debug) {
+    auto_input.append("(dbg) (:cont)");
   }
 
   while (!m_want_exit && !m_want_reload) {
     try {
-      // 1). get a line from the user (READ)
-      std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-      if (m_listener.is_connected()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-      }
-      if (m_debugger.is_halted()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-      } else if (m_debugger.is_attached()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+      std::optional<goos::Object> code;
+
+      if (auto_input.empty()) {
+        // 1). get a line from the user (READ)
+        std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+        if (m_listener.is_connected()) {
+          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+        }
+        if (m_debugger.is_halted()) {
+          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+        } else if (m_debugger.is_attached()) {
+          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+        }
+
+        code = m_goos.reader.read_from_stdin(prompt, *m_repl);
+      } else {
+        code = m_goos.reader.read_from_string(auto_input);
+        auto_input.clear();
       }
 
-      auto code = m_goos.reader.read_from_stdin(prompt, *m_repl);
       if (!code) {
         continue;
       }
@@ -123,9 +140,6 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
                                        bool allow_emit) {
   auto file_env = m_global_env->add_file(name);
   Env* compilation_env = file_env;
-  if (!allow_emit) {
-    compilation_env = file_env->add_no_emit_env();
-  }
 
   file_env->add_top_level_function(
       compile_top_level_function("top-level", std::move(code), compilation_env));
@@ -140,19 +154,19 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
 std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::string& name,
                                                                   const goos::Object& code,
                                                                   Env* env) {
-  auto fe = std::make_unique<FunctionEnv>(env, name);
+  auto fe = std::make_unique<FunctionEnv>(env, name, &m_goos.reader);
   fe->set_segment(TOP_LEVEL_SEGMENT);
 
   auto result = compile_error_guard(code, fe.get());
 
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
-    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get()),
-                                         emitter::gRegInfo.get_gpr_ret_reg()));
+    fe->emit_ir<IR_Return>(code, fe->make_gpr(result->type()), result->to_gpr(code, fe.get()),
+                           emitter::gRegInfo.get_gpr_ret_reg());
   }
 
   if (!fe->code().empty()) {
-    fe->emit_ir<IR_Null>();
+    fe->emit_ir<IR_Null>(code);
   }
 
   fe->finish();
@@ -170,10 +184,15 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
         obj_print += "...";
       }
       bool term;
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-      fmt::print(m_goos.reader.db.get_info_for(code, &term));
+      auto loc_info = m_goos.reader.db.get_info_for(code, &term);
+      if (term) {
+        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+        fmt::print(loc_info);
+      }
+
       fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
       fmt::print("{}\n", obj_print);
+
       if (term) {
         ce.print_err_stack = false;
       }
@@ -185,19 +204,32 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   }
 
   catch (std::runtime_error& e) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    fmt::print(fmt::emphasis::bold, "{}\n", e.what());
+
     auto obj_print = code.print();
     if (obj_print.length() > 80) {
       obj_print = obj_print.substr(0, 80);
       obj_print += "...";
     }
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-    fmt::print(m_goos.reader.db.get_info_for(code));
+    bool term;
+    auto loc_info = m_goos.reader.db.get_info_for(code, &term);
+    if (term) {
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+      fmt::print(loc_info);
+    }
+
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
     fmt::print("{}\n", obj_print);
+
+    CompilerException ce("Compiler Exception");
+    if (term) {
+      ce.print_err_stack = false;
+    }
     std::string line(80, '-');
     line.push_back('\n');
     fmt::print(line);
-    throw e;
+    throw ce;
   }
 }
 
@@ -239,7 +271,7 @@ void Compiler::color_object_file(FileEnv* env) {
         //  regalloc_result_2.num_spilled_vars);
       }
       num_spills_in_file += regalloc_result_2.num_spills;
-      f->set_allocations(regalloc_result_2);
+      f->set_allocations(std::move(regalloc_result_2));
     } else {
       fmt::print(
           "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
@@ -249,7 +281,7 @@ void Compiler::color_object_file(FileEnv* env) {
       auto regalloc_result = allocate_registers(input);
       m_debug_stats.num_spills_v1 += regalloc_result.num_spills;
       num_spills_in_file += regalloc_result.num_spills;
-      f->set_allocations(regalloc_result);
+      f->set_allocations(std::move(regalloc_result));
     }
   }
 
@@ -265,7 +297,8 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
       if (f->settings.print_asm) {
-        fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
+        fmt::print("{}\n",
+                   debug_info->disassemble_function_by_name(f->name(), &ok, &m_goos.reader));
       }
     }
     auto stats = gen.get_obj_stats();
@@ -285,7 +318,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   CodeGenerator gen(env, debug_info);
   *data_out = gen.run(&m_ts);
   bool ok = true;
-  *asm_out = debug_info->disassemble_all_functions(&ok);
+  *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader);
   return ok;
 }
 

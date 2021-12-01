@@ -67,7 +67,7 @@
     )
   )
 
-(defmacro cgo (output-name desc-file-name &rest objs)
+(defmacro cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   `(defstep :in ,(string-append "goal_src/dgos/" desc-file-name)
      :tool 'dgo
@@ -80,11 +80,11 @@
   )
 
 (defmacro copy-texture (tpage-id)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" (tpage-name tpage-id))
-     :tool 'copy
-     :out '(,(string-append "out/obj/" (tpage-name tpage-id)))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
 
 (defmacro copy-textures (&rest ids)
   `(begin
@@ -93,11 +93,11 @@
   )
 
 (defmacro copy-go (name)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" name ".go")
-     :tool 'copy
-     :out '(,(string-append "out/obj/" name ".go"))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" name ".go")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defmacro copy-gos (&rest gos)
   `(begin
@@ -210,7 +210,76 @@
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        "out/iso/VI1.DGO"
+       "out/iso/VI2.DGO"
+       "out/iso/VI3.DGO"
+       "out/iso/TRA.DGO"
+       "out/iso/FIN.DGO"
+       "out/iso/FIC.DGO"
+       "out/iso/JUN.DGO"
+       "out/iso/MAI.DGO"
+       "out/iso/BEA.DGO"
+       "out/iso/CIT.DGO"
        )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; hub1 Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the hub1 group is a group of files required to play the first hub (village1, jungle, beach, misty, training, firecanyon)
+
+(group "hub1"
+       "out/iso/0COMMON.TXT"
+       "out/iso/KERNEL.CGO"
+       "out/iso/GAME.CGO"
+       "out/iso/VI1.DGO"
+       "out/iso/TRA.DGO"
+       "out/iso/FIC.DGO"
+       "out/iso/JUN.DGO"
+       "out/iso/BEA.DGO"
+       )
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Common Level Objects
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; as we find objects that exist in multiple levels, put them here
+
+(copy-gos
+ "warpgate-ag"
+ "sharkey-ag-BEA-TRA-VI2"
+ "eichar-racer+0-ag"
+
+ "babak-ag"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Common Level Code
+;;;;;;;;;;;;;;;;;;;;;
+
+(goal-src-sequence
+  "levels/"
+   :deps ;; no idea what these depend on, make it depend on the whole engine
+   ("out/obj/default-menu.o")
+
+   "village_common/villagep-obs.gc"
+   "village_common/oracle.gc"
+
+   "common/blocking-plane.gc"
+   "common/launcherdoor.gc"
+   "common/mistycannon.gc"
+   "common/babak-with-cannon.gc"
+   "common/snow-bunny.gc"
+   "common/battlecontroller.gc"
+
+   "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/racer-part.gc"
+   "racer_common/racer.gc"
+   "racer_common/target-racer-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/racer-states-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/collide-reaction-racer.gc"
+
+   )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -228,8 +297,6 @@
  :deps ;; no idea what these depend on, make it depend on the whole engine
  ("out/obj/default-menu.o")
 
- "village_common/villagep-obs.gc"
- "village_common/oracle.gc"
  "village1/farmer.gc"
  "village1/explorer.gc"
  "village1/assistant.gc"
@@ -279,14 +346,466 @@
  "village-cam-ag-VI1"
  "village1cam-ag"
  "warp-gate-switch-ag-VI1-VI3"
- "warpgate-ag"
  "water-anim-village1-ag"
  "windmill-sail-ag"
  "windspinner-ag"
  "yakow-ag"
  "village1-vis"
  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Jungle
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "JUN.DGO"
+  "jun.gd")
+
+(goal-src-sequence
+ "levels/jungle/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "jungle-elevator.gc"
+ "bouncer.gc"
+ "hopper.gc"
+ "junglesnake.gc"
+ "darkvine.gc"
+ "jungle-obs.gc"
+ "jungle-mirrors.gc"
+ "junglefish.gc"
+ "fisher-JUN.gc"
+ "jungle-part.gc"
+ )
+
+(copy-gos
+  "eichar-fish+0-ag-JUN"
+  "accordian-ag"
+  "bounceytarp-ag"
+  "catch-fisha-ag"
+  "catch-fishb-ag"
+  "catch-fishc-ag"
+  "darkvine-ag-JUN"
+  "ecovalve-ag-JUB-JUN"
+  "fish-net-ag"
+  "fisher-ag"
+  "hopper-ag"
+  "junglecam-ag"
+  "junglefish-ag"
+  "junglesnake-ag"
+  "launcherdoor-ag-JUN"
+  "logtrap-ag"
+  "lurkerm-piston-ag"
+  "lurkerm-tall-sail-ag"
+  "maindoor-ag"
+  "medres-firecanyon-ag"
+  "orb-cache-top-ag-JUN"
+  "periscope-ag"
+  "plat-button-ag"
+  "plat-eco-ag-JUN"
+  "precurbridge-ag"
+  "reflector-mirror-ag"
+  "ropebridge-52-ag"
+  "ropebridge-70-ag"
+  "sharkey-ag-JUN-MIS"
+  "sidedoor-ag"
+  "towertop-ag"
+  "water-anim-jungle-ag"
+  "jungle-vis"
+  )
+
+(copy-textures 385 531 386 388 765)
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Beach
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "BEA.DGO"
+  "bea.gd"
+  )
+
+(goal-src-sequence
+  "levels/beach/"
+  :deps ("out/obj/default-menu.o")
+  "air-h.gc"
+  "air.gc"
+  "wobbler.gc"
+  "twister.gc"
+  "beach-obs.gc"
+  "bird-lady.gc"
+  "bird-lady-beach.gc"
+  "mayor.gc"
+  "sculptor.gc"
+  "pelican.gc"
+  "lurkerworm.gc"
+  "lurkercrab.gc"
+  "lurkerpuppy.gc"
+  "beach-rocks.gc"
+  "seagull.gc"
+  "beach-part.gc"
+  )
+
+(copy-textures 212 214 213 215)
+
+(copy-gos
+  "barrel-ag-BEA"
+  "beachcam-ag"
+  "bird-lady-ag"
+  "bird-lady-beach-ag"
+  "bladeassm-ag"
+  "ecovalve-ag-BEA"
+  "ecoventrock-ag"
+  "flutflut-ag"
+  "flutflutegg-ag"
+  "grottopole-ag"
+  "harvester-ag"
+  "kickrock-ag"
+  "lrocklrg-ag"
+  "lurkercrab-ag"
+  "lurkerpuppy-ag"
+  "lurkerworm-ag"
+  "mayor-ag"
+  "mistycannon-ag"
+  "orb-cache-top-ag-BEA"
+  "pelican-ag"
+  "sack-ag-BEA"
+  "sculptor-ag"
+  "sculptor-muse-ag"
+  "seagull-ag"
+  "windmill-one-ag"
+  "beach-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Fire Canyon
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "FIC.DGO"
+     "fic.gd"
+     )
+
+(copy-textures 1119) ;; might be common/zoomer hud??
+
+(goal-src-sequence
+ "levels/firecanyon/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "firecanyon-part.gc"
+ "assistant-firecanyon.gc"
+ "firecanyon-obs.gc"
+
+ )
+
+(copy-textures 815 822 854 1123)
+
+(copy-gos
+  "assistant-firecanyon-ag"
+  "balloon-ag"
+  "crate-darkeco-cluster-ag-FIC"
+  "ecovalve-ag-FIC-OGR"
+  "ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA"
+  "racer-ag-FIC-ROL"
+  "spike-ag"
+  "firecanyon-vis")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Training
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the definition of the DGO package for the level
+(cgo "TRA.DGO"
+     "tra.gd")
+
+;; The code
+(goal-src-sequence
+  "levels/training/"
+  :deps ("out/obj/default-menu.o") ;; makes us depend on the whole engine
+
+  "training-obs.gc"
+  "training-part.gc"
+  )
+
+;; the textures
+(copy-textures 1309 1311 1310 1308 775)
+
+(copy-gos
+  "ecovalve-ag-TRA"
+  "jng-iris-door-ag-TRA"
+  "plat-eco-ag-TRA"
+  "pontoonfive-ag-TRA"
+  "scarecrow-a-ag"
+  "scarecrow-b-ag"
+  "trainingcam-ag"
+  "warp-gate-switch-ag-TRA"
+  "water-anim-training-ag"
+  "training-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Village 2
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "VI2.DGO" "vi2.gd")
+
+(goal-src-sequence
+ "levels/village2/"
+ :deps ("out/obj/default-menu.o")
+ "village2-part.gc"
+ "village2-obs.gc"
+ "village2-part2.gc"
+ "gambler.gc"
+ "warrior.gc"
+ "geologist.gc"
+ "swamp-blimp.gc"
+ "sage-bluehut.gc"
+ "flutflut-bluehut.gc"
+ "assistant-village2.gc"
+ "sunken-elevator.gc"
+ )
+
+(copy-textures 919 922 920 921 1476)
+
+(copy-gos
+  "allpontoons-ag"
+  "assistant-village2-ag"
+  "barrel-ag-VI2"
+  "ceilingflag-ag"
+  "exit-chamber-dummy-ag"
+  "fireboulder-ag"
+  "flutflut-bluehut-ag"
+  "gambler-ag"
+  "geologist-ag"
+  "jaws-ag"
+  "medres-rolling-ag"
+  "medres-rolling1-ag"
+  "medres-village2-ag"
+  "ogreboss-village2-ag"
+  "oracle-ag-VI2"
+  "orb-cache-top-ag-VI2"
+  "pontoonfive-ag-VI2"
+  "pontoonten-ag"
+  "precursor-arm-ag"
+  "sage-bluehut-ag"
+  "sunken-elevator-ag"
+  "swamp-blimp-ag"
+  "swamp-rope-ag"
+  "swamp-tetherrock-ag"
+  "swamp-tetherrock-explode-ag"
+  "swampcam-ag-VI2"
+  "village-cam-ag-VI2"
+  "village2cam-ag"
+  "warp-gate-switch-ag-VI2"
+  "warrior-ag"
+  "water-anim-village2-ag"
+  "village2-vis"
+  )
  
+;;;;;;;;;;;;;;;;;;;;;
+;; Village 3
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the definition for the DGO file.
+(cgo "VI3.DGO" "vi3.gd")
+
+;; the code
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+ "village3/village3-part.gc"
+ "village3/village3-obs.gc"
+ "village3/minecart.gc"
+ "village3/miners.gc"
+ "village3/assistant-village3.gc"
+ "village3/sage-village3.gc"
+ )
+
+(copy-textures 1208 1210 1209 1194)
+
+(copy-gos
+  "assistant-village3-ag"
+  "cavegem-ag"
+  "evilbro-village3-ag"
+  "evilsis-village3-ag"
+  "gondola-ag"
+  "gondolacables-ag"
+  "lavaspoutdrip-ag"
+  "medres-finalboss-ag"
+  "medres-ogre-ag"
+  "medres-ogre2-ag"
+  "medres-ogre3-ag"
+  "minecartsteel-ag"
+  "minershort-ag"
+  "minertall-ag"
+  "oracle-ag-VI3"
+  "pistons-ag"
+  "sage-village3-ag"
+  "vil3-bridge-36-ag"
+  "village-cam-ag-VI3"
+  "water-anim-village3-ag"
+  "village3-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Spider Cave
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MAI.DGO" "mai.gd")
+
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o"
+  ;;"out/obj/darkcave-obs.o"
+  )
+ "maincave/cavecrystal-light.gc"
+ "maincave/maincave-obs.gc"
+ "maincave/maincave-part.gc"
+ "maincave/spiderwebs.gc"
+ "maincave/dark-crystal.gc"
+ "maincave/baby-spider.gc"
+ "maincave/mother-spider-h.gc"
+ "maincave/mother-spider-egg.gc"
+ "maincave/mother-spider-proj.gc"
+ "maincave/mother-spider.gc"
+ "maincave/gnawer.gc"
+ "maincave/driller-lurker.gc"
+ )
+
+(copy-textures 1313 1315 1314 1312 767)
+
+(copy-gos
+  "baby-spider-ag-MAI"
+  "cavetrapdoor-ag-MAI"
+  "dark-crystal-ag"
+  "driller-lurker-ag"
+  "ecovalve-ag-MAI"
+  "gnawer-ag"
+  "launcherdoor-maincave-ag"
+  "maincavecam-ag"
+  "mother-spider-ag"
+  "plat-ag-MAI"
+  "spider-egg-ag-DAR-MAI"
+  "spiderwebs-ag"
+  "water-anim-maincave-ag"
+  "water-anim-maincave-water-ag"
+  "maincave-vis"
+  )
+
+; (goal-src-sequence
+;  "levels/"
+;  :deps ;; no idea what these depend on, make it depend on the whole engine
+;  ("out/obj/default-menu.o" "out/obj/cavecrystal-light.o")
+;  "darkcave/darkcave-obs.gc"
+;  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; citadel
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "CIT.DGO" "cit.gd")
+
+(goal-src-sequence
+  "levels/citadel/"
+  :deps ("out/obj/default-menu.o")
+
+  "citadel-part.gc"
+  "citadel-obs.gc"
+  "citb-plat.gc"
+  "citadel-sages.gc"
+  "citb-bunny.gc"
+  "citb-drop-plat-CIT.gc"
+  "assistant-citadel.gc"
+  )
+
+(copy-textures 1415 1417 1416 1414)
+
+(copy-gos
+  "babak-ag-CIT"
+  "ecovalve-ag-CIT"
+  "orb-cache-top-ag-CIT"
+  "assistant-lavatube-end-ag"
+  "bluesage-ag"
+  "citadelcam-ag"
+  "citb-arm-ag"
+  "citb-arm-shoulder-ag"
+  "citb-bunny-ag"
+  "citb-button-ag"
+  "citb-chain-plat-ag"
+  "citb-chains-ag"
+  "citb-coil-ag"
+  "citb-disc-ag"
+  "citb-donut-ag"
+  "citb-drop-plat-ag"
+  "citb-exit-plat-ag"
+  "citb-firehose-ag"
+  "citb-generator-ag"
+  "citb-hose-ag"
+  "citb-iris-door-ag"
+  "citb-launcher-ag"
+  "citb-robotboss-ag"
+  "citb-rotatebox-ag"
+  "citb-sagecage-ag"
+  "citb-stopbox-ag"
+  "evilbro-citadel-ag"
+  "evilsis-citadel-ag"
+  "green-sagecage-ag"
+  "plat-citb-ag"
+  "plat-eco-citb-ag"
+  "redsage-ag"
+  "warp-gate-switch-ag-CIT"
+  "yellowsage-ag"
+  "citadel-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Final Boss
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "FIN.DGO" "fin.gd")
+
+(goal-src-sequence
+  "levels/finalboss/"
+  :deps ("out/obj/default-menu.o")
+
+  "robotboss-h.gc"
+  "robotboss-part.gc"
+  "sage-finalboss-part.gc"
+  "light-eco.gc"
+  "robotboss-weapon.gc"
+  "robotboss-misc.gc"
+  "green-eco-lurker.gc"
+  "robotboss.gc"
+  "final-door.gc"
+  "sage-finalboss-FIN.gc"
+  )
+
+(copy-textures 1419 1420 634 1418 545)
+
+(copy-gos
+  "darkecobomb-ag"
+  "ecoclaw-ag"
+  "ecovalve-ag-FIN"
+  "finalbosscam-ag"
+  "green-eco-lurker-ag"
+  "greenshot-ag"
+  "jak-white-ag"
+  "light-eco-ag"
+  "plat-eco-finalboss-ag"
+  "power-left-ag"
+  "power-right-ag"
+  "powercellalt-ag"
+  "redring-ag"
+  "robotboss-ag"
+  "robotboss-blueeco-ag"
+  "robotboss-cinematic-ag"
+  "robotboss-redeco-ag"
+  "robotboss-yelloweco-ag"
+  "silodoor-ag"
+  "water-anim-finalboss-ag"
+  "finalboss-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

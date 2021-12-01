@@ -1,3 +1,5 @@
+add_subdirectory(level_tools)
+
 add_executable(dgo_unpacker
         dgo_unpacker.cpp)
 target_link_libraries(dgo_unpacker common)

@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <memory>
+#include <optional>
 
 #include "common/goos/Object.h"
 
@@ -29,11 +30,12 @@ class SourceText {
  public:
   explicit SourceText(std::string r);
   SourceText() = default;
-  const char* get_text() { return text.c_str(); }
-  int get_size() { return text.size(); }
+  const char* get_text() { return m_text.c_str(); }
+  int get_size() { return m_text.size(); }
   virtual std::string get_description() = 0;
   std::string get_line_containing_offset(int offset);
   int get_line_idx(int offset);
+  int get_offset_of_line(int line_idx);
   // should the compiler keep looking up the stack when printing errors on this, or not?
   // this should return true if the text source is specific enough so that they can find what they
   // want
@@ -43,8 +45,8 @@ class SourceText {
 
  protected:
   void build_offsets();
-  std::string text;
-  std::vector<int> offset_by_line;
+  std::string m_text;
+  std::vector<int> m_offset_by_line;
   std::pair<int, int> get_containing_line(int offset);
 };
 
@@ -73,13 +75,14 @@ class ProgramString : public SourceText {
  */
 class FileText : public SourceText {
  public:
-  FileText(std::string filename_);
+  FileText(const std::string& filename, const std::string& description_name);
 
-  std::string get_description() { return filename; }
+  std::string get_description() { return m_desc_name; }
   ~FileText() = default;
 
  private:
-  std::string filename;
+  std::string m_filename;
+  std::string m_desc_name;
 };
 
 struct TextRef {
@@ -89,14 +92,23 @@ struct TextRef {
 
 class TextDb {
  public:
+  struct ShortInfo {
+    std::string filename;
+    int line_idx_to_display = -1;
+    int pos_in_line = -1;
+    std::string line_text;
+  };
+
   void insert(const std::shared_ptr<SourceText>& frag);
   void link(const Object& o, std::shared_ptr<SourceText> frag, int offset);
   std::string get_info_for(const Object& o, bool* terminate_compiler_error = nullptr) const;
   std::string get_info_for(const std::shared_ptr<SourceText>& frag, int offset) const;
+  std::optional<ShortInfo> try_get_short_info(const Object& o) const;
+  bool has_info(const Object& o) const;
   void inherit_info(const Object& parent, const Object& child);
 
  private:
-  std::vector<std::shared_ptr<SourceText>> fragments;
-  std::unordered_map<std::shared_ptr<goos::HeapObject>, TextRef> map;
+  std::vector<std::shared_ptr<SourceText>> m_fragments;
+  std::unordered_map<std::shared_ptr<goos::HeapObject>, TextRef> m_map;
 };
 }  // namespace goos

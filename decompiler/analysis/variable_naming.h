@@ -15,14 +15,15 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
 #include <optional>
+#include <string>
 #include <unordered_map>
+#include <vector>
+
 #include "common/util/assert.h"
 #include "decompiler/Disasm/Register.h"
-#include "decompiler/util/TP_Type.h"
 #include "decompiler/IR2/IR2_common.h"
+#include "decompiler/util/TP_Type.h"
 
 namespace decompiler {
 

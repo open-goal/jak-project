@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+
 #include "decompiler/Function/Function.h"
 
 namespace decompiler {
@@ -17,4 +18,5 @@ std::string write_from_top_level(const Function& top_level,
 
 goos::Object get_arg_list_for_function(const Function& func, const Env& env);
 goos::Object final_output_lambda(const Function& function);
+goos::Object final_output_defstate_anonymous_behavior(const Function& func);
 }  // namespace decompiler

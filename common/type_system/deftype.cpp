@@ -179,7 +179,7 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
-    // (name args return-type [:no-virtual] [id])
+    // (name args return-type [:no-virtual] [:replace] [:state] [id])
     auto method_name = symbol_string(car(obj));
     obj = cdr(obj);
     auto& args = car(obj);
@@ -199,6 +199,11 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     if (!obj->is_empty_list() && car(obj).is_symbol(":replace")) {
       obj = cdr(obj);
       replace_method = true;
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":state")) {
+      obj = cdr(obj);
+      function_typespec = TypeSpec("state");
     }
 
     if (!obj->is_empty_list() && car(obj).is_symbol(":behavior")) {
@@ -238,6 +243,34 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
   });
 }
 
+void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def) {
+  for_each_in_list(def, [&](const goos::Object& _obj) {
+    auto obj = &_obj;
+    if (obj->is_list()) {
+      // (name ,@args)
+      auto state_name = symbol_string(car(obj));
+      auto args = cdr(obj);
+
+      TypeSpec state_typespec("state");
+
+      for_each_in_list(*args, [&](const goos::Object& o) {
+        state_typespec.add_arg(parse_typespec(type_system, o));
+      });
+      state_typespec.add_arg(TypeSpec(type->get_name()));
+
+      type->add_state(state_name, state_typespec);
+    } else {
+      // name
+      auto state_name = symbol_string(*obj);
+
+      TypeSpec state_typespec("state");
+      state_typespec.add_arg(TypeSpec(type->get_name()));
+
+      type->add_state(state_name, state_typespec);
+    }
+  });
+}
+
 struct StructureDefResult {
   TypeFlags flags;
   bool generate_runtime_type = true;
@@ -269,8 +302,11 @@ StructureDefResult parse_structure_def(StructureType* type,
       auto& first = car(opt_list);
       opt_list = cdr(opt_list);
 
-      if (symbol_string(first) == ":methods") {
+      auto list_name = symbol_string(first);
+      if (list_name == ":methods") {
         declare_method(type, ts, *opt_list);
+      } else if (list_name == ":states") {
+        declare_state(type, ts, *opt_list);
       } else {
         throw std::runtime_error("Invalid option list in field specification: " +
                                  car(rest).print());
@@ -299,6 +335,8 @@ StructureDefResult parse_structure_def(StructureType* type,
         rest = cdr(rest);
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
+      } else if (opt_name == ":no-inspect") {
+        type->set_gen_inspect(false);
       } else if (opt_name == ":pack-me") {
         result.pack_me = true;
       } else if (opt_name == ":heap-base") {
@@ -405,6 +443,8 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
         rest = cdr(rest);
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
+      } else if (opt_name == ":no-inspect") {
+        type->set_gen_inspect(false);
       } else if (opt_name == ":heap-base") {
         u16 hb = get_int(car(rest));
         rest = cdr(rest);

@@ -6,10 +6,11 @@
 #include <utility>
 #include "Interpreter.h"
 #include "ParseHelpers.h"
+#include "common/util/FileUtil.h"
 #include <third-party/fmt/core.h>
 
 namespace goos {
-Interpreter::Interpreter() {
+Interpreter::Interpreter(const std::string& username) {
   // Interpreter startup:
   goal_to_goos.reset();
 
@@ -21,9 +22,14 @@ Interpreter::Interpreter() {
 
   // make both environments available in both.
   define_var_in_env(global_environment, global_environment, "*global-env*");
+  define_var_in_env(global_environment, goal_env, "*goal-env*");
   define_var_in_env(goal_env, goal_env, "*goal-env*");
   define_var_in_env(goal_env, global_environment, "*global-env*");
-  define_var_in_env(global_environment, goal_env, "*goal-env*");
+
+  // set user profile name
+  auto user = SymbolObject::make_new(reader.symbolTable, username);
+  define_var_in_env(global_environment, user, "*user*");
+  define_var_in_env(goal_env, user, "*user*");
 
   // setup maps
   special_forms = {
@@ -47,6 +53,7 @@ Interpreter::Interpreter() {
                    {"print", &Interpreter::eval_print},
                    {"inspect", &Interpreter::eval_inspect},
                    {"load-file", &Interpreter::eval_load_file},
+                   {"try-load-file", &Interpreter::eval_try_load_file},
                    {"eq?", &Interpreter::eval_equals},
                    {"gensym", &Interpreter::eval_gensym},
                    {"eval", &Interpreter::eval_eval},
@@ -74,7 +81,8 @@ Interpreter::Interpreter() {
                    {"string-append", &Interpreter::eval_string_append},
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
-                   {"string->symbol", &Interpreter::eval_string_to_symbol}};
+                   {"string->symbol", &Interpreter::eval_string_to_symbol},
+                   {"get-environment-variable", &Interpreter::eval_get_env}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -122,14 +130,14 @@ void Interpreter::disable_printfs() {
  */
 void Interpreter::load_goos_library() {
   auto cmd = "(load-file \"goal_src/goos-lib.gs\")";
-  eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env());
+  eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env_ptr());
 }
 
 /*!
  * In env, set the variable named "name" to the value var.
  */
 void Interpreter::define_var_in_env(Object& env, Object& var, const std::string& name) {
-  env.as_env()->vars[intern(name).as_symbol()] = var;
+  env.as_env()->vars[intern_ptr(name)] = var;
 }
 
 /*!
@@ -137,6 +145,10 @@ void Interpreter::define_var_in_env(Object& env, Object& var, const std::string&
  */
 Object Interpreter::intern(const std::string& name) {
   return SymbolObject::make_new(reader.symbolTable, name);
+}
+
+HeapObject* Interpreter::intern_ptr(const std::string& name) {
+  return reader.symbolTable.intern_ptr(name);
 }
 
 /*!
@@ -152,7 +164,7 @@ void Interpreter::execute_repl(ReplWrapper& repl) {
         continue;
       }
       // evaluate
-      Object evald = eval_with_rewind(*obj, global_environment.as_env());
+      Object evald = eval_with_rewind(*obj, global_environment.as_env_ptr());
       // print
       printf("%s\n", evald.print().c_str());
     } catch (std::exception& e) {
@@ -177,7 +189,7 @@ void Interpreter::throw_eval_error(const Object& o, const std::string& err) {
  */
 Object Interpreter::eval_with_rewind(const Object& obj,
                                      const std::shared_ptr<EnvironmentObject>& env) {
-  Object result = EmptyListObject::make_new();
+  Object result = Object::make_empty_list();
   try {
     result = eval(obj, env);
   } catch (std::runtime_error& e) {
@@ -429,7 +441,7 @@ Object Interpreter::eval_list_return_last(const Object& form,
                                           Object rest,
                                           const std::shared_ptr<EnvironmentObject>& env) {
   Object o = std::move(rest);
-  Object rv = EmptyListObject::make_new();
+  Object rv = Object::make_empty_list();
   for (;;) {
     if (o.is_pair()) {
       auto op = o.as_pair();
@@ -489,7 +501,7 @@ bool try_symbol_lookup(const Object& sym,
   }
 
   // loop up envs until we find it.
-  std::shared_ptr<EnvironmentObject> search_env = env;
+  EnvironmentObject* search_env = env.get();
   for (;;) {
     auto kv = search_env->vars.find(sym.as_symbol());
     if (kv != search_env->vars.end()) {
@@ -497,7 +509,7 @@ bool try_symbol_lookup(const Object& sym,
       return true;
     }
 
-    auto pe = search_env->parent_env;
+    auto pe = search_env->parent_env.get();
     if (pe) {
       search_env = pe;
     } else {
@@ -565,7 +577,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
       Arguments args = get_args(obj, rest, macro->args);
 
       auto mac_env_obj = EnvironmentObject::make_new();
-      auto mac_env = mac_env_obj.as_env();
+      auto mac_env = mac_env_obj.as_env_ptr();
       mac_env->parent_env = env;  // not 100% clear that this is right
       set_args_in_env(obj, args, macro->args, mac_env);
       // expand the macro!
@@ -583,7 +595,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
   Arguments args = get_args(obj, rest, lam->args);
   eval_args(&args, env);
   auto lam_env_obj = EnvironmentObject::make_new();
-  auto lam_env = lam_env_obj.as_env();
+  auto lam_env = lam_env_obj.as_env_ptr();
   lam_env->parent_env = lam->parent_env;
   set_args_in_env(obj, args, lam->args, lam_env);
   return eval_list_return_last(lam->body, lam->body, lam_env);
@@ -641,7 +653,7 @@ Object Interpreter::eval_define(const Object& form,
   if (args.has_named("env")) {
     auto result = eval_with_rewind(args.get_named("env"), env);
     expect_env(form, result);
-    define_env = result.as_env();
+    define_env = result.as_env_ptr();
   }
 
   Object value = eval_with_rewind(args.unnamed[1], env);
@@ -945,7 +957,7 @@ Object Interpreter::eval_exit(const Object& form,
   (void)args;
   (void)env;
   want_exit = true;
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -960,7 +972,7 @@ Object Interpreter::eval_begin(const Object& form,
   }
 
   if (args.unnamed.empty()) {
-    return EmptyListObject::make_new();
+    return Object::make_empty_list();
   } else {
     return args.unnamed.back();
   }
@@ -981,7 +993,7 @@ Object Interpreter::eval_read(const Object& form,
     throw_eval_error(form, std::string("reader error inside of read:\n") + e.what());
   }
 
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -998,7 +1010,7 @@ Object Interpreter::eval_read_file(const Object& form,
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("reader error inside of read-file:\n") + e.what());
   }
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1018,11 +1030,40 @@ Object Interpreter::eval_load_file(const Object& form,
   }
 
   try {
-    return eval_with_rewind(o, global_environment.as_env());
+    return eval_with_rewind(o, global_environment.as_env_ptr());
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("eval error inside of load-file:\n") + e.what());
   }
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
+}
+
+/*!
+ * Combines read-file and eval to load in a file. Return #f if it doesn't exist.
+ */
+Object Interpreter::eval_try_load_file(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+
+  auto path = {args.unnamed.at(0).as_string()->data};
+  if (!std::filesystem::exists(file_util::get_file_path(path))) {
+    return SymbolObject::make_new(reader.symbolTable, "#f");
+  }
+
+  Object o;
+  try {
+    o = reader.read_from_file(path);
+  } catch (std::runtime_error& e) {
+    throw_eval_error(form, std::string("reader error inside of try-load-file:\n") + e.what());
+  }
+
+  try {
+    return eval_with_rewind(o, global_environment.as_env_ptr());
+  } catch (std::runtime_error& e) {
+    throw_eval_error(form, std::string("eval error inside of try-load-file:\n") + e.what());
+  }
+  return SymbolObject::make_new(reader.symbolTable, "#t");
 }
 
 /*!
@@ -1038,7 +1079,7 @@ Object Interpreter::eval_print(const Object& form,
   if (!disable_printing) {
     printf("%s\n", args.unnamed.at(0).print().c_str());
   }
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1055,7 +1096,7 @@ Object Interpreter::eval_inspect(const Object& form,
     printf("%s\n", args.unnamed.at(0).inspect().c_str());
   }
 
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1153,7 +1194,7 @@ Object Interpreter::eval_plus(const Object& form,
 
     default:
       throw_eval_error(form, "+ must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1192,7 +1233,7 @@ Object Interpreter::eval_times(const Object& form,
 
     default:
       throw_eval_error(form, "* must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1236,7 +1277,7 @@ Object Interpreter::eval_minus(const Object& form,
 
     default:
       throw_eval_error(form, "- must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1269,7 +1310,7 @@ Object Interpreter::eval_divide(const Object& form,
 
     default:
       throw_eval_error(form, "/ must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1308,7 +1349,7 @@ Object Interpreter::eval_numequals(const Object& form,
 
     default:
       throw_eval_error(form, "+ must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 
   return SymbolObject::make_new(reader.symbolTable, result ? "#t" : "#f");
@@ -1338,7 +1379,7 @@ Object Interpreter::eval_lt(const Object& form,
 
     default:
       throw_eval_error(form, "< must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1366,7 +1407,7 @@ Object Interpreter::eval_gt(const Object& form,
 
     default:
       throw_eval_error(form, "> must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1394,7 +1435,7 @@ Object Interpreter::eval_leq(const Object& form,
 
     default:
       throw_eval_error(form, "<= must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1422,7 +1463,7 @@ Object Interpreter::eval_geq(const Object& form,
 
     default:
       throw_eval_error(form, ">= must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1564,7 +1605,7 @@ Object Interpreter::eval_error(const Object& form,
   (void)env;
   vararg_check(form, args, {ObjectType::STRING}, {});
   throw_eval_error(form, "Error: " + args.unnamed.at(0).as_string()->data);
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 Object Interpreter::eval_string_ref(const Object& form,
@@ -1622,7 +1663,7 @@ Object Interpreter::eval_ash(const Object& form,
     return Object::make_integer(val >> -sa);
   } else {
     throw_eval_error(form, fmt::format("Shift amount {} is out of range", sa));
-    return EmptyListObject::make_new();
+    return Object::make_empty_list();
   }
 }
 
@@ -1638,5 +1679,21 @@ Object Interpreter::eval_string_to_symbol(const Object& form,
                                           const std::shared_ptr<EnvironmentObject>&) {
   vararg_check(form, args, {ObjectType::STRING}, {});
   return SymbolObject::make_new(reader.symbolTable, args.unnamed.at(0).as_string()->data);
+}
+
+Object Interpreter::eval_get_env(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::STRING}, {{"default", {false, ObjectType::STRING}}});
+  const std::string var_name = args.unnamed.at(0).as_string()->data;
+  const char* env_p = std::getenv(var_name.c_str());
+  if (env_p == NULL) {
+    if (args.has_named("default")) {
+      return args.get_named("default");
+    } else {
+      throw_eval_error(form, fmt::format("env-var {} not found and no default provided", var_name));
+    }
+  }
+  return StringObject::make_new(env_p);
 }
 }  // namespace goos

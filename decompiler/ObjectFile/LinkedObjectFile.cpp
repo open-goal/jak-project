@@ -103,6 +103,21 @@ Function& LinkedObjectFile::get_function_at_label(int label_id) {
 /*!
  * Get the function starting at this label, or nullptr if there is none.
  */
+Function* LinkedObjectFile::try_get_function_at_label(int label_id) {
+  const auto& label = labels.at(label_id);
+  return try_get_function_at_label(label);
+}
+
+Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) {
+  for (auto& func : functions_by_seg.at(label.target_segment)) {
+    // + 4 to skip past type tag to the first word, which is were the label points.
+    if (func.start_word * 4 + 4 == label.offset) {
+      return &func;
+    }
+  }
+  return nullptr;
+}
+
 const Function* LinkedObjectFile::try_get_function_at_label(int label_id) const {
   const auto& label = labels.at(label_id);
   return try_get_function_at_label(label);
@@ -115,7 +130,6 @@ const Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabe
       return &func;
     }
   }
-
   return nullptr;
 }
 
@@ -539,7 +553,7 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
                                                          const std::string& extra_name) {
   std::string result;
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-  result += "; .function " + func.guessed_name.to_string() + " " + extra_name + "\n";
+  result += "; .function " + func.name() + " " + extra_name + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
   if (func.warnings.has_warnings()) {
@@ -827,8 +841,8 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 
   // resulting form. we can't have a totally empty list (as an empty list looks like a symbol,
   // so it wouldn't be flagged), so it's safe to make this a pair.
-  auto result = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
-                                           goos::EmptyListObject::make_new());
+  auto result =
+      goos::PairObject::make_new(goos::Object::make_empty_list(), goos::Object::make_empty_list());
 
   // the current pair to fill out.
   auto fill = result;
@@ -845,7 +859,7 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 
       if (is_empty_list(seg, cdr_addr)) {
         // the list has ended!
-        fill.as_pair()->cdr = goos::EmptyListObject::make_new();
+        fill.as_pair()->cdr = goos::Object::make_empty_list();
         return result;
       } else {
         // cdr object should be aligned.
@@ -855,8 +869,8 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
         if (cdr_word.kind == LinkedWord::PTR && (labels.at(cdr_word.label_id).offset & 7) == 2) {
           // yes, proper list. add another pair and link it in to the list.
           goal_print_obj = labels.at(cdr_word.label_id).offset;
-          fill.as_pair()->cdr = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
-                                                           goos::EmptyListObject::make_new());
+          fill.as_pair()->cdr = goos::PairObject::make_new(goos::Object::make_empty_list(),
+                                                           goos::Object::make_empty_list());
           fill = fill.as_pair()->cdr;
         } else {
           // improper list, put the last thing in and end
@@ -922,7 +936,7 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
           }
         }
       } else if (word.kind == LinkedWord::EMPTY_PTR) {
-        result = goos::EmptyListObject::make_new();
+        result = goos::Object::make_empty_list();
       } else {
         std::string debug;
         append_word_to_string(debug, word);

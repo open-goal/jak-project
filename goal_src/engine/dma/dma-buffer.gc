@@ -52,6 +52,10 @@
 (deftype dma-gif-packet (structure)
   ((dma-vif dma-packet :inline :offset-assert 0)
    (gif     uint64    2       :offset-assert 16) ;; guess
+   ;; these two were added to make it easier.
+   (gif0    uint64 :offset 16)
+   (gif1    uint64 :offset 24)
+   
    (quad    uint128    2       :offset 0)
    )
   :method-count-assert 9
@@ -423,12 +427,13 @@
       )
   )
 
-(defmacro with-dma-buffer-add-bucket (bindings &rest body)
+(defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (-> (current-frame) bucket-group)) &rest body)
   "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
-   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket bucket-id) &rest body "
+   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body
+   example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-draw1)) ...)"
   
-  `(let (,(car bindings))
-    (with-dma-bucket (,(caar bindings) ,(second bindings) ,(third bindings))
+  `(let ((,(caar bindings) ,(cadar bindings)))
+    (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings))
       ,@body
       )
     )

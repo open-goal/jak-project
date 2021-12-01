@@ -55,6 +55,7 @@ struct TextStream {
   bool text_remains() { return seek < text->get_size(); }
   bool text_remains(int i) { return seek + i < text->get_size(); }
   void seek_past_whitespace_and_comments();
+  void read_utf8_encoding(bool throw_on_error);
 };
 
 /*!
@@ -72,7 +73,7 @@ class Reader {
   Reader();
   Object read_from_string(const std::string& str, bool add_top_level = true);
   std::optional<Object> read_from_stdin(const std::string& prompt, ReplWrapper& repl);
-  Object read_from_file(const std::vector<std::string>& file_path);
+  Object read_from_file(const std::vector<std::string>& file_path, bool check_encoding = false);
   bool check_string_is_valid(const std::string& str) const;
   std::string get_source_dir();
 
@@ -80,7 +81,9 @@ class Reader {
   TextDb db;
 
  private:
-  Object internal_read(std::shared_ptr<SourceText> text, bool add_top_level = true);
+  Object internal_read(std::shared_ptr<SourceText> text,
+                       bool check_encoding,
+                       bool add_top_level = true);
   Object read_list(TextStream& stream, bool expect_close_paren = true);
   bool read_object(Token& tok, TextStream& ts, Object& obj);
   bool read_array(TextStream& stream, Object& o);
@@ -99,6 +102,8 @@ class Reader {
 
   bool m_valid_symbols_chars[256];
   bool m_valid_source_text_chars[256];
+
+  bool is_valid_source_char(char c) const;
 
   std::unordered_map<std::string, std::string> m_reader_macros;
 };
