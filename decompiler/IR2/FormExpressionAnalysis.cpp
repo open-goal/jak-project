@@ -695,35 +695,6 @@ void SimpleExpressionElement::update_from_stack_float_2(const Env& env,
   }
 }
 
-void SimpleExpressionElement::update_from_stack_float_1(const Env& env,
-                                                        FixedOperatorKind kind,
-                                                        FormPool& pool,
-                                                        FormStack& stack,
-                                                        std::vector<FormElement*>* result,
-                                                        bool allow_side_effects) {
-  if (is_float_type(env, m_my_idx, m_expr.get_arg(0).var())) {
-    auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-    auto new_form =
-        pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0));
-    result->push_back(new_form);
-  } else {
-    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types on Op: {}.", m_my_idx));
-  }
-}
-
-void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
-                                                     FixedOperatorKind kind,
-                                                     FormPool& pool,
-                                                     FormStack& stack,
-                                                     std::vector<FormElement*>* result,
-                                                     bool allow_side_effects) {
-  auto in_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg()).typespec();
-  auto arg = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-  result->push_back(pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(kind),
-      make_cast_if_needed(arg, in_type, TypeSpec("int"), pool, env)));
-}
-
 namespace {
 std::vector<Form*> get_math_op_elements(Form* in, FixedOperatorKind kind) {
   auto gen_elt = in->try_as_element<GenericElement>();
