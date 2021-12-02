@@ -27,6 +27,7 @@ files_with_modifications = [
   "sunken-obs",
   "cam-master",
   "generic-obs",
+  "target-snowball",
   "default-menu"
 ]
 

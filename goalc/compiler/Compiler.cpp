@@ -11,8 +11,8 @@
 
 using namespace goos;
 
-Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
-    : m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
+Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
+    : m_goos(user_profile), m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -24,6 +24,11 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
+
+  if (user_profile != "#f") {
+    Object user_code = m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
+    compile_object_file(user_profile, user_code, false);
+  }
 
   // add built-in forms to symbol info
   for (auto& builtin : g_goal_forms) {

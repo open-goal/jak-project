@@ -50,6 +50,7 @@ class Matcher {
   static Matcher if_no_else(const Matcher& condition, const Matcher& true_case);
   static Matcher while_loop(const Matcher& condition, const Matcher& body);
   static Matcher any_constant_token(int match_id = -1);
+  static Matcher constant_token(const std::string& name);
   static Matcher or_expression(const std::vector<Matcher>& elts);
   static Matcher begin(const std::vector<Matcher>& elts);
 
@@ -73,6 +74,7 @@ class Matcher {
     IF_NO_ELSE,
     WHILE_LOOP,
     ANY_CONSTANT_TOKEN,
+    CONSTANT_TOKEN,
     SC_OR,
     BEGIN,
     INVALID
@@ -102,8 +104,9 @@ class DerefTokenMatcher {
   static DerefTokenMatcher string(const std::string& str);
   static DerefTokenMatcher integer(int value);
   static DerefTokenMatcher any_string(int match_id = -1);
+  static DerefTokenMatcher any_integer(int match_id = -1);
 
-  enum class Kind { STRING, ANY_STRING, CONSTANT_INTEGER, INVALID };
+  enum class Kind { STRING, ANY_STRING, CONSTANT_INTEGER, ANY_INTEGER, INVALID };
 
   bool do_match(const DerefToken& input, MatchResult::Maps* maps_out) const;
 
