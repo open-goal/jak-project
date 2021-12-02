@@ -1128,6 +1128,8 @@ class DerefToken {
     return m_name;
   }
 
+  s64 int_constant() const { return m_int_constant; }
+
   Form* expr() {
     assert(m_kind == Kind::INTEGER_EXPRESSION);
     return m_expr;
