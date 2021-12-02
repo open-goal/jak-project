@@ -170,6 +170,9 @@ Tfrag3::DoubleDraw Tfrag3::setup_shader(const RenderSettings& /*settings*/,
       case DrawMode::AlphaBlend::SRC_0_SRC_DST:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         break;
+      case DrawMode::AlphaBlend::SRC_0_FIX_DST:
+        glBlendFunc(GL_ONE, GL_ONE);
+        break;
       default:
         assert(false);
     }

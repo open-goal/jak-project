@@ -47,10 +47,19 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   return true;
 }
 
-void extract_from_level(ObjectFileDB& db, TextureDB& tex_db, const std::string& dgo_name) {
-  fmt::print("Extract from {}\n", dgo_name);
+void extract_from_level(ObjectFileDB& db,
+                        TextureDB& tex_db,
+                        const std::string& dgo_name,
+                        const DecompileHacks& hacks) {
+  if (db.obj_files_by_dgo.count(dgo_name) == 0) {
+    lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
+    return;
+  }
+
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
-  fmt::print("found bsp file: {}\n", bsp_rec.name);
+  std::string level_name = bsp_rec.name.substr(0, bsp_rec.name.length() - 4);
+
+  fmt::print("Processing level {} ({})\n", dgo_name, level_name);
   auto& bsp_file = db.lookup_record(bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   assert(ok);
@@ -68,14 +77,19 @@ void extract_from_level(ObjectFileDB& db, TextureDB& tex_db, const std::string& 
   tfrag3::Level tfrag_level;
 
   for (auto& draw_tree : bsp_header.drawable_tree_array.trees) {
-    fmt::print("tree: {}\n", draw_tree->my_type());
     if (tfrag_trees.count(draw_tree->my_type())) {
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
-      fmt::print("  Is a tfrag tree!\n");
+      fmt::print("  extracting tree {}\n", draw_tree->my_type());
       assert(as_tfrag_tree);
+      std::vector<std::pair<int, int>> expected_missing_textures;
+      auto it = hacks.missing_textures_by_level.find(level_name);
+      if (it != hacks.missing_textures_by_level.end()) {
+        expected_missing_textures = it->second;
+      }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
-                    bsp_header.texture_remap_table, tex_db, tfrag_level);
+                    bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level);
     } else {
+      fmt::print("  unsupported tree {}\n", draw_tree->my_type());
       tfrag_level.trees.emplace_back();
       tfrag_level.trees.back().kind = tfrag3::TFragmentTreeKind::INVALID;
     }

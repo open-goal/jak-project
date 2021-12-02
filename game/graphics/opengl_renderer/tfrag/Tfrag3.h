@@ -42,10 +42,9 @@ class Tfrag3 {
     float aref = 0.;
   };
 
-
   DoubleDraw setup_shader(const RenderSettings& settings,
-                              SharedRenderState* render_state,
-                              DrawMode mode);
+                          SharedRenderState* render_state,
+                          DrawMode mode);
   void interp_time_of_day_slow(const float weights[8],
                                const std::vector<tfrag3::TimeOfDayColor>& in,
                                math::Vector<u8, 4>* out);

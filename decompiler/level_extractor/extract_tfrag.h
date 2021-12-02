@@ -10,7 +10,6 @@ namespace decompiler {
 // the different "kinds" of tfrag. The actual renderers are almost identical and the only different
 // is in GS setup (alpha blending) and in how the closest object is used.
 
-
 // This is the actual tree data, minus the tfrags themselves.
 struct VisNodeTree {
   std::vector<tfrag3::VisNode> vis_nodes;
@@ -32,6 +31,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::string& debug_name,
                    const std::vector<level_tools::TextureRemap>& map,
                    const TextureDB& tex_db,
+                   const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out);
 
 }  // namespace decompiler

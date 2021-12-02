@@ -349,11 +349,7 @@ struct AdGifData {
 // it can also represent "invalid".
 class DrawMode {
  public:
-  enum class AlphaBlend {
-    DISABLED = 0,
-    SRC_DST_SRC_DST = 1,
-    SRC_0_SRC_DST = 2,
-  };
+  enum class AlphaBlend { DISABLED = 0, SRC_DST_SRC_DST = 1, SRC_0_SRC_DST = 2, SRC_0_FIX_DST = 3 };
 
   enum class AlphaTest {
     NEVER = 0,

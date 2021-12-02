@@ -70,4 +70,3 @@ TypedRef typed_ref_from_basic(const Ref& object, const decompiler::DecompilerTyp
 Ref deref_label(const Ref& object);
 
 std::string inspect_ref(const Ref& ref);
-

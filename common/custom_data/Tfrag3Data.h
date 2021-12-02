@@ -10,7 +10,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 4;
+constexpr int TFRAG3_VERSION = 5;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {

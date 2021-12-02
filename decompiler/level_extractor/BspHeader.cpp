@@ -367,20 +367,19 @@ void TFragment::read_from_file(TypedRef ref,
   int num_actual_colors = std::max(num_base_colors, std::max(num_level0_colors, num_level1_colors));
   int num_colors = ((num_actual_colors + 3) / 4) * 4;
   // each color is a u64 (4x u16 indices)
-  //color_indices.resize(4 * num_colors);
+  // color_indices.resize(4 * num_colors);
 
   // 24 = 12 * u32
   auto color_idx_start = deref_label(get_field_ref(ref, "color-indices", dts));
   for (int i = 0; i < num_colors / 4; i++) {
-    u32 low = deref_u32(color_idx_start, i*2);
-    u32 high = deref_u32(color_idx_start, i*2 + 1);
+    u32 low = deref_u32(color_idx_start, i * 2);
+    u32 high = deref_u32(color_idx_start, i * 2 + 1);
     color_indices.push_back(low & 0xffff);
     color_indices.push_back(low >> 16);
     color_indices.push_back(high & 0xffff);
     color_indices.push_back(high >> 16);
   }
   assert((int)color_indices.size() == num_colors);
-
 
   // todo shader
 
@@ -732,11 +731,9 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
   time_of_day.height = deref_u32(palette, 1);
   time_of_day.pad = deref_u32(palette, 2);
   assert(time_of_day.pad == 0);
-  fmt::print("time of day {} at {}\n", time_of_day.height, inspect_ref(get_field_ref(ref, "time-of-day-pal", dts)));
   for (int i = 0; i < int(8 * time_of_day.height); i++) {
     time_of_day.colors.push_back(deref_u32(palette, 3 + i));
   }
-
 
   for (int idx = 0; idx < length; idx++) {
     Ref array_slot_ref = data_ref;
@@ -1134,17 +1131,20 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
   drawable_tree_array.read_from_file(
       get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats);
 
-  auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
+  texture_remap_table.clear();
+
   s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);
 
-  texture_remap_table.clear();
-  for (int entry = 0; entry < tex_remap_len; entry++) {
-    u64 low = deref_u32(tex_remap_data, 2 * entry);
-    u64 high = deref_u32(tex_remap_data, 2 * entry + 1);
-    TextureRemap remap;
-    remap.original_texid = low;
-    remap.new_texid = high;
-    texture_remap_table.push_back(remap);
+  if (tex_remap_len > 0) {
+    auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
+    for (int entry = 0; entry < tex_remap_len; entry++) {
+      u64 low = deref_u32(tex_remap_data, 2 * entry);
+      u64 high = deref_u32(tex_remap_data, 2 * entry + 1);
+      TextureRemap remap;
+      remap.original_texid = low;
+      remap.new_texid = high;
+      texture_remap_table.push_back(remap);
+    }
   }
 }
 

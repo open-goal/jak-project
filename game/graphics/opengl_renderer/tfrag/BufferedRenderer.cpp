@@ -5,7 +5,6 @@
 
 namespace BufferedRenderer {
 
-
 Renderer::Renderer(BucketId my_id) : m_my_id(my_id) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.index_buffer);

@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
   }
 
   for (auto& lev : config.levels_to_extract) {
-    extract_from_level(db, tex_db, lev);
+    extract_from_level(db, tex_db, lev, config.hacks);
   }
 
   if (!config.audio_dir_file_name.empty()) {

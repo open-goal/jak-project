@@ -26,7 +26,6 @@ DirTpageResult process_dir_tpages(ObjectFileData& data) {
   // next is length
   assert(words.at(word_idx).kind == LinkedWord::PLAIN_DATA);
   int dir_length = words.at(word_idx).data;
-  fmt::print("length: {}\n", dir_length);
   word_idx++;
 
   for (int i = 0; i < dir_length; i++) {
