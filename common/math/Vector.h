@@ -183,6 +183,19 @@ class Vector {
     return result;
   }
 
+  template <int len>
+  Vector<T, len> head() const {
+    static_assert(len < Size);
+    Vector<T, len> result;
+    for (int i = 0; i < len; i++) {
+      result[i] = m_data[i];
+    }
+    return result;
+  }
+
+  Vector<T, 3> xyz() const { return head<3>(); }
+  Vector<T, 3> xy() const { return head<2>(); }
+
  private:
   T m_data[Size];
 };

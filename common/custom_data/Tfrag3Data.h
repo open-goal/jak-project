@@ -10,7 +10,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 5;
+constexpr int TFRAG3_VERSION = 6;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -54,6 +54,9 @@ struct VisNode {
 
 enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, INVALID };
 
+constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",   "ice",
+                                          "lowres", "lowres-trans", "invalid"};
+
 struct TimeOfDayColor {
   math::Vector<u8, 4> rgba[8];
 };
@@ -67,6 +70,9 @@ struct Tree {
   std::vector<TimeOfDayColor> colors;
   u16 first_leaf_node = 0;
   u16 last_leaf_node = 0;
+  u16 first_root = 0;
+  u16 num_roots = 0;
+  bool only_children = false;
 
   void serialize(Serializer& ser);
 };

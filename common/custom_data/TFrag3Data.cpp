@@ -29,6 +29,9 @@ void Tree::serialize(Serializer& ser) {
   ser.from_pod_vector(&colors);
   ser.from_ptr(&first_leaf_node);
   ser.from_ptr(&last_leaf_node);
+  ser.from_ptr(&first_root);
+  ser.from_ptr(&num_roots);
+  ser.from_ptr(&only_children);
 }
 
 void Texture::serialize(Serializer& ser) {

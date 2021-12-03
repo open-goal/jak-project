@@ -15,6 +15,9 @@ struct VisNodeTree {
   std::vector<tfrag3::VisNode> vis_nodes;
   u16 first_child_node = 0;
   u16 last_child_node = 0;
+  u16 first_root = 0;
+  u16 num_roots = 0;
+  bool only_children = false;
 };
 
 // The final result

@@ -78,4 +78,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::BUFFERED_TCC0) = {"buffered_tcc0"};
   at(ShaderId::BUFFERED_TCC1) = {"buffered_tcc1"};
   at(ShaderId::TFRAG3) = {"tfrag3"};
+  at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex"};
 }

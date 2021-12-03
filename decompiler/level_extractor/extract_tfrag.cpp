@@ -81,7 +81,25 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
   VisNodeTree result;
   result.first_child_node = first_child;
   result.last_child_node = first_child;
-  result.vis_nodes.resize(first_child);
+
+  if (tree->arrays.size() == 0) {
+  } else if (tree->arrays.size() == 1) {
+    auto array =
+        dynamic_cast<const level_tools::DrawableInlineArrayTFrag*>(tree->arrays.at(0).get());
+    assert(array);
+    result.first_root = array->tfragments.at(0).id;
+    result.num_roots = array->tfragments.size();
+    result.only_children = true;
+  } else {
+    auto array =
+        dynamic_cast<const level_tools::DrawableInlineArrayNode*>(tree->arrays.at(0).get());
+    assert(array);
+    result.first_root = array->draw_nodes.at(0).id;
+    result.num_roots = array->draw_nodes.size();
+    result.only_children = false;
+  }
+
+  result.vis_nodes.resize(first_child - result.first_root);
 
   // may run 0 times, if there are only children.
   for (int i = 0; i < ((int)tree->arrays.size()) - 1; i++) {
@@ -92,7 +110,7 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
     assert(array);
     u16 idx = first_child;
     for (auto& elt : array->draw_nodes) {
-      auto& vis = result.vis_nodes.at(elt.id);
+      auto& vis = result.vis_nodes.at(elt.id - result.first_root);
       assert(vis.num_kids == 0xff);
       for (int j = 0; j < 4; j++) {
         vis.bsphere[j] = elt.bsphere.data[j];
@@ -111,6 +129,9 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
           assert(idx == l->id);
 
           assert(l->id >= result.first_child_node);
+          if (leaf == 0) {
+            vis.child_id = l->id;
+          }
           result.last_child_node = std::max((u16)l->id, result.last_child_node);
           idx++;
         }
@@ -126,6 +147,10 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
             assert(arr_idx < l->id);
             arr_idx = l->id;
           }
+          if (child == 0) {
+            vis.child_id = l->id;
+          }
+
           assert(l->id < result.first_child_node);
         }
       }
@@ -2082,6 +2107,8 @@ void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tre
     }
   }
 }
+
+
 }  // namespace
 
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
@@ -2127,12 +2154,37 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
   this_tree.first_leaf_node = vis_nodes.first_child_node;
   this_tree.last_leaf_node = vis_nodes.last_child_node;
+  this_tree.num_roots = vis_nodes.num_roots;
+  this_tree.only_children = vis_nodes.only_children;
+  this_tree.first_root = vis_nodes.first_root;
   this_tree.vis_nodes = std::move(vis_nodes.vis_nodes);
+
+  std::unordered_map<int, int> tfrag_parents;
+  //for (auto& node : this_tree.vis_nodes) {
+  for (size_t node_idx = 0; node_idx < this_tree.vis_nodes.size(); node_idx++) {
+    const auto& node = this_tree.vis_nodes[node_idx];
+    if (node.flags == 0) {
+      for (int i = 0; i < node.num_kids; i++) {
+        tfrag_parents[node.child_id + i] = node_idx;
+      }
+    }
+  }
   //  assert(result.vis_nodes.last_child_node + 1 == idx);
 
   emulate_tfrags(as_tfrag_array->tfragments, debug_name, map, out, this_tree, tex_db,
                  expected_missing_textures);
   extract_time_of_day(tree, this_tree);
+
+  for (auto& draw : this_tree.draws) {
+    for (auto& str : draw.vis_groups) {
+      auto it = tfrag_parents.find(str.tfrag_idx);
+      if (it == tfrag_parents.end()) {
+        str.tfrag_idx = UINT32_MAX;
+      } else {
+        str.tfrag_idx = it->second;
+      }
+    }
+  }
   out.trees.push_back(this_tree);
 }
 }  // namespace decompiler
