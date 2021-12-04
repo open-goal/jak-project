@@ -26,7 +26,7 @@ float g_gamepad_analogs[(int)Analog::Max] = {127};
 
 // input mode for controller mapping
 InputModeStatus input_mode = InputModeStatus::Disabled;
-u64 input_mode_pad = 0;
+int input_mode_pad = 0;
 u64 input_mode_key = -1;
 u64 input_mode_mod = 0;
 u64 input_mode_index = 0;
@@ -105,7 +105,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
     return 0;
   }
 
-  if (g_gamepad_buttons[(int)button]) {
+  if (pad == 0 && g_gamepad_buttons[(int)button]) {
     return 1;
   }
   auto key = mapping.pad_mapping[pad][(int)button];
@@ -193,6 +193,10 @@ u64 input_mode_get_index() {
   return input_mode_index;
 }
 
+void input_mode_pad_set(s64 idx) {
+  input_mode_pad = idx;
+}
+
 /*
 ********************************
 * Gamepad Support
@@ -212,6 +216,9 @@ void check_gamepad() {
         break;
       }
     }
+  } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx)) {
+    lg::info("Gamepad has been disconnected");
+    g_gamepads.gamepad_idx = -1;
   }
 }
 
@@ -232,17 +239,10 @@ void clear_gamepads() {
 }
 
 void update_gamepads() {
-  clear_gamepads();
-
   check_gamepad();
 
   if (g_gamepads.gamepad_idx == -1) {
-    return;
-  }
-
-  if (!glfwJoystickPresent(g_gamepads.gamepad_idx)) {
-    g_gamepads.gamepad_idx = -1;
-    lg::info("Gamepad has been disconnected");
+    clear_gamepads();
     return;
   }
 
