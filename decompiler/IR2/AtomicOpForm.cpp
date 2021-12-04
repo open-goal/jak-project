@@ -499,7 +499,7 @@ FormElement* make_label_load(int label_idx,
       load_size == 4 && hint.result_type == TypeSpec("float")) {
     assert((label.offset % 4) == 0);
     auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    assert(word.kind == LinkedWord::PLAIN_DATA);
+    assert(word.kind() == LinkedWord::PLAIN_DATA);
     float value;
     memcpy(&value, &word.data, 4);
     return pool.alloc_element<ConstantFloatElement>(value);
@@ -508,8 +508,8 @@ FormElement* make_label_load(int label_idx,
     assert((label.offset % 8) == 0);
     auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-    assert(word0.kind == LinkedWord::PLAIN_DATA);
-    assert(word1.kind == LinkedWord::PLAIN_DATA);
+    assert(word0.kind() == LinkedWord::PLAIN_DATA);
+    assert(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;
     memcpy(&value, &word0.data, 4);
     memcpy(((u8*)&value) + 4, &word1.data, 4);
@@ -526,8 +526,8 @@ FormElement* make_label_load(int label_idx,
     assert((label.offset % 8) == 0);
     auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-    assert(word0.kind == LinkedWord::PLAIN_DATA);
-    assert(word1.kind == LinkedWord::PLAIN_DATA);
+    assert(word0.kind() == LinkedWord::PLAIN_DATA);
+    assert(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;
     memcpy(&value, &word0.data, 4);
     memcpy(((u8*)&value) + 4, &word1.data, 4);

@@ -16,7 +16,7 @@ std::vector<u32> get_test_data(const std::string& name) {
 
   std::vector<u32> data;
   for (auto& w : parsed.words) {
-    EXPECT_EQ(w.kind, LinkedWord::Kind::PLAIN_DATA);
+    EXPECT_EQ(w.kind(), LinkedWord::Kind::PLAIN_DATA);
     data.push_back(w.data);
   }
   return data;

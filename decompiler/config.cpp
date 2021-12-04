@@ -192,8 +192,15 @@ Config read_config_file(const std::string& path_to_config_file) {
         max_len;
   }
 
+  for (auto& entry : hacks_json.at("missing_textures")) {
+    int tpage = entry.at(1).get<int>();
+    int idx = entry.at(2).get<int>();
+    config.hacks.missing_textures_by_level[entry.at(0).get<std::string>()].emplace_back(tpage, idx);
+  }
+
   config.bad_format_strings =
       hacks_json.at("bad_format_strings").get<std::unordered_map<std::string, int>>();
+  config.levels_to_extract = cfg.at("levels_to_extract").get<std::vector<std::string>>();
   return config;
 }
 

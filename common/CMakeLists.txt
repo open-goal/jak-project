@@ -3,6 +3,7 @@ add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
+        custom_data/TFrag3Data.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
@@ -32,6 +33,7 @@ add_library(common
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp
+        util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
         util/image_loading.cpp)

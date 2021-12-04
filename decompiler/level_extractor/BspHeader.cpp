@@ -2,8 +2,8 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "tools/level_tools/goal_data_reader.h"
-#include "tools/level_tools/Error.h"
+#include "decompiler/util/goal_data_reader.h"
+#include "decompiler/util/Error.h"
 #include "common/dma/dma.h"
 
 namespace level_tools {
@@ -24,7 +24,7 @@ void Vector::read_from_file(Ref ref) {
   }
   for (int i = 0; i < 4; i++) {
     const auto& word = ref.data->words_by_seg.at(ref.seg).at((ref.byte_offset / 4) + i);
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("vector didn't get plain data.");
     }
     memcpy(data + i, &word.data, 4);
@@ -148,8 +148,8 @@ void TFragmentDebugData::read_from_file(Ref ref,
   auto& words = ref.data->words_by_seg.at(ref.seg);
   for (int i = 0; i < 4; i++) {
     auto& word = words.at((ref.byte_offset / 4) + i);
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
-      throw Error("debug data word type: {}\n", (int)word.kind);
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+      throw Error("debug data word type: {}\n", (int)word.kind());
     }
     data[i] = word.data;
   }
@@ -164,7 +164,7 @@ void TFragmentDebugData::read_from_file(Ref ref,
   stats->total_tfrag_tris += tris;
 
   auto& debug_word = words.at(4 + (ref.byte_offset / 4));
-  if (debug_word.kind != decompiler::LinkedWord::PLAIN_DATA || debug_word.data != 0) {
+  if (debug_word.kind() != decompiler::LinkedWord::PLAIN_DATA || debug_word.data != 0) {
     throw Error("got debug word.");
   }
 }
@@ -184,8 +184,8 @@ u32 deref_u32(const Ref& ref, int word_offset) {
     throw Error("deref_u32 bad alignment");
   }
   const auto& word = ref.data->words_by_seg.at(ref.seg).at(word_offset + (ref.byte_offset / 4));
-  if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
-    throw Error("deref_u32 bad kind");
+  if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u32 bad kind: {}", (int)word.kind());
   }
   return word.data;
 }
@@ -286,6 +286,16 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
   fmt::print("-------------------------------------------\n");
 }
 
+std::vector<u8> read_dma_chain(Ref& start, u32 qwc) {
+  std::vector<u8> result;
+  result.resize(qwc * 16);
+  for (u32 word = 0; word < qwc * 4; word++) {
+    u32 x = deref_u32(start, word);
+    memcpy(result.data() + (word * 4), &x, 4);
+  }
+  return result;
+}
+
 void TFragment::read_from_file(TypedRef ref,
                                const decompiler::DecompilerTypeSystem& dts,
                                DrawStats* stats) {
@@ -298,7 +308,7 @@ void TFragment::read_from_file(TypedRef ref,
 
   auto dma_field = get_field_ref(ref, "dma-qwc", dts);
   auto& dma_word = ref.ref.data->words_by_seg.at(dma_field.seg).at(dma_field.byte_offset / 4);
-  if (dma_word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+  if (dma_word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
     throw Error("bad dma qwc word");
   }
   memcpy(dma_qwc, &dma_word.data, 4);
@@ -313,13 +323,12 @@ void TFragment::read_from_file(TypedRef ref,
   for (int i = 0; i < 3; i++) {
     auto& word = dma_slot.data->words_by_seg.at(dma_slot.seg).at((dma_slot.byte_offset / 4));
     dmas[i].ref = deref_label(dma_slot);
-    dmas[i].label_name = dma_slot.data->labels.at(word.label_id).name;
+    dmas[i].label_name = dma_slot.data->labels.at(word.label_id()).name;
 
     dma_slot.byte_offset += 4;
   }
 
   if (stats->debug_print_dma_data) {
-    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
     // first, common
     fmt::print("DMA COMMON {}, {} qwc:\n", dmas[0].label_name, dma_qwc[0]);
     tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[0]);
@@ -335,22 +344,50 @@ void TFragment::read_from_file(TypedRef ref,
     // next "level1"
     fmt::print("DMA LEVEL1 {}, {} qwc:\n", dmas[2].label_name, dma_qwc[2]);
     tfrag_debug_print_unpack(dmas[2].ref, dma_qwc[2]);
+
+    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
   }
 
-  // todo dma
-  // todo dma
-  // todo dma
-
-  // todo shader
-  num_shaders = read_plain_data_field<u8>(ref, "num-shaders", dts);
   num_base_colors = read_plain_data_field<u8>(ref, "num-base-colors", dts);
   num_level0_colors = read_plain_data_field<u8>(ref, "num-level0-colors", dts);
   num_level1_colors = read_plain_data_field<u8>(ref, "num-level1-colors", dts);
+  num_shaders = read_plain_data_field<u8>(ref, "num-shaders", dts);
   color_offset = read_plain_data_field<u8>(ref, "color-offset", dts);
   color_count = read_plain_data_field<u8>(ref, "color-count", dts);
+  dma_base = read_dma_chain(dmas[1].ref, dma_qwc[1]);
+
+  if (num_level0_colors > 0 || num_level1_colors > 0) {
+    // if we're base only, this has junk in it, and it wouldn't be used anyway.
+    dma_common_and_level0 = read_dma_chain(dmas[0].ref, std::max(dma_qwc[3], dma_qwc[0]));
+  }
+
+  dma_level1 = read_dma_chain(dmas[2].ref, dma_qwc[2]);
+
+  // color indices
+  int num_actual_colors = std::max(num_base_colors, std::max(num_level0_colors, num_level1_colors));
+  int num_colors = ((num_actual_colors + 3) / 4) * 4;
+  // each color is a u64 (4x u16 indices)
+  // color_indices.resize(4 * num_colors);
+
+  // 24 = 12 * u32
+  auto color_idx_start = deref_label(get_field_ref(ref, "color-indices", dts));
+  for (int i = 0; i < num_colors / 4; i++) {
+    u32 low = deref_u32(color_idx_start, i * 2);
+    u32 high = deref_u32(color_idx_start, i * 2 + 1);
+    color_indices.push_back(low & 0xffff);
+    color_indices.push_back(low >> 16);
+    color_indices.push_back(high & 0xffff);
+    color_indices.push_back(high >> 16);
+  }
+  assert((int)color_indices.size() == num_colors);
+
+  // todo shader
+
+  assert(num_colors / 4 == color_count);
+  // fmt::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
   assert(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
   assert(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
-  // todo generic
+  assert(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
 }
 
 std::string TFragment::print(const PrintSettings& settings, int indent) const {
@@ -687,6 +724,17 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
     throw Error("misaligned data array");
   }
 
+  auto palette = deref_label(get_field_ref(ref, "time-of-day-pal", dts));
+  time_of_day.width = deref_u32(palette, 0);
+
+  assert(time_of_day.width == 8);
+  time_of_day.height = deref_u32(palette, 1);
+  time_of_day.pad = deref_u32(palette, 2);
+  assert(time_of_day.pad == 0);
+  for (int i = 0; i < int(8 * time_of_day.height); i++) {
+    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
+  }
+
   for (int idx = 0; idx < length; idx++) {
     Ref array_slot_ref = data_ref;
     array_slot_ref.byte_offset += idx * 4;
@@ -785,7 +833,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   auto next_slot = get_field_ref(ref, "next", dts);
   for (int i = 0; i < 4; i++) {
     auto& word = ref.ref.data->words_by_seg.at(next_slot.seg).at(i + (next_slot.byte_offset / 4));
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie next");
     }
     next[i] = word.data;
@@ -794,7 +842,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   auto count_slot = get_field_ref(ref, "count", dts);
   for (int i = 0; i < 2; i++) {
     auto& word = ref.ref.data->words_by_seg.at(count_slot.seg).at(i + (count_slot.byte_offset / 4));
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie count");
     }
     memcpy(count + 2 * i, &word.data, 4);
@@ -804,7 +852,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   u8* block_start = (u8*)generic_count;
   for (int i = 0; i < 12; i++) {
     auto& word = ref.ref.data->words_by_seg.at(block_slot.seg).at(i + (block_slot.byte_offset / 4));
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie slot");
     }
     memcpy(block_start + 4 * i, &word.data, 4);
@@ -995,6 +1043,24 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     return tree;
   }
 
+  if (ref.type->get_name() == "drawable-tree-lowres-tfrag") {
+    auto tree = std::make_unique<DrawableTreeLowresTfrag>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-dirt-tfrag") {
+    auto tree = std::make_unique<DrawableTreeDirtTfrag>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-ice-tfrag") {
+    auto tree = std::make_unique<DrawableTreeIceTfrag>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
   if (ref.type->get_name() == "drawable-tree-instance-tie") {
     auto tree = std::make_unique<DrawableTreeInstanceTie>();
     tree->read_from_file(ref, dts, stats);
@@ -1064,6 +1130,22 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
 
   drawable_tree_array.read_from_file(
       get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats);
+
+  texture_remap_table.clear();
+
+  s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);
+
+  if (tex_remap_len > 0) {
+    auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
+    for (int entry = 0; entry < tex_remap_len; entry++) {
+      u64 low = deref_u32(tex_remap_data, 2 * entry);
+      u64 high = deref_u32(tex_remap_data, 2 * entry + 1);
+      TextureRemap remap;
+      remap.original_texid = low;
+      remap.new_texid = high;
+      texture_remap_table.push_back(remap);
+    }
+  }
 }
 
 std::string BspHeader::print(const PrintSettings& settings) const {

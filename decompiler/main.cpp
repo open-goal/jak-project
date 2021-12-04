@@ -7,8 +7,13 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 #include "decompiler/data/streamed_audio.h"
+#include "decompiler/level_extractor/extract_level.h"
+#include "decompiler/data/TextureDB.h"
+#include "common/util/os.h"
 
 int main(int argc, char** argv) {
+  fmt::print("[Mem] Size of linked word: {}\n", sizeof(decompiler::LinkedWord));
+  fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
   lg::set_file_level(lg::level::info);
@@ -24,13 +29,14 @@ int main(int argc, char** argv) {
     printf("Usage: decompiler <config_file> <in_folder> <out_folder>\n");
     return 1;
   }
+  fmt::print("[Mem] After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // collect all files to process
   Config config;
   try {
     config = read_config_file(argv[1]);
   } catch (const std::exception& e) {
-    lg::error("Failed to parse config");
+    lg::error("Failed to parse config: {}", e.what());
     return 1;
   }
 
@@ -52,9 +58,13 @@ int main(int argc, char** argv) {
 
   file_util::create_dir_if_needed(out_folder);
 
+  fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
+
   // build file database
   lg::info("Setting up object file DB...");
   ObjectFileDB db(dgos, config.obj_file_name_map_file, objs, strs, config);
+
+  fmt::print("[Mem] After DB setup: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out DGO file info
   file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
@@ -72,8 +82,10 @@ int main(int argc, char** argv) {
 
   // process files (required for all analysis)
   db.process_link_data(config);
+  fmt::print("[Mem] After link data: {} MB\n", get_peak_rss() / (1024 * 1024));
   db.find_code(config);
   db.process_labels();
+  fmt::print("[Mem] After code: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // print disassembly
   if (config.disassemble_code || config.disassemble_data) {
@@ -92,6 +104,8 @@ int main(int argc, char** argv) {
   if (config.decompile_code) {
     db.analyze_functions_ir2(out_folder, config, {});
   }
+
+  fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
@@ -113,12 +127,17 @@ int main(int argc, char** argv) {
     }
   }
 
+  fmt::print("[Mem] After text: {} MB\n", get_peak_rss() / (1024 * 1024));
+
+  decompiler::TextureDB tex_db;
   if (config.process_tpages) {
-    auto result = db.process_tpages();
+    auto result = db.process_tpages(tex_db);
     if (!result.empty()) {
       file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
     }
   }
+
+  fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   if (config.process_game_count) {
     auto result = db.process_game_count_file();
@@ -126,6 +145,12 @@ int main(int argc, char** argv) {
       file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
     }
   }
+
+  for (auto& lev : config.levels_to_extract) {
+    extract_from_level(db, tex_db, lev, config.hacks);
+  }
+
+  fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   if (!config.audio_dir_file_name.empty()) {
     process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
