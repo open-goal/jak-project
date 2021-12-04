@@ -3,27 +3,20 @@
 
 ;; definition for method 25 of type pov-camera
 (defmethod TODO-RENAME-25 pov-camera ((obj pov-camera))
-  (when
-   (or
-    (and
-     (>=
-      (-
-       (-> *display* base-frame-counter)
-       (the-as int (-> obj debounce-start-time))
-       )
-      60
+  (when (or
+          (and
+            (>= (- (-> *display* base-frame-counter) (the-as int (-> obj debounce-start-time))) 60)
+            (cpad-pressed? 0 triangle)
+            )
+          (logtest? (-> obj flags) 2)
+          )
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
+    (when (logtest? (-> obj flags) 1)
+      (send-event (handle->process (-> obj notify-handle)) 'notify 'abort-request)
+      #t
       )
-     (cpad-pressed? 0 triangle)
-     )
-    (logtest? (-> obj flags) 2)
     )
-   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
-   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-   (when (logtest? (-> obj flags) 1)
-    (send-event (handle->process (-> obj notify-handle)) 'notify 'abort-request)
-    #t
-    )
-   )
   )
 
 ;; definition for method 26 of type pov-camera
@@ -40,10 +33,7 @@
 (defstate pov-camera-startup (pov-camera)
   :virtual #t
   :code
-  (behavior ()
-   (go-virtual pov-camera-start-playing)
-   (none)
-   )
+  (behavior () (go-virtual pov-camera-start-playing) (none))
   )
 
 ;; failed to figure out what this is:
@@ -51,103 +41,74 @@
   :virtual #t
   :code
   (behavior ()
-   (logclear! (-> self mask) (process-mask actor-pause))
-   (while (not (target-grabbed? self))
-    (suspend)
-    )
-   (let ((gp-0 0))
-    (let ((v1-7 (dummy-10 (-> self draw jgeo) "camera" (the-as type #f))))
-     (if v1-7
-      (set! gp-0 (+ (-> v1-7 number) 1))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (while (not (target-grabbed? self))
+      (suspend)
       )
-     )
-    (let* ((s5-0 (get-process *default-dead-pool* othercam #x4000))
-           (v1-10 (when s5-0
-                   (let ((t9-3 (method-of-type othercam activate)))
-                    (t9-3
-                     (the-as othercam s5-0)
-                     self
-                     'othercam
-                     (the-as pointer #x70004000)
-                     )
-                    )
-                   (run-now-in-process
-                    s5-0
-                    othercam-init-by-other
-                    self
-                    gp-0
-                    #t
-                    #t
-                    )
-                   (-> s5-0 ppointer)
-                   )
+    (let ((gp-0 0))
+      (let ((v1-7 (dummy-10 (-> self draw jgeo) "camera" (the-as type #f))))
+        (if v1-7
+            (set! gp-0 (+ (-> v1-7 number) 1))
             )
-           )
-     (send-event (ppointer->process v1-10) 'mask (-> self mask-to-clear))
-     )
+        )
+      (let* ((s5-0 (get-process *default-dead-pool* othercam #x4000))
+             (v1-10 (when s5-0
+                      (let ((t9-3 (method-of-type othercam activate)))
+                        (t9-3 (the-as othercam s5-0) self 'othercam (the-as pointer #x70004000))
+                        )
+                      (run-now-in-process s5-0 othercam-init-by-other self gp-0 #t #t)
+                      (-> s5-0 ppointer)
+                      )
+                    )
+             )
+        (send-event (ppointer->process v1-10) 'mask (-> self mask-to-clear))
+        )
+      )
+    (go-virtual pov-camera-playing)
+    (none)
     )
-   (go-virtual pov-camera-playing)
-   (none)
-   )
   )
 
 ;; definition for function pov-camera-play-and-reposition
 ;; INFO: Return type mismatch int vs none.
-(defbehavior
-  pov-camera-play-and-reposition pov-camera
-  ((arg0 joint-anim-compressed) (arg1 vector) (arg2 float))
+(defbehavior pov-camera-play-and-reposition pov-camera ((arg0 joint-anim-compressed) (arg1 vector) (arg2 float))
   (let ((s4-0 #f))
-   (let ((v1-2 (-> self skel root-channel 0)))
-    (set! (-> v1-2 frame-group) (the-as art-joint-anim arg0))
-    (set! (-> v1-2 param 0) (the float (+ (-> arg0 data 9 unknown-half) -1)))
-    (set! (-> v1-2 param 1) arg2)
-    (set! (-> v1-2 frame-num) 0.0)
-    (joint-control-channel-group!
-     v1-2
-     (the-as art-joint-anim arg0)
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (let
-     ((v1-4
-       (and
-        (not s4-0)
-        (< (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                              (-> self skel root-channel 0 frame-group)
-                              )
-                          data
-                          0
-                          length
-                          )
-                       -4
+    (let ((v1-2 (-> self skel root-channel 0)))
+      (set! (-> v1-2 frame-group) (the-as art-joint-anim arg0))
+      (set! (-> v1-2 param 0) (the float (+ (-> arg0 data 9 unknown-half) -1)))
+      (set! (-> v1-2 param 1) arg2)
+      (set! (-> v1-2 frame-num) 0.0)
+      (joint-control-channel-group! v1-2 (the-as art-joint-anim arg0) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (let ((v1-4 (and (not s4-0) (< (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                               (-> self skel root-channel 0 frame-group)
+                                                               )
+                                                         data
+                                                         0
+                                                         length
+                                                         )
+                                                    -4
+                                                    )
+                                           )
+                                     (ja-frame-num 0)
+                                     )
                        )
+                  )
             )
-         (ja-frame-num 0)
-         )
+        (when v1-4
+          (set! s4-0 #t)
+          (send-event *camera* 'teleport-to-vector-start-string arg1)
+          )
         )
-       )
+      (suspend)
+      (let ((a0-4 (-> self skel root-channel 0)))
+        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
+        (set! (-> a0-4 param 1) arg2)
+        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     (when v1-4
-      (set! s4-0 #t)
-      (send-event *camera* 'teleport-to-vector-start-string arg1)
-      )
-     )
-    (suspend)
-    (let ((a0-4 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-4 param 0)
-      (the float (+ (-> a0-4 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-4 param 1) arg2)
-     (joint-control-channel-group-eval!
-      a0-4
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
     )
-   )
   0
   (none)
   )
@@ -157,140 +118,105 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('abort)
-      (when (logtest? (-> self flags) 1)
-       (logior! (-> self flags) 2)
-       (if (= (-> self anim-name type) string)
-        (go-virtual pov-camera-abort)
-        )
+    (case arg2
+      (('abort)
+       (when (logtest? (-> self flags) 1)
+         (logior! (-> self flags) 2)
+         (if (= (-> self anim-name type) string)
+             (go-virtual pov-camera-abort)
+             )
+         )
        )
       )
     )
-   )
   :enter
   (behavior ()
-   (set!
-    (-> self debounce-start-time)
-    (the-as uint (-> *display* base-frame-counter))
+    (set! (-> self debounce-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (if (= (-> self anim-name type) string)
+        (backup-load-state-and-set-cmds *load-state* (-> self command-list))
+        )
+    (none)
     )
-   (if (= (-> self anim-name type) string)
-    (backup-load-state-and-set-cmds *load-state* (-> self command-list))
-    )
-   (none)
-   )
   :exit
   (behavior ()
-   (if (= (-> self anim-name type) string)
-    (restore-load-state-and-cleanup *load-state*)
+    (if (= (-> self anim-name type) string)
+        (restore-load-state-and-cleanup *load-state*)
+        )
+    (clear-pending-settings-from-process *setting-control* self 'music-volume)
+    (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
+    (none)
     )
-   (clear-pending-settings-from-process *setting-control* self 'music-volume)
-   (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
-   (none)
-   )
   :code
   (behavior ()
-   (push-setting!
-    *setting-control*
-    self
-    'music-volume
-    'rel
-    (-> self music-volume-movie)
-    0
-    )
-   (push-setting!
-    *setting-control*
-    self
-    'sfx-volume
-    'rel
-    (-> self sfx-volume-movie)
-    0
-    )
-   (cond
-    ((= (-> self anim-name type) string)
-     (let ((a0-4 (-> self skel root-channel 0)))
-      (set! (-> a0-4 frame-group) (if (> (-> self skel active-channels) 0)
-                                   (-> self skel root-channel 0 frame-group)
-                                   )
+    (push-setting! *setting-control* self 'music-volume 'rel (-> self music-volume-movie) 0)
+    (push-setting! *setting-control* self 'sfx-volume 'rel (-> self sfx-volume-movie) 0)
+    (cond
+      ((= (-> self anim-name type) string)
+       (let ((a0-4 (-> self skel root-channel 0)))
+         (set! (-> a0-4 frame-group) (if (> (-> self skel active-channels) 0)
+                                         (-> self skel root-channel 0 frame-group)
+                                         )
+               )
+         (set! (-> a0-4 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                          (-> self skel root-channel 0 frame-group)
+                                                          )
+                                                    data
+                                                    0
+                                                    length
+                                                    )
+                                               -1
+                                               )
+                                      )
+               )
+         (set! (-> a0-4 param 1) 1.0)
+         (set! (-> a0-4 frame-num) 0.0)
+         (joint-control-channel-group!
+           a0-4
+           (if (> (-> self skel active-channels) 0)
+               (-> self skel root-channel 0 frame-group)
+               )
+           num-func-seek!
+           )
+         )
+       (until (ja-done? 0)
+         (TODO-RENAME-25 self)
+         (suspend)
+         (let ((a0-6 (-> self skel root-channel 0)))
+           (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
+           (set! (-> a0-6 param 1) 1.0)
+           (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
+           )
+         )
        )
-      (set!
-       (-> a0-4 param 0)
-       (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                          (-> self skel root-channel 0 frame-group)
-                          )
-                      data
-                      0
-                      length
-                      )
-                   -1
-                   )
-        )
-       )
-      (set! (-> a0-4 param 1) 1.0)
-      (set! (-> a0-4 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-4
-       (if (> (-> self skel active-channels) 0)
-        (-> self skel root-channel 0 frame-group)
-        )
-       num-func-seek!
-       )
-      )
-     (until (ja-done? 0)
-      (TODO-RENAME-25 self)
-      (suspend)
-      (let ((a0-6 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-6 param 0)
-        (the float (+ (-> a0-6 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-6 param 1) 1.0)
-       (joint-control-channel-group-eval!
-        a0-6
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
+      ((= (-> self anim-name type) spool-anim)
+       (ja-play-spooled-anim
+         (the-as spool-anim (-> self anim-name))
+         (the-as art-joint-anim #f)
+         (the-as art-joint-anim #f)
+         (method-of-object self TODO-RENAME-25)
+         )
        )
       )
-     )
-    ((= (-> self anim-name type) spool-anim)
-     (ja-play-spooled-anim
-      (the-as spool-anim (-> self anim-name))
-      (the-as art-joint-anim #f)
-      (the-as art-joint-anim #f)
-      (method-of-object self TODO-RENAME-25)
-      )
-     )
+    (go-virtual pov-camera-done-playing)
+    (none)
     )
-   (go-virtual pov-camera-done-playing)
-   (none)
-   )
   :post
   (behavior ()
-   (if (= (-> self anim-name type) string)
-    (execute-commands-up-to *load-state* (ja-aframe-num 0))
+    (if (= (-> self anim-name type) string)
+        (execute-commands-up-to *load-state* (ja-aframe-num 0))
+        )
+    (ja-post)
+    (none)
     )
-   (ja-post)
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate pov-camera-abort (pov-camera)
   :virtual #t
   :enter
-  (behavior ()
-   (logior! (-> self flags) 2)
-   (none)
-   )
+  (behavior () (logior! (-> self flags) 2) (none))
   :code
-  (behavior ()
-   (set-blackout-frames 10)
-   (suspend)
-   (suspend)
-   (go-virtual pov-camera-done-playing)
-   (none)
-   )
+  (behavior () (set-blackout-frames 10) (suspend) (suspend) (go-virtual pov-camera-done-playing) (none))
   )
 
 ;; failed to figure out what this is:
@@ -298,19 +224,16 @@
   :virtual #t
   :code
   (behavior ()
-   (while (begin
-           self
-           (not ((method-of-object self target-released?)))
-           )
+    (while (begin self (not ((method-of-object self target-released?))))
+      (suspend)
+      )
+    (send-event (handle->process (-> self notify-handle)) 'notify 'die)
     (suspend)
+    (suspend)
+    (dummy-18 self)
+    (deactivate self)
+    (none)
     )
-   (send-event (handle->process (-> self notify-handle)) 'notify 'die)
-   (suspend)
-   (suspend)
-   (dummy-18 self)
-   (deactivate self)
-   (none)
-   )
   )
 
 ;; definition for method 27 of type pov-camera
@@ -329,15 +252,7 @@
 ;; definition for function pov-camera-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior
-  pov-camera-init-by-other pov-camera
-  ((arg0 vector)
-   (arg1 skeleton-group)
-   (arg2 string)
-   (arg3 int)
-   (arg4 process-drawable)
-   (arg5 pair)
-   )
+(defbehavior pov-camera-init-by-other pov-camera ((arg0 vector) (arg1 skeleton-group) (arg2 string) (arg3 int) (arg4 process-drawable) (arg5 pair))
   (set-stack-size! self)
   (set! (-> *game-info* pov-camera-handle) (process->handle self))
   (set! (-> self flags) arg3)
@@ -345,81 +260,68 @@
   (set! (-> self music-volume-movie) 100.0)
   (set! (-> self sfx-volume-movie) 100.0)
   (if arg4
-   (set! (-> self notify-handle) (process->handle arg4))
-   (set! (-> self notify-handle) (the-as handle #f))
-   )
-  (set!
-   (-> self debounce-start-time)
-   (the-as uint (-> *display* base-frame-counter))
-   )
-  (logclear!
-   (-> self mask)
-   (process-mask actor-pause movie enemy platform projectile)
-   )
+      (set! (-> self notify-handle) (process->handle arg4))
+      (set! (-> self notify-handle) (the-as handle #f))
+      )
+  (set! (-> self debounce-start-time) (the-as uint (-> *display* base-frame-counter)))
+  (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
   (when (logtest? (-> self flags) 4)
-   (let
-    ((v1-20
-      (if (and (nonzero? arg4) (type-type? (-> arg4 type) process-drawable))
-       arg4
-       )
+    (let ((v1-20 (if (and (nonzero? arg4) (type-type? (-> arg4 type) process-drawable))
+                     arg4
+                     )
+                 )
+          )
+      (quaternion-copy! (-> self root quat) (-> v1-20 root quat))
       )
-     )
-    (quaternion-copy! (-> self root quat) (-> v1-20 root quat))
     )
-   )
   (initialize-skeleton self arg1 '())
   (logior! (-> self draw status) 32)
   (logior! (-> self skel status) 1)
   (set! (-> self anim-name) arg2)
   (cond
-   ((= (-> arg2 type) string)
-    (logior! (-> self skel status) 32)
-    (let ((s5-1 (dummy-10 (-> self draw art-group) arg2 art-joint-anim)))
-     (if (not s5-1)
-      (go process-drawable-art-error arg2)
-      )
-     (ja-channel-set! 1)
-     (set!
-      (-> self skel root-channel 0 frame-group)
-      (the-as art-joint-anim s5-1)
-      )
+    ((= (-> arg2 type) string)
+     (logior! (-> self skel status) 32)
+     (let ((s5-1 (dummy-10 (-> self draw art-group) arg2 art-joint-anim)))
+       (if (not s5-1)
+           (go process-drawable-art-error arg2)
+           )
+       (ja-channel-set! 1)
+       (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim s5-1))
+       )
+     )
+    ((= (-> arg2 type) spool-anim)
      )
     )
-   ((= (-> arg2 type) spool-anim)
-    )
-   )
   (set! (-> self mask-to-clear) (the-as uint #x4a0800))
-  (set!
-   (-> self event-hook)
-   (lambda :behavior pov-camera
-    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-     (the-as object (cond
-                     ((= v1-0 'mask)
-                      (let ((v0-0 (the-as number (-> arg3 param 0))))
-                       (set! (-> self mask-to-clear) (the-as uint v0-0))
-                       v0-0
-                       )
-                      )
-                     ((= v1-0 'music-movie-volume)
-                      (let ((f0-0 (the-as float (-> arg3 param 0))))
-                       (set! (-> self music-volume-movie) f0-0)
-                       f0-0
-                       )
-                      )
-                     ((= v1-0 'sfx-movie-volume)
-                      (let ((f0-1 (the-as float (-> arg3 param 0))))
-                       (set! (-> self sfx-volume-movie) f0-1)
-                       f0-1
-                       )
-                      )
-                     )
-      )
-     )
-    )
-   )
+  (set! (-> self event-hook) (lambda :behavior pov-camera
+                               ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+                               (let ((v1-0 arg2))
+                                 (the-as object (cond
+                                                  ((= v1-0 'mask)
+                                                   (let ((v0-0 (the-as number (-> arg3 param 0))))
+                                                     (set! (-> self mask-to-clear) (the-as uint v0-0))
+                                                     v0-0
+                                                     )
+                                                   )
+                                                  ((= v1-0 'music-movie-volume)
+                                                   (let ((f0-0 (the-as float (-> arg3 param 0))))
+                                                     (set! (-> self music-volume-movie) f0-0)
+                                                     f0-0
+                                                     )
+                                                   )
+                                                  ((= v1-0 'sfx-movie-volume)
+                                                   (let ((f0-1 (the-as float (-> arg3 param 0))))
+                                                     (set! (-> self sfx-volume-movie) f0-1)
+                                                     f0-1
+                                                     )
+                                                   )
+                                                  )
+                                         )
+                                 )
+                               )
+        )
   ((method-of-object self dummy-27))
   (go-virtual pov-camera-startup)
   (none)

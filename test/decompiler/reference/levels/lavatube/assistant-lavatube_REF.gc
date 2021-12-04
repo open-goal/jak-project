@@ -13,8 +13,8 @@
 ;; definition for method 3 of type assistant-lavatube-start
 (defmethod inspect assistant-lavatube-start ((obj assistant-lavatube-start))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   obj
   )
 
@@ -29,49 +29,36 @@
   )
 
 ;; definition for method 32 of type assistant-lavatube-start
-(defmethod
-  play-anim!
-  assistant-lavatube-start
-  ((obj assistant-lavatube-start) (arg0 symbol))
-  (case (current-status (-> obj tasks)) 
-   (((task-status need-reward-speech))
+(defmethod play-anim! assistant-lavatube-start ((obj assistant-lavatube-start) (arg0 symbol))
+  (case (current-status (-> obj tasks))
+    (((task-status need-reward-speech))
      (if arg0
-      (close-current! (-> obj tasks))
-      )
+         (close-current! (-> obj tasks))
+         )
      (new 'static 'spool-anim
-      :name "assistant-lavatube-start-resolution"
-      :index 5
-      :parts 11
-      :command-list
-      '(
-        ((the binteger 232)
-          joint
-          "cameraB"
+       :name "assistant-lavatube-start-resolution"
+       :index 5
+       :parts 11
+       :command-list
+       '(((the binteger 232) joint "cameraB")
+         ((the binteger 491) joint "camera")
+         ((the binteger 866) joint "cameraB")
+         ((the binteger 1061) joint "camera")
+         )
+       )
+     )
+    (else
+      (if arg0
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
           )
-        ((the binteger 491)
-         joint
-         "camera"
-         )
-        ((the binteger 866)
-         joint
-         "cameraB"
-         )
-        ((the binteger 1061) joint "camera")
-        )
+      (get-art-elem obj)
       )
-     )
-   (else
-    (if arg0
-     (format
-      0
-      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-      (-> obj name)
-      (task-status->string (current-status (-> obj tasks)))
-      )
-     )
-    (get-art-elem obj)
     )
-   )
   )
 
 ;; definition for method 31 of type assistant-lavatube-start
@@ -84,95 +71,60 @@
   :virtual #t
   :trans
   (behavior ()
-   ((-> (method-of-type process-taskable hidden) trans))
-   (when (and (cond
-               ((and
-                 *target*
-                 (>=
-                  61440.0
-                  (vector-vector-distance
-                   (-> self root-override trans)
-                   (-> *target* control trans)
-                   )
-                  )
-                 )
-                #t
-                )
-               (else
+    ((-> (method-of-type process-taskable hidden) trans))
+    (when (and
+            (cond
+              ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+               #t
+               )
+              (else
                 (set! (-> self state-time) (-> *display* base-frame-counter))
                 #f
                 )
-               )
-          (and
-           (not
-            (closed?
-             (-> self tasks)
-             (game-task lavatube-start)
-             (task-status need-reward-speech)
-             )
+              )
+            (and
+              (not (closed? (-> self tasks) (game-task lavatube-start) (task-status need-reward-speech)))
+              (not (movie?))
+              (not (level-hint-displayed?))
+              (not (and *cheat-mode* (cpad-hold? 0 l3)))
+              (< (- (-> *display* base-frame-counter) (-> self state-time)) 3000)
+              )
             )
-           (not (movie?))
-           (not (level-hint-displayed?))
-           (not (and *cheat-mode* (cpad-hold? 0 l3)))
-           (< (- (-> *display* base-frame-counter) (-> self state-time)) 3000)
-           )
+      (hide-hud)
+      (kill-current-level-hint '() '(sidekick voicebox) 'exit)
+      (when (and
+              (seen-text? *game-info* (game-text-id assistant-lavatube-powercell-hint))
+              (hud-hidden?)
+              (can-grab-display? self)
+              (not (-> *setting-control* current hint))
+              )
+        (let ((gp-0
+                (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))
+                )
+              )
+          (let ((v1-26 gp-0))
+            (set! (-> v1-26 width) (the float 448))
+            )
+          (let ((v1-27 gp-0))
+            (set! (-> v1-27 height) (the float 80))
+            )
+          (let ((v1-28 gp-0))
+            (set! (-> v1-28 scale) 0.8)
+            )
+          (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
+          (print-game-text (lookup-text! *common-text* (game-text-id lavatube-powercell-req-text) #f) gp-0 #f 128 22)
           )
-    (hide-hud)
-    (kill-current-level-hint '() '(sidekick voicebox) 'exit)
-    (when
-     (and
-      (seen-text? *game-info* (game-text-id assistant-lavatube-powercell-hint))
-      (hud-hidden?)
-      (can-grab-display? self)
-      (not (-> *setting-control* current hint))
-      )
-     (let
-      ((gp-0
-        (new
-         'stack
-         'font-context
-         *font-default-matrix*
-         32
-         160
-         0.0
-         (font-color default)
-         (font-flags shadow kerning)
-         )
         )
-       )
-      (let ((v1-26 gp-0))
-       (set! (-> v1-26 width) (the float 448))
-       )
-      (let ((v1-27 gp-0))
-       (set! (-> v1-27 height) (the float 80))
-       )
-      (let ((v1-28 gp-0))
-       (set! (-> v1-28 scale) 0.8)
-       )
-      (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
-      (print-game-text
-       (lookup-text!
-        *common-text*
-        (game-text-id lavatube-powercell-req-text)
-        #f
+      (level-hint-spawn
+        (game-text-id assistant-lavatube-powercell-hint)
+        "asstva74"
+        (the-as entity #f)
+        *entity-pool*
+        (game-task none)
         )
-       gp-0
-       #f
-       128
-       22
-       )
       )
-     )
-    (level-hint-spawn
-     (game-text-id assistant-lavatube-powercell-hint)
-     "asstva74"
-     (the-as entity #f)
-     *entity-pool*
-     (game-task none)
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -180,142 +132,90 @@
   :virtual #t
   :code
   (behavior ()
-   (while #t
-    (when (!= (if (> (-> self skel active-channels) 0)
-               (-> self skel root-channel 0 frame-group)
-               )
-           (get-art-elem self)
-           )
-     (ja-channel-push! 1 15)
-     (let ((v1-5 (-> self skel root-channel 0)))
-      (set!
-       (-> v1-5 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 3))
-       )
-      )
-     )
-    (let* ((f30-0 2.0)
-           (v1-7 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-8 (the-as number (logior #x3f800000 v1-7)))
-           )
-     (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-8)))) 2))
-      (let ((a0-12 (-> self skel root-channel 0)))
-       (set! (-> a0-12 frame-group) (if (> (-> self skel active-channels) 0)
-                                     (-> self skel root-channel 0 frame-group)
-                                     )
+    (while #t
+      (when (!= (if (> (-> self skel active-channels) 0)
+                      (-> self skel root-channel 0 frame-group)
+                      )
+                (get-art-elem self)
+                )
+        (ja-channel-push! 1 15)
+        (let ((v1-5 (-> self skel root-channel 0)))
+          (set! (-> v1-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+          )
         )
-       (set!
-        (-> a0-12 param 0)
-        (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
-                       data
-                       0
-                       length
-                       )
-                    -1
-                    )
-         )
+      (let* ((f30-0 2.0)
+             (v1-7 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-8 (the-as number (logior #x3f800000 v1-7)))
+             )
+        (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-8)))) 2))
+          (let ((a0-12 (-> self skel root-channel 0)))
+            (set! (-> a0-12 frame-group) (if (> (-> self skel active-channels) 0)
+                                             (-> self skel root-channel 0 frame-group)
+                                             )
+                  )
+            (set! (-> a0-12 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                              (-> self skel root-channel 0 frame-group)
+                                                              )
+                                                        data
+                                                        0
+                                                        length
+                                                        )
+                                                   -1
+                                                   )
+                                          )
+                  )
+            (set! (-> a0-12 param 1) 1.0)
+            (set! (-> a0-12 frame-num) 0.0)
+            (joint-control-channel-group!
+              a0-12
+              (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+              num-func-seek!
+              )
+            )
+          (until (ja-done? 0)
+            (suspend)
+            (let ((a0-13 (-> self skel root-channel 0)))
+              (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
+              (set! (-> a0-13 param 1) 1.0)
+              (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
+              )
+            )
+          )
         )
-       (set! (-> a0-12 param 1) 1.0)
-       (set! (-> a0-12 frame-num) 0.0)
-       (joint-control-channel-group!
-        a0-12
-        (if (> (-> self skel active-channels) 0)
-         (-> self skel root-channel 0 frame-group)
-         )
-        num-func-seek!
+      (ja-channel-push! 1 15)
+      (let ((a0-16 (-> self skel root-channel 0)))
+        (set! (-> a0-16 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+        (set! (-> a0-16 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+              )
+        (set! (-> a0-16 param 1) 1.0)
+        (set! (-> a0-16 frame-num) 0.0)
+        (joint-control-channel-group! a0-16 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
         )
-       )
       (until (ja-done? 0)
-       (suspend)
-       (let ((a0-13 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-13 param 0)
-         (the float (+ (-> a0-13 frame-group data 0 length) -1))
-         )
-        (set! (-> a0-13 param 1) 1.0)
-        (joint-control-channel-group-eval!
-         a0-13
-         (the-as art-joint-anim #f)
-         num-func-seek!
-         )
+        (suspend)
+        (let ((a0-17 (-> self skel root-channel 0)))
+          (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
+          (set! (-> a0-17 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
+          )
         )
-       )
       )
-     )
-    (ja-channel-push! 1 15)
-    (let ((a0-16 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-16 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      )
-     (set!
-      (-> a0-16 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         data
-         0
-         length
-         )
-        -1
-        )
-       )
-      )
-     (set! (-> a0-16 param 1) 1.0)
-     (set! (-> a0-16 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-16
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((a0-17 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-17 param 0)
-       (the float (+ (-> a0-17 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-17 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       a0-17
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 39 of type assistant-lavatube-start
-(defmethod
-  should-display?
-  assistant-lavatube-start
-  ((obj assistant-lavatube-start))
+(defmethod should-display? assistant-lavatube-start ((obj assistant-lavatube-start))
   (first-any (-> obj tasks) #t)
   (= (current-status (-> obj tasks)) (task-status need-reward-speech))
   )
 
 ;; definition for method 11 of type assistant-lavatube-start
-(defmethod
-  init-from-entity!
-  assistant-lavatube-start
-  ((obj assistant-lavatube-start) (arg0 entity-actor))
-  (dummy-40
-   obj
-   arg0
-   *assistant-lavatube-start-sg*
-   3
-   29
-   (new 'static 'vector :w 4096.0)
-   5
-   )
+(defmethod init-from-entity! assistant-lavatube-start ((obj assistant-lavatube-start) (arg0 entity-actor))
+  (dummy-40 obj arg0 *assistant-lavatube-start-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task lavatube-start)))
   (first-any (-> obj tasks) #t)
   (dummy-42 obj)

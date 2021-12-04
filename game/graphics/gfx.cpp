@@ -170,6 +170,7 @@ void poll_events() {
 
 void input_mode_set(u32 enable) {
   if (enable == s7.offset + FIX_SYM_TRUE) {  // #t
+    Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
     Pad::EnterInputMode();
   } else {
     Pad::ExitInputMode(enable != s7.offset);  // use #f for graceful exit, or 'canceled for abrupt

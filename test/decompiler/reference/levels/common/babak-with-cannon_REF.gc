@@ -15,8 +15,8 @@
 ;; definition for method 3 of type babak-with-cannon
 (defmethod inspect babak-with-cannon ((obj babak-with-cannon))
   (let ((t9-0 (method-of-type babak inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tcannon-ent: ~A~%" (-> obj cannon-ent))
   (format #t "~T~Tdistance: ~f~%" (-> obj distance))
   obj
@@ -30,91 +30,54 @@ nav-enemy-default-event-handler
   :virtual #t
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   nav-enemy-default-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    nav-enemy-default-event-handler
+    )
   :trans
   (behavior ()
-   (if
-    (and
-     (and
-      *target*
-      (>=
-       (-> self enemy-info idle-distance)
-       (vector-vector-distance
-        (-> self collide-info trans)
-        (-> *target* control trans)
+    (if (and
+            (and *target* (>= (-> self enemy-info idle-distance)
+                              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                              )
+                 )
+            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+            )
+        (go-virtual nav-enemy-patrol)
         )
-       )
-      )
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (-> self state-timeout)
-      )
-     )
-    (go-virtual nav-enemy-patrol)
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ()
-   (ja-channel-push! 1 22)
-   (let ((a0-1 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-1 frame-group)
-     (the-as
-      art-joint-anim
-      (-> self draw art-group data (-> self nav-info idle-anim))
-      )
-     )
-    (set!
-     (-> a0-1 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as
-         art-joint-anim
-         (-> self draw art-group data (-> self nav-info idle-anim))
-         )
-        data
-        0
-        length
+    (ja-channel-push! 1 22)
+    (let ((a0-1 (-> self skel root-channel 0)))
+      (set! (-> a0-1 frame-group)
+            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
+            )
+      (set! (-> a0-1 param 0)
+            (the float
+                 (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim))) data 0 length) -1)
+                 )
+            )
+      (set! (-> a0-1 param 1) 1.0)
+      (set! (-> a0-1 frame-num) 0.0)
+      (joint-control-channel-group!
+        a0-1
+        (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
+        num-func-seek!
         )
-       -1
-       )
       )
-     )
-    (set! (-> a0-1 param 1) 1.0)
-    (set! (-> a0-1 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-1
-     (the-as
-      art-joint-anim
-      (-> self draw art-group data (-> self nav-info idle-anim))
+    (until (ja-done? 0)
+      (ja-post)
+      (suspend)
+      (let ((a0-2 (-> self skel root-channel 0)))
+        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+        (set! (-> a0-2 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     num-func-seek!
-     )
+    (anim-loop)
+    (none)
     )
-   (until (ja-done? 0)
-    (ja-post)
-    (suspend)
-    (let ((a0-2 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-2 param 0)
-      (the float (+ (-> a0-2 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-2 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-2
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (anim-loop)
-   (none)
-   )
   :post
   (the-as (function none :behavior babak-with-cannon) #f)
   )
@@ -124,58 +87,40 @@ nav-enemy-default-event-handler
   :virtual #t
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   nav-enemy-default-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    nav-enemy-default-event-handler
+    )
   :trans
   (behavior ()
-   (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
-    (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
-     (if
-      (and
-       (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-       (or
-        (or
-         (not *target*)
-         (<
-          (-> self distance)
-          (vector-vector-distance
-           (-> self collide-info trans)
-           (-> *target* control trans)
-           )
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+      (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
+        (if (and
+                (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+                (or
+                  (or
+                    (not *target*)
+                    (< (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
+                    )
+                  (< f30-0 -40960.0)
+                  )
+                )
+            (go babak-run-to-cannon)
+            )
+        )
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+        (if (or (not *target*) (< (-> self enemy-info idle-distance)
+                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                    )
+                  )
+            (go-virtual nav-enemy-idle)
+            )
+        )
+      (if (nav-enemy-notice-player?)
+          (go-virtual nav-enemy-notice)
           )
-         )
-        (< f30-0 -40960.0)
-        )
-       )
-      (go babak-run-to-cannon)
       )
-     )
-    (when
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (-> self state-timeout)
-      )
-     (if
-      (or
-       (not *target*)
-       (<
-        (-> self enemy-info idle-distance)
-        (vector-vector-distance
-         (-> self collide-info trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (go-virtual nav-enemy-idle)
-      )
-     )
-    (if (nav-enemy-notice-player?)
-     (go-virtual nav-enemy-notice)
-     )
+    (none)
     )
-   (none)
-   )
   :code
   (-> (method-of-type babak nav-enemy-patrol) code)
   )
@@ -184,91 +129,62 @@ nav-enemy-default-event-handler
 (defstate babak-run-to-cannon (babak)
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak)
-   nav-enemy-default-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak)
+    nav-enemy-default-event-handler
+    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self nav destination-pos quad) (-> self entity extra trans quad))
-   (set! (-> self nav target-pos quad) (-> self entity extra trans quad))
-   (none)
-   )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self nav destination-pos quad) (-> self entity extra trans quad))
+    (set! (-> self nav target-pos quad) (-> self entity extra trans quad))
+    (none)
+    )
   :trans
   (behavior ()
-   (if (nav-enemy-notice-player?)
-    (go-virtual nav-enemy-chase)
+    (if (nav-enemy-notice-player?)
+        (go-virtual nav-enemy-chase)
+        )
+    (if (logtest? (nav-control-flags bit19) (-> self nav flags))
+        (go babak-with-cannon-jump-onto-cannon)
+        )
+    (none)
     )
-   (if (logtest? (nav-control-flags bit19) (-> self nav flags))
-    (go babak-with-cannon-jump-onto-cannon)
-    )
-   (none)
-   )
   :code
   (behavior ()
-   (ja-channel-push! 1 22)
-   (while #t
-    (let ((a0-1 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-1 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 8))
-      )
-     (set!
-      (-> a0-1 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 8))
-         data
-         0
-         length
-         )
-        -1
+    (ja-channel-push! 1 22)
+    (while #t
+      (let ((a0-1 (-> self skel root-channel 0)))
+        (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
+        (set! (-> a0-1 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
+              )
+        (set! (-> a0-1 param 1) 1.0)
+        (set! (-> a0-1 frame-num) 0.0)
+        (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
         )
-       )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((a0-2 (-> self skel root-channel 0)))
+          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+          (set! (-> a0-2 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
       )
-     (set! (-> a0-1 param 1) 1.0)
-     (set! (-> a0-1 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-1
-      (the-as art-joint-anim (-> self draw art-group data 8))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 param 0)
-       (the float (+ (-> a0-2 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-2 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       a0-2
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   :post
-  (behavior ()
-   (nav-enemy-travel-post)
-   (none)
-   )
+  (behavior () (nav-enemy-travel-post) (none))
   )
 
 ;; definition for function handle->process-safe
 (defun handle->process-safe ((arg0 handle))
   (let ((v0-0 (the-as process #f)))
-   (if (handle->process arg0)
-    (set! v0-0 (-> arg0 process 0))
+    (if (handle->process arg0)
+        (set! v0-0 (-> arg0 process 0))
+        )
+    v0-0
     )
-   v0-0
-   )
   )
 
 ;; definition for function babak-with-cannon-compute-cannon-dir
@@ -285,8 +201,8 @@ nav-enemy-default-event-handler
   (let ((a1-4 (new 'static 'vector :y 18149.377 :z -17289.217 :w 1.0))
         (a2-0 (-> arg0 node-list data 3 bone transform))
         )
-   (vector-matrix*! arg1 a1-4 a2-0)
-   )
+    (vector-matrix*! arg1 a1-4 a2-0)
+    )
   arg1
   )
 
@@ -294,26 +210,22 @@ nav-enemy-default-event-handler
 (defbehavior babak-with-cannon-ride-cannon-post babak-with-cannon ()
   (let* ((v1-0 (-> self cannon-ent))
          (s5-0 (if v1-0
-                (-> v1-0 extra process)
-                )
-          )
-         (gp-0
-          (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
-           s5-0
-           )
-          )
+                   (-> v1-0 extra process)
+                   )
+               )
+         (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
+                   s5-0
+                   )
+               )
          )
-   (when gp-0
-    (let ((s5-1 (new 'stack-no-clear 'vector)))
-     (babak-with-cannon-compute-cannon-dir (the-as mistycannon gp-0) s5-1)
-     (forward-up->quaternion (-> self collide-info quat) s5-1 *y-vector*)
-     )
-    (babak-with-cannon-compute-ride-point
-     (the-as mistycannon gp-0)
-     (-> self collide-info trans)
-     )
+    (when gp-0
+      (let ((s5-1 (new 'stack-no-clear 'vector)))
+        (babak-with-cannon-compute-cannon-dir (the-as mistycannon gp-0) s5-1)
+        (forward-up->quaternion (-> self collide-info quat) s5-1 *y-vector*)
+        )
+      (babak-with-cannon-compute-ride-point (the-as mistycannon gp-0) (-> self collide-info trans))
+      )
     )
-   )
   (nav-enemy-simple-post)
   (none)
   )
@@ -322,129 +234,86 @@ nav-enemy-default-event-handler
 (defstate babak-with-cannon-jump-onto-cannon (babak-with-cannon)
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   nav-enemy-jump-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    nav-enemy-jump-event-handler
+    )
   :exit
-  (behavior ()
-   (logior! (-> self nav-enemy-flags) 24)
-   (none)
-   )
+  (behavior () (logior! (-> self nav-enemy-flags) 24) (none))
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-   (set! (-> self turn-time) (the-as int (-> self nav-info run-turn-time)))
-   (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
-   (nav-enemy-neck-control-inactive)
-   (let* ((v1-7 (-> self cannon-ent))
-          (gp-0 (if v1-7
-                 (-> v1-7 extra process)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+    (set! (-> self turn-time) (the-as int (-> self nav-info run-turn-time)))
+    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (nav-enemy-neck-control-inactive)
+    (let* ((v1-7 (-> self cannon-ent))
+           (gp-0 (if v1-7
+                     (-> v1-7 extra process)
+                     )
+                 )
+           (a0-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                     gp-0
+                     )
                  )
            )
-          (a0-2
-           (if
-            (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
-            gp-0
-            )
-           )
+      (cond
+        (a0-2
+          (babak-with-cannon-compute-ride-point (the-as mistycannon a0-2) (-> self event-param-point))
+          (nav-enemy-initialize-jump (-> self event-param-point))
           )
-    (cond
-     (a0-2
-      (babak-with-cannon-compute-ride-point
-       (the-as mistycannon a0-2)
-       (-> self event-param-point)
-       )
-      (nav-enemy-initialize-jump (-> self event-param-point))
+        (else
+          (go-virtual nav-enemy-idle)
+          )
+        )
       )
-     (else
-      (go-virtual nav-enemy-idle)
+    (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
+      (ja-channel-push! 1 60)
+      (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
-     )
-    )
-   (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-    (ja-channel-push! 1 60)
-    (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
-    )
-   (logior! (-> self nav-enemy-flags) 16)
-   (nav-enemy-execute-jump)
-   (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
-   (let* ((v1-20 (-> self cannon-ent))
-          (gp-1 (if v1-20
-                 (-> v1-20 extra process)
+    (logior! (-> self nav-enemy-flags) 16)
+    (nav-enemy-execute-jump)
+    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (let* ((v1-20 (-> self cannon-ent))
+           (gp-1 (if v1-20
+                     (-> v1-20 extra process)
+                     )
+                 )
+           (a0-9 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) process-drawable))
+                     gp-1
+                     )
                  )
            )
-          (a0-9
-           (if
-            (and (nonzero? gp-1) (type-type? (-> gp-1 type) process-drawable))
-            gp-1
+      (when a0-9
+        (let ((gp-2 (babak-with-cannon-compute-cannon-dir (the-as mistycannon a0-9) (new 'stack-no-clear 'vector))))
+          (when (not (nav-enemy-facing-direction? gp-2 1820.4445))
+            (ja-channel-push! 1 60)
+            (nav-enemy-turn-to-face-dir gp-2 182.04445)
+            (forward-up->quaternion (-> self collide-info quat) gp-2 *y-vector*)
             )
-           )
           )
-    (when a0-9
-     (let
-      ((gp-2
-        (babak-with-cannon-compute-cannon-dir
-         (the-as mistycannon a0-9)
-         (new 'stack-no-clear 'vector)
-         )
         )
-       )
-      (when (not (nav-enemy-facing-direction? gp-2 1820.4445))
-       (ja-channel-push! 1 60)
-       (nav-enemy-turn-to-face-dir gp-2 182.04445)
-       (forward-up->quaternion (-> self collide-info quat) gp-2 *y-vector*)
-       )
       )
-     )
-    )
-   (ja-channel-push! 1 30)
-   (let ((a0-15 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-15 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 17))
-     )
-    (set!
-     (-> a0-15 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 17))
-        data
-        0
-        length
+    (ja-channel-push! 1 30)
+    (let ((a0-15 (-> self skel root-channel 0)))
+      (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
+      (set! (-> a0-15 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
+            )
+      (set! (-> a0-15 param 1) 1.0)
+      (set! (-> a0-15 frame-num) 0.0)
+      (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-16 (-> self skel root-channel 0)))
+        (set! (-> a0-16 param 0) (the float (+ (-> a0-16 frame-group data 0 length) -1)))
+        (set! (-> a0-16 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> a0-15 param 1) 1.0)
-    (set! (-> a0-15 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-15
-     (the-as art-joint-anim (-> self draw art-group data 17))
-     num-func-seek!
-     )
+    (go babak-with-cannon-shooting)
+    (none)
     )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-16 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-16 param 0)
-      (the float (+ (-> a0-16 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-16 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-16
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go babak-with-cannon-shooting)
-   (none)
-   )
   :post
   (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
   )
@@ -453,72 +322,46 @@ nav-enemy-default-event-handler
 (defstate babak-with-cannon-jump-off-cannon (babak-with-cannon)
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   nav-enemy-jump-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    nav-enemy-jump-event-handler
+    )
   :exit
-  (behavior ()
-   (logior! (-> self nav-enemy-flags) 24)
-   (none)
-   )
+  (behavior () (logior! (-> self nav-enemy-flags) 24) (none))
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (nav-enemy-initialize-jump (-> self entity extra trans))
-   (nav-enemy-neck-control-look-at)
-   (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
-   (let ((a0-2 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-2 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 17))
-     )
-    (set! (-> a0-2 param 0) 0.0)
-    (set! (-> a0-2 param 1) 2.0)
-    (set!
-     (-> a0-2 frame-num)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 17))
-        data
-        0
-        length
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (nav-enemy-initialize-jump (-> self entity extra trans))
+    (nav-enemy-neck-control-look-at)
+    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (let ((a0-2 (-> self skel root-channel 0)))
+      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
+      (set! (-> a0-2 param 0) 0.0)
+      (set! (-> a0-2 param 1) 2.0)
+      (set! (-> a0-2 frame-num)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
+            )
+      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+        (set! (-> a0-3 param 0) 0.0)
+        (set! (-> a0-3 param 1) 2.0)
+        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (joint-control-channel-group!
-     a0-2
-     (the-as art-joint-anim (-> self draw art-group data 17))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-3 (-> self skel root-channel 0)))
-     (set! (-> a0-3 param 0) 0.0)
-     (set! (-> a0-3 param 1) 2.0)
-     (joint-control-channel-group-eval!
-      a0-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
+      (ja-channel-push! 1 60)
+      (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
-     )
+    (logior! (-> self nav-enemy-flags) 16)
+    (nav-enemy-execute-jump)
+    (let ((a1-6 (dummy-16 (-> self nav) (-> self jump-dest))))
+      (set-current-poly! (-> self nav) a1-6)
+      )
+    (go-virtual nav-enemy-jump-land)
+    (none)
     )
-   (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-    (ja-channel-push! 1 60)
-    (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
-    )
-   (logior! (-> self nav-enemy-flags) 16)
-   (nav-enemy-execute-jump)
-   (let ((a1-6 (dummy-16 (-> self nav) (-> self jump-dest))))
-    (set-current-poly! (-> self nav) a1-6)
-    )
-   (go-virtual nav-enemy-jump-land)
-   (none)
-   )
   :post
   (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
   )
@@ -527,60 +370,53 @@ nav-enemy-default-event-handler
 (defstate babak-with-cannon-shooting (babak-with-cannon)
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   nav-enemy-default-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    nav-enemy-default-event-handler
+    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-    (if v1-2
-     (logior! (-> v1-2 extra perm status) (entity-perm-status complete))
-     )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+      (if v1-2
+          (logior! (-> v1-2 extra perm status) (entity-perm-status complete))
+          )
+      )
+    (none)
     )
-   (none)
-   )
   :exit
   (behavior ()
-   (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-    (if v1-0
-     (logclear! (-> v1-0 extra perm status) (entity-perm-status complete))
-     )
+    (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+      (if v1-0
+          (logclear! (-> v1-0 extra perm status) (entity-perm-status complete))
+          )
+      )
+    (none)
     )
-   (none)
-   )
   :trans
   (behavior ()
-   (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
-    (if
-     (and
-      (< -40960.0 f0-1)
-      (and
-       (and
-        *target*
-        (>=
-         (-> self distance)
-         (vector-vector-distance
-          (-> self collide-info trans)
-          (-> *target* control trans)
+    (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
+      (if (and
+              (< -40960.0 f0-1)
+              (and
+                (and
+                  *target*
+                  (>= (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
+                  )
+                (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+                )
+              )
+          (go babak-with-cannon-jump-off-cannon)
           )
-         )
-        )
-       (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-       )
       )
-     (go babak-with-cannon-jump-off-cannon)
-     )
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ()
-   (while #t
-    (suspend)
+    (while #t
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   :post
   babak-with-cannon-ride-cannon-post
   )
@@ -590,31 +426,24 @@ nav-enemy-default-event-handler
   :virtual #t
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   nav-enemy-default-event-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    nav-enemy-default-event-handler
+    )
   :trans
   (behavior ()
-   (if (and *target* (= (-> *target* current-level name) 'beach))
-    (spool-push *art-control* "beachcam-cannon" 0 self -1.0)
-    )
-   (if (and *target* (= (-> *target* current-level name) 'misty))
-    (spool-push *art-control* "mistycam-cannon" 0 self -1.0)
-    )
-   (let
-    ((t9-3
-      (->
-       (the-as (state nav-enemy) (find-parent-method babak-with-cannon 23))
-       trans
-       )
+    (if (and *target* (= (-> *target* current-level name) 'beach))
+        (spool-push *art-control* "beachcam-cannon" 0 self -1.0)
+        )
+    (if (and *target* (= (-> *target* current-level name) 'misty))
+        (spool-push *art-control* "mistycam-cannon" 0 self -1.0)
+        )
+    (let ((t9-3 (-> (the-as (state nav-enemy) (find-parent-method babak-with-cannon 23)) trans)))
+      (if t9-3
+          (t9-3)
+          )
       )
-     )
-    (if t9-3
-     (t9-3)
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -622,90 +451,72 @@ nav-enemy-default-event-handler
   :virtual #t
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior babak-with-cannon)
-   process-drawable-fuel-cell-handler
-   )
+    (function process int symbol event-message-block object :behavior babak-with-cannon)
+    process-drawable-fuel-cell-handler
+    )
   :code
   (behavior ()
-   (ja-channel-set! 0)
-   (clear-collide-with-as (-> self collide-info))
-   (ja-post)
-   (when (not (task-complete? *game-info* (-> self entity extra perm task)))
-    (when
-     (not
-      (and
-       (-> self entity)
-       (logtest?
-        (-> self entity extra perm status)
-        (entity-perm-status complete)
+    (ja-channel-set! 0)
+    (clear-collide-with-as (-> self collide-info))
+    (ja-post)
+    (when (not (task-complete? *game-info* (-> self entity extra perm task)))
+      (when (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+        (process-entity-status! self (entity-perm-status complete) #t)
+        (if (and *target* (= (-> *target* current-level name) 'beach))
+            (beachcam-spawn)
+            )
+        (if (and *target* (= (-> *target* current-level name) 'misty))
+            (mistycam-spawn)
+            )
         )
-       )
+      (if (not (-> self child))
+          (birth-pickup-at-point
+            (-> self collide-info trans)
+            (pickup-type fuel-cell)
+            (the float (-> self entity extra perm task))
+            #f
+            self
+            (the-as fact-info #f)
+            )
+          )
+      (while (-> self child)
+        (suspend)
+        )
       )
-     (process-entity-status! self (entity-perm-status complete) #t)
-     (if (and *target* (= (-> *target* current-level name) 'beach))
-      (beachcam-spawn)
-      )
-     (if (and *target* (= (-> *target* current-level name) 'misty))
-      (mistycam-spawn)
-      )
-     )
-    (if (not (-> self child))
-     (birth-pickup-at-point
-      (-> self collide-info trans)
-      (pickup-type fuel-cell)
-      (the float (-> self entity extra perm task))
-      #f
-      self
-      (the-as fact-info #f)
-      )
-     )
-    (while (-> self child)
-     (suspend)
-     )
+    (dummy-18 self)
+    (none)
     )
-   (dummy-18 self)
-   (none)
-   )
   )
 
 ;; definition for method 39 of type babak-with-cannon
 (defmethod common-post babak-with-cannon ((obj babak-with-cannon))
   (cond
-   ((= (level-status *level* 'beach) 'active)
-    (spool-push *art-control* "beachcam-cannon" 0 obj -99.0)
+    ((= (level-status *level* 'beach) 'active)
+     (spool-push *art-control* "beachcam-cannon" 0 obj -99.0)
+     )
+    ((= (level-status *level* 'misty) 'active)
+     (spool-push *art-control* "mistycam-cannon" 0 obj -99.0)
+     )
     )
-   ((= (level-status *level* 'misty) 'active)
-    (spool-push *art-control* "mistycam-cannon" 0 obj -99.0)
-    )
-   )
   ((method-of-type nav-enemy common-post) obj)
   (none)
   )
 
 ;; definition for method 11 of type babak-with-cannon
 ;; INFO: Return type mismatch object vs none.
-(defmethod
-  init-from-entity!
-  babak-with-cannon
-  ((obj babak-with-cannon) (arg0 entity-actor))
+(defmethod init-from-entity! babak-with-cannon ((obj babak-with-cannon) (arg0 entity-actor))
   (initialize-collision obj)
   (process-drawable-from-entity! obj arg0)
   (TODO-RENAME-48 obj)
   (set! (-> obj distance) (res-lump-float arg0 'distance :default 163840.0))
   (set! (-> obj cannon-ent) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (logclear! (-> obj mask) (process-mask actor-pause))
-  (if
-   (or
-    (not
-     (and
-      (-> obj entity)
-      (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+  (if (or
+          (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete))))
+          (zero? (logand (-> obj enemy-info options) (fact-options fop1)))
+          )
+      (go (method-of-object obj nav-enemy-idle))
       )
-     )
-    (zero? (logand (-> obj enemy-info options) (fact-options fop1)))
-    )
-   (go (method-of-object obj nav-enemy-idle))
-   )
   (go (method-of-object obj nav-enemy-fuel-cell))
   (none)
   )

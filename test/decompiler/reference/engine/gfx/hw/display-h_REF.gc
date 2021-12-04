@@ -75,11 +75,7 @@
 ;; definition for function put-draw-env
 ;; Used lq/sq
 (defun put-draw-env ((arg0 (pointer gif-tag)))
-  (dma-send
-   (the-as dma-bank #x1000a000)
-   (the-as uint arg0)
-   (+ (-> arg0 0 nloop) 1)
-   )
+  (dma-send (the-as dma-bank #x1000a000) (the-as uint arg0) (+ (-> arg0 0 nloop) 1))
   (none)
   )
 
@@ -118,20 +114,16 @@
 
 ;; definition for method 0 of type display-frame
 (defmethod new display-frame ((allocation symbol) (type-to-make type))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj calc-buf) (the-as dma-buffer 0))
+    (set! (-> obj global-buf) (the-as dma-buffer 0))
+    (set! (-> obj debug-buf) (the-as dma-buffer 0))
+    (when *debug-segment*
+      (set! (-> obj profile-bar 0) (new 'debug 'profile-bar))
+      (set! (-> obj profile-bar 1) (new 'debug 'profile-bar))
+      )
+    obj
     )
-   (set! (-> obj calc-buf) (the-as dma-buffer 0))
-   (set! (-> obj global-buf) (the-as dma-buffer 0))
-   (set! (-> obj debug-buf) (the-as dma-buffer 0))
-   (when *debug-segment*
-    (set! (-> obj profile-bar 0) (new 'debug 'profile-bar))
-    (set! (-> obj profile-bar 1) (new 'debug 'profile-bar))
-    )
-   obj
-   )
   )
 
 ;; definition of type virtual-frame
@@ -225,41 +217,17 @@
   (format #t "~Tbase-frame-counter: ~D~%" (-> obj base-frame-counter))
   (format #t "~Tgame-frame-counter: ~D~%" (-> obj game-frame-counter))
   (format #t "~Tintegral-frame-counter: ~D~%" (-> obj integral-frame-counter))
-  (format
-   #t
-   "~Treal-integral-frame-counter: ~D~%"
-   (-> obj real-integral-frame-counter)
-   )
+  (format #t "~Treal-integral-frame-counter: ~D~%" (-> obj real-integral-frame-counter))
   (format #t "~Tactual-frame-counter: ~D~%" (-> obj actual-frame-counter))
-  (format
-   #t
-   "~Treal-actual-frame-counter: ~D~%"
-   (-> obj real-actual-frame-counter)
-   )
+  (format #t "~Treal-actual-frame-counter: ~D~%" (-> obj real-actual-frame-counter))
   (format #t "~Tpart-frame-counter: ~D~%" (-> obj part-frame-counter))
   (format #t "~Told-real-frame-counter: ~D~%" (-> obj old-real-frame-counter))
   (format #t "~Told-base-frame-counter: ~D~%" (-> obj old-base-frame-counter))
   (format #t "~Told-game-frame-counter: ~D~%" (-> obj old-game-frame-counter))
-  (format
-   #t
-   "~Told-integral-frame-counter: ~D~%"
-   (-> obj old-integral-frame-counter)
-   )
-  (format
-   #t
-   "~Told-real-integral-frame-counter: ~D~%"
-   (-> obj old-real-integral-frame-counter)
-   )
-  (format
-   #t
-   "~Told-actual-frame-counter: ~D~%"
-   (-> obj old-actual-frame-counter)
-   )
-  (format
-   #t
-   "~Told-real-actual-frame-counter: ~D~%"
-   (-> obj old-real-actual-frame-counter)
-   )
+  (format #t "~Told-integral-frame-counter: ~D~%" (-> obj old-integral-frame-counter))
+  (format #t "~Told-real-integral-frame-counter: ~D~%" (-> obj old-real-integral-frame-counter))
+  (format #t "~Told-actual-frame-counter: ~D~%" (-> obj old-actual-frame-counter))
+  (format #t "~Told-real-actual-frame-counter: ~D~%" (-> obj old-real-actual-frame-counter))
   (format #t "~Told-part-frame-counter: ~D~%" (-> obj old-part-frame-counter))
   (format #t "~Ttime-ratio: ~f~%" (-> obj time-ratio))
   (format #t "~Tseconds-per-frame: ~f~%" (-> obj seconds-per-frame))
@@ -270,72 +238,46 @@
   )
 
 ;; definition for method 0 of type display
-(defmethod
-  new
-  display
-  ((allocation symbol)
-   (type-to-make type)
-   (psm int)
-   (w int)
-   (h int)
-   (ztest int)
-   (zpsm int)
-   )
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+(defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set-display obj psm w h ztest zpsm)
+    (set! (-> obj frames 0 display) (-> obj display-env0))
+    (set! (-> obj frames 1 display) (-> obj display-env1))
+    (set! (-> obj frames 2 display) (-> obj display-env2))
+    (set! (-> obj frames 3 display) (-> obj display-env0))
+    (set! (-> obj frames 4 display) (-> obj display-env1))
+    (set! (-> obj frames 5 display) (-> obj display-env2))
+    (set! (-> obj frames 0 display-last) (-> obj display-env2))
+    (set! (-> obj frames 1 display-last) (-> obj display-env0))
+    (set! (-> obj frames 2 display-last) (-> obj display-env1))
+    (set! (-> obj frames 3 display-last) (-> obj display-env2))
+    (set! (-> obj frames 4 display-last) (-> obj display-env0))
+    (set! (-> obj frames 5 display-last) (-> obj display-env1))
+    (set! (-> obj frames 0 gif) (the-as pointer (-> obj gif-tag0)))
+    (set! (-> obj frames 1 gif) (the-as pointer (-> obj gif-tag1)))
+    (set! (-> obj frames 2 gif) (the-as pointer (-> obj gif-tag2)))
+    (set! (-> obj frames 3 gif) (the-as pointer (-> obj gif-tag0)))
+    (set! (-> obj frames 4 gif) (the-as pointer (-> obj gif-tag1)))
+    (set! (-> obj frames 5 gif) (the-as pointer (-> obj gif-tag2)))
+    (set! (-> obj frames 0 draw) (-> obj draw0))
+    (set! (-> obj frames 1 draw) (-> obj draw1))
+    (set! (-> obj frames 2 draw) (-> obj draw2))
+    (set! (-> obj frames 3 draw) (-> obj draw0))
+    (set! (-> obj frames 4 draw) (-> obj draw1))
+    (set! (-> obj frames 5 draw) (-> obj draw2))
+    (set! (-> obj frames 0 frame) (new 'global 'display-frame))
+    (set! (-> obj frames 1 frame) (new 'global 'display-frame))
+    (set! (-> obj frames 2 frame) (-> obj frames 0 frame))
+    (set! (-> obj frames 3 frame) (-> obj frames 1 frame))
+    (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
+    (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
+    (default-buffer-init *default-regs-buffer*)
+    (set! (-> obj bg-clear-color 0) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+    (set! (-> obj bg-clear-color 1) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+    (set! (-> obj bg-clear-color 2) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+    (set! (-> obj bg-clear-color 3) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+    obj
     )
-   (set-display obj psm w h ztest zpsm)
-   (set! (-> obj frames 0 display) (-> obj display-env0))
-   (set! (-> obj frames 1 display) (-> obj display-env1))
-   (set! (-> obj frames 2 display) (-> obj display-env2))
-   (set! (-> obj frames 3 display) (-> obj display-env0))
-   (set! (-> obj frames 4 display) (-> obj display-env1))
-   (set! (-> obj frames 5 display) (-> obj display-env2))
-   (set! (-> obj frames 0 display-last) (-> obj display-env2))
-   (set! (-> obj frames 1 display-last) (-> obj display-env0))
-   (set! (-> obj frames 2 display-last) (-> obj display-env1))
-   (set! (-> obj frames 3 display-last) (-> obj display-env2))
-   (set! (-> obj frames 4 display-last) (-> obj display-env0))
-   (set! (-> obj frames 5 display-last) (-> obj display-env1))
-   (set! (-> obj frames 0 gif) (the-as pointer (-> obj gif-tag0)))
-   (set! (-> obj frames 1 gif) (the-as pointer (-> obj gif-tag1)))
-   (set! (-> obj frames 2 gif) (the-as pointer (-> obj gif-tag2)))
-   (set! (-> obj frames 3 gif) (the-as pointer (-> obj gif-tag0)))
-   (set! (-> obj frames 4 gif) (the-as pointer (-> obj gif-tag1)))
-   (set! (-> obj frames 5 gif) (the-as pointer (-> obj gif-tag2)))
-   (set! (-> obj frames 0 draw) (-> obj draw0))
-   (set! (-> obj frames 1 draw) (-> obj draw1))
-   (set! (-> obj frames 2 draw) (-> obj draw2))
-   (set! (-> obj frames 3 draw) (-> obj draw0))
-   (set! (-> obj frames 4 draw) (-> obj draw1))
-   (set! (-> obj frames 5 draw) (-> obj draw2))
-   (set! (-> obj frames 0 frame) (new 'global 'display-frame))
-   (set! (-> obj frames 1 frame) (new 'global 'display-frame))
-   (set! (-> obj frames 2 frame) (-> obj frames 0 frame))
-   (set! (-> obj frames 3 frame) (-> obj frames 1 frame))
-   (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
-   (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
-   (default-buffer-init *default-regs-buffer*)
-   (set!
-    (-> obj bg-clear-color 0)
-    (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-    )
-   (set!
-    (-> obj bg-clear-color 1)
-    (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-    )
-   (set!
-    (-> obj bg-clear-color 2)
-    (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-    )
-   (set!
-    (-> obj bg-clear-color 3)
-    (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-    )
-   obj
-   )
   )
 
 ;; definition for symbol *pre-draw-hook*, type (function object none)

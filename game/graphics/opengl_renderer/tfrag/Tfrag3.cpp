@@ -455,7 +455,7 @@ void Tfrag3::debug_render_all_trees_nolores(const RenderSettings& settings,
         m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
         m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
       settings_copy.tree_idx = i;
-      render_tree_cull_debug(settings_copy, render_state, prof);
+      // render_tree_cull_debug(settings_copy, render_state, prof);
     }
   }
 }

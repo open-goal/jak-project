@@ -38,13 +38,9 @@
 ;; definition for method 3 of type plat-button
 (defmethod inspect plat-button ((obj plat-button))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
-  (format
-   #t
-   "~T~Tgo-back-if-lost-player?: ~A~%"
-   (-> obj go-back-if-lost-player?)
-   )
+    (t9-0 obj)
+    )
+  (format #t "~T~Tgo-back-if-lost-player?: ~A~%" (-> obj go-back-if-lost-player?))
   (format #t "~T~Tgrab-player?: ~A~%" (-> obj grab-player?))
   (format #t "~T~Tshould-grab-player?: ~A~%" (-> obj should-grab-player?))
   (format #t "~T~Tpath-pos: ~f~%" (-> obj path-pos))
@@ -72,10 +68,7 @@
 
 ;; definition for method 26 of type plat-button
 (defmethod can-activate? plat-button ((obj plat-button))
-  (or
-   (= (-> obj path-pos) 0.0)
-   (and (-> obj bidirectional?) (= (-> obj path-pos) 1.0))
-   )
+  (or (= (-> obj path-pos) 0.0) (and (-> obj bidirectional?) (= (-> obj path-pos) 1.0)))
   )
 
 ;; failed to figure out what this is:
@@ -83,132 +76,96 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('touch)
-      (when (can-activate? self)
-       (if
-        (and
-         ((method-of-type touching-shapes-entry prims-touching?)
-          (the-as touching-shapes-entry (-> arg3 param 0))
-          (-> self root-override)
-          (the-as uint 1)
-          )
-         (or
-          (not (-> self should-grab-player?))
-          (let ((v0-3 (process-grab? *target*)))
-           (set! (-> self grab-player?) v0-3)
-           v0-3
-           )
-          )
+    (case arg2
+      (('touch)
+       (when (can-activate? self)
+         (if (and
+                 ((method-of-type touching-shapes-entry prims-touching?)
+                  (the-as touching-shapes-entry (-> arg3 param 0))
+                  (-> self root-override)
+                  (the-as uint 1)
+                  )
+                 (or (not (-> self should-grab-player?)) (let ((v0-3 (process-grab? *target*)))
+                                                           (set! (-> self grab-player?) v0-3)
+                                                           v0-3
+                                                           )
+                     )
+                 )
+             (go-virtual plat-button-pressed)
+             )
          )
-        (go-virtual plat-button-pressed)
-        )
        )
       )
     )
-   )
   :code
   (behavior ()
-   (let ((gp-0 (can-activate? self)))
-    (cond
-     (gp-0
-      (let ((a0-1 (-> self skel root-channel 0)))
-       (set! (-> a0-1 param 0) 0.0)
-       (set! (-> a0-1 param 1) 1.0)
-       (joint-control-channel-group!
-        a0-1
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     (else
-      (let ((a0-2 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-2 param 0)
-        (the float (+ (-> a0-2 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-2 param 1) 1.0)
-       (joint-control-channel-group!
-        a0-2
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     )
-    (while #t
-     (if (should-teleport? self)
-      (go-virtual plat-button-teleport-to-other-end)
-      )
-     (let ((s5-0 (can-activate? self)))
-      (when (!= s5-0 gp-0)
-       (set! gp-0 s5-0)
-       (cond
-        (s5-0
-         (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) 0.0)
-          (set! (-> a0-5 param 1) 1.0)
-          (joint-control-channel-group!
-           a0-5
-           (the-as art-joint-anim #f)
-           num-func-seek!
-           )
+    (let ((gp-0 (can-activate? self)))
+      (cond
+        (gp-0
+          (let ((a0-1 (-> self skel root-channel 0)))
+            (set! (-> a0-1 param 0) 0.0)
+            (set! (-> a0-1 param 1) 1.0)
+            (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+            )
           )
-         )
         (else
-         (let ((a0-6 (-> self skel root-channel 0)))
-          (set!
-           (-> a0-6 param 0)
-           (the float (+ (-> a0-6 frame-group data 0 length) -1))
-           )
-          (set! (-> a0-6 param 1) 1.0)
-          (joint-control-channel-group!
-           a0-6
-           (the-as art-joint-anim #f)
-           num-func-seek!
-           )
+          (let ((a0-2 (-> self skel root-channel 0)))
+            (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+            (set! (-> a0-2 param 1) 1.0)
+            (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+            )
           )
-         )
         )
-       )
-      (when (not (ja-done? 0))
-       (rider-trans)
-       (cond
-        (s5-0
-         (let ((a0-8 (-> self skel root-channel 0)))
-          (set! (-> a0-8 param 0) 0.0)
-          (set! (-> a0-8 param 1) 1.0)
-          (joint-control-channel-group-eval!
-           a0-8
-           (the-as art-joint-anim #f)
-           num-func-seek!
-           )
+      (while #t
+        (if (should-teleport? self)
+            (go-virtual plat-button-teleport-to-other-end)
+            )
+        (let ((s5-0 (can-activate? self)))
+          (when (!= s5-0 gp-0)
+            (set! gp-0 s5-0)
+            (cond
+              (s5-0
+                (let ((a0-5 (-> self skel root-channel 0)))
+                  (set! (-> a0-5 param 0) 0.0)
+                  (set! (-> a0-5 param 1) 1.0)
+                  (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-seek!)
+                  )
+                )
+              (else
+                (let ((a0-6 (-> self skel root-channel 0)))
+                  (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
+                  (set! (-> a0-6 param 1) 1.0)
+                  (joint-control-channel-group! a0-6 (the-as art-joint-anim #f) num-func-seek!)
+                  )
+                )
+              )
+            )
+          (when (not (ja-done? 0))
+            (rider-trans)
+            (cond
+              (s5-0
+                (let ((a0-8 (-> self skel root-channel 0)))
+                  (set! (-> a0-8 param 0) 0.0)
+                  (set! (-> a0-8 param 1) 1.0)
+                  (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
+                  )
+                )
+              (else
+                (let ((a0-9 (-> self skel root-channel 0)))
+                  (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
+                  (set! (-> a0-9 param 1) 1.0)
+                  (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+                  )
+                )
+              )
+            (rider-post)
+            )
           )
-         )
-        (else
-         (let ((a0-9 (-> self skel root-channel 0)))
-          (set!
-           (-> a0-9 param 0)
-           (the float (+ (-> a0-9 frame-group data 0 length) -1))
-           )
-          (set! (-> a0-9 param 1) 1.0)
-          (joint-control-channel-group-eval!
-           a0-9
-           (the-as art-joint-anim #f)
-           num-func-seek!
-           )
-          )
-         )
+        (suspend)
         )
-       (rider-post)
-       )
       )
-     (suspend)
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -216,21 +173,21 @@
   :virtual #t
   :code
   (behavior ()
-   (let ((f0-0 1.0))
-    (if (>= (-> self path-pos) 0.5)
-     (set! f0-0 0.0)
-     )
-    (set! (-> self path-pos) f0-0)
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-     (eval-path-curve! (-> self path) gp-0 f0-0 'interp)
-     (vector+! gp-0 gp-0 (-> self trans-off))
-     (TODO-RENAME-30 (-> self root-override) gp-0)
-     )
+    (let ((f0-0 1.0))
+      (if (>= (-> self path-pos) 0.5)
+          (set! f0-0 0.0)
+          )
+      (set! (-> self path-pos) f0-0)
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (eval-path-curve! (-> self path) gp-0 f0-0 'interp)
+        (vector+! gp-0 gp-0 (-> self trans-off))
+        (TODO-RENAME-30 (-> self root-override) gp-0)
+        )
+      )
+    (ja-post)
+    (go-virtual plat-button-idle)
+    (none)
     )
-   (ja-post)
-   (go-virtual plat-button-idle)
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -240,41 +197,27 @@
   (the-as (function none :behavior plat-button) rider-trans)
   :code
   (behavior ()
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-0 param 0)
-     (the float (+ (-> a0-0 frame-group data 0 length) -1))
-     )
-    (set! (-> a0-0 param 1) 1.0)
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-1 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-1 param 0)
-      (the float (+ (-> a0-1 frame-group data 0 length) -1))
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
+      (set! (-> a0-0 param 1) 1.0)
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
       )
-     (set! (-> a0-1 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-1 (-> self skel root-channel 0)))
+        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
+        (set! (-> a0-1 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
+    (set! (-> self go-back-if-lost-player?) #t)
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (if (= (-> self path-pos) 0.0)
+        (go-virtual plat-button-move-downward)
+        (go-virtual plat-button-move-upward)
+        )
+    (none)
     )
-   (set! (-> self go-back-if-lost-player?) #t)
-   (process-entity-status! self (entity-perm-status complete) #t)
-   (if (= (-> self path-pos) 0.0)
-    (go-virtual plat-button-move-downward)
-    (go-virtual plat-button-move-upward)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior plat-button) rider-post)
   )
@@ -283,10 +226,10 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior plat-button-camera-on plat-button ()
   (let ((v1-1 (res-lump-struct (-> self entity) 'camera-name structure)))
-   (if v1-1
-    (send-event *camera* 'change-to-entity-by-name v1-1)
+    (if v1-1
+        (send-event *camera* 'change-to-entity-by-name v1-1)
+        )
     )
-   )
   0
   (none)
   )
@@ -304,108 +247,77 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
-                   (set! (-> self state-time) (-> *display* base-frame-counter))
-                   #f
-                   )
+    (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
+                     (set! (-> self state-time) (-> *display* base-frame-counter))
+                     #f
+                     )
+            )
     )
-   )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (process-entity-status! self (entity-perm-status bit-3) #t)
-   (plat-button-camera-on)
-   (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
-   (none)
-   )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (process-entity-status! self (entity-perm-status bit-3) #t)
+    (plat-button-camera-on)
+    (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
+    (none)
+    )
   :exit
   (behavior ()
-   (plat-button-camera-off)
-   (clear-pending-settings-from-process
-    *setting-control*
-    self
-    'allow-look-around
+    (plat-button-camera-off)
+    (clear-pending-settings-from-process *setting-control* self 'allow-look-around)
+    (none)
     )
-   (none)
-   )
   :trans
   (behavior ()
-   (if (= (-> self path-pos) 1.0)
-    (go-virtual plat-button-at-end)
-    )
-   (rider-trans)
-   (when (-> self go-back-if-lost-player?)
-    (when
-     (or
-      (not *target*)
-      (and
-       (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
-       (not
-        (and
-         (logtest? (-> *target* control unknown-surface00 flags) 2048)
-         (zero? (logand (-> *target* control status) 1))
-         )
+    (if (= (-> self path-pos) 1.0)
+        (go-virtual plat-button-at-end)
         )
-       )
-      )
-     (set! (-> self go-back-if-lost-player?) #f)
-     (go-virtual plat-button-move-upward)
-     )
-    )
-   (let
-    ((f0-4
-      (seek-with-smooth
-       (-> self path-pos)
-       1.0
-       (* 0.1 (-> *display* seconds-per-frame))
-       0.25
-       0.001
-       )
-      )
-     )
-    (set! (-> self path-pos) f0-4)
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-     (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
-     (vector+! gp-0 gp-0 (-> self trans-off))
-     (TODO-RENAME-30 (-> self root-override) gp-0)
-     )
-    )
-   (sound-play-by-name
-    (static-sound-name "elev-loop")
-    (-> self sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-    (set! (-> gp-1 command) (sound-command set-param))
-    (set! (-> gp-1 id) (-> self sound-id))
-    (let ((a1-6 (-> self root-override trans)))
-     (let ((s5-0 self))
-      (when (= a1-6 #t)
-       (if
-        (and
-         s5-0
-         (type-type? (-> s5-0 type) process-drawable)
-         (nonzero? (-> s5-0 root-override))
-         )
-        (set! a1-6 (-> s5-0 root-override trans))
-        (set! a1-6 (the-as vector #f))
+    (rider-trans)
+    (when (-> self go-back-if-lost-player?)
+      (when (or (not *target*) (and
+                                 (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
+                                 (not (and
+                                        (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                                        (zero? (logand (-> *target* control status) 1))
+                                        )
+                                      )
+                                 )
+                )
+        (set! (-> self go-back-if-lost-player?) #f)
+        (go-virtual plat-button-move-upward)
         )
-       )
       )
-     (sound-trans-convert (-> gp-1 parms trans) a1-6)
-     )
-    (set! (-> gp-1 parms mask) (the-as uint 32))
-    (-> gp-1 id)
+    (let ((f0-4 (seek-with-smooth (-> self path-pos) 1.0 (* 0.1 (-> *display* seconds-per-frame)) 0.25 0.001)))
+      (set! (-> self path-pos) f0-4)
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
+        (vector+! gp-0 gp-0 (-> self trans-off))
+        (TODO-RENAME-30 (-> self root-override) gp-0)
+        )
+      )
+    (sound-play-by-name (static-sound-name "elev-loop") (-> self sound-id) 1024 0 0 1 #t)
+    (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+      (set! (-> gp-1 command) (sound-command set-param))
+      (set! (-> gp-1 id) (-> self sound-id))
+      (let ((a1-6 (-> self root-override trans)))
+        (let ((s5-0 self))
+          (when (= a1-6 #t)
+            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root-override)))
+                (set! a1-6 (-> s5-0 root-override trans))
+                (set! a1-6 (the-as vector #f))
+                )
+            )
+          )
+        (sound-trans-convert (-> gp-1 parms trans) a1-6)
+        )
+      (set! (-> gp-1 parms mask) (the-as uint 32))
+      (-> gp-1 id)
+      )
+    (if (and (-> self grab-player?) (< 0.2 (-> self path-pos)))
+        (set! (-> self grab-player?) (not (process-release? *target*)))
+        )
+    (none)
     )
-   (if (and (-> self grab-player?) (< 0.2 (-> self path-pos)))
-    (set! (-> self grab-player?) (not (process-release? *target*)))
-    )
-   (none)
-   )
   :code
   (the-as (function none :behavior plat-button) anim-loop)
   :post
@@ -417,108 +329,77 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
-                   (set! (-> self state-time) (-> *display* base-frame-counter))
-                   #f
-                   )
+    (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
+                     (set! (-> self state-time) (-> *display* base-frame-counter))
+                     #f
+                     )
+            )
     )
-   )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (process-entity-status! self (entity-perm-status bit-3) #t)
-   (plat-button-camera-on)
-   (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
-   (none)
-   )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (process-entity-status! self (entity-perm-status bit-3) #t)
+    (plat-button-camera-on)
+    (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
+    (none)
+    )
   :exit
   (behavior ()
-   (plat-button-camera-off)
-   (clear-pending-settings-from-process
-    *setting-control*
-    self
-    'allow-look-around
+    (plat-button-camera-off)
+    (clear-pending-settings-from-process *setting-control* self 'allow-look-around)
+    (none)
     )
-   (none)
-   )
   :trans
   (behavior ()
-   (if (= (-> self path-pos) 0.0)
-    (go-virtual plat-button-at-end)
-    )
-   (rider-trans)
-   (when (-> self go-back-if-lost-player?)
-    (when
-     (or
-      (not *target*)
-      (and
-       (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
-       (not
-        (and
-         (logtest? (-> *target* control unknown-surface00 flags) 2048)
-         (zero? (logand (-> *target* control status) 1))
-         )
+    (if (= (-> self path-pos) 0.0)
+        (go-virtual plat-button-at-end)
         )
-       )
-      )
-     (set! (-> self go-back-if-lost-player?) #f)
-     (go-virtual plat-button-move-downward)
-     )
-    )
-   (let
-    ((f0-4
-      (seek-with-smooth
-       (-> self path-pos)
-       0.0
-       (* 0.1 (-> *display* seconds-per-frame))
-       0.25
-       0.001
-       )
-      )
-     )
-    (set! (-> self path-pos) f0-4)
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-     (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
-     (vector+! gp-0 gp-0 (-> self trans-off))
-     (TODO-RENAME-30 (-> self root-override) gp-0)
-     )
-    )
-   (sound-play-by-name
-    (static-sound-name "elev-loop")
-    (-> self sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-    (set! (-> gp-1 command) (sound-command set-param))
-    (set! (-> gp-1 id) (-> self sound-id))
-    (let ((a1-6 (-> self root-override trans)))
-     (let ((s5-0 self))
-      (when (= a1-6 #t)
-       (if
-        (and
-         s5-0
-         (type-type? (-> s5-0 type) process-drawable)
-         (nonzero? (-> s5-0 root-override))
-         )
-        (set! a1-6 (-> s5-0 root-override trans))
-        (set! a1-6 (the-as vector #f))
+    (rider-trans)
+    (when (-> self go-back-if-lost-player?)
+      (when (or (not *target*) (and
+                                 (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
+                                 (not (and
+                                        (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                                        (zero? (logand (-> *target* control status) 1))
+                                        )
+                                      )
+                                 )
+                )
+        (set! (-> self go-back-if-lost-player?) #f)
+        (go-virtual plat-button-move-downward)
         )
-       )
       )
-     (sound-trans-convert (-> gp-1 parms trans) a1-6)
-     )
-    (set! (-> gp-1 parms mask) (the-as uint 32))
-    (-> gp-1 id)
+    (let ((f0-4 (seek-with-smooth (-> self path-pos) 0.0 (* 0.1 (-> *display* seconds-per-frame)) 0.25 0.001)))
+      (set! (-> self path-pos) f0-4)
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
+        (vector+! gp-0 gp-0 (-> self trans-off))
+        (TODO-RENAME-30 (-> self root-override) gp-0)
+        )
+      )
+    (sound-play-by-name (static-sound-name "elev-loop") (-> self sound-id) 1024 0 0 1 #t)
+    (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+      (set! (-> gp-1 command) (sound-command set-param))
+      (set! (-> gp-1 id) (-> self sound-id))
+      (let ((a1-6 (-> self root-override trans)))
+        (let ((s5-0 self))
+          (when (= a1-6 #t)
+            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root-override)))
+                (set! a1-6 (-> s5-0 root-override trans))
+                (set! a1-6 (the-as vector #f))
+                )
+            )
+          )
+        (sound-trans-convert (-> gp-1 parms trans) a1-6)
+        )
+      (set! (-> gp-1 parms mask) (the-as uint 32))
+      (-> gp-1 id)
+      )
+    (if (and (-> self grab-player?) (< (-> self path-pos) 0.8))
+        (set! (-> self grab-player?) (not (process-release? *target*)))
+        )
+    (none)
     )
-   (if (and (-> self grab-player?) (< (-> self path-pos) 0.8))
-    (set! (-> self grab-player?) (not (process-release? *target*)))
-    )
-   (none)
-   )
   :code
   (the-as (function none :behavior plat-button) anim-loop)
   :post
@@ -530,107 +411,64 @@
   :virtual #t
   :code
   (behavior ()
-   (if (-> self allow-auto-kill)
-    (process-entity-status! self (entity-perm-status bit-3) #f)
-    )
-   (sound-stop (-> self sound-id))
-   (sound-play-by-name
-    (static-sound-name "elev-land")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (while #t
-    (if
-     (or
-      (not *target*)
-      (<
-       268435460.0
-       (vector-vector-xz-distance-squared
-        (-> self root-override trans)
-        (target-pos 0)
+    (if (-> self allow-auto-kill)
+        (process-entity-status! self (entity-perm-status bit-3) #f)
         )
-       )
+    (sound-stop (-> self sound-id))
+    (sound-play-by-name (static-sound-name "elev-land") (new-sound-id) 1024 0 0 1 #t)
+    (while #t
+      (if (or
+              (not *target*)
+              (< 268435460.0 (vector-vector-xz-distance-squared (-> self root-override trans) (target-pos 0)))
+              )
+          (go-virtual plat-button-idle)
+          )
+      (suspend)
       )
-     (go-virtual plat-button-idle)
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 28 of type plat-button
 (defmethod TODO-RENAME-28 plat-button ((obj plat-button))
-  (let
-   ((s5-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s5-0 reaction) default-collision-reaction)
-   (set!
-    (-> s5-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s5-0 1)
-   (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 3))
-    (set! (-> s4-0 transform-index) 0)
-    (set-vector! (-> s4-0 local-sphere) 0.0 -4096.0 0.0 27033.6)
-    (set-root-prim! s5-0 s4-0)
-    (let
-     ((s3-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s5-0
-        (the-as uint 0)
-        (the-as uint 1)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 3))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -4096.0 0.0 27033.6)
+      (set-root-prim! s5-0 s4-0)
+      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s3-0 collide-with) (the-as uint 16))
+        (set! (-> s3-0 prim-core action) (the-as uint 3))
+        (set! (-> s3-0 prim-core offense) 4)
+        (set! (-> s3-0 transform-index) 4)
+        (set-vector! (-> s3-0 local-sphere) 0.0 -3072.0 0.0 7372.8)
+        (append-prim s4-0 s3-0)
         )
-       )
-      )
-     (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s3-0 collide-with) (the-as uint 16))
-     (set! (-> s3-0 prim-core action) (the-as uint 3))
-     (set! (-> s3-0 prim-core offense) 4)
-     (set! (-> s3-0 transform-index) 4)
-     (set-vector! (-> s3-0 local-sphere) 0.0 -3072.0 0.0 7372.8)
-     (append-prim s4-0 s3-0)
-     )
-    (let
-     ((s3-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s5-0
-        (the-as uint 1)
-        (the-as uint 2)
+      (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 2))))
+        (set! (-> s3-1 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s3-1 collide-with) (the-as uint 16))
+        (set! (-> s3-1 prim-core action) (the-as uint 3))
+        (set! (-> s3-1 prim-core offense) 4)
+        (set! (-> s3-1 transform-index) 3)
+        (set-vector! (-> s3-1 local-sphere) 0.0 -4096.0 0.0 27033.6)
+        (append-prim s4-0 s3-1)
         )
-       )
       )
-     (set! (-> s3-1 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s3-1 collide-with) (the-as uint 16))
-     (set! (-> s3-1 prim-core action) (the-as uint 3))
-     (set! (-> s3-1 prim-core offense) 4)
-     (set! (-> s3-1 transform-index) 3)
-     (set-vector! (-> s3-1 local-sphere) 0.0 -4096.0 0.0 27033.6)
-     (append-prim s4-0 s3-1)
-     )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    s5-0
     )
-   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (backup-collide-with-as s5-0)
-   (set! (-> obj root-override) s5-0)
-   s5-0
-   )
   )
 
 ;; definition for method 29 of type plat-button
@@ -644,41 +482,29 @@
 (defmethod TODO-RENAME-27 plat-button ((obj plat-button))
   (ja-channel-set! 1)
   (cond
-   ((can-activate? obj)
-    (let ((s5-0 (-> obj skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      s5-0
-      (the-as art-joint-anim (-> obj draw art-group data 2))
-      num-func-identity
-      )
-     (set! (-> s5-0 frame-num) 0.0)
-     )
-    )
-   (else
-    (let ((s5-1 (-> obj skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      s5-1
-      (the-as art-joint-anim (-> obj draw art-group data 2))
-      num-func-identity
-      )
-     (set!
-      (-> s5-1 frame-num)
-      (the
-       float
-       (+
-        (->
+    ((can-activate? obj)
+     (let ((s5-0 (-> obj skel root-channel 0)))
+       (joint-control-channel-group-eval!
+         s5-0
          (the-as art-joint-anim (-> obj draw art-group data 2))
-         data
-         0
-         length
+         num-func-identity
          )
-        -1
-        )
+       (set! (-> s5-0 frame-num) 0.0)
        )
-      )
      )
+    (else
+      (let ((s5-1 (-> obj skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s5-1
+          (the-as art-joint-anim (-> obj draw art-group data 2))
+          num-func-identity
+          )
+        (set! (-> s5-1 frame-num)
+              (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+              )
+        )
+      )
     )
-   )
   (ja-post)
   (dummy-47 (-> obj root-override))
   (none)
@@ -706,28 +532,20 @@
   (set! (-> obj go-back-if-lost-player?) #f)
   (set! (-> obj grab-player?) #f)
   (set! (-> obj should-grab-player?) #f)
-  (set!
-   (-> obj trans-off quad)
-   (->
-    (the-as
-     vector
-     ((method-of-type res-lump get-property-struct)
-      arg0
-      'trans-offset
-      'interp
-      -1000000000.0
-      *null-vector*
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    quad
-    )
-   )
-  (set!
-   (-> obj bidirectional?)
-   (nonzero? (res-lump-value arg0 'bidirectional uint128))
-   )
+  (set! (-> obj trans-off quad) (-> (the-as vector ((method-of-type res-lump get-property-struct)
+                                                      arg0
+                                                      'trans-offset
+                                                      'interp
+                                                      -1000000000.0
+                                                      *null-vector*
+                                                      (the-as (pointer res-tag) #f)
+                                                      *res-static-buf*
+                                                      )
+                                              )
+                                    quad
+                                    )
+        )
+  (set! (-> obj bidirectional?) (nonzero? (res-lump-value arg0 'bidirectional uint128)))
   (TODO-RENAME-28 obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -735,15 +553,12 @@
   (logior! (-> obj skel status) 1)
   (set! (-> obj spawn-pos quad) (-> obj root-override trans quad))
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
-  (logior!
-   (-> obj path flags)
-   (path-control-flag display draw-line draw-point draw-text)
-   )
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> obj path-pos) 0.0)
   (let ((s5-1 (-> obj root-override trans)))
-   (eval-path-curve! (-> obj path) s5-1 (-> obj path-pos) 'interp)
-   (vector+! s5-1 s5-1 (-> obj trans-off))
-   )
+    (eval-path-curve! (-> obj path) s5-1 (-> obj path-pos) 'interp)
+    (vector+! s5-1 s5-1 (-> obj trans-off))
+    )
   (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj allow-auto-kill) #t)
   (can-target-move? obj)

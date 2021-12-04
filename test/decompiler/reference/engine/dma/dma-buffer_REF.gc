@@ -94,15 +94,11 @@
 
 ;; definition for method 0 of type dma-buffer
 (defmethod new dma-buffer ((allocation symbol) (type-to-make type) (arg0 int))
-  (let
-   ((v0-0
-     (object-new allocation type-to-make (+ arg0 -4 (-> type-to-make size)))
-     )
+  (let ((v0-0 (object-new allocation type-to-make (+ arg0 -4 (-> type-to-make size)))))
+    (set! (-> v0-0 base) (-> v0-0 data))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
     )
-   (set! (-> v0-0 base) (-> v0-0 data))
-   (set! (-> v0-0 allocated-length) arg0)
-   v0-0
-   )
   )
 
 ;; definition for function dma-buffer-inplace-new
@@ -133,73 +129,46 @@
   )
 
 ;; definition for function dma-buffer-add-vu-function
-(defun
-  dma-buffer-add-vu-function
-  ((dma-buf dma-buffer) (vu-func vu-function) (arg2 int))
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (arg2 int))
   (let ((func-ptr (&-> vu-func data 4))
         (qlen (-> vu-func qlength))
         (origin (-> vu-func origin))
         )
-   (while (> qlen 0)
-    (let ((qwc-now (min 127 qlen)))
-     (let* ((dma-buf-2 dma-buf)
-            (buf-ptr (the-as dma-packet (-> dma-buf-2 base)))
-            )
-      (set!
-       (-> buf-ptr dma)
-       (new 'static 'dma-tag
-        :id (dma-tag-id ref)
-        :addr (the-as int func-ptr)
-        :qwc qwc-now
+    (while (> qlen 0)
+      (let ((qwc-now (min 127 qlen)))
+        (let* ((dma-buf-2 dma-buf)
+               (buf-ptr (the-as dma-packet (-> dma-buf-2 base)))
+               )
+          (set! (-> buf-ptr dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int func-ptr) :qwc qwc-now))
+          (set! (-> buf-ptr vif0) (new 'static 'vif-tag :cmd (if (zero? arg2) 16 19)))
+          (set! (-> buf-ptr vif1) (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* qwc-now 2) :imm origin))
+          (set! (-> dma-buf-2 base) (&+ (the-as pointer buf-ptr) 16))
+          )
+        (&+! func-ptr (* qwc-now 16))
+        (set! qlen (- qlen qwc-now))
+        (+! origin (* qwc-now 2))
         )
-       )
-      (set!
-       (-> buf-ptr vif0)
-       (new 'static 'vif-tag :cmd (if (zero? arg2) 16 19))
-       )
-      (set!
-       (-> buf-ptr vif1)
-       (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* qwc-now 2) :imm origin)
-       )
-      (set! (-> dma-buf-2 base) (&+ (the-as pointer buf-ptr) 16))
       )
-     (&+! func-ptr (* qwc-now 16))
-     (set! qlen (- qlen qwc-now))
-     (+! origin (* qwc-now 2))
-     )
     )
-   )
   #f
   )
 
 ;; definition for function dma-buffer-send
 (defun dma-buffer-send ((arg0 dma-bank) (arg1 dma-buffer))
-  (when
-   (<
-    (-> arg1 allocated-length)
-    (&- (-> arg1 base) (the-as uint (-> arg1 data)))
+  (when (< (-> arg1 allocated-length) (&- (-> arg1 base) (the-as uint (-> arg1 data))))
+    (crash!)
+    0
     )
-   (crash!)
-   0
-   )
-  (dma-send
-   arg0
-   (the-as uint (-> arg1 data))
-   (the-as uint (dma-buffer-length arg1))
-   )
+  (dma-send arg0 (the-as uint (-> arg1 data)) (the-as uint (dma-buffer-length arg1)))
   (none)
   )
 
 ;; definition for function dma-buffer-send-chain
 (defun dma-buffer-send-chain ((arg0 dma-bank-source) (arg1 dma-buffer))
-  (when
-   (<
-    (-> arg1 allocated-length)
-    (&- (-> arg1 base) (the-as uint (-> arg1 data)))
+  (when (< (-> arg1 allocated-length) (&- (-> arg1 base) (the-as uint (-> arg1 data))))
+    (crash!)
+    0
     )
-   (crash!)
-   0
-   )
   (dma-send-chain arg0 (the-as uint (-> arg1 data)))
   (none)
   )
