@@ -11,9 +11,10 @@
 #include "common/goos/Object.h"
 #include "common/goos/Reader.h"
 #include "common/goos/Printer.h"
+#include "common/goos/PrettyPrinter2.h"
 
 namespace pretty_print {
 // main pretty print function
-std::string to_string(const goos::Object& obj, int line_length = 80);
+std::string to_string_v1(const goos::Object& obj, int line_length = 80);
 
 }  // namespace pretty_print

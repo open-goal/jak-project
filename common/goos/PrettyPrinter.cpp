@@ -13,10 +13,9 @@
 #include "third-party/fmt/core.h"
 #include "common/log/log.h"
 
+#include "common/goos/PrettyPrinter2.h"
+
 namespace pretty_print {
-
-
-
 
 /*!
  * A single token which cannot be split between lines.
@@ -743,7 +742,7 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
   }
 }
 
-std::string to_string(const goos::Object& obj, int line_length) {
+std::string to_string_v1(const goos::Object& obj, int line_length) {
   NodePool pool;
   std::vector<FormToken> tokens;
   add_to_token_list(obj, &tokens);

@@ -15,7 +15,7 @@ Object read(const std::string& str) {
 }
 
 std::string pprint(const Object& o, int len = 80) {
-  return pretty_print::to_string(o, len);
+  return pretty_print::to_string_v1(o, len);
 }
 
 // read then pretty print a string.
@@ -43,7 +43,7 @@ TEST(PrettyPrinter, ReadAgain) {
                            .as_pair()
                            ->cdr.as_pair()
                            ->car;
-  auto printed_gcommon2 = pretty_print::to_string(gcommon_code);
+  auto printed_gcommon2 = pretty_print::to_string_v1(gcommon_code);
   EXPECT_TRUE(gcommon_code == gcommon_code2);
 }
 
@@ -59,7 +59,7 @@ TEST(PrettyPrinter, ReadAgainVeryShortLines) {
                            .as_pair()
                            ->cdr.as_pair()
                            ->car;
-  auto printed_gcommon2 = pretty_print::to_string(gcommon_code);
+  auto printed_gcommon2 = pretty_print::to_string_v1(gcommon_code);
   EXPECT_TRUE(gcommon_code == gcommon_code2);
 }
 
@@ -76,7 +76,7 @@ TEST(PrettyPrinter, DefunNoArgs) {
                  .as_pair()
                  ->cdr.as_pair()
                  ->car;
-  auto printed = pretty_print::to_string(obj, 80);
+  auto printed = pretty_print::to_string_v1(obj, 80);
 
   EXPECT_EQ(printed,
             "(defun looping-code ()\n"
@@ -92,14 +92,12 @@ TEST(PrettyPrinter2, Debugging) {
   auto gcommon_code = pretty_print::get_pretty_printer_reader().read_from_file(
       {"goal_src", "kernel", "gcommon.gc"});
   // pretty print it
-  auto printed_gcommon = pretty_print::to_string_v2(gcommon_code);
+  auto printed_gcommon = pretty_print::to_string(gcommon_code);
   auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
                            .read_from_string(printed_gcommon)
                            .as_pair()
                            ->cdr.as_pair()
                            ->car;
-  auto printed_gcommon2 = pretty_print::to_string_v2(gcommon_code);
-  fmt::print("Code:\n{}\n", printed_gcommon);
   EXPECT_TRUE(gcommon_code == gcommon_code2);
 }
 
@@ -107,7 +105,7 @@ namespace {
 std::string pretty_print_v2(const std::string& str) {
   auto obj =
       pretty_print::get_pretty_printer_reader().read_from_string(str).as_pair()->cdr.as_pair()->car;
-  return pretty_print::to_string_v2(obj);
+  return pretty_print::to_string(obj);
 }
 }  // namespace
 
@@ -115,10 +113,9 @@ TEST(PrettyPrinter2, Defun) {
   // checks that edefun is split up properly
   std::string code = "(defun identity ((obj object)) obj)";
   EXPECT_EQ(pretty_print_v2(code),
-            R"(
-(defun identity ((obj object))
+            R"((defun identity ((obj object))
   obj
-  ))" + 1);
+  ))");
 }
 
 TEST(PrettyPrinter2, MultiLine) {
@@ -128,15 +125,14 @@ TEST(PrettyPrinter2, MultiLine) {
       "\"~Tx: ~f~%\" (-> obj x)) (format #t \"~Ty: ~f~%\" (-> obj y)) (format #t \"~Tz: ~f~%\" (-> "
       "obj z)) (format #t \"~Tw: ~f~%\" (-> obj w)) obj )";
   EXPECT_EQ(pretty_print_v2(code),
-            R"(
-(defmethod inspect vec4s ((obj vec4s))
+            R"((defmethod inspect vec4s ((obj vec4s))
   (format #t "[~8x] ~A~%" obj 'vec4s)
   (format #t "~Tx: ~f~%" (-> obj x))
   (format #t "~Ty: ~f~%" (-> obj y))
   (format #t "~Tz: ~f~%" (-> obj z))
   (format #t "~Tw: ~f~%" (-> obj w))
   obj
-  ))" + 1);
+  ))");
 }
 
 TEST(PrettyPrinter2, LetUntilIf) {
@@ -149,8 +145,7 @@ TEST(PrettyPrinter2, LetUntilIf) {
   // this checks that let defs are properly aligned, until is properly aligned (body only indented
   // by two), if indented properly (aligned with condition)
   EXPECT_EQ(pretty_print_v2(code),
-            R"(
-(defun basic-type? ((obj basic) (parent-type type))
+            R"((defun basic-type? ((obj basic) (parent-type type))
   (let ((obj-type (-> obj type))
         (end-type object)
         )
@@ -162,7 +157,7 @@ TEST(PrettyPrinter2, LetUntilIf) {
       )
     )
   #f
-  ))" + 1);
+  ))");
 }
 
 TEST(PrettyPrinter2, Overhang) {
@@ -174,8 +169,7 @@ TEST(PrettyPrinter2, Overhang) {
   // this case is tricky: you have several lists starting at the (while with their last elements
   // split. this makes sure that the close parens of these list are right.
   EXPECT_EQ(pretty_print_v2(code),
-            R"(
-(defun nassoc ((item-name string) (alist object))
+            R"((defun nassoc ((item-name string) (alist object))
   (while (not (or (null? alist) (let ((key (car (car alist))))
                                   (if (pair? key)
                                       (nmember item-name key)
@@ -189,7 +183,7 @@ TEST(PrettyPrinter2, Overhang) {
   (if (not (null? alist))
       (car alist)
       )
-  ))" + 1);
+  ))");
 }
 
 TEST(PrettyPrint2, Cond) {
@@ -200,11 +194,12 @@ TEST(PrettyPrint2, Cond) {
       "result 0)) (else (let ((iter (cdr obj))) (set! result 1) (while (and (not (null? iter)) "
       "(pair? iter)) (+! result 1) (set! iter (cdr iter)) ) ) ) ) result )";
   EXPECT_EQ(pretty_print_v2(code),
-            R"(
-(defmethod length pair ((obj pair))
+            R"((defmethod length pair ((obj pair))
   (local-vars (result int))
   (cond
-    ((null? obj) (set! result 0))
+    ((null? obj)
+     (set! result 0)
+     )
     (else
       (let ((iter (cdr obj)))
         (set! result 1)
@@ -216,7 +211,7 @@ TEST(PrettyPrint2, Cond) {
       )
     )
   result
-  ))" + 1);
+  ))");
 }
 
 TEST(PrettyPrint2, ParenWayOutToTheRight) {
@@ -226,10 +221,10 @@ TEST(PrettyPrint2, ParenWayOutToTheRight) {
       "uint size) (-> type-to-make heap-base)))) ) ) ) (when (nonzero? obj) (set! (-> obj length) "
       "size) (set! (-> obj allocated-length) size)) obj ) )";
 
-    // checks that the c0 stuff works right.
-    EXPECT_EQ(pretty_print_v2(code),
-            R"(
-(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (size int))
+  // checks that the c0 stuff works right.
+  EXPECT_EQ(
+      pretty_print_v2(code),
+      R"((defmethod new inline-array-class ((allocation symbol) (type-to-make type) (size int))
   (let ((obj (object-new
                allocation
                type-to-make
@@ -237,7 +232,10 @@ TEST(PrettyPrint2, ParenWayOutToTheRight) {
                )
              )
         )
-    (when (nonzero? obj) (set! (-> obj length) size) (set! (-> obj allocated-length) size))
+    (when (nonzero? obj)
+      (set! (-> obj length) size)
+      (set! (-> obj allocated-length) size)
+      )
     obj
     )
   ))");

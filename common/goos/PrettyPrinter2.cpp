@@ -16,12 +16,15 @@ namespace v2 {
 
 // The main node type.
 // unlike v1, this nests lists.
+// these have pointers to parents, so generally not safe to copy.
 struct Node {
   Node() = default;
+
   Node(const std::string& str) {
     kind = Kind::ATOM;
     atom_str = str;
   }
+
   Node(std::vector<Node>&& list, bool is_list) {
     kind = is_list ? Kind::LIST : Kind::PAIR;
     if (!is_list) {
@@ -119,6 +122,7 @@ Node to_node(const goos::Object& obj) {
           }
         } else {
           children.push_back(to_node(*to_print));
+          assert(false);  // untested
           return Node(std::move(children), false);
         }
       }
@@ -148,9 +152,9 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
           // special case compute first line length
           int first_line_len = 1 + node->quoted;  // open paren + quotes
           int nodes_on_first_line =
-              std::min(u32(node->child_nodes.size()), u32(node->top_line_count));
+              std::min(int(node->child_nodes.size()), int(node->top_line_count));
           if (nodes_on_first_line > 0) {
-            for (u32 node_idx = 0; node_idx < nodes_on_first_line; node_idx++) {
+            for (int node_idx = 0; node_idx < nodes_on_first_line; node_idx++) {
               first_line_len += node->child_nodes.at(node_idx).text_len;
               first_line_len++;  // trailing space
             }
@@ -180,12 +184,19 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
   }
 }
 
+/*!
+ * Note: this has special cases for how to insert breaks.
+ * These rules will be used if the printer decides it should break up the list.
+ * If you want to force a form to always be broken up, see insert_required_breaks
+ */
 void break_list(Node* node) {
-  // Temp: this is a simplified version
   assert(!node->break_list);
   node->break_list = true;
   node->sub_elt_indent = 2;
   node->top_line_count = 1;
+
+  const std::unordered_set<std::string> sameline_splitters = {
+      "if", "<", ">", "<=", ">=", "set!", "=", "!=", "+", "-", "*", "/", "the", "->"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo
@@ -193,23 +204,29 @@ void break_list(Node* node) {
     node->sub_elt_indent = 1;
   } else if (node->child_nodes.at(0).kind == Node::Kind::ATOM) {
     auto& name = node->child_nodes[0].atom_str;
-    if (name == "defun" || name == "defun-debug" || name == "defbehavior") {
+    if (name == "defun" || name == "defun-debug" || name == "defbehavior" || name == "defstate") {
+      // things with three things in the top line: (defun <name> <args>
       node->top_line_count = 3;
     } else if (name == "defmethod") {
+      // things with 4 things in the top line: (defmethod <method> <type> <args>
       node->top_line_count = 4;
-    } else if (name == "let" || name == "let*" || name == "lambda") {
+    } else if (name == "until" || name == "while" || name == "dotimes" || name == "countdown" ||
+               name == "when" || name == "behavior" || name == "lambda") {
       node->top_line_count = 2;
+    } else if (name == "let" || name == "let*" || name == "rlet") {
+      // special case for things like let.
+      node->top_line_count = 2;  // (let <defs>
       if (node->child_nodes.size() > 1 && node->child_nodes[1].child_nodes.size() > 1 &&
           !node->child_nodes[1].break_list) {
+        // and break the defs.
         break_list(&node->child_nodes[1]);
       }
-    } else if (name == "until" || name == "while" || name == "dotimes" || name == "countdown" ||
-               name == "when") {
-      node->top_line_count = 2;
-    } else if (name == "if") {
+    } else if (sameline_splitters.count(name) > 0) {
+      // if has a special indent rule:
       node->top_line_count = 2;
       node->sub_elt_indent += name.size();
     } else if (name == "cond") {
+      // cond should always be broken up
       for (size_t i = 1; i < node->child_nodes.size(); i++) {
         auto& cond_body = node->child_nodes[i];
         if (cond_body.kind == Node::Kind::LIST && !cond_body.break_list) {
@@ -217,6 +234,7 @@ void break_list(Node* node) {
         }
       }
     } else if (name == "case") {
+      // case gets a second thing on top, plus break up everything.
       node->top_line_count = 2;
       for (size_t i = 2; i < node->child_nodes.size(); i++) {
         auto& cond_body = node->child_nodes[i];
@@ -238,8 +256,8 @@ void break_list(Node* node) {
 
 void insert_required_breaks(const std::vector<Node*>& bfs_order) {
   const std::unordered_set<std::string> always_break = {
-      "when",  "defun-debug", "countdown", "case",    "defun", "defmethod", "let", "until",
-      "while", "if",          "dotimes",   "cond", "else",  "defbehavior", "with-pp"};
+      "when",  "defun-debug", "countdown", "case", "defun", "defmethod",   "let",     "until",
+      "while", "if",          "dotimes",   "cond", "else",  "defbehavior", "with-pp", "rlet"};
   for (auto node : bfs_order) {
     if (!node->break_list && node->kind == Node::Kind::LIST &&
         node->child_nodes.at(0).kind == Node::Kind::ATOM) {
@@ -265,7 +283,7 @@ int run_algorithm(const std::vector<Node*>& bfs_order, int line_length) {
       break;
     }
 
-    if (node->kind != Node::Kind::ATOM && node->text_len > line_length &&
+    if (node->kind != Node::Kind::ATOM && (int)node->text_len > line_length &&
         node->break_list == false) {
       break_list(node);
       num_broken++;
@@ -281,7 +299,7 @@ int run_algorithm(const std::vector<Node*>& bfs_order, int line_length) {
 int compute_extra_offset(const std::string& str, int s0, int ei) {
   assert(!str.empty());
   for (size_t i = str.length(); i-- > 0;) {
-    if (i == s0) {
+    if ((int)i == s0) {
       return ei + str.length() - s0;
     } else if (i == '\n') {
       return str.length() - i;
@@ -297,7 +315,7 @@ void append_node_to_string(const Node* node,
   for (int i = 0; i < init_indent_level; i++) {
     str.push_back(' ');
   }
-  for (int i = 0; i < node->quoted; i++) {
+  for (u32 i = 0; i < node->quoted; i++) {
     str.push_back('\'');
   }
   switch (node->kind) {
@@ -375,7 +393,7 @@ std::string node_to_string(const Node* node) {
 
 }  // namespace v2
 
-std::string to_string_v2(const goos::Object& obj, int line_length) {
+std::string to_string(const goos::Object& obj, int line_length) {
   using namespace v2;
 
   // construct the tree
@@ -394,9 +412,6 @@ std::string to_string_v2(const goos::Object& obj, int line_length) {
   for (auto node : bfs_order) {
     max_depth = std::max((int)node->my_depth, max_depth);
   }
-
-  fmt::print("length (before splitting): {}, num nodes: {}, depth: {}\n", root.text_len,
-             bfs_order.size(), max_depth);
 
   int num_broken = 1;
   while (num_broken) {
