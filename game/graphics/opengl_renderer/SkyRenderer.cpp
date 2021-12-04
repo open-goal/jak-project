@@ -243,7 +243,10 @@ SkyBlendHandler::SkyBlendHandler(const std::string& name,
                                  std::shared_ptr<SkyBlender> shared_blender)
     : BucketRenderer(name, my_id),
       m_shared_blender(shared_blender),
-      m_tfrag_renderer(fmt::format("tfrag-{}", name), my_id, true) {}
+      m_tfrag_renderer(fmt::format("tfrag-{}", name),
+                       my_id,
+                       {tfrag3::TFragmentTreeKind::TRANS, tfrag3::TFragmentTreeKind::LOWRES_TRANS},
+                       true) {}
 
 void SkyBlendHandler::handle_sky_copies(DmaFollower& dma,
                                         SharedRenderState* render_state,
@@ -275,6 +278,12 @@ void SkyBlendHandler::render(DmaFollower& dma,
       dma.read_and_advance();
     }
     assert(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+
+  if (dma.current_tag().qwc != 8) {
+    auto tfrag_prof = prof.make_scoped_child("tfrag-trans");
+    m_tfrag_renderer.render(dma, render_state, tfrag_prof);
     return;
   }
 

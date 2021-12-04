@@ -150,7 +150,7 @@ bool LinkedObjectFile::pointer_link_word(int source_segment,
   assert((source_offset % 4) == 0);
 
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
-  assert(word.kind == LinkedWord::PLAIN_DATA);
+  assert(word.kind() == LinkedWord::PLAIN_DATA);
 
   if (dest_offset / 4 > (int)words_by_seg.at(dest_segment).size()) {
     //    printf("HACK bad link ignored!\n");
@@ -158,8 +158,7 @@ bool LinkedObjectFile::pointer_link_word(int source_segment,
   }
   assert(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
 
-  word.kind = LinkedWord::PTR;
-  word.label_id = get_label_id_for(dest_segment, dest_offset);
+  word.set_to_pointer(LinkedWord::PTR, get_label_id_for(dest_segment, dest_offset));
   return true;
 }
 
@@ -173,11 +172,10 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
   assert((source_offset % 4) == 0);
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
   //  assert(word.kind == LinkedWord::PLAIN_DATA);
-  if (word.kind != LinkedWord::PLAIN_DATA) {
+  if (word.kind() != LinkedWord::PLAIN_DATA) {
     printf("bad symbol link word\n");
   }
-  word.kind = kind;
-  word.symbol_name = name;
+  word.set_to_symbol(kind, name);
 }
 
 /*!
@@ -187,9 +185,8 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
 void LinkedObjectFile::symbol_link_offset(int source_segment, int source_offset, const char* name) {
   assert((source_offset % 4) == 0);
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
-  assert(word.kind == LinkedWord::PLAIN_DATA);
-  word.kind = LinkedWord::SYM_OFFSET;
-  word.symbol_name = name;
+  assert(word.kind() == LinkedWord::PLAIN_DATA);
+  word.set_to_symbol(LinkedWord::SYM_OFFSET, name);
 }
 
 /*!
@@ -207,14 +204,11 @@ void LinkedObjectFile::pointer_link_split_word(int source_segment,
   auto& lo_word = words_by_seg.at(source_segment).at(source_lo_offset / 4);
 
   //  assert(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
-  assert(hi_word.kind == LinkedWord::PLAIN_DATA);
-  assert(lo_word.kind == LinkedWord::PLAIN_DATA);
+  assert(hi_word.kind() == LinkedWord::PLAIN_DATA);
+  assert(lo_word.kind() == LinkedWord::PLAIN_DATA);
 
-  hi_word.kind = LinkedWord::HI_PTR;
-  hi_word.label_id = get_label_id_for(dest_segment, dest_offset);
-
-  lo_word.kind = LinkedWord::LO_PTR;
-  lo_word.label_id = hi_word.label_id;
+  hi_word.set_to_pointer(LinkedWord::HI_PTR, get_label_id_for(dest_segment, dest_offset));
+  lo_word.set_to_pointer(LinkedWord::LO_PTR, hi_word.label_id());
 }
 
 /*!
@@ -284,32 +278,32 @@ std::string LinkedObjectFile::print_words() {
 void LinkedObjectFile::append_word_to_string(std::string& dest, const LinkedWord& word) const {
   char buff[128];
 
-  switch (word.kind) {
+  switch (word.kind()) {
     case LinkedWord::PLAIN_DATA:
       sprintf(buff, "    .word 0x%x\n", word.data);
       break;
     case LinkedWord::PTR:
-      sprintf(buff, "    .word %s\n", labels.at(word.label_id).name.c_str());
+      sprintf(buff, "    .word %s\n", labels.at(word.label_id()).name.c_str());
       break;
     case LinkedWord::SYM_PTR:
-      sprintf(buff, "    .symbol %s\n", word.symbol_name.c_str());
+      sprintf(buff, "    .symbol %s\n", word.symbol_name().c_str());
       break;
     case LinkedWord::TYPE_PTR:
-      sprintf(buff, "    .type %s\n", word.symbol_name.c_str());
+      sprintf(buff, "    .type %s\n", word.symbol_name().c_str());
       break;
     case LinkedWord::EMPTY_PTR:
       sprintf(buff, "    .empty-list\n");  // ?
       break;
     case LinkedWord::HI_PTR:
       sprintf(buff, "    .ptr-hi 0x%x %s\n", word.data >> 16,
-              labels.at(word.label_id).name.c_str());
+              labels.at(word.label_id()).name.c_str());
       break;
     case LinkedWord::LO_PTR:
       sprintf(buff, "    .ptr-lo 0x%x %s\n", word.data >> 16,
-              labels.at(word.label_id).name.c_str());
+              labels.at(word.label_id()).name.c_str());
       break;
     case LinkedWord::SYM_OFFSET:
-      sprintf(buff, "    .sym-off 0x%x %s\n", word.data >> 16, word.symbol_name.c_str());
+      sprintf(buff, "    .sym-off 0x%x %s\n", word.data >> 16, word.symbol_name().c_str());
       break;
     default:
       throw std::runtime_error("nyi");
@@ -326,8 +320,8 @@ void LinkedObjectFile::find_code() {
     // single segment object files should never have any code.
     auto& seg = words_by_seg.front();
     for (auto& word : seg) {
-      if (!word.symbol_name.empty()) {
-        assert(word.symbol_name != "function");
+      if (word.kind() == LinkedWord::TYPE_PTR) {
+        assert(word.symbol_name() != "function");
       }
     }
     offset_of_data_zone_by_seg.at(0) = 0;
@@ -346,7 +340,7 @@ void LinkedObjectFile::find_code() {
       size_t function_loc = -1;
       for (size_t j = words_by_seg.at(i).size(); j-- > 0;) {
         auto& word = words_by_seg.at(i).at(j);
-        if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "function") {
+        if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "function") {
           function_loc = j;
           found_function = true;
           break;
@@ -361,7 +355,7 @@ void LinkedObjectFile::find_code() {
 
         for (size_t j = function_loc; j < words_by_seg.at(i).size(); j++) {
           auto& word = words_by_seg.at(i).at(j);
-          if (word.kind == LinkedWord::PLAIN_DATA && word.data == jr_ra) {
+          if (word.kind() == LinkedWord::PLAIN_DATA && word.data == jr_ra) {
             found_jr_ra = true;
             jr_ra_loc = j;
           }
@@ -385,7 +379,7 @@ void LinkedObjectFile::find_code() {
       // verify there are no functions after the data section starts
       for (size_t j = offset_of_data_zone_by_seg.at(i); j < words_by_seg.at(i).size(); j++) {
         auto& word = words_by_seg.at(i).at(j);
-        if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "function") {
+        if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "function") {
           assert(false);
         }
       }
@@ -421,7 +415,7 @@ void LinkedObjectFile::find_functions() {
         bool found_function_tag_loc = false;
         for (; function_tag_loc-- > 0;) {
           auto& word = words_by_seg.at(seg).at(function_tag_loc);
-          if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "function") {
+          if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "function") {
             found_function_tag_loc = true;
             break;
           }
@@ -729,7 +723,7 @@ std::string LinkedObjectFile::print_disassembly(bool write_hex) {
       auto& word = words_by_seg[seg][i];
       append_word_to_string(result, word);
 
-      if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "string") {
+      if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "string") {
         result += "; " + get_goal_string(seg, i) + "\n";
       }
     }
@@ -751,7 +745,7 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_q
     return "invalid string!\n";
   }
   const LinkedWord& size_word = words_by_seg[seg].at(word_idx + 1);
-  if (size_word.kind != LinkedWord::PLAIN_DATA) {
+  if (size_word.kind() != LinkedWord::PLAIN_DATA) {
     // sometimes an array of string pointer triggers this!
     return "invalid string!\n";
   }
@@ -762,7 +756,7 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_q
     int word_offset = word_idx + 2 + (i / 4);
     int byte_offset = i % 4;
     auto& word = words_by_seg[seg].at(word_offset);
-    if (word.kind != LinkedWord::PLAIN_DATA) {
+    if (word.kind() != LinkedWord::PLAIN_DATA) {
       return "invalid string! (check me!)\n";
     }
     char cword[4];
@@ -827,7 +821,7 @@ std::string LinkedObjectFile::print_scripts() {
 bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
   assert((byte_idx % 4) == 0);
   auto& word = words_by_seg.at(seg).at(byte_idx / 4);
-  return word.kind == LinkedWord::EMPTY_PTR;
+  return word.kind() == LinkedWord::EMPTY_PTR;
 }
 
 /*!
@@ -866,9 +860,10 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
         assert((cdr_addr % 4) == 0);
         auto& cdr_word = words_by_seg.at(seg).at(cdr_addr / 4);
         // check for proper list
-        if (cdr_word.kind == LinkedWord::PTR && (labels.at(cdr_word.label_id).offset & 7) == 2) {
+        if (cdr_word.kind() == LinkedWord::PTR &&
+            (labels.at(cdr_word.label_id()).offset & 7) == 2) {
           // yes, proper list. add another pair and link it in to the list.
-          goal_print_obj = labels.at(cdr_word.label_id).offset;
+          goal_print_obj = labels.at(cdr_word.label_id()).offset;
           fill.as_pair()->cdr = goos::PairObject::make_new(goos::Object::make_empty_list(),
                                                            goos::Object::make_empty_list());
           fill = fill.as_pair()->cdr;
@@ -900,7 +895,7 @@ bool LinkedObjectFile::is_string(int seg, int byte_idx) const {
     return false;
   }
   auto& type_word = words_by_seg.at(seg).at(type_tag_ptr / 4);
-  return type_word.kind == LinkedWord::TYPE_PTR && type_word.symbol_name == "string";
+  return type_word.kind() == LinkedWord::TYPE_PTR && type_word.symbol_name() == "string";
 }
 
 /*!
@@ -915,15 +910,15 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
     case 0:
     case 4: {
       auto& word = words_by_seg.at(seg).at(byte_idx / 4);
-      if (word.kind == LinkedWord::SYM_PTR) {
+      if (word.kind() == LinkedWord::SYM_PTR) {
         // .symbol xxxx
-        result = pretty_print::to_symbol(word.symbol_name);
-      } else if (word.kind == LinkedWord::PLAIN_DATA) {
+        result = pretty_print::to_symbol(word.symbol_name());
+      } else if (word.kind() == LinkedWord::PLAIN_DATA) {
         // .word xxxxx
         result = pretty_print::to_symbol(std::to_string(word.data));
-      } else if (word.kind == LinkedWord::PTR) {
+      } else if (word.kind() == LinkedWord::PTR) {
         // might be a sub-list, or some other random pointer
-        auto offset = labels.at(word.label_id).offset;
+        auto offset = labels.at(word.label_id()).offset;
         if ((offset & 7) == 2) {
           // list!
           result = to_form_script(seg, offset / 4, seen);
@@ -932,10 +927,10 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
             result = pretty_print::to_symbol(get_goal_string(seg, offset / 4 - 1));
           } else {
             // some random pointer, just print the label.
-            result = pretty_print::to_symbol(labels.at(word.label_id).name);
+            result = pretty_print::to_symbol(labels.at(word.label_id()).name);
           }
         }
-      } else if (word.kind == LinkedWord::EMPTY_PTR) {
+      } else if (word.kind() == LinkedWord::EMPTY_PTR) {
         result = goos::Object::make_empty_list();
       } else {
         std::string debug;
@@ -958,7 +953,7 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
 u32 LinkedObjectFile::read_data_word(const DecompilerLabel& label) {
   assert(0 == (label.offset % 4));
   auto& word = words_by_seg.at(label.target_segment).at(label.offset / 4);
-  assert(word.kind == LinkedWord::Kind::PLAIN_DATA);
+  assert(word.kind() == LinkedWord::Kind::PLAIN_DATA);
   return word.data;
 }
 

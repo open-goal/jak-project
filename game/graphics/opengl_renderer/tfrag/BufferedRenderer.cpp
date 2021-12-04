@@ -5,81 +5,6 @@
 
 namespace BufferedRenderer {
 
-std::string DrawMode::to_string() const {
-  std::string result;
-  result += fmt::format(" depth-write: {}\n", get_depth_write_enable());
-  result += fmt::format(" depth-test: ");
-  switch (get_depth_test()) {
-    case GsTest::ZTest::NEVER:
-      result += "never\n";
-      break;
-    case GsTest::ZTest::GEQUAL:
-      result += "gequal\n";
-      break;
-    case GsTest::ZTest::ALWAYS:
-      result += "always\n";
-      break;
-    case GsTest::ZTest::GREATER:
-      result += "greater\n";
-      break;
-    default:
-      assert(false);
-  }
-  result += fmt::format(" alpha: ");
-  switch (get_alpha_blend()) {
-    case AlphaBlend::SRC_0_SRC_DST:
-      result += "src, 0, src, dst\n";
-      break;
-    case AlphaBlend::SRC_DST_SRC_DST:
-      result += "src, dst, src, dst\n";
-      break;
-    case AlphaBlend::DISABLED:
-      result += "disabled\n";
-      break;
-    default:
-      assert(false);
-  }
-  result += fmt::format(" clamp: {}\n", get_clamp_enable());
-  result += fmt::format(" filt: {}\n", get_filt_enable());
-  result += fmt::format(" tcc: {}\n", get_tcc_enable());
-  result += fmt::format(" aref: {}\n", get_aref());
-  result += fmt::format(" ate: {}\n", get_at_enable());
-  result += fmt::format(" atst: ");
-  switch (get_alpha_test()) {
-    case AlphaTest::ALWAYS:
-      result += "always\n";
-      break;
-    case AlphaTest::GEQUAL:
-      result += "gequal\n";
-      break;
-    case AlphaTest::NEVER:
-      result += "never\n";
-      break;
-    default:
-      assert(false);
-  }
-  result += fmt::format(" zte: {}\n", get_zt_enable());
-  result += fmt::format(" abe: {}\n", get_ab_enable());
-  result += fmt::format(" afail: ");
-  switch (get_alpha_fail()) {
-    case GsTest::AlphaFail::KEEP:
-      result += "keep\n";
-      break;
-    case GsTest::AlphaFail::FB_ONLY:
-      result += "fb-only\n";
-      break;
-    case GsTest::AlphaFail::RGB_ONLY:
-      result += "rgb-only\n";
-      break;
-    case GsTest::AlphaFail::ZB_ONLY:
-      result += "zb-only\n";
-      break;
-    default:
-      assert(false);
-  }
-  return result;
-}
-
 Renderer::Renderer(BucketId my_id) : m_my_id(my_id) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.index_buffer);
@@ -203,13 +128,19 @@ void Renderer::setup_opengl_excluding_textures(SharedRenderState* render_state, 
       default:
         assert(false);
     }
+  } else {
+    glDisable(GL_BLEND);
   }
 
-  if (mode.get_clamp_enable()) {
+  if (mode.get_clamp_s_enable()) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (mode.get_clamp_t_enable()) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   }
 
@@ -245,6 +176,7 @@ void Renderer::setup_opengl_excluding_textures(SharedRenderState* render_state, 
         alpha_reject);
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC1].id(), "T0"), 0);
   } else {
+    fmt::print("tcc off!\n");
     render_state->shaders[ShaderId::BUFFERED_TCC0].activate();
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC0].id(), "alpha_reject"),
@@ -563,8 +495,8 @@ void Builder::handle_clamp1(u64 val) {
     assert(false);
   }
 
-  // this isn't quite right, but I'm hoping it's enough!
-  m_current_mode.set_clamp_enable(val == 0b101);
+  m_current_mode.set_clamp_s_enable(val & 0b1);
+  m_current_mode.set_clamp_t_enable(val & 0b100);
 }
 
 void Builder::handle_alpha1(u64 val) {

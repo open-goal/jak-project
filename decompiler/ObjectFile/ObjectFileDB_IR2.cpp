@@ -706,7 +706,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
       auto& word = data.linked_data.words_by_seg[seg][i];
       data.linked_data.append_word_to_string(result, word);
 
-      if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "string") {
+      if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "string") {
         result += "; " + data.linked_data.get_goal_string(seg, i) + "\n";
       }
     }

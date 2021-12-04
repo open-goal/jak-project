@@ -1,5 +1,7 @@
 #pragma once
 
+#include "decompiler/data/TextureDB.h"
+
 namespace decompiler {
 struct ObjectFileData;
 
@@ -9,5 +11,5 @@ struct TPageResultStats {
   int num_px = 0;
 };
 
-TPageResultStats process_tpage(ObjectFileData& data);
+TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db);
 }  // namespace decompiler

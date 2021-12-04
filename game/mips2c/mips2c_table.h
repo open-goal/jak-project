@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <random>
 
 #include "game/kernel/Ptr.h"
 #include "common/common_types.h"
@@ -30,6 +31,7 @@ extern LinkedFunctionTable gLinkedFunctionTable;
 struct Rng {
   Rng() { init(); }
   float R = 0.;
+  std::mt19937 extra_random_generator;
 
   u32 R_u32() {
     u32 result;
@@ -60,6 +62,11 @@ struct Rng {
     u32 y = 1 & (r32 >> 22);
     r32 <<= 1;
     r32 = r32 ^ x ^ y;
+    // we add a bit of extra randomness here. They XOR the random number generator with an
+    // uninitialized register, and in our port this corresponds to some random value on the stack.
+    // If we get unlucky this can end up being the current value in r32, and the random generator
+    // will get stuck outputting 1 for a while.
+    r32 ^= extra_random_generator();
     R = from23_bits(r32);
   }
 
