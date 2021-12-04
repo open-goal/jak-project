@@ -11,11 +11,7 @@ size_t get_peak_rss() {
 }
 
 #else
-int get_current_rss() {
-  return 0;
-}
-
-int get_peak_rss() {
+size_t get_peak_rss() {
   return 0;
 }
 #endif
