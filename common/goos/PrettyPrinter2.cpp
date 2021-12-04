@@ -256,8 +256,9 @@ void break_list(Node* node) {
 
 void insert_required_breaks(const std::vector<Node*>& bfs_order) {
   const std::unordered_set<std::string> always_break = {
-      "when",  "defun-debug", "countdown", "case", "defun", "defmethod",   "let",     "until",
-      "while", "if",          "dotimes",   "cond", "else",  "defbehavior", "with-pp", "rlet"};
+      "when", "defun-debug", "countdown", "case", "defun",   "defmethod",
+      "let",  "until",       "while",     "if",   "dotimes", "cond",
+      "else", "defbehavior", "with-pp",   "rlet", "defstate"};
   for (auto node : bfs_order) {
     if (!node->break_list && node->kind == Node::Kind::LIST &&
         node->child_nodes.at(0).kind == Node::Kind::ATOM) {
