@@ -1065,7 +1065,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), rd_ok.addr_of, tokens));
           return;
         } else {
-          lg::error("Bad is {}\n", args.at(0)->to_string(env));
+          // TODO - output error to IR
+          lg::error("Bad is {} at OP: {}\n", args.at(0)->to_string(env), m_my_idx);
           throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
       }
