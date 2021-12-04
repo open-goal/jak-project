@@ -257,11 +257,13 @@
 (defmacro set-vector! (v xv yv zv wv)
   "Set all fields in a vector"
   (with-gensyms (vec)
-     `(let ((vec ,v))
-       (set! (-> vec x) ,xv)
-       (set! (-> vec y) ,yv)
-       (set! (-> vec z) ,zv)
-       (set! (-> vec w) ,wv)))
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
      )
 
 ;; cause the current process to change state
@@ -406,6 +408,7 @@
   (set! *defstate-type-stack* '())
   `(none)
   )
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
                                &key (event *no-state*)
@@ -416,7 +419,7 @@
                                &key (post *no-state*)
                                )
   "Define a new state!"
-  
+
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
@@ -427,24 +430,32 @@
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when (not (null? default-handlers))
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
               (set! default-handlers (cdr default-handlers))
-              (when (and (not event) (car default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
                   (set! event (car default-handlers)))
+              ;; enter
               (set! default-handlers (cdr default-handlers))
-              (when (and (not enter) (car default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
                   (set! enter (car default-handlers)))
+              ;; trans
               (set! default-handlers (cdr default-handlers))
-              (when (and (not trans) (car default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
                   (set! trans (car default-handlers)))
+              ;; exit
               (set! default-handlers (cdr default-handlers))
-              (when (and (not exit) (car default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
                   (set! exit (car default-handlers)))
+              ;; code
               (set! default-handlers (cdr default-handlers))
-              (when (and (not code) (car default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
                   (set! code (car default-handlers)))
+              ;; post
               (set! default-handlers (cdr default-handlers))
-              (when (and (not post) (car default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
                   (set! post (car default-handlers)))
+
               (set! default-handlers (cdr default-handlers))
               )
           )
@@ -472,7 +483,7 @@
               `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
-         
+
          )
       )
     )
