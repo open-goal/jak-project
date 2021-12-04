@@ -471,40 +471,6 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in,
       break;
     }
   }
-  //  while (m_next_block != TFragJumper::END_PROGRAM) {
-  ////    fmt::print("block {}\n", (int)m_next_block);
-  //    switch (m_next_block) {
-  //      case L128_PART0_X:
-  //        exec_jumper_L128<DEBUG>(in, vars);
-  //        break;
-  //      case L129_PART1_X:
-  //        exec_jumper_L129<DEBUG>(in, vars);
-  //        break;
-  //      case L0x6A1_PART0_Y:
-  //        exec_jumper_L6A1<DEBUG>(in, vars);
-  //        break;
-  //      case L130_PART1_Y:
-  //        exec_jumper_L130<DEBUG>(in, vars);
-  //        break;
-  //      case L0x6B0_PART0_Z:
-  //        exec_jumper_L6B0<DEBUG>(in, vars);
-  //        break;
-  //      case L131_PART1_Z:
-  //        exec_jumper_L131<DEBUG>(in, vars);
-  //        break;
-  //      case L0x6BF_PART0_W:
-  //        exec_jumper_L6BF<DEBUG>(in, vars);
-  //        break;
-  //      case L132_PART1_W:
-  //        exec_jumper_L132<DEBUG>(in, vars);
-  //        break;
-  //      case L122_KICK:
-  //        exec_jumper_L122<DEBUG>(in, vars, render_state, prof);
-  //        break;
-  //      default:
-  //        assert(false);
-  //    }
-  //  }
 }
 
 template <bool DEBUG>

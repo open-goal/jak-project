@@ -9,15 +9,22 @@
 #include "common/util/math_util.h"
 
 namespace decompiler {
+
+constexpr const char* reg_names[] = {"a0-0", "a1-0", "a2-0", "a3-0",
+                                     "t0-0", "t1-0", "t2-0", "t3-0"};
+
+const char* get_reg_name(int idx) {
+  if (idx >= 8) {
+    return "INVALID";
+  } else {
+    return reg_names[idx];
+  }
+}
+
 void Env::set_remap_for_function(const TypeSpec& ts) {
   int nargs = ts.arg_count() - 1;
   for (int i = 0; i < nargs; i++) {
-    std::string var_name;
-    var_name.push_back(i >= 4 ? 't' : 'a');
-    var_name.push_back('0' + (i % 4));
-    var_name.push_back('-');
-    var_name.push_back('0');
-    m_var_remap[var_name] = ("arg" + std::to_string(i));
+    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i));
   }
   if (ts.try_get_tag("behavior")) {
     m_var_remap["s6-0"] = "self";
@@ -32,12 +39,7 @@ void Env::set_remap_for_new_method(const TypeSpec& ts) {
   m_var_remap["a0-0"] = "allocation";
   m_var_remap["a1-0"] = "type-to-make";
   for (int i = 2; i < nargs; i++) {
-    std::string var_name;
-    var_name.push_back(i >= 4 ? 't' : 'a');
-    var_name.push_back('0' + (i % 4));
-    var_name.push_back('-');
-    var_name.push_back('0');
-    m_var_remap[var_name] = ("arg" + std::to_string(i - 2));
+    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 2));
   }
   if (ts.try_get_tag("behavior")) {
     m_var_remap["s6-0"] = "self";
@@ -51,12 +53,7 @@ void Env::set_remap_for_method(const TypeSpec& ts) {
   int nargs = ts.arg_count() - 1;
   m_var_remap["a0-0"] = "obj";
   for (int i = 1; i < nargs; i++) {
-    std::string var_name;
-    var_name.push_back(i >= 4 ? 't' : 'a');
-    var_name.push_back('0' + (i % 4));
-    var_name.push_back('-');
-    var_name.push_back('0');
-    m_var_remap[var_name] = ("arg" + std::to_string(i - 1));
+    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 1));
   }
   if (ts.try_get_tag("behavior")) {
     m_var_remap["s6-0"] = "self";
@@ -69,12 +66,7 @@ void Env::set_remap_for_method(const TypeSpec& ts) {
 void Env::map_args_from_config(const std::vector<std::string>& args_names,
                                const std::unordered_map<std::string, std::string>& var_names) {
   for (size_t i = 0; i < args_names.size(); i++) {
-    std::string var_name;
-    var_name.push_back(i >= 4 ? 't' : 'a');
-    var_name.push_back('0' + (i % 4));
-    var_name.push_back('-');
-    var_name.push_back('0');
-    m_var_remap[var_name] = args_names[i];
+    m_var_remap[get_reg_name(i)] = args_names[i];
   }
 
   for (auto& x : var_names) {
@@ -86,12 +78,7 @@ void Env::map_args_from_config(
     const std::vector<std::string>& args_names,
     const std::unordered_map<std::string, LocalVarOverride>& var_overrides) {
   for (size_t i = 0; i < args_names.size(); i++) {
-    std::string var_name;
-    var_name.push_back(i >= 4 ? 't' : 'a');
-    var_name.push_back('0' + (i % 4));
-    var_name.push_back('-');
-    var_name.push_back('0');
-    m_var_remap[var_name] = args_names[i];
+    m_var_remap[get_reg_name(i)] = args_names[i];
   }
 
   for (auto& x : var_overrides) {

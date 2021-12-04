@@ -89,6 +89,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
+        graphics/opengl_renderer/Loader.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
@@ -97,6 +98,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/tfrag/BufferedRenderer.cpp
         graphics/opengl_renderer/tfrag/program6_cpu.cpp
+        graphics/opengl_renderer/tfrag/Tfrag3.cpp
         graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
         graphics/opengl_renderer/tfrag/TFragment.cpp
         graphics/texture/TextureConverter.cpp

@@ -223,23 +223,23 @@ int label_to_word_offset(DecompilerLabel l, bool basic) {
 }
 
 std::string get_type_tag(const LinkedWord& word) {
-  assert(word.kind == LinkedWord::TYPE_PTR);
-  return word.symbol_name;
+  assert(word.kind() == LinkedWord::TYPE_PTR);
+  return word.symbol_name();
 }
 
 bool is_type_tag(const LinkedWord& word, const std::string& type) {
-  return word.kind == LinkedWord::TYPE_PTR && word.symbol_name == type;
+  return word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == type;
 }
 
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
-  assert(word.kind == LinkedWord::PTR);
-  return data.linked_data.labels.at(word.label_id);
+  assert(word.kind() == LinkedWord::PTR);
+  return data.linked_data.labels.at(word.label_id());
 }
 
 template <typename T>
 T get_word(const LinkedWord& word) {
   T result;
-  assert(word.kind == LinkedWord::PLAIN_DATA);
+  assert(word.kind() == LinkedWord::PLAIN_DATA);
   static_assert(sizeof(T) == 4, "bad get_word size");
   memcpy(&result, &word.data, 4);
   return result;
@@ -385,8 +385,8 @@ TexturePage read_texture_page(ObjectFileData& data,
   }
 
   for (int i = 0; i < tpage.length; i++) {
-    if (words.at(offset).kind == LinkedWord::SYM_PTR) {
-      if (words.at(offset).symbol_name == "#f") {
+    if (words.at(offset).kind() == LinkedWord::SYM_PTR) {
+      if (words.at(offset).symbol_name() == "#f") {
         tpage.data.emplace_back();
         Texture null_tex;
         null_tex.null_texture = true;
@@ -415,7 +415,7 @@ TexturePage read_texture_page(ObjectFileData& data,
  * Process a texture page.
  * TODO - document
  */
-TPageResultStats process_tpage(ObjectFileData& data) {
+TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
   TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
 
@@ -464,7 +464,9 @@ TPageResultStats process_tpage(ObjectFileData& data) {
   }
 
   // get all textures in the tpage
-  for (auto& tex : texture_page.textures) {
+  for (u32 tex_id = 0; tex_id < texture_page.textures.size(); tex_id++) {
+    auto& tex = texture_page.textures.at(tex_id);
+
     // I think these get inserted for CLUTs, but I'm not sure.
     if (tex.null_texture) {
       continue;
@@ -520,6 +522,8 @@ TPageResultStats process_tpage(ObjectFileData& data) {
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
           out.data(), tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -566,6 +570,8 @@ TPageResultStats process_tpage(ObjectFileData& data) {
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
           out.data(), tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMCT16) && tex.clutpsm == 0) {
       // not a clut.
@@ -594,6 +600,8 @@ TPageResultStats process_tpage(ObjectFileData& data) {
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
           out.data(), tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -638,6 +646,8 @@ TPageResultStats process_tpage(ObjectFileData& data) {
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
           out.data(), tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT32)) {
       // will store output pixels, rgba (8888)
@@ -682,6 +692,8 @@ TPageResultStats process_tpage(ObjectFileData& data) {
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
           out.data(), tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name);
       stats.successful_textures++;
     }
 

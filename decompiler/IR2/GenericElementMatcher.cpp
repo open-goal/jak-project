@@ -163,6 +163,13 @@ Matcher Matcher::any_constant_token(int match_id) {
   return m;
 }
 
+Matcher Matcher::constant_token(const std::string& name) {
+  Matcher m;
+  m.m_kind = Kind::CONSTANT_TOKEN;
+  m.m_str = name;
+  return m;
+}
+
 Matcher Matcher::begin(const std::vector<Matcher>& elts) {
   Matcher m;
   m.m_kind = Kind::BEGIN;
@@ -301,6 +308,14 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       } else {
         return false;
       }
+    } break;
+
+    case Kind::CONSTANT_TOKEN: {
+      auto as_ct = input->try_as_element<ConstantTokenElement>();
+      if (as_ct) {
+        return as_ct->value() == m_str;
+      }
+      return false;
     } break;
 
     case Kind::CAST: {
@@ -616,6 +631,13 @@ DerefTokenMatcher DerefTokenMatcher::any_string(int match_id) {
   return result;
 }
 
+DerefTokenMatcher DerefTokenMatcher::any_integer(int match_id) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::ANY_INTEGER;
+  result.m_str_out_id = match_id;
+  return result;
+}
+
 bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::STRING:
@@ -630,6 +652,14 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
       return false;
     case Kind::CONSTANT_INTEGER:
       return input.kind() == DerefToken::Kind::INTEGER_CONSTANT && input.is_int(m_int);
+    case Kind::ANY_INTEGER:
+      if (input.kind() == DerefToken::Kind::INTEGER_CONSTANT) {
+        if (m_str_out_id != -1) {
+          maps_out->ints[m_str_out_id] = input.int_constant();
+        }
+        return true;
+      }
+      return false;
     default:
       assert(false);
       return false;

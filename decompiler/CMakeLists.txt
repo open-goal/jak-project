@@ -24,6 +24,7 @@ add_library(
         data/game_text.cpp
         data/streamed_audio.cpp
         data/StrFileReader.cpp
+        data/TextureDB.cpp
         data/tpage.cpp
 
         Disasm/Instruction.cpp
@@ -54,6 +55,10 @@ add_library(
         IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
+        level_extractor/extract_level.cpp
+        level_extractor/extract_tfrag.cpp
+        level_extractor/BspHeader.cpp
+
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/ObjectFileDB.cpp
@@ -63,6 +68,7 @@ add_library(
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
+        util/goal_data_reader.cpp
         util/sparticle_decompile.cpp
         util/TP_Type.cpp
 

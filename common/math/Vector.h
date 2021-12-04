@@ -175,13 +175,26 @@ class Vector {
   const T* data() const { return m_data; }
 
   template <typename U>
-  Vector<U, Size> cast() {
+  Vector<U, Size> cast() const {
     Vector<U, Size> result;
     for (int i = 0; i < Size; i++) {
       result[i] = (U)m_data[i];
     }
     return result;
   }
+
+  template <int len>
+  Vector<T, len> head() const {
+    static_assert(len < Size);
+    Vector<T, len> result;
+    for (int i = 0; i < len; i++) {
+      result[i] = m_data[i];
+    }
+    return result;
+  }
+
+  Vector<T, 3> xyz() const { return head<3>(); }
+  Vector<T, 3> xy() const { return head<2>(); }
 
  private:
   T m_data[Size];
@@ -210,6 +223,9 @@ struct Matrix {
     }
     return result;
   }
+
+  T* data() { return m_data; }
+  const T* data() const { return m_data; }
 
   std::string to_string_aligned() const {
     std::string result;

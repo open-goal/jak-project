@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "tools/level_tools/goal_data_reader.h"
+#include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -126,8 +126,12 @@ struct TFragment : public Drawable {
   // u32 color_indices;  // 12 - 16 (or colors?)
   Vector bsphere;  // 16 - 32
   // dma common/level0 // 32 - 36
+  std::vector<u8> dma_common_and_level0;
   // dma base // 36 - 40
+  std::vector<u8> dma_base;
   // dma level 1 // 40 - 44
+  std::vector<u8> dma_level1;
+  std::vector<u16> color_indices;
   u8 dma_qwc[4];
   // shader // 48 - 52
   u8 num_shaders;        // 52
@@ -226,6 +230,13 @@ struct DrawableInlineArrayUnknown : public DrawableInlineArray {
 
 struct DrawableTree : public Drawable {};
 
+struct TimeOfDayPalette {
+  u32 width;
+  u32 height;
+  u32 pad;
+  std::vector<u32> colors;
+};
+
 struct DrawableTreeTfrag : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -236,6 +247,7 @@ struct DrawableTreeTfrag : public DrawableTree {
   s16 id;
   s16 length;
   // todo time of day stuff
+  TimeOfDayPalette time_of_day;
   Vector bsphere;
 
   std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
@@ -336,6 +348,18 @@ struct DrawableTreeTransTfrag : public DrawableTreeTfrag {
   std::string my_type() const override { return "drawable-tree-trans-tfrag"; }
 };
 
+struct DrawableTreeLowresTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-lowres-tfrag"; }
+};
+
+struct DrawableTreeDirtTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-dirt-tfrag"; }
+};
+
+struct DrawableTreeIceTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-ice-tfrag"; }
+};
+
 struct DrawableTreeUnknown : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -354,6 +378,11 @@ struct DrawableTreeArray {
   std::string print(const PrintSettings& settings, int indent) const;
 
   std::vector<std::unique_ptr<DrawableTree>> trees;
+};
+
+struct TextureRemap {
+  u32 original_texid;
+  u32 new_texid;
 };
 
 struct BspHeader {
@@ -377,6 +406,7 @@ struct BspHeader {
   //  ;; some osrt of texture remapping info
   //      (texture-remap-table (pointer uint64) :offset-assert 52)
   //  (texture-remap-table-len int32 :offset-assert 56)
+  std::vector<TextureRemap> texture_remap_table;
   //
   //  (texture-ids (pointer texture-id) :offset-assert 60)
   //  (texture-page-count int32 :offset-assert 64)
@@ -405,7 +435,8 @@ struct BspHeader {
   //  (unk-data-8 uint32 55 :offset-assert 180)
 
   void read_from_file(const decompiler::LinkedObjectFile& file,
-                      const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats);
 
   std::string print(const PrintSettings& settings) const;
 };

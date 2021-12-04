@@ -332,6 +332,28 @@
       ,@body)
   )
 
+(defmacro doarray (bindings &rest body)
+  "iterate over an array. usage: (doarray (<array entry name> <array>) <code>)"
+
+  (with-gensyms (len i)
+  (let ((val (first bindings))
+        (arr (second bindings)))
+
+        `(let* ((,len (-> ,arr length))
+                (,i 0)
+                (,val (-> ,arr ,i)))
+             (while (< ,i ,len)
+                ,@body
+                (1+! ,i)
+                (set! ,val (-> ,arr ,i))
+                )
+               )
+
+        )
+
+    )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 ;; NOTE : GOAL protected defs in a FIFO manner (this is FILO/LIFO), this should be fixed at some point
@@ -752,14 +774,14 @@
   (with-gensyms (val str)
     `(let ((,val ,input)
            (,str ,stream))
-        
+
         ,@(apply (lambda (x)
                     `(if (logtesta? ,val (,enum ,(car x)))
                         (format ,str ,(fmt #f "{} " (car x)))
                         )
-                    
+
                     ) (reverse (get-enum-vals enum)))
-        
+
         )
     )
   )

@@ -2850,7 +2850,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
       auto type_1 = match_result.maps.strings.at(type_for_method);
-      auto name = match_result.maps.strings.at(method_name);
+      auto& name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
         // calling the new method of object. This is a special case that turns into an (object-new
@@ -2893,7 +2893,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                                         {alloc_matcher, type_arg_matcher});
         match_result = match(matcher, temp_form);
         if (match_result.matched) {
-          auto alloc = match_result.maps.strings.at(allocation);
+          auto& alloc = match_result.maps.strings.at(allocation);
           if (alloc != "global" && alloc != "debug" && alloc != "process" &&
               alloc != "loading-level") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
@@ -3808,6 +3808,61 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   return nullptr;
 }
 
+FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
+  /*
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+ */
+  auto cpad_matcher = Matcher::op(
+      GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
+      {Matcher::deref(Matcher::symbol("*cpad-list*"), false,
+                      {DerefTokenMatcher::string("cpads"), DerefTokenMatcher::any_integer(0),
+                       DerefTokenMatcher::any_string(2), DerefTokenMatcher::integer(0)}),
+       Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("pad-buttons")), {})});
+  auto mr = match(cpad_matcher, in);
+  if (mr.matched) {
+    enum { ABS, REL, NIL } t = NIL;
+    if (mr.maps.strings.at(2) == "button0-abs") {
+      t = ABS;
+    } else if (mr.maps.strings.at(2) == "button0-rel") {
+      t = REL;
+    }
+
+    if (t != NIL) {
+      auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
+      if (logtest_elt != nullptr) {
+        auto buttons_form = logtest_elt->elts().at(1);
+        std::vector<Form*> v = {
+            pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(0)))};
+        GenericElement* butts =
+            dynamic_cast<GenericElement*>(buttons_form->at(0));  // the form with the buttons itself
+        if (butts != nullptr) {
+          v.insert(v.end(), butts->elts().begin(), butts->elts().end());
+        }
+
+        return pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(t == ABS ? FixedOperatorKind::CPAD_HOLD_P
+                                                 : FixedOperatorKind::CPAD_PRESSED_P),
+            v);
+      }
+    }
+  }
+  return nullptr;
+}
+
 FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
                                                           FormPool& pool,
                                                           const std::vector<Form*>& source_forms,
@@ -3837,9 +3892,14 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
                                               std::vector<Form*>{mr.maps.forms.at(0), value_form});
   }
 
-  auto as_logand = try_make_nonzero_logtest(source_forms.at(0), pool);
-  if (as_logand) {
-    return as_logand;
+  auto as_logtest = try_make_nonzero_logtest(source_forms.at(0), pool);
+  if (as_logtest) {
+    auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+    auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
+    if (as_cpad_macro) {
+      return as_cpad_macro;
+    }
+    return as_logtest;
   }
 
   return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
@@ -4966,7 +5026,13 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   if (!val && on_zero) {
     auto as_logtest = try_make_nonzero_logtest(popped.at(1), pool);
     if (as_logtest) {
-      val = pool.alloc_single_form(nullptr, as_logtest);
+      auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+      auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
+      if (as_cpad_macro) {
+        val = pool.alloc_single_form(nullptr, as_cpad_macro);
+      } else {
+        val = pool.alloc_single_form(nullptr, as_logtest);
+      }
     }
   }
 

@@ -76,6 +76,7 @@ struct DecompileHacks {
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
   std::unordered_set<std::string> mips2c_functions_by_name;
+  std::unordered_map<std::string, std::vector<std::pair<int, int>>> missing_textures_by_level;
 };
 
 struct Config {
@@ -124,6 +125,8 @@ struct Config {
       stack_structure_hints_by_function;
 
   std::unordered_map<std::string, int> bad_format_strings;
+
+  std::vector<std::string> levels_to_extract;
 
   DecompileHacks hacks;
 };

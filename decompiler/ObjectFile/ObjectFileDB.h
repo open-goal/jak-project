@@ -14,6 +14,7 @@
 #include "LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
+#include "decompiler/data/TextureDB.h"
 #include "decompiler/analysis/symbol_def_map.h"
 
 namespace decompiler {
@@ -96,7 +97,7 @@ class ObjectFileDB {
   std::string ir2_final_out(ObjectFileData& data,
                             const std::unordered_set<std::string>& skip_functions = {});
 
-  std::string process_tpages();
+  std::string process_tpages(TextureDB& tex_db);
   std::string process_game_count_file();
   std::string process_game_text_files();
 

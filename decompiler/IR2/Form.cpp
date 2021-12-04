@@ -1849,6 +1849,10 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "ppointer->process";
     case FixedOperatorKind::SEND_EVENT:
       return "send-event";
+    case FixedOperatorKind::CPAD_PRESSED_P:
+      return "cpad-pressed?";
+    case FixedOperatorKind::CPAD_HOLD_P:
+      return "cpad-hold?";
     default:
       assert(false);
       return "";
