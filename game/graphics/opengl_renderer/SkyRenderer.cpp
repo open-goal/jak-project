@@ -281,6 +281,12 @@ void SkyBlendHandler::render(DmaFollower& dma,
     return;
   }
 
+  if (dma.current_tag().qwc != 8) {
+    auto tfrag_prof = prof.make_scoped_child("tfrag-trans");
+    m_tfrag_renderer.render(dma, render_state, tfrag_prof);
+    return;
+  }
+
   // first is the set-display-gs-state
   auto set_display = dma.read_and_advance();
   assert(set_display.size_bytes == 8 * 16);
