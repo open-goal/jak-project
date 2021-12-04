@@ -12699,7 +12699,7 @@
 ;; - Types
 
 (deftype tie-fragment (drawable)
-  ((gif-ref       uint32         :offset 4)
+  ((gif-ref       (inline-array adgif-shader) :offset 4)
    (point-ref     uint32         :offset 8)
    (color-index   uint16         :offset 12)
    (base-colors   uint8          :offset 14)
@@ -12711,9 +12711,9 @@
    (num-dverts    uint16         :offset-assert 42)
    (dp-ref        uint32         :offset-assert 44)
    (dp-qwc        uint32         :offset-assert 48)
-   (generic-ref   uint32         :offset-assert 52)
+   (generic-ref   uint32         :offset-assert 52) ;; L891 ish, just a pointer to data.
    (generic-count uint32         :offset-assert 56)
-   (debug-lines   basic          :offset-assert 60)
+   (debug-lines   (array vector-array)  :offset-assert 60)
    )
   :method-count-assert 18
   :size-assert         #x40
@@ -16750,33 +16750,33 @@
 
 ;; - Types
 
-; (deftype tie-consts (structure)
-;   ((data      UNKNOWN 24      :offset-assert 0)
-;    (vector    UNKNOWN 6       :offset-assert 0)
-;    (quads     UNKNOWN 6       :offset-assert 0)
-;    (adgif     qword   :inline :offset-assert 0)
-;    (strgif    qword   :inline :offset-assert 16)
-;    (extra     qword   :inline :offset-assert 32)
-;    (gifbufs   qword   :inline :offset-assert 48)
-;    (clrbufs   qword   :inline :offset-assert 64)
-;    (misc      qword   :inline :offset-assert 80)
-;    (atestgif  qword   :inline :offset-assert 96)
-;    (atest     UNKNOWN 2       :offset-assert 112)
-;    (atest-tra ad-cmd  :inline :offset-assert 112)
-;    (atest-def ad-cmd  :inline :offset-assert 128)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x90
-;   :flag-assert         #x900000090
-;   )
+(deftype tie-consts (structure)
+  ((data      uint32  24        :offset-assert 0)
+   (vector    vector  6 :inline :offset 0)
+   (quads     uint128 6         :offset 0)
+   (adgif     qword     :inline :offset 0)
+   (strgif    qword     :inline :offset 16)
+   (extra     qword     :inline :offset 32)
+   (gifbufs   qword     :inline :offset 48)
+   (clrbufs   qword     :inline :offset 64)
+   (misc      qword     :inline :offset 80)
+   (atestgif  qword     :inline :offset 96)
+   (atest     ad-cmd 2  :inline :offset 112)
+   (atest-tra ad-cmd    :inline :offset 112)
+   (atest-def ad-cmd    :inline :offset 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
 
 ;; - Functions
 
-(define-extern tie-init-consts function)
+(define-extern tie-init-consts (function pointer int none))
 (define-extern tie-float-reg function)
 (define-extern tie-int-reg function)
-(define-extern tie-init-engine function)
-(define-extern tie-end-buffer function)
+(define-extern tie-init-engine (function dma-buffer gs-test int none)) ;; probably first int is gs-test
+(define-extern tie-end-buffer (function dma-buffer none))
 (define-extern tie-ints function)
 (define-extern tie-floats function)
 
@@ -16815,8 +16815,8 @@
 ;; - Functions
 
 (define-extern tie-near-init-consts function)
-(define-extern tie-near-init-engine function)
-(define-extern tie-near-end-buffer function)
+(define-extern tie-near-init-engine (function dma-buffer gs-test int none))
+(define-extern tie-near-end-buffer (function dma-buffer none))
 (define-extern tie-near-int-reg function)
 (define-extern tie-near-float-reg function)
 
@@ -16856,9 +16856,9 @@
 ;; - Functions
 
 (define-extern tie-init-buffers (function dma-buffer none))
-(define-extern tie-debug-between function)
-(define-extern tie-debug-one function)
-(define-extern walk-tie-generic-prototypes function)
+(define-extern tie-debug-between (function uint uint uint))
+(define-extern tie-debug-one (function uint uint uint))
+(define-extern walk-tie-generic-prototypes (function none))
 (define-extern draw-inline-array-instance-tie function)
 (define-extern draw-inline-array-prototype-tie-generic-asm function)
 (define-extern draw-inline-array-prototype-tie-asm function)
@@ -16867,8 +16867,8 @@
 
 ;; - Unknowns
 
-;;(define-extern *tie* object) ;; unknown type
-;;(define-extern *pke-hack* object) ;; unknown type
+(define-extern *tie* symbol)
+(define-extern *pke-hack* symbol)
 
 
 ;; ----------------------
