@@ -59,15 +59,22 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
 void OpenGLRenderer::init_bucket_renderers() {
-  // temp
+  std::vector<tfrag3::TFragmentTreeKind> normal_tfrags = {tfrag3::TFragmentTreeKind::NORMAL,
+                                                          tfrag3::TFragmentTreeKind::LOWRES};
+  std::vector<tfrag3::TFragmentTreeKind> dirt_tfrags = {tfrag3::TFragmentTreeKind::DIRT};
+  // TODO ice
+  // std::vector<tfrag3::TFragmentTreeKind> ice_tfrags = {tfrag3::TFragmentTreeKind::ICE};
+
+  // std::vector<tfrag3::TFragmentTreeKind> trans_tfrags = {tfrag3::TFragmentTreeKind::TRANS,
+  //                                                       tfrag3::TFragmentTreeKind::LOWRES_TRANS};
 
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
   init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
 
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
-  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, false);
+  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false);
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
-  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, false);
+  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
@@ -75,10 +82,10 @@ void OpenGLRenderer::init_bucket_renderers() {
   auto sky_blender = std::make_shared<SkyBlender>();
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
                                         BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, sky_blender);
-  init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, false);
+  init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false);
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-1",
                                         BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1, sky_blender);
-  init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, false);
+  init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);

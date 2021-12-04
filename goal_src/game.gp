@@ -219,6 +219,7 @@
        "out/iso/MAI.DGO"
        "out/iso/BEA.DGO"
        "out/iso/CIT.DGO"
+       "out/iso/SUN.DGO"
        )
 
 
@@ -599,6 +600,77 @@
   "warrior-ag"
   "water-anim-village2-ag"
   "village2-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; LPC
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SUN.DGO" "sun.gd")
+
+(goal-src-sequence
+  "levels/sunken/"
+  :deps ("out/obj/default-menu.o")
+  "sunken-part.gc"
+  "sunken-part2.gc"
+  "sunken-part3.gc"
+  "sunken-part4.gc"
+  "sunken-part5.gc"
+  "target-tube.gc"
+  "sunken-obs.gc"
+  "shover.gc"
+  "square-platform.gc"
+  "sun-iris-door.gc"
+  "orbit-plat.gc"
+  "wedge-plats.gc"
+  "wall-plat.gc"
+  "qbert-plat.gc"
+  "steam-cap.gc"
+  "sun-exit-chamber.gc"
+  "floating-launcher.gc"
+  "sunken-water.gc"
+  "whirlpool.gc"
+  "sunken-pipegame.gc"
+  "bully.gc"
+  "double-lurker.gc"
+  "helix-water.gc"
+  "puffer.gc"
+  "sunken-fish.gc"
+  )
+
+(copy-textures 661 663 714 662 766)
+
+(copy-gos
+  "eichar-tube+0-ag-SUN"
+  "bully-ag"
+  "double-lurker-ag"
+  "double-lurker-top-ag"
+  "exit-chamber-ag"
+  "generic-button-ag"
+  "launcherdoor-ag-SUN"
+  "orb-cache-top-ag-SUN"
+  "orbit-plat-ag"
+  "orbit-plat-bottom-ag"
+  "plat-sunken-ag"
+  "puffer-ag"
+  "qbert-plat-ag"
+  "qbert-plat-on-ag"
+  "seaweed-ag"
+  "shover-ag-SUN"
+  "side-to-side-plat-ag"
+  "square-platform-ag"
+  "steam-cap-ag-SUN"
+  "sun-iris-door-ag"
+  "sunkencam-ag-SUN"
+  "sunkenfisha-ag"
+  "wall-plat-ag"
+  "water-anim-sunken-ag"
+  "water-anim-sunken-dark-eco-ag"
+  "wedge-plat-ag"
+  "wedge-plat-outer-ag"
+  "whirlpool-ag"
+  "sunken-vis"
   )
  
 ;;;;;;;;;;;;;;;;;;;;;

@@ -3,6 +3,7 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/tfrag/BufferedRenderer.h"
+#include "game/graphics/opengl_renderer/tfrag/Tfrag3.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 
@@ -40,7 +41,10 @@ struct TFragKickZone {
 
 class TFragment : public BucketRenderer {
  public:
-  TFragment(const std::string& name, BucketId my_id, bool child_mode);
+  TFragment(const std::string& name,
+            BucketId my_id,
+            const std::vector<tfrag3::TFragmentTreeKind>& trees,
+            bool child_mode);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
@@ -193,6 +197,10 @@ class TFragment : public BucketRenderer {
   bool m_prog18_with_prog6 = true;
   bool m_all_with_prog6 = false;
   bool m_use_buffered_renderer = true;
+  bool m_use_tfrag3 = true;
+  bool m_hack_test_many_levels = false;
+  bool m_override_time_of_day = false;
+  float m_time_of_days[8] = {0};
   std::string m_frag_debug;
 
   // GS setup data
@@ -203,6 +211,13 @@ class TFragment : public BucketRenderer {
   Matrix4f m_matrix_1;
   TFragData m_tfrag_data;
   TFragKickZone m_kick_data;
+
+  struct PcPortData {
+    Vector4f planes[4];
+    math::Vector<s32, 4> itimes[4];
+    char level_name[12];
+    u32 tree_idx;
+  } m_pc_port_data;
 
   // buffers
   TFragBufferedData m_buffered_data[2];
@@ -281,4 +296,12 @@ class TFragment : public BucketRenderer {
 
   DirectRenderer m_direct_renderer;
   BufferedRenderer::Builder m_buffered_renderer;
+  Tfrag3 m_tfrag3;
+  std::vector<tfrag3::TFragmentTreeKind> m_tree_kinds;
+
+  struct HackManyLevels {
+    static constexpr int NUM_LEVELS = 23;
+    Tfrag3 level_renderers[NUM_LEVELS];
+    bool level_enables[NUM_LEVELS] = {0};
+  } m_many_level_render;
 };

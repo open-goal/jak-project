@@ -516,7 +516,7 @@ Mips2C_Line handle_lwc1(const Instruction& i0,
   if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(Register(Reg::GPR, Reg::FP))) {
     auto& label = file->labels.at(i0.get_src(0).get_label());
     auto& word = file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    assert(word.kind == LinkedWord::PLAIN_DATA);
+    assert(word.kind() == LinkedWord::PLAIN_DATA);
     float f;
     memcpy(&f, &word.data, 4);
     return {fmt::format("c->fprs[{}] = {};", reg_to_name(i0.get_dst(0)), float_to_string(f)),

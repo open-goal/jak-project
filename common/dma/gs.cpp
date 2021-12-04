@@ -357,3 +357,78 @@ std::string GsTex0::print() const {
 std::string GsPrim::print() const {
   return fmt::format("0x{:x}, kind {}\n", data, kind());
 }
+
+std::string DrawMode::to_string() const {
+  std::string result;
+  result += fmt::format(" depth-write: {}\n", get_depth_write_enable());
+  result += fmt::format(" depth-test: ");
+  switch (get_depth_test()) {
+    case GsTest::ZTest::NEVER:
+      result += "never\n";
+      break;
+    case GsTest::ZTest::GEQUAL:
+      result += "gequal\n";
+      break;
+    case GsTest::ZTest::ALWAYS:
+      result += "always\n";
+      break;
+    case GsTest::ZTest::GREATER:
+      result += "greater\n";
+      break;
+    default:
+      assert(false);
+  }
+  result += fmt::format(" alpha: ");
+  switch (get_alpha_blend()) {
+    case AlphaBlend::SRC_0_SRC_DST:
+      result += "src, 0, src, dst\n";
+      break;
+    case AlphaBlend::SRC_DST_SRC_DST:
+      result += "src, dst, src, dst\n";
+      break;
+    case AlphaBlend::DISABLED:
+      result += "disabled\n";
+      break;
+    default:
+      assert(false);
+  }
+  result += fmt::format(" clamp: s {} t {}\n", get_clamp_s_enable(), get_clamp_t_enable());
+  result += fmt::format(" filt: {}\n", get_filt_enable());
+  result += fmt::format(" tcc: {}\n", get_tcc_enable());
+  result += fmt::format(" aref: {}\n", get_aref());
+  result += fmt::format(" ate: {}\n", get_at_enable());
+  result += fmt::format(" atst: ");
+  switch (get_alpha_test()) {
+    case AlphaTest::ALWAYS:
+      result += "always\n";
+      break;
+    case AlphaTest::GEQUAL:
+      result += "gequal\n";
+      break;
+    case AlphaTest::NEVER:
+      result += "never\n";
+      break;
+    default:
+      assert(false);
+  }
+  result += fmt::format(" zte: {}\n", get_zt_enable());
+  result += fmt::format(" abe: {}\n", get_ab_enable());
+  result += fmt::format(" afail: ");
+  switch (get_alpha_fail()) {
+    case GsTest::AlphaFail::KEEP:
+      result += "keep\n";
+      break;
+    case GsTest::AlphaFail::FB_ONLY:
+      result += "fb-only\n";
+      break;
+    case GsTest::AlphaFail::RGB_ONLY:
+      result += "rgb-only\n";
+      break;
+    case GsTest::AlphaFail::ZB_ONLY:
+      result += "zb-only\n";
+      break;
+    default:
+      assert(false);
+  }
+  return result;
+}

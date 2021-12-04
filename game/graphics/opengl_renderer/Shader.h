@@ -34,6 +34,8 @@ enum class ShaderId {
   DEBUG_BUFFERED = 9,
   BUFFERED_TCC0 = 10,
   BUFFERED_TCC1 = 11,
+  TFRAG3 = 12,
+  TFRAG3_NO_TEX = 13,
   MAX_SHADERS
 };
 
