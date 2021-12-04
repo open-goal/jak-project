@@ -187,8 +187,8 @@ void TFragment::render(DmaFollower& dma,
         memcpy(settings.math_camera.data(),
                &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16], 64);
         settings.tree_idx = 0;
-        for (int i = 0; i < 8; i++) {
-          settings.time_of_day_weights[i] = m_time_of_days[i];
+        for (int j = 0; j < 8; j++) {
+          settings.time_of_day_weights[j] = m_time_of_days[j];
         }
 
         auto t3prof = prof.make_scoped_child(level_names[i]);

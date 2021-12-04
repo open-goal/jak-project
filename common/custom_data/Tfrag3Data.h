@@ -55,7 +55,7 @@ struct VisNode {
 enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, INVALID };
 
 constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",   "ice",
-                                          "lowres", "lowres-trans", "invalid"};
+                                            "lowres", "lowres-trans", "invalid"};
 
 struct TimeOfDayColor {
   math::Vector<u8, 4> rgba[8];

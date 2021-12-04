@@ -1135,36 +1135,36 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
     }
   }
 
-  if (word.kind == LinkedWord::SYM_OFFSET) {
+  if (word.kind() == LinkedWord::SYM_OFFSET) {
     bool fixed = false;
     for (int j = 0; j < i.n_src; j++) {
       if (i.src[j].kind == InstructionAtom::IMM) {
         fixed = true;
-        i.src[j].set_sym(word.symbol_name);
+        i.src[j].set_sym(word.symbol_name());
       }
     }
     assert(fixed);
   }
 
-  if (word.kind == LinkedWord::HI_PTR) {
+  if (word.kind() == LinkedWord::HI_PTR) {
     assert(i.kind == InstructionKind::LUI);
     bool fixed = false;
     for (int j = 0; j < i.n_src; j++) {
       if (i.src[j].kind == InstructionAtom::IMM) {
         fixed = true;
-        i.src[j].set_label(word.label_id);
+        i.src[j].set_label(word.label_id());
       }
     }
     assert(fixed);
   }
 
-  if (word.kind == LinkedWord::LO_PTR) {
+  if (word.kind() == LinkedWord::LO_PTR) {
     assert(i.kind == InstructionKind::ORI);
     bool fixed = false;
     for (int j = 0; j < i.n_src; j++) {
       if (i.src[j].kind == InstructionAtom::IMM) {
         fixed = true;
-        i.src[j].set_label(word.label_id);
+        i.src[j].set_label(word.label_id());
       }
     }
     assert(fixed);

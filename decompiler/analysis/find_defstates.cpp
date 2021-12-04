@@ -230,24 +230,24 @@ std::string verify_empty_state_and_get_name(DecompiledDataElement* state, const 
   auto& words = env.file->words_by_seg.at(lab.target_segment);
 
   auto first_word = words.at(start_word_idx);
-  if (first_word.kind != LinkedWord::TYPE_PTR || first_word.symbol_name != "state") {
+  if (first_word.kind() != LinkedWord::TYPE_PTR || first_word.symbol_name() != "state") {
     env.func->warnings.warn_and_throw("Reference to state bad: invalid type pointer");
   }
 
   auto name_word = words.at(start_word_idx + 1);
-  if (name_word.kind != LinkedWord::SYM_PTR) {
+  if (name_word.kind() != LinkedWord::SYM_PTR) {
     env.func->warnings.warn_and_throw("Reference to state bad: invalid name");
   }
 
   for (int i = 0; i < 7; i++) {
     auto& word = words.at(start_word_idx + 2 + i);
-    if (word.kind != LinkedWord::SYM_PTR || word.symbol_name != "#f") {
+    if (word.kind() != LinkedWord::SYM_PTR || word.symbol_name() != "#f") {
       env.func->warnings.warn_and_throw(
           "Reference to state bad: got a non #f in the initial fields");
     }
   }
 
-  return name_word.symbol_name;
+  return name_word.symbol_name();
 }
 
 FormElement* rewrite_virtual_defstate(

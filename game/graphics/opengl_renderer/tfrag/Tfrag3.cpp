@@ -550,8 +550,8 @@ void debug_vis_draw(int first_root,
                     int depth,
                     const std::vector<tfrag3::VisNode>& nodes,
                     std::vector<Tfrag3::DebugVertex>& verts_out) {
-  for (int i = 0; i < num; i++) {
-    auto& node = nodes.at(i + tree - first_root);
+  for (int ki = 0; ki < num; ki++) {
+    auto& node = nodes.at(ki + tree - first_root);
     assert(node.child_id != 0xffff);
     math::Vector4f rgba{frac(0.4 * depth), frac(0.7 * depth), frac(0.2 * depth), 0.06};
     math::Vector3f center = node.bsphere.xyz();
@@ -657,6 +657,8 @@ void Tfrag3::render_tree_cull_debug(const RenderSettings& settings,
     glBufferSubData(GL_ARRAY_BUFFER, 0, to_do * sizeof(DebugVertex),
                     m_debug_vert_data.data() + start);
     glDrawArrays(GL_TRIANGLES, 0, to_do);
+    prof.add_draw_call();
+    prof.add_tri(to_do / 3);
 
     remaining -= to_do;
     start += to_do;

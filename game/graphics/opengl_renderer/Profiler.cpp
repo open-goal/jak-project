@@ -99,7 +99,7 @@ void Profiler::draw_node(ProfilerNode& node, bool expand, int depth, float start
   constexpr int origin_x = 40;
   constexpr int origin_y = 60;
   constexpr int row_height = 15;
-  constexpr int px_per_ms = 200;
+  constexpr int px_per_ms = 75;
 
   if (node.m_stats.duration > 0.00001) {
     color = name_to_color(node.m_name);

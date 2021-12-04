@@ -202,10 +202,10 @@ goos::Object decompile_sparticle_tex_field_init(const std::vector<LinkedWord>& w
                                                 const TypeSystem& ts,
                                                 const std::string& field_name,
                                                 const std::string& flag_name) {
-  assert(words.at(1).kind == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 0);
   assert(flag_name == "plain-v1");
 
@@ -217,38 +217,38 @@ goos::Object decompile_sparticle_tex_field_init(const std::vector<LinkedWord>& w
 }
 
 float word_as_float(const LinkedWord& w) {
-  assert(w.kind == LinkedWord::PLAIN_DATA);
+  assert(w.kind() == LinkedWord::PLAIN_DATA);
   float v;
   memcpy(&v, &w.data, 4);
   return v;
 }
 
 s32 word_as_s32(const LinkedWord& w) {
-  assert(w.kind == LinkedWord::PLAIN_DATA);
+  assert(w.kind() == LinkedWord::PLAIN_DATA);
   return w.data;
 }
 
 goos::Object decompile_sparticle_func(const std::vector<LinkedWord>& words,
                                       const std::string& field_name,
                                       const std::string& flag_name) {
-  assert(words.at(1).kind == LinkedWord::SYM_PTR);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(1).kind() == LinkedWord::SYM_PTR);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 0);
   assert(flag_name == "from-pointer");
   return pretty_print::to_symbol(
-      fmt::format("(sp-func {} '{})", field_name, words.at(1).symbol_name));
+      fmt::format("(sp-func {} '{})", field_name, words.at(1).symbol_name()));
 }
 
 goos::Object decompile_sparticle_end(const std::vector<LinkedWord>& words,
                                      const std::string& field_name,
                                      const std::string& flag_name) {
-  assert(words.at(1).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(1).data == 0);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 0);
   assert(flag_name == "plain-v1");
   assert(field_name == "spt-end");
@@ -300,10 +300,10 @@ goos::Object decompile_sparticle_userdata(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_int_init(const std::vector<LinkedWord>& words,
                                           const std::string& field_name,
                                           const std::string& flag_name) {
-  assert(words.at(1).kind == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 1);
   assert(flag_name == "plain-v1");
   return pretty_print::to_symbol(
@@ -338,10 +338,10 @@ goos::Object decompile_sparticle_int_with_rand_init(const std::vector<LinkedWord
 goos::Object decompile_sparticle_launcher_by_id(const std::vector<LinkedWord>& words,
                                                 const std::string& field_name,
                                                 const std::string& flag_name) {
-  assert(words.at(1).kind == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 0);
   assert(flag_name == "part-by-id");
   return pretty_print::to_symbol(
@@ -354,9 +354,9 @@ goos::Object decompile_sparticle_flags(const std::vector<LinkedWord>& words,
                                        const std::string& flag_name) {
   assert(flag_name == "plain-v1");
   assert(field_name == "spt-flags");
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 1);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
   auto flag_def =
       decompile_bitfield_enum_from_int(TypeSpec("sp-cpuinfo-flag"), ts, word_as_s32(words.at(1)));
@@ -372,10 +372,10 @@ goos::Object decompile_sparticle_flags(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_from_other(const std::vector<LinkedWord>& words,
                                             const std::string& field_name,
                                             const std::string& flag_name) {
-  assert(words.at(1).kind == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(2).data == 0);
-  assert(words.at(3).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
   assert(words.at(3).data == 1);
   assert(flag_name == "copy-from-other-field");
   return pretty_print::to_symbol(
@@ -547,7 +547,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                    words.at(label.target_segment).begin() + (offset_location / 4),
                    words.at(label.target_segment).begin() + (offset_location / 4) + word_count);
 
-  assert(obj_words.at(0).kind == LinkedWord::PLAIN_DATA);
+  assert(obj_words.at(0).kind() == LinkedWord::PLAIN_DATA);
   u16 field_id = obj_words.at(0).data & 0xffff;
   u16 flags = obj_words.at(0).data >> 16;
 

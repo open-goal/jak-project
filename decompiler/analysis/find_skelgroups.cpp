@@ -61,34 +61,34 @@ DefskelgroupElement::StaticInfo inspect_skel_group_data(DecompiledDataElement* s
   auto& words = env.file->words_by_seg.at(lab.target_segment);
 
   auto& type_word = words.at(start_word_idx - 1);
-  if (type_word.kind != LinkedWord::TYPE_PTR || type_word.symbol_name != "skeleton-group") {
+  if (type_word.kind() != LinkedWord::TYPE_PTR || type_word.symbol_name() != "skeleton-group") {
     env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid type pointer");
   }
   auto& string_word = words.at(start_word_idx);
-  if (string_word.kind != LinkedWord::PTR) {
+  if (string_word.kind() != LinkedWord::PTR) {
     env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid name label");
   }
   result.art_name = env.file->get_goal_string_by_label(
-      env.file->get_label_by_name(env.file->get_label_name(string_word.label_id)));
+      env.file->get_label_by_name(env.file->get_label_name(string_word.label_id())));
   for (int i = 0; i < 4; i++) {
     auto& word = words.at(start_word_idx + 3 + i);
-    if (word.kind != LinkedWord::PLAIN_DATA) {
+    if (word.kind() != LinkedWord::PLAIN_DATA) {
       env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid bounds");
     }
     result.bounds[i] = *reinterpret_cast<float*>(&word.data);
   }
   auto& lod_word = words.at(start_word_idx + 9);
-  if (lod_word.kind != LinkedWord::PLAIN_DATA) {
+  if (lod_word.kind() != LinkedWord::PLAIN_DATA) {
     env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid max-lod");
   }
   result.max_lod = lod_word.data;
   auto& edge_word = words.at(start_word_idx + 14);
-  if (edge_word.kind != LinkedWord::PLAIN_DATA) {
+  if (edge_word.kind() != LinkedWord::PLAIN_DATA) {
     env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid longest-edge");
   }
   result.longest_edge = *reinterpret_cast<float*>(&edge_word.data);
   auto& other_word = words.at(start_word_idx + 15);
-  if (other_word.kind != LinkedWord::PLAIN_DATA) {
+  if (other_word.kind() != LinkedWord::PLAIN_DATA) {
     env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid other data");
   }
   result.tex_level = other_word.get_byte(0);

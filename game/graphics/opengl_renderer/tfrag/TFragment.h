@@ -41,7 +41,10 @@ struct TFragKickZone {
 
 class TFragment : public BucketRenderer {
  public:
-  TFragment(const std::string& name, BucketId my_id, const std::vector<tfrag3::TFragmentTreeKind>& trees, bool child_mode);
+  TFragment(const std::string& name,
+            BucketId my_id,
+            const std::vector<tfrag3::TFragmentTreeKind>& trees,
+            bool child_mode);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 

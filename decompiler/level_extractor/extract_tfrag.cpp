@@ -2108,7 +2108,6 @@ void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tre
   }
 }
 
-
 }  // namespace
 
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
@@ -2160,7 +2159,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   this_tree.vis_nodes = std::move(vis_nodes.vis_nodes);
 
   std::unordered_map<int, int> tfrag_parents;
-  //for (auto& node : this_tree.vis_nodes) {
+  // for (auto& node : this_tree.vis_nodes) {
   for (size_t node_idx = 0; node_idx < this_tree.vis_nodes.size(); node_idx++) {
     const auto& node = this_tree.vis_nodes[node_idx];
     if (node.flags == 0) {

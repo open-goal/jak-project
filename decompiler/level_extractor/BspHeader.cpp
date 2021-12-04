@@ -24,7 +24,7 @@ void Vector::read_from_file(Ref ref) {
   }
   for (int i = 0; i < 4; i++) {
     const auto& word = ref.data->words_by_seg.at(ref.seg).at((ref.byte_offset / 4) + i);
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("vector didn't get plain data.");
     }
     memcpy(data + i, &word.data, 4);
@@ -148,8 +148,8 @@ void TFragmentDebugData::read_from_file(Ref ref,
   auto& words = ref.data->words_by_seg.at(ref.seg);
   for (int i = 0; i < 4; i++) {
     auto& word = words.at((ref.byte_offset / 4) + i);
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
-      throw Error("debug data word type: {}\n", (int)word.kind);
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+      throw Error("debug data word type: {}\n", (int)word.kind());
     }
     data[i] = word.data;
   }
@@ -164,7 +164,7 @@ void TFragmentDebugData::read_from_file(Ref ref,
   stats->total_tfrag_tris += tris;
 
   auto& debug_word = words.at(4 + (ref.byte_offset / 4));
-  if (debug_word.kind != decompiler::LinkedWord::PLAIN_DATA || debug_word.data != 0) {
+  if (debug_word.kind() != decompiler::LinkedWord::PLAIN_DATA || debug_word.data != 0) {
     throw Error("got debug word.");
   }
 }
@@ -184,8 +184,8 @@ u32 deref_u32(const Ref& ref, int word_offset) {
     throw Error("deref_u32 bad alignment");
   }
   const auto& word = ref.data->words_by_seg.at(ref.seg).at(word_offset + (ref.byte_offset / 4));
-  if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
-    throw Error("deref_u32 bad kind: {}", (int)word.kind);
+  if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u32 bad kind: {}", (int)word.kind());
   }
   return word.data;
 }
@@ -308,7 +308,7 @@ void TFragment::read_from_file(TypedRef ref,
 
   auto dma_field = get_field_ref(ref, "dma-qwc", dts);
   auto& dma_word = ref.ref.data->words_by_seg.at(dma_field.seg).at(dma_field.byte_offset / 4);
-  if (dma_word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+  if (dma_word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
     throw Error("bad dma qwc word");
   }
   memcpy(dma_qwc, &dma_word.data, 4);
@@ -323,7 +323,7 @@ void TFragment::read_from_file(TypedRef ref,
   for (int i = 0; i < 3; i++) {
     auto& word = dma_slot.data->words_by_seg.at(dma_slot.seg).at((dma_slot.byte_offset / 4));
     dmas[i].ref = deref_label(dma_slot);
-    dmas[i].label_name = dma_slot.data->labels.at(word.label_id).name;
+    dmas[i].label_name = dma_slot.data->labels.at(word.label_id()).name;
 
     dma_slot.byte_offset += 4;
   }
@@ -833,7 +833,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   auto next_slot = get_field_ref(ref, "next", dts);
   for (int i = 0; i < 4; i++) {
     auto& word = ref.ref.data->words_by_seg.at(next_slot.seg).at(i + (next_slot.byte_offset / 4));
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie next");
     }
     next[i] = word.data;
@@ -842,7 +842,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   auto count_slot = get_field_ref(ref, "count", dts);
   for (int i = 0; i < 2; i++) {
     auto& word = ref.ref.data->words_by_seg.at(count_slot.seg).at(i + (count_slot.byte_offset / 4));
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie count");
     }
     memcpy(count + 2 * i, &word.data, 4);
@@ -852,7 +852,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   u8* block_start = (u8*)generic_count;
   for (int i = 0; i < 12; i++) {
     auto& word = ref.ref.data->words_by_seg.at(block_slot.seg).at(i + (block_slot.byte_offset / 4));
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie slot");
     }
     memcpy(block_start + 4 * i, &word.data, 4);

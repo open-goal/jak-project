@@ -223,23 +223,23 @@ int label_to_word_offset(DecompilerLabel l, bool basic) {
 }
 
 std::string get_type_tag(const LinkedWord& word) {
-  assert(word.kind == LinkedWord::TYPE_PTR);
-  return word.symbol_name;
+  assert(word.kind() == LinkedWord::TYPE_PTR);
+  return word.symbol_name();
 }
 
 bool is_type_tag(const LinkedWord& word, const std::string& type) {
-  return word.kind == LinkedWord::TYPE_PTR && word.symbol_name == type;
+  return word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == type;
 }
 
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
-  assert(word.kind == LinkedWord::PTR);
-  return data.linked_data.labels.at(word.label_id);
+  assert(word.kind() == LinkedWord::PTR);
+  return data.linked_data.labels.at(word.label_id());
 }
 
 template <typename T>
 T get_word(const LinkedWord& word) {
   T result;
-  assert(word.kind == LinkedWord::PLAIN_DATA);
+  assert(word.kind() == LinkedWord::PLAIN_DATA);
   static_assert(sizeof(T) == 4, "bad get_word size");
   memcpy(&result, &word.data, 4);
   return result;
@@ -385,8 +385,8 @@ TexturePage read_texture_page(ObjectFileData& data,
   }
 
   for (int i = 0; i < tpage.length; i++) {
-    if (words.at(offset).kind == LinkedWord::SYM_PTR) {
-      if (words.at(offset).symbol_name == "#f") {
+    if (words.at(offset).kind() == LinkedWord::SYM_PTR) {
+      if (words.at(offset).symbol_name() == "#f") {
         tpage.data.emplace_back();
         Texture null_tex;
         null_tex.null_texture = true;
