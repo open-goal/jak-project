@@ -13,8 +13,8 @@
 ;; definition for method 3 of type assistant-villagec
 (defmethod inspect assistant-villagec ((obj assistant-villagec))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   obj
   )
 
@@ -32,17 +32,17 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-52 assistant-villagec ((obj assistant-villagec))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
-   (when v1-1
-    (let ((f0-0 (-> obj root-override trans y)))
-     (let ((a0-2 v1-1))
-      (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0)))
+    (when v1-1
+      (let ((f0-0 (-> obj root-override trans y)))
+        (let ((a0-2 v1-1))
+          (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0)))
+          )
+        0
+        (set! (-> v1-1 settings top-plane w) (- (+ 1024.0 f0-0)))
+        )
+      0
       )
-     0
-     (set! (-> v1-1 settings top-plane w) (- (+ 1024.0 f0-0)))
-     )
-    0
     )
-   )
   (none)
   )
 
@@ -50,24 +50,20 @@
 (defmethod draw-npc-shadow assistant-villagec ((obj assistant-villagec))
   (-> obj draw shadow-ctrl)
   (cond
-   ((and
-     (-> obj draw shadow)
-     (zero? (-> obj draw cur-lod))
-     (logtest? (-> obj draw status) 8)
+    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) 8))
+     (let ((v1-9 (-> obj draw shadow-ctrl)))
+       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       )
+     0
+     (dummy-14 (-> obj draw shadow-ctrl))
      )
-    (let ((v1-9 (-> obj draw shadow-ctrl)))
-     (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
-     )
-    0
-    (dummy-14 (-> obj draw shadow-ctrl))
+    (else
+      (let ((v1-14 (-> obj draw shadow-ctrl)))
+        (logior! (-> v1-14 settings flags) 32)
+        )
+      0
+      )
     )
-   (else
-    (let ((v1-14 (-> obj draw shadow-ctrl)))
-     (logior! (-> v1-14 settings flags) 32)
-     )
-    0
-    )
-   )
   (none)
   )
 
@@ -75,29 +71,21 @@
 (defmethod play-anim! assistant-villagec ((obj assistant-villagec) (arg0 symbol))
   (set! (-> obj talk-message) (the-as uint 292))
   (cond
-   ((=
-     (get-task-status (game-task finalboss-movies))
-     (task-status need-introduction)
+    ((= (get-task-status (game-task finalboss-movies)) (task-status need-introduction))
+     (if arg0
+         (format
+           0
+           "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+           (-> obj name)
+           (task-status->string (current-status (-> obj tasks)))
+           )
+         )
+     (get-art-elem obj)
      )
-    (if arg0
-     (format
-      0
-      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-      (-> obj name)
-      (task-status->string (current-status (-> obj tasks)))
+    (else
+      (new 'static 'spool-anim :name "assistant-village3-reminder" :index 4 :parts 3 :command-list '())
       )
-     )
-    (get-art-elem obj)
     )
-   (else
-    (new 'static 'spool-anim
-     :name "assistant-village3-reminder"
-     :index 4
-     :parts 3
-     :command-list '()
-     )
-    )
-   )
   )
 
 ;; definition for method 31 of type assistant-villagec
@@ -107,10 +95,7 @@
 
 ;; definition for method 39 of type assistant-villagec
 (defmethod should-display? assistant-villagec ((obj assistant-villagec))
-  (and
-   (task-closed? (game-task village3-button) (task-status need-introduction))
-   (not (sages-kidnapped?))
-   )
+  (and (task-closed? (game-task village3-button) (task-status need-introduction)) (not (sages-kidnapped?)))
   )
 
 ;; definition for method 47 of type assistant-villagec
@@ -121,88 +106,48 @@
 
 ;; definition for method 43 of type assistant-villagec
 (defmethod TODO-RENAME-43 assistant-villagec ((obj assistant-villagec))
-  (when
-   (TODO-RENAME-10
-    (-> obj ambient)
-    (new 'stack-no-clear 'vector)
-    9000
-    122880.0
-    obj
+  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) 9000 122880.0 obj)
+    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-4 (the-as number (logior #x3f800000 v1-3)))
+           (f0-2 (+ -1.0 (the-as float v1-4)))
+           )
+      (cond
+        ((< 0.85714287 f0-2)
+         (play-ambient (-> obj ambient) "ASSTLP31" #f (-> obj root-override trans))
+         )
+        ((< 0.71428573 f0-2)
+         (play-ambient (-> obj ambient) "ASSTLP32" #f (-> obj root-override trans))
+         )
+        ((< 0.5714286 f0-2)
+         (play-ambient (-> obj ambient) "ASSTLP33" #f (-> obj root-override trans))
+         )
+        ((< 0.42857143 f0-2)
+         (let ((v1-16 (get-task-status (game-task lavatube-end))))
+           (if (not (or (= v1-16 (task-status need-reward-speech)) (= v1-16 (task-status invalid))))
+               (play-ambient (-> obj ambient) "ASSTLP34" #f (-> obj root-override trans))
+               )
+           )
+         )
+        ((< 0.2857143 f0-2)
+         (let ((v1-21 (get-task-status (game-task lavatube-end))))
+           (if (not (or (= v1-21 (task-status need-reward-speech)) (= v1-21 (task-status invalid))))
+               (play-ambient (-> obj ambient) "ASSTLP35" #f (-> obj root-override trans))
+               )
+           )
+         )
+        ((< 0.14285715 f0-2)
+         (let ((v1-26 (get-task-status (game-task lavatube-end))))
+           (if (not (or (= v1-26 (task-status need-reward-speech)) (= v1-26 (task-status invalid))))
+               (play-ambient (-> obj ambient) "ASSTLP36" #f (-> obj root-override trans))
+               )
+           )
+         )
+        ((nonzero? (get-task-status (game-task citadel-sage-green)))
+         (play-ambient (-> obj ambient) "ASSTLP37" #f (-> obj root-override trans))
+         )
+        )
+      )
     )
-   (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-          (v1-4 (the-as number (logior #x3f800000 v1-3)))
-          (f0-2 (+ -1.0 (the-as float v1-4)))
-          )
-    (cond
-     ((< 0.85714287 f0-2)
-      (play-ambient (-> obj ambient) "ASSTLP31" #f (-> obj root-override trans))
-      )
-     ((< 0.71428573 f0-2)
-      (play-ambient (-> obj ambient) "ASSTLP32" #f (-> obj root-override trans))
-      )
-     ((< 0.5714286 f0-2)
-      (play-ambient (-> obj ambient) "ASSTLP33" #f (-> obj root-override trans))
-      )
-     ((< 0.42857143 f0-2)
-      (let ((v1-16 (get-task-status (game-task lavatube-end))))
-       (if
-        (not
-         (or
-          (= v1-16 (task-status need-reward-speech))
-          (= v1-16 (task-status invalid))
-          )
-         )
-        (play-ambient
-         (-> obj ambient)
-         "ASSTLP34"
-         #f
-         (-> obj root-override trans)
-         )
-        )
-       )
-      )
-     ((< 0.2857143 f0-2)
-      (let ((v1-21 (get-task-status (game-task lavatube-end))))
-       (if
-        (not
-         (or
-          (= v1-21 (task-status need-reward-speech))
-          (= v1-21 (task-status invalid))
-          )
-         )
-        (play-ambient
-         (-> obj ambient)
-         "ASSTLP35"
-         #f
-         (-> obj root-override trans)
-         )
-        )
-       )
-      )
-     ((< 0.14285715 f0-2)
-      (let ((v1-26 (get-task-status (game-task lavatube-end))))
-       (if
-        (not
-         (or
-          (= v1-26 (task-status need-reward-speech))
-          (= v1-26 (task-status invalid))
-          )
-         )
-        (play-ambient
-         (-> obj ambient)
-         "ASSTLP36"
-         #f
-         (-> obj root-override trans)
-         )
-        )
-       )
-      )
-     ((nonzero? (get-task-status (game-task citadel-sage-green)))
-      (play-ambient (-> obj ambient) "ASSTLP37" #f (-> obj root-override trans))
-      )
-     )
-    )
-   )
   )
 
 ;; failed to figure out what this is:
@@ -210,157 +155,90 @@
   :virtual #t
   :code
   (behavior ()
-   (if (!= (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        (get-art-elem self)
-        )
-    (ja-channel-push! 1 15)
-    )
-   (while #t
-    (TODO-RENAME-43 self)
-    (let ((a0-8 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-8 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      )
-     (set!
-      (-> a0-8 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 3))
-         data
-         0
-         length
-         )
-        -1
-        )
-       )
-      )
-     (set! (-> a0-8 param 1) 1.0)
-     (set! (-> a0-8 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-8
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((a0-9 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-9 param 0)
-       (the float (+ (-> a0-9 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-9 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       a0-9
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
-    (let ((gp-0 (-> *display* base-frame-counter)))
-     (while (let* ((s5-0 (-> *display* base-frame-counter))
-                   (f30-0 300.0)
-                   (f28-0 0.16)
-                   (f26-0 0.17000002)
-                   (v1-31
-                    (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+    (if (!= (if (> (-> self skel active-channels) 0)
+                    (-> self skel root-channel 0 frame-group)
                     )
-                   (v1-32 (the-as number (logior #x3f800000 v1-31)))
-                   )
-             (<
-              (-
-               s5-0
-               (the
-                int
-                (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-32)))))
-                )
-               )
-              gp-0
+              (get-art-elem self)
               )
-             )
-      (suspend)
-      )
-     )
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (set! (-> gp-1 frame-group) (if (> (-> self skel active-channels) 0)
-                                  (-> self skel root-channel 0 frame-group)
-                                  )
-      )
-     (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
-     (set! (-> gp-1 param 1) 1.0)
-     (set! (-> gp-1 frame-num) (ja-aframe 16.0 0))
-     (joint-control-channel-group! gp-1 (if (> (-> self skel active-channels) 0)
-                                         (->
-                                          self
-                                          skel
-                                          root-channel
-                                          0
-                                          frame-group
-                                          )
-                                         )
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((gp-2 (-> self skel root-channel 0)))
-      (set! (-> gp-2 param 0) (ja-aframe 0.0 0))
-      (set! (-> gp-2 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       gp-2
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
-    (let ((gp-3 (-> *display* base-frame-counter)))
-     (while (let* ((s5-1 (-> *display* base-frame-counter))
-                   (f30-1 300.0)
-                   (f28-1 0.16)
-                   (f26-1 0.17000002)
-                   (v1-56
-                    (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
-                    )
-                   (v1-57 (the-as number (logior #x3f800000 v1-56)))
-                   )
-             (<
-              (-
-               s5-1
-               (the
-                int
-                (* f30-1 (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-57)))))
-                )
-               )
-              gp-3
+        (ja-channel-push! 1 15)
+        )
+    (while #t
+      (TODO-RENAME-43 self)
+      (let ((a0-8 (-> self skel root-channel 0)))
+        (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+        (set! (-> a0-8 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
               )
-             )
-      (suspend)
+        (set! (-> a0-8 param 1) 1.0)
+        (set! (-> a0-8 frame-num) 0.0)
+        (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
+        )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((a0-9 (-> self skel root-channel 0)))
+          (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
+          (set! (-> a0-9 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
+      (let ((gp-0 (-> *display* base-frame-counter)))
+        (while (let* ((s5-0 (-> *display* base-frame-counter))
+                      (f30-0 300.0)
+                      (f28-0 0.16)
+                      (f26-0 0.17000002)
+                      (v1-31 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                      (v1-32 (the-as number (logior #x3f800000 v1-31)))
+                      )
+                 (< (- s5-0 (the int (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-32))))))) gp-0)
+                 )
+          (suspend)
+          )
+        )
+      (let ((gp-1 (-> self skel root-channel 0)))
+        (set! (-> gp-1 frame-group) (if (> (-> self skel active-channels) 0)
+                                        (-> self skel root-channel 0 frame-group)
+                                        )
+              )
+        (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
+        (set! (-> gp-1 param 1) 1.0)
+        (set! (-> gp-1 frame-num) (ja-aframe 16.0 0))
+        (joint-control-channel-group!
+          gp-1
+          (if (> (-> self skel active-channels) 0)
+              (-> self skel root-channel 0 frame-group)
+              )
+          num-func-seek!
+          )
+        )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((gp-2 (-> self skel root-channel 0)))
+          (set! (-> gp-2 param 0) (ja-aframe 0.0 0))
+          (set! (-> gp-2 param 1) 1.0)
+          (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
+      (let ((gp-3 (-> *display* base-frame-counter)))
+        (while (let* ((s5-1 (-> *display* base-frame-counter))
+                      (f30-1 300.0)
+                      (f28-1 0.16)
+                      (f26-1 0.17000002)
+                      (v1-56 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                      (v1-57 (the-as number (logior #x3f800000 v1-56)))
+                      )
+                 (< (- s5-1 (the int (* f30-1 (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-57))))))) gp-3)
+                 )
+          (suspend)
+          )
+        )
       )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 11 of type assistant-villagec
-(defmethod
-  init-from-entity!
-  assistant-villagec
-  ((obj assistant-villagec) (arg0 entity-actor))
-  (dummy-40
-   obj
-   arg0
-   *assistant-village3-sg*
-   3
-   31
-   (new 'static 'vector :w 4096.0)
-   5
-   )
+(defmethod init-from-entity! assistant-villagec ((obj assistant-villagec) (arg0 entity-actor))
+  (dummy-40 obj arg0 *assistant-village3-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task assistant-village3)))
   (dummy-42 obj)
   (none)

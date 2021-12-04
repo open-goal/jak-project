@@ -17,8 +17,8 @@
 ;; definition for method 3 of type wedge-plat-master
 (defmethod inspect wedge-plat-master ((obj wedge-plat-master))
   (let ((t9-0 (method-of-type process inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tcenter: #<vector @ #x~X>~%" (-> obj center))
   (format #t "~T~Trotspeed: ~f~%" (-> obj rotspeed))
   (format #t "~T~Trotate-inner: ~f~%" (-> obj rotate-inner))
@@ -30,58 +30,27 @@
 (defstate wedge-plat-master-idle (wedge-plat-master)
   :code
   (behavior ()
-   (while #t
-    (set!
-     (-> self rotate-inner)
-     (the
-      float
-      (sar
-       (shl
-        (the
-         int
-         (+
-          (-> self rotate-inner)
-          (* (-> self rotspeed) (-> *display* seconds-per-frame))
-          )
-         )
-        48
-        )
-       48
-       )
+    (while #t
+      (set! (-> self rotate-inner)
+            (the float
+                 (sar (shl (the int (+ (-> self rotate-inner) (* (-> self rotspeed) (-> *display* seconds-per-frame)))) 48) 48)
+                 )
+            )
+      (set! (-> self rotate-outer)
+            (the float
+                 (sar (shl (the int (- (-> self rotate-outer) (* (-> self rotspeed) (-> *display* seconds-per-frame)))) 48) 48)
+                 )
+            )
+      (suspend)
       )
-     )
-    (set!
-     (-> self rotate-outer)
-     (the
-      float
-      (sar
-       (shl
-        (the
-         int
-         (-
-          (-> self rotate-outer)
-          (* (-> self rotspeed) (-> *display* seconds-per-frame))
-          )
-         )
-        48
-        )
-       48
-       )
-      )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 11 of type wedge-plat-master
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod
-  init-from-entity!
-  wedge-plat-master
-  ((obj wedge-plat-master) (arg0 entity-actor))
+(defmethod init-from-entity! wedge-plat-master ((obj wedge-plat-master) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (set! (-> obj center quad) (-> arg0 extra trans quad))
   (set! (-> obj center y) (+ 819.2 (-> obj center y)))
@@ -111,8 +80,8 @@
 ;; definition for method 3 of type wedge-plat
 (defmethod inspect wedge-plat ((obj wedge-plat))
   (let ((t9-0 (method-of-type baseplat inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tmaster: ~A~%" (-> obj master))
   (format #t "~T~Tdistance: ~f~%" (-> obj distance))
   (format #t "~T~Toffset: ~f~%" (-> obj offset))
@@ -132,78 +101,64 @@
 (defmethod dummy-27 wedge-plat ((obj wedge-plat))
   (let* ((a0-1 (-> obj master))
          (v1-0 (if a0-1
-                (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
-                )
-          )
+                   (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
+                   )
+               )
          )
-   (when v1-0
-    (let ((s4-0 (&-> v1-0 27))
-          (f30-0 (-> obj distance))
-          (f28-0
-           (the
-            float
-            (sar
-             (shl (the int (+ (the-as float (-> v1-0 32)) (-> obj offset))) 48)
-             48
-             )
+    (when v1-0
+      (let ((s4-0 (&-> v1-0 27))
+            (f30-0 (-> obj distance))
+            (f28-0 (the float (sar (shl (the int (+ (the-as float (-> v1-0 32)) (-> obj offset))) 48) 48)))
+            (s5-0 #f)
             )
-           )
-          (s5-0 #f)
+        (quaternion-axis-angle!
+          (-> obj root-override quat)
+          0.0
+          1.0
+          0.0
+          (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48))
           )
-     (quaternion-axis-angle!
-      (-> obj root-override quat)
-      0.0
-      1.0
-      0.0
-      (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48))
+        (set! (-> obj basetrans x) (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0))))
+        (set! (-> obj basetrans y) (the-as float (-> s4-0 1)))
+        (set! (-> obj basetrans z) (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0))))
+        (let ((f0-16 (cos f28-0)))
+          (if (or (< 0.95 f0-16) (< f0-16 -0.95))
+              (set! s5-0 #t)
+              )
+          )
+        s5-0
+        )
       )
-     (set!
-      (-> obj basetrans x)
-      (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0)))
-      )
-     (set! (-> obj basetrans y) (the-as float (-> s4-0 1)))
-     (set!
-      (-> obj basetrans z)
-      (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0)))
-      )
-     (let ((f0-16 (cos f28-0)))
-      (if (or (< 0.95 f0-16) (< f0-16 -0.95))
-       (set! s5-0 #t)
-       )
-      )
-     s5-0
-     )
     )
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate wedge-plat-idle (wedge-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'bonk)
-                    (dummy-22 self)
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (if (= v1-0 'bonk)
+                         (dummy-22 self)
+                         )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior wedge-plat) plat-trans)
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set! (-> gp-0 num-func) num-func-identity)
-    (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 num-func) num-func-identity)
+      (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
+      )
+    (while #t
+      (if (dummy-27 self)
+          (go wedge-plat-tip)
+          )
+      (suspend)
+      )
+    (none)
     )
-   (while #t
-    (if (dummy-27 self)
-     (go wedge-plat-tip)
-     )
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior wedge-plat) plat-post)
   )
@@ -212,116 +167,83 @@
 (defstate wedge-plat-tip (wedge-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'bonk)
-                     (dummy-22 self)
-                     )
-                    ((= v1-0 'touch)
-                     (send-event arg0 'no-look-around 450)
-                     #f
-                     )
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((= v1-0 'bonk)
+                        (dummy-22 self)
+                        )
+                       ((= v1-0 'touch)
+                        (send-event arg0 'no-look-around 450)
+                        #f
+                        )
+                       )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior wedge-plat) plat-trans)
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set! (-> gp-0 param 0) (ja-aframe 60.0 0))
-    (set! (-> gp-0 param 1) 1.0)
-    (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
-    (joint-control-channel-group!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (dummy-27 self)
-    (suspend)
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (set! (-> gp-1 param 0) (ja-aframe 60.0 0))
-     (set! (-> gp-1 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> gp-0 param 0) (ja-aframe 60.0 0))
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
+      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
       )
-     )
-    )
-   (let ((gp-2 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-2 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set! (-> gp-2 param 0) (ja-aframe 100.0 0))
-    (set! (-> gp-2 param 1) 1.0)
-    (set! (-> gp-2 frame-num) (ja-aframe 60.0 0))
-    (joint-control-channel-group!
-     gp-2
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (dummy-27 self)
-    (suspend)
-    (let ((gp-3 (-> self skel root-channel 0)))
-     (set! (-> gp-3 param 0) (ja-aframe 100.0 0))
-     (set! (-> gp-3 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (dummy-27 self)
+      (suspend)
+      (let ((gp-1 (-> self skel root-channel 0)))
+        (set! (-> gp-1 param 0) (ja-aframe 60.0 0))
+        (set! (-> gp-1 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
-    )
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
-    (let ((gp-4 (-> self skel root-channel 0)))
-     (set! (-> gp-4 num-func) num-func-identity)
-     (set! (-> gp-4 frame-num) (ja-aframe 100.0 0))
-     )
-    (dummy-27 self)
-    (suspend)
-    )
-   (let ((gp-5 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-5 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set! (-> gp-5 param 0) (ja-aframe 153.0 0))
-    (set! (-> gp-5 param 1) 1.0)
-    (set! (-> gp-5 frame-num) (ja-aframe 100.0 0))
-    (joint-control-channel-group!
-     gp-5
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (dummy-27 self)
-    (suspend)
-    (let ((gp-6 (-> self skel root-channel 0)))
-     (set! (-> gp-6 param 0) (ja-aframe 153.0 0))
-     (set! (-> gp-6 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-6
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (let ((gp-2 (-> self skel root-channel 0)))
+      (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> gp-2 param 0) (ja-aframe 100.0 0))
+      (set! (-> gp-2 param 1) 1.0)
+      (set! (-> gp-2 frame-num) (ja-aframe 60.0 0))
+      (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
       )
-     )
+    (until (ja-done? 0)
+      (dummy-27 self)
+      (suspend)
+      (let ((gp-3 (-> self skel root-channel 0)))
+        (set! (-> gp-3 param 0) (ja-aframe 100.0 0))
+        (set! (-> gp-3 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-3 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+      (let ((gp-4 (-> self skel root-channel 0)))
+        (set! (-> gp-4 num-func) num-func-identity)
+        (set! (-> gp-4 frame-num) (ja-aframe 100.0 0))
+        )
+      (dummy-27 self)
+      (suspend)
+      )
+    (let ((gp-5 (-> self skel root-channel 0)))
+      (set! (-> gp-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> gp-5 param 0) (ja-aframe 153.0 0))
+      (set! (-> gp-5 param 1) 1.0)
+      (set! (-> gp-5 frame-num) (ja-aframe 100.0 0))
+      (joint-control-channel-group! gp-5 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (dummy-27 self)
+      (suspend)
+      (let ((gp-6 (-> self skel root-channel 0)))
+        (set! (-> gp-6 param 0) (ja-aframe 153.0 0))
+        (set! (-> gp-6 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-6 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (go wedge-plat-idle)
+    (none)
     )
-   (go wedge-plat-idle)
-   (none)
-   )
   :post
   (the-as (function none :behavior wedge-plat) plat-post)
   )
@@ -330,53 +252,32 @@
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! wedge-plat ((obj wedge-plat) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 3)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *wedge-plat-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
-  (set!
-   (-> obj master)
-   (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0))
-   )
+  (set! (-> obj master) (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0)))
   (set! (-> obj offset) (res-lump-float arg0 'rotoffset))
   (set! (-> obj distance) (res-lump-float arg0 'distance :default 36864.0))
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -396,8 +297,8 @@
 ;; definition for method 3 of type wedge-plat-outer
 (defmethod inspect wedge-plat-outer ((obj wedge-plat-outer))
   (let ((t9-0 (method-of-type wedge-plat inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   obj
   )
 
@@ -414,78 +315,64 @@
 (defmethod dummy-27 wedge-plat-outer ((obj wedge-plat-outer))
   (let* ((a0-1 (-> obj master))
          (v1-0 (if a0-1
-                (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
-                )
-          )
+                   (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
+                   )
+               )
          )
-   (when v1-0
-    (let ((s4-0 (&-> v1-0 27))
-          (f30-0 (-> obj distance))
-          (f28-0
-           (the
-            float
-            (sar
-             (shl (the int (+ (the-as float (-> v1-0 33)) (-> obj offset))) 48)
-             48
-             )
+    (when v1-0
+      (let ((s4-0 (&-> v1-0 27))
+            (f30-0 (-> obj distance))
+            (f28-0 (the float (sar (shl (the int (+ (the-as float (-> v1-0 33)) (-> obj offset))) 48) 48)))
+            (s5-0 #f)
             )
-           )
-          (s5-0 #f)
+        (quaternion-axis-angle!
+          (-> obj root-override quat)
+          0.0
+          1.0
+          0.0
+          (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48))
           )
-     (quaternion-axis-angle!
-      (-> obj root-override quat)
-      0.0
-      1.0
-      0.0
-      (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48))
+        (set! (-> obj basetrans x) (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0))))
+        (set! (-> obj basetrans y) (the-as float (-> s4-0 1)))
+        (set! (-> obj basetrans z) (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0))))
+        (let ((f0-16 (sin f28-0)))
+          (if (or (< 0.95 f0-16) (< f0-16 -0.95))
+              (set! s5-0 #t)
+              )
+          )
+        s5-0
+        )
       )
-     (set!
-      (-> obj basetrans x)
-      (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0)))
-      )
-     (set! (-> obj basetrans y) (the-as float (-> s4-0 1)))
-     (set!
-      (-> obj basetrans z)
-      (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0)))
-      )
-     (let ((f0-16 (sin f28-0)))
-      (if (or (< 0.95 f0-16) (< f0-16 -0.95))
-       (set! s5-0 #t)
-       )
-      )
-     s5-0
-     )
     )
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate wedge-plat-outer-idle (wedge-plat-outer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'bonk)
-                    (dummy-22 self)
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (if (= v1-0 'bonk)
+                         (dummy-22 self)
+                         )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior wedge-plat-outer) plat-trans)
   :code
   (behavior ()
-   (while #t
-    (let ((gp-0 (-> self skel root-channel 0)))
-     (set! (-> gp-0 num-func) num-func-identity)
-     (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
-     )
-    (if (dummy-27 self)
-     (go wedge-plat-outer-tip)
-     )
-    (suspend)
+    (while #t
+      (let ((gp-0 (-> self skel root-channel 0)))
+        (set! (-> gp-0 num-func) num-func-identity)
+        (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
+        )
+      (if (dummy-27 self)
+          (go wedge-plat-outer-tip)
+          )
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior wedge-plat-outer) plat-post)
   )
@@ -494,173 +381,116 @@
 (defstate wedge-plat-outer-tip (wedge-plat-outer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'bonk)
-                     (dummy-22 self)
-                     )
-                    ((= v1-0 'touch)
-                     (send-event arg0 'no-look-around 450)
-                     )
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((= v1-0 'bonk)
+                        (dummy-22 self)
+                        )
+                       ((= v1-0 'touch)
+                        (send-event arg0 'no-look-around 450)
+                        )
+                       )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior wedge-plat-outer) plat-trans)
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set! (-> gp-0 param 0) (ja-aframe 60.0 0))
-    (set! (-> gp-0 param 1) 1.0)
-    (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
-    (joint-control-channel-group!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (dummy-27 self)
-    (suspend)
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (set! (-> gp-1 param 0) (ja-aframe 60.0 0))
-     (set! (-> gp-1 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> gp-0 param 0) (ja-aframe 60.0 0))
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
+      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
       )
-     )
-    )
-   (let ((gp-2 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-2 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set! (-> gp-2 param 0) (ja-aframe 100.0 0))
-    (set! (-> gp-2 param 1) 1.0)
-    (set! (-> gp-2 frame-num) (ja-aframe 60.0 0))
-    (joint-control-channel-group!
-     gp-2
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (dummy-27 self)
-    (suspend)
-    (let ((gp-3 (-> self skel root-channel 0)))
-     (set! (-> gp-3 param 0) (ja-aframe 100.0 0))
-     (set! (-> gp-3 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (dummy-27 self)
+      (suspend)
+      (let ((gp-1 (-> self skel root-channel 0)))
+        (set! (-> gp-1 param 0) (ja-aframe 60.0 0))
+        (set! (-> gp-1 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
-    )
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
-    (let ((gp-4 (-> self skel root-channel 0)))
-     (set! (-> gp-4 num-func) num-func-identity)
-     (set! (-> gp-4 frame-num) (ja-aframe 100.0 0))
-     )
-    (dummy-27 self)
-    (suspend)
-    )
-   (let ((gp-5 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-5 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set! (-> gp-5 param 0) (ja-aframe 153.0 0))
-    (set! (-> gp-5 param 1) 1.0)
-    (set! (-> gp-5 frame-num) (ja-aframe 100.0 0))
-    (joint-control-channel-group!
-     gp-5
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (dummy-27 self)
-    (suspend)
-    (let ((gp-6 (-> self skel root-channel 0)))
-     (set! (-> gp-6 param 0) (ja-aframe 153.0 0))
-     (set! (-> gp-6 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-6
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (let ((gp-2 (-> self skel root-channel 0)))
+      (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> gp-2 param 0) (ja-aframe 100.0 0))
+      (set! (-> gp-2 param 1) 1.0)
+      (set! (-> gp-2 frame-num) (ja-aframe 60.0 0))
+      (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
       )
-     )
+    (until (ja-done? 0)
+      (dummy-27 self)
+      (suspend)
+      (let ((gp-3 (-> self skel root-channel 0)))
+        (set! (-> gp-3 param 0) (ja-aframe 100.0 0))
+        (set! (-> gp-3 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-3 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+      (let ((gp-4 (-> self skel root-channel 0)))
+        (set! (-> gp-4 num-func) num-func-identity)
+        (set! (-> gp-4 frame-num) (ja-aframe 100.0 0))
+        )
+      (dummy-27 self)
+      (suspend)
+      )
+    (let ((gp-5 (-> self skel root-channel 0)))
+      (set! (-> gp-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> gp-5 param 0) (ja-aframe 153.0 0))
+      (set! (-> gp-5 param 1) 1.0)
+      (set! (-> gp-5 frame-num) (ja-aframe 100.0 0))
+      (joint-control-channel-group! gp-5 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (dummy-27 self)
+      (suspend)
+      (let ((gp-6 (-> self skel root-channel 0)))
+        (set! (-> gp-6 param 0) (ja-aframe 153.0 0))
+        (set! (-> gp-6 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-6 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (go wedge-plat-outer-idle)
+    (none)
     )
-   (go wedge-plat-outer-idle)
-   (none)
-   )
   :post
   (the-as (function none :behavior wedge-plat-outer) plat-post)
   )
 
 ;; definition for method 11 of type wedge-plat-outer
 ;; INFO: Return type mismatch object vs none.
-(defmethod
-  init-from-entity!
-  wedge-plat-outer
-  ((obj wedge-plat-outer) (arg0 entity-actor))
+(defmethod init-from-entity! wedge-plat-outer ((obj wedge-plat-outer) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 19))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 32768.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 19))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 3)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 32768.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *wedge-plat-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
-  (set!
-   (-> obj master)
-   (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0))
-   )
+  (set! (-> obj master) (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0)))
   (set! (-> obj offset) (res-lump-float arg0 'rotoffset))
   (set! (-> obj distance) (res-lump-float arg0 'distance :default 69632.0))
   (logclear! (-> obj mask) (process-mask actor-pause))

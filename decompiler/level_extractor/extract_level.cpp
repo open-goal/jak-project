@@ -10,8 +10,8 @@ namespace decompiler {
 /*!
  * Look through files in a DGO and find the bsp-header file (the level)
  */
-ObjectFileRecord get_bsp_file(const std::vector<ObjectFileRecord>& records) {
-  ObjectFileRecord result;
+std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records) {
+  std::optional<ObjectFileRecord> result;
   bool found = false;
   for (auto& file : records) {
     if (file.name.length() > 4 && file.name.substr(file.name.length() - 4) == "-vis") {
@@ -20,7 +20,6 @@ ObjectFileRecord get_bsp_file(const std::vector<ObjectFileRecord>& records) {
       result = file;
     }
   }
-  assert(found);
   return result;
 }
 
@@ -57,10 +56,14 @@ void extract_from_level(ObjectFileDB& db,
   }
 
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
-  std::string level_name = bsp_rec.name.substr(0, bsp_rec.name.length() - 4);
+  if (!bsp_rec) {
+    lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
+    return;
+  }
+  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
   fmt::print("Processing level {} ({})\n", dgo_name, level_name);
-  auto& bsp_file = db.lookup_record(bsp_rec);
+  auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   assert(ok);
 

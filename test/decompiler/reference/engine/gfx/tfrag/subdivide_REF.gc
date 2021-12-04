@@ -29,41 +29,22 @@
 ;; INFO: Return type mismatch uint vs none.
 (defun-debug print-tr-stat ((stat tr-stat) (name string) (dest string))
   (clear dest)
-  (when
-   (nonzero?
-    (+
-     (-> stat groups)
-     (-> stat fragments)
-     (-> stat tris)
-     (-> stat dverts)
-     (-> stat instances)
-     )
+  (when (nonzero? (+ (-> stat groups) (-> stat fragments) (-> stat tris) (-> stat dverts) (-> stat instances)))
+    (format dest "~0k~4d  ~5d   ~6d   ~6d" (-> stat groups) (-> stat fragments) (-> stat tris) (-> stat dverts))
+    (format
+      dest
+      "~0k   ~7f ~5d  ~s"
+      (/ (* 2.0 (the float (-> stat tris))) (the float (- (-> stat dverts) (-> stat tris))))
+      (-> stat instances)
+      name
+      )
+    (format *stdcon* "~S~%" dest)
+    (+! (-> *terrain-stats* total groups) (-> stat groups))
+    (+! (-> *terrain-stats* total fragments) (-> stat fragments))
+    (+! (-> *terrain-stats* total tris) (-> stat tris))
+    (+! (-> *terrain-stats* total dverts) (-> stat dverts))
+    (+! (-> *terrain-stats* total instances) (-> stat instances))
     )
-   (format
-    dest
-    "~0k~4d  ~5d   ~6d   ~6d"
-    (-> stat groups)
-    (-> stat fragments)
-    (-> stat tris)
-    (-> stat dverts)
-    )
-   (format
-    dest
-    "~0k   ~7f ~5d  ~s"
-    (/
-     (* 2.0 (the float (-> stat tris)))
-     (the float (- (-> stat dverts) (-> stat tris)))
-     )
-    (-> stat instances)
-    name
-    )
-   (format *stdcon* "~S~%" dest)
-   (+! (-> *terrain-stats* total groups) (-> stat groups))
-   (+! (-> *terrain-stats* total fragments) (-> stat fragments))
-   (+! (-> *terrain-stats* total tris) (-> stat tris))
-   (+! (-> *terrain-stats* total dverts) (-> stat dverts))
-   (+! (-> *terrain-stats* total instances) (-> stat instances))
-   )
   (none)
   )
 
@@ -71,26 +52,26 @@
 ;; INFO: Return type mismatch int vs none.
 (defun-debug print-terrain-stats ()
   (if *debug-segment*
-   (add-frame
-    (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-    'draw
-    (new 'static 'rgba :r #x40 :b #x40 :a #x80)
-    )
-   )
-  (dotimes (gp-0 (-> *level* length))
-   (let ((s5-0 (-> *level* level gp-0)))
-    (when (= (-> s5-0 status) 'active)
-     (compute-memory-usage s5-0 #f)
-     (format
-      *stdcon*
-      "~0k~D ~A ~,,2fK + textures~%"
-      (-> s5-0 index)
-      (-> s5-0 name)
-      (* 0.0009765625 (the float (-> s5-0 mem-usage)))
+      (add-frame
+        (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+        'draw
+        (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+        )
       )
-     )
+  (dotimes (gp-0 (-> *level* length))
+    (let ((s5-0 (-> *level* level gp-0)))
+      (when (= (-> s5-0 status) 'active)
+        (compute-memory-usage s5-0 #f)
+        (format
+          *stdcon*
+          "~0k~D ~A ~,,2fK + textures~%"
+          (-> s5-0 index)
+          (-> s5-0 name)
+          (* 0.0009765625 (the float (-> s5-0 mem-usage)))
+          )
+        )
+      )
     )
-   )
   (format *stdcon* "~0k~%grps  frags     tris   dverts    strip  insts~%")
   (print-tr-stat (-> *terrain-stats* pris) "pris" *temp-string*)
   (print-tr-stat (-> *merc-global-stats* merc) "merc" *temp-string*)
@@ -100,27 +81,16 @@
   (print-tr-stat (-> *terrain-stats* tie-generic) "tie-generic" *temp-string*)
   (print-tr-stat (-> *terrain-stats* shrub-near) "shrub-near" *temp-string*)
   (print-tr-stat (-> *terrain-stats* shrub) "shrub" *temp-string*)
-  (print-tr-stat
-   (-> *terrain-stats* tfrag-near)
-   "tfrag-near"
-   *stat-string-tfrag-near*
-   )
+  (print-tr-stat (-> *terrain-stats* tfrag-near) "tfrag-near" *stat-string-tfrag-near*)
   (print-tr-stat (-> *terrain-stats* tfrag) "tfrag" *stat-string-tfrag*)
   (print-tr-stat (-> *terrain-stats* trans-tfrag) "trans-tfrag" *temp-string*)
-  (print-tr-stat
-   (-> *terrain-stats* trans-tfrag-near)
-   "trans-tfrag-near"
-   *temp-string*
-   )
+  (print-tr-stat (-> *terrain-stats* trans-tfrag-near) "trans-tfrag-near" *temp-string*)
   (print-tr-stat (-> *terrain-stats* trans-pris) "trans-pris" *temp-string*)
   (print-tr-stat (-> *terrain-stats* billboard) "billboard" *temp-string*)
   (print-tr-stat (-> *terrain-stats* trans-shrub) "trans-shrub" *temp-string*)
   (print-tr-stat (-> *terrain-stats* ocean-mid) "ocean-mid" *temp-string*)
   (print-tr-stat (-> *terrain-stats* ocean-near) "ocean-near" *temp-string*)
-  (format
-   *stdcon*
-   "~0k---------------------------------------------------------------~%"
-   )
+  (format *stdcon* "~0k---------------------------------------------------------------~%")
   (print-tr-stat (-> *terrain-stats* total) "total" *stat-string-total*)
   (clear-tr-stat (-> *terrain-stats* pris))
   (clear-tr-stat (-> *merc-global-stats* merc))
@@ -141,33 +111,31 @@
   (clear-tr-stat (-> *terrain-stats* ocean-near))
   (clear-tr-stat (-> *terrain-stats* total))
   (if *debug-segment*
-   (add-frame
-    (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-    'draw
-    (new 'static 'rgba :b #xff :a #x80)
-    )
-   )
+      (add-frame
+        (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+        'draw
+        (new 'static 'rgba :b #xff :a #x80)
+        )
+      )
   0
   (none)
   )
 
 ;; definition for function update-subdivide-settings!
 ;; INFO: Return type mismatch int vs none.
-(defun
-  update-subdivide-settings!
-  ((settings subdivide-settings) (math-cam math-camera) (idx int))
+(defun update-subdivide-settings! ((settings subdivide-settings) (math-cam math-camera) (idx int))
   (set! (-> settings meters 0) (-> settings far idx))
   (set! (-> settings meters 4) (-> settings close idx))
   (let ((f0-3 (* 0.14285715 (- (-> settings meters 0) (-> settings meters 4)))))
-   (set! (-> settings meters 3) (+ (-> settings meters 4) (* 0.5 f0-3)))
-   (set! (-> settings meters 2) (+ (-> settings meters 3) f0-3))
-   (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 f0-3)))
-   )
-  (let ((f0-7 (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
-   (dotimes (v1-5 5)
-    (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))
+    (set! (-> settings meters 3) (+ (-> settings meters 4) (* 0.5 f0-3)))
+    (set! (-> settings meters 2) (+ (-> settings meters 3) f0-3))
+    (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 f0-3)))
     )
-   )
+  (let ((f0-7 (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
+    (dotimes (v1-5 5)
+      (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))
+      )
+    )
   (set! (-> *tfrag-work* frag-dists x) (- (-> settings meters 0)))
   (set! (-> *tfrag-work* frag-dists y) (- (-> settings meters 1)))
   (set! (-> *tfrag-work* frag-dists z) (- (-> settings meters 2)))
@@ -177,10 +145,7 @@
   )
 
 ;; definition for symbol *subdivide-settings*, type subdivide-settings
-(define
-  *subdivide-settings*
-  (new 'global 'subdivide-settings (meters 30.0) (meters 70.0))
-  )
+(define *subdivide-settings* (new 'global 'subdivide-settings (meters 30.0) (meters 70.0)))
 
 ;; definition for function set-tfrag-dists!
 ;; INFO: Return type mismatch tfrag-dists vs none.
@@ -189,25 +154,25 @@
         (f1-0 (-> *subdivide-settings* dist 1))
         (f0-0 (-> *subdivide-settings* dist 2))
         )
-   (set! (-> arg0 k0s 0 w) f2-0)
-   (set! (-> arg0 k0s 1 w) f1-0)
-   (let ((f4-1 (/ 1.0 (- f2-0 f1-0)))
-         (f3-2 (/ 1.0 (- f1-0 f0-0)))
-         )
-    (set! (-> arg0 k0s 0 y) (- f4-1))
-    (set! (-> arg0 k0s 1 y) (- f3-2))
-    (set! (-> arg0 k0s 0 x) (* 0.5 f4-1))
-    (set! (-> arg0 k0s 1 x) (* 0.5 f3-2))
-    (let ((f2-1 (* f2-0 f4-1))
-          (f5-7 (* f1-0 f3-2))
+    (set! (-> arg0 k0s 0 w) f2-0)
+    (set! (-> arg0 k0s 1 w) f1-0)
+    (let ((f4-1 (/ 1.0 (- f2-0 f1-0)))
+          (f3-2 (/ 1.0 (- f1-0 f0-0)))
           )
-     (set! (-> arg0 k1s 0 y) f2-1)
-     (set! (-> arg0 k1s 1 y) f5-7)
-     )
-    (set! (-> arg0 k1s 0 x) (* -0.5 f4-1 f1-0))
-    (set! (-> arg0 k1s 1 x) (* -0.5 f3-2 f0-0))
+      (set! (-> arg0 k0s 0 y) (- f4-1))
+      (set! (-> arg0 k0s 1 y) (- f3-2))
+      (set! (-> arg0 k0s 0 x) (* 0.5 f4-1))
+      (set! (-> arg0 k0s 1 x) (* 0.5 f3-2))
+      (let ((f2-1 (* f2-0 f4-1))
+            (f5-7 (* f1-0 f3-2))
+            )
+        (set! (-> arg0 k1s 0 y) f2-1)
+        (set! (-> arg0 k1s 1 y) f5-7)
+        )
+      (set! (-> arg0 k1s 0 x) (* -0.5 f4-1 f1-0))
+      (set! (-> arg0 k1s 1 x) (* -0.5 f3-2 f0-0))
+      )
     )
-   )
   (none)
   )
 
@@ -221,83 +186,77 @@
 ;; INFO: Return type mismatch perf-stat vs none.
 (defmethod print-to-stream perf-stat ((obj perf-stat) (arg0 string) (arg1 basic))
   (format
-   *stdcon*
-   "~3d  ~8d  ~8d  ~6d ~6d"
-   (-> obj count)
-   (-> obj cycles)
-   (-> obj instructions)
-   (-> obj icache)
-   (-> obj dcache)
-   )
-  (format
-   *stdcon*
-   "  ~2d ~2d ~2d"
-   (-> obj to-vu0-waits)
-   (-> obj to-spr-waits)
-   (-> obj from-spr-waits)
-   )
+    *stdcon*
+    "~3d  ~8d  ~8d  ~6d ~6d"
+    (-> obj count)
+    (-> obj cycles)
+    (-> obj instructions)
+    (-> obj icache)
+    (-> obj dcache)
+    )
+  (format *stdcon* "  ~2d ~2d ~2d" (-> obj to-vu0-waits) (-> obj to-spr-waits) (-> obj from-spr-waits))
   (format *stdcon* "   ~s~%" arg0)
   (none)
   )
 
 ;; definition (debug) for function perf-stat-bucket->string
 (defun-debug perf-stat-bucket->string ((arg0 perf-stat-bucket))
-  (case arg0 
-   (((perf-stat-bucket camera))
+  (case arg0
+    (((perf-stat-bucket camera))
      "camera"
      )
-   (((perf-stat-bucket collide))
-    "collide"
+    (((perf-stat-bucket collide))
+     "collide"
+     )
+    (((perf-stat-bucket nav))
+     "nav"
+     )
+    (((perf-stat-bucket bones))
+     "bones"
+     )
+    (((perf-stat-bucket proto-tie-n))
+     "proto-tie-n"
+     )
+    (((perf-stat-bucket proto-tie))
+     "proto-tie"
+     )
+    (((perf-stat-bucket proto-tie-g))
+     "proto-tie-g"
+     )
+    (((perf-stat-bucket inst-tie))
+     "inst-tie"
+     )
+    (((perf-stat-bucket proto-shrub))
+     "proto-shrub"
+     )
+    (((perf-stat-bucket inst-shrub))
+     "inst-shrub"
+     )
+    (((perf-stat-bucket tfrag-near))
+     "tfrag-near"
+     )
+    (((perf-stat-bucket tfrag))
+     "tfrag"
+     )
+    (((perf-stat-bucket drawable))
+     "drawable"
+     )
+    (((perf-stat-bucket background))
+     "background"
+     )
+    (((perf-stat-bucket tie-generic))
+     "tie-generic"
+     )
+    (((perf-stat-bucket mercneric))
+     "mercneric"
+     )
+    (((perf-stat-bucket all-code))
+     "all-code"
+     )
+    (else
+      "*unknown*"
+      )
     )
-   (((perf-stat-bucket nav))
-    "nav"
-    )
-   (((perf-stat-bucket bones))
-    "bones"
-    )
-   (((perf-stat-bucket proto-tie-n))
-    "proto-tie-n"
-    )
-   (((perf-stat-bucket proto-tie))
-    "proto-tie"
-    )
-   (((perf-stat-bucket proto-tie-g))
-    "proto-tie-g"
-    )
-   (((perf-stat-bucket inst-tie))
-    "inst-tie"
-    )
-   (((perf-stat-bucket proto-shrub))
-    "proto-shrub"
-    )
-   (((perf-stat-bucket inst-shrub))
-    "inst-shrub"
-    )
-   (((perf-stat-bucket tfrag-near))
-    "tfrag-near"
-    )
-   (((perf-stat-bucket tfrag))
-    "tfrag"
-    )
-   (((perf-stat-bucket drawable))
-    "drawable"
-    )
-   (((perf-stat-bucket background))
-    "background"
-    )
-   (((perf-stat-bucket tie-generic))
-    "tie-generic"
-    )
-   (((perf-stat-bucket mercneric))
-    "mercneric"
-    )
-   (((perf-stat-bucket all-code))
-    "all-code"
-    )
-   (else
-    "*unknown*"
-    )
-   )
   )
 
 ;; definition for symbol GSH_ENABLE, type symbol
@@ -316,10 +275,7 @@
 (define GSH_TIME 64)
 
 ;; definition for symbol *gomi-stats-hack*, type (inline-array perf-stat)
-(define
-  *gomi-stats-hack*
-  (the-as (inline-array perf-stat) (malloc 'debug (* 52 (+ GSH_TIME 1))))
-  )
+(define *gomi-stats-hack* (the-as (inline-array perf-stat) (malloc 'debug (* 52 (+ GSH_TIME 1)))))
 
 ;; definition (debug) for function start-perf-stat-collection
 ;; INFO: Return type mismatch int vs none.
@@ -336,136 +292,92 @@
 (defun-debug start-perf-stat-collection ()
   (local-vars (r0-0 none))
   (let ((frame-idx (+ (-> *perf-stats* data 0 frame-number) 1)))
-   (set! (-> *perf-stats* data 0 frame-number) frame-idx)
-   (let ((gp-0 (mod frame-idx (the-as uint 34))))
-    (when GSH_ENABLE
-     (let ((bucket GSH_BUCKET))
-      (let ((which-stat GSH_WHICH_STAT))
-       (set! gp-0 (+ (* bucket 2) which-stat))
-       )
-      (when GSH_MAX_DISPLAY
-       (let
-        ((stat-idx
-          (logand (-> *perf-stats* data 0 frame-number) (+ GSH_TIME -1))
+    (set! (-> *perf-stats* data 0 frame-number) frame-idx)
+    (let ((gp-0 (mod frame-idx (the-as uint 34))))
+      (when GSH_ENABLE
+        (let ((bucket GSH_BUCKET))
+          (let ((which-stat GSH_WHICH_STAT))
+            (set! gp-0 (+ (* bucket 2) which-stat))
+            )
+          (when GSH_MAX_DISPLAY
+            (let ((stat-idx (logand (-> *perf-stats* data 0 frame-number) (+ GSH_TIME -1))))
+              (set! (-> *gomi-stats-hack* stat-idx cycles) (-> *perf-stats* data (the-as int bucket) cycles))
+              (set! (-> *gomi-stats-hack* stat-idx instructions) (-> *perf-stats* data (the-as int bucket) instructions))
+              (set! (-> *gomi-stats-hack* stat-idx icache) (-> *perf-stats* data (the-as int bucket) icache))
+              (set! (-> *gomi-stats-hack* stat-idx dcache) (-> *perf-stats* data (the-as int bucket) dcache))
+              (when (zero? stat-idx)
+                (set! (-> *gomi-stats-hack* GSH_TIME cycles) (the-as uint 0))
+                (set! (-> *gomi-stats-hack* GSH_TIME instructions) (the-as uint 0))
+                (set! (-> *gomi-stats-hack* GSH_TIME icache) (the-as uint 0))
+                (set! (-> *gomi-stats-hack* GSH_TIME dcache) (the-as uint 0))
+                (dotimes (v1-22 GSH_TIME)
+                  (if (< (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* v1-22 cycles))
+                      (set! (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* v1-22 cycles))
+                      )
+                  (if (< (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* v1-22 instructions))
+                      (set! (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* v1-22 instructions))
+                      )
+                  (if (< (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* v1-22 icache))
+                      (set! (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* v1-22 icache))
+                      )
+                  (if (< (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* v1-22 dcache))
+                      (set! (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* v1-22 dcache))
+                      )
+                  )
+                )
+              )
+            (format *stdcon* "~%")
+            (print-to-stream (-> *gomi-stats-hack* GSH_TIME) "max-value" *stdcon*)
+            )
           )
-         )
-        (set!
-         (-> *gomi-stats-hack* stat-idx cycles)
-         (-> *perf-stats* data (the-as int bucket) cycles)
-         )
-        (set!
-         (-> *gomi-stats-hack* stat-idx instructions)
-         (-> *perf-stats* data (the-as int bucket) instructions)
-         )
-        (set!
-         (-> *gomi-stats-hack* stat-idx icache)
-         (-> *perf-stats* data (the-as int bucket) icache)
-         )
-        (set!
-         (-> *gomi-stats-hack* stat-idx dcache)
-         (-> *perf-stats* data (the-as int bucket) dcache)
-         )
-        (when (zero? stat-idx)
-         (set! (-> *gomi-stats-hack* GSH_TIME cycles) (the-as uint 0))
-         (set! (-> *gomi-stats-hack* GSH_TIME instructions) (the-as uint 0))
-         (set! (-> *gomi-stats-hack* GSH_TIME icache) (the-as uint 0))
-         (set! (-> *gomi-stats-hack* GSH_TIME dcache) (the-as uint 0))
-         (dotimes (v1-22 GSH_TIME)
-          (if
-           (<
-            (-> *gomi-stats-hack* GSH_TIME cycles)
-            (-> *gomi-stats-hack* v1-22 cycles)
-            )
-           (set!
-            (-> *gomi-stats-hack* GSH_TIME cycles)
-            (-> *gomi-stats-hack* v1-22 cycles)
-            )
-           )
-          (if
-           (<
-            (-> *gomi-stats-hack* GSH_TIME instructions)
-            (-> *gomi-stats-hack* v1-22 instructions)
-            )
-           (set!
-            (-> *gomi-stats-hack* GSH_TIME instructions)
-            (-> *gomi-stats-hack* v1-22 instructions)
-            )
-           )
-          (if
-           (<
-            (-> *gomi-stats-hack* GSH_TIME icache)
-            (-> *gomi-stats-hack* v1-22 icache)
-            )
-           (set!
-            (-> *gomi-stats-hack* GSH_TIME icache)
-            (-> *gomi-stats-hack* v1-22 icache)
-            )
-           )
-          (if
-           (<
-            (-> *gomi-stats-hack* GSH_TIME dcache)
-            (-> *gomi-stats-hack* v1-22 dcache)
-            )
-           (set!
-            (-> *gomi-stats-hack* GSH_TIME dcache)
-            (-> *gomi-stats-hack* v1-22 dcache)
-            )
-           )
-          )
-         )
         )
-       (format *stdcon* "~%")
-       (print-to-stream (-> *gomi-stats-hack* GSH_TIME) "max-value" *stdcon*)
-       )
-      )
-     )
-    (dotimes (v1-27 17)
-     (set! (-> *perf-stats* data v1-27 count) (the-as uint 0))
-     (cond
-      ((!= v1-27 (shr gp-0 1))
-       (set! (-> *perf-stats* data v1-27 ctrl) (the-as uint 0))
-       0
-       )
-      (else
-       (let ((a1-63 (logand gp-0 1))
-             (a0-64 (the-as uint #x80004010))
-             )
+      (dotimes (v1-27 17)
+        (set! (-> *perf-stats* data v1-27 count) (the-as uint 0))
         (cond
-         ((zero? a1-63)
-          (set! a0-64 (+ #x60020 a0-64))
+          ((!= v1-27 (shr gp-0 1))
+           (set! (-> *perf-stats* data v1-27 ctrl) (the-as uint 0))
+           0
+           )
+          (else
+            (let ((a1-63 (logand gp-0 1))
+                  (a0-64 (the-as uint #x80004010))
+                  )
+              (cond
+                ((zero? a1-63)
+                 (set! a0-64 (+ #x60020 a0-64))
+                 )
+                ((= a1-63 1)
+                 (set! a0-64 (+ #x300c0 a0-64))
+                 )
+                )
+              (set! (-> *perf-stats* data v1-27 select) a1-63)
+              (set! (-> *perf-stats* data v1-27 ctrl) a0-64)
+              )
+            (set! (-> *perf-stats* data v1-27 accum0) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 accum1) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 to-vu0-waits) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 to-spr-waits) (the-as uint 0))
+            (set! (-> *perf-stats* data v1-27 from-spr-waits) (the-as uint 0))
+            0
+            )
           )
-         ((= a1-63 1)
-          (set! a0-64 (+ #x300c0 a0-64))
-          )
-         )
-        (set! (-> *perf-stats* data v1-27 select) a1-63)
-        (set! (-> *perf-stats* data v1-27 ctrl) a0-64)
         )
-       (set! (-> *perf-stats* data v1-27 accum0) (the-as uint 0))
-       (set! (-> *perf-stats* data v1-27 accum1) (the-as uint 0))
-       (set! (-> *perf-stats* data v1-27 to-vu0-waits) (the-as uint 0))
-       (set! (-> *perf-stats* data v1-27 to-spr-waits) (the-as uint 0))
-       (set! (-> *perf-stats* data v1-27 from-spr-waits) (the-as uint 0))
-       0
-       )
       )
-     )
     )
-   )
   (let* ((v1-31 (-> *perf-stats* data))
          (a0-76 (-> v1-31 0 ctrl))
          )
-   (+! (-> v1-31 0 count) 1)
-   (b! (zero? a0-76) cfg-28 :delay (nop!))
-   (.mtc0 Perf r0-0)
-   (.sync.l)
-   (.sync.p)
-   (.mtpc pcr0 r0-0)
-   (.mtpc pcr1 r0-0)
-   (.sync.l)
-   (.sync.p)
-   (.mtc0 Perf a0-76)
-   )
+    (+! (-> v1-31 0 count) 1)
+    (b! (zero? a0-76) cfg-28 :delay (nop!))
+    (.mtc0 Perf r0-0)
+    (.sync.l)
+    (.sync.p)
+    (.mtpc pcr0 r0-0)
+    (.mtpc pcr1 r0-0)
+    (.sync.l)
+    (.sync.p)
+    (.mtc0 Perf a0-76)
+    )
   (.sync.l)
   (.sync.p)
   (label cfg-28)
@@ -484,36 +396,36 @@
 (defun-debug end-perf-stat-collection ()
   (local-vars (r0-0 none) (a0-1 int) (a0-3 int))
   (let ((v1-1 (-> *perf-stats* data)))
-   (b! (zero? (-> v1-1 0 ctrl)) cfg-2 :delay (nop!))
-   (.mtc0 Perf r0-0)
-   (.sync.l)
-   (.sync.p)
-   (.mfpc a0-1 pcr0)
-   (+! (-> v1-1 0 accum0) a0-1)
-   (.mfpc a0-3 pcr1)
-   (+! (-> v1-1 0 accum1) a0-3)
-   )
+    (b! (zero? (-> v1-1 0 ctrl)) cfg-2 :delay (nop!))
+    (.mtc0 Perf r0-0)
+    (.sync.l)
+    (.sync.p)
+    (.mfpc a0-1 pcr0)
+    (+! (-> v1-1 0 accum0) a0-1)
+    (.mfpc a0-3 pcr1)
+    (+! (-> v1-1 0 accum1) a0-3)
+    )
   (label cfg-2)
   0
   (dotimes (v1-3 17)
-   (when (nonzero? (-> *perf-stats* data v1-3 ctrl))
-    (let ((a2-0 (-> *perf-stats* data v1-3 select))
-          (a1-8 (-> *perf-stats* data v1-3 accum0))
-          (a0-15 (-> *perf-stats* data v1-3 accum1))
+    (when (nonzero? (-> *perf-stats* data v1-3 ctrl))
+      (let ((a2-0 (-> *perf-stats* data v1-3 select))
+            (a1-8 (-> *perf-stats* data v1-3 accum0))
+            (a0-15 (-> *perf-stats* data v1-3 accum1))
+            )
+        (cond
+          ((zero? a2-0)
+           (set! (-> *perf-stats* data v1-3 cycles) a1-8)
+           (set! (-> *perf-stats* data v1-3 instructions) a0-15)
+           )
+          ((= a2-0 1)
+           (set! (-> *perf-stats* data v1-3 icache) a1-8)
+           (set! (-> *perf-stats* data v1-3 dcache) a0-15)
+           )
           )
-     (cond
-      ((zero? a2-0)
-       (set! (-> *perf-stats* data v1-3 cycles) a1-8)
-       (set! (-> *perf-stats* data v1-3 instructions) a0-15)
-       )
-      ((= a2-0 1)
-       (set! (-> *perf-stats* data v1-3 icache) a1-8)
-       (set! (-> *perf-stats* data v1-3 dcache) a0-15)
-       )
+        )
       )
-     )
     )
-   )
   0
   (none)
   )
@@ -523,14 +435,14 @@
 (defun-debug print-perf-stats ()
   (format *stdcon* "~0k~%count  cycles     instr  icache dcache  vu0/to/from~%")
   (dotimes (gp-0 17)
-   (if (nonzero? (-> *perf-stats* data gp-0 count))
-    (print-to-stream
-     (-> *perf-stats* data gp-0)
-     (perf-stat-bucket->string (the-as perf-stat-bucket gp-0))
-     *stdcon*
-     )
+    (if (nonzero? (-> *perf-stats* data gp-0 count))
+        (print-to-stream
+          (-> *perf-stats* data gp-0)
+          (perf-stat-bucket->string (the-as perf-stat-bucket gp-0))
+          *stdcon*
+          )
+        )
     )
-   )
   0
   (none)
   )
