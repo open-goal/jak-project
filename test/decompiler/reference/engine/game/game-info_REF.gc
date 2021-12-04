@@ -6,153 +6,121 @@
 (defmethod debug-draw! border-plane ((obj border-plane))
   (let* ((v1-0 (-> obj action))
          (s5-0 (if (= v1-0 'load)
-                (new 'static 'rgba :g #xff :a #x80)
-                (new 'static 'rgba :r #xff :a #x80)
-                )
-          )
+                   (new 'static 'rgba :g #xff :a #x80)
+                   (new 'static 'rgba :r #xff :a #x80)
+                   )
+               )
          )
-   (add-debug-text-sphere
-    #t
-    (bucket-id debug-draw1)
-    (-> obj trans)
-    819.2
-    (symbol->string (-> obj name))
-    s5-0
+    (add-debug-text-sphere #t (bucket-id debug-draw1) (-> obj trans) 819.2 (symbol->string (-> obj name)) s5-0)
+    (add-debug-vector #t (bucket-id debug-draw1) (-> obj trans) (-> obj normal) (meters 2.0) s5-0)
     )
-   (add-debug-vector
-    #t
-    (bucket-id debug-draw1)
-    (-> obj trans)
-    (-> obj normal)
-    (meters 2.0)
-    s5-0
-    )
-   )
   0
   (none)
   )
 
 ;; definition for method 10 of type border-plane
 (defmethod point-past-plane? border-plane ((obj border-plane) (arg0 vector))
-  (>=
-   (vector-dot
-    (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans))
-    (-> obj normal)
-    )
-   0.0
-   )
+  (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) (-> obj normal)) 0.0)
   )
 
 ;; definition for method 11 of type game-info
 (defmethod task-complete? game-info ((obj game-info) (arg0 game-task))
-  (logtest?
-   (-> obj task-perm-list data arg0 status)
-   (entity-perm-status real-complete)
-   )
+  (logtest? (-> obj task-perm-list data arg0 status) (entity-perm-status real-complete))
   )
 
 ;; definition for symbol *default-continue*, type continue-point
-(define
-  *default-continue*
-  (new 'static 'continue-point
-   :name "default"
-   :level #f
-   :trans (new 'static 'vector :w 1.0)
-   :quat (new 'static 'quaternion :w 1.0)
-   :camera-trans (new 'static 'vector :w 1.0)
-   :load-commands '()
-   :vis-nick #f
-   :lev0 #f
-   :disp0 #f
-   :lev1 #f
-   :disp1 #f
-   )
-  )
+(define *default-continue* (new 'static 'continue-point
+                             :name "default"
+                             :level #f
+                             :trans (new 'static 'vector :w 1.0)
+                             :quat (new 'static 'quaternion :w 1.0)
+                             :camera-trans (new 'static 'vector :w 1.0)
+                             :load-commands '()
+                             :vis-nick #f
+                             :lev0 #f
+                             :disp0 #f
+                             :lev1 #f
+                             :disp1 #f
+                             )
+        )
 
 ;; definition for method 17 of type game-info
 (defmethod get-or-create-continue! game-info ((obj game-info))
   (cond
-   ((and (= (-> obj mode) 'play) (-> obj current-continue))
-    (-> obj current-continue)
-    )
-   (else
-    (let ((gp-0 *default-continue*))
-     (position-in-front-of-camera! (-> gp-0 trans) 40960.0 4096.0)
-     (quaternion-identity! (-> gp-0 quat))
-     (set! (-> gp-0 vis-nick) (-> *load-state* vis-nick))
-     (set! (-> gp-0 lev0) (-> *load-state* want 0 name))
-     (set! (-> gp-0 disp0) (-> *load-state* want 0 display?))
-     (set! (-> gp-0 lev1) (-> *load-state* want 1 name))
-     (set! (-> gp-0 disp1) (-> *load-state* want 1 display?))
-     gp-0
+    ((and (= (-> obj mode) 'play) (-> obj current-continue))
+     (-> obj current-continue)
      )
+    (else
+      (let ((gp-0 *default-continue*))
+        (position-in-front-of-camera! (-> gp-0 trans) 40960.0 4096.0)
+        (quaternion-identity! (-> gp-0 quat))
+        (set! (-> gp-0 vis-nick) (-> *load-state* vis-nick))
+        (set! (-> gp-0 lev0) (-> *load-state* want 0 name))
+        (set! (-> gp-0 disp0) (-> *load-state* want 0 display?))
+        (set! (-> gp-0 lev1) (-> *load-state* want 1 name))
+        (set! (-> gp-0 disp1) (-> *load-state* want 1 display?))
+        gp-0
+        )
+      )
     )
-   )
   )
 
 ;; definition for method 18 of type game-info
 ;; INFO: Return type mismatch object vs continue-point.
 (defmethod get-continue-by-name game-info ((obj game-info) (arg0 string))
   (let ((s5-0 *level-load-list*))
-   (while (not (null? s5-0))
-    (let
-     ((s4-0
-       (->
-        (the-as level-load-info (-> (the-as symbol (car s5-0)) value))
-        continues
+    (while (not (null? s5-0))
+      (let ((s4-0 (-> (the-as level-load-info (-> (the-as symbol (car s5-0)) value)) continues)))
+        (while (not (null? s4-0))
+          (let ((s3-0 (car s4-0)))
+            (if (string= arg0 (-> (the-as continue-point s3-0) name))
+                (return (the-as continue-point s3-0))
+                )
+            )
+          (set! s4-0 (cdr s4-0))
+          )
         )
-       )
+      (set! s5-0 (cdr s5-0))
       )
-     (while (not (null? s4-0))
-      (let ((s3-0 (car s4-0)))
-       (if (string= arg0 (-> (the-as continue-point s3-0) name))
-        (return (the-as continue-point s3-0))
-        )
-       )
-      (set! s4-0 (cdr s4-0))
-      )
-     )
-    (set! s5-0 (cdr s5-0))
     )
-   )
   (the-as continue-point #f)
   )
 
 ;; definition for method 19 of type game-info
 (defmethod set-continue! game-info ((obj game-info) (arg0 basic))
   (let ((s5-0 (-> obj current-continue)))
-   (if (null? arg0)
-    (set! arg0 #f)
-    )
-   (case (-> arg0 type) 
-    ((string)
-      (let ((v1-5 (get-continue-by-name obj (the-as string arg0))))
-       (if v1-5
-        (set! (-> obj current-continue) v1-5)
+    (if (null? arg0)
+        (set! arg0 #f)
         )
+    (case (-> arg0 type)
+      ((string)
+       (let ((v1-5 (get-continue-by-name obj (the-as string arg0))))
+         (if v1-5
+             (set! (-> obj current-continue) v1-5)
+             )
+         )
        )
+      ((continue-point)
+       (set! (-> obj current-continue) (the-as continue-point arg0))
+       )
+      (else
+        (let ((s4-3 *default-continue*))
+          (position-in-front-of-camera! (-> s4-3 trans) 40960.0 4096.0)
+          (quaternion-identity! (-> s4-3 quat))
+          (set! (-> s4-3 vis-nick) (-> *load-state* vis-nick))
+          (set! (-> s4-3 lev0) (-> *load-state* want 0 name))
+          (set! (-> s4-3 disp0) (-> *load-state* want 0 display?))
+          (set! (-> s4-3 lev1) (-> *load-state* want 1 name))
+          (set! (-> s4-3 disp1) (-> *load-state* want 1 display?))
+          (set! (-> obj current-continue) s4-3)
+          )
+        )
       )
-    ((continue-point)
-     (set! (-> obj current-continue) (the-as continue-point arg0))
-     )
-    (else
-     (let ((s4-3 *default-continue*))
-      (position-in-front-of-camera! (-> s4-3 trans) 40960.0 4096.0)
-      (quaternion-identity! (-> s4-3 quat))
-      (set! (-> s4-3 vis-nick) (-> *load-state* vis-nick))
-      (set! (-> s4-3 lev0) (-> *load-state* want 0 name))
-      (set! (-> s4-3 disp0) (-> *load-state* want 0 display?))
-      (set! (-> s4-3 lev1) (-> *load-state* want 1 name))
-      (set! (-> s4-3 disp1) (-> *load-state* want 1 display?))
-      (set! (-> obj current-continue) s4-3)
+    (when (!= s5-0 (-> obj current-continue))
+      (set! (-> obj continue-deaths) 0)
+      (set! (-> obj continue-time) (-> *display* base-frame-counter))
       )
-     )
     )
-   (when (!= s5-0 (-> obj current-continue))
-    (set! (-> obj continue-deaths) 0)
-    (set! (-> obj continue-time) (-> *display* base-frame-counter))
-    )
-   )
   (-> obj current-continue)
   )
 
@@ -164,87 +132,60 @@
 ;; definition for method 9 of type game-info
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 191]
 ;; Used lq/sq
-(defmethod
-  initialize!
-  game-info
-  ((obj game-info)
-   (cause symbol)
-   (save-to-load game-save)
-   (continue-point-override string)
-   )
+(defmethod initialize! game-info ((obj game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
   (local-vars (v0-0 int) (sv-96 symbol))
-  (case cause 
-   (('dead)
+  (case cause
+    (('dead)
      (+! (-> obj total-deaths) 1)
      (+! (-> obj continue-deaths) 1)
      (+! (-> obj fuel-cell-deaths) 1)
      (when *target*
-      (let ((lev-info (-> *target* current-level info)))
-       (set!
-        v0-0
-        (when (>= (-> *level-task-data-remap* length) (-> lev-info index))
-         (set!
-          v0-0
-          (seekl
-           (the-as
-            int
-            (->
-             obj
-             deaths-per-level
-             (-> *level-task-data-remap* (+ (-> lev-info index) -1))
-             )
-            )
-           255
-           1
-           )
-          )
-         (set!
-          (->
-           obj
-           deaths-per-level
-           (-> *level-task-data-remap* (+ (-> lev-info index) -1))
-           )
-          (the-as uint v0-0)
-          )
-         v0-0
+       (let ((lev-info (-> *target* current-level info)))
+         (set! v0-0
+               (when (>= (-> *level-task-data-remap* length) (-> lev-info index))
+                 (set! v0-0
+                       (seekl (the-as int (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1)))) 255 1)
+                       )
+                 (set! (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))) (the-as uint v0-0))
+                 v0-0
+                 )
+               )
          )
-        )
        )
-      )
-     (case (-> obj mode) 
-      (('play)
+     (case (-> obj mode)
+       (('play)
         (if (< 0.0 (-> obj life))
-         (set! cause 'life)
-         (set! cause 'try)
-         )
+            (set! cause 'life)
+            (set! cause 'try)
+            )
         )
-      (else
-       (set! obj obj)
-       (goto cfg-50)
+       (else
+         (set! obj obj)
+         (goto cfg-50)
+         )
        )
-      )
      )
-   )
+    )
   (kill-current-level-hint '() '() 'die)
-  (case cause 
-   (('game)
+  (case cause
+    (('game)
      (reset-all-hint-controls)
      (set-continue! obj (cond
-                         (continue-point-override
-                          (empty)
-                          continue-point-override
+                          (continue-point-override
+                            (empty)
+                            continue-point-override
+                            )
+                          ((!= *kernel-boot-message* 'play)
+                           "demo-start"
+                           )
+                          (*debug-segment*
+                            "village1-hut"
+                            )
+                          (else
+                            "title-start"
+                            )
                           )
-                         ((!= *kernel-boot-message* 'play)
-                          "demo-start"
-                          )
-                         (*debug-segment*
-                          "village1-hut"
-                          )
-                         (else
-                          "title-start"
-                          )
-                         )
-      )
+                    )
      (set! (-> obj auto-save-count) 0)
      (set! (-> *setting-control* default auto-save) #f)
      (set! (-> obj money) 0.0)
@@ -264,219 +205,173 @@
      (set! (-> obj death-time) (-> *display* base-frame-counter))
      (set! (-> obj hit-time) (-> *display* base-frame-counter))
      (dotimes (v1-50 116)
-      (set! (-> obj fuel-cell-time 0) 0)
-      (nop!)
-      )
+       (set! (-> obj fuel-cell-time 0) 0)
+       (nop!)
+       )
      (dotimes (v1-53 32)
-      (set! (-> obj money-per-level v1-53) (the-as uint 0))
-      (set! (-> obj deaths-per-level v1-53) (the-as uint 0))
-      (set! (-> obj enter-level-time v1-53) 0)
-      (set! (-> obj in-level-time v1-53) 0)
-      (set! (-> obj level-opened v1-53) (the-as uint 0))
-      (nop!)
-      )
+       (set! (-> obj money-per-level v1-53) (the-as uint 0))
+       (set! (-> obj deaths-per-level v1-53) (the-as uint 0))
+       (set! (-> obj enter-level-time v1-53) 0)
+       (set! (-> obj in-level-time v1-53) 0)
+       (set! (-> obj level-opened v1-53) (the-as uint 0))
+       (nop!)
+       )
      )
-   )
-  (case cause 
-   (('game 'try)
-     (case (-> obj mode) 
-      (('play)
+    )
+  (case cause
+    (('game 'try)
+     (case (-> obj mode)
+       (('play)
         (set! *display-profile* #f)
         (set! *display-entity-errors* #f)
         )
-      )
+       )
      (set! (-> obj life-max) (-> *GAME-bank* life-max-default))
      (set! (-> obj life) (-> *GAME-bank* life-start-default))
      )
-   )
+    )
   (let ((v1-65 (-> obj mode)))
-   (cond
-    ((= v1-65 'debug)
-     (reset-actors cause)
-     (if save-to-load
-      (load-game! obj save-to-load)
-      )
-     )
-    ((= v1-65 'play)
-     (when *target*
-      (set-setting! *setting-control* *target* 'allow-pause #f 0.0 0)
-      (set-setting! *setting-control* *target* 'allow-progress #f 0.0 0)
-      (copy-settings-from-target! *setting-control*)
-      )
-     (send-event (handle->process (-> *game-info* auto-save-proc)) 'die)
-     (set! (-> *level* border?) #f)
-     (set! (-> *setting-control* default border-mode) #f)
-     (set! *spawn-actors* #f)
-     (set-blackout-frames 30)
-     (send-event *target* 'reset)
-     (let ((s3-1 (get-process *4k-dead-pool* process #x4000)))
-      (when s3-1
-       (let ((t9-15 (method-of-type process activate)))
-        (t9-15 s3-1 *default-pool* 'process (the-as pointer #x70004000))
-        )
-       (let
-        ((s2-0
-          (the-as
-           (function cpu-thread function object object object object pointer)
-           set-to-run
+    (cond
+      ((= v1-65 'debug)
+       (reset-actors cause)
+       (if save-to-load
+           (load-game! obj save-to-load)
            )
-          )
-         (s1-0 (-> s3-1 main-thread))
-         (s0-0
-          (lambda
-           ((arg0 symbol) (arg1 symbol) (arg2 continue-point) (arg3 symbol))
-           (stop arg0)
-           (reset-actors arg1)
-           (set-continue! *game-info* arg2)
-           (when arg3
-            (load-game! *game-info* (the-as game-save arg3))
-            (set! arg2 (get-or-create-continue! *game-info*))
-            )
-           (suspend)
-           (start arg0 arg2)
-           (none)
+       )
+      ((= v1-65 'play)
+       (when *target*
+         (set-setting! *setting-control* *target* 'allow-pause #f 0.0 0)
+         (set-setting! *setting-control* *target* 'allow-progress #f 0.0 0)
+         (copy-settings-from-target! *setting-control*)
+         )
+       (send-event (handle->process (-> *game-info* auto-save-proc)) 'die)
+       (set! (-> *level* border?) #f)
+       (set! (-> *setting-control* default border-mode) #f)
+       (set! *spawn-actors* #f)
+       (set-blackout-frames 30)
+       (send-event *target* 'reset)
+       (let ((s3-1 (get-process *4k-dead-pool* process #x4000)))
+         (when s3-1
+           (let ((t9-15 (method-of-type process activate)))
+             (t9-15 s3-1 *default-pool* 'process (the-as pointer #x70004000))
+             )
+           (let ((s2-0 (the-as (function cpu-thread function object object object object pointer) set-to-run))
+                 (s1-0 (-> s3-1 main-thread))
+                 (s0-0 (lambda ((arg0 symbol) (arg1 symbol) (arg2 continue-point) (arg3 symbol))
+                         (stop arg0)
+                         (reset-actors arg1)
+                         (set-continue! *game-info* arg2)
+                         (when arg3
+                           (load-game! *game-info* (the-as game-save arg3))
+                           (set! arg2 (get-or-create-continue! *game-info*))
+                           )
+                         (suspend)
+                         (start arg0 arg2)
+                         (none)
+                         )
+                       )
+                 )
+             (set! sv-96 (-> obj mode))
+             (let ((t0-2 (get-or-create-continue! obj))
+                   (t1-2 save-to-load)
+                   )
+               (s2-0 s1-0 s0-0 sv-96 cause t0-2 t1-2)
+               )
+             )
+           (-> s3-1 ppointer)
            )
-          )
          )
-        (set! sv-96 (-> obj mode))
-        (let ((t0-2 (get-or-create-continue! obj))
-              (t1-2 save-to-load)
-              )
-         (s2-0 s1-0 s0-0 sv-96 cause t0-2 t1-2)
-         )
-        )
-       (-> s3-1 ppointer)
+       (set-master-mode 'game)
        )
       )
-     (set-master-mode 'game)
-     )
     )
-   )
   (label cfg-50)
   obj
   )
 
 ;; definition for method 10 of type game-info
-(defmethod
-  adjust
-  game-info
-  ((obj game-info) (item symbol) (amount float) (source handle))
-  (case item 
-   (('life)
+(defmethod adjust game-info ((obj game-info) (item symbol) (amount float) (source handle))
+  (case item
+    (('life)
      (if (>= amount 0.0)
-      (set! (-> obj life) (seek (-> obj life) (-> obj life-max) amount))
-      (set! (-> obj life) (seek (-> obj life) 0.0 (- amount)))
-      )
+         (set! (-> obj life) (seek (-> obj life) (-> obj life-max) amount))
+         (set! (-> obj life) (seek (-> obj life) 0.0 (- amount)))
+         )
      (-> obj life)
      )
-   (('money)
-    (if
-     (and
-      (< 0.0 amount)
-      (= (+ (-> obj money) amount) (-> *GAME-bank* money-task-inc))
-      )
-     (level-hint-spawn
-      (game-text-id MISSING-orb-hint)
-      "sksp0014"
-      (the-as entity #f)
-      *entity-pool*
-      (game-task none)
-      )
-     )
-    (when (< 0.0 amount)
-     (let ((proc (handle->process source)))
-      (when (and proc (-> proc entity))
-       (when
-        (>=
-         (-> *level-task-data-remap* length)
-         (-> proc entity extra level info index)
-         )
-        (let
-         ((level-idx
-           (->
-            *level-task-data-remap*
-            (+ (-> proc entity extra level info index) -1)
-            )
+    (('money)
+     (if (and (< 0.0 amount) (= (+ (-> obj money) amount) (-> *GAME-bank* money-task-inc)))
+         (level-hint-spawn
+           (game-text-id MISSING-orb-hint)
+           "sksp0014"
+           (the-as entity #f)
+           *entity-pool*
+           (game-task none)
            )
-          )
-         (+! (-> obj money-per-level level-idx) (the int amount))
-         (+! (-> obj money-total) amount)
-         (if
-          (=
-           (-> obj money-per-level level-idx)
-           (-> (get-game-count level-idx) money-count)
-           )
-          (activate-orb-all level-idx)
-          )
          )
-        )
-       )
-      )
-     )
-    (let ((f0-18 (+ (-> obj money) amount)))
-     (set! (-> obj money) f0-18)
-     f0-18
-     )
-    )
-   (('fuel-cell)
-    (let ((s5-1 (the int amount)))
-     (when
-      (not
-       (or
-        (task-complete? obj (the-as game-task s5-1))
-        (>= (the-as uint 1) (the-as uint s5-1))
-        )
-       )
-      (set! (-> obj fuel-cell-deaths) 0)
-      (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
-      (set! (-> obj fuel-cell-time s5-1) (-> *display* base-frame-counter))
-      (set! (-> obj fuel) (+ 1.0 (-> obj fuel)))
-      (logior!
-       (-> obj task-perm-list data s5-1 status)
-       (entity-perm-status real-complete)
-       )
-      (get-task-control (the-as game-task s5-1))
-      (close-specific-task!
-       (the-as game-task s5-1)
-       (task-status need-resolution)
-       )
-      )
-     )
-    (-> obj fuel)
-    )
-   (('buzzer)
-    (let ((buzz-task (logand (the int amount) #xffff))
-          (buzz-index (sar (the int amount) 16))
-          (buzz-count 0.0)
-          )
-     (when (> (the-as uint buzz-task) 0)
-      (let* ((ctrl (get-task-control (the-as game-task buzz-task)))
-             (buzz-bits (get-reminder ctrl 0))
+     (when (< 0.0 amount)
+       (let ((proc (handle->process source)))
+         (when (and proc (-> proc entity))
+           (when (>= (-> *level-task-data-remap* length) (-> proc entity extra level info index))
+             (let ((level-idx (-> *level-task-data-remap* (+ (-> proc entity extra level info index) -1))))
+               (+! (-> obj money-per-level level-idx) (the int amount))
+               (+! (-> obj money-total) amount)
+               (if (= (-> obj money-per-level level-idx) (-> (get-game-count level-idx) money-count))
+                   (activate-orb-all level-idx)
+                   )
+               )
              )
-       (when
-        (and
-         (>= buzz-index 0)
-         (< buzz-index (the int (-> *FACT-bank* buzzer-max-default)))
+           )
          )
-        (if (zero? (logand buzz-bits (ash 1 buzz-index)))
-         (set! (-> obj buzzer-total) (+ 1.0 (-> obj buzzer-total)))
-         )
-        (let ((t9-10 (method-of-object ctrl save-reminder)))
-         (set! buzz-bits (logior buzz-bits (ash 1 buzz-index)))
-         (t9-10 ctrl buzz-bits 0)
-         )
-        )
-       (countdown (v1-58 (the int (-> *FACT-bank* buzzer-max-default)))
-        (if (logtest? buzz-bits (ash 1 v1-58))
-         (set! buzz-count (+ 1.0 buzz-count))
-         )
-        )
        )
-      )
-     buzz-count
+     (let ((f0-18 (+ (-> obj money) amount)))
+       (set! (-> obj money) f0-18)
+       f0-18
+       )
+     )
+    (('fuel-cell)
+     (let ((s5-1 (the int amount)))
+       (when (not (or (task-complete? obj (the-as game-task s5-1)) (>= (the-as uint 1) (the-as uint s5-1))))
+         (set! (-> obj fuel-cell-deaths) 0)
+         (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
+         (set! (-> obj fuel-cell-time s5-1) (-> *display* base-frame-counter))
+         (set! (-> obj fuel) (+ 1.0 (-> obj fuel)))
+         (logior! (-> obj task-perm-list data s5-1 status) (entity-perm-status real-complete))
+         (get-task-control (the-as game-task s5-1))
+         (close-specific-task! (the-as game-task s5-1) (task-status need-resolution))
+         )
+       )
+     (-> obj fuel)
+     )
+    (('buzzer)
+     (let ((buzz-task (logand (the int amount) #xffff))
+           (buzz-index (sar (the int amount) 16))
+           (buzz-count 0.0)
+           )
+       (when (> (the-as uint buzz-task) 0)
+         (let* ((ctrl (get-task-control (the-as game-task buzz-task)))
+                (buzz-bits (get-reminder ctrl 0))
+                )
+           (when (and (>= buzz-index 0) (< buzz-index (the int (-> *FACT-bank* buzzer-max-default))))
+             (if (zero? (logand buzz-bits (ash 1 buzz-index)))
+                 (set! (-> obj buzzer-total) (+ 1.0 (-> obj buzzer-total)))
+                 )
+             (let ((t9-10 (method-of-object ctrl save-reminder)))
+               (set! buzz-bits (logior buzz-bits (ash 1 buzz-index)))
+               (t9-10 ctrl buzz-bits 0)
+               )
+             )
+           (countdown (v1-58 (the int (-> *FACT-bank* buzzer-max-default)))
+             (if (logtest? buzz-bits (ash 1 v1-58))
+                 (set! buzz-count (+ 1.0 buzz-count))
+                 )
+             )
+           )
+         )
+       buzz-count
+       )
      )
     )
-   )
   )
 
 ;; definition for method 23 of type game-info
@@ -489,13 +384,13 @@
   (let ((v1-1 (get-reminder (get-task-control arg0) 0))
         (v0-2 0)
         )
-   (countdown (a0-4 (the int (-> *FACT-bank* buzzer-max-default)))
-    (if (logtest? v1-1 (ash 1 a0-4))
-     (+! v0-2 1)
-     )
+    (countdown (a0-4 (the int (-> *FACT-bank* buzzer-max-default)))
+      (if (logtest? v1-1 (ash 1 a0-4))
+          (+! v0-2 1)
+          )
+      )
+    v0-2
     )
-   v0-2
-   )
   )
 
 ;; definition for method 21 of type game-info
@@ -507,8 +402,8 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod mark-text-as-seen game-info ((obj game-info) (arg0 game-text-id))
   (if (and (< (the-as uint arg0) (the-as uint 4095)) (> (the-as uint arg0) 0))
-   (set-bit (-> obj text-ids-seen) (the-as int arg0))
-   )
+      (set-bit (-> obj text-ids-seen) (the-as int arg0))
+      )
   0
   (none)
   )
@@ -525,469 +420,253 @@
 ;; INFO: Return type mismatch float vs none.
 (defmethod reset! fact-info-target ((obj fact-info-target) (arg0 symbol))
   (when (or (not arg0) (= arg0 'eco))
-   (set! (-> obj eco-timeout) 0)
-   (set! (-> obj eco-level) 0.0)
-   (set!
-    (-> obj eco-pickup-time)
-    (the-as uint (-> *display* game-frame-counter))
+    (set! (-> obj eco-timeout) 0)
+    (set! (-> obj eco-level) 0.0)
+    (set! (-> obj eco-pickup-time) (the-as uint (-> *display* game-frame-counter)))
     )
-   )
   (when (or (not arg0) (= arg0 'health))
-   (set! (-> obj health-max) (-> *FACT-bank* health-max-default))
-   (set! (-> obj health) (-> obj health-max))
-   (set! (-> obj health-pickup-time) (the-as uint -30000))
-   )
+    (set! (-> obj health-max) (-> *FACT-bank* health-max-default))
+    (set! (-> obj health) (-> obj health-max))
+    (set! (-> obj health-pickup-time) (the-as uint -30000))
+    )
   (when (or (not arg0) (= arg0 'buzzer))
-   (set! (-> obj buzzer-max) (-> *FACT-bank* buzzer-max-default))
-   (set! (-> obj buzzer) 0.0)
-   )
+    (set! (-> obj buzzer-max) (-> *FACT-bank* buzzer-max-default))
+    (set! (-> obj buzzer) 0.0)
+    )
   (when (or (not arg0) (= arg0 'eco-pill))
-   (set! (-> obj eco-pill-max) (-> *FACT-bank* eco-pill-max-default))
-   (set! (-> obj eco-pill) 0.0)
-   )
+    (set! (-> obj eco-pill-max) (-> *FACT-bank* eco-pill-max-default))
+    (set! (-> obj eco-pill) 0.0)
+    )
   (none)
   )
 
 ;; definition for method 11 of type fact-info-target
-(defmethod
-  pickup-collectable!
-  fact-info-target
-  ((obj fact-info-target)
-   (kind pickup-type)
-   (amount float)
-   (source-handle handle)
-   )
-  (case kind 
-   (((pickup-type eco-green))
+(defmethod pickup-collectable! fact-info-target ((obj fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
+  (case kind
+    (((pickup-type eco-green))
      (cond
-      ((>= amount 0.0)
-       (when (< 0.0 amount)
-        (if
-         (or
-          (!=
-           (handle->process source-handle)
-           (handle->process (-> obj eco-source))
-           )
-          (>=
-           (-
-            (-> *display* base-frame-counter)
-            (the-as int (-> obj eco-source-time))
+       ((>= amount 0.0)
+        (when (< 0.0 amount)
+          (if (or
+                  (!= (handle->process source-handle) (handle->process (-> obj eco-source)))
+                  (>= (- (-> *display* base-frame-counter) (the-as int (-> obj eco-source-time))) 150)
+                  )
+              (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 1 #t)
+              )
+          (when (handle->process source-handle)
+            (set! (-> obj eco-source) source-handle)
+            (set! (-> obj eco-source-time) (the-as uint (-> *display* base-frame-counter)))
             )
-           150
-           )
           )
-         (sound-play-by-name
-          (static-sound-name "get-green-eco")
-          (new-sound-id)
-          1024
-          0
-          0
-          1
-          #t
-          )
-         )
-        (when (handle->process source-handle)
-         (set! (-> obj eco-source) source-handle)
-         (set!
-          (-> obj eco-source-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
+        (if (= (-> obj health) (-> obj health-max))
+            (pickup-collectable!
+              obj
+              (pickup-type eco-pill)
+              (-> *FACT-bank* eco-pill-max-default)
+              (process->handle (-> obj process))
+              )
+            )
+        (set! (-> obj health-pickup-time) (the-as uint (-> *display* base-frame-counter)))
+        (set! (-> obj health) (seek (-> obj health) (-> obj health-max) amount))
         )
-       (if (= (-> obj health) (-> obj health-max))
-        (pickup-collectable!
-         obj
-         (pickup-type eco-pill)
-         (-> *FACT-bank* eco-pill-max-default)
-         (process->handle (-> obj process))
+       (else
+         (set! (-> obj health) (seek (-> obj health) 0.0 (- amount)))
+         (if (>= amount -10.0)
+             (pickup-collectable! obj (pickup-type eco-pill) 0.0 source-handle)
+             )
+         (if (= (-> obj health) 0.0)
+             (adjust (-> (the-as target (-> obj process)) game) 'life (- (-> *GAME-bank* life-single-inc)) source-handle)
+             )
          )
-        )
-       (set!
-        (-> obj health-pickup-time)
-        (the-as uint (-> *display* base-frame-counter))
-        )
-       (set! (-> obj health) (seek (-> obj health) (-> obj health-max) amount))
        )
-      (else
-       (set! (-> obj health) (seek (-> obj health) 0.0 (- amount)))
-       (if (>= amount -10.0)
-        (pickup-collectable! obj (pickup-type eco-pill) 0.0 source-handle)
-        )
-       (if (= (-> obj health) 0.0)
-        (adjust
-         (-> (the-as target (-> obj process)) game)
-         'life
-         (- (-> *GAME-bank* life-single-inc))
-         source-handle
-         )
-        )
-       )
-      )
      (b!
-      (and
-       (logtest?
-        (->
-         (the-as collide-shape (-> obj process root))
-         root-prim
-         prim-core
-         action
+       (and
+         (logtest? (-> (the-as collide-shape (-> obj process root)) root-prim prim-core action) 512)
+         (type-type? (-> (handle->process source-handle) type) vent)
          )
-        512
-        )
-       (type-type? (-> (handle->process source-handle) type) vent)
+       cfg-80
+       :delay
+       (nop!)
        )
-      cfg-80
-      :delay
-      (nop!)
-      )
      (-> obj health)
      )
-   (((pickup-type eco-pill))
-    (when (>= amount 0.0)
-     (set!
-      (-> obj eco-pill-pickup-time)
-      (the-as uint (-> *display* base-frame-counter))
-      )
-     (set!
-      (-> obj eco-pill)
-      (seek (-> obj eco-pill) (-> obj eco-pill-max) amount)
-      )
-     (when
-      (and
-       (>= (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default))
-       (< (-> obj health) (-> obj health-max))
-       )
-      (set!
-       (-> obj eco-pill)
-       (- (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default))
-       )
-      (pickup-collectable!
-       obj
-       (pickup-type eco-green)
-       (-> *FACT-bank* health-small-inc)
-       (process->handle (-> obj process))
-       )
-      )
-     )
-    (-> obj eco-pill)
-    )
-   (((pickup-type money))
-    (when (< 0.0 amount)
-     (if
-      (>=
-       (-
-        (-> *display* base-frame-counter)
-        (the-as int (-> obj money-pickup-time))
-        )
-       15
-       )
-      (sound-play-by-name
-       (static-sound-name "money-pickup")
-       (new-sound-id)
-       1024
-       0
-       0
-       1
-       #t
-       )
-      )
-     (set!
-      (-> obj money-pickup-time)
-      (the-as uint (-> *display* base-frame-counter))
-      )
-     )
-    (adjust
-     (-> (the-as target (-> obj process)) game)
-     'money
-     amount
-     source-handle
-     )
-    )
-   (((pickup-type fuel-cell))
-    (let ((s4-2 (the int amount)))
-     (if
-      (not
-       (or
-        (task-complete?
-         (-> (the-as target (-> obj process)) game)
-         (the-as game-task s4-2)
-         )
-        (>= (the-as uint 1) (the-as uint s4-2))
-        )
-       )
-      (set!
-       (-> obj fuel-cell-pickup-time)
-       (the-as uint (-> *display* base-frame-counter))
-       )
-      )
-     )
-    (adjust
-     (-> (the-as target (-> obj process)) game)
-     'fuel-cell
-     amount
-     source-handle
-     )
-    )
-   (((pickup-type buzzer))
-    (let
-     ((buzz-count
-       (adjust
-        (-> (the-as target (-> obj process)) game)
-        'buzzer
-        amount
-        source-handle
-        )
-       )
-      )
-     (if (!= buzz-count (-> obj buzzer))
-      (set!
-       (-> obj buzzer-pickup-time)
-       (the-as uint (-> *display* base-frame-counter))
-       )
-      )
-     (set! (-> obj buzzer) buzz-count)
-     )
-    (-> obj buzzer)
-    )
-   (((pickup-type eco-red) (pickup-type eco-blue) (pickup-type eco-yellow))
-    (label cfg-80)
-    (if (= amount 0.0)
-     (return (if (= (-> obj eco-type) kind)
-              (-> obj eco-level)
-              0.0
-              )
-      )
-     )
-    (when (!= (-> obj eco-type) kind)
-     (set! (-> obj eco-level) 0.0)
-     (set! (-> obj eco-timeout) 0)
-     0
-     )
-    (set! (-> obj eco-type) (the-as int kind))
-    (let ((eco-lev (-> obj eco-level)))
-     (set! (-> obj eco-level) 1.0)
-     (when (and (= eco-lev 0.0) (< 0.0 (-> obj eco-level)))
-      (set!
-       (-> obj eco-pickup-time)
-       (the-as uint (-> *display* game-frame-counter))
-       )
-      (send-event (-> obj process) 'reset-collide)
-      )
-     (set!
-      (-> obj eco-timeout)
-      (min
-       (the-as
-        int
-        (+
-         (-> obj eco-timeout)
-         (* (the-as int (-> *FACT-bank* eco-single-timeout)) (the int amount))
-         )
-        )
-       (the-as
-        int
-        (+
-         (-> *FACT-bank* eco-full-timeout)
-         (-
-          (-> *display* game-frame-counter)
-          (the-as int (-> obj eco-pickup-time))
-          )
-         )
-        )
-       )
-      )
-     (if
-      (>=
-       (the-as
-        int
-        (-
-         (-> obj eco-timeout)
-         (the-as
-          uint
-          (-
-           (-> *display* game-frame-counter)
-           (the-as int (-> obj eco-pickup-time))
+    (((pickup-type eco-pill))
+     (when (>= amount 0.0)
+       (set! (-> obj eco-pill-pickup-time) (the-as uint (-> *display* base-frame-counter)))
+       (set! (-> obj eco-pill) (seek (-> obj eco-pill) (-> obj eco-pill-max) amount))
+       (when (and (>= (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)) (< (-> obj health) (-> obj health-max)))
+         (set! (-> obj eco-pill) (- (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)))
+         (pickup-collectable!
+           obj
+           (pickup-type eco-green)
+           (-> *FACT-bank* health-small-inc)
+           (process->handle (-> obj process))
            )
-          )
          )
-        )
-       (the-as int (-> *FACT-bank* eco-full-timeout))
        )
-      (set! (-> obj eco-level) 2.0)
-      )
-     (when
-      (not
-       (and
-        (=
-         (handle->process source-handle)
-         (handle->process (-> obj eco-source))
-         )
-        (<
-         (-
-          (-> *display* base-frame-counter)
-          (the-as int (-> obj eco-source-time))
-          )
-         150
-         )
-        )
+     (-> obj eco-pill)
+     )
+    (((pickup-type money))
+     (when (< 0.0 amount)
+       (if (>= (- (-> *display* base-frame-counter) (the-as int (-> obj money-pickup-time))) 15)
+           (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 0 0 1 #t)
+           )
+       (set! (-> obj money-pickup-time) (the-as uint (-> *display* base-frame-counter)))
        )
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 60)
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 60)
-      (case kind 
-       (((pickup-type eco-blue))
-         (sound-play-by-name
-          (static-sound-name "get-blue-eco")
-          (new-sound-id)
-          1024
-          0
-          0
-          1
-          #t
-          )
-         )
-       (((pickup-type eco-green))
-        (sound-play-by-name
-         (static-sound-name "get-green-eco")
-         (new-sound-id)
-         1024
-         0
-         0
-         1
-         #t
-         )
-        )
-       (((pickup-type eco-yellow))
-        (sound-play-by-name
-         (static-sound-name "get-yellow-eco")
-         (new-sound-id)
-         1024
-         0
-         0
-         1
-         #t
-         )
-        )
-       (((pickup-type eco-red))
-        (sound-play-by-name
-         (static-sound-name "get-red-eco")
-         (new-sound-id)
-         1024
-         0
-         0
-         1
-         #t
-         )
-        )
+     (adjust (-> (the-as target (-> obj process)) game) 'money amount source-handle)
+     )
+    (((pickup-type fuel-cell))
+     (let ((s4-2 (the int amount)))
+       (if (not (or
+                    (task-complete? (-> (the-as target (-> obj process)) game) (the-as game-task s4-2))
+                    (>= (the-as uint 1) (the-as uint s4-2))
+                    )
+                  )
+           (set! (-> obj fuel-cell-pickup-time) (the-as uint (-> *display* base-frame-counter)))
+           )
        )
-      )
-     (set! (-> obj eco-source) source-handle)
-     (set!
-      (-> obj eco-source-time)
-      (the-as uint (-> *display* base-frame-counter))
-      )
-     (when (= kind (pickup-type eco-blue))
-      (when (= eco-lev 0.0)
-       (let ((s5-1 (-> obj process)))
-        (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
-               (s4-3 (when s3-5
-                      (let ((t9-28 (method-of-type touch-tracker activate)))
-                       (t9-28
-                        (the-as touch-tracker s3-5)
-                        s5-1
-                        'touch-tracker
-                        (the-as pointer #x70004000)
-                        )
+     (adjust (-> (the-as target (-> obj process)) game) 'fuel-cell amount source-handle)
+     )
+    (((pickup-type buzzer))
+     (let ((buzz-count (adjust (-> (the-as target (-> obj process)) game) 'buzzer amount source-handle)))
+       (if (!= buzz-count (-> obj buzzer))
+           (set! (-> obj buzzer-pickup-time) (the-as uint (-> *display* base-frame-counter)))
+           )
+       (set! (-> obj buzzer) buzz-count)
+       )
+     (-> obj buzzer)
+     )
+    (((pickup-type eco-red) (pickup-type eco-blue) (pickup-type eco-yellow))
+     (label cfg-80)
+     (if (= amount 0.0)
+         (return (if (= (-> obj eco-type) kind)
+                     (-> obj eco-level)
+                     0.0
+                     )
+                 )
+         )
+     (when (!= (-> obj eco-type) kind)
+       (set! (-> obj eco-level) 0.0)
+       (set! (-> obj eco-timeout) 0)
+       0
+       )
+     (set! (-> obj eco-type) (the-as int kind))
+     (let ((eco-lev (-> obj eco-level)))
+       (set! (-> obj eco-level) 1.0)
+       (when (and (= eco-lev 0.0) (< 0.0 (-> obj eco-level)))
+         (set! (-> obj eco-pickup-time) (the-as uint (-> *display* game-frame-counter)))
+         (send-event (-> obj process) 'reset-collide)
+         )
+       (set! (-> obj eco-timeout)
+             (min
+               (the-as int (+ (-> obj eco-timeout) (* (the-as int (-> *FACT-bank* eco-single-timeout)) (the int amount))))
+               (the-as int (+ (-> *FACT-bank* eco-full-timeout)
+                              (- (-> *display* game-frame-counter) (the-as int (-> obj eco-pickup-time)))
+                              )
                        )
-                      (run-now-in-process
-                       s3-5
-                       touch-tracker-init
-                       (-> s5-1 root trans)
-                       (-> *FACT-bank* suck-bounce-dist)
-                       300
-                       )
-                      (-> s3-5 ppointer)
-                      )
-                )
                )
-         (send-event (ppointer->process s4-3) 'target s5-1)
-         (send-event (ppointer->process s4-3) 'event 'eco-blue)
-         (send-event (ppointer->process s4-3) 'exit (lambda ()
-                                                     (send-event
-                                                      *target*
-                                                      'query
-                                                      'powerup
-                                                      3
-                                                      )
-                                                     )
-          )
-         (send-event
-          (ppointer->process s4-3)
-          'eval
-          (lambda :behavior process-drawable
-           ()
-           (set!
-            (-> (the-as collide-shape (-> self root)) root-prim collide-with)
-            (the-as uint #x800e)
+             )
+       (if (>= (the-as int (- (-> obj eco-timeout)
+                                  (the-as uint (- (-> *display* game-frame-counter) (the-as int (-> obj eco-pickup-time))))
+                                  )
+                           )
+                 (the-as int (-> *FACT-bank* eco-full-timeout))
+                 )
+           (set! (-> obj eco-level) 2.0)
+           )
+       (when (not (and
+                    (= (handle->process source-handle) (handle->process (-> obj eco-source)))
+                    (< (- (-> *display* base-frame-counter) (the-as int (-> obj eco-source-time))) 150)
+                    )
+                  )
+         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 60)
+         (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 60)
+         (case kind
+           (((pickup-type eco-blue))
+            (sound-play-by-name (static-sound-name "get-blue-eco") (new-sound-id) 1024 0 0 1 #t)
             )
-           (none)
+           (((pickup-type eco-green))
+            (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 1 #t)
+            )
+           (((pickup-type eco-yellow))
+            (sound-play-by-name (static-sound-name "get-yellow-eco") (new-sound-id) 1024 0 0 1 #t)
+            )
+           (((pickup-type eco-red))
+            (sound-play-by-name (static-sound-name "get-red-eco") (new-sound-id) 1024 0 0 1 #t)
+            )
            )
-          )
          )
-        (let ((s4-4 (get-process *4k-dead-pool* process #x4000)))
-         (when s4-4
-          (let ((t9-35 (method-of-type process activate)))
-           (t9-35 s4-4 s5-1 'process (the-as pointer #x70004000))
+       (set! (-> obj eco-source) source-handle)
+       (set! (-> obj eco-source-time) (the-as uint (-> *display* base-frame-counter)))
+       (when (= kind (pickup-type eco-blue))
+         (when (= eco-lev 0.0)
+           (let ((s5-1 (-> obj process)))
+             (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
+                    (s4-3
+                      (when s3-5
+                        (let ((t9-28 (method-of-type touch-tracker activate)))
+                          (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
+                          )
+                        (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
+                        (-> s3-5 ppointer)
+                        )
+                      )
+                    )
+               (send-event (ppointer->process s4-3) 'target s5-1)
+               (send-event (ppointer->process s4-3) 'event 'eco-blue)
+               (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup 3)))
+               (send-event
+                 (ppointer->process s4-3)
+                 'eval
+                 (lambda :behavior process-drawable
+                   ()
+                   (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with) (the-as uint #x800e))
+                   (none)
+                   )
+                 )
+               )
+             (let ((s4-4 (get-process *4k-dead-pool* process #x4000)))
+               (when s4-4
+                 (let ((t9-35 (method-of-type process activate)))
+                   (t9-35 s4-4 s5-1 'process (the-as pointer #x70004000))
+                   )
+                 (run-next-time-in-process
+                   s4-4
+                   (lambda ((arg0 process-drawable))
+                     (let ((s5-0 (-> *display* base-frame-counter)))
+                       (until (>= (- (-> *display* base-frame-counter) s5-0) 180)
+                         (send-event arg0 'effect 'eco-blue)
+                         (suspend)
+                         )
+                       )
+                     (none)
+                     )
+                   s5-1
+                   )
+                 (-> s4-4 ppointer)
+                 )
+               )
+             )
            )
-          (run-next-time-in-process s4-4 (lambda ((arg0 process-drawable))
-                                          (let
-                                           ((s5-0
-                                             (-> *display* base-frame-counter)
-                                             )
-                                            )
-                                           (until
-                                            (>=
-                                             (-
-                                              (-> *display* base-frame-counter)
-                                              s5-0
-                                              )
-                                             180
-                                             )
-                                            (send-event arg0 'effect 'eco-blue)
-                                            (suspend)
-                                            )
-                                           )
-                                          (none)
-                                          )
-           s5-1
-           )
-          (-> s4-4 ppointer)
-          )
          )
-        )
        )
+     (-> obj eco-level)
+     )
+    (else
+      ((method-of-type fact-info pickup-collectable!) obj kind amount source-handle)
       )
-     )
-    (-> obj eco-level)
     )
-   (else
-    ((method-of-type fact-info pickup-collectable!)
-     obj
-     kind
-     amount
-     source-handle
-     )
-    )
-   )
   )
 
 ;; definition for method 12 of type game-info
 (defmethod lookup-entity-perm-by-aid game-info ((obj game-info) (arg0 actor-id))
   (let ((v1-0 (-> obj perm-list)))
-   (countdown (a0-1 (-> v1-0 length))
-    (if (= arg0 (-> v1-0 data a0-1 aid))
-     (return (-> v1-0 data a0-1))
-     )
+    (countdown (a0-1 (-> v1-0 length))
+      (if (= arg0 (-> v1-0 data a0-1 aid))
+          (return (-> v1-0 data a0-1))
+          )
+      )
     )
-   )
   (the-as entity-perm #f)
   )
 
@@ -998,29 +677,24 @@
   (let ((perms (-> obj perm-list))
         (lev-entities (-> lev bsp level entity))
         )
-   (dotimes (lev-entity-idx (-> lev-entities length))
-    (let
-     ((lev-entity-perm (-> lev-entities data lev-entity-idx entity extra perm)))
-     (when (nonzero? (-> lev-entity-perm task))
-      (let
-       ((info-entity-perm
-         (lookup-entity-perm-by-aid obj (-> lev-entity-perm aid))
-         )
+    (dotimes (lev-entity-idx (-> lev-entities length))
+      (let ((lev-entity-perm (-> lev-entities data lev-entity-idx entity extra perm)))
+        (when (nonzero? (-> lev-entity-perm task))
+          (let ((info-entity-perm (lookup-entity-perm-by-aid obj (-> lev-entity-perm aid))))
+            (cond
+              (info-entity-perm
+                (set! (-> info-entity-perm quad) (-> lev-entity-perm quad))
+                )
+              ((< (-> perms length) (-> perms allocated-length))
+               (set! (-> perms data (-> perms length) quad) (-> lev-entity-perm quad))
+               (+! (-> perms length) 1)
+               )
+              )
+            )
+          )
         )
-       (cond
-        (info-entity-perm
-         (set! (-> info-entity-perm quad) (-> lev-entity-perm quad))
-         )
-        ((< (-> perms length) (-> perms allocated-length))
-         (set! (-> perms data (-> perms length) quad) (-> lev-entity-perm quad))
-         (+! (-> perms length) 1)
-         )
-        )
-       )
       )
-     )
     )
-   )
   0
   (none)
   )
@@ -1030,32 +704,21 @@
 ;; Used lq/sq
 (defmethod copy-perms-to-level! game-info ((obj game-info) (lev level))
   (let ((lev-entities (-> lev bsp level entity)))
-   (dotimes (lev-entity-idx (-> lev-entities length))
-    (let*
-     ((lev-entity-perm (-> lev-entities data lev-entity-idx entity extra perm))
-      (info-entity-perm
-       (lookup-entity-perm-by-aid obj (-> lev-entity-perm aid))
-       )
-      )
-     (when info-entity-perm
-      (set! (-> lev-entity-perm quad) (-> info-entity-perm quad))
-      (update-perm!
-       lev-entity-perm
-       'try
-       (entity-perm-status
-        bit-0
-        bit-1
-        dead
-        bit-3
-        user-set-from-cstage
-        complete
-        bit-9
+    (dotimes (lev-entity-idx (-> lev-entities length))
+      (let* ((lev-entity-perm (-> lev-entities data lev-entity-idx entity extra perm))
+             (info-entity-perm (lookup-entity-perm-by-aid obj (-> lev-entity-perm aid)))
+             )
+        (when info-entity-perm
+          (set! (-> lev-entity-perm quad) (-> info-entity-perm quad))
+          (update-perm!
+            lev-entity-perm
+            'try
+            (entity-perm-status bit-0 bit-1 dead bit-3 user-set-from-cstage complete bit-9)
+            )
+          )
         )
-       )
       )
-     )
     )
-   )
   0
   (none)
   )
@@ -1070,30 +733,25 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod debug-draw! continue-point ((obj continue-point))
-  (add-debug-x
-   #t
-   (bucket-id debug-draw1)
-   (-> obj trans)
-   (new 'static 'rgba :r #xff :a #x80)
-   )
+  (add-debug-x #t (bucket-id debug-draw1) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
-   #t
-   (bucket-id debug-draw1)
-   (-> obj name)
-   (-> obj trans)
-   (font-color white)
-   (new 'static 'vector2h :y 8)
-   )
-  (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> obj quat))))
-   (add-debug-vector
     #t
     (bucket-id debug-draw1)
+    (-> obj name)
     (-> obj trans)
-    a3-2
-    (meters 2.0)
-    (new 'static 'rgba :r #xff :g #x80 :a #x80)
+    (font-color white)
+    (new 'static 'vector2h :y 8)
     )
-   )
+  (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> obj quat))))
+    (add-debug-vector
+      #t
+      (bucket-id debug-draw1)
+      (-> obj trans)
+      a3-2
+      (meters 2.0)
+      (new 'static 'rgba :r #xff :g #x80 :a #x80)
+      )
+    )
   0
   (none)
   )
@@ -1102,58 +760,41 @@
 ;; INFO: Return type mismatch int vs none.
 (defun-debug trsq->continue-point ((arg0 trsq))
   (let ((a2-0 (level-get-target-inside *level*)))
-   (format
-    #t
-    "~%(static-continue-point ~A ()~%"
-    (symbol->string (-> a2-0 name))
+    (format #t "~%(static-continue-point ~A ()~%" (symbol->string (-> a2-0 name)))
     )
-   )
-  (format
-   #t
-   "                       (target ~m ~m ~m "
-   (-> arg0 trans x)
-   (-> arg0 trans y)
-   (-> arg0 trans z)
-   )
-  (format
-   #t
-   "~f ~f ~f ~f)~%"
-   (-> arg0 quat x)
-   (-> arg0 quat y)
-   (-> arg0 quat z)
-   (-> arg0 quat w)
-   )
+  (format #t "                       (target ~m ~m ~m " (-> arg0 trans x) (-> arg0 trans y) (-> arg0 trans z))
+  (format #t "~f ~f ~f ~f)~%" (-> arg0 quat x) (-> arg0 quat y) (-> arg0 quat z) (-> arg0 quat w))
   (let ((gp-1 *math-camera*))
-   (format
-    #t
-    "                       (camera ~m ~m ~m ~f ~f ~f "
-    (-> gp-1 trans x)
-    (-> gp-1 trans y)
-    (-> gp-1 trans z)
-    (-> gp-1 inv-camera-rot vector 0 x)
-    (-> gp-1 inv-camera-rot vector 0 y)
-    (-> gp-1 inv-camera-rot vector 0 z)
+    (format
+      #t
+      "                       (camera ~m ~m ~m ~f ~f ~f "
+      (-> gp-1 trans x)
+      (-> gp-1 trans y)
+      (-> gp-1 trans z)
+      (-> gp-1 inv-camera-rot vector 0 x)
+      (-> gp-1 inv-camera-rot vector 0 y)
+      (-> gp-1 inv-camera-rot vector 0 z)
+      )
+    (format
+      #t
+      "~f ~f ~f ~f ~f ~f)~%"
+      (-> gp-1 inv-camera-rot vector 1 x)
+      (-> gp-1 inv-camera-rot vector 1 y)
+      (-> gp-1 inv-camera-rot vector 1 z)
+      (-> gp-1 inv-camera-rot vector 2 x)
+      (-> gp-1 inv-camera-rot vector 2 y)
+      (-> gp-1 inv-camera-rot vector 2 z)
+      )
     )
-   (format
-    #t
-    "~f ~f ~f ~f ~f ~f)~%"
-    (-> gp-1 inv-camera-rot vector 1 x)
-    (-> gp-1 inv-camera-rot vector 1 y)
-    (-> gp-1 inv-camera-rot vector 1 z)
-    (-> gp-1 inv-camera-rot vector 2 x)
-    (-> gp-1 inv-camera-rot vector 2 y)
-    (-> gp-1 inv-camera-rot vector 2 z)
-    )
-   )
   (format
-   #t
-   "                       (load '~A '~A '~A '~A '~A)~%"
-   (-> *load-state* vis-nick)
-   (-> *load-state* want 0 name)
-   (-> *load-state* want 0 display?)
-   (-> *load-state* want 1 name)
-   (-> *load-state* want 1 display?)
-   )
+    #t
+    "                       (load '~A '~A '~A '~A '~A)~%"
+    (-> *load-state* vis-nick)
+    (-> *load-state* want 0 name)
+    (-> *load-state* want 0 display?)
+    (-> *load-state* want 1 name)
+    (-> *load-state* want 1 display?)
+    )
   (format #t "                       )~%")
   0
   (none)
@@ -1161,416 +802,416 @@
 
 ;; definition (debug) for function game-task->string
 (defun-debug game-task->string ((arg0 game-task))
-  (case arg0 
-   (((game-task max))
+  (case arg0
+    (((game-task max))
      "max"
      )
-   (((game-task assistant-village3))
-    "assistant-village3"
+    (((game-task assistant-village3))
+     "assistant-village3"
+     )
+    (((game-task leaving-misty))
+     "leaving-misty"
+     )
+    (((game-task plunger-lurker-hit))
+     "plunger-lurker-hit"
+     )
+    (((game-task finalboss-movies))
+     "finalboss-movies"
+     )
+    (((game-task village4-button))
+     "village4-button"
+     )
+    (((game-task ogre-secret))
+     "ogre-secret"
+     )
+    (((game-task intro))
+     "intro"
+     )
+    (((game-task lavatube-start))
+     "lavatube-start"
+     )
+    (((game-task lavatube-balls))
+     "lavatube-balls"
+     )
+    (((game-task red-eggtop))
+     "red-eggtop"
+     )
+    (((game-task village3-button))
+     "village3-button"
+     )
+    (((game-task swamp-arm))
+     "swamp-arm"
+     )
+    (((game-task village2-levitator))
+     "village2-levitator"
+     )
+    (((game-task firecanyon-assistant))
+     "firecanyon-assistant"
+     )
+    (((game-task village3-oracle-money2))
+     "village3-oracle-money2"
+     )
+    (((game-task village3-oracle-money1))
+     "village3-oracle-money1"
+     )
+    (((game-task village3-miner-money4))
+     "village3-miner-money4"
+     )
+    (((game-task village3-miner-money3))
+     "village3-miner-money3"
+     )
+    (((game-task village3-miner-money2))
+     "village3-miner-money2"
+     )
+    (((game-task village3-miner-money1))
+     "village3-miner-money1"
+     )
+    (((game-task training-buzzer))
+     "training-buzzer"
+     )
+    (((game-task training-climb))
+     "training-climb"
+     )
+    (((game-task training-door))
+     "training-door"
+     )
+    (((game-task training-gimmie))
+     "training-gimmie"
+     )
+    (((game-task citadel-buzzer))
+     "citadel-buzzer"
+     )
+    (((game-task lavatube-buzzer))
+     "lavatube-buzzer"
+     )
+    (((game-task lavatube-end))
+     "lavatube-end"
+     )
+    (((game-task ogre-buzzer))
+     "ogre-buzzer"
+     )
+    (((game-task ogre-end))
+     "ogre-end"
+     )
+    (((game-task ogre-boss))
+     "ogre-boss"
+     )
+    (((game-task cave-buzzer))
+     "cave-buzzer"
+     )
+    (((game-task cave-platforms))
+     "cave-platforms"
+     )
+    (((game-task cave-spider-tunnel))
+     "cave-spider-tunnel"
+     )
+    (((game-task cave-swing-poles))
+     "cave-swing-poles"
+     )
+    (((game-task cave-robot-climb))
+     "cave-robot-climb"
+     )
+    (((game-task cave-dark-climb))
+     "cave-dark-climb"
+     )
+    (((game-task cave-dark-crystals))
+     "cave-dark-crystals"
+     )
+    (((game-task cave-gnawers))
+     "cave-gnawers"
+     )
+    (((game-task village3-buzzer))
+     "village3-buzzer"
+     )
+    (((game-task village2-buzzer))
+     "village2-buzzer"
+     )
+    (((game-task village1-buzzer))
+     "village1-buzzer"
+     )
+    (((game-task village3-extra1))
+     "village3-extra1"
+     )
+    (((game-task citadel-sage-yellow))
+     "citadel-sage-yellow"
+     )
+    (((game-task citadel-sage-red))
+     "citadel-sage-red"
+     )
+    (((game-task citadel-sage-blue))
+     "citadel-sage-blue"
+     )
+    (((game-task citadel-sage-green))
+     "citadel-sage-green"
+     )
+    (((game-task firecanyon-end))
+     "firecanyon-end"
+     )
+    (((game-task firecanyon-buzzer))
+     "firecanyon-buzzer"
+     )
+    (((game-task snow-cage))
+     "snow-cage"
+     )
+    (((game-task snow-bumpers))
+     "snow-bumpers"
+     )
+    (((game-task snow-buzzer))
+     "snow-buzzer"
+     )
+    (((game-task snow-bunnies))
+     "snow-bunnies"
+     )
+    (((game-task snow-ball))
+     "snow-ball"
+     )
+    (((game-task snow-fort))
+     "snow-fort"
+     )
+    (((game-task snow-ram))
+     "snow-ram"
+     )
+    (((game-task snow-eggtop))
+     "snow-eggtop"
+     )
+    (((game-task rolling-ring-chase-2))
+     "rolling-ring-chase-2"
+     )
+    (((game-task rolling-ring-chase-1))
+     "rolling-ring-chase-1"
+     )
+    (((game-task rolling-buzzer))
+     "rolling-buzzer"
+     )
+    (((game-task rolling-lake))
+     "rolling-lake"
+     )
+    (((game-task rolling-plants))
+     "rolling-plants"
+     )
+    (((game-task rolling-moles))
+     "rolling-moles"
+     )
+    (((game-task rolling-robbers))
+     "rolling-robbers"
+     )
+    (((game-task rolling-race))
+     "rolling-race"
+     )
+    (((game-task sunken-spinning-room))
+     "sunken-spinning-room"
+     )
+    (((game-task sunken-top-of-helix))
+     "sunken-top-of-helix"
+     )
+    (((game-task sunken-buzzer))
+     "sunken-buzzer"
+     )
+    (((game-task sunken-sharks))
+     "sunken-sharks"
+     )
+    (((game-task sunken-room))
+     "sunken-room"
+     )
+    (((game-task sunken-slide))
+     "sunken-slide"
+     )
+    (((game-task sunken-pipe))
+     "sunken-pipe"
+     )
+    (((game-task sunken-platforms))
+     "sunken-platforms"
+     )
+    (((game-task swamp-buzzer))
+     "swamp-buzzer"
+     )
+    (((game-task swamp-tether-4))
+     "swamp-tether-4"
+     )
+    (((game-task swamp-tether-3))
+     "swamp-tether-3"
+     )
+    (((game-task swamp-tether-2))
+     "swamp-tether-2"
+     )
+    (((game-task swamp-tether-1))
+     "swamp-tether-1"
+     )
+    (((game-task swamp-battle))
+     "swamp-battle"
+     )
+    (((game-task swamp-flutflut))
+     "swamp-flutflut"
+     )
+    (((game-task swamp-billy))
+     "swamp-billy"
+     )
+    (((game-task village2-oracle-money2))
+     "village2-oracle-money2"
+     )
+    (((game-task village2-oracle-money1))
+     "village2-oracle-money1"
+     )
+    (((game-task village2-warrior-money))
+     "village2-warrior-money"
+     )
+    (((game-task village2-geologist-money))
+     "village2-geologist-money"
+     )
+    (((game-task village2-gambler-money))
+     "village2-gambler-money"
+     )
+    (((game-task misty-eco-challenge))
+     "misty-eco-challenge"
+     )
+    (((game-task misty-bike-jump))
+     "misty-bike-jump"
+     )
+    (((game-task misty-buzzer))
+     "misty-buzzer"
+     )
+    (((game-task misty-bike))
+     "misty-bike"
+     )
+    (((game-task misty-cannon))
+     "misty-cannon"
+     )
+    (((game-task misty-warehouse))
+     "misty-warehouse"
+     )
+    (((game-task misty-boat))
+     "misty-boat"
+     )
+    (((game-task misty-muse))
+     "misty-muse"
+     )
+    (((game-task beach-sentinel))
+     "beach-sentinel"
+     )
+    (((game-task beach-gimmie))
+     "beach-gimmie"
+     )
+    (((game-task beach-buzzer))
+     "beach-buzzer"
+     )
+    (((game-task beach-cannon))
+     "beach-cannon"
+     )
+    (((game-task beach-seagull))
+     "beach-seagull"
+     )
+    (((game-task beach-flutflut))
+     "beach-flutflut"
+     )
+    (((game-task beach-pelican))
+     "beach-pelican"
+     )
+    (((game-task beach-ecorocks))
+     "beach-ecorocks"
+     )
+    (((game-task village1-oracle-money2))
+     "village1-oracle-money2"
+     )
+    (((game-task village1-oracle-money1))
+     "village1-oracle-money1"
+     )
+    (((game-task village1-uncle-money))
+     "village1-uncle-money"
+     )
+    (((game-task village1-mayor-money))
+     "village1-mayor-money"
+     )
+    (((game-task village1-yakow))
+     "village1-yakow"
+     )
+    (((game-task jungle-temple-door))
+     "jungle-temple-door"
+     )
+    (((game-task jungle-canyon-end))
+     "jungle-canyon-end"
+     )
+    (((game-task jungle-buzzer))
+     "jungle-buzzer"
+     )
+    (((game-task jungle-plant))
+     "jungle-plant"
+     )
+    (((game-task jungle-fishgame))
+     "jungle-fishgame"
+     )
+    (((game-task jungle-tower))
+     "jungle-tower"
+     )
+    (((game-task jungle-lurkerm))
+     "jungle-lurkerm"
+     )
+    (((game-task jungle-eggtop))
+     "jungle-eggtop"
+     )
+    (((game-task complete))
+     "complete"
+     )
+    (((game-task none))
+     "none"
+     )
+    (else
+      "*unknown*"
+      )
     )
-   (((game-task leaving-misty))
-    "leaving-misty"
-    )
-   (((game-task plunger-lurker-hit))
-    "plunger-lurker-hit"
-    )
-   (((game-task finalboss-movies))
-    "finalboss-movies"
-    )
-   (((game-task village4-button))
-    "village4-button"
-    )
-   (((game-task ogre-secret))
-    "ogre-secret"
-    )
-   (((game-task intro))
-    "intro"
-    )
-   (((game-task lavatube-start))
-    "lavatube-start"
-    )
-   (((game-task lavatube-balls))
-    "lavatube-balls"
-    )
-   (((game-task red-eggtop))
-    "red-eggtop"
-    )
-   (((game-task village3-button))
-    "village3-button"
-    )
-   (((game-task swamp-arm))
-    "swamp-arm"
-    )
-   (((game-task village2-levitator))
-    "village2-levitator"
-    )
-   (((game-task firecanyon-assistant))
-    "firecanyon-assistant"
-    )
-   (((game-task village3-oracle-money2))
-    "village3-oracle-money2"
-    )
-   (((game-task village3-oracle-money1))
-    "village3-oracle-money1"
-    )
-   (((game-task village3-miner-money4))
-    "village3-miner-money4"
-    )
-   (((game-task village3-miner-money3))
-    "village3-miner-money3"
-    )
-   (((game-task village3-miner-money2))
-    "village3-miner-money2"
-    )
-   (((game-task village3-miner-money1))
-    "village3-miner-money1"
-    )
-   (((game-task training-buzzer))
-    "training-buzzer"
-    )
-   (((game-task training-climb))
-    "training-climb"
-    )
-   (((game-task training-door))
-    "training-door"
-    )
-   (((game-task training-gimmie))
-    "training-gimmie"
-    )
-   (((game-task citadel-buzzer))
-    "citadel-buzzer"
-    )
-   (((game-task lavatube-buzzer))
-    "lavatube-buzzer"
-    )
-   (((game-task lavatube-end))
-    "lavatube-end"
-    )
-   (((game-task ogre-buzzer))
-    "ogre-buzzer"
-    )
-   (((game-task ogre-end))
-    "ogre-end"
-    )
-   (((game-task ogre-boss))
-    "ogre-boss"
-    )
-   (((game-task cave-buzzer))
-    "cave-buzzer"
-    )
-   (((game-task cave-platforms))
-    "cave-platforms"
-    )
-   (((game-task cave-spider-tunnel))
-    "cave-spider-tunnel"
-    )
-   (((game-task cave-swing-poles))
-    "cave-swing-poles"
-    )
-   (((game-task cave-robot-climb))
-    "cave-robot-climb"
-    )
-   (((game-task cave-dark-climb))
-    "cave-dark-climb"
-    )
-   (((game-task cave-dark-crystals))
-    "cave-dark-crystals"
-    )
-   (((game-task cave-gnawers))
-    "cave-gnawers"
-    )
-   (((game-task village3-buzzer))
-    "village3-buzzer"
-    )
-   (((game-task village2-buzzer))
-    "village2-buzzer"
-    )
-   (((game-task village1-buzzer))
-    "village1-buzzer"
-    )
-   (((game-task village3-extra1))
-    "village3-extra1"
-    )
-   (((game-task citadel-sage-yellow))
-    "citadel-sage-yellow"
-    )
-   (((game-task citadel-sage-red))
-    "citadel-sage-red"
-    )
-   (((game-task citadel-sage-blue))
-    "citadel-sage-blue"
-    )
-   (((game-task citadel-sage-green))
-    "citadel-sage-green"
-    )
-   (((game-task firecanyon-end))
-    "firecanyon-end"
-    )
-   (((game-task firecanyon-buzzer))
-    "firecanyon-buzzer"
-    )
-   (((game-task snow-cage))
-    "snow-cage"
-    )
-   (((game-task snow-bumpers))
-    "snow-bumpers"
-    )
-   (((game-task snow-buzzer))
-    "snow-buzzer"
-    )
-   (((game-task snow-bunnies))
-    "snow-bunnies"
-    )
-   (((game-task snow-ball))
-    "snow-ball"
-    )
-   (((game-task snow-fort))
-    "snow-fort"
-    )
-   (((game-task snow-ram))
-    "snow-ram"
-    )
-   (((game-task snow-eggtop))
-    "snow-eggtop"
-    )
-   (((game-task rolling-ring-chase-2))
-    "rolling-ring-chase-2"
-    )
-   (((game-task rolling-ring-chase-1))
-    "rolling-ring-chase-1"
-    )
-   (((game-task rolling-buzzer))
-    "rolling-buzzer"
-    )
-   (((game-task rolling-lake))
-    "rolling-lake"
-    )
-   (((game-task rolling-plants))
-    "rolling-plants"
-    )
-   (((game-task rolling-moles))
-    "rolling-moles"
-    )
-   (((game-task rolling-robbers))
-    "rolling-robbers"
-    )
-   (((game-task rolling-race))
-    "rolling-race"
-    )
-   (((game-task sunken-spinning-room))
-    "sunken-spinning-room"
-    )
-   (((game-task sunken-top-of-helix))
-    "sunken-top-of-helix"
-    )
-   (((game-task sunken-buzzer))
-    "sunken-buzzer"
-    )
-   (((game-task sunken-sharks))
-    "sunken-sharks"
-    )
-   (((game-task sunken-room))
-    "sunken-room"
-    )
-   (((game-task sunken-slide))
-    "sunken-slide"
-    )
-   (((game-task sunken-pipe))
-    "sunken-pipe"
-    )
-   (((game-task sunken-platforms))
-    "sunken-platforms"
-    )
-   (((game-task swamp-buzzer))
-    "swamp-buzzer"
-    )
-   (((game-task swamp-tether-4))
-    "swamp-tether-4"
-    )
-   (((game-task swamp-tether-3))
-    "swamp-tether-3"
-    )
-   (((game-task swamp-tether-2))
-    "swamp-tether-2"
-    )
-   (((game-task swamp-tether-1))
-    "swamp-tether-1"
-    )
-   (((game-task swamp-battle))
-    "swamp-battle"
-    )
-   (((game-task swamp-flutflut))
-    "swamp-flutflut"
-    )
-   (((game-task swamp-billy))
-    "swamp-billy"
-    )
-   (((game-task village2-oracle-money2))
-    "village2-oracle-money2"
-    )
-   (((game-task village2-oracle-money1))
-    "village2-oracle-money1"
-    )
-   (((game-task village2-warrior-money))
-    "village2-warrior-money"
-    )
-   (((game-task village2-geologist-money))
-    "village2-geologist-money"
-    )
-   (((game-task village2-gambler-money))
-    "village2-gambler-money"
-    )
-   (((game-task misty-eco-challenge))
-    "misty-eco-challenge"
-    )
-   (((game-task misty-bike-jump))
-    "misty-bike-jump"
-    )
-   (((game-task misty-buzzer))
-    "misty-buzzer"
-    )
-   (((game-task misty-bike))
-    "misty-bike"
-    )
-   (((game-task misty-cannon))
-    "misty-cannon"
-    )
-   (((game-task misty-warehouse))
-    "misty-warehouse"
-    )
-   (((game-task misty-boat))
-    "misty-boat"
-    )
-   (((game-task misty-muse))
-    "misty-muse"
-    )
-   (((game-task beach-sentinel))
-    "beach-sentinel"
-    )
-   (((game-task beach-gimmie))
-    "beach-gimmie"
-    )
-   (((game-task beach-buzzer))
-    "beach-buzzer"
-    )
-   (((game-task beach-cannon))
-    "beach-cannon"
-    )
-   (((game-task beach-seagull))
-    "beach-seagull"
-    )
-   (((game-task beach-flutflut))
-    "beach-flutflut"
-    )
-   (((game-task beach-pelican))
-    "beach-pelican"
-    )
-   (((game-task beach-ecorocks))
-    "beach-ecorocks"
-    )
-   (((game-task village1-oracle-money2))
-    "village1-oracle-money2"
-    )
-   (((game-task village1-oracle-money1))
-    "village1-oracle-money1"
-    )
-   (((game-task village1-uncle-money))
-    "village1-uncle-money"
-    )
-   (((game-task village1-mayor-money))
-    "village1-mayor-money"
-    )
-   (((game-task village1-yakow))
-    "village1-yakow"
-    )
-   (((game-task jungle-temple-door))
-    "jungle-temple-door"
-    )
-   (((game-task jungle-canyon-end))
-    "jungle-canyon-end"
-    )
-   (((game-task jungle-buzzer))
-    "jungle-buzzer"
-    )
-   (((game-task jungle-plant))
-    "jungle-plant"
-    )
-   (((game-task jungle-fishgame))
-    "jungle-fishgame"
-    )
-   (((game-task jungle-tower))
-    "jungle-tower"
-    )
-   (((game-task jungle-lurkerm))
-    "jungle-lurkerm"
-    )
-   (((game-task jungle-eggtop))
-    "jungle-eggtop"
-    )
-   (((game-task complete))
-    "complete"
-    )
-   (((game-task none))
-    "none"
-    )
-   (else
-    "*unknown*"
-    )
-   )
   )
 
 ;; definition for method 16 of type game-info
 (defmethod debug-print game-info ((obj game-info) (arg0 symbol))
   (inspect obj)
   (when (or (not arg0) (= arg0 'game-task))
-   (format #t "~Tgame-task:~%")
-   (dotimes (s4-0 116)
-    (if (task-complete? obj (the-as game-task s4-0))
-     (format #t "~T~T~S~%" (game-task->string (the-as game-task s4-0)))
-     )
+    (format #t "~Tgame-task:~%")
+    (dotimes (s4-0 116)
+      (if (task-complete? obj (the-as game-task s4-0))
+          (format #t "~T~T~S~%" (game-task->string (the-as game-task s4-0)))
+          )
+      )
     )
-   )
   (when (or (not arg0) (= arg0 'entity-perm))
-   (format #t "~Tentity-perm:~%")
-   (let ((s5-1 (-> obj perm-list)))
-    (dotimes (s4-1 (-> s5-1 length))
-     (format #t "~T~T~`entity-perm`P~%" (-> s5-1 data s4-1))
-     )
+    (format #t "~Tentity-perm:~%")
+    (let ((s5-1 (-> obj perm-list)))
+      (dotimes (s4-1 (-> s5-1 length))
+        (format #t "~T~T~`entity-perm`P~%" (-> s5-1 data s4-1))
+        )
+      )
     )
-   )
   obj
   )
 
 ;; failed to figure out what this is:
 (let ((gp-0 *game-info*))
   (when (zero? (-> gp-0 perm-list))
-   (set! (-> gp-0 perm-list) (new 'global 'entity-perm-array 4096))
-   (set! (-> gp-0 perm-list length) 0)
-   0
-   )
-  (when (zero? (-> gp-0 task-perm-list))
-   (let ((v1-15 (new 'global 'entity-perm-array 116)))
-    (set! (-> gp-0 task-perm-list) v1-15)
-    (dotimes (a0-24 (-> v1-15 length))
-     (set! (-> v1-15 data a0-24 task) (the-as game-task a0-24))
-     )
-    (logior! (-> v1-15 data 1 status) (entity-perm-status real-complete))
+    (set! (-> gp-0 perm-list) (new 'global 'entity-perm-array 4096))
+    (set! (-> gp-0 perm-list length) 0)
+    0
     )
-   )
+  (when (zero? (-> gp-0 task-perm-list))
+    (let ((v1-15 (new 'global 'entity-perm-array 116)))
+      (set! (-> gp-0 task-perm-list) v1-15)
+      (dotimes (a0-24 (-> v1-15 length))
+        (set! (-> v1-15 data a0-24 task) (the-as game-task a0-24))
+        )
+      (logior! (-> v1-15 data 1 status) (entity-perm-status real-complete))
+      )
+    )
   (if (zero? (-> gp-0 text-ids-seen))
-   (set! (-> gp-0 text-ids-seen) (new 'global 'bit-array 4095))
-   )
+      (set! (-> gp-0 text-ids-seen) (new 'global 'bit-array 4095))
+      )
   (when (zero? (-> gp-0 death-pos))
-   (set! (-> gp-0 death-pos) (new 'global 'vector-array 64))
-   (set! (-> gp-0 death-pos length) 0)
-   0
-   )
+    (set! (-> gp-0 death-pos) (new 'global 'vector-array 64))
+    (set! (-> gp-0 death-pos length) 0)
+    0
+    )
   (if (zero? (-> gp-0 display-text-handle))
-   (set! (-> gp-0 display-text-handle) (the-as handle #f))
-   )
+      (set! (-> gp-0 display-text-handle) (the-as handle #f))
+      )
   (if (not (-> gp-0 current-continue))
-   (set-continue! gp-0 *default-continue*)
-   )
+      (set-continue! gp-0 *default-continue*)
+      )
   (set! (-> gp-0 want-auto-save) #f)
   (set! (-> gp-0 auto-save-proc) (the-as handle #f))
   (set! (-> gp-0 auto-save-status) (mc-status-code ok))
@@ -1582,35 +1223,19 @@
 
 ;; definition for method 27 of type game-info
 (defmethod get-death-count game-info ((obj game-info) (arg0 symbol))
-  (let
-   ((v1-13
-     (if
-      (and
-       arg0
-       *target*
-       (>=
-        (-> *level-task-data-remap* length)
-        (-> *target* current-level info index)
+  (let ((v1-13
+          (if (and arg0 *target* (>= (-> *level-task-data-remap* length) (-> *target* current-level info index)))
+              (the-as
+                int
+                (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
+                )
+              (-> obj fuel-cell-deaths)
+              )
+          )
         )
-       )
-      (the-as
-       int
-       (->
-        obj
-        deaths-per-level
-        (->
-         *level-task-data-remap*
-         (+ (-> *target* current-level info index) -1)
-         )
-        )
-       )
-      (-> obj fuel-cell-deaths)
-      )
-     )
+    0
+    (min 4 (/ v1-13 5))
     )
-   0
-   (min 4 (/ v1-13 5))
-   )
   )
 
 ;; definition for method 28 of type game-info

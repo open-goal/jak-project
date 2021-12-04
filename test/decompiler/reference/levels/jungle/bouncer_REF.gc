@@ -15,8 +15,8 @@
 ;; definition for method 3 of type springbox
 (defmethod inspect springbox ((obj springbox))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tspring-height: (meters ~m)~%" (-> obj spring-height))
   (format #t "~T~Tsmush: ~f~%" (-> obj smush))
   obj
@@ -38,136 +38,102 @@
 (defstate bouncer-wait (springbox)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('bonk)
-      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-3 from) self)
-       (set! (-> a1-3 num-params) 3)
-       (set! (-> a1-3 message) 'jump)
-       (set! (-> a1-3 param 0) (the-as uint (-> self spring-height)))
-       (set! (-> a1-3 param 1) (the-as uint (-> self spring-height)))
-       (set! (-> a1-3 param 2) (the-as uint #f))
-       (when (send-event-function arg0 a1-3)
-        (sound-play-by-name
-         (static-sound-name "trampoline")
-         (new-sound-id)
-         1024
-         0
-         0
-         1
-         #t
+    (case arg2
+      (('bonk)
+       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-3 from) self)
+         (set! (-> a1-3 num-params) 3)
+         (set! (-> a1-3 message) 'jump)
+         (set! (-> a1-3 param 0) (the-as uint (-> self spring-height)))
+         (set! (-> a1-3 param 1) (the-as uint (-> self spring-height)))
+         (set! (-> a1-3 param 2) (the-as uint #f))
+         (when (send-event-function arg0 a1-3)
+           (sound-play-by-name (static-sound-name "trampoline") (new-sound-id) 1024 0 0 1 #t)
+           (go bouncer-fire)
+           )
          )
-        (go bouncer-fire)
-        )
+       )
+      (('touch)
+       (if (not (or (= (-> self next-state name) 'bouncer-smush) (= (-> self next-state name) 'bouncer-fire)))
+           (go bouncer-smush)
+           )
+       )
+      (('attack)
+       (when (and (= (-> arg3 param 1) 'flop) (send-event arg0 'jump (-> self spring-height) (-> self spring-height) #f))
+         (go bouncer-fire)
+         #f
+         )
        )
       )
-    (('touch)
-     (if
-      (not
-       (or
-        (= (-> self next-state name) 'bouncer-smush)
-        (= (-> self next-state name) 'bouncer-fire)
-        )
-       )
-      (go bouncer-smush)
-      )
-     )
-    (('attack)
-     (when
-      (and
-       (= (-> arg3 param 1) 'flop)
-       (send-event
-        arg0
-        'jump
-        (-> self spring-height)
-        (-> self spring-height)
-        #f
-        )
-       )
-      (go bouncer-fire)
-      #f
-      )
-     )
     )
-   )
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-identity
-     )
-    (set! (-> gp-0 frame-num) 0.0)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 2))
+        num-func-identity
+        )
+      (set! (-> gp-0 frame-num) 0.0)
+      )
+    (transform-post)
+    (while #t
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    (none)
     )
-   (transform-post)
-   (while #t
-    (logior! (-> self mask) (process-mask sleep))
-    (suspend)
-    )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate bouncer-smush (springbox)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('touch)
-      (set! (-> self state-time) (-> *display* base-frame-counter))
-      #f
+    (case arg2
+      (('touch)
+       (set! (-> self state-time) (-> *display* base-frame-counter))
+       #f
+       )
+      (else
+        ((-> bouncer-wait event) arg0 arg1 arg2 arg3)
+        )
       )
-    (else
-     ((-> bouncer-wait event) arg0 arg1 arg2 arg3)
-     )
     )
-   )
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self smush) 0.0)
-   (while #t
-    (cond
-     ((>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
-      (let ((a0-1 (-> self skel root-channel 0)))
-       (set! (-> a0-1 param 0) 0.0)
-       (set! (-> a0-1 param 1) 0.1)
-       (joint-control-channel-group-eval!
-        a0-1
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     (else
-      (let ((gp-0 (-> self skel root-channel 0)))
-       (set!
-        (-> gp-0 param 0)
-        (lerp-scale
-         (ja-aframe 6.0 0)
-         (ja-aframe 2.0 0)
-         (vector-vector-xz-distance (target-pos 0) (-> self root trans))
-         0.0
-         4096.0
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self smush) 0.0)
+    (while #t
+      (cond
+        ((>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
+         (let ((a0-1 (-> self skel root-channel 0)))
+           (set! (-> a0-1 param 0) 0.0)
+           (set! (-> a0-1 param 1) 0.1)
+           (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+           )
          )
+        (else
+          (let ((gp-0 (-> self skel root-channel 0)))
+            (set! (-> gp-0 param 0) (lerp-scale
+                                      (ja-aframe 6.0 0)
+                                      (ja-aframe 2.0 0)
+                                      (vector-vector-xz-distance (target-pos 0) (-> self root trans))
+                                      0.0
+                                      4096.0
+                                      )
+                  )
+            (set! (-> gp-0 param 1) 0.2)
+            (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
         )
-       (set! (-> gp-0 param 1) 0.2)
-       (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
+      (suspend)
+      (if (ja-min? 0)
+          (go bouncer-wait)
+          )
       )
-     )
-    (suspend)
-    (if (ja-min? 0)
-     (go bouncer-wait)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior springbox) transform-post)
   )
@@ -176,53 +142,27 @@
 (defstate bouncer-fire (springbox)
   :code
   (behavior ()
-   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     )
-    (set!
-     (-> gp-0 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        data
-        0
-        length
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+      (set! (-> gp-0 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
+            )
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) (ja-aframe 6.0 0))
+      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
+        (set! (-> a0-3 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> gp-0 param 1) 1.0)
-    (set! (-> gp-0 frame-num) (ja-aframe 6.0 0))
-    (joint-control-channel-group!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-seek!
-     )
+    (go bouncer-wait)
+    (none)
     )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-3 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-3 param 0)
-      (the float (+ (-> a0-3 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-3 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go bouncer-wait)
-   (none)
-   )
   :post
   (the-as (function none :behavior springbox) transform-post)
   )
@@ -230,50 +170,29 @@
 ;; definition for method 11 of type springbox
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! springbox ((obj springbox) (arg0 entity-actor))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 128))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 3072.0 0.0 6963.2)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 128))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 1))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 3072.0 0.0 6963.2)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *bouncer-sg* '())
   (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
-  (set!
-   (-> obj spring-height)
-   (res-lump-float arg0 'spring-height :default 45056.0)
-   )
+  (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
   (go bouncer-wait)
   (none)
   )

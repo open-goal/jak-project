@@ -14,117 +14,72 @@
 ;; definition for method 9 of type display
 (defmethod set-time-ratios display ((obj display) (slowdown float))
   (let ((ratio (fmin 4.0 slowdown)))
-   (set! (-> obj time-ratio) ratio)
-   (case (get-video-mode) 
-    (('pal)
-      (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
-      (set! (-> obj seconds-per-frame) (* 0.02 ratio))
-      (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
-      (set! (-> obj time-factor) 6.0)
+    (set! (-> obj time-ratio) ratio)
+    (case (get-video-mode)
+      (('pal)
+       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
+       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
+       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
+       (set! (-> obj time-factor) 6.0)
+       )
+      (else
+        (set! (-> obj time-adjust-ratio) ratio)
+        (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
+        (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
+        (set! (-> obj time-factor) 5.0)
+        )
       )
-    (else
-     (set! (-> obj time-adjust-ratio) ratio)
-     (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
-     (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
-     (set! (-> obj time-factor) 5.0)
-     )
     )
-   )
   (-> obj time-ratio)
   )
 
 ;; definition for function set-display-env
-(defun
-  set-display-env
-  ((env display-env)
-   (psm int)
-   (width int)
-   (height int)
-   (dx int)
-   (dy int)
-   (fbp int)
-   )
-  (set!
-   (-> env pmode)
-   (new 'static 'gs-pmode :en1 #x1 :mmod #x1 :slbg #x1 :alp #xff)
-   )
+(defun set-display-env ((env display-env) (psm int) (width int) (height int) (dx int) (dy int) (fbp int))
+  (set! (-> env pmode) (new 'static 'gs-pmode :en1 #x1 :mmod #x1 :slbg #x1 :alp #xff))
   (set! (-> env smode2) (new 'static 'gs-smode2 :int #x1 :ffmd #x1))
-  (set!
-   (-> env dspfb)
-   (new 'static 'gs-display-fb :psm psm :fbw (/ width 64) :fbp fbp)
-   )
-  (set!
-   (-> env display)
-   (new 'static 'gs-display
-    :dw #x9ff
-    :dy (+ dy 50)
-    :dx (+ (* dx (/ 2560 width)) 652)
-    :dh (+ (* height 2) -1)
-    :magh (+ (/ (+ width 2559) width) -1)
-    )
-   )
+  (set! (-> env dspfb) (new 'static 'gs-display-fb :psm psm :fbw (/ width 64) :fbp fbp))
+  (set! (-> env display) (new 'static 'gs-display
+                           :dw #x9ff
+                           :dy (+ dy 50)
+                           :dx (+ (* dx (/ 2560 width)) 652)
+                           :dh (+ (* height 2) -1)
+                           :magh (+ (/ (+ width 2559) width) -1)
+                           )
+        )
   (set! (-> env bgcolor) (new 'static 'gs-bgcolor))
   env
   )
 
 ;; definition for function set-draw-env
-(defun
-  set-draw-env
-  ((env draw-env)
-   (psm int)
-   (width int)
-   (height int)
-   (ztest int)
-   (zpsm int)
-   (fbp int)
-   )
+(defun set-draw-env ((env draw-env) (psm int) (width int) (height int) (ztest int) (zpsm int) (fbp int))
   (set! (-> env frame1addr) (gs-reg64 frame-1))
-  (set!
-   (-> env frame1)
-   (new 'static 'gs-frame :fbw (/ width 64) :psm (logand psm 15) :fbp fbp)
-   )
+  (set! (-> env frame1) (new 'static 'gs-frame :fbw (/ width 64) :psm (logand psm 15) :fbp fbp))
   (set! (-> env dtheaddr) (gs-reg64 dthe))
   (cond
-   ((zero? (logand psm 2))
-    (set! (-> env dthe) (new 'static 'gs-dthe))
-    0
+    ((zero? (logand psm 2))
+     (set! (-> env dthe) (new 'static 'gs-dthe))
+     0
+     )
+    (else
+      (set! (-> env dthe) (new 'static 'gs-dthe :dthe #x1))
+      )
     )
-   (else
-    (set! (-> env dthe) (new 'static 'gs-dthe :dthe #x1))
-    )
-   )
   (set! (-> env zbuf1addr) (gs-reg64 zbuf-1))
-  (set!
-   (-> env zbuf1)
-   (new 'static 'gs-zbuf
-    :zbp #x1c0
-    :psm (logand zpsm 15)
-    :zmsk (if (zero? ztest) 1 0)
-    )
-   )
+  (set! (-> env zbuf1) (new 'static 'gs-zbuf :zbp #x1c0 :psm (logand zpsm 15) :zmsk (if (zero? ztest) 1 0)))
   (set! (-> env test1addr) (gs-reg64 test-1))
   (cond
-   ((zero? ztest)
-    (set! (-> env test1) (new 'static 'gs-test))
-    0
+    ((zero? ztest)
+     (set! (-> env test1) (new 'static 'gs-test))
+     0
+     )
+    (else
+      (set! (-> env test1) (new 'static 'gs-test :zte #x1 :ztst ztest))
+      )
     )
-   (else
-    (set! (-> env test1) (new 'static 'gs-test :zte #x1 :ztst ztest))
-    )
-   )
   (set! (-> env xyoffset1addr) (gs-reg64 xyoffset-1))
-  (set!
-   (-> env xyoffset1)
-   (new 'static 'gs-xy-offset
-    :ofx #x7000
-    :ofy (* (-> *video-parms* screen-miny) 16)
-    )
-   )
+  (set! (-> env xyoffset1) (new 'static 'gs-xy-offset :ofx #x7000 :ofy (* (-> *video-parms* screen-miny) 16)))
   (set! (-> env scissor1addr) (gs-reg64 scissor-1))
-  (set!
-   (-> env scissor1)
-   (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1))
-   )
+  (set! (-> env scissor1) (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1)))
   (set! (-> env prmodecontaddr) (gs-reg64 prmodecont))
   (set! (-> env prmodecont) (new 'static 'gs-prmode-cont :ac #x1))
   (set! (-> env colclampaddr) (gs-reg64 colclamp))
@@ -134,13 +89,12 @@
 
 ;; definition for function set-draw-env-offset
 (defun set-draw-env-offset ((env draw-env) (x int) (y int) (arg3 int))
-  (set!
-   (-> env xyoffset1)
-   (new 'static 'gs-xy-offset
-    :ofx (* (- x (the-as int (shr (+ (-> env scissor1 scax1) 1) 1))) 16)
-    :ofy (+ (* (- y (the-as int (shr (+ (-> env scissor1 scay1) 1) 1))) 16) (if (zero? arg3) 0 8))
-    )
-   )
+  (set! (-> env xyoffset1)
+        (new 'static 'gs-xy-offset
+          :ofx (* (- x (the-as int (shr (+ (-> env scissor1 scax1) 1) 1))) 16)
+          :ofy (+ (* (- y (the-as int (shr (+ (-> env scissor1 scay1) 1) 1))) 16) (if (zero? arg3) 0 8))
+          )
+        )
   env
   )
 
@@ -148,41 +102,39 @@
 ;; INFO: Return type mismatch gs-display vs none.
 (defun put-display-alpha-env ((arg0 display-env))
   (let ((v1-0 (the-as gs-bank #x12000000)))
-   (set! (-> v1-0 dspfb1) (-> arg0 dspfb))
-   (set! (-> v1-0 display1) (-> arg0 display))
-   )
+    (set! (-> v1-0 dspfb1) (-> arg0 dspfb))
+    (set! (-> v1-0 display1) (-> arg0 display))
+    )
   (none)
   )
 
 ;; definition for function set-display
 ;; Used lq/sq
-(defun
-  set-display
-  ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
+(defun set-display ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
   (let ((v1-0 (-> disp gif-tag0)))
-   (set! (-> v1-0 tag) (new 'static 'gif-tag64 :nloop #x8 :eop #x1 :nreg #x1))
-   (set! (-> v1-0 regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-   )
+    (set! (-> v1-0 tag) (new 'static 'gif-tag64 :nloop #x8 :eop #x1 :nreg #x1))
+    (set! (-> v1-0 regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+    )
   (set! (-> disp gif-tag1 qword) (-> disp gif-tag0 qword))
   (set! (-> disp gif-tag2 qword) (-> disp gif-tag0 qword))
   (set-display-env
-   (-> disp display-env0)
-   psm
-   w
-   h
-   (-> *video-parms* display-dx)
-   (-> *video-parms* display-dy)
-   320
-   )
+    (-> disp display-env0)
+    psm
+    w
+    h
+    (-> *video-parms* display-dx)
+    (-> *video-parms* display-dy)
+    320
+    )
   (set-display-env
-   (-> disp display-env1)
-   psm
-   w
-   h
-   (-> *video-parms* display-dx)
-   (-> *video-parms* display-dy)
-   384
-   )
+    (-> disp display-env1)
+    psm
+    w
+    h
+    (-> *video-parms* display-dx)
+    (-> *video-parms* display-dy)
+    384
+    )
   (set-draw-env (-> disp draw0) psm w h ztest zpsm 384)
   (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
   (set! (-> disp base-frame-counter) #x493e0)
@@ -194,48 +146,34 @@
   (set! (-> disp old-base-frame-counter) (+ (-> disp base-frame-counter) -1))
   (set! (-> disp old-game-frame-counter) (+ (-> disp game-frame-counter) -1))
   (set! (-> disp old-real-frame-counter) (+ (-> disp real-frame-counter) -1))
-  (set!
-   (-> disp old-integral-frame-counter)
-   (+ (-> disp integral-frame-counter) -1)
-   )
-  (set!
-   (-> disp old-real-integral-frame-counter)
-   (+ (-> disp real-integral-frame-counter) -1)
-   )
+  (set! (-> disp old-integral-frame-counter) (+ (-> disp integral-frame-counter) -1))
+  (set! (-> disp old-real-integral-frame-counter) (+ (-> disp real-integral-frame-counter) -1))
   (set! (-> disp old-part-frame-counter) (+ (-> disp part-frame-counter) -1))
-  (set!
-   (-> disp old-actual-frame-counter)
-   (+ (-> disp actual-frame-counter) -1)
-   )
-  (set!
-   (-> disp old-real-actual-frame-counter)
-   (+ (-> disp real-actual-frame-counter) -1)
-   )
+  (set! (-> disp old-actual-frame-counter) (+ (-> disp actual-frame-counter) -1))
+  (set! (-> disp old-real-actual-frame-counter) (+ (-> disp real-actual-frame-counter) -1))
   disp
   )
 
 ;; definition for function set-display2
-(defun
-  set-display2
-  ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
+(defun set-display2 ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
   (set-display-env
-   (-> disp display-env0)
-   psm
-   w
-   h
-   (-> *video-parms* display-dx)
-   (-> *video-parms* display-dy)
-   320
-   )
+    (-> disp display-env0)
+    psm
+    w
+    h
+    (-> *video-parms* display-dx)
+    (-> *video-parms* display-dy)
+    320
+    )
   (set-display-env
-   (-> disp display-env1)
-   psm
-   w
-   h
-   (-> *video-parms* display-dx)
-   (-> *video-parms* display-dy)
-   384
-   )
+    (-> disp display-env1)
+    psm
+    w
+    h
+    (-> *video-parms* display-dx)
+    (-> *video-parms* display-dy)
+    384
+    )
   (set-draw-env (-> disp draw0) psm w h ztest zpsm 384)
   (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
   disp
@@ -244,62 +182,48 @@
 ;; definition for function allocate-dma-buffers
 (defun allocate-dma-buffers ((arg0 display))
   (when (zero? (-> arg0 frames 0 frame calc-buf))
-   (set! (-> arg0 frames 0 frame calc-buf) (new 'global 'dma-buffer 10000))
-   (set! (-> arg0 frames 1 frame calc-buf) (new 'global 'dma-buffer 10000))
-   (set! (-> arg0 frames 0 frame global-buf) (new 'global 'dma-buffer #x1ac000))
-   (set! (-> arg0 frames 1 frame global-buf) (new 'global 'dma-buffer #x1ac000))
-   (when *debug-segment*
-    (set! (-> arg0 frames 0 frame debug-buf) (new 'debug 'dma-buffer #x800000))
-    (set! (-> arg0 frames 1 frame debug-buf) (new 'debug 'dma-buffer #x800000))
+    (set! (-> arg0 frames 0 frame calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 1 frame calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 0 frame global-buf) (new 'global 'dma-buffer #x1ac000))
+    (set! (-> arg0 frames 1 frame global-buf) (new 'global 'dma-buffer #x1ac000))
+    (when *debug-segment*
+      (set! (-> arg0 frames 0 frame debug-buf) (new 'debug 'dma-buffer #x800000))
+      (set! (-> arg0 frames 1 frame debug-buf) (new 'debug 'dma-buffer #x800000))
+      )
     )
-   )
   arg0
   )
 
 ;; definition for symbol *font-context*, type font-context
 (define
   *font-context*
-  (new
-   'global
-   'font-context
-   *font-default-matrix*
-   0
-   24
-   0.0
-   (font-color default)
-   (font-flags shadow kerning)
-   )
+  (new 'global 'font-context *font-default-matrix* 0 24 0.0 (font-color default) (font-flags shadow kerning))
   )
 
 ;; definition for symbol *pause-context*, type font-context
-(define
-  *pause-context*
-  (new
-   'global
-   'font-context
-   *font-default-matrix*
-   256
-   170
-   0.0
-   (font-color orange-red)
-   (font-flags shadow kerning)
-   )
-  )
+(define *pause-context* (new
+                          'global
+                          'font-context
+                          *font-default-matrix*
+                          256
+                          170
+                          0.0
+                          (font-color orange-red)
+                          (font-flags shadow kerning)
+                          )
+        )
 
 ;; definition for method 11 of type profile-bar
 (defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
   (when *debug-segment*
-   (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-    (+! (-> obj profile-frame-count) 1)
-    (set! (-> new-frame name) name)
-    (set!
-     (-> new-frame time-stamp)
-     (timer-count (the-as timer-bank #x10000800))
-     )
-    (set! (-> new-frame color) color)
-    new-frame
+    (let ((new-frame (-> obj data (-> obj profile-frame-count))))
+      (+! (-> obj profile-frame-count) 1)
+      (set! (-> new-frame name) name)
+      (set! (-> new-frame time-stamp) (timer-count (the-as timer-bank #x10000800)))
+      (set! (-> new-frame color) color)
+      new-frame
+      )
     )
-   )
   )
 
 ;; definition for method 10 of type profile-bar
@@ -310,17 +234,14 @@
   )
 
 ;; definition for method 12 of type profile-bar
-(defmethod
-  add-end-frame
-  profile-bar
-  ((obj profile-bar) (name symbol) (color rgba))
+(defmethod add-end-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
   (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-   (+! (-> obj profile-frame-count) 1)
-   (set! (-> new-frame name) name)
-   (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
-   (set! (-> new-frame color) color)
-   new-frame
-   )
+    (+! (-> obj profile-frame-count) 1)
+    (set! (-> new-frame name) name)
+    (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
+    (set! (-> new-frame color) color)
+    new-frame
+    )
   )
 
 ;; definition for symbol *profile-x*, type int
@@ -341,171 +262,104 @@
 ;; definition for method 13 of type profile-bar
 (defmethod draw profile-bar ((obj profile-bar) (buf dma-buffer) (bar-pos int))
   (let ((height (the int (* 8.0 (-> *video-parms* relative-y-scale)))))
-   (set! *profile-y* (+ (-> *video-parms* screen-miny) height))
-   (set! *profile-h* height)
-   )
+    (set! *profile-y* (+ (-> *video-parms* screen-miny) height))
+    (set! *profile-h* height)
+    )
   (let ((block-idx 1)
         (block-count (-> obj profile-frame-count))
         (left (* *profile-x* 16))
         (end-time 0)
         (worst-time-cache (new 'static 'array uint32 2 #x0 #x0))
         )
-   (let
-    ((screen-y
-      (the int (* (the float bar-pos) (-> *video-parms* relative-y-scale)))
-      )
-     )
-    (let* ((t1-0 buf)
-           (direct-tag (the-as dma-packet (-> t1-0 base)))
-           )
-     (set!
-      (-> direct-tag dma)
-      (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (+ (* block-count 2) -1))
-      )
-     (set! (-> direct-tag vif0) (new 'static 'vif-tag))
-     (set!
-      (-> direct-tag vif1)
-      (new 'static 'vif-tag
-       :cmd (vif-cmd direct)
-       :msk #x1
-       :imm (+ (* block-count 2) -1)
-       )
-      )
-     (set! (-> t1-0 base) (&+ (the-as pointer direct-tag) 16))
-     )
-    (let* ((t1-1 buf)
-           (start-gif-tag (the-as gs-gif-tag (-> t1-1 base)))
-           )
-     (set!
-      (-> start-gif-tag tag)
-      (new 'static 'gif-tag64
-       :eop #x1
-       :flg (gif-flag reg-list)
-       :nreg #x4
-       :nloop (+ block-count -1)
-       )
-      )
-     (set!
-      (-> start-gif-tag regs)
-      (new 'static 'gif-tag-regs
-       :regs1 (gif-reg-id rgbaq)
-       :regs2 (gif-reg-id xyzf2)
-       :regs3 (gif-reg-id xyzf2)
-       )
-      )
-     (set! (-> t1-1 base) (&+ (the-as pointer start-gif-tag) 16))
-     )
-    (while (< block-idx block-count)
-     (let ((block (-> obj data block-idx)))
-      (let* ((t2-4 buf)
-             (t3-8 (-> t2-4 base))
+    (let ((screen-y (the int (* (the float bar-pos) (-> *video-parms* relative-y-scale)))))
+      (let* ((t1-0 buf)
+             (direct-tag (the-as dma-packet (-> t1-0 base)))
              )
-       (set!
-        (-> (the-as (pointer gs-prim) t3-8) 0)
-        (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
+        (set! (-> direct-tag dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (+ (* block-count 2) -1)))
+        (set! (-> direct-tag vif0) (new 'static 'vif-tag))
+        (set! (-> direct-tag vif1)
+              (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm (+ (* block-count 2) -1))
+              )
+        (set! (-> t1-0 base) (&+ (the-as pointer direct-tag) 16))
         )
-       (set!
-        (-> (the-as (pointer uint64) t3-8) 1)
-        (the-as uint (-> block color))
+      (let* ((t1-1 buf)
+             (start-gif-tag (the-as gs-gif-tag (-> t1-1 base)))
+             )
+        (set! (-> start-gif-tag tag)
+              (new 'static 'gif-tag64 :eop #x1 :flg (gif-flag reg-list) :nreg #x4 :nloop (+ block-count -1))
+              )
+        (set! (-> start-gif-tag regs)
+              (new 'static 'gif-tag-regs :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2) :regs3 (gif-reg-id xyzf2))
+              )
+        (set! (-> t1-1 base) (&+ (the-as pointer start-gif-tag) 16))
         )
-       (set!
-        (-> (the-as (pointer gs-xyzf) t3-8) 2)
-        (new 'static 'gs-xyzf
-         :z #x3fffff
-         :y (* (+ *profile-y* screen-y) 16)
-         :x left
-         )
-        )
-       (set! (-> t2-4 base) (&+ t3-8 24))
-       )
-      (if (!= (-> block name) 'end-draw)
-       (set! end-time (the-as int (-> block time-stamp)))
-       )
-      (set!
-       left
-       (*
-        (+
-         *profile-x*
-         (/
-          (* (-> block time-stamp) (the-as uint *profile-w*))
-          (the-as uint *ticks-per-frame*)
-          )
-         )
-        16
-        )
-       )
-      )
-     (let* ((t1-8 buf)
-            (t2-8 (-> t1-8 base))
+      (while (< block-idx block-count)
+        (let ((block (-> obj data block-idx)))
+          (let* ((t2-4 buf)
+                 (t3-8 (-> t2-4 base))
+                 )
+            (set! (-> (the-as (pointer gs-prim) t3-8) 0) (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1))
+            (set! (-> (the-as (pointer uint64) t3-8) 1) (the-as uint (-> block color)))
+            (set! (-> (the-as (pointer gs-xyzf) t3-8) 2)
+                  (new 'static 'gs-xyzf :z #x3fffff :y (* (+ *profile-y* screen-y) 16) :x left)
+                  )
+            (set! (-> t2-4 base) (&+ t3-8 24))
             )
-      (set!
-       (-> (the-as (pointer gs-xyzf) t2-8) 0)
-       (new 'static 'gs-xyzf
-        :z #x3fffff
-        :y (* (+ *profile-y* screen-y *profile-h*) 16)
-        :x left
+          (if (!= (-> block name) 'end-draw)
+              (set! end-time (the-as int (-> block time-stamp)))
+              )
+          (set! left
+                (* (+ *profile-x* (/ (* (-> block time-stamp) (the-as uint *profile-w*)) (the-as uint *ticks-per-frame*))) 16)
+                )
+          )
+        (let* ((t1-8 buf)
+               (t2-8 (-> t1-8 base))
+               )
+          (set! (-> (the-as (pointer gs-xyzf) t2-8) 0)
+                (new 'static 'gs-xyzf :z #x3fffff :y (* (+ *profile-y* screen-y *profile-h*) 16) :x left)
+                )
+          (set! (-> t1-8 base) (&+ t2-8 8))
+          )
+        (+! block-idx 1)
         )
-       )
-      (set! (-> t1-8 base) (&+ t2-8 8))
       )
-     (+! block-idx 1)
-     )
-    )
-   (when
-    (or
-     (<
-      75
-      (- (-> *display* real-frame-counter) (the-as int (-> obj cache-time)))
+    (when (or
+            (< 75 (- (-> *display* real-frame-counter) (the-as int (-> obj cache-time))))
+            (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
+            )
+      (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
+      (set! (-> obj cache-time) (the-as uint (-> *display* real-frame-counter)))
       )
-     (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
-     )
-    (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-    (set! (-> obj cache-time) (the-as uint (-> *display* real-frame-counter)))
-    )
-   (cond
-    (*profile-ticks*
-     (let ((s3-0 draw-string-xy))
-      (format (clear *temp-string*) "~5D" (-> worst-time-cache (/ bar-pos 10)))
-      (s3-0
-       *temp-string*
-       buf
-       488
-       (+ bar-pos 8)
-       (font-color default)
-       (font-flags shadow right)
-       )
-      )
-     (the float (-> worst-time-cache (/ bar-pos 10)))
-     )
-    (else
-     (let
-      ((f30-0
-        (/
-         (* 104.0 (the float (-> worst-time-cache (/ bar-pos 10))))
-         (the float *ticks-per-frame*)
-         )
+    (cond
+      (*profile-ticks*
+        (let ((s3-0 draw-string-xy))
+          (format (clear *temp-string*) "~5D" (-> worst-time-cache (/ bar-pos 10)))
+          (s3-0 *temp-string* buf 488 (+ bar-pos 8) (font-color default) (font-flags shadow right))
+          )
+        (the float (-> worst-time-cache (/ bar-pos 10)))
         )
-       )
-      (let ((s4-1 draw-string-xy))
-       (format (clear *temp-string*) "~5,,2f" f30-0)
-       (s4-1
-        *temp-string*
-        buf
-        488
-        (+ bar-pos 8)
-        (the-as font-color (if (>= f30-0 100.0)
-                            3
-                            0
-                            )
-         )
-        (font-flags shadow right)
+      (else
+        (let ((f30-0 (/ (* 104.0 (the float (-> worst-time-cache (/ bar-pos 10)))) (the float *ticks-per-frame*))))
+          (let ((s4-1 draw-string-xy))
+            (format (clear *temp-string*) "~5,,2f" f30-0)
+            (s4-1
+              *temp-string*
+              buf
+              488
+              (+ bar-pos 8)
+              (the-as font-color (if (>= f30-0 100.0)
+                                     3
+                                     0
+                                     )
+                      )
+              (font-flags shadow right)
+              )
+            )
+          f30-0
+          )
         )
-       )
-      f30-0
       )
-     )
     )
-   )
   )
 
 ;; failed to figure out what this is:
@@ -518,104 +372,65 @@
 
 ;; definition for function draw-sprite2d-xy
 ;; INFO: Return type mismatch pointer vs none.
-(defun
-  draw-sprite2d-xy
-  ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
+(defun draw-sprite2d-xy ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
   (let* ((context (new 'stack 'draw-context x y w h color))
          (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
          (draw-y
-          (max
-           (min
-            (+ (-> context orgy) (-> *video-parms* screen-miny))
-            (-> *video-parms* screen-maxy)
-            )
-           (-> *video-parms* screen-miny)
+           (max
+             (min (+ (-> context orgy) (-> *video-parms* screen-miny)) (-> *video-parms* screen-maxy))
+             (-> *video-parms* screen-miny)
+             )
            )
-          )
          (draw-w (-> context width))
          (draw-h (-> context height))
          (end-dma (the-as dma-packet (-> buf base)))
          )
-   (let* ((a2-2 buf)
-          (dma (the-as dma-packet (-> a2-2 base)))
+    (let* ((a2-2 buf)
+           (dma (the-as dma-packet (-> a2-2 base)))
+           )
+      (set! (-> dma dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> dma vif0) (new 'static 'vif-tag))
+      (set! (-> dma vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a2-2 base) (&+ (the-as pointer dma) 16))
+      )
+    (let* ((a2-3 buf)
+           (gif (the-as gs-gif-tag (-> a2-3 base)))
+           )
+      (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x4))
+      (set! (-> gif regs)
+            (new 'static 'gif-tag-regs :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2) :regs3 (gif-reg-id xyzf2))
+            )
+      (set! (-> a2-3 base) (&+ (the-as pointer gif) 16))
+      )
+    (let* ((a2-4 buf)
+           (gif-buf (-> a2-4 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) gif-buf) 0) (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1))
+      (set! (-> (the-as (pointer gs-rgbaq) gif-buf) 1) (the-as gs-rgbaq (-> context color 0)))
+      (set! (-> (the-as (pointer gs-xyzf) gif-buf) 2)
+            (new 'static 'gs-xyzf :z #x3fffff :y (* draw-y 16) :x (* draw-x 16))
+            )
+      (set! (-> (the-as (pointer gs-xyzf) gif-buf) 3)
+            (new 'static 'gs-xyzf
+              :z #x3fffff
+              :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
+              :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
+              )
+            )
+      (set! (-> a2-4 base) (&+ gif-buf 32))
+      )
+    (let ((total-qwc (/ (the-as int (+ (- -16 (the-as int end-dma)) (the-as int (-> buf base)))) 16)))
+      (cond
+        ((nonzero? total-qwc)
+         (logior! (-> (the-as (pointer dma-tag) end-dma) 0) (new 'static 'dma-tag :qwc total-qwc))
+         (logior! (-> (the-as (pointer dma-tag) end-dma) 1) (shl (shr (shl total-qwc 48) 48) 32))
+         )
+        (else
+          (set! (-> buf base) (the-as pointer end-dma))
           )
-    (set! (-> dma dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> dma vif0) (new 'static 'vif-tag))
-    (set! (-> dma vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> a2-2 base) (&+ (the-as pointer dma) 16))
+        )
+      )
     )
-   (let* ((a2-3 buf)
-          (gif (the-as gs-gif-tag (-> a2-3 base)))
-          )
-    (set!
-     (-> gif tag)
-     (new 'static 'gif-tag64
-      :nloop #x1
-      :eop #x1
-      :flg (gif-flag reg-list)
-      :nreg #x4
-      )
-     )
-    (set!
-     (-> gif regs)
-     (new 'static 'gif-tag-regs
-      :regs1 (gif-reg-id rgbaq)
-      :regs2 (gif-reg-id xyzf2)
-      :regs3 (gif-reg-id xyzf2)
-      )
-     )
-    (set! (-> a2-3 base) (&+ (the-as pointer gif) 16))
-    )
-   (let* ((a2-4 buf)
-          (gif-buf (-> a2-4 base))
-          )
-    (set!
-     (-> (the-as (pointer gs-prim) gif-buf) 0)
-     (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
-     )
-    (set!
-     (-> (the-as (pointer gs-rgbaq) gif-buf) 1)
-     (the-as gs-rgbaq (-> context color 0))
-     )
-    (set!
-     (-> (the-as (pointer gs-xyzf) gif-buf) 2)
-     (new 'static 'gs-xyzf :z #x3fffff :y (* draw-y 16) :x (* draw-x 16))
-     )
-    (set!
-     (-> (the-as (pointer gs-xyzf) gif-buf) 3)
-     (new 'static 'gs-xyzf
-      :z #x3fffff
-      :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
-      :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
-      )
-     )
-    (set! (-> a2-4 base) (&+ gif-buf 32))
-    )
-   (let
-    ((total-qwc
-      (/
-       (the-as int (+ (- -16 (the-as int end-dma)) (the-as int (-> buf base))))
-       16
-       )
-      )
-     )
-    (cond
-     ((nonzero? total-qwc)
-      (logior!
-       (-> (the-as (pointer dma-tag) end-dma) 0)
-       (new 'static 'dma-tag :qwc total-qwc)
-       )
-      (logior!
-       (-> (the-as (pointer dma-tag) end-dma) 1)
-       (shl (shr (shl total-qwc 48) 48) 32)
-       )
-      )
-     (else
-      (set! (-> buf base) (the-as pointer end-dma))
-      )
-     )
-    )
-   )
   (none)
   )
 
@@ -624,143 +439,93 @@
 (defun draw-quad2d ((buf dma-buffer) (context draw-context))
   (let ((draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
         (draw-y
-         (max
-          (min
-           (+ (-> context orgy) (-> *video-parms* screen-miny))
-           (-> *video-parms* screen-maxy)
-           )
-          (-> *video-parms* screen-miny)
+          (max
+            (min (+ (-> context orgy) (-> *video-parms* screen-miny)) (-> *video-parms* screen-maxy))
+            (-> *video-parms* screen-miny)
+            )
           )
-         )
         (draw-w (-> context width))
         (draw-h (-> context height))
         (end-dma (-> buf base))
         )
-   (let* ((t0-0 buf)
-          (dma (the-as dma-packet (-> t0-0 base)))
+    (let* ((t0-0 buf)
+           (dma (the-as dma-packet (-> t0-0 base)))
+           )
+      (set! (-> dma dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> dma vif0) (new 'static 'vif-tag))
+      (set! (-> dma vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> t0-0 base) (&+ (the-as pointer dma) 16))
+      )
+    (let* ((t0-1 buf)
+           (gif (the-as gs-gif-tag (-> t0-1 base)))
+           )
+      (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x9))
+      (set! (-> gif regs) (new 'static 'gif-tag-regs
+                            :regs1 (gif-reg-id rgbaq)
+                            :regs2 (gif-reg-id xyzf2)
+                            :regs3 (gif-reg-id rgbaq)
+                            :regs4 (gif-reg-id xyzf2)
+                            :regs5 (gif-reg-id rgbaq)
+                            :regs6 (gif-reg-id xyzf2)
+                            :regs7 (gif-reg-id rgbaq)
+                            :regs8 (gif-reg-id xyzf2)
+                            )
+            )
+      (set! (-> t0-1 base) (&+ (the-as pointer gif) 16))
+      )
+    (let* ((t0-2 buf)
+           (gif-buf (-> t0-2 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) gif-buf) 0)
+            (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) gif-buf) 1) (the-as gs-rgbaq (-> context color 0)))
+      (set! (-> (the-as (pointer gs-xyzf) gif-buf) 2) (new 'static 'gs-xyzf :y (* draw-y 16) :x (* draw-x 16)))
+      (set! (-> (the-as (pointer gs-rgbaq) gif-buf) 3) (the-as gs-rgbaq (-> context color 1)))
+      (set! (-> (the-as (pointer gs-xyzf) gif-buf) 4)
+            (new 'static 'gs-xyzf :y (* draw-y 16) :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16))
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) gif-buf) 5) (the-as gs-rgbaq (-> context color 2)))
+      (set! (-> (the-as (pointer gs-xyzf) gif-buf) 6)
+            (new 'static 'gs-xyzf
+              :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
+              :x (* draw-x 16)
+              )
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) gif-buf) 7) (the-as gs-rgbaq (-> context color 3)))
+      (set! (-> (the-as (pointer gs-xyzf) gif-buf) 8)
+            (new 'static 'gs-xyzf
+              :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
+              :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
+              )
+            )
+      (set! (-> (the-as (pointer uint64) gif-buf) 9) (the-as uint 0))
+      (set! (-> t0-2 base) (&+ gif-buf 80))
+      )
+    (let ((total-qwc (/ (the-as int (+ (- -16 (the-as int end-dma)) (the-as int (-> buf base)))) 16)))
+      (cond
+        ((nonzero? total-qwc)
+         (logior! (-> (the-as (pointer dma-tag) end-dma) 0) (new 'static 'dma-tag :qwc total-qwc))
+         (logior! (-> (the-as (pointer dma-tag) end-dma) 1) (shl (shr (shl total-qwc 48) 48) 32))
+         )
+        (else
+          (set! (-> buf base) end-dma)
           )
-    (set! (-> dma dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> dma vif0) (new 'static 'vif-tag))
-    (set! (-> dma vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> t0-0 base) (&+ (the-as pointer dma) 16))
+        )
+      )
     )
-   (let* ((t0-1 buf)
-          (gif (the-as gs-gif-tag (-> t0-1 base)))
-          )
-    (set!
-     (-> gif tag)
-     (new 'static 'gif-tag64
-      :nloop #x1
-      :eop #x1
-      :flg (gif-flag reg-list)
-      :nreg #x9
-      )
-     )
-    (set!
-     (-> gif regs)
-     (new 'static 'gif-tag-regs
-      :regs1 (gif-reg-id rgbaq)
-      :regs2 (gif-reg-id xyzf2)
-      :regs3 (gif-reg-id rgbaq)
-      :regs4 (gif-reg-id xyzf2)
-      :regs5 (gif-reg-id rgbaq)
-      :regs6 (gif-reg-id xyzf2)
-      :regs7 (gif-reg-id rgbaq)
-      :regs8 (gif-reg-id xyzf2)
-      )
-     )
-    (set! (-> t0-1 base) (&+ (the-as pointer gif) 16))
-    )
-   (let* ((t0-2 buf)
-          (gif-buf (-> t0-2 base))
-          )
-    (set!
-     (-> (the-as (pointer gs-prim) gif-buf) 0)
-     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
-     )
-    (set!
-     (-> (the-as (pointer gs-rgbaq) gif-buf) 1)
-     (the-as gs-rgbaq (-> context color 0))
-     )
-    (set!
-     (-> (the-as (pointer gs-xyzf) gif-buf) 2)
-     (new 'static 'gs-xyzf :y (* draw-y 16) :x (* draw-x 16))
-     )
-    (set!
-     (-> (the-as (pointer gs-rgbaq) gif-buf) 3)
-     (the-as gs-rgbaq (-> context color 1))
-     )
-    (set!
-     (-> (the-as (pointer gs-xyzf) gif-buf) 4)
-     (new 'static 'gs-xyzf
-      :y (* draw-y 16)
-      :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
-      )
-     )
-    (set!
-     (-> (the-as (pointer gs-rgbaq) gif-buf) 5)
-     (the-as gs-rgbaq (-> context color 2))
-     )
-    (set!
-     (-> (the-as (pointer gs-xyzf) gif-buf) 6)
-     (new 'static 'gs-xyzf
-      :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
-      :x (* draw-x 16)
-      )
-     )
-    (set!
-     (-> (the-as (pointer gs-rgbaq) gif-buf) 7)
-     (the-as gs-rgbaq (-> context color 3))
-     )
-    (set!
-     (-> (the-as (pointer gs-xyzf) gif-buf) 8)
-     (new 'static 'gs-xyzf
-      :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
-      :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
-      )
-     )
-    (set! (-> (the-as (pointer uint64) gif-buf) 9) (the-as uint 0))
-    (set! (-> t0-2 base) (&+ gif-buf 80))
-    )
-   (let
-    ((total-qwc
-      (/
-       (the-as int (+ (- -16 (the-as int end-dma)) (the-as int (-> buf base))))
-       16
-       )
-      )
-     )
-    (cond
-     ((nonzero? total-qwc)
-      (logior!
-       (-> (the-as (pointer dma-tag) end-dma) 0)
-       (new 'static 'dma-tag :qwc total-qwc)
-       )
-      (logior!
-       (-> (the-as (pointer dma-tag) end-dma) 1)
-       (shl (shr (shl total-qwc 48) 48) 32)
-       )
-      )
-     (else
-      (set! (-> buf base) end-dma)
-      )
-     )
-    )
-   )
   (none)
   )
 
 ;; definition for function screen-gradient
-(defun
-  screen-gradient
-  ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
+(defun screen-gradient ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
   (let ((a1-2 (new 'stack 'draw-context 0 0 512 224 (new 'static 'rgba))))
-   (set! (-> a1-2 color 0) arg1)
-   (set! (-> a1-2 color 1) arg2)
-   (set! (-> a1-2 color 2) arg3)
-   (set! (-> a1-2 color 3) arg4)
-   (draw-quad2d arg0 a1-2)
-   )
+    (set! (-> a1-2 color 0) arg1)
+    (set! (-> a1-2 color 1) arg2)
+    (set! (-> a1-2 color 2) arg3)
+    (set! (-> a1-2 color 3) arg4)
+    (draw-quad2d arg0 a1-2)
+    )
   (none)
   )
 
@@ -772,10 +537,10 @@
 
 ;; failed to figure out what this is:
 (install-handler 5 (if *debug-segment*
-                   vif1-handler-debug
-                   vif1-handler
-                   )
-  )
+                       vif1-handler-debug
+                       vif1-handler
+                       )
+                 )
 
 ;; failed to figure out what this is:
 (when #f
@@ -788,178 +553,134 @@
 (define *oddeven* 0)
 
 ;; definition for function set-display-gs-state
-(defun
-  set-display-gs-state
-  ((dma-buf dma-buffer) (fbp int) (scx int) (scy int) (fb-msk int) (psm int))
+(defun set-display-gs-state ((dma-buf dma-buffer) (fbp int) (scx int) (scy int) (fb-msk int) (psm int))
   (let ((fbw (/ (+ scx 63) 64)))
-   (let* ((v1-1 dma-buf)
-          (dma (the-as dma-packet (-> v1-1 base)))
-          )
-    (set! (-> dma dma) (new 'static 'dma-tag :qwc #x8 :id (dma-tag-id cnt)))
-    (set! (-> dma vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-    (set!
-     (-> dma vif1)
-     (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd direct) :msk #x1)
-     )
-    (set! (-> v1-1 base) (&+ (the-as pointer dma) 16))
-    )
-   (let* ((v1-2 dma-buf)
-          (gif (the-as gs-gif-tag (-> v1-2 base)))
-          )
-    (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
-    (set!
-     (-> gif regs)
-     (new 'static 'gif-tag-regs
-      :regs0 (gif-reg-id a+d)
-      :regs1 (gif-reg-id a+d)
-      :regs2 (gif-reg-id a+d)
-      :regs3 (gif-reg-id a+d)
-      :regs4 (gif-reg-id a+d)
-      :regs5 (gif-reg-id a+d)
-      :regs6 (gif-reg-id a+d)
-      :regs7 (gif-reg-id a+d)
-      :regs8 (gif-reg-id a+d)
-      :regs9 (gif-reg-id a+d)
-      :regs10 (gif-reg-id a+d)
-      :regs11 (gif-reg-id a+d)
-      :regs12 (gif-reg-id a+d)
-      :regs13 (gif-reg-id a+d)
-      :regs14 (gif-reg-id a+d)
-      :regs15 (gif-reg-id a+d)
+    (let* ((v1-1 dma-buf)
+           (dma (the-as dma-packet (-> v1-1 base)))
+           )
+      (set! (-> dma dma) (new 'static 'dma-tag :qwc #x8 :id (dma-tag-id cnt)))
+      (set! (-> dma vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> dma vif1) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-1 base) (&+ (the-as pointer dma) 16))
       )
-     )
-    (set! (-> v1-2 base) (&+ (the-as pointer gif) 16))
+    (let* ((v1-2 dma-buf)
+           (gif (the-as gs-gif-tag (-> v1-2 base)))
+           )
+      (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
+      (set! (-> gif regs) (new 'static 'gif-tag-regs
+                            :regs0 (gif-reg-id a+d)
+                            :regs1 (gif-reg-id a+d)
+                            :regs2 (gif-reg-id a+d)
+                            :regs3 (gif-reg-id a+d)
+                            :regs4 (gif-reg-id a+d)
+                            :regs5 (gif-reg-id a+d)
+                            :regs6 (gif-reg-id a+d)
+                            :regs7 (gif-reg-id a+d)
+                            :regs8 (gif-reg-id a+d)
+                            :regs9 (gif-reg-id a+d)
+                            :regs10 (gif-reg-id a+d)
+                            :regs11 (gif-reg-id a+d)
+                            :regs12 (gif-reg-id a+d)
+                            :regs13 (gif-reg-id a+d)
+                            :regs14 (gif-reg-id a+d)
+                            :regs15 (gif-reg-id a+d)
+                            )
+            )
+      (set! (-> v1-2 base) (&+ (the-as pointer gif) 16))
+      )
+    (let* ((v1-3 dma-buf)
+           (gif-buf (-> v1-3 base))
+           )
+      (set! (-> (the-as (pointer gs-scissor) gif-buf) 0)
+            (new 'static 'gs-scissor :scax1 (+ scx -1) :scay1 (+ scy -1))
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 1) (gs-reg64 scissor-1))
+      (set! (-> (the-as (pointer gs-xy-offset) gif-buf) 2) (new 'static 'gs-xy-offset))
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 3) (gs-reg64 xyoffset-1))
+      (set! (-> (the-as (pointer gs-frame) gif-buf) 4)
+            (new 'static 'gs-frame :fbp fbp :fbw fbw :psm psm :fbmsk fb-msk)
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 5) (gs-reg64 frame-1))
+      (set! (-> (the-as (pointer gs-test) gif-buf) 6) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 7) (gs-reg64 test-1))
+      (set! (-> (the-as (pointer gs-texa) gif-buf) 8) (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 9) (gs-reg64 texa))
+      (set! (-> (the-as (pointer gs-zbuf) gif-buf) 10)
+            (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 11) (gs-reg64 zbuf-1))
+      (set! (-> (the-as (pointer uint64) gif-buf) 12) (the-as uint 0))
+      (set! (-> (the-as (pointer gs-reg64) gif-buf) 13) (gs-reg64 texflush))
+      (set! (-> v1-3 base) (&+ gif-buf 112))
+      )
     )
-   (let* ((v1-3 dma-buf)
-          (gif-buf (-> v1-3 base))
-          )
-    (set!
-     (-> (the-as (pointer gs-scissor) gif-buf) 0)
-     (new 'static 'gs-scissor :scax1 (+ scx -1) :scay1 (+ scy -1))
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 1) (gs-reg64 scissor-1))
-    (set!
-     (-> (the-as (pointer gs-xy-offset) gif-buf) 2)
-     (new 'static 'gs-xy-offset)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 3) (gs-reg64 xyoffset-1))
-    (set!
-     (-> (the-as (pointer gs-frame) gif-buf) 4)
-     (new 'static 'gs-frame :fbp fbp :fbw fbw :psm psm :fbmsk fb-msk)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 5) (gs-reg64 frame-1))
-    (set!
-     (-> (the-as (pointer gs-test) gif-buf) 6)
-     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 7) (gs-reg64 test-1))
-    (set!
-     (-> (the-as (pointer gs-texa) gif-buf) 8)
-     (new 'static 'gs-texa :ta0 #x80 :ta1 #x80)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 9) (gs-reg64 texa))
-    (set!
-     (-> (the-as (pointer gs-zbuf) gif-buf) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 11) (gs-reg64 zbuf-1))
-    (set! (-> (the-as (pointer uint64) gif-buf) 12) (the-as uint 0))
-    (set! (-> (the-as (pointer gs-reg64) gif-buf) 13) (gs-reg64 texflush))
-    (set! (-> v1-3 base) (&+ gif-buf 112))
-    )
-   )
   dma-buf
   )
 
 ;; definition for function set-display-gs-state-offset
-(defun
-  set-display-gs-state-offset
-  ((dma-buf dma-buffer)
-   (fbp int)
-   (width int)
-   (height int)
-   (fb-msk int)
-   (psm int)
-   (off-x int)
-   (off-y int)
-   )
+(defun set-display-gs-state-offset ((dma-buf dma-buffer) (fbp int) (width int) (height int) (fb-msk int) (psm int) (off-x int) (off-y int))
   (let ((fbw (/ (+ width 63) 64)))
-   (let* ((v1-1 dma-buf)
-          (dma (the-as dma-packet (-> v1-1 base)))
-          )
-    (set! (-> dma dma) (new 'static 'dma-tag :qwc #x8 :id (dma-tag-id cnt)))
-    (set! (-> dma vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-    (set!
-     (-> dma vif1)
-     (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd direct) :msk #x1)
-     )
-    (set! (-> v1-1 base) (&+ (the-as pointer dma) 16))
-    )
-   (let* ((v1-2 dma-buf)
-          (gif (the-as gs-gif-tag (-> v1-2 base)))
-          )
-    (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
-    (set!
-     (-> gif regs)
-     (new 'static 'gif-tag-regs
-      :regs0 (gif-reg-id a+d)
-      :regs1 (gif-reg-id a+d)
-      :regs2 (gif-reg-id a+d)
-      :regs3 (gif-reg-id a+d)
-      :regs4 (gif-reg-id a+d)
-      :regs5 (gif-reg-id a+d)
-      :regs6 (gif-reg-id a+d)
-      :regs7 (gif-reg-id a+d)
-      :regs8 (gif-reg-id a+d)
-      :regs9 (gif-reg-id a+d)
-      :regs10 (gif-reg-id a+d)
-      :regs11 (gif-reg-id a+d)
-      :regs12 (gif-reg-id a+d)
-      :regs13 (gif-reg-id a+d)
-      :regs14 (gif-reg-id a+d)
-      :regs15 (gif-reg-id a+d)
+    (let* ((v1-1 dma-buf)
+           (dma (the-as dma-packet (-> v1-1 base)))
+           )
+      (set! (-> dma dma) (new 'static 'dma-tag :qwc #x8 :id (dma-tag-id cnt)))
+      (set! (-> dma vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> dma vif1) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-1 base) (&+ (the-as pointer dma) 16))
       )
-     )
-    (set! (-> v1-2 base) (&+ (the-as pointer gif) 16))
+    (let* ((v1-2 dma-buf)
+           (gif (the-as gs-gif-tag (-> v1-2 base)))
+           )
+      (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
+      (set! (-> gif regs) (new 'static 'gif-tag-regs
+                            :regs0 (gif-reg-id a+d)
+                            :regs1 (gif-reg-id a+d)
+                            :regs2 (gif-reg-id a+d)
+                            :regs3 (gif-reg-id a+d)
+                            :regs4 (gif-reg-id a+d)
+                            :regs5 (gif-reg-id a+d)
+                            :regs6 (gif-reg-id a+d)
+                            :regs7 (gif-reg-id a+d)
+                            :regs8 (gif-reg-id a+d)
+                            :regs9 (gif-reg-id a+d)
+                            :regs10 (gif-reg-id a+d)
+                            :regs11 (gif-reg-id a+d)
+                            :regs12 (gif-reg-id a+d)
+                            :regs13 (gif-reg-id a+d)
+                            :regs14 (gif-reg-id a+d)
+                            :regs15 (gif-reg-id a+d)
+                            )
+            )
+      (set! (-> v1-2 base) (&+ (the-as pointer gif) 16))
+      )
+    (let* ((v1-3 dma-buf)
+           (gif-data (the-as (pointer uint64) (-> v1-3 base)))
+           )
+      (set! (-> (the-as (pointer gs-scissor) gif-data) 0)
+            (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1))
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 1) (gs-reg64 scissor-1))
+      (set! (-> (the-as (pointer gs-xy-offset) gif-data) 2)
+            (new 'static 'gs-xy-offset :ofx (* off-x 16) :ofy (* off-y 16))
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 3) (gs-reg64 xyoffset-1))
+      (set! (-> (the-as (pointer gs-frame) gif-data) 4)
+            (new 'static 'gs-frame :fbp fbp :fbw fbw :psm psm :fbmsk fb-msk)
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
+      (set! (-> (the-as (pointer gs-test) gif-data) 6) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
+      (set! (-> (the-as (pointer gs-texa) gif-data) 8) (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
+      (set! (-> (the-as (pointer gs-zbuf) gif-data) 10)
+            (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
+      (set! (-> gif-data 12) (the-as uint 0))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 13) (gs-reg64 texflush))
+      (set! (-> v1-3 base) (&+ (the-as pointer gif-data) 112))
+      )
     )
-   (let* ((v1-3 dma-buf)
-          (gif-data (the-as (pointer uint64) (-> v1-3 base)))
-          )
-    (set!
-     (-> (the-as (pointer gs-scissor) gif-data) 0)
-     (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1))
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 1) (gs-reg64 scissor-1))
-    (set!
-     (-> (the-as (pointer gs-xy-offset) gif-data) 2)
-     (new 'static 'gs-xy-offset :ofx (* off-x 16) :ofy (* off-y 16))
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 3) (gs-reg64 xyoffset-1))
-    (set!
-     (-> (the-as (pointer gs-frame) gif-data) 4)
-     (new 'static 'gs-frame :fbp fbp :fbw fbw :psm psm :fbmsk fb-msk)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
-    (set!
-     (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
-    (set!
-     (-> (the-as (pointer gs-texa) gif-data) 8)
-     (new 'static 'gs-texa :ta0 #x80 :ta1 #x80)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
-    (set!
-     (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
-    (set! (-> gif-data 12) (the-as uint 0))
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 13) (gs-reg64 texflush))
-    (set! (-> v1-3 base) (&+ (the-as pointer gif-data) 112))
-    )
-   )
   dma-buf
   )
 
@@ -969,90 +690,63 @@
          (hoff (* oddeven 8))
          (fbp (-> disp frames onscreen draw frame1 fbp))
          )
-   (let* ((a3-1 dma-buf)
-          (dma (the-as dma-packet (-> a3-1 base)))
-          )
-    (set! (-> dma dma) (new 'static 'dma-tag :qwc #x8 :id (dma-tag-id cnt)))
-    (set! (-> dma vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-    (set!
-     (-> dma vif1)
-     (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd direct) :msk #x1)
-     )
-    (set! (-> a3-1 base) (&+ (the-as pointer dma) 16))
+    (let* ((a3-1 dma-buf)
+           (dma (the-as dma-packet (-> a3-1 base)))
+           )
+      (set! (-> dma dma) (new 'static 'dma-tag :qwc #x8 :id (dma-tag-id cnt)))
+      (set! (-> dma vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> dma vif1) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a3-1 base) (&+ (the-as pointer dma) 16))
+      )
+    (let* ((a3-2 dma-buf)
+           (gif (the-as gs-gif-tag (-> a3-2 base)))
+           )
+      (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
+      (set! (-> gif regs) (new 'static 'gif-tag-regs
+                            :regs0 (gif-reg-id a+d)
+                            :regs1 (gif-reg-id a+d)
+                            :regs2 (gif-reg-id a+d)
+                            :regs3 (gif-reg-id a+d)
+                            :regs4 (gif-reg-id a+d)
+                            :regs5 (gif-reg-id a+d)
+                            :regs6 (gif-reg-id a+d)
+                            :regs7 (gif-reg-id a+d)
+                            :regs8 (gif-reg-id a+d)
+                            :regs9 (gif-reg-id a+d)
+                            :regs10 (gif-reg-id a+d)
+                            :regs11 (gif-reg-id a+d)
+                            :regs12 (gif-reg-id a+d)
+                            :regs13 (gif-reg-id a+d)
+                            :regs14 (gif-reg-id a+d)
+                            :regs15 (gif-reg-id a+d)
+                            )
+            )
+      (set! (-> a3-2 base) (&+ (the-as pointer gif) 16))
+      )
+    (let ((gif-data (the-as (pointer uint64) (-> dma-buf base))))
+      (set! (-> (the-as (pointer gs-scissor) gif-data) 0)
+            (new 'static 'gs-scissor :scax1 #x1ff :scay1 (-> *video-parms* screen-masky))
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 1) (gs-reg64 scissor-1))
+      (set! (-> (the-as (pointer gs-xy-offset) gif-data) 2)
+            (new 'static 'gs-xy-offset :ofx #x7000 :ofy (+ (* (-> *video-parms* screen-miny) 16) hoff))
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 3) (gs-reg64 xyoffset-1))
+      (set! (-> (the-as (pointer gs-frame) gif-data) 4) (new 'static 'gs-frame :fbw #x8 :fbp fbp))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
+      (set! (-> (the-as (pointer gs-test) gif-data) 6)
+            (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal))
+            )
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
+      (set! (-> (the-as (pointer gs-texa) gif-data) 8) (new 'static 'gs-texa :ta1 #x80))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
+      (set! (-> (the-as (pointer gs-zbuf) gif-data) 10) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
+      (set! (-> gif-data 12) (the-as uint 0))
+      (set! (-> (the-as (pointer gs-reg64) gif-data) 13) (gs-reg64 texflush))
+      (set! (-> dma-buf base) (&+ (the-as pointer gif-data) 112))
+      )
     )
-   (let* ((a3-2 dma-buf)
-          (gif (the-as gs-gif-tag (-> a3-2 base)))
-          )
-    (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
-    (set!
-     (-> gif regs)
-     (new 'static 'gif-tag-regs
-      :regs0 (gif-reg-id a+d)
-      :regs1 (gif-reg-id a+d)
-      :regs2 (gif-reg-id a+d)
-      :regs3 (gif-reg-id a+d)
-      :regs4 (gif-reg-id a+d)
-      :regs5 (gif-reg-id a+d)
-      :regs6 (gif-reg-id a+d)
-      :regs7 (gif-reg-id a+d)
-      :regs8 (gif-reg-id a+d)
-      :regs9 (gif-reg-id a+d)
-      :regs10 (gif-reg-id a+d)
-      :regs11 (gif-reg-id a+d)
-      :regs12 (gif-reg-id a+d)
-      :regs13 (gif-reg-id a+d)
-      :regs14 (gif-reg-id a+d)
-      :regs15 (gif-reg-id a+d)
-      )
-     )
-    (set! (-> a3-2 base) (&+ (the-as pointer gif) 16))
-    )
-   (let ((gif-data (the-as (pointer uint64) (-> dma-buf base))))
-    (set!
-     (-> (the-as (pointer gs-scissor) gif-data) 0)
-     (new 'static 'gs-scissor
-      :scax1 #x1ff
-      :scay1 (-> *video-parms* screen-masky)
-      )
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 1) (gs-reg64 scissor-1))
-    (set!
-     (-> (the-as (pointer gs-xy-offset) gif-data) 2)
-     (new 'static 'gs-xy-offset
-      :ofx #x7000
-      :ofy (+ (* (-> *video-parms* screen-miny) 16) hoff)
-      )
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 3) (gs-reg64 xyoffset-1))
-    (set!
-     (-> (the-as (pointer gs-frame) gif-data) 4)
-     (new 'static 'gs-frame :fbw #x8 :fbp fbp)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
-    (set!
-     (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test
-      :atst (gs-atest not-equal)
-      :zte #x1
-      :ztst (gs-ztest greater-equal)
-      )
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
-    (set!
-     (-> (the-as (pointer gs-texa) gif-data) 8)
-     (new 'static 'gs-texa :ta1 #x80)
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
-    (set!
-     (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24))
-     )
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
-    (set! (-> gif-data 12) (the-as uint 0))
-    (set! (-> (the-as (pointer gs-reg64) gif-data) 13) (gs-reg64 texflush))
-    (set! (-> dma-buf base) (&+ (the-as pointer gif-data) 112))
-    )
-   )
   disp
   )
 

@@ -34,8 +34,8 @@
 ;; definition for method 3 of type sun-iris-door
 (defmethod inspect sun-iris-door ((obj sun-iris-door))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Ttimeout: ~f~%" (-> obj timeout))
   (format #t "~T~Tproximity?: ~A~%" (-> obj proximity?))
   (format #t "~T~Tdirectional-proximity?: ~A~%" (-> obj directional-proximity?))
@@ -61,49 +61,36 @@
 ;; definition for method 21 of type sun-iris-door
 (defmethod should-open? sun-iris-door ((obj sun-iris-door))
   (let ((f30-0 1228800.0))
-   0.0
-   (let ((f0-7 (cond
-                ((-> obj directional-proximity?)
-                 (let ((s5-0 (new 'stack-no-clear 'vector)))
-                  (when *target*
-                   (vector-! s5-0 (target-pos 0) (-> obj root-override trans))
-                   (set! (-> s5-0 y) 0.0)
-                   (set! f30-0 (fabs (vector-dot s5-0 (-> obj outward-vec))))
+    0.0
+    (let ((f0-7 (cond
+                  ((-> obj directional-proximity?)
+                   (let ((s5-0 (new 'stack-no-clear 'vector)))
+                     (when *target*
+                       (vector-! s5-0 (target-pos 0) (-> obj root-override trans))
+                       (set! (-> s5-0 y) 0.0)
+                       (set! f30-0 (fabs (vector-dot s5-0 (-> obj outward-vec))))
+                       )
+                     (vector-! s5-0 (camera-pos) (-> obj root-override trans))
+                     (set! (-> s5-0 y) 0.0)
+                     (fabs (vector-dot s5-0 (-> obj outward-vec)))
+                     )
                    )
-                  (vector-! s5-0 (camera-pos) (-> obj root-override trans))
-                  (set! (-> s5-0 y) 0.0)
-                  (fabs (vector-dot s5-0 (-> obj outward-vec)))
-                  )
-                 )
-                (else
-                 (if *target*
-                  (set!
-                   f30-0
-                   (vector-vector-xz-distance
-                    (-> obj root-override trans)
-                    (target-pos 0)
+                  (else
+                    (if *target*
+                        (set! f30-0 (vector-vector-xz-distance (-> obj root-override trans) (target-pos 0)))
+                        )
+                    (vector-vector-xz-distance (-> obj root-override trans) (camera-pos))
                     )
-                   )
                   )
-                 (vector-vector-xz-distance
-                  (-> obj root-override trans)
-                  (camera-pos)
-                  )
-                 )
                 )
           )
-         )
-    (when (or (>= (-> obj open-dist) f30-0) (>= (-> obj open-dist) f0-7))
-     (if
-      (or
-       (not (-> obj locked-by-task?))
-       (task-complete? *game-info* (-> obj entity extra perm task))
-       )
-      (return #t)
+      (when (or (>= (-> obj open-dist) f30-0) (>= (-> obj open-dist) f0-7))
+        (if (or (not (-> obj locked-by-task?)) (task-complete? *game-info* (-> obj entity extra perm task)))
+            (return #t)
+            )
+        )
       )
-     )
     )
-   )
   #f
   )
 
@@ -111,191 +98,148 @@
 (defstate sun-iris-door-closed (sun-iris-door)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('trigger)
-      (go sun-iris-door-opening)
+    (case arg2
+      (('trigger)
+       (go sun-iris-door-opening)
+       )
+      (('move-to)
+       (set! (-> self move-to?) #t)
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       )
       )
-    (('move-to)
-     (set! (-> self move-to?) #t)
-     (set!
-      (-> self move-to-pos quad)
-      (-> (the-as vector (-> arg3 param 0)) quad)
-      )
-     (quaternion-copy!
-      (-> self move-to-quat)
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :trans
   (behavior ()
-   (when (-> self proximity?)
-    (if (should-open? self)
-     (go sun-iris-door-opening)
-     )
+    (when (-> self proximity?)
+      (if (should-open? self)
+          (go sun-iris-door-opening)
+          )
+      )
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ()
-   (while #t
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
+    (while #t
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   :post
   (behavior ()
-   (when (-> self move-to?)
-    (set! (-> self move-to?) #f)
-    (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
-    (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
-    (ja-post)
+    (when (-> self move-to?)
+      (set! (-> self move-to?) #f)
+      (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
+      (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+      (ja-post)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate sun-iris-door-opening (sun-iris-door)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('untrigger)
-      (go sun-iris-door-closing)
+    (case arg2
+      (('untrigger)
+       (go sun-iris-door-closing)
+       )
+      (('move-to)
+       (set! (-> self move-to?) #t)
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       )
       )
-    (('move-to)
-     (set! (-> self move-to?) #t)
-     (set!
-      (-> self move-to-pos quad)
-      (-> (the-as vector (-> arg3 param 0)) quad)
-      )
-     (quaternion-copy!
-      (-> self move-to-quat)
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :code
   (behavior ()
-   (sound-play-by-name
-    (static-sound-name "irisdoor2")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (let ((a0-2 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-2 param 0)
-     (the float (+ (-> a0-2 frame-group data 0 length) -1))
-     )
-    (set! (-> a0-2 param 1) 1.0)
-    (joint-control-channel-group!
-     a0-2
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-3 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-3 param 0)
-      (the float (+ (-> a0-3 frame-group data 0 length) -1))
+    (sound-play-by-name (static-sound-name "irisdoor2") (new-sound-id) 1024 0 0 1 #t)
+    (let ((a0-2 (-> self skel root-channel 0)))
+      (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+      (set! (-> a0-2 param 1) 1.0)
+      (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
       )
-     (set! (-> a0-3 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
+        (set! (-> a0-3 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
+    (ja-post)
+    (go sun-iris-door-open)
+    (none)
     )
-   (ja-post)
-   (go sun-iris-door-open)
-   (none)
-   )
   :post
   (behavior ()
-   (cond
-    ((-> self move-to?)
-     (set! (-> self move-to?) #f)
-     (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
-     (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
-     (ja-post)
-     )
-    (else
-     (transform-post)
-     )
+    (cond
+      ((-> self move-to?)
+       (set! (-> self move-to?) #f)
+       (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
+       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+       (ja-post)
+       )
+      (else
+        (transform-post)
+        )
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 20 of type sun-iris-door
 (defmethod should-close? sun-iris-door ((obj sun-iris-door))
   (let ((f30-0 1228800.0))
-   0.0
-   (let ((f0-7 (cond
-                ((-> obj directional-proximity?)
-                 (let ((s5-0 (new 'stack-no-clear 'vector)))
-                  (when *target*
-                   (vector-! s5-0 (target-pos 0) (-> obj root-override trans))
-                   (set! (-> s5-0 y) 0.0)
-                   (set! f30-0 (fabs (vector-dot s5-0 (-> obj outward-vec))))
+    0.0
+    (let ((f0-7 (cond
+                  ((-> obj directional-proximity?)
+                   (let ((s5-0 (new 'stack-no-clear 'vector)))
+                     (when *target*
+                       (vector-! s5-0 (target-pos 0) (-> obj root-override trans))
+                       (set! (-> s5-0 y) 0.0)
+                       (set! f30-0 (fabs (vector-dot s5-0 (-> obj outward-vec))))
+                       )
+                     (vector-! s5-0 (camera-pos) (-> obj root-override trans))
+                     (set! (-> s5-0 y) 0.0)
+                     (fabs (vector-dot s5-0 (-> obj outward-vec)))
+                     )
                    )
-                  (vector-! s5-0 (camera-pos) (-> obj root-override trans))
-                  (set! (-> s5-0 y) 0.0)
-                  (fabs (vector-dot s5-0 (-> obj outward-vec)))
-                  )
-                 )
-                (else
-                 (if *target*
-                  (set!
-                   f30-0
-                   (vector-vector-xz-distance
-                    (-> obj root-override trans)
-                    (target-pos 0)
+                  (else
+                    (if *target*
+                        (set! f30-0 (vector-vector-xz-distance (-> obj root-override trans) (target-pos 0)))
+                        )
+                    (vector-vector-xz-distance (-> obj root-override trans) (camera-pos))
                     )
-                   )
                   )
-                 (vector-vector-xz-distance
-                  (-> obj root-override trans)
-                  (camera-pos)
-                  )
-                 )
                 )
           )
-         )
-    (when (and (>= f30-0 (-> obj close-dist)) (>= f0-7 (-> obj close-dist)))
-     (cond
-      ((and *target* (-> obj directional-proximity?))
-       (let ((s4-6 (new 'stack-no-clear 'vector))
-             (s5-3 (new 'stack-no-clear 'vector))
+      (when (and (>= f30-0 (-> obj close-dist)) (>= f0-7 (-> obj close-dist)))
+        (cond
+          ((and *target* (-> obj directional-proximity?))
+           (let ((s4-6 (new 'stack-no-clear 'vector))
+                 (s5-3 (new 'stack-no-clear 'vector))
+                 )
+             (vector-! s4-6 (target-pos 0) (-> obj root-override trans))
+             (set! (-> s4-6 y) 0.0)
+             (vector-! s5-3 (camera-pos) (-> obj root-override trans))
+             (set! (-> s5-3 y) 0.0)
+             (case (>= (vector-dot (-> obj outward-vec) s4-6) 0.0)
+               (((>= (vector-dot (-> obj outward-vec) s5-3) 0.0))
+                (return #t)
+                )
+               )
              )
-        (vector-! s4-6 (target-pos 0) (-> obj root-override trans))
-        (set! (-> s4-6 y) 0.0)
-        (vector-! s5-3 (camera-pos) (-> obj root-override trans))
-        (set! (-> s5-3 y) 0.0)
-        (case (>= (vector-dot (-> obj outward-vec) s4-6) 0.0) 
-         (((>= (vector-dot (-> obj outward-vec) s5-3) 0.0))
-           (return #t)
            )
-         )
+          (else
+            (return #t)
+            )
+          )
         )
-       )
-      (else
-       (return #t)
-       )
       )
-     )
     )
-   )
   #f
   )
 
@@ -303,189 +247,143 @@
 (defstate sun-iris-door-open (sun-iris-door)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('trigger)
-      (let ((v0-0 (the-as object (-> *display* base-frame-counter))))
-       (set! (-> self state-time) (the-as int v0-0))
-       v0-0
+    (case arg2
+      (('trigger)
+       (let ((v0-0 (the-as object (-> *display* base-frame-counter))))
+         (set! (-> self state-time) (the-as int v0-0))
+         v0-0
+         )
+       )
+      (('untrigger)
+       (go sun-iris-door-closing)
+       )
+      (('move-to)
+       (set! (-> self move-to?) #t)
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
        )
       )
-    (('untrigger)
-     (go sun-iris-door-closing)
-     )
-    (('move-to)
-     (set! (-> self move-to?) #t)
-     (set!
-      (-> self move-to-pos quad)
-      (-> (the-as vector (-> arg3 param 0)) quad)
-      )
-     (quaternion-copy!
-      (-> self move-to-quat)
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (clear-collide-with-as (-> self root-override))
-   (logior! (-> self draw status) 2)
-   (none)
-   )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (clear-collide-with-as (-> self root-override))
+    (logior! (-> self draw status) 2)
+    (none)
+    )
   :exit
   (behavior ()
-   (restore-collide-with-as (-> self root-override))
-   (set! (-> self draw status) (logand -3 (-> self draw status)))
-   (none)
-   )
+    (restore-collide-with-as (-> self root-override))
+    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (none)
+    )
   :trans
   (behavior ()
-   (when (-> self proximity?)
-    (if (should-close? self)
-     (go sun-iris-door-closing)
-     )
-    )
-   (if
-    (and
-     (!= (-> self timeout) 0.0)
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (the int (* 300.0 (-> self timeout)))
+    (when (-> self proximity?)
+      (if (should-close? self)
+          (go sun-iris-door-closing)
+          )
       )
-     )
-    (go sun-iris-door-closing)
+    (if (and
+            (!= (-> self timeout) 0.0)
+            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
+            )
+        (go sun-iris-door-closing)
+        )
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ()
-   (while #t
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
+    (while #t
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   :post
   (behavior ()
-   (when (-> self move-to?)
-    (set! (-> self move-to?) #f)
-    (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
-    (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
-    (ja-post)
+    (when (-> self move-to?)
+      (set! (-> self move-to?) #f)
+      (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
+      (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+      (ja-post)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate sun-iris-door-closing (sun-iris-door)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('trigger)
-      (go sun-iris-door-opening)
+    (case arg2
+      (('trigger)
+       (go sun-iris-door-opening)
+       )
+      (('move-to)
+       (set! (-> self move-to?) #t)
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       )
       )
-    (('move-to)
-     (set! (-> self move-to?) #t)
-     (set!
-      (-> self move-to-pos quad)
-      (-> (the-as vector (-> arg3 param 0)) quad)
-      )
-     (quaternion-copy!
-      (-> self move-to-quat)
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :code
   (behavior ()
-   (sound-play-by-name
-    (static-sound-name "irisdoor2")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (let ((a0-2 (-> self skel root-channel 0)))
-    (set! (-> a0-2 param 0) 0.0)
-    (set! (-> a0-2 param 1) 1.0)
-    (joint-control-channel-group!
-     a0-2
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-3 (-> self skel root-channel 0)))
-     (set! (-> a0-3 param 0) 0.0)
-     (set! (-> a0-3 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (sound-play-by-name (static-sound-name "irisdoor2") (new-sound-id) 1024 0 0 1 #t)
+    (let ((a0-2 (-> self skel root-channel 0)))
+      (set! (-> a0-2 param 0) 0.0)
+      (set! (-> a0-2 param 1) 1.0)
+      (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
       )
-     )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+        (set! (-> a0-3 param 0) 0.0)
+        (set! (-> a0-3 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (ja-post)
+    (go sun-iris-door-closed)
+    (none)
     )
-   (ja-post)
-   (go sun-iris-door-closed)
-   (none)
-   )
   :post
   (behavior ()
-   (cond
-    ((-> self move-to?)
-     (set! (-> self move-to?) #f)
-     (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
-     (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
-     (ja-post)
-     )
-    (else
-     (transform-post)
-     )
+    (cond
+      ((-> self move-to?)
+       (set! (-> self move-to?) #f)
+       (TODO-RENAME-30 (-> self root-override) (-> self move-to-pos))
+       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+       (ja-post)
+       )
+      (else
+        (transform-post)
+        )
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 11 of type sun-iris-door
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod
-  init-from-entity!
-  sun-iris-door
-  ((obj sun-iris-door) (arg0 entity-actor))
+(defmethod init-from-entity! sun-iris-door ((obj sun-iris-door) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (set! (-> obj move-to?) #f)
-  (let
-   ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 1))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *sun-iris-door-sg* '())
   (set! (-> obj close-dist) 49152.0)
@@ -494,48 +392,38 @@
   (set! (-> obj proximity?) (nonzero? (res-lump-value arg0 'proximity uint128)))
   (set! (-> obj directional-proximity?) #f)
   (when (name= (-> obj name) "sun-iris-door-6")
-   (set! (-> obj close-dist) 16384.0)
-   (set! (-> obj open-dist) 8192.0)
-   (set! (-> obj directional-proximity?) #t)
-   )
+    (set! (-> obj close-dist) 16384.0)
+    (set! (-> obj open-dist) 8192.0)
+    (set! (-> obj directional-proximity?) #t)
+    )
   (set! (-> obj locked-by-task?) (nonzero? (-> obj entity extra perm task)))
   (let ((f0-11 (res-lump-float arg0 'scale-factor :default 1.0)))
-   (set-vector! (-> obj root-override scale) f0-11 f0-11 f0-11 1.0)
-   (set! (-> obj draw bounds w) (* 18432.0 f0-11))
-   (let ((v1-25 (-> obj root-override root-prim)))
-    (set! (-> v1-25 local-sphere w) (* 24576.0 f0-11 f0-11))
-    )
-   )
-  (set! sv-16 (new 'static 'res-tag))
-  (let
-   ((v1-28
-     (res-lump-data
-      (-> obj entity)
-      'trans-offset
-      (pointer float)
-      :tag-ptr
-      (& sv-16)
+    (set-vector! (-> obj root-override scale) f0-11 f0-11 f0-11 1.0)
+    (set! (-> obj draw bounds w) (* 18432.0 f0-11))
+    (let ((v1-25 (-> obj root-override root-prim)))
+      (set! (-> v1-25 local-sphere w) (* 24576.0 f0-11 f0-11))
       )
-     )
     )
-   (when v1-28
-    (+! (-> obj root-override trans x) (-> v1-28 0))
-    (+! (-> obj root-override trans y) (-> v1-28 1))
-    (+! (-> obj root-override trans z) (-> v1-28 2))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-28 (res-lump-data (-> obj entity) 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+    (when v1-28
+      (+! (-> obj root-override trans x) (-> v1-28 0))
+      (+! (-> obj root-override trans y) (-> v1-28 1))
+      (+! (-> obj root-override trans z) (-> v1-28 2))
+      )
     )
-   )
   (let ((f30-0 (quaternion-y-angle (-> obj root-override quat))))
-   (set-vector! (-> obj outward-vec) (sin f30-0) 0.0 (cos f30-0) 1.0)
-   )
+    (set-vector! (-> obj outward-vec) (sin f30-0) 0.0 (cos f30-0) 1.0)
+    )
   (ja-channel-set! 1)
   (let ((s5-2 (-> obj skel root-channel 0)))
-   (joint-control-channel-group-eval!
-    s5-2
-    (the-as art-joint-anim (-> obj draw art-group data 3))
-    num-func-identity
+    (joint-control-channel-group-eval!
+      s5-2
+      (the-as art-joint-anim (-> obj draw art-group data 3))
+      num-func-identity
+      )
+    (set! (-> s5-2 frame-num) 0.0)
     )
-   (set! (-> s5-2 frame-num) 0.0)
-   )
   (dummy-47 (-> obj root-override))
   (ja-post)
   (go sun-iris-door-closed)
@@ -545,35 +433,22 @@
 ;; definition for function sun-iris-door-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior
-  sun-iris-door-init-by-other sun-iris-door
-  ((arg0 vector) (arg1 quaternion) (arg2 symbol))
+(defbehavior sun-iris-door-init-by-other sun-iris-door ((arg0 vector) (arg1 quaternion) (arg2 symbol))
   (set! (-> self move-to?) #f)
-  (let
-   ((s3-0 (new 'process 'collide-shape self (collide-list-enum hit-by-others))))
-   (let
-    ((s2-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s3-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s3-0 (new 'process 'collide-shape self (collide-list-enum hit-by-others))))
+    (let ((s2-0 (new 'process 'collide-shape-prim-mesh s3-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s2-0 prim-core collide-as) (the-as uint 512))
+      (set! (-> s2-0 collide-with) (the-as uint 16))
+      (set! (-> s2-0 prim-core action) (the-as uint 1))
+      (set! (-> s2-0 prim-core offense) 4)
+      (set! (-> s2-0 transform-index) 0)
+      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 24576.0)
+      (set-root-prim! s3-0 s2-0)
       )
-     )
-    (set! (-> s2-0 prim-core collide-as) (the-as uint 512))
-    (set! (-> s2-0 collide-with) (the-as uint 16))
-    (set! (-> s2-0 prim-core action) (the-as uint 1))
-    (set! (-> s2-0 prim-core offense) 4)
-    (set! (-> s2-0 transform-index) 0)
-    (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 24576.0)
-    (set-root-prim! s3-0 s2-0)
+    (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
+    (backup-collide-with-as s3-0)
+    (set! (-> self root-override) s3-0)
     )
-   (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
-   (backup-collide-with-as s3-0)
-   (set! (-> self root-override) s3-0)
-   )
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (quaternion-copy! (-> self root-override quat) arg1)
   (initialize-skeleton self *sun-iris-door-sg* '())
@@ -584,45 +459,33 @@
   (set! (-> self directional-proximity?) #f)
   (ja-channel-set! 1)
   (cond
-   (arg2
-    (let ((s5-1 (-> self skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      s5-1
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      num-func-identity
-      )
-     (set!
-      (-> s5-1 frame-num)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 3))
-         data
-         0
-         length
-         )
-        -1
+    (arg2
+      (let ((s5-1 (-> self skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s5-1
+          (the-as art-joint-anim (-> self draw art-group data 3))
+          num-func-identity
+          )
+        (set! (-> s5-1 frame-num)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
+              )
         )
-       )
       )
-     )
-    )
-   (else
-    (let ((s5-2 (-> self skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      s5-2
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      num-func-identity
+    (else
+      (let ((s5-2 (-> self skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s5-2
+          (the-as art-joint-anim (-> self draw art-group data 3))
+          num-func-identity
+          )
+        (set! (-> s5-2 frame-num) 0.0)
+        )
       )
-     (set! (-> s5-2 frame-num) 0.0)
-     )
     )
-   )
   (transform-post)
   (if arg2
-   (go sun-iris-door-open)
-   (go sun-iris-door-closed)
-   )
+      (go sun-iris-door-open)
+      (go sun-iris-door-closed)
+      )
   (none)
   )

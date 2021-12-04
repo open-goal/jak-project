@@ -43,20 +43,13 @@
 
 ;; definition for method 0 of type align-control
 ;; INFO: Return type mismatch object vs align-control.
-(defmethod
-  new
-  align-control
-  ((allocation symbol) (type-to-make type) (arg0 process))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+(defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? obj)
+      (go process-drawable-art-error "memory")
+      (return (the-as align-control 0))
+      )
+    (set! (-> obj process) (the-as process-drawable arg0))
+    obj
     )
-   (when (zero? obj)
-    (go process-drawable-art-error "memory")
-    (return (the-as align-control 0))
-    )
-   (set! (-> obj process) (the-as process-drawable arg0))
-   obj
-   )
   )

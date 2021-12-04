@@ -2,36 +2,34 @@
 (in-package goal)
 
 ;; definition for symbol *spider-jump-mods*, type surface
-(define
-  *spider-jump-mods*
-  (new 'static 'surface
-   :name 'jump
-   :turnv 131072.0
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 49152.0
-   :target-speed 49152.0
-   :seek0 0.6
-   :seek90 0.6
-   :seek180 0.6
-   :fric 0.2
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *spider-jump-mods* (new 'static 'surface
+                             :name 'jump
+                             :turnv 131072.0
+                             :turnvv 18204.445
+                             :tiltv 32768.0
+                             :tiltvv 131072.0
+                             :transv-max 49152.0
+                             :target-speed 49152.0
+                             :seek0 0.6
+                             :seek90 0.6
+                             :seek180 0.6
+                             :fric 0.2
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :mode 'air
+                             :flags #xc00
+                             )
+        )
 
 ;; definition of type spiderwebs
 (deftype spiderwebs (process-drawable)
@@ -50,8 +48,8 @@
 ;; definition for method 3 of type spiderwebs
 (defmethod inspect spiderwebs ((obj spiderwebs))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tspring-height: (meters ~m)~%" (-> obj spring-height))
   obj
   )
@@ -66,64 +64,48 @@
   )
 
 ;; definition for function spiderwebs-default-event-handler
-(defbehavior
-  spiderwebs-default-event-handler spiderwebs
-  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2 
-   (('bonk)
+(defbehavior spiderwebs-default-event-handler spiderwebs ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('bonk)
      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 3)
-      (set! (-> a1-1 message) 'jump)
-      (set! (-> a1-1 param 0) (the-as uint (-> self spring-height)))
-      (set! (-> a1-1 param 1) (the-as uint (-> self spring-height)))
-      (set! (-> a1-1 param 2) (the-as uint *spider-jump-mods*))
-      (if (send-event-function arg0 a1-1)
-       (go spiderwebs-bounce)
+       (set! (-> a1-1 from) self)
+       (set! (-> a1-1 num-params) 3)
+       (set! (-> a1-1 message) 'jump)
+       (set! (-> a1-1 param 0) (the-as uint (-> self spring-height)))
+       (set! (-> a1-1 param 1) (the-as uint (-> self spring-height)))
+       (set! (-> a1-1 param 2) (the-as uint *spider-jump-mods*))
+       (if (send-event-function arg0 a1-1)
+           (go spiderwebs-bounce)
+           )
        )
-      )
      )
-   (('touch)
-    (when (= (-> arg0 type) target)
-     (let* ((a0-8 (target-pos 0))
-            (f1-1 (- (-> a0-8 y) (-> self root trans y)))
-            )
-      (if
-       (and
-        (>= 2048.0 (fabs f1-1))
-        (and
-         (>= 13516.8 (vector-vector-distance a0-8 (-> self root trans)))
-         (send-event
-          arg0
-          'jump
-          (-> self spring-height)
-          (-> self spring-height)
-          *spider-jump-mods*
-          )
+    (('touch)
+     (when (= (-> arg0 type) target)
+       (let* ((a0-8 (target-pos 0))
+              (f1-1 (- (-> a0-8 y) (-> self root trans y)))
+              )
+         (if (and
+                 (>= 2048.0 (fabs f1-1))
+                 (and
+                   (>= 13516.8 (vector-vector-distance a0-8 (-> self root trans)))
+                   (send-event arg0 'jump (-> self spring-height) (-> self spring-height) *spider-jump-mods*)
+                   )
+                 )
+             (go spiderwebs-bounce)
+             )
          )
-        )
-       (go spiderwebs-bounce)
        )
-      )
+     )
+    (('attack)
+     (if (and
+             (= (-> arg3 param 1) 'flop)
+             (send-event arg0 'jump (-> self spring-height) (-> self spring-height) *spider-jump-mods*)
+             )
+         (go spiderwebs-bounce)
+         )
+     #f
      )
     )
-   (('attack)
-    (if
-     (and
-      (= (-> arg3 param 1) 'flop)
-      (send-event
-       arg0
-       'jump
-       (-> self spring-height)
-       (-> self spring-height)
-       *spider-jump-mods*
-       )
-      )
-     (go spiderwebs-bounce)
-     )
-    #f
-    )
-   )
   )
 
 ;; failed to figure out what this is:
@@ -132,111 +114,66 @@
   spiderwebs-default-event-handler
   :code
   (behavior ()
-   (logior! (-> self mask) (process-mask actor-pause))
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-identity
-     )
-    (set! (-> gp-0 frame-num) 0.0)
+    (logior! (-> self mask) (process-mask actor-pause))
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 2))
+        num-func-identity
+        )
+      (set! (-> gp-0 frame-num) 0.0)
+      )
+    (transform-post)
+    (while #t
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
     )
-   (transform-post)
-   (while #t
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
-    )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate spiderwebs-bounce (spiderwebs)
   :code
   (behavior ()
-   (logclear! (-> self mask) (process-mask actor-pause))
-   (sound-play-by-name
-    (static-sound-name "web-tramp")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (let ((gp-1 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-1 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     )
-    (set! (-> gp-1 param 0) (ja-aframe 10.0 0))
-    (set! (-> gp-1 param 1) 1.0)
-    (set! (-> gp-1 frame-num) 0.0)
-    (joint-control-channel-group!
-     gp-1
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((gp-2 (-> self skel root-channel 0)))
-     (set! (-> gp-2 param 0) (ja-aframe 10.0 0))
-     (set! (-> gp-2 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-2
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (sound-play-by-name (static-sound-name "web-tramp") (new-sound-id) 1024 0 0 1 #t)
+    (let ((gp-1 (-> self skel root-channel 0)))
+      (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+      (set! (-> gp-1 param 0) (ja-aframe 10.0 0))
+      (set! (-> gp-1 param 1) 1.0)
+      (set! (-> gp-1 frame-num) 0.0)
+      (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
       )
-     )
-    )
-   (set! (-> self event-hook) (-> spiderwebs-idle event))
-   (let ((gp-3 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-3 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     )
-    (set!
-     (-> gp-3 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        data
-        0
-        length
+    (until (ja-done? 0)
+      (suspend)
+      (let ((gp-2 (-> self skel root-channel 0)))
+        (set! (-> gp-2 param 0) (ja-aframe 10.0 0))
+        (set! (-> gp-2 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> gp-3 param 1) 1.0)
-    (set! (-> gp-3 frame-num) (ja-aframe 10.0 0))
-    (joint-control-channel-group!
-     gp-3
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-seek!
-     )
+    (set! (-> self event-hook) (-> spiderwebs-idle event))
+    (let ((gp-3 (-> self skel root-channel 0)))
+      (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+      (set! (-> gp-3 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
+            )
+      (set! (-> gp-3 param 1) 1.0)
+      (set! (-> gp-3 frame-num) (ja-aframe 10.0 0))
+      (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-10 (-> self skel root-channel 0)))
+        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+        (set! (-> a0-10 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (go spiderwebs-idle)
+    (none)
     )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-10 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-10 param 0)
-      (the float (+ (-> a0-10 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-10 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-10
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go spiderwebs-idle)
-   (none)
-   )
   :post
   (the-as (function none :behavior spiderwebs) transform-post)
   )
@@ -245,70 +182,42 @@
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! spiderwebs ((obj spiderwebs) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 14336.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 1))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 3)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 14336.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) 13926.4)
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root) s4-0)
     )
-   (set! (-> s4-0 nav-radius) 13926.4)
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *spiderwebs-sg* '())
-  (set!
-   (-> obj spring-height)
-   (res-lump-float arg0 'spring-height :default 45056.0)
-   )
+  (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
   (ja-channel-set! 1)
   (let ((a0-11 (-> obj skel root-channel 0)))
-   (set!
-    (-> a0-11 param 0)
-    (the float (+ (-> a0-11 frame-group data 0 length) -1))
+    (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
+    (set! (-> a0-11 param 1) 1.0)
+    (joint-control-channel-group! a0-11 (the-as art-joint-anim #f) num-func-seek!)
     )
-   (set! (-> a0-11 param 1) 1.0)
-   (joint-control-channel-group!
-    a0-11
-    (the-as art-joint-anim #f)
-    num-func-seek!
-    )
-   )
   (let ((s5-1 (-> obj skel root-channel 0)))
-   (joint-control-channel-group-eval!
-    s5-1
-    (the-as art-joint-anim (-> obj draw art-group data 2))
-    num-func-identity
+    (joint-control-channel-group-eval!
+      s5-1
+      (the-as art-joint-anim (-> obj draw art-group data 2))
+      num-func-identity
+      )
+    (set! (-> s5-1 frame-num) 0.0)
     )
-   (set! (-> s5-1 frame-num) 0.0)
-   )
   (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
   (transform-post)
   (go spiderwebs-idle)
