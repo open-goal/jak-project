@@ -247,7 +247,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
           fmt::print("Unknown Function at rip\n");
         }
 
-        if (s32(rip - m_debug_context.base) > 0 && m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
+        if (s32(rip - m_debug_context.base) > 0 &&
+            m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
           u32 function_sym_val = m_symbol_name_to_value_map.at("function");
           u32 goal_pc = u32(rip - m_debug_context.base) & -8;
 
