@@ -89,6 +89,24 @@
   (the-as prototype-bucket #f)
   )
 
+(define-extern prototype-bucket-type (function prototype-bucket type)) ;; TODO
+
+(defun-debug prototype-bucket-recalc-fields ((arg0 prototype-bucket))
+  (case (prototype-bucket-type arg0)
+    ((instance-shrubbery)
+     (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists x))))
+     )
+    (else
+      (set! (-> arg0 dists z) (+ (-> arg0 dists x) (* 0.33333334 (- (-> arg0 dists w) (-> arg0 dists x)))))
+      (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists z) (-> arg0 dists x))))
+      )
+    )
+  (set! (-> arg0 rdists z) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists z))))
+  (set! (-> arg0 dists y) (* 0.5 (-> arg0 dists x)))
+  (set! (-> arg0 rdists y) (/ 1.0 (-> arg0 dists y)))
+  arg0
+  )
+
 (defun sphere-cull ((arg0 vector))
   #t
   ;; todo
