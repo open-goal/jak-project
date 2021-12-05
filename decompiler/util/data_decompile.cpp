@@ -1193,7 +1193,7 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
   } else if (word.kind() == LinkedWord::EMPTY_PTR) {
     return pretty_print::to_symbol("'()");
   } else if (word.kind() == LinkedWord::PLAIN_DATA && (word.data & 0b111) == 0) {
-    return pretty_print::to_symbol(fmt::format("(the binteger {})", ((s32)word.data) >> 3));
+    return pretty_print::to_symbol(fmt::format("{}", ((s32)word.data) >> 3));  // binteger assumed
   } else if (word.kind() == LinkedWord::PLAIN_DATA) {
     return pretty_print::to_symbol(fmt::format("#x{:x}", word.data));
   } else {
