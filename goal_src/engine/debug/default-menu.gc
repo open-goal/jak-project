@@ -1302,8 +1302,8 @@
                    'debug-menu-item-flag
                    "Edit"
                    (the-as int '*cam-layout*)
-                   (the-as (function int debug-menu-msg object) (lambda ((arg0 symbol) (arg1 int))
-                                                                  (when (= arg1 4)
+                   (the-as (function int debug-menu-msg object) (lambda ((arg0 symbol) (arg1 debug-menu-msg))
+                                                                  (when (= arg1 (debug-menu-msg press))
                                                                     (if (-> arg0 value)
                                                                         (cam-layout-stop)
                                                                         (cam-layout-start)
@@ -2283,11 +2283,11 @@
         s3-0
         (the-as
           (function int debug-menu-msg float float float)
-          (lambda ((arg0 debug-menu) (arg1 int) (arg2 float) (arg3 float))
+          (lambda ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
             (let ((gp-0 (find-instance-by-name (-> arg0 name))))
               (the-as object (cond
                                (gp-0
-                                 (when (= arg1 4)
+                                 (when (= arg1 (debug-menu-msg press))
                                    (set! (-> gp-0 dists x) (* 4096.0 arg2))
                                    (prototype-bucket-recalc-fields gp-0)
                                    )
@@ -2315,11 +2315,11 @@
         s3-1
         (the-as
           (function int debug-menu-msg float float float)
-          (lambda ((arg0 debug-menu) (arg1 int) (arg2 float) (arg3 float))
+          (lambda ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
             (let ((gp-0 (find-instance-by-name (-> arg0 name))))
               (the-as object (cond
                                (gp-0
-                                 (when (= arg1 4)
+                                 (when (= arg1 (debug-menu-msg press))
                                    (set! (-> gp-0 dists w) (* 4096.0 arg2))
                                    (prototype-bucket-recalc-fields gp-0)
                                    )
@@ -3745,8 +3745,8 @@
            (function "Reset Actors" #f (lambda () (reset-actors 'debug) (none)))
            (function "Save Game" #f (lambda () (auto-save-command 'save 0 0 *default-pool*) (none)))
            (function "Load Game" #f (lambda () (auto-save-command 'restore 0 0 *default-pool*) (none)))
-           (flag "Target" #f (lambda ((arg0 int) (arg1 int))
-                               (when (= arg1 4)
+           (flag "Target" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
+                               (when (= arg1 (debug-menu-msg press))
                                  (if *target*
                                      (stop 'debug)
                                      (start 'debug (get-or-create-continue! *game-info*))
@@ -3763,18 +3763,19 @@
              (float-var
                "sfx-volume"
                #f
-               (lambda ((arg0 int) (arg1 int) (arg2 float)) (cond
-                                                              ((= arg1 4)
-                                                               (let ((f0-0 arg2))
-                                                                 (set! (-> *setting-control* default sfx-volume) f0-0)
-                                                                 f0-0
-                                                                 )
-                                                               )
-                                                              (else
-                                                                (-> *setting-control* default sfx-volume)
-                                                                )
-                                                              )
-                       )
+               (lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
+                 (cond
+                   ((= arg1 (debug-menu-msg press))
+                    (let ((f0-0 arg2))
+                      (set! (-> *setting-control* default sfx-volume) f0-0)
+                      f0-0
+                      )
+                    )
+                   (else
+                     (-> *setting-control* default sfx-volume)
+                     )
+                   )
+                 )
                2
                1
                #t
@@ -3785,18 +3786,19 @@
              (float-var
                "music-volume"
                #f
-               (lambda ((arg0 int) (arg1 int) (arg2 float)) (cond
-                                                              ((= arg1 4)
-                                                               (let ((f0-0 arg2))
-                                                                 (set! (-> *setting-control* default music-volume) f0-0)
-                                                                 f0-0
-                                                                 )
-                                                               )
-                                                              (else
-                                                                (-> *setting-control* default music-volume)
-                                                                )
-                                                              )
-                       )
+               (lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
+                 (cond
+                   ((= arg1 (debug-menu-msg press))
+                    (let ((f0-0 arg2))
+                      (set! (-> *setting-control* default music-volume) f0-0)
+                      f0-0
+                      )
+                    )
+                   (else
+                     (-> *setting-control* default music-volume)
+                     )
+                   )
+                 )
                2
                1
                #t
@@ -3807,18 +3809,19 @@
              (float-var
                "dialog-volume"
                #f
-               (lambda ((arg0 int) (arg1 int) (arg2 float)) (cond
-                                                              ((= arg1 4)
-                                                               (let ((f0-0 arg2))
-                                                                 (set! (-> *setting-control* default dialog-volume) f0-0)
-                                                                 f0-0
-                                                                 )
-                                                               )
-                                                              (else
-                                                                (-> *setting-control* default dialog-volume)
-                                                                )
-                                                              )
-                       )
+               (lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
+                 (cond
+                   ((= arg1 (debug-menu-msg press))
+                    (let ((f0-0 arg2))
+                      (set! (-> *setting-control* default dialog-volume) f0-0)
+                      f0-0
+                      )
+                    )
+                   (else
+                     (-> *setting-control* default dialog-volume)
+                     )
+                   )
+                 )
                2
                1
                #t
@@ -3839,8 +3842,8 @@
              (flag
                "play-hints "
                #f
-               (lambda ((arg0 int) (arg1 int))
-                 (if (= arg1 4)
+               (lambda ((arg0 int) (arg1 debug-menu-msg))
+                 (if (= arg1 (debug-menu-msg press))
                      (set! (-> *setting-control* default play-hints) (not (-> *setting-control* default play-hints)))
                      )
                  (-> *setting-control* default play-hints)
@@ -3849,8 +3852,8 @@
              (flag
                "vibration"
                #f
-               (lambda ((arg0 int) (arg1 int))
-                 (if (= arg1 4)
+               (lambda ((arg0 int) (arg1 debug-menu-msg))
+                 (if (= arg1 (debug-menu-msg press))
                      (set! (-> *setting-control* default vibration) (not (-> *setting-control* default vibration)))
                      )
                  (-> *setting-control* default vibration)
@@ -3859,8 +3862,8 @@
              (flag
                "border-mode"
                #f
-               (lambda ((arg0 int) (arg1 int))
-                 (if (= arg1 4)
+               (lambda ((arg0 int) (arg1 debug-menu-msg))
+                 (if (= arg1 (debug-menu-msg press))
                      (set! (-> *setting-control* default border-mode) (not (-> *setting-control* default border-mode)))
                      )
                  (-> *setting-control* default border-mode)
@@ -4077,8 +4080,8 @@
            (function "Play" #f (lambda () (play #t #t)))
            (function "Start" #f (lambda () (the-as int (start 'debug (get-or-create-continue! *game-info*)))))
            (function "Stop" #f (lambda () (stop 'debug)))
-           (flag "Invulnerable" #f (lambda ((arg0 int) (arg1 int))
-                                     (when (= arg1 4)
+           (flag "Invulnerable" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
+                                     (when (= arg1 (debug-menu-msg press))
                                        (if *target*
                                            (set! (-> *target* state-flags) (logxor (-> *target* state-flags) 16))
                                            )
@@ -4208,8 +4211,8 @@
     '(main-menu
        "Popup"
        (flag "Cam 1" pad-1 dm-cam-externalize)
-       (flag "Target" #f (lambda ((arg0 int) (arg1 int))
-                           (when (= arg1 4)
+       (flag "Target" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
+                           (when (= arg1 (debug-menu-msg press))
                              (if *target*
                                  (stop 'debug)
                                  (start 'debug (get-or-create-continue! *game-info*))
@@ -4218,8 +4221,8 @@
                            *target*
                            )
              )
-       (flag "Game" #f (lambda ((arg0 int) (arg1 int))
-                         (when (= arg1 4)
+       (flag "Game" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
+                         (when (= arg1 (debug-menu-msg press))
                            (let ((v1-3 (-> *game-info* mode)))
                              (set! (-> *game-info* mode) (cond
                                                            ((= v1-3 'play)
@@ -4238,7 +4241,7 @@
                          (= (-> *game-info* mode) 'play)
                          )
              )
-       (function "Clean" #f (lambda ((arg0 int) (arg1 int))
+       (function "Clean" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
                               (if (time-of-day-setup #f)
                                   (time-of-day-setup #t)
                                   )
