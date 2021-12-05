@@ -15,8 +15,8 @@
 
 using namespace iop;
 
-static RPC_Str_Cmd sRPCBuf;
-static RPC_Str_Cmd sRPCBuf2;  // todo type
+static RPC_Str_Cmd sSTRBuf;
+static RPC_Play_Cmd sPLAYBuf;  // todo type
 void* RPC_STR(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
 
@@ -38,8 +38,8 @@ constexpr int STR_INDEX_CACHE_SIZE = 4;
 CacheEntry sCache[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
-  memset(&sRPCBuf, 0, sizeof(RPC_Str_Cmd));
-  memset(&sRPCBuf2, 0, sizeof(RPC_Str_Cmd));
+  memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd));
+  memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd));
 }
 
 /*!
@@ -52,7 +52,7 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, STR_RPC_ID, RPC_STR, &sRPCBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, STR_RPC_ID, RPC_STR, &sSTRBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -65,7 +65,7 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, &sRPCBuf2, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, &sPLAYBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
