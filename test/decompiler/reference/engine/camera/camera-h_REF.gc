@@ -26,50 +26,28 @@
   (format #t "~Tjoypad: ~D~%" (-> obj joypad))
   (format #t "~Tmin-detectable-velocity: ~f~%" (-> obj min-detectable-velocity))
   (format #t "~Tattack-timeout: ~D~%" (-> obj attack-timeout))
-  (format
-   #t
-   "~Tdefault-string-max-y: (meters ~m)~%"
-   (-> obj default-string-max-y)
-   )
-  (format
-   #t
-   "~Tdefault-string-min-y: (meters ~m)~%"
-   (-> obj default-string-min-y)
-   )
-  (format
-   #t
-   "~Tdefault-string-max-z: (meters ~m)~%"
-   (-> obj default-string-max-z)
-   )
-  (format
-   #t
-   "~Tdefault-string-min-z: (meters ~m)~%"
-   (-> obj default-string-min-z)
-   )
-  (format
-   #t
-   "~Tdefault-string-push-z: (meters ~m)~%"
-   (-> obj default-string-push-z)
-   )
+  (format #t "~Tdefault-string-max-y: (meters ~m)~%" (-> obj default-string-max-y))
+  (format #t "~Tdefault-string-min-y: (meters ~m)~%" (-> obj default-string-min-y))
+  (format #t "~Tdefault-string-max-z: (meters ~m)~%" (-> obj default-string-max-z))
+  (format #t "~Tdefault-string-min-z: (meters ~m)~%" (-> obj default-string-min-z))
+  (format #t "~Tdefault-string-push-z: (meters ~m)~%" (-> obj default-string-push-z))
   (format #t "~Tdefault-tilt-adjust: (deg ~r)~%" (-> obj default-tilt-adjust))
   obj
   )
 
 ;; definition for symbol *CAMERA-bank*, type camera-bank
-(define
-  *CAMERA-bank*
-  (new 'static 'camera-bank
-   :collide-move-rad 1638.4
-   :min-detectable-velocity 40.96
-   :attack-timeout (seconds 0.25)
-   :default-string-max-y (meters 3.0)
-   :default-string-min-y (meters 1.0)
-   :default-string-max-z (meters 12.5)
-   :default-string-min-z (meters 5.0)
-   :default-string-push-z (meters 10.0)
-   :default-tilt-adjust (degrees -6.5000005)
-   )
-  )
+(define *CAMERA-bank* (new 'static 'camera-bank
+                        :collide-move-rad 1638.4
+                        :min-detectable-velocity 40.96
+                        :attack-timeout (seconds 0.25)
+                        :default-string-max-y (meters 3.0)
+                        :default-string-min-y (meters 1.0)
+                        :default-string-max-z (meters 12.5)
+                        :default-string-min-z (meters 5.0)
+                        :default-string-push-z (meters 10.0)
+                        :default-tilt-adjust (degrees -6.5000005)
+                        )
+        )
 
 ;; definition of type cam-index
 (deftype cam-index (structure)
@@ -188,16 +166,8 @@
   (format #t "~Tsample-len: ~f~%" (-> obj sample-len))
   (format #t "~Tused-count: ~D~%" (-> obj used-count))
   (format #t "~Told-position: #<vector @ #x~X>~%" (-> obj old-position))
-  (format
-   #t
-   "~Tdebug-old-position: #<vector @ #x~X>~%"
-   (-> obj debug-old-position)
-   )
-  (format
-   #t
-   "~Tdebug-out-position: #<vector @ #x~X>~%"
-   (-> obj debug-out-position)
-   )
+  (format #t "~Tdebug-old-position: #<vector @ #x~X>~%" (-> obj debug-old-position))
+  (format #t "~Tdebug-out-position: #<vector @ #x~X>~%" (-> obj debug-out-position))
   (format #t "~Tdebug-last-point: ~D~%" (-> obj debug-last-point))
   obj
   )
@@ -237,10 +207,7 @@
 
 ;; definition for method 9 of type cam-float-seeker
 ;; INFO: Return type mismatch int vs none.
-(defmethod
-  init-cam-float-seeker
-  cam-float-seeker
-  ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init-cam-float-seeker cam-float-seeker ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> obj target) arg0)
   (set! (-> obj value) arg0)
   (set! (-> obj vel) 0.0)
@@ -253,10 +220,7 @@
 
 ;; definition for method 10 of type cam-float-seeker
 ;; INFO: Return type mismatch int vs none.
-(defmethod
-  copy-cam-float-seeker
-  cam-float-seeker
-  ((obj cam-float-seeker) (arg0 cam-float-seeker))
+(defmethod copy-cam-float-seeker cam-float-seeker ((obj cam-float-seeker) (arg0 cam-float-seeker))
   (set! (-> obj target) (-> arg0 target))
   (set! (-> obj value) (-> arg0 value))
   (set! (-> obj vel) (-> arg0 vel))
@@ -275,21 +239,20 @@
   (let* ((pos-error (- (+ (-> obj target) offset) (-> obj value)))
          (partial-velocity-limit (* (-> obj max-partial) (fabs pos-error)))
          )
-   (let
-    ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
-    (+! (-> obj vel) daccel)
+    (let ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
+      (+! (-> obj vel) daccel)
+      )
+    (let ((abs-vel (fabs (-> obj vel)))
+          (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
+          )
+      (if (< abs-vel-limit abs-vel)
+          (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
+          )
+      )
     )
-   (let ((abs-vel (fabs (-> obj vel)))
-         (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
-         )
-    (if (< abs-vel-limit abs-vel)
-     (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
-     )
-    )
-   )
   (let ((dpos (* (-> obj vel) (-> *display* time-adjust-ratio))))
-   (+! (-> obj value) dpos)
-   )
+    (+! (-> obj value) dpos)
+    )
   0
   (none)
   )
@@ -298,9 +261,9 @@
 (defmethod jump-to-target! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
   (set! (-> obj value) (+ (-> obj target) arg0))
   (let ((f0-2 0.0))
-   (set! (-> obj vel) f0-2)
-   f0-2
-   )
+    (set! (-> obj vel) f0-2)
+    f0-2
+    )
   )
 
 ;; definition of type cam-vector-seeker
@@ -336,20 +299,17 @@
 ;; definition for method 9 of type cam-vector-seeker
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defmethod
-  init!
-  cam-vector-seeker
-  ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
-   (arg0
-    (set! (-> obj target quad) (-> arg0 quad))
-    (set! (-> obj value quad) (-> arg0 quad))
+    (arg0
+      (set! (-> obj target quad) (-> arg0 quad))
+      (set! (-> obj value quad) (-> arg0 quad))
+      )
+    (else
+      (vector-reset! (-> obj target))
+      (vector-reset! (-> obj value))
+      )
     )
-   (else
-    (vector-reset! (-> obj target))
-    (vector-reset! (-> obj value))
-    )
-   )
   (vector-reset! (-> obj vel))
   (set! (-> obj accel) arg1)
   (set! (-> obj max-vel) arg2)
@@ -362,34 +322,30 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod update! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-   0.0
-   (cond
-    (arg0
-     (vector+! gp-0 (-> obj target) arg0)
-     (vector-! gp-0 gp-0 (-> obj value))
-     )
-    (else
-     (vector-! gp-0 (-> obj target) (-> obj value))
-     )
-    )
-   (let ((f30-1 (* (-> obj max-partial) (vector-length gp-0))))
-    (vector-float*!
-     gp-0
-     gp-0
-     (* (-> obj accel) (-> *display* time-adjust-ratio))
-     )
-    (vector+! (-> obj vel) (-> obj vel) gp-0)
-    (let ((f0-4 (vector-length (-> obj vel)))
-          (f1-2 (fmin f30-1 (-> obj max-vel)))
-          )
-     (if (< f1-2 f0-4)
-      (vector-float*! (-> obj vel) (-> obj vel) (/ f1-2 f0-4))
+    0.0
+    (cond
+      (arg0
+        (vector+! gp-0 (-> obj target) arg0)
+        (vector-! gp-0 gp-0 (-> obj value))
+        )
+      (else
+        (vector-! gp-0 (-> obj target) (-> obj value))
+        )
       )
-     )
+    (let ((f30-1 (* (-> obj max-partial) (vector-length gp-0))))
+      (vector-float*! gp-0 gp-0 (* (-> obj accel) (-> *display* time-adjust-ratio)))
+      (vector+! (-> obj vel) (-> obj vel) gp-0)
+      (let ((f0-4 (vector-length (-> obj vel)))
+            (f1-2 (fmin f30-1 (-> obj max-vel)))
+            )
+        (if (< f1-2 f0-4)
+            (vector-float*! (-> obj vel) (-> obj vel) (/ f1-2 f0-4))
+            )
+        )
+      )
+    (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
+    (vector+! (-> obj value) (-> obj value) gp-0)
     )
-   (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
-   (vector+! (-> obj value) (-> obj value) gp-0)
-   )
   0
   (none)
   )
@@ -423,16 +379,8 @@
   (format #t "~Ttilt-adjust: #<cam-float-seeker @ #x~X>~%" (-> obj tilt-adjust))
   (format #t "~Tuse-point-of-interest: ~A~%" (-> obj use-point-of-interest))
   (format #t "~Tpoint-of-interest: ~`vector`P~%" (-> obj point-of-interest))
-  (format
-   #t
-   "~Tpoint-of-interest-blend: #<cam-float-seeker @ #x~X>~%"
-   (-> obj point-of-interest-blend)
-   )
-  (format
-   #t
-   "~Tunderwater-blend: #<cam-float-seeker @ #x~X>~%"
-   (-> obj underwater-blend)
-   )
+  (format #t "~Tpoint-of-interest-blend: #<cam-float-seeker @ #x~X>~%" (-> obj point-of-interest-blend))
+  (format #t "~Tunderwater-blend: #<cam-float-seeker @ #x~X>~%" (-> obj underwater-blend))
   obj
   )
 
@@ -460,8 +408,8 @@
 ;; definition for method 3 of type camera-combiner
 (defmethod inspect camera-combiner ((obj camera-combiner))
   (let ((t9-0 (method-of-type process inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Ttrans: ~`vector`P~%" (-> obj trans))
   (format #t "~T~Tinv-camera-rot: ~`matrix`P~%" (-> obj inv-camera-rot))
   (format #t "~T~Tfov: ~f~%" (-> obj fov))
@@ -469,11 +417,7 @@
   (format #t "~T~Tinterp-step: ~f~%" (-> obj interp-step))
   (format #t "~T~Tdist-from-src: ~f~%" (-> obj dist-from-src))
   (format #t "~T~Tdist-from-dest: ~f~%" (-> obj dist-from-dest))
-  (format
-   #t
-   "~T~Tflip-control-axis: #<vector @ #x~X>~%"
-   (-> obj flip-control-axis)
-   )
+  (format #t "~T~Tflip-control-axis: #<vector @ #x~X>~%" (-> obj flip-control-axis))
   (format #t "~T~Tvelocity: #<vector @ #x~X>~%" (-> obj velocity))
   (format #t "~T~Ttracking-status: ~D~%" (-> obj tracking-status))
   (format #t "~T~Ttracking-options: ~D~%" (-> obj tracking-options))
@@ -544,8 +488,8 @@
 ;; definition for method 3 of type camera-slave
 (defmethod inspect camera-slave ((obj camera-slave))
   (let ((t9-0 (method-of-type process inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Ttrans: ~`vector`P~%" (-> obj trans))
   (format #t "~T~Tfov: ~f~%" (-> obj fov))
   (format #t "~T~Tfov0: ~f~%" (-> obj fov0))
@@ -558,11 +502,7 @@
   (format #t "~T~Tview-flat: ~`vector`P~%" (-> obj view-flat))
   (format #t "~T~Tstring-vel-dir: ~D~%" (-> obj string-vel-dir))
   (format #t "~T~Tstring-trans: ~`vector`P~%" (-> obj string-trans))
-  (format
-   #t
-   "~T~Tposition-spline: #<tracking-spline @ #x~X>~%"
-   (-> obj position-spline)
-   )
+  (format #t "~T~Tposition-spline: #<tracking-spline @ #x~X>~%" (-> obj position-spline))
   (format #t "~T~Tpivot-pt: ~`vector`P~%" (-> obj pivot-pt))
   (format #t "~T~Tpivot-rad: ~f~%" (-> obj pivot-rad))
   (format #t "~T~Tcircular-follow: #<vector @ #x~X>~%" (-> obj circular-follow))
@@ -576,11 +516,7 @@
   (format #t "~T~Tlos-state: ~D~%" (-> obj los-state))
   (format #t "~T~Tgood-point: ~`vector`P~%" (-> obj good-point))
   (format #t "~T~Tlos-tgt-spline-pt: ~D~%" (-> obj los-tgt-spline-pt))
-  (format
-   #t
-   "~T~Tlos-tgt-spline-pt-incarnation: ~D~%"
-   (-> obj los-tgt-spline-pt-incarnation)
-   )
+  (format #t "~T~Tlos-tgt-spline-pt-incarnation: ~D~%" (-> obj los-tgt-spline-pt-incarnation))
   (format #t "~T~Tlos-last-pos: ~`vector`P~%" (-> obj los-last-pos))
   (format #t "~T~Tintro-curve: #<curve @ #x~X>~%" (-> obj intro-curve))
   (format #t "~T~Tintro-offset: #<vector @ #x~X>~%" (-> obj intro-offset))
@@ -672,8 +608,8 @@
 ;; definition for method 3 of type camera-master
 (defmethod inspect camera-master ((obj camera-master))
   (let ((t9-0 (method-of-type process inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tmaster-options: ~D~%" (-> obj master-options))
   (format #t "~T~Tnum-slaves: ~D~%" (-> obj num-slaves))
   (format #t "~T~Tslave[2] @ #x~X~%" (-> obj slave))
@@ -685,16 +621,8 @@
   (format #t "~T~TstringMaxLength: ~f~%" (-> obj stringMaxLength))
   (format #t "~T~TstringMinHeight: ~f~%" (-> obj stringMinHeight))
   (format #t "~T~TstringMaxHeight: ~f~%" (-> obj stringMaxHeight))
-  (format
-   #t
-   "~T~Tstring-min: #<cam-vector-seeker @ #x~X>~%"
-   (-> obj string-min)
-   )
-  (format
-   #t
-   "~T~Tstring-max: #<cam-vector-seeker @ #x~X>~%"
-   (-> obj string-max)
-   )
+  (format #t "~T~Tstring-min: #<cam-vector-seeker @ #x~X>~%" (-> obj string-min))
+  (format #t "~T~Tstring-max: #<cam-vector-seeker @ #x~X>~%" (-> obj string-max))
   (format #t "~T~Tstring-push-z: ~f~%" (-> obj string-push-z))
   (format #t "~T~TstringCliffHeight: ~f~%" (-> obj stringCliffHeight))
   (format #t "~T~Tno-intro: ~D~%" (-> obj no-intro))
@@ -722,11 +650,7 @@
   (format #t "~T~Tpitch-off: ~`vector`P~%" (-> obj pitch-off))
   (format #t "~T~Tfoot-offset: ~f~%" (-> obj foot-offset))
   (format #t "~T~Thead-offset: ~f~%" (-> obj head-offset))
-  (format
-   #t
-   "~T~Ttarget-spline: #<tracking-spline @ #x~X>~%"
-   (-> obj target-spline)
-   )
+  (format #t "~T~Ttarget-spline: #<tracking-spline @ #x~X>~%" (-> obj target-spline))
   (format #t "~T~Tease-from: #<vector @ #x~X>~%" (-> obj ease-from))
   (format #t "~T~Tease-t: ~f~%" (-> obj ease-t))
   (format #t "~T~Tease-step: ~f~%" (-> obj ease-step))

@@ -123,15 +123,7 @@
 
 ;; definition for method 2 of type vec4s
 (defmethod print vec4s ((obj vec4s))
-  (format
-   #t
-   "#<vector ~F ~F ~F ~F @ #x~X>"
-   (-> obj x)
-   (-> obj y)
-   (-> obj z)
-   (-> obj w)
-   obj
-   )
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
   obj
   )
 
@@ -160,10 +152,7 @@
 ;; definition for method 5 of type type
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of type ((obj type))
-  (the-as
-   int
-   (logand (the-as uint #xfffffff0) (+ (* (-> obj allocated-length) 4) 43))
-   )
+  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> obj allocated-length) 4) 43)))
   )
 
 ;; definition for function basic-type?
@@ -171,26 +160,26 @@
   (let ((obj-type (-> obj type))
         (end-type object)
         )
-   (until (= obj-type end-type)
-    (if (= obj-type parent-type)
-     (return #t)
-     )
-    (set! obj-type (-> obj-type parent))
+    (until (= obj-type end-type)
+      (if (= obj-type parent-type)
+          (return #t)
+          )
+      (set! obj-type (-> obj-type parent))
+      )
     )
-   )
   #f
   )
 
 ;; definition for function type-type?
 (defun type-type? ((child-type type) (parent-type type))
   (let ((end-type object))
-   (until (or (= child-type end-type) (zero? child-type))
-    (if (= child-type parent-type)
-     (return #t)
-     )
-    (set! child-type (-> child-type parent))
+    (until (or (= child-type end-type) (zero? child-type))
+      (if (= child-type parent-type)
+          (return #t)
+          )
+      (set! child-type (-> child-type parent))
+      )
     )
-   )
   #f
   )
 
@@ -198,27 +187,27 @@
 (defun find-parent-method ((child-type type) (method-id int))
   (local-vars (current-method function))
   (let ((original-method (-> child-type method-table method-id)))
-   (until (!= current-method original-method)
-    (if (= child-type object)
-     (return nothing)
-     )
-    (set! child-type (-> child-type parent))
-    (set! current-method (-> child-type method-table method-id))
-    (if (zero? current-method)
-     (return nothing)
-     )
+    (until (!= current-method original-method)
+      (if (= child-type object)
+          (return nothing)
+          )
+      (set! child-type (-> child-type parent))
+      (set! current-method (-> child-type method-table method-id))
+      (if (zero? current-method)
+          (return nothing)
+          )
+      )
     )
-   )
   current-method
   )
 
 ;; definition for function ref
 (defun ref ((lst object) (index int))
   (dotimes (count index)
-   (nop!)
-   (nop!)
-   (set! lst (cdr lst))
-   )
+    (nop!)
+    (nop!)
+    (set! lst (cdr lst))
+    )
   (car lst)
   )
 
@@ -226,19 +215,19 @@
 (defmethod length pair ((obj pair))
   (local-vars (result int))
   (cond
-   ((null? obj)
-    (set! result 0)
-    )
-   (else
-    (let ((iter (cdr obj)))
-     (set! result 1)
-     (while (and (not (null? iter)) (pair? iter))
-      (+! result 1)
-      (set! iter (cdr iter))
-      )
+    ((null? obj)
+     (set! result 0)
      )
+    (else
+      (let ((iter (cdr obj)))
+        (set! result 1)
+        (while (and (not (null? iter)) (pair? iter))
+          (+! result 1)
+          (set! iter (cdr iter))
+          )
+        )
+      )
     )
-   )
   result
   )
 
@@ -251,202 +240,194 @@
 ;; definition for function last
 (defun last ((lst object))
   (let ((iter lst))
-   (while (not (null? (cdr iter)))
-    (nop!)
-    (nop!)
-    (set! iter (cdr iter))
+    (while (not (null? (cdr iter)))
+      (nop!)
+      (nop!)
+      (set! iter (cdr iter))
+      )
+    iter
     )
-   iter
-   )
   )
 
 ;; definition for function member
 (defun member ((obj object) (lst object))
   (let ((iter lst))
-   (while (not (or (null? iter) (= (car iter) obj)))
-    (set! iter (cdr iter))
+    (while (not (or (null? iter) (= (car iter) obj)))
+      (set! iter (cdr iter))
+      )
+    (if (not (null? iter))
+        iter
+        )
     )
-   (if (not (null? iter))
-    iter
-    )
-   )
   )
 
 ;; definition for function nmember
 (defun nmember ((obj basic) (lst object))
   (while (not (or (null? lst) (name= (the-as basic (car lst)) obj)))
-   (set! lst (cdr lst))
-   )
+    (set! lst (cdr lst))
+    )
   (if (not (null? lst))
-   lst
-   )
+      lst
+      )
   )
 
 ;; definition for function assoc
 (defun assoc ((item object) (alist object))
   (let ((iter alist))
-   (while (not (or (null? iter) (= (car (car iter)) item)))
-    (set! iter (cdr iter))
+    (while (not (or (null? iter) (= (car (car iter)) item)))
+      (set! iter (cdr iter))
+      )
+    (if (not (null? iter))
+        (car iter)
+        )
     )
-   (if (not (null? iter))
-    (car iter)
-    )
-   )
   )
 
 ;; definition for function assoce
 (defun assoce ((item object) (alist object))
   (let ((iter alist))
-   (while
-    (not (or (null? iter) (= (car (car iter)) item) (= (car (car iter)) 'else)))
-    (set! iter (cdr iter))
+    (while (not (or (null? iter) (= (car (car iter)) item) (= (car (car iter)) 'else)))
+      (set! iter (cdr iter))
+      )
+    (if (not (null? iter))
+        (car iter)
+        )
     )
-   (if (not (null? iter))
-    (car iter)
-    )
-   )
   )
 
 ;; definition for function nassoc
 (defun nassoc ((item-name string) (alist object))
   (while (not (or (null? alist) (let ((key (car (car alist))))
-                                 (if (pair? key)
-                                  (nmember item-name key)
-                                  (name= (the-as basic key) item-name)
+                                  (if (pair? key)
+                                      (nmember item-name key)
+                                      (name= (the-as basic key) item-name)
+                                      )
                                   )
-                                 )
-               )
-          )
-   (set! alist (cdr alist))
-   )
+                  )
+              )
+    (set! alist (cdr alist))
+    )
   (if (not (null? alist))
-   (car alist)
-   )
+      (car alist)
+      )
   )
 
 ;; definition for function nassoce
 (defun nassoce ((item-name string) (alist object))
   (while (not (or (null? alist) (let ((key (car (car alist))))
-                                 (if (pair? key)
-                                  (nmember item-name key)
-                                  (or
-                                   (name= (the-as basic key) item-name)
-                                   (= key 'else)
-                                   )
+                                  (if (pair? key)
+                                      (nmember item-name key)
+                                      (or (name= (the-as basic key) item-name) (= key 'else))
+                                      )
                                   )
-                                 )
-               )
-          )
-   (set! alist (cdr alist))
-   )
+                  )
+              )
+    (set! alist (cdr alist))
+    )
   (if (not (null? alist))
-   (car alist)
-   )
+      (car alist)
+      )
   )
 
 ;; definition for function append!
 (defun append! ((front object) (back object))
   (cond
-   ((null? front)
-    back
-    )
-   (else
-    (let ((iter front))
-     (while (not (null? (cdr iter)))
-      (nop!)
-      (nop!)
-      (set! iter (cdr iter))
-      )
-     (if (not (null? iter))
-      (set! (cdr iter) back)
-      )
+    ((null? front)
+     back
      )
-    front
+    (else
+      (let ((iter front))
+        (while (not (null? (cdr iter)))
+          (nop!)
+          (nop!)
+          (set! iter (cdr iter))
+          )
+        (if (not (null? iter))
+            (set! (cdr iter) back)
+            )
+        )
+      front
+      )
     )
-   )
   )
 
 ;; definition for function delete!
 ;; INFO: Return type mismatch object vs pair.
 (defun delete! ((item object) (lst object))
   (the-as pair (cond
-                ((= item (car lst))
-                 (cdr lst)
-                 )
-                (else
-                 (let ((iter-prev lst)
-                       (iter (cdr lst))
-                       )
-                  (while (not (or (null? iter) (= (car iter) item)))
-                   (set! iter-prev iter)
-                   (set! iter (cdr iter))
-                   )
-                  (if (not (null? iter))
-                   (set! (cdr iter-prev) (cdr iter))
-                   )
+                 ((= item (car lst))
+                  (cdr lst)
                   )
-                 lst
+                 (else
+                   (let ((iter-prev lst)
+                         (iter (cdr lst))
+                         )
+                     (while (not (or (null? iter) (= (car iter) item)))
+                       (set! iter-prev iter)
+                       (set! iter (cdr iter))
+                       )
+                     (if (not (null? iter))
+                         (set! (cdr iter-prev) (cdr iter))
+                         )
+                     )
+                   lst
+                   )
                  )
-                )
-   )
+          )
   )
 
 ;; definition for function delete-car!
 (defun delete-car! ((item object) (lst object))
   (cond
-   ((= item (car (car lst)))
-    (cdr lst)
-    )
-   (else
-    (let ((iter-prev lst)
-          (iter (cdr lst))
-          )
-     (while (not (or (null? iter) (= (car (car iter)) item)))
-      (set! iter-prev iter)
-      (set! iter (cdr iter))
-      )
-     (if (not (null? iter))
-      (set! (cdr iter-prev) (cdr iter))
-      )
+    ((= item (car (car lst)))
+     (cdr lst)
      )
-    lst
+    (else
+      (let ((iter-prev lst)
+            (iter (cdr lst))
+            )
+        (while (not (or (null? iter) (= (car (car iter)) item)))
+          (set! iter-prev iter)
+          (set! iter (cdr iter))
+          )
+        (if (not (null? iter))
+            (set! (cdr iter-prev) (cdr iter))
+            )
+        )
+      lst
+      )
     )
-   )
   )
 
 ;; definition for function insert-cons!
 (defun insert-cons! ((kv object) (alist object))
   (let ((updated-list (delete-car! (car kv) alist)))
-   (cons kv updated-list)
-   )
+    (cons kv updated-list)
+    )
   )
 
 ;; definition for function sort
 (defun sort ((lst object) (compare-func (function object object object)))
   (let ((unsorted-count -1))
-   (while (nonzero? unsorted-count)
-    (set! unsorted-count 0)
-    (let ((iter lst))
-     (while (not (or (null? (cdr iter)) (not (pair? (cdr iter)))))
-      (let* ((first-elt (car iter))
-             (seoncd-elt (car (cdr iter)))
-             (compare-result (compare-func first-elt seoncd-elt))
-             )
-       (when
-        (and
-         (or (not compare-result) (> (the-as int compare-result) 0))
-         (!= compare-result #t)
-         )
-        (+! unsorted-count 1)
-        (set! (car iter) seoncd-elt)
-        (set! (car (cdr iter)) first-elt)
+    (while (nonzero? unsorted-count)
+      (set! unsorted-count 0)
+      (let ((iter lst))
+        (while (not (or (null? (cdr iter)) (not (pair? (cdr iter)))))
+          (let* ((first-elt (car iter))
+                 (seoncd-elt (car (cdr iter)))
+                 (compare-result (compare-func first-elt seoncd-elt))
+                 )
+            (when (and (or (not compare-result) (> (the-as int compare-result) 0)) (!= compare-result #t))
+              (+! unsorted-count 1)
+              (set! (car iter) seoncd-elt)
+              (set! (car (cdr iter)) first-elt)
+              )
+            )
+          (set! iter (cdr iter))
+          )
         )
-       )
-      (set! iter (cdr iter))
       )
-     )
     )
-   )
   lst
   )
 
@@ -473,31 +454,20 @@
   )
 
 ;; definition for method 0 of type inline-array-class
-(defmethod
-  new
-  inline-array-class
-  ((allocation symbol) (type-to-make type) (size int))
-  (let
-   ((obj
-     (object-new
-      allocation
-      type-to-make
-      (the-as
-       int
-       (+
-        (-> type-to-make size)
-        (* (the-as uint size) (-> type-to-make heap-base))
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (size int))
+  (let ((obj (object-new
+               allocation
+               type-to-make
+               (the-as int (+ (-> type-to-make size) (* (the-as uint size) (-> type-to-make heap-base))))
+               )
+             )
         )
-       )
+    (when (nonzero? obj)
+      (set! (-> obj length) size)
+      (set! (-> obj allocated-length) size)
       )
-     )
+    obj
     )
-   (when (nonzero? obj)
-    (set! (-> obj length) size)
-    (set! (-> obj allocated-length) size)
-    )
-   obj
-   )
   )
 
 ;; definition for method 4 of type inline-array-class
@@ -508,42 +478,29 @@
 ;; definition for method 5 of type inline-array-class
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of inline-array-class ((obj inline-array-class))
-  (the-as
-   int
-   (+
-    (-> obj type size)
-    (* (-> obj allocated-length) (the-as int (-> obj type heap-base)))
-    )
-   )
+  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj type heap-base)))))
   )
 
 ;; definition for method 0 of type array
-(defmethod
-  new
-  array
-  ((allocation symbol) (type-to-make type) (content-type type) (len int))
-  (let
-   ((obj
-     (object-new
-      allocation
-      type-to-make
-      (the-as
-       int
-       (+ (-> type-to-make size) (* len (if (type-type? content-type number)
-                                         (the-as int (-> content-type size))
-                                         4
-                                         )
-                                  )
+(defmethod new array ((allocation symbol) (type-to-make type) (content-type type) (len int))
+  (let ((obj (object-new
+               allocation
+               type-to-make
+               (the-as int (+ (-> type-to-make size) (* len (if (type-type? content-type number)
+                                                                (the-as int (-> content-type size))
+                                                                4
+                                                                )
+                                                        )
+                              )
+                       )
+               )
+             )
         )
-       )
-      )
-     )
+    (set! (-> obj allocated-length) len)
+    (set! (-> obj length) len)
+    (set! (-> obj content-type) content-type)
+    obj
     )
-   (set! (-> obj allocated-length) len)
-   (set! (-> obj length) len)
-   (set! (-> obj content-type) content-type)
-   obj
-   )
   )
 
 ;; definition for method 2 of type array
@@ -551,127 +508,147 @@
 (defmethod print array ((obj array))
   (format #t "#(")
   (cond
-   ((type-type? (-> obj content-type) integer)
-    (case (-> obj content-type symbol) 
-     (('int32)
-       (dotimes (s5-0 (-> obj length))
-        (format #t (if (zero? s5-0)
-                    "~D"
-                    " ~D"
-                    )
-         (-> (the-as (array int32) obj) s5-0)
+    ((type-type? (-> obj content-type) integer)
+     (case (-> obj content-type symbol)
+       (('int32)
+        (dotimes (s5-0 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-0)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int32) obj) s5-0)
+            )
+          )
+        )
+       (('uint32)
+        (dotimes (s5-1 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-1)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint32) obj) s5-1)
+            )
+          )
+        )
+       (('int64)
+        (dotimes (s5-2 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-2)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int64) obj) s5-2)
+            )
+          )
+        )
+       (('uint64)
+        (dotimes (s5-3 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-3)
+                "#x~X"
+                " #x~X"
+                )
+            (-> (the-as (array uint64) obj) s5-3)
+            )
+          )
+        )
+       (('int8)
+        (dotimes (s5-4 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-4)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int8) obj) s5-4)
+            )
+          )
+        )
+       (('uint8)
+        (dotimes (s5-5 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-5)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint8) obj) s5-5)
+            )
+          )
+        )
+       (('int16)
+        (dotimes (s5-6 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-6)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int16) obj) s5-6)
+            )
+          )
+        )
+       (('uint16)
+        (dotimes (s5-7 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-7)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint16) obj) s5-7)
+            )
+          )
+        )
+       (('uint128 'int128)
+        (dotimes (s5-8 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-8)
+                "#x~X"
+                " #x~X"
+                )
+            (-> (the-as (array uint128) obj) s5-8)
+            )
+          )
+        )
+       (else
+         (dotimes (s5-9 (-> obj length))
+           (format
+             #t
+             (if (zero? s5-9)
+                 "~D"
+                 " ~D"
+                 )
+             (-> (the-as (array int32) obj) s5-9)
+             )
+           )
          )
-        )
        )
-     (('uint32)
-      (dotimes (s5-1 (-> obj length))
-       (format #t (if (zero? s5-1)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array uint32) obj) s5-1)
-        )
-       )
-      )
-     (('int64)
-      (dotimes (s5-2 (-> obj length))
-       (format #t (if (zero? s5-2)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array int64) obj) s5-2)
-        )
-       )
-      )
-     (('uint64)
-      (dotimes (s5-3 (-> obj length))
-       (format #t (if (zero? s5-3)
-                   "#x~X"
-                   " #x~X"
-                   )
-        (-> (the-as (array uint64) obj) s5-3)
-        )
-       )
-      )
-     (('int8)
-      (dotimes (s5-4 (-> obj length))
-       (format #t (if (zero? s5-4)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array int8) obj) s5-4)
-        )
-       )
-      )
-     (('uint8)
-      (dotimes (s5-5 (-> obj length))
-       (format #t (if (zero? s5-5)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array uint8) obj) s5-5)
-        )
-       )
-      )
-     (('int16)
-      (dotimes (s5-6 (-> obj length))
-       (format #t (if (zero? s5-6)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array int16) obj) s5-6)
-        )
-       )
-      )
-     (('uint16)
-      (dotimes (s5-7 (-> obj length))
-       (format #t (if (zero? s5-7)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array uint16) obj) s5-7)
-        )
-       )
-      )
-     (('uint128 'int128)
-      (dotimes (s5-8 (-> obj length))
-       (format #t (if (zero? s5-8)
-                   "#x~X"
-                   " #x~X"
-                   )
-        (-> (the-as (array uint128) obj) s5-8)
-        )
-       )
-      )
-     (else
-      (dotimes (s5-9 (-> obj length))
-       (format #t (if (zero? s5-9)
-                   "~D"
-                   " ~D"
-                   )
-        (-> (the-as (array int32) obj) s5-9)
-        )
-       )
-      )
      )
-    )
-   ((= (-> obj content-type) float)
-    (dotimes (s5-10 (-> obj length))
-     (if (zero? s5-10)
-      (format #t "~f" (-> (the-as (array float) obj) s5-10))
-      (format #t " ~f" (-> (the-as (array float) obj) s5-10))
-      )
+    ((= (-> obj content-type) float)
+     (dotimes (s5-10 (-> obj length))
+       (if (zero? s5-10)
+           (format #t "~f" (-> (the-as (array float) obj) s5-10))
+           (format #t " ~f" (-> (the-as (array float) obj) s5-10))
+           )
+       )
      )
-    )
-   (else
-    (dotimes (s5-11 (-> obj length))
-     (if (zero? s5-11)
-      (format #t "~A" (-> (the-as (array basic) obj) s5-11))
-      (format #t " ~A" (-> (the-as (array basic) obj) s5-11))
+    (else
+      (dotimes (s5-11 (-> obj length))
+        (if (zero? s5-11)
+            (format #t "~A" (-> (the-as (array basic) obj) s5-11))
+            (format #t " ~A" (-> (the-as (array basic) obj) s5-11))
+            )
+        )
       )
-     )
     )
-   )
   (format #t ")")
   obj
   )
@@ -685,71 +662,71 @@
   (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   (cond
-   ((type-type? (-> obj content-type) integer)
-    (case (-> obj content-type symbol) 
-     (('int32)
-       (dotimes (s5-0 (-> obj length))
-        (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
+    ((type-type? (-> obj content-type) integer)
+     (case (-> obj content-type symbol)
+       (('int32)
+        (dotimes (s5-0 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
+          )
         )
+       (('uint32)
+        (dotimes (s5-1 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) obj) s5-1))
+          )
+        )
+       (('int64)
+        (dotimes (s5-2 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) obj) s5-2))
+          )
+        )
+       (('uint64)
+        (dotimes (s5-3 (-> obj length))
+          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) obj) s5-3))
+          )
+        )
+       (('int8)
+        (dotimes (s5-4 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) obj) s5-4))
+          )
+        )
+       (('uint8)
+        (dotimes (s5-5 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) obj) s5-5))
+          )
+        )
+       (('int16)
+        (dotimes (s5-6 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) obj) s5-6))
+          )
+        )
+       (('uint16)
+        (dotimes (s5-7 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) obj) s5-7))
+          )
+        )
+       (('int128 'uint128)
+        (dotimes (s5-8 (-> obj length))
+          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) obj) s5-8))
+          )
+        )
+       (else
+         (dotimes (s5-9 (-> obj length))
+           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) obj) s5-9))
+           )
+         )
        )
-     (('uint32)
-      (dotimes (s5-1 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) obj) s5-1))
-       )
-      )
-     (('int64)
-      (dotimes (s5-2 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) obj) s5-2))
-       )
-      )
-     (('uint64)
-      (dotimes (s5-3 (-> obj length))
-       (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) obj) s5-3))
-       )
-      )
-     (('int8)
-      (dotimes (s5-4 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) obj) s5-4))
-       )
-      )
-     (('uint8)
-      (dotimes (s5-5 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) obj) s5-5))
-       )
-      )
-     (('int16)
-      (dotimes (s5-6 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) obj) s5-6))
-       )
-      )
-     (('uint16)
-      (dotimes (s5-7 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) obj) s5-7))
-       )
-      )
-     (('int128 'uint128)
-      (dotimes (s5-8 (-> obj length))
-       (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) obj) s5-8))
-       )
-      )
-     (else
-      (dotimes (s5-9 (-> obj length))
-       (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) obj) s5-9))
-       )
-      )
      )
-    )
-   ((= (-> obj content-type) float)
-    (dotimes (s5-10 (-> obj length))
-     (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) obj) s5-10))
+    ((= (-> obj content-type) float)
+     (dotimes (s5-10 (-> obj length))
+       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) obj) s5-10))
+       )
      )
+    (else
+      (dotimes (s5-11 (-> obj length))
+        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) obj) s5-11))
+        )
+      )
     )
-   (else
-    (dotimes (s5-11 (-> obj length))
-     (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) obj) s5-11))
-     )
-    )
-   )
   obj
   )
 
@@ -761,94 +738,81 @@
 ;; definition for method 5 of type array
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of array ((obj array))
-  (the-as
-   int
-   (+
-    (-> array size)
-    (* (-> obj allocated-length) (if (type-type? (-> obj content-type) number)
-                                  (the-as int (-> obj content-type size))
-                                  4
-                                  )
-     )
-    )
-   )
+  (the-as int (+ (-> array size) (* (-> obj allocated-length) (if (type-type? (-> obj content-type) number)
+                                                                  (the-as int (-> obj content-type size))
+                                                                  4
+                                                                  )
+                                    )
+                 )
+          )
   )
 
 ;; definition for function mem-copy!
 (defun mem-copy! ((dst pointer) (src pointer) (size int))
   (let ((result dst))
-   (dotimes (i size)
-    (set! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
-    (&+! dst 1)
-    (&+! src 1)
+    (dotimes (i size)
+      (set! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
+      (&+! dst 1)
+      (&+! src 1)
+      )
+    result
     )
-   result
-   )
   )
 
 ;; definition for function qmem-copy<-!
 ;; Used lq/sq
 (defun qmem-copy<-! ((dst pointer) (src pointer) (size int))
   (let ((result dst))
-   (countdown (qwc (/ (+ size 15) 16))
-    (set!
-     (-> (the-as (pointer uint128) dst))
-     (-> (the-as (pointer uint128) src))
-     )
-    (&+! dst 16)
-    (&+! src 16)
+    (countdown (qwc (/ (+ size 15) 16))
+      (set! (-> (the-as (pointer uint128) dst)) (-> (the-as (pointer uint128) src)))
+      (&+! dst 16)
+      (&+! src 16)
+      )
+    result
     )
-   result
-   )
   )
 
 ;; definition for function qmem-copy->!
 ;; Used lq/sq
 (defun qmem-copy->! ((dst pointer) (src pointer) (size int))
   (let ((result dst))
-   (let* ((qwc (/ (+ size 15) 16))
-          (dst-ptr (&+ dst (* qwc 16)))
-          (src-ptr (&+ src (* qwc 16)))
-          )
-    (while (nonzero? qwc)
-     (+! qwc -1)
-     (&+! dst-ptr -16)
-     (&+! src-ptr -16)
-     (set!
-      (-> (the-as (pointer uint128) dst-ptr))
-      (-> (the-as (pointer uint128) src-ptr))
+    (let* ((qwc (/ (+ size 15) 16))
+           (dst-ptr (&+ dst (* qwc 16)))
+           (src-ptr (&+ src (* qwc 16)))
+           )
+      (while (nonzero? qwc)
+        (+! qwc -1)
+        (&+! dst-ptr -16)
+        (&+! src-ptr -16)
+        (set! (-> (the-as (pointer uint128) dst-ptr)) (-> (the-as (pointer uint128) src-ptr)))
+        )
       )
-     )
+    result
     )
-   result
-   )
   )
 
 ;; definition for function mem-set32!
 (defun mem-set32! ((dst pointer) (size int) (value int))
   (let ((result dst))
-   (dotimes (i size)
-    (set! (-> (the-as (pointer int32) dst)) value)
-    (&+! dst 4)
-    (nop!)
+    (dotimes (i size)
+      (set! (-> (the-as (pointer int32) dst)) value)
+      (&+! dst 4)
+      (nop!)
+      )
+    result
     )
-   result
-   )
   )
 
 ;; definition for function mem-or!
 (defun mem-or! ((dst pointer) (src pointer) (size int))
   (let ((result dst))
-   (dotimes (i size)
-    (logior!
-     (-> (the-as (pointer uint8) dst))
-     (-> (the-as (pointer uint8) src))
-     )
-    (&+! dst 1)
-    (&+! src 1)
+    (dotimes (i size)
+      (logior! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
+      (&+! dst 1)
+      (&+! src 1)
+      )
+    result
     )
-   result
-   )
   )
 
 ;; definition for function quad-copy!
@@ -857,9 +821,9 @@
 ;; definition for function fact
 (defun fact ((x int))
   (if (= x 1)
-   1
-   (* x (fact (+ x -1)))
-   )
+      1
+      (* x (fact (+ x -1)))
+      )
   )
 
 ;; definition for symbol *print-column*, type binteger
@@ -873,8 +837,8 @@
 ;; definition for function printl
 (defun printl ((arg0 object))
   (let ((a0-1 arg0))
-   ((method-of-type (rtype-of a0-1) print) a0-1)
-   )
+    ((method-of-type (rtype-of a0-1) print) a0-1)
+    )
   (format #t "~%")
   arg0
   )
@@ -887,16 +851,16 @@
 ;; definition (debug) for function mem-print
 (defun-debug mem-print ((data (pointer uint32)) (word-count int))
   (dotimes (current-qword (/ word-count 4))
-   (format
-    0
-    "~X: ~X ~X ~X ~X~%"
-    (&-> data (* current-qword 4))
-    (-> data (* current-qword 4))
-    (-> data (+ (* current-qword 4) 1))
-    (-> data (+ (* current-qword 4) 2))
-    (-> data (+ (* current-qword 4) 3))
+    (format
+      0
+      "~X: ~X ~X ~X ~X~%"
+      (&-> data (* current-qword 4))
+      (-> data (* current-qword 4))
+      (-> data (+ (* current-qword 4) 1))
+      (-> data (+ (* current-qword 4) 2))
+      (-> data (+ (* current-qword 4) 3))
+      )
     )
-   )
   #f
   )
 
@@ -906,12 +870,12 @@
 ;; definition for function print-tree-bitmask
 (defun print-tree-bitmask ((bits int) (count int))
   (dotimes (i count)
-   (if (zero? (logand bits 1))
-    (format #t "    ")
-    (format #t "|   ")
+    (if (zero? (logand bits 1))
+        (format #t "    ")
+        (format #t "|   ")
+        )
+    (set! bits (shr bits 1))
     )
-   (set! bits (shr bits 1))
-   )
   #f
   )
 
@@ -930,250 +894,229 @@
 ;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 ;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 ;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
-(defun
-  valid?
-  ((obj object)
-   (expected-type type)
-   (name basic)
-   (allow-false basic)
-   (print-dest object)
-   )
+(defun valid? ((obj object) (expected-type type) (name basic) (allow-false basic) (print-dest object))
   (local-vars (v1-11 int) (v1-44 int) (v1-48 int) (s7-0 none))
-  (let
-   ((in-goal-mem
-     (and
-      (>= (the-as uint obj) (the-as uint __START-OF-TABLE__))
-      (< (the-as uint obj) (the-as uint #x8000000))
-      )
-     )
-    )
-   (cond
-    ((not expected-type)
-     (cond
-      ((logtest? (the-as int obj) 3)
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object (misaligned)~%"
-         obj
-         name
-         )
+  (let ((in-goal-mem
+          (and (>= (the-as uint obj) (the-as uint __START-OF-TABLE__)) (< (the-as uint obj) (the-as uint #x8000000)))
+          )
         )
+    (cond
+      ((not expected-type)
+       (cond
+         ((logtest? (the-as int obj) 3)
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" obj name)
+              )
+          #f
+          )
+         ((not in-goal-mem)
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" obj name)
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((and allow-false (not obj))
+       #t
+       )
+      ((= expected-type structure)
+       (cond
+         ((logtest? (the-as int obj) 15)
+          (if name
+              (format
+                print-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                obj
+                name
+                expected-type
+                )
+              )
+          #f
+          )
+         ((or (not in-goal-mem) (begin
+                                  (let ((v1-10 #x8000))
+                                    (.daddu v1-11 v1-10 s7-0)
+                                    )
+                                  (< (the-as uint obj) (the-as uint v1-11))
+                                  )
+              )
+          (if name
+              (format
+                print-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+                obj
+                name
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((= expected-type pair)
+       (cond
+         ((!= (logand (the-as int obj) 7) 2)
+          (if name
+              (format
+                print-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                obj
+                name
+                expected-type
+                )
+              )
+          #f
+          )
+         ((not in-goal-mem)
+          (if name
+              (format
+                print-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+                obj
+                name
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((= expected-type binteger)
+       (cond
+         ((zero? (logand (the-as int obj) 7))
+          #t
+          )
+         (else
+           (if name
+               (format
+                 print-dest
+                 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                 obj
+                 name
+                 expected-type
+                 )
+               )
+           #f
+           )
+         )
+       )
+      ((!= (logand (the-as int obj) 7) 4)
+       (if name
+           (format
+             print-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+             obj
+             name
+             expected-type
+             )
+           )
        #f
        )
       ((not in-goal-mem)
        (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object (bad address)~%"
-         obj
-         name
+           (format
+             print-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+             obj
+             name
+             expected-type
+             )
+           )
+       #f
+       )
+      ((and (= expected-type type) (!= (rtype-of obj) type))
+       (if name
+           (format
+             print-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+             obj
+             name
+             expected-type
+             (rtype-of obj)
+             )
+           )
+       #f
+       )
+      ((and (!= expected-type type) (not (valid? (rtype-of obj) type #f #t 0)))
+       (if name
+           (format
+             print-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+             obj
+             name
+             expected-type
+             (rtype-of obj)
+             )
+           )
+       #f
+       )
+      ((not (type-type? (rtype-of obj) expected-type))
+       (if name
+           (format
+             print-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
+             obj
+             name
+             expected-type
+             (rtype-of obj)
+             )
+           )
+       #f
+       )
+      ((= expected-type symbol)
+       (let ((v1-43 #x8000))
+         (.daddu v1-44 v1-43 s7-0)
          )
-        )
+       (cond
+         ((>= (the-as uint obj) (the-as uint v1-44))
+          (if name
+              (format
+                print-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
+                obj
+                name
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((begin
+         (let ((v1-47 #x8000))
+           (.daddu v1-48 v1-47 s7-0)
+           )
+         (< (the-as uint obj) (the-as uint v1-48))
+         )
+       (if name
+           (format
+             print-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
+             obj
+             name
+             expected-type
+             )
+           )
        #f
        )
       (else
-       #t
-       )
-      )
-     )
-    ((and allow-false (not obj))
-     #t
-     )
-    ((= expected-type structure)
-     (cond
-      ((logtest? (the-as int obj) 15)
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-         obj
-         name
-         expected-type
-         )
+        #t
         )
-       #f
-       )
-      ((or (not in-goal-mem) (begin
-                              (let ((v1-10 #x8000))
-                               (.daddu v1-11 v1-10 s7-0)
-                               )
-                              (< (the-as uint obj) (the-as uint v1-11))
-                              )
-        )
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
-         obj
-         name
-         expected-type
-         )
-        )
-       #f
-       )
-      (else
-       #t
-       )
       )
-     )
-    ((= expected-type pair)
-     (cond
-      ((!= (logand (the-as int obj) 7) 2)
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-         obj
-         name
-         expected-type
-         )
-        )
-       #f
-       )
-      ((not in-goal-mem)
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
-         obj
-         name
-         expected-type
-         )
-        )
-       #f
-       )
-      (else
-       #t
-       )
-      )
-     )
-    ((= expected-type binteger)
-     (cond
-      ((zero? (logand (the-as int obj) 7))
-       #t
-       )
-      (else
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-         obj
-         name
-         expected-type
-         )
-        )
-       #f
-       )
-      )
-     )
-    ((!= (logand (the-as int obj) 7) 4)
-     (if name
-      (format
-       print-dest
-       "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-       obj
-       name
-       expected-type
-       )
-      )
-     #f
-     )
-    ((not in-goal-mem)
-     (if name
-      (format
-       print-dest
-       "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
-       obj
-       name
-       expected-type
-       )
-      )
-     #f
-     )
-    ((and (= expected-type type) (!= (rtype-of obj) type))
-     (if name
-      (format
-       print-dest
-       "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-       obj
-       name
-       expected-type
-       (rtype-of obj)
-       )
-      )
-     #f
-     )
-    ((and (!= expected-type type) (not (valid? (rtype-of obj) type #f #t 0)))
-     (if name
-      (format
-       print-dest
-       "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-       obj
-       name
-       expected-type
-       (rtype-of obj)
-       )
-      )
-     #f
-     )
-    ((not (type-type? (rtype-of obj) expected-type))
-     (if name
-      (format
-       print-dest
-       "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
-       obj
-       name
-       expected-type
-       (rtype-of obj)
-       )
-      )
-     #f
-     )
-    ((= expected-type symbol)
-     (let ((v1-43 #x8000))
-      (.daddu v1-44 v1-43 s7-0)
-      )
-     (cond
-      ((>= (the-as uint obj) (the-as uint v1-44))
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
-         obj
-         name
-         expected-type
-         )
-        )
-       #f
-       )
-      (else
-       #t
-       )
-      )
-     )
-    ((begin
-      (let ((v1-47 #x8000))
-       (.daddu v1-48 v1-47 s7-0)
-       )
-      (< (the-as uint obj) (the-as uint v1-48))
-      )
-     (if name
-      (format
-       print-dest
-       "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
-       obj
-       name
-       expected-type
-       )
-      )
-     #f
-     )
-    (else
-     #t
-     )
     )
-   )
   )
 
 ;; failed to figure out what this is:

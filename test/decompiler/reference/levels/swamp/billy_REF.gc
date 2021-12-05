@@ -32,8 +32,8 @@
 ;; definition for method 3 of type billy
 (defmethod inspect billy ((obj billy))
   (let ((t9-0 (method-of-type process-taskable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tfarthy: ~D~%" (-> obj farthy))
   (format #t "~T~Tpath-data[3] @ #x~X~%" (-> obj path-data))
   (format #t "~T~Tpath-snacks: ~A~%" (-> obj path-snacks))
@@ -55,20 +55,14 @@
 ;; INFO: Return type mismatch process-drawable vs billy.
 (defmethod relocate billy ((obj billy) (arg0 int))
   (countdown (v1-0 3)
-   (if (nonzero? (-> obj path-data v1-0))
-    (&+! (-> obj path-data v1-0) arg0)
+    (if (nonzero? (-> obj path-data v1-0))
+        (&+! (-> obj path-data v1-0) arg0)
+        )
     )
-   )
   (the-as
-   billy
-   ((the-as
-     (function process-drawable int process-drawable)
-     (find-parent-method billy 7)
-     )
-    obj
-    arg0
+    billy
+    ((the-as (function process-drawable int process-drawable) (find-parent-method billy 7)) obj arg0)
     )
-   )
   )
 
 ;; definition of type billy-snack
@@ -88,8 +82,8 @@
 ;; definition for method 3 of type billy-snack
 (defmethod inspect billy-snack ((obj billy-snack))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tnum-rats: ~D~%" (-> obj num-rats))
   obj
   )
@@ -107,65 +101,49 @@
 (defstate billy-snack-eat (billy-snack)
   :code
   (behavior ()
-   (let ((v1-2 (-> self skel root-channel 0)))
-    (set!
-     (-> v1-2 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    )
-   (let ((a0-3 (-> self skel root-channel 0)))
-    (set! (-> a0-3 frame-group) (if (> (-> self skel active-channels) 0)
-                                 (-> self skel root-channel 0 frame-group)
-                                 )
-     )
-    (set!
-     (-> a0-3 param 0)
-     (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    data
-                    0
-                    length
-                    )
-                 -1
-                 )
+    (let ((v1-2 (-> self skel root-channel 0)))
+      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
       )
-     )
-    (set! (-> a0-3 param 1) 1.0)
-    (set! (-> a0-3 frame-num) 0.0)
-    (joint-control-channel-group! a0-3 (if (> (-> self skel active-channels) 0)
-                                        (->
-                                         self
-                                         skel
-                                         root-channel
-                                         0
-                                         frame-group
-                                         )
-                                        )
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-4 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-4 param 0)
-      (the float (+ (-> a0-4 frame-group data 0 length) -1))
+    (let ((a0-3 (-> self skel root-channel 0)))
+      (set! (-> a0-3 frame-group) (if (> (-> self skel active-channels) 0)
+                                      (-> self skel root-channel 0 frame-group)
+                                      )
+            )
+      (set! (-> a0-3 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                       (-> self skel root-channel 0 frame-group)
+                                                       )
+                                                 data
+                                                 0
+                                                 length
+                                                 )
+                                            -1
+                                            )
+                                   )
+            )
+      (set! (-> a0-3 param 1) 1.0)
+      (set! (-> a0-3 frame-num) 0.0)
+      (joint-control-channel-group!
+        a0-3
+        (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        num-func-seek!
+        )
       )
-     (set! (-> a0-4 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-4
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-4 (-> self skel root-channel 0)))
+        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
+        (set! (-> a0-4 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
+    (deactivate self)
+    (while #t
+      (suspend)
+      )
+    (none)
     )
-   (deactivate self)
-   (while #t
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior billy-snack) ja-post)
   )
@@ -173,66 +151,52 @@
 ;; failed to figure out what this is:
 (defstate billy-snack-idle (billy-snack)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('eat)
-      (go billy-snack-eat)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('eat)
+                                                                                    (go billy-snack-eat)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (while #t
-    (let ((a0-0 (-> self skel root-channel 0)))
-     (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                  (-> self skel root-channel 0 frame-group)
-                                  )
+    (while #t
+      (let ((a0-0 (-> self skel root-channel 0)))
+        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
+                                        (-> self skel root-channel 0 frame-group)
+                                        )
+              )
+        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                         (-> self skel root-channel 0 frame-group)
+                                                         )
+                                                   data
+                                                   0
+                                                   length
+                                                   )
+                                              -1
+                                              )
+                                     )
+              )
+        (set! (-> a0-0 param 1) 1.0)
+        (set! (-> a0-0 frame-num) 0.0)
+        (joint-control-channel-group!
+          a0-0
+          (if (> (-> self skel active-channels) 0)
+              (-> self skel root-channel 0 frame-group)
+              )
+          num-func-seek!
+          )
+        )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((a0-1 (-> self skel root-channel 0)))
+          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
+          (set! (-> a0-1 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
       )
-     (set!
-      (-> a0-0 param 0)
-      (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                         (-> self skel root-channel 0 frame-group)
-                         )
-                     data
-                     0
-                     length
-                     )
-                  -1
-                  )
-       )
-      )
-     (set! (-> a0-0 param 1) 1.0)
-     (set! (-> a0-0 frame-num) 0.0)
-     (joint-control-channel-group! a0-0 (if (> (-> self skel active-channels) 0)
-                                         (->
-                                          self
-                                          skel
-                                          root-channel
-                                          0
-                                          frame-group
-                                          )
-                                         )
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((a0-1 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-1 param 0)
-       (the float (+ (-> a0-1 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-1 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       a0-1
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior billy-snack) ja-post)
   )
@@ -269,8 +233,8 @@
 ;; definition for method 3 of type billy-rat
 (defmethod inspect billy-rat ((obj billy-rat))
   (let ((t9-0 (method-of-type swamp-rat inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tdest-type: ~D~%" (-> obj dest-type))
   (format #t "~T~Tsnack: ~D~%" (-> obj snack))
   (format #t "~T~Tdestination: #<vector @ #x~X>~%" (-> obj destination))
@@ -281,24 +245,14 @@
 ;; definition for function rat-about-to-eat?
 ;; INFO: Return type mismatch basic vs symbol.
 (defun rat-about-to-eat? ((arg0 billy-rat) (arg1 billy))
-  (the-as
-   symbol
-   (and
-    (= (-> arg0 dest-type) 2)
-    (> (-> arg1 num-snacks) 0)
-    (handle->process (-> arg0 snack))
-    )
-   )
+  (the-as symbol (and (= (-> arg0 dest-type) 2) (> (-> arg1 num-snacks) 0) (handle->process (-> arg0 snack))))
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (billy-rat)
   :virtual #t
   :enter
-  (behavior ()
-   (go-virtual nav-enemy-chase)
-   (none)
-   )
+  (behavior () (go-virtual nav-enemy-chase) (none))
   :post
   (the-as (function none :behavior billy-rat) nav-enemy-common-post)
   )
@@ -308,105 +262,70 @@
   :virtual #t
   :code
   (behavior ()
-   (nav-enemy-fall-and-play-death-anim
-    (the-as
-     art-joint-anim
-     (-> self draw art-group data (-> self nav-info die-anim))
-     )
-    1.0
-    1.0
-    1000000000000000.0
-    600
+    (nav-enemy-fall-and-play-death-anim
+      (the-as art-joint-anim (-> self draw art-group data (-> self nav-info die-anim)))
+      1.0
+      1.0
+      1000000000000000.0
+      600
+      )
+    (send-event (ppointer->process (-> self billy)) 'billy-rat-die)
+    (dummy-18 self)
+    (none)
     )
-   (send-event (ppointer->process (-> self billy)) 'billy-rat-die)
-   (dummy-18 self)
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate billy-rat-eat (billy-rat)
   :trans
-  (behavior ()
-   (seek-to-point-toward-point!
-    (-> self collide-info)
-    (-> self destination)
-    131072.0
-    3
-    )
-   (none)
-   )
+  (behavior () (seek-to-point-toward-point! (-> self collide-info) (-> self destination) 131072.0 3) (none))
   :code
   (behavior ()
-   (send-event (handle->process (-> self snack)) 'eat)
-   (sound-play-by-name
-    (static-sound-name "rat-gulp")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (ja-channel-push! 1 15)
-   (let ((v1-8 (-> self skel root-channel 0)))
-    (set!
-     (-> v1-8 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 12))
-     )
-    )
-   (let ((a0-9 (-> self skel root-channel 0)))
-    (set! (-> a0-9 frame-group) (if (> (-> self skel active-channels) 0)
-                                 (-> self skel root-channel 0 frame-group)
-                                 )
-     )
-    (set!
-     (-> a0-9 param 0)
-     (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    data
-                    0
-                    length
-                    )
-                 -1
-                 )
+    (send-event (handle->process (-> self snack)) 'eat)
+    (sound-play-by-name (static-sound-name "rat-gulp") (new-sound-id) 1024 0 0 1 #t)
+    (ja-channel-push! 1 15)
+    (let ((v1-8 (-> self skel root-channel 0)))
+      (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 12)))
       )
-     )
-    (set! (-> a0-9 param 1) 1.0)
-    (set! (-> a0-9 frame-num) 0.0)
-    (joint-control-channel-group! a0-9 (if (> (-> self skel active-channels) 0)
-                                        (->
-                                         self
-                                         skel
-                                         root-channel
-                                         0
-                                         frame-group
-                                         )
-                                        )
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-10 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-10 param 0)
-      (the float (+ (-> a0-10 frame-group data 0 length) -1))
+    (let ((a0-9 (-> self skel root-channel 0)))
+      (set! (-> a0-9 frame-group) (if (> (-> self skel active-channels) 0)
+                                      (-> self skel root-channel 0 frame-group)
+                                      )
+            )
+      (set! (-> a0-9 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                       (-> self skel root-channel 0 frame-group)
+                                                       )
+                                                 data
+                                                 0
+                                                 length
+                                                 )
+                                            -1
+                                            )
+                                   )
+            )
+      (set! (-> a0-9 param 1) 1.0)
+      (set! (-> a0-9 frame-num) 0.0)
+      (joint-control-channel-group!
+        a0-9
+        (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        num-func-seek!
+        )
       )
-     (set! (-> a0-10 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-10
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-10 (-> self skel root-channel 0)))
+        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+        (set! (-> a0-10 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
+    (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
+    (logclear! (-> self nav flags) (nav-control-flags bit19))
+    (go-virtual nav-enemy-chase)
+    (none)
     )
-   (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
-   (logclear! (-> self nav flags) (nav-control-flags bit19))
-   (go-virtual nav-enemy-chase)
-   (none)
-   )
   :post
   (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
   )
@@ -415,84 +334,51 @@
 (defstate billy-rat-salivate (billy-rat)
   :event
   (the-as
-   (function process int symbol event-message-block object :behavior billy-rat)
-   nav-enemy-default-event-handler
-   )
+    (function process int symbol event-message-block object :behavior billy-rat)
+    nav-enemy-default-event-handler
+    )
   :code
   (behavior ()
-   (ja-channel-push! 1 22)
-   (dotimes (gp-0 1)
-    (sound-play-by-name
-     (static-sound-name "rat-eat")
-     (new-sound-id)
-     1024
-     0
-     0
-     1
-     #t
-     )
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-     (let ((a0-3 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-3 frame-group)
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info victory-anim))
-        )
-       )
-      (set!
-       (-> a0-3 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as
-           art-joint-anim
-           (-> self draw art-group data (-> self nav-info victory-anim))
-           )
-          data
-          0
-          length
+    (ja-channel-push! 1 22)
+    (dotimes (gp-0 1)
+      (sound-play-by-name (static-sound-name "rat-eat") (new-sound-id) 1024 0 0 1 #t)
+      (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+        (let ((a0-3 (-> self skel root-channel 0)))
+          (set! (-> a0-3 frame-group)
+                (the-as art-joint-anim (-> self draw art-group data (-> self nav-info victory-anim)))
+                )
+          (set! (-> a0-3 param 0)
+                (the float
+                     (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info victory-anim))) data 0 length)
+                        -1
+                        )
+                     )
+                )
+          (set! (-> a0-3 param 1) f30-0)
+          (set! (-> a0-3 frame-num) 0.0)
+          (joint-control-channel-group!
+            a0-3
+            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info victory-anim)))
+            num-func-seek!
+            )
           )
-         -1
-         )
+        (until (ja-done? 0)
+          (suspend)
+          (let ((a0-4 (-> self skel root-channel 0)))
+            (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
+            (set! (-> a0-4 param 1) f30-0)
+            (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
         )
-       )
-      (set! (-> a0-3 param 1) f30-0)
-      (set! (-> a0-3 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-3
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info victory-anim))
-        )
-       num-func-seek!
-       )
       )
-     (until (ja-done? 0)
-      (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-4 param 0)
-        (the float (+ (-> a0-4 frame-group data 0 length) -1))
+    (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
+    (if (= (-> self dest-type) 3)
+        (go billy-rat-eat)
+        (go-virtual nav-enemy-chase)
         )
-       (set! (-> a0-4 param 1) f30-0)
-       (joint-control-channel-group-eval!
-        a0-4
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     )
+    (none)
     )
-   (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
-   (if (= (-> self dest-type) 3)
-    (go billy-rat-eat)
-    (go-virtual nav-enemy-chase)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
   )
@@ -502,37 +388,27 @@
   :virtual #t
   :enter
   (behavior ()
-   (let
-    ((t9-1
-      (-> (the-as (state nav-enemy) (find-parent-method billy-rat 33)) enter)
+    (let ((t9-1 (-> (the-as (state nav-enemy) (find-parent-method billy-rat 33)) enter)))
+      (if t9-1
+          (t9-1)
+          )
       )
-     )
-    (if t9-1
-     (t9-1)
-     )
-    )
-   (when (logtest? (nav-control-flags bit19) (-> self nav flags))
-    (logclear! (-> self nav flags) (nav-control-flags bit19))
-    (if (rat-about-to-eat? self (-> self billy 0))
-     (go billy-rat-salivate)
-     (send-event
-      (ppointer->process (-> self billy))
-      'billy-rat-needs-destination
+    (when (logtest? (nav-control-flags bit19) (-> self nav flags))
+      (logclear! (-> self nav flags) (nav-control-flags bit19))
+      (if (rat-about-to-eat? self (-> self billy 0))
+          (go billy-rat-salivate)
+          (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
+          )
       )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (billy-rat)
   :virtual #t
   :enter
-  (behavior ()
-   (go-virtual nav-enemy-chase)
-   (none)
-   )
+  (behavior () (go-virtual nav-enemy-chase) (none))
   )
 
 ;; failed to figure out what this is:
@@ -540,41 +416,31 @@
   :virtual #t
   :trans
   (behavior ()
-   (set! (-> self speed-scale) (-> self billy 0 rat-speed))
-   (if
-    (or
-     (logtest? (nav-control-flags bit19) (-> self nav flags))
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (the-as int (-> self chase-rest-time))
-      )
-     )
-    (go-virtual nav-enemy-victory)
+    (set! (-> self speed-scale) (-> self billy 0 rat-speed))
+    (if (or
+            (logtest? (nav-control-flags bit19) (-> self nav flags))
+            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self chase-rest-time)))
+            )
+        (go-virtual nav-enemy-victory)
+        )
+    (none)
     )
-   (none)
-   )
   :post
-  (behavior ()
-   (swamp-rat-update-wiggle-target (-> self destination))
-   (nav-enemy-travel-post)
-   (none)
-   )
+  (behavior () (swamp-rat-update-wiggle-target (-> self destination)) (nav-enemy-travel-post) (none))
   )
 
 ;; definition for function billy-rat-init-by-other
 ;; Used lq/sq
-(defbehavior
-  billy-rat-init-by-other billy-rat
-  ((arg0 billy) (arg1 vector) (arg2 vector))
+(defbehavior billy-rat-init-by-other billy-rat ((arg0 billy) (arg1 vector) (arg2 vector))
   (set! (-> self billy) (the-as (pointer billy) (process->ppointer arg0)))
   (set! (-> self destination quad) (-> arg2 quad))
   (set! (-> self dest-type) (the-as uint 1))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-   (vector-! s4-0 arg2 arg1)
-   (set! (-> s4-0 y) 0.0)
-   (vector-normalize! s4-0 1.0)
-   (swamp-rat-init-by-other arg0 arg1 s4-0 (pickup-type none) #t)
-   )
+    (vector-! s4-0 arg2 arg1)
+    (set! (-> s4-0 y) 0.0)
+    (vector-normalize! s4-0 1.0)
+    (swamp-rat-init-by-other arg0 arg1 s4-0 (pickup-type none) #t)
+    )
   (none)
   )
 
@@ -602,847 +468,462 @@
   (let* ((gp-0 (the-as (pointer process-tree) (-> self child-override)))
          (s5-0 (-> (the-as (pointer billy-snack) gp-0) 0 brother))
          )
-   (while gp-0
-    (if
-     (not
-      (or
-       (= gp-0 (-> self farthy process))
-       (type-type? (-> (ppointer->process gp-0) type) fuel-cell)
-       )
+    (while gp-0
+      (if (not (or (= gp-0 (-> self farthy process)) (type-type? (-> (ppointer->process gp-0) type) fuel-cell)))
+          (deactivate (-> gp-0 0))
+          )
+      (set! gp-0 s5-0)
+      (set! s5-0 (-> gp-0 0 brother))
       )
-     (deactivate (-> gp-0 0))
-     )
-    (set! gp-0 s5-0)
-    (set! s5-0 (-> gp-0 0 brother))
     )
-   )
   #f
   )
 
 ;; definition for method 32 of type billy
 (defmethod play-anim! billy ((obj billy) (arg0 symbol))
-  (case (current-status (-> obj tasks)) 
-   (((task-status need-hint) (task-status need-introduction))
+  (case (current-status (-> obj tasks))
+    (((task-status need-hint) (task-status need-introduction))
      (when arg0
-      (set! (-> obj blend-on-exit) #t)
-      (close-status! (-> obj tasks) (task-status need-introduction))
-      (let ((s5-1 (new 'stack-no-clear 'vector)))
-       (dotimes
-        (s4-0
-         (+
-          (the int (the float (+ (-> obj path-snacks curve num-cverts) -1)))
-          1
-          )
-         )
-        (eval-path-curve-div! (-> obj path-snacks) s5-1 (the float s4-0) 'exact)
-        (set! (-> s5-1 x) (+ -40960.0 (-> s5-1 x)))
-        (set! (-> s5-1 z) (+ 20480.0 (-> s5-1 z)))
-        (let ((s3-0 (get-process *default-dead-pool* manipy #x4000)))
-         (when s3-0
-          (let ((t9-4 (method-of-type manipy activate)))
-           (t9-4 (the-as manipy s3-0) obj 'manipy (the-as pointer #x70004000))
+       (set! (-> obj blend-on-exit) #t)
+       (close-status! (-> obj tasks) (task-status need-introduction))
+       (let ((s5-1 (new 'stack-no-clear 'vector)))
+         (dotimes (s4-0 (+ (the int (the float (+ (-> obj path-snacks curve num-cverts) -1))) 1))
+           (eval-path-curve-div! (-> obj path-snacks) s5-1 (the float s4-0) 'exact)
+           (set! (-> s5-1 x) (+ -40960.0 (-> s5-1 x)))
+           (set! (-> s5-1 z) (+ 20480.0 (-> s5-1 z)))
+           (let ((s3-0 (get-process *default-dead-pool* manipy #x4000)))
+             (when s3-0
+               (let ((t9-4 (method-of-type manipy activate)))
+                 (t9-4 (the-as manipy s3-0) obj 'manipy (the-as pointer #x70004000))
+                 )
+               (run-now-in-process s3-0 manipy-init s5-1 (-> obj entity) *farthy-snack-sg* #f)
+               (-> s3-0 ppointer)
+               )
+             )
            )
-          (run-now-in-process
-           s3-0
-           manipy-init
-           s5-1
-           (-> obj entity)
-           *farthy-snack-sg*
-           #f
-           )
-          (-> s3-0 ppointer)
-          )
          )
-        )
        )
-      )
      (new 'static 'spool-anim
-      :name "billy-introduction"
-      :index 5
-      :parts 14
-      :command-list
-      '(
-        (0
-          kill
-          "swamp-blimp-3"
+       :name "billy-introduction"
+       :index 5
+       :parts 14
+       :command-list
+       '((0 kill "swamp-blimp-3")
+         (0 kill "swamp-tetherrock-14")
+         (0 kill "swamp-tetherrock-15")
+         (0 kill "flutflut-3")
+         (0 kill "tar-plat-26")
+         (0 kill "tar-plat-25")
+         (0 kill "babak-380")
+         (0 kill "eco-164")
+         (0 kill "eco-165")
+         (0 kill "eco-140")
+         (0 kill "launcher-97")
+         (0 kill "swamp-rat-nest-5")
+         (0 kill "swamp-rat-nest-4")
+         (0 kill "swamp-rat-nest-3")
+         (0 kill "swamp-rat-nest-2")
+         (0 kill "sharkey-9")
+         (0 kill "launcher-46")
+         (0 kill "launcher-44")
+         (0 kill "launcher-42")
+         (0 kill "swamp-spike-43")
+         (0 kill "swamp-spike-44")
+         (0 kill "swamp-spike-45")
+         ((the binteger 346) blackout (the binteger 10))
+         ((the binteger 349) blackout 0)
+         ((the binteger 494) blackout (the binteger 10))
+         ((the binteger 497) blackout 0)
+         ((the binteger 1145) blackout (the binteger 10))
+         ((the binteger 1148) blackout 0)
+         ((the binteger 1518) blackout (the binteger 10))
+         ((the binteger 1521) blackout 0)
+         )
+       )
+     )
+    (((task-status need-reminder-a) (task-status need-reminder))
+     (set! (-> obj skippable) #t)
+     (set! (-> obj blend-on-exit) #t)
+     (set! (-> obj will-talk) #t)
+     (new 'static 'spool-anim
+       :name "billy-reminder-1"
+       :index 8
+       :parts 2
+       :command-list
+       '((0 kill "swamp-blimp-3")
+         (0 kill "swamp-tetherrock-14")
+         (0 kill "swamp-tetherrock-15")
+         (0 kill "flutflut-3")
+         (0 kill "tar-plat-26")
+         (0 kill "tar-plat-25")
+         (0 kill "babak-380")
+         (0 kill "eco-164")
+         (0 kill "eco-165")
+         (0 kill "eco-140")
+         (0 kill "launcher-97")
+         (0 kill "swamp-rat-nest-5")
+         (0 kill "swamp-rat-nest-4")
+         (0 kill "swamp-rat-nest-3")
+         (0 kill "swamp-rat-nest-2")
+         (0 kill "sharkey-9")
+         (0 kill "launcher-46")
+         (0 kill "launcher-44")
+         (0 kill "launcher-42")
+         (0 kill "swamp-spike-43")
+         (0 kill "swamp-spike-44")
+         (0 kill "swamp-spike-45")
+         )
+       )
+     )
+    (((task-status need-reward-speech))
+     (when arg0
+       (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
+       (close-current! (-> obj tasks))
+       )
+     (new 'static 'spool-anim
+       :name "billy-resolution"
+       :index 9
+       :parts 2
+       :command-list
+       '((0 kill "swamp-blimp-3")
+         (0 kill "swamp-tetherrock-14")
+         (0 kill "swamp-tetherrock-15")
+         (0 kill "flutflut-3")
+         (0 kill "tar-plat-26")
+         (0 kill "tar-plat-25")
+         (0 kill "babak-380")
+         (0 kill "eco-164")
+         (0 kill "eco-165")
+         (0 kill "eco-140")
+         (0 kill "launcher-97")
+         (0 kill "swamp-rat-nest-5")
+         (0 kill "swamp-rat-nest-4")
+         (0 kill "swamp-rat-nest-3")
+         (0 kill "swamp-rat-nest-2")
+         (0 kill "sharkey-9")
+         (0 kill "launcher-46")
+         (0 kill "launcher-44")
+         (0 kill "launcher-42")
+         (0 kill "swamp-spike-43")
+         (0 kill "swamp-spike-44")
+         (0 kill "swamp-spike-45")
+         )
+       )
+     )
+    (else
+      (if arg0
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
           )
-        (0
-         kill
-         "swamp-tetherrock-14"
-         )
-        (0
-         kill
-         "swamp-tetherrock-15"
-         )
-        (0
-         kill
-         "flutflut-3"
-         )
-        (0
-         kill
-         "tar-plat-26"
-         )
-        (0
-         kill
-         "tar-plat-25"
-         )
-        (0
-         kill
-         "babak-380"
-         )
-        (0
-         kill
-         "eco-164"
-         )
-        (0
-         kill
-         "eco-165"
-         )
-        (0
-         kill
-         "eco-140"
-         )
-        (0
-         kill
-         "launcher-97"
-         )
-        (0
-         kill
-         "swamp-rat-nest-5"
-         )
-        (0
-         kill
-         "swamp-rat-nest-4"
-         )
-        (0
-         kill
-         "swamp-rat-nest-3"
-         )
-        (0
-         kill
-         "swamp-rat-nest-2"
-         )
-        (0
-         kill
-         "sharkey-9"
-         )
-        (0
-         kill
-         "launcher-46"
-         )
-        (0
-         kill
-         "launcher-44"
-         )
-        (0
-         kill
-         "launcher-42"
-         )
-        (0
-         kill
-         "swamp-spike-43"
-         )
-        (0
-         kill
-         "swamp-spike-44"
-         )
-        (0
-         kill
-         "swamp-spike-45"
-         )
-        ((the binteger 346)
-         blackout
-         (the binteger 10)
-         )
-        ((the binteger 349)
-         blackout
-         0
-         )
-        ((the binteger 494)
-         blackout
-         (the binteger 10)
-         )
-        ((the binteger 497)
-         blackout
-         0
-         )
-        ((the binteger 1145)
-         blackout
-         (the binteger 10)
-         )
-        ((the binteger 1148)
-         blackout
-         0
-         )
-        ((the binteger 1518)
-         blackout
-         (the binteger 10)
-         )
-        ((the binteger 1521) blackout 0)
-        )
+      (-> obj draw art-group data 3)
       )
-     )
-   (((task-status need-reminder-a) (task-status need-reminder))
-    (set! (-> obj skippable) #t)
-    (set! (-> obj blend-on-exit) #t)
-    (set! (-> obj will-talk) #t)
-    (new 'static 'spool-anim
-     :name "billy-reminder-1"
-     :index 8
-     :parts 2
-     :command-list
-     '(
-       (0
-         kill
-         "swamp-blimp-3"
-         )
-       (0
-        kill
-        "swamp-tetherrock-14"
-        )
-       (0
-        kill
-        "swamp-tetherrock-15"
-        )
-       (0
-        kill
-        "flutflut-3"
-        )
-       (0
-        kill
-        "tar-plat-26"
-        )
-       (0
-        kill
-        "tar-plat-25"
-        )
-       (0
-        kill
-        "babak-380"
-        )
-       (0
-        kill
-        "eco-164"
-        )
-       (0
-        kill
-        "eco-165"
-        )
-       (0
-        kill
-        "eco-140"
-        )
-       (0
-        kill
-        "launcher-97"
-        )
-       (0
-        kill
-        "swamp-rat-nest-5"
-        )
-       (0
-        kill
-        "swamp-rat-nest-4"
-        )
-       (0
-        kill
-        "swamp-rat-nest-3"
-        )
-       (0
-        kill
-        "swamp-rat-nest-2"
-        )
-       (0
-        kill
-        "sharkey-9"
-        )
-       (0
-        kill
-        "launcher-46"
-        )
-       (0
-        kill
-        "launcher-44"
-        )
-       (0
-        kill
-        "launcher-42"
-        )
-       (0
-        kill
-        "swamp-spike-43"
-        )
-       (0 kill "swamp-spike-44") (0 kill "swamp-spike-45")
-       )
-     )
     )
-   (((task-status need-reward-speech))
-    (when arg0
-     (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-     (close-current! (-> obj tasks))
-     )
-    (new 'static 'spool-anim
-     :name "billy-resolution"
-     :index 9
-     :parts 2
-     :command-list
-     '(
-       (0
-         kill
-         "swamp-blimp-3"
-         )
-       (0
-        kill
-        "swamp-tetherrock-14"
-        )
-       (0
-        kill
-        "swamp-tetherrock-15"
-        )
-       (0
-        kill
-        "flutflut-3"
-        )
-       (0
-        kill
-        "tar-plat-26"
-        )
-       (0
-        kill
-        "tar-plat-25"
-        )
-       (0
-        kill
-        "babak-380"
-        )
-       (0
-        kill
-        "eco-164"
-        )
-       (0
-        kill
-        "eco-165"
-        )
-       (0
-        kill
-        "eco-140"
-        )
-       (0
-        kill
-        "launcher-97"
-        )
-       (0
-        kill
-        "swamp-rat-nest-5"
-        )
-       (0
-        kill
-        "swamp-rat-nest-4"
-        )
-       (0
-        kill
-        "swamp-rat-nest-3"
-        )
-       (0
-        kill
-        "swamp-rat-nest-2"
-        )
-       (0
-        kill
-        "sharkey-9"
-        )
-       (0
-        kill
-        "launcher-46"
-        )
-       (0
-        kill
-        "launcher-44"
-        )
-       (0
-        kill
-        "launcher-42"
-        )
-       (0
-        kill
-        "swamp-spike-43"
-        )
-       (0 kill "swamp-spike-44") (0 kill "swamp-spike-45")
-       )
-     )
-    )
-   (else
-    (if arg0
-     (format
-      0
-      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-      (-> obj name)
-      (task-status->string (current-status (-> obj tasks)))
-      )
-     )
-    (-> obj draw art-group data 3)
-    )
-   )
   )
 
 ;; definition for method 31 of type billy
 (defmethod get-art-elem billy ((obj billy))
-  (case (current-status (-> obj tasks)) 
-   (((task-status invalid) (task-status need-resolution))
+  (case (current-status (-> obj tasks))
+    (((task-status invalid) (task-status need-resolution))
      (-> obj draw art-group data 10)
      )
-   (else
-    (-> obj draw art-group data 3)
+    (else
+      (-> obj draw art-group data 3)
+      )
     )
-   )
   )
 
 ;; definition for method 38 of type billy
 (defmethod dummy-38 billy ((obj billy))
-  (case (current-status (-> obj tasks)) 
-   (((task-status need-reminder-a) (task-status need-reminder))
+  (case (current-status (-> obj tasks))
+    (((task-status need-reminder-a) (task-status need-reminder))
      (go (method-of-object obj query))
      )
-   (((task-status need-reward-speech))
-    (go (method-of-object obj play-anim))
-    )
-   (else
-    ((the-as (function nav-enemy none) (find-parent-method billy 38))
-     (the-as nav-enemy obj)
+    (((task-status need-reward-speech))
+     (go (method-of-object obj play-anim))
      )
+    (else
+      ((the-as (function nav-enemy none) (find-parent-method billy 38)) (the-as nav-enemy obj))
+      )
     )
-   )
   (none)
   )
 
 ;; definition for method 34 of type billy
 (defmethod get-accept-anim billy ((obj billy) (arg0 symbol))
   (if arg0
-   (close-current! (-> obj tasks))
-   )
-  (new 'static 'spool-anim
-   :name "billy-accept"
-   :index 6
-   :parts 3
-   :command-list '()
-   )
+      (close-current! (-> obj tasks))
+      )
+  (new 'static 'spool-anim :name "billy-accept" :index 6 :parts 3 :command-list '())
   )
 
 ;; definition for method 36 of type billy
 (defmethod get-reject-anim billy ((obj billy) (arg0 symbol))
-  (new 'static 'spool-anim
-   :name "billy-reject"
-   :index 7
-   :parts 3
-   :command-list '()
-   )
+  (new 'static 'spool-anim :name "billy-reject" :index 7 :parts 3 :command-list '())
   )
 
 ;; failed to figure out what this is:
 (defstate billy-done (billy)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'billy-rat-needs-destination)
-                    (let* ((gp-0 arg0)
-                           (v1-2
-                            (if
-                             (and
-                              (nonzero? gp-0)
-                              (type-type? (-> gp-0 type) billy-rat)
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'billy-rat-needs-destination)
+                       (let* ((gp-0 arg0)
+                              (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
+                                        gp-0
+                                        )
+                                    )
                               )
-                             gp-0
-                             )
-                            )
+                         (when v1-2
+                           (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
+                           (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
                            )
-                     (when v1-2
-                      (set!
-                       (-> (the-as billy-rat v1-2) dest-type)
-                       (the-as uint 1)
+                         )
                        )
-                      (get-random-point
-                       (-> self path-waypts)
-                       (-> (the-as billy-rat v1-2) destination)
-                       )
-                      )
-                     )
-                    )
-     )
+              )
+      )
     )
-   )
   :enter
   (behavior ()
-   (init!
-    (-> self query)
-    (lookup-text! *common-text* (game-text-id play-again?) #f)
-    40
-    150
-    30
-    #f
-    (lookup-text! *common-text* (game-text-id quit) #f)
-    )
-   (ja-channel-set! 1)
-   (let ((gp-1 (-> self skel root-channel 0)))
-    (set! (-> gp-1 frame-group) (the-as art-joint-anim (get-art-elem self)))
-    )
-   (send-event *target* 'end-mode)
-   (when
-    (and (handle->process (-> self offending-rat)) (zero? (-> self num-snacks)))
-    (send-event
-     *camera*
-     'change-target
-     (handle->process (-> self offending-rat))
-     )
-    (send-event *camera* 'change-state cam-standoff 0)
-    (send-event *camera* 'set-standoff-height 0.0)
-    (send-event *camera* 'set-standoff-dist 20480.0)
-    (send-event *camera* 'set-standoff-height 16384.0)
-    (send-event *camera-combiner* 'stop-tracking)
-    (send-event
-     *camera-combiner*
-     'start-tracking
-     (ppointer->process (-> *camera* slave 0))
-     )
-    (let ((a0-24 (get-reminder (-> self tasks) 0)))
-     (save-reminder (-> self tasks) (seekl a0-24 255 1) 0)
-     )
-    (let* ((v1-49 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-50 (the-as number (logior #x3f800000 v1-49)))
-           (f0-2 (+ -1.0 (the-as float v1-50)))
-           )
-     (cond
-      ((< 0.75 f0-2)
-       (play-ambient (-> self ambient) "BIL-TA04" #t (the-as vector #f))
-       )
-      ((< 0.5 f0-2)
-       (play-ambient (-> self ambient) "BIL-TA05" #t (the-as vector #f))
-       )
-      ((< 0.25 f0-2)
-       (play-ambient (-> self ambient) "BIL-TA4A" #t (the-as vector #f))
-       )
-      (else
-       (play-ambient (-> self ambient) "BIL-TA5A" #t (the-as vector #f))
-       )
+    (init!
+      (-> self query)
+      (lookup-text! *common-text* (game-text-id play-again?) #f)
+      40
+      150
+      30
+      #f
+      (lookup-text! *common-text* (game-text-id quit) #f)
       )
-     )
+    (ja-channel-set! 1)
+    (let ((gp-1 (-> self skel root-channel 0)))
+      (set! (-> gp-1 frame-group) (the-as art-joint-anim (get-art-elem self)))
+      )
+    (send-event *target* 'end-mode)
+    (when (and (handle->process (-> self offending-rat)) (zero? (-> self num-snacks)))
+      (send-event *camera* 'change-target (handle->process (-> self offending-rat)))
+      (send-event *camera* 'change-state cam-standoff 0)
+      (send-event *camera* 'set-standoff-height 0.0)
+      (send-event *camera* 'set-standoff-dist 20480.0)
+      (send-event *camera* 'set-standoff-height 16384.0)
+      (send-event *camera-combiner* 'stop-tracking)
+      (send-event *camera-combiner* 'start-tracking (ppointer->process (-> *camera* slave 0)))
+      (let ((a0-24 (get-reminder (-> self tasks) 0)))
+        (save-reminder (-> self tasks) (seekl a0-24 255 1) 0)
+        )
+      (let* ((v1-49 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-50 (the-as number (logior #x3f800000 v1-49)))
+             (f0-2 (+ -1.0 (the-as float v1-50)))
+             )
+        (cond
+          ((< 0.75 f0-2)
+           (play-ambient (-> self ambient) "BIL-TA04" #t (the-as vector #f))
+           )
+          ((< 0.5 f0-2)
+           (play-ambient (-> self ambient) "BIL-TA05" #t (the-as vector #f))
+           )
+          ((< 0.25 f0-2)
+           (play-ambient (-> self ambient) "BIL-TA4A" #t (the-as vector #f))
+           )
+          (else
+            (play-ambient (-> self ambient) "BIL-TA5A" #t (the-as vector #f))
+            )
+          )
+        )
+      )
+    (none)
     )
-   (none)
-   )
   :exit
   (behavior ()
-   (billy-kill-all-but-farthy)
-   (send-event *camera* 'change-target *target*)
-   (send-event *camera* 'change-state *camera-base-mode* 0)
-   (none)
-   )
+    (billy-kill-all-but-farthy)
+    (send-event *camera* 'change-target *target*)
+    (send-event *camera* 'change-state *camera-base-mode* 0)
+    (none)
+    )
   :trans
   (behavior ()
-   (cond
-    ((> (-> self num-snacks) 0)
-     (when (process-grab? *target*)
-      (close-current! (-> self tasks))
-      (go-virtual play-anim)
-      )
-     )
-    ((< (-> self num-snacks) 0)
-     (go-virtual idle)
-     )
-    (else
-     (process-grab? *target*)
-     (when (and *target* (logtest? (-> *target* state-flags) 256))
-      (let ((gp-0 (get-response (-> self query))))
-       (cond
-        ((and (= gp-0 'yes) (process-release? *target*))
-         (go-virtual enter-playing)
+    (cond
+      ((> (-> self num-snacks) 0)
+       (when (process-grab? *target*)
+         (close-current! (-> self tasks))
+         (go-virtual play-anim)
          )
-        ((= gp-0 'no)
-         (go-virtual play-reject)
-         )
-        )
        )
+      ((< (-> self num-snacks) 0)
+       (go-virtual idle)
+       )
+      (else
+        (process-grab? *target*)
+        (when (and *target* (logtest? (-> *target* state-flags) 256))
+          (let ((gp-0 (get-response (-> self query))))
+            (cond
+              ((and (= gp-0 'yes) (process-release? *target*))
+               (go-virtual enter-playing)
+               )
+              ((= gp-0 'no)
+               (go-virtual play-reject)
+               )
+              )
+            )
+          )
+        )
       )
-     )
+    (spool-push *art-control* "billy-reject" 0 self -99.0)
+    (none)
     )
-   (spool-push *art-control* "billy-reject" 0 self -99.0)
-   (none)
-   )
   :code
   (the-as (function none :behavior billy) process-taskable-anim-loop)
   :post
-  (behavior ()
-   (ja-post)
-   (none)
-   )
+  (behavior () (ja-post) (none))
   )
 
 ;; definition for function billy-game-update-wave
 ;; INFO: Return type mismatch int vs none.
 (defbehavior billy-game-update-wave billy ()
-  (let*
-   ((a0-2
-     (/ (the-as uint (+ (get-reminder (-> self tasks) 0) 1)) (the-as uint 5))
-     )
-    (v1-4 (min 3 (the-as int a0-2)))
+  (let* ((a0-2 (/ (the-as uint (+ (get-reminder (-> self tasks) 0) 1)) (the-as uint 5)))
+         (v1-4 (min 3 (the-as int a0-2)))
+         )
+    (cond
+      ((zero? v1-4)
+       (let ((v1-5 (-> self current-wave)))
+         (cond
+           ((zero? v1-5)
+            (set! (-> self max-rats) 6)
+            (set! (-> self rat-speed) 1.0)
+            (set! (-> self spawn-rats) #t)
+            (set! (-> self passed-last-stage) #f)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 4500)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           ((= v1-5 2)
+            (set! (-> self max-rats) 8)
+            (set! (-> self rat-speed) 1.2)
+            (set! (-> self spawn-rats) #t)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 6000)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           ((= v1-5 4)
+            (set! (-> self max-rats) 10)
+            (set! (-> self rat-speed) 1.35)
+            (set! (-> self spawn-rats) #t)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 7500)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           )
+         )
+       )
+      ((= v1-4 1)
+       (let ((v1-30 (-> self current-wave)))
+         (cond
+           ((zero? v1-30)
+            (set! (-> self max-rats) 6)
+            (set! (-> self rat-speed) 1.0)
+            (set! (-> self spawn-rats) #t)
+            (set! (-> self passed-last-stage) #f)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 4500)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           ((= v1-30 2)
+            (set! (-> self max-rats) 7)
+            (set! (-> self rat-speed) 1.2)
+            (set! (-> self spawn-rats) #t)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 6000)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           ((= v1-30 4)
+            (set! (-> self max-rats) 10)
+            (set! (-> self rat-speed) 1.3)
+            (set! (-> self spawn-rats) #t)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 6600)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           )
+         )
+       )
+      ((= v1-4 2)
+       (let ((v1-55 (-> self current-wave)))
+         (cond
+           ((zero? v1-55)
+            (set! (-> self max-rats) 6)
+            (set! (-> self rat-speed) 1.0)
+            (set! (-> self spawn-rats) #t)
+            (set! (-> self passed-last-stage) #f)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 4500)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           ((= v1-55 2)
+            (set! (-> self max-rats) 7)
+            (set! (-> self rat-speed) 1.1)
+            (set! (-> self spawn-rats) #t)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 5400)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           ((= v1-55 4)
+            (set! (-> self max-rats) 9)
+            (set! (-> self rat-speed) 1.25)
+            (set! (-> self spawn-rats) #t)
+            (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 6000)
+              (+! (-> self current-wave) 1)
+              (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+              )
+            )
+           )
+         )
+       )
+      (else
+        (let ((v1-80 (-> self current-wave)))
+          (cond
+            ((zero? v1-80)
+             (set! (-> self max-rats) 5)
+             (set! (-> self rat-speed) 0.9)
+             (set! (-> self spawn-rats) #t)
+             (set! (-> self passed-last-stage) #f)
+             (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 4500)
+               (+! (-> self current-wave) 1)
+               (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+               )
+             )
+            ((= v1-80 2)
+             (set! (-> self max-rats) 6)
+             (set! (-> self rat-speed) 1.0)
+             (set! (-> self spawn-rats) #t)
+             (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 5400)
+               (+! (-> self current-wave) 1)
+               (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+               )
+             )
+            ((= v1-80 4)
+             (set! (-> self max-rats) 8)
+             (set! (-> self rat-speed) 1.1)
+             (set! (-> self spawn-rats) #t)
+             (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 6000)
+               (+! (-> self current-wave) 1)
+               (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+               )
+             )
+            )
+          )
+        )
+      )
     )
-   (cond
-    ((zero? v1-4)
-     (let ((v1-5 (-> self current-wave)))
-      (cond
-       ((zero? v1-5)
-        (set! (-> self max-rats) 6)
-        (set! (-> self rat-speed) 1.0)
-        (set! (-> self spawn-rats) #t)
-        (set! (-> self passed-last-stage) #f)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          4500
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-5 2)
-        (set! (-> self max-rats) 8)
-        (set! (-> self rat-speed) 1.2)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          6000
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-5 4)
-        (set! (-> self max-rats) 10)
-        (set! (-> self rat-speed) 1.35)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          7500
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       )
-      )
-     )
-    ((= v1-4 1)
-     (let ((v1-30 (-> self current-wave)))
-      (cond
-       ((zero? v1-30)
-        (set! (-> self max-rats) 6)
-        (set! (-> self rat-speed) 1.0)
-        (set! (-> self spawn-rats) #t)
-        (set! (-> self passed-last-stage) #f)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          4500
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-30 2)
-        (set! (-> self max-rats) 7)
-        (set! (-> self rat-speed) 1.2)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          6000
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-30 4)
-        (set! (-> self max-rats) 10)
-        (set! (-> self rat-speed) 1.3)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          6600
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       )
-      )
-     )
-    ((= v1-4 2)
-     (let ((v1-55 (-> self current-wave)))
-      (cond
-       ((zero? v1-55)
-        (set! (-> self max-rats) 6)
-        (set! (-> self rat-speed) 1.0)
-        (set! (-> self spawn-rats) #t)
-        (set! (-> self passed-last-stage) #f)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          4500
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-55 2)
-        (set! (-> self max-rats) 7)
-        (set! (-> self rat-speed) 1.1)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          5400
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-55 4)
-        (set! (-> self max-rats) 9)
-        (set! (-> self rat-speed) 1.25)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          6000
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       )
-      )
-     )
-    (else
-     (let ((v1-80 (-> self current-wave)))
-      (cond
-       ((zero? v1-80)
-        (set! (-> self max-rats) 5)
-        (set! (-> self rat-speed) 0.9)
-        (set! (-> self spawn-rats) #t)
-        (set! (-> self passed-last-stage) #f)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          4500
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-80 2)
-        (set! (-> self max-rats) 6)
-        (set! (-> self rat-speed) 1.0)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          5400
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       ((= v1-80 4)
-        (set! (-> self max-rats) 8)
-        (set! (-> self rat-speed) 1.1)
-        (set! (-> self spawn-rats) #t)
-        (when
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self wave-start-time))
-           )
-          6000
-          )
-         (+! (-> self current-wave) 1)
-         (set!
-          (-> self wave-start-time)
-          (the-as uint (-> *display* base-frame-counter))
-          )
-         )
-        )
-       )
-      )
-     )
-    )
-   )
   (none)
   )
 
@@ -1450,65 +931,44 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior billy-game-update billy ()
   (let ((v1-0 (-> self current-wave)))
-   (cond
-    ((or (zero? v1-0) (= v1-0 2) (= v1-0 4))
-     (billy-game-update-wave)
-     )
-    ((= v1-0 5)
-     (set! (-> self spawn-rats) #f)
-     (set! (-> self passed-last-stage) #t)
-     )
-    ((begin
-      (set! (-> self spawn-rats) #f)
-      (zero? (-> self num-rats))
-      )
-     (when
-      (>=
-       (-
-        (-> *display* base-frame-counter)
-        (the-as int (-> self wave-start-time))
-        )
-       900
+    (cond
+      ((or (zero? v1-0) (= v1-0 2) (= v1-0 4))
+       (billy-game-update-wave)
        )
-      (+! (-> self current-wave) 1)
-      (set!
-       (-> self wave-start-time)
-       (the-as uint (-> *display* base-frame-counter))
+      ((= v1-0 5)
+       (set! (-> self spawn-rats) #f)
+       (set! (-> self passed-last-stage) #t)
        )
-      )
-     )
-    (else
-     (set!
-      (-> self wave-start-time)
-      (the-as uint (-> *display* base-frame-counter))
-      )
-     )
-    )
-   )
-  (when (and (< (-> self num-rats) (-> self max-rats)) (-> self spawn-rats))
-   (let ((gp-0 (new 'stack-no-clear 'vector))
-         (s5-0 (new 'stack-no-clear 'vector))
+      ((begin (set! (-> self spawn-rats) #f) (zero? (-> self num-rats)))
+       (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wave-start-time))) 900)
+         (+! (-> self current-wave) 1)
+         (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
          )
-    (get-random-point (-> self path-starts) gp-0)
-    (get-random-point (-> self path-waypts) s5-0)
-    (let ((s4-0 (get-process *default-dead-pool* billy-rat #x4000)))
-     (if (when s4-0
-          (let ((t9-4 (method-of-type billy-rat activate)))
-           (t9-4
-            (the-as billy-rat s4-0)
-            self
-            'billy-rat
-            (the-as pointer #x70004000)
-            )
-           )
-          (run-now-in-process s4-0 billy-rat-init-by-other self gp-0 s5-0)
-          (-> s4-0 ppointer)
-          )
-      (+! (-> self num-rats) 1)
+       )
+      (else
+        (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+        )
       )
-     )
     )
-   )
+  (when (and (< (-> self num-rats) (-> self max-rats)) (-> self spawn-rats))
+    (let ((gp-0 (new 'stack-no-clear 'vector))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (get-random-point (-> self path-starts) gp-0)
+      (get-random-point (-> self path-waypts) s5-0)
+      (let ((s4-0 (get-process *default-dead-pool* billy-rat #x4000)))
+        (if (when s4-0
+                (let ((t9-4 (method-of-type billy-rat activate)))
+                  (t9-4 (the-as billy-rat s4-0) self 'billy-rat (the-as pointer #x70004000))
+                  )
+                (run-now-in-process s4-0 billy-rat-init-by-other self gp-0 s5-0)
+                (-> s4-0 ppointer)
+                )
+            (+! (-> self num-rats) 1)
+            )
+        )
+      )
+    )
   0
   (none)
   )
@@ -1517,303 +977,226 @@
 (defstate billy-playing (billy)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('billy-rat-die)
-      (+! (-> self num-rats) -1)
-      (let* ((v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-5 (the-as number (logior #x3f800000 v1-4)))
-             (f0-2 (+ -1.0 (the-as float v1-5)))
-             (f0-3 (* 3.0 f0-2))
-             )
-       (cond
-        ((< 1.0 f0-3)
-         #f
-         )
-        ((< 0.8333333 f0-3)
-         (play-ambient (-> self ambient) "SKSP009F" #t (the-as vector #f))
-         )
-        ((< 0.6666667 f0-3)
-         (play-ambient (-> self ambient) "BIL-TA02" #t (the-as vector #f))
-         )
-        ((< 0.5 f0-3)
-         (play-ambient (-> self ambient) "BIL-TA08" #t (the-as vector #f))
-         )
-        ((< 0.33333334 f0-3)
-         (play-ambient (-> self ambient) "BIL-TA09" #t (the-as vector #f))
-         )
-        ((< 0.16666667 f0-3)
-         (play-ambient (-> self ambient) "BIL-TA2A" #t (the-as vector #f))
-         )
-        (else
-         (play-ambient (-> self ambient) "BIL-TA4B" #t (the-as vector #f))
-         )
-        )
-       )
-      )
-    (('billy-rat-needs-destination)
-     (let* ((s5-0 arg0)
-            (gp-0
-             (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) billy-rat))
-              (the-as billy-rat s5-0)
+    (case arg2
+      (('billy-rat-die)
+       (+! (-> self num-rats) -1)
+       (let* ((v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+              (v1-5 (the-as number (logior #x3f800000 v1-4)))
+              (f0-2 (+ -1.0 (the-as float v1-5)))
+              (f0-3 (* 3.0 f0-2))
               )
-             )
+         (cond
+           ((< 1.0 f0-3)
+            #f
             )
-      (when gp-0
-       (let* ((v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-16 (the-as number (logior #x3f800000 v1-15)))
-              (f0-6 (+ -1.0 (the-as float v1-16)))
-              )
-        (cond
-         ((< 0.75 f0-6)
-          (play-ambient (-> self ambient) "BIL-TA01" #t (the-as vector #f))
-          )
-         ((< 0.5 f0-6)
-          (play-ambient (-> self ambient) "BIL-TA03" #t (the-as vector #f))
-          )
-         ((< 0.25 f0-6)
-          (play-ambient (-> self ambient) "BIL-TA1A" #t (the-as vector #f))
-          )
-         (else
-          (play-ambient (-> self ambient) "BIL-TA3A" #t (the-as vector #f))
-          )
-         )
-        )
-       (cond
-        ((rat-about-to-eat? gp-0 self)
-         (set! (-> self num-snacks) 0)
-         (set! (-> self offending-rat) (process->handle gp-0))
-         (set! (-> gp-0 dest-type) (the-as uint 3))
-         (let ((v0-1 (the-as object (-> gp-0 destination))))
-          (set!
-           (-> (the-as vector v0-1) quad)
-           (-> (the-as billy-snack (-> gp-0 snack process 0)) root trans quad)
-           )
-          v0-1
-          )
-         )
-        ((or
-          (= (-> gp-0 dest-type) 2)
-          (= (-> gp-0 dest-type) 3)
-          (<= (-> self num-snacks) 0)
-          )
-         (set! (-> gp-0 dest-type) (the-as uint 1))
-         (get-random-point (-> self path-starts) (-> gp-0 destination))
-         )
-        (else
-         (let ((s3-0 100)
-               (s4-0 0)
-               (s2-0 (the-as (pointer process-tree) (-> self child-override)))
-               (s5-1 (the-as process-tree #f))
-               )
-          (while s2-0
-           (let* ((s1-0 (ppointer->process s2-0))
-                  (v1-47
-                   (if
-                    (and
-                     (nonzero? s1-0)
-                     (type-type? (-> s1-0 type) billy-snack)
-                     )
-                    s1-0
-                    )
-                   )
-                  )
-            (cond
-             ((not v1-47)
-              )
-             ((< (-> (the-as billy-snack v1-47) num-rats) s3-0)
-              (set! s5-1 v1-47)
-              (set! s3-0 (-> (the-as billy-snack v1-47) num-rats))
-              (set! s4-0 1)
-              )
-             ((= (-> (the-as billy-snack v1-47) num-rats) s3-0)
-              (+! s4-0 1)
-              )
-             )
+           ((< 0.8333333 f0-3)
+            (play-ambient (-> self ambient) "SKSP009F" #t (the-as vector #f))
             )
-           (set! s2-0 (-> s2-0 0 brother))
-           )
-          (cond
-           ((zero? s4-0)
-            (set! (-> gp-0 dest-type) (the-as uint 1))
-            (get-random-point (-> self path-waypts) (-> gp-0 destination))
+           ((< 0.6666667 f0-3)
+            (play-ambient (-> self ambient) "BIL-TA02" #t (the-as vector #f))
+            )
+           ((< 0.5 f0-3)
+            (play-ambient (-> self ambient) "BIL-TA08" #t (the-as vector #f))
+            )
+           ((< 0.33333334 f0-3)
+            (play-ambient (-> self ambient) "BIL-TA09" #t (the-as vector #f))
+            )
+           ((< 0.16666667 f0-3)
+            (play-ambient (-> self ambient) "BIL-TA2A" #t (the-as vector #f))
             )
            (else
-            (set! (-> gp-0 snack) (process->handle (the-as billy-snack s5-1)))
-            (+! (-> (the-as billy-snack s5-1) num-rats) 1)
-            (set! (-> gp-0 dest-type) (the-as uint 2))
-            (set!
-             (-> gp-0 destination quad)
-             (-> (the-as billy-snack s5-1) root trans quad)
+             (play-ambient (-> self ambient) "BIL-TA4B" #t (the-as vector #f))
              )
-            (let ((f0-8 (+ 6799.36 (-> gp-0 destination x))))
-             (set! (-> gp-0 destination x) f0-8)
-             f0-8
-             )
-            )
            )
-          )
          )
-        )
+       )
+      (('billy-rat-needs-destination)
+       (let* ((s5-0 arg0)
+              (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) billy-rat))
+                        (the-as billy-rat s5-0)
+                        )
+                    )
+              )
+         (when gp-0
+           (let* ((v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                  (v1-16 (the-as number (logior #x3f800000 v1-15)))
+                  (f0-6 (+ -1.0 (the-as float v1-16)))
+                  )
+             (cond
+               ((< 0.75 f0-6)
+                (play-ambient (-> self ambient) "BIL-TA01" #t (the-as vector #f))
+                )
+               ((< 0.5 f0-6)
+                (play-ambient (-> self ambient) "BIL-TA03" #t (the-as vector #f))
+                )
+               ((< 0.25 f0-6)
+                (play-ambient (-> self ambient) "BIL-TA1A" #t (the-as vector #f))
+                )
+               (else
+                 (play-ambient (-> self ambient) "BIL-TA3A" #t (the-as vector #f))
+                 )
+               )
+             )
+           (cond
+             ((rat-about-to-eat? gp-0 self)
+              (set! (-> self num-snacks) 0)
+              (set! (-> self offending-rat) (process->handle gp-0))
+              (set! (-> gp-0 dest-type) (the-as uint 3))
+              (let ((v0-1 (the-as object (-> gp-0 destination))))
+                (set! (-> (the-as vector v0-1) quad) (-> (the-as billy-snack (-> gp-0 snack process 0)) root trans quad))
+                v0-1
+                )
+              )
+             ((or (= (-> gp-0 dest-type) 2) (= (-> gp-0 dest-type) 3) (<= (-> self num-snacks) 0))
+              (set! (-> gp-0 dest-type) (the-as uint 1))
+              (get-random-point (-> self path-starts) (-> gp-0 destination))
+              )
+             (else
+               (let ((s3-0 100)
+                     (s4-0 0)
+                     (s2-0 (the-as (pointer process-tree) (-> self child-override)))
+                     (s5-1 (the-as process-tree #f))
+                     )
+                 (while s2-0
+                   (let* ((s1-0 (ppointer->process s2-0))
+                          (v1-47 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) billy-snack))
+                                     s1-0
+                                     )
+                                 )
+                          )
+                     (cond
+                       ((not v1-47)
+                        )
+                       ((< (-> (the-as billy-snack v1-47) num-rats) s3-0)
+                        (set! s5-1 v1-47)
+                        (set! s3-0 (-> (the-as billy-snack v1-47) num-rats))
+                        (set! s4-0 1)
+                        )
+                       ((= (-> (the-as billy-snack v1-47) num-rats) s3-0)
+                        (+! s4-0 1)
+                        )
+                       )
+                     )
+                   (set! s2-0 (-> s2-0 0 brother))
+                   )
+                 (cond
+                   ((zero? s4-0)
+                    (set! (-> gp-0 dest-type) (the-as uint 1))
+                    (get-random-point (-> self path-waypts) (-> gp-0 destination))
+                    )
+                   (else
+                     (set! (-> gp-0 snack) (process->handle (the-as billy-snack s5-1)))
+                     (+! (-> (the-as billy-snack s5-1) num-rats) 1)
+                     (set! (-> gp-0 dest-type) (the-as uint 2))
+                     (set! (-> gp-0 destination quad) (-> (the-as billy-snack s5-1) root trans quad))
+                     (let ((f0-8 (+ 6799.36 (-> gp-0 destination x))))
+                       (set! (-> gp-0 destination x) f0-8)
+                       f0-8
+                       )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         )
        )
       )
-     )
     )
-   )
   :enter
   (behavior ()
-   (push-setting! *setting-control* self 'music 'danger 0.0 0)
-   (ja-channel-set! 0)
-   (clear-collide-with-as (-> self root-override))
-   (init!
-    (-> self query)
-    (the-as string #f)
-    40
-    150
-    25
-    #t
-    (lookup-text! *common-text* (game-text-id quit) #f)
-    )
-   (set!
-    (-> self wave-start-time)
-    (the-as uint (-> *display* base-frame-counter))
-    )
-   (set! (-> self num-snacks) 0)
-   (set! (-> self num-rats) 0)
-   (set! (-> self current-wave) 0)
-   (set! (-> self offending-rat) (the-as handle #f))
-   (let ((gp-1 (new 'stack-no-clear 'vector)))
-    (dotimes
-     (s5-1
-      (+ (the int (the float (+ (-> self path-snacks curve num-cverts) -1))) 1)
-      )
-     (eval-path-curve-div! (-> self path-snacks) gp-1 (the float s5-1) 'exact)
-     (let ((s4-1 (get-process *default-dead-pool* billy-snack #x4000)))
-      (if (when s4-1
-           (let ((t9-7 (method-of-type billy-snack activate)))
-            (t9-7
-             (the-as billy-snack s4-1)
-             self
-             'billy-snack
-             (the-as pointer #x70004000)
-             )
-            )
-           (run-now-in-process s4-1 billy-snack-init-by-other gp-1)
-           (-> s4-1 ppointer)
-           )
-       (+! (-> self num-snacks) 1)
-       )
-      )
-     )
-    )
-   (backup-load-state-and-set-cmds *load-state* '())
-   (let*
-    ((gp-2
-      '(
-        (kill
-          "swamp-blimp-3"
+    (push-setting! *setting-control* self 'music 'danger 0.0 0)
+    (ja-channel-set! 0)
+    (clear-collide-with-as (-> self root-override))
+    (init! (-> self query) (the-as string #f) 40 150 25 #t (lookup-text! *common-text* (game-text-id quit) #f))
+    (set! (-> self wave-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self num-snacks) 0)
+    (set! (-> self num-rats) 0)
+    (set! (-> self current-wave) 0)
+    (set! (-> self offending-rat) (the-as handle #f))
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+      (dotimes (s5-1 (+ (the int (the float (+ (-> self path-snacks curve num-cverts) -1))) 1))
+        (eval-path-curve-div! (-> self path-snacks) gp-1 (the float s5-1) 'exact)
+        (let ((s4-1 (get-process *default-dead-pool* billy-snack #x4000)))
+          (if (when s4-1
+                  (let ((t9-7 (method-of-type billy-snack activate)))
+                    (t9-7 (the-as billy-snack s4-1) self 'billy-snack (the-as pointer #x70004000))
+                    )
+                  (run-now-in-process s4-1 billy-snack-init-by-other gp-1)
+                  (-> s4-1 ppointer)
+                  )
+              (+! (-> self num-snacks) 1)
+              )
           )
-        (kill
-         "swamp-tetherrock-14"
-         )
-        (kill
-         "swamp-tetherrock-15"
-         )
-        (kill
-         "flutflut-3"
-         )
-        (kill
-         "tar-plat-26"
-         )
-        (kill
-         "tar-plat-25"
-         )
-        (kill
-         "babak-380"
-         )
-        (kill
-         "eco-164"
-         )
-        (kill
-         "eco-165"
-         )
-        (kill
-         "eco-140"
-         )
-        (kill
-         "launcher-97"
-         )
-        (kill
-         "swamp-rat-nest-5"
-         )
-        (kill
-         "swamp-rat-nest-4"
-         )
-        (kill
-         "swamp-rat-nest-3"
-         )
-        (kill
-         "swamp-rat-nest-2"
-         )
-        (kill
-         "sharkey-9"
-         )
-        (kill
-         "launcher-46"
-         )
-        (kill
-         "launcher-44"
-         )
-        (kill
-         "launcher-42"
-         )
-        (kill "swamp-spike-43") (kill "swamp-spike-44") (kill "swamp-spike-45")
         )
       )
-     (a1-8 (car gp-2))
-     )
-    (while (not (null? gp-2))
-     (execute-command *load-state* (the-as pair a1-8))
-     (set! gp-2 (cdr gp-2))
-     (set! a1-8 (car gp-2))
-     )
+    (backup-load-state-and-set-cmds *load-state* '())
+    (let* ((gp-2
+             '((kill "swamp-blimp-3")
+               (kill "swamp-tetherrock-14")
+               (kill "swamp-tetherrock-15")
+               (kill "flutflut-3")
+               (kill "tar-plat-26")
+               (kill "tar-plat-25")
+               (kill "babak-380")
+               (kill "eco-164")
+               (kill "eco-165")
+               (kill "eco-140")
+               (kill "launcher-97")
+               (kill "swamp-rat-nest-5")
+               (kill "swamp-rat-nest-4")
+               (kill "swamp-rat-nest-3")
+               (kill "swamp-rat-nest-2")
+               (kill "sharkey-9")
+               (kill "launcher-46")
+               (kill "launcher-44")
+               (kill "launcher-42")
+               (kill "swamp-spike-43")
+               (kill "swamp-spike-44")
+               (kill "swamp-spike-45")
+               )
+             )
+           (a1-8 (car gp-2))
+           )
+      (while (not (null? gp-2))
+        (execute-command *load-state* (the-as pair a1-8))
+        (set! gp-2 (cdr gp-2))
+        (set! a1-8 (car gp-2))
+        )
+      )
+    (none)
     )
-   (none)
-   )
   :exit
   (behavior ()
-   (restore-collide-with-as (-> self root-override))
-   (restore-load-state-and-cleanup *load-state*)
-   (set! (-> *ACTOR-bank* birth-max) 1000)
-   (clear-pending-settings-from-process *setting-control* self 'music)
-   (none)
-   )
+    (restore-collide-with-as (-> self root-override))
+    (restore-load-state-and-cleanup *load-state*)
+    (set! (-> *ACTOR-bank* birth-max) 1000)
+    (clear-pending-settings-from-process *setting-control* self 'music)
+    (none)
+    )
   :trans
   (behavior ()
-   (spool-push *art-control* "billy-resolution" 0 self -99.0)
-   (spool-push *art-control* "billy-reject" 0 self -99.0)
-   (none)
-   )
+    (spool-push *art-control* "billy-resolution" 0 self -99.0)
+    (spool-push *art-control* "billy-reject" 0 self -99.0)
+    (none)
+    )
   :code
   (behavior ()
-   (while #t
-    (billy-game-update)
-    (if
-     (or
-      (zero? (-> self num-snacks))
-      (and (zero? (-> self num-rats)) (-> self passed-last-stage))
-      (and *cheat-mode* (cpad-pressed? 1 x))
+    (while #t
+      (billy-game-update)
+      (if (or
+              (zero? (-> self num-snacks))
+              (and (zero? (-> self num-rats)) (-> self passed-last-stage))
+              (and *cheat-mode* (cpad-pressed? 1 x))
+              )
+          (go billy-done)
+          )
+      (suspend)
       )
-     (go billy-done)
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   :post
-  (behavior ()
-   (ja-post)
-   (none)
-   )
+  (behavior () (ja-post) (none))
   )
 
 ;; failed to figure out what this is:
@@ -1821,112 +1204,101 @@
   :virtual #t
   :trans
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'change-mode)
-    (set! (-> a1-0 param 0) (the-as uint 'billy))
-    (when (send-event-function *target* a1-0)
-     (send-event *target* 'trans 'reset)
-     (let ((v1-8 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-      (cond
-       (v1-8
-        (TODO-RENAME-30 (-> *target* control) (-> v1-8 extra trans))
-        (go billy-playing)
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) self)
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'change-mode)
+      (set! (-> a1-0 param 0) (the-as uint 'billy))
+      (when (send-event-function *target* a1-0)
+        (send-event *target* 'trans 'reset)
+        (let ((v1-8 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+          (cond
+            (v1-8
+              (TODO-RENAME-30 (-> *target* control) (-> v1-8 extra trans))
+              (go billy-playing)
+              )
+            (else
+              )
+            )
+          )
         )
-       (else
-        )
-       )
       )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 43 of type billy
 (defmethod TODO-RENAME-43 billy ((obj billy))
-  (when
-   (TODO-RENAME-10
-    (-> obj ambient)
-    (new 'stack-no-clear 'vector)
-    9000
-    122880.0
-    obj
-    )
-   (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-          (v1-4 (the-as number (logior #x3f800000 v1-3)))
-          (f30-0 (+ -1.0 (the-as float v1-4)))
+  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) 9000 122880.0 obj)
+    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-4 (the-as number (logior #x3f800000 v1-3)))
+           (f30-0 (+ -1.0 (the-as float v1-4)))
+           )
+      (cond
+        ((< 0.9411765 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM01" #f (-> obj root-override trans))
+         )
+        ((< 0.88235295 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM02" #f (-> obj root-override trans))
+         )
+        ((< 0.8235294 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM03" #f (-> obj root-override trans))
+         )
+        ((< 0.7647059 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM04" #f (-> obj root-override trans))
+         )
+        ((< 0.7058824 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM05" #f (-> obj root-override trans))
+         )
+        ((< 0.64705884 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM06" #f (-> obj root-override trans))
+         )
+        ((< 0.5882353 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM07" #f (-> obj root-override trans))
+         )
+        ((< 0.5294118 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM08" #f (-> obj root-override trans))
+         )
+        ((< 0.47058824 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM1A" #f (-> obj root-override trans))
+         )
+        ((< 0.4117647 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM2A" #f (-> obj root-override trans))
+         )
+        ((< 0.3529412 f30-0)
+         (play-ambient (-> obj ambient) "BIL-AM2B" #f (-> obj root-override trans))
+         )
+        ((= (current-status (-> obj tasks)) (task-status invalid))
+         #f
+         )
+        ((< 0.29411766 f30-0)
+         (play-ambient (-> obj ambient) "BIL-LO01" #f (-> obj root-override trans))
+         )
+        ((< 0.23529412 f30-0)
+         (play-ambient (-> obj ambient) "BIL-LO02" #f (-> obj root-override trans))
+         )
+        ((< 0.1764706 f30-0)
+         (play-ambient (-> obj ambient) "BIL-LO03" #f (-> obj root-override trans))
+         )
+        ((< 0.11764706 f30-0)
+         (play-ambient (-> obj ambient) "BIL-LO1A" #f (-> obj root-override trans))
+         )
+        ((< 0.05882353 f30-0)
+         (play-ambient (-> obj ambient) "BIL-LO2A" #f (-> obj root-override trans))
+         )
+        (else
+          (play-ambient (-> obj ambient) "BIL-LO2B" #f (-> obj root-override trans))
           )
-    (cond
-     ((< 0.9411765 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM01" #f (-> obj root-override trans))
+        )
       )
-     ((< 0.88235295 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM02" #f (-> obj root-override trans))
-      )
-     ((< 0.8235294 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM03" #f (-> obj root-override trans))
-      )
-     ((< 0.7647059 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM04" #f (-> obj root-override trans))
-      )
-     ((< 0.7058824 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM05" #f (-> obj root-override trans))
-      )
-     ((< 0.64705884 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM06" #f (-> obj root-override trans))
-      )
-     ((< 0.5882353 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM07" #f (-> obj root-override trans))
-      )
-     ((< 0.5294118 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM08" #f (-> obj root-override trans))
-      )
-     ((< 0.47058824 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM1A" #f (-> obj root-override trans))
-      )
-     ((< 0.4117647 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM2A" #f (-> obj root-override trans))
-      )
-     ((< 0.3529412 f30-0)
-      (play-ambient (-> obj ambient) "BIL-AM2B" #f (-> obj root-override trans))
-      )
-     ((= (current-status (-> obj tasks)) (task-status invalid))
-      #f
-      )
-     ((< 0.29411766 f30-0)
-      (play-ambient (-> obj ambient) "BIL-LO01" #f (-> obj root-override trans))
-      )
-     ((< 0.23529412 f30-0)
-      (play-ambient (-> obj ambient) "BIL-LO02" #f (-> obj root-override trans))
-      )
-     ((< 0.1764706 f30-0)
-      (play-ambient (-> obj ambient) "BIL-LO03" #f (-> obj root-override trans))
-      )
-     ((< 0.11764706 f30-0)
-      (play-ambient (-> obj ambient) "BIL-LO1A" #f (-> obj root-override trans))
-      )
-     ((< 0.05882353 f30-0)
-      (play-ambient (-> obj ambient) "BIL-LO2A" #f (-> obj root-override trans))
-      )
-     (else
-      (play-ambient (-> obj ambient) "BIL-LO2B" #f (-> obj root-override trans))
-      )
-     )
     )
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate play-anim (billy)
   :virtual #t
   :exit
-  (behavior ()
-   (billy-kill-all-but-farthy)
-   ((-> (method-of-type process-taskable play-anim) exit))
-   (none)
-   )
+  (behavior () (billy-kill-all-but-farthy) ((-> (method-of-type process-taskable play-anim) exit)) (none))
   )
 
 ;; failed to figure out what this is:
@@ -1934,132 +1306,91 @@
   :virtual #t
   :code
   (behavior ()
-   (if (!= (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        (get-art-elem self)
-        )
-    (ja-channel-push! 1 60)
-    )
-   (while #t
-    (let ((gp-0 (-> self skel root-channel 0)))
-     (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-     )
-    (let* ((f30-0 5.0)
-           (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-10 (the-as number (logior #x3f800000 v1-9)))
-           )
-     (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
-      (let ((a0-10 (-> self skel root-channel 0)))
-       (set! (-> a0-10 frame-group) (if (> (-> self skel active-channels) 0)
-                                     (-> self skel root-channel 0 frame-group)
-                                     )
-        )
-       (set!
-        (-> a0-10 param 0)
-        (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
-                       data
-                       0
-                       length
-                       )
-                    -1
+    (if (!= (if (> (-> self skel active-channels) 0)
+                    (-> self skel root-channel 0 frame-group)
                     )
-         )
-        )
-       (set! (-> a0-10 param 1) 1.0)
-       (set! (-> a0-10 frame-num) 0.0)
-       (joint-control-channel-group!
-        a0-10
-        (if (> (-> self skel active-channels) 0)
-         (-> self skel root-channel 0 frame-group)
-         )
-        num-func-seek!
-        )
-       )
-      (until (ja-done? 0)
-       (TODO-RENAME-43 self)
-       (suspend)
-       (let ((a0-12 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-12 param 0)
-         (the float (+ (-> a0-12 frame-group data 0 length) -1))
-         )
-        (set! (-> a0-12 param 1) 1.0)
-        (joint-control-channel-group-eval!
-         a0-12
-         (the-as art-joint-anim #f)
-         num-func-seek!
-         )
-        )
-       )
-      )
-     )
-    (when (= (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
+              (get-art-elem self)
               )
-           (-> self draw art-group data 3)
-           )
-     (let ((a0-19 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-19 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 4))
-       )
-      (set!
-       (-> a0-19 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 4))
-          data
-          0
-          length
+        (ja-channel-push! 1 60)
+        )
+    (while #t
+      (let ((gp-0 (-> self skel root-channel 0)))
+        (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
+        )
+      (let* ((f30-0 5.0)
+             (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-10 (the-as number (logior #x3f800000 v1-9)))
+             )
+        (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
+          (let ((a0-10 (-> self skel root-channel 0)))
+            (set! (-> a0-10 frame-group) (if (> (-> self skel active-channels) 0)
+                                             (-> self skel root-channel 0 frame-group)
+                                             )
+                  )
+            (set! (-> a0-10 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                              (-> self skel root-channel 0 frame-group)
+                                                              )
+                                                        data
+                                                        0
+                                                        length
+                                                        )
+                                                   -1
+                                                   )
+                                          )
+                  )
+            (set! (-> a0-10 param 1) 1.0)
+            (set! (-> a0-10 frame-num) 0.0)
+            (joint-control-channel-group!
+              a0-10
+              (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+              num-func-seek!
+              )
+            )
+          (until (ja-done? 0)
+            (TODO-RENAME-43 self)
+            (suspend)
+            (let ((a0-12 (-> self skel root-channel 0)))
+              (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
+              (set! (-> a0-12 param 1) 1.0)
+              (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
+              )
+            )
           )
-         -1
-         )
         )
-       )
-      (set! (-> a0-19 param 1) 1.0)
-      (set! (-> a0-19 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-19
-       (the-as art-joint-anim (-> self draw art-group data 4))
-       num-func-seek!
-       )
+      (when (= (if (> (-> self skel active-channels) 0)
+                    (-> self skel root-channel 0 frame-group)
+                    )
+               (-> self draw art-group data 3)
+               )
+        (let ((a0-19 (-> self skel root-channel 0)))
+          (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+          (set! (-> a0-19 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+                )
+          (set! (-> a0-19 param 1) 1.0)
+          (set! (-> a0-19 frame-num) 0.0)
+          (joint-control-channel-group! a0-19 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
+          )
+        (until (ja-done? 0)
+          (suspend)
+          (let ((a0-20 (-> self skel root-channel 0)))
+            (set! (-> a0-20 param 0) (the float (+ (-> a0-20 frame-group data 0 length) -1)))
+            (set! (-> a0-20 param 1) 1.0)
+            (joint-control-channel-group-eval! a0-20 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+        )
       )
-     (until (ja-done? 0)
-      (suspend)
-      (let ((a0-20 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-20 param 0)
-        (the float (+ (-> a0-20 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-20 param 1) 1.0)
-       (joint-control-channel-group-eval!
-        a0-20
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 47 of type billy
 ;; INFO: Return type mismatch basic vs symbol.
 (defmethod target-above-threshold? billy ((obj billy))
-  (the-as
-   symbol
-   (and
-    *target*
-    (zero? (logand (-> *target* control root-prim prim-core action) #x4000))
-    )
-   )
+  (the-as symbol (and *target* (zero? (logand (-> *target* control root-prim prim-core action) #x4000))))
   )
 
 ;; definition for method 11 of type billy
@@ -2067,42 +1398,25 @@
   (dummy-40 obj arg0 *billy-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task swamp-billy)))
   (dotimes (s5-0 3)
-   (let ((v1-3 (new 'process 'curve-control obj 'path (the float s5-0))))
-    (set! (-> obj path-data s5-0) v1-3)
-    (logior!
-     (-> v1-3 flags)
-     (path-control-flag display draw-line draw-point draw-text)
-     )
+    (let ((v1-3 (new 'process 'curve-control obj 'path (the float s5-0))))
+      (set! (-> obj path-data s5-0) v1-3)
+      (logior! (-> v1-3 flags) (path-control-flag display draw-line draw-point draw-text))
+      )
     )
-   )
   (set! (-> obj path) (-> obj path-snacks))
   (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-   (set! (-> obj farthy) (ppointer->handle (when s5-1
-                                            (let
-                                             ((t9-4
-                                               (method-of-type manipy activate)
-                                               )
-                                              )
-                                             (t9-4
-                                              (the-as manipy s5-1)
-                                              obj
-                                              'manipy
-                                              (the-as pointer #x70004000)
-                                              )
-                                             )
-                                            (run-now-in-process
-                                             s5-1
-                                             manipy-init
-                                             (-> obj root-override trans)
-                                             (-> obj entity)
-                                             *billy-sidekick-sg*
-                                             #f
-                                             )
-                                            (-> s5-1 ppointer)
-                                            )
-                          )
+    (set! (-> obj farthy)
+          (ppointer->handle
+            (when s5-1
+              (let ((t9-4 (method-of-type manipy activate)))
+                (t9-4 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
+                )
+              (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *billy-sidekick-sg* #f)
+              (-> s5-1 ppointer)
+              )
+            )
+          )
     )
-   )
   (send-event (handle->process (-> obj farthy)) 'center-joint 3)
   (send-event (handle->process (-> obj farthy)) 'anim-mode 'clone-anim)
   (dummy-42 obj)

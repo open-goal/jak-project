@@ -63,225 +63,180 @@
   )
 
 ;; definition for symbol *cavecrystal-light-control*, type cavecrystal-light-control
-(define
-  *cavecrystal-light-control*
-  (new 'static 'cavecrystal-light-control :head #f)
-  )
+(define *cavecrystal-light-control* (new 'static 'cavecrystal-light-control :head #f))
 
 ;; definition for function cavecrystal-light-control-default-callback
 ;; INFO: Return type mismatch vector vs none.
 ;; Used lq/sq
-(defun
-  cavecrystal-light-control-default-callback
-  ((arg0 (pointer process-drawable)) (arg1 int) (arg2 float))
+(defun cavecrystal-light-control-default-callback ((arg0 (pointer process-drawable)) (arg1 int) (arg2 float))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-   (let ((v1-1 (-> arg0 0 node-list)))
-    (if (and (>= arg1 0) (nonzero? v1-1))
-     (vector<-cspace! s5-0 (-> v1-1 data arg1))
-     (set! (-> s5-0 quad) (-> arg0 0 root trans quad))
-     )
+    (let ((v1-1 (-> arg0 0 node-list)))
+      (if (and (>= arg1 0) (nonzero? v1-1))
+          (vector<-cspace! s5-0 (-> v1-1 data arg1))
+          (set! (-> s5-0 quad) (-> arg0 0 root trans quad))
+          )
+      )
+    (set! (-> s5-0 w) arg2)
+    (let ((f0-1 (TODO-RENAME-10 *cavecrystal-light-control* s5-0))
+          (a2-2 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+          (a1-5 (new 'static 'vector :x 0.05 :y 0.05 :z 0.05 :w 1.0))
+          )
+      (vector-lerp! (-> arg0 0 draw color-mult) a1-5 a2-2 f0-1)
+      )
     )
-   (set! (-> s5-0 w) arg2)
-   (let ((f0-1 (TODO-RENAME-10 *cavecrystal-light-control* s5-0))
-         (a2-2 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
-         (a1-5 (new 'static 'vector :x 0.05 :y 0.05 :z 0.05 :w 1.0))
-         )
-    (vector-lerp! (-> arg0 0 draw color-mult) a1-5 a2-2 f0-1)
-    )
-   )
   (none)
   )
 
 ;; definition for method 13 of type cavecrystal-light-control
-(defmethod
-  create-connection!
-  cavecrystal-light-control
-  ((obj cavecrystal-light-control)
-   (arg0 process-drawable)
-   (arg1 res-lump)
-   (arg2 (function object object object object object))
-   (arg3 object)
-   (arg4 object)
-   )
+(defmethod create-connection! cavecrystal-light-control ((obj cavecrystal-light-control)
+                                                       (arg0 process-drawable)
+                                                       (arg1 res-lump)
+                                                       (arg2 (function object object object object object))
+                                                       (arg3 object)
+                                                       (arg4 object)
+                                                       )
   (if (nonzero? (res-lump-value arg1 'crystal-light uint128))
-   (add-connection
-    *cavecrystal-engine*
-    arg0
-    arg2
-    (process->ppointer arg0)
-    arg3
-    arg4
-    )
-   )
+      (add-connection *cavecrystal-engine* arg0 arg2 (process->ppointer arg0) arg3 arg4)
+      )
   )
 
 ;; definition for method 14 of type cavecrystal-light-control
-(defmethod
-  execute-connections
-  cavecrystal-light-control
-  ((obj cavecrystal-light-control))
+(defmethod execute-connections cavecrystal-light-control ((obj cavecrystal-light-control))
   (execute-connections *cavecrystal-engine* #f)
   )
 
 ;; definition for method 12 of type cavecrystal-light-control
-(defmethod
-  TODO-RENAME-12
-  cavecrystal-light-control
-  ((obj cavecrystal-light-control))
+(defmethod TODO-RENAME-12 cavecrystal-light-control ((obj cavecrystal-light-control))
   (let ((v1-0 (-> obj last-known-valid-time))
         (a1-1 (-> *display* base-frame-counter))
         )
-   (when (!= v1-0 a1-1)
-    (set! (-> obj last-known-valid-time) (the-as uint a1-1))
-    (cond
-     ((zero? v1-0)
-      (set! (-> obj active-count) 0)
-      (set! (-> obj head) #f)
-      (dotimes (v1-1 7)
-       (let ((a1-5 (-> obj crystal v1-1)))
-        (set! (-> a1-5 next) #f)
-        (set! (-> a1-5 crystal-id) v1-1)
-        (set! (-> a1-5 intensity) 0.0)
-        (set! (-> a1-5 fade-start) 20480.0)
-        (set! (-> a1-5 fade-end) 286720.0)
-        (set! (-> a1-5 crystal-handle) (the-as handle #f))
-        )
-       )
-      #f
-      )
-     (else
-      (when (> (-> obj active-count) 0)
-       (let ((v1-4 (the-as cavecrystal-light #f))
-             (a1-7 (-> obj head))
+    (when (!= v1-0 a1-1)
+      (set! (-> obj last-known-valid-time) (the-as uint a1-1))
+      (cond
+        ((zero? v1-0)
+         (set! (-> obj active-count) 0)
+         (set! (-> obj head) #f)
+         (dotimes (v1-1 7)
+           (let ((a1-5 (-> obj crystal v1-1)))
+             (set! (-> a1-5 next) #f)
+             (set! (-> a1-5 crystal-id) v1-1)
+             (set! (-> a1-5 intensity) 0.0)
+             (set! (-> a1-5 fade-start) 20480.0)
+             (set! (-> a1-5 fade-end) 286720.0)
+             (set! (-> a1-5 crystal-handle) (the-as handle #f))
              )
-        (while a1-7
-         (cond
-          ((handle->process (-> a1-7 crystal-handle))
-           (set! v1-4 a1-7)
-           (set! a1-7 (-> a1-7 next))
            )
-          (else
-           (let ((a2-4 (-> a1-7 next)))
-            (+! (-> obj active-count) -1)
-            (set! (-> a1-7 next) #f)
-            (set! (-> a1-7 intensity) 0.0)
-            (if v1-4
-             (set! (-> obj head) a2-4)
-             (set! (-> v1-4 next) a2-4)
-             )
-            (set! a1-7 a2-4)
-            )
-           )
-          )
+         #f
          )
+        (else
+          (when (> (-> obj active-count) 0)
+            (let ((v1-4 (the-as cavecrystal-light #f))
+                  (a1-7 (-> obj head))
+                  )
+              (while a1-7
+                (cond
+                  ((handle->process (-> a1-7 crystal-handle))
+                   (set! v1-4 a1-7)
+                   (set! a1-7 (-> a1-7 next))
+                   )
+                  (else
+                    (let ((a2-4 (-> a1-7 next)))
+                      (+! (-> obj active-count) -1)
+                      (set! (-> a1-7 next) #f)
+                      (set! (-> a1-7 intensity) 0.0)
+                      (if v1-4
+                          (set! (-> obj head) a2-4)
+                          (set! (-> v1-4 next) a2-4)
+                          )
+                      (set! a1-7 a2-4)
+                      )
+                    )
+                  )
+                )
+              )
+            #f
+            )
+          )
         )
-       #f
-       )
       )
-     )
     )
-   )
   )
 
 ;; definition for method 11 of type cavecrystal-light-control
-(defmethod
-  inc-intensites!
-  cavecrystal-light-control
-  ((obj cavecrystal-light-control))
+(defmethod inc-intensites! cavecrystal-light-control ((obj cavecrystal-light-control))
   (set! (-> obj head) #f)
   (let ((a1-0 (the-as cavecrystal-light #f))
         (v0-0 0)
         )
-   (dotimes (v1-0 7)
-    (let ((a2-3 (-> obj crystal v1-0)))
-     (set! (-> a2-3 next) #f)
-     (when (< 0.0 (-> a2-3 intensity))
-      (+! v0-0 1)
-      (if a1-0
-       (set! (-> a1-0 next) a2-3)
-       (set! (-> obj head) a2-3)
-       )
-      (set! a1-0 a2-3)
+    (dotimes (v1-0 7)
+      (let ((a2-3 (-> obj crystal v1-0)))
+        (set! (-> a2-3 next) #f)
+        (when (< 0.0 (-> a2-3 intensity))
+          (+! v0-0 1)
+          (if a1-0
+              (set! (-> a1-0 next) a2-3)
+              (set! (-> obj head) a2-3)
+              )
+          (set! a1-0 a2-3)
+          )
+        )
       )
-     )
+    (set! (-> obj active-count) v0-0)
+    v0-0
     )
-   (set! (-> obj active-count) v0-0)
-   v0-0
-   )
   )
 
 ;; definition for method 9 of type cavecrystal-light-control
 ;; Used lq/sq
-(defmethod
-  TODO-RENAME-9
-  cavecrystal-light-control
-  ((obj cavecrystal-light-control)
-   (arg0 int)
-   (arg1 float)
-   (arg2 process-drawable)
-   )
+(defmethod TODO-RENAME-9 cavecrystal-light-control ((obj cavecrystal-light-control) (arg0 int) (arg1 float) (arg2 process-drawable))
   (TODO-RENAME-12 obj)
   (when (or (< arg0 0) (>= arg0 7))
-   (format 0 "ERROR: Bogus cavecrystal id!~%")
-   (return #f)
-   )
-  (let ((s3-0 (-> obj crystal arg0)))
-   (cond
-    ((and (< 0.0 arg1) (>= 0.0 (-> s3-0 intensity)))
-     (+! (-> obj active-count) 1)
-     (set! (-> s3-0 intensity) arg1)
-     (set! (-> s3-0 crystal-handle) (process->handle arg2))
-     (set! (-> s3-0 trans quad) (-> arg2 root trans quad))
-     (inc-intensites! obj)
-     )
-    ((and (>= 0.0 arg1) (< 0.0 (-> s3-0 intensity)))
-     (+! (-> obj active-count) -1)
-     (set! (-> s3-0 intensity) 0.0)
-     (inc-intensites! obj)
-     )
-    ((< 0.0 arg1)
-     (set! (-> s3-0 intensity) arg1)
-     )
+    (format 0 "ERROR: Bogus cavecrystal id!~%")
+    (return #f)
     )
-   (set-fade! *palette-fade-controls* (+ arg0 1) arg1 0.0 (-> s3-0 trans))
-   )
+  (let ((s3-0 (-> obj crystal arg0)))
+    (cond
+      ((and (< 0.0 arg1) (>= 0.0 (-> s3-0 intensity)))
+       (+! (-> obj active-count) 1)
+       (set! (-> s3-0 intensity) arg1)
+       (set! (-> s3-0 crystal-handle) (process->handle arg2))
+       (set! (-> s3-0 trans quad) (-> arg2 root trans quad))
+       (inc-intensites! obj)
+       )
+      ((and (>= 0.0 arg1) (< 0.0 (-> s3-0 intensity)))
+       (+! (-> obj active-count) -1)
+       (set! (-> s3-0 intensity) 0.0)
+       (inc-intensites! obj)
+       )
+      ((< 0.0 arg1)
+       (set! (-> s3-0 intensity) arg1)
+       )
+      )
+    (set-fade! *palette-fade-controls* (+ arg0 1) arg1 0.0 (-> s3-0 trans))
+    )
   )
 
 ;; definition for method 10 of type cavecrystal-light-control
-(defmethod
-  TODO-RENAME-10
-  cavecrystal-light-control
-  ((obj cavecrystal-light-control) (arg0 vector))
+(defmethod TODO-RENAME-10 cavecrystal-light-control ((obj cavecrystal-light-control) (arg0 vector))
   (TODO-RENAME-12 obj)
   (let ((s5-1 (-> obj head))
         (f30-0 0.0)
         )
-   (when s5-1
-    (until (not s5-1)
-     (let* ((f26-0 (-> s5-1 fade-start))
-            (f28-0 (- (-> s5-1 fade-end) f26-0))
-            (f1-1
-             (fmin
-              (fmax
-               0.0
-               (-
-                (- (vector-vector-distance (-> s5-1 trans) arg0) (-> arg0 w))
-                f26-0
-                )
+    (when s5-1
+      (until (not s5-1)
+        (let* ((f26-0 (-> s5-1 fade-start))
+               (f28-0 (- (-> s5-1 fade-end) f26-0))
+               (f1-1 (fmin (fmax 0.0 (- (- (vector-vector-distance (-> s5-1 trans) arg0) (-> arg0 w)) f26-0)) f28-0))
+               (f0-7 (* (- 1.0 (/ f1-1 f28-0)) (-> s5-1 intensity)))
                )
-              f28-0
+          (if (< f30-0 f0-7)
+              (set! f30-0 f0-7)
               )
-             )
-            (f0-7 (* (- 1.0 (/ f1-1 f28-0)) (-> s5-1 intensity)))
-            )
-      (if (< f30-0 f0-7)
-       (set! f30-0 f0-7)
-       )
+          )
+        (set! s5-1 (-> s5-1 next))
+        )
+      (set! f30-0 (fmin 2.0 f30-0))
       )
-     (set! s5-1 (-> s5-1 next))
-     )
-    (set! f30-0 (fmin 2.0 f30-0))
+    f30-0
     )
-   f30-0
-   )
   )
