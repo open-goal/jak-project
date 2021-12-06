@@ -159,25 +159,25 @@
 
 ;; An item that calls a function when you select it.
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function int object)  :offset-assert  24)
+  ((activate-func (function object object)  :offset-assert  24)
    (hilite-timer  int8                :offset-assert  28) ;; how much longer to stay highlighted for.
    )
   :method-count-assert 9
   :size-assert         #x1d
   :flag-assert         #x90000001d
   (:methods
-    (new (symbol type string int (function int object)) _type_ 0)
+    (new (symbol type string object (function object object)) _type_ 0)
     )
   )
 
-(defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (name string) (id int) (func (function int object)))
+(defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (name string) id (func (function object object)))
   "Create an item for a function."
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj name) name)
     (set! (-> obj parent) #f)
     (set! (-> obj refresh-delay) 0)
     (set! (-> obj refresh-ctr) (-> obj refresh-delay))
-    (set! (-> obj id) id)
+    (set! (-> obj id) (the-as int id))
     (set! (-> obj activate-func) func)
     (set! (-> obj hilite-timer) 0)
     obj
@@ -186,25 +186,25 @@
 
 ;; An item with on/off state.
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func (function int debug-menu-msg object)  :offset-assert  24)
+  ((activate-func (function object debug-menu-msg object)  :offset-assert  24)
    (is-on         object                     :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   (:methods
-    (new (symbol type string int (function int debug-menu-msg object)) _type_ 0)
+    (new (symbol type string object (function object debug-menu-msg object)) _type_ 0)
     )
   )
 
-(defmethod new debug-menu-item-flag ((allocation symbol) (type-to-make type) (name string) (id int) (func (function int debug-menu-msg object)))
+(defmethod new debug-menu-item-flag ((allocation symbol) (type-to-make type) (name string) id (func (function object debug-menu-msg object)))
   "Create a new item for a flag. By default, the refresh-delay is set to 23."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
    (set! (-> v0-0 name) name)
    (set! (-> v0-0 parent) #f)
    (set! (-> v0-0 refresh-delay) 23)
    (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
-   (set! (-> v0-0 id) id)
+   (set! (-> v0-0 id) (the-as int id))
    (set! (-> v0-0 activate-func) func)
    (set! (-> v0-0 is-on) #f)
    v0-0
