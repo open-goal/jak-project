@@ -159,25 +159,25 @@
 
 ;; An item that calls a function when you select it.
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function int object)  :offset-assert  24)
+  ((activate-func (function object object)  :offset-assert  24)
    (hilite-timer  int8                :offset-assert  28) ;; how much longer to stay highlighted for.
    )
   :method-count-assert 9
   :size-assert         #x1d
   :flag-assert         #x90000001d
   (:methods
-    (new (symbol type string int (function int object)) _type_ 0)
+    (new (symbol type string object (function object object)) _type_ 0)
     )
   )
 
-(defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (name string) (id int) (func (function int object)))
+(defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (name string) id (func (function object object)))
   "Create an item for a function."
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj name) name)
     (set! (-> obj parent) #f)
     (set! (-> obj refresh-delay) 0)
     (set! (-> obj refresh-ctr) (-> obj refresh-delay))
-    (set! (-> obj id) id)
+    (set! (-> obj id) (the-as int id))
     (set! (-> obj activate-func) func)
     (set! (-> obj hilite-timer) 0)
     obj
@@ -186,25 +186,25 @@
 
 ;; An item with on/off state.
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func (function int debug-menu-msg object)  :offset-assert  24)
+  ((activate-func (function object debug-menu-msg object)  :offset-assert  24)
    (is-on         object                     :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   (:methods
-    (new (symbol type string int (function int debug-menu-msg object)) _type_ 0)
+    (new (symbol type string object (function object debug-menu-msg object)) _type_ 0)
     )
   )
 
-(defmethod new debug-menu-item-flag ((allocation symbol) (type-to-make type) (name string) (id int) (func (function int debug-menu-msg object)))
+(defmethod new debug-menu-item-flag ((allocation symbol) (type-to-make type) (name string) id (func (function object debug-menu-msg object)))
   "Create a new item for a flag. By default, the refresh-delay is set to 23."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
    (set! (-> v0-0 name) name)
    (set! (-> v0-0 parent) #f)
    (set! (-> v0-0 refresh-delay) 23)
    (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
-   (set! (-> v0-0 id) id)
+   (set! (-> v0-0 id) (the-as int id))
    (set! (-> v0-0 activate-func) func)
    (set! (-> v0-0 is-on) #f)
    v0-0
@@ -258,10 +258,7 @@
 
 
 (define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
-(define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
 (define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item))
-(define-extern debug-menu-item-var-render (function debug-menu-item-var int int int symbol debug-menu-item-var))
-(define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu))
 
 
 
@@ -522,7 +519,7 @@
   context
   )
 
-(defun debug-menu-append-item ((menu debug-menu) (item debug-menu-item))
+(defun debug-menu-append-item ((menu debug-menu) (item debug-menu-node))
   "Add an entry to the debug menu."
   (let* ((context (-> menu context))
          (was-active (-> context is-active))
@@ -578,7 +575,7 @@
     )
   )
 
-(defun debug-menu-make-from-template ((arg0 debug-menu-context) (arg1 pair))
+(defun-recursive debug-menu-make-from-template debug-menu-node ((arg0 debug-menu-context) (arg1 pair))
   "Make a debug menu from static layout data.  The keys are:
    - menu : make a new submenu
    - main-menu : make the root menu
@@ -1388,7 +1385,7 @@
   arg0
   )
 
-(defun debug-menu-send-msg ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 symbol))
+(defun-recursive debug-menu-send-msg debug-menu ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 symbol))
   "Send to all items in menu. Arg2 picks if we are recursive or not."
   (let* ((s3-0 (-> arg0 items))
          (s2-0 (car s3-0))

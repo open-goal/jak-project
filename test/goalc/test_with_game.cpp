@@ -869,10 +869,9 @@ TEST_F(WithGameTests, StackInlineArray) {
 }
 
 TEST_F(WithGameTests, GetEnumVals) {
-  shared_compiler->runner.run_static_test(
-      env, testCategory, "test-get-enum-vals.gc",
-      {"((thing1 . #<invalid object #x1>) (thing3 . #<invalid object #x3>) "
-       "(thing5 . #<invalid object #x5>))\n0\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "test-get-enum-vals.gc",
+                                          {"((thing1 . 1) (thing3 . 3) "
+                                           "(thing5 . 5))\n0\n"});
 }
 
 TEST_F(WithGameTests, SetU64FromFloat) {

@@ -214,6 +214,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
     rsp += 8;
   }
 
+  int fails = 0;
   while (true) {
     fmt::print("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base,
                rip, rip - m_debug_context.base);
@@ -223,6 +224,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
+      fails = 0;
       fmt::print("<====================== CALL STACK ======================>\n");
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
@@ -241,17 +243,57 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     } else {
       if (!frame.rip_info.knows_function) {
-        fmt::print("Unknown Function at 0x{:x} (#x{:x})\n", rip, rip - m_debug_context.base);
-
-        // attempt to backtrace anyway! if this fails then rip
-        u64 next_rip = 0;
-        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-          fmt::print("Invalid return address encountered!\n");
-          break;
+        if (fails == 0) {
+          fmt::print("Unknown Function at rip\n");
         }
 
-        rip = next_rip;
-        rsp = rsp + 8;  // 8 for the call itself.
+        if (s32(rip - m_debug_context.base) > 0 &&
+            m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
+          u32 function_sym_val = m_symbol_name_to_value_map.at("function");
+          u32 goal_pc = u32(rip - m_debug_context.base) & -8;
+
+          // go back through memory, but stop before reading the symbol table
+          u32 symtable_end = m_symbol_name_to_value_map.at("#f") + 0xff38;
+          while (goal_pc > symtable_end) {
+            goal_pc -= 8;
+            u32 wordval;
+            if (!read_memory_if_safe<u32>(&wordval, goal_pc)) {
+              goal_pc = symtable_end;
+              break;
+            }
+
+            if (wordval == function_sym_val) {
+              // found a function!
+              fmt::print("Found function after {} bytes!\n",
+                         (rip - m_debug_context.base) - goal_pc);
+              break;
+            }
+          }
+
+          if (goal_pc == symtable_end) {
+            fmt::print("Could not find function within this address.\n");
+            break;
+          }
+
+          rip = goal_pc + m_debug_context.base + BASIC_OFFSET;
+          rsp = rsp + 8;  // 8 for the call itself.
+        } else if (fails > 50) {
+          fmt::print(
+              "Backtrace was too long. Exception might have happened outside GOAL code, or the "
+              "stack frame is too long.\n");
+          break;
+        } else {
+          // attempt to backtrace anyway! if this fails then rip
+          u64 next_rip = 0;
+          if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+            fmt::print("Invalid return address encountered!\n");
+            break;
+          }
+
+          rip = next_rip;
+          rsp = rsp + 8;  // 8 for the call itself.
+          ++fails;
+        }
         // break;
       } else if (!frame.rip_info.func_debug) {
         fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);

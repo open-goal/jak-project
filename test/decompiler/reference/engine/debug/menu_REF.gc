@@ -182,14 +182,14 @@
 
 ;; definition of type debug-menu-item-function
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function int object)  :offset-assert  24)
-   (hilite-timer  int8                   :offset-assert  28)
+  ((activate-func (function object object)  :offset-assert  24)
+   (hilite-timer  int8                      :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x1d
   :flag-assert         #x90000001d
   (:methods
-    (new (symbol type string int (function int object)) _type_ 0)
+    (new (symbol type string object (function object object)) _type_ 0)
     )
   )
 
@@ -207,13 +207,13 @@
   )
 
 ;; definition for method 0 of type debug-menu-item-function
-(defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (arg0 string) (arg1 int) (arg2 (function int object)))
+(defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (arg0 string) (arg1 object) (arg2 (function object object)))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 parent) #f)
     (set! (-> v0-0 refresh-delay) 0)
     (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
-    (set! (-> v0-0 id) arg1)
+    (set! (-> v0-0 id) (the-as int arg1))
     (set! (-> v0-0 activate-func) arg2)
     (set! (-> v0-0 hilite-timer) 0)
     v0-0
@@ -222,14 +222,14 @@
 
 ;; definition of type debug-menu-item-flag
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func (function int debug-menu-msg object)  :offset-assert  24)
-   (is-on         object                                :offset-assert  28)
+  ((activate-func (function object debug-menu-msg object)  :offset-assert  24)
+   (is-on         object                                   :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   (:methods
-    (new (symbol type string int (function int debug-menu-msg object)) _type_ 0)
+    (new (symbol type string object (function object debug-menu-msg object)) _type_ 0)
     )
   )
 
@@ -247,13 +247,18 @@
   )
 
 ;; definition for method 0 of type debug-menu-item-flag
-(defmethod new debug-menu-item-flag ((allocation symbol) (type-to-make type) (arg0 string) (arg1 int) (arg2 (function int debug-menu-msg object)))
+(defmethod new debug-menu-item-flag ((allocation symbol)
+                                   (type-to-make type)
+                                   (arg0 string)
+                                   (arg1 object)
+                                   (arg2 (function object debug-menu-msg object))
+                                   )
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 parent) #f)
     (set! (-> v0-0 refresh-delay) 23)
     (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
-    (set! (-> v0-0 id) arg1)
+    (set! (-> v0-0 id) (the-as int arg1))
     (set! (-> v0-0 activate-func) arg2)
     (set! (-> v0-0 is-on) (the-as object #f))
     v0-0
@@ -578,7 +583,7 @@
   )
 
 ;; definition for function debug-menu-append-item
-(defun debug-menu-append-item ((menu debug-menu) (item debug-menu-item))
+(defun debug-menu-append-item ((menu debug-menu) (item debug-menu-node))
   (let* ((context (-> menu context))
          (was-active (-> context is-active))
          )
@@ -661,7 +666,7 @@
            (while (not (null? gp-1))
              (let ((a1-4 (debug-menu-make-from-template arg0 (the-as pair a1-3))))
                (if a1-4
-                   (debug-menu-append-item s4-1 (the-as debug-menu-item a1-4))
+                   (debug-menu-append-item s4-1 a1-4)
                    )
                )
              (set! gp-1 (cdr gp-1))
@@ -678,7 +683,7 @@
          (while (not (null? gp-2))
            (let ((a1-7 (debug-menu-make-from-template arg0 (the-as pair a1-6))))
              (if a1-7
-                 (debug-menu-append-item (the-as debug-menu s5-0) (the-as debug-menu-item a1-7))
+                 (debug-menu-append-item (the-as debug-menu s5-0) a1-7)
                  )
              )
            (set! gp-2 (cdr gp-2))
@@ -695,8 +700,8 @@
                    'debug
                    'debug-menu-item-flag
                    s5-1
-                   (the-as int (car (cdr (cdr arg1))))
-                   (the-as (function int debug-menu-msg object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
+                   (car (cdr (cdr arg1)))
+                   (the-as (function object debug-menu-msg object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
                    )
                  )
                 ((or (= s4-0 0) (= s4-0 'function))
@@ -704,8 +709,8 @@
                    'debug
                    'debug-menu-item-function
                    s5-1
-                   (the-as int (car (cdr (cdr arg1))))
-                   (the-as (function int object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
+                   (car (cdr (cdr arg1)))
+                   (the-as (function object object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
                    )
                  )
                 ((= s4-0 'var)
