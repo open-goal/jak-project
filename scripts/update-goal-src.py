@@ -30,7 +30,8 @@ files_with_modifications = [
   "target-snowball",
   "quicksandlurker",
   "logic-target",
-  "default-menu"
+  "default-menu",
+  "collide-shape"
 ]
 
 for file in files:

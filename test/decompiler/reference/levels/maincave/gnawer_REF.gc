@@ -130,7 +130,7 @@
   :flag-assert         #x1f056005d0
   (:methods
     (dummy-20 (_type_ int) matrix 20)
-    (dummy-21 (_type_ int matrix float float) float 21)
+    (dummy-21 (_type_ int bounding-box symbol float) float 21)
     (dummy-22 (_type_ float) symbol 22)
     (dummy-23 (_type_) none 23)
     (dummy-24 (_type_) none 24)
@@ -681,7 +681,7 @@
 ;; definition for method 22 of type gnawer
 ;; Used lq/sq
 (defmethod dummy-22 gnawer ((obj gnawer) (arg0 float))
-  (let ((s4-0 (new 'stack-no-clear 'matrix))
+  (let ((s4-0 (new 'stack-no-clear 'bounding-box))
         (a3-0 #t)
         (gp-0 #t)
         )
@@ -702,7 +702,7 @@
                  (set! gp-0 #f)
                  )
                )
-             (dummy-21 obj s2-0 s4-0 (the-as float a3-0) f0-1)
+             (dummy-21 obj s2-0 s4-0 a3-0 f0-1)
              )
            )
           (else
@@ -714,14 +714,14 @@
       )
     (set-vector!
       (-> obj root-override trans)
-      (* 0.5 (+ (-> s4-0 vector 0 x) (-> s4-0 vector 1 x)))
-      (* 0.5 (+ (-> s4-0 vector 0 y) (-> s4-0 vector 1 y)))
-      (* 0.5 (+ (-> s4-0 vector 0 z) (-> s4-0 vector 1 z)))
+      (* 0.5 (+ (-> s4-0 min x) (-> s4-0 max x)))
+      (* 0.5 (+ (-> s4-0 min y) (-> s4-0 max y)))
+      (* 0.5 (+ (-> s4-0 min z) (-> s4-0 max z)))
       1.0
       )
-    (let* ((f0-10 (- (-> s4-0 vector 1 x) (-> obj root-override trans x)))
-           (f1-12 (- (-> s4-0 vector 1 y) (-> obj root-override trans y)))
-           (f2-7 (- (-> s4-0 vector 1 z) (-> obj root-override trans z)))
+    (let* ((f0-10 (- (-> s4-0 max x) (-> obj root-override trans x)))
+           (f1-12 (- (-> s4-0 max y) (-> obj root-override trans y)))
+           (f2-7 (- (-> s4-0 max z) (-> obj root-override trans z)))
            (f0-14 (sqrtf (+ (* f0-10 f0-10) (* f1-12 f1-12) (* f2-7 f2-7))))
            (a0-3 (-> obj draw bounds))
            (v1-21 (-> obj root-override root-prim))
@@ -740,7 +740,7 @@
 
 ;; definition for method 21 of type gnawer
 ;; Used lq/sq
-(defmethod dummy-21 gnawer ((obj gnawer) (arg0 int) (arg1 matrix) (arg2 float) (arg3 float))
+(defmethod dummy-21 gnawer ((obj gnawer) (arg0 int) (arg1 bounding-box) (arg2 symbol) (arg3 float))
   (let ((gp-0 (-> obj segments arg0)))
     (let ((f0-1 (+ 10240.0 (-> obj route surface-dist))))
       (cond
@@ -776,11 +776,11 @@
       )
     (cond
       (arg2
-        (set! (-> arg1 vector 0 quad) (-> gp-0 world-pos quad))
-        (set! (-> arg1 vector 1 quad) (-> gp-0 world-pos quad))
+        (set! (-> arg1 min quad) (-> gp-0 world-pos quad))
+        (set! (-> arg1 max quad) (-> gp-0 world-pos quad))
         )
       (else
-        ((method-of-type bounding-box add-point!) (the-as bounding-box arg1) (the-as vector3s (-> gp-0 world-pos)))
+        (add-point! arg1 (the-as vector3s (-> gp-0 world-pos)))
         )
       )
     (let ((s4-1 (new 'stack-no-clear 'vector)))
