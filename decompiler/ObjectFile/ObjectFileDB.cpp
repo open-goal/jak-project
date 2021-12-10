@@ -612,7 +612,7 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
   return result;
 }
 
-std::string ObjectFileDB::process_game_text_files() {
+std::string ObjectFileDB::process_game_text_files(GameTextVersion version) {
   lg::info("- Finding game text...");
   std::string text_string = "COMMON";
   Timer timer;
@@ -624,7 +624,7 @@ std::string ObjectFileDB::process_game_text_files() {
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(1) == text_string) {
       file_count++;
-      auto statistics = process_game_text(data);
+      auto statistics = process_game_text(data, version);
       string_count += statistics.total_text;
       char_count += statistics.total_chars;
       if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
