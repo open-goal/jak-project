@@ -102,10 +102,10 @@ TEST(PrettyPrinter2, Debugging) {
 }
 
 namespace {
-std::string pretty_print_v2(const std::string& str) {
+std::string pretty_print_v2(const std::string& str, int line_length = 110) {
   auto obj =
       pretty_print::get_pretty_printer_reader().read_from_string(str).as_pair()->cdr.as_pair()->car;
-  return pretty_print::to_string(obj);
+  return pretty_print::to_string(obj, line_length);
 }
 }  // namespace
 
@@ -239,4 +239,22 @@ TEST(PrettyPrint2, ParenWayOutToTheRight) {
     obj
     )
   ))");
+}
+
+TEST(PrettyPrint2, ImproperList) {
+  std::string code = "( ( a .  b)  ( c .  d ) ( e  f . g) . #f )";
+  EXPECT_EQ(pretty_print_v2(code), "((a . b) (c . d) (e f . g) . #f)");
+}
+
+TEST(PrettyPrint2, ImproperListMultiLine) {
+  std::string code =
+      "( ( asdfasfdasdf .  b)  ( casdfsadfasdf .  dsadfasfdsf ) ( esdfasdf  fdasfsadf . gdfasfd) . "
+      "#f )";
+  EXPECT_EQ(pretty_print_v2(code, 40),
+            "((asdfasfdasdf . b)\n"
+            "  (casdfsadfasdf . dsadfasfdsf)\n"
+            "  (esdfasdf fdasfsadf . gdfasfd)\n"
+            "  .\n"
+            "  #f\n"
+            "  )");
 }
