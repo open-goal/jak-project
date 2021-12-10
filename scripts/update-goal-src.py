@@ -31,7 +31,8 @@ files_with_modifications = [
   "quicksandlurker",
   "logic-target",
   "default-menu",
-  "collide-shape"
+  "collide-shape",
+  "cam-states"
 ]
 
 for file in files:
