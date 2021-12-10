@@ -26,13 +26,10 @@ struct Node {
   }
 
   Node(std::vector<Node>&& list, bool is_list) {
-    kind = is_list ? Kind::LIST : Kind::PAIR;
-    if (!is_list) {
-      assert(list.size() == 2);
-    }
+    kind = is_list ? Kind::LIST : Kind::IMPROPER_LIST;
     child_nodes = std::move(list);
   }
-  enum class Kind : u8 { ATOM, LIST, PAIR, INVALID } kind = Kind::INVALID;
+  enum class Kind : u8 { ATOM, LIST, IMPROPER_LIST, INVALID } kind = Kind::INVALID;
 
   std::vector<Node> child_nodes;
   std::string atom_str;
@@ -51,7 +48,7 @@ struct Node {
       case Kind::ATOM:
         break;
       case Kind::LIST:
-      case Kind::PAIR:
+      case Kind::IMPROPER_LIST:
         assert(!child_nodes.empty());
         for (auto& child : child_nodes) {
           child.link(this, bfs_order, depth + 1);
@@ -122,7 +119,6 @@ Node to_node(const goos::Object& obj) {
           }
         } else {
           children.push_back(to_node(*to_print));
-          assert(false);  // untested
           return Node(std::move(children), false);
         }
       }
@@ -147,6 +143,7 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
       case Node::Kind::ATOM:
         node->text_len = node->atom_str.length() + node->quoted;
         break;
+      case Node::Kind::IMPROPER_LIST:
       case Node::Kind::LIST: {
         if (node->break_list) {
           // special case compute first line length
@@ -323,6 +320,7 @@ void append_node_to_string(const Node* node,
     case Node::Kind::ATOM:
       str.append(node->atom_str);
       break;
+    case Node::Kind::IMPROPER_LIST:
     case Node::Kind::LIST:
       if (node->break_list) {
         str.push_back('(');
@@ -332,6 +330,10 @@ void append_node_to_string(const Node* node,
         int extra_indent = 0;
         for (; node_idx < node->top_line_count; node_idx++) {
           size_t s0 = str.length();
+          if (node->kind == Node::Kind::IMPROPER_LIST &&
+              &node->child_nodes.at(node_idx) == &node->child_nodes.back()) {
+            str.append(". ");
+          }
           append_node_to_string(&node->child_nodes.at(node_idx), str, 0,
                                 listing_indent + extra_indent);
           // extra_indent += (str.length() - s0);
@@ -343,6 +345,13 @@ void append_node_to_string(const Node* node,
         }
         str.push_back('\n');
         for (; node_idx < node->child_nodes.size(); node_idx++) {
+          if (node->kind == Node::Kind::IMPROPER_LIST &&
+              &node->child_nodes.at(node_idx) == &node->child_nodes.back()) {
+            for (int i = 0; i < listing_indent; i++) {
+              str.push_back(' ');
+            }
+            str.append(".\n");
+          }
           append_node_to_string(&node->child_nodes.at(node_idx), str, listing_indent,
                                 listing_indent);
           str.push_back('\n');
@@ -358,6 +367,9 @@ void append_node_to_string(const Node* node,
         int extra_indent = 1;
         int c0 = 0;
         for (auto& child : node->child_nodes) {
+          if (node->kind == Node::Kind::IMPROPER_LIST && &child == &node->child_nodes.back()) {
+            str.append(". ");
+          }
           size_t s0 = str.length();
           append_node_to_string(&child, str, 0, listing_indent + extra_indent);
           str.push_back(' ');
