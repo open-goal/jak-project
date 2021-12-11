@@ -4391,13 +4391,10 @@ void push_asm_pcpyud_to_stack(const AsmOp* op,
   auto dst = op->dst();
   assert(dst.has_value());
 
-  auto possible_r0 = op->src(1);
-  assert(possible_r0.has_value());
-
   auto arg0_type = env.get_variable_type(*var, true);
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (bitfield_info && op->instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     read_elt->push_pcpyud(env.dts->ts, pool, env);
@@ -4421,13 +4418,10 @@ void push_asm_pextuw_to_stack(const AsmOp* op,
   auto dst = op->dst();
   assert(dst.has_value());
 
-  auto possible_r0 = op->src(0);
-  assert(possible_r0.has_value());
-
   auto arg0_type = env.get_variable_type(*var, true);
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (bitfield_info && op->instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::PEXTUW, 0);

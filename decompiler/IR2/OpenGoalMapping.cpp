@@ -42,6 +42,11 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     // lots of implicit logic in OpenGOAL depending on argument types!
     {InstructionKind::MFC1, {".mov", {}}},
 
+    {InstructionKind::MOVN, {"move-if-not-zero", {}}}, // s7 special case is handled elsewhere
+    {InstructionKind::SLT, {"set-on-less-than", {}}},
+    {InstructionKind::SLTI, {"set-on-less-than", {}}},
+    {InstructionKind::SRA, {"shift-arith-right", {}}},
+
     // ---- COP2 -----
     // TODO - VMOVE supports dest, but OpenGOAL does NOT yet!
     {InstructionKind::VMOVE, {".mov.vf", {MOD::DEST_MASK}}},
@@ -220,7 +225,14 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
         named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
       }
     } else {
-      args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
+      // if it's r0, replace it with a `0`
+      if (atom.is_reg() && atom.get_reg().get_kind() == decompiler::Reg::RegisterKind::GPR &&
+          atom.get_reg().reg_id() == decompiler::Reg::R0) {
+        args.push_back(pretty_print::to_symbol("0"));
+      } else {
+        args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
+      }
+      
     }
   }
 

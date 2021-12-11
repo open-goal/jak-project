@@ -572,9 +572,9 @@ class ConditionElement : public FormElement {
                                                         const std::vector<Form*>& source_forms,
                                                         const std::vector<TypeSpec>& types);
   FormElement* make_geq_zero_unsigned_check_generic(const Env& env,
-                                                  FormPool& pool,
-                                                  const std::vector<Form*>& source_forms,
-                                                  const std::vector<TypeSpec>& types);
+                                                    FormPool& pool,
+                                                    const std::vector<Form*>& source_forms,
+                                                    const std::vector<TypeSpec>& types);
   FormElement* make_geq_zero_signed_check_generic(const Env& env,
                                                   FormPool& pool,
                                                   const std::vector<Form*>& source_forms,

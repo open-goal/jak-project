@@ -943,16 +943,6 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
       return convert_bnel_1(i0, idx, true, force_asm_branch);
     case InstructionKind::SUBU:
       return convert_subu_1(i0, idx);  // may fail
-    case InstructionKind::SLT:
-      auto dst = make_dst_var(i0.get_dst(0).get_reg(), idx);
-      auto src0 = make_src_atom(i0.get_src(0).get_reg(), idx);
-      auto src1 = make_src_atom(i0.get_src(1).get_reg(), idx);
-      return std::make_unique<SimpleExpression>(SimpleExpression::Kind::SET_ON_LESS_THAN, dst, src0,
-                                                src1);
-    case InstructionKind::SLTI:
-      return make_2reg_1imm_op(i0, SimpleExpression::Kind::SET_ON_LESS_THAN_IMM, idx);
-    /*case InstructionKind::SRA:
-      return convert_sra_1(i0, idx);*/
     default:
       return nullptr;
   }

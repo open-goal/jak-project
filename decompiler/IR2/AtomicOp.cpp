@@ -519,7 +519,9 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     if (src.is_reg()) {
       auto reg = src.get_reg();
       if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
-        m_src[i] = RegisterAccess(AccessMode::READ, reg, my_idx, true);
+        if (reg != Register(Reg::GPR, Reg::R0)) {
+          m_src[i] = RegisterAccess(AccessMode::READ, reg, my_idx, true);
+        }
       }
     }
   }
