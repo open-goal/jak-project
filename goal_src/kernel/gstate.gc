@@ -38,7 +38,7 @@ There are several ways to "go"
 - go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
   to be cleaned up, and the old state's exit to be called.  It will reset the stack, then run the code.
   Unlike the others, this means you "go" immediately.
-  
+
 The compiler has two special hooks related to states: go-hook and define-state-hook.
 These take care of doing a go and a state definition and properly checking types.
 
@@ -95,7 +95,7 @@ It type checks the arguments for the entry function.
 (defmacro make-function-process (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process that runs a function on its main thread.
    Returns a pointer to the new process (or #f? on error)."
-  
+
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
@@ -110,7 +110,7 @@ It type checks the arguments for the entry function.
 (defmacro make-init-process (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process and run an init function on it.
    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
-  
+
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
@@ -151,7 +151,7 @@ It type checks the arguments for the entry function.
                                &key (post *no-state*)
                                )
   "Define a new state!"
-  
+
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
@@ -162,24 +162,32 @@ It type checks the arguments for the entry function.
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when (not (null? default-handlers))
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
               (set! default-handlers (cdr default-handlers))
-              (when (and (not event) (car default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
                   (set! event (car default-handlers)))
+              ;; enter
               (set! default-handlers (cdr default-handlers))
-              (when (and (not enter) (car default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
                   (set! enter (car default-handlers)))
+              ;; trans
               (set! default-handlers (cdr default-handlers))
-              (when (and (not trans) (car default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
                   (set! trans (car default-handlers)))
+              ;; exit
               (set! default-handlers (cdr default-handlers))
-              (when (and (not exit) (car default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
                   (set! exit (car default-handlers)))
+              ;; code
               (set! default-handlers (cdr default-handlers))
-              (when (and (not code) (car default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
                   (set! code (car default-handlers)))
+              ;; post
               (set! default-handlers (cdr default-handlers))
-              (when (and (not post) (car default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
                   (set! post (car default-handlers)))
+
               (set! default-handlers (cdr default-handlers))
               )
           )
@@ -207,7 +215,7 @@ It type checks the arguments for the entry function.
               `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
-         
+
          )
       )
     )
@@ -215,7 +223,7 @@ It type checks the arguments for the entry function.
 
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
-  
+
   (let ((behavior-type (first *defstate-type-stack*)))
     (pop! *defstate-type-stack*)
     `(lambda :behavior ,behavior-type ,bindings ,@body)
@@ -275,11 +283,11 @@ It type checks the arguments for the entry function.
      )
     (else
       ;; Note: this is added to let us defstate on a child before the parent.
-      ;; The child won't be usable like this, but it will prevent a crash. 
+      ;; The child won't be usable like this, but it will prevent a crash.
       (format 0 "[STATE ERROR] inherit-state got a null parent state. Child is ~A~%" (-> child name))
       )
     )
-  
+
   child
   )
 
@@ -330,7 +338,7 @@ It type checks the arguments for the entry function.
        ;; loop through current stack frames
        (let ((frame (-> pp stack-frame-top)))
          (while frame
-           (case (-> frame type) 
+           (case (-> frame type)
              ((protect-frame state)
               ((-> (the-as protect-frame frame) exit))
               )
@@ -338,7 +346,7 @@ It type checks the arguments for the entry function.
            (set! frame (-> frame next))
            )
          )
-       
+
        ;; done with going!
        (process-mask-clear! (-> pp mask) going)
 

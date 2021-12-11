@@ -11,9 +11,9 @@ namespace decompiler {
 class LinkedWordReader {
  public:
   explicit LinkedWordReader(const std::vector<LinkedWord>* words) : m_words(words) {}
-  const std::string& get_type_tag() {
-    if (m_words->at(m_offset).kind == LinkedWord::TYPE_PTR) {
-      auto& result = m_words->at(m_offset).symbol_name;
+  std::string get_type_tag() {
+    if (m_words->at(m_offset).kind() == LinkedWord::TYPE_PTR) {
+      auto result = m_words->at(m_offset).symbol_name();
       m_offset++;
       return result;
     } else {
@@ -26,7 +26,7 @@ class LinkedWordReader {
   T get_word() {
     static_assert(sizeof(T) == 4, "size of word in get_word");
     T result;
-    assert(m_words->at(m_offset).kind == LinkedWord::PLAIN_DATA);
+    assert(m_words->at(m_offset).kind() == LinkedWord::PLAIN_DATA);
     memcpy(&result, &m_words->at(m_offset).data, 4);
     m_offset++;
     return result;

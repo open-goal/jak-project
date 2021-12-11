@@ -575,12 +575,13 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
     fie->add_static(std::move(pair_structure));
     return result;
   } else if (form.is_int()) {
-    if (!integer_fits(form.as_int(), 4, true)) {
+    s64 bint_val = form.as_int() << 3;
+    if (!integer_fits(bint_val, 4, true)) {
       throw_compiler_error(
           form, "Cannot store {} (0x{:x}) in a pair because it overflows a signed 32-bit integer.",
-          form.as_int(), form.as_int());
+          bint_val, bint_val);
     }
-    return StaticResult::make_constant_data(form.as_int(), TypeSpec("int32"));
+    return StaticResult::make_constant_data(bint_val, TypeSpec("int32"));
   } else if (form.is_symbol()) {
     return StaticResult::make_symbol(form.as_symbol()->name);
   } else if (form.is_empty_list()) {

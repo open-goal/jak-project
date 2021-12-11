@@ -869,10 +869,9 @@ TEST_F(WithGameTests, StackInlineArray) {
 }
 
 TEST_F(WithGameTests, GetEnumVals) {
-  shared_compiler->runner.run_static_test(
-      env, testCategory, "test-get-enum-vals.gc",
-      {"((thing1 . #<invalid object #x1>) (thing3 . #<invalid object #x3>) "
-       "(thing5 . #<invalid object #x5>))\n0\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "test-get-enum-vals.gc",
+                                          {"((thing1 . 1) (thing3 . 3) "
+                                           "(thing5 . 5))\n0\n"});
 }
 
 TEST_F(WithGameTests, SetU64FromFloat) {
@@ -923,9 +922,18 @@ TEST_F(WithGameTests, Mips2C_CallGoal) {
                                           {"1 2 3 4 5 6 7 8\n12\n"});
 }
 
+void add_expected_type_mismatches(Compiler& c) {
+  c.add_ignored_define_extern_symbol("draw-drawable-tree-tfrag");
+  c.add_ignored_define_extern_symbol("draw-drawable-tree-trans-tfrag");
+  c.add_ignored_define_extern_symbol("draw-drawable-tree-dirt-tfrag");
+  c.add_ignored_define_extern_symbol("draw-drawable-tree-ice-tfrag");
+  c.add_ignored_define_extern_symbol("tfrag-init-buffer");
+}
+
 TEST(TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
+  add_expected_type_mismatches(compiler);
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
   compiler.run_test_no_load("decompiler/config/all-types.gc");
 }
@@ -933,6 +941,7 @@ TEST(TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
+  add_expected_type_mismatches(compiler);
   compiler.run_test_no_load("decompiler/config/all-types.gc");
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
 }

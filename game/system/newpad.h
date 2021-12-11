@@ -91,6 +91,7 @@ void ExitInputMode(bool);
 u64 input_mode_get();
 u64 input_mode_get_key();
 u64 input_mode_get_index();
+void input_mode_pad_set(s64);
 
 void initialize();
 void update_gamepads();

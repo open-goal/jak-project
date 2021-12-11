@@ -6,6 +6,7 @@
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
+#include "game/graphics/opengl_renderer/Loader.h"
 
 /*!
  * Matches the bucket-id enum in GOAL
@@ -47,6 +48,8 @@ struct SharedRenderState {
       : texture_pool(_texture_pool) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
+  Loader loader;
+
   u32 buckets_base = 0;  // address of buckets array.
   u32 next_bucket = 0;   // address of next bucket that we haven't started rendering in buckets
   u32 default_regs_buffer = 0;  // address of the default regs chain.

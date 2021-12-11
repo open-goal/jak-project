@@ -30,47 +30,26 @@
   )
 
 ;; definition for method 0 of type load-dir
-(defmethod
-  new
-  load-dir
-  ((allocation symbol) (type-to-make type) (length int) (unk basic))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (unk basic))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj unknown) unk)
+    (set! (-> obj string-array)
+          (the-as (array string) ((method-of-type array new) allocation array string length))
+          )
+    (set! (-> obj string-array length) 0)
+    (set! (-> obj data-array) (the-as (array basic) ((method-of-type array new) allocation array basic length)))
+    (set! (-> obj data-array length) 0)
+    obj
     )
-   (set! (-> obj unknown) unk)
-   (set!
-    (-> obj string-array)
-    (the-as
-     (array string)
-     ((method-of-type array new) allocation array string length)
-     )
-    )
-   (set! (-> obj string-array length) 0)
-   (set!
-    (-> obj data-array)
-    (the-as
-     (array basic)
-     ((method-of-type array new) allocation array basic length)
-     )
-    )
-   (set! (-> obj data-array length) 0)
-   obj
-   )
   )
 
 ;; definition for method 0 of type load-dir-art-group
 ;; INFO: Return type mismatch load-dir vs load-dir-art-group.
-(defmethod
-  new
-  load-dir-art-group
-  ((allocation symbol) (type-to-make type) (length int) (unk basic))
-  (let
-   ((obj ((method-of-type load-dir new) allocation type-to-make length unk)))
-   (set! (-> obj data-array content-type) art-group)
-   (the-as load-dir-art-group obj)
-   )
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (unk basic))
+  (let ((obj ((method-of-type load-dir new) allocation type-to-make length unk)))
+    (set! (-> obj data-array content-type) art-group)
+    (the-as load-dir-art-group obj)
+    )
   )
 
 ;; definition of type external-art-buffer
@@ -120,11 +99,7 @@
   (format #t "~Tpending-load-file: ~A~%" (-> obj pending-load-file))
   (format #t "~Tpending-load-file-part: ~D~%" (-> obj pending-load-file-part))
   (format #t "~Tpending-load-file-owner: ~D~%" (-> obj pending-load-file-owner))
-  (format
-   #t
-   "~Tpending-load-file-priority: ~f~%"
-   (-> obj pending-load-file-priority)
-   )
+  (format #t "~Tpending-load-file-priority: ~f~%" (-> obj pending-load-file-priority))
   (format #t "~Tload-file: ~A~%" (-> obj load-file))
   (format #t "~Tload-file-part: ~D~%" (-> obj load-file-part))
   (format #t "~Tload-file-owner: ~D~%" (-> obj load-file-owner))
@@ -136,30 +111,23 @@
   )
 
 ;; definition for method 0 of type external-art-buffer
-(defmethod
-  new
-  external-art-buffer
-  ((allocation symbol) (type-to-make type) (idx int))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+(defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (idx int))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj index) idx)
+    (set! (-> obj load-file) #f)
+    (set! (-> obj load-file-part) -1)
+    (set! (-> obj load-file-owner) (the-as handle #f))
+    (set! (-> obj load-file-priority) 100000000.0)
+    (set! (-> obj pending-load-file) #f)
+    (set! (-> obj pending-load-file-part) -1)
+    (set! (-> obj pending-load-file-owner) (the-as handle #f))
+    (set! (-> obj pending-load-file-priority) 100000000.0)
+    (set! (-> obj art-group) #f)
+    (set! (-> obj status) 'initialize)
+    (set! (-> obj locked?) #f)
+    (set! (-> obj other) #f)
+    obj
     )
-   (set! (-> obj index) idx)
-   (set! (-> obj load-file) #f)
-   (set! (-> obj load-file-part) -1)
-   (set! (-> obj load-file-owner) (the-as handle #f))
-   (set! (-> obj load-file-priority) 100000000.0)
-   (set! (-> obj pending-load-file) #f)
-   (set! (-> obj pending-load-file-part) -1)
-   (set! (-> obj pending-load-file-owner) (the-as handle #f))
-   (set! (-> obj pending-load-file-priority) 100000000.0)
-   (set! (-> obj art-group) #f)
-   (set! (-> obj status) 'initialize)
-   (set! (-> obj locked?) #f)
-   (set! (-> obj other) #f)
-   obj
-   )
   )
 
 ;; definition of type spool-anim
@@ -229,49 +197,36 @@
   (format #t "~Treserve-buffer-count: ~D~%" (-> obj reserve-buffer-count))
   (format #t "~Tactive-stream: ~A~%" (-> obj active-stream))
   (format #t "~Tpreload-stream: #<spool-anim @ #x~X>~%" (-> obj preload-stream))
-  (format
-   #t
-   "~Tlast-preload-stream: #<spool-anim @ #x~X>~%"
-   (-> obj last-preload-stream)
-   )
+  (format #t "~Tlast-preload-stream: #<spool-anim @ #x~X>~%" (-> obj last-preload-stream))
   obj
   )
 
 ;; definition for method 0 of type external-art-control
 (defmethod new external-art-control ((allocation symbol) (type-to-make type))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
-    )
-   (dotimes (buff-idx 2)
-    (set!
-     (-> obj buffer buff-idx)
-     ((method-of-type external-art-buffer new)
-      allocation
-      external-art-buffer
-      buff-idx
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (dotimes (buff-idx 2)
+      (set! (-> obj buffer buff-idx)
+            ((method-of-type external-art-buffer new) allocation external-art-buffer buff-idx)
+            )
       )
-     )
+    (set! (-> obj buffer 0 other) (-> obj buffer 1))
+    (set! (-> obj buffer 1 other) (-> obj buffer 0))
+    (dotimes (rec-idx 3)
+      (set! (-> obj rec rec-idx name) #f)
+      (set! (-> obj rec rec-idx priority) 100000000.0)
+      (set! (-> obj rec rec-idx owner) (the-as handle #f))
+      )
+    (set! (-> obj spool-lock) (the-as handle #f))
+    (set! (-> obj reserve-buffer) #f)
+    (set! (-> obj active-stream) #f)
+    (set! (-> obj preload-stream name) #f)
+    (set! (-> obj preload-stream priority) 100000000.0)
+    (set! (-> obj preload-stream owner) (the-as handle #f))
+    (set! (-> obj last-preload-stream name) #f)
+    (set! (-> obj last-preload-stream priority) 100000000.0)
+    (set! (-> obj last-preload-stream owner) (the-as handle #f))
+    obj
     )
-   (set! (-> obj buffer 0 other) (-> obj buffer 1))
-   (set! (-> obj buffer 1 other) (-> obj buffer 0))
-   (dotimes (rec-idx 3)
-    (set! (-> obj rec rec-idx name) #f)
-    (set! (-> obj rec rec-idx priority) 100000000.0)
-    (set! (-> obj rec rec-idx owner) (the-as handle #f))
-    )
-   (set! (-> obj spool-lock) (the-as handle #f))
-   (set! (-> obj reserve-buffer) #f)
-   (set! (-> obj active-stream) #f)
-   (set! (-> obj preload-stream name) #f)
-   (set! (-> obj preload-stream priority) 100000000.0)
-   (set! (-> obj preload-stream owner) (the-as handle #f))
-   (set! (-> obj last-preload-stream name) #f)
-   (set! (-> obj last-preload-stream priority) 100000000.0)
-   (set! (-> obj last-preload-stream owner) (the-as handle #f))
-   obj
-   )
   )
 
 ;; failed to figure out what this is:

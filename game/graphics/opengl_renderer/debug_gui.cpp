@@ -32,7 +32,7 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
   window_pos_pivot.y = 1.0f;
   ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
 
-  ImGui::SetNextWindowBgAlpha(0.35f);  // Transparent background
+  ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
   if (ImGui::Begin("Frame Timing", p_open, window_flags)) {
     ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
                 dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10), dma_stats.num_chunks);

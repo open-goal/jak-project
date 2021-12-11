@@ -38,8 +38,7 @@ void FormRegressionTest::TestData::add_string_at_label(const std::string& label_
 
   // add string type tag:
   LinkedWord type_tag(0);
-  type_tag.kind = LinkedWord::Kind::TYPE_PTR;
-  type_tag.symbol_name = "string";
+  type_tag.set_to_symbol(decompiler::LinkedWord::TYPE_PTR, "string");
   file.words_by_seg.at(1).push_back(type_tag);
   int string_start = 4 * int(file.words_by_seg.at(1).size());
 

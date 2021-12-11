@@ -14,15 +14,15 @@ namespace {
 template <typename T>
 T get_word(const LinkedWord& word) {
   T result;
-  assert(word.kind == LinkedWord::PLAIN_DATA);
+  assert(word.kind() == LinkedWord::PLAIN_DATA);
   static_assert(sizeof(T) == 4, "bad get_word size");
   memcpy(&result, &word.data, 4);
   return result;
 }
 
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
-  assert(word.kind == LinkedWord::PTR);
-  return data.linked_data.labels.at(word.label_id);
+  assert(word.kind() == LinkedWord::PTR);
+  return data.linked_data.labels.at(word.label_id());
 }
 
 }  // namespace
@@ -51,8 +51,8 @@ GameTextResult process_game_text(ObjectFileData& data) {
   int offset = 0;
 
   // type tage for game-text-info
-  if (words.at(offset).kind != LinkedWord::TYPE_PTR ||
-      words.front().symbol_name != "game-text-info") {
+  if (words.at(offset).kind() != LinkedWord::TYPE_PTR ||
+      words.front().symbol_name() != "game-text-info") {
     assert(false);
   }
   read_words.at(offset)++;

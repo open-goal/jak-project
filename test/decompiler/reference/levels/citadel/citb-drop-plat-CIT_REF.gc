@@ -70,8 +70,8 @@
 ;; definition for method 3 of type drop-plat
 (defmethod inspect drop-plat ((obj drop-plat))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tspin-axis: #<vector @ #x~X>~%" (-> obj spin-axis))
   (format #t "~T~Tspin-angle: ~f~%" (-> obj spin-angle))
   (format #t "~T~Tspin-speed: ~f~%" (-> obj spin-speed))
@@ -86,40 +86,32 @@
 (defstate drop-plat-idle (drop-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('drop)
-      (logclear! (-> self mask) (process-mask actor-pause))
-      (go drop-plat-drop)
+    (case arg2
+      (('drop)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go drop-plat-drop)
+       )
+      (('touch 'attack)
+       (send-event *target* 'no-look-around 300)
+       (send-event (ppointer->process (-> self parent)) 'player-stepped (-> self color))
+       #f
+       )
       )
-    (('touch 'attack)
-     (send-event *target* 'no-look-around 300)
-     (send-event
-      (ppointer->process (-> self parent))
-      'player-stepped
-      (-> self color)
-      )
-     #f
-     )
     )
-   )
   :code
   (behavior ()
-   (suspend)
-   (dummy-47 (-> self root-override))
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (logior! (-> self mask) (process-mask actor-pause))
-   (while #t
-    (if
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (-> self duration)
-      )
-     (go drop-plat-drop)
-     )
     (suspend)
+    (dummy-47 (-> self root-override))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (logior! (-> self mask) (process-mask actor-pause))
+    (while #t
+      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self duration))
+          (go drop-plat-drop)
+          )
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior drop-plat) ja-post)
   )
@@ -127,25 +119,16 @@
 ;; definition for function drop-plat-set-fade
 ;; INFO: Return type mismatch int vs none.
 (defbehavior drop-plat-set-fade drop-plat ()
-  (let
-   ((f0-1
-     (fmin
-      1.0
-      (*
-       0.000012207031
-       (-
-        (-> self root-override trans y)
-        (+
-         -204800.0
-         (-> (the-as process-drawable (-> self parent 0)) root trans y)
-         )
+  (let ((f0-1
+          (fmin 1.0 (* 0.000012207031 (- (-> self root-override trans y)
+                                         (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
+                                         )
+                       )
+                )
+          )
         )
-       )
-      )
-     )
+    (set-vector! (-> self draw color-mult) f0-1 f0-1 f0-1 1.0)
     )
-   (set-vector! (-> self draw color-mult) f0-1 f0-1 f0-1 1.0)
-   )
   0
   (none)
   )
@@ -153,262 +136,163 @@
 ;; failed to figure out what this is:
 (defstate drop-plat-spawn (drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('drop)
-      (go drop-plat-die)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('drop)
+                                                                                    (go drop-plat-die)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (set!
-    (-> self root-override trans y)
-    (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
-    )
-   (logior! (-> self draw status) 2)
-   (ja-post)
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (while #t
-    (when
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (-> self delay)
+    (set! (-> self root-override trans y)
+          (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
+          )
+    (logior! (-> self draw status) 2)
+    (ja-post)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (while #t
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay))
+        (let ((v1-14 (logand -3 (-> self draw status)))
+              (a0-5 (-> self draw))
+              )
+          (set! (-> a0-5 status) v1-14)
+          (go drop-plat-rise a0-5)
+          )
+        )
+      (suspend)
       )
-     (let ((v1-14 (logand -3 (-> self draw status)))
-           (a0-5 (-> self draw))
-           )
-      (set! (-> a0-5 status) v1-14)
-      (go drop-plat-rise a0-5)
-      )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate drop-plat-rise (drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('drop)
-      (go drop-plat-drop)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('drop)
+                                                                                    (go drop-plat-drop)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ((arg0 draw-control))
-   (set! (-> self interp) 1.0)
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self spin-angle) 0.0)
-   (set!
-    (-> self root-override trans y)
-    (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
-    )
-   (let ((gp-0 (new 'stack-no-clear 'vector))
-         (s5-0 #f)
-         )
-    (set! (-> gp-0 quad) (-> self root-override trans quad))
-    (set!
-     (-> gp-0 y)
-     (-> (the-as process-drawable (-> self parent 0)) root trans y)
-     )
-    (while #t
-     (let
-      ((f0-6
-        (fmax
-         0.0
-         (-
-          1.0
-          (*
-           0.0033333334
-           (the
-            float
-            (- (-> *display* base-frame-counter) (-> self state-time))
-            )
-           )
+    (set! (-> self interp) 1.0)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self spin-angle) 0.0)
+    (set! (-> self root-override trans y)
+          (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
           )
-         )
+    (let ((gp-0 (new 'stack-no-clear 'vector))
+          (s5-0 #f)
+          )
+      (set! (-> gp-0 quad) (-> self root-override trans quad))
+      (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
+      (while #t
+        (let ((f0-6
+                (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
+                )
+              )
+          (set! (-> self interp) (* f0-6 f0-6))
+          )
+        (set! (-> self root-override trans y)
+              (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (* 204800.0 (-> self interp)))
+              )
+        (when (and (not s5-0) (< (-> self interp) 0.05))
+          (set! s5-0 #t)
+          (sound-play-by-name (static-sound-name "bridge-piece-up") (new-sound-id) 1024 0 0 1 (the-as symbol gp-0))
+          )
+        (set! (-> self spin-angle) (* 10.0 (-> self spin-speed) (-> self interp)))
+        (if (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+            (go drop-plat-idle)
+            )
+        (suspend)
         )
-       )
-      (set! (-> self interp) (* f0-6 f0-6))
       )
-     (set!
-      (-> self root-override trans y)
-      (-
-       (-> (the-as process-drawable (-> self parent 0)) root trans y)
-       (* 204800.0 (-> self interp))
-       )
-      )
-     (when (and (not s5-0) (< (-> self interp) 0.05))
-      (set! s5-0 #t)
-      (sound-play-by-name
-       (static-sound-name "bridge-piece-up")
-       (new-sound-id)
-       1024
-       0
-       0
-       1
-       (the-as symbol gp-0)
-       )
-      )
-     (set! (-> self spin-angle) (* 10.0 (-> self spin-speed) (-> self interp)))
-     (if
-      (=
-       (-> (the-as process-drawable (-> self parent 0)) root trans y)
-       (-> self root-override trans y)
-       )
-      (go drop-plat-idle)
-      )
-     (suspend)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (behavior ()
-   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-    (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
-    (quaternion*!
-     (-> self root-override quat)
-     (-> (the-as process-drawable (-> self parent 0)) root quat)
-     gp-0
-     )
+    (let ((gp-0 (new 'stack-no-clear 'quaternion)))
+      (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
+      (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
+      )
+    (drop-plat-set-fade)
+    (transform-post)
+    (none)
     )
-   (drop-plat-set-fade)
-   (transform-post)
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate drop-plat-drop (drop-plat)
   :code
   (behavior ()
-   (when
-    (=
-     (-> (the-as process-drawable (-> self parent 0)) root trans y)
-     (-> self root-override trans y)
-     )
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (sound-play-by-name
-     (static-sound-name "bridge-piece-dn")
-     (new-sound-id)
-     1024
-     0
-     0
-     1
-     #t
-     )
-    (let ((gp-1 (the int (* 300.0 (rand-vu-float-range 0.2 0.3)))))
-     (while (< (- (-> *display* base-frame-counter) (-> self state-time)) gp-1)
-      (set!
-       (-> self interp)
-       (/
-        (the float (- (-> *display* base-frame-counter) (-> self state-time)))
-        (the float gp-1)
+    (when (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (sound-play-by-name (static-sound-name "bridge-piece-dn") (new-sound-id) 1024 0 0 1 #t)
+      (let ((gp-1 (the int (* 300.0 (rand-vu-float-range 0.2 0.3)))))
+        (while (< (- (-> *display* base-frame-counter) (-> self state-time)) gp-1)
+          (set! (-> self interp)
+                (/ (the float (- (-> *display* base-frame-counter) (-> self state-time))) (the float gp-1))
+                )
+          (set! (-> self spin-angle) (* 910.2222 (sin (* 196608.0 (-> self interp)))))
+          (suspend)
+          )
         )
-       )
-      (set!
-       (-> self spin-angle)
-       (* 910.2222 (sin (* 196608.0 (-> self interp))))
-       )
+      )
+    (while #t
+      (vector-v++! (-> self root-override transv) (dummy-62 (-> self root-override) (new-stack-vector0) 0.0))
+      (vector-v++! (-> self root-override trans) (-> self root-override transv))
+      (if (< 204800.0
+               (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+               )
+          (go drop-plat-die)
+          )
+      (+! (-> self spin-angle) (* (-> self spin-speed) (-> *display* seconds-per-frame)))
       (suspend)
       )
-     )
+    (none)
     )
-   (while #t
-    (vector-v++!
-     (-> self root-override transv)
-     (dummy-62 (-> self root-override) (new-stack-vector0) 0.0)
-     )
-    (vector-v++! (-> self root-override trans) (-> self root-override transv))
-    (if
-     (<
-      204800.0
-      (-
-       (-> (the-as process-drawable (-> self parent 0)) root trans y)
-       (-> self root-override trans y)
-       )
-      )
-     (go drop-plat-die)
-     )
-    (+!
-     (-> self spin-angle)
-     (* (-> self spin-speed) (-> *display* seconds-per-frame))
-     )
-    (suspend)
-    )
-   (none)
-   )
   :post
   (behavior ()
-   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-    (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
-    (quaternion*!
-     (-> self root-override quat)
-     (-> (the-as process-drawable (-> self parent 0)) root quat)
-     gp-0
-     )
+    (let ((gp-0 (new 'stack-no-clear 'quaternion)))
+      (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
+      (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
+      )
+    (drop-plat-set-fade)
+    (transform-post)
+    (none)
     )
-   (drop-plat-set-fade)
-   (transform-post)
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate drop-plat-die (drop-plat)
   :code
-  (behavior ()
-   (dummy-18 self)
-   (none)
-   )
+  (behavior () (dummy-18 self) (none))
   )
 
 ;; definition for method 20 of type drop-plat
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-20 drop-plat ((obj drop-plat))
-  (let
-   ((s5-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s5-0 reaction) default-collision-reaction)
-   (set!
-    (-> s5-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s5-0 1)
-   (let
-    ((s4-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s5-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 3))
+      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! s5-0 s4-0)
       )
-     )
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 3))
-    (set! (-> s4-0 prim-core offense) 4)
-    (set! (-> s4-0 transform-index) 0)
-    (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-    (set-root-prim! s5-0 s4-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
     )
-   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (backup-collide-with-as s5-0)
-   (set! (-> obj root-override) s5-0)
-   )
   0
   (none)
   )
@@ -416,39 +300,39 @@
 ;; definition for method 21 of type drop-plat
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-21 drop-plat ((obj drop-plat))
-  (case (-> obj color) 
-   ((1)
+  (case (-> obj color)
+    ((1)
      (initialize-skeleton obj *citb-drop-plat-red-sg* '())
      )
-   ((2)
-    (initialize-skeleton obj *citb-drop-plat-green-sg* '())
+    ((2)
+     (initialize-skeleton obj *citb-drop-plat-green-sg* '())
+     )
+    ((3)
+     (initialize-skeleton obj *citb-drop-plat-blue-sg* '())
+     )
+    ((4)
+     (initialize-skeleton obj *citb-drop-plat-yellow-sg* '())
+     )
+    (else
+      (initialize-skeleton obj *citb-drop-plat-sg* '())
+      )
     )
-   ((3)
-    (initialize-skeleton obj *citb-drop-plat-blue-sg* '())
-    )
-   ((4)
-    (initialize-skeleton obj *citb-drop-plat-yellow-sg* '())
-    )
-   (else
-    (initialize-skeleton obj *citb-drop-plat-sg* '())
-    )
-   )
   (logclear! (-> obj mask) (process-mask actor-pause))
   (let ((s3-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         )
-   (set! (-> s3-0 x) (* 65536.0 (rand-vu)))
-   (let ((f30-1 14563.556)
-         (f0-2 (rand-vu-float-range -1.0 1.0))
-         )
-    (set! (-> s3-0 y) (* f30-1 (* f0-2 f0-2)))
+    (set! (-> s3-0 x) (* 65536.0 (rand-vu)))
+    (let ((f30-1 14563.556)
+          (f0-2 (rand-vu-float-range -1.0 1.0))
+          )
+      (set! (-> s3-0 y) (* f30-1 (* f0-2 f0-2)))
+      )
+    (vector-sincos! s5-0 s4-0 s3-0)
+    (set! (-> obj spin-axis x) (* (-> s4-0 y) (-> s4-0 x)))
+    (set! (-> obj spin-axis y) (-> s5-0 y))
+    (set! (-> obj spin-axis z) (* (-> s4-0 y) (-> s5-0 x)))
     )
-   (vector-sincos! s5-0 s4-0 s3-0)
-   (set! (-> obj spin-axis x) (* (-> s4-0 y) (-> s4-0 x)))
-   (set! (-> obj spin-axis y) (-> s5-0 y))
-   (set! (-> obj spin-axis z) (* (-> s4-0 y) (-> s5-0 x)))
-   )
   (set! (-> obj spin-axis w) 1.0)
   (set! (-> obj spin-angle) 0.0)
   (set! (-> obj spin-speed) (* 8192.0 (+ 1.0 (rand-vu))))
@@ -459,19 +343,14 @@
 ;; definition for function drop-plat-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior
-  drop-plat-init-by-other drop-plat
-  ((arg0 vector) (arg1 int) (arg2 int) (arg3 int))
+(defbehavior drop-plat-init-by-other drop-plat ((arg0 vector) (arg1 int) (arg2 int) (arg3 int))
   (set! (-> self color) arg3)
   (set! (-> self delay) arg1)
   (set! (-> self duration) arg2)
   (TODO-RENAME-20 self)
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (vector-identity! (-> self root-override scale))
-  (quaternion-copy!
-   (-> self root-override quat)
-   (-> (the-as process-drawable (-> self parent 0)) root quat)
-   )
+  (quaternion-copy! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
   (dummy-21 self)
   (go drop-plat-spawn)
   (none)
@@ -523,8 +402,8 @@
 ;; definition for method 3 of type citb-drop-plat
 (defmethod inspect citb-drop-plat ((obj citb-drop-plat))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tx-count: ~D~%" (-> obj x-count))
   (format #t "~T~Tz-count: ~D~%" (-> obj z-count))
   (format #t "~T~Tchild-count: ~D~%" (-> obj child-count))
@@ -545,8 +424,8 @@
 ;; INFO: Return type mismatch process-drawable vs citb-drop-plat.
 (defmethod relocate citb-drop-plat ((obj citb-drop-plat) (arg0 int))
   (if (nonzero? (-> obj child-array))
-   (&+! (-> obj child-array) arg0)
-   )
+      (&+! (-> obj child-array) arg0)
+      )
   (the-as citb-drop-plat ((method-of-type process-drawable relocate) obj arg0))
   )
 
@@ -556,123 +435,65 @@
 (defbehavior citb-drop-plat-spawn-children citb-drop-plat ()
   (local-vars (s0-0 int) (sv-48 process) (sv-64 int))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-   6
-   0
-   (let ((s5-0 0)
-         (s4-0 1)
-         )
-    (when
-     (<
-      0.0
-      (vector-dot
-       (vector-!
-        (new 'stack-no-clear 'vector)
-        (target-pos 0)
-        (-> self root trans)
+    6
+    0
+    (let ((s5-0 0)
+          (s4-0 1)
+          )
+      (when (< 0.0
+               (vector-dot (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) (-> self z-dir))
+               )
+        (set! s5-0 (+ (-> self z-count) -1))
+        (set! s4-0 -1)
         )
-       (-> self z-dir)
-       )
+      (dotimes (s3-2 (-> self z-count))
+        (dotimes (s2-0 (-> self x-count))
+          (let ((s1-0 (+ s2-0 (* s5-0 (-> self x-count)))))
+            (set! (-> gp-0 quad) (-> self origin quad))
+            (vector+*! gp-0 gp-0 (-> self x-dir) (* (-> self x-spacing) (the float s2-0)))
+            (vector+*! gp-0 gp-0 (-> self z-dir) (* (-> self z-spacing) (the float s5-0)))
+            (if (-> self child-color-array)
+                (set! s0-0 (-> self child-color-array s1-0))
+                (set! s0-0 (rand-vu-int-range 0 5))
+                )
+            (when (nonzero? s0-0)
+              (set! sv-64 (the int (* 150.0 (rand-vu))))
+              (set! sv-48 (get-process *default-dead-pool* drop-plat #x4000))
+              (set! (-> self child-array data s1-0)
+                    (ppointer->handle (when sv-48
+                                        (let ((t9-6 (method-of-type drop-plat activate)))
+                                          (t9-6 (the-as drop-plat sv-48) self 'drop-plat (the-as pointer #x70004000))
+                                          )
+                                        (let ((t9-7 run-function-in-process)
+                                              (a0-8 sv-48)
+                                              (a1-5 drop-plat-init-by-other)
+                                              (a2-4 gp-0)
+                                              (t0-0 (-> self duration))
+                                              )
+                                          ((the-as (function process function vector uint uint int) t9-7)
+                                           a0-8
+                                           a1-5
+                                           a2-4
+                                           (the-as uint sv-64)
+                                           (the-as uint t0-0)
+                                           )
+                                          )
+                                        (-> sv-48 ppointer)
+                                        )
+                                      )
+                    )
+              )
+            )
+          )
+        (let ((s2-1 (-> *display* base-frame-counter)))
+          (until (>= (- (-> *display* base-frame-counter) s2-1) 36)
+            (suspend)
+            )
+          )
+        (+! s5-0 s4-0)
+        )
       )
-     (set! s5-0 (+ (-> self z-count) -1))
-     (set! s4-0 -1)
-     )
-    (dotimes (s3-2 (-> self z-count))
-     (dotimes (s2-0 (-> self x-count))
-      (let ((s1-0 (+ s2-0 (* s5-0 (-> self x-count)))))
-       (set! (-> gp-0 quad) (-> self origin quad))
-       (vector+*!
-        gp-0
-        gp-0
-        (-> self x-dir)
-        (* (-> self x-spacing) (the float s2-0))
-        )
-       (vector+*!
-        gp-0
-        gp-0
-        (-> self z-dir)
-        (* (-> self z-spacing) (the float s5-0))
-        )
-       (if (-> self child-color-array)
-        (set! s0-0 (-> self child-color-array s1-0))
-        (set! s0-0 (rand-vu-int-range 0 5))
-        )
-       (when (nonzero? s0-0)
-        (set! sv-64 (the int (* 150.0 (rand-vu))))
-        (set! sv-48 (get-process *default-dead-pool* drop-plat #x4000))
-        (set! (-> self child-array data s1-0) (ppointer->handle (when sv-48
-                                                                 (let
-                                                                  ((t9-6
-                                                                    (method-of-type
-                                                                     drop-plat
-                                                                     activate
-                                                                     )
-                                                                    )
-                                                                   )
-                                                                  (t9-6
-                                                                   (the-as
-                                                                    drop-plat
-                                                                    sv-48
-                                                                    )
-                                                                   self
-                                                                   'drop-plat
-                                                                   (the-as
-                                                                    pointer
-                                                                    #x70004000
-                                                                    )
-                                                                   )
-                                                                  )
-                                                                 (let
-                                                                  ((t9-7
-                                                                    run-function-in-process
-                                                                    )
-                                                                   (a0-8 sv-48)
-                                                                   (a1-5
-                                                                    drop-plat-init-by-other
-                                                                    )
-                                                                   (a2-4 gp-0)
-                                                                   (t0-0
-                                                                    (->
-                                                                     self
-                                                                     duration
-                                                                     )
-                                                                    )
-                                                                   )
-                                                                  ((the-as
-                                                                    (function process function vector uint uint int)
-                                                                    t9-7
-                                                                    )
-                                                                   a0-8
-                                                                   a1-5
-                                                                   a2-4
-                                                                   (the-as
-                                                                    uint
-                                                                    sv-64
-                                                                    )
-                                                                   (the-as
-                                                                    uint
-                                                                    t0-0
-                                                                    )
-                                                                   )
-                                                                  )
-                                                                 (->
-                                                                  sv-48
-                                                                  ppointer
-                                                                  )
-                                                                 )
-                                               )
-         )
-        )
-       )
-      )
-     (let ((s2-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) s2-1) 36)
-       (suspend)
-       )
-      )
-     (+! s5-0 s4-0)
-     )
     )
-   )
   (set! (-> self drop-time) (-> *display* base-frame-counter))
   0
   (none)
@@ -681,9 +502,9 @@
 ;; definition for function citb-drop-plat-drop-all-children
 (defbehavior citb-drop-plat-drop-all-children citb-drop-plat ()
   (dotimes (gp-0 (-> self child-count))
-   (send-event (handle->process (-> self child-array data gp-0)) 'drop)
-   (set! (-> self child-array data gp-0) (the-as handle #f))
-   )
+    (send-event (handle->process (-> self child-array data gp-0)) 'drop)
+    (set! (-> self child-array data gp-0) (the-as handle #f))
+    )
   #f
   )
 
@@ -691,24 +512,19 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior citb-drop-plat-drop-children citb-drop-plat ((arg0 int))
   (cond
-   ((= arg0 6)
-    )
-   (else
-    (dotimes (s5-0 (-> self child-count))
-     (let ((a0-3 (handle->process (-> self child-array data s5-0))))
-      (when
-       (and
-        a0-3
-        (!= (-> (the-as drop-plat a0-3) color) 6)
-        (= arg0 (-> (the-as drop-plat a0-3) color))
-        )
-       (send-event a0-3 'drop)
-       (set! (-> self child-array data s5-0) (the-as handle #f))
-       )
-      )
+    ((= arg0 6)
      )
+    (else
+      (dotimes (s5-0 (-> self child-count))
+        (let ((a0-3 (handle->process (-> self child-array data s5-0))))
+          (when (and a0-3 (!= (-> (the-as drop-plat a0-3) color) 6) (= arg0 (-> (the-as drop-plat a0-3) color)))
+            (send-event a0-3 'drop)
+            (set! (-> self child-array data s5-0) (the-as handle #f))
+            )
+          )
+        )
+      )
     )
-   )
   0
   (none)
   )
@@ -716,133 +532,98 @@
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-idle (citb-drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('trigger)
-      (go citb-drop-plat-active)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('trigger)
+                                                                                    (go citb-drop-plat-active)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (citb-drop-plat-drop-all-children)
-   (while #t
-    (suspend)
+    (citb-drop-plat-drop-all-children)
+    (while #t
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-active (citb-drop-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'player-stepped)
-                     (when
-                      (>=
-                       (- (-> *display* base-frame-counter) (-> self drop-time))
-                       60
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((= v1-0 'player-stepped)
+                        (when (>= (- (-> *display* base-frame-counter) (-> self drop-time)) 60)
+                          (set! (-> self drop-time) (-> *display* base-frame-counter))
+                          (citb-drop-plat-drop-children (the-as int (-> arg3 param 0)))
+                          )
+                        )
+                       ((= v1-0 'trigger)
+                        (go citb-drop-plat-idle)
+                        )
                        )
-                      (set!
-                       (-> self drop-time)
-                       (-> *display* base-frame-counter)
-                       )
-                      (citb-drop-plat-drop-children
-                       (the-as int (-> arg3 param 0))
-                       )
-                      )
-                     )
-                    ((= v1-0 'trigger)
-                     (go citb-drop-plat-idle)
-                     )
-                    )
-     )
+              )
+      )
     )
-   )
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (citb-drop-plat-spawn-children)
-   (while #t
-    (if
-     (or
-      (>=
-       (- (-> *display* base-frame-counter) (-> self state-time))
-       (+ (-> self duration) 600)
-       )
-      (or
-       (not *target*)
-       (<
-        (-> self idle-distance)
-        (vector-vector-distance
-         (-> self root trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (not (-> self child))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (citb-drop-plat-spawn-children)
+    (while #t
+      (if (or
+              (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) 600))
+              (or
+                (not *target*)
+                (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                )
+              (not (-> self child))
+              )
+          (go citb-drop-plat-idle)
+          )
+      (suspend)
       )
-     (go citb-drop-plat-idle)
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 11 of type citb-drop-plat
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod
-  init-from-entity!
-  citb-drop-plat
-  ((obj citb-drop-plat) (arg0 entity-actor))
+(defmethod init-from-entity! citb-drop-plat ((obj citb-drop-plat) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (let ((v1-2 (res-lump-data arg0 'count pointer)))
-   (when v1-2
-    (set! (-> obj x-count) (-> (the-as (pointer int32) v1-2) 0))
-    (set! (-> obj z-count) (-> (the-as (pointer int32) v1-2) 1))
+    (when v1-2
+      (set! (-> obj x-count) (-> (the-as (pointer int32) v1-2) 0))
+      (set! (-> obj z-count) (-> (the-as (pointer int32) v1-2) 1))
+      )
     )
-   )
   (set! (-> obj child-count) (* (-> obj x-count) (-> obj z-count)))
-  (set!
-   (-> obj child-color-array)
-   (res-lump-data arg0 'plat-type (pointer int8))
-   )
+  (set! (-> obj child-color-array) (res-lump-data arg0 'plat-type (pointer int8)))
   (when (> (-> obj child-count) 0)
-   (set!
-    (-> obj child-array)
-    (new 'process 'handle-inline-array (-> obj child-count))
+    (set! (-> obj child-array) (new 'process 'handle-inline-array (-> obj child-count)))
+    (dotimes (v1-9 (-> obj child-count))
+      (set! (-> obj child-array data v1-9) (the-as handle #f))
+      )
     )
-   (dotimes (v1-9 (-> obj child-count))
-    (set! (-> obj child-array data v1-9) (the-as handle #f))
-    )
-   )
   (set! (-> obj x-spacing) 16384.0)
   (set! (-> obj z-spacing) 16384.0)
-  (set!
-   (-> obj idle-distance)
-   (+ 40960.0 (* 0.5 (the float (-> obj z-count)) (-> obj z-spacing)))
-   )
-  (set!
-   (-> obj duration)
-   (the int (* 300.0 (+ 2.0 (the float (-> obj z-count)))))
-   )
+  (set! (-> obj idle-distance) (+ 40960.0 (* 0.5 (the float (-> obj z-count)) (-> obj z-spacing))))
+  (set! (-> obj duration) (the int (* 300.0 (+ 2.0 (the float (-> obj z-count))))))
   (let ((f0-7 (res-lump-float arg0 'rotoffset)))
-   (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-7)
-   )
+    (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-7)
+    )
   (vector-x-quaternion! (-> obj x-dir) (-> obj root quat))
   (vector-z-quaternion! (-> obj z-dir) (-> obj root quat))
   (set! (-> obj origin quad) (-> obj root trans quad))
   (let ((f0-10 (* -0.5 (the float (+ (-> obj x-count) -1)) (-> obj x-spacing)))
         (f30-0 (* -0.5 (the float (+ (-> obj z-count) -1)) (-> obj z-spacing)))
         )
-   (vector+*! (-> obj origin) (-> obj origin) (-> obj x-dir) f0-10)
-   (vector+*! (-> obj origin) (-> obj origin) (-> obj z-dir) f30-0)
-   )
+    (vector+*! (-> obj origin) (-> obj origin) (-> obj x-dir) f0-10)
+    (vector+*! (-> obj origin) (-> obj origin) (-> obj z-dir) f30-0)
+    )
   (go citb-drop-plat-idle)
   (none)
   )

@@ -3,7 +3,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
-#include "tools/level_tools/Error.h"
+#include "decompiler/util/Error.h"
 
 void read_plain_data_field(const TypedRef& object,
                            const std::string& field_name,
@@ -43,7 +43,7 @@ void read_plain_data_field(const TypedRef& object,
     int byte_in_word = byte_in_words % 4;
 
     const auto& word = words.at(word_idx);
-    if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("Error reading byte {} of field {} (in data, byte {}). Didn't get plain data.",
                   byte, field_name, byte_in_words);
     }
@@ -78,11 +78,11 @@ TypedRef get_and_check_ref_to_basic(const TypedRef& object,
 
   const auto& word = object.ref.data->words_by_seg.at(object.ref.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::PTR) {
+  if (word.kind() != decompiler::LinkedWord::PTR) {
     throw Error("get_and_check_ref_to_basic did not get a label");
   }
 
-  const auto& label = object.ref.data->labels.at(word.label_id);
+  const auto& label = object.ref.data->labels.at(word.label_id());
 
   Ref ref;
   ref.data = object.ref.data;
@@ -94,18 +94,18 @@ TypedRef get_and_check_ref_to_basic(const TypedRef& object,
   }
 
   const auto& type_tag = object.ref.data->words_by_seg.at(ref.seg).at(ref.byte_offset / 4);
-  if (type_tag.kind != decompiler::LinkedWord::TYPE_PTR) {
+  if (type_tag.kind() != decompiler::LinkedWord::TYPE_PTR) {
     throw Error("get_and_check_ref_to_basic did not find a type tag");
   }
 
-  if (type_tag.symbol_name != expected_type) {
+  if (type_tag.symbol_name() != expected_type) {
     throw Error("get_and_check_ref_to_basic found type {} for field {}, expected {}",
-                type_tag.symbol_name, field_name, expected_type);
+                type_tag.symbol_name(), field_name, expected_type);
   }
 
   TypedRef tr;
   tr.ref = ref;
-  tr.type = dts.ts.lookup_type(type_tag.symbol_name);
+  tr.type = dts.ts.lookup_type(type_tag.symbol_name());
   return tr;
 }
 
@@ -132,11 +132,11 @@ std::string read_symbol_field(const TypedRef& object,
 
   const auto& word = object.ref.data->words_by_seg.at(object.ref.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::SYM_PTR) {
+  if (word.kind() != decompiler::LinkedWord::SYM_PTR) {
     throw Error("read_symbol_field did not get a symbol (offset {} words)", byte_in_words / 4);
   }
 
-  return word.symbol_name;
+  return word.symbol_name();
 }
 
 std::string read_type_field(const TypedRef& object,
@@ -163,11 +163,11 @@ std::string read_type_field(const TypedRef& object,
 
   const auto& word = object.ref.data->words_by_seg.at(object.ref.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::TYPE_PTR) {
+  if (word.kind() != decompiler::LinkedWord::TYPE_PTR) {
     throw Error("read_type_field did not get a symbol (offset {} words)", byte_in_words / 4);
   }
 
-  return word.symbol_name;
+  return word.symbol_name();
 }
 
 std::string read_string_field(const TypedRef& object,
@@ -193,11 +193,11 @@ std::string read_string_field(const TypedRef& object,
   }
   const auto& word = object.ref.data->words_by_seg.at(object.ref.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::PTR) {
+  if (word.kind() != decompiler::LinkedWord::PTR) {
     throw Error("read_string_field did not get a label (offset {} words)", byte_in_words / 4);
   }
 
-  const auto& label = object.ref.data->labels.at(word.label_id);
+  const auto& label = object.ref.data->labels.at(word.label_id());
   return object.ref.data->get_goal_string_by_label(label);
 }
 
@@ -218,11 +218,11 @@ std::string get_type_of_basic(const Ref& object) {
 
   const auto& word = object.data->words_by_seg.at(object.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::TYPE_PTR) {
+  if (word.kind() != decompiler::LinkedWord::TYPE_PTR) {
     throw Error("get_type_of_basic did not get a type tag (offset {} words)", byte_in_words / 4);
   }
 
-  return word.symbol_name;
+  return word.symbol_name();
 }
 
 TypedRef typed_ref_from_basic(const Ref& object, const decompiler::DecompilerTypeSystem& dts) {
@@ -233,13 +233,13 @@ TypedRef typed_ref_from_basic(const Ref& object, const decompiler::DecompilerTyp
 
   const auto& word = object.data->words_by_seg.at(object.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::TYPE_PTR) {
+  if (word.kind() != decompiler::LinkedWord::TYPE_PTR) {
     throw Error("typed_ref_from_basic did not get a type tag (offset {} words)", byte_in_words / 4);
   }
 
   TypedRef result;
   result.ref = object;
-  result.type = dts.ts.lookup_type(word.symbol_name);
+  result.type = dts.ts.lookup_type(word.symbol_name());
   return result;
 }
 
@@ -251,11 +251,11 @@ Ref deref_label(const Ref& object) {
 
   const auto& word = object.data->words_by_seg.at(object.seg).at(byte_in_words / 4);
 
-  if (word.kind != decompiler::LinkedWord::PTR) {
+  if (word.kind() != decompiler::LinkedWord::PTR) {
     throw Error("deref_label did not get a label (offset {} words)", byte_in_words / 4);
   }
 
-  const auto& lab = object.data->labels.at(word.label_id);
+  const auto& lab = object.data->labels.at(word.label_id());
 
   Ref result;
   result.byte_offset = lab.offset;
@@ -266,15 +266,15 @@ Ref deref_label(const Ref& object) {
 
 std::string inspect_ref(const Ref& ref) {
   auto& word = ref.data->words_by_seg.at(ref.seg).at(ref.byte_offset / 4);
-  switch (word.kind) {
+  switch (word.kind()) {
     case decompiler::LinkedWord::PLAIN_DATA:
       return fmt::format("[0x{:08x} (offset {} bytes)]", word.data, ref.byte_offset % 4);
     case decompiler::LinkedWord::PTR:
-      return fmt::format("[{}]", ref.data->labels.at(word.label_id).name);
+      return fmt::format("[{}]", ref.data->labels.at(word.label_id()).name);
     case decompiler::LinkedWord::SYM_PTR:
-      return fmt::format("['{}]", word.symbol_name);
+      return fmt::format("['{}]", word.symbol_name());
     case decompiler::LinkedWord::TYPE_PTR:
-      return fmt::format("[t'{}]", word.symbol_name);
+      return fmt::format("[t'{}]", word.symbol_name());
     default:
       assert(false);
   }

@@ -41,8 +41,8 @@
 ;; definition for method 3 of type basebutton
 (defmethod inspect basebutton ((obj basebutton))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tdown?: ~A~%" (-> obj down?))
   (format #t "~T~Tspawned-by-other?: ~A~%" (-> obj spawned-by-other?))
   (format #t "~T~Tmove-to?: ~A~%" (-> obj move-to?))
@@ -70,19 +70,16 @@
 
 ;; definition for method 30 of type basebutton
 ;; Used lq/sq
-(defmethod
-  move-to-vec-or-quat!
-  basebutton
-  ((obj basebutton) (arg0 vector) (arg1 quaternion))
+(defmethod move-to-vec-or-quat! basebutton ((obj basebutton) (arg0 vector) (arg1 quaternion))
   (set! (-> obj move-to?) #t)
   (if arg0
-   (set! (-> obj move-to-pos quad) (-> arg0 quad))
-   (set! (-> obj move-to-pos quad) (-> obj root-override trans quad))
-   )
+      (set! (-> obj move-to-pos quad) (-> arg0 quad))
+      (set! (-> obj move-to-pos quad) (-> obj root-override trans quad))
+      )
   (if arg1
-   (quaternion-copy! (-> obj move-to-quat) arg1)
-   (quaternion-copy! (-> obj move-to-quat) (-> obj root-override quat))
-   )
+      (quaternion-copy! (-> obj move-to-quat) arg1)
+      (quaternion-copy! (-> obj move-to-quat) (-> obj root-override quat))
+      )
   )
 
 ;; failed to figure out what this is:
@@ -90,12 +87,12 @@
   :virtual #t
   :code
   (behavior ()
-   (if (-> self down?)
-    (go-virtual basebutton-down-idle)
-    (go-virtual basebutton-up-idle)
+    (if (-> self down?)
+        (go-virtual basebutton-down-idle)
+        (go-virtual basebutton-up-idle)
+        )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -103,69 +100,46 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('attack)
-      (case (-> arg3 param 1) 
-       (('flop)
-         (TODO-RENAME-29 self (-> self event-going-down) (-> self notify-actor))
-         (sound-play-by-name
-          (static-sound-name "silo-button")
-          (new-sound-id)
-          1024
-          0
-          0
-          1
-          #t
+    (case arg2
+      (('attack)
+       (case (-> arg3 param 1)
+         (('flop)
+          (TODO-RENAME-29 self (-> self event-going-down) (-> self notify-actor))
+          (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+          (go-virtual basebutton-going-down)
           )
-         (go-virtual basebutton-going-down)
          )
        )
+      (('trigger)
+       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (go-virtual basebutton-going-down)
+       )
+      (('move-to)
+       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       )
       )
-    (('trigger)
-     (sound-play-by-name
-      (static-sound-name "silo-button")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      #t
-      )
-     (go-virtual basebutton-going-down)
-     )
-    (('move-to)
-     (move-to-vec-or-quat!
-      self
-      (the-as vector (-> arg3 param 0))
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :enter
-  (behavior ()
-   (press! self #f)
-   (none)
-   )
+  (behavior () (press! self #f) (none))
   :trans
   (behavior ()
-   (if (-> self move-to?)
-    (rider-trans)
+    (if (-> self move-to?)
+        (rider-trans)
+        )
+    (none)
     )
-   (none)
-   )
   :code
   (the-as (function none :behavior basebutton) anim-loop)
   :post
   (behavior ()
-   (when (-> self move-to?)
-    (set! (-> self move-to?) #f)
-    (set! (-> self root-override trans quad) (-> self move-to-pos quad))
-    (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
-    (rider-post)
+    (when (-> self move-to?)
+      (set! (-> self move-to?) #f)
+      (set! (-> self root-override trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+      (rider-post)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -173,78 +147,49 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('untrigger)
-      (sound-play-by-name
-       (static-sound-name "silo-button")
-       (new-sound-id)
-       1024
-       0
-       0
-       1
-       #t
+    (case arg2
+      (('untrigger)
+       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (go-virtual basebutton-going-up)
        )
-      (go-virtual basebutton-going-up)
+      (('move-to)
+       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       )
       )
-    (('move-to)
-     (move-to-vec-or-quat!
-      self
-      (the-as vector (-> arg3 param 0))
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :enter
-  (behavior ()
-   (press! self #t)
-   (none)
-   )
+  (behavior () (press! self #t) (none))
   :trans
   (the-as (function none :behavior basebutton) rider-trans)
   :code
   (behavior ()
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-0 param 0)
-     (the float (+ (-> a0-0 frame-group data 0 length) -1))
-     )
-    (set! (-> a0-0 param 1) (-> self anim-speed))
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-1 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-1 param 0)
-      (the float (+ (-> a0-1 frame-group data 0 length) -1))
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
+      (set! (-> a0-0 param 1) (-> self anim-speed))
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
       )
-     (set! (-> a0-1 param 1) (-> self anim-speed))
-     (joint-control-channel-group-eval!
-      a0-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-1 (-> self skel root-channel 0)))
+        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
+        (set! (-> a0-1 param 1) (-> self anim-speed))
+        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
+    (TODO-RENAME-29 self (-> self event-down) (-> self notify-actor))
+    (go-virtual basebutton-down-idle)
+    (none)
     )
-   (TODO-RENAME-29 self (-> self event-down) (-> self notify-actor))
-   (go-virtual basebutton-down-idle)
-   (none)
-   )
   :post
   (behavior ()
-   (when (-> self move-to?)
-    (set! (-> self move-to?) #f)
-    (set! (-> self root-override trans quad) (-> self move-to-pos quad))
-    (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+    (when (-> self move-to?)
+      (set! (-> self move-to?) #f)
+      (set! (-> self root-override trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+      )
+    (rider-post)
+    (none)
     )
-   (rider-post)
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -252,80 +197,53 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('untrigger)
-      (sound-play-by-name
-       (static-sound-name "silo-button")
-       (new-sound-id)
-       1024
-       0
-       0
-       1
-       #t
+    (case arg2
+      (('untrigger)
+       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (go-virtual basebutton-going-up)
        )
-      (go-virtual basebutton-going-up)
+      (('move-to)
+       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       )
       )
-    (('move-to)
-     (move-to-vec-or-quat!
-      self
-      (the-as vector (-> arg3 param 0))
-      (the-as quaternion (-> arg3 param 1))
-      )
-     )
     )
-   )
   :enter
-  (behavior ()
-   (press! self #t)
-   (none)
-   )
+  (behavior () (press! self #t) (none))
   :trans
   (behavior ()
-   (if (-> self move-to?)
-    (rider-trans)
+    (if (-> self move-to?)
+        (rider-trans)
+        )
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (cond
-    ((= (-> self timeout) 0.0)
-     (anim-loop)
-     )
-    (else
-     (until
-      (>=
-       (- (-> *display* base-frame-counter) (-> self state-time))
-       (the int (* 300.0 (-> self timeout)))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (cond
+      ((= (-> self timeout) 0.0)
+       (anim-loop)
        )
-      (suspend)
+      (else
+        (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
+          (suspend)
+          )
+        (TODO-RENAME-29 self (-> self event-going-up) (-> self notify-actor))
+        (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+        (go-virtual basebutton-going-up)
+        )
       )
-     (TODO-RENAME-29 self (-> self event-going-up) (-> self notify-actor))
-     (sound-play-by-name
-      (static-sound-name "silo-button")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      #t
-      )
-     (go-virtual basebutton-going-up)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (behavior ()
-   (when (-> self move-to?)
-    (set! (-> self move-to?) #f)
-    (set! (-> self root-override trans quad) (-> self move-to-pos quad))
-    (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
-    (rider-post)
+    (when (-> self move-to?)
+      (set! (-> self move-to?) #f)
+      (set! (-> self root-override trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+      (rider-post)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
@@ -333,122 +251,97 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('move-to)
-      (move-to-vec-or-quat!
-       self
-       (the-as vector (-> arg3 param 0))
-       (the-as quaternion (-> arg3 param 1))
+    (case arg2
+      (('move-to)
+       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       )
+      (('trigger)
+       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (go-virtual basebutton-going-down)
        )
       )
-    (('trigger)
-     (sound-play-by-name
-      (static-sound-name "silo-button")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      #t
-      )
-     (go-virtual basebutton-going-down)
-     )
     )
-   )
   :enter
-  (behavior ()
-   (press! self #f)
-   (none)
-   )
+  (behavior () (press! self #f) (none))
   :trans
   (the-as (function none :behavior basebutton) rider-trans)
   :code
   (behavior ()
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set! (-> a0-0 param 0) 0.0)
-    (set! (-> a0-0 param 1) (-> self anim-speed))
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-1 (-> self skel root-channel 0)))
-     (set! (-> a0-1 param 0) 0.0)
-     (set! (-> a0-1 param 1) (-> self anim-speed))
-     (joint-control-channel-group-eval!
-      a0-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 param 0) 0.0)
+      (set! (-> a0-0 param 1) (-> self anim-speed))
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
       )
-     )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-1 (-> self skel root-channel 0)))
+        (set! (-> a0-1 param 0) 0.0)
+        (set! (-> a0-1 param 1) (-> self anim-speed))
+        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (TODO-RENAME-29 self (-> self event-up) (-> self notify-actor))
+    (go-virtual basebutton-up-idle)
+    (none)
     )
-   (TODO-RENAME-29 self (-> self event-up) (-> self notify-actor))
-   (go-virtual basebutton-up-idle)
-   (none)
-   )
   :post
   (behavior ()
-   (when (-> self move-to?)
-    (set! (-> self move-to?) #f)
-    (set! (-> self root-override trans quad) (-> self move-to-pos quad))
-    (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+    (when (-> self move-to?)
+      (set! (-> self move-to?) #f)
+      (set! (-> self root-override trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
+      )
+    (rider-post)
+    (none)
     )
-   (rider-post)
-   (none)
-   )
   )
 
 ;; definition for method 31 of type basebutton
 (defmethod press! basebutton ((obj basebutton) (arg0 symbol))
   (set! (-> obj down?) arg0)
   (cond
-   (arg0
-    (if (not (-> obj spawned-by-other?))
-     (process-entity-status! obj (entity-perm-status complete) #t)
-     )
+    (arg0
+      (if (not (-> obj spawned-by-other?))
+          (process-entity-status! obj (entity-perm-status complete) #t)
+          )
+      )
+    (else
+      (if (not (-> obj spawned-by-other?))
+          (process-entity-status! obj (entity-perm-status complete) #f)
+          )
+      )
     )
-   (else
-    (if (not (-> obj spawned-by-other?))
-     (process-entity-status! obj (entity-perm-status complete) #f)
-     )
-    )
-   )
   )
 
 ;; definition for method 29 of type basebutton
-(defmethod
-  TODO-RENAME-29
-  basebutton
-  ((obj basebutton) (arg0 symbol) (arg1 entity))
+(defmethod TODO-RENAME-29 basebutton ((obj basebutton) (arg0 symbol) (arg1 entity))
   (with-pp
-   (when arg0
-    (cond
-     (arg1
-      (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> v1-0 from) pp)
-       (set! (-> v1-0 num-params) 0)
-       (set! (-> v1-0 message) arg0)
-       (let ((a1-1 arg1))
-        (send-event-function (if a1-1
-                              (-> a1-1 extra process)
-                              )
-         v1-0
-         )
+    (when arg0
+      (cond
+        (arg1
+          (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> v1-0 from) pp)
+            (set! (-> v1-0 num-params) 0)
+            (set! (-> v1-0 message) arg0)
+            (let ((a1-1 arg1))
+              (send-event-function
+                (if a1-1
+                    (-> a1-1 extra process)
+                    )
+                v1-0
+                )
+              )
+            )
+          )
+        (else
+          (if (nonzero? (-> obj link))
+              (send-to-all (-> obj link) arg0)
+              )
+          )
         )
-       )
       )
-     (else
-      (if (nonzero? (-> obj link))
-       (send-to-all (-> obj link) arg0)
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; definition for method 25 of type basebutton
@@ -463,17 +356,17 @@
   (set! (-> obj event-going-up) #f)
   (set! (-> obj event-up) #f)
   (let ((f0-1 1.0))
-   (set! (-> obj anim-speed) f0-1)
-   f0-1
-   )
+    (set! (-> obj anim-speed) f0-1)
+    f0-1
+    )
   )
 
 ;; definition for method 28 of type basebutton
 (defmethod arm-trigger-event! basebutton ((obj basebutton))
   (let ((v0-0 'trigger))
-   (set! (-> obj event-going-down) v0-0)
-   v0-0
-   )
+    (set! (-> obj event-going-down) v0-0)
+    v0-0
+    )
   )
 
 ;; definition for method 26 of type basebutton
@@ -482,41 +375,29 @@
   (logior! (-> obj skel status) 1)
   (ja-channel-set! 1)
   (cond
-   ((-> obj down?)
-    (let ((s5-0 (-> obj skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      s5-0
-      (the-as art-joint-anim (-> obj draw art-group data 2))
-      num-func-identity
-      )
-     (set!
-      (-> s5-0 frame-num)
-      (the
-       float
-       (+
-        (->
+    ((-> obj down?)
+     (let ((s5-0 (-> obj skel root-channel 0)))
+       (joint-control-channel-group-eval!
+         s5-0
          (the-as art-joint-anim (-> obj draw art-group data 2))
-         data
-         0
-         length
+         num-func-identity
          )
-        -1
-        )
+       (set! (-> s5-0 frame-num)
+             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+             )
        )
-      )
      )
-    )
-   (else
-    (let ((s5-1 (-> obj skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      s5-1
-      (the-as art-joint-anim (-> obj draw art-group data 2))
-      num-func-identity
+    (else
+      (let ((s5-1 (-> obj skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s5-1
+          (the-as art-joint-anim (-> obj draw art-group data 2))
+          num-func-identity
+          )
+        (set! (-> s5-1 frame-num) 0.0)
+        )
       )
-     (set! (-> s5-1 frame-num) 0.0)
-     )
     )
-   )
   (set! (-> obj anim-speed) 2.0)
   (dummy-47 (-> obj root-override))
   (ja-post)
@@ -525,71 +406,43 @@
 
 ;; definition for method 27 of type basebutton
 (defmethod TODO-RENAME-27 basebutton ((obj basebutton))
-  (let
-   ((s5-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s5-0 reaction) default-collision-reaction)
-   (set!
-    (-> s5-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s5-0 1)
-   (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 3))
-    (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-    (set-root-prim! s5-0 s4-0)
-    (let
-     ((s3-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s5-0
-        (the-as uint 0)
-        (the-as uint 0)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 3))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! s5-0 s4-0)
+      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s3-0 collide-with) (the-as uint 16))
+        (set! (-> s3-0 prim-core action) (the-as uint 3))
+        (set! (-> s3-0 prim-core offense) 4)
+        (set! (-> s3-0 transform-index) 4)
+        (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
+        (append-prim s4-0 s3-0)
         )
-       )
-      )
-     (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s3-0 collide-with) (the-as uint 16))
-     (set! (-> s3-0 prim-core action) (the-as uint 3))
-     (set! (-> s3-0 prim-core offense) 4)
-     (set! (-> s3-0 transform-index) 4)
-     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
-     (append-prim s4-0 s3-0)
-     )
-    (let
-     ((s3-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s5-0
-        (the-as uint 1)
-        (the-as uint 0)
+      (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+        (set! (-> s3-1 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s3-1 collide-with) (the-as uint 16))
+        (set! (-> s3-1 prim-core action) (the-as uint 3))
+        (set! (-> s3-1 prim-core offense) 4)
+        (set! (-> s3-1 transform-index) 3)
+        (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 12288.0)
+        (append-prim s4-0 s3-1)
         )
-       )
       )
-     (set! (-> s3-1 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s3-1 collide-with) (the-as uint 16))
-     (set! (-> s3-1 prim-core action) (the-as uint 3))
-     (set! (-> s3-1 prim-core offense) 4)
-     (set! (-> s3-1 transform-index) 3)
-     (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 12288.0)
-     (append-prim s4-0 s3-1)
-     )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    s5-0
     )
-   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (backup-collide-with-as s5-0)
-   (set! (-> obj root-override) s5-0)
-   s5-0
-   )
   )
 
 ;; definition for method 11 of type basebutton
@@ -598,48 +451,30 @@
   (reset! obj)
   (set! (-> obj spawned-by-other?) #f)
   (set! (-> obj button-id) -1)
-  (let
-   ((v1-4
-     (res-lump-value
-      (-> obj entity)
-      'extra-id
-      uint128
-      :default
-      (the-as uint128 -1)
-      )
-     )
+  (let ((v1-4 (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 -1))))
+    (if (>= (the-as int v1-4) 0)
+        (set! (-> obj button-id) (the-as int v1-4))
+        )
     )
-   (if (>= (the-as int v1-4) 0)
-    (set! (-> obj button-id) (the-as int v1-4))
+  (when (or (res-lump-struct arg0 'next-actor structure) (res-lump-struct arg0 'prev-actor structure))
+    (set! (-> obj link) (new 'process 'actor-link-info obj))
+    (if (< (-> obj button-id) 0)
+        (set! (-> obj button-id) (actor-count-before (-> obj link)))
+        )
     )
-   )
-  (when
-   (or
-    (res-lump-struct arg0 'next-actor structure)
-    (res-lump-struct arg0 'prev-actor structure)
-    )
-   (set! (-> obj link) (new 'process 'actor-link-info obj))
-   (if (< (-> obj button-id) 0)
-    (set! (-> obj button-id) (actor-count-before (-> obj link)))
-    )
-   )
   (TODO-RENAME-27 obj)
   (process-drawable-from-entity! obj arg0)
   (let ((v1-16 #f))
-   (if
-    (and
-     (-> obj entity)
-     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-     )
-    (set! v1-16 #t)
+    (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+        (set! v1-16 #t)
+        )
+    (set! (-> obj down?) v1-16)
     )
-   (set! (-> obj down?) v1-16)
-   )
   (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> obj timeout) (res-lump-float arg0 'timeout))
   (if (not (-> obj spawned-by-other?))
-   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
-   )
+      (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
+      )
   (arm-trigger-event! obj)
   (TODO-RENAME-26 obj)
   (go (method-of-object obj basebutton-startup))
@@ -649,15 +484,7 @@
 ;; definition for function basebutton-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior
-  basebutton-init-by-other basebutton
-  ((arg0 basebutton)
-   (arg1 vector)
-   (arg2 quaternion)
-   (arg3 entity-actor)
-   (arg4 symbol)
-   (arg5 float)
-   )
+(defbehavior basebutton-init-by-other basebutton ((arg0 basebutton) (arg1 vector) (arg2 quaternion) (arg3 entity-actor) (arg4 symbol) (arg5 float))
   (reset! self)
   (set! (-> self spawned-by-other?) #t)
   (set! (-> self button-id) -1)
@@ -665,8 +492,8 @@
   (set! (-> self notify-actor) arg3)
   (set! (-> self timeout) arg5)
   (if arg0
-   (set! (-> self entity) (the-as entity arg0))
-   )
+      (set! (-> self entity) (the-as entity arg0))
+      )
   (TODO-RENAME-27 self)
   (set! (-> self root-override trans quad) (-> arg1 quad))
   (quaternion-copy! (-> self root-override quat) arg2)
@@ -678,21 +505,18 @@
   )
 
 ;; definition for symbol *warp-info*, type (array string)
-(define
-  *warp-info*
-  (the-as (array string)
-   (new
-    'static
-    'boxed-array
-    :type string :length 5 :allocated-length 5
-    "training-warp"
-    "village1-warp"
-    "village2-warp"
-    "village3-warp"
-    "citadel-warp"
-    )
-   )
-  )
+(define *warp-info* (the-as (array string) (new
+                                             'static
+                                             'boxed-array
+                                             :type string :length 5 :allocated-length 5
+                                             "training-warp"
+                                             "village1-warp"
+                                             "village2-warp"
+                                             "village3-warp"
+                                             "citadel-warp"
+                                             )
+                                           )
+        )
 
 ;; definition of type warp-gate
 (deftype warp-gate (process-drawable)
@@ -716,8 +540,8 @@
 ;; definition for method 3 of type warp-gate
 (defmethod inspect warp-gate ((obj warp-gate))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tlevel: ~A~%" (-> obj level))
   (format #t "~T~Tlevel-slot: ~D~%" (-> obj level-slot))
   (format #t "~T~Tmin-slot: ~D~%" (-> obj min-slot))
@@ -729,312 +553,219 @@
 (defstate use (warp-gate)
   :virtual #t
   :trans
-  (behavior ()
-   (send-event *camera* 'joystick 0.0 0.0)
-   (none)
-   )
+  (behavior () (send-event *camera* 'joystick 0.0 0.0) (none))
   :code
   (behavior ((arg0 int) (arg1 level))
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (when (not arg1)
-    (process-release? *target*)
-    (go-virtual idle)
-    )
-   (let ((s4-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> s4-0 from) self)
-    (set! (-> s4-0 num-params) 3)
-    (set! (-> s4-0 message) 'change-state)
-    (set! (-> s4-0 param 0) (the-as uint target-warp-out))
-    (let ((v1-9 (new 'static 'vector)))
-     (set! (-> v1-9 quad) (-> self root trans quad))
-     (set! (-> s4-0 param 1) (the-as uint v1-9))
-     )
-    (set! (-> s4-0 param 2) (the-as uint (target-pos 0)))
-    (send-event-function *target* s4-0)
-    )
-   (case (-> self level) 
-    (('citadel 'lavatube)
-      (while (and *target* (zero? (logand (-> *target* draw status) 2)))
-       (suspend)
-       )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (when (not arg1)
+      (process-release? *target*)
+      (go-virtual idle)
       )
-    (else
-     (load-state-want-levels (-> self level) (-> arg1 load-name))
-     (while
-      (or
-       (not
-        (member (level-status *level* (-> arg1 load-name)) '(loaded active))
+    (let ((s4-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> s4-0 from) self)
+      (set! (-> s4-0 num-params) 3)
+      (set! (-> s4-0 message) 'change-state)
+      (set! (-> s4-0 param 0) (the-as uint target-warp-out))
+      (let ((v1-9 (new 'static 'vector)))
+        (set! (-> v1-9 quad) (-> self root trans quad))
+        (set! (-> s4-0 param 1) (the-as uint v1-9))
         )
-       (< (- (-> *display* base-frame-counter) (-> self state-time)) 600)
-       )
-      (suspend)
+      (set! (-> s4-0 param 2) (the-as uint (target-pos 0)))
+      (send-event-function *target* s4-0)
       )
-     )
+    (case (-> self level)
+      (('citadel 'lavatube)
+       (while (and *target* (zero? (logand (-> *target* draw status) 2)))
+         (suspend)
+         )
+       )
+      (else
+        (load-state-want-levels (-> self level) (-> arg1 load-name))
+        (while (or
+                 (not (member (level-status *level* (-> arg1 load-name)) '(loaded active)))
+                 (< (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+                 )
+          (suspend)
+          )
+        )
+      )
+    (set-blackout-frames 15)
+    (start 'play (get-continue-by-name *game-info* (-> *warp-info* arg0)))
+    (logior! (-> self mask) (process-mask sleep))
+    (suspend)
+    0
+    (none)
     )
-   (set-blackout-frames 15)
-   (start 'play (get-continue-by-name *game-info* (-> *warp-info* arg0)))
-   (logior! (-> self mask) (process-mask sleep))
-   (suspend)
-   0
-   (none)
-   )
   )
 
 ;; definition for symbol *warp-jump-mods*, type surface
-(define
-  *warp-jump-mods*
-  (new 'static 'surface
-   :name 'jump
-   :turnv 273066.66
-   :turnvv 1820444.5
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 65536.0
-   :target-speed 65536.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #x20
-   )
-  )
+(define *warp-jump-mods* (new 'static 'surface
+                           :name 'jump
+                           :turnv 273066.66
+                           :turnvv 1820444.5
+                           :tiltv 32768.0
+                           :tiltvv 131072.0
+                           :transv-max 65536.0
+                           :target-speed 65536.0
+                           :slip-factor 1.0
+                           :slide-factor 1.0
+                           :slope-up-factor 1.0
+                           :slope-down-factor 1.0
+                           :slope-slip-angle 1.0
+                           :impact-fric 1.0
+                           :bend-factor 1.0
+                           :bend-speed 1.0
+                           :alignv 1.0
+                           :slope-up-traction 1.0
+                           :align-speed 1.0
+                           :mode 'air
+                           :flags #x20
+                           )
+        )
 
 ;; failed to figure out what this is:
 (defstate target-warp-out (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('death-end)
-      (let ((v0-0 (the-as object (logior (-> self draw status) 2))))
-       (set! (-> self draw status) (the-as uint v0-0))
-       v0-0
+    (case arg2
+      (('death-end)
+       (let ((v0-0 (the-as object (logior (-> self draw status) 2))))
+         (set! (-> self draw status) (the-as uint v0-0))
+         v0-0
+         )
        )
+      (else
+        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        )
       )
-    (else
-     (target-generic-event-handler arg0 arg1 arg2 arg3)
-     )
     )
-   )
   :enter
   (behavior ((arg0 vector) (arg1 vector))
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self control status) (logand -8 (-> self control status)))
-   (set! (-> self control unknown-surface00) *warp-jump-mods*)
-   (set! (-> self control unknown-vector102 quad) (-> arg0 quad))
-   (set! (-> self control unknown-vector103 quad) (-> arg1 quad))
-   (set!
-    (-> self control unknown-vector102 y)
-    (+ -4096.0 (-> self control unknown-vector102 y))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self control status) (logand -8 (-> self control status)))
+    (set! (-> self control unknown-surface00) *warp-jump-mods*)
+    (set! (-> self control unknown-vector102 quad) (-> arg0 quad))
+    (set! (-> self control unknown-vector103 quad) (-> arg1 quad))
+    (set! (-> self control unknown-vector102 y) (+ -4096.0 (-> self control unknown-vector102 y)))
+    (set! (-> self control unknown-uint20) (the-as uint #f))
+    (vector-reset! (-> self control transv))
+    (logior! (-> self state-flags) 1024)
+    (set! (-> self alt-cam-pos quad) (-> arg1 quad))
+    (none)
     )
-   (set! (-> self control unknown-uint20) (the-as uint #f))
-   (vector-reset! (-> self control transv))
-   (logior! (-> self state-flags) 1024)
-   (set! (-> self alt-cam-pos quad) (-> arg1 quad))
-   (none)
-   )
   :exit
-  (behavior ()
-   (set! (-> self state-flags) (logand -1025 (-> self state-flags)))
-   (none)
-   )
+  (behavior () (set! (-> self state-flags) (logand -1025 (-> self state-flags))) (none))
   :code
   (behavior ((arg0 vector) (arg1 vector))
-   (send-event *camera* 'change-state cam-fixed 0)
-   (ja-channel-push! 1 60)
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 41))
-     )
-    (set! (-> gp-0 param 0) (ja-aframe 16.0 0))
-    (set! (-> gp-0 param 1) 1.0)
-    (set! (-> gp-0 frame-num) 0.0)
-    (joint-control-channel-group!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 41))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (set! (-> gp-1 param 0) (ja-aframe 16.0 0))
-     (set! (-> gp-1 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (send-event *camera* 'change-state cam-fixed 0)
+    (ja-channel-push! 1 60)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
+      (set! (-> gp-0 param 0) (ja-aframe 16.0 0))
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) 0.0)
+      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
       )
-     )
-    )
-   (vector-!
-    (-> self control transv)
-    (-> self control unknown-vector102)
-    (-> self control trans)
-    )
-   (vector-xz-normalize! (-> self control transv) 32768.0)
-   (let ((gp-2 (new-stack-vector0)))
-    (let
-     ((f0-6
-       (vector-dot
-        (-> self control dynam gravity-normal)
-        (-> self control transv)
+    (until (ja-done? 0)
+      (suspend)
+      (let ((gp-1 (-> self skel root-channel 0)))
+        (set! (-> gp-1 param 0) (ja-aframe 16.0 0))
+        (set! (-> gp-1 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
         )
-       )
       )
-     0.0
-     (vector-!
-      gp-2
-      (-> self control transv)
-      (vector-float*! gp-2 (-> self control dynam gravity-normal) f0-6)
-      )
-     )
-    (let* ((f0-7 (vector-length gp-2))
-           (f1-1 f0-7)
-           (f2-4
-            (-
-             (sqrtf
-              (*
-               2.0
-               (-> self control dynam gravity-length)
-               (vector-dot
-                (-> self control dynam gravity-normal)
-                (vector-!
-                 (new 'stack-no-clear 'vector)
-                 (-> self control unknown-vector102)
-                 (-> self control trans)
-                 )
-                )
+    (vector-! (-> self control transv) (-> self control unknown-vector102) (-> self control trans))
+    (vector-xz-normalize! (-> self control transv) 32768.0)
+    (let ((gp-2 (new-stack-vector0)))
+      (let ((f0-6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+        0.0
+        (vector-! gp-2 (-> self control transv) (vector-float*! gp-2 (-> self control dynam gravity-normal) f0-6))
+        )
+      (let* ((f0-7 (vector-length gp-2))
+             (f1-1 f0-7)
+             (f2-4
+               (- (sqrtf
+                     (* 2.0
+                        (-> self control dynam gravity-length)
+                        (vector-dot
+                          (-> self control dynam gravity-normal)
+                          (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector102) (-> self control trans))
+                          )
+                        )
+                     )
+                  (* 0.008333334 (- (-> self control dynam gravity-length)))
+                  )
                )
-              )
-             (* 0.008333334 (- (-> self control dynam gravity-length)))
              )
+        (vector+!
+          (-> self control transv)
+          (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-4)
+          (vector-float*! gp-2 gp-2 (/ f0-7 f1-1))
+          )
+        )
+      )
+    (clear-collide-with-as (-> self control))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self trans-hook)
+          (lambda :behavior target
+            ()
+            (let ((gp-0 (new-stack-vector0))
+                  (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                  )
+              0.0
+              (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f30-0))
+              (let* ((f0-3 (vector-length gp-0))
+                     (f1-0 f0-3)
+                     )
+                (if (< f30-0 0.0)
+                    (set! f30-0 8192.0)
+                    )
+                (vector+!
+                  (-> self control transv)
+                  (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-0)
+                  (vector-float*! gp-0 gp-0 (/ f0-3 f1-0))
+                  )
+                )
+              )
+            (let ((gp-2 (vector-! (new-stack-vector0) (-> self control unknown-vector102) (-> self control trans))))
+              (set! (-> gp-2 y) 0.0)
+              (send-event *target* 'sidekick #f)
+              (when (and
+                      (or (< (vector-dot gp-2 (-> self control transv)) 0.0) (-> self control unknown-spoolanim00))
+                      (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
+                      )
+                (vector-seek! (-> self draw color-mult) (new 'static 'vector) (* 2.0 (-> *display* seconds-per-frame)))
+                (set! (-> self control transv x) (* 0.95 (-> self control transv x)))
+                (set! (-> self control transv z) (* 0.95 (-> self control transv z)))
+                (when (not (-> self control unknown-spoolanim00))
+                  (send-event self 'do-effect 'death-warp-out -1.0)
+                  (let ((v0-2 #t))
+                    (set! (-> self control unknown-uint20) (the-as uint v0-2))
+                    v0-2
+                    )
+                  )
+                )
+              )
             )
-           )
-     (vector+!
-      (-> self control transv)
-      (vector-float*!
-       (-> self control transv)
-       (-> self control dynam gravity-normal)
-       f2-4
-       )
-      (vector-float*! gp-2 gp-2 (/ f0-7 f1-1))
+          )
+    (let ((gp-3 (-> self skel root-channel 0)))
+      (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
+      (set! (-> gp-3 param 0) (ja-aframe 40.0 0))
+      (set! (-> gp-3 param 1) 1.0)
+      (set! (-> gp-3 frame-num) (ja-aframe 16.0 0))
+      (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
       )
-     )
-    )
-   (clear-collide-with-as (-> self control))
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set!
-    (-> self trans-hook)
-    (lambda :behavior target () (let ((gp-0 (new-stack-vector0))
-                                      (f30-0
-                                       (vector-dot
-                                        (-> self control dynam gravity-normal)
-                                        (-> self control transv)
-                                        )
-                                       )
-                                      )
-                                 0.0
-                                 (vector-!
-                                  gp-0
-                                  (-> self control transv)
-                                  (vector-float*!
-                                   gp-0
-                                   (-> self control dynam gravity-normal)
-                                   f30-0
-                                   )
-                                  )
-                                 (let* ((f0-3 (vector-length gp-0))
-                                        (f1-0 f0-3)
-                                        )
-                                  (if (< f30-0 0.0)
-                                   (set! f30-0 8192.0)
-                                   )
-                                  (vector+!
-                                   (-> self control transv)
-                                   (vector-float*!
-                                    (-> self control transv)
-                                    (-> self control dynam gravity-normal)
-                                    f30-0
-                                    )
-                                   (vector-float*! gp-0 gp-0 (/ f0-3 f1-0))
-                                   )
-                                  )
-                                 )
-     (let
-      ((gp-2
-        (vector-!
-         (new-stack-vector0)
-         (-> self control unknown-vector102)
-         (-> self control trans)
-         )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((gp-4 (-> self skel root-channel 0)))
+        (set! (-> gp-4 param 0) (ja-aframe 40.0 0))
+        (set! (-> gp-4 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-4 (the-as art-joint-anim #f) num-func-seek!)
         )
-       )
-      (set! (-> gp-2 y) 0.0)
-      (send-event *target* 'sidekick #f)
-      (when
-       (and
-        (or
-         (< (vector-dot gp-2 (-> self control transv)) 0.0)
-         (-> self control unknown-spoolanim00)
-         )
-        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
-        )
-       (vector-seek!
-        (-> self draw color-mult)
-        (new 'static 'vector)
-        (* 2.0 (-> *display* seconds-per-frame))
-        )
-       (set! (-> self control transv x) (* 0.95 (-> self control transv x)))
-       (set! (-> self control transv z) (* 0.95 (-> self control transv z)))
-       (when (not (-> self control unknown-spoolanim00))
-        (send-event self 'do-effect 'death-warp-out -1.0)
-        (let ((v0-2 #t))
-         (set! (-> self control unknown-uint20) (the-as uint v0-2))
-         v0-2
-         )
-        )
-       )
       )
-     )
+    (anim-loop)
+    (none)
     )
-   (let ((gp-3 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-3 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 41))
-     )
-    (set! (-> gp-3 param 0) (ja-aframe 40.0 0))
-    (set! (-> gp-3 param 1) 1.0)
-    (set! (-> gp-3 frame-num) (ja-aframe 16.0 0))
-    (joint-control-channel-group!
-     gp-3
-     (the-as art-joint-anim (-> self draw art-group data 41))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((gp-4 (-> self skel root-channel 0)))
-     (set! (-> gp-4 param 0) (ja-aframe 40.0 0))
-     (set! (-> gp-4 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-4
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (anim-loop)
-   (none)
-   )
   :post
   target-no-stick-post
   )

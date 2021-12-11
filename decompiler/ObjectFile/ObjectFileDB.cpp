@@ -428,7 +428,7 @@ void ObjectFileDB::process_link_data(const Config& config) {
   });
 
   lg::info("Processed Link Data");
-  lg::info(" Total {} ms\n", process_link_timer.getMs());
+  lg::info(" Total {:.2f} ms\n", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -443,7 +443,7 @@ void ObjectFileDB::process_labels() {
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {} ms\n", process_label_timer.getMs());
+  lg::info(" Total {:.2f} ms\n", process_label_timer.getMs());
 }
 
 /*!
@@ -579,7 +579,7 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages() {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
@@ -590,7 +590,7 @@ std::string ObjectFileDB::process_tpages() {
   std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      auto statistics = process_tpage(data);
+      auto statistics = process_tpage(data, tex_db);
       total += statistics.total_textures;
       success += statistics.successful_textures;
       total_px += statistics.num_px;
@@ -602,13 +602,13 @@ std::string ObjectFileDB::process_tpages() {
 
   assert(tpage_dir_count <= 1);
 
+  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
+           100.f * float(success) / float(total), timer.getMs());
+
   if (tpage_dir_count == 0) {
     lg::warn("Did not find tpage-dir.");
     return {};
   }
-
-  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
-           100.f * float(success) / float(total), timer.getMs());
   return result;
 }
 

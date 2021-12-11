@@ -45,6 +45,9 @@ class Compiler {
   void run_full_compiler_on_string_no_save(const std::string& src);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
+  void add_ignored_define_extern_symbol(const std::string& name) {
+    m_allow_inconsistent_definition_symbols.insert(name);
+  }
   Debugger& get_debugger() { return m_debugger; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
@@ -75,6 +78,7 @@ class Compiler {
   std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
+  std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;

@@ -5,3 +5,675 @@
 ;; name in dgo: snow-bumper
 ;; dgos: L1, SNO
 
+(define-extern *snow-bumper-sg* skeleton-group)
+
+(declare-type snow-bumper process-drawable)
+
+(define-extern snow-bumper-spawn-fuel-cell (state snow-bumper)) ;; unknown type
+(define-extern snow-bumper-inactive-idle (state snow-bumper)) ;; unknown type
+(define-extern snow-bumper-active-far-idle (state snow-bumper)) ;; unknown type
+(define-extern snow-bumper-deactivate (state snow-bumper)) ;; unknown type
+(define-extern snow-bumper-active-close-idle (state snow-bumper)) ;; unknown type
+
+;; DECOMP BEGINS
+
+(deftype snow-bumper (process-drawable)
+  ((bumper-id               int32                     :offset-assert 176)
+   (base-shove-ry           float                     :offset-assert 180)
+   (max-shove-diff-ry       float                     :offset-assert 184)
+   (part2                   sparticle-launch-control  :offset-assert 188)
+   (last-shoved-player-time uint64                    :offset-assert 192)
+   )
+  :heap-base #x60
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16006000c8
+  (:methods
+    (dummy-20 (_type_) none 20)
+    (shove-player (_type_ process-drawable) none 21)
+    )
+  )
+
+
+(defskelgroup *snow-bumper-sg* snow-bumper
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 2.2 0 3.4)
+  :longest-edge (meters 0)
+  )
+
+(set!
+  (-> *part-group-id-table* 519)
+  (new 'static 'sparticle-launch-group
+   :length 1
+   :duration #xbb8
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-snow-bumper-idle"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 1
+    (sp-item 1893 :fade-after (meters 90.0) :falloff-to (meters 90.0) :period 25 :length 10)
+    )
+   :bounds (new 'static 'sphere :w 32768.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 1893)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 15.0)
+    (sp-flt spt-y (meters 1.5))
+    (sp-flt spt-z 0.0)
+    (sp-flt spt-scale-x (meters 1.5))
+    (sp-flt spt-scale-y (meters 6.0))
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 64.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-vel-y (meters 0.013333334))
+    (sp-flt spt-scalevel-x (meters 0.0038461538))
+    (sp-flt spt-scalevel-y (meters -0.03076923))
+    (sp-flt spt-fade-a 0.0)
+    (sp-int spt-timer 25)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 5.0))
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-group-id-table* 520)
+  (new 'static 'sparticle-launch-group
+   :length 1
+   :duration #xbb8
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-snow-bumper-shove"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 1 (sp-item 1895))
+   :bounds (new 'static 'sphere :w 32768.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 1895)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 19
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-flt spt-x (meters 5.5))
+    (sp-flt spt-y (meters 1.5))
+    (sp-flt spt-z 0.0)
+    (sp-flt spt-scale-x (meters 2.0))
+    (sp-flt spt-scale-y (meters 6.0))
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-vel-x (meters 0.033333335))
+    (sp-flt spt-scalevel-x (meters 0.008333334))
+    (sp-flt spt-scalevel-y (meters 0.2))
+    (sp-flt spt-fade-a 0.0)
+    (sp-int spt-timer 25)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 45.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(defmethod shove-player snow-bumper ((obj snow-bumper) (arg0 process-drawable))
+  (with-pp
+   (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (vector-! s5-0 (-> arg0 root trans) (-> obj root trans))
+    (set! (-> s5-0 y) 0.0)
+    (vector-normalize! s5-0 1.0)
+    (let* ((f0-3 (atan (-> s5-0 x) (-> s5-0 z)))
+           (f30-0 (-> obj base-shove-ry))
+           (f28-0 (-> obj max-shove-diff-ry))
+           (f0-4 (deg- f0-3 f30-0))
+           )
+     (when (< f28-0 (fabs f0-4))
+      (let ((f30-1 (if (>= f0-4 0.0)
+                    (+ f30-0 f28-0)
+                    (- f30-0 f28-0)
+                    )
+             )
+            )
+       (set-vector! s5-0 (sin f30-1) 0.0 (cos f30-1) 1.0)
+       )
+      )
+     )
+    (let ((f0-12 (+ -16384.0 (atan (-> s5-0 x) (-> s5-0 z)))))
+     (set!
+      (-> *part-id-table* 1895 init-specs 17 initial-valuef)
+      (+ -4096.0 f0-12)
+      )
+     )
+    (spawn (-> obj part2) (-> obj root trans))
+    (let ((s3-1 (new 'stack-no-clear 'vector)))
+     (vector-normalize-copy! s3-1 s5-0 32768.0)
+     (vector+! s3-1 s3-1 (-> obj root trans))
+     (vector-! s5-0 s3-1 (-> arg0 root trans))
+     )
+    (let ((f30-3 (vector-xz-length s5-0)))
+     (vector-normalize! s5-0 1.0)
+     (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-12 from) pp)
+      (set! (-> a1-12 num-params) 2)
+      (set! (-> a1-12 message) 'shove)
+      (set! (-> a1-12 param 0) (the-as uint #f))
+      (let ((v1-16 (new 'static 'attack-info :mask #xc2)))
+       (set! (-> v1-16 vector quad) (-> s5-0 quad))
+       (set! (-> v1-16 shove-up) 4096.0)
+       (set! (-> v1-16 shove-back) f30-3)
+       (set! (-> a1-12 param 1) (the-as uint v1-16))
+       )
+      (if (send-event-function *target* a1-12)
+       (set!
+        (-> obj last-shoved-player-time)
+        (the-as uint (-> *display* base-frame-counter))
+        )
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate snow-bumper-active-far-idle (snow-bumper)
+  :trans
+  (behavior ()
+   (if
+    (and
+     *target*
+     (>=
+      135895450000.0
+      (vector-vector-xz-distance-squared (-> self root trans) (target-pos 0))
+      )
+     )
+    (go snow-bumper-active-close-idle)
+    )
+   0
+   (none)
+   )
+  :code
+  (behavior ()
+   (transform-post)
+   (suspend)
+   (while #t
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+(defstate snow-bumper-active-close-idle (snow-bumper)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (case arg2 
+    (('touch 'attack 'bonk)
+      (when (= (-> arg0 type) target)
+       (let ((gp-0 (-> arg3 param 0)))
+        (when
+         (and
+          (>=
+           6144.0
+           (vector-vector-xz-distance (-> self root trans) (target-pos 0))
+           )
+          ((method-of-type touching-shapes-entry prims-touching?)
+           (the-as touching-shapes-entry gp-0)
+           (the-as collide-shape-moving (-> self root))
+           (the-as uint 1)
+           )
+          )
+         (close-specific-task! (game-task snow-bumpers) (task-status need-hint))
+         (go snow-bumper-deactivate)
+         )
+        )
+       )
+      )
+    )
+   )
+  :trans
+  (behavior ()
+   (cond
+    (*target*
+     (let* ((gp-0 (target-pos 0))
+            (f30-0 (vector-vector-xz-distance (-> self root trans) gp-0))
+            (f28-0 (- (-> gp-0 y) (-> self root trans y)))
+            )
+      (if (< 368640.0 f30-0)
+       (go snow-bumper-active-far-idle)
+       )
+      (if
+       (and
+        (>=
+         (-
+          (-> *display* base-frame-counter)
+          (the-as int (-> self last-shoved-player-time))
+          )
+         150
+         )
+        (>= 20480.0 f30-0)
+        (>= f28-0 -4096.0)
+        (>= 11059.2 f28-0)
+        )
+       (shove-player self *target*)
+       )
+      )
+     )
+    (else
+     (go snow-bumper-active-far-idle)
+     )
+    )
+   (spawn (-> self part) (-> self root trans))
+   (update! (-> self sound))
+   (none)
+   )
+  :code
+  (behavior ()
+   (transform-post)
+   (suspend)
+   (while #t
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+(defstate snow-bumper-deactivate (snow-bumper)
+  :exit
+  (behavior ()
+   (stop! (-> self sound))
+   (logior! (-> self mask) (process-mask actor-pause))
+   (none)
+   )
+  :trans
+  (the-as (function none :behavior snow-bumper) rider-trans)
+  :code
+  (behavior ()
+   (local-vars (sv-16 symbol))
+   (logclear! (-> self mask) (process-mask actor-pause))
+   (sound-play-by-name
+    (static-sound-name "bumper-pwr-dwn")
+    (new-sound-id)
+    1024
+    0
+    0
+    1
+    #t
+    )
+   (let ((a0-3 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-3 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     )
+    (set!
+     (-> a0-3 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-3 param 1) 0.05)
+    (set! (-> a0-3 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-3
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (spawn (-> self part) (-> self root trans))
+    (update! (-> self sound))
+    (suspend)
+    (let ((a0-6 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-6 param 0)
+      (the float (+ (-> a0-6 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-6 param 1) 0.05)
+     (joint-control-channel-group-eval!
+      a0-6
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (stop! (-> self sound))
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+    (suspend)
+    )
+   (let ((a0-10 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-10 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     )
+    (set!
+     (-> a0-10 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 5))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-10 param 1) 0.02)
+    (set! (-> a0-10 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-10
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-11 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-11 param 0)
+      (the float (+ (-> a0-11 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-11 param 1) 0.02)
+     (joint-control-channel-group-eval!
+      a0-11
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (process-entity-status! self (entity-perm-status complete) #t)
+   (set! sv-16 (the-as symbol #f))
+   (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+   (when sv-16
+    (save-reminder
+     (get-task-control (game-task snow-bumpers))
+     (-> self bumper-id)
+     0
+     )
+    (go snow-bumper-spawn-fuel-cell)
+    )
+   (go snow-bumper-inactive-idle)
+   (none)
+   )
+  :post
+  (the-as (function none :behavior snow-bumper) rider-post)
+  )
+
+(defstate snow-bumper-spawn-fuel-cell (snow-bumper)
+  :code
+  (behavior ()
+   (ja-channel-set! 1)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     num-func-identity
+     )
+    (set!
+     (-> gp-0 frame-num)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 5))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    )
+   (transform-post)
+   (if (not (task-complete? *game-info* (-> self entity extra perm task)))
+    (birth-pickup-at-point
+     (-> self root trans)
+     (pickup-type fuel-cell)
+     (the float (-> self entity extra perm task))
+     #t
+     self
+     (the-as fact-info #f)
+     )
+    )
+   (until (not (-> self child))
+    (suspend)
+    )
+   (go snow-bumper-inactive-idle)
+   (none)
+   )
+  )
+
+(defstate snow-bumper-inactive-idle (snow-bumper)
+  :code
+  (behavior ()
+   (set! (-> self root nav-radius) 6963.2)
+   (ja-channel-set! 1)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     num-func-identity
+     )
+    (set!
+     (-> gp-0 frame-num)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 5))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    )
+   (transform-post)
+   (suspend)
+   (logior! (-> self mask) (process-mask sleep-code))
+   (suspend)
+   0
+   (none)
+   )
+  )
+
+(defmethod deactivate snow-bumper ((obj snow-bumper))
+  (if (nonzero? (-> obj part2))
+   (kill-and-free-particles (-> obj part2))
+   )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+(defmethod relocate snow-bumper ((obj snow-bumper) (arg0 int))
+  (if (nonzero? (-> obj part2))
+   (&+! (-> obj part2) arg0)
+   )
+  (the-as
+   snow-bumper
+   ((the-as
+     (function process-drawable int process-drawable)
+     (find-parent-method snow-bumper 7)
+     )
+    obj
+    arg0
+    )
+   )
+  )
+
+(defmethod init-from-entity! snow-bumper ((obj snow-bumper) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj last-shoved-player-time) (the-as uint 0))
+  (let
+   ((s4-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s4-0 reaction) default-collision-reaction)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
+   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set! (-> s3-0 prim-core action) (the-as uint 3))
+    (set-vector! (-> s3-0 local-sphere) 0.0 9011.2 0.0 13926.4)
+    (set-root-prim! s4-0 s3-0)
+    (let
+     ((s2-0
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 0)
+        (the-as uint 1)
+        )
+       )
+      )
+     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-0 collide-with) (the-as uint 16))
+     (set! (-> s2-0 prim-core action) (the-as uint 3))
+     (set! (-> s2-0 prim-core offense) 4)
+     (set! (-> s2-0 transform-index) 6)
+     (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4915.2)
+     (append-prim s3-0 s2-0)
+     )
+    (let
+     ((s2-1
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 1)
+        (the-as uint 2)
+        )
+       )
+      )
+     (set! (-> s2-1 prim-core collide-as) (the-as uint 512))
+     (set! (-> s2-1 collide-with) (the-as uint 16))
+     (set! (-> s2-1 prim-core action) (the-as uint 1))
+     (set! (-> s2-1 prim-core offense) 4)
+     (set! (-> s2-1 transform-index) 3)
+     (set-vector! (-> s2-1 local-sphere) 0.0 8192.0 0.0 11878.4)
+     (append-prim s3-0 s2-1)
+     )
+    )
+   (set! (-> s4-0 nav-radius) 20480.0)
+   (backup-collide-with-as s4-0)
+   (set! (-> obj root) s4-0)
+   )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *snow-bumper-sg* '())
+  (set!
+   (-> obj part)
+   (create-launch-control (-> *part-group-id-table* 519) obj)
+   )
+  (set!
+   (-> obj part2)
+   (create-launch-control (-> *part-group-id-table* 520) obj)
+   )
+  (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (set! (-> obj bumper-id) (+ (actor-count-before (-> obj link)) 1))
+  (set!
+   (-> obj sound)
+   (new
+    'process
+    'ambient-sound
+    (new 'static 'sound-spec
+     :mask #x80
+     :num 1.0
+     :group #x1
+     :sound-name (static-sound-name "snow-bumper")
+     :volume #x400
+     :fo-max 40
+     )
+    (-> obj root trans)
+    )
+   )
+  (ja-channel-set! 1)
+  (let ((s5-1 (-> obj skel root-channel 0)))
+   (joint-control-channel-group-eval!
+    s5-1
+    (the-as art-joint-anim (-> obj draw art-group data 3))
+    num-func-identity
+    )
+   (set! (-> s5-1 frame-num) 0.0)
+   )
+  (transform-post)
+  (set! (-> obj base-shove-ry) 0.0)
+  (set! (-> obj max-shove-diff-ry) 32768.0)
+  (set! sv-16 (new 'static 'res-tag))
+  (let
+   ((v1-52
+     (res-lump-data (-> obj entity) 'rotmin (pointer float) :tag-ptr (& sv-16))
+     )
+    )
+   (when v1-52
+    (set! (-> obj base-shove-ry) (-> v1-52 0))
+    (set! (-> obj max-shove-diff-ry) (-> v1-52 1))
+    )
+   )
+  (cond
+   ((and
+     (-> obj entity)
+     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+     )
+    (if
+     (and
+      (=
+       (get-reminder (get-task-control (game-task snow-bumpers)) 0)
+       (-> obj bumper-id)
+       )
+      (not (task-complete? *game-info* (-> obj entity extra perm task)))
+      )
+     (go snow-bumper-spawn-fuel-cell)
+     (go snow-bumper-inactive-idle)
+     )
+    )
+   (else
+    (go snow-bumper-active-far-idle)
+    )
+   )
+  (none)
+  )
+
+
+
+

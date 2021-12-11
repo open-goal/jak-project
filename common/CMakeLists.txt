@@ -3,6 +3,7 @@ add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
+        custom_data/TFrag3Data.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
@@ -10,7 +11,9 @@ add_library(common
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
+        goos/Printer.cpp
         goos/PrettyPrinter.cpp
+        goos/PrettyPrinter2.cpp
         goos/Reader.cpp
         goos/TextDB.cpp
         goos/ReplUtils.cpp
@@ -32,9 +35,10 @@ add_library(common
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp
+        util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        util/image_loading.cpp)
+        util/image_loading.cpp "goos/Printer.cpp" "goos/Printer.h" "goos/PrettyPrinter2.cpp" "goos/PrettyPrinter2.h")
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 
