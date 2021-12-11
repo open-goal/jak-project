@@ -121,7 +121,47 @@
   dst
   )
 
-;; definition for function matrix*!
+(defmacro .matrix* (acc dest-vec src1-vec src2-vec)
+  "macro for matrix multiplication with assembly. dest and src2 shall not overlap."
+  `(begin
+    (.mul.x.vf ,acc ,(car src2-vec) ,(car src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(car src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(car src1-vec) ,acc)
+    (.add.mul.w.vf ,(car dest-vec) ,(cadddr src2-vec) ,(car src1-vec) ,acc)
+    (.mul.x.vf ,acc ,(car src2-vec) ,(cadr src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(cadr src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(cadr src1-vec) ,acc)
+    (.add.mul.w.vf ,(cadr dest-vec) ,(cadddr src2-vec) ,(cadr src1-vec) ,acc)
+    (.mul.x.vf ,acc ,(car src2-vec) ,(caddr src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(caddr src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(caddr src1-vec) ,acc)
+    (.add.mul.w.vf ,(caddr dest-vec) ,(cadddr src2-vec) ,(caddr src1-vec) ,acc)
+    (.mul.x.vf ,acc ,(car src2-vec) ,(cadddr src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(cadddr src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(cadddr src1-vec) ,acc)
+    (.add.mul.w.vf ,(cadddr dest-vec) ,(cadddr src2-vec) ,(cadddr src1-vec) ,acc)
+    )
+  )
+
+(defmacro .matrix3x4* (acc dest-vec src1-vec src2-vec)
+  "macro for matrix multiplication with assembly. dest and src2 shall not overlap.
+   Only multiplies the first 3 of 4 rows. You must multiply the last one yourself."
+  `(begin
+    (.mul.x.vf ,acc ,(car src2-vec) ,(car src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(car src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(car src1-vec) ,acc)
+    (.add.mul.w.vf ,(car dest-vec) ,(cadddr src2-vec) ,(car src1-vec) ,acc)
+    (.mul.x.vf ,acc ,(car src2-vec) ,(cadr src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(cadr src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(cadr src1-vec) ,acc)
+    (.add.mul.w.vf ,(cadr dest-vec) ,(cadddr src2-vec) ,(cadr src1-vec) ,acc)
+    (.mul.x.vf ,acc ,(car src2-vec) ,(caddr src1-vec))
+    (.add.mul.y.vf ,acc ,(cadr src2-vec) ,(caddr src1-vec) ,acc)
+    (.add.mul.z.vf ,acc ,(caddr src2-vec) ,(caddr src1-vec) ,acc)
+    (.add.mul.w.vf ,(caddr dest-vec) ,(cadddr src2-vec) ,(caddr src1-vec) ,acc)
+    )
+  )
+
 (defun matrix*! ((dst matrix) (src1 matrix) (src2 matrix))
   "Set dst = src1 * src2. It is okay for any arguments to be the same data.
    This is a moderately efficient implementation."

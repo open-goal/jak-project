@@ -1110,7 +1110,121 @@
   (matrix*! (-> arg0 bone transform) arg1 (-> arg0 parent bone transform))
   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun cspace<-parented-transformq-joint! ((arg0 cspace) (arg1 transformq))
+  (nop!)
+  ;; the ops in these funcs were scrambled for pipeline optimization. screw that.
+  ;; f0 = 1.0
+  ;; a3 = -> arg0 parent (used once)
+  (rlet ((acc :class vf)
+         (vf0 :class vf) ;; unit
+         (vf5 :class vf) ;; quat
+         (vf15 :class vf) ;; trans
+         (vf6 :class vf) ;; temp
+         (vf2 :class vf) ;; temp
+         (vf3 :class vf) ;; temp
+         (vf4 :class vf) ;; temp
+
+         (vf1 :class vf) ;; temp
+         (vf7 :class vf) ;; temp
+         (vf8 :class vf) ;; temp
+         (vf9 :class vf) ;; temp
+         (vf10 :class vf) ;; temp
+
+         (vf11 :class vf) ;; temp
+         (vf12 :class vf) ;; temp
+         (vf13 :class vf) ;; temp
+         (vf14 :class vf) ;; temp
+         
+         (vf16 :class vf) ;; temp
+         (t1 :class vf)
+         (t2 :class vf)
+         (t3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf5 (-> arg1 quat))
+    (.lvf vf15 (-> arg1 trans))
+    (let ((t0 (-> arg0 parent bone))
+          (a2 (-> arg0 bone))
+          )
+      (.add.vf vf6 vf5 vf5)
+      ;; set vf2
+      (.add.w.vf vf2 vf0 vf5 :mask #b0001)
+      (.add.z.vf vf2 vf0 vf5 :mask #b0010)
+      (.sub.y.vf vf2 vf0 vf5 :mask #b0100)
+      (.sub.w.vf vf2 vf0 vf0 :mask #b1000)
+      ;; set vf3
+      (.sub.z.vf vf3 vf0 vf5 :mask #b0001)
+      (.add.w.vf vf3 vf0 vf5 :mask #b0010)
+      (.add.x.vf vf3 vf0 vf5 :mask #b0100)
+      (.sub.w.vf vf3 vf0 vf0 :mask #b1000)
+      ;; set vf4
+      (.add.y.vf vf4 vf0 vf5 :mask #b0001)
+      (.sub.x.vf vf4 vf0 vf5 :mask #b0010)
+      (.add.w.vf vf4 vf0 vf5 :mask #b0100)
+      (.sub.w.vf vf4 vf0 vf0 :mask #b1000)
+      ;; outer prods
+      (.outer.product.vf vf2 vf6 vf2)
+      (.outer.product.vf vf3 vf6 vf3)
+      (.outer.product.vf vf4 vf6 vf4)
+      ;; add ones
+      (.add.w.vf vf2 vf2 vf0 :mask #b0001)
+      (.add.w.vf vf3 vf3 vf0 :mask #b0010)
+      (.add.w.vf vf4 vf4 vf0 :mask #b0100)
+      
+      ;; things for cond blocks
+      (.lvf vf7 (-> t0 transform vector 0))
+      (.lvf vf8 (-> t0 transform vector 1))
+      (.lvf vf9 (-> t0 transform vector 2))
+      (.lvf vf10 (-> t0 transform vector 3))
+      (.lvf vf1 (-> a2 scale))
+      
+      (cond
+        ((zero? (-> t0 scale w))
+         (.mul.x.vf vf2 vf2 vf1)
+         (.mul.y.vf vf3 vf3 vf1)
+         (.mul.z.vf vf4 vf4 vf1)
+         
+         ;; the same
+         (.matrix3x4* acc (vf11 vf12 vf13 vf14) (vf2 vf3 vf4) (vf7 vf8 vf9 vf10))
+         (.mul.x.vf acc vf7 vf15)
+         (.add.mul.y.vf acc vf8 vf15 acc)
+         (.add.mul.z.vf acc vf9 vf15 acc)
+         (.add.mul.w.vf vf14 vf10 vf0 acc)
+         (.svf (-> a2 transform vector 0) vf11)
+         (.svf (-> a2 transform vector 1) vf12)
+         (.svf (-> a2 transform vector 2) vf13)
+         (.svf (-> a2 transform vector 3) vf14)
+         )
+        (else
+         (.mul.x.vf vf2 vf2 vf1)
+         (.mul.y.vf vf3 vf3 vf1)
+         (.mul.z.vf vf4 vf4 vf1)
+         
+         (.mov t1 (/ 1.0 (-> t0 scale x)))
+         (.mov t2 (/ 1.0 (-> t0 scale y)))
+         (.mov t3 (/ 1.0 (-> t0 scale z)))
+         (.pextlw t1 t1 t2)
+         (.pcpyld t1 t1 t3)
+         (.mov vf16 t1)
+         (.mul.vf vf2 vf2 vf16)
+         (.mul.vf vf3 vf3 vf16)
+         (.mul.vf vf4 vf4 vf16)
+         
+         ;; the same
+         (.matrix3x4* acc (vf11 vf12 vf13 vf14) (vf2 vf3 vf4) (vf7 vf8 vf9 vf10))
+         (.mul.x.vf acc vf7 vf15)
+         (.add.mul.y.vf acc vf8 vf15 acc)
+         (.add.mul.z.vf acc vf9 vf15 acc)
+         (.add.mul.w.vf vf14 vf10 vf0 acc)
+         (.svf (-> a2 transform vector 0) vf11)
+         (.svf (-> a2 transform vector 1) vf12)
+         (.svf (-> a2 transform vector 2) vf13)
+         (.svf (-> a2 transform vector 3) vf14)
+         )
+        )
+      )
+    )
+  )
 
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
