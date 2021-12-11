@@ -4398,13 +4398,10 @@ void push_asm_sllv_to_stack(const AsmOp* op,
   auto dst = op->dst();
   assert(dst.has_value());
 
-  auto sav = op->src(1);
-  assert(sav.has_value());
-
   auto arg0_type = env.get_variable_type(*var, true);
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (sav->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (op->instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     if (bitfield_info) {
       auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
       auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);

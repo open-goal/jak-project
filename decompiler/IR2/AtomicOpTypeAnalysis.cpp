@@ -789,7 +789,7 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   }
 
   if (m_instr.kind == InstructionKind::PCPYUD) {
-    if (m_src[1] && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+    if (instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
       assert(m_src[0]);
       auto& in_type = result.get(m_src[0]->reg());
       auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(in_type.typespec()));
@@ -803,7 +803,7 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
 
   // pextuw t0, r0, gp
   if (m_instr.kind == InstructionKind::PEXTUW) {
-    if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
+    if (instruction().src[0].is_reg(Register(Reg::GPR, Reg::R0))) {
       assert(m_src[1]);
       auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
       auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -817,7 +817,8 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   }
 
   // sllv out, in, r0
-  if (m_instr.kind == InstructionKind::SLLV && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (m_instr.kind == InstructionKind::SLLV &&
+      instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     if (as_bitfield) {
