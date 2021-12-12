@@ -149,11 +149,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       args.has_named("inline-only") && symbol_string(args.get_named("inline-only")) != "#f";
 
   // pick default segment to store function in.
-  int segment = MAIN_SEGMENT;
-  if (fe->segment == DEBUG_SEGMENT) {
-    // make anonymous lambdas in debug functions also go to debug
-    segment = DEBUG_SEGMENT;
-  }
+  int segment = fe->segment_for_static_data();
 
   // override default segment.
   if (args.has_named("segment")) {
@@ -712,5 +708,36 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       throw_compiler_error(first, "Unrecognized declare option {}.", first.print());
     }
   });
+  return get_none();
+}
+
+Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
+                                    const goos::Object& rest,
+                                    Env* env) {
+  for_each_in_list(rest, [&](const goos::Object& o) {
+    if (!o.is_pair()) {
+      throw_compiler_error(o, "Invalid declare-file specification.");
+    }
+
+    auto first = o.as_pair()->car;
+    auto rrest = &o.as_pair()->cdr;
+
+    if (!first.is_symbol()) {
+      throw_compiler_error(
+          first, "Invalid declare option specification, expected a symbol, but got {} instead.",
+          first.print());
+    }
+
+    if (first.as_symbol()->name == "debug") {
+      if (!rrest->is_empty_list()) {
+        throw_compiler_error(first, "Invalid debug declare");
+      }
+      env->file_env()->set_debug_file();
+
+    } else {
+      throw_compiler_error(first, "Unrecognized declare-file option {}.", first.print());
+    }
+  });
+
   return get_none();
 }

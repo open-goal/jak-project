@@ -208,6 +208,7 @@ const std::unordered_map<
         {"declare", &Compiler::compile_declare},
         {"inline", &Compiler::compile_inline},
         {"local-vars", &Compiler::compile_local_vars},
+        {"declare-file", &Compiler::compile_declare_file},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
 
@@ -428,14 +429,12 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
 }
 
 /*!
- * Compile a string constant. The constant is placed in the same segment as the parent function.
+ * Compile a string constant. The constant is placed in the same segment as the parent function. For
+ * top-level functions, the string is placed in the file's default segment.
  */
 Val* Compiler::compile_string(const goos::Object& form, Env* env) {
-  auto segment = env->function_env()->segment;
-  if (segment == TOP_LEVEL_SEGMENT) {
-    segment = MAIN_SEGMENT;
-  }
-  return compile_string(form.as_string()->data, env, segment);
+  return compile_string(form.as_string()->data, env,
+                        env->function_env()->segment_for_static_data());
 }
 
 /*!
@@ -456,12 +455,10 @@ Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
  * of the code, at least in Jak 1.
  */
 Val* Compiler::compile_float(const goos::Object& code, Env* env) {
-  auto segment = env->function_env()->segment;
-  if (segment == TOP_LEVEL_SEGMENT) {
-    segment = MAIN_SEGMENT;
-  }
   assert(code.is_float());
-  return compile_float(code.float_obj.value, env, segment);
+  // TODO: this will put top-level only floats in main. Which is conservative because I
+  // don't think we can take the address of a float constant.
+  return compile_float(code.float_obj.value, env, env->function_env()->segment_for_static_data());
 }
 
 /*!

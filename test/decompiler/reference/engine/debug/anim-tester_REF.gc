@@ -449,26 +449,29 @@
 
 ;; definition of type anim-tester
 (deftype anim-tester (process-drawable)
-  ((flags       int32                :offset-assert 176)
-   (obj-list    glst-list    :inline :offset-assert 180)
-   (current-obj string               :offset-assert 196)
-   (speed       int32                :offset-assert 200)
-   (list-con    list-control :inline :offset-assert 204)
-   (pick-con    list-control :inline :offset-assert 284)
-   (item-field  int64                :offset-assert 368)
-   (inc-delay   int32                :offset-assert 376)
-   (inc-timer   int32                :offset-assert 380)
-   (edit-mode   int32                :offset-assert 384)
-   (old-mode    int32                :offset-assert 388)
-   (anim-speed  float                :offset-assert 392)
-   (anim-gspeed float                :offset-assert 396)
-   (anim-first  float                :offset-assert 400)
-   (anim-last   float                :offset-assert 404)
+  ((flags       anim-tester-flags         :offset-assert 176)
+   (obj-list    glst-list         :inline :offset-assert 180)
+   (current-obj string                    :offset-assert 196)
+   (speed       int32                     :offset-assert 200)
+   (list-con    list-control      :inline :offset-assert 204)
+   (pick-con    list-control      :inline :offset-assert 284)
+   (item-field  int64                     :offset-assert 368)
+   (inc-delay   int32                     :offset-assert 376)
+   (inc-timer   int32                     :offset-assert 380)
+   (edit-mode   int32                     :offset-assert 384)
+   (old-mode    int32                     :offset-assert 388)
+   (anim-speed  float                     :offset-assert 392)
+   (anim-gspeed float                     :offset-assert 396)
+   (anim-first  float                     :offset-assert 400)
+   (anim-last   float                     :offset-assert 404)
    )
   :heap-base #x130
   :method-count-assert 20
   :size-assert         #x198
   :flag-assert         #x1401300198
+  (:states
+    anim-tester-process
+    )
   )
 
 ;; definition for method 3 of type anim-tester
@@ -809,7 +812,7 @@
   (format #t "current-obj=~A~%" (-> obj current-obj))
   (format #t "speed=~f~%" (* (-> (new 'static 'array float 1 0.01) 0) (the float (-> obj speed))))
   (format #t "--flags:--~%")
-  (the-as anim-tester (format #t "  CONNECTED: ~A~%" (if (logtest? (-> obj flags) 1)
+  (the-as anim-tester (format #t "  CONNECTED: ~A~%" (if (logtest? (-> obj flags) (anim-tester-flags fanimt0))
                                                          "TRUE"
                                                          "f"
                                                          )
@@ -934,12 +937,12 @@
 ;; definition for function anim-tester-real-post
 ;; INFO: Return type mismatch int vs none.
 (defbehavior anim-tester-real-post anim-tester ()
-  (when (logtest? (-> self flags) 1)
-    (if (logtest? (-> self flags) 32)
+  (when (logtest? (-> self flags) (anim-tester-flags fanimt0))
+    (if (logtest? (-> self flags) (anim-tester-flags fanimt5))
         (vector-v+! (-> self root trans) (-> self root trans) (-> self root transv))
         )
     (ja-post)
-    (when (logtest? (-> self flags) 16)
+    (when (logtest? (-> self flags) (anim-tester-flags fanimt4))
       (draw-joint-spheres self)
       (dummy-10 (-> self skel) (the-as symbol *stdcon*))
       )
@@ -1093,7 +1096,7 @@
   (case arg2
     (('reset)
      (process-disconnect self)
-     (set! (-> self flags) (logand -2 (-> self flags)))
+     (logclear! (-> self flags) (anim-tester-flags fanimt0))
      (when (!= (-> *anim-tester* 0 edit-mode) 1)
        (set! (-> *debug-menu-context* is-hidden) #f)
        (set! (-> *anim-tester* 0 edit-mode) 0)
@@ -1212,7 +1215,7 @@
           (set! (-> *debug-menu-context* is-hidden) #f)
           (set! (-> *anim-tester* 0 edit-mode) 0)
           (set! *camera-read-buttons* #t)
-          (logior! (-> *anim-tester* 0 flags) 4)
+          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
           )
          )
        )
@@ -1383,7 +1386,7 @@
               (set! (-> *debug-menu-context* is-hidden) #f)
               (set! (-> *anim-tester* 0 edit-mode) 0)
               (set! *camera-read-buttons* #t)
-              (logior! (-> *anim-tester* 0 flags) 4)
+              (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
               )
              )
            )
@@ -1557,7 +1560,7 @@
           (set! (-> *debug-menu-context* is-hidden) #f)
           (set! (-> *anim-tester* 0 edit-mode) 0)
           (set! *camera-read-buttons* #t)
-          (logior! (-> *anim-tester* 0 flags) 4)
+          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
           )
          )
        )
@@ -1660,7 +1663,7 @@
   )
 
 ;; definition for function anim-tester-pick-item-setup
-;; INFO: Return type mismatch int vs none.
+;; INFO: Return type mismatch anim-tester-flags vs none.
 (defun anim-tester-pick-item-setup ((arg0 anim-test-seq-item) (arg1 anim-test-sequence))
   (let ((gp-0 (-> arg1 parent)))
     (set! (-> *anim-tester* 0 pick-con listfunc) anim-test-anim-list-handler)
@@ -1692,7 +1695,7 @@
         )
       )
     )
-  (logior! (-> *anim-tester* 0 flags) 8)
+  (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
   (none)
   )
 
@@ -1735,7 +1738,11 @@
     )
   (let ((gp-0 (-> arg1 the-node))
         (s4-0 (the-as object (-> arg1 list-owner)))
-        (s2-0 (and (logtest? (-> *anim-tester* 0 flags) 8) (zero? (-> *anim-tester* 0 item-field))))
+        (s2-0 (and
+                (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
+                (zero? (-> *anim-tester* 0 item-field))
+                )
+              )
         )
     (cond
       ((zero? arg0)
@@ -1938,13 +1945,13 @@
        )
       ((= arg0 4)
        (cond
-         ((logtest? (-> *anim-tester* 0 flags) 8)
+         ((logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
           (let ((v1-88 (-> *anim-tester* 0 item-field)))
             (cond
               ((zero? v1-88)
                (cond
                  ((cpad-pressed? 0 x)
-                  (set! (-> *anim-tester* 0 flags) (logand -9 (-> *anim-tester* 0 flags)))
+                  (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
                   (let ((v0-24
                           (the-as
                             anim-test-obj
@@ -1968,14 +1975,14 @@
                     )
                   )
                  ((cpad-pressed? 0 square)
-                  (set! (-> *anim-tester* 0 flags) (logand -9 (-> *anim-tester* 0 flags)))
+                  (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
                   )
                  )
                )
               ((= v1-88 9)
                (cond
                  ((zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x)))
-                  (set! (-> *anim-tester* 0 flags) (logand -9 (-> *anim-tester* 0 flags)))
+                  (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
                   )
                  ((cpad-pressed? 0 up)
                   (let ((v1-124 (the-as anim-test-seq-item gp-0)))
@@ -2018,7 +2025,7 @@
               ((or (= v1-88 1) (= v1-88 2) (= v1-88 3) (= v1-88 4))
                (cond
                  ((zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x)))
-                  (set! (-> *anim-tester* 0 flags) (logand -9 (-> *anim-tester* 0 flags)))
+                  (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
                   )
                  ((begin (set! (-> arg1 current-index) (-> arg1 the-index)) (<= (-> *anim-tester* 0 inc-timer) 0))
                   (if (> (-> *anim-tester* 0 inc-delay) 0)
@@ -2137,7 +2144,7 @@
               (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons square))
               (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
               (set! (-> *anim-tester* 0 edit-mode) 3)
-              (logior! (-> *anim-tester* 0 flags) 4)
+              (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
               )
              ((cpad-pressed? 0 x)
               (cond
@@ -2184,7 +2191,7 @@
                              (the-as int #f)
                              )
                             (else
-                              (logior! (-> *anim-tester* 0 flags) 8)
+                              (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
                               (set! (-> *anim-tester* 0 inc-delay) (-> *DISP_LIST-bank* INC_DELAY))
                               (set! (-> *anim-tester* 0 inc-timer) 0)
                               0
@@ -2272,8 +2279,8 @@
   (let ((v1-0 (-> self edit-mode)))
     (cond
       ((zero? v1-0)
-       (when (logtest? (-> *anim-tester* 0 flags) 4)
-         (set! (-> *anim-tester* 0 flags) (logand -5 (-> *anim-tester* 0 flags)))
+       (when (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
+         (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
          (set-master-mode 'menu)
          )
        )
@@ -2480,13 +2487,13 @@
   :event
   anim-tester-standard-event-handler
   :enter
-  (behavior () (logior! (-> self flags) 2) (none))
+  (behavior () (logior! (-> self flags) (anim-tester-flags fanimt1)) (none))
   :trans
   (behavior ()
-    (if (and (zero? (logand (-> self flags) 2)) (= *master-mode* 'menu))
+    (if (and (zero? (logand (-> self flags) (anim-tester-flags fanimt1))) (= *master-mode* 'menu))
         (anim-tester-interface)
         )
-    (set! (-> self flags) (logand -3 (-> self flags)))
+    (logclear! (-> self flags) (anim-tester-flags fanimt1))
     (when (!= *master-mode* 'menu)
       (dummy-10 (-> self skel) (the-as symbol *stdcon*))
       (add-debug-x
@@ -2502,7 +2509,7 @@
   (behavior ()
     (local-vars (s4-0 glst-node) (s5-1 anim-test-seq-item) (gp-2 anim-test-sequence))
     (while #t
-      (set! (-> self flags) (logand -2 (-> self flags)))
+      (logclear! (-> self flags) (anim-tester-flags fanimt0))
       (let ((v1-2 (-> self obj-list)))
         "is the list empty, #t = empty"
         (cond
@@ -2529,7 +2536,7 @@
              )
            (format *stdcon* "anim-tester:no anims loaded~%")
            (format *stdcon* "displaying without anim not yet implement~%")
-           (set! (-> self flags) (logand -2 (-> self flags)))
+           (logclear! (-> self flags) (anim-tester-flags fanimt0))
            (suspend)
            0
            )
@@ -2577,7 +2584,7 @@
              (anim-tester-update-anim-info s5-1)
              (cond
                (s4-1
-                 (logior! (-> self flags) 1)
+                 (logior! (-> self flags) (anim-tester-flags fanimt0))
                  (if (nonzero? (-> s5-1 blend))
                      (ja-channel-push! 1 (the int (* (the float (-> s5-1 blend)) (-> self anim-gspeed))))
                      (ja-channel-set! 1)
@@ -2604,7 +2611,7 @@
                    )
                  (when (nonzero? (-> s5-1 blend))
                    (while (and (!= (-> self skel root-channel 0) (-> self skel channel)) (logtest? (-> s5-1 flags) 2))
-                     (when (logtest? (-> self flags) 32)
+                     (when (logtest? (-> self flags) (anim-tester-flags fanimt5))
                        (TODO-RENAME-9 (-> self align))
                        (TODO-RENAME-10
                          (-> self align)
@@ -2618,7 +2625,7 @@
                      )
                    )
                  (until (ja-done? 0)
-                   (when (logtest? (-> self flags) 32)
+                   (when (logtest? (-> self flags) (anim-tester-flags fanimt5))
                      (TODO-RENAME-9 (-> self align))
                      (TODO-RENAME-10
                        (-> self align)

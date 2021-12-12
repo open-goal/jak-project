@@ -28,7 +28,11 @@ files_with_modifications = [
   "cam-master",
   "generic-obs",
   "target-snowball",
-  "default-menu"
+  "quicksandlurker",
+  "logic-target",
+  "default-menu",
+  "collide-shape",
+  "cam-states"
 ]
 
 for file in files:
