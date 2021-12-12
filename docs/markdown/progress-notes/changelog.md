@@ -207,3 +207,4 @@
 - It is now possible to use a macro to provide a static inline array element definition
 - It is now possible to have symbol names that have a `#` in the middle of them
 - `go-hook` now returns the return value of the `enter-state` function it calls
+- Added a `(declare-file (debug))` to put things in the debug segment by default. This only changes _static_ objects. Dynamic allocation with forms like `cons` will continue to use the main segment like before.
