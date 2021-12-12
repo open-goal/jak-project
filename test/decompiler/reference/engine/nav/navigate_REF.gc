@@ -1,32 +1,38 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: navigate.gc
-;; name in dgo: navigate
-;; dgos: GAME, ENGINE
-
-;; DECOMP BEGINS
-
+;; definition for symbol *nav-timer*, type stopwatch
 (define *nav-timer* (new 'global 'stopwatch))
 
+;; definition for symbol *travel-timer*, type stopwatch
 (define *travel-timer* (new 'global 'stopwatch))
 
+;; definition for symbol *clip-for-spheres-timer*, type stopwatch
 (define *clip-for-spheres-timer* (new 'global 'stopwatch))
 
+;; definition for symbol *find-poly-timer*, type stopwatch
 (define *find-poly-timer* (new 'global 'stopwatch))
 
+;; definition for symbol *nav-timer-enable*, type symbol
 (define *nav-timer-enable* #t)
 
+;; definition for symbol *nav-patch-route-table*, type symbol
 (define *nav-patch-route-table* #t)
 
+;; definition for symbol *nav-triangle-test-count*, type int
 (define *nav-triangle-test-count* 0)
 
+;; definition for symbol *nav-last-triangle-test-count*, type int
 (define *nav-last-triangle-test-count* 0)
 
+;; definition for symbol *debug-traverse*, type int
 (define *debug-traverse* 0)
 
+;; definition for symbol *debug-tests*, type int
 (define *debug-tests* 0)
 
+;; definition for function pke-nav-hack
+;; INFO: Return type mismatch int vs none.
 (defun pke-nav-hack ()
   (format *stdcon* "travs: ~d, tests: ~d~%" *debug-traverse* *debug-tests*)
   (set! *debug-traverse* 0)
@@ -35,65 +41,97 @@
   (none)
   )
 
+;; definition for function debug-report-nav-stats
+;; INFO: Return type mismatch int vs none.
 (defun debug-report-nav-stats ()
   0
   (none)
   )
 
+;; definition for symbol *debug-output*, type symbol
 (define *debug-output* #f)
 
+;; definition for symbol *debug-nav*, type symbol
 (define *debug-nav* #t)
 
+;; definition for symbol *debug-nav-ray*, type nav-ray
 (define *debug-nav-ray* (the-as nav-ray #f))
 
+;; definition for symbol *debug-ray-offset*, type vector
 (define *debug-ray-offset* (new 'static 'vector))
 
+;; definition for symbol *debug-nav-travel*, type symbol
 (define *debug-nav-travel* #f)
 
+;; definition for symbol *color-black*, type rgba
 (define *color-black* (new 'static 'rgba :a #x80))
 
+;; definition for symbol *color-white*, type rgba
 (define *color-white* (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
 
+;; definition for symbol *color-gray*, type rgba
 (define *color-gray* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
 
+;; definition for symbol *color-red*, type rgba
 (define *color-red* (new 'static 'rgba :r #xff :a #x80))
 
+;; definition for symbol *color-green*, type rgba
 (define *color-green* (new 'static 'rgba :g #xff :a #x80))
 
+;; definition for symbol *color-blue*, type rgba
 (define *color-blue* (new 'static 'rgba :b #xff :a #x80))
 
+;; definition for symbol *color-cyan*, type rgba
 (define *color-cyan* (new 'static 'rgba :g #xff :b #xff :a #x80))
 
+;; definition for symbol *color-magenta*, type rgba
 (define *color-magenta* (new 'static 'rgba :r #xff :b #xff :a #x80))
 
+;; definition for symbol *color-yellow*, type rgba
 (define *color-yellow* (new 'static 'rgba :r #xff :g #xff :a #x80))
 
+;; definition for symbol *color-light-red*, type rgba
 (define *color-light-red* (new 'static 'rgba :r #xff :g #x80 :b #x80 :a #x80))
 
+;; definition for symbol *color-light-green*, type rgba
 (define *color-light-green* (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80))
 
+;; definition for symbol *color-light-blue*, type rgba
 (define *color-light-blue* (new 'static 'rgba :r #x80 :g #x80 :b #xff :a #x80))
 
+;; definition for symbol *color-light-cyan*, type rgba
 (define *color-light-cyan* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
 
+;; definition for symbol *color-light-magenta*, type rgba
 (define *color-light-magenta* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
 
+;; definition for symbol *color-light-yellow*, type rgba
 (define *color-light-yellow* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
 
+;; definition for symbol *color-dark-red*, type rgba
 (define *color-dark-red* (new 'static 'rgba :r #x80 :a #x80))
 
+;; definition for symbol *color-dark-green*, type rgba
 (define *color-dark-green* (new 'static 'rgba :g #x80 :a #x80))
 
+;; definition for symbol *color-dark-blue*, type rgba
 (define *color-dark-blue* (new 'static 'rgba :b #x80 :a #x80))
 
+;; definition for symbol *color-dark-cyan*, type rgba
 (define *color-dark-cyan* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
 
+;; definition for symbol *color-dark-magenta*, type rgba
 (define *color-dark-magenta* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
 
+;; definition for symbol *color-dark-yellow*, type rgba
 (define *color-dark-yellow* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
 
+;; definition for symbol *color-orange*, type rgba
 (define *color-orange* (new 'static 'rgba :r #xff :g #x80 :a #x80))
 
+;; definition for function entity-nav-login
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defun entity-nav-login ((arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (let ((gp-0 (if (nonzero? (-> arg0 nav-mesh))
@@ -124,14 +162,18 @@
   (none)
   )
 
+;; definition for method 4 of type nav-control
 (defmethod length nav-control ((obj nav-control))
   (-> obj num-spheres)
   )
 
+;; definition for method 5 of type nav-control
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of nav-control ((obj nav-control))
   (the-as int (+ (-> nav-control size) (* (-> obj max-spheres) 16)))
   )
 
+;; definition for symbol *default-nav-mesh*, type nav-mesh
 (define *default-nav-mesh* (new 'static 'nav-mesh
                              :bounds
                              (new 'static 'sphere :x 12288.0 :y -200704.0 :z 12288.0 :w 20480.0)
@@ -172,16 +214,20 @@
                              )
         )
 
+;; failed to figure out what this is:
 (let ((gp-0 *default-nav-mesh*))
   (if (zero? (-> gp-0 user-list))
       (set! (-> gp-0 user-list) (new 'global 'engine 'nav-engine 32))
       )
   )
 
+;; definition for method 4 of type nav-mesh
 (defmethod length nav-mesh ((obj nav-mesh))
   (-> obj poly-count)
   )
 
+;; definition for method 20 of type nav-mesh
+;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-20 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 rgba))
   (let ((s5-0 (-> obj origin))
         (s2-0 (-> obj vertex))
@@ -220,10 +266,14 @@
   (none)
   )
 
+;; definition for symbol *nav-one-third*, type vector
 (define *nav-one-third* (new 'global 'vector))
 
+;; failed to figure out what this is:
 (set! (-> *nav-one-third* x) 0.33333334)
 
+;; definition for method 10 of type nav-mesh
+;; Used lq/sq
 (defmethod TODO-RENAME-10 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector))
   (set! (-> arg1 quad) (-> obj vertex (-> arg0 vertex 0) quad))
   (vector+! arg1 arg1 (the-as vector (-> obj vertex (-> arg0 vertex 1))))
@@ -231,26 +281,32 @@
   (vector-float*! arg1 arg1 0.333333)
   )
 
+;; definition for method 9 of type nav-mesh
 (defmethod dummy-9 nav-mesh ((obj nav-mesh) (arg0 int) (arg1 rgba))
   (TODO-RENAME-10 obj (the-as nav-poly arg0) (the-as vector arg1))
   (vector+! (the-as vector arg1) (the-as vector arg1) (-> obj origin))
   )
 
+;; definition for symbol *edge-vert0-table*, type (array int8)
 (define
   *edge-vert0-table*
   (the-as (array int8) (new 'static 'boxed-array :type int8 :length 3 :allocated-length 3 1 2 0))
   )
 
+;; definition for symbol *edge-vert1-table*, type (array int8)
 (define
   *edge-vert1-table*
   (the-as (array int8) (new 'static 'boxed-array :type int8 :length 3 :allocated-length 3 2 0 1))
   )
 
+;; definition for symbol *edge-mask-table*, type (array int8)
 (define
   *edge-mask-table*
   (the-as (array int8) (new 'static 'boxed-array :type int8 :length 3 :allocated-length 3 1 2 4))
   )
 
+;; definition for function inc-mod3
+;; INFO: Return type mismatch int vs none.
 (defun inc-mod3 ((arg0 int))
   (local-vars (v0-1 int) (v1-1 int))
   (let ((v0-0 (+ arg0 1)))
@@ -262,6 +318,8 @@
   (none)
   )
 
+;; definition for function dec-mod3
+;; INFO: Return type mismatch int vs none.
 (defun dec-mod3 ((arg0 int))
   (local-vars (v0-1 int) (a0-1 int))
   (let ((v0-0 (+ arg0 -1))
@@ -273,6 +331,7 @@
   (none)
   )
 
+;; definition for function vu-point-triangle-intersection?
 (defun vu-point-triangle-intersection? ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (local-vars (v1-0 float) (v1-1 int) (v1-3 int) (a0-1 float) (a0-2 int) (a0-4 int) (a1-1 float) (a1-2 int))
   (rlet ((acc :class vf)
@@ -322,6 +381,7 @@
     )
   )
 
+;; definition for method 21 of type nav-mesh
 (defmethod TODO-RENAME-21 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector))
   (vu-point-triangle-intersection?
     arg1
@@ -331,6 +391,8 @@
     )
   )
 
+;; definition for method 24 of type nav-mesh
+;; Used lq/sq
 (defmethod TODO-RENAME-24 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (let ((s2-0 (-> obj vertex))
         (s1-0 (new 'stack-no-clear 'vector))
@@ -353,6 +415,8 @@
   arg1
   )
 
+;; definition for method 26 of type nav-mesh
+;; Used lq/sq
 (defmethod TODO-RENAME-26 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (if (TODO-RENAME-21 obj arg0 arg2)
       (set! (-> arg1 quad) (-> arg2 quad))
@@ -361,6 +425,7 @@
   arg1
   )
 
+;; definition for function point-inside-rect?
 (defun point-inside-rect? ((arg0 nav-node) (arg1 vector) (arg2 float))
   (and
     (>= (-> arg1 x) (- (-> arg0 center-x) (-> arg0 radius-x)))
@@ -372,6 +437,7 @@
     )
   )
 
+;; definition for function point-inside-poly?
 (defun point-inside-poly? ((arg0 nav-mesh) (arg1 uint) (arg2 vector) (arg3 float))
   (local-vars (v1-6 float) (v1-7 int) (v1-9 int) (a0-3 float) (a0-4 int) (a0-6 int) (a1-6 float) (a1-7 int))
   (rlet ((acc :class vf)
@@ -438,6 +504,7 @@
     )
   )
 
+;; definition for function recursive-inside-poly
 (defun recursive-inside-poly ((arg0 nav-mesh) (arg1 nav-node) (arg2 vector) (arg3 float))
   (when (point-inside-rect? arg1 arg2 arg3)
     (cond
@@ -490,8 +557,10 @@
   -1
   )
 
+;; definition for method 27 of type nav-mesh
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function circle-triangle-intersection-proc?
 (defun circle-triangle-intersection-proc? ((arg0 vector) (arg1 float) (arg2 (inline-array nav-vertex)))
   (let ((v1-0 0))
     (dotimes (a3-0 3)
@@ -589,6 +658,7 @@
     )
   )
 
+;; definition for function circle-triangle-intersection?
 (defun circle-triangle-intersection? ((arg0 vector) (arg1 float) (arg2 (inline-array nav-vertex)))
   (let ((v1-0 arg0)
         (f0-0 arg1)
@@ -689,173 +759,177 @@
     )
   )
 
+;; definition for method 29 of type nav-mesh
 ;; WARN: Expression building failed: In (method 29 nav-mesh): Failed to match product_with_constant inline array access 2.
-; (defmethod TODO-RENAME-29 nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 float) (arg2 meters))
-;   (local-vars
-;     (v0-1 symbol)
-;     (v0-2 symbol)
-;     (v1-8 (inline-array nav-vertex))
-;     (v1-9 nav-vertex)
-;     (v1-10 float)
-;     (v1-11 int)
-;     (v1-12 symbol)
-;     (v1-13 symbol)
-;     (v1-14 symbol)
-;     (v1-15 symbol)
-;     (v1-16 symbol)
-;     (v1-18 int)
-;     (v1-19 int)
-;     (v1-21 symbol)
-;     (a0-3 nav-poly)
-;     (a0-4 nav-vertex)
-;     (a0-5 float)
-;     (a0-6 vector)
-;     (a1-1 uint)
-;     (a1-2 uint)
-;     (a1-3 nav-vertex)
-;     (a1-4 float)
-;     (a2-1 uint)
-;     (a2-2 uint)
-;     (a2-3 uint)
-;     (a2-4 collide-history)
-;     (a3-1 uint)
-;     (s1-0 int)
-;     (s2-0 collide-history)
-;     (t9-1 (function vector float (inline-array nav-vertex) symbol))
-;     (f0-1 float)
-;     (f0-4 meters)
-;     (f0-5 float)
-;     (f0-6 float)
-;     (f0-7 float)
-;     (f0-8 float)
-;     (f0-9 float)
-;     (f0-10 float)
-;     (f1-1 float)
-;     (f1-2 float)
-;     (f1-3 float)
-;     (f1-4 float)
-;     (f1-5 float)
-;     (f1-6 float)
-;     (f1-7 float)
-;     (f1-8 float)
-;     (f1-9 float)
-;     (f1-10 float)
-;     (f2-0 float)
-;     (f2-1 float)
-;     (f30-1 float)
-;     )
-;   (rlet ((vf1 :class vf)
-;          (vf2 :class vf)
-;          (vf3 :class vf)
-;          (vf4 :class vf)
-;          (vf5 :class vf)
-;          (vf6 :class vf)
-;          (vf7 :class vf)
-;          )
-;     (when (>= (* f0-1 f0-1) (vector-length-squared arg0))
-;       (set! s2-0 (new 'stack-no-clear 'collide-history))
-;       (set! f30-1 0.33333334)
-;       (set! s1-0 (-> obj poly-count))
-;       (while (nonzero? s1-0)
-;         (when (zero? (logand (-> a0-3 pat) 1))
-;           (when (begin
-;                   (and
-;                     (begin
-;                       (nop!)
-;                       (set! v1-8 (-> obj vertex))
-;                       (nop!)
-;                       (set! a2-1 (-> a0-3 vertex 0))
-;                       (nop!)
-;                       (set! a1-1 (-> a0-3 vertex 1))
-;                       (set! a2-2 (* a2-1 16))
-;                       (set! a3-1 (-> a0-3 vertex 2))
-;                       (set! a1-2 (* a1-1 16))
-;                       (set! a0-4 (+ a2-2 v1-8))
-;                       (set! a2-3 (sll a3-1 4))
-;                       (set! a1-3 (+ a1-2 v1-8))
-;                       (set! v1-9 (+ a2-3 v1-8))
-;                       (.lvf vf3 (&-> a0-4 quad))
-;                       (set! a0-5 (fpr->gpr f30-1))
-;                       (.mov vf7 a0-5)
-;                       (.lvf vf4 (&-> a1-3 quad))
-;                       (.lvf vf5 (&-> v1-9 quad))
-;                       (.min.vf vf1 vf3 vf4 :mask #b111)
-;                       (.lvf vf6 (&-> arg0 quad))
-;                       (.add.y.vf vf7 vf3 vf4 :mask #b10)
-;                       (.svf (&-> s2-0 intersect quad) vf3)
-;                       (.max.vf vf2 vf3 vf4 :mask #b111)
-;                       (.svf (&-> s2-0 trans quad) vf4)
-;                       (.min.vf vf1 vf1 vf5 :mask #b111)
-;                       (.svf (&-> s2-0 transv quad) vf5)
-;                       (.max.vf vf2 vf2 vf5 :mask #b111)
-;                       (.mul.x.vf vf7 vf7 vf7 :mask #b10)
-;                       (.svf (&-> s2-0 transv-out quad) vf1)
-;                       (.svf (&-> s2-0 local-normal quad) vf2)
-;                       (.sub.y.vf vf7 vf6 vf7 :mask #b10)
-;                       (.mov v1-10 vf7)
-;                       (set! v1-11 (sra v1-10 32))
-;                       (set! f0-4 (gpr->fpr arg2))
-;                       (set! f1-1 (the-as float (gpr->fpr v1-11)))
-;                       (set! f1-2 (abs.s f1-1))
-;                       (set! v1-12 (>=.s f0-4 f1-2))
-;                       v1-12
-;                       )
-;                     (begin
-;                       (set! f0-5 (-> arg0 x))
-;                       (set! f1-3 (gpr->fpr arg1))
-;                       (set! f0-6 (+.s f0-5 f1-3))
-;                       (set! f1-4 (-> s2-0 transv-out x))
-;                       (set! v1-14 (>=.s f0-6 f1-4))
-;                       v1-14
-;                       )
-;                     (begin
-;                       (set! f0-7 (-> s2-0 local-normal x))
-;                       (set! f1-5 (-> arg0 x))
-;                       (set! f2-0 (gpr->fpr arg1))
-;                       (set! f1-6 (-.s f1-5 f2-0))
-;                       (set! v1-15 (>=.s f0-7 f1-6))
-;                       v1-15
-;                       )
-;                     (begin
-;                       (set! f0-8 (-> arg0 z))
-;                       (set! f1-7 (gpr->fpr arg1))
-;                       (set! f0-9 (+.s f0-8 f1-7))
-;                       (set! f1-8 (-> s2-0 transv-out z))
-;                       (set! v1-16 (>=.s f0-9 f1-8))
-;                       v1-16
-;                       )
-;                     (begin
-;                       (set! f0-10 (-> s2-0 local-normal z))
-;                       (set! f1-9 (-> arg0 z))
-;                       (set! f2-1 (gpr->fpr arg1))
-;                       (set! f1-10 (-.s f1-9 f2-1))
-;                       (set! v1-13 (>=.s f0-10 f1-10))
-;                       )
-;                     )
-;                   v1-13
-;                   )
-;             (if (begin
-;                     (set! v1-18 *debug-tests*)
-;                     (set! v1-19 (+ v1-18 1))
-;                     (set! *debug-tests* v1-19)
-;                     (set! t9-1 circle-triangle-intersection?)
-;                     (set! a0-6 arg0)
-;                     (set! a1-4 arg1)
-;                     (set! a2-4 s2-0)
-;                     (set! v0-1 (call! a0-6 a1-4 a2-4))
-;                     v0-1
-;                     )
-;                 (return (begin (set! v1-21 #t) (set! v0-2 v1-21)))
-;                 )
-;             )
-;           )
-;         )
-;       )
-;     (set! v0-2 #f)
-;     (ret-value v0-2)
-;     )
-;   )
+(defmethod TODO-RENAME-29 nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 float) (arg2 meters))
+  (local-vars
+    (v0-1 symbol)
+    (v0-2 symbol)
+    (v1-8 (inline-array nav-vertex))
+    (v1-9 nav-vertex)
+    (v1-10 float)
+    (v1-11 int)
+    (v1-12 symbol)
+    (v1-13 symbol)
+    (v1-14 symbol)
+    (v1-15 symbol)
+    (v1-16 symbol)
+    (v1-18 int)
+    (v1-19 int)
+    (v1-21 symbol)
+    (a0-3 nav-poly)
+    (a0-4 nav-vertex)
+    (a0-5 float)
+    (a0-6 vector)
+    (a1-1 uint)
+    (a1-2 uint)
+    (a1-3 nav-vertex)
+    (a1-4 float)
+    (a2-1 uint)
+    (a2-2 uint)
+    (a2-3 uint)
+    (a2-4 collide-history)
+    (a3-1 uint)
+    (s1-0 int)
+    (s2-0 collide-history)
+    (t9-1 (function vector float (inline-array nav-vertex) symbol))
+    (f0-1 float)
+    (f0-4 meters)
+    (f0-5 float)
+    (f0-6 float)
+    (f0-7 float)
+    (f0-8 float)
+    (f0-9 float)
+    (f0-10 float)
+    (f1-1 float)
+    (f1-2 float)
+    (f1-3 float)
+    (f1-4 float)
+    (f1-5 float)
+    (f1-6 float)
+    (f1-7 float)
+    (f1-8 float)
+    (f1-9 float)
+    (f1-10 float)
+    (f2-0 float)
+    (f2-1 float)
+    (f30-1 float)
+    )
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (when (>= (* f0-1 f0-1) (vector-length-squared arg0))
+      (set! s2-0 (new 'stack-no-clear 'collide-history))
+      (set! f30-1 0.33333334)
+      (set! s1-0 (-> obj poly-count))
+      (while (nonzero? s1-0)
+        (when (zero? (logand (-> a0-3 pat) 1))
+          (when (begin
+                  (and
+                    (begin
+                      (nop!)
+                      (set! v1-8 (-> obj vertex))
+                      (nop!)
+                      (set! a2-1 (-> a0-3 vertex 0))
+                      (nop!)
+                      (set! a1-1 (-> a0-3 vertex 1))
+                      (set! a2-2 (* a2-1 16))
+                      (set! a3-1 (-> a0-3 vertex 2))
+                      (set! a1-2 (* a1-1 16))
+                      (set! a0-4 (+ a2-2 v1-8))
+                      (set! a2-3 (sll a3-1 4))
+                      (set! a1-3 (+ a1-2 v1-8))
+                      (set! v1-9 (+ a2-3 v1-8))
+                      (.lvf vf3 (&-> a0-4 quad))
+                      (set! a0-5 (fpr->gpr f30-1))
+                      (.mov vf7 a0-5)
+                      (.lvf vf4 (&-> a1-3 quad))
+                      (.lvf vf5 (&-> v1-9 quad))
+                      (.min.vf vf1 vf3 vf4 :mask #b111)
+                      (.lvf vf6 (&-> arg0 quad))
+                      (.add.y.vf vf7 vf3 vf4 :mask #b10)
+                      (.svf (&-> s2-0 intersect quad) vf3)
+                      (.max.vf vf2 vf3 vf4 :mask #b111)
+                      (.svf (&-> s2-0 trans quad) vf4)
+                      (.min.vf vf1 vf1 vf5 :mask #b111)
+                      (.svf (&-> s2-0 transv quad) vf5)
+                      (.max.vf vf2 vf2 vf5 :mask #b111)
+                      (.mul.x.vf vf7 vf7 vf7 :mask #b10)
+                      (.svf (&-> s2-0 transv-out quad) vf1)
+                      (.svf (&-> s2-0 local-normal quad) vf2)
+                      (.sub.y.vf vf7 vf6 vf7 :mask #b10)
+                      (.mov v1-10 vf7)
+                      (set! v1-11 (sra v1-10 32))
+                      (set! f0-4 (gpr->fpr arg2))
+                      (set! f1-1 (the-as float (gpr->fpr v1-11)))
+                      (set! f1-2 (abs.s f1-1))
+                      (set! v1-12 (>=.s f0-4 f1-2))
+                      v1-12
+                      )
+                    (begin
+                      (set! f0-5 (-> arg0 x))
+                      (set! f1-3 (gpr->fpr arg1))
+                      (set! f0-6 (+.s f0-5 f1-3))
+                      (set! f1-4 (-> s2-0 transv-out x))
+                      (set! v1-14 (>=.s f0-6 f1-4))
+                      v1-14
+                      )
+                    (begin
+                      (set! f0-7 (-> s2-0 local-normal x))
+                      (set! f1-5 (-> arg0 x))
+                      (set! f2-0 (gpr->fpr arg1))
+                      (set! f1-6 (-.s f1-5 f2-0))
+                      (set! v1-15 (>=.s f0-7 f1-6))
+                      v1-15
+                      )
+                    (begin
+                      (set! f0-8 (-> arg0 z))
+                      (set! f1-7 (gpr->fpr arg1))
+                      (set! f0-9 (+.s f0-8 f1-7))
+                      (set! f1-8 (-> s2-0 transv-out z))
+                      (set! v1-16 (>=.s f0-9 f1-8))
+                      v1-16
+                      )
+                    (begin
+                      (set! f0-10 (-> s2-0 local-normal z))
+                      (set! f1-9 (-> arg0 z))
+                      (set! f2-1 (gpr->fpr arg1))
+                      (set! f1-10 (-.s f1-9 f2-1))
+                      (set! v1-13 (>=.s f0-10 f1-10))
+                      )
+                    )
+                  v1-13
+                  )
+            (if (begin
+                    (set! v1-18 *debug-tests*)
+                    (set! v1-19 (+ v1-18 1))
+                    (set! *debug-tests* v1-19)
+                    (set! t9-1 circle-triangle-intersection?)
+                    (set! a0-6 arg0)
+                    (set! a1-4 arg1)
+                    (set! a2-4 s2-0)
+                    (set! v0-1 (call! a0-6 a1-4 a2-4))
+                    v0-1
+                    )
+                (return (begin (set! v1-21 #t) (set! v0-2 v1-21)))
+                )
+            )
+          )
+        )
+      )
+    (set! v0-2 #f)
+    (ret-value v0-2)
+    )
+  )
 
+;; definition for method 14 of type nav-mesh
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-14 nav-mesh ((obj nav-mesh) (arg0 nav-ray))
   (local-vars (a2-7 int) (a3-3 int))
   (let ((v1-0 -1)
@@ -927,6 +1001,7 @@
   (none)
   )
 
+;; definition for function init-ray
 (defun init-ray ((arg0 nav-ray))
   (vector-! (-> arg0 dir) (-> arg0 dest-pos) (-> arg0 current-pos))
   (set! (-> arg0 dir y) 0.0)
@@ -941,6 +1016,8 @@
   #f
   )
 
+;; definition for function init-ray-local
+;; Used lq/sq
 (defun init-ray-local ((arg0 nav-ray) (arg1 nav-poly) (arg2 vector) (arg3 vector))
   (set! (-> arg0 current-pos quad) (-> arg2 quad))
   (set! (-> arg0 dest-pos quad) (-> arg3 quad))
@@ -948,6 +1025,8 @@
   (init-ray arg0)
   )
 
+;; definition for function init-ray-dir-local
+;; Used lq/sq
 (defun init-ray-dir-local ((arg0 nav-ray) (arg1 nav-poly) (arg2 vector) (arg3 vector) (arg4 float))
   (set! (-> arg0 current-poly) arg1)
   (set! (-> arg0 current-pos quad) (-> arg2 quad))
@@ -955,6 +1034,7 @@
   (init-ray arg0)
   )
 
+;; definition for method 15 of type nav-mesh
 (defmethod TODO-RENAME-15 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 float))
   (local-vars (v1-2 symbol))
   (let ((gp-0 (new 'stack-no-clear 'nav-ray)))
@@ -970,6 +1050,7 @@
     )
   )
 
+;; definition for function nav-ray-test
 (defun nav-ray-test ((arg0 nav-mesh) (arg1 nav-poly) (arg2 vector) (arg3 vector))
   (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg2 (-> arg0 origin)))
         (s3-1 (vector-! (new 'stack-no-clear 'vector) arg3 arg2))
@@ -983,6 +1064,7 @@
     )
   )
 
+;; definition for function nav-ray-test-local?
 (defun nav-ray-test-local? ((arg0 nav-mesh) (arg1 nav-poly) (arg2 vector) (arg3 vector))
   (local-vars (v1-2 symbol))
   (let ((gp-0 (new 'stack-no-clear 'nav-ray)))
@@ -998,6 +1080,8 @@
     )
   )
 
+;; definition for function nav-mesh-update-route-table
+;; INFO: Return type mismatch int vs uint.
 (defun nav-mesh-update-route-table ((arg0 nav-mesh) (arg1 int) (arg2 int) (arg3 uint))
   (let* ((a1-1 (* (+ arg2 (* arg1 (-> arg0 poly-count))) 2))
          (v1-3 (/ a1-1 8))
@@ -1010,334 +1094,341 @@
     )
   )
 
+;; definition for function nav-mesh-lookup-route
 (defun nav-mesh-lookup-route ((arg0 nav-mesh) (arg1 int) (arg2 int))
   (let ((v1-3 (* (+ arg1 (* arg2 (-> arg0 poly-count))) 2)))
     (logand (ash (-> (the-as (pointer uint8) (-> arg0 route)) (/ v1-3 8)) (- (logand v1-3 7))) 3)
     )
   )
 
+;; definition for symbol *nav-update-route-table-ray-count*, type int
 (define *nav-update-route-table-ray-count* 0)
 
+;; definition for symbol *nav-update-route-table-route-count*, type int
 (define *nav-update-route-table-route-count* 0)
 
+;; definition for method 18 of type nav-mesh
 ;; WARN: Type Propagation failed: Failed type prop at op 44 ((set! a0 (l.bu a0))): Could not get type of load: (set! a0 (l.bu a0)). 
 ;; WARN: Type Propagation failed: Type analysis failed
-; (defmethod dummy-18 nav-mesh ((a0-0 nav-mesh) (a1-0 int) (a2-0 vector) (a3-0 int) (t0-0 int) (t1-0 int))
-;   (local-vars
-;     (v0-0 uint)
-;     (v0-1 uint)
-;     (v0-2 none)
-;     (v0-3 none)
-;     (v0-4 none)
-;     (v0-5 none)
-;     (v0-6 none)
-;     (v1-0 int)
-;     (v1-1 int)
-;     (v1-2 int)
-;     (v1-4 (inline-array nav-poly))
-;     (v1-5 int)
-;     (v1-6 int)
-;     (v1-7 int)
-;     (v1-8 uint)
-;     (v1-9 uint)
-;     (v1-10 uint)
-;     (v1-11 none)
-;     (v1-12 int)
-;     (v1-14 none)
-;     (v1-15 none)
-;     (v1-16 none)
-;     (v1-17 none)
-;     (v1-18 none)
-;     (v1-20 none)
-;     (v1-22 none)
-;     (v1-23 none)
-;     (v1-24 none)
-;     (v1-25 none)
-;     (v1-28 none)
-;     (v1-30 none)
-;     (v1-31 none)
-;     (v1-32 int)
-;     (a0-1 int)
-;     (a0-2 nav-mesh)
-;     (a0-3 nav-mesh)
-;     (a0-4 int)
-;     (a0-5 symbol)
-;     (a0-6 uint)
-;     (a0-7 int)
-;     (a0-8 none)
-;     (a0-9 none)
-;     (a0-10 none)
-;     (a0-11 none)
-;     (a0-12 none)
-;     (a0-14 none)
-;     (a0-16 none)
-;     (a1-1 int)
-;     (a1-2 int)
-;     (a1-5 none)
-;     (a1-6 none)
-;     (a2-1 int)
-;     (a2-2 int)
-;     (a2-3 none)
-;     (a3-1 int)
-;     (a3-2 int)
-;     (a3-4 none)
-;     (t1-1 none)
-;     (s0-0 vector)
-;     (s1-1 nav-poly)
-;     (t9-0 (function nav-mesh int int uint uint))
-;     (t9-1 (function nav-mesh int int uint uint))
-;     (t9-2 none)
-;     (t9-3 none)
-;     (t9-4 none)
-;     (t9-5 none)
-;     )
-;   (when (begin
-;           (set! v1-0 1)
-;           (set! a0-1 (+ t0-0 a3-0))
-;           (s.b! a0-1 v1-0)
-;           (set! t9-0 nav-mesh-update-route-table)
-;           (set! a0-2 a0-0)
-;           (set! a1-1 a1-0)
-;           (set! a2-1 a3-0)
-;           (set! a3-1 3)
-;           (call! a0-2 a1-1 a2-1 a3-1)
-;           (set! t9-1 nav-mesh-update-route-table)
-;           (set! a0-3 a0-0)
-;           (set! a1-2 a3-0)
-;           (set! a2-2 a1-0)
-;           (set! a3-2 3)
-;           (call! a0-3 a1-2 a2-2 a3-2)
-;           (set! v1-1 *nav-update-route-table-route-count*)
-;           (set! v1-2 (+ v1-1 1))
-;           (set! *nav-update-route-table-route-count* v1-2)
-;           (>0.si t1-0)
-;           )
-;     (set! v1-4 (-> a0-0 poly))
-;     (set! a0-4 (sll a3-0 3))
-;     (set! s1-1 (+ v1-4 a0-4))
-;     (set! s0-0 (new 'stack-no-clear 'vector))
-;     (set! v1-5 0)
-;     (set! sv-32 v1-5)
-;     (while (begin (set! v1-32 (the-as int sv-32)) (<.si v1-32 3))
-;       (when (begin
-;               (and
-;                 (begin
-;                   (set! v1-6 (the-as int sv-32))
-;                   (set! v1-7 (+ v1-6 s1-1))
-;                   (set! v1-8 (dynamic-array-field-access v1-7 adj-poly PLACEHOLDER))
-;                   (set! sv-48 v1-8)
-;                   (set! v1-9 (the-as uint sv-48))
-;                   (set! v1-10 (+ v1-9 -255))
-;                   (set! a0-5 (nonzero? v1-10))
-;                   a0-5
-;                   )
-;                 (begin
-;                   (set! v1-12 1)
-;                   (set! a0-6 (the-as uint sv-48))
-;                   (set! a0-7 (+ t0-0 a0-6))
-;                   (set! a0-8 (the-as none (l.bu a0-7)))
-;                   (set! v1-11 (the-as none (!= v1-12 a0-8)))
-;                   )
-;                 )
-;               v1-11
-;               )
-;         (when (begin
-;                 (set! v1-14 (the-as none 1))
-;                 (set! a0-9 (the-as none sv-48))
-;                 (set! a0-10 (the-as none (+ t0-0 a0-9)))
-;                 (s.b! a0-10 v1-14)
-;                 (set! v1-15 (the-as none (l.wu (+ a0-0 192))))
-;                 (set! a0-11 (the-as none sv-48))
-;                 (set! a0-12 (the-as none (sll a0-11 3)))
-;                 (set! v1-16 (the-as none (+ v1-15 a0-12)))
-;                 (set! v1-17 (the-as none (l.bu (+ v1-16 7))))
-;                 (set! v1-18 (the-as none (logand v1-17 1)))
-;                 (zero? v1-18)
-;                 )
-;           (when (begin
-;                   (when (begin
-;                           (set! t9-2 (the-as none nav-mesh-lookup-route))
-;                           (set! a0-13 (the-as none a0-0))
-;                           (set! a1-3 (the-as none a1-0))
-;                           (set! a2-3 (the-as none sv-48))
-;                           (set! v0-2 (the-as none (call!)))
-;                           (set! v1-20 (the-as none (+ v0-2 -3)))
-;                           (set! v0-3 (the-as none (zero? v1-20)))
-;                           (not v0-3)
-;                           )
-;                     (set! a0-14 (the-as none a0-0))
-;                     (set! v1-22 (the-as none (l.wu (+ a0-14 -4))))
-;                     (set! t9-3 (the-as none (l.wu (+ v1-22 56))))
-;                     (set! a1-4 (the-as none s1-1))
-;                     (set! a2-4 (the-as none s0-0))
-;                     (call!)
-;                     (set! v1-23 (the-as none *nav-update-route-table-ray-count*))
-;                     (set! v1-24 (the-as none (+ v1-23 1)))
-;                     (set! *nav-update-route-table-ray-count* (the-as int v1-24))
-;                     (set! t9-4 (the-as none nav-ray-test-local?))
-;                     (set! a0-15 (the-as none a0-0))
-;                     (set! v1-25 (the-as none (l.wu (+ a0-0 192))))
-;                     (set! a1-5 (the-as none (sll a1-0 3)))
-;                     (set! a1-6 (the-as none (+ v1-25 a1-5)))
-;                     (set! a2-5 (the-as none a2-0))
-;                     (set! a3-3 (the-as none s0-0))
-;                     (set! v0-3 (the-as none (call!)))
-;                     (set! v1-26 (the-as none v0-3))
-;                     )
-;                   v0-3
-;                   )
-;             (set! a0-16 (the-as none a0-0))
-;             (set! v1-28 (the-as none (l.wu (+ a0-16 -4))))
-;             (set! t9-5 (the-as none (l.wu (+ v1-28 88))))
-;             (set! a1-7 (the-as none a1-0))
-;             (set! a2-6 (the-as none a2-0))
-;             (set! t0-1 (the-as none t0-0))
-;             (set! t1-1 (the-as none (+ t1-0 -1)))
-;             (set! a3-4 (the-as none sv-48))
-;             (call!)
-;             (set! v1-29 (the-as none v0-5))
-;             )
-;           )
-;         )
-;       (set! v1-30 (the-as none sv-32))
-;       (set! v1-31 (the-as none (+ v1-30 1)))
-;       (set! sv-32 v1-31)
-;       )
-;     )
-;   (set! v0-6 (the-as none 0))
-;   (ret-none)
-;   )
+;; Used lq/sq
+(defmethod dummy-18 nav-mesh ((a0-0 nav-mesh) (a1-0 int) (a2-0 vector) (a3-0 int) (t0-0 int) (t1-0 int))
+  (local-vars
+    (v0-0 uint)
+    (v0-1 uint)
+    (v0-2 none)
+    (v0-3 none)
+    (v0-4 none)
+    (v0-5 none)
+    (v0-6 none)
+    (v1-0 int)
+    (v1-1 int)
+    (v1-2 int)
+    (v1-4 (inline-array nav-poly))
+    (v1-5 int)
+    (v1-6 int)
+    (v1-7 int)
+    (v1-8 uint)
+    (v1-9 uint)
+    (v1-10 uint)
+    (v1-11 none)
+    (v1-12 int)
+    (v1-14 none)
+    (v1-15 none)
+    (v1-16 none)
+    (v1-17 none)
+    (v1-18 none)
+    (v1-20 none)
+    (v1-22 none)
+    (v1-23 none)
+    (v1-24 none)
+    (v1-25 none)
+    (v1-28 none)
+    (v1-30 none)
+    (v1-31 none)
+    (v1-32 int)
+    (a0-1 int)
+    (a0-2 nav-mesh)
+    (a0-3 nav-mesh)
+    (a0-4 int)
+    (a0-5 symbol)
+    (a0-6 uint)
+    (a0-7 int)
+    (a0-8 none)
+    (a0-9 none)
+    (a0-10 none)
+    (a0-11 none)
+    (a0-12 none)
+    (a0-14 none)
+    (a0-16 none)
+    (a1-1 int)
+    (a1-2 int)
+    (a1-5 none)
+    (a1-6 none)
+    (a2-1 int)
+    (a2-2 int)
+    (a2-3 none)
+    (a3-1 int)
+    (a3-2 int)
+    (a3-4 none)
+    (t1-1 none)
+    (s0-0 vector)
+    (s1-1 nav-poly)
+    (t9-0 (function nav-mesh int int uint uint))
+    (t9-1 (function nav-mesh int int uint uint))
+    (t9-2 none)
+    (t9-3 none)
+    (t9-4 none)
+    (t9-5 none)
+    )
+  (when (begin
+          (set! v1-0 1)
+          (set! a0-1 (+ t0-0 a3-0))
+          (s.b! a0-1 v1-0)
+          (set! t9-0 nav-mesh-update-route-table)
+          (set! a0-2 a0-0)
+          (set! a1-1 a1-0)
+          (set! a2-1 a3-0)
+          (set! a3-1 3)
+          (call! a0-2 a1-1 a2-1 a3-1)
+          (set! t9-1 nav-mesh-update-route-table)
+          (set! a0-3 a0-0)
+          (set! a1-2 a3-0)
+          (set! a2-2 a1-0)
+          (set! a3-2 3)
+          (call! a0-3 a1-2 a2-2 a3-2)
+          (set! v1-1 *nav-update-route-table-route-count*)
+          (set! v1-2 (+ v1-1 1))
+          (set! *nav-update-route-table-route-count* v1-2)
+          (>0.si t1-0)
+          )
+    (set! v1-4 (-> a0-0 poly))
+    (set! a0-4 (sll a3-0 3))
+    (set! s1-1 (+ v1-4 a0-4))
+    (set! s0-0 (new 'stack-no-clear 'vector))
+    (set! v1-5 0)
+    (set! sv-32 v1-5)
+    (while (begin (set! v1-32 (the-as int sv-32)) (<.si v1-32 3))
+      (when (begin
+              (and
+                (begin
+                  (set! v1-6 (the-as int sv-32))
+                  (set! v1-7 (+ v1-6 s1-1))
+                  (set! v1-8 (dynamic-array-field-access v1-7 adj-poly PLACEHOLDER))
+                  (set! sv-48 v1-8)
+                  (set! v1-9 (the-as uint sv-48))
+                  (set! v1-10 (+ v1-9 -255))
+                  (set! a0-5 (nonzero? v1-10))
+                  a0-5
+                  )
+                (begin
+                  (set! v1-12 1)
+                  (set! a0-6 (the-as uint sv-48))
+                  (set! a0-7 (+ t0-0 a0-6))
+                  (set! a0-8 (the-as none (l.bu a0-7)))
+                  (set! v1-11 (the-as none (!= v1-12 a0-8)))
+                  )
+                )
+              v1-11
+              )
+        (when (begin
+                (set! v1-14 (the-as none 1))
+                (set! a0-9 (the-as none sv-48))
+                (set! a0-10 (the-as none (+ t0-0 a0-9)))
+                (s.b! a0-10 v1-14)
+                (set! v1-15 (the-as none (l.wu (+ a0-0 192))))
+                (set! a0-11 (the-as none sv-48))
+                (set! a0-12 (the-as none (sll a0-11 3)))
+                (set! v1-16 (the-as none (+ v1-15 a0-12)))
+                (set! v1-17 (the-as none (l.bu (+ v1-16 7))))
+                (set! v1-18 (the-as none (logand v1-17 1)))
+                (zero? v1-18)
+                )
+          (when (begin
+                  (when (begin
+                          (set! t9-2 (the-as none nav-mesh-lookup-route))
+                          (set! a0-13 (the-as none a0-0))
+                          (set! a1-3 (the-as none a1-0))
+                          (set! a2-3 (the-as none sv-48))
+                          (set! v0-2 (the-as none (call!)))
+                          (set! v1-20 (the-as none (+ v0-2 -3)))
+                          (set! v0-3 (the-as none (zero? v1-20)))
+                          (not v0-3)
+                          )
+                    (set! a0-14 (the-as none a0-0))
+                    (set! v1-22 (the-as none (l.wu (+ a0-14 -4))))
+                    (set! t9-3 (the-as none (l.wu (+ v1-22 56))))
+                    (set! a1-4 (the-as none s1-1))
+                    (set! a2-4 (the-as none s0-0))
+                    (call!)
+                    (set! v1-23 (the-as none *nav-update-route-table-ray-count*))
+                    (set! v1-24 (the-as none (+ v1-23 1)))
+                    (set! *nav-update-route-table-ray-count* (the-as int v1-24))
+                    (set! t9-4 (the-as none nav-ray-test-local?))
+                    (set! a0-15 (the-as none a0-0))
+                    (set! v1-25 (the-as none (l.wu (+ a0-0 192))))
+                    (set! a1-5 (the-as none (sll a1-0 3)))
+                    (set! a1-6 (the-as none (+ v1-25 a1-5)))
+                    (set! a2-5 (the-as none a2-0))
+                    (set! a3-3 (the-as none s0-0))
+                    (set! v0-3 (the-as none (call!)))
+                    (set! v1-26 (the-as none v0-3))
+                    )
+                  v0-3
+                  )
+            (set! a0-16 (the-as none a0-0))
+            (set! v1-28 (the-as none (l.wu (+ a0-16 -4))))
+            (set! t9-5 (the-as none (l.wu (+ v1-28 88))))
+            (set! a1-7 (the-as none a1-0))
+            (set! a2-6 (the-as none a2-0))
+            (set! t0-1 (the-as none t0-0))
+            (set! t1-1 (the-as none (+ t1-0 -1)))
+            (set! a3-4 (the-as none sv-48))
+            (call!)
+            (set! v1-29 (the-as none v0-5))
+            )
+          )
+        )
+      (set! v1-30 (the-as none sv-32))
+      (set! v1-31 (the-as none (+ v1-30 1)))
+      (set! sv-32 v1-31)
+      )
+    )
+  (set! v0-6 (the-as none 0))
+  (ret-none)
+  )
 
+;; definition for method 17 of type nav-mesh
 ;; WARN: Type Propagation failed: Failed type prop at op 36 ((set! a0 (+ s4 s3))): Cannot get_type_int2: (+ s4 s3), args matrix and <integer -1 + int>
 ;; WARN: Type Propagation failed: Type analysis failed
-; (defmethod dummy-17 nav-mesh ((a0-0 nav-mesh))
-;   (local-vars
-;     (v0-0 int)
-;     (v0-1 int)
-;     (v0-2 vector)
-;     (v0-3 pointer)
-;     (v0-4 none)
-;     (v0-5 uint)
-;     (v0-6 none)
-;     (v1-0 symbol)
-;     (v1-2 vector)
-;     (v1-3 (inline-array nav-poly))
-;     (v1-4 uint)
-;     (v1-5 uint)
-;     (v1-7 type)
-;     (v1-9 int)
-;     (v1-10 none)
-;     (v1-11 none)
-;     (v1-13 none)
-;     (v1-14 none)
-;     (v1-15 none)
-;     (v1-16 none)
-;     (v1-18 none)
-;     (a0-1 stopwatch)
-;     (a0-2 stopwatch)
-;     (a0-3 int)
-;     (a0-4 nav-mesh)
-;     (a0-5 matrix)
-;     (a0-6 none)
-;     (a0-7 none)
-;     (a0-8 none)
-;     (a0-9 stopwatch)
-;     (a1-0 nav-poly)
-;     (a1-1 int)
-;     (a2-0 vector)
-;     (a2-1 int)
-;     (a3-0 none)
-;     (t1-0 none)
-;     (s1-0 none)
-;     (s2-0 nav-poly)
-;     (s3-0 int)
-;     (s4-0 matrix)
-;     (s5-0 vector)
-;     (t9-0 (function stopwatch int))
-;     (t9-1 (function stopwatch int))
-;     (t9-2 (function nav-mesh nav-poly vector vector))
-;     (t9-3 (function pointer int int pointer))
-;     (t9-4 none)
-;     (t9-5 (function stopwatch uint))
-;     )
-;   (when (begin (set! v1-0 *nav-patch-route-table*) v1-0)
-;     (set! t9-0 stopwatch-init)
-;     (set! a0-1 *nav-timer*)
-;     (call! a0-1)
-;     (set! t9-1 stopwatch-begin)
-;     (set! a0-2 *nav-timer*)
-;     (call! a0-2)
-;     (set! s5-0 (new 'stack-no-clear 'vector))
-;     (set! v1-2 (new 'stack-no-clear 'vector))
-;     (set! s4-0 (new 'stack-no-clear 'matrix))
-;     (set! *nav-update-route-table-ray-count* 0)
-;     (set! *nav-update-route-table-route-count* 0)
-;     (set! s3-0 (-> a0-0 poly-count))
-;     (while (nonzero? s3-0)
-;       (when (begin
-;               (set! s3-0 (+ s3-0 -1))
-;               (set! v1-3 (-> a0-0 poly))
-;               (set! a0-3 (sll s3-0 3))
-;               (set! s2-0 (+ v1-3 a0-3))
-;               (set! v1-4 (-> s2-0 pat))
-;               (set! v1-5 (logand v1-4 1))
-;               (zero? v1-5)
-;               )
-;         (set! a0-4 a0-0)
-;         (set! v1-7 (-> a0-4 type))
-;         (set! t9-2 (method-of-type v1-7 TODO-RENAME-10))
-;         (set! a1-0 s2-0)
-;         (set! a2-0 s5-0)
-;         (call! a0-4 a1-0 a2-0)
-;         (set! v1-8 v0-2)
-;         (set! t9-3 mem-set32!)
-;         (set! a0-5 s4-0)
-;         (set! a1-1 64)
-;         (set! a2-1 0)
-;         (call! a0-5 a1-1 a2-1)
-;         (set! v1-9 1)
-;         (set! a0-6 (the-as none (+ s4-0 s3-0)))
-;         (s.b! a0-6 v1-9)
-;         (set! s1-0 (the-as none 0))
-;         (while (<.si s1-0 3)
-;           (when (begin
-;                   (set! v1-10 (the-as none (+ s1-0 s2-0)))
-;                   (set! a3-0 (the-as none (l.bu (+ v1-10 4))))
-;                   (set! v1-11 (the-as none 255))
-;                   (!= a3-0 v1-11)
-;                   )
-;             (when (begin
-;                     (set! v1-13 (the-as none (l.wu (+ a0-0 192))))
-;                     (set! a0-7 (the-as none (sll a3-0 3)))
-;                     (set! v1-14 (the-as none (+ v1-13 a0-7)))
-;                     (set! v1-15 (the-as none (l.bu (+ v1-14 7))))
-;                     (set! v1-16 (the-as none (logand v1-15 1)))
-;                     (zero? v1-16)
-;                     )
-;               (set! a0-8 (the-as none a0-0))
-;               (set! v1-18 (the-as none (l.wu (+ a0-8 -4))))
-;               (set! t9-4 (the-as none (l.wu (+ v1-18 88))))
-;               (set! a1-2 (the-as none s3-0))
-;               (set! a2-2 (the-as none s5-0))
-;               (set! t0-0 (the-as none s4-0))
-;               (set! t1-0 (the-as none 0))
-;               (call!)
-;               (set! v1-19 (the-as none v0-4))
-;               )
-;             )
-;           (set! s1-0 (the-as none (+ s1-0 1)))
-;           )
-;         )
-;       )
-;     (set! t9-5 stopwatch-end)
-;     (set! a0-9 *nav-timer*)
-;     (call! a0-9)
-;     (set! v1-24 v0-5)
-;     )
-;   (set! v0-6 (the-as none 0))
-;   (ret-none)
-;   )
+(defmethod dummy-17 nav-mesh ((a0-0 nav-mesh))
+  (local-vars
+    (v0-0 int)
+    (v0-1 int)
+    (v0-2 vector)
+    (v0-3 pointer)
+    (v0-4 none)
+    (v0-5 uint)
+    (v0-6 none)
+    (v1-0 symbol)
+    (v1-2 vector)
+    (v1-3 (inline-array nav-poly))
+    (v1-4 uint)
+    (v1-5 uint)
+    (v1-7 type)
+    (v1-9 int)
+    (v1-10 none)
+    (v1-11 none)
+    (v1-13 none)
+    (v1-14 none)
+    (v1-15 none)
+    (v1-16 none)
+    (v1-18 none)
+    (a0-1 stopwatch)
+    (a0-2 stopwatch)
+    (a0-3 int)
+    (a0-4 nav-mesh)
+    (a0-5 matrix)
+    (a0-6 none)
+    (a0-7 none)
+    (a0-8 none)
+    (a0-9 stopwatch)
+    (a1-0 nav-poly)
+    (a1-1 int)
+    (a2-0 vector)
+    (a2-1 int)
+    (a3-0 none)
+    (t1-0 none)
+    (s1-0 none)
+    (s2-0 nav-poly)
+    (s3-0 int)
+    (s4-0 matrix)
+    (s5-0 vector)
+    (t9-0 (function stopwatch int))
+    (t9-1 (function stopwatch int))
+    (t9-2 (function nav-mesh nav-poly vector vector))
+    (t9-3 (function pointer int int pointer))
+    (t9-4 none)
+    (t9-5 (function stopwatch uint))
+    )
+  (when (begin (set! v1-0 *nav-patch-route-table*) v1-0)
+    (set! t9-0 stopwatch-init)
+    (set! a0-1 *nav-timer*)
+    (call! a0-1)
+    (set! t9-1 stopwatch-begin)
+    (set! a0-2 *nav-timer*)
+    (call! a0-2)
+    (set! s5-0 (new 'stack-no-clear 'vector))
+    (set! v1-2 (new 'stack-no-clear 'vector))
+    (set! s4-0 (new 'stack-no-clear 'matrix))
+    (set! *nav-update-route-table-ray-count* 0)
+    (set! *nav-update-route-table-route-count* 0)
+    (set! s3-0 (-> a0-0 poly-count))
+    (while (nonzero? s3-0)
+      (when (begin
+              (set! s3-0 (+ s3-0 -1))
+              (set! v1-3 (-> a0-0 poly))
+              (set! a0-3 (sll s3-0 3))
+              (set! s2-0 (+ v1-3 a0-3))
+              (set! v1-4 (-> s2-0 pat))
+              (set! v1-5 (logand v1-4 1))
+              (zero? v1-5)
+              )
+        (set! a0-4 a0-0)
+        (set! v1-7 (-> a0-4 type))
+        (set! t9-2 (method-of-type v1-7 TODO-RENAME-10))
+        (set! a1-0 s2-0)
+        (set! a2-0 s5-0)
+        (call! a0-4 a1-0 a2-0)
+        (set! v1-8 v0-2)
+        (set! t9-3 mem-set32!)
+        (set! a0-5 s4-0)
+        (set! a1-1 64)
+        (set! a2-1 0)
+        (call! a0-5 a1-1 a2-1)
+        (set! v1-9 1)
+        (set! a0-6 (the-as none (+ s4-0 s3-0)))
+        (s.b! a0-6 v1-9)
+        (set! s1-0 (the-as none 0))
+        (while (<.si s1-0 3)
+          (when (begin
+                  (set! v1-10 (the-as none (+ s1-0 s2-0)))
+                  (set! a3-0 (the-as none (l.bu (+ v1-10 4))))
+                  (set! v1-11 (the-as none 255))
+                  (!= a3-0 v1-11)
+                  )
+            (when (begin
+                    (set! v1-13 (the-as none (l.wu (+ a0-0 192))))
+                    (set! a0-7 (the-as none (sll a3-0 3)))
+                    (set! v1-14 (the-as none (+ v1-13 a0-7)))
+                    (set! v1-15 (the-as none (l.bu (+ v1-14 7))))
+                    (set! v1-16 (the-as none (logand v1-15 1)))
+                    (zero? v1-16)
+                    )
+              (set! a0-8 (the-as none a0-0))
+              (set! v1-18 (the-as none (l.wu (+ a0-8 -4))))
+              (set! t9-4 (the-as none (l.wu (+ v1-18 88))))
+              (set! a1-2 (the-as none s3-0))
+              (set! a2-2 (the-as none s5-0))
+              (set! t0-0 (the-as none s4-0))
+              (set! t1-0 (the-as none 0))
+              (call!)
+              (set! v1-19 (the-as none v0-4))
+              )
+            )
+          (set! s1-0 (the-as none (+ s1-0 1)))
+          )
+        )
+      )
+    (set! t9-5 stopwatch-end)
+    (set! a0-9 *nav-timer*)
+    (call! a0-9)
+    (set! v1-24 v0-5)
+    )
+  (set! v0-6 (the-as none 0))
+  (ret-none)
+  )
 
+;; definition for function point-triangle-distance-min
 (defun point-triangle-distance-min ((arg0 vector) (arg1 float) (arg2 (inline-array nav-vertex)))
   (let ((v1-0 0)
         (f0-0 arg1)
@@ -1437,6 +1528,9 @@
     )
   )
 
+;; definition for method 28 of type nav-mesh
+;; INFO: Return type mismatch structure vs nav-poly.
+;; Used lq/sq
 (defmethod dummy-28 nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 meters) (arg2 (pointer nav-control-flags)))
   (local-vars (s3-1 structure))
   (let ((v1-1 (dummy-27 obj arg0 arg1)))
@@ -1479,6 +1573,8 @@
   (the-as nav-poly s3-1)
   )
 
+;; definition for method 12 of type nav-mesh
+;; INFO: Return type mismatch object vs none.
 (defmethod dummy-12 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 nav-route-portal))
   (local-vars (t0-6 int) (t1-1 int))
   (set! (-> arg2 next-poly) #f)
@@ -1521,6 +1617,7 @@
   (none)
   )
 
+;; definition for method 11 of type nav-mesh
 (defmethod dummy-11 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 symbol))
   (local-vars (v1-12 uint) (t0-6 int) (t1-1 int))
   (cond
@@ -1564,6 +1661,8 @@
     )
   )
 
+;; definition for method 19 of type nav-mesh
+;; INFO: Return type mismatch int vs none.
 (defmethod compute-bounding-box nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 vector))
   (let ((f0-0 10000000000000000000000000000000000000.0)
         (f1-0 -10000000000000000000000000000000000000.0)
@@ -1591,6 +1690,9 @@
   (none)
   )
 
+;; definition for method 13 of type nav-mesh
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-13 nav-mesh ((obj nav-mesh))
   (local-vars (sv-32 vector) (sv-48 int))
   (with-pp
@@ -1664,25 +1766,27 @@
     )
   )
 
-; (defmethod TODO-RENAME-22 nav-mesh ((obj nav-mesh) (arg0 (pointer uint8)) (arg1 (pointer uint8)))
-;   (when (!= arg0 arg1)
-;     (dotimes (v1-1 3)
-;       (dotimes (a0-1 3)
-;         (when (= (-> (+ v1-1 (the-as int arg0)) 1) (-> (+ a0-1 (the-as int arg1)) 1))
-;           (let ((a3-6 (-> (+ (mod (+ v1-1 1) 3) (the-as int arg0)) 1)))
-;             (dotimes (t0-3 3)
-;               (if (and (!= t0-3 a0-1) (= a3-6 (-> (+ t0-3 (the-as int arg1)) 1)))
-;                   (return (logior a3-6 (shl (-> (+ v1-1 (the-as int arg0)) 1) 16)))
-;                   )
-;               )
-;             )
-;           )
-;         )
-;       )
-;     )
-;   (the-as uint #xffffffff)
-;   )
+;; definition for method 22 of type nav-mesh
+(defmethod TODO-RENAME-22 nav-mesh ((obj nav-mesh) (arg0 (pointer uint8)) (arg1 (pointer uint8)))
+  (when (!= arg0 arg1)
+    (dotimes (v1-1 3)
+      (dotimes (a0-1 3)
+        (when (= (-> (+ v1-1 (the-as int arg0)) 1) (-> (+ a0-1 (the-as int arg1)) 1))
+          (let ((a3-6 (-> (+ (mod (+ v1-1 1) 3) (the-as int arg0)) 1)))
+            (dotimes (t0-3 3)
+              (if (and (!= t0-3 a0-1) (= a3-6 (-> (+ t0-3 (the-as int arg1)) 1)))
+                  (return (logior a3-6 (shl (-> (+ v1-1 (the-as int arg0)) 1) 16)))
+                  )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as uint #xffffffff)
+  )
 
+;; definition for function ray-ccw-line-segment-intersection?
 (defun ray-ccw-line-segment-intersection? ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let ((f0-2 (- (* (-> arg2 x) (-> arg1 z)) (* (-> arg2 z) (-> arg1 x))))
         (f2-4 (- (* (-> arg3 x) (-> arg1 z)) (* (-> arg3 z) (-> arg1 x))))
@@ -1703,6 +1807,7 @@
     )
   )
 
+;; definition for function ray-line-segment-intersection?
 (defun ray-line-segment-intersection? ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let ((f1-3 (- (* (-> arg2 x) (-> arg1 z)) (* (-> arg2 z) (-> arg1 x))))
         (f0-4 (- (* (-> arg3 x) (-> arg1 z)) (* (-> arg3 z) (-> arg1 x))))
@@ -1728,8 +1833,10 @@
     )
   )
 
+;; definition for symbol *debug-offset*, type vector
 (define *debug-offset* (new 'static 'vector :y 4096.0 :w 1.0))
 
+;; definition for function clip-vector-to-halfspace!
 (defun clip-vector-to-halfspace! ((arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (let ((f0-2 (+ (* arg1 (-> arg0 x)) (* arg2 (-> arg0 z)))))
     (when (< arg3 f0-2)
@@ -1744,80 +1851,84 @@
     )
   )
 
-; (defmethod dummy-23 nav-mesh ((obj nav-mesh) (arg0 basic) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 basic))
-;   (local-vars (v1-32 int) (a0-14 int) (a0-17 int) (a1-10 int) (sv-16 nav-vertex))
-;   (let ((s1-0 (-> obj vertex))
-;         (s0-0 -1)
-;         )
-;     (set! (-> arg2 quad) (-> arg3 quad))
-;     (dotimes (v1-1 3)
-;       (let* ((a0-8 (-> s1-0 (l.bu (+ (-> *edge-vert0-table* v1-1) (the-as int arg0) 1))))
-;              (a1-7 (-> s1-0 (l.bu (+ (-> *edge-vert1-table* v1-1) (the-as int arg0) 1))))
-;              (f0-1 (- (-> a0-8 z) (-> a1-7 z)))
-;              (f1-2 (- (-> a1-7 x) (-> a0-8 x)))
-;              (f2-4 (+ (* f0-1 (- (-> a0-8 x) (-> arg1 x))) (* f1-2 (- (-> a0-8 z) (-> arg1 z)))))
-;              (f0-3 (+ (* (-> arg2 x) f0-1) (* (-> arg2 z) f1-2)))
-;              )
-;         (when (< f2-4 f0-3)
-;           (set! s0-0 v1-1)
-;           (let ((f0-4 (/ f2-4 f0-3)))
-;             (set! (-> arg2 x) (* (-> arg2 x) f0-4))
-;             (set! (-> arg2 z) (* (-> arg2 z) f0-4))
-;             )
-;           )
-;         )
-;       )
-;     (when arg4
-;       (cond
-;         ((= s0-0 -1)
-;          (s.w! arg4 #f)
-;          )
-;         (else
-;           (while (!= s0-0 -1)
-;             (let ((v1-11 (-> (the-as nav-poly (+ (-> *edge-vert0-table* s0-0) (the-as int arg0))) adj-poly 0)))
-;               (cond
-;                 ((!= v1-11 255)
-;                  (let ((v1-13 (-> obj poly v1-11)))
-;                    (s.w! arg4 v1-13)
-;                    )
-;                  (set! s0-0 -1)
-;                  )
-;                 ((let ((a1-8 (-> s1-0 (l.bu (+ (-> *edge-vert0-table* s0-0) (the-as int arg0) 1)))))
-;                    (set! sv-16 (-> s1-0 (l.bu (+ (-> *edge-vert1-table* s0-0) (the-as int arg0) 1))))
-;                    (< (vector-vector-xz-distance arg1 a1-8) 204.8)
-;                    )
-;                  (let ((a1-9 (+ s0-0 -1))
-;                        (v1-28 2)
-;                        )
-;                    (set-on-less-than a0-14 a1-9 0)
-;                    (move-if-not-zero a1-10 v1-28 a0-14 a1-9)
-;                    )
-;                  (set! s0-0 a1-10)
-;                  )
-;                 ((< (vector-vector-xz-distance arg1 sv-16) 204.8)
-;                  (let ((v1-31 (+ s0-0 1)))
-;                    (let ((a0-16 2))
-;                      (set-on-less-than a0-17 a0-16 v1-31)
-;                      )
-;                    (move-if-not-zero v1-32 0 a0-17 v1-31)
-;                    )
-;                  (set! s0-0 v1-32)
-;                  )
-;                 (else
-;                   (s.w! arg4 #f)
-;                   (set! s0-0 -1)
-;                   )
-;                 )
-;               )
-;             )
-;           )
-;         )
-;       )
-;     )
-;   (set! (-> arg2 y) (-> arg1 y))
-;   arg2
-;   )
+;; definition for method 23 of type nav-mesh
+;; Used lq/sq
+(defmethod dummy-23 nav-mesh ((obj nav-mesh) (arg0 basic) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 basic))
+  (local-vars (v1-32 int) (a0-14 int) (a0-17 int) (a1-10 int) (sv-16 nav-vertex))
+  (let ((s1-0 (-> obj vertex))
+        (s0-0 -1)
+        )
+    (set! (-> arg2 quad) (-> arg3 quad))
+    (dotimes (v1-1 3)
+      (let* ((a0-8 (-> s1-0 (l.bu (+ (-> *edge-vert0-table* v1-1) (the-as int arg0) 1))))
+             (a1-7 (-> s1-0 (l.bu (+ (-> *edge-vert1-table* v1-1) (the-as int arg0) 1))))
+             (f0-1 (- (-> a0-8 z) (-> a1-7 z)))
+             (f1-2 (- (-> a1-7 x) (-> a0-8 x)))
+             (f2-4 (+ (* f0-1 (- (-> a0-8 x) (-> arg1 x))) (* f1-2 (- (-> a0-8 z) (-> arg1 z)))))
+             (f0-3 (+ (* (-> arg2 x) f0-1) (* (-> arg2 z) f1-2)))
+             )
+        (when (< f2-4 f0-3)
+          (set! s0-0 v1-1)
+          (let ((f0-4 (/ f2-4 f0-3)))
+            (set! (-> arg2 x) (* (-> arg2 x) f0-4))
+            (set! (-> arg2 z) (* (-> arg2 z) f0-4))
+            )
+          )
+        )
+      )
+    (when arg4
+      (cond
+        ((= s0-0 -1)
+         (s.w! arg4 #f)
+         )
+        (else
+          (while (!= s0-0 -1)
+            (let ((v1-11 (-> (the-as nav-poly (+ (-> *edge-vert0-table* s0-0) (the-as int arg0))) adj-poly 0)))
+              (cond
+                ((!= v1-11 255)
+                 (let ((v1-13 (-> obj poly v1-11)))
+                   (s.w! arg4 v1-13)
+                   )
+                 (set! s0-0 -1)
+                 )
+                ((let ((a1-8 (-> s1-0 (l.bu (+ (-> *edge-vert0-table* s0-0) (the-as int arg0) 1)))))
+                   (set! sv-16 (-> s1-0 (l.bu (+ (-> *edge-vert1-table* s0-0) (the-as int arg0) 1))))
+                   (< (vector-vector-xz-distance arg1 a1-8) 204.8)
+                   )
+                 (let ((a1-9 (+ s0-0 -1))
+                       (v1-28 2)
+                       )
+                   (set-on-less-than a0-14 a1-9 0)
+                   (move-if-not-zero a1-10 v1-28 a0-14 a1-9)
+                   )
+                 (set! s0-0 a1-10)
+                 )
+                ((< (vector-vector-xz-distance arg1 sv-16) 204.8)
+                 (let ((v1-31 (+ s0-0 1)))
+                   (let ((a0-16 2))
+                     (set-on-less-than a0-17 a0-16 v1-31)
+                     )
+                   (move-if-not-zero v1-32 0 a0-17 v1-31)
+                   )
+                 (set! s0-0 v1-32)
+                 )
+                (else
+                  (s.w! arg4 #f)
+                  (set! s0-0 -1)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (set! (-> arg2 y) (-> arg1 y))
+  arg2
+  )
 
+;; definition for method 25 of type nav-mesh
+;; Used lq/sq
 (defmethod dummy-25 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (let ((s3-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'matrix))
@@ -1834,6 +1945,8 @@
   (none)
   )
 
+;; definition for method 17 of type nav-control
+;; Used lq/sq
 (defmethod dummy-17 nav-control ((obj nav-control) (arg0 vector) (arg1 vector))
   (local-vars (sv-32 int))
   (let ((s5-0 (-> obj mesh))
@@ -1855,6 +1968,7 @@
   arg0
   )
 
+;; definition for method 18 of type nav-control
 (defmethod TODO-RENAME-18 nav-control ((obj nav-control) (arg0 vector))
   (dummy-28
     (-> obj mesh)
@@ -1864,6 +1978,7 @@
     )
   )
 
+;; definition for method 20 of type nav-control
 (defmethod dummy-20 nav-control ((obj nav-control) (arg0 basic) (arg1 vector) (arg2 vector))
   (dummy-25
     (-> obj mesh)
@@ -1875,6 +1990,7 @@
   arg1
   )
 
+;; definition for method 25 of type nav-control
 (defmethod dummy-25 nav-control ((obj nav-control) (arg0 vector) (arg1 float))
   (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin)))
         (a1-1 (-> obj mesh))
@@ -1883,6 +1999,9 @@
     )
   )
 
+;; definition for method 9 of type nav-control
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod dummy-9 nav-control ((obj nav-control))
   (local-vars
     (sv-192 vector)
@@ -2126,6 +2245,8 @@
   (none)
   )
 
+;; definition for method 8 of type nav-mesh
+;; INFO: Return type mismatch int vs nav-mesh.
 (defmethod mem-usage nav-mesh ((obj nav-mesh) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 46 (-> arg0 length)))
   (set! (-> arg0 data 45 name) "nav-mesh")
@@ -2158,6 +2279,8 @@
   (the-as nav-mesh 0)
   )
 
+;; definition for method 14 of type nav-control
+;; INFO: Return type mismatch int vs none.
 (defmethod set-current-poly! nav-control ((obj nav-control) (arg0 nav-poly))
   (set! (-> obj current-poly) arg0)
   (logior! (-> obj flags) (nav-control-flags bit9))
@@ -2165,6 +2288,7 @@
   (none)
   )
 
+;; definition for method 30 of type nav-control
 (defmethod dummy-30 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector))
   (let ((s5-0 (the-as sphere #f)))
     (let ((f30-0 -0.000001))
@@ -2184,10 +2308,13 @@
     )
   )
 
+;; definition for method 31 of type nav-control
 (defmethod intersect-ray-line-segment? nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (ray-line-segment-intersection? arg0 arg1 arg2 arg3)
   )
 
+;; definition for function add-nav-sphere
+;; INFO: Return type mismatch int vs none.
 (defun add-nav-sphere ((arg0 nav-control) (arg1 vector))
   (when (< (-> arg0 num-spheres) (-> arg0 max-spheres))
     (let* ((s4-0 (-> arg0 sphere (-> arg0 num-spheres)))
@@ -2206,6 +2333,9 @@
   (none)
   )
 
+;; definition for function add-collide-shape-spheres
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defun add-collide-shape-spheres ((arg0 nav-control) (arg1 collide-shape) (arg2 vector))
   (when (logtest? (-> arg1 nav-flags) 1)
     (set! (-> arg2 quad) (-> arg1 root-prim prim-core world-sphere quad))
@@ -2250,6 +2380,9 @@
   (none)
   )
 
+;; definition for method 28 of type nav-control
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-28 nav-control ((obj nav-control) (arg0 int))
   (local-vars
     (sv-32 nav-control)
@@ -2395,6 +2528,7 @@
   (none)
   )
 
+;; definition for method 35 of type nav-control
 (defmethod dummy-35 nav-control ((obj nav-control) (arg0 basic) (arg1 vector) (arg2 basic) (arg3 basic) (arg4 float) (arg5 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg1 (-> obj mesh origin))
@@ -2410,6 +2544,7 @@
   (none)
   )
 
+;; definition of type cfs-travel-vec
 (deftype cfs-travel-vec (structure)
   ((dir         vector :inline :offset-assert   0)
    (delta-angle float          :offset-assert  16)
@@ -2419,7 +2554,15 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type cfs-travel-vec
+(defmethod inspect cfs-travel-vec ((obj cfs-travel-vec))
+  (format #t "[~8x] ~A~%" obj 'cfs-travel-vec)
+  (format #t "~Tdir: #<vector @ #x~X>~%" (-> obj dir))
+  (format #t "~Tdelta-angle: ~f~%" (-> obj delta-angle))
+  obj
+  )
 
+;; definition of type cfs-work
 (deftype cfs-work (structure)
   ((desired-travel-dist float                    :offset-assert   0)
    (desired-angle       float                    :offset-assert   4)
@@ -2440,7 +2583,26 @@
   :flag-assert         #x900000100
   )
 
+;; definition for method 3 of type cfs-work
+(defmethod inspect cfs-work ((obj cfs-work))
+  (format #t "[~8x] ~A~%" obj 'cfs-work)
+  (format #t "~Tdesired-travel-dist: ~f~%" (-> obj desired-travel-dist))
+  (format #t "~Tdesired-angle: ~f~%" (-> obj desired-angle))
+  (format #t "~Tmax-dist: ~f~%" (-> obj max-dist))
+  (format #t "~Told-angle: ~f~%" (-> obj old-angle))
+  (format #t "~Tmodified: ~D~%" (-> obj modified))
+  (format #t "~Tblocked-mask: ~D~%" (-> obj blocked-mask))
+  (format #t "~Ttravel: #<vector @ #x~X>~%" (-> obj travel))
+  (format #t "~Tcurrent: #<vector @ #x~X>~%" (-> obj current))
+  (format #t "~Tnew-travel[2] @ #x~X~%" (-> obj new-travel))
+  (format #t "~Ttemp-travel[2] @ #x~X~%" (-> obj temp-travel))
+  (format #t "~Tprev-dir: #<vector @ #x~X>~%" (-> obj prev-dir))
+  (format #t "~Tattempt-dir: #<vector @ #x~X>~%" (-> obj attempt-dir))
+  (format #t "~Ttangent[2] @ #x~X~%" (-> obj tangent))
+  obj
+  )
 
+;; definition of type nav-control-cfs-work
 (deftype nav-control-cfs-work (structure)
   ((in-dir              vector  :inline   :offset-assert   0)
    (right-dir           vector  :inline   :offset-assert  16)
@@ -2467,7 +2629,33 @@
   :flag-assert         #x9000000c0
   )
 
+;; definition for method 3 of type nav-control-cfs-work
+(defmethod inspect nav-control-cfs-work ((obj nav-control-cfs-work))
+  (format #t "[~8x] ~A~%" obj 'nav-control-cfs-work)
+  (format #t "~Tin-dir: #<vector @ #x~X>~%" (-> obj in-dir))
+  (format #t "~Tright-dir: #<vector @ #x~X>~%" (-> obj right-dir))
+  (format #t "~Tbest-dir[2] @ #x~X~%" (-> obj best-dir))
+  (format #t "~Ttemp-dir[2] @ #x~X~%" (-> obj temp-dir))
+  (format #t "~Taway-dir: #<vector @ #x~X>~%" (-> obj away-dir))
+  (format #t "~Tbest-dir-angle[2] @ #x~X~%" (-> obj best-dir-angle))
+  (format #t "~Tignore-mask: ~D~%" (-> obj ignore-mask))
+  (format #t "~Tinitial-ignore-mask: ~D~%" (-> obj initial-ignore-mask))
+  (format #t "~Ti-sphere: ~D~%" (-> obj i-sphere))
+  (format #t "~Ti-first-sphere: ~D~%" (-> obj i-first-sphere))
+  (format #t "~Ti-inside-sphere: ~D~%" (-> obj i-inside-sphere))
+  (format #t "~Tinside-sphere-dist: ~f~%" (-> obj inside-sphere-dist))
+  (format #t "~Tsign: ~f~%" (-> obj sign))
+  (format #t "~Ttravel-len: ~f~%" (-> obj travel-len))
+  (format #t "~Tdist2: ~f~%" (-> obj dist2))
+  (format #t "~Tinside-dist: ~f~%" (-> obj inside-dist))
+  (format #t "~Trand-angle: ~f~%" (-> obj rand-angle))
+  (format #t "~Tdir-update: ~A~%" (-> obj dir-update))
+  (format #t "~Tdebug-offset: #<vector @ #x~X>~%" (-> obj debug-offset))
+  obj
+  )
 
+;; definition for function circle-tangent-directions
+;; Used lq/sq
 (defun circle-tangent-directions ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let ((s2-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'vector))
@@ -2502,6 +2690,7 @@
     )
   )
 
+;; definition for function find-closest-circle-ray-intersection
 (defun find-closest-circle-ray-intersection ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int) (arg4 (inline-array vector)) (arg5 int))
   (let ((f30-0 1.0)
         (gp-0 -1)
@@ -2525,6 +2714,7 @@
     )
   )
 
+;; definition for function sign-bit
 (defun sign-bit ((arg0 int))
   (local-vars (v1-1 int))
   (let ((v1-0 arg0))
@@ -2533,6 +2723,7 @@
   (logand v1-1 1)
   )
 
+;; definition for function compute-dir-parm
 (defun compute-dir-parm ((arg0 vector) (arg1 vector) (arg2 vector))
   (local-vars (a2-3 int))
   (let ((v1-0 (new 'static 'vector :x 1.0 :y -1.0)))
@@ -2543,8 +2734,10 @@
     )
   )
 
+;; definition for method 32 of type nav-control
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for method 23 of type nav-control
 (defmethod dummy-23 nav-control ((obj nav-control) (arg0 vector) (arg1 check-vector-collision-with-nav-spheres-info))
   (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) (-> obj shape trans) (-> obj mesh origin)))
         (f30-0 -1.0)
@@ -2586,6 +2779,8 @@
     )
   )
 
+;; definition for method 33 of type nav-control
+;; Used lq/sq
 (defmethod TODO-RENAME-33 nav-control ((obj nav-control)
                                      (arg0 vector)
                                      (arg1 vector)
@@ -2611,18 +2806,27 @@
     )
   )
 
+;; definition for symbol *debug-ray-test*, type nav-ray
 (define *debug-ray-test* (the-as nav-ray #f))
 
+;; definition for symbol *debug-ray-test-capture-mode*, type symbol
 (define *debug-ray-test-capture-mode* #f)
 
+;; definition for symbol *debug-ray-test-capture-output*, type symbol
 (define *debug-ray-test-capture-output* #f)
 
+;; definition for symbol *test-ray-start-poly-id*, type int
 (define *test-ray-start-poly-id* 62)
 
+;; definition for symbol *test-ray-src-pos*, type vector
 (define *test-ray-src-pos* (new 'static 'vector :x -705089.6 :y 9769.325 :z -963339.0 :w 1.0))
 
+;; definition for symbol *test-ray-dest-pos*, type vector
 (define *test-ray-dest-pos* (new 'static 'vector :x -722887.7 :y 9532.475 :z -958862.25 :w 1.0))
 
+;; definition for method 19 of type nav-control
+;; INFO: Return type mismatch vector vs none.
+;; Used lq/sq
 (defmethod dummy-19 nav-control ((obj nav-control) (arg0 vector) (arg1 collide-shape-moving) (arg2 vector) (arg3 float))
   (local-vars (sv-48 float))
   (let ((f30-0 (* arg3 (-> *display* seconds-per-frame)))
@@ -2662,6 +2866,8 @@
   (none)
   )
 
+;; definition for method 16 of type nav-control
+;; INFO: Return type mismatch symbol vs nav-poly.
 (defmethod dummy-16 nav-control ((obj nav-control) (arg0 vector))
   (the-as nav-poly (dummy-27
                      (-> obj mesh)
@@ -2671,6 +2877,7 @@
           )
   )
 
+;; definition for method 21 of type nav-control
 (defmethod TODO-RENAME-21 nav-control ((obj nav-control) (arg0 vector))
   (dummy-27
     (-> obj mesh)
@@ -2679,6 +2886,7 @@
     )
   )
 
+;; definition for method 22 of type nav-control
 (defmethod TODO-RENAME-22 nav-control ((obj nav-control) (arg0 vector) (arg1 float))
   (and
     (dummy-27
@@ -2690,6 +2898,7 @@
     )
   )
 
+;; definition for function debug-nav-validate-current-poly
 (defun debug-nav-validate-current-poly ((arg0 nav-mesh) (arg1 nav-poly) (arg2 vector))
   (when (not (TODO-RENAME-21 arg0 arg1 arg2))
     (let ((s3-0 (new 'stack-no-clear 'vector)))
@@ -2700,11 +2909,16 @@
     )
   )
 
+;; definition for method 26 of type nav-control
+;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-26 nav-control ((obj nav-control))
   0
   (none)
   )
 
+;; definition for method 27 of type nav-control
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-27 nav-control ((obj nav-control))
   (local-vars (v1-7 symbol))
   (cond
@@ -2751,6 +2965,9 @@
   (none)
   )
 
+;; definition for method 16 of type nav-mesh
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-16 nav-mesh ((obj nav-mesh)
                                   (arg0 vector)
                                   (arg1 nav-poly)
@@ -2844,6 +3061,8 @@
   (none)
   )
 
+;; definition for method 24 of type nav-control
+;; INFO: Return type mismatch int vs none.
 (defmethod dummy-24 nav-control ((obj nav-control) (arg0 float) (arg1 clip-travel-vector-to-mesh-return-info))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 (-> obj shape trans) (-> obj mesh origin))
@@ -2866,6 +3085,7 @@
   (none)
   )
 
+;; definition for function test-xz-point-on-line-segment?
 (defun test-xz-point-on-line-segment? ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (let ((v0-2 (>= arg3 (fmin (vector-vector-xz-distance arg0 arg1) (vector-vector-xz-distance arg0 arg2)))))
     (when (not v0-2)
@@ -2893,6 +3113,7 @@
     )
   )
 
+;; definition for function choose-travel-portal-vertex
 (defun choose-travel-portal-vertex ((arg0 nav-mesh) (arg1 nav-route-portal) (arg2 nav-poly) (arg3 vector))
   (let ((f0-1 (- (-> arg1 vertex 1 x) (-> arg1 vertex 0 x)))
         (f1-2 (- (-> arg1 vertex 1 z) (-> arg1 vertex 0 z)))
@@ -2965,6 +3186,8 @@
     )
   )
 
+;; definition for method 13 of type nav-control
+;; Used lq/sq
 (defmethod dummy-13 nav-control ((obj nav-control) (arg0 vector) (arg1 vector))
   (local-vars
     (sv-80 vector)
@@ -3084,6 +3307,8 @@
   (-> obj travel)
   )
 
+;; definition for method 12 of type nav-control
+;; Used lq/sq
 (defmethod TODO-RENAME-12 nav-control ((obj nav-control) (arg0 nav-gap-info))
   (when (and (-> obj next-poly) (logtest? (-> obj next-poly pat) 1))
     (let ((s4-0 (-> obj next-poly))
@@ -3105,6 +3330,68 @@
     )
   )
 
+;; definition for function start-collect-nav
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+;; WARN: Unsupported inline assembly instruction kind - [mtpc pcr0, r0]
+;; WARN: Unsupported inline assembly instruction kind - [mtpc pcr1, r0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Perf, a0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+(defun start-collect-nav ()
+  (let* ((v1-1 (-> *perf-stats* data 14))
+         (a0-0 (-> v1-1 ctrl))
+         )
+    (+! (-> v1-1 count) 1)
+    (b! (zero? a0-0) cfg-2 :delay (nop!))
+    (.mtc0 Perf r0)
+    (.sync.l)
+    (.sync.p)
+    (.mtpc pcr0 r0)
+    (.mtpc pcr1 r0)
+    (.sync.l)
+    (.sync.p)
+    (.mtc0 Perf a0-0)
+    )
+  (.sync.l)
+  (.sync.p)
+  (label cfg-2)
+  0
+  0
+  (none)
+  )
+
+;; definition for function end-collect-nav
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+;; WARN: Unsupported inline assembly instruction kind - [mfpc a0, pcr0]
+;; WARN: Unsupported inline assembly instruction kind - [mfpc a0, pcr1]
+(defun end-collect-nav ()
+  (local-vars (a0-1 int) (a0-3 int))
+  (let ((v1-1 (-> *perf-stats* data 14)))
+    (b! (zero? (-> v1-1 ctrl)) cfg-2 :delay (nop!))
+    (.mtc0 Perf r0)
+    (.sync.l)
+    (.sync.p)
+    (.mfpc a0-1 pcr0)
+    (+! (-> v1-1 accum0) a0-1)
+    (.mfpc a0-3 pcr1)
+    (+! (-> v1-1 accum1) a0-3)
+    )
+  (label cfg-2)
+  0
+  0
+  (none)
+  )
+
+;; definition for method 11 of type nav-control
+;; Used lq/sq
 (defmethod dummy-11 nav-control ((obj nav-control) (arg0 vector))
   (set! (-> obj old-travel quad) (-> obj travel quad))
   (-> obj block-count)
@@ -3146,6 +3433,8 @@
   (-> obj travel)
   )
 
+;; definition (debug) for function nav-sphere-from-cam
+;; INFO: Return type mismatch int vs none.
 (defun-debug nav-sphere-from-cam ()
   (let ((v1-0 (camera-pos)))
     (format #t "SPHEREM(~4,,1M, ~4,,1M, ~4,,1M, 1.0)~%" (-> v1-0 x) (-> v1-0 y) (-> v1-0 z))
@@ -3153,7 +3442,3 @@
   0
   (none)
   )
-
-
-
-

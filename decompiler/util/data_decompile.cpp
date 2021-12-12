@@ -473,6 +473,17 @@ goos::Object nav_mesh_poly_arr_decompile(const std::vector<LinkedWord>& words,
                                                file, TypeSpec("nav-poly"), 8);
 }
 
+goos::Object nav_mesh_route_arr_decompile(const std::vector<LinkedWord>& words,
+                                          const std::vector<DecompilerLabel>& labels,
+                                          int my_seg,
+                                          int field_location,
+                                          const TypeSystem& ts,
+                                          const std::vector<std::vector<LinkedWord>>& all_words,
+                                          const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("vector4ub"), 4);
+}
+
 goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& words,
                                               const std::vector<DecompilerLabel>& labels,
                                               int my_seg,
@@ -707,6 +718,10 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(
               field.name(), nav_mesh_poly_arr_decompile(obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
+        } else if (field.name() == "route" && type.print() == "nav-mesh") {
+          field_defs_out.emplace_back(
+              field.name(), nav_mesh_route_arr_decompile(obj_words, labels, label.target_segment,
+                                                         field_start, ts, words, file));
         } else if (field.name() == "launcher" && type.print() == "sparticle-launch-group") {
           field_defs_out.emplace_back(field.name(), sp_launch_grp_launcher_decompile(
                                                         obj_words, labels, label.target_segment,

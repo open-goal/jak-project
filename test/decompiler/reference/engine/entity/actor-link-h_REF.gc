@@ -5,16 +5,21 @@
 ;; INFO: Return type mismatch entity vs entity-actor.
 ;; Used lq/sq
 (defun entity-actor-lookup ((lump res-lump) (name symbol) (idx int))
-  (local-vars (sv-16 res-tag))
+  (local-vars (a1-2 uint128) (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-1 (res-lump-data lump name (pointer uint32) :tag-ptr (& sv-16))))
     (the-as
       entity-actor
       (when (and v1-1 (< idx (the-as int (-> sv-16 elt-count))))
-        (if (= (-> sv-16 elt-type) string)
-            (entity-by-name (the-as string (-> (the-as (pointer uint32) (&+ v1-1 (* idx 4))) 0)))
-            (entity-by-aid (-> (the-as (pointer uint32) (&+ v1-1 (* idx 4))) 0))
+        (let ((a0-6 string))
+          (let ((a1-1 sv-16))
+            (.pextuw a1-2 0 a1-1)
             )
+          (if (= (the-as type a1-2) a0-6)
+              (entity-by-name (the-as string (-> (the-as (pointer uint32) (&+ v1-1 (* idx 4))) 0)))
+              (entity-by-aid (-> (the-as (pointer uint32) (&+ v1-1 (* idx 4))) 0))
+              )
+          )
         )
       )
     )

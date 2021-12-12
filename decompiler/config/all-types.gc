@@ -15179,24 +15179,24 @@
    (poly-lookup-history uint8 2         :offset-assert 8)
    (debug-time          uint8           :offset-assert 10)
    (static-sphere-count uint8           :offset-assert 11)
-   (static-sphere       nav-sphere          :offset-assert 12)
+   (static-sphere       (inline-array nav-sphere)          :offset-assert 12)
    (bounds              sphere  :inline :offset-assert 16)
    (origin              vector  :inline :offset-assert 32)
    (cache               nav-lookup-elem 4 :inline :offset-assert 48) ;; guess on type
    (node-count          int32           :offset-assert 176)
-   (nodes               (pointer nav-node)        :offset-assert 180)
+   (nodes               (inline-array nav-node)        :offset-assert 180)
    (vertex-count        int32           :offset-assert 184)
-   (vertex              (inline-array nav-vertex)          :offset-assert 188) ;; nav-vertex?
+   (vertex              (inline-array nav-vertex)          :offset-assert 188)
    (poly-count          int32           :offset-assert 192)
    (poly                (inline-array nav-poly)          :offset-assert 196)
-   (route               pointer          :offset-assert 200) ;; problems decompiling this
+   (route               (inline-array vector4ub)          :offset-assert 200) ;; this is a guess, it's probably wrong -- but its something with a uint8 at offset 0
    )
   :method-count-assert 30
   :size-assert         #xcc
   :flag-assert         #x1e000000cc
   (:methods
     (dummy-9 (_type_ int rgba) vector 9) ;; TODO - calls method 10, skeptical about rgba now (iirc the debug method signatures might be wrong)
-    (TODO-RENAME-10 (_type_ nav-poly rgba) vector 10) ;; TODO - is rgba a vector4w?
+    (TODO-RENAME-10 (_type_ nav-poly vector) vector 10)
     (dummy-11 (_type_ nav-poly nav-poly symbol) nav-poly 11)
     (dummy-12 (_type_ nav-poly nav-poly nav-route-portal) none 12)
     (TODO-RENAME-13 (_type_) none 13)
@@ -15209,7 +15209,7 @@
     (TODO-RENAME-20 (_type_ nav-poly rgba) none 20) ;; TODO - is rgba a vector4w?
     (TODO-RENAME-21 (_type_ nav-poly vector) symbol 21)
     (TODO-RENAME-22 (_type_ (pointer uint8) (pointer uint8)) uint 22) ;; TODO - unused, hard to tell what these types are...
-    (dummy-23 (_type_ basic vector vector vector basic) vector 23) ;; TODO - basics!
+    (dummy-23 (_type_ basic vector vector vector basic) vector 23) ;; TODO - basics - what are they?
     (TODO-RENAME-24 (_type_ nav-poly vector vector) vector 24)
     (dummy-25 (_type_ nav-poly vector vector) none 25)
     (TODO-RENAME-26 (_type_ nav-poly vector vector) vector 26)
@@ -15273,7 +15273,7 @@
     (new (symbol type collide-shape int float) _type_)
     (dummy-9 (_type_) none 9)
     (point-in-bounds? (_type_ vector) symbol 10)
-    (dummy-11 (_type_ vector) none 11) ;; ret - vector?
+    (dummy-11 (_type_ vector) vector 11)
     (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
     (dummy-13 (_type_ vector vector) vector 13) ;; see - puffer::20 | second vector may be clip-travel-vector-to-mesh-return-info though
     (set-current-poly! (_type_ nav-poly) none 14)
@@ -15292,9 +15292,9 @@
     (TODO-RENAME-27 (_type_) none 27)
     (TODO-RENAME-28 (_type_ int) none 28)
     (should-display? (_type_) symbol 29)
-    (dummy-30 (_type_ vector vector basic) sphere 30) ;; TODO - last arg?
+    (dummy-30 (_type_ vector vector vector) sphere 30) ;; TODO - last arg? - it has a float as the first arg, vector is a total guess
     (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
-    (TODO-ASM-32 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) none 32) ;; TODO - basics?
+    (TODO-ASM-32 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) none 32)
     (TODO-RENAME-33 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) symbol 33)
     (dummy-34 () none 34)
     (dummy-35 (_type_ basic vector basic basic float vector) none 35)
@@ -20507,7 +20507,6 @@
 (define-extern make-collide-list-using-line-sphere-inst-test (function collide-fragment instance-tie symbol))
 (define-extern test-closest-pt-in-triangle (function collide-cache symbol))
 
-(define-extern test-closest-pt-in-triangle function)
 ;; - Unknowns
 
 (define-extern *already-printed-exeeded-max-cache-tris* symbol) ;; TODO - not confirmed
@@ -20648,36 +20647,36 @@
 
 (define-extern test-xz-point-on-line-segment? (function vector vector vector float symbol))
 (define-extern ray-ccw-line-segment-intersection? (function vector vector vector vector symbol))
-(define-extern choose-travel-portal-vertex (function nav-mesh nav-route-portal nav-poly vector int)) ;; TODO - confirm the matrix
+(define-extern choose-travel-portal-vertex (function nav-mesh nav-route-portal nav-poly vector int))
 (define-extern init-ray (function nav-ray symbol))
 (define-extern ray-line-segment-intersection? (function vector vector vector vector symbol))
 (define-extern point-triangle-distance-min (function vector float (inline-array nav-vertex) float))
-(define-extern nav-mesh-update-route-table (function nav-mesh int int uint int))
+(define-extern nav-mesh-update-route-table (function nav-mesh int int uint uint))
 (define-extern nav-mesh-lookup-route (function nav-mesh int int uint))
 (define-extern nav-ray-test-local? (function nav-mesh nav-poly vector vector symbol))
 (define-extern init-ray-local (function nav-ray nav-poly vector vector symbol))
 (define-extern init-ray-dir-local (function nav-ray nav-poly vector vector float symbol))
-(define-extern circle-triangle-intersection? (function vector float vector symbol)) ;; TODO - last arg has 5 vectors or more?
+(define-extern circle-triangle-intersection? (function vector float (inline-array nav-vertex) symbol))
 (define-extern point-inside-rect? (function nav-node vector float symbol))
-(define-extern recursive-inside-poly (function nav-mesh nav-node vector float symbol)) ;; unused / TODO
+(define-extern recursive-inside-poly (function nav-mesh nav-node vector float int)) ;; unused
 (define-extern point-inside-poly? (function nav-mesh uint vector float symbol))
-(define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol)) ;; TODO - slt / slti
+(define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol))
 (define-extern pke-nav-hack (function none))
 (define-extern debug-report-nav-stats (function none)) ;; empty stub
-(define-extern inc-mod3 (function int none)) ;; TODO - has a movn and slt
-(define-extern dec-mod3 (function int none)) ;; TODO - has a movn and slt
+(define-extern inc-mod3 (function int none))
+(define-extern dec-mod3 (function int none))
 (define-extern circle-triangle-intersection-proc? (function vector float (inline-array nav-vertex) symbol))
 (define-extern nav-ray-test (function nav-mesh nav-poly vector vector meters))
 (define-extern clip-vector-to-halfspace! (function vector float float float float))
 (define-extern add-nav-sphere (function nav-control vector none))
 (define-extern add-collide-shape-spheres (function nav-control collide-shape vector none)) ;; unused
 (define-extern circle-tangent-directions (function vector vector vector vector vector))
-(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) float int))
-(define-extern sign-bit (function int int)) ;; TODO - sra
-(define-extern compute-dir-parm (function vector vector vector float)) ;; TODO - sra
+(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) int int)) ;; last int arg may be a float but...it does a logand with it
+(define-extern sign-bit (function int int))
+(define-extern compute-dir-parm (function vector vector vector float))
 (define-extern debug-nav-validate-current-poly (function nav-mesh nav-poly vector symbol)) ;; unused
-(define-extern start-collect-nav (function none)) ;; TODO - make these instructions just NOP out?
-(define-extern end-collect-nav (function none)) ;; TODO - make these instructions just NOP out?
+(define-extern start-collect-nav (function none))
+(define-extern end-collect-nav (function none))
 (define-extern nav-sphere-from-cam (function none))
 
 ;; - Unknowns
