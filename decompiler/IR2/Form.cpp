@@ -1570,7 +1570,6 @@ void TypeOfElement::collect_vars(RegAccessSet& vars, bool recursive) const {
 
 void TypeOfElement::get_modified_regs(RegSet&) const {}
 
-
 /////////////////////////////
 // ConditionalMoveFalseElement
 /////////////////////////////

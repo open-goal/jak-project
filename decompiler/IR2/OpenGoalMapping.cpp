@@ -42,7 +42,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     // lots of implicit logic in OpenGOAL depending on argument types!
     {InstructionKind::MFC1, {".mov", {}}},
 
-    {InstructionKind::MOVN, {"move-if-not-zero", {}}}, // s7 special case is handled elsewhere
+    {InstructionKind::MOVN, {"move-if-not-zero", {}}},  // s7 special case is handled elsewhere
     {InstructionKind::SLT, {"set-on-less-than", {}}},
     {InstructionKind::SLTI, {"set-on-less-than", {}}},
     {InstructionKind::SRA, {"shift-arith-right", {}}},
@@ -232,7 +232,6 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
       } else {
         args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
       }
-      
     }
   }
 

@@ -4030,7 +4030,6 @@ FormElement* ConditionElement::make_geq_zero_signed_check_generic(
   }
 }
 
-
 FormElement* ConditionElement::make_geq_zero_unsigned_check_generic(
     const Env& env,
     FormPool& pool,
