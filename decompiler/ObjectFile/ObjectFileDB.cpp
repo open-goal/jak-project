@@ -12,6 +12,7 @@
 #include <map>
 #include "common/link_types.h"
 #include "common/util/dgo_util.h"
+#include "common/util/BitUtils.h"
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
@@ -244,7 +245,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
 
     add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name,
                      config);
-    reader.ffwd(obj_header.object_count);
+    reader.ffwd(align16(obj_header.object_count));
   }
 
   // check we're at the end
