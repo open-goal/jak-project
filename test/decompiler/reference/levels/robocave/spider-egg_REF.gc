@@ -1,0 +1,360 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type spider-egg
+(deftype spider-egg (process-drawable)
+  ((root-override collide-shape-moving         :offset        112)
+   (notify-actor  entity-actor                 :offset-assert 176)
+   (broken-look   lod-set              :inline :offset-assert 180)
+   )
+  :heap-base #x70
+  :method-count-assert 20
+  :size-assert         #xd5
+  :flag-assert         #x14007000d5
+  )
+
+;; definition for method 3 of type spider-egg
+(defmethod inspect spider-egg ((obj spider-egg))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tnotify-actor: ~A~%" (-> obj notify-actor))
+  (format #t "~T~Tbroken-look: #<lod-set @ #x~X>~%" (-> obj broken-look))
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup *spider-egg-unbroken-sg* spider-egg
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2)
+  :longest-edge (meters 0)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup *spider-egg-broken-sg* spider-egg
+  5
+  -1
+  ((6 (meters 20)) (7 (meters 40)) (8 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2)
+  :longest-edge (meters 0)
+  )
+
+;; failed to figure out what this is:
+(defstate spider-egg-idle (spider-egg)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (local-vars (v0-0 none))
+    (let ((v1-0 arg2))
+      (the-as
+        object
+        (cond
+          ((= v1-0 'touch)
+           (dummy-55 (-> self root-override) arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 0.7 6144.0 16384.0)
+           )
+          ((= v1-0 'can-spawn?)
+           (return (the-as object #t))
+           v0-0
+           )
+          ((= v1-0 'notify-spawned)
+           (go spider-egg-hatch)
+           )
+          ((= v1-0 'attack)
+           (go spider-egg-die)
+           )
+          )
+        )
+      )
+    )
+  :enter
+  (behavior ((arg0 symbol)) (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  :code
+  (behavior ((arg0 symbol))
+    (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
+      (cond
+        (arg0
+          (ja-channel-set! 1)
+          (let ((gp-1 (-> self skel root-channel 0)))
+            (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 9)))
+            (set! (-> gp-1 param 0)
+                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) data 0 length) -1))
+                  )
+            (set! (-> gp-1 param 1) f30-0)
+            (set! (-> gp-1 frame-num)
+                  (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                                    (-> self skel root-channel 0 frame-group)
+                                                                    )
+                                                              data
+                                                              0
+                                                              length
+                                                              )
+                                                         -1
+                                                         )
+                                                )
+                                       )
+                  )
+            (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 9)) num-func-seek!)
+            )
+          (until (ja-done? 0)
+            (suspend)
+            (let ((a0-5 (-> self skel root-channel 0)))
+              (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group data 0 length) -1)))
+              (set! (-> a0-5 param 1) f30-0)
+              (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
+              )
+            )
+          )
+        (else
+          (ja-channel-push! 1 60)
+          )
+        )
+      (while #t
+        (let ((gp-2 (rand-vu-int-range 2 6)))
+          (dotimes (s5-0 gp-2)
+            (let ((a0-9 (-> self skel root-channel 0)))
+              (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 9)))
+              (set! (-> a0-9 param 0)
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) data 0 length) -1))
+                    )
+              (set! (-> a0-9 param 1) f30-0)
+              (set! (-> a0-9 frame-num) 0.0)
+              (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 9)) num-func-seek!)
+              )
+            (until (ja-done? 0)
+              (suspend)
+              (let ((a0-10 (-> self skel root-channel 0)))
+                (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+                (set! (-> a0-10 param 1) f30-0)
+                (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            )
+          )
+        (ja-channel-push! 1 30)
+        (let ((a0-13 (-> self skel root-channel 0)))
+          (set! (-> a0-13 frame-group) (the-as art-joint-anim (-> self draw art-group data 13)))
+          (set! (-> a0-13 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) data 0 length) -1))
+                )
+          (set! (-> a0-13 param 1) 1.0)
+          (set! (-> a0-13 frame-num) 0.0)
+          (joint-control-channel-group! a0-13 (the-as art-joint-anim (-> self draw art-group data 13)) num-func-seek!)
+          )
+        (until (ja-done? 0)
+          (suspend)
+          (let ((a0-14 (-> self skel root-channel 0)))
+            (set! (-> a0-14 param 0) (the float (+ (-> a0-14 frame-group data 0 length) -1)))
+            (set! (-> a0-14 param 1) 1.0)
+            (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+        (ja-channel-push! 1 30)
+        )
+      )
+    (none)
+    )
+  :post
+  (the-as (function none :behavior spider-egg) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate spider-egg-hatch (spider-egg)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (local-vars (v0-0 symbol))
+    (case arg2
+      (('can-spawn?)
+       (return (the-as object #f))
+       v0-0
+       )
+      )
+    )
+  :code
+  (behavior ()
+    (dummy-18 self)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (clear-collide-with-as (-> self root-override))
+    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when gp-0
+        (let ((t9-3 (method-of-type part-tracker activate)))
+          (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
+          )
+        (run-now-in-process
+          gp-0
+          part-tracker-init
+          (-> *part-group-id-table* 324)
+          -1
+          #f
+          #f
+          #f
+          (-> self root-override trans)
+          )
+        (-> gp-0 ppointer)
+        )
+      )
+    (lods-assign! (-> self draw) (-> self broken-look))
+    (ja-channel-push! 1 60)
+    (let ((a0-8 (-> self skel root-channel 0)))
+      (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
+      (set! (-> a0-8 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) data 0 length) -1))
+            )
+      (set! (-> a0-8 param 1) 1.0)
+      (set! (-> a0-8 frame-num) 0.0)
+      (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-9 (-> self skel root-channel 0)))
+        (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
+        (set! (-> a0-9 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (logior! (-> self draw status) 2)
+    (until (not (-> self child))
+      (suspend)
+      )
+    (none)
+    )
+  :post
+  (the-as (function none :behavior spider-egg) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate spider-egg-die (spider-egg)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (local-vars (v0-0 symbol))
+    (case arg2
+      (('can-spawn?)
+       (return (the-as object #f))
+       v0-0
+       )
+      )
+    )
+  :code
+  (behavior ()
+    (dummy-18 self)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (when (-> self notify-actor)
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) self)
+        (set! (-> a1-0 num-params) 1)
+        (set! (-> a1-0 message) 'notify)
+        (set! (-> a1-0 param 0) (the-as uint 'die))
+        (let ((t9-1 send-event-function)
+              (v1-9 (-> self notify-actor))
+              )
+          (t9-1
+            (if v1-9
+                (-> v1-9 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      )
+    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when gp-0
+        (let ((t9-3 (method-of-type part-tracker activate)))
+          (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
+          )
+        (run-now-in-process
+          gp-0
+          part-tracker-init
+          (-> *part-group-id-table* 325)
+          -1
+          #f
+          #f
+          #f
+          (-> self root-override trans)
+          )
+        (-> gp-0 ppointer)
+        )
+      )
+    (lods-assign! (-> self draw) (-> self broken-look))
+    (ja-channel-push! 1 30)
+    (clear-collide-with-as (-> self root-override))
+    (let ((a0-9 (-> self skel root-channel 0)))
+      (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 12)))
+      (set! (-> a0-9 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) data 0 length) -1))
+            )
+      (set! (-> a0-9 param 1) 1.0)
+      (set! (-> a0-9 frame-num) 0.0)
+      (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 12)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-10 (-> self skel root-channel 0)))
+        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+        (set! (-> a0-10 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (logior! (-> self draw status) 2)
+    (until (not (-> self child))
+      (suspend)
+      )
+    (none)
+    )
+  :post
+  (the-as (function none :behavior spider-egg) ja-post)
+  )
+
+;; definition for method 11 of type spider-egg
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
+(defmethod init-from-entity! spider-egg ((obj spider-egg) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core offense) 1)
+      (set-vector! (-> s3-0 local-sphere) 0.0 2048.0 0.0 3686.4)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) 4096.0)
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *spider-egg-unbroken-sg* '())
+  (dummy-9 (-> obj broken-look) *spider-egg-broken-sg* (-> obj draw art-group) (-> obj entity))
+  (set-vector! (-> obj root-override scale) 0.4 0.4 0.4 1.0)
+  (if (not (dummy-60 (-> obj root-override) 12288.0 40960.0 #t (the-as uint 1)))
+      (go process-drawable-art-error "no ground")
+      )
+  (set! (-> obj root-override trans y) (+ -409.6 (-> obj root-override trans y)))
+  (let ((s4-1 (new 'stack-no-clear 'vector)))
+    (set! (-> s4-1 quad) (-> obj root-override surface-normal quad))
+    (+! (-> s4-1 x) (rand-vu-float-range -0.2 0.2))
+    (+! (-> s4-1 z) (rand-vu-float-range -0.2 0.2))
+    (vector-normalize! s4-1 1.0)
+    (quaternion-axis-angle!
+      (-> obj root-override quat)
+      (-> s4-1 x)
+      (-> s4-1 y)
+      (-> s4-1 z)
+      (rand-vu-float-range 0.0 65536.0)
+      )
+    )
+  (dummy-47 (-> obj root-override))
+  (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
+  (if (> (entity-actor-count arg0 'alt-actor) 0)
+      (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+      (set! (-> obj notify-actor) #f)
+      )
+  (go spider-egg-idle #t)
+  (none)
+  )

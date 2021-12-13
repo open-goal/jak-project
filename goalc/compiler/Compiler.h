@@ -125,7 +125,7 @@ class Compiler {
   Val* compile_float(float value, Env* env, int seg);
   Val* compile_symbol(const goos::Object& form, Env* env);
   Val* compile_string(const goos::Object& form, Env* env);
-  Val* compile_string(const std::string& str, Env* env, int seg = MAIN_SEGMENT);
+  Val* compile_string(const std::string& str, Env* env, int seg);
   Val* compile_get_symbol_value(const goos::Object& form, const std::string& name, Env* env);
   Val* compile_function_or_method_call(const goos::Object& form, Env* env);
 
@@ -233,15 +233,20 @@ class Compiler {
                          Env* env,
                          bool call_constructor);
 
-  StaticResult fill_static_array(const goos::Object& form, const goos::Object& rest, Env* env);
+  StaticResult fill_static_array(const goos::Object& form,
+                                 const goos::Object& rest,
+                                 Env* env,
+                                 int seg);
 
   StaticResult fill_static_boxed_array(const goos::Object& form,
                                        const goos::Object& rest,
-                                       Env* env);
+                                       Env* env,
+                                       int seg);
 
   StaticResult fill_static_inline_array(const goos::Object& form,
                                         const goos::Object& rest,
-                                        Env* env);
+                                        Env* env,
+                                        int seg);
 
   void fill_static_inline_array_inline(const goos::Object& form,
                                        const TypeSpec& content_type,
@@ -330,10 +335,11 @@ class Compiler {
   Val* compile_new_static_structure_or_basic(const goos::Object& form,
                                              const TypeSpec& type,
                                              const goos::Object& field_defs,
-                                             Env* env);
-  Val* compile_static_pair(const goos::Object& form, Env* env);
+                                             Env* env,
+                                             int seg);
+  Val* compile_static_pair(const goos::Object& form, Env* env, int seg);
   StaticResult compile_static(const goos::Object& form, Env* env);
-  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form, Env* env);
+  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form, Env* env, int seg);
 
   Val* compile_bitfield_definition(const goos::Object& form,
                                    const TypeSpec& type,
@@ -343,7 +349,8 @@ class Compiler {
   StaticResult compile_new_static_structure(const goos::Object& form,
                                             const TypeSpec& type,
                                             const goos::Object& _field_defs,
-                                            Env* env);
+                                            Env* env,
+                                            int seg);
 
   void compile_static_structure_inline(const goos::Object& form,
                                        const TypeSpec& type,
@@ -606,6 +613,7 @@ class Compiler {
   Val* compile_inline(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_declare_file(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Type
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);

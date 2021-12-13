@@ -1,0 +1,1153 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bully-broken-cage
+(deftype bully-broken-cage (process-drawable)
+  ((parent-override (pointer bully)  :offset  12)
+   )
+  :heap-base #x40
+  :method-count-assert 20
+  :size-assert         #xb0
+  :flag-assert         #x14004000b0
+  (:states
+    (bully-broken-cage-explode bully-broken-cage)
+    )
+  )
+
+;; definition for method 3 of type bully-broken-cage
+(defmethod inspect bully-broken-cage ((obj bully-broken-cage))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
+
+;; definition of type bully
+(deftype bully (process-drawable)
+  ((root-override   collide-shape-moving  :offset        112)
+   (fact-override   fact-info-enemy       :offset        144)
+   (hit-player?     symbol                :offset-assert 176)
+   (bounced?        symbol                :offset-assert 180)
+   (bounce-volume   int32                 :offset-assert 184)
+   (facing-ry       float                 :offset-assert 188)
+   (travel-ry       float                 :offset-assert 192)
+   (speed-u         float                 :offset-assert 196)
+   (spin-vel        float                 :offset-assert 200)
+   (travel-speed    float                 :offset-assert 204)
+   (reaction-delay  uint64                :offset-assert 208)
+   (start-spin-time uint64                :offset-assert 216)
+   (slow-down       uint64                :offset-assert 224)
+   (hit-player-time uint64                :offset-assert 232)
+   (neck            joint-mod             :offset-assert 240)
+   )
+  :heap-base #x90
+  :method-count-assert 21
+  :size-assert         #xf4
+  :flag-assert         #x15009000f4
+  (:methods
+    (dummy-20 (_type_) float 20)
+    )
+  (:states
+    bully-die
+    (bully-idle symbol)
+    bully-notice
+    bully-start-spinning
+    bully-stop-spinning
+    )
+  )
+
+;; definition for method 3 of type bully
+(defmethod inspect bully ((obj bully))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Thit-player?: ~A~%" (-> obj hit-player?))
+  (format #t "~T~Tbounced?: ~A~%" (-> obj bounced?))
+  (format #t "~T~Tbounce-volume: ~D~%" (-> obj bounce-volume))
+  (format #t "~T~Tfacing-ry: ~f~%" (-> obj facing-ry))
+  (format #t "~T~Ttravel-ry: ~f~%" (-> obj travel-ry))
+  (format #t "~T~Tspeed-u: ~f~%" (-> obj speed-u))
+  (format #t "~T~Tspin-vel: ~f~%" (-> obj spin-vel))
+  (format #t "~T~Ttravel-speed: ~f~%" (-> obj travel-speed))
+  (format #t "~T~Treaction-delay: ~D~%" (-> obj reaction-delay))
+  (format #t "~T~Tstart-spin-time: ~D~%" (-> obj start-spin-time))
+  (format #t "~T~Tslow-down: ~D~%" (-> obj slow-down))
+  (format #t "~T~Thit-player-time: ~D~%" (-> obj hit-player-time))
+  (format #t "~T~Tneck: ~A~%" (-> obj neck))
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup *bully-sg* bully
+  0
+  5
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1.5 0 3)
+  :longest-edge (meters 0)
+  :shadow 4
+  )
+
+;; failed to figure out what this is:
+(defskelgroup *bully-broken-cage-sg* bully
+  14
+  -1
+  ((15 (meters 999999)))
+  :bounds (static-spherem 0 2 0 6)
+  :longest-edge (meters 0)
+  )
+
+;; definition for symbol *bully-shadow-control*, type shadow-control
+(define
+  *bully-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :center
+                                           (new 'static 'vector :w (the-as float #x9))
+                                           :shadow-dir
+                                           (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 10240.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w -2048.0)
+                                           :fade-dist 245760.0
+                                           )
+                               )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *part-group-id-table* 454) (new 'static 'sparticle-launch-group
+                                       :length 5
+                                       :duration #xbb8
+                                       :linger-duration #x5dc
+                                       :flags (sp-group-flag use-local-clock)
+                                       :name "group-bully-explode"
+                                       :launcher
+                                       (new 'static 'inline-array sparticle-group-item 5
+                                         (sp-item 2871)
+                                         (sp-item 2872)
+                                         (sp-item 2873)
+                                         (sp-item 2874)
+                                         (sp-item 2875)
+                                         )
+                                       :bounds (new 'static 'sphere :w 32768.0)
+                                       )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2871) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 20
+                                    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+                                    (sp-flt spt-num 16.0)
+                                    (sp-rnd-flt spt-y (meters 0.5) (meters 2.0) 1.0)
+                                    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-copy-from-other spt-scale-y -4)
+                                    (sp-rnd-flt spt-r 128.0 32.0 1.0)
+                                    (sp-rnd-flt spt-g 128.0 32.0 1.0)
+                                    (sp-rnd-flt spt-b 128.0 32.0 1.0)
+                                    (sp-rnd-flt spt-a 32.0 16.0 1.0)
+                                    (sp-rnd-flt spt-vel-y (meters 0.016666668) (meters 0.033333335) 1.0)
+                                    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 1.2) 1.0)
+                                    (sp-flt spt-accel-y 2.7306666)
+                                    (sp-int spt-timer 120)
+                                    (sp-cpuinfo-flags bit2 bit12)
+                                    (sp-int-plain-rnd spt-next-time 30 59 1)
+                                    (sp-launcher-by-id spt-next-launcher 2876)
+                                    (sp-rnd-flt spt-conerot-x (degrees 70.0) (degrees 20.0) 1.0)
+                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-end)
+                                    )
+                                  )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2876)
+      (new 'static 'sparticle-launcher
+        :init-specs
+        (new 'static 'inline-array sp-field-init-spec 2 (sp-flt spt-fade-a -1.0666667) (sp-end))
+        )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2872) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 21
+                                    (sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+                                    (sp-flt spt-num 4.0)
+                                    (sp-flt spt-y (meters 1.5))
+                                    (sp-rnd-flt spt-scale-x (meters 6.0) (meters 3.0) 1.0)
+                                    (sp-int spt-rot-x 4)
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-rnd-flt spt-scale-y (meters 0.3) (meters 1.0) 1.0)
+                                    (sp-flt spt-r 192.0)
+                                    (sp-flt spt-g 192.0)
+                                    (sp-rnd-flt spt-b 64.0 128.0 1.0)
+                                    (sp-flt spt-a 0.0)
+                                    (sp-flt spt-scalevel-x (meters 0.009765625))
+                                    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+                                    (sp-flt spt-scalevel-y (meters 0.009765625))
+                                    (sp-flt spt-fade-a 2.1333334)
+                                    (sp-int spt-timer 30)
+                                    (sp-cpuinfo-flags bit2 bit3)
+                                    (sp-int spt-next-time 15)
+                                    (sp-launcher-by-id spt-next-launcher 2877)
+                                    (sp-flt spt-rotate-y (degrees 0.0))
+                                    (sp-end)
+                                    )
+                                  )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2877)
+      (new 'static 'sparticle-launcher
+        :init-specs
+        (new 'static 'inline-array sp-field-init-spec 2 (sp-flt spt-fade-a -2.1333334) (sp-end))
+        )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2873) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 13
+                                    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+                                    (sp-flt spt-num 1.0)
+                                    (sp-flt spt-y (meters 1.5))
+                                    (sp-flt spt-scale-x (meters 12.0))
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-copy-from-other spt-scale-y -4)
+                                    (sp-flt spt-r 196.0)
+                                    (sp-flt spt-g 196.0)
+                                    (sp-flt spt-b 196.0)
+                                    (sp-flt spt-a 48.0)
+                                    (sp-int spt-timer 10)
+                                    (sp-cpuinfo-flags bit2 bit3)
+                                    (sp-end)
+                                    )
+                                  )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2874) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 25
+                                    (sp-tex spt-texture (new 'static 'texture-id :index #x6 :page #x2))
+                                    (sp-flt spt-num 16.0)
+                                    (sp-rnd-flt spt-x (meters -0.5) (meters 1.0) 1.0)
+                                    (sp-rnd-flt spt-y (meters 0.25) (meters 1.5) 1.0)
+                                    (sp-rnd-flt spt-z -2048.0 4096.0 1.0)
+                                    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.00048828125) 2457.6)
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-flt spt-scale-y (meters 0.3))
+                                    (sp-flt spt-r 160.0)
+                                    (sp-flt spt-g 160.0)
+                                    (sp-flt spt-b 160.0)
+                                    (sp-flt spt-a 128.0)
+                                    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.06666667) 1.0)
+                                    (sp-flt spt-rotvel-x (degrees 1.2))
+                                    (sp-flt spt-rotvel-y (degrees 2.4))
+                                    (sp-rnd-int-flt spt-rotvel-z (degrees 0.0) 2 436.90668)
+                                    (sp-flt spt-accel-y -13.653334)
+                                    (sp-flt spt-friction 0.97)
+                                    (sp-int spt-timer 150)
+                                    (sp-cpuinfo-flags bit2 bit12)
+                                    (sp-int spt-next-time 75)
+                                    (sp-launcher-by-id spt-next-launcher 2878)
+                                    (sp-rnd-flt spt-conerot-x (degrees 40.0) (degrees 30.0) 1.0)
+                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-end)
+                                    )
+                                  )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2878)
+      (new 'static 'sparticle-launcher :init-specs (new 'static 'inline-array sp-field-init-spec 4
+                                                     (sp-flt spt-scalevel-x (meters -0.0033333334))
+                                                     (sp-copy-from-other spt-scalevel-y -4)
+                                                     (sp-flt spt-fade-a -3.4)
+                                                     (sp-end)
+                                                     )
+                                       )
+      )
+
+;; failed to figure out what this is:
+(set! (-> *part-id-table* 2875) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 25
+                                    (sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #x2))
+                                    (sp-flt spt-num 16.5)
+                                    (sp-rnd-flt spt-x (meters -0.5) (meters 1.0) 1.0)
+                                    (sp-rnd-flt spt-y (meters 0.25) (meters 1.5) 1.0)
+                                    (sp-rnd-flt spt-z -2048.0 4096.0 1.0)
+                                    (sp-rnd-int-flt spt-scale-x (meters 0.3) 1 4096.0)
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-flt spt-scale-y (meters 0.3))
+                                    (sp-flt spt-r 100.0)
+                                    (sp-flt spt-g 100.0)
+                                    (sp-flt spt-b 100.0)
+                                    (sp-flt spt-a 128.0)
+                                    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.06666667) 1.0)
+                                    (sp-flt spt-rotvel-x (degrees 1.2))
+                                    (sp-flt spt-rotvel-y (degrees 2.4))
+                                    (sp-rnd-int-flt spt-rotvel-z (degrees 0.0) 3 436.90668)
+                                    (sp-flt spt-accel-y -13.653334)
+                                    (sp-flt spt-friction 0.97)
+                                    (sp-int spt-timer 150)
+                                    (sp-cpuinfo-flags bit2 bit12)
+                                    (sp-int spt-next-time 75)
+                                    (sp-launcher-by-id spt-next-launcher 2878)
+                                    (sp-rnd-flt spt-conerot-x (degrees 40.0) (degrees 30.0) 1.0)
+                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-end)
+                                    )
+                                  )
+      )
+
+;; failed to figure out what this is:
+(defstate bully-broken-cage-explode (bully-broken-cage)
+  :code
+  (behavior ((arg0 bully-broken-cage))
+    (ja-channel-push! 1 0)
+    (let ((a0-2 (-> self skel root-channel 0)))
+      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
+      (set! (-> a0-2 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) data 0 length) -1))
+            )
+      (set! (-> a0-2 param 1) 1.0)
+      (set! (-> a0-2 frame-num) 0.0)
+      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 16)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
+        (set! (-> a0-3 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (none)
+    )
+  :post
+  (the-as (function none :behavior bully-broken-cage) ja-post)
+  )
+
+;; definition for function bully-broken-cage-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
+(defbehavior bully-broken-cage-init-by-other bully-broken-cage ((arg0 entity))
+  (set! (-> self entity) arg0)
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> self parent-override 0 root-override trans quad))
+  (quaternion-copy! (-> self root quat) (-> self parent-override 0 root-override quat))
+  (set! (-> self root scale quad) (-> self parent-override 0 root-override scale quad))
+  (let ((a0-13 self))
+    (initialize-skeleton a0-13 *bully-broken-cage-sg* '())
+    (go bully-broken-cage-explode a0-13)
+    )
+  (none)
+  )
+
+;; definition for function bully-default-event-handler
+;; INFO: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 48]
+;; WARN: disable def twice: 148. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 229]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 248]
+;; Used lq/sq
+(defbehavior bully-default-event-handler bully ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 none))
+  (let ((v1-0 arg2))
+    (the-as
+      object
+      (when (or (= v1-0 'touch) (= v1-0 'touched) (= v1-0 'attack))
+        (cond
+          ((= (-> arg0 type) bully)
+           (let ((v1-3 (new 'stack-no-clear 'vector)))
+             (vector-! v1-3 (-> self root-override trans) (-> (the-as process-drawable arg0) root trans))
+             (set! (-> self travel-ry) (atan (-> v1-3 x) (-> v1-3 z)))
+             )
+           (set! (-> self bounced?) #t)
+           (set! v0-0 (the-as none 100))
+           (set! (-> self bounce-volume) (the-as int v0-0))
+           v0-0
+           )
+          ((= (-> arg0 type) target)
+           (cond
+             ((= (-> arg3 param 1) 'flop)
+              (go bully-die)
+              (return (the-as object #t))
+              v0-0
+              )
+             ((or (= arg2 'touch) (= arg2 'attack))
+              (cond
+                ((>= (- (-> (target-pos 0) y) (-> self root-override trans y)) 6144.0)
+                 (let* ((f0-6 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
+                        (f28-0 (* 8192.0 f0-6))
+                        (f30-0 (* 8192.0 f0-6))
+                        (s4-0 (new 'stack-no-clear 'vector))
+                        )
+                   (vector-! s4-0 (target-pos 0) (-> self root-override trans))
+                   (let ((f26-0 (atan (-> s4-0 x) (-> s4-0 z))))
+                     (when (< 0.0 (-> self travel-speed))
+                       (let ((f0-11 (deg- f26-0 (-> self travel-ry))))
+                         (if (< (fabs f0-11) 8192.0)
+                             (set! f26-0 (if (>= f0-11 0.0)
+                                             (+ 8192.0 f26-0)
+                                             (+ -8192.0 f26-0)
+                                             )
+                                   )
+                             )
+                         )
+                       )
+                     (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0)
+                     )
+                   (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+                     (set! (-> a1-8 from) self)
+                     (set! (-> a1-8 num-params) 2)
+                     (set! (-> a1-8 message) 'shove)
+                     (set! (-> a1-8 param 0) (-> arg3 param 0))
+                     (let ((v1-23 (new 'static 'attack-info :mask #x82)))
+                       (set! (-> v1-23 shove-up) f30-0)
+                       (set! (-> v1-23 vector quad) (-> s4-0 quad))
+                       (set! (-> a1-8 param 1) (the-as uint v1-23))
+                       )
+                     (when (send-event-function arg0 a1-8)
+                       (level-hint-spawn
+                         (game-text-id sunken-bully-dive-hint)
+                         "sksp0131"
+                         (the-as entity #f)
+                         *entity-pool*
+                         (game-task none)
+                         )
+                       (set! (-> self bounced?) #t)
+                       (set! v0-0 (the-as none 100))
+                       (set! (-> self bounce-volume) (the-as int v0-0))
+                       v0-0
+                       )
+                     )
+                   )
+                 )
+                (else
+                  (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
+                        (a1-10 (new 'stack-no-clear 'event-message-block))
+                        )
+                    (set! (-> a1-10 from) self)
+                    (set! (-> a1-10 num-params) 2)
+                    (set! (-> a1-10 message) 'attack)
+                    (set! (-> a1-10 param 0) (-> arg3 param 0))
+                    (let ((v1-29 (new 'static 'attack-info :mask #xc0)))
+                      (set! (-> v1-29 shove-up) (* 12288.0 f0-21))
+                      (set! (-> v1-29 shove-back) (* 16384.0 f0-21))
+                      (set! (-> a1-10 param 1) (the-as uint v1-29))
+                      )
+                    (when (send-event-function arg0 a1-10)
+                      (level-hint-spawn
+                        (game-text-id sunken-bully-dive-hint)
+                        "sksp0131"
+                        (the-as entity #f)
+                        *entity-pool*
+                        (game-task none)
+                        )
+                      (set! (-> self hit-player?) #t)
+                      (set! (-> self bounced?) #t)
+                      (set! (-> self bounce-volume) 100)
+                      (set! (-> self hit-player-time) (the-as uint (-> *display* base-frame-counter)))
+                      (dummy-54 (-> self root-override) 2 0)
+                      )
+                    )
+                  )
+                )
+              )
+             )
+           )
+          (else
+            (when (= arg2 'touched)
+              (cond
+                ((= (-> arg0 type) target)
+                 (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+                   (set! (-> a1-13 from) self)
+                   (set! (-> a1-13 num-params) 2)
+                   (set! (-> a1-13 message) 'attack)
+                   (set! (-> a1-13 param 0) (-> arg3 param 0))
+                   (let ((a0-26 (new 'static 'attack-info :mask #x20)))
+                     (set! (-> a0-26 mode) 'explode)
+                     (set! (-> a1-13 param 1) (the-as uint a0-26))
+                     )
+                   (send-event-function arg0 a1-13)
+                   )
+                 )
+                (else
+                  (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+                    (set! (-> a1-14 from) self)
+                    (set! (-> a1-14 num-params) 4)
+                    (set! (-> a1-14 message) 'attack)
+                    (set! (-> a1-14 param 0) (-> arg3 param 0))
+                    (set! (-> a1-14 param 1) (the-as uint 'explode))
+                    (let ((v1-48 (+ *global-attack-id* 1)))
+                      (set! *global-attack-id* v1-48)
+                      (set! (-> a1-14 param 2) (the-as uint v1-48))
+                      )
+                    (set! (-> a1-14 param 3) (the-as uint 0))
+                    (send-event-function arg0 a1-14)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function bully-post
+;; INFO: Return type mismatch int vs none.
+(defbehavior bully-post bully ()
+  (when (and
+          (-> self hit-player?)
+          (or (not *target*) (and
+                               (zero? (logand (-> *target* state-flags) #x80f8))
+                               (>= (- (-> *display* base-frame-counter) (the-as int (-> self hit-player-time))) 15)
+                               )
+              )
+          )
+    (dummy-54 (-> self root-override) 2 2)
+    (set! (-> self hit-player?) #f)
+    )
+  (transform-post)
+  (none)
+  )
+
+;; definition for method 20 of type bully
+;; Used lq/sq
+(defmethod dummy-20 bully ((obj bully))
+  (local-vars (at-0 int))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set-vector!
+      (-> obj root-override transv)
+      (* (sin (-> obj travel-ry)) (-> obj travel-speed))
+      0.0
+      (* (cos (-> obj travel-ry)) (-> obj travel-speed))
+      1.0
+      )
+    (let ((s5-1 #f))
+      (dummy-28 (-> obj nav) 2560)
+      (let ((v1-4 (-> obj nav travel)))
+        (.lvf vf1 (&-> (-> obj root-override transv) quad))
+        (let ((f0-8 (-> *display* seconds-per-frame)))
+          (.mov at-0 f0-8)
+          )
+        (.mov vf2 at-0)
+        (.mov.vf vf1 vf0 :mask #b1000)
+        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.svf (&-> v1-4 quad) vf1)
+        )
+      (let ((s4-0 (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
+        (when (>= (dummy-23 (-> obj nav) (-> obj nav travel) s4-0) 0.0)
+          (let ((s5-2 (new 'stack-no-clear 'vector)))
+            (set! (-> s5-2 quad) (-> s4-0 normal quad))
+            (set! (-> s5-2 y) 0.0)
+            (vector-normalize! s5-2 1.0)
+            (vector-reflect! (-> obj root-override transv) (-> obj root-override transv) s5-2)
+            )
+          (set! (-> obj travel-ry) (atan (-> obj root-override transv x) (-> obj root-override transv z)))
+          (+! (-> obj travel-ry) (rand-vu-float-range -910.2222 910.2222))
+          (vector-reset! (-> obj root-override transv))
+          (set! s5-1 #t)
+          (set! (-> obj bounced?) #t)
+          (set! (-> obj bounce-volume) 100)
+          )
+        )
+      (when (not s5-1)
+        (vector-normalize-copy! (-> obj nav travel) (-> obj root-override transv) 2048.0)
+        (let ((s5-3 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
+          (dummy-24 (-> obj nav) 2048.0 s5-3)
+          (when (and
+                  (-> s5-3 found-boundary)
+                  (>= (* (-> obj travel-speed) (-> *display* seconds-per-frame))
+                      (vector-vector-xz-distance (-> s5-3 intersection) (-> obj root-override trans))
+                      )
+                  )
+            (let ((s4-1 (new 'stack-no-clear 'vector)))
+              (vector-negate! s4-1 (-> s5-3 boundary-normal))
+              (set! (-> s4-1 y) 0.0)
+              (vector-normalize! s4-1 1.0)
+              (vector-reflect! (-> obj root-override transv) (-> obj root-override transv) s4-1)
+              )
+            (set! (-> obj travel-ry) (atan (-> obj root-override transv x) (-> obj root-override transv z)))
+            (+! (-> obj travel-ry) (rand-vu-float-range -910.2222 910.2222))
+            (vector-reset! (-> obj root-override transv))
+            #t
+            (set! (-> obj bounced?) #t)
+            (set! (-> obj bounce-volume) 60)
+            )
+          )
+        )
+      )
+    (let ((f0-25 (+ -36864.0 (-> obj root-override transv y))))
+      (set! (-> obj root-override transv y) f0-25)
+      f0-25
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate bully-idle (bully)
+  :event
+  bully-default-event-handler
+  :enter
+  (behavior ((arg0 symbol))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self reaction-delay) (the-as uint (rand-vu-int-range 0 105)))
+    (set! (-> self travel-speed) 0.0)
+    (shut-down! (-> self neck))
+    (let ((v1-5 (-> self draw shadow-ctrl)))
+      (logior! (-> v1-5 settings flags) 32)
+      )
+    0
+    (none)
+    )
+  :exit
+  (behavior ()
+    (let ((v1-1 (-> self draw shadow-ctrl)))
+      (set! (-> v1-1 settings flags) (logand -33 (-> v1-1 settings flags)))
+      )
+    0
+    (none)
+    )
+  :trans
+  (behavior ()
+    (when (and
+            (and *target* (>= (-> self fact-override idle-distance)
+                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                              )
+                 )
+            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self reaction-delay)))
+            )
+      (start-hint-timer (game-text-id sunken-bully-dive-hint))
+      (go bully-notice)
+      )
+    (none)
+    )
+  :code
+  (behavior ((arg0 symbol))
+    (ja-channel-push! 1 22)
+    (cond
+      (arg0
+        (let ((gp-1 (-> self skel root-channel 0)))
+          (joint-control-channel-group-eval!
+            gp-1
+            (the-as art-joint-anim (-> self draw art-group data 5))
+            num-func-identity
+            )
+          (set! (-> gp-1 frame-num)
+                (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                                  (-> self skel root-channel 0 frame-group)
+                                                                  )
+                                                            data
+                                                            0
+                                                            length
+                                                            )
+                                                       -1
+                                                       )
+                                              )
+                                     )
+                )
+          )
+        )
+      (else
+        (let ((gp-2 (-> self skel root-channel 0)))
+          (joint-control-channel-group-eval!
+            gp-2
+            (the-as art-joint-anim (-> self draw art-group data 5))
+            num-func-identity
+            )
+          (set! (-> gp-2 frame-num) 0.0)
+          )
+        )
+      )
+    (while #t
+      (suspend)
+      (let ((a0-5 (-> self skel root-channel 0)))
+        (set! (-> a0-5 param 0) 1.0)
+        (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
+        )
+      )
+    (none)
+    )
+  :post
+  bully-post
+  )
+
+;; failed to figure out what this is:
+(defstate bully-notice (bully)
+  :event
+  bully-default-event-handler
+  :trans
+  (behavior ()
+    (when *target*
+      (if *target*
+          (look-at-enemy!
+            (-> *target* neck)
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            'attacking
+            self
+            )
+          )
+      (set-target! (-> self neck) (target-pos 5))
+      )
+    (none)
+    )
+  :code
+  (behavior ()
+    (set! (-> self travel-speed) 0.0)
+    (ja-channel-push! 1 22)
+    (set-vector! (-> self root-override transv) 0.0 (rand-vu-float-range 61440.0 90112.0) 0.0 1.0)
+    (let ((gp-1 (-> self skel root-channel 0)))
+      (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
+      (set! (-> gp-1 param 0) (ja-aframe 13.0 0))
+      (set! (-> gp-1 param 1) 1.0)
+      (set! (-> gp-1 frame-num) 0.0)
+      (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((gp-2 (-> self skel root-channel 0)))
+        (set! (-> gp-2 param 0) (ja-aframe 13.0 0))
+        (set! (-> gp-2 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (until (logtest? (-> self root-override status) 1)
+      (let ((a0-7 (-> self skel root-channel 0)))
+        (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
+        (set! (-> a0-7 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      (+! (-> self root-override transv y) (* -545996.8 (-> *display* seconds-per-frame)))
+      (dummy-59 (-> self root-override) (-> self root-override transv) (the-as uint 1) 12288.0 #f #f #f)
+      (when *target*
+        (let ((gp-3 (new 'stack-no-clear 'vector)))
+          (vector-! gp-3 (target-pos 0) (-> self root-override trans))
+          (seek-toward-heading-vec! (-> self root-override) gp-3 524288.0 30)
+          )
+        (set! (-> self facing-ry) (quaternion-y-angle (-> self root-override quat)))
+        )
+      (suspend)
+      )
+    (let ((a0-14 (-> self skel root-channel 0)))
+      (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
+      (set! (-> a0-14 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
+            )
+      (set! (-> a0-14 param 1) 1.0)
+      (set! (-> a0-14 frame-num) 0.0)
+      (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-15 (-> self skel root-channel 0)))
+        (set! (-> a0-15 param 0) (the float (+ (-> a0-15 frame-group data 0 length) -1)))
+        (set! (-> a0-15 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-15 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (go bully-start-spinning)
+    (none)
+    )
+  :post
+  bully-post
+  )
+
+;; failed to figure out what this is:
+(defstate bully-start-spinning (bully)
+  :event
+  bully-default-event-handler
+  :enter
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self start-spin-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self slow-down) (the-as uint (rand-vu-int-range 1200 2400)))
+    (set! (-> self speed-u) 0.2)
+    (set! (-> self bounced?) #f)
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (if *target*
+          (vector-! gp-0 (target-pos 0) (-> self root-override trans))
+          (vector-z-quaternion! gp-0 (-> self root-override quat))
+          )
+      (set! (-> self travel-ry) (atan (-> gp-0 x) (-> gp-0 z)))
+      )
+    (+! (-> self travel-ry) (rand-vu-float-range -910.2222 910.2222))
+    (none)
+    )
+  :trans
+  (behavior ()
+    (when *target*
+      (if *target*
+          (look-at-enemy!
+            (-> *target* neck)
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            'attacking
+            self
+            )
+          )
+      (set-target! (-> self neck) (target-pos 5))
+      )
+    (cond
+      ((>= (- (-> *display* base-frame-counter) (the-as int (-> self start-spin-time)))
+           (the-as int (-> self slow-down))
+           )
+       (set! (-> self speed-u) (seek (-> self speed-u) 0.0 (* 0.5555556 (-> *display* seconds-per-frame))))
+       (if (= (-> self speed-u) 0.0)
+           (go bully-stop-spinning)
+           )
+       )
+      (else
+        (set! (-> self speed-u) (seek (-> self speed-u) 1.0 (* 0.5555556 (-> *display* seconds-per-frame))))
+        )
+      )
+    (set! (-> self spin-vel) (* 196608.0 (-> self speed-u)))
+    (set! (-> self travel-speed) (* 41779.2 (-> self speed-u)))
+    (+! (-> self facing-ry) (* (-> self spin-vel) (-> *display* seconds-per-frame)))
+    (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 (-> self facing-ry))
+    (dummy-20 self)
+    (dummy-59 (-> self root-override) (-> self root-override transv) (the-as uint 1) 8192.0 #f #f #f)
+    (dummy-27 (-> self nav))
+    (none)
+    )
+  :code
+  (behavior ()
+    (local-vars (v1-34 symbol) (v1-52 symbol))
+    (ja-channel-push! 1 60)
+    (let ((a0-1 (-> self skel root-channel 0)))
+      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
+      (set! (-> a0-1 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
+            )
+      (set! (-> a0-1 param 1) 1.0)
+      (set! (-> a0-1 frame-num) 0.0)
+      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-2 (-> self skel root-channel 0)))
+        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+        (set! (-> a0-2 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (set! (-> self bounced?) #f)
+    (ja-channel-push! 1 60)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 9))
+        num-func-identity
+        )
+      (set! (-> gp-0 frame-num) 0.0)
+      )
+    (while #t
+      (until v1-34
+        (suspend)
+        (let ((a0-6 (-> self skel root-channel 0)))
+          (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
+          (set! (-> a0-6 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        (set! v1-34 (or (ja-done? 0) (-> self bounced?)))
+        )
+      (when (-> self bounced?)
+        (sound-play-by-name
+          (static-sound-name "bully-bounce")
+          (new-sound-id)
+          (the int (* 10.24 (the float (-> self bounce-volume))))
+          0
+          0
+          1
+          #t
+          )
+        (until (not (-> self bounced?))
+          (set! (-> self bounced?) #f)
+          (ja-channel-push! 1 60)
+          (let ((gp-2 (-> self skel root-channel 0)))
+            (joint-control-channel-group-eval!
+              gp-2
+              (the-as art-joint-anim (-> self draw art-group data 11))
+              num-func-identity
+              )
+            (set! (-> gp-2 frame-num) 0.0)
+            )
+          (until v1-52
+            (suspend)
+            (let ((a0-12 (-> self skel root-channel 0)))
+              (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
+              (set! (-> a0-12 param 1) 1.0)
+              (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
+              )
+            (set! v1-52 (or (ja-done? 0) (-> self bounced?)))
+            )
+          )
+        (ja-channel-push! 1 60)
+        )
+      (let ((gp-3 (-> self skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          gp-3
+          (the-as art-joint-anim (-> self draw art-group data 9))
+          num-func-identity
+          )
+        (set! (-> gp-3 frame-num) 0.0)
+        )
+      )
+    (none)
+    )
+  :post
+  bully-post
+  )
+
+;; failed to figure out what this is:
+(defstate bully-stop-spinning (bully)
+  :event
+  bully-default-event-handler
+  :enter
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self reaction-delay) (the-as uint (rand-vu-int-range 600 900)))
+    (set! (-> self travel-speed) 0.0)
+    (set! (-> self bounced?) #f)
+    (none)
+    )
+  :trans
+  (behavior ()
+    (when *target*
+      (if *target*
+          (look-at-enemy!
+            (-> *target* neck)
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            'attacking
+            self
+            )
+          )
+      (set-target! (-> self neck) (target-pos 5))
+      )
+    (none)
+    )
+  :code
+  (behavior ()
+    (local-vars (v1-17 symbol) (v1-35 symbol))
+    (let ((gp-0 2))
+      (ja-channel-push! 1 60)
+      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self reaction-delay)))
+        (cond
+          ((>= gp-0 0)
+           (+! gp-0 -1)
+           (let ((s5-0 (-> self skel root-channel 0)))
+             (joint-control-channel-group-eval!
+               s5-0
+               (the-as art-joint-anim (-> self draw art-group data 13))
+               num-func-identity
+               )
+             (set! (-> s5-0 frame-num) 0.0)
+             )
+           )
+          (else
+            (let ((s5-1 (-> self skel root-channel 0)))
+              (joint-control-channel-group-eval!
+                s5-1
+                (the-as art-joint-anim (-> self draw art-group data 5))
+                num-func-identity
+                )
+              (set! (-> s5-1 frame-num) 0.0)
+              )
+            )
+          )
+        (until v1-17
+          (suspend)
+          (let ((a0-3 (-> self skel root-channel 0)))
+            (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
+            (set! (-> a0-3 param 1) 1.0)
+            (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          (set! v1-17 (or (ja-done? 0) (-> self bounced?)))
+          )
+        (when (-> self bounced?)
+          (sound-play-by-name
+            (static-sound-name "bully-bounce")
+            (new-sound-id)
+            (the int (* 10.24 (the float (-> self bounce-volume))))
+            0
+            0
+            1
+            #t
+            )
+          (set! gp-0 0)
+          (until (not (-> self bounced?))
+            (set! (-> self bounced?) #f)
+            (ja-channel-push! 1 60)
+            (let ((s5-3 (-> self skel root-channel 0)))
+              (joint-control-channel-group-eval!
+                s5-3
+                (the-as art-joint-anim (-> self draw art-group data 11))
+                num-func-identity
+                )
+              (set! (-> s5-3 frame-num) 0.0)
+              )
+            (until v1-35
+              (suspend)
+              (let ((a0-9 (-> self skel root-channel 0)))
+                (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
+                (set! (-> a0-9 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              (set! v1-35 (or (ja-done? 0) (-> self bounced?)))
+              )
+            )
+          (ja-channel-push! 1 60)
+          )
+        )
+      )
+    (if (or (not *target*) (< (-> self fact-override idle-distance)
+                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                )
+              )
+        (go bully-idle #f)
+        )
+    (go bully-start-spinning)
+    (none)
+    )
+  :post
+  bully-post
+  )
+
+;; failed to figure out what this is:
+(defstate bully-die (bully)
+  :code
+  (behavior ()
+    (dummy-18 self)
+    (shut-down! (-> self neck))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (let ((gp-0 (get-process *default-dead-pool* bully-broken-cage #x4000)))
+      (when gp-0
+        (let ((t9-3 (method-of-type bully-broken-cage activate)))
+          (t9-3 (the-as bully-broken-cage gp-0) self 'bully-broken-cage (the-as pointer #x70004000))
+          )
+        (run-now-in-process gp-0 bully-broken-cage-init-by-other (-> self entity))
+        (-> gp-0 ppointer)
+        )
+      )
+    (spawn (-> self part) (-> self root-override trans))
+    (clear-collide-with-as (-> self root-override))
+    (drop-pickup (-> self fact-override) #t *entity-pool* (-> self fact-override) 0)
+    (ja-channel-push! 1 22)
+    (let ((a0-10 (-> self skel root-channel 0)))
+      (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
+      (set! (-> a0-10 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) data 0 length) -1))
+            )
+      (set! (-> a0-10 param 1) 1.0)
+      (set! (-> a0-10 frame-num) 0.0)
+      (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-11 (-> self skel root-channel 0)))
+        (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
+        (set! (-> a0-11 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (increment-success-for-hint (game-text-id sunken-bully-dive-hint))
+    (logior! (-> self draw status) 2)
+    (while (-> self child)
+      (suspend)
+      )
+    (none)
+    )
+  :post
+  (the-as (function none :behavior bully) transform-post)
+  )
+
+;; definition for method 7 of type bully
+;; INFO: Return type mismatch process-drawable vs bully.
+(defmethod relocate bully ((obj bully) (arg0 int))
+  (if (nonzero? (-> obj neck))
+      (&+! (-> obj neck) arg0)
+      )
+  (the-as
+    bully
+    ((the-as (function process-drawable int process-drawable) (find-parent-method bully 7)) obj arg0)
+    )
+  )
+
+;; definition for method 11 of type bully
+;; INFO: Return type mismatch object vs none.
+(defmethod init-from-entity! bully ((obj bully) (arg0 entity-actor))
+  (set! (-> obj hit-player?) #f)
+  (set! (-> obj bounced?) #f)
+  (set! (-> obj bounce-volume) 100)
+  (set! (-> obj spin-vel) 0.0)
+  (set! (-> obj travel-speed) 0.0)
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+      (set! (-> s3-0 collide-with) (the-as uint 404))
+      (set! (-> s3-0 prim-core action) (the-as uint 3073))
+      (set! (-> s3-0 prim-core offense) 2)
+      (set-vector! (-> s3-0 local-sphere) 0.0 6144.0 0.0 10240.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
+        (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
+        (set! (-> s2-0 collide-with) (the-as uint 404))
+        (set! (-> s2-0 prim-core action) (the-as uint 3073))
+        (set! (-> s2-0 prim-core offense) 2)
+        (set-vector! (-> s2-0 local-sphere) 0.0 4096.0 0.0 6963.2)
+        (append-prim s3-0 s2-0)
+        )
+      (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
+        (set! (-> s2-1 prim-core collide-as) (the-as uint 256))
+        (set! (-> s2-1 collide-with) (the-as uint 404))
+        (set! (-> s2-1 prim-core action) (the-as uint 3073))
+        (set! (-> s2-1 prim-core offense) 2)
+        (set-vector! (-> s2-1 local-sphere) 0.0 9420.8 0.0 4096.0)
+        (append-prim s3-0 s2-1)
+        )
+      )
+    (set! (-> s4-0 nav-radius) 7680.0)
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (set! (-> obj root-override event-self) 'touched)
+  (set! (-> obj root-override event-other) 'touch)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *bully-sg* '())
+  (set! (-> obj draw shadow-ctrl) *bully-shadow-control*)
+  (set! (-> obj nav) (new 'process 'nav-control (-> obj root-override) 16 40960.0))
+  (logior! (-> obj nav flags) (nav-control-flags display-marks bit3 bit5 bit6 bit7))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 454) obj))
+  (set! (-> obj fact-override)
+        (new 'process 'fact-info-enemy obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+        )
+  (let ((v1-49 (new 'process 'joint-mod (joint-mod-handler-mode reset) obj 5)))
+    (set! (-> obj neck) v1-49)
+    (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
+    (set! (-> v1-49 up) (the-as uint 1))
+    (set! (-> v1-49 nose) (the-as uint 2))
+    (set! (-> v1-49 ear) (the-as uint 0))
+    (set! (-> v1-49 max-dist) 102400.0)
+    (set! (-> v1-49 ignore-angle) 16384.0)
+    )
+  (transform-post)
+  (if (not (dummy-60 (-> obj root-override) 12288.0 40960.0 #t (the-as uint 1)))
+      (go process-drawable-art-error "no ground")
+      )
+  (set! (-> obj facing-ry) (quaternion-y-angle (-> obj root-override quat)))
+  (go bully-idle #t)
+  (none)
+  )

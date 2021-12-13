@@ -264,14 +264,15 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 StaticResult Compiler::compile_new_static_structure(const goos::Object& form,
                                                     const TypeSpec& type,
                                                     const goos::Object& _field_defs,
-                                                    Env* env) {
+                                                    Env* env,
+                                                    int seg) {
   std::unique_ptr<StaticStructure> obj;
   if (is_basic(type)) {
-    obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, type.base_type());
+    obj = std::make_unique<StaticBasic>(seg, type.base_type());
   } else {
     // if we ever find this type of static data outside of MAIN_SEGMENT, we can create an option
     // in the new form to pick the segment.
-    obj = std::make_unique<StaticStructure>(MAIN_SEGMENT);
+    obj = std::make_unique<StaticStructure>(seg);
   }
 
   auto type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type));
@@ -554,22 +555,19 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
  * - Integers
  * - Strings
  */
-StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form, Env* env) {
+StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form,
+                                                        Env* env,
+                                                        int seg) {
   auto fie = env->file_env();
-  auto fe = env->function_env();
-  auto segment = fe->segment;
-  if (segment == TOP_LEVEL_SEGMENT) {
-    segment = MAIN_SEGMENT;
-  }
   if (form.is_pair()) {
     if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
                                             form.as_pair()->car.as_symbol()->name == "the" ||
                                             form.as_pair()->car.as_symbol()->name == "lambda")) {
       return compile_static(form, env);
     }
-    auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env);
-    auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env);
-    auto pair_structure = std::make_unique<StaticPair>(car, cdr, segment);
+    auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env, seg);
+    auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env, seg);
+    auto pair_structure = std::make_unique<StaticPair>(car, cdr, seg);
     auto result =
         StaticResult::make_structure_reference(pair_structure.get(), m_ts.make_typespec("pair"));
     fie->add_static(std::move(pair_structure));
@@ -588,7 +586,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
     return StaticResult::make_symbol("_empty_");
   } else if (form.is_string()) {
     // todo - this should eventually work with a string pool
-    auto obj = std::make_unique<StaticString>(form.as_string()->data, segment);
+    auto obj = std::make_unique<StaticString>(form.as_string()->data, seg);
     auto result = StaticResult::make_structure_reference(obj.get(), m_ts.make_typespec("string"));
     fie->add_static(std::move(obj));
     return result;
@@ -599,7 +597,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
 }
 
 /*!
- * Generic copmilation function to handle:
+ * Generic compilation function to handle:
  *  - (new 'static <structure-or-basic>), a reference
  *
  *  - (new 'static '<bitfield>), an integer constant
@@ -616,10 +614,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
   auto form = expand_macro_completely(form_before_macro, env);
   auto fie = env->file_env();
   auto fe = env->function_env();
-  auto segment = fe->segment;
-  if (segment == TOP_LEVEL_SEGMENT) {
-    segment = MAIN_SEGMENT;
-  }
+  auto segment = fe->segment_for_static_data();
 
   if (form.is_symbol()) {
     // constant, #t, or #f
@@ -660,7 +655,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
           throw_compiler_error(form, "The form {} is an invalid quoted form.", form.print());
         }
         if (second.is_pair() || second.is_empty_list()) {
-          return compile_static_no_eval_for_pairs(second, env);
+          return compile_static_no_eval_for_pairs(second, env, segment);
         } else {
           throw_compiler_error(form, "Could not evaluate the quoted form {} at compile time.",
                                second.print());
@@ -685,11 +680,11 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       }
 
       if (unquote(args.at(1)).as_symbol()->name == "boxed-array") {
-        return fill_static_boxed_array(form, rest, env);
+        return fill_static_boxed_array(form, rest, env, segment);
       } else if (unquote(args.at(1)).as_symbol()->name == "array") {
-        return fill_static_array(form, rest, env);
+        return fill_static_array(form, rest, env, segment);
       } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
-        return fill_static_inline_array(form, rest, env);
+        return fill_static_inline_array(form, rest, env, segment);
       } else {
         auto ts = parse_typespec(unquote(args.at(1)));
         if (ts == TypeSpec("string")) {
@@ -710,7 +705,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
               compile_bitfield_definition(form, ts, constructor_args, false, env));
           return StaticResult::make_constant_data(val->value(), val->type());
         } else if (is_structure(ts)) {
-          return compile_new_static_structure(form, ts, constructor_args, env);
+          return compile_new_static_structure(form, ts, constructor_args, env, segment);
         } else {
           throw_compiler_error(form, "Cannot construct a static {}.", ts.print());
         }
@@ -831,7 +826,8 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
 
 StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          const goos::Object& rest,
-                                         Env* env) {
+                                         Env* env,
+                                         int seg) {
   auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
@@ -851,10 +847,9 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   assert(deref_info.can_deref);
   assert(deref_info.mem_deref);
   auto array_data_size_bytes = length * deref_info.stride;
-  // todo, segments
   std::unique_ptr<StaticStructure> obj;
 
-  obj = std::make_unique<StaticStructure>(MAIN_SEGMENT);
+  obj = std::make_unique<StaticStructure>(seg);
 
   obj->data.resize(array_data_size_bytes);
 
@@ -870,7 +865,8 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
 
 StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
                                                const goos::Object& rest,
-                                               Env* env) {
+                                               Env* env,
+                                               int seg) {
   auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
@@ -923,7 +919,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
-  obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");
+  obj = std::make_unique<StaticBasic>(seg, "array");
 
   int array_header_size = 16;
   obj->data.resize(array_header_size + array_data_size_bytes);
@@ -1002,7 +998,8 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
 
 StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
                                                 const goos::Object& rest,
-                                                Env* env) {
+                                                Env* env,
+                                                int seg) {
   auto fie = env->file_env();
   // (new 'static 'inline-array ...)
   // get all arguments now
@@ -1021,8 +1018,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   auto deref_info = m_ts.get_deref_info(inline_array_type);
   assert(deref_info.can_deref);
   assert(!deref_info.mem_deref);
-  // todo
-  auto obj = std::make_unique<StaticStructure>(MAIN_SEGMENT);
+  auto obj = std::make_unique<StaticStructure>(seg);
   obj->set_offset(is_basic(content_type) ? 4 : 0);
   obj->data.resize(length * deref_info.stride);
 
@@ -1035,9 +1031,9 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   return result;
 }
 
-Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
+Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   assert(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg);
   assert(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());
@@ -1047,9 +1043,10 @@ Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
 Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
                                                      const TypeSpec& type,
                                                      const goos::Object& field_defs,
-                                                     Env* env) {
+                                                     Env* env,
+                                                     int seg) {
   auto fe = env->function_env();
-  auto sr = compile_new_static_structure(form, type, field_defs, env);
+  auto sr = compile_new_static_structure(form, type, field_defs, env, seg);
   auto result = fe->alloc_val<StaticVal>(sr.reference(), type);
   return result;
 }

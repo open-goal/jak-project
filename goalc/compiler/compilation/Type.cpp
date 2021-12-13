@@ -485,7 +485,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   place->func = nullptr;
 
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name, &m_goos.reader);
-  new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
+  new_func_env->set_segment(env->function_env()->segment_for_static_data());
   new_func_env->method_of_type_name = symbol_string(type_name);
 
   // set up arguments
@@ -1060,7 +1060,8 @@ Val* Compiler::compile_static_new(const goos::Object& form,
   } else {
     auto type_of_object = parse_typespec(unquote(type));
     if (is_structure(type_of_object)) {
-      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env,
+                                                   env->function_env()->segment_for_static_data());
     }
 
     if (is_bitfield(type_of_object)) {
