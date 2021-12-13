@@ -12,13 +12,7 @@ struct GameTextResult {
   int total_chars = 0;
 };
 
-enum class GameTextVersion {
-  JAK1_V1 = 10,
-  JAK1_V2 = 11,
-  JAK2 = 20,
-  JAK3 = 30,
-  JAKX = 40
-};
+enum class GameTextVersion { JAK1_V1 = 10, JAK1_V2 = 11, JAK2 = 20, JAK3 = 30, JAKX = 40 };
 
 GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version);
 std::string write_game_text(
