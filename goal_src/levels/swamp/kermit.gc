@@ -524,15 +524,15 @@
       )
 
 (deftype joint-mod-tracker (basic)
-  ((target-pos               vector            :inline :offset-assert  16)
-   (target-pos-func          (function vector)         :offset-assert  32)
-   (inv-forward-scale-factor float                     :offset-assert  36)
-   (forward-scale-control    float                     :offset-assert  40)
-   (forward-scale-max        float                     :offset-assert  44)
-   (process                  kermit                    :offset-assert  48)
-   (enable                   symbol                    :offset-assert  52)
-   (up-axis                  int8                      :offset-assert  56)
-   (forward-axis             int8                      :offset-assert  57)
+  ((target-pos               vector                   :inline :offset-assert  16)
+   (target-pos-func          (function vector vector)         :offset-assert  32)
+   (inv-forward-scale-factor float                            :offset-assert  36)
+   (forward-scale-control    float                            :offset-assert  40)
+   (forward-scale-max        float                            :offset-assert  44)
+   (process                  kermit                           :offset-assert  48)
+   (enable                   symbol                           :offset-assert  52)
+   (up-axis                  int8                             :offset-assert  56)
+   (forward-axis             int8                             :offset-assert  57)
    )
   :method-count-assert 9
   :size-assert         #x3a
@@ -578,10 +578,9 @@
     (cond
       ((-> s4-0 enable)
        (let ((t9-0 (-> s4-0 target-pos-func)))
-         (when t9-0
-           (-> s4-0 target-pos)
-           (t9-0)
-           )
+         (if t9-0
+             (t9-0 (-> s4-0 target-pos))
+             )
          )
        (let ((s3-0 (-> s4-0 target-pos))
              (s5-1 (vector-matrix*! (new 'stack-no-clear 'vector) (-> arg1 trans) (-> arg0 parent bone transform)))
@@ -623,7 +622,7 @@
 (defmethod new joint-mod-tracker ((allocation symbol) (type-to-make type) (arg0 kermit) (arg1 int) (arg2 function) (arg3 int) (arg4 int))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 process) arg0)
-    (set! (-> v0-0 target-pos-func) (the-as (function vector) arg2))
+    (set! (-> v0-0 target-pos-func) (the-as (function vector vector) arg2))
     (set! (-> v0-0 up-axis) arg3)
     (set! (-> v0-0 forward-axis) arg4)
     (set! (-> v0-0 inv-forward-scale-factor) 0.0)
