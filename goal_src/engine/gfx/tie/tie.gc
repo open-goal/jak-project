@@ -5,11 +5,25 @@
 ;; name in dgo: tie
 ;; dgos: GAME, ENGINE
 
+
+;; TIE
+;;  tesselating fragment instance engine
+
+;; The TIE renderer is one of three main background renderers.
+;; TIE has the following features:
+;; - instanced rendering (you can draw the same thing multiple times!)
+;; - time of day lighting (believed to be slightly different in implementation than tfrag)
+
+
+;; Background elements that use the GENERIC render will store their data in tie-fragments.
+;; The exact procedure for GENERIC through TIE is unknown.
+;;  The functions are generic-tie-execute and generic-tie-convert
+
 ;;;;;;;;;;;;;;;;;
 ;; Basic Methods
 ;;;;;;;;;;;;;;;;;
 
-;; something is going wrong mem-usage
+;; something is going wrong mem-usage (believed fixed)
 
 (defmethod login tie-fragment ((obj tie-fragment))
   "Initialize the shaders for a tie-fragment"
@@ -40,19 +54,21 @@
 (defmethod asize-of drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie))
   "Compute the size in memory of an array of instances."
   (the-as int (+ (-> drawable-inline-array-instance-tie size)
-                 (* (+ (-> obj length) -1) 64) ;; 64 bytes / fragment
+                 (* (+ (-> obj length) -1) 64) ;; 64 bytes / instance, minus the 1 in the type.
                  )
           )
   )
 
 #|
+;; for some reason, this showed up twice.
 (defmethod login drawable-tree-instance-tie ((obj drawable-tree-instance-tie))
 obj
 )
 |#
 
 (defmethod login drawable-tree-instance-tie ((obj drawable-tree-instance-tie))
-  "Login method for the tie tree."
+  "Login method for the tie instance tree."
+  ;; just log in all of the drawables.
   (dotimes (s5-0 (-> obj length))
     (login (-> obj data s5-0))
     )
@@ -60,9 +76,11 @@ obj
   )
 
 (defmethod inspect prototype-tie ((obj prototype-tie))
+  "Inspect the inline-array of tie"
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  ;; print each fragment
   (dotimes (s5-0 (-> obj length))
     (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
     )
@@ -70,6 +88,7 @@ obj
   )
 
 (defmethod login prototype-tie ((obj prototype-tie))
+  "Login each tie-fragment."
   (dotimes (s5-0 (-> obj length))
     (login (-> obj data s5-0))
     )
@@ -77,6 +96,7 @@ obj
   )
 
 (defmethod mem-usage drawable-tree-instance-tie ((obj drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
+  "Compute memory usage for a drawable tree of TIE instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -84,16 +104,23 @@ obj
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
+  
+  ;; do our drawables
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj data s3-0) arg0 arg1)
     )
+  
+  ;; do our prototypes, but with a flag set!
   (mem-usage (-> obj prototypes prototype-array-tie) arg0 (logior arg1 1))
   obj
   )
 
 (defmethod mem-usage tie-fragment ((obj tie-fragment) (arg0 memory-usage-block) (arg1 int))
+  "Compute the memory usage of a TIE prototype."
   (when (logtest? arg1 2)
+    ;; count for an instance of this prototype.
     (let ((v1-3 (* (-> obj color-count) 4))
+          ;; pick one of the instance color categories.
           (a0-2 (cond
                   ((logtest? arg1 4)
                    20
@@ -115,6 +142,8 @@ obj
     (set! obj obj)
     (goto cfg-13)
     )
+  
+  ;; not an instance, count the memory of the prototype.
   (set! (-> arg0 length) (max 18 (-> arg0 length)))
   (set! (-> arg0 data 9 name) "tie-fragment")
   (set! (-> arg0 data 10 name) "tie-gif")
@@ -165,6 +194,7 @@ obj
   )
 
 (defmethod mem-usage instance-tie ((obj instance-tie) (arg0 memory-usage-block) (arg1 int))
+  "Compute the memory usage of TIE instance."
   (set! (-> arg0 length) (max 19 (-> arg0 length)))
   (set! (-> arg0 data 18 name) "instance-tie")
   (+! (-> arg0 data 18 count) 1)
@@ -181,39 +211,25 @@ obj
     (set! (-> arg0 data 22 name) "instance-tie-colors3")
     (+! (-> arg0 data 23 count) 1)
     (let ((s3-0 (-> obj bucket-ptr)))
-      (+
-        (-> arg0 data 19 used)
-        (-> arg0 data 20 used)
-        (-> arg0 data 21 used)
-        (-> arg0 data 22 used)
-        )
+      ;; unused
+      (+ (-> arg0 data 19 used) (-> arg0 data 20 used) (-> arg0 data 21 used) (-> arg0 data 22 used))
+      
+      ;; loop over all 4 possible geometries
       (dotimes (s2-0 4)
-        (let ((a0-10 (-> s3-0 geometry s2-0)))
-          (when (nonzero? a0-10)
-            (let ((t9-1 (method-of-object a0-10 mem-usage))
-                  (a1-2 arg0)
-                  (v1-29 s2-0)
-                  )
-              (t9-1 a0-10 a1-2 (logior (logior (cond
-                                                 ((= v1-29 1)
-                                                  4
-                                                  )
-                                                 ((= v1-29 2)
-                                                  8
-                                                  )
-                                                 ((= v1-29 3)
-                                                  16
-                                                  )
-                                                 (else
-                                                   0
-                                                   )
-                                                 )
-                                               2
-                                               )
-                                       arg1
+        (let ((a0-10 (-> s3-0 geometry-override s2-0)))
+          (when (nonzero? a0-10) ;; only if we actually have it.
+            (mem-usage a0-10 arg0 
+                       (logior (logior (cond ;; based on which geom we are, pick the right color bucket.
+                                         ((= s2-0 1) 4)
+                                         ((= s2-0 2) 8)
+                                         ((= s2-0 3) 16)
+                                         (else 0)
+                                         )
+                                       2 ;; set so we count it as an instance of a prototype.
                                        )
-                    )
-              )
+                               arg1
+                               )
+                       )
             )
           )
         )
@@ -223,6 +239,7 @@ obj
   )
 
 (defmethod mem-usage drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
+  "Compute the memory usage of an entire array of instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -230,6 +247,7 @@ obj
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
+  ;; just call mem-usage on every element.
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj data s3-0) arg0 arg1)
     )
@@ -237,6 +255,7 @@ obj
   )
 
 (defmethod mem-usage prototype-tie ((obj prototype-tie) (arg0 memory-usage-block) (arg1 int))
+  "Compute the memory usage of an entire array of prototypes."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -244,6 +263,7 @@ obj
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
+  ;; just call mem-usage on each.
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj data s3-0) arg0 arg1)
     )
@@ -251,6 +271,8 @@ obj
   )
 
 (defmethod asize-of prototype-tie ((obj prototype-tie))
+  "Compute the size in memory of a prototype array"
+  ;; 64 bytes/fragment, minus 1 in the type.
   (the-as int (+ (-> prototype-tie size) (* (+ (-> obj length) -1) 64)))
   )
 
@@ -258,7 +280,7 @@ obj
 ;; TIE Renderer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; these constants are uploaded to the VU.
+;; these constants are uploaded to the VU once per frame.
 (deftype tie-consts (structure)
   ((data      uint32  24        :offset-assert 0)
    (vector    vector  6 :inline :offset 0)
@@ -279,18 +301,18 @@ obj
   :flag-assert         #x900000090
   )
 ;; definition for symbol tie-vu1-block, type vu-function
-(define tie-vu1-block (new 'static 'vu-function :length #x3e1 :qlength #x1f1))
+(define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)) ;; was 0x3e1, 0x1f1
 
 ;; definition for function tie-init-consts
 ;; INFO: Return type mismatch int vs none.
 (defun tie-init-consts ((arg0 tie-consts) (arg1 int))
   "Initialize TIE constants. arg1 enables alpha blending"
   
-  ;; adgifs are just 5 ad's.
+  ;; set the adgif shader tag (just 5x a+d's)
   (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
   (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   
-  ;; based on the menu drawing mode.
+  ;; based on the menu drawing mode, create the template tag for geometry.
   (cond
     ((zero? *subdivide-draw-mode*) ;; normal textured
      (set! (-> arg0 strgif tag)
@@ -330,7 +352,7 @@ obj
      )
     )
   
-  ;; the main drawing tag: st, rgbaq, xyzf per vertex
+  ;; the main drawing tag: st, rgbaq, xyzf per vertex (same in all draws modes)
   (set! (-> arg0 strgif regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
         )
@@ -727,6 +749,10 @@ obj
       )
     )
   )
+
+
+;; NOTE: these dump programs rely on a not-present function that stashes the register values
+;; at the top of the VU memory.
 
 (defun-debug tie-ints ()
   "Dump the VU1 integer registers to stdout."

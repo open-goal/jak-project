@@ -254,10 +254,269 @@
   obj
   )
 
+(defun draw-drawable-tree-instance-tie ((arg0 drawable-tree-instance-tie) (arg1 level))
+  "Actually draw TIE instances.
+  Will draw TIE, TIE-NEAR, and GENERIC"
+  
+  ;; todo kill
+  (local-vars
+    (r0-0 none)
+    (a0-31 int)
+    (a0-33 int)
+    (a0-46 int)
+    (a0-48 int)
+    (a0-62 int)
+    (a0-64 int)
+    (a0-82 int)
+    (a0-84 int)
+    (sv-16 int)
+    )
+  
+  ;; only if one of our renderers is enabled.
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near tie generic))
+    ;; setup work (TODO, what uses TIE wind?)
+    (set! (-> *instance-tie-work* first-generic-prototype) (the-as uint 0))
+    (set! (-> *instance-tie-work* wind-vectors) (-> arg0 prototypes wind-vectors))
+    
+    ;; 
+    (let ((s4-0 (+ (-> arg0 length) -1))) ;; number of arrays of draw-nodes (depth of the BVH tree, not counting instance leaves)
+      
+      ;; perform draw node culling. TODO
+      #|
+      (when (nonzero? s4-0)
+        (dotimes (s3-0 s4-0)
+          (let* ((v1-10 (-> arg0 data s3-0))
+                 (a0-5 (-> arg0 data (+ s3-0 1)))
+                 (a1-2 (/ (-> (the-as drawable-inline-array-node v1-10) data 0 id) 8))
+                 (a0-7 (/ (-> (the-as drawable-inline-array-node a0-5) data 0 id) 8))
+                 (a1-4 (+ a1-2 #x38b0 #x70000000))
+                 (a0-9 (+ a0-7 #x38b0 #x70000000))
+                 )
+            (draw-node-cull
+              (the-as pointer a0-9)
+              (the-as pointer a1-4)
+              (-> (the-as drawable-inline-array-node v1-10) data)
+              (-> (the-as drawable-inline-array-node v1-10) length)
+              )
+            )
+          )
+        )
+        |#
+      
+      (let* ((v1-16 (-> arg0 data s4-0)) ;; leaves
+             (s4-1 (-> arg0 prototypes prototype-array-tie)) ;; prototypes
+             (s5-1 (-> s4-1 length)) ;; number of prototypes
+             )
+        
+        (dotimes (a0-11 s5-1) ;; loop over prototypes, zero stuff??
+          (let ((a1-7 (-> s4-1 array-data a0-11)))
+            (set! (-> a1-7 next-clear) (the-as uint128 0))
+            (set! (-> a1-7 generic-count-clear) (the-as uint128 0))
+            (set! (-> a1-7 generic-next-clear) (the-as uint128 0))
+            )
+          0
+          )
+    
+        (let* ((s1-0 (-> (the-as drawable-inline-array-instance-tie v1-16) data))  ;; the inline array of instances
+               (s0-0 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s1-0 0 id) 8))) ;; vis for first.
+               (s3-1 (-> *display* frames (-> *display* on-screen) frame global-buf)) ;; dma buf to write to
+               )
+          (set! sv-16 (-> (the-as drawable-inline-array-node v1-16) length)) ;; number of instances
+          
+          ;; if we actually have things to draw
+          (when (nonzero? sv-16)
+            
+            ;; this is some buffer for the generic renderer
+            (let* ((v1-21 (logand (the-as int *gsf-buffer*) 8191))
+                   (v1-23 (logand (the-as int (&- (logand (the-as int (&-> (-> s4-1 data) -512)) 8191) (the-as uint v1-21))) 8191))
+                   )
+              ;; not sure why, but we'll use some gsf-buffer space to store an instance-tie-work
+              ;; all the external stuff will dump into *instance-tie-work*, and we'll make a copy that's used
+              ;; in the actual DMA generation code.
+              (set! *instance-tie-work-copy* (the-as instance-tie-work (+ (the-as int *gsf-buffer*) v1-23)))
+              )
+            
+            
+            ;;; TIE instance Drawing
+            (let ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+              ;; actually copy the work
+              (quad-copy! (the-as pointer *instance-tie-work-copy*) (the-as pointer *instance-tie-work*) 28)
+              ;; clear perf counting stuff
+              (set! (-> *instance-tie-work-copy* wait-to-spr) (the-as uint 0))
+              (set! (-> *instance-tie-work-copy* wait-from-spr) (the-as uint 0))
+              (reset! (-> *perf-stats* data 9))
+              
+              ;; DRAW!
+              (draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1)
+              ;; finish perf stats
+              (read! (-> *perf-stats* data 9))
+              (update-wait-stats (-> *perf-stats* data 9) (the-as uint 0)
+                                 (-> *instance-tie-work-copy* wait-to-spr)
+                                 (-> *instance-tie-work-copy* wait-from-spr))
+              
+              ;; copy out things from instance tie work
+              (let ((v1-42 (-> *instance-tie-work-copy* min-dist quad)))
+                (set! (-> *instance-tie-work* min-dist quad) v1-42)
+                )
+              (set! (-> *instance-tie-work* flags) (-> *instance-tie-work-copy* flags))
+              
+              ;; update memory usage
+              (let ((a0-38 *dma-mem-usage*))
+                (when (nonzero? a0-38)
+                  (set! (-> a0-38 length) (max 10 (-> a0-38 length)))
+                  (set! (-> a0-38 data 9 name) "tie-fragment")
+                  (+! (-> a0-38 data 9 count) 1)
+                  (+! (-> a0-38 data 9 used)
+                      (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s2-0))
+                      )
+                  (set! (-> a0-38 data 9 total) (-> a0-38 data 9 used))
+                  )
+                )
+              )
+            
+            ;; Generic TIE prototype drawing
+            (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+              (when (logtest? (-> *instance-tie-work* flags) 2)
+                (let ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+                  (set! (-> *prototype-tie-work* generic-wait-to-spr) (the-as uint 0))
+                  (set! (-> *prototype-tie-work* generic-wait-from-spr) (the-as uint 0))
+                  (set! (-> *instance-tie-work* first-generic-prototype) (the-as uint (-> s3-1 base)))
+                  
+                  (reset! (-> *perf-stats* data 10))
+                  (draw-inline-array-prototype-tie-generic-asm s3-1 s5-1 s4-1)
+                  (read! (-> *perf-stats* data 10))
+                  (update-wait-stats (-> *perf-stats* data 10) (the-as uint 0)
+                                     (-> *prototype-tie-work* generic-wait-to-spr)
+                                     (-> *prototype-tie-work* generic-wait-from-spr)
+                                     )
+                  ;; Note: we don't add to a bucket. This lives in some buffer somewhere and generic will take care of actually adding it.
+                  (let ((a0-51 *dma-mem-usage*))
+                    (when (nonzero? a0-51)
+                      (set! (-> a0-51 length) (max 18 (-> a0-51 length)))
+                      (set! (-> a0-51 data 17 name) "tie-generic")
+                      (+! (-> a0-51 data 17 count) 1)
+                      (+! (-> a0-51 data 17 used)
+                        (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s2-1))
+                        )
+                      (set! (-> a0-51 data 17 total) (-> a0-51 data 17 used))
+                      )
+                    )
+                  )
+                )
+              )
+            
+            ;; Normal TIE prototype drawing
+            (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
+              (let ((s3-2 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+                (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
+                  (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                         (s2-2 (-> s1-1 base))
+                         )
+                    (set! (-> *prototype-tie-work* wait-to-spr) (the-as uint 0))
+                    (set! (-> *prototype-tie-work* wait-from-spr) (the-as uint 0))
+                    (reset! (-> *perf-stats* data 11))
+                    (draw-inline-array-prototype-tie-asm s1-1 s5-1 s4-1)
+                    (read! (-> *perf-stats* data 11))
+                    (update-wait-stats (-> *perf-stats* data 11) (the-as uint 0)
+                                       (-> *prototype-tie-work* wait-to-spr)
+                                       (-> *prototype-tie-work* wait-from-spr)
+                                       )
+                    
+                    ;; this actually generates real drawing DMA, so add it to the appropriate bucket.
+                    (let ((a3-11 (-> s1-1 base)))
+                      (let ((v1-94 (the-as object (-> s1-1 base))))
+                        (set! (-> (the-as dma-packet v1-94) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                        (set! (-> (the-as dma-packet v1-94) vif0) (new 'static 'vif-tag))
+                        (set! (-> (the-as dma-packet v1-94) vif1) (new 'static 'vif-tag))
+                        (set! (-> s1-1 base) (&+ (the-as pointer v1-94) 16))
+                        )
+                      (dma-bucket-insert-tag
+                        (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                        (the-as bucket-id (if (zero? (-> arg1 index))
+                                              (bucket-id tie-0)
+                                              (bucket-id tie-1)
+                                              )
+                                )
+                        s2-2
+                        (the-as (pointer dma-tag) a3-11)
+                        )
+                      )
+                    )
+                  )
+                (let ((v1-100 *dma-mem-usage*))
+                  (when (nonzero? v1-100)
+                    (set! (-> v1-100 length) (max 10 (-> v1-100 length)))
+                    (set! (-> v1-100 data 9 name) "tie-fragment")
+                    (+! (-> v1-100 data 9 count) 1)
+                    (+! (-> v1-100 data 9 used)
+                      (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s3-2))
+                      )
+                    (set! (-> v1-100 data 9 total) (-> v1-100 data 9 used))
+                    )
+                  )
+                )
+              )
+            
+            
+            (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
+              (let ((s3-3 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+                (let* ((s1-2 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                       (s2-3 (-> s1-2 base))
+                       )
+                  (set! (-> *prototype-tie-work* near-wait-to-spr) (the-as uint 0))
+                  (set! (-> *prototype-tie-work* near-wait-from-spr) (the-as uint 0))
+                  (reset! (-> *perf-stats* data 12))
+                  (draw-inline-array-prototype-tie-near-asm s1-2 s5-1 s4-1)
+                  (read! (-> *perf-stats* data 12))
+                  (update-wait-stats (-> *perf-stats* data 12) (the-as uint 0)
+                                     (-> *prototype-tie-work* near-wait-to-spr)
+                                     (-> *prototype-tie-work* near-wait-from-spr)
+                                     )
+                  (let ((a3-16 (-> s1-2 base)))
+                    (let ((v1-123 (the-as object (-> s1-2 base))))
+                      (set! (-> (the-as dma-packet v1-123) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                      (set! (-> (the-as dma-packet v1-123) vif0) (new 'static 'vif-tag))
+                      (set! (-> (the-as dma-packet v1-123) vif1) (new 'static 'vif-tag))
+                      (set! (-> s1-2 base) (&+ (the-as pointer v1-123) 16))
+                      )
+                    (dma-bucket-insert-tag
+                      (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                      (the-as bucket-id (if (zero? (-> arg1 index))
+                                              (bucket-id tie-near-0)
+                                              (bucket-id tie-near-1)
+                                            )
+                              )
+                      s2-3
+                      (the-as (pointer dma-tag) a3-16)
+                      )
+                    )
+                  )
+                (let ((a0-92 *dma-mem-usage*))
+                  (when (nonzero? a0-92)
+                    (set! (-> a0-92 length) (max 16 (-> a0-92 length)))
+                    (set! (-> a0-92 data 15 name) "tie-near")
+                    (+! (-> a0-92 data 15 count) 1)
+                    (+! (-> a0-92 data 15 used)
+                      (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s3-3))
+                      )
+                    (set! (-> a0-92 data 15 total) (-> a0-92 data 15 used))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    )
+  (set! (-> arg1 closest-object 5) (-> *instance-tie-work* min-dist x))
+  0
+  (none)
+  )
+
 (defmethod draw drawable-tree-instance-tie ((obj drawable-tree-instance-tie) (arg0 drawable) (arg1 display-frame))
   "Add the tree to the background work list."
-  ;; NOTE: for now it's commented out because nothing removes the trees yet.
-  #|
   (let* ((v1-1 (-> *background-work* tie-tree-count))
          (a1-2 (-> (scratchpad-obj terrain-context) bsp lev-index))
          (a1-5 (-> *level* level a1-2))
@@ -266,7 +525,6 @@
     (set! (-> *background-work* tie-levels v1-1) a1-5)
     )
   (+! (-> *background-work* tie-tree-count) 1)
-  |#
   (none)
   )
 
