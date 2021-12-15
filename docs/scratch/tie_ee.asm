@@ -9,6 +9,12 @@
 # this is yet-another insane double-buffered DMA function.
 # it tries to keep a SPR to or SPR from DMA going always, while processing other stuff
 # on the Scratch Pad.
+# The upload chunks are 2kB and complete in 128 cycles ideally.
+
+# it's documented, not including:
+# -tie near (but this is very simple)
+# -wind (probably not too hard)
+# -generic (for another day)
 
 # args are:
 #  a0 : vis bits
@@ -224,7 +230,7 @@ B16:
     sll r0, r0, 0
 
 # if we reach here, we've got some bank data.
-# This is per-8 instances
+# TOP for per-8 instances
 B17:
 L146:
     lb t6, 0(ra)      # load 8 bits of vis data for this bank.
@@ -244,7 +250,7 @@ B18:
 # we have some visible!
 B19:
 L147:
-    addiu t7, r0, 128  # some constant
+    addiu t7, r0, 128  # vis mask constant (start at highest bit)
     lqc2 vf2, 16(t4)   # load the bsphere of the instance.
 B20:
 L148:
@@ -252,13 +258,15 @@ L148:
     sll r0, r0, 0       # note, really 10, not sure why they leave 2 empty.
     blez ra, L151   # branch if we have room, vcallms 42 no matter what.
     vcallms 42      # these people are insane.
-                    # vi01 = clipping result
+                    # vi01 = in view frustum result
                     # vf05 = M(vf28) * bsphere (camera)
-                    # vf06 = M(vf24) * bsphere (camera rot with special z)
+                    # vf06 = M(vf24) * bsphere (camera rot (I think includes trans, but no perspective))
 
+# if we got here, we filled the output buffer.
+# we should then copy the output FROM SPR to the dma buffer.
 B21:
 L149:
-    lw t8, 0(a3)
+    lw t8, 0(a3)    # SPR FROM sync.
     sll r0, r0, 0
     sll r0, r0, 0
     sll r0, r0, 0
@@ -281,111 +289,113 @@ B22:
 
 B23:
 L150:
-    sw a1, 128(a3)
-    xori a1, a1, 12288
-    sw v1, 16(a3)
+    sw a1, 128(a3)     # copy from out ptr
+    xori a1, a1, 12288 # toggle out
+    sw v1, 16(a3)      # copy to dma buf ptr
     sll t8, t9, 4
-    addu v1, v1, t8
-    or t8, a1, r0
-    sw t9, 32(a3)
+    addu v1, v1, t8    # seek dma buf ptr to the next
+    or t8, a1, r0      # t8 = the next out ptr
+    sw t9, 32(a3)      # store qwc
     addiu t9, r0, 256
-    sw t9, 0(a3)
-    addiu t9, r0, 0
+    sw t9, 0(a3)       # start the FROM.
+    addiu t9, r0, 0    # t9 = 0 (why?)
+
+# here, we have room in the scratchpad output for up to 10.
 B24:
 L151:
     sll r0, r0, 0
-    lw ra, 12(t4)
-    and gp, t6, t7
-    ld s5, 56(t4)
-    beq gp, r0, L172
-    ld s2, 32(t4)
+    lw ra, 12(t4)       # ra = our prototype bucket
+    and gp, t6, t7      # check if our vis bit is set.
+    ld s5, 56(t4)       # s5 = origin_3
+    beq gp, r0, L172    # are we even visible?
+    ld s2, 32(t4)       # s2 = origin_0
 
 B25:
-    sll gp, t9, 4
-    ld s4, 40(t4)
-    pextlh s3, s5, r0
-    ld s5, 48(t4)
-    psraw s3, s3, 10
-    lq s1, 28(ra)
-    pextlh s2, s2, r0
-    lq s0, 44(ra)
-    psraw s2, s2, 16
-    qmtc2.ni vf14, s1
-    pextlh s4, s4, r0
-    qmtc2.ni vf15, s0
-    psraw s4, s4, 16
-    qmtc2.ni vf13, s3
-    pextlh s5, s5, r0
-    qmtc2.ni vf10, s2
-    psraw s3, s5, 16
-    lhu s2, 62(t4)
-    addu gp, gp, v1
-    qmtc2.ni vf11, s4
-    dsll s5, s2, 4
-    qmtc2.ni vf12, s3
-    daddu s4, s2, t5
-    lw s2, 408(t0)
-    andi s4, s4, 63
-    lw s3, 384(t0)
-    sll s1, s4, 4
-    lw s4, 4(ra)
-    daddu s5, s3, s5
-    addu s3, s1, s2
-    andi s1, s4, 1
-    andi s4, s4, 2
-    bne s1, r0, L172
-    cfc2.ni s1, vi1
+    sll gp, t9, 4       # gp = output offset
+    ld s4, 40(t4)       # s4 = origin_1
+    pextlh s3, s5, r0   # s3 = s5 << 16 (now 128-bits, origin3)
+    ld s5, 48(t4)       # s5 = origin_2
+    psraw s3, s3, 10    # s3 = origin3, now signed
+    lq s1, 28(ra)       # s1 = our prototype bucket's dists
+    pextlh s2, s2, r0   # conversion of origin matrix
+    lq s0, 44(ra)       # s0 = [rlength-near, rlength-stiff, rlength-mid, stiffness]
+    psraw s2, s2, 16    # conversion of origin matrix (see tie format doc)
+    qmtc2.ni vf14, s1   # vf14 = dists
+    pextlh s4, s4, r0   # conversion
+    qmtc2.ni vf15, s0   # vf15 = rlengths
+    psraw s4, s4, 16    # conversion
+    qmtc2.ni vf13, s3   # vf13 = origin3
+    pextlh s5, s5, r0   # conversion
+    qmtc2.ni vf10, s2   # vf10 = origin0
+    psraw s3, s5, 16    # conversion
+    lhu s2, 62(t4)      # s2 = wind index
+    addu gp, gp, v1     # gp = output address (spr buffer)
+    qmtc2.ni vf11, s4   # vf11 = origin1
+    dsll s5, s2, 4      # s5 = wind_idx * 16
+    qmtc2.ni vf12, s3   # vf12 = origin2
+    daddu s4, s2, t5    # s4 = wind_idx + time?  (on the first time through, seems like it's not time...)
+    lw s2, 408(t0)      # s2 = wind work
+    andi s4, s4, 63     # truncate upper bits so we fit in the 64 wind array.
+    lw s3, 384(t0)      # s3 = wind vectors
+    sll s1, s4, 4       # index qw's with our [0, 64) index
+    lw s4, 4(ra)        # flags
+    daddu s5, s3, s5    # s5 = wind vector pointer (not from wind work, in the static data.)
+    addu s3, s1, s2     # wind work vector array pointer
+    andi s1, s4, 1      # s1 = flag1
+    andi s4, s4, 2      # s4 = flag2
+    bne s1, r0, L172    # skip if flag1 is set.
+    cfc2.ni s1, vi1     # get the in-view-frustum result from VU0.
 
 B26:
-    vitof0.xyzw vf13, vf13
-    lw t5, 1324(s2)
-    bne s1, r0, L172
-    lqc2 vf25, 112(t0)
+    vitof0.xyzw vf13, vf13  # convert origin matrix row to float.
+    lw t5, 1324(s2)         # load wind time
+    bne s1, r0, L172        # skip if not in view frustum.
+    lqc2 vf25, 112(t0)      # vf25 = current TIE min distance
 
 B27:
     sll r0, r0, 0
-    lqc2 vf16, 16(t0)
+    lqc2 vf16, 16(t0)          # vf16 = hmge-d
     sll r0, r0, 0
-    lqc2 vf17, 32(t0)
-    vmulaz.xyzw acc, vf1, vf6
-    sw gp, 196(t0)
-    vmsubw.xyzw vf8, vf1, vf2
-    sw gp, 276(t0)
-    vadd.xyz vf5, vf0, vf0
+    lqc2 vf17, 32(t0)          # vf17 = hvdf-offset
+    vmulaz.xyzw acc, vf1, vf6  # [z, z, z, z] (how in front of camera)
+    sw gp, 196(t0)             # work.upload-color-0.addr = output_ptr
+    vmsubw.xyzw vf8, vf1, vf2  # vf8 = dist in front of cam (origin - r_bs)
+    sw gp, 276(t0)             # work.generic-color-0.addr = output_ptr
+    vadd.xyz vf5, vf0, vf0     # vf5 = [0, 0, 0, transformed_w]
     sll r0, r0, 0
-    vadd.xyz vf13, vf13, vf2
+    vadd.xyz vf13, vf13, vf2   # vf13 = (+, +, +) corner of bounding box (outside of bsphere)
     sll r0, r0, 0
-    vmula.xyzw acc, vf1, vf1
+    vmula.xyzw acc, vf1, vf1   # acc = [1, 1, 1, 1]
     sll r0, r0, 0
-    vsub.xyzw vf14, vf8, vf14
+    vsub.xyzw vf14, vf8, vf14  # (origin - r_bs) - dists
     sll r0, r0, 0
-    vaddw.w vf5, vf5, vf17
-    sll r0, r0, 0
-    sll r0, r0, 0
-    lqc2 vf30, 80(t0)
-    vmini.xyzw vf25, vf8, vf25
-    sll r0, r0, 0
-    vmsub.xyz vf15, vf14, vf15
-    sll r0, r0, 0
-    vminiy.w vf5, vf5, vf16
+    vaddw.w vf5, vf5, vf17     # vf5 = [0, 0, 0, transformed_w + hvdf_offset.w]
     sll r0, r0, 0
     sll r0, r0, 0
-    lqc2 vf24, 128(t0)
+    lqc2 vf30, 80(t0)          # vf30 = far_morph
+    vmini.xyzw vf25, vf8, vf25 # update TIE min distance
     sll r0, r0, 0
-    sqc2 vf25, 112(t0)
-    vmini.xyz vf15, vf15, vf1
+    vmsub.xyz vf15, vf14, vf15 # dist weights
     sll r0, r0, 0
-    vmaxx.w vf5, vf5, vf16
-    sll r0, r0, 0
-    vsubz.xyzw vf16, vf8, vf16
+    vminiy.w vf5, vf5, vf16    # clip w min
     sll r0, r0, 0
     sll r0, r0, 0
-    lqc2 vf25, 144(t0)
+    lqc2 vf24, 128(t0)         # vf24 = guard plane 0 (i think w plane)
     sll r0, r0, 0
-    lqc2 vf26, 160(t0)
+    sqc2 vf25, 112(t0)         # vf25 = min-dist
+    vmini.xyz vf15, vf15, vf1  # saturate dist weights
     sll r0, r0, 0
-    lqc2 vf27, 176(t0)
-    vmulax.xyzw acc, vf24, vf2
+    vmaxx.w vf5, vf5, vf16     # clip w max
+    sll r0, r0, 0
+    vsubz.xyzw vf16, vf8, vf16 # vf16 = dist in front of the camera - some hmge thing.
+    sll r0, r0, 0
+    sll r0, r0, 0
+    lqc2 vf25, 144(t0)         # vf25 = some plane
+    sll r0, r0, 0
+    lqc2 vf26, 160(t0)         # vf26 = another plane
+    sll r0, r0, 0
+    lqc2 vf27, 176(t0)         # vf27 = yet another plane
+    vmulax.xyzw acc, vf24, vf2 # perform clipping with this plane.
     sll r0, r0, 0
     vmadday.xyzw acc, vf25, vf2
     sll r0, r0, 0
@@ -396,32 +406,33 @@ B27:
     vmsubw.xyzw vf24, vf1, vf2
     sll r0, r0, 0
     sll r0, r0, 0
-    qmfc2.i s2, vf16
-    vmulw.xyzw vf28, vf15, vf30
+    qmfc2.i s2, vf16             # s2 = dists - hmge thing
+    vmulw.xyzw vf28, vf15, vf30  # vf28 = scaled dist weights
     sll r0, r0, 0
-    vmulw.xyzw vf29, vf15, vf30
+    vmulw.xyzw vf29, vf15, vf30  # vf29 = scaled dist weights, again?
     sll r0, r0, 0
     sll r0, r0, 0
-    lqc2 vf19, 0(t0)
-    vitof12.xyzw vf10, vf10
+    lqc2 vf19, 0(t0)             # vf19 = wind const (WIND)
+    vitof12.xyzw vf10, vf10      # convert origin (back to this, I guess)
     sll r0, r0, 0
-    pcgtw s1, r0, s2
-    qmfc2.i s0, vf24
-    vmulx.xyzw vf28, vf1, vf28
+    pcgtw s1, r0, s2             # dists check
+    qmfc2.i s0, vf24             # clip check
+    vmulx.xyzw vf28, vf1, vf28   # distweights x
     sll r0, r0, 0
-    vmulz.xyzw vf29, vf1, vf29
-    lw s2, 56(ra)
-    pcgtw s0, r0, s0
-    sqc2 vf5, 80(t8)
-    ppach s0, r0, s0
-    sw s4, 80(t8)
-    or s1, s0, s1
-    sqc2 vf14, 96(t0)
-    ppacb s1, r0, s1
+    vmulz.xyzw vf29, vf1, vf29   # distweights z
+    lw s2, 56(ra)                # s2 = stiffness
+    pcgtw s0, r0, s0             # check clip again
+    sqc2 vf5, 80(t8)             # store magic w.
+    ppach s0, r0, s0             # s0 = more clip
+    sw s4, 80(t8)                # store some flags
+    or s1, s0, s1                # more clipping/distance crap
+    sqc2 vf14, 96(t0)            # called "dist-test"
+    ppacb s1, r0, s1             # distance stuff.
     mfc1 r0, f31
-    beq s2, r0, L153
-    sw s1, 84(t8)
+    beq s2, r0, L153             # if stiffness == 0, skip ahead
+    sw s1, 84(t8)                # output some clip/dist info.
 
+# apply wind.
 B28:
     vftoi0.zw vf28, vf28
     ld s1, 8(s5)
@@ -516,11 +527,12 @@ B30:
     beq r0, r0, L154
     sll r0, r0, 0
 
+
 B31:
 L152:
-    vmulax.yw acc, vf0, vf0
+    vmulax.yw acc, vf0, vf0    # acc = [? 0 ? 0]
     sll r0, r0, 0
-    vmulay.xz acc, vf27, vf12
+    vmulay.xz acc, vf27, vf12  # acc = [o2.y*gp3.x, 0, o2.y*gp3.z, 0] (wtf is this)
     sll r0, r0, 0
     bne s4, r0, L164
     vmadd.xyzw vf12, vf1, vf12
@@ -529,11 +541,12 @@ B32:
     beq r0, r0, L154
     sll r0, r0, 0
 
+# Don't Apply Wind.
 B33:
 L153:
-    vftoi0.zw vf28, vf28
+    vftoi0.zw vf28, vf28    # dist weights
     sll r0, r0, 0
-    vftoi0.zw vf29, vf29
+    vftoi0.zw vf29, vf29    # more dist weights
     sll r0, r0, 0
     vsubx.x vf28, vf30, vf15
     sll r0, r0, 0
@@ -551,21 +564,25 @@ L153:
     sll r0, r0, 0
     vsubw.w vf29, vf30, vf29
     sll r0, r0, 0
-    vitof12.xyzw vf11, vf11
+    vitof12.xyzw vf11, vf11 # convert origin1
     sll r0, r0, 0
     bne s4, r0, L164
-    vitof12.xyzw vf12, vf12
+    vitof12.xyzw vf12, vf12 # convert origin2
 
+
+# End of stiffness calcultion.
+# S4 = 0 version. Goto L164 for S4 != 0 version.
+# Maybe this is the version for non-generic??
 B34:
 L154:
     sll r0, r0, 0
-    lw s5, 84(t8)
+    lw s5, 84(t8)   # s5 = clipping/dist flags
     sll r0, r0, 0
-    lw s4, 108(t0)
-    addiu t9, t9, 6
-    lw s3, 104(t0)
-    bne s5, r0, L158
-    vsubw.w vf10, vf10, vf10
+    lw s4, 108(t0) # s4 = dist_test_w (from work)
+    addiu t9, t9, 6 # advance output qwc by 6 (96 bytes)
+    lw s3, 104(t0) # s3 = dist_test_z (from work)
+    bne s5, r0, L158          # if we clip, go to TIE NEAR.
+    vsubw.w vf10, vf10, vf10  # clear the w component of origin0
 
 B35:
     bgtz s4, L156
@@ -575,30 +592,30 @@ B36:
     bgtz s3, L155
     sll r0, r0, 0
 
-B37:
+B37: # GEOM 1 (this is the non-near version) (believed to be the high-LOD one)
     sll r0, r0, 0
-    lh s4, 78(ra)
+    lh s4, 78(ra)     # load count 1
     sll r0, r0, 0
-    lw s5, 64(ra)
-    daddiu s4, s4, 1
-    sqc2 vf28, 64(t8)
-    vmulax.xyzw acc, vf20, vf10
-    addiu gp, gp, 96
-    vmadday.xyzw acc, vf21, vf10
-    sw gp, 64(ra)
-    vmaddz.xyzw vf10, vf22, vf10
-    sh s4, 78(ra)
-    vmulax.xyzw acc, vf20, vf11
-    lbu s4, 109(ra)
-    vmadday.xyzw acc, vf21, vf11
-    lhu gp, 118(ra)
-    vmaddz.xyzw vf11, vf22, vf11
-    lbu s3, 113(ra)
+    lw s5, 64(ra)     # load next
+    daddiu s4, s4, 1  # inc count
+    sqc2 vf28, 64(t8) # store morph constants
+    vmulax.xyzw acc, vf20, vf10 # matmul 0/16
+    addiu gp, gp, 96   # output pointer, I think this is a pointer to the RAM dma buffer, not spr.
+    vmadday.xyzw acc, vf21, vf10 # matmul 1/16
+    sw gp, 64(ra)      # update next.
+    vmaddz.xyzw vf10, vf22, vf10 # matmul 2/16 (out vf10)
+    sh s4, 78(ra)      # store updated count
+    vmulax.xyzw acc, vf20, vf11 # matmul 3/16
+    lbu s4, 109(ra)    # s4 = frag-count 1
+    vmadday.xyzw acc, vf21, vf11 # matmul 4/16
+    lhu gp, 118(ra)    # gp = base-qw
+    vmaddz.xyzw vf11, vf22, vf11 # matmul 5/16 (out vf11)
+    lbu s3, 113(ra)    # s3 = index-start
     beq r0, r0, L157
     sll r0, r0, 0
 
 B38:
-L155:
+L155: # geom 2 version (same as above)
     sll r0, r0, 0
     lh s4, 80(ra)
     sll r0, r0, 0
@@ -621,7 +638,7 @@ L155:
     sll r0, r0, 0
 
 B39:
-L156:
+L156: # geom 3 version (same as above)
     sll r0, r0, 0
     lh s4, 82(ra)
     sll r0, r0, 0
@@ -640,31 +657,35 @@ L156:
     lhu gp, 122(ra)
     vmaddz.xyzw vf11, vf22, vf11
     lbu s3, 115(ra)
+
+# common for 1,2,3 geoms
 B40:
 L157:
-    vmulax.xyzw acc, vf20, vf12
-    lq s2, 224(t0)
-    vmadday.xyzw acc, vf21, vf12
-    lq s1, 240(t0)
-    vmaddz.xyzw vf12, vf22, vf12
-    dsll gp, gp, 4
-    vmulax.xyzw acc, vf20, vf13
-    daddu s3, s3, ra
-    vmadday.xyzw acc, vf21, vf13
+    vmulax.xyzw acc, vf20, vf12  # matmul 6/16
+    lq s2, 224(t0)               # s2 = upload color 2
+    vmadday.xyzw acc, vf21, vf12 # matmul 7/16
+    lq s1, 240(t0)               # s1 = upload color ret
+    vmaddz.xyzw vf12, vf22, vf12 # matmul 8/16 (out vf12)
+    dsll gp, gp, 4               # base-offset (from base-qw in the prototype)
+    vmulax.xyzw acc, vf20, vf13  # matmul
+    daddu s3, s3, ra             # s3 = prototype bucket + index zone (noe sure what's here yet.)
+    vmadday.xyzw acc, vf21, vf13 # matmul
     sll r0, r0, 0
-    vmaddaz.xyzw acc, vf22, vf13
+    vmaddaz.xyzw acc, vf22, vf13 # matmul
     sll r0, r0, 0
-    vmaddw.xyzw vf13, vf23, vf0
+    vmaddw.xyzw vf13, vf23, vf0  # matmul (out vf13, we're done)
     sll r0, r0, 0
-    sqc2 vf10, 0(t8)
+    sqc2 vf10, 0(t8)  # store matrix
     sll r0, r0, 0
-    sqc2 vf11, 16(t8)
-    movz s2, s1, s5
-    sqc2 vf12, 32(t8)
-    daddiu t8, t8, 96
+    sqc2 vf11, 16(t8) # store matrix
+    movz s2, s1, s5   # if we're the first thing added, we'll be the last in the chain, and should put a upload-color-ret!
+    sqc2 vf12, 32(t8) # store matrix
+    daddiu t8, t8, 96 # inc SPR ptr.
     beq r0, r0, L159
-    sqc2 vf13, -48(t8)
+    sqc2 vf13, -48(t8) # store matrix
 
+# TIE NEAR DMA generation
+# (don't care)
 B41:
 L158:
     sll r0, r0, 0
@@ -715,42 +736,47 @@ L158:
     movz s2, s1, s5
     sqc2 vf13, 48(t8)
     daddiu t8, t8, 96
+
+# And Back to common non-generic TIE.
+# it is time for colors. This is a loop over fragments
 B42:
 L159:
     sll r0, r0, 0
-    lw ra, 8(t4)
+    lw ra, 8(t4)  # ra = color-indices
     sll r0, r0, 0
-    sq s2, 256(t0)
+    sq s2, 256(t0) # upload color temp (either ret or 2, we'll refer to it as 2)
     sll r0, r0, 0
-    lbu s2, 144(s3)
-    addu s1, gp, ra
-    sw s5, 260(t0)
-    daddiu t9, t9, 3
-    sw s1, 212(t0)
-    sll s1, s2, 2
-    sh s2, 208(t0)
-    sll s2, s2, 4
-    sb s1, 222(t0)
-    daddu gp, gp, s2
-    lq s2, 192(t0)
-    daddiu s5, s5, 48
-    lq s1, 208(t0)
-    daddiu t8, t8, 48
-    lq s0, 256(t0)
-    daddiu s3, s3, 1
-    sq s2, -48(t8)
-    daddiu s4, s4, -1
-    sq s1, -32(t8)
-    blez s4, L172
-    sq s0, -16(t8)
+    lbu s2, 144(s3) # load the first index (actually counts)
+    addu s1, gp, ra # s1 = color-indices + base-offset
+    sw s5, 260(t0)  # store the address of next in the colors2 tag (doesn't do anything if ret)
+    daddiu t9, t9, 3 # another 3 qw for the colors.
+    sw s1, 212(t0)  # color + base goes in colors 1
+    sll s1, s2, 2   # s1 = index * 4
+    sh s2, 208(t0)  # color1's qwc = *index
+    sll s2, s2, 4   # s2 = index * 16
+    sb s1, 222(t0)  # set something in the vif tag of upload color 1
+    daddu gp, gp, s2 # advance our colors ptrs
+    lq s2, 192(t0)     # s2 = upload color 0
+    daddiu s5, s5, 48  # inc next
+    lq s1, 208(t0)     # s1 = upload color 1
+    daddiu t8, t8, 48  # inc output
+    lq s0, 256(t0)     # s0 = upload temp (2 or ret)
+    daddiu s3, s3, 1   # inc the instance pointer
+    sq s2, -48(t8)     # upload color 0 (seems to be, a constant?)
+    daddiu s4, s4, -1  # decrement frag count.
+    sq s1, -32(t8)     # upload color 1
+    blez s4, L172      # did we run out of fragments?
+    sq s0, -16(t8)     # upload color 2
 
+# top of fragment loop
 B43:
 L160:
-    daddiu s2, t9, -252
+    daddiu s2, t9, -252 # did we run out of room in the scratchpad?
     sll r0, r0, 0
     blez s2, L163
     sll r0, r0, 0
 
+# swap output buffer
 B44:
 L161:
     lw t8, 0(a3)
@@ -786,19 +812,23 @@ L162:
     addiu t9, r0, 256
     sw t9, 0(a3)
     addiu t9, r0, 0
+
+# here we have an output buffer that has room for another fragment.
+# and add another fragment.
 B47:
 L163:
     sll r0, r0, 0
-    lbu s2, 144(s3)
-    addu s1, gp, ra
-    sw s5, 260(t0)
-    daddiu t9, t9, 3
-    sw s1, 212(t0)
-    sll s1, s2, 2
-    sh s2, 208(t0)
-    sll s2, s2, 4
-    sb s1, 222(t0)
-    daddu gp, gp, s2
+    lbu s2, 144(s3) # load next index
+    addu s1, gp, ra # s1 = color-indices + base-offset
+    sw s5, 260(t0)  # store the address of next in the colors2 tag (doesn't do anything if ret)
+    daddiu t9, t9, 3 # another 3 qw for the colors.
+    sw s1, 212(t0)  # color + base goes in colors 1
+    sll s1, s2, 2   # s1 = index * 4
+    sh s2, 208(t0)  # color1's qwc = *index
+    sll s2, s2, 4   # s2 = index * 16
+    sb s1, 222(t0)  # set something in the vif tag of upload color 1
+    daddu gp, gp, s2  # advance our colors ptrs
+    # same as B42
     lq s2, 192(t0)
     daddiu s5, s5, 48
     lq s1, 208(t0)
@@ -808,13 +838,16 @@ L163:
     sq s2, -48(t8)
     daddiu s4, s4, -1
     sq s1, -32(t8)
-    bgtz s4, L160
+    bgtz s4, L160 # except we keep looping if there are fragments left.
     sq s0, -16(t8)
 
 B48:
     beq r0, r0, L172
     sll r0, r0, 0
 
+# s4 != 0 version
+# I think, for the GENERIC renderer.
+# wtf there's a square root...
 B49:
 L164:
     vmul.xyz vf16, vf6, vf6
@@ -1050,13 +1083,14 @@ L171:
     sq s0, -16(t8)
 
 B61:
+# early exit for 1 in a per-8
 L172:
-    addiu a2, a2, -1
-    srl t7, t7, 1
-    daddiu t4, t4, 64
+    addiu a2, a2, -1  # decrement instance count
+    srl t7, t7, 1     # update vis mask
+    daddiu t4, t4, 64 # update instance ptr
     sll r0, r0, 0
-    bne t7, r0, L148
-    lqc2 vf2, 16(t4)
+    bne t7, r0, L148  # reloop, if we've got any left in the group of 8.
+    lqc2 vf2, 16(t4)  # load the bsphere.
 
 # early exit for per-8
 B62:
