@@ -31709,7 +31709,7 @@
 (declare-type kermit nav-enemy)
 (deftype joint-mod-tracker (basic)
   ((target-pos               vector :inline :offset-assert 16)
-   (target-pos-func          function          :offset-assert 32)
+   (target-pos-func          (function vector vector)          :offset-assert 32)
    (inv-forward-scale-factor float          :offset-assert 36)
    (forward-scale-control    float          :offset-assert 40)
    (forward-scale-max        float          :offset-assert 44)
@@ -31721,7 +31721,7 @@
   :method-count-assert 9
   :size-assert         #x3a
   :flag-assert         #x90000003a
-  (:methods (new (symbol type kermit int function int8 int8) _type_ 0))
+  (:methods (new (symbol type kermit int function int int) _type_ 0))
   )
 
 (deftype kermit-pulse (process-drawable)
@@ -31734,6 +31734,9 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    kermit-pulse-idle
+    kermit-pulse-impact)
   )
 
 (deftype kermit (nav-enemy)
@@ -31751,6 +31754,16 @@
   :size-assert         #x1bc
   :heap-base           #x150
   :flag-assert         #x4c015001bc
+  (:states
+    kermit-idle
+    kermit-chase
+    kermit-retract-tongue
+    kermit-tongue-stuck
+    kermit-patrol
+    kermit-attack
+    kermit-chase-new-position
+    kermit-give-up
+    kermit-notice)
   )
 
 ;; - Functions
@@ -31773,8 +31786,8 @@
 (define-extern kermit-long-hop (function symbol :behavior kermit))
 (define-extern kermit-short-hop (function symbol :behavior kermit))
 (define-extern kermit-pulse-init-by-other (function vector entity none :behavior kermit-pulse))
-(define-extern joint-mod-tracker-callback (function basic vector none)) ;; TODO - no idea what this basic is!
-(define-extern build-matrix-from-up-and-forward-axes! (function matrix none))
+(define-extern joint-mod-tracker-callback (function cspace transformq none))
+(define-extern build-matrix-from-up-and-forward-axes! (function matrix vector int vector int matrix))
 (define-extern kermit-get-head-dir (function kermit vector vector))
 (define-extern kermit-post (function none :behavior kermit))
 
@@ -31782,17 +31795,6 @@
 
 (define-extern *kermit-sg* skeleton-group)
 (define-extern *kermit-nav-enemy-info* nav-enemy-info)
-(define-extern kermit-idle (state kermit)) ;; unknown type
-(define-extern kermit-chase (state kermit)) ;; unknown type
-(define-extern kermit-retract-tongue (state kermit)) ;; unknown type
-(define-extern kermit-tongue-stuck (state kermit)) ;; unknown type
-(define-extern kermit-patrol (state kermit)) ;; unknown type
-(define-extern kermit-attack (state kermit)) ;; unknown type
-(define-extern kermit-chase-new-position (state kermit)) ;; unknown type
-(define-extern kermit-give-up (state kermit)) ;; unknown type
-(define-extern kermit-notice (state kermit)) ;; unknown type
-(define-extern kermit-pulse-idle (state kermit-pulse)) ;; unknown type
-(define-extern kermit-pulse-impact (state kermit-pulse)) ;; unknown type
 
 
 ;; ----------------------
