@@ -1,22 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-death.gc
-;; name in dgo: target-death
-;; dgos: GAME, ENGINE
-
-;; TODO - for target-flut
-; (define-extern target-hit-effect (function attack-info none :behavior target))
-; (define-extern *smack-mods* surface) ;; unknown type
-; (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
-; (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
-
-(define-extern target-title (state target)) ;; unknown type
-(define-extern target-demo (state target)) ;; unknown type
-(define-extern target-warp-in (state target)) ;; unknown type
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup *deathcam-sg* deathcam
   0
   2
@@ -26,8 +11,11 @@
   :texture-level 2
   )
 
+;; definition for symbol *auto-continue*, type symbol
 (define *auto-continue* #f)
 
+;; definition for function next-level
+;; INFO: Return type mismatch symbol vs level-load-info.
 (defun next-level ((arg0 symbol))
   (let ((v1-0 (lookup-level-info arg0)))
     (the-as level-load-info (when v1-0
@@ -50,6 +38,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-continue (target)
   :event
   target-generic-event-handler
@@ -498,6 +487,7 @@
   target-no-move-post
   )
 
+;; definition for symbol *smack-mods*, type surface
 (define *smack-mods* (new 'static 'surface
                        :name 'jump
                        :tiltv 32768.0
@@ -541,6 +531,7 @@
                        )
         )
 
+;; definition for symbol *smack-up-mods*, type surface
 (define
   *smack-up-mods*
   (new 'static 'surface
@@ -588,6 +579,8 @@
     )
   )
 
+;; definition for function velocity-set-to-target!
+;; Used lq/sq
 (defbehavior velocity-set-to-target! target ((arg0 vector) (arg1 float) (arg2 attack-info))
   (let* ((v1-1 (-> self control trans))
          (gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 v1-1))
@@ -602,6 +595,8 @@
     )
   )
 
+;; definition for function target-hit-effect
+;; INFO: Return type mismatch int vs none.
 (defbehavior target-hit-effect target ((arg0 attack-info))
   (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when s5-0
@@ -662,6 +657,9 @@
   (none)
   )
 
+;; definition for function target-hit-push
+;; INFO: Return type mismatch symbol vs object.
+;; Used lq/sq
 (defbehavior target-hit-push target ((arg0 vector) (arg1 matrix) (arg2 float) (arg3 float) (arg4 attack-info))
   (case (-> arg4 angle)
     (('jump 'up 'up-forward)
@@ -742,6 +740,7 @@
     )
   )
 
+;; definition for function target-hit-orient
 (defbehavior target-hit-orient target ((arg0 attack-info) (arg1 vector))
   (let ((s5-0 #f))
     (if (and
@@ -778,6 +777,7 @@
     )
   )
 
+;; definition for function target-hit-setup-anim
 (defbehavior target-hit-setup-anim target ((arg0 attack-info))
   (case (-> arg0 angle)
     (('back)
@@ -876,6 +876,9 @@
     )
   )
 
+;; definition for function target-hit-move
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior target-hit-move target ((arg0 attack-info) (arg1 symbol) (arg2 (function none :behavior target)) (arg3 float))
   (local-vars (v1-40 symbol) (s2-1 object))
   (vector-identity! (-> self control transv))
@@ -945,6 +948,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-hit (target)
   :event
   target-standard-event-handler
@@ -1121,6 +1125,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; definition for symbol *death-spool-array*, type (array spool-anim)
 (define
   *death-spool-array*
   (the-as (array spool-anim)
@@ -1143,10 +1148,12 @@
     )
   )
 
+;; failed to figure out what this is:
 (if (!= *kernel-boot-message* 'play)
     (set! (-> *death-spool-array* length) 3)
     )
 
+;; definition for function death-movie-remap
 (defun death-movie-remap ((arg0 int) (arg1 int))
   (let ((v1-0 (/ arg0 arg1)))
     (mod
@@ -1159,6 +1166,8 @@
     )
   )
 
+;; definition for function target-death-anim
+;; INFO: Return type mismatch int vs none.
 (defbehavior target-death-anim target ((arg0 spool-anim))
   (set! (-> self control unknown-surface00) *neutral-mods*)
   (ja-channel-push! 1 30)
@@ -1194,6 +1203,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-death (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1609,7 +1619,3 @@
   :post
   target-no-stick-post
   )
-
-
-
-
