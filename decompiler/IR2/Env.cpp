@@ -27,10 +27,10 @@ void Env::set_remap_for_function(const TypeSpec& ts) {
     m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i));
   }
   if (ts.try_get_tag("behavior")) {
-    m_var_remap["s6-0"] = "self";
+    m_var_remap["s6-*"] = "self";
     m_pp_mapped_by_behavior = true;
   } else {
-    m_var_remap["s6-0"] = "pp";
+    m_var_remap["s6-*"] = "pp";
   }
 }
 
@@ -42,10 +42,10 @@ void Env::set_remap_for_new_method(const TypeSpec& ts) {
     m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 2));
   }
   if (ts.try_get_tag("behavior")) {
-    m_var_remap["s6-0"] = "self";
+    m_var_remap["s6-*"] = "self";
     m_pp_mapped_by_behavior = true;
   } else {
-    m_var_remap["s6-0"] = "pp";
+    m_var_remap["s6-*"] = "pp";
   }
 }
 
@@ -56,10 +56,10 @@ void Env::set_remap_for_method(const TypeSpec& ts) {
     m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 1));
   }
   if (ts.try_get_tag("behavior")) {
-    m_var_remap["s6-0"] = "self";
+    m_var_remap["s6-*"] = "self";
     m_pp_mapped_by_behavior = true;
   } else {
-    m_var_remap["s6-0"] = "pp";
+    m_var_remap["s6-*"] = "pp";
   }
 }
 
@@ -87,6 +87,14 @@ void Env::map_args_from_config(
 }
 
 const std::string& Env::remapped_name(const std::string& name) const {
+  // merge usages, use s6-* mapping for all
+  if (name.rfind("s6-") == 0) {
+    auto kv = m_var_remap.find("s6-*");
+    if (kv != m_var_remap.end()) {
+      return kv->second;
+    }
+  }
+
   auto kv = m_var_remap.find(name);
   if (kv != m_var_remap.end()) {
     return kv->second;
@@ -116,9 +124,17 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
     auto lookup_name = original_name;
 
     // and then see if there's a user remapping of it
-    auto remapped = m_var_remap.find(original_name);
-    if (remapped != m_var_remap.end()) {
-      lookup_name = remapped->second;
+    // merge usages, use s6-* mapping for all
+    if (original_name.rfind("s6-") == 0) {
+      auto remapped = m_var_remap.find("s6-*");
+      if (remapped != m_var_remap.end()) {
+        lookup_name = remapped->second;
+      }
+    } else {
+      auto remapped = m_var_remap.find(original_name);
+      if (remapped != m_var_remap.end()) {
+        lookup_name = remapped->second;
+      }
     }
 
     if (types_succeeded) {
@@ -434,9 +450,16 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
     }
 
     std::string lookup_name = x.name();
-    auto remapped = m_var_remap.find(lookup_name);
-    if (remapped != m_var_remap.end()) {
-      lookup_name = remapped->second;
+    if (lookup_name.rfind("s6-") == 0) {
+      auto remapped = m_var_remap.find("s6-*");
+      if (remapped != m_var_remap.end()) {
+        lookup_name = remapped->second;
+      }
+    } else {
+      auto remapped = m_var_remap.find(lookup_name);
+      if (remapped != m_var_remap.end()) {
+        lookup_name = remapped->second;
+      }
     }
 
     if (m_vars_defined_in_let.find(lookup_name) != m_vars_defined_in_let.end()) {
