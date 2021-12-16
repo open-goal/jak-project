@@ -180,9 +180,10 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
     } break;
     case SimpleAtom::Kind::INTEGER_CONSTANT: {
       std::optional<TypeSpec> cast_for_set, cast_for_define;
-      bool sym_int_or_uint = env.dts->ts.tc(TypeSpec("integer"), expected_type);
-      bool sym_uint = env.dts->ts.tc(TypeSpec("uinteger"), expected_type);
-      bool sym_int = sym_int_or_uint && !sym_uint;
+      const auto& type_name = expected_type.base_type();
+      bool sym_int = (type_name == "int8") || (type_name == "int16") || (type_name == "int32") ||
+                     (type_name == "int64") || (type_name == "int") || (type_name == "integer") ||
+                     (type_name == "seconds");
 
       if (sym_int) {
         // do nothing for set.
