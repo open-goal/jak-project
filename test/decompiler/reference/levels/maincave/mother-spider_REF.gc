@@ -100,7 +100,7 @@
            )
       (init-vf0-vector)
       (+! (-> self transv y) (* (-> self gravity) (-> *display* seconds-per-frame)))
-      (let ((gp-0 (new 'stack-no-clear 'collide-mesh-cache-tri))
+      (let ((gp-0 (new 'stack-no-clear 'collide-tri-result))
             (a2-0 (new 'stack-no-clear 'vector))
             )
         (let ((v1-1 a2-0))
@@ -113,9 +113,9 @@
           (.mul.x.vf vf1 vf1 vf2 :mask #b111)
           (.svf (&-> v1-1 quad) vf1)
           )
-        (when (>= (dummy-10 *collide-cache* (-> self root trans) a2-0 3276.8 1 self (the-as collide-tri-result gp-0) 1) 0.0)
+        (when (>= (dummy-10 *collide-cache* (-> self root trans) a2-0 3276.8 1 self gp-0 1) 0.0)
           (let ((f28-0 (vector-xz-length (-> self transv))))
-            (vector-reflect! (-> self transv) (-> self transv) (the-as vector (-> gp-0 bbox4w)))
+            (vector-reflect! (-> self transv) (-> self transv) (-> gp-0 normal))
             (let ((f30-0 (-> self transv y)))
               (set! (-> self transv y) 0.0)
               (vector-normalize! (-> self transv) (* f28-0 (rand-vu-float-range 0.3 0.8)))
@@ -459,7 +459,7 @@
 (defmethod TODO-RENAME-24 mother-spider ((obj mother-spider))
   (cond
     ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) 8))
-     (let ((s5-0 (new 'stack-no-clear 'collide-mesh-cache-tri))
+     (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-0 (new 'stack-no-clear 'vector))
            (a2-0 (new 'stack-no-clear 'vector))
            )
@@ -467,20 +467,20 @@
        (set-vector! a2-0 0.0 -81920.0 0.0 1.0)
        (set! (-> a1-0 y) (+ -8192.0 (-> a1-0 y)))
        (cond
-         ((>= (dummy-10 *collide-cache* a1-0 a2-0 8192.0 1 obj (the-as collide-tri-result s5-0) 1) 0.0)
+         ((>= (dummy-10 *collide-cache* a1-0 a2-0 8192.0 1 obj s5-0 1) 0.0)
           (let ((v1-11 (-> obj draw shadow-ctrl)))
             (set! (-> v1-11 settings flags) (logand -33 (-> v1-11 settings flags)))
             )
           0
           (let ((v1-14 (-> obj draw shadow-ctrl)))
-            (set! (-> v1-14 settings bot-plane w) (- (+ -6144.0 (-> s5-0 normal y))))
+            (set! (-> v1-14 settings bot-plane w) (- (+ -6144.0 (-> s5-0 intersect y))))
             )
           0
           (let ((v1-17 (-> obj draw shadow-ctrl)))
-            (set! (-> v1-17 settings top-plane w) (- (+ 6144.0 (-> s5-0 normal y))))
+            (set! (-> v1-17 settings top-plane w) (- (+ 6144.0 (-> s5-0 intersect y))))
             )
           0
-          (let* ((f3-0 (vector-vector-distance (-> s5-0 normal) (-> obj root-override trans)))
+          (let* ((f3-0 (vector-vector-distance (-> s5-0 intersect) (-> obj root-override trans)))
                  (f0-14 (* 0.000030517578 (fmin 32768.0 (fmax 0.0 (+ -57344.0 f3-0)))))
                  (f0-15 (lerp 409600.0 40960.0 f0-14))
                  )
@@ -1581,22 +1581,11 @@
     (cond
       ((>= (vector-xz-length (-> obj nav travel)) 4096.0)
        (vector+! arg0 (-> obj root-override trans) (-> obj nav travel))
-       (let ((s2-2 (new 'stack-no-clear 'collide-mesh-cache-tri)))
+       (let ((s2-2 (new 'stack-no-clear 'collide-tri-result)))
          (cond
-           ((>= (dummy-10
-                    *collide-cache*
-                    arg0
-                    (new 'static 'vector :y -69632.0 :w 1.0)
-                    40.96
-                    1
-                    obj
-                    (the-as collide-tri-result s2-2)
-                    1
-                    )
-                0.0
-                )
-            (set! (-> arg0 y) (-> s2-2 normal y))
-            (set! (-> arg1 quad) (-> s2-2 bbox4w min quad))
+           ((>= (dummy-10 *collide-cache* arg0 (new 'static 'vector :y -69632.0 :w 1.0) 40.96 1 obj s2-2 1) 0.0)
+            (set! (-> arg0 y) (-> s2-2 intersect y))
+            (set! (-> arg1 quad) (-> s2-2 normal quad))
             (return #t)
             )
            (else
@@ -1610,30 +1599,16 @@
         )
       )
     )
-  (let ((t9-11 (method-of-object (-> obj nav) dummy-17)))
-    (-> obj root-override trans)
-    (t9-11)
-    )
+  (dummy-17 (-> obj nav) arg0 (-> obj root-override trans))
   (let ((a1-12 (new 'stack-no-clear 'vector))
-        (s3-2 (new 'stack-no-clear 'collide-mesh-cache-tri))
+        (s3-2 (new 'stack-no-clear 'collide-tri-result))
         )
     (set! (-> a1-12 quad) (-> arg0 quad))
     (set! (-> a1-12 y) (+ 8192.0 (-> a1-12 y)))
     (cond
-      ((>= (dummy-10
-               *collide-cache*
-               a1-12
-               (new 'static 'vector :y -69632.0 :w 1.0)
-               40.96
-               1
-               obj
-               (the-as collide-tri-result s3-2)
-               1
-               )
-           0.0
-           )
-       (set! (-> arg0 y) (-> s3-2 normal y))
-       (set! (-> arg1 quad) (-> s3-2 bbox4w min quad))
+      ((>= (dummy-10 *collide-cache* a1-12 (new 'static 'vector :y -69632.0 :w 1.0) 40.96 1 obj s3-2 1) 0.0)
+       (set! (-> arg0 y) (-> s3-2 intersect y))
+       (set! (-> arg1 quad) (-> s3-2 normal quad))
        (return #t)
        )
       (else
