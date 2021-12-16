@@ -1060,6 +1060,8 @@
   (rolling-ring-hint-be-quick-to-next #x340)
   (rolling-ring-hint-be-quick-all #x341)
 
+  (sunken-pipegame-follow-it #x343)
+
   (sunken-blue-eco-charger-hint #x345)
   (sunken-take-it-easy-hot-pipes #x34e)
   (sunken-double-lurker-hint #x347)
@@ -1485,7 +1487,7 @@
 (define-extern process type) ; deftype provided by C Kernel
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
-   (status basic :offset-assert #x24)
+   (status basic :offset-assert #x24) ; a symbol
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
@@ -33483,8 +33485,8 @@
    (sucked-up-far-part-pos  vector :inline :offset-assert 80)
    (blown-out-jar-part-pos  vector :inline :offset-assert 96)
    (blown-out-far-part-pos  vector :inline :offset-assert 112)
-   (sucked-up-part          basic          :offset-assert 128)
-   (blown-out-part          basic          :offset-assert 132)
+   (sucked-up-part          sparticle-launch-control          :offset-assert 128) ; guesses
+   (blown-out-part          sparticle-launch-control          :offset-assert 132) ; guesses
    )
   :method-count-assert 9
   :size-assert         #x88
@@ -33492,11 +33494,11 @@
   )
 
 (deftype sunken-pipegame (process-drawable)
-  ((abort-audio-if-beaten? basic           :offset-assert 176)
+  ((abort-audio-if-beaten? symbol           :offset-assert 176)
    (challenges-mask        uint32          :offset-assert 180)
    (challenge              int32           :offset-assert 184)
    (ticker                 ticky   :inline :offset-assert 192)
-   (button                 sunken-pipegame-button 3       :offset-assert 224)
+   (button                 (pointer sunken-pipegame-button) 3       :offset-assert 224)
    (prize                  sunken-pipegame-prize 3       :inline :offset-assert 240)
    )
   :method-count-assert 23
@@ -33504,23 +33506,21 @@
   :heap-base           #x230
   :flag-assert         #x17023002a0
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_ symbol) symbol 21)
+    (dummy-22 (_type_ symbol) none 22)
     )
+  (:states
+    sunken-pipegame-start-up
+    sunken-pipegame-idle
+    sunken-pipegame-end-play
+    sunken-pipegame-beat-challenge
+    sunken-pipegame-begin-play)
   )
 
 ;; - Functions
 
-(define-extern sunken-pipegame-button-init-by-other function)
-
-;; - Unknowns
-
-(define-extern sunken-pipegame-start-up (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-idle (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-end-play (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-beat-challenge (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-begin-play (state sunken-pipegame)) ;; unknown type
+(define-extern sunken-pipegame-button-init-by-other (function vector quaternion entity-actor symbol none :behavior sunken-pipegame-button))
 
 
 ;; ----------------------
