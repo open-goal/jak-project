@@ -8008,15 +8008,40 @@
     )
   )
 
+(defenum draw-status
+  :type uint8
+  :bitfield #t
+  (drwf00 0)
+  (drwf01 1)
+  (drwf02 2)
+  (drwf03 3)
+  (drwf04 4)
+  (drwf05 5)
+  (drwf06 6)
+  (drwf07 7)
+  )
+
+(defenum draw-effect
+  :type uint8
+  (drweff0 0)
+  (drweff1 1)
+  (drweff2 2)
+  (title 3)
+  (drweff4 4)
+  (drweff5 5)
+  (drweff6 6)
+  (drweff7 7)
+  )
+
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
 (declare-type shadow-geo art-element)
 (declare-type process-drawable process)
 (deftype draw-control (basic)
-  ((status                   uint8           :offset-assert 4)
+  ((status                   draw-status     :offset-assert 4)
    (matrix-type              uint8           :offset-assert 5)
    (data-format              uint8           :offset-assert 6)
-   (global-effect            uint8           :offset-assert 7)
+   (global-effect            draw-effect     :offset-assert 7)
    (art-group                art-group       :offset-assert 8)
    (jgeo                     art-joint-geo   :offset-assert 12)
    (mgeo                     merc-ctrl       :offset-assert 16)
@@ -16184,43 +16209,43 @@
 
 ;; - Types
 
-; (deftype bone-calculation (structure)
-;   ((flags               uint16            :offset-assert 0)
-;    (num-bones           uint16            :offset-assert 2)
-;    (matrix-area         uint32            :offset-assert 4)
-;    (joints              uint32            :offset-assert 8)
-;    (bones               uint32            :offset-assert 12)
-;    (ripple-scale        float             :offset-assert 16)
-;    (ripple-y-scale      float             :offset-assert 20)
-;    (ripple-normal-scale float             :offset-assert 24)
-;    (ripple-area         uint32            :offset-assert 28)
-;    (next                bone-calculation  :offset-assert 32)
-;    (dummy-1             uint32            :offset-assert 36)
-;    (dummy-2             uint32            :offset-assert 40)
-;    (dummy-3             uint32            :offset-assert 44)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype bone-calculation (structure)
+  ((flags               uint16            :offset-assert 0)
+   (num-bones           uint16            :offset-assert 2)
+   (matrix-area         uint32            :offset-assert 4)
+   (joints              uint32            :offset-assert 8)
+   (bones               uint32            :offset-assert 12)
+   (ripple-scale        float             :offset-assert 16)
+   (ripple-y-scale      float             :offset-assert 20)
+   (ripple-normal-scale float             :offset-assert 24)
+   (ripple-area         uint32            :offset-assert 28)
+   (next                bone-calculation  :offset-assert 32)
+   (dummy-1             uint32            :offset-assert 36)
+   (dummy-2             uint32            :offset-assert 40)
+   (dummy-3             uint32            :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; (deftype bone-calculation-list (structure)
-;   ((first bone-calculation  :offset-assert 0)
-;    (next  bone-calculation  :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
+(deftype bone-calculation-list (structure)
+  ((first bone-calculation  :offset-assert 0)
+   (next  bone-calculation  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
 
-; (deftype texscroll-globals (structure)
-;   ((requests int32      :offset-assert 0)
-;    (effects  UNKNOWN 32 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x84
-;   :flag-assert         #x900000084
-;   )
+(deftype texscroll-globals (structure)
+  ((requests int32      :offset-assert 0)
+   (effects  uint32 32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
 
 (deftype merc-effect-bucket-info (structure)
   ((color-fade    uint32  :offset-assert 0)
@@ -16251,7 +16276,7 @@
 
 (define-extern paused? (function symbol))
 (define-extern dump-mem function)
-(define-extern bone-list-init function)
+(define-extern bone-list-init (function none))
 (define-extern texscroll-make-request function)
 (define-extern texscroll-execute (function none))
 (define-extern bones-set-sqwc function)
@@ -16274,13 +16299,13 @@
 
 ;; - Unknowns
 
-;;(define-extern *merc-bucket-info* object) ;; unknown type
-;;(define-extern *bone-calculation-list* object) ;; unknown type
-;;(define-extern bones-vu0-block object) ;; unknown type
-;;(define-extern *texscroll-globals* object) ;; unknown type
-;;(define-extern *use-generic* object) ;; unknown type
-(define-extern *merc-global-array* merc-global-array) ;; unknown type
-;;(define-extern *bones-first* object) ;; unknown type
+(define-extern *merc-bucket-info* merc-bucket-info)
+(define-extern *bone-calculation-list* bone-calculation-list)
+(define-extern bones-vu0-block vu-function)
+(define-extern *texscroll-globals* texscroll-globals)
+(define-extern *use-generic* symbol)
+(define-extern *merc-global-array* merc-global-array)
+(define-extern *bones-first* symbol)
 (define-extern *default-shadow-settings* shadow-settings)
 
 

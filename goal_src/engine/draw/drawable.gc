@@ -37,22 +37,6 @@
    )
   )
 
-(defun vis-cull ((id int))
-  "Is this thing visible? By draw-node id."
-  ;; todo
-  #t
-  
-  #|
-  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
-         (vis-byte (-> addr 0)) ;; vis byte
-         (shift-amount (+ 56 (logand id 7)))
-         (shifted (shl vis-byte shift-amount))
-         )
-    (< shifted 0)
-    )
-    |#
-  )
-
 (defun-debug find-instance-by-name ((arg0 string))
   (dotimes (s5-0 (-> *level* length))
     (let ((v1-3 (-> *level* level s5-0)))
@@ -117,7 +101,21 @@
   ;; todo
   )
 
-;; vis-cull
+(defun vis-cull ((id int))
+  "Is this thing visible? By draw-node id."
+  ;; todo
+  #t
+  
+  #|
+  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
+         (vis-byte (-> addr 0)) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< shifted 0)
+    )
+    |#
+  )
 
 (defun real-main-draw-hook ()
   (when *slow-frame-rate*
@@ -853,9 +851,9 @@
          )
     (init-vf0-vector)
     (set! sv-16 arg0)
-    (set! (-> arg1 status) (logand -9 (-> arg1 status)))
-    (when (zero? (logand (-> arg1 status) 22))
-      (let ((s4-0 (+ 48 (the-as int (the-as terrain-context #x70000000))))
+    (logclear! (-> arg1 status) (draw-status drwf03))
+    (when (zero? (logand (-> arg1 status) (draw-status drwf01 drwf02 drwf04)))
+      (let ((s4-0 (the-as vector (+ 48 (the-as int (the-as terrain-context #x70000000)))))
             (s2-0 (the-as vu-lights (+ 64 (the-as int (the-as terrain-context #x70000000)))))
             (s3-0 *time-of-day-context*)
             )
@@ -863,12 +861,12 @@
         (.lvf vf17 (&-> arg1 bounds quad))
         (.mul.x.vf vf16 vf16 vf0 :mask #b1000)
         (.add.vf vf16 vf16 vf17)
-        (s.vf! s4-0 vf16)
+        (.svf (&-> s4-0 quad) vf16)
         (.lvf vf28 (&-> arg1 color-mult quad))
         (.lvf vf29 (&-> arg1 color-emissive quad))
         (when (sphere-in-view-frustum? (the-as sphere s4-0))
           (case (-> arg1 global-effect)
-            ((3)
+            (((draw-effect title))
              (when (not (-> s3-0 title-updated))
                (set! (-> s3-0 title-updated) #t)
                (let ((s0-0 (-> *math-camera* inv-camera-rot))
@@ -1013,8 +1011,8 @@
             (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
             (.lvf vf27 (&-> at-0 camera-rot vector 3 quad))
             )
-          (let ((v1-42 (the-as object (+ 176 (the-as int (the-as terrain-context #x70000000))))))
-            (.lvf vf15 (&-> (the-as (pointer int128) s4-0)))
+          (let ((v1-42 (the-as vector (+ 176 (the-as int (the-as terrain-context #x70000000))))))
+            (.lvf vf15 (&-> s4-0 quad))
             (.mul.w.vf acc vf27 vf0)
             (.add.mul.x.vf acc vf24 vf15 acc)
             (.add.mul.y.vf acc vf25 vf15 acc)
@@ -1027,41 +1025,41 @@
             (.sub.w.vf vf28 vf0 vf15 :mask #b1000)
             (.wait.vf)
             (.add.vf vf15 vf28 Q :mask #b1000)
-            (.svf (&-> (the-as vector v1-42) quad) vf15)
-            (when (< 0.0 (+ (-> (the-as vector v1-42) z) (-> arg1 bounds w)))
-              (let ((s3-1 0))
-                (let ((f30-1 (-> (the-as vector v1-42) w)))
+            (.svf (&-> v1-42 quad) vf15)
+            (when (< 0.0 (+ (-> v1-42 z) (-> arg1 bounds w)))
+              (let ((lod-to-use 0))
+                (let ((cam-dist (-> v1-42 w)))
                   (when (nonzero? (-> arg1 lod-set max-lod))
                     (cond
                       ((>= (-> arg1 force-lod) 0)
-                       (set! s3-1 (-> arg1 force-lod))
-                       (if (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) f30-1)
+                       (set! lod-to-use (-> arg1 force-lod))
+                       (if (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) cam-dist)
                            (return #f)
                            )
                        )
                       (else
-                        (while (and (< s3-1 (-> arg1 lod-set max-lod)) (< (-> arg1 lod-set lod s3-1 dist) f30-1))
-                          (+! s3-1 1)
+                        (while (and (< lod-to-use (-> arg1 lod-set max-lod)) (< (-> arg1 lod-set lod lod-to-use dist) cam-dist))
+                          (+! lod-to-use 1)
                           )
                         )
                       )
                     )
-                  (if (and (< (-> arg1 lod-set lod s3-1 dist) f30-1) (< (-> arg1 force-lod) 0))
+                  (if (and (< (-> arg1 lod-set lod lod-to-use dist) cam-dist) (< (-> arg1 force-lod) 0))
                       (return #f)
                       )
                   (let ((v1-64 (-> arg1 sink-group level))
                         (a0-26 (+ (-> arg1 sink-group merc-sink foreground-texture-page) 6))
                         )
-                    (when (zero? (logand (-> arg1 status) 64))
-                      (if (< f30-1 (-> v1-64 closest-object a0-26))
-                          (set! (-> v1-64 closest-object a0-26) f30-1)
+                    (when (zero? (logand (-> arg1 status) (draw-status drwf06)))
+                      (if (< cam-dist (-> v1-64 closest-object a0-26))
+                          (set! (-> v1-64 closest-object a0-26) cam-dist)
                           )
                       (when (and (!= a0-26 6) (!= (-> arg1 level-index) 2))
                         (let ((a1-45 (cond
-                                       ((< 102400.0 f30-1)
+                                       ((< 102400.0 cam-dist)
                                         (-> arg1 mgeo header masks 0)
                                         )
-                                       ((< 81920.0 f30-1)
+                                       ((< 81920.0 cam-dist)
                                         (-> arg1 mgeo header masks 1)
                                         )
                                        (else
@@ -1075,23 +1073,23 @@
                         )
                       )
                     )
-                  (if (or (guard-band-cull (the-as vector s4-0)) (< f30-1 (* 1.2 (-> *math-camera* d))))
-                      (logior! (-> arg1 status) 1)
-                      (set! (-> arg1 status) (logand -2 (-> arg1 status)))
+                  (if (or (guard-band-cull s4-0) (< cam-dist (* 1.2 (-> *math-camera* d))))
+                      (logior! (-> arg1 status) (draw-status drwf00))
+                      (logclear! (-> arg1 status) (draw-status drwf00))
                       )
-                  (logior! (-> arg1 status) 8)
-                  (if (logtest? (-> arg1 status) 32)
+                  (logior! (-> arg1 status) (draw-status drwf03))
+                  (if (logtest? (-> arg1 status) (draw-status drwf05))
                       (return #f)
                       )
-                  (draw-bones arg1 arg3 f30-1)
+                  (draw-bones arg1 arg3 cam-dist)
                   )
-                (when (and (< s3-1 (-> arg1 cur-lod)) (logtest? (-> arg1 status) 128))
+                (when (and (< lod-to-use (-> arg1 cur-lod)) (logtest? (-> arg1 status) (draw-status drwf07)))
                   (let ((v1-82 *matrix-engine*))
                     (set! (-> v1-82 (-> v1-82 length)) (process->handle sv-16))
                     (+! (-> v1-82 length) 1)
                     )
                   )
-                (lod-set! arg1 s3-1)
+                (lod-set! arg1 lod-to-use)
                 )
               )
             )
