@@ -9735,7 +9735,7 @@
    (distance   vector      :inline :offset-assert 160)
    (next-tag   dma-packet  :inline :offset-assert 176)
    (dma-buf    dma-buffer          :offset-assert 192)
-   (sink-group basic               :offset-assert 196) ;; dma sink
+   (sink-group dma-foreground-sink-group :offset-assert 196) ;; dma sink
    (next-pris  dma-packet          :offset-assert 200)
    (next-merc  dma-packet          :offset-assert 204)
    (wait-count uint32              :offset-assert 208)
@@ -9806,7 +9806,7 @@
 
 ;; - Symbols
 
-(define-extern *merc-globals* symbol)
+(define-extern *merc-globals* merc-globals)
 
 
 ;; ----------------------
@@ -16209,16 +16209,37 @@
 
 ;; - Types
 
+(defenum bone-calc-flags
+  :type uint16
+  :bitfield #t
+  (bncfl00 0)
+  (bncfl01 1)
+  (bncfl02 2)
+  (bncfl03 3)
+  (bncfl04 4)
+  (bncfl05 5)
+  (bncfl06 6)
+  (bncfl07 7)
+  (bncfl08 8)
+  (bncfl09 9)
+  (bncfl10 10)
+  (bncfl11 11)
+  (bncfl12 12)
+  (bncfl13 13)
+  (bncfl14 14)
+  (bncfl15 15)
+  )
+
 (deftype bone-calculation (structure)
-  ((flags               uint16            :offset-assert 0)
+  ((flags               bone-calc-flags   :offset-assert 0)
    (num-bones           uint16            :offset-assert 2)
-   (matrix-area         uint32            :offset-assert 4)
+   (matrix-area         (inline-array matrix) :offset-assert 4)
    (joints              uint32            :offset-assert 8)
    (bones               uint32            :offset-assert 12)
    (ripple-scale        float             :offset-assert 16)
    (ripple-y-scale      float             :offset-assert 20)
    (ripple-normal-scale float             :offset-assert 24)
-   (ripple-area         uint32            :offset-assert 28)
+   (ripple-area         (inline-array vector) :offset-assert 28)
    (next                bone-calculation  :offset-assert 32)
    (dummy-1             uint32            :offset-assert 36)
    (dummy-2             uint32            :offset-assert 40)
@@ -16240,7 +16261,7 @@
 
 (deftype texscroll-globals (structure)
   ((requests int32      :offset-assert 0)
-   (effects  uint32 32  :offset-assert 4)
+   (effects  merc-effect 32  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x84
@@ -16275,24 +16296,24 @@
 ;; - Functions
 
 (define-extern paused? (function symbol))
-(define-extern dump-mem function)
+(define-extern dump-mem (function pointer int none))
 (define-extern bone-list-init (function none))
-(define-extern texscroll-make-request function)
+(define-extern texscroll-make-request (function merc-effect none))
 (define-extern texscroll-execute (function none))
-(define-extern bones-set-sqwc function)
-(define-extern bones-reset-sqwc function)
-(define-extern bones-init (function dma-buffer none)) ;; TODO - unconfirmed
-(define-extern draw-bones-mtx-calc function)
-(define-extern bones-mtx-calc function)
+(define-extern bones-set-sqwc (function none))
+(define-extern bones-reset-sqwc (function none))
+(define-extern bones-init (function dma-buffer dma-foreground-sink-group none))
+(define-extern draw-bones-mtx-calc (function bone-calculation int bone-calc-flags object))
+(define-extern bones-mtx-calc (function int pointer pointer int none))
 (define-extern bones-mtx-calc-execute (function none))
-(define-extern bones-wrapup (function none)) ;; TODO - unconfirmed
-(define-extern dump-qword function)
-(define-extern bones-debug function)
-(define-extern dump-bone-mem function)
-(define-extern draw-bones-shadow function)
-(define-extern draw-bones-generic-merc function)
+(define-extern bones-wrapup (function none))
+(define-extern dump-qword (function qword none))
+(define-extern bones-debug (function none))
+(define-extern dump-bone-mem (function none))
+(define-extern draw-bones-shadow (function object object object none))
+(define-extern draw-bones-generic-merc (function object object object object none))
 (define-extern draw-bones-merc function)
-(define-extern draw-bones-check-longest-edge function)
+(define-extern draw-bones-check-longest-edge (function none))
 (define-extern draw-bones-check-longest-edge-asm function)
 (define-extern draw-bones (function draw-control object float none))
 (define-extern draw-bones-hud (function draw-control dma-buffer none))

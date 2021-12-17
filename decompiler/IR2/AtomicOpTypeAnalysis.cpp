@@ -487,6 +487,16 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
+  } else if (arg1_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT &&
+             m_kind == Kind::ADD) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg1_type.get_add_int_constant();
+    rd_in.stride = arg1_type.get_mult_int_constant();
+    rd_in.base_type = arg0_type.typespec();
+    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    if (out.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
+    }
   }
 
   if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR && m_kind == Kind::ADD) {
