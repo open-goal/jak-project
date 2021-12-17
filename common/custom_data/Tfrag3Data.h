@@ -25,7 +25,7 @@ struct PreloadedVertex {
 static_assert(sizeof(PreloadedVertex) == 32, "PreloadedVertex size");
 
 // Settings for an OpenGL draw
-struct Draw {
+struct TfragDraw {
   DrawMode mode;        // the OpenGL draw settings.
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
@@ -61,9 +61,9 @@ struct TimeOfDayColor {
   math::Vector<u8, 4> rgba[8];
 };
 
-struct Tree {
+struct TfragTree {
   TFragmentTreeKind kind;
-  std::vector<Draw> draws;
+  std::vector<TfragDraw> draws;
   std::vector<u16> color_indices_per_vertex;
   std::vector<VisNode> vis_nodes;
   std::vector<PreloadedVertex> vertices;
@@ -75,6 +75,18 @@ struct Tree {
   bool only_children = false;
 
   void serialize(Serializer& ser);
+};
+
+
+struct TieTree {
+  std::vector<VisNode> vis_nodes;
+  u16 first_leaf_node = 0;
+  u16 last_leaf_node = 0;
+  u16 first_root = 0;
+  u16 num_roots = 0;
+  bool only_children = false; // todo
+
+  // void serialize(Serializer& ser); TODO
 };
 
 struct Texture {
@@ -91,7 +103,7 @@ struct Level {
   u16 version = TFRAG3_VERSION;
   std::string level_name;
   std::vector<Texture> textures;
-  std::vector<Tree> trees;
+  std::vector<TfragTree> tfrag_trees;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
 };

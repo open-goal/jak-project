@@ -75,7 +75,7 @@ class Tfrag3 {
     GLuint vertex_buffer = -1;
     GLuint vao;
     u32 vert_count = 0;
-    const std::vector<tfrag3::Draw>* draws = nullptr;
+    const std::vector<tfrag3::TfragDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const std::vector<tfrag3::VisNode>* vis = nullptr;
 

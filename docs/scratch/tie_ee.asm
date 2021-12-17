@@ -739,6 +739,10 @@ L158:
 
 # And Back to common non-generic TIE.
 # it is time for colors. This is a loop over fragments
+# s2 = tag2
+# s4 = frag-count 1
+# gp = base-qw * 16
+# s3 = prototype + index-start
 B42:
 L159:
     sll r0, r0, 0
@@ -1188,5 +1192,569 @@ L177:
     daddiu sp, sp, 128
 
     sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; .function draw-inline-array-prototype-tie-asm
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;BAD PROLOGUE
+;; Warnings:
+;; INFO: Flagged as asm by config
+;; INFO: Assembly Function
+
+# runs after the instance drawing.
+# a0 - dma buffer
+# a1 - num prototypes
+# a2 - prototype array (a prototype-array-tie)
+
+# t0 = work
+# t1 = SPR from DMA bank
+# t3 = SPR ptr to input buffer
+# 
+
+
+B0:
+L84:
+    daddiu sp, sp, -112
+    sd ra, 0(sp)
+    sq s1, 16(sp)
+    sq s2, 32(sp)
+    sq s3, 48(sp)
+    sq s4, 64(sp)
+    sq s5, 80(sp)
+    sq gp, 96(sp)
+    sll r0, r0, 0
+
+    # SETUP
+    lui a3, 28672      # = 0x7000
+    lw v1, 4(a0)       # = dma buf base
+    lui t1, 4096       # = 0x1000
+    lui t2, 4096       # = 0x1000
+
+    sync.l
+    cache dxwbin v1, 0
+    sync.l
+    cache dxwbin v1, 1
+    sync.l
+
+    lw t0, *prototype-tie-work*(s7)
+    ori t1, t1, 53248       # spr FROM
+    ori t4, t2, 54272       # spr TO
+    ori t3, a3, 16          # setup spr input buffer pointer
+    ori t2, a3, 2064        # spr output buffer pointer
+    sw a0, 10260(a3)        # stash dma buffer in spad (dma-buffer of prototype-tie-dma)
+    daddiu t7, a1, -1       # not sure, is the input data length off by one or something?
+    sll r0, r0, 0
+    lw t5, 12(a2)           # t5 = prototype-bucket-tie
+    addiu a0, r0, 0         # a0 = 0 (offset into the scratchpad's output offset)
+    or a1, t2, r0           # a1 = spr output
+
+
+B1:
+L85:
+    sll r0, r0, 0
+    lq t6, 60(t5)          # load next's for the bucket (start of dma chains per geom, in 0, 1, 2, 3 order)
+    daddiu t8, a2, 4       # t8 = array pointer (array prottype-bucket-tie), load at +12.
+    sw t7, 10256(a3)       # stash length in spad
+    dsrl32 a2, t6, 0       # a2 = 1's next
+    sw t8, 280(t0)         # stash prototype-array
+    pcpyud t8, t6, t6      # [2,3]
+    lw t7, 140(t5)         # tie colors
+    or t8, a2, t8          # t8 = any next's nonzero?
+    lw a2, 108(t5)         # a2 = frag counts array
+    beq t8, r0, L99        # skip ahead if 0 prototypes drawn.
+    lw t8, 4(a3)           # load mood off of the terrain-context (spr)
+
+B2:
+    sll r0, r0, 0
+    lq t5, 12(t5)          # load geom's from bucket
+    sll r0, r0, 0
+    sq t6, 10272(a3)       # stash next's on spad
+    sll r0, r0, 0
+    sw a2, 10304(a3)       # stash frag counts on spad
+    sll r0, r0, 0
+    sq t5, 10288(a3)       # stash geom's on spad
+    sll r0, r0, 0
+    ld a2, 272(t0)         # clamp constant: #x0080'00ff'00ff'00ff (for time of day color interp)
+    sll r0, r0, 0
+    lw t6, 4(t7)           # t6 = time of day palette's height
+    daddiu ra, t7, 12      # ra = time of day palette's data
+    lq t5, 1852(t8)        # t5 = itimes0 from mood
+    sra t7, t6, 2          # t7 = width / 4
+    sll r0, r0, 0
+    addu t7, t7, a0        # some spad out buffer ptr, or something.
+    addiu t9, r0, 221      # t9 = 221 (I think the max number of qws we can safely have used after colors)
+    dsubu t7, t9, t7
+    sll r0, r0, 0
+    bgez t7, L88           # see if we have too much crap in the DMA output buffer
+    sll r0, r0, 0
+
+# dma output full, copy from scratchpad.
+B3:
+L86:
+    lw a1, 0(t1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a1, a1, 256
+    sll r0, r0, 0
+    beq a1, r0, L87
+    sll r0, r0, 0
+
+B4:
+    sll r0, r0, 0
+    lw a1, 292(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a1, a1, 1
+    sll r0, r0, 0
+    sw a1, 292(t0)
+    beq r0, r0, L86
+    sll r0, r0, 0
+
+B5:
+L87:
+    sw t2, 128(t1)
+    xori t2, t2, 4096
+    sw v1, 16(t1)
+    sll a1, a0, 4
+    addu v1, v1, a1
+    or a1, t2, r0
+    sw a0, 32(t1)
+    addiu a0, r0, 256
+    sw a0, 0(t1)
+    addiu a0, r0, 0
+
+# here it is safe to output colors to the current scratchpad
+# output buffer.
+B6:
+L88:
+    addiu t7, t6, 31  # width + 31
+    lq t6, 0(t0)      # upload palette 0
+    sra t7, t7, 5     # (width + 31) / 5
+    addiu a0, a0, 2   # 2 qw's, I guess for upload palette 0 and upload palette 1
+    sll t9, t7, 5     # ((width + 31) / 5) * 5
+    sq t6, 0(a1)      # store upload palette 0
+    sra t6, t9, 2     # aligned width / 4
+    sb t9, 30(t0)     # probably the viftag's unpack count, or something.
+    addu a0, a0, t6   # going to use up (aligned width / 4) qw's in our dma buffer.
+    sh t6, 16(t0)     # also put this in the giftag for upload1
+    sll r0, r0, 0
+    lq t6, 1868(t8)   # t6 = itimes1
+    sll r0, r0, 0
+    lq gp, 16(t0)     # gp = upload1's tag
+    sll r0, r0, 0
+    lq t7, 1884(t8)   # t7 = itimes2
+    sll r0, r0, 0
+    sq gp, 16(a1)     # store upload palette 1
+    addiu a1, a1, 32  # advance output pointer (spr)
+    lq t8, 1900(t8)   # t8 = itimes3
+
+# begin color stuff
+B7:
+L89:
+    lw gp, 0(t4)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi gp, gp, 256
+    sll r0, r0, 0
+    beq gp, r0, L90
+    sll r0, r0, 0
+
+B8:
+    sll r0, r0, 0
+    lw gp, 296(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu gp, gp, 1
+    sll r0, r0, 0
+    sw gp, 296(t0)
+    beq r0, r0, L89
+    sll r0, r0, 0
+
+B9:
+L90:
+    sw ra, 16(t4)
+    daddiu t9, t9, -32
+    sw t3, 128(t4)
+    addiu gp, r0, 64
+    sw gp, 32(t4)
+    addiu gp, r0, 256
+    sw gp, 0(t4)
+    daddiu ra, ra, 1024
+B10:
+L91:
+    or s5, t3, r0
+    xori t3, t3, 1024
+    blez t9, L94
+    daddiu t9, t9, -32
+
+B11:
+L92:
+    lw gp, 0(t4)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi gp, gp, 256
+    sll r0, r0, 0
+    beq gp, r0, L93
+    sll r0, r0, 0
+
+B12:
+    sll r0, r0, 0
+    lw gp, 296(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu gp, gp, 1
+    sll r0, r0, 0
+    sw gp, 296(t0)
+    beq r0, r0, L92
+    sll r0, r0, 0
+
+B13:
+L93:
+    sw ra, 16(t4)
+    sll r0, r0, 0
+    sw t3, 128(t4)
+    addiu gp, r0, 64
+    sw gp, 32(t4)
+    addiu gp, r0, 256
+    sw gp, 0(t4)
+    daddiu ra, ra, 1024
+    beq r0, r0, L95
+    sll r0, r0, 0
+
+B14:
+L94:
+    lw gp, 0(t4)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi gp, gp, 256
+    sll r0, r0, 0
+    beq gp, r0, L95
+    sll r0, r0, 0
+
+B15:
+    sll r0, r0, 0
+    lw gp, 296(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu gp, gp, 1
+    sll r0, r0, 0
+    sw gp, 296(t0)
+    beq r0, r0, L94
+    sll r0, r0, 0
+
+B16:
+L95:
+    addiu gp, a1, 128
+    lq s2, 12(s5)
+    sll r0, r0, 0
+    lq s4, 28(s5)
+    pextlb s3, r0, s2
+    mfc1 r0, f31
+    pextub s2, r0, s2
+    mfc1 r0, f31
+    pmulth r0, s3, t5
+    mfc1 r0, f31
+    pextlb s3, r0, s4
+    mfc1 r0, f31
+    pmaddh r0, s2, t6
+    mfc1 r0, f31
+    pextub s4, r0, s4
+    mfc1 r0, f31
+    pmaddh r0, s3, t7
+    lq s3, 44(s5)
+    addiu s5, s5, 32
+    sll r0, r0, 0
+    pmaddh r0, s4, t8
+    lq s4, 28(s5)
+    pextlb s2, r0, s3
+    mfc1 r0, f31
+B17:
+L96:
+    pextub s3, r0, s3
+    mfc1 r0, f31
+    pmfhl.lh s1
+    mfc1 r0, f31
+    pmulth r0, s2, t5
+    mfc1 r0, f31
+    psrlh s2, s1, 6
+    mfc1 r0, f31
+    pcpyud s1, s2, s2
+    mfc1 r0, f31
+    paddh s2, s1, s2
+    mfc1 r0, f31
+    pminh s2, s2, a2
+    mfc1 r0, f31
+    ppacb s1, r0, s2
+    mfc1 r0, f31
+    pextlb s2, r0, s4
+    mfc1 r0, f31
+    pmaddh r0, s3, t6
+    sw s1, 0(a1)
+    pextub s4, r0, s4
+    mfc1 r0, f31
+    pmaddh r0, s2, t7
+    lq s3, 44(s5)
+    addiu s5, s5, 32
+    addiu a1, a1, 4
+    pmaddh r0, s4, t8
+    lq s4, 28(s5)
+    bne a1, gp, L96
+    pextlb s2, r0, s3
+
+B18:
+    bgez t9, L91
+    sll r0, r0, 0
+
+# done with colors
+B19:
+    sll r0, r0, 0
+    lw a2, 10276(a3)  # next1
+    sll r0, r0, 0
+    lw t6, 10292(a3)  # geom1
+    beq a2, r0, L97
+    lbu t5, 10305(a3) # frag1
+
+B20:
+    bgezal r0, L100   # call sub at L100 for adding the geom.
+    sll r0, r0, 0
+
+B21:
+L97:
+    sll r0, r0, 0
+    lw a2, 10280(a3)
+    sll r0, r0, 0
+    lw t6, 10296(a3)
+    beq a2, r0, L98
+    lbu t5, 10306(a3)
+
+B22:
+    bgezal r0, L100
+    sll r0, r0, 0
+
+B23:
+L98:
+    sll r0, r0, 0
+    lw a2, 10284(a3)
+    sll r0, r0, 0
+    lw t6, 10300(a3)
+    beq a2, r0, L99
+    lbu t5, 10307(a3)
+
+B24:
+    bgezal r0, L100
+    sll r0, r0, 0
+
+# early exit if we didn't draw any of this protytpe
+B25:
+L99:
+    sll r0, r0, 0
+    lw a2, 280(t0)
+    sll r0, r0, 0
+    lw t6, 10256(a3)
+    sll r0, r0, 0
+    lw t5, 12(a2)
+    bne t6, r0, L85
+    daddiu t7, t6, -1
+
+B26:
+    beq r0, r0, L105
+    sll r0, r0, 0
+
+# geom upload thing.
+B27:
+L100:
+    addiu t6, t6, 32 # offset of first frag within a prototype-tie
+    sll r0, r0, 0
+B28:
+L101:
+    addiu t7, a0, 4  # looks like we're going to use 4 qw's of our buffer
+    addiu t8, r0, 255 # and we can go all the way to the end this time (last time we did 251)
+    dsubu t7, t8, t7
+    lw t8, 0(t6)      # t8 = gif ref
+    bgez t7, L104
+    lhu t7, 30(t6)
+
+B29:
+L102:
+    lw a1, 0(t1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a1, a1, 256
+    sll r0, r0, 0
+    beq a1, r0, L103
+    sll r0, r0, 0
+
+B30:
+    sll r0, r0, 0
+    lw a1, 292(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a1, a1, 1
+    sll r0, r0, 0
+    sw a1, 292(t0)
+    beq r0, r0, L102
+    sll r0, r0, 0
+
+B31:
+L103:
+    sw t2, 128(t1)
+    xori t2, t2, 4096
+    sw v1, 16(t1)
+    sll a1, a0, 4
+    addu v1, v1, a1
+    or a1, t2, r0
+    sw a0, 32(t1)
+    addiu a0, r0, 256
+    sw a0, 0(t1)
+    addiu a0, r0, 0
+# got enough room, make the output for this frag:
+# a2 = next, t6 = tie-fragment, t5 = frag count, 
+B32:
+L104:
+    sll r0, r0, 0
+    lw s5, 4(t6)   # s5 = point ref
+    sll r0, r0, 0
+    lhu s4, 28(t6) # s4 = tex-count
+    sll r0, r0, 0
+    lhu gp, 32(t6) # gp = vertex count
+    sll r0, r0, 0
+    sw t8, 36(t0)  # store gif ref ptr in upload model 0
+    sll r0, r0, 0
+    sh s4, 32(t0)  # store tex count in upload 0
+    daddiu t9, s4, 16384 # what's this doing... something with the unpack. maybe an offset.
+    sb s4, 46(t0)  # store tex count in upload 0's vif tag
+    dsll s4, s4, 4 # s4 now bytes
+    sw s5, 68(t0)  # point ref in upload 2
+    daddu t8, t8, s4 # advance gif ref
+    sh gp, 64(t0)   # vertex count in upload 2 dma
+    dsll gp, gp, 1  # multiply by 2 (I guess upacks to 2x as big?)
+    sw a2, 84(t0)   # store next in upload 3
+    sll r0, r0, 0
+    sb gp, 78(t0)  # vertex count * 2 in upload 2 viftag unpack
+    sll r0, r0, 0
+    sw t8, 52(t0)  # ?? in upload 1 (more "gif" stuff)
+    sll r0, r0, 0
+    sh t7, 48(t0)  # upload 1 gets gif-count
+    dsll t7, t7, 2 # also unpacks
+    sh t9, 60(t0)  # really not sure what this is here...
+    sll r0, r0, 0
+    sb t7, 62(t0)  # unpack count for the extra gif stuff.
+    sll r0, r0, 0
+    lq t7, 32(t0)  # t7 = upload0
+    sll r0, r0, 0
+    lq t8, 48(t0)  # t8 = upload1
+    sll r0, r0, 0 
+    lq t9, 64(t0)  # t9 = upload2
+    sll r0, r0, 0
+    lq gp, 80(t0)  # gp = upload3
+    daddiu a0, a0, 4
+    sq t7, 0(a1)
+    daddiu t5, t5, -1
+    sq t8, 16(a1)
+    daddiu a2, a2, 48
+    sq t9, 32(a1)
+    sq gp, 48(a1)
+    daddiu a1, a1, 64
+    bgtz t5, L101
+    daddiu t6, t6, 64
+
+B33:
+    jr ra
+    sll r0, r0, 0
+# end of geom upload subroutine
+
+B34:
+L105:
+    beq a0, r0, L108
+    sll r0, r0, 0
+
+B35:
+L106:
+    lw a1, 0(t1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a1, a1, 256
+    sll r0, r0, 0
+    beq a1, r0, L107
+    sll r0, r0, 0
+
+B36:
+    sll r0, r0, 0
+    lw a1, 292(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a1, a1, 1
+    sll r0, r0, 0
+    sw a1, 292(t0)
+    beq r0, r0, L106
+    sll r0, r0, 0
+
+B37:
+L107:
+    sw t2, 128(t1)
+    sll r0, r0, 0
+    sw v1, 16(t1)
+    sll a1, a0, 4
+    addu v1, v1, a1
+    sll r0, r0, 0
+    sw a0, 32(t1)
+    addiu a0, r0, 256
+    sw a0, 0(t1)
+    sll r0, r0, 0
+B38:
+L108:
+    lw a0, 0(t1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a0, a0, 256
+    sll r0, r0, 0
+    beq a0, r0, L109
+    sll r0, r0, 0
+
+B39:
+    sll r0, r0, 0
+    lw a0, 292(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a0, a0, 1
+    sll r0, r0, 0
+    sw a0, 292(t0)
+    beq r0, r0, L108
+    sll r0, r0, 0
+
+B40:
+L109:
+    lw a0, 10260(a3)
+    sll r0, r0, 0
+    sw v1, 4(a0)
+    sll r0, r0, 0
+    or v0, r0, r0
+    ld ra, 0(sp)
+    lq gp, 96(sp)
+    lq s5, 80(sp)
+    lq s4, 64(sp)
+    lq s3, 48(sp)
+    lq s2, 32(sp)
+    lq s1, 16(sp)
+    jr ra
+    daddiu sp, sp, 112
+
     sll r0, r0, 0
     sll r0, r0, 0

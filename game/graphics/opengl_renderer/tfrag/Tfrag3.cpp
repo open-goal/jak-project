@@ -41,14 +41,14 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
     fmt::print("new level for tfrag3: {} -> {}\n", m_level_name, level);
     fmt::print("discarding old stuff\n");
     discard_tree_cache();
-    fmt::print("level has {} trees\n", lev_data->trees.size());
-    m_cached_trees.resize(lev_data->trees.size());
+    fmt::print("level has {} trees\n", lev_data->tfrag_trees.size());
+    m_cached_trees.resize(lev_data->tfrag_trees.size());
 
     size_t idx_buffer_len = 0;
     size_t time_of_day_count = 0;
 
-    for (size_t tree_idx = 0; tree_idx < lev_data->trees.size(); tree_idx++) {
-      const auto& tree = lev_data->trees[tree_idx];
+    for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees.size(); tree_idx++) {
+      const auto& tree = lev_data->tfrag_trees[tree_idx];
       m_cached_trees[tree_idx].kind = tree.kind;
       if (tree.kind != tfrag3::TFragmentTreeKind::INVALID) {
         for (auto& draw : tree.draws) {

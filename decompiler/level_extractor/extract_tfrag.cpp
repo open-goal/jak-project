@@ -1976,7 +1976,7 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
 }
 
 void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
-                      tfrag3::Tree& tree_out,
+                      tfrag3::TfragTree& tree_out,
                       std::vector<tfrag3::Texture>& texture_pool,
                       const TextureDB& tdb,
                       const std::vector<std::pair<int, int>>& expected_missing_textures) {
@@ -2030,12 +2030,12 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
 
     // now, add draws
     for (auto& draw : draw_list) {
-      tfrag3::Draw tdraw;
+      tfrag3::TfragDraw tdraw;
       tdraw.mode = draw.mode;
       tdraw.tree_tex_id = tfrag3_tex_id;
 
       for (auto& strip : draw.strips) {
-        tfrag3::Draw::VisGroup vgroup;
+        tfrag3::TfragDraw::VisGroup vgroup;
         vgroup.tfrag_idx = strip.tfrag_id;    // associate with the tfrag for culling
         vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
 
@@ -2071,7 +2071,7 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
                     const std::string& debug_name,
                     const std::vector<level_tools::TextureRemap>& map,
                     tfrag3::Level& level_out,
-                    tfrag3::Tree& tree_out,
+                    tfrag3::TfragTree& tree_out,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures) {
   TFragExtractStats stats;
@@ -2099,7 +2099,7 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
       file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}), debug_out);
 }
 
-void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tree& out) {
+void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::TfragTree& out) {
   out.colors.resize(tree->time_of_day.height);
   for (int i = 0; i < (int)tree->time_of_day.height; i++) {
     for (int j = 0; j < 8; j++) {
@@ -2116,7 +2116,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out) {
-  tfrag3::Tree this_tree;
+  tfrag3::TfragTree this_tree;
   if (tree->my_type() == "drawable-tree-tfrag") {
     this_tree.kind = tfrag3::TFragmentTreeKind::NORMAL;
   } else if (tree->my_type() == "drawable-tree-dirt-tfrag") {
@@ -2184,6 +2184,6 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
       }
     }
   }
-  out.trees.push_back(this_tree);
+  out.tfrag_trees.push_back(this_tree);
 }
 }  // namespace decompiler

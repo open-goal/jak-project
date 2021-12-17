@@ -3,7 +3,7 @@
 
 namespace tfrag3 {
 
-void Draw::serialize(Serializer& ser) {
+void TfragDraw::serialize(Serializer& ser) {
   ser.from_ptr(&mode);
   ser.from_ptr(&tree_tex_id);
   ser.from_pod_vector(&vertex_index_stream);
@@ -11,7 +11,7 @@ void Draw::serialize(Serializer& ser) {
   ser.from_ptr(&num_triangles);
 }
 
-void Tree::serialize(Serializer& ser) {
+void TfragTree::serialize(Serializer& ser) {
   ser.from_ptr(&kind);
 
   if (ser.is_saving()) {
@@ -62,11 +62,11 @@ void Level::serialize(Serializer& ser) {
   }
 
   if (ser.is_saving()) {
-    ser.save<size_t>(trees.size());
+    ser.save<size_t>(tfrag_trees.size());
   } else {
-    trees.resize(ser.load<size_t>());
+    tfrag_trees.resize(ser.load<size_t>());
   }
-  for (auto& tree : trees) {
+  for (auto& tree : tfrag_trees) {
     tree.serialize(ser);
   }
 

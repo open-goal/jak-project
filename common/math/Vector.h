@@ -213,8 +213,8 @@ struct Matrix {
     return result;
   }
 
-  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
-  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
+//  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
+//  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
 
   Vector<T, Rows> col(int c) const {
     Vector<T, Rows> result;
