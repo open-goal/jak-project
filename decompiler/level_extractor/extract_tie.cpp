@@ -183,9 +183,19 @@ struct TieInstanceInfo {
 };
 
 struct AdgifInfo {
+  u32 first_w;
+  u32 second_w;
+  u32 third_w;
   u32 combo_tex;
   u64 alpha_val;
   u64 clamp_val;
+};
+
+struct StrGifInfo {
+  u16 address;
+  u16 nloop;
+  u16 mode;  // not yet fully understood, but can allow the use of other templates.
+  bool eop;
 };
 
 struct TieFrag {
@@ -194,14 +204,70 @@ struct TieFrag {
 
   std::vector<u8> other_gif_data;
   std::vector<u8> points_data;
+  std::vector<u32> point_sizes;
 
-  u16 ilw(u32 qw, u32 offset) const {
-    u32 byte_offset = qw * 16 + offset * 4;
-    assert(byte_offset + 2 <= points_data.size());
-    u16 result;
-    memcpy(&result, points_data.data() + byte_offset, sizeof(u16));
+  //  u16 ilw_points(u32 qw, u32 offset) const {
+  //    // note: dividing by two because we use the v16 unpack.
+  //    u32 byte_offset_in_input = (16 * qw + 4 * offset) / 2;
+  //    fmt::print("byte offset in input is {}\n", byte_offset_in_input);
+  //    assert(byte_offset_in_input + 2 <= points_data.size());
+  //    u16 result;
+  //    memcpy(&result, points_data.data() + byte_offset_in_input, sizeof(u16));
+  //    return result;
+  //  }
+
+  math::Vector<float, 4> lq_points(u32 qw) const {
+    assert(qw >= 50);
+    qw -= 50;
+    assert((qw * 16) + 16 <= points_data.size());
+    math::Vector<float, 4> result;
+    memcpy(result.data(), points_data.data() + (qw * 16), 16);
     return result;
   }
+
+  math::Vector<float, 4> lq_points_allow_past_end(u32 qw) const {
+    assert(qw >= 50);
+    qw -= 50;
+    if ((qw * 16) + 16 <= points_data.size()) {
+      math::Vector<float, 4> result;
+      memcpy(result.data(), points_data.data() + (qw * 16), 16);
+      return result;
+    } else {
+      return math::Vector4f(-1, -1, -1, -1);
+    }
+  }
+
+  void sq_points(u32 qw, const math::Vector4f& data) {
+    assert(qw >= 50);
+    qw -= 50;
+    assert((qw * 16) + 16 <= points_data.size());
+    memcpy(points_data.data() + (qw * 16), data.data(), 16);
+  }
+
+  u16 ilw_other_gif(u32 qw, u32 offset) const {
+    // unpacked with v8.
+    int qwi = qw;
+    qwi -= (adgifs.size() * 5);
+    assert(qwi >= 0);
+    return other_gif_data.at(qwi * 4 + offset);
+  }
+
+  struct ProgramInfo {
+    std::vector<u16> adgif_offset_in_gif_buf_qw;
+    std::vector<StrGifInfo> str_gifs;
+    u16 skip_bp2 = 0;
+    u16 skip_ips = 0;
+    u16 tgt_bp1_ptr = 0;
+    u16 tgt_bp2_ptr = 0;
+    u16 tgt_ip1_ptr = 0;
+    u16 tgt_ip2_ptr = 0;
+    u16 kick_addr = 0;
+    u16 clr_ptr = 0;
+    u16 point_ptr = 0;
+    u16 misc_x = 0;  // at 971's x.
+    math::Vector4f gifbufs;
+    math::Vector4f extra;
+  } prog_info;
 };
 
 struct TieProtoInfo {
@@ -342,6 +408,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         assert(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
         assert(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // todo: what does this mean
         frag_info.has_magic_tex0_bit = ra_tex0_val == 0x800000000;
+        memcpy(&adgif.first_w, &gif_data.at(16 * (tex_idx * 5 + 0) + 12), 4);
 
         u8 ra_tex1 = gif_data.at(16 * (tex_idx * 5 + 1) + 8);
         u64 ra_tex1_val;
@@ -360,6 +427,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         auto tex = tdb.textures.find(tex_combo);
         assert(tex != tdb.textures.end());
         adgif.combo_tex = tex_combo;
+        memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
 
         if (ra_tex0_val == 0x800000000) {
           fmt::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
@@ -367,6 +435,8 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
 
         u8 ra_mip = gif_data.at(16 * (tex_idx * 5 + 2) + 8);
         assert(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
+        memcpy(&adgif.third_w, &gif_data.at(16 * (tex_idx * 5 + 2) + 12), 4);
+
         // who cares about the value
 
         u8 ra_clamp = gif_data.at(16 * (tex_idx * 5 + 3) + 8);
@@ -388,7 +458,21 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
       memcpy(frag_info.other_gif_data.data(),
              proto.geometry[GEOM_IDX].tie_fragments[frag_idx].gif_data.data() + (16 * tex_qwc),
              16 * other_qwc);
-      frag_info.points_data = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].point_ref;
+
+      const auto& pr = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].point_ref;
+      frag_info.points_data.resize(pr.size() * 2);
+      for (int p = 0; p < pr.size() / 2; p++) {
+        s16 v;
+        memcpy(&v, pr.data() + (2 * p), 2);
+        s32 vv = v;
+        memcpy(frag_info.points_data.data() + (p * 4), &vv, 4);
+      }
+
+      // just for debug
+      for (int i = 0; i < 4; i++) {
+        frag_info.point_sizes.push_back(proto.geometry[i].tie_fragments[frag_idx].point_ref.size());
+      }
+
       info.frags.push_back(std::move(frag_info));
     }
   }
@@ -450,13 +534,46 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
 //   973 atest-tra
 //   974 atest-def
 
-void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
+math::Vector4f itof0(const math::Vector4f& vec) {
+  math::Vector4f result;
+  for (int i = 0; i < 4; i++) {
+    s32 val;
+    memcpy(&val, vec.data() + i, 4);
+    result[i] = val;
+  }
+  return result;
+}
+
+math::Vector4f itof12xyz_0w(const math::Vector4f& vec) {
+  math::Vector4f result;
+  for (int i = 0; i < 4; i++) {
+    s32 val;
+    memcpy(&val, vec.data() + i, 4);
+    result[i] = val;
+  }
+  result.x() /= 4096.f;
+  result.y() /= 4096.f;
+  result.z() /= 4096.f;
+  return result;
+}
+
+math::Vector4f muli64_xyz(const math::Vector4f& vec) {
+  math::Vector4f result = vec;
+  result.x() *= 64.f;
+  result.y() *= 64.f;
+  result.z() *= 64.f;
+  return result;
+}
+
+void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
   using math::Vector4f;
 
   // our convention here is to use the lower buffer for everything double buffered.
 
   // because double buffering was too easy, the xgkick output buffer is triple buffered!
-  // it looks like each fragment gets to use 2 of the 3 buffers.
+  // the normal double buffering approach would not allow one prototype to be in setup
+  // while the second is being kicked. Each prototype gets two gif bufs and the third gif buf
+  // is used to xgkick whatever is left over from the previous prototype.
   float gifbuf_start = 8388894.f;   // 0x4b00011e. The 0x11e in the mantissa is 286.
   float gifbuf_middle = 8389078.f;  // 0x4b0001d6. The 0x1d6 in the mantissa is 470.
   float gifbuf_end = 8389262.f;     // 0x4b00028e. The 0x28e in the mantissa is 654.
@@ -469,40 +586,54 @@ void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
   u16 misc_x = 0;
   u16 misc_y = 1;
 
-  for (const auto& proto : protos) {
+  // First, we will emulate the program that runs after model uploads. (L1, imm = 6)
+  // it runs once per fragment
+  for (auto& proto : protos) {
     fmt::print("TIE for proto: {}\n", proto.name);
     fmt::print("proto has {} frags\n", proto.frags.size());
 
+    // loop over fragments in this proto
     for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
-      const auto& frag = proto.frags[frag_idx];
+      auto& frag = proto.frags[frag_idx];
       fmt::print("----frag {} with {} adgifs, {} bytes of extra\n", frag_idx, frag.adgifs.size(),
                  frag.other_gif_data.size());
 
-      // the starting address of each adgif data group.
-      std::vector<u16> adgif_offset_in_gif_buf_qw;
+      // this basically sets up some templates in memory.
+      // we're going to track the memory addresses of where certain tags are placed.
 
+      // there are 6qw gif packets that do an adgif-shader upload.
+      // this vector will store the location of these adgif shaders, relative to the start
+      // of the gif output buffer being used.
+
+      // this starts off pointing to 0, which is the adgif shaders for this fragment (input data)
       u16 vi_point_ptr = 0;
 
+      // this fiddles with the triple buffering magic for gif bufs
       // todo: figure out the trick and just use a fixed addr.
       vf_gifbufs.z() = vf_extra.z() - vf_gifbufs.x();
       vf_gifbufs.x() = vf_extra.x() - vf_gifbufs.x();
 
       //    L1:
       //    lq.xyz vf01, 966(vi00)                |  nop    vf01 = adgif header.
-      //    ilwr.w vi_tgt_bp1_ptr, vi_point_ptr   |  nop
-      u16 vi_tgt_bp1_ptr = frag.ilw(vi_point_ptr, 3);
-      fmt::print("vi_tgt_bp1_ptr: {}\n", vi_tgt_bp1_ptr);
+      //    ilwr.w vi04, vi_point_ptr   |  nop
+      // some integers are hidden in the upper 32-bits of the adgif data.
+      // the first one has the offset in the gif buffer.
+      // we expect this to be 0 for the first one - we should start with adgif shaders always.
+      u16 vi04 = frag.adgifs.at(0).first_w;
+      assert(vi04 == 0);
 
       //    ilw.w vi_ind, 1(vi_point_ptr)         |  nop
-      u16 vi_ind = frag.ilw(vi_point_ptr + 1, 3);
-      fmt::print("vi_ind: {}\n", vi_ind);
-      assert(vi_ind == frag.adgifs.size());  // this should loop over adgifs
+      // the next hidden integer is the number of adgif shaders used in this fragment.
+      // we already know this, so check it.
+      u16 vi_ind = frag.adgifs.at(0).second_w;
+      assert(vi_ind == frag.adgifs.size());
 
       //    mtir vi06, vf_gifbufs.y               |  nop
+      // vi06 will be one of our gifbufs we can use.
       u16 vi06;
       memcpy(&vi06, &vf_gifbufs.y(), sizeof(u16));
       fmt::print("vi06: {}\n", vi06);
-      assert(vi06 == 470 || vi06 == 286 || vi06 == 470);  // should be one of the three gifbufs.
+      assert(vi06 == 470 || vi06 == 286 || vi06 == 654);  // should be one of the three gifbufs.
 
       //    lqi.xyzw vf02, vi_point_ptr        |  suby.xz vf_gifbufs, vf_gifbufs, vf_gifbufs
       //    lqi.xyzw vf03, vi_point_ptr        |  nop
@@ -512,12 +643,14 @@ void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
       //    lqi.xyzw vf06, vi_point_ptr        |  subw.w vf01, vf01, vf01
 
       // loads the adgif data into vf02 -> vf06
-      // sets upper 32 bits of adgif header to 0 (should have already been this????)
+      // the subw.w is to clear out the secret integer (I think the gs ignores this anyway)
       vf_gifbufs.x() -= vf_gifbufs.y();
       vf_gifbufs.z() -= vf_gifbufs.y();
+      // and vi05 is our other buffer.
       u16 vi05;
       memcpy(&vi05, &vf_gifbufs.x(), sizeof(u16));
       fmt::print("vi05: {}\n", vi05);
+      // check that we understand the buffer rotation.
       if (vi06 == 470) {
         assert(vi05 == 286);
       } else if (vi06 == 286) {
@@ -527,20 +660,26 @@ void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
       }
       vi_point_ptr += 5;
 
+      // this loop copies the adgifs to the gif buf at the appropriate address.
+      // Note: the final iteration through the loop does a load that's past the end of the
+      // adgif array, and vf02 is the first qw of the "extra gif data"
+      u32 adgif_load_idx = 1;
     adgif_setup_loop_top:
       //    L2:
-      //    iadd vi03, vi_tgt_bp1_ptr, vi05                |  nop
-      u16 vi03 = vi_tgt_bp1_ptr + vi05;
+      //    iadd vi03, vi04, vi05                |  nop
+      // vi04 is the adgif offset, vi05 is the buffer.
+      u16 vi03 = vi04 + vi05;
 
-      //    iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi06      |  nop
-      vi_tgt_bp1_ptr += vi06;
+      //    iadd vi04, vi04, vi06      |  nop
+      // set vi04 to the offset for the adgif in the second buffer.
+      vi04 += vi06;
 
       //    iaddi vi_ind, vi_ind, -0x1     |  nop
-      vi_ind--;
+      vi_ind--;  // decrement remaining adgifs
 
-      // store adgifs in one buffer
-      adgif_offset_in_gif_buf_qw.push_back(vi03 - vi05);
-      fmt::print("adgifs at offset {}\n", adgif_offset_in_gif_buf_qw.back());
+      // store adgifs in one buffer.
+      frag.prog_info.adgif_offset_in_gif_buf_qw.push_back(vi03 - vi05);
+      fmt::print("adgifs at offset {}\n", frag.prog_info.adgif_offset_in_gif_buf_qw.back());
       //    sqi.xyzw vf01, vi03        |  nop
       //    sqi.xyzw vf02, vi03        |  nop
       //    sqi.xyzw vf03, vi03        |  nop
@@ -550,16 +689,17 @@ void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
       vi03 += 5;
 
       // and the other buffer
-      //    sqi.xyzw vf01, vi_tgt_bp1_ptr        |  nop
-      //    sqi.xyzw vf02, vi_tgt_bp1_ptr        |  nop
-      //    sqi.xyzw vf03, vi_tgt_bp1_ptr        |  nop
-      //    sqi.xyzw vf04, vi_tgt_bp1_ptr        |  nop
-      //    sqi.xyzw vf05, vi_tgt_bp1_ptr        |  nop
-      //    sqi.xyzw vf06, vi_tgt_bp1_ptr        |  nop
-      vi_tgt_bp1_ptr += 5;
+      //    sqi.xyzw vf01, vi04        |  nop
+      //    sqi.xyzw vf02, vi04        |  nop
+      //    sqi.xyzw vf03, vi04        |  nop
+      //    sqi.xyzw vf04, vi04        |  nop
+      //    sqi.xyzw vf05, vi04        |  nop
+      //    sqi.xyzw vf06, vi04        |  nop
+      vi04 += 5;
 
-      //    ilwr.w vi_tgt_bp1_ptr, vi_point_ptr          |  nop
-      vi_tgt_bp1_ptr = frag.ilw(vi_point_ptr, 3);
+      //    ilwr.w vi04, vi_point_ptr          |  nop
+      // get the offset of the next adgif
+      // vi04 = frag.ilw_points(vi_point_ptr, 3);
 
       //    lqi.xyzw vf02, vi_point_ptr        |  nop
       //    lqi.xyzw vf03, vi_point_ptr        |  nop
@@ -569,124 +709,403 @@ void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
 
       //    ibgtz vi_ind, L2             |  nop
       if (((s16)vi_ind) > 0) {
+        // moved down
+        vi04 = frag.adgifs.at(adgif_load_idx++).first_w;
         goto adgif_setup_loop_top;
       }
       //    lqi.xyzw vf06, vi_point_ptr        |  nop (adgif load)
 
-
+      // Extra gif stuff
+      // this part builds the headers for the actual drawing packets.
+      // again, we do it in two parts. The extra gif data gives us offsets,
+      // The extra gif stuff is unpacked immediately after adgifs. Unpacked with v8 4.
+      // the above adgif loop will run off the end and vf02 will have the first byte in it's w.
+      assert(frag.other_gif_data.size() > 1);
       //    mtir vi_ind, vf02.w          |  nop
+      // vi_ind will contain the number of drawing packets for this fragment.
+      vi_ind = frag.other_gif_data.at(3);
+      u16 vf02_x = frag.other_gif_data.at(0);
+      u16 vf02_y = frag.other_gif_data.at(1);
+      u16 vf02_z = frag.other_gif_data.at(2);
+      u16 vf03_x = frag.other_gif_data.at(4);
+      u16 vf03_y = frag.other_gif_data.at(5);
+      u16 vf03_z = frag.other_gif_data.at(6);
+      u16 vf03_w = frag.other_gif_data.at(7);
+      u16 vf04_x = frag.other_gif_data.at(8);
+      u16 vf04_y = frag.other_gif_data.at(9);
+      u16 vf04_z = frag.other_gif_data.at(10);
+      u16 vf04_w = frag.other_gif_data.at(11);
+      assert(vi_ind >= frag.adgifs.size());  // at least 1 draw per shader.
+      assert(vi_ind < 1000);                 // check for insane value.
+      fmt::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
 
       //    iaddi vi_point_ptr, vi_point_ptr, -0x2     |  subw.w vf07, vf07, vf07
+      vi_point_ptr -= 2;
+      // vf07.w = 0
+
+      // setup for tag building loop.
+
       //    ilwr.x vi07, vi_point_ptr          |  nop
+      u16 vi07 = frag.ilw_other_gif(vi_point_ptr, 0);
+      // vi07 is the nloop/eop.
+
       //    ilwr.y vi08, vi_point_ptr          |  nop
-      //    ilwr.z vi_tgt_bp1_ptr, vi_point_ptr          |  nop
+      u16 vi08 = frag.ilw_other_gif(vi_point_ptr, 1);
+      // this can toggle to a different mode but I don't understand it yet.
+      assert(vi08 == 0);
+
+      //    ilwr.z vi04, vi_point_ptr          |  nop
+      vi04 = frag.ilw_other_gif(vi_point_ptr, 2);
+      // offset
+
+      fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind - 1);
+
       //    iaddi vi_ind, vi_ind, -0x1     |  nop
+      vi_ind--;
+
       //    iaddi vi_point_ptr, vi_point_ptr, 0x1      |  nop
+      vi_point_ptr++;
+
       //    ibeq vi00, vi_ind, L4        |  nop
       //    lq.xyz vf07, 967(vi08)     |  nop
-      //    L3:
-      //    iadd vi03, vi_tgt_bp1_ptr, vi05      |  nop
-      //    iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi06      |  nop
-      //    iaddi vi_ind, vi_ind, -0x1     |  nop
-      //    sq.xyzw vf07, 0(vi03)      |  nop
-      //    iswr.x vi07, vi03          |  nop
-      //    sq.xyzw vf07, 0(vi_tgt_bp1_ptr)      |  nop
-      //    iswr.x vi07, vi_tgt_bp1_ptr          |  nop
-      //    ilwr.x vi07, vi_point_ptr          |  nop
-      //    ilwr.y vi08, vi_point_ptr          |  nop
-      //    ilwr.z vi_tgt_bp1_ptr, vi_point_ptr          |  nop
-      //    iaddi vi_point_ptr, vi_point_ptr, 0x1      |  nop
-      //    ibne vi00, vi_ind, L3        |  nop
-      //    lq.xyz vf07, 967(vi08)     |  nop
+      u16 next_mode = vi08;
+
+      // todo: can we rely on a strgif from a previous fragment?
+      while (vi_ind) {
+        StrGifInfo info;
+        //    L3:
+        //    iadd vi03, vi04, vi05      |  nop
+        vi03 = vi04 + vi05;  // addr in one buf
+        //    iadd vi04, vi04, vi06      |  nop
+        vi04 = vi04 + vi06;  // addr in other buf
+        //    iaddi vi_ind, vi_ind, -0x1     |  nop
+        vi_ind--;  // dec remaining tag
+        //    sq.xyzw vf07, 0(vi03)      |  nop
+        info.address = vi03 - vi05;  // store the template. but this doesn't have size or anything.
+        fmt::print("strgif at {}, {}\n", vi03, vi04);
+
+        //    iswr.x vi07, vi03          |  nop
+        info.nloop = vi07 & 0x7fff;
+        info.eop = vi07 & 0x8000;
+        assert(!info.eop);  // seems like we handle this manually after the loop
+        info.mode = next_mode;
+
+        //    sq.xyzw vf07, 0(vi04)      |  nop
+        //    iswr.x vi07, vi04          |  nop
+        // and the same for the other tag in the other buffer
+
+        //    ilwr.x vi07, vi_point_ptr          |  nop
+        vi07 = frag.ilw_other_gif(vi_point_ptr, 0);
+
+        //    ilwr.y vi08, vi_point_ptr          |  nop
+        vi08 = frag.ilw_other_gif(vi_point_ptr, 1);
+
+        //    ilwr.z vi04, vi_point_ptr          |  nop
+        vi04 = frag.ilw_other_gif(vi_point_ptr, 2);
+
+        //    iaddi vi_point_ptr, vi_point_ptr, 0x1      |  nop
+        vi_point_ptr++;
+
+        //    ibne vi00, vi_ind, L3        |  nop
+        //    lq.xyz vf07, 967(vi08)     |  nop
+        next_mode = vi08;
+        fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind);
+        frag.prog_info.str_gifs.push_back(info);
+      }
+
+      // and now, the final tag, which ends the drawing packet!
       //    L4:
       //    iaddiu vi07, vi07, 0x4000  |  nop
+      vi07 += 0x8000;
       //    iaddiu vi07, vi07, 0x4000  |  nop
-      //    iadd vi03, vi_tgt_bp1_ptr, vi05      |  nop
-      //    iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi06      |  nop
+      StrGifInfo info;
+      info.eop = true;  // the 0x8000 sets the eop bit.
+
+      // compute addresses
+      //    iadd vi03, vi04, vi05      |  nop
+      vi03 = vi04 + vi05;
+      //    iadd vi04, vi04, vi06      |  nop
+      vi04 += vi06;
+
+      // store and set nloop/eop
       //    sq.xyzw vf07, 0(vi03)      |  nop
+      info.address = vi03 - vi05;
       //    iswr.x vi07, vi03          |  nop
-      //    sq.xyzw vf07, 0(vi_tgt_bp1_ptr)      |  nop
-      //    iswr.x vi07, vi_tgt_bp1_ptr          |  nop
+      info.nloop = vi07 & 0x7fff;
+      //    sq.xyzw vf07, 0(vi04)      |  nop
+      //    iswr.x vi07, vi04          |  nop
+      frag.prog_info.str_gifs.push_back(info);
+
       //    mtir vi06, vf04.x          |  nop
+      vi06 = vf04_x;
+      fmt::print("vi06: {}\n", vi06);  // length of points data.
+
       //    lq.xyzw vf05, 50(vi00)     |  nop
+      auto vf05 = frag.lq_points(50);
       //    lq.xyzw vf15, 51(vi00)     |  nop
+      auto vf15 = frag.lq_points(51);
       //    iaddiu vi05, vi00, 0x34    |  nop
+      vi05 = 0x34;  // points to after the two qw's we just loaded
       //    nop                        |  nop
       //    iaddiu vi06, vi06, 0x32    |  itof0.xyzw vf05, vf05
+      vi06 += 0x32;
+      vf05 = itof0(vf05);
+
       //    lqi.xyzw vf06, vi05        |  itof12.xyz vf15, vf15
+      auto vf06 = frag.lq_points(vi05);
+      vi05++;
+      vf15 = itof12xyz_0w(vf15);
+
       //    lqi.xyzw vf16, vi05        |  itof0.w vf15, vf15
+      auto vf16 = frag.lq_points(vi05);
+      vi05++;
+      // itof0 already done by previous
+
       //    64.0                       |  nop :i
       //    ibeq vi06, vi05, L6        |  muli.xyz vf05, vf05, I
+      vf05 = muli64_xyz(vf05);
       //    mtir vi07, vf04.y          |  itof0.xyzw vf06, vf06
+      vi07 = vf04_y;
+      fmt::print("bonus points: {}\n", vi07);
+      vf06 = itof0(vf06);
+
       //    L5:
+      Vector4f vf07;
+    top_of_points_loop:
+      // fmt::print("{}/{}\n", vi05, vi06);
       //    lqi.xyzw vf07, vi05        |  itof12.xyz vf16, vf16
+      vf07 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf16 = itof12xyz_0w(vf16);
+
       //    lqi.xyzw vf17, vi05        |  itof0.w vf16, vf16
+      auto vf17 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      // itof done above.
+
       //    sq.xyzw vf15, -5(vi05)     |  nop
+      frag.sq_points(vi05 - 5, vf15);
+
       //    ibeq vi06, vi05, L6        |  muli.xyz vf06, vf06, I
       //    sq.xyzw vf05, -6(vi05)     |  itof0.xyzw vf07, vf07
+      vf06 = muli64_xyz(vf06);
+      frag.sq_points(vi05 - 6, vf05);
+      vf07 = itof0(vf07);
+      if (vi05 == vi06) {
+        goto end_of_int_to_float_loop;
+      }
+
       //    lqi.xyzw vf05, vi05        |  itof12.xyz vf17, vf17
+      vf05 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf17 = itof12xyz_0w(vf17);
+
       //    lqi.xyzw vf15, vi05        |  itof0.w vf17, vf17
+      vf15 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      // itof doen above
+
       //    sq.xyzw vf16, -5(vi05)     |  nop
+      frag.sq_points(vi05 - 5, vf16);
       //    ibeq vi06, vi05, L6        |  muli.xyz vf07, vf07, I
+      vf07 = muli64_xyz(vf07);
       //    sq.xyzw vf06, -6(vi05)     |  itof0.xyzw vf05, vf05
+      frag.sq_points(vi05 - 6, vf06);
+      vf05 = itof0(vf05);
+      if (vi05 == vi06) {
+        goto end_of_int_to_float_loop;
+      }
+
       //    lqi.xyzw vf06, vi05        |  itof12.xyz vf15, vf15
+      vf06 = frag.lq_points_allow_past_end(vi05);
+      vf15 = itof12xyz_0w(vf15);
+      vi05++;
+
       //    lqi.xyzw vf16, vi05        |  itof0.w vf15, vf15
+      vf16 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      // itof done above
+
       //    sq.xyzw vf17, -5(vi05)     |  nop
+      frag.sq_points(vi05 - 5, vf17);
+
       //    ibne vi06, vi05, L5        |  muli.xyz vf05, vf05, I
       //    sq.xyzw vf07, -6(vi05)     |  itof0.xyzw vf06, vf06
+      vf05 = muli64_xyz(vf05);
+      frag.sq_points(vi05 - 6, vf07);
+      vf06 = itof0(vf06);
+      if (vi05 != vi06) {
+        goto top_of_points_loop;
+      }
+
+    end_of_int_to_float_loop:
+      // another points loop
+      Vector4f vf10;
+
       //    L6:
       //    lq.xyzw vf09, -4(vi05)     |  nop
+      auto vf09 = frag.lq_points_allow_past_end(vi05 - 4);
       //    lq.xyzw vf05, -3(vi05)     |  nop
+      vf05 = frag.lq_points_allow_past_end(vi05 - 3);
       //    lq.xyzw vf15, -2(vi05)     |  nop
+      vf15 = frag.lq_points_allow_past_end(vi05 - 2);
       //    iadd vi07, vi07, vi05      |  nop
+      vi07 += vi05;
       //    iaddi vi07, vi07, -0x4     |  nop
+      vi07 -= 4;
       //    iaddi vi05, vi05, -0x1     |  nop
+      vi05 -= 1;
       //    iaddi vi08, vi05, -0x3     |  nop
+      vi08 = vi05 - 3;
       //    ibeq vi07, vi05, L8        |  nop
       //    nop                        |  itof0.xyzw vf09, vf09
+      vf09 = itof0(vf09);
+      if (vi07 == vi05) {
+        goto end_of_points2;
+      }
+
       //    lqi.xyzw vf10, vi05        |  itof0.xyzw vf05, vf05
+      vf10 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf05 = itof0(vf05);
+
       //    lqi.xyzw vf06, vi05        |  itof0.w vf15, vf15
+      vf06 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf15 = itof12xyz_0w(vf15);
+
       //    lqi.xyzw vf16, vi05        |  itof12.xyz vf15, vf15
+      vf16 = frag.lq_points_allow_past_end(vi05);
+      vi05++;  // itof done above
+
       //    nop                        |  nop
       //    nop                        |  muli.xyz vf09, vf09, I
+      vf09 = muli64_xyz(vf09);
+
       //    ibeq vi07, vi05, L8        |  muli.xyz vf05, vf05, I
       //    nop                        |  itof0.xyzw vf10, vf10
+      vf05 = muli64_xyz(vf05);
+      vf10 = itof0(vf10);
+      if (vi05 == vi07) {
+        goto end_of_points2;
+      }
+
+      Vector4f vf11;
+    top_of_points2:
+      fmt::print("{} / {}\n", vi05, vi07);
       //    L7:
       //    lqi.xyzw vf11, vi05        |  itof0.xyzw vf06, vf06
+      vf11 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf06 = itof0(vf06);
       //    lqi.xyzw vf07, vi05        |  itof0.w vf16, vf16
+      vf07 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf16 = itof12xyz_0w(vf16);
+
       //    lqi.xyzw vf17, vi05        |  itof12.xyz vf16, vf16
+      vf17 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
       //    sqi.xyzw vf09, vi08        |  nop
+      frag.sq_points(vi08, vf09);
+      vi08++;
       //    sqi.xyzw vf05, vi08        |  muli.xyz vf10, vf10, I
+      frag.sq_points(vi08, vf05);
+      vi08++;
+      vf10 = muli64_xyz(vf10);
       //    ibeq vi07, vi05, L8        |  muli.xyz vf06, vf06, I
+      vf06 = muli64_xyz(vf06);
       //    sqi.xyzw vf15, vi08        |  itof0.xyzw vf11, vf11
+      frag.sq_points(vi08, vf15);
+      vi08++;
+      vf11 = itof0(vf11);
+      if (vi07 == vi05) {
+        goto end_of_points2;
+      }
+
       //    lqi.xyzw vf09, vi05        |  itof0.xyzw vf07, vf07
+      vf09 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf07 = itof0(vf07);
       //    lqi.xyzw vf05, vi05        |  itof0.w vf17, vf17
+      vf05 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf17 = itof12xyz_0w(vf17);
       //    lqi.xyzw vf15, vi05        |  itof12.xyz vf17, vf17
+      vf15 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+
       //    sqi.xyzw vf10, vi08        |  nop
+      frag.sq_points(vi08, vf10);
+      vi08++;
       //    sqi.xyzw vf06, vi08        |  muli.xyz vf11, vf11, I
+      frag.sq_points(vi08, vf06);
+      vi08++;
+      vf11 = muli64_xyz(vf11);
       //    ibeq vi07, vi05, L8        |  muli.xyz vf07, vf07, I
       //    sqi.xyzw vf16, vi08        |  itof0.xyzw vf09, vf09
+      vf07 = muli64_xyz(vf07);
+      frag.sq_points(vi08, vf16);
+      vi08++;
+      vf09 = itof0(vf09);
+      if (vi07 == vi05) {
+        goto end_of_points2;
+      }
+
       //    lqi.xyzw vf10, vi05        |  itof0.xyzw vf05, vf05
+      vf10 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf05 = itof0(vf05);
       //    lqi.xyzw vf06, vi05        |  itof0.w vf15, vf15
+      vf06 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+      vf15 = itof12xyz_0w(vf15);
       //    lqi.xyzw vf16, vi05        |  itof12.xyz vf15, vf15
+      vf16 = frag.lq_points_allow_past_end(vi05);
+      vi05++;
+
       //    sqi.xyzw vf11, vi08        |  nop
+      frag.sq_points(vi08, vf11);
+      vi08++;
       //    sqi.xyzw vf07, vi08        |  muli.xyz vf09, vf09, I
+      frag.sq_points(vi08, vf07);
+      vi08++;
+      vf09 = muli64_xyz(vf09);
       //    ibne vi07, vi05, L7        |  muli.xyz vf05, vf05, I
       //    sqi.xyzw vf17, vi08        |  itof0.xyzw vf10, vf10
+      vf05 = muli64_xyz(vf05);
+      frag.sq_points(vi08, vf17);
+      vi08++;
+      vf10 = itof0(vf10);
+      if (vi07 != vi05) {
+        goto top_of_points2;
+      }
+
+    end_of_points2:
       //    L8:
       //    mtir vi01, vf04.z          |  nop
+      u16 vi01 = vf04_z;
       //    mtir vi05, vf02.x          |  nop
+      frag.prog_info.skip_bp2 = vf02_x;
+
       //    mtir vi14, vf02.y          |  nop
-      //    mtir vi_tgt_bp1_ptr, vf03.x          |  nop
+      frag.prog_info.skip_ips = vf02_y;
+      //    mtir vi04, vf03.x          |  nop
+      frag.prog_info.tgt_bp1_ptr = vf03_x;
       //    mtir vi06, vf03.y          |  nop
+      frag.prog_info.tgt_bp2_ptr = vf03_y;
       //    mtir vi07, vf03.z          |  nop
+      frag.prog_info.tgt_ip1_ptr = vf03_z;
       //    mtir vi08, vf03.w          |  nop
+      frag.prog_info.tgt_ip2_ptr = vf03_w;
       //    isw.x vi01, 971(vi00)      |  nop
+      frag.prog_info.misc_x = vi01;
       //    iaddi vi15, vi00, 0x0      |  nop
+      frag.prog_info.kick_addr = 0;
       //    mtir vi03, vf_clrbuf.x          |  nop
+      frag.prog_info.clr_ptr = 198;  // just forcing it to one buffer for now
       //    iaddiu vi_point_ptr, vi00, 0x32    |  nop
-
-
+      frag.prog_info.point_ptr = 0x32;
 
       //    mr32.xyzw vf_gifbufs, vf_gifbufs       |  nop
       //    mfir.y vf_extra, vi00          |  nop :e
@@ -698,9 +1117,12 @@ void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
       vf_gifbufs.w() = temp;
       vf_extra.y() = 0;
       vf_extra.w() = 0;
+      frag.prog_info.gifbufs = vf_gifbufs;
+      frag.prog_info.extra = vf_extra;
+      // todo: maybe we need more.
     }
 
-    assert(false);
+    // assert(false);
   }
 }
 
@@ -710,6 +1132,16 @@ void debug_print_info(const std::vector<TieProtoInfo>& out) {
     fmt::print("  generic: {}\n", proto.uses_generic);
     fmt::print("  use count: {}\n", proto.instances.size());
     fmt::print("  stiffness: {}\n", proto.stiffness);
+  }
+}
+
+void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
+  for (auto& proto : protos) {
+    for (auto& instance : proto.instances) {
+      for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
+        // lets go
+      }
+    }
   }
 }
 
@@ -756,7 +1188,8 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data);
   debug_print_info(info);
 
-  emulate_tie_program(info);
+  emulate_tie_prototype_program(info);
+  emulate_tie_instance_program(info);
 
   // todo handle prototypes
   // todo handle vu1
