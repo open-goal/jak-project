@@ -182,14 +182,26 @@ struct TieInstanceInfo {
   std::vector<TieInstanceFragInfo> frags;  // per-instance per-fragment info
 };
 
-struct TieFrag {
+struct AdgifInfo {
   u32 combo_tex;
   u64 alpha_val;
   u64 clamp_val;
+};
+
+struct TieFrag {
   bool has_magic_tex0_bit = false;
+  std::vector<AdgifInfo> adgifs;
 
   std::vector<u8> other_gif_data;
   std::vector<u8> points_data;
+
+  u16 ilw(u32 qw, u32 offset) const {
+    u32 byte_offset = qw * 16 + offset * 4;
+    assert(byte_offset + 2 <= points_data.size());
+    u16 result;
+    memcpy(&result, points_data.data() + byte_offset, sizeof(u16));
+    return result;
+  }
 };
 
 struct TieProtoInfo {
@@ -322,6 +334,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
       TieFrag frag_info;
       for (int tex_idx = 0;
            tex_idx < proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).tex_count / 5; tex_idx++) {
+        AdgifInfo adgif;
         auto& gif_data = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].gif_data;
         u8 ra_tex0 = gif_data.at(16 * (tex_idx * 5 + 0) + 8);
         u64 ra_tex0_val;
@@ -346,7 +359,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u32 tex_combo = (((u32)tpage) << 16) | tidx;
         auto tex = tdb.textures.find(tex_combo);
         assert(tex != tdb.textures.end());
-        frag_info.combo_tex = tex_combo;
+        adgif.combo_tex = tex_combo;
 
         if (ra_tex0_val == 0x800000000) {
           fmt::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
@@ -360,13 +373,14 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         assert(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
         u64 clamp;
         memcpy(&clamp, &gif_data.at(16 * (tex_idx * 5 + 3)), 8);
-        frag_info.clamp_val = clamp;
+        adgif.clamp_val = clamp;
 
         u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
         assert(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
         u64 alpha;
         memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
-        frag_info.alpha_val = alpha;
+        adgif.alpha_val = alpha;
+        frag_info.adgifs.push_back(adgif);
       }
       int tex_qwc = proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).tex_count;
       int other_qwc = proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).gif_count;
@@ -374,11 +388,319 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
       memcpy(frag_info.other_gif_data.data(),
              proto.geometry[GEOM_IDX].tie_fragments[frag_idx].gif_data.data() + (16 * tex_qwc),
              16 * other_qwc);
-
-      // todo other tags
-
+      frag_info.points_data = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].point_ref;
       info.frags.push_back(std::move(frag_info));
     }
+  }
+}
+
+// upload-palette-0: just a flusha
+//   no data
+
+// upload-palette-1: stmod 1 (add row), unpack v4 (32 qw in, 128 qw out), imm = usn, 0x346
+//   colors (after time of day interpolation)
+//   NOTE: adds row
+
+// upload-model-0: stmod = 0, unpack-v4-32 imm = 0 (upload to 0?) (usn doesn't matter for v4-32)
+//   adgifs, size of adgifs.
+
+// upload-model-1:
+// mscal 4
+// unpack-v4-8 imm = right after adgifs, usn.
+// extra gif stuff
+
+// upload-model-2:
+// unpack-v4-16 imm = 32, signed.
+// points
+
+// upload-model-3
+// mscal 6
+// call the models!
+
+// upload-color-0
+// 6 qw of matrix plus flag stuff
+// to 198 (relative to TOP)
+
+// upload-color-1
+// to 204 unsigned (relative to TOP)
+
+// upload-color-2/ret
+// mscal 0
+
+// MEMORY MAP of TIE
+// 0 gif tags
+// extra gifs
+// 32 model
+// 198 instance matrix
+// 204 instance colors
+// 242 instance matrix again
+// 248 instance colors again
+// 286 gifbuf
+// 470 gifbuf again
+// 654 ??
+// 838 color palette
+// 966 tie-consts
+//   966 adgif
+//   967 strgid
+//   968 extra
+//   969 gifbufs
+//   970 clrbufs
+//   971 misc
+//   972 atestgif
+//   973 atest-tra
+//   974 atest-def
+
+void emulate_tie_program(const std::vector<TieProtoInfo>& protos) {
+  using math::Vector4f;
+
+  // our convention here is to use the lower buffer for everything double buffered.
+
+  // because double buffering was too easy, the xgkick output buffer is triple buffered!
+  // it looks like each fragment gets to use 2 of the 3 buffers.
+  float gifbuf_start = 8388894.f;   // 0x4b00011e. The 0x11e in the mantissa is 286.
+  float gifbuf_middle = 8389078.f;  // 0x4b0001d6. The 0x1d6 in the mantissa is 470.
+  float gifbuf_end = 8389262.f;     // 0x4b00028e. The 0x28e in the mantissa is 654.
+
+  Vector4f vf_gifbufs(gifbuf_end, gifbuf_middle, gifbuf_end, gifbuf_middle);
+
+  float gifbuf_sum = gifbuf_start + gifbuf_middle + gifbuf_end;
+  Vector4f vf_extra(gifbuf_sum, 0, gifbuf_sum, 0);
+
+  u16 misc_x = 0;
+  u16 misc_y = 1;
+
+  for (const auto& proto : protos) {
+    fmt::print("TIE for proto: {}\n", proto.name);
+    fmt::print("proto has {} frags\n", proto.frags.size());
+
+    for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
+      const auto& frag = proto.frags[frag_idx];
+      fmt::print("----frag {} with {} adgifs, {} bytes of extra\n", frag_idx, frag.adgifs.size(),
+                 frag.other_gif_data.size());
+
+      // the starting address of each adgif data group.
+      std::vector<u16> adgif_offset_in_gif_buf_qw;
+
+      u16 vi_point_ptr = 0;
+
+      // todo: figure out the trick and just use a fixed addr.
+      vf_gifbufs.z() = vf_extra.z() - vf_gifbufs.x();
+      vf_gifbufs.x() = vf_extra.x() - vf_gifbufs.x();
+
+      //    L1:
+      //    lq.xyz vf01, 966(vi00)                |  nop    vf01 = adgif header.
+      //    ilwr.w vi_tgt_bp1_ptr, vi_point_ptr   |  nop
+      u16 vi_tgt_bp1_ptr = frag.ilw(vi_point_ptr, 3);
+      fmt::print("vi_tgt_bp1_ptr: {}\n", vi_tgt_bp1_ptr);
+
+      //    ilw.w vi_ind, 1(vi_point_ptr)         |  nop
+      u16 vi_ind = frag.ilw(vi_point_ptr + 1, 3);
+      fmt::print("vi_ind: {}\n", vi_ind);
+      assert(vi_ind == frag.adgifs.size());  // this should loop over adgifs
+
+      //    mtir vi06, vf_gifbufs.y               |  nop
+      u16 vi06;
+      memcpy(&vi06, &vf_gifbufs.y(), sizeof(u16));
+      fmt::print("vi06: {}\n", vi06);
+      assert(vi06 == 470 || vi06 == 286 || vi06 == 470);  // should be one of the three gifbufs.
+
+      //    lqi.xyzw vf02, vi_point_ptr        |  suby.xz vf_gifbufs, vf_gifbufs, vf_gifbufs
+      //    lqi.xyzw vf03, vi_point_ptr        |  nop
+      //    lqi.xyzw vf04, vi_point_ptr        |  nop
+      //    lqi.xyzw vf05, vi_point_ptr        |  nop
+      //    mtir vi05, vf_gifbufs.x            |  nop
+      //    lqi.xyzw vf06, vi_point_ptr        |  subw.w vf01, vf01, vf01
+
+      // loads the adgif data into vf02 -> vf06
+      // sets upper 32 bits of adgif header to 0 (should have already been this????)
+      vf_gifbufs.x() -= vf_gifbufs.y();
+      vf_gifbufs.z() -= vf_gifbufs.y();
+      u16 vi05;
+      memcpy(&vi05, &vf_gifbufs.x(), sizeof(u16));
+      fmt::print("vi05: {}\n", vi05);
+      if (vi06 == 470) {
+        assert(vi05 == 286);
+      } else if (vi06 == 286) {
+        assert(vi05 == 654);
+      } else {
+        assert(vi05 == 470);
+      }
+      vi_point_ptr += 5;
+
+    adgif_setup_loop_top:
+      //    L2:
+      //    iadd vi03, vi_tgt_bp1_ptr, vi05                |  nop
+      u16 vi03 = vi_tgt_bp1_ptr + vi05;
+
+      //    iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi06      |  nop
+      vi_tgt_bp1_ptr += vi06;
+
+      //    iaddi vi_ind, vi_ind, -0x1     |  nop
+      vi_ind--;
+
+      // store adgifs in one buffer
+      adgif_offset_in_gif_buf_qw.push_back(vi03 - vi05);
+      fmt::print("adgifs at offset {}\n", adgif_offset_in_gif_buf_qw.back());
+      //    sqi.xyzw vf01, vi03        |  nop
+      //    sqi.xyzw vf02, vi03        |  nop
+      //    sqi.xyzw vf03, vi03        |  nop
+      //    sqi.xyzw vf04, vi03        |  nop
+      //    sqi.xyzw vf05, vi03        |  nop
+      //    sqi.xyzw vf06, vi03        |  nop
+      vi03 += 5;
+
+      // and the other buffer
+      //    sqi.xyzw vf01, vi_tgt_bp1_ptr        |  nop
+      //    sqi.xyzw vf02, vi_tgt_bp1_ptr        |  nop
+      //    sqi.xyzw vf03, vi_tgt_bp1_ptr        |  nop
+      //    sqi.xyzw vf04, vi_tgt_bp1_ptr        |  nop
+      //    sqi.xyzw vf05, vi_tgt_bp1_ptr        |  nop
+      //    sqi.xyzw vf06, vi_tgt_bp1_ptr        |  nop
+      vi_tgt_bp1_ptr += 5;
+
+      //    ilwr.w vi_tgt_bp1_ptr, vi_point_ptr          |  nop
+      vi_tgt_bp1_ptr = frag.ilw(vi_point_ptr, 3);
+
+      //    lqi.xyzw vf02, vi_point_ptr        |  nop
+      //    lqi.xyzw vf03, vi_point_ptr        |  nop
+      //    lqi.xyzw vf04, vi_point_ptr        |  nop
+      //    lqi.xyzw vf05, vi_point_ptr        |  nop
+      vi_point_ptr += 5;
+
+      //    ibgtz vi_ind, L2             |  nop
+      if (((s16)vi_ind) > 0) {
+        goto adgif_setup_loop_top;
+      }
+      //    lqi.xyzw vf06, vi_point_ptr        |  nop (adgif load)
+
+
+      //    mtir vi_ind, vf02.w          |  nop
+
+      //    iaddi vi_point_ptr, vi_point_ptr, -0x2     |  subw.w vf07, vf07, vf07
+      //    ilwr.x vi07, vi_point_ptr          |  nop
+      //    ilwr.y vi08, vi_point_ptr          |  nop
+      //    ilwr.z vi_tgt_bp1_ptr, vi_point_ptr          |  nop
+      //    iaddi vi_ind, vi_ind, -0x1     |  nop
+      //    iaddi vi_point_ptr, vi_point_ptr, 0x1      |  nop
+      //    ibeq vi00, vi_ind, L4        |  nop
+      //    lq.xyz vf07, 967(vi08)     |  nop
+      //    L3:
+      //    iadd vi03, vi_tgt_bp1_ptr, vi05      |  nop
+      //    iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi06      |  nop
+      //    iaddi vi_ind, vi_ind, -0x1     |  nop
+      //    sq.xyzw vf07, 0(vi03)      |  nop
+      //    iswr.x vi07, vi03          |  nop
+      //    sq.xyzw vf07, 0(vi_tgt_bp1_ptr)      |  nop
+      //    iswr.x vi07, vi_tgt_bp1_ptr          |  nop
+      //    ilwr.x vi07, vi_point_ptr          |  nop
+      //    ilwr.y vi08, vi_point_ptr          |  nop
+      //    ilwr.z vi_tgt_bp1_ptr, vi_point_ptr          |  nop
+      //    iaddi vi_point_ptr, vi_point_ptr, 0x1      |  nop
+      //    ibne vi00, vi_ind, L3        |  nop
+      //    lq.xyz vf07, 967(vi08)     |  nop
+      //    L4:
+      //    iaddiu vi07, vi07, 0x4000  |  nop
+      //    iaddiu vi07, vi07, 0x4000  |  nop
+      //    iadd vi03, vi_tgt_bp1_ptr, vi05      |  nop
+      //    iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi06      |  nop
+      //    sq.xyzw vf07, 0(vi03)      |  nop
+      //    iswr.x vi07, vi03          |  nop
+      //    sq.xyzw vf07, 0(vi_tgt_bp1_ptr)      |  nop
+      //    iswr.x vi07, vi_tgt_bp1_ptr          |  nop
+      //    mtir vi06, vf04.x          |  nop
+      //    lq.xyzw vf05, 50(vi00)     |  nop
+      //    lq.xyzw vf15, 51(vi00)     |  nop
+      //    iaddiu vi05, vi00, 0x34    |  nop
+      //    nop                        |  nop
+      //    iaddiu vi06, vi06, 0x32    |  itof0.xyzw vf05, vf05
+      //    lqi.xyzw vf06, vi05        |  itof12.xyz vf15, vf15
+      //    lqi.xyzw vf16, vi05        |  itof0.w vf15, vf15
+      //    64.0                       |  nop :i
+      //    ibeq vi06, vi05, L6        |  muli.xyz vf05, vf05, I
+      //    mtir vi07, vf04.y          |  itof0.xyzw vf06, vf06
+      //    L5:
+      //    lqi.xyzw vf07, vi05        |  itof12.xyz vf16, vf16
+      //    lqi.xyzw vf17, vi05        |  itof0.w vf16, vf16
+      //    sq.xyzw vf15, -5(vi05)     |  nop
+      //    ibeq vi06, vi05, L6        |  muli.xyz vf06, vf06, I
+      //    sq.xyzw vf05, -6(vi05)     |  itof0.xyzw vf07, vf07
+      //    lqi.xyzw vf05, vi05        |  itof12.xyz vf17, vf17
+      //    lqi.xyzw vf15, vi05        |  itof0.w vf17, vf17
+      //    sq.xyzw vf16, -5(vi05)     |  nop
+      //    ibeq vi06, vi05, L6        |  muli.xyz vf07, vf07, I
+      //    sq.xyzw vf06, -6(vi05)     |  itof0.xyzw vf05, vf05
+      //    lqi.xyzw vf06, vi05        |  itof12.xyz vf15, vf15
+      //    lqi.xyzw vf16, vi05        |  itof0.w vf15, vf15
+      //    sq.xyzw vf17, -5(vi05)     |  nop
+      //    ibne vi06, vi05, L5        |  muli.xyz vf05, vf05, I
+      //    sq.xyzw vf07, -6(vi05)     |  itof0.xyzw vf06, vf06
+      //    L6:
+      //    lq.xyzw vf09, -4(vi05)     |  nop
+      //    lq.xyzw vf05, -3(vi05)     |  nop
+      //    lq.xyzw vf15, -2(vi05)     |  nop
+      //    iadd vi07, vi07, vi05      |  nop
+      //    iaddi vi07, vi07, -0x4     |  nop
+      //    iaddi vi05, vi05, -0x1     |  nop
+      //    iaddi vi08, vi05, -0x3     |  nop
+      //    ibeq vi07, vi05, L8        |  nop
+      //    nop                        |  itof0.xyzw vf09, vf09
+      //    lqi.xyzw vf10, vi05        |  itof0.xyzw vf05, vf05
+      //    lqi.xyzw vf06, vi05        |  itof0.w vf15, vf15
+      //    lqi.xyzw vf16, vi05        |  itof12.xyz vf15, vf15
+      //    nop                        |  nop
+      //    nop                        |  muli.xyz vf09, vf09, I
+      //    ibeq vi07, vi05, L8        |  muli.xyz vf05, vf05, I
+      //    nop                        |  itof0.xyzw vf10, vf10
+      //    L7:
+      //    lqi.xyzw vf11, vi05        |  itof0.xyzw vf06, vf06
+      //    lqi.xyzw vf07, vi05        |  itof0.w vf16, vf16
+      //    lqi.xyzw vf17, vi05        |  itof12.xyz vf16, vf16
+      //    sqi.xyzw vf09, vi08        |  nop
+      //    sqi.xyzw vf05, vi08        |  muli.xyz vf10, vf10, I
+      //    ibeq vi07, vi05, L8        |  muli.xyz vf06, vf06, I
+      //    sqi.xyzw vf15, vi08        |  itof0.xyzw vf11, vf11
+      //    lqi.xyzw vf09, vi05        |  itof0.xyzw vf07, vf07
+      //    lqi.xyzw vf05, vi05        |  itof0.w vf17, vf17
+      //    lqi.xyzw vf15, vi05        |  itof12.xyz vf17, vf17
+      //    sqi.xyzw vf10, vi08        |  nop
+      //    sqi.xyzw vf06, vi08        |  muli.xyz vf11, vf11, I
+      //    ibeq vi07, vi05, L8        |  muli.xyz vf07, vf07, I
+      //    sqi.xyzw vf16, vi08        |  itof0.xyzw vf09, vf09
+      //    lqi.xyzw vf10, vi05        |  itof0.xyzw vf05, vf05
+      //    lqi.xyzw vf06, vi05        |  itof0.w vf15, vf15
+      //    lqi.xyzw vf16, vi05        |  itof12.xyz vf15, vf15
+      //    sqi.xyzw vf11, vi08        |  nop
+      //    sqi.xyzw vf07, vi08        |  muli.xyz vf09, vf09, I
+      //    ibne vi07, vi05, L7        |  muli.xyz vf05, vf05, I
+      //    sqi.xyzw vf17, vi08        |  itof0.xyzw vf10, vf10
+      //    L8:
+      //    mtir vi01, vf04.z          |  nop
+      //    mtir vi05, vf02.x          |  nop
+      //    mtir vi14, vf02.y          |  nop
+      //    mtir vi_tgt_bp1_ptr, vf03.x          |  nop
+      //    mtir vi06, vf03.y          |  nop
+      //    mtir vi07, vf03.z          |  nop
+      //    mtir vi08, vf03.w          |  nop
+      //    isw.x vi01, 971(vi00)      |  nop
+      //    iaddi vi15, vi00, 0x0      |  nop
+      //    mtir vi03, vf_clrbuf.x          |  nop
+      //    iaddiu vi_point_ptr, vi00, 0x32    |  nop
+
+
+
+      //    mr32.xyzw vf_gifbufs, vf_gifbufs       |  nop
+      //    mfir.y vf_extra, vi00          |  nop :e
+      //    mfir.w vf_extra, vi00          |  nop
+      float temp = vf_gifbufs.x();
+      vf_gifbufs.x() = vf_gifbufs.y();
+      vf_gifbufs.y() = vf_gifbufs.z();
+      vf_gifbufs.z() = vf_gifbufs.w();
+      vf_gifbufs.w() = temp;
+      vf_extra.y() = 0;
+      vf_extra.w() = 0;
+    }
+
+    assert(false);
   }
 }
 
@@ -433,6 +755,8 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   auto info = collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data);
   update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data);
   debug_print_info(info);
+
+  emulate_tie_program(info);
 
   // todo handle prototypes
   // todo handle vu1
