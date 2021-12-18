@@ -32,7 +32,8 @@ files_with_modifications = [
   "logic-target",
   "default-menu",
   "collide-shape",
-  "cam-states"
+  "cam-states",
+  "plant-boss"
 ]
 
 for file in files:
