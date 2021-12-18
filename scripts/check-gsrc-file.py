@@ -12,6 +12,7 @@ files = args.files.split(",")
 throw_error = False
 
 method_split_pattern = re.compile('t9-\d+\s\(method-of-object')
+function_split_pattern = re.compile('\(t9-\d+\)')
 missing_res_tag_pattern = re.compile('(sv-\d{2,} int)')
 decompiler_error_pattern = re.compile(';; ERROR')
 
@@ -35,6 +36,11 @@ for file in files:
       method_split_match = method_split_pattern.search(line)
       if method_split_match:
         print("method_split - {}:{}".format(file_path, lineno + 1))
+        throw_error = True
+        continue
+      function_split_match = function_split_pattern.search(line)
+      if function_split_match:
+        print("function_split - {}:{}".format(file_path, lineno + 1))
         throw_error = True
         continue
       missing_res_tag_match = missing_res_tag_pattern.search(line)

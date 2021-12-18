@@ -977,6 +977,7 @@
   
   (daxter-screaming-jump #x290)
   (daxter-wahoo-jump #x291)
+  (daxter-get-some #x292)
 
   (collectables-scout-flies-red-boxes #x295)
   (found-all-scout-flies #x296)
@@ -23666,6 +23667,10 @@
   (:methods
     (spawn-part (_type_) none 20)
     )
+  (:states
+    mistycannon-missile-idle
+    mistycannon-missile-explode
+    mistycannon-missile-in-water)
   )
 
 (deftype mistycannon-init-data (structure)
@@ -23710,9 +23715,15 @@
   (:methods
     (rotate! (_type_ float) none 20)
     (tilt! (_type_ float) none 21)
-    (dummy-22 (_type_ float float float) none 22)
+    (dummy-22 (_type_ float float float) none 22) ;; can return a #f is postbindinfo-ok is false
     (dummy-23 (_type_) none 23)
     )
+  (:states
+    mistycannon-idle
+    mistycannon-waiting-for-player
+    mistycannon-waiting-for-player-to-fuck-off
+    mistycannon-aim-at-player
+    mistycannon-player-control)
   )
 
 (deftype quadratic-solution (structure)
@@ -23739,12 +23750,12 @@
 
 ;; - Functions
 
-(define-extern mistycannon-prebind-function (function mistycannon object))
+(define-extern mistycannon-prebind-function (function mistycannon int mistycannon none))
 (define-extern mistycannon-postbind-function (function mistycannon none))
 (define-extern angle-tracker-init-range! (function angle-tracker float float float none))
 (define-extern mistycannon-pick-random-target-point (function float :behavior mistycannon))
 (define-extern angle-tracker-seek! (function angle-tracker float symbol))
-(define-extern mistycannon-do-aim (function vector vector none :behavior mistycannon))
+(define-extern mistycannon-do-aim (function vector vector none :behavior mistycannon)) ;; can return a #f is postbindinfo-ok is false
 (define-extern mistycannon-find-trajectory (function trajectory-params none :behavior mistycannon))
 (define-extern solve-missile-velocity (function trajectory-params float none))
 (define-extern spawn-mistycannon-missile (function process-tree vector vector float float float float entity none))
@@ -23753,22 +23764,14 @@
 (define-extern mistycannon-collision-reaction (function collide-shape-moving collide-shape-intersect none))
 (define-extern angle-tracker-get-value (function angle-tracker float))
 (define-extern angle-tracker-set-value (function angle-tracker float float))
-(define-extern solve-missile-tilt (function trajectory-params float float float float symbol))
-(define-extern mistycannon-find-best-solution (function quadratic-solution none :behavior mistycannon))
+(define-extern solve-missile-tilt (function quadratic-solution float float float float symbol))
+(define-extern mistycannon-find-best-solution (function quadratic-solution int :behavior mistycannon))
 
 ;; - Unknowns
 
 (define-extern *mistycannon-sg* skeleton-group)
-(define-extern mistycannon-idle (state mistycannon)) ;; unknown type
-(define-extern mistycannon-waiting-for-player (state mistycannon)) ;; unknown type
 (define-extern cam-mistycannon (state camera-slave)) ;; unknown type
-(define-extern mistycannon-waiting-for-player-to-fuck-off (state mistycannon)) ;; unknown type
-(define-extern mistycannon-aim-at-player (state mistycannon)) ;; unknown type
-(define-extern mistycannon-player-control (state mistycannon)) ;; unknown type
 (define-extern *mistycannon-missile-sg* skeleton-group)
-(define-extern mistycannon-missile-idle (state mistycannon-missile)) ;; unknown type
-(define-extern mistycannon-missile-explode (state mistycannon-missile)) ;; unknown type
-(define-extern mistycannon-missile-in-water (state mistycannon-missile)) ;; unknown type
 
 
 ;; ----------------------
@@ -31751,7 +31754,7 @@
 (declare-type kermit nav-enemy)
 (deftype joint-mod-tracker (basic)
   ((target-pos               vector :inline :offset-assert 16)
-   (target-pos-func          function          :offset-assert 32)
+   (target-pos-func          (function vector vector)          :offset-assert 32)
    (inv-forward-scale-factor float          :offset-assert 36)
    (forward-scale-control    float          :offset-assert 40)
    (forward-scale-max        float          :offset-assert 44)
@@ -31763,7 +31766,7 @@
   :method-count-assert 9
   :size-assert         #x3a
   :flag-assert         #x90000003a
-  (:methods (new (symbol type kermit int function int8 int8) _type_ 0))
+  (:methods (new (symbol type kermit int function int int) _type_ 0))
   )
 
 (deftype kermit-pulse (process-drawable)
@@ -31776,6 +31779,9 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    kermit-pulse-idle
+    kermit-pulse-impact)
   )
 
 (deftype kermit (nav-enemy)
@@ -31793,6 +31799,16 @@
   :size-assert         #x1bc
   :heap-base           #x150
   :flag-assert         #x4c015001bc
+  (:states
+    kermit-idle
+    kermit-chase
+    kermit-retract-tongue
+    kermit-tongue-stuck
+    kermit-patrol
+    kermit-attack
+    kermit-chase-new-position
+    kermit-give-up
+    kermit-notice)
   )
 
 ;; - Functions
@@ -31815,8 +31831,8 @@
 (define-extern kermit-long-hop (function symbol :behavior kermit))
 (define-extern kermit-short-hop (function symbol :behavior kermit))
 (define-extern kermit-pulse-init-by-other (function vector entity none :behavior kermit-pulse))
-(define-extern joint-mod-tracker-callback (function basic vector none)) ;; TODO - no idea what this basic is!
-(define-extern build-matrix-from-up-and-forward-axes! (function matrix none))
+(define-extern joint-mod-tracker-callback (function cspace transformq none))
+(define-extern build-matrix-from-up-and-forward-axes! (function matrix vector int vector int matrix))
 (define-extern kermit-get-head-dir (function kermit vector vector))
 (define-extern kermit-post (function none :behavior kermit))
 
@@ -31824,17 +31840,6 @@
 
 (define-extern *kermit-sg* skeleton-group)
 (define-extern *kermit-nav-enemy-info* nav-enemy-info)
-(define-extern kermit-idle (state kermit)) ;; unknown type
-(define-extern kermit-chase (state kermit)) ;; unknown type
-(define-extern kermit-retract-tongue (state kermit)) ;; unknown type
-(define-extern kermit-tongue-stuck (state kermit)) ;; unknown type
-(define-extern kermit-patrol (state kermit)) ;; unknown type
-(define-extern kermit-attack (state kermit)) ;; unknown type
-(define-extern kermit-chase-new-position (state kermit)) ;; unknown type
-(define-extern kermit-give-up (state kermit)) ;; unknown type
-(define-extern kermit-notice (state kermit)) ;; unknown type
-(define-extern kermit-pulse-idle (state kermit-pulse)) ;; unknown type
-(define-extern kermit-pulse-impact (state kermit-pulse)) ;; unknown type
 
 
 ;; ----------------------
@@ -35272,7 +35277,8 @@
   )
 
 (deftype snow-ball (process)
-  ((state-time             uint64    :offset-assert 112)
+  ((child-override (pointer snow-ball-roller) :score 100         :offset 20)
+   (state-time             uint64    :offset-assert 112)
    (last-path-picked       int32     :offset-assert 120)
    (same-path-picked-count int32     :offset-assert 124)
    (delay-til-next         int32     :offset-assert 128)
@@ -35283,8 +35289,8 @@
   :heap-base           #x20
   :flag-assert         #x100020008c
   (:methods
-    (dummy-14 (_type_ vector float int) none 14) ;; TODO - im pretty sure the 2nd arg is snow-ball-junction related!
-    (dummy-15 (_type_ vector int) none 15) ;; TODO - same type as above
+    (dummy-14 (_type_ (inline-array snow-ball-junction) float int) symbol 14)
+    (dummy-15 (_type_ (inline-array snow-ball-junction) int) none 15) ;; TODO - same type as above
     )
   )
 
