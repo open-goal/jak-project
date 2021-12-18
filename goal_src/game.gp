@@ -224,6 +224,18 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; engine Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the engine group is a group of files loaded as the game engine with no levels
+
+(group "engine"
+       "out/iso/0COMMON.TXT"
+       "out/iso/KERNEL.CGO"
+       "out/iso/GAME.CGO"
+       )
+
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; hub1 Group
 ;;;;;;;;;;;;;;;;;;;;;
 ;; the hub1 group is a group of files required to play the first hub (village1, jungle, beach, misty, training, firecanyon)
