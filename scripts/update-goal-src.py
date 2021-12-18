@@ -32,7 +32,8 @@ files_with_modifications = [
   "logic-target",
   "default-menu",
   "collide-shape",
-  "cam-states"
+  "cam-states",
+  "ogreboss"
 ]
 
 for file in files:
