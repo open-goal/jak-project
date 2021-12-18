@@ -284,18 +284,16 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
               "stack frame is too long.\n");
           break;
         }
-        if (!found) {
-          // attempt to backtrace anyway! if this fails then rip
-          u64 next_rip = 0;
-          if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-            fmt::print("Invalid return address encountered!\n");
-            break;
-          }
-
-          rip = next_rip;
-          rsp = rsp + 8;  // 8 for the call itself.
-          ++fails;
+        // attempt to backtrace anyway! if this fails then rip
+        u64 next_rip = 0;
+        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+          fmt::print("Invalid return address encountered!\n");
+          break;
         }
+
+        rip = next_rip;
+        rsp = rsp + 8;  // 8 for the call itself.
+        ++fails;
         // break;
       } else if (!frame.rip_info.func_debug) {
         fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);
