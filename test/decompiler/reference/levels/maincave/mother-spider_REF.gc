@@ -195,7 +195,7 @@
 (defstate wait-for-children (mother-spider)
   :code
   (behavior ()
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (until (not (-> self child))
       (suspend)
       )
@@ -391,8 +391,8 @@
      (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0)
      )
     (('death-end)
-     (let ((v0-0 (the-as object (logior (-> self draw status) 2))))
-       (set! (-> self draw status) (the-as uint v0-0))
+     (let ((v0-0 (the-as object (logior (-> self draw status) (draw-status drwf01)))))
+       (set! (-> self draw status) (the-as draw-status v0-0))
        v0-0
        )
      )
@@ -458,7 +458,7 @@
 ;; Used lq/sq
 (defmethod TODO-RENAME-24 mother-spider ((obj mother-spider))
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) 8))
+    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-0 (new 'stack-no-clear 'vector))
            (a2-0 (new 'stack-no-clear 'vector))
@@ -875,21 +875,19 @@
       )
     0
     (set! (-> self mode) (the-as uint 0))
-    (set! (-> self skel postbind-function) (the-as (function pointer int process-drawable none) 0))
+    (set! (-> self skel postbind-function) (the-as (function process-drawable none) 0))
     (clear-collide-with-as (-> self root-override))
     (shut-down! (-> self neck))
     (logior! (-> self mask) (process-mask actor-pause))
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (none)
     )
   :exit
   (behavior ()
     (restore-collide-with-as (-> self root-override))
-    (set! (-> self skel postbind-function)
-          (the-as (function pointer int process-drawable none) mother-spider-full-joint-callback)
-          )
+    (set! (-> self skel postbind-function) mother-spider-full-joint-callback)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (none)
     )
   :trans
@@ -1809,7 +1807,7 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (set! (-> self skel postbind-function) #f)
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (while (-> self child)
       (suspend)
       )
@@ -1905,7 +1903,7 @@
     (or
       (< (vector-vector-xz-distance (-> obj root-override trans) (math-camera-pos)) (-> obj deactivate-xz-dist))
       (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) 16))
+      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
       )
     )
   )
