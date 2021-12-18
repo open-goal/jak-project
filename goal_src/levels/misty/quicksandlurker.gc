@@ -5,25 +5,6 @@
 ;; name in dgo: quicksandlurker
 ;; dgos: L1, MIS
 
-(define-extern *quicksandlurker-sg* skeleton-group)
-
-(declare-type quicksandlurker process-drawable)
-(declare-type quicksandlurker-missile process-drawable)
-
-(define-extern quicksandlurker-idle (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-track (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-wait (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-popup (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-attack (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-hide (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-die (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-victory (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-missile-idle (state quicksandlurker-missile)) ;; unknown type
-(define-extern quicksandlurker-missile-impact (state quicksandlurker-missile)) ;; unknown type
-(define-extern quicksandlurker-yawn (state quicksandlurker)) ;; unknown type
-
-;; TODO - I skipped a function that was unused, and i moved the type defs to make the parent-override work
-
 ;; DECOMP BEGINS
 
 (set! (-> *part-group-id-table* 198) (new 'static 'sparticle-launch-group
@@ -366,8 +347,7 @@
       )
 
 (deftype quicksandlurker-missile (process-drawable)
-  ((parent-override (pointer quicksandlurker)  :offset  12)
-   (root-override   collide-shape-moving       :offset 112)
+  ((root-override collide-shape-moving  :offset 112)
    )
   :heap-base #x40
   :method-count-assert 20
@@ -411,7 +391,7 @@
                    )
                  )
                )
-         (send-event (ppointer->process (-> self parent-override)) 'victory)
+         (send-event (ppointer->process (-> self parent)) 'victory)
          (go quicksandlurker-missile-impact)
          )
        )
@@ -526,7 +506,9 @@
     (set! (-> self root-override) s5-0)
     )
   (set! (-> self root-override trans quad) (-> arg0 position quad))
-  (set! (-> self root-override quat vec quad) (-> (the-as quicksandlurker (-> self parent 0)) root quat vec quad))
+  (set! (-> self root-override quat vec quad)
+        (-> (the-as quicksandlurker (-> self parent 0)) root-override quat vec quad)
+        )
   (vector-identity! (-> self root-override scale))
   (set! (-> self root-override transv quad) (-> arg0 velocity quad))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 198) self))
