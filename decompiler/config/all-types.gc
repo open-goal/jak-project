@@ -10166,7 +10166,7 @@
   :flag-assert         #xc00000028
   (:methods
     (new (symbol type process-drawable pickup-type float) _type_ 0)
-    (drop-pickup (_type_ symbol process-tree fact-info int) none 9)
+    (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
     (reset! (_type_ symbol) none 10)
     (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
@@ -11305,7 +11305,7 @@
    (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
-   (root-prim             collide-shape-prim              :offset-assert 160)
+   (root-prim             collide-shape-prim              :offset-assert 160) ;; i think this can be any subtype of collide-shape-prim as well!
    (riders                collide-sticky-rider-group              :offset-assert 164)
    (backup-collide-as     uint64             :offset-assert 168)
    (backup-collide-with   uint64             :offset-assert 176)
@@ -15298,11 +15298,11 @@
     (set-current-poly! (_type_ nav-poly) none 14)
     (set-target-pos! (_type_ vector) none 15)
     (dummy-16 (_type_ vector) nav-poly 16) ; see - nav-enemy-test-point-in-nav-mesh?
-    (dummy-17 () none 17)
+    (dummy-17 (_type_ vector vector) none 17)
     (TODO-RENAME-18 (_type_ vector) nav-poly 18)
     (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
     (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (dummy-21 (_type_ vector) none 21)
     (dummy-22 () none 22)
     (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23) ;; TODO - unconfirmed
     (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
@@ -15316,7 +15316,7 @@
     (dummy-32 () none 32)
     (dummy-33 () none 33)
     (dummy-34 () none 34)
-    (dummy-35 () none 35)
+    (dummy-35 (_type_ vector vector vector vector float) none 35)
     )
   )
 
@@ -21206,7 +21206,7 @@
     (bounce-on ()  _type_ :state 23) ;; state
     (notice-blue (handle) _type_ :state 24)
     (params-init (_type_ entity) none 25)
-    (art-init (_type_) none 26)
+    (art-init (_type_) crate 26)
     (params-set! (_type_ symbol symbol) none 27)
     (dummy-28 (_type_) none 28)
     (smush-update! (_type_) none 29)
@@ -27651,7 +27651,7 @@
     (plant-boss-back-arms-hit symbol)
     (plant-boss-back-arms-die symbol)
     (plant-boss-arm-die symbol)
-    plant-boss-arm-hit
+    (plant-boss-arm-hit basic)
     plant-boss-back-arms-idle
     plant-boss-arm-idle
     )
@@ -27668,12 +27668,12 @@
   :size-assert         #xc0
   :flag-assert         #x14005000c0
   (:states
-    plant-boss-leaf-idle
-    plant-boss-leaf-die
+    (plant-boss-leaf-idle symbol)
+    (plant-boss-leaf-die basic)
     (plant-boss-leaf-open-idle symbol)
     plant-boss-leaf-close
     plant-boss-leaf-bounce
-    plant-boss-leaf-open
+    (plant-boss-leaf-open symbol)
     )
   )
 
@@ -27704,9 +27704,9 @@
   :size-assert         #x124
   :flag-assert         #x1400c00124
   (:states
-    plant-boss-root-die
+    (plant-boss-root-die symbol)
     (plant-boss-vine-die symbol)
-    plant-boss-vine-hit
+    (plant-boss-vine-hit basic)
     plant-boss-eat
     plant-boss-vine-idle
     plant-boss-root-idle
@@ -32301,6 +32301,8 @@
   :size-assert         #xf0
   :heap-base           #x80
   :flag-assert         #x14008000f0
+  (:states
+    (mother-spider-leg-flying))
   )
 
 (deftype mother-spider-thread (structure)
@@ -32403,8 +32405,21 @@
     (spawn-child (_type_ vector vector symbol) int 30)
     (is-player-stuck? (_type_) symbol 31)
     )
+  (:states
+    (mother-spider-die-wait-for-children)
+    (mother-spider-idle)
+    (mother-spider-hit-while-birthing)
+    (mother-spider-birthing)
+    (mother-spider-traveling uint)
+    (mother-spider-birth-baby)
+    (mother-spider-tracking)
+    (mother-spider-hit-while-tracking)
+    (mother-spider-spit)
+    (mother-spider-stop-traveling)
+    (mother-spider-die-from-uppercut)
+    (mother-spider-die)
+    (wait-for-children))
   )
-
 
 ;; ----------------------
 ;; File - mother-spider-egg
@@ -32434,6 +32449,13 @@
     (dummy-20 (_type_) none 20)
     (draw-egg-shadow (_type_ vector symbol) symbol 21)
     )
+  (:states
+    (mother-spider-egg-falling)
+    (mother-spider-egg-die-exit)
+    (mother-spider-egg-hatch)
+    (mother-spider-egg-die)
+    (mother-spider-egg-on-ground)
+    (mother-spider-egg-die-while-falling))
   )
 
 ;; - Functions
@@ -32444,12 +32466,6 @@
 
 (define-extern *mother-spider-egg-unbroken-sg* skeleton-group)
 (define-extern *mother-spider-egg-broken-sg* skeleton-group)
-(define-extern mother-spider-egg-falling (state mother-spider-egg)) ;; unknown type
-(define-extern mother-spider-egg-die-exit (state mother-spider-egg)) ;; unknown type
-(define-extern mother-spider-egg-hatch (state mother-spider-egg)) ;; unknown type
-(define-extern mother-spider-egg-die (state mother-spider-egg)) ;; unknown type
-(define-extern mother-spider-egg-on-ground (state mother-spider-egg)) ;; unknown type
-(define-extern mother-spider-egg-die-while-falling (state mother-spider-egg)) ;; unknown type
 
 
 ;; ----------------------
@@ -32492,23 +32508,9 @@
 ;; - Unknowns
 
 (define-extern *mother-spider-sg* skeleton-group)
-(define-extern mother-spider-die-wait-for-children (state mother-spider)) ;; unknown type
-(define-extern mother-spider-idle (state mother-spider)) ;; unknown type
 (define-extern *mother-spider-threads* (inline-array mother-spider-thread)) ;; unknown type
 (define-extern *mother-spider-leg-infos* (inline-array mother-spider-leg-info)) ;; unknown type
-(define-extern mother-spider-hit-while-birthing (state mother-spider)) ;; unknown type
-(define-extern mother-spider-birthing (state mother-spider)) ;; unknown type
-(define-extern mother-spider-traveling (state uint mother-spider)) ;; unknown type
-(define-extern mother-spider-birth-baby (state mother-spider)) ;; unknown type
-(define-extern mother-spider-tracking (state mother-spider)) ;; unknown type
-(define-extern mother-spider-hit-while-tracking (state mother-spider)) ;; unknown type
-(define-extern mother-spider-spit (state mother-spider)) ;; unknown type
-(define-extern mother-spider-stop-traveling (state mother-spider)) ;; unknown type
-(define-extern mother-spider-die-from-uppercut (state mother-spider)) ;; unknown type
-(define-extern mother-spider-die (state mother-spider)) ;; unknown type
 (define-extern *mother-spider-leg-sg* skeleton-group)
-(define-extern mother-spider-leg-flying (state mother-spider-leg)) ;; unknown type
-(define-extern wait-for-children (state mother-spider)) ;; unknown type
 
 
 ;; ----------------------
@@ -33582,7 +33584,7 @@
   :heap-base           #x40
   :flag-assert         #x14004000b0
   (:states
-    (bully-broken-cage-explode bully-broken-cage)
+    (bully-broken-cage-explode)
     )
   )
 

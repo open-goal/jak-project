@@ -87,7 +87,7 @@ nav-enemy-default-event-handler
           (vector-vector-distance (-> obj collide-info trans) (math-camera-pos))
           )
       (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
+      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) 16))
       )
     )
   )
@@ -214,7 +214,7 @@ nav-enemy-default-event-handler
       (vector-normalize! (-> self dir) 1.0)
       (vector+*! gp-0 s4-0 (-> self dir) (- (-> self spawn-distance)))
       )
-    ((method-of-object (-> self nav) dummy-17))
+    (dummy-17 (-> self nav) gp-0 gp-0)
     (set! (-> gp-0 y) (-> self y-min))
     (set! (-> self spawn-point quad) (-> gp-0 quad))
     )
@@ -240,7 +240,7 @@ nav-enemy-default-event-handler
     (none)
     )
   :exit
-  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
+  (behavior () (set! (-> self draw status) (logand -3 (-> self draw status))) (none))
   :trans
   (behavior ()
     (cond
@@ -264,7 +264,7 @@ nav-enemy-default-event-handler
          (when (or
                  (and a0-4 (logtest? (-> a0-4 pat) 2))
                  (and
-                   (logtest? (-> self draw status) (draw-status drwf01))
+                   (logtest? (-> self draw status) 2)
                    (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
                    )
                  )
@@ -307,7 +307,7 @@ nav-enemy-default-event-handler
       (ja-post)
       (suspend)
       )
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) 2)
     (anim-loop)
     (none)
     )
@@ -491,7 +491,7 @@ nav-enemy-default-event-handler
         )
       )
     (sharkey-reset-position)
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) 2)
     (go-virtual nav-enemy-idle)
     (none)
     )
