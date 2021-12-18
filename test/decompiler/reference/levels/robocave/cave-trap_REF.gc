@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: cave-trap.gc
-;; name in dgo: cave-trap
-;; dgos: L1, ROB
-
-(declare-type spider-egg process-drawable)
-
-;; DECOMP BEGINS
-
+;; definition of type cave-trap
 (deftype cave-trap (process-drawable)
   ((root-override   collide-shape                :offset        112)
    (spider-count    int32                        :offset-assert 176)
@@ -31,7 +24,20 @@
     )
   )
 
+;; definition for method 3 of type cave-trap
+(defmethod inspect cave-trap ((obj cave-trap))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tspider-count: ~D~%" (-> obj spider-count))
+  (format #t "~T~Talt-actors: ~A~%" (-> obj alt-actors))
+  (format #t "~T~Tspawn-delay: ~D~%" (-> obj spawn-delay))
+  (format #t "~T~Tlast-spawn-time: ~D~%" (-> obj last-spawn-time))
+  (format #t "~T~Tdebug-targ-pos: #<vector @ #x~X>~%" (-> obj debug-targ-pos))
+  obj
+  )
 
+;; definition of type spider-vent
 (deftype spider-vent (process-drawable)
   ((last-spawn-time uint64  :offset-assert 176)
    )
@@ -44,7 +50,16 @@
     )
   )
 
+;; definition for method 3 of type spider-vent
+(defmethod inspect spider-vent ((obj spider-vent))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tlast-spawn-time: ~D~%" (-> obj last-spawn-time))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate spider-vent-idle (spider-vent)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -65,6 +80,8 @@
   (behavior () (logior! (-> self mask) (process-mask sleep-code)) (suspend) 0 (none))
   )
 
+;; definition for method 11 of type spider-vent
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! spider-vent ((obj spider-vent) (arg0 entity-actor))
   (set! (-> obj last-spawn-time) (the-as uint 0))
   (set! (-> obj root) (new 'process 'trsqv))
@@ -73,6 +90,7 @@
   (none)
   )
 
+;; definition for function cave-trap-default-event-handler
 (defbehavior cave-trap-default-event-handler cave-trap ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('untrigger)
@@ -91,6 +109,7 @@
     )
   )
 
+;; definition of type spawn-baby-spider-best
 (deftype spawn-baby-spider-best (structure)
   ((index int32  :offset-assert   0)
    (dist  float  :offset-assert   4)
@@ -100,7 +119,15 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type spawn-baby-spider-best
+(defmethod inspect spawn-baby-spider-best ((obj spawn-baby-spider-best))
+  (format #t "[~8x] ~A~%" obj 'spawn-baby-spider-best)
+  (format #t "~Tindex: ~D~%" (-> obj index))
+  (format #t "~Tdist: ~f~%" (-> obj dist))
+  obj
+  )
 
+;; definition of type spawn-baby-spider-work
 (deftype spawn-baby-spider-work (structure)
   ((best spawn-baby-spider-best 4 :inline :offset-assert   0)
    )
@@ -109,7 +136,15 @@
   :flag-assert         #x900000040
   )
 
+;; definition for method 3 of type spawn-baby-spider-work
+(defmethod inspect spawn-baby-spider-work ((obj spawn-baby-spider-work))
+  (format #t "[~8x] ~A~%" obj 'spawn-baby-spider-work)
+  (format #t "~Tbest[4] @ #x~X~%" (-> obj best))
+  obj
+  )
 
+;; definition for method 20 of type cave-trap
+;; Used lq/sq
 (defmethod TODO-RENAME-20 cave-trap ((obj cave-trap))
   (with-pp
     (set! (-> obj last-spawn-time) (the-as uint (-> *display* base-frame-counter)))
@@ -234,6 +269,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate cave-trap-idle (cave-trap)
   :event
   cave-trap-default-event-handler
@@ -267,6 +303,7 @@
   (behavior () (logior! (-> self mask) (process-mask sleep-code)) (suspend) 0 (none))
   )
 
+;; failed to figure out what this is:
 (defstate cave-trap-active (cave-trap)
   :event
   cave-trap-default-event-handler
@@ -304,6 +341,7 @@
   (behavior () (logior! (-> self mask) (process-mask sleep-code)) (suspend) 0 (none))
   )
 
+;; failed to figure out what this is:
 (defstate cave-trap-give-up (cave-trap)
   :event
   cave-trap-default-event-handler
@@ -311,6 +349,8 @@
   (behavior () (suspend) (go cave-trap-idle) (none))
   )
 
+;; definition for method 7 of type cave-trap
+;; INFO: Return type mismatch process-drawable vs cave-trap.
 (defmethod relocate cave-trap ((obj cave-trap) (arg0 int))
   (if (nonzero? (-> obj alt-actors))
       (&+! (-> obj alt-actors) arg0)
@@ -321,6 +361,8 @@
     )
   )
 
+;; definition for method 11 of type cave-trap
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! cave-trap ((obj cave-trap) (arg0 entity-actor))
   (set! (-> obj spider-count) 0)
   (set! (-> obj spawn-delay) (the-as uint 0))
@@ -351,7 +393,3 @@
   (go cave-trap-idle)
   (none)
   )
-
-
-
-
