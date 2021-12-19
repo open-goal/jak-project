@@ -1,32 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-flut.gc
-;; name in dgo: target-flut
-;; dgos: L1, SNO, SWA
-
-(define-extern target-flut-stance (state target)) ;; unknown type
-(define-extern target-flut-grab (state target)) ;; unknown type
-(define-extern target-flut-clone-anim (state handle target)) ;; unknown type
-(define-extern target-flut-get-off-hit-ground (state symbol target)) ;; unknown type
-(define-extern target-flut-get-off-jump (state handle target)) ;; unknown type
-(define-extern target-flut-death (state symbol target)) ;; unknown type
-(define-extern target-flut-hit-ground (state target)) ;; unknown type
-(define-extern target-flut-air-attack-hit-ground (state target)) ;; unknown type
-(define-extern target-flut-jump (state float float target)) ;; unknown type
-(define-extern target-flut-falling (state target)) ;; unknown type
-(define-extern target-flut-hit (state symbol attack-info target)) ;; unknown type
-(define-extern target-flut-walk (state target)) ;; unknown type
-(define-extern target-flut-air-attack (state float target)) ;; unknown type
-(define-extern target-flut-double-jump (state float float target)) ;; unknown type
-(define-extern target-flut-running-attack (state target)) ;; unknown type
-(define-extern target-flut-get-on (state handle target)) ;; unknown type
-(define-extern target-flut-get-off (state handle target)) ;; unknown type
-
-(define-extern target-flut-falling-anim-trans (function none :behavior target))
-
-;; DECOMP BEGINS
-
+;; definition of type flut-info
 (deftype flut-info (basic)
   ((entity        basic            :offset-assert   4)
    (flut-trans    vector   :inline :offset-assert  16)
@@ -40,7 +15,19 @@
   :flag-assert         #x900000048
   )
 
+;; definition for method 3 of type flut-info
+(defmethod inspect flut-info ((obj flut-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tentity: ~A~%" (-> obj entity))
+  (format #t "~Tflut-trans: ~`vector`P~%" (-> obj flut-trans))
+  (format #t "~Tflut-quat: ~`vector`P~%" (-> obj flut-quat))
+  (format #t "~Tflut-scale: ~`vector`P~%" (-> obj flut-scale))
+  (format #t "~Tstick-lock: ~A~%" (-> obj stick-lock))
+  (format #t "~Tflap-sound-id: ~D~%" (-> obj flap-sound-id))
+  obj
+  )
 
+;; definition of type flut-bank
 (deftype flut-bank (basic)
   ((jump-height-min        meters  :offset-assert   4)
    (jump-height-max        meters  :offset-assert   8)
@@ -54,7 +41,19 @@
   :flag-assert         #x900000020
   )
 
+;; definition for method 3 of type flut-bank
+(defmethod inspect flut-bank ((obj flut-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tjump-height-min: (meters ~m)~%" (-> obj jump-height-min))
+  (format #t "~Tjump-height-max: (meters ~m)~%" (-> obj jump-height-max))
+  (format #t "~Tdouble-jump-height-min: (meters ~m)~%" (-> obj double-jump-height-min))
+  (format #t "~Tdouble-jump-height-max: (meters ~m)~%" (-> obj double-jump-height-max))
+  (format #t "~Tair-attack-speed: (meters ~m)~%" (-> obj air-attack-speed))
+  (format #t "~Tground-timeout: ~D~%" (-> obj ground-timeout))
+  obj
+  )
 
+;; definition for symbol *FLUT-bank*, type flut-bank
 (define *FLUT-bank* (new 'static 'flut-bank
                       :jump-height-min (meters 5.0)
                       :jump-height-max (meters 7.0)
@@ -65,6 +64,7 @@
                       )
         )
 
+;; definition for symbol *flut-walk-mods*, type surface
 (define *flut-walk-mods* (new 'static 'surface
                            :name 'run
                            :turnv 54613.332
@@ -93,6 +93,7 @@
                            )
         )
 
+;; definition for symbol *flut-jump-mods*, type surface
 (define *flut-jump-mods* (new 'static 'surface
                            :name 'jump
                            :turnv 131072.0
@@ -122,6 +123,7 @@
                            )
         )
 
+;; definition for symbol *flut-double-jump-mods*, type surface
 (define *flut-double-jump-mods* (new 'static 'surface
                                   :name 'jump-double
                                   :turnv 131072.0
@@ -151,6 +153,7 @@
                                   )
         )
 
+;; definition for symbol *flut-run-attack-mods*, type surface
 (define *flut-run-attack-mods* (new 'static 'surface
                                  :name 'wheel-flip
                                  :tiltv 32768.0
@@ -175,6 +178,7 @@
                                  )
         )
 
+;; definition for symbol *flut-air-attack-mods*, type surface
 (define *flut-air-attack-mods* (new 'static 'surface
                                  :name 'flop
                                  :tiltv 32768.0
@@ -200,6 +204,9 @@
                                  )
         )
 
+;; definition for function target-flut-post-post
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior target-flut-post-post target ()
   (vector+! (-> self flut flut-trans) (-> self control trans) (-> self control unknown-vector12))
   (quaternion-copy! (the-as quaternion (-> self flut flut-quat)) (-> self control quat))
@@ -211,6 +218,8 @@
   (none)
   )
 
+;; definition for function target-flut-post
+;; INFO: Return type mismatch int vs none.
 (defbehavior target-flut-post target ()
   (target-post)
   (target-flut-post-post)
@@ -218,8 +227,10 @@
   (none)
   )
 
+;; definition for function target-flut-falling-anim-trans
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function target-flut-hit-ground-anim
 (defbehavior target-flut-hit-ground-anim target ()
   (cond
     ((= (if (> (-> self skel active-channels) 0)
@@ -327,6 +338,8 @@
     )
   )
 
+;; definition for function target-flut-standard-event-handler
+;; Used lq/sq
 (defbehavior target-flut-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (cond
     ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
@@ -405,6 +418,7 @@
     )
   )
 
+;; definition for function target-flut-dangerous-event-handler
 (defbehavior target-flut-dangerous-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touched)
@@ -438,6 +452,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-start (target)
   :event
   target-flut-standard-event-handler
@@ -592,6 +607,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-stance (target)
   :event
   target-flut-standard-event-handler
@@ -749,6 +765,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-walk (target)
   :event
   target-flut-standard-event-handler
@@ -975,6 +992,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-jump (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1209,6 +1227,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-double-jump (target)
   :event
   (-> target-flut-jump event)
@@ -1396,6 +1415,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-hit-ground (target)
   :event
   target-flut-standard-event-handler
@@ -1471,6 +1491,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-falling (target)
   :event
   (-> target-flut-jump event)
@@ -1568,6 +1589,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-running-attack (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1901,6 +1923,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-air-attack (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -2067,6 +2090,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-air-attack-hit-ground (target)
   :event
   target-flut-standard-event-handler
@@ -2159,6 +2183,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-hit (target)
   :event
   target-flut-standard-event-handler
@@ -2348,6 +2373,7 @@
   target-flut-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-death (target)
   :event
   (-> target-death event)
@@ -2472,6 +2498,7 @@
   target-no-stick-post
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-get-on (target)
   :event
   target-generic-event-handler
@@ -2570,6 +2597,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-get-off (target)
   :event
   target-generic-event-handler
@@ -2592,6 +2620,7 @@
   (behavior () (target-no-stick-post) (target-flut-post-post) (none))
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-get-off-jump (target)
   :event
   target-generic-event-handler
@@ -2700,6 +2729,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-get-off-hit-ground (target)
   :event
   target-standard-event-handler
@@ -2734,6 +2764,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-grab (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -2776,6 +2807,7 @@
   (behavior () (target-no-stick-post) (target-flut-post-post) (none))
   )
 
+;; failed to figure out what this is:
 (defstate target-flut-clone-anim (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
