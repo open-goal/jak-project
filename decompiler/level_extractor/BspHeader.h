@@ -168,6 +168,8 @@ struct TieFragment : public Drawable {
   std::vector<u8> gif_data;
   std::vector<u8> point_ref;
 
+  std::string debug_label_name;
+
   // todo, lots more
 };
 

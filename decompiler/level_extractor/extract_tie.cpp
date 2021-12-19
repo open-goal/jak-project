@@ -157,7 +157,22 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
 }
 
 struct TieInstanceFragInfo {
+  // the color index table uploaded to VU.
+  // this contains indices into the shared palette.
   std::vector<u8> color_indices;
+
+  math::Vector<u32, 4> lq_colors_ui(u32 qw) const {
+    // note: this includes the unpack
+    assert(qw >= 204);
+    qw -= 204;
+    qw *= 4;
+    assert(qw + 4 <= color_indices.size());
+    math::Vector<u32, 4> result;
+    for (int i = 0; i < 4; i++) {
+      result[i] = color_indices.at(qw + i);
+    }
+    return result;
+  }
 };
 
 struct TieInstanceInfo {
@@ -198,6 +213,15 @@ struct StrGifInfo {
   bool eop;
 };
 
+struct TieProtoVertex {
+  math::Vector<float, 3> pos;
+  math::Vector<float, 2> tex;
+  // NOTE: this is a double lookup.
+  // first you look up the index in the _instance_ color table
+  // then you look up the color in the _proto_'s interpolated color palette.
+  u32 color_index_index;
+};
+
 struct TieFrag {
   bool has_magic_tex0_bit = false;
   std::vector<AdgifInfo> adgifs;
@@ -205,6 +229,11 @@ struct TieFrag {
   std::vector<u8> other_gif_data;
   std::vector<u8> points_data;
   std::vector<u32> point_sizes;
+
+  u32 expected_dverts = 0;
+
+  // this contains vertices, key is the start of the actual xyzf/st/rgbaq data for it.
+  std::unordered_map<u32, TieProtoVertex> vertex_by_dest_addr;
 
   //  u16 ilw_points(u32 qw, u32 offset) const {
   //    // note: dividing by two because we use the v16 unpack.
@@ -275,6 +304,7 @@ struct TieProtoInfo {
   std::vector<TieInstanceInfo> instances;
   bool uses_generic = false;
   float stiffness = 0;
+  u32 generic_flag;
   std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;
   std::vector<TieFrag> frags;
 };
@@ -343,7 +373,7 @@ std::vector<TieProtoInfo> collect_instance_info(
       TieInstanceFragInfo frag_info;
       u32 num_color_qwc = proto.color_index_qwc.at(proto.index_start[GEOM_IDX] + frag_idx);
       // fmt::print("frag: {}, qwc: {}, off: {}\n", frag_idx, num_color_qwc, offset_bytes);
-      for (u32 i = 0; i < num_color_qwc / 4; i++) {
+      for (u32 i = 0; i < num_color_qwc * 4; i++) {
         for (u32 j = 0; j < 4; j++) {
           frag_info.color_indices.push_back(
               instance.color_indices.data->words_by_seg.at(instance.color_indices.seg)
@@ -352,6 +382,7 @@ std::vector<TieProtoInfo> collect_instance_info(
         }
       }
       info.frags.push_back(std::move(frag_info));
+      assert(info.frags.back().color_indices.size() > 0);
       offset_bytes += num_color_qwc * 16;
     }
 
@@ -388,6 +419,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     info.uses_generic = (proto.flags == 2);
     info.name = proto.name;
     info.stiffness = proto.stiffness;
+    info.generic_flag = proto.flags & 2;
 
     info.time_of_day_colors.resize(proto.time_of_day.height);
     for (int k = 0; k < (int)proto.time_of_day.height; k++) {
@@ -452,6 +484,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         adgif.alpha_val = alpha;
         frag_info.adgifs.push_back(adgif);
       }
+      frag_info.expected_dverts = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].num_dverts;
       int tex_qwc = proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).tex_count;
       int other_qwc = proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).gif_count;
       frag_info.other_gif_data.resize(16 * other_qwc);
@@ -460,13 +493,36 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
              16 * other_qwc);
 
       const auto& pr = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].point_ref;
-      frag_info.points_data.resize(pr.size() * 2);
-      for (int p = 0; p < pr.size() / 2; p++) {
-        s16 v;
-        memcpy(&v, pr.data() + (2 * p), 2);
-        s32 vv = v;
-        memcpy(frag_info.points_data.data() + (p * 4), &vv, 4);
+      int in_qw = pr.size() / 16;
+      int out_qw = in_qw * 2;
+      frag_info.points_data.resize(out_qw * 16);
+      {
+        // fmt::print("from {}\n",
+        // proto.geometry[GEOM_IDX].tie_fragments[frag_idx].debug_label_name);
+        const s16* in_ptr = (const s16*)pr.data();
+        s32* out_ptr = (s32*)frag_info.points_data.data();
+        for (int ii = 0; ii < out_qw * 4; ii++) {
+          out_ptr[ii] = in_ptr[ii];
+          //          if ((ii % 8) == 0) {
+          //            fmt::print("\n {:4d} : ", ii);
+          //          }
+          //          fmt::print("0x{:04x} ", (u16)in_ptr[ii]);
+        }
       }
+      //      for (int pp = 0; pp < 10; pp++) {
+      //        int offset = 16 * pp + 6;
+      //        s16 val;
+      //        memcpy(&val, pr.data() + offset, 2);
+      //        fmt::print("pp: {} {}\n", pp, val);
+      //      }
+      //      assert(false);
+      //      frag_info.points_data.resize(pr.size() * 2);
+      //      for (int p = 0; p < pr.size() / 2; p++) {
+      //        s16 v;
+      //        memcpy(&v, pr.data() + (2 * p), 2);
+      //        s32 vv = v;
+      //        memcpy(frag_info.points_data.data() + (p * 4), &vv, 4);
+      //      }
 
       // just for debug
       for (int i = 0; i < 4; i++) {
@@ -872,7 +928,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       //    L5:
       Vector4f vf07;
     top_of_points_loop:
-      // fmt::print("{}/{}\n", vi05, vi06);
+      fmt::print("{}/{}\n", vi05, vi06);
       //    lqi.xyzw vf07, vi05        |  itof12.xyz vf16, vf16
       vf07 = frag.lq_points_allow_past_end(vi05);
       vi05++;
@@ -1135,13 +1191,263 @@ void debug_print_info(const std::vector<TieProtoInfo>& out) {
   }
 }
 
+u16 float_to_u16(float f) {
+  u16 result;
+  memcpy(&result, &f, 2);
+  return result;
+}
+
 void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
   for (auto& proto : protos) {
-    for (auto& instance : proto.instances) {
-      for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
-        // lets go
+    //    bool first_instance = true;
+    //    for (auto& instance : proto.instances) {
+    for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
+      auto& frag = proto.frags.at(frag_idx);
+      // for these sections, see the TIE Instance VU Program Doc.
+      /////////////////////////////////////
+      // SETUP
+      /////////////////////////////////////
+      // note that setup also contains the warm-up for the pipelined Draw1 loop.
+      // we omit this here and do Draw1 as un-pipelined.
+
+      // this was set by the previous program that sets up this prototype frag
+      u16 clr_ptr = frag.prog_info.clr_ptr;
+      u16 tgt_bp1_ptr = frag.prog_info.tgt_bp1_ptr;
+      u16 tgt_bp2_ptr = frag.prog_info.tgt_bp2_ptr;
+      u16 tgt_ip1_ptr = frag.prog_info.tgt_ip1_ptr;
+      u16 tgt_ip2_ptr = frag.prog_info.tgt_ip2_ptr;
+      u16 skip_bp2 = frag.prog_info.skip_bp2;
+      u16 kick_addr = frag.prog_info.kick_addr;
+      u16 dest_ptr = 0;  // they never initialized this... seems like a bug
+
+      // lqi.xyzw vtx_0, vi_point_ptr        |  nop
+      // use hard-coded lower buffer for model data
+      u16 point_ptr = 0x32;
+      // lq.xyzw vf_inds, 6(vi_clr_ptr)      |  nop
+      // pipeline
+
+      // lq.xyzw vf_clr2, 3(vi_clr_ptr)      |  nop
+      // lq.xyzw vf_mtx0, 0(vi_clr_ptr)      |  nop
+      // lq.xyzw vf_mtx1, 1(vi_clr_ptr)      |  nop
+      // lq.xyzw vf_clr1, 2(vi_clr_ptr)      |  nop
+      // this is the matrix
+
+      // mtir vi_ind, vf_inds.x              |  nop
+      // pipeline
+
+      // lqi.xyzw vf_tex0, vi_point_ptr      |  mulaw.xyzw ACC, vf_clr2, vf00
+      // pipeline
+      // lq.xyzw vf_morph, 4(vi_clr_ptr)     |  maddax.xyzw ACC, vf_mtx0, vtx_0
+      // we're going to ignore the "morph" and use hi-res everywehere
+
+      // ilw.x vi01, 5(vi_clr_ptr)           |  madday.xyzw ACC, vf_mtx1, vtx_0
+      // the vi01 is unused here. (indicates if we're generic or not)
+
+      // lq.xyzw vf_clr0, 838(vi_ind)        |  maddz.xyzw vf_pos02, vf_clr1, vtx_0
+      // pipeline
+
+      // lqi.xyzw vf_vtx1, vi_point_ptr      |  nop
+      // pipeline
+
+      // lq.xyzw vf_res02, 5(vi_clr_ptr)     |  nop
+      // loading the flags and stuff, which we will ignore too
+
+      // iaddi vi_clr_ptr, vi_clr_ptr, 0x7   |  nop
+      u16 clr_ptr_base = clr_ptr;
+      clr_ptr += 6;  // it says 7, but we want to point to the first index data.
+
+      // mtir vi_ind, vf_inds.y              |  addx.w vf_res13, vf_res02, vf00 <- flags crap
+      // div Q, vf00.w, vf_pos02.w           |  mulaw.xyzw ACC, vf_clr2, vf00
+      // lqi.xyzw vf_tex1, vi_point_ptr      |  maddax.xyzw ACC, vf_mtx0, vf_vtx1
+      // mtir vi01, vf_gifbufs.x             |  madday.xyzw ACC, vf_mtx1, vf_vtx1
+      u16 vi01 = float_to_u16(frag.prog_info.gifbufs.x());
+
+      // lq.xyzw vf_mtx2, 838(vi_ind)        |  maddz.xyzw vf_pos13, vf_clr1, vf_vtx1
+
+      // isub vi01, vi01, vi_kick_addr       |  ftoi4.w vf_res02, vf_res02
+      vi01 -= kick_addr;
+
+      // iadd vi_tgt_bp1_ptr, vi_tgt_bp1_ptr, vi01   |  ftoi4.w vf_res13, vf_res13
+      tgt_bp1_ptr += vi01;
+      // iadd vi_tgt_bp2_ptr, vi_tgt_bp2_ptr, vi01   |  nop
+      tgt_bp2_ptr += vi01;
+
+      fmt::print("b tgts: {} {}\n", tgt_bp1_ptr, tgt_bp2_ptr);
+      // lqi.xyzw vf_vtx2, vi_point_ptr              |  mul.xyz vf_pos02, vf_pos02, Q
+      // div Q, vf00.w, vf_pos13.w                   |  mul.xyz vf_tex0, vf_tex0, Q
+      // mtir vi_ind, vf_inds.z                      |  addx.w vtx_0, vtx_0, vf_gifbufs
+      // lqi.xyzw vf_tex2, vi_point_ptr              |  mulaw.xyzw ACC, vf_clr2, vf00
+      // iadd vi_tgt_ip1_ptr, vi_tgt_ip1_ptr, vi01   |  maddax.xyzw ACC, vf_mtx0, vf_vtx2
+      // iadd vi_tgt_ip2_ptr, vi_tgt_ip2_ptr, vi01   |  madday.xyzw ACC, vf_mtx1, vf_vtx2
+      tgt_ip1_ptr += vi01;
+      tgt_ip2_ptr += vi01;
+      fmt::print("i tgts: {} {}\n", tgt_ip1_ptr, tgt_ip2_ptr);
+      // lq.xyzw vf_mtx3, 838(vi_ind)                |  ftoi4.xyz vf_res02, vf_pos02
+      // ibeq vi_tgt_bp1_ptr, vi_dest_ptr, L40       |  maddz.xyzw vf_pos02, vf_clr1, vf_vtx2
+      // iadd vi_kick_addr, vi_kick_addr, vi01       |  nop
+      kick_addr += vi01;
+      if (tgt_bp1_ptr == dest_ptr) {
+        fmt::print("DRAW FINISH 1 (no points)\n");
+        goto program_end;
       }
+
+      /////////////////////////////////////
+      // DRAW 1
+      /////////////////////////////////////
+      {
+        fmt::print("draw 1 with target: {}, frag with {} dvert\n", tgt_bp1_ptr,
+                   frag.expected_dverts);
+        int draw_1_count = 0;
+        while (dest_ptr != tgt_bp1_ptr) {
+          // there's 1 load of colors per 4x verts.
+          // (lqi.xyzw vf_inds, vi_clr_ptr         |  nop)
+          // these are different per instance, but index into a palette shared by all instances
+          // for the i-th point, we just load the i-th color index.
+
+          // This is reordered.
+          // A "T" means it is part of transformation and we leave it out.
+          // A number corresponds to the line below.
+
+          // (4) mtir vi_dest_ptr, vtx_0.w         |  nop
+          // (2) lqi.xyzw vi_vtx3, vi_point_ptr    |  (T) mul.xyz vf_pos13, vf_pos13, Q
+          // (T) div Q, vf00.w, vf_pos02.w         |  (T) mul.xyz vf_tex1, vf_tex1, Q
+          // (1) mtir vi_ind, vf_inds.w            |  (3) addx.w vf_vtx1, vf_vtx1, vf_gifbufs
+          // (5) lqi.xyzw vi_tex3, vi_point_ptr    |  (T) mulaw.xyzw ACC, vf_clr2, vf00
+          // (7) sq.xyzw vf_tex0, 0(vi_dest_ptr)   |  (T) maddax.xyzw ACC, vf_mtx0, vi_vtx3
+          // (7) sq.xyzw vf_clr0, 1(vi_dest_ptr)   |  (T) madday.xyzw ACC, vf_mtx1, vi_vtx3
+          // (6) lq.xyzw vi_clr3, 838(vi_ind)      |  (T) ftoi4.xyz vf_res13, vf_pos13
+          // ibeq vi_tgt_bp1_ptr, vi_dest_ptr, L13 |  (T) maddz.xyzw vf_pos13, vf_clr1, vi_vtx3
+          // (7) sq.xyzw vf_res02, 2(vi_dest_ptr)  |  nop
+
+          // 01 - grab the index for this vertex color
+          // we don't want to actually do the lookup here, just remember where we would have
+          // looked.
+          u32 clr_idx_idx = draw_1_count;
+
+          // 02 - load the floating point vertex values
+          auto vert_pos = frag.lq_points(point_ptr);
+          point_ptr++;
+
+          // 03 - do the weird gifbuf triple buffer with floats crap
+          float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
+
+          // 04 - now get the destination
+          dest_ptr = float_to_u16(vtx_w);
+
+          // 05 - load tex coords
+          auto tex_coord = frag.lq_points(point_ptr);
+          point_ptr++;
+
+          // 06 - actually do the color load in the palette. (skip)
+
+          // 07 - set vertex
+          TieProtoVertex vertex_info;
+          vertex_info.color_index_index = clr_idx_idx;
+          vertex_info.pos.x() = vert_pos.x();
+          vertex_info.pos.y() = vert_pos.y();
+          vertex_info.pos.z() = vert_pos.z();
+          vertex_info.tex.x() = tex_coord.x();
+          vertex_info.tex.y() = tex_coord.y();
+
+          bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
+          assert(inserted);
+
+          draw_1_count++;
+        }
+        fmt::print("draw1 did {} verts, skip bp2? {}\n", draw_1_count, skip_bp2);
+      }
+
+      if (skip_bp2) {
+        fmt::print("skip bp2 not yet implemented.\n");
+        assert(false);
+      } else {
+        // bp2 setup:
+        // The BP2 drawing is similar to BP1, but duplicate draws vertices.
+        int draw_2_count = 0;
+        while (dest_ptr != tgt_bp2_ptr) {
+          u32 clr_idx_idx = draw_2_count;
+          auto vert_pos = frag.lq_points(point_ptr);
+          point_ptr++;
+          float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
+          dest_ptr = float_to_u16(vtx_w);
+          auto tex_coord = frag.lq_points(point_ptr);
+          fmt::print("texw: [{}] {}\n", point_ptr, tex_coord.w());
+          point_ptr++;
+          float tex_w = tex_coord.w() + frag.prog_info.gifbufs.x();
+          u16 dest2_ptr = float_to_u16(tex_w);
+
+
+          TieProtoVertex vertex_info;
+          vertex_info.color_index_index = clr_idx_idx;
+          vertex_info.pos.x() = vert_pos.x();
+          vertex_info.pos.y() = vert_pos.y();
+          vertex_info.pos.z() = vert_pos.z();
+          vertex_info.tex.x() = tex_coord.x();
+          vertex_info.tex.y() = tex_coord.y();
+
+          fmt::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
+          bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
+          assert(inserted);
+
+          bool inserted2 = frag.vertex_by_dest_addr.insert({(u32)dest2_ptr, vertex_info}).second;
+          assert(inserted2);
+
+          draw_2_count++;
+        }
+
+
+        // ibne vi00, vi_skip_bp2, L24      |  mul.xyz vf_pos13, vf_pos13, Q
+        // lqi.xyzw vi_vtx3, vi_point_ptr   |  mul.xyz vf_tex1, vf_tex1, Q
+        // div Q, vf00.w, vf_pos02.w        |  addx.w vf_vtx1, vf_vtx1, vf_gifbufs
+        // mtir vi_ind, vf_inds.w           |  mulaw.xyzw ACC, vf_clr2, vf00
+        // lqi.xyzw vf_inds, vi_clr_ptr     |  nop
+        // sq.xyzw vf_tex0, 0(vi_dest_ptr)  |  addx.w vf_vtx2, vf_vtx2, vf_gifbufs
+        // sq.xyzw vf_clr0, 1(vi_dest_ptr)  |  maddax.xyzw ACC, vf_mtx0, vi_vtx3
+        // lqi.xyzw vi_tex3, vi_point_ptr   |  madday.xyzw ACC, vf_mtx1, vi_vtx3
+        // lq.xyzw vi_clr3, 838(vi_ind)     |  ftoi4.xyz vf_res13, vf_pos13
+        // lqi.xyzw vtx_0, vi_point_ptr     |  maddz.xyzw vf_pos13, vf_clr1, vi_vtx3
+        // sq.xyzw vf_res02, 2(vi_dest_ptr) |  mul.xyz vf_pos02, vf_pos02, Q
+        // mtir vi_dest_ptr, vf_vtx1.w      |  mul.xyz vf_tex2, vf_tex2, Q
+        // lqi.xyzw vf_tex0, vi_point_ptr   |  mulaw.xyzw ACC, vf_clr2, vf00
+        // mtir vi_ind, vf_inds.x           |  maddax.xyzw ACC, vf_mtx0, vtx_0
+        // nop                              |  madday.xyzw ACC, vf_mtx1, vtx_0
+        // div Q, vf00.w, vf_pos13.w        |  ftoi4.xyz vf_res02, vf_pos02
+        // sq.xyzw vf_tex1, 0(vi_dest_ptr)  |  maddz.xyzw vf_pos02, vf_clr1, vtx_0
+        // sq.xyzw vf_mtx2, 1(vi_dest_ptr)  |  nop
+        // sq.xyzw vf_res13, 2(vi_dest_ptr) |  nop
+        // mtir vi_dest_ptr, vf_vtx2.w      |  nop
+        // lq.xyzw vf_clr0, 838(vi_ind)     |  addx.w vi_vtx3, vi_vtx3, vf_gifbufs
+        // div Q, vf00.w, vf_pos02.w        |  mul.xyz vf_pos13, vf_pos13, Q
+        // sq.xyzw vf_tex2, 0(vi_dest_ptr)  |  mul.xyz vi_tex3, vi_tex3, Q
+        // sq.xyzw vf_mtx3, 1(vi_dest_ptr)  |  addx.w vi_tex3, vi_tex3, vf_gifbufs
+        // sq.xyzw vf_res02, 2(vi_dest_ptr) |  nop
+        // b L14                            |  ftoi4.xyz vf_res13, vf_pos13
+        // mtir vi_dest_ptr, vi_vtx3.w      |  nop
+
+        // bp2 chunk
+
+        // lqi.xyzw vf_vtx1, vi_point_ptr        |  nop
+        // mtir vi_ind, vf_inds.y              |  nop
+        // mtir vi13, vi_tex3.w          |  mulaw.xyzw ACC, vf_clr2, vf00
+        // sq.xyzw vi_tex3, 0(vi_dest_ptr)      |  addx.w vtx_0, vtx_0, vf_gifbufs
+        // sq.xyzw vi_clr3, 1(vi_dest_ptr)      |  maddax.xyzw ACC, vf_mtx0, vf_vtx1
+        // sq.xyzw vf_res13, 2(vi_dest_ptr)      |  madday.xyzw ACC, vf_mtx1, vf_vtx1
+        // lqi.xyzw vf_tex1, vi_point_ptr        |  maddz.xyzw vf_pos13, vf_clr1, vf_vtx1
+        // lq.xyzw vf_mtx2, 838(vi_ind)    |  mul.xyz vf_pos02, vf_pos02, Q
+        // sq.xyzw vi_tex3, 0(vi13)      |  mul.xyz vf_tex0, vf_tex0, Q
+        // sq.xyzw vi_clr3, 1(vi13)      |  addx.w vf_tex0, vf_tex0, vf_gifbufs
+        // sq.xyzw vf_res13, 2(vi13)      |  nop
+        // div Q, vf00.w, vf_pos13.w      |  nop
+        // ibeq vi_tgt_bp2_ptr, vi_dest_ptr, L18       |  ftoi4.xyz vf_res02, vf_pos02
+        // mtir vi_dest_ptr, vtx_0.w          |  nop
+      }
+
+    program_end:
+
+      assert(false);
     }
+
+    //    }
   }
 }
 

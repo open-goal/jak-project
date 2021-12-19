@@ -455,8 +455,9 @@ void TieFragment::read_from_file(TypedRef ref,
     memcpy(gif_data.data() + (i * 4), &word.data, 4);
   }
 
-  auto points_data_ref = deref_label(get_field_ref(ref, "gif-ref", dts));
+  auto points_data_ref = deref_label(get_field_ref(ref, "point-ref", dts));
   point_ref.resize(16 * vertex_count);
+  debug_label_name = inspect_ref(get_field_ref(ref, "point-ref", dts));
   for (u32 i = 0; i < vertex_count * 4; i++) {
     auto& word = points_data_ref.data->words_by_seg.at(points_data_ref.seg)
                      .at((points_data_ref.byte_offset / 4) + i);
