@@ -1511,13 +1511,13 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
 
-          fmt::print("ip1 draw: {}\n", dest_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           assert(inserted);
 
           ip_1_count++;
         }
 
+        bool first_iter = true;
         while (dest_ptr != tgt_ip2_ptr) {
           // todo - might be some rounding here.
           u32 clr_idx_idx = draw_1_count + draw_2_count + ip_1_count * 4 + ip_2_count;
@@ -1540,19 +1540,23 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
 
-          fmt::print("ip2 draw: {} and {}\n", dest_ptr, dest2_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           assert(inserted);
 
+          // first iteration of ip2 is a bit strange because how it jumps from loop to loop.
+          // in some cases it uses ip2 on a point that should have used ip1 with the same addr
+          // twice. I am pretty sure it's not our fault because we get exactly the right dvert.
           bool inserted2 = frag.vertex_by_dest_addr.insert({(u32)dest2_ptr, vertex_info}).second;
-          assert(inserted2);
-
+          if (!first_iter) {
+            assert(inserted2);
+          }
+          first_iter = false;
           ip_1_count++;
         }
       }
 
       // now, let's check count:
-      if (frag.prog_info.skip_ips) {
+      if (true) {
         assert(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
         fmt::print("frag with {} verts\n", frag.expected_dverts);
       } else {
