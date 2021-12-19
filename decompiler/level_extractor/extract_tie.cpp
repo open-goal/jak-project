@@ -338,7 +338,7 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
   return result;
 }
 
-constexpr int GEOM_IDX = 1;
+constexpr int GEOM_IDX = 1;  // todo 0 or 1??
 
 std::vector<TieProtoInfo> collect_instance_info(
     const level_tools::DrawableInlineArrayInstanceTie* instances,
@@ -1205,7 +1205,8 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // for these sections, see the TIE Instance VU Program Doc.
       int draw_1_count = 0;
       int draw_2_count = 0;
-
+      int ip_1_count = 0;
+      int ip_2_count = 0;
 
       /////////////////////////////////////
       // SETUP
@@ -1375,7 +1376,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
         bool reached_target = false;
         int past_target = 0;
         while (past_target < 2) {
-          u32 clr_idx_idx = draw_2_count;
+          u32 clr_idx_idx = draw_1_count + draw_2_count;
           auto vert_pos = frag.lq_points(point_ptr);
           point_ptr++;
           float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
@@ -1411,7 +1412,6 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
           draw_2_count++;
         }
-
 
         // setup
         // ibne vi00, vi_skip_bp2, L24      |  mul.xyz vf_pos13, vf_pos13, Q
@@ -1459,15 +1459,107 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
         // mtir vi_dest_ptr, vtx_0.w          |  nop
       }
 
+      if (!frag.prog_info.skip_ips) {
+        // Sadly TIE has no special case for highest lod.
+        // this is surprising to me, but really does seem to be the case.
+
+        // L31
+        // lqi.xyzw vf_vtx1, vi_point_ptr        |  mulaw.xyzw ACC, vf_clr2, vf00
+        // lqi.xyz vf_xyofs, vi_point_ptr        |  maddax.xyzw ACC, vf_mtx0, vtx_0
+        // lqi.xyzw vf_tex1, vi_point_ptr        |  madday.xyzw ACC, vf_mtx1, vtx_0
+
+        // we have an additional "xyofs" here, but otherwise similar
+
+        // mtir vi_dest_ptr, vf_vtx2.w          |  maddz.xyzw vf_pos02, vf_clr1, vtx_0
+        // as usual, using vtx.w for dest pointer.
+
+        // mtir vi_ind, vf_inds.x        |  mulaw.xyzw ACC, vf_clr_val1, vf_morph
+        // mtir vi10, vf_inds.y          |  maddz.xyzw vf_clr0, vf_clr0, vf_morph
+        // mtir vi11, vf_inds.z          |  mulx.xyz vf_vtx1, vf_vtx1, vf_morph
+        // inds works differently. There is a qw per vertex, containing 3 indices.
+        // the formula is a pain, so I will ignore it for today.
+        // ideally we can figure out the constant value of vf_morph first, to simplify all this.
+        //
+
+        // sq.xyzw vf_tex2, 0(vi_dest_ptr)      |  mul.xyz vf_res13, vf_pos13, Q
+        // lq.xyzw vf_mtx2, 838(vi_ind)    |  mul.xyz vi_tex3, vi_tex3, Q
+        // lq.xyzw vf_clr_val1, 838(vi10)    |  nop
+        // lq.xyzw vf_clr_val2, 838(vi11)    |  nop
+        // div Q, vf00.w, vf_pos02.w      |  ftoi4.xyz vf_res13, vf_res13
+        // sq.xyzw vf_mtx3, 1(vi_dest_ptr)      |  add.xyzw vf_vtx1, vf_vtx1, vf_xyofs
+        // lqi.xyzw vf_inds, vi_clr_ptr        |  mulay.xyzw ACC, vf_clr_val1, vf_morph
+        // ibeq vi_tgt_ip1_ptr, vi_dest_ptr, L35       |  nop
+        // sq.xyzw vf_res02, 2(vi_dest_ptr)      |  maddy.xyzw vf_clr_val1, vf_clr_val2, vf_morph
+
+        while (dest_ptr != tgt_ip1_ptr) {
+          // todo - might be some rounding here.
+          u32 clr_idx_idx = draw_1_count + draw_2_count + ip_1_count * 4;
+          auto vert_pos = frag.lq_points(point_ptr);
+          point_ptr++;
+          auto xy_offs = frag.lq_points(point_ptr);
+          point_ptr++;
+          float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
+          dest_ptr = float_to_u16(vtx_w);
+          auto tex_coord = frag.lq_points(point_ptr);
+          point_ptr++;
+
+          TieProtoVertex vertex_info;
+          vertex_info.color_index_index = clr_idx_idx;
+          vertex_info.pos.x() = vert_pos.x();
+          vertex_info.pos.y() = vert_pos.y();
+          vertex_info.pos.z() = vert_pos.z();
+          vertex_info.tex.x() = tex_coord.x();
+          vertex_info.tex.y() = tex_coord.y();
+
+          fmt::print("ip1 draw: {}\n", dest_ptr);
+          bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
+          assert(inserted);
+
+          ip_1_count++;
+        }
+
+        while (dest_ptr != tgt_ip2_ptr) {
+          // todo - might be some rounding here.
+          u32 clr_idx_idx = draw_1_count + draw_2_count + ip_1_count * 4 + ip_2_count;
+          auto vert_pos = frag.lq_points(point_ptr);
+          point_ptr++;
+          auto xy_offs = frag.lq_points(point_ptr);
+          point_ptr++;
+          float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
+          dest_ptr = float_to_u16(vtx_w);
+          auto tex_coord = frag.lq_points(point_ptr);
+          point_ptr++;
+          float tex_w = tex_coord.w() + frag.prog_info.gifbufs.x();
+          u16 dest2_ptr = float_to_u16(tex_w);
+
+          TieProtoVertex vertex_info;
+          vertex_info.color_index_index = clr_idx_idx;
+          vertex_info.pos.x() = vert_pos.x();
+          vertex_info.pos.y() = vert_pos.y();
+          vertex_info.pos.z() = vert_pos.z();
+          vertex_info.tex.x() = tex_coord.x();
+          vertex_info.tex.y() = tex_coord.y();
+
+          fmt::print("ip2 draw: {} and {}\n", dest_ptr, dest2_ptr);
+          bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
+          assert(inserted);
+
+          bool inserted2 = frag.vertex_by_dest_addr.insert({(u32)dest2_ptr, vertex_info}).second;
+          assert(inserted2);
+
+          ip_1_count++;
+        }
+      }
+
       // now, let's check count:
       if (frag.prog_info.skip_ips) {
         assert(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
         fmt::print("frag with {} verts\n", frag.expected_dverts);
       } else {
-        fmt::print("vert count check {} / {} ({} and {}) si {}\n", frag.vertex_by_dest_addr.size(),
-                   frag.expected_dverts, draw_1_count, draw_2_count, frag.prog_info.skip_ips);
+        fmt::print("vert count check {} / {} ({} and {} and {} and {}) si {}\n",
+                   frag.vertex_by_dest_addr.size(), frag.expected_dverts, draw_1_count,
+                   draw_2_count, ip_1_count, ip_2_count, frag.prog_info.skip_ips);
       }
-
 
     program_end:;
       //      assert(false);
