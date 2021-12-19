@@ -688,7 +688,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // vi06 will be one of our gifbufs we can use.
       u16 vi06;
       memcpy(&vi06, &vf_gifbufs.y(), sizeof(u16));
-      fmt::print("vi06: {}\n", vi06);
+      // fmt::print("vi06: {}\n", vi06);
       assert(vi06 == 470 || vi06 == 286 || vi06 == 654);  // should be one of the three gifbufs.
 
       //    lqi.xyzw vf02, vi_point_ptr        |  suby.xz vf_gifbufs, vf_gifbufs, vf_gifbufs
@@ -705,7 +705,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // and vi05 is our other buffer.
       u16 vi05;
       memcpy(&vi05, &vf_gifbufs.x(), sizeof(u16));
-      fmt::print("vi05: {}\n", vi05);
+      // fmt::print("vi05: {}\n", vi05);
       // check that we understand the buffer rotation.
       if (vi06 == 470) {
         assert(vi05 == 286);
@@ -735,7 +735,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 
       // store adgifs in one buffer.
       frag.prog_info.adgif_offset_in_gif_buf_qw.push_back(vi03 - vi05);
-      fmt::print("adgifs at offset {}\n", frag.prog_info.adgif_offset_in_gif_buf_qw.back());
+      // fmt::print("adgifs at offset {}\n", frag.prog_info.adgif_offset_in_gif_buf_qw.back());
       //    sqi.xyzw vf01, vi03        |  nop
       //    sqi.xyzw vf02, vi03        |  nop
       //    sqi.xyzw vf03, vi03        |  nop
@@ -793,7 +793,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       u16 vf04_w = frag.other_gif_data.at(11);
       assert(vi_ind >= frag.adgifs.size());  // at least 1 draw per shader.
       assert(vi_ind < 1000);                 // check for insane value.
-      fmt::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
+      // fmt::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
 
       //    iaddi vi_point_ptr, vi_point_ptr, -0x2     |  subw.w vf07, vf07, vf07
       vi_point_ptr -= 2;
@@ -814,7 +814,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       vi04 = frag.ilw_other_gif(vi_point_ptr, 2);
       // offset
 
-      fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind - 1);
+      // fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind - 1);
 
       //    iaddi vi_ind, vi_ind, -0x1     |  nop
       vi_ind--;
@@ -838,7 +838,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
         vi_ind--;  // dec remaining tag
         //    sq.xyzw vf07, 0(vi03)      |  nop
         info.address = vi03 - vi05;  // store the template. but this doesn't have size or anything.
-        fmt::print("strgif at {}, {}\n", vi03, vi04);
+        // fmt::print("strgif at {}, {}\n", vi03, vi04);
 
         //    iswr.x vi07, vi03          |  nop
         info.nloop = vi07 & 0x7fff;
@@ -865,7 +865,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
         //    ibne vi00, vi_ind, L3        |  nop
         //    lq.xyz vf07, 967(vi08)     |  nop
         next_mode = vi08;
-        fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind);
+        // fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind);
         frag.prog_info.str_gifs.push_back(info);
       }
 
@@ -922,13 +922,13 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       vf05 = muli64_xyz(vf05);
       //    mtir vi07, vf04.y          |  itof0.xyzw vf06, vf06
       vi07 = vf04_y;
-      fmt::print("bonus points: {}\n", vi07);
+      // fmt::print("bonus points: {}\n", vi07);
       vf06 = itof0(vf06);
 
       //    L5:
       Vector4f vf07;
     top_of_points_loop:
-      fmt::print("{}/{}\n", vi05, vi06);
+      // fmt::print("{}/{}\n", vi05, vi06);
       //    lqi.xyzw vf07, vi05        |  itof12.xyz vf16, vf16
       vf07 = frag.lq_points_allow_past_end(vi05);
       vi05++;
@@ -1048,7 +1048,6 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 
       Vector4f vf11;
     top_of_points2:
-      fmt::print("{} / {}\n", vi05, vi07);
       //    L7:
       //    lqi.xyzw vf11, vi05        |  itof0.xyzw vf06, vf06
       vf11 = frag.lq_points_allow_past_end(vi05);
@@ -1204,11 +1203,16 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
     for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
       auto& frag = proto.frags.at(frag_idx);
       // for these sections, see the TIE Instance VU Program Doc.
+      int draw_1_count = 0;
+      int draw_2_count = 0;
+
+
       /////////////////////////////////////
       // SETUP
       /////////////////////////////////////
-      // note that setup also contains the warm-up for the pipelined Draw1 loop.
-      // we omit this here and do Draw1 as un-pipelined.
+      // this is some basic register setup for the TIE instance
+      // ad also for the pipelined Draw1 loop.
+      // we omit the pipeline startup here.
 
       // this was set by the previous program that sets up this prototype frag
       u16 clr_ptr = frag.prog_info.clr_ptr;
@@ -1272,7 +1276,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // iadd vi_tgt_bp2_ptr, vi_tgt_bp2_ptr, vi01   |  nop
       tgt_bp2_ptr += vi01;
 
-      fmt::print("b tgts: {} {}\n", tgt_bp1_ptr, tgt_bp2_ptr);
+      // fmt::print("b tgts: {} {}\n", tgt_bp1_ptr, tgt_bp2_ptr);
       // lqi.xyzw vf_vtx2, vi_point_ptr              |  mul.xyz vf_pos02, vf_pos02, Q
       // div Q, vf00.w, vf_pos13.w                   |  mul.xyz vf_tex0, vf_tex0, Q
       // mtir vi_ind, vf_inds.z                      |  addx.w vtx_0, vtx_0, vf_gifbufs
@@ -1281,7 +1285,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // iadd vi_tgt_ip2_ptr, vi_tgt_ip2_ptr, vi01   |  madday.xyzw ACC, vf_mtx1, vf_vtx2
       tgt_ip1_ptr += vi01;
       tgt_ip2_ptr += vi01;
-      fmt::print("i tgts: {} {}\n", tgt_ip1_ptr, tgt_ip2_ptr);
+      // fmt::print("i tgts: {} {}\n", tgt_ip1_ptr, tgt_ip2_ptr);
       // lq.xyzw vf_mtx3, 838(vi_ind)                |  ftoi4.xyz vf_res02, vf_pos02
       // ibeq vi_tgt_bp1_ptr, vi_dest_ptr, L40       |  maddz.xyzw vf_pos02, vf_clr1, vf_vtx2
       // iadd vi_kick_addr, vi_kick_addr, vi01       |  nop
@@ -1295,10 +1299,11 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // DRAW 1
       /////////////////////////////////////
       {
-        fmt::print("draw 1 with target: {}, frag with {} dvert\n", tgt_bp1_ptr,
-                   frag.expected_dverts);
-        int draw_1_count = 0;
-        while (dest_ptr != tgt_bp1_ptr) {
+        // Draw 1 computes and sets vertices that appear once.
+        // Note that it does 3 more vertices after reaching the target pointer.
+        bool reached_target = false;
+        int past_target = 0;
+        while (past_target < 3) {
           // there's 1 load of colors per 4x verts.
           // (lqi.xyzw vf_inds, vi_clr_ptr         |  nop)
           // these are different per instance, but index into a palette shared by all instances
@@ -1352,30 +1357,34 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           assert(inserted);
 
+          if (reached_target) {
+            past_target++;
+          }
+
+          if (dest_ptr == tgt_bp1_ptr) {
+            reached_target = true;
+          }
+
           draw_1_count++;
         }
-        fmt::print("draw1 did {} verts, skip bp2? {}\n", draw_1_count, skip_bp2);
       }
 
-      if (skip_bp2) {
-        fmt::print("skip bp2 not yet implemented.\n");
-        assert(false);
-      } else {
+      if (!skip_bp2) {
         // bp2 setup:
         // The BP2 drawing is similar to BP1, but duplicate draws vertices.
-        int draw_2_count = 0;
-        while (dest_ptr != tgt_bp2_ptr) {
+        bool reached_target = false;
+        int past_target = 0;
+        while (past_target < 2) {
           u32 clr_idx_idx = draw_2_count;
           auto vert_pos = frag.lq_points(point_ptr);
           point_ptr++;
           float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
           dest_ptr = float_to_u16(vtx_w);
           auto tex_coord = frag.lq_points(point_ptr);
-          fmt::print("texw: [{}] {}\n", point_ptr, tex_coord.w());
+          // fmt::print("texw: [{}] {}\n", point_ptr, tex_coord.w());
           point_ptr++;
           float tex_w = tex_coord.w() + frag.prog_info.gifbufs.x();
           u16 dest2_ptr = float_to_u16(tex_w);
-
 
           TieProtoVertex vertex_info;
           vertex_info.color_index_index = clr_idx_idx;
@@ -1385,17 +1394,26 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
 
-          fmt::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
+          // fmt::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           assert(inserted);
 
           bool inserted2 = frag.vertex_by_dest_addr.insert({(u32)dest2_ptr, vertex_info}).second;
           assert(inserted2);
 
+          if (reached_target) {
+            past_target++;
+          }
+
+          if (dest_ptr == tgt_bp2_ptr) {
+            reached_target = true;
+          }
+
           draw_2_count++;
         }
 
 
+        // setup
         // ibne vi00, vi_skip_bp2, L24      |  mul.xyz vf_pos13, vf_pos13, Q
         // lqi.xyzw vi_vtx3, vi_point_ptr   |  mul.xyz vf_tex1, vf_tex1, Q
         // div Q, vf00.w, vf_pos02.w        |  addx.w vf_vtx1, vf_vtx1, vf_gifbufs
@@ -1424,8 +1442,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
         // b L14                            |  ftoi4.xyz vf_res13, vf_pos13
         // mtir vi_dest_ptr, vi_vtx3.w      |  nop
 
-        // bp2 chunk
-
+        // bp2 chunk (out of 4)
         // lqi.xyzw vf_vtx1, vi_point_ptr        |  nop
         // mtir vi_ind, vf_inds.y              |  nop
         // mtir vi13, vi_tex3.w          |  mulaw.xyzw ACC, vf_clr2, vf00
@@ -1442,9 +1459,18 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
         // mtir vi_dest_ptr, vtx_0.w          |  nop
       }
 
-    program_end:
+      // now, let's check count:
+      if (frag.prog_info.skip_ips) {
+        assert(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
+        fmt::print("frag with {} verts\n", frag.expected_dverts);
+      } else {
+        fmt::print("vert count check {} / {} ({} and {}) si {}\n", frag.vertex_by_dest_addr.size(),
+                   frag.expected_dverts, draw_1_count, draw_2_count, frag.prog_info.skip_ips);
+      }
 
-      assert(false);
+
+    program_end:;
+      //      assert(false);
     }
 
     //    }
