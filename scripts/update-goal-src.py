@@ -32,7 +32,8 @@ files_with_modifications = [
   "default-menu",
   "collide-shape",
   "cam-states",
-  "plant-boss"
+  "plant-boss",
+  "helix-water"
 ]
 
 for file in files:
