@@ -1061,11 +1061,13 @@
   (rolling-ring-hint-be-quick-to-next #x340)
   (rolling-ring-hint-be-quick-all #x341)
 
+  (sunken-helix-daxter-bad-feeling #x344)
   (sunken-blue-eco-charger-hint #x345)
-  (sunken-take-it-easy-hot-pipes #x34e)
   (sunken-double-lurker-hint #x347)
+  (sunken-helix-daxter-eco-rising #x348)
   (sunken-qbert-plat-hint #x34a)
   (sunken-bully-dive-hint #x34b)
+  (sunken-take-it-easy-hot-pipes #x34e)
 
   (sunken-blue-eco-charger-all-hint #x34d)
 
@@ -11294,9 +11296,9 @@
   :flag-assert         #x38000000b8
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_)
-    (TODO-RENAME-28 (_type_ vector) none 28)
+    (TODO-RENAME-28 (_type_ vector) object 28) ;; ret - symbol | float (CSPG::9)
     (dummy-29 (_type_ int) none 29)
-    (TODO-RENAME-30 (_type_ vector) none 30)
+    (TODO-RENAME-30 (_type_ vector) object 30) ;; ret - symbol | float (CSPG::9)
     (dummy-31 (_type_) none 31)
     (dummy-32 (_type_ object uint) none 32)
     (dummy-33 (_type_ vector uint) none 33)
@@ -19012,19 +19014,19 @@
   ((volume-type  symbol  :offset-assert 0)
    (point-count  int16   :offset-assert 4)
    (normal-count int16   :offset-assert 6)
-   (first-point  vector  :offset-assert 8)
-   (first-normal vector  :offset-assert 12)
+   (first-point  (pointer vector)  :offset-assert 8)
+   (first-normal (pointer vector)  :offset-assert 12)
    (num-planes   int32   :offset-assert 16)
-   (plane        uint32  :offset-assert 20)
+   (plane        (inline-array plane)  :offset-assert 20)
    )
   :pack-me
   :method-count-assert 12
   :size-assert         #x18
   :flag-assert         #xc00000018
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
+    (dummy-9 (_type_ symbol vector-array vector-array) symbol 9)
+    (debug-draw (_type_) none 10)
+    (dummy-11 (_type_ vector float) symbol 11)
     )
   )
 
@@ -19035,16 +19037,16 @@
    (pos-vol       plane-volume 32 :inline :offset-assert 16)
    (neg-vol-count int32      :offset-assert 784)
    (neg-vol       plane-volume 32 :inline :offset-assert 788)
-   (debug-point   basic      :offset-assert 1556)
-   (debug-normal  basic      :offset-assert 1560)
+   (debug-point   vector-array      :offset-assert 1556)
+   (debug-normal  vector-array      :offset-assert 1560)
    )
   :method-count-assert 12
   :size-assert         #x61c
   :flag-assert         #xc0000061c
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (dummy-9 (_type_) none 9)
-    (dummy-10 (_type_ vector) none 10)
+    (dummy-9 (_type_) symbol 9)
+    (dummy-10 (_type_ vector) symbol 10)
     (TODO-RENAME-11 (_type_) symbol 11)
     )
   )
@@ -20572,7 +20574,7 @@
 
 ;; - Functions
 
-(define-extern plane-volume-intersect-dist function)
+(define-extern plane-volume-intersect-dist (function vector vector vector float))
 
 
 ;; ----------------------
@@ -32834,7 +32836,8 @@
   )
 
 (deftype sunkencam (pov-camera)
-  ((seq uint64  :offset-assert 224)
+  ((ppointer-override (pointer sunkencam) :score 100 :offset 24)
+   (seq uint64  :offset-assert 224)
    )
   :method-count-assert 30
   :size-assert         #xe8
@@ -33665,13 +33668,17 @@
   :size-assert         #xb0
   :heap-base           #x40
   :flag-assert         #x14004000b0
+  (:states
+    helix-slide-door-idle-open
+    helix-slide-door-idle-closed
+    helix-slide-door-close)
   )
 
 (deftype helix-button (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (my-water     entity-actor          :offset-assert 176)
    (my-door      entity-actor          :offset-assert 180)
-   (fcell-handle uint64         :offset-assert 184)
+   (fcell-handle handle         :offset-assert 184)
    (down-y       float          :offset-assert 192)
    (spawn-trans  vector :inline :offset-assert 208)
    )
@@ -33679,6 +33686,12 @@
   :size-assert         #xe0
   :heap-base           #x70
   :flag-assert         #x14007000e0
+  (:states
+    helix-button-startup
+    helix-button-idle-down
+    helix-button-quick-activate
+    helix-button-activate
+    helix-button-idle-up)
   )
 
 (deftype helix-dark-eco (dark-eco-pool)
@@ -33695,35 +33708,28 @@
    (transv-y                float   :offset-assert 184)
    (start-y                 float   :offset-assert 188)
    (end-y                   float   :offset-assert 192)
-   (dark-eco                uint32  :offset-assert 196)
+   (dark-eco                (pointer helix-dark-eco)  :offset-assert 196)
    )
   :method-count-assert 22
   :size-assert         #xc8
   :heap-base           #x60
   :flag-assert         #x16006000c8
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_) object 21)
     )
+  (:states
+    helix-water-idle
+    helix-water-activated)
   )
 
 ;; - Unknowns
 
 (define-extern *helix-water* helix-water) ;; unknown type
-(define-extern helix-water-idle (state helix-water)) ;; unknown type
-(define-extern helix-water-activated (state helix-water)) ;; unknown type
 (define-extern *helix-button-sg* skeleton-group)
 (define-extern *helix-button* helix-button) ;; unknown type
-(define-extern helix-button-startup (state helix-button)) ;; unknown type
-(define-extern helix-button-idle-down (state helix-button)) ;; unknown type
-(define-extern helix-button-quick-activate (state helix-button)) ;; unknown type
-(define-extern helix-button-activate (state helix-button)) ;; unknown type
-(define-extern helix-button-idle-up (state helix-button)) ;; unknown type
 (define-extern *helix-slide-door-sg* skeleton-group)
 (define-extern *helix-slide-door* helix-slide-door) ;; unknown type
-(define-extern helix-slide-door-idle-open (state helix-slide-door)) ;; unknown type
-(define-extern helix-slide-door-idle-closed (state helix-slide-door)) ;; unknown type
-(define-extern helix-slide-door-close (state helix-slide-door)) ;; unknown type
 
 
 ;; ----------------------
@@ -34849,8 +34855,9 @@
 ;; - Types
 
 (deftype minecartsteel (process-drawable)
-  ((index int32             :offset-assert 176)
-   (anim  basic             :offset-assert 180)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (index int32             :offset-assert 176)
+   (anim  spool-anim             :offset-assert 180)
    (sync  sync-info :inline :offset-assert 184)
    )
   :method-count-assert 21
@@ -34863,7 +34870,7 @@
 
 ;; - Functions
 
-(define-extern minecartsteel-initialize-by-other function)
+(define-extern minecartsteel-initialize-by-other (function entity-actor float object :behavior minecartsteel))
 
 ;; - Unknowns
 
