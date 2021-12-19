@@ -2,6 +2,8 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
+#include "common/util/FileUtil.h"
+
 namespace decompiler {
 
 /*!
@@ -216,10 +218,16 @@ struct StrGifInfo {
 struct TieProtoVertex {
   math::Vector<float, 3> pos;
   math::Vector<float, 2> tex;
+
   // NOTE: this is a double lookup.
   // first you look up the index in the _instance_ color table
   // then you look up the color in the _proto_'s interpolated color palette.
   u32 color_index_index;
+};
+
+struct TieStrip {
+  AdgifInfo adgif;
+  std::vector<TieProtoVertex> verts;
 };
 
 struct TieFrag {
@@ -232,18 +240,10 @@ struct TieFrag {
 
   u32 expected_dverts = 0;
 
+  std::vector<TieStrip> strips;
+
   // this contains vertices, key is the start of the actual xyzf/st/rgbaq data for it.
   std::unordered_map<u32, TieProtoVertex> vertex_by_dest_addr;
-
-  //  u16 ilw_points(u32 qw, u32 offset) const {
-  //    // note: dividing by two because we use the v16 unpack.
-  //    u32 byte_offset_in_input = (16 * qw + 4 * offset) / 2;
-  //    fmt::print("byte offset in input is {}\n", byte_offset_in_input);
-  //    assert(byte_offset_in_input + 2 <= points_data.size());
-  //    u16 result;
-  //    memcpy(&result, points_data.data() + byte_offset_in_input, sizeof(u16));
-  //    return result;
-  //  }
 
   math::Vector<float, 4> lq_points(u32 qw) const {
     assert(qw >= 50);
@@ -352,6 +352,10 @@ std::vector<TieProtoInfo> collect_instance_info(
       info.bsphere[i] = instance.bsphere.data[i];
     }
     info.mat = extract_tie_matrix(instance.origin.data);
+    // todo:
+    info.mat[3][0] += info.bsphere[0];
+    info.mat[3][1] += info.bsphere[1];
+    info.mat[3][2] += info.bsphere[2];
     info.wind_index = instance.wind_index;
     // there's a value stashed here that we can get rid of
     // it is related to wind.
@@ -1505,6 +1509,8 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
           TieProtoVertex vertex_info;
           vertex_info.color_index_index = clr_idx_idx;
+          // random guess
+          vert_pos = xy_offs;
           vertex_info.pos.x() = vert_pos.x();
           vertex_info.pos.y() = vert_pos.y();
           vertex_info.pos.z() = vert_pos.z();
@@ -1534,6 +1540,8 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
           TieProtoVertex vertex_info;
           vertex_info.color_index_index = clr_idx_idx;
+          // random guess
+          vert_pos = xy_offs;
           vertex_info.pos.x() = vert_pos.x();
           vertex_info.pos.y() = vert_pos.y();
           vertex_info.pos.z() = vert_pos.z();
@@ -1556,14 +1564,8 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       }
 
       // now, let's check count:
-      if (true) {
-        assert(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
-        fmt::print("frag with {} verts\n", frag.expected_dverts);
-      } else {
-        fmt::print("vert count check {} / {} ({} and {} and {} and {}) si {}\n",
-                   frag.vertex_by_dest_addr.size(), frag.expected_dverts, draw_1_count,
-                   draw_2_count, ip_1_count, ip_2_count, frag.prog_info.skip_ips);
-      }
+      assert(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
+      fmt::print("frag with {} verts\n", frag.expected_dverts);
 
     program_end:;
       //      assert(false);
@@ -1571,6 +1573,201 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
     //    }
   }
+}
+
+// makes per-prototype meshes
+void emulate_kicks(std::vector<TieProtoInfo>& protos) {
+  for (auto& proto : protos) {
+    for (auto& frag : proto.frags) {
+      auto adgif_it = frag.prog_info.adgif_offset_in_gif_buf_qw.begin();
+      auto adgif_end = frag.prog_info.adgif_offset_in_gif_buf_qw.end();
+      auto str_it = frag.prog_info.str_gifs.begin();
+      auto str_end = frag.prog_info.str_gifs.end();
+
+      assert(frag.prog_info.adgif_offset_in_gif_buf_qw.at(0) == 0);
+      assert(frag.prog_info.adgif_offset_in_gif_buf_qw.size() == frag.adgifs.size());
+      const AdgifInfo* adgif_info = nullptr;
+      int expected_next_tag = 0;
+
+      // loop over strgifs
+      while (str_it != str_end) {
+        // try advance adgif
+        if (adgif_it != adgif_end && (*adgif_it) == expected_next_tag) {
+          int idx = adgif_it - frag.prog_info.adgif_offset_in_gif_buf_qw.begin();
+          adgif_info = &frag.adgifs.at(idx);
+          // fmt::print("using adgif {}\n", *adgif_it);
+          expected_next_tag += 6;
+          adgif_it++;
+        }
+        assert(adgif_info);
+
+        // fmt::print("strip: {}\n", str_it->address);
+        assert(expected_next_tag == str_it->address);
+        expected_next_tag += 3 * str_it->nloop + 1;
+        // here we have the right str and adgif.
+
+        // kinda stupid, but we have to guess the base address of the gifbuf
+        // 286 gifbuf
+        // 470 gifbuf again
+        // 654 ??
+        assert(!frag.vertex_by_dest_addr.empty());
+        int gifbuf_addr = frag.vertex_by_dest_addr.begin()->first;
+        int base_address = 286;
+        if (gifbuf_addr >= 654) {
+          base_address = 654;
+        } else if (gifbuf_addr >= 470) {
+          base_address = 470;
+        }
+
+        // now, vertices!
+        frag.strips.emplace_back();
+        auto& strip = frag.strips.back();
+        strip.adgif = *adgif_info;
+        for (int vtx = 0; vtx < str_it->nloop; vtx++) {
+          u32 vtx_addr = str_it->address + 1 + (3 * vtx) + base_address;
+          strip.verts.push_back(frag.vertex_by_dest_addr.at(vtx_addr));
+        }
+
+        str_it++;
+      }
+
+      assert(adgif_it == adgif_end);
+    }
+  }
+}
+
+std::string debug_dump_proto_to_obj(const TieProtoInfo& proto) {
+  std::vector<math::Vector<float, 3>> verts;
+  std::vector<math::Vector<float, 2>> tcs;
+  std::vector<math::Vector<int, 3>> faces;
+
+  for (auto& frag : proto.frags) {
+    for (auto& strip : frag.strips) {
+      // add verts...
+      assert(strip.verts.size() >= 3);
+
+      int vert_idx = 0;
+
+      int vtx_idx_queue[3];
+
+      int q_idx = 0;
+      int startup = 0;
+      while (vert_idx < (int)strip.verts.size()) {
+        verts.push_back(strip.verts.at(vert_idx).pos / 65536);  // no idea
+        tcs.push_back(math::Vector<float, 2>{strip.verts.at(vert_idx).tex.x(),
+                                             strip.verts.at(vert_idx).tex.y()});
+        vert_idx++;
+        vtx_idx_queue[q_idx++] = verts.size();
+
+        // wrap the index
+        if (q_idx == 3) {
+          q_idx = 0;
+        }
+
+        // bump the startup
+        if (startup < 3) {
+          startup++;
+        }
+
+        if (startup >= 3) {
+          faces.push_back(
+              math::Vector<int, 3>{vtx_idx_queue[0], vtx_idx_queue[1], vtx_idx_queue[2]});
+        }
+      }
+    }
+  }
+
+  std::string result;
+  for (auto& vert : verts) {
+    result += fmt::format("v {} {} {}\n", vert.x(), vert.y(), vert.z());
+  }
+  for (auto& tc : tcs) {
+    result += fmt::format("vt {} {}\n", tc.x(), tc.y());
+  }
+  for (auto& face : faces) {
+    result += fmt::format("f {}/{} {}/{} {}/{}\n", face.x(), face.x(), face.y(), face.y(), face.z(),
+                          face.z());
+  }
+
+  return result;
+}
+
+math::Vector<float, 3> transform_tie(const std::array<math::Vector4f, 4> mat,
+                                     const math::Vector3f& pt) {
+  auto temp = mat[0] * pt.x() + mat[1] * pt.y() + mat[2] * pt.z() + mat[3];
+
+//  math::Vector4f temp;
+//  temp.x() = pt.x();
+//  temp.y() = pt.y();
+//  temp.z() = pt.z();
+//  temp += mat[3];
+
+  math::Vector3f result;
+  result.x() = temp.x();
+  result.y() = temp.y();
+  result.z() = temp.z();
+  return result;
+}
+
+std::string dump_full_to_obj(const std::vector<TieProtoInfo>& protos) {
+  std::vector<math::Vector<float, 3>> verts;
+  std::vector<math::Vector<float, 2>> tcs;
+  std::vector<math::Vector<int, 3>> faces;
+
+  for (auto& proto : protos) {
+    for (auto& inst : proto.instances) {
+      auto& mat = inst.mat;
+      for (auto& frag : proto.frags) {
+        for (auto& strip : frag.strips) {
+          // add verts...
+          assert(strip.verts.size() >= 3);
+
+          int vert_idx = 0;
+
+          int vtx_idx_queue[3];
+
+          int q_idx = 0;
+          int startup = 0;
+          while (vert_idx < (int)strip.verts.size()) {
+            verts.push_back(transform_tie(mat, strip.verts.at(vert_idx).pos)/ 65536);  // no idea
+            tcs.push_back(math::Vector<float, 2>{strip.verts.at(vert_idx).tex.x(),
+                                                 strip.verts.at(vert_idx).tex.y()});
+            vert_idx++;
+            vtx_idx_queue[q_idx++] = verts.size();
+
+            // wrap the index
+            if (q_idx == 3) {
+              q_idx = 0;
+            }
+
+            // bump the startup
+            if (startup < 3) {
+              startup++;
+            }
+
+            if (startup >= 3) {
+              faces.push_back(
+                  math::Vector<int, 3>{vtx_idx_queue[0], vtx_idx_queue[1], vtx_idx_queue[2]});
+            }
+          }
+        }
+      }
+    }
+  }
+
+  std::string result;
+  for (auto& vert : verts) {
+    result += fmt::format("v {} {} {}\n", vert.x(), vert.y(), vert.z());
+  }
+  for (auto& tc : tcs) {
+    result += fmt::format("vt {} {}\n", tc.x(), tc.y());
+  }
+  for (auto& face : faces) {
+    result += fmt::format("f {}/{} {}/{} {}/{}\n", face.x(), face.x(), face.y(), face.y(), face.z(),
+                          face.z());
+  }
+
+  return result;
 }
 
 void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
@@ -1614,10 +1811,21 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
 
   auto info = collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data);
   update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data);
-  debug_print_info(info);
-
+  // debug_print_info(info);
   emulate_tie_prototype_program(info);
   emulate_tie_instance_program(info);
+  emulate_kicks(info);
+
+  auto dir = file_util::get_file_path({fmt::format("debug_out/tie-{}/", debug_name)});
+  file_util::create_dir_if_needed(dir);
+  for (auto& proto : info) {
+    auto data = debug_dump_proto_to_obj(proto);
+    file_util::write_text_file(fmt::format("{}/{}.obj", dir, proto.name), data);
+    // file_util::create_dir_if_needed()
+  }
+
+  auto full = dump_full_to_obj(info);
+  file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
 
   // todo handle prototypes
   // todo handle vu1
