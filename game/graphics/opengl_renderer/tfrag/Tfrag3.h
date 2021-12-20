@@ -4,40 +4,28 @@
 #include "common/math/Vector.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/tfrag/Tie3.h"
 
 class Tfrag3 {
  public:
-  struct RenderSettings {
-    math::Matrix4f math_camera;
-    math::Vector4f hvdf_offset;
-    float fog_x;
-    const u8* rgba_data;
-    int tree_idx;
-    float time_of_day_weights[8] = {0};
-    math::Vector4f planes[4];
-    bool do_culling = false;
-    bool debug_culling = false;
-    // todo culling planes
-    // todo occlusion culling string.
-  };
-
   Tfrag3();
   ~Tfrag3();
 
-  void debug_render_all_trees_nolores(const RenderSettings& settings,
+  void debug_render_all_trees_nolores(const TfragRenderSettings& settings,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof);
 
-  void render_all_trees(const RenderSettings& settings,
+  void render_all_trees(const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
   void render_matching_trees(const std::vector<tfrag3::TFragmentTreeKind>& trees,
-                             const RenderSettings& settings,
+                             const TfragRenderSettings& settings,
                              SharedRenderState* render_state,
                              ScopedProfilerNode& prof);
 
-  void render_tree(const RenderSettings& settings,
+  void render_tree(const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof,
                    bool use_vis);
@@ -45,7 +33,7 @@ class Tfrag3 {
   void setup_for_level(const std::string& level, SharedRenderState* render_state);
   void discard_tree_cache();
 
-  void render_tree_cull_debug(const RenderSettings& settings,
+  void render_tree_cull_debug(const TfragRenderSettings& settings,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof);
 
@@ -56,26 +44,12 @@ class Tfrag3 {
   };
 
  private:
-  void first_draw_setup(const RenderSettings& settings, SharedRenderState* render_state);
-  enum class DoubleDrawKind { NONE, AFAIL_NO_DEPTH_WRITE };
-  struct DoubleDraw {
-    DoubleDrawKind kind = DoubleDrawKind::NONE;
-    float aref = 0.;
-  };
-
-  DoubleDraw setup_shader(const RenderSettings& settings,
-                          SharedRenderState* render_state,
-                          DrawMode mode);
-  void interp_time_of_day_slow(const float weights[8],
-                               const std::vector<tfrag3::TimeOfDayColor>& in,
-                               math::Vector<u8, 4>* out);
-
   struct TreeCache {
     tfrag3::TFragmentTreeKind kind;
     GLuint vertex_buffer = -1;
     GLuint vao;
     u32 vert_count = 0;
-    const std::vector<tfrag3::TfragDraw>* draws = nullptr;
+    const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const std::vector<tfrag3::VisNode>* vis = nullptr;
 
@@ -115,8 +89,11 @@ class Tfrag3 {
 
   // in theory could be up to 4096, I think, but we don't see that many...
   // should be easy to increase (will require a shader change too for indexing)
-  static constexpr int TIME_OF_DAY_COLOR_COUNT = 2048;
+  static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
 
   static constexpr int DEBUG_TRI_COUNT = 4096;
   std::vector<DebugVertex> m_debug_vert_data;
+
+  bool m_want_hack_tie = false;
+  std::unique_ptr<Tie3> m_hack_tie;
 };

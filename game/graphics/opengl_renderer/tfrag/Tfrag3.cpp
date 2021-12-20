@@ -64,11 +64,12 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
         m_cached_trees[tree_idx].vert_count = verts;
         m_cached_trees[tree_idx].draws = &tree.draws;  // todo - should we just copy this?
         m_cached_trees[tree_idx].colors = &tree.colors;
-        m_cached_trees[tree_idx].vis = &tree.vis_nodes;
+        m_cached_trees[tree_idx].vis = &tree.bvh.vis_nodes;
         // don't bother with vis if we only have children.
-        m_cached_trees[tree_idx].num_vis_tree_roots = tree.only_children ? 0 : tree.num_roots;
-        m_cached_trees[tree_idx].vis_tree_root = tree.first_root;
-        m_cached_trees[tree_idx].vis_temp.resize(tree.vis_nodes.size());
+        m_cached_trees[tree_idx].num_vis_tree_roots =
+            tree.bvh.only_children ? 0 : tree.bvh.num_roots;
+        m_cached_trees[tree_idx].vis_tree_root = tree.bvh.first_root;
+        m_cached_trees[tree_idx].vis_temp.resize(tree.bvh.vis_nodes.size());
         m_cached_trees[tree_idx].culled_indices.resize(idx_buffer_len);
         glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[tree_idx].vertex_buffer);
         glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
@@ -152,136 +153,7 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
   }
 }
 
-void Tfrag3::first_draw_setup(const RenderSettings& settings, SharedRenderState* render_state) {
-  render_state->shaders[ShaderId::TFRAG3].activate();
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T0"), 0);
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T1"), 1);
-  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "camera"),
-                     1, GL_FALSE, settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "hvdf_offset"),
-              settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
-              settings.hvdf_offset[3]);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_constant"),
-              settings.fog_x);
-}
-
-Tfrag3::DoubleDraw Tfrag3::setup_shader(const RenderSettings& /*settings*/,
-                                        SharedRenderState* render_state,
-                                        DrawMode mode) {
-  glActiveTexture(GL_TEXTURE0);
-
-  if (mode.get_zt_enable()) {
-    glEnable(GL_DEPTH_TEST);
-    switch (mode.get_depth_test()) {
-      case GsTest::ZTest::NEVER:
-        glDepthFunc(GL_NEVER);
-        break;
-      case GsTest::ZTest::ALWAYS:
-        glDepthFunc(GL_ALWAYS);
-        break;
-      case GsTest::ZTest::GEQUAL:
-        glDepthFunc(GL_GEQUAL);
-        break;
-      case GsTest::ZTest::GREATER:
-        glDepthFunc(GL_GREATER);
-        break;
-      default:
-        assert(false);
-    }
-  } else {
-    glDisable(GL_DEPTH_TEST);
-  }
-
-  if (mode.get_ab_enable() && mode.get_alpha_blend() != DrawMode::AlphaBlend::DISABLED) {
-    glEnable(GL_BLEND);
-    switch (mode.get_alpha_blend()) {
-      case DrawMode::AlphaBlend::SRC_DST_SRC_DST:
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        break;
-      case DrawMode::AlphaBlend::SRC_0_SRC_DST:
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-        break;
-      case DrawMode::AlphaBlend::SRC_0_FIX_DST:
-        glBlendFunc(GL_ONE, GL_ONE);
-        break;
-      default:
-        assert(false);
-    }
-  } else {
-    glDisable(GL_BLEND);
-  }
-
-  if (mode.get_clamp_s_enable()) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  } else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  }
-
-  if (mode.get_clamp_t_enable()) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  } else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  }
-
-  if (mode.get_filt_enable()) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  } else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  }
-
-  // for some reason, they set atest NEVER + FB_ONLY to disable depth writes
-  bool alpha_hack_to_disable_z_write = false;
-  DoubleDraw double_draw;
-
-  float alpha_min = 0.;
-  if (mode.get_at_enable()) {
-    switch (mode.get_alpha_test()) {
-      case DrawMode::AlphaTest::ALWAYS:
-        break;
-      case DrawMode::AlphaTest::GEQUAL:
-        alpha_min = mode.get_aref() / 127.f;
-        switch (mode.get_alpha_fail()) {
-          case GsTest::AlphaFail::KEEP:
-            // ok, no need for double draw
-            break;
-          case GsTest::AlphaFail::FB_ONLY:
-            // darn, we need to draw twice
-            double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
-            double_draw.aref = alpha_min;
-            break;
-          default:
-            assert(false);
-        }
-        break;
-      case DrawMode::AlphaTest::NEVER:
-        if (mode.get_alpha_fail() == GsTest::AlphaFail::FB_ONLY) {
-          alpha_hack_to_disable_z_write = true;
-        } else {
-          assert(false);
-        }
-        break;
-      default:
-        assert(false);
-    }
-  }
-
-  if (mode.get_depth_write_enable()) {
-    glDepthMask(GL_TRUE);
-  } else {
-    glDepthMask(GL_FALSE);
-  }
-
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
-              alpha_min);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-              10.f);
-
-  return double_draw;
-}
-
-void Tfrag3::render_tree(const RenderSettings& settings,
+void Tfrag3::render_tree(const TfragRenderSettings& settings,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof,
                          bool use_vis) {
@@ -297,7 +169,7 @@ void Tfrag3::render_tree(const RenderSettings& settings,
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
 
-  first_draw_setup(settings, render_state);
+  first_tfrag_draw_setup(settings, render_state);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
@@ -308,7 +180,7 @@ void Tfrag3::render_tree(const RenderSettings& settings,
 
   for (const auto& draw : *tree.draws) {
     glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
-    auto double_draw = setup_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
     tree.tris_this_frame += draw.num_triangles;
     tree.draws_this_frame++;
     int draw_size = draw.vertex_index_stream.size();
@@ -316,7 +188,7 @@ void Tfrag3::render_tree(const RenderSettings& settings,
       int vtx_idx = 0;
       int out_idx = 0;
       for (auto& grp : draw.vis_groups) {
-        if (grp.tfrag_idx == 0xffffffff || tree.vis_temp.at(grp.tfrag_idx)) {
+        if (grp.vis_idx == 0xffffffff || tree.vis_temp.at(grp.vis_idx)) {
           memcpy(&tree.culled_indices[out_idx], &draw.vertex_index_stream[vtx_idx],
                  grp.num * sizeof(u32));
           out_idx += grp.num;
@@ -402,10 +274,10 @@ void cull_ref_all(const math::Vector4f* planes,
  * This is intended to be used only for debugging when we can't easily get commands for all trees
  * working.
  */
-void Tfrag3::render_all_trees(const RenderSettings& settings,
+void Tfrag3::render_all_trees(const TfragRenderSettings& settings,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof) {
-  RenderSettings settings_copy = settings;
+  TfragRenderSettings settings_copy = settings;
   for (size_t i = 0; i < m_cached_trees.size(); i++) {
     if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID) {
       settings_copy.tree_idx = i;
@@ -415,10 +287,10 @@ void Tfrag3::render_all_trees(const RenderSettings& settings,
 }
 
 void Tfrag3::render_matching_trees(const std::vector<tfrag3::TFragmentTreeKind>& trees,
-                                   const RenderSettings& settings,
+                                   const TfragRenderSettings& settings,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
-  RenderSettings settings_copy = settings;
+  TfragRenderSettings settings_copy = settings;
   for (size_t i = 0; i < m_cached_trees.size(); i++) {
     m_cached_trees[i].reset_stats();
     if (!m_cached_trees[i].allowed) {
@@ -435,12 +307,24 @@ void Tfrag3::render_matching_trees(const std::vector<tfrag3::TFragmentTreeKind>&
       }
     }
   }
+
+  if (m_want_hack_tie) {
+    if (!m_hack_tie) {
+      m_hack_tie = std::make_unique<Tie3>("hack", (BucketId)1234);
+    }
+    auto tie_prof = prof.make_scoped_child("tie");
+    m_hack_tie->render_all_trees(settings, render_state, tie_prof);
+  } else {
+    if (m_hack_tie) {
+      m_hack_tie.reset();
+    }
+  }
 }
 
-void Tfrag3::debug_render_all_trees_nolores(const RenderSettings& settings,
+void Tfrag3::debug_render_all_trees_nolores(const TfragRenderSettings& settings,
                                             SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
-  RenderSettings settings_copy = settings;
+  TfragRenderSettings settings_copy = settings;
   for (size_t i = 0; i < m_cached_trees.size(); i++) {
     if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID &&
         m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
@@ -461,6 +345,7 @@ void Tfrag3::debug_render_all_trees_nolores(const RenderSettings& settings,
 }
 
 void Tfrag3::draw_debug_window() {
+  ImGui::Checkbox("Hack TIE?", &m_want_hack_tie);
   for (int i = 0; i < (int)m_cached_trees.size(); i++) {
     auto& tree = m_cached_trees[i];
     if (tree.kind == tfrag3::TFragmentTreeKind::INVALID) {
@@ -487,6 +372,10 @@ void Tfrag3::draw_debug_window() {
     }
     ImGui::Text("root: %d, roots: %d, nodes %d", tree.vis_tree_root, tree.num_vis_tree_roots,
                 (int)tree.vis->size());
+  }
+
+  if (m_hack_tie) {
+    m_hack_tie->draw_debug_window();
   }
 }
 
@@ -519,24 +408,6 @@ void Tfrag3::discard_tree_cache() {
   m_cached_trees.clear();
 }
 
-void Tfrag3::interp_time_of_day_slow(const float weights[8],
-                                     const std::vector<tfrag3::TimeOfDayColor>& in,
-                                     math::Vector<u8, 4>* out) {
-  // Timer interp_timer;
-  for (size_t color = 0; color < in.size(); color++) {
-    math::Vector4f result = math::Vector4f::zero();
-    for (int component = 0; component < 8; component++) {
-      result += in[color].rgba[component].cast<float>() * weights[component];
-    }
-    result[0] = std::min(result[0], 255.f);
-    result[1] = std::min(result[1], 255.f);
-    result[2] = std::min(result[2], 255.f);
-    result[3] = std::min(result[3], 128.f);  // note: different for alpha!
-    out[color] = result.cast<u8>();
-  }
-  // about 70 us, not bad.
-  // fmt::print("interp {} colors {:.2f} ms\n", in.size(), interp_timer.getMs());
-}
 
 namespace {
 
@@ -617,7 +488,7 @@ void debug_vis_draw(int first_root,
 
 }  // namespace
 
-void Tfrag3::render_tree_cull_debug(const RenderSettings& settings,
+void Tfrag3::render_tree_cull_debug(const TfragRenderSettings& settings,
                                     SharedRenderState* render_state,
                                     ScopedProfilerNode& prof) {
   // generate debug verts:

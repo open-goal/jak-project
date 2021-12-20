@@ -102,7 +102,7 @@ void TFragment::render(DmaFollower& dma,
 
     assert(!level_name.empty());
     m_tfrag3.setup_for_level(level_name, render_state);
-    Tfrag3::RenderSettings settings;
+    TfragRenderSettings settings;
     settings.hvdf_offset = m_tfrag_data.hvdf_offset;
     settings.fog_x = m_tfrag_data.fog.x();
     memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
@@ -181,7 +181,7 @@ void TFragment::render(DmaFollower& dma,
     for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
       if (m_many_level_render.level_enables[i]) {
         m_many_level_render.level_renderers[i].setup_for_level(level_names[i], render_state);
-        Tfrag3::RenderSettings settings;
+        TfragRenderSettings settings;
         settings.hvdf_offset = m_tfrag_data.hvdf_offset;
         settings.fog_x = m_tfrag_data.fog.x();
         memcpy(settings.math_camera.data(),
@@ -199,6 +199,7 @@ void TFragment::render(DmaFollower& dma,
     }
   }
 }
+
 void TFragment::draw_debug_window() {
   ImGui::Separator();
   ImGui::Checkbox("Extra Debug", &m_extra_debug);

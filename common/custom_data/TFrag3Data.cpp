@@ -3,7 +3,7 @@
 
 namespace tfrag3 {
 
-void TfragDraw::serialize(Serializer& ser) {
+void StripDraw::serialize(Serializer& ser) {
   ser.from_ptr(&mode);
   ser.from_ptr(&tree_tex_id);
   ser.from_pod_vector(&vertex_index_stream);
@@ -24,14 +24,34 @@ void TfragTree::serialize(Serializer& ser) {
   }
 
   ser.from_pod_vector(&vertices);
-  ser.from_pod_vector(&color_indices_per_vertex);
-  ser.from_pod_vector(&vis_nodes);
   ser.from_pod_vector(&colors);
+  bvh.serialize(ser);
+}
+
+void TieTree::serialize(Serializer& ser) {
+  ser.from_ptr(&tree_idx);
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(static_draws.size());
+  } else {
+    static_draws.resize(ser.load<size_t>());
+  }
+  for (auto& draw : static_draws) {
+    draw.serialize(ser);
+  }
+
+  ser.from_pod_vector(&vertices);
+  ser.from_pod_vector(&colors);
+  bvh.serialize(ser);
+}
+
+void BVH::serialize(Serializer& ser) {
   ser.from_ptr(&first_leaf_node);
   ser.from_ptr(&last_leaf_node);
   ser.from_ptr(&first_root);
   ser.from_ptr(&num_roots);
   ser.from_ptr(&only_children);
+  ser.from_pod_vector(&vis_nodes);
 }
 
 void Texture::serialize(Serializer& ser) {
@@ -67,6 +87,15 @@ void Level::serialize(Serializer& ser) {
     tfrag_trees.resize(ser.load<size_t>());
   }
   for (auto& tree : tfrag_trees) {
+    tree.serialize(ser);
+  }
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(tie_trees.size());
+  } else {
+    tie_trees.resize(ser.load<size_t>());
+  }
+  for (auto& tree : tie_trees) {
     tree.serialize(ser);
   }
 

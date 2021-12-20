@@ -2030,13 +2030,13 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
 
     // now, add draws
     for (auto& draw : draw_list) {
-      tfrag3::TfragDraw tdraw;
+      tfrag3::StripDraw tdraw;
       tdraw.mode = draw.mode;
       tdraw.tree_tex_id = tfrag3_tex_id;
 
       for (auto& strip : draw.strips) {
-        tfrag3::TfragDraw::VisGroup vgroup;
-        vgroup.tfrag_idx = strip.tfrag_id;    // associate with the tfrag for culling
+        tfrag3::StripDraw::VisGroup vgroup;
+        vgroup.vis_idx = strip.tfrag_id;    // associate with the tfrag for culling
         vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
 
         tdraw.num_triangles += strip.verts.size() - 2;
@@ -2049,7 +2049,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
           vtx.q = vert.stq.z();
-          vtx.color_index = vert.rgba;
+          vtx.color_index = vert.rgba / 4;
           // assert((vert.rgba >> 2) < 1024); spider cave has 2048?
           assert((vert.rgba & 3) == 0);
 
@@ -2151,17 +2151,17 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   fmt::print("    tree has {} arrays and {} tfragments\n", tree->length, as_tfrag_array->length);
 
   auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
-  this_tree.first_leaf_node = vis_nodes.first_child_node;
-  this_tree.last_leaf_node = vis_nodes.last_child_node;
-  this_tree.num_roots = vis_nodes.num_roots;
-  this_tree.only_children = vis_nodes.only_children;
-  this_tree.first_root = vis_nodes.first_root;
-  this_tree.vis_nodes = std::move(vis_nodes.vis_nodes);
+  this_tree.bvh.first_leaf_node = vis_nodes.first_child_node;
+  this_tree.bvh.last_leaf_node = vis_nodes.last_child_node;
+  this_tree.bvh.num_roots = vis_nodes.num_roots;
+  this_tree.bvh.only_children = vis_nodes.only_children;
+  this_tree.bvh.first_root = vis_nodes.first_root;
+  this_tree.bvh.vis_nodes = std::move(vis_nodes.vis_nodes);
 
   std::unordered_map<int, int> tfrag_parents;
   // for (auto& node : this_tree.vis_nodes) {
-  for (size_t node_idx = 0; node_idx < this_tree.vis_nodes.size(); node_idx++) {
-    const auto& node = this_tree.vis_nodes[node_idx];
+  for (size_t node_idx = 0; node_idx < this_tree.bvh.vis_nodes.size(); node_idx++) {
+    const auto& node = this_tree.bvh.vis_nodes[node_idx];
     if (node.flags == 0) {
       for (int i = 0; i < node.num_kids; i++) {
         tfrag_parents[node.child_id + i] = node_idx;
@@ -2176,11 +2176,11 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
   for (auto& draw : this_tree.draws) {
     for (auto& str : draw.vis_groups) {
-      auto it = tfrag_parents.find(str.tfrag_idx);
+      auto it = tfrag_parents.find(str.vis_idx);
       if (it == tfrag_parents.end()) {
-        str.tfrag_idx = UINT32_MAX;
+        str.vis_idx = UINT32_MAX;
       } else {
-        str.tfrag_idx = it->second;
+        str.vis_idx = it->second;
       }
     }
   }
