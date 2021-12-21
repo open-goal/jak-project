@@ -28,6 +28,7 @@ class Tie3 : public BucketRenderer {
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
+    SwizzledTimeOfDay tod_cache;
 
     // todo: could share this better
     std::vector<u8> vis_temp;
@@ -49,6 +50,8 @@ class Tie3 : public BucketRenderer {
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
 
   char m_user_level[255] = "vi1";
-  std::optional<std::string> m_pending_user_level;
-  bool m_override_level = false;
+  std::optional<std::string> m_pending_user_level = "vi1";
+  bool m_override_level = true;
+  bool m_use_fast_time_of_day = true;
+  bool m_debug_wireframe = false;
 };

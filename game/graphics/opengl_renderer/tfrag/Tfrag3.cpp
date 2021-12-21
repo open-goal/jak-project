@@ -234,41 +234,6 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
   glBindVertexArray(0);
 }
 
-bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {
-  /*
-   *(let ((v1-0 *math-camera*))
-    (.lvf vf6 (&-> arg0 quad))
-    (.lvf vf1 (&-> v1-0 plane 0 quad))
-    (.lvf vf2 (&-> v1-0 plane 1 quad))
-    (.lvf vf3 (&-> v1-0 plane 2 quad))
-    (.lvf vf4 (&-> v1-0 plane 3 quad))
-    )
-   (.mul.x.vf acc vf1 vf6)
-   (.add.mul.y.vf acc vf2 vf6 acc)
-   (.add.mul.z.vf acc vf3 vf6 acc)
-   (.sub.mul.w.vf vf5 vf4 vf0 acc)
-   (.add.w.vf vf5 vf5 vf6)
-   (.mov v1-1 vf5)
-   (.pcgtw v1-2 r0-0 v1-1)
-   (.ppach v1-3 r0-0 v1-2)
-   (zero? (the-as int v1-3))
-   */
-
-  math::Vector4f acc =
-      planes[0] * sphere.x() + planes[1] * sphere.y() + planes[2] * sphere.z() - planes[3];
-
-  return acc.x() > -sphere.w() && acc.y() > -sphere.w() && acc.z() > -sphere.w() &&
-         acc.w() > -sphere.w();
-}
-
-void cull_ref_all(const math::Vector4f* planes,
-                  const std::vector<tfrag3::VisNode>& nodes,
-                  u8* out) {
-  for (size_t i = 0; i < nodes.size(); i++) {
-    out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
-  }
-}
-
 /*!
  * Render all trees with settings for the given tree.
  * This is intended to be used only for debugging when we can't easily get commands for all trees
@@ -300,7 +265,8 @@ void Tfrag3::render_matching_trees(const std::vector<tfrag3::TFragmentTreeKind>&
         m_cached_trees[i].forced) {
       m_cached_trees[i].rendered_this_frame = true;
       settings_copy.tree_idx = i;
-      cull_ref_all(settings.planes, *m_cached_trees[i].vis, m_cached_trees[i].vis_temp.data());
+      cull_check_all_slow(settings.planes, *m_cached_trees[i].vis,
+                          m_cached_trees[i].vis_temp.data());
       render_tree(settings_copy, render_state, prof, true);
       if (m_cached_trees[i].cull_debug) {
         render_tree_cull_debug(settings_copy, render_state, prof);
@@ -407,7 +373,6 @@ void Tfrag3::discard_tree_cache() {
   // delete textures and stuff.
   m_cached_trees.clear();
 }
-
 
 namespace {
 

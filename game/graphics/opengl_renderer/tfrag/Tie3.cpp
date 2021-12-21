@@ -39,6 +39,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_trees[tree_idx].vis = &tree.bvh;
       m_trees[tree_idx].vis_temp.resize(tree.bvh.vis_nodes.size());
       m_trees[tree_idx].culled_indices.resize(idx_buffer_len);
+      m_trees[tree_idx].tod_cache = swizzle_time_of_day(tree.colors);
       glBindBuffer(GL_ARRAY_BUFFER, m_trees[tree_idx].vertex_buffer);
       glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
                    GL_DYNAMIC_DRAW);
@@ -177,7 +178,13 @@ void Tie3::render_tree(int idx,
   if (m_color_result.size() < tree.colors->size()) {
     m_color_result.resize(tree.colors->size());
   }
-  interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+
+  if (m_use_fast_time_of_day) {
+    interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+  } else {
+    interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+  }
+
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
@@ -192,12 +199,20 @@ void Tie3::render_tree(int idx,
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
+  int last_texture = -1;
+
+  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, tree.vis_temp.data());
+
   for (const auto& draw : *tree.draws) {
-    glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+    if ((int)draw.tree_tex_id != last_texture) {
+      glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+      last_texture = draw.tree_tex_id;
+    }
+
     auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
 
     int draw_size = draw.vertex_index_stream.size();
-    if (false) {
+    if (true) {
       int vtx_idx = 0;
       int out_idx = 0;
       for (auto& grp : draw.vis_groups) {
@@ -245,6 +260,27 @@ void Tie3::render_tree(int idx,
       default:
         assert(false);
     }
+
+    if (m_debug_wireframe) {
+      render_state->shaders[ShaderId::TFRAG3_NO_TEX].activate();
+      glUniformMatrix4fv(
+          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "camera"), 1,
+          GL_FALSE, settings.math_camera.data());
+      glUniform4f(
+          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "hvdf_offset"),
+          settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
+          settings.hvdf_offset[3]);
+      glUniform1f(
+          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "fog_constant"),
+          settings.fog_x);
+      glDisable(GL_BLEND);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)0);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      prof.add_draw_call();
+      prof.add_tri(draw_size);
+      render_state->shaders[ShaderId::TFRAG3].activate();
+    }
   }
   glBindVertexArray(0);
 }
@@ -255,4 +291,6 @@ void Tie3::draw_debug_window() {
     m_pending_user_level = m_user_level;
   }
   ImGui::Checkbox("Override level", &m_override_level);
+  ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
+  ImGui::Checkbox("Wireframe", &m_debug_wireframe);
 }

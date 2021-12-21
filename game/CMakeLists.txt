@@ -19,7 +19,7 @@ if(UNIX)
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
-        -Wsign-promo -O3")
+        -Wsign-promo -O3 -march=haswell")
 else()
         set(CMAKE_CXX_FLAGS "/EHsc")
 endif(UNIX)

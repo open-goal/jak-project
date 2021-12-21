@@ -29,3 +29,18 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderSta
 void interp_time_of_day_slow(const float weights[8],
                              const std::vector<tfrag3::TimeOfDayColor>& in,
                              math::Vector<u8, 4>* out);
+
+struct SwizzledTimeOfDay {
+  std::vector<u8> data;
+  u32 color_count = 0;
+};
+
+SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>& in);
+
+void interp_time_of_day_fast(const float weights[8],
+                             const SwizzledTimeOfDay& in,
+                             math::Vector<u8, 4>* out);
+
+void cull_check_all_slow(const math::Vector4f* planes,
+                         const std::vector<tfrag3::VisNode>& nodes,
+                         u8* out);

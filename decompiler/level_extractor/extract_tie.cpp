@@ -1196,6 +1196,14 @@ u16 float_to_u16(float f) {
   return result;
 }
 
+int get_fancy_base(int draw1, int draw2) {
+  int total = draw1 + draw2;
+  total += 3;
+  total /= 4;
+  total *= 4;
+  return total;
+}
+
 void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
   for (auto& proto : protos) {
     //    bool first_instance = true;
@@ -1493,9 +1501,11 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
         // ibeq vi_tgt_ip1_ptr, vi_dest_ptr, L35       |  nop
         // sq.xyzw vf_res02, 2(vi_dest_ptr)      |  maddy.xyzw vf_clr_val1, vf_clr_val2, vf_morph
 
+        int base = get_fancy_base(draw_1_count, draw_2_count);
+
         while (dest_ptr != tgt_ip1_ptr) {
           // todo - might be some rounding here.
-          u32 clr_idx_idx = draw_1_count + draw_2_count + ip_1_count * 4;
+          u32 clr_idx_idx = base + ip_1_count * 4 + 0;
           auto vert_pos = frag.lq_points(point_ptr);
           point_ptr++;
           auto xy_offs = frag.lq_points(point_ptr);
@@ -1525,7 +1535,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
         bool first_iter = true;
         while (dest_ptr != tgt_ip2_ptr) {
           // todo - might be some rounding here.
-          u32 clr_idx_idx = draw_1_count + draw_2_count + ip_1_count * 4 + ip_2_count;
+          u32 clr_idx_idx = base + ip_1_count * 4 + 0;
           auto vert_pos = frag.lq_points(point_ptr);
           point_ptr++;
           auto xy_offs = frag.lq_points(point_ptr);
@@ -1842,7 +1852,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
                (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
-//    assert(false);
+    //    assert(false);
   }
 }
 
@@ -1873,15 +1883,18 @@ DrawMode process_draw_mode(const AdgifInfo& info) {
 void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                                   tfrag3::Level& lev,
                                   const TextureDB& tdb,
-                                  const std::vector<TieProtoInfo>& protos) {
+                                  const std::vector<TieProtoInfo>& protos,
+                                  BigPalette& pal) {
   // our current approach for static draws is just to flatten to giant mesh.
 
   std::unordered_map<u32, std::vector<u32>> draws_by_tex;
 
+  std::unordered_map<u32, u32> interp_hack_colors;
+
   for (auto& proto : protos) {
     for (auto& inst : proto.instances) {
       auto& mat = inst.mat;
-      //for (auto& frag : proto.frags) {
+      // for (auto& frag : proto.frags) {
       for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
         auto& frag = proto.frags[frag_idx];
         auto& ifrag = inst.frags.at(frag_idx);
@@ -1955,7 +1968,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
           // now we have a draw, time to add vertices
           tfrag3::StripDraw::VisGroup vgroup;
-          vgroup.vis_idx = inst.vis_id;    // associate with the tfrag for culling
+          vgroup.vis_idx = inst.vis_id;         // associate with the tfrag for culling
           vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
           draw_to_add_to->num_triangles += strip.verts.size() - 2;
           for (auto& vert : strip.verts) {
@@ -1968,8 +1981,14 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             vtx.s = vert.tex.x();
             vtx.t = vert.tex.y();
             vtx.q = vert.tex.z();
-            vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
-            vtx.color_index += ifrag.color_index_offset_in_big_palette;
+            if (vert.color_index_index == UINT32_MAX) {
+              vtx.color_index = 0;
+            } else {
+              vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
+              assert(vert.color_index_index < ifrag.color_indices.size());
+              vtx.color_index += ifrag.color_index_offset_in_big_palette;
+            }
+
             size_t vert_idx = tree.vertices.size();
             tree.vertices.push_back(vtx);
             draw_to_add_to->vertex_index_stream.push_back(vert_idx);
@@ -1980,6 +1999,11 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       }
     }
   }
+
+  std::stable_sort(tree.static_draws.begin(), tree.static_draws.end(),
+                   [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
+                     return a.tree_tex_id < b.tree_tex_id;
+                   });
 }
 
 void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
@@ -2040,7 +2064,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
 
   auto full_palette = make_big_palette(info);
-  add_vertices_and_static_draw(this_tree, out, tex_db, info);
+  add_vertices_and_static_draw(this_tree, out, tex_db, info, full_palette);
 
   for (auto& draw : this_tree.static_draws) {
     for (auto& str : draw.vis_groups) {
