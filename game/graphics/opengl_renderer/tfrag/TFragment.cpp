@@ -308,8 +308,8 @@ void TFragment::handle_initialization(DmaFollower& dma,
   m_globals.vf04_ambient = m_tfrag_data.ambient;  // TODO get rid?
 
   auto pc_port_data = dma.read_and_advance();
-  assert(pc_port_data.size_bytes == sizeof(PcPortData));
-  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(PcPortData));
+  assert(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
   for (int i = 0; i < 4; i++) {

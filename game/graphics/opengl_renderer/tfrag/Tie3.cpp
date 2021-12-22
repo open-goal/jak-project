@@ -167,11 +167,81 @@ void Tie3::discard_tree_cache() {
 }
 
 void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  if (!m_enabled) {
+    while (dma.current_tag_offset() != render_state->next_bucket) {
+      dma.read_and_advance();
+    }
+    return;
+  }
+
   if (m_override_level && m_pending_user_level) {
     setup_for_level(*m_pending_user_level, render_state);
     m_pending_user_level = {};
   }
 
+  auto data0 = dma.read_and_advance();
+  assert(data0.vif1() == 0);
+  assert(data0.vif0() == 0);
+  assert(data0.size_bytes == 0);
+
+  if (dma.current_tag().kind == DmaTag::Kind::CALL) {
+    // renderer didn't run, let's just get out of here.
+    for (int i = 0; i < 4; i++) {
+      dma.read_and_advance();
+    }
+    assert(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+
+  auto gs_test = dma.read_and_advance();
+  assert(gs_test.size_bytes == 32);
+
+  auto tie_consts = dma.read_and_advance();
+  assert(tie_consts.size_bytes == 9 * 16);
+
+  auto mscalf = dma.read_and_advance();
+  assert(mscalf.size_bytes == 0);
+
+  auto row = dma.read_and_advance();
+  assert(row.size_bytes == 32);
+
+  auto next = dma.read_and_advance();
+  assert(next.size_bytes == 0);
+
+  auto pc_port_data = dma.read_and_advance();
+  assert(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
+  m_pc_port_data.level_name[11] = '\0';
+
+  while (dma.current_tag_offset() != render_state->next_bucket) {
+    dma.read_and_advance();
+  }
+
+  TfragRenderSettings settings;
+  settings.hvdf_offset = m_pc_port_data.hvdf_off;
+  settings.fog_x = m_pc_port_data.fogx;
+
+  memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
+  settings.tree_idx = 0;
+
+  for (int i = 0; i < 4; i++) {
+    settings.planes[i] = m_pc_port_data.planes[i];
+  }
+
+  if (false) {
+    //    for (int i = 0; i < 8; i++) {
+    //      settings.time_of_day_weights[i] = m_time_of_days[i];
+    //    }
+  } else {
+    for (int i = 0; i < 8; i++) {
+      settings.time_of_day_weights[i] =
+          2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
+    }
+  }
+  if (!m_override_level) {
+    setup_for_level(m_pc_port_data.level_name, render_state);
+  }
+  render_all_trees(settings, render_state, prof);
   // todo render all...
 }
 

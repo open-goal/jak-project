@@ -44,3 +44,14 @@ void interp_time_of_day_fast(const float weights[8],
 void cull_check_all_slow(const math::Vector4f* planes,
                          const std::vector<tfrag3::VisNode>& nodes,
                          u8* out);
+
+struct TfragPcPortData {
+  math::Vector4f planes[4];
+  math::Vector<s32, 4> itimes[4];
+  math::Vector4f camera[4];
+  math::Vector4f hvdf_off;
+  float fogx;
+  float unused[3];
+  char level_name[12];
+  u32 tree_idx;
+};
