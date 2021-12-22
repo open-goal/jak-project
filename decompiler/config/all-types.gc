@@ -11594,10 +11594,10 @@
   :size-assert         #xe4
   :flag-assert         #xd000000e4
   (:methods
-    (get-touched-prim (_type_ trsqv touching-prims-entry) collide-shape-prim 9)
+    (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim 9) ;; see ropebridge::(event ropebridge-idle)
     (dummy-10 () none 10)
     (dummy-11 (_type_ vector) vector 11)
-    (get-touched-tri (_type_ touching-prims-entry touching-prims-entry) collide-tri-result 12)
+    (get-touched-tri (_type_ touching-prims-entry touching-shapes-entry) collide-tri-result 12) ;; see ropebridge::(event ropebridge-idle)
     )
   )
 
@@ -23476,10 +23476,11 @@
 
 ;; - Types
 
+(declare-type ropebridge-spring-point structure)
 (deftype ropebridge-tuning (structure)
   ((num-springs             int32   :offset-assert 0)
    (num-spring-points       int32   :offset-assert 4)
-   (col-mesh-indexes        pointer :offset-assert 8) ;; pointer to a variable sized thing
+   (col-mesh-indexes        (pointer int8) :offset-assert 8) ;; pointer to a variable sized thing
    (view-frustum-radius     float   :offset-assert 12)
    (root-prim-radius        float   :offset-assert 16)
    (desired-spring-len      float   :offset-assert 20)
@@ -23495,7 +23496,7 @@
    (rider-bonk-max          float   :offset-assert 60)
    (normal-board-len        float   :offset-assert 64)
    (bridge-end-to-end-len   float   :offset-assert 68)
-   (rest-state              symbol   :offset-assert 72)
+   (rest-state              (pointer ropebridge-spring-point)   :offset-assert 72)
    )
   :method-count-assert 9
   :size-assert         #x4c
@@ -23514,15 +23515,15 @@
   )
 
 (deftype ropebridge (process-drawable)
-  ((root-override basic :offset 112)
+  ((root-override          collide-shape :score 100                     :offset 112)
    (subtype                uint64                    :offset-assert 176)
-   (subtype-name           basic                     :offset-assert 184)
+   (subtype-name           string                     :offset-assert 184)
    (agitated-time-stamp    uint64                    :offset-assert 192)
    (bonk-time-stamp        uint64                    :offset-assert 200)
    (attack-flop-time-stamp uint64                    :offset-assert 208)
    (player-attack-id       uint64                    :offset-assert 216)
    (sleep-dist             float                     :offset-assert 224)
-   (do-physics?            basic                     :offset-assert 228)
+   (do-physics?            symbol                     :offset-assert 228)
    (tuning                 ropebridge-tuning         :offset-assert 232)
    (world-matrix           matrix            :inline :offset-assert 240)
    (inv-world-matrix       matrix            :inline :offset-assert 304)
@@ -23534,12 +23535,12 @@
   :heap-base           #x7d0
   :flag-assert         #x1d07d00840
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
-    (dummy-22 (_type_) none 22)
-    (dummy-23 (_type_) none 23)
+    (TODO-RENAME-20 (_type_ uint vector int float) symbol 20)
+    (TODO-RENAME-21 (_type_) symbol 21)
+    (TODO-RENAME-22 (_type_ uint vector int) symbol 22)
+    (TODO-RENAME-23 (_type_) symbol 23)
     (dummy-24 (_type_) none 24)
-    (dummy-25 (_type_) none 25)
+    (dummy-25 (_type_) symbol 25)
     (dummy-26 (_type_) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
@@ -23550,7 +23551,7 @@
 
 ;; - Functions
 
-(define-extern ropebridge-joint-callback function)
+(define-extern ropebridge-joint-callback (function ropebridge none))
 
 ;; - Unknowns
 
