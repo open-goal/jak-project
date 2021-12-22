@@ -8,23 +8,36 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
+/*!
+ * Set up all OpenGL and temporary buffers for a given level name.
+ * The level name should be the 3 character short name.
+ */
 void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_state) {
   // make sure we have the level data.
+  // TODO: right now this will wait to load from disk and unpack it.
   auto lev_data = render_state->loader.get_tfrag3_level(level);
+
   if (m_level_name != level) {
-    fmt::print("new level for tie3: {} -> {}\n", m_level_name, level);
-    fmt::print("discarding old stuff\n");
+    // We changed level!
+    fmt::print("TIE3 level change! {} -> {}\n", m_level_name, level);
+    fmt::print(" Removing old level...\n");
     discard_tree_cache();
-    fmt::print("level has {} tie trees\n", lev_data->tie_trees.size());
+    fmt::print(" New level has {} tie trees\n", lev_data->tie_trees.size());
     m_trees.resize(lev_data->tie_trees.size());
 
     size_t idx_buffer_len = 0;
     size_t time_of_day_count = 0;
+    size_t vis_temp_len = 0;
+    size_t max_draw = 0;
+    size_t max_idx_per_draw = 0;
 
+    // set up each tree
     for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees.size(); tree_idx++) {
       const auto& tree = lev_data->tie_trees[tree_idx];
+      max_draw = std::max(tree.static_draws.size(), max_draw);
       for (auto& draw : tree.static_draws) {
-        idx_buffer_len = std::max(idx_buffer_len, draw.vertex_index_stream.size());
+        idx_buffer_len += draw.vertex_index_stream.size();
+        max_idx_per_draw = std::max(max_idx_per_draw, draw.vertex_index_stream.size());
       }
       time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
       u32 verts = tree.vertices.size();
@@ -37,12 +50,11 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_trees[tree_idx].draws = &tree.static_draws;  // todo - should we just copy this?
       m_trees[tree_idx].colors = &tree.colors;
       m_trees[tree_idx].vis = &tree.bvh;
-      m_trees[tree_idx].vis_temp.resize(tree.bvh.vis_nodes.size());
-      m_trees[tree_idx].culled_indices.resize(idx_buffer_len);
+      vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
       m_trees[tree_idx].tod_cache = swizzle_time_of_day(tree.colors);
       glBindBuffer(GL_ARRAY_BUFFER, m_trees[tree_idx].vertex_buffer);
       glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
-                   GL_DYNAMIC_DRAW);
+                   GL_STATIC_DRAW);
       glEnableVertexAttribArray(0);
       glEnableVertexAttribArray(1);
       glEnableVertexAttribArray(2);
@@ -76,11 +88,16 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       glBindVertexArray(0);
     }
 
+    fmt::print("TIE temporary vis output size: {}\n", vis_temp_len);
+    m_cache.vis_temp.resize(vis_temp_len);
+    fmt::print("TIE max draws/tree: {}\n", max_draw);
+    m_cache.draw_idx_temp.resize(max_draw);
+    fmt::print("TIE draw with the most verts: {}\n", max_idx_per_draw);
+
     // todo share textures
     fmt::print("level has {} textures\n", lev_data->textures.size());
     for (auto& tex : lev_data->textures) {
       GLuint gl_tex;
-      // fmt::print("  tex: {} x {} {} {}\n", tex.w, tex.h, tex.debug_name, tex.debug_tpage_name);
       glGenTextures(1, &gl_tex);
       glBindTexture(GL_TEXTURE_2D, gl_tex);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.w, tex.h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
@@ -96,12 +113,13 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_textures.push_back(gl_tex);
     }
 
-    fmt::print("level max index stream: {}\n", idx_buffer_len);
+    fmt::print("level TIE index stream: {}\n", idx_buffer_len);
+    m_cache.index_list.resize(idx_buffer_len);
     m_has_index_buffer = true;
     glGenBuffers(1, &m_index_buffer);
     glActiveTexture(GL_TEXTURE1);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_STREAM_DRAW);
 
     fmt::print("level max time of day: {}\n", time_of_day_count);
     assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
@@ -160,6 +178,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 void Tie3::render_all_trees(const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof) {
+  Timer all_tree_timer;
   if (m_override_level && m_pending_user_level) {
     setup_for_level(*m_pending_user_level, render_state);
     m_pending_user_level = {};
@@ -167,24 +186,32 @@ void Tie3::render_all_trees(const TfragRenderSettings& settings,
   for (u32 i = 0; i < m_trees.size(); i++) {
     render_tree(i, settings, render_state, prof);
   }
+  m_all_tree_time.add(all_tree_timer.getSeconds());
 }
 
 void Tie3::render_tree(int idx,
                        const TfragRenderSettings& settings,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
+  Timer tree_timer;
   auto& tree = m_trees.at(idx);
+  tree.perf.draws = 0;
+  tree.perf.verts = 0;
+  tree.perf.full_draws = 0;
 
   if (m_color_result.size() < tree.colors->size()) {
     m_color_result.resize(tree.colors->size());
   }
 
+  Timer interp_timer;
   if (m_use_fast_time_of_day) {
     interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
   } else {
     interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
   }
+  tree.perf.tod_time.add(interp_timer.getSeconds());
 
+  Timer setup_timer;
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
@@ -198,56 +225,100 @@ void Tie3::render_tree(int idx,
   glActiveTexture(GL_TEXTURE0);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
+  tree.perf.tod_time.add(setup_timer.getSeconds());
 
   int last_texture = -1;
 
-  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, tree.vis_temp.data());
+  Timer cull_timer;
+  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
+  tree.perf.cull_time.add(cull_timer.getSeconds());
 
-  for (const auto& draw : *tree.draws) {
+  Timer index_timer;
+  int idx_buffer_ptr = 0;
+  for (size_t i = 0; i < tree.draws->size(); i++) {
+    const auto& draw = tree.draws->operator[](i);
+    int vtx_idx = 0;
+    DrawIndices ds;
+    ds.start_idx = idx_buffer_ptr;
+    bool building_run = false;
+    int run_start_out = 0;
+    int run_start_in = 0;
+    for (auto& grp : draw.vis_groups) {
+      bool vis = grp.vis_idx == 0xffffffff || m_cache.vis_temp.at(grp.vis_idx);
+      if (building_run) {
+        if (vis) {
+          idx_buffer_ptr += grp.num;
+        } else {
+          building_run = false;
+          idx_buffer_ptr += grp.num;
+          memcpy(&m_cache.index_list[run_start_out], &draw.vertex_index_stream[run_start_in],
+                 (idx_buffer_ptr - run_start_out) * sizeof(u32));
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start_out = idx_buffer_ptr;
+          run_start_in = vtx_idx;
+          idx_buffer_ptr += grp.num;
+        } else {
+        }
+      }
+      vtx_idx += grp.num;
+    }
+    if (building_run) {
+      memcpy(&m_cache.index_list[run_start_out], &draw.vertex_index_stream[run_start_in],
+             (idx_buffer_ptr - run_start_out) * sizeof(u32));
+    }
+
+    ds.end_idx = idx_buffer_ptr;
+    m_cache.draw_idx_temp[i] = ds;
+  }
+  tree.perf.index_time.add(index_timer.getSeconds());
+  tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
+
+  Timer draw_timer;
+  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32),
+                  m_cache.index_list.data());
+
+  for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
+    const auto& draw = tree.draws->operator[](draw_idx);
+    const auto& indices = m_cache.draw_idx_temp[draw_idx];
+
+    if (indices.end_idx <= indices.start_idx) {
+      continue;
+    }
+
     if ((int)draw.tree_tex_id != last_texture) {
       glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
 
     auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    int draw_size = indices.end_idx - indices.start_idx;
+    void* offset = (void*)(indices.start_idx * sizeof(u32));
 
-    int draw_size = draw.vertex_index_stream.size();
-    if (true) {
-      int vtx_idx = 0;
-      int out_idx = 0;
-      for (auto& grp : draw.vis_groups) {
-        if (grp.vis_idx == 0xffffffff || tree.vis_temp.at(grp.vis_idx)) {
-          memcpy(&tree.culled_indices[out_idx], &draw.vertex_index_stream[vtx_idx],
-                 grp.num * sizeof(u32));
-          out_idx += grp.num;
-        }
+    prof.add_draw_call();
+    prof.add_tri(draw.num_triangles * (float)draw_size / draw.vertex_index_stream.size());
 
-        vtx_idx += grp.num;
-      }
+    bool is_full = draw_size == (int)draw.vertex_index_stream.size();
 
-      draw_size = out_idx;
-      if (draw_size == 0) {
-        continue;
-      }
-
-      prof.add_draw_call();
-      prof.add_tri(draw.num_triangles * (float)out_idx / draw.vertex_index_stream.size());
-
-      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, out_idx * sizeof(u32),
-                      tree.culled_indices.data());
-    } else {
-      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, draw.vertex_index_stream.size() * sizeof(u32),
-                      draw.vertex_index_stream.data());
-      prof.add_draw_call();
-      prof.add_tri(draw.num_triangles);
+    tree.perf.draws++;
+    if (is_full) {
+      tree.perf.full_draws++;
     }
+    tree.perf.verts += draw_size;
 
-    glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
         break;
       case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
+        tree.perf.draws++;
+        tree.perf.verts += draw_size;
+        if (is_full) {
+          tree.perf.full_draws++;
+        }
         prof.add_draw_call();
         prof.add_tri(draw_size);
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
@@ -255,7 +326,7 @@ void Tie3::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
                     double_draw.aref);
         glDepthMask(GL_FALSE);
-        glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)0);
+        glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;
       default:
         assert(false);
@@ -283,6 +354,8 @@ void Tie3::render_tree(int idx,
     }
   }
   glBindVertexArray(0);
+  tree.perf.draw_time.add(draw_timer.getSeconds());
+  tree.perf.tree_time.add(tree_timer.getSeconds());
 }
 
 void Tie3::draw_debug_window() {
@@ -293,4 +366,19 @@ void Tie3::draw_debug_window() {
   ImGui::Checkbox("Override level", &m_override_level);
   ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
   ImGui::Checkbox("Wireframe", &m_debug_wireframe);
+  ImGui::Separator();
+  for (u32 i = 0; i < m_trees.size(); i++) {
+    auto& perf = m_trees[i].perf;
+    ImGui::Text("Tree: %d", i);
+    ImGui::Text("index data bytes: %d", perf.index_upload);
+    ImGui::Text("time of days: %d", (int)m_trees[i].colors->size());
+    ImGui::Text("draw: %d, full: %d, verts: %d", perf.draws, perf.full_draws, perf.verts);
+    ImGui::Text("total: %.2f", perf.tree_time.get());
+    ImGui::Text("cull: %.2f index: %.2f tod: %.2f setup: %.2f draw: %.2f",
+                perf.cull_time.get() * 1000.f, perf.index_time.get() * 1000.f,
+                perf.tod_time.get() * 1000.f, perf.setup_time.get() * 1000.f,
+                perf.draw_time.get() * 1000.f);
+    ImGui::Separator();
+  }
+  ImGui::Text("All trees: %.2f", 1000.f * m_all_tree_time.get());
 }

@@ -2,6 +2,7 @@
 #include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/util/FilteredValue.h"
 
 class Tie3 : public BucketRenderer {
  public:
@@ -30,14 +31,32 @@ class Tie3 : public BucketRenderer {
     const tfrag3::BVH* vis = nullptr;
     SwizzledTimeOfDay tod_cache;
 
-    // todo: could share this better
-    std::vector<u8> vis_temp;
-    std::vector<u32> culled_indices;
+    struct {
+      u32 index_upload = 0;
+      u32 verts = 0;
+      u32 draws = 0;
+      u32 full_draws = 0; // ones that have all visible
+      Filtered<float> cull_time;
+      Filtered<float> index_time;
+      Filtered<float> tod_time;
+      Filtered<float> setup_time;
+      Filtered<float> draw_time;
+      Filtered<float> tree_time;
+    } perf;
   };
 
   std::vector<Tree> m_trees;
   std::string m_level_name;
   std::vector<GLuint> m_textures;  // todo, can we share with tfrag in some cases?
+
+  struct DrawIndices {
+    int start_idx, end_idx;
+  };
+  struct Cache {
+    std::vector<u8> vis_temp;
+    std::vector<DrawIndices> draw_idx_temp;
+    std::vector<u32> index_list;
+  } m_cache;
 
   GLuint m_time_of_day_texture = -1;
   bool m_has_time_of_day_texture = false;
@@ -54,4 +73,5 @@ class Tie3 : public BucketRenderer {
   bool m_override_level = true;
   bool m_use_fast_time_of_day = true;
   bool m_debug_wireframe = false;
+  Filtered<float> m_all_tree_time;
 };

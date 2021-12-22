@@ -150,9 +150,25 @@ void interp_time_of_day_slow(const float weights[8],
     result[3] = std::min(result[3], 128.f);  // note: different for alpha!
     out[color] = result.cast<u8>();
   }
-  // about 70 us, not bad.
-  // fmt::print("interp {} colors {:.2f} ms\n", in.size(), interp_timer.getMs());
 }
+
+// we want to absolutely minimize the number of time we have to "cross lanes" in AVX (meaning X
+// component of one vector interacts with Y component of another).  We can make this a lot better by
+// taking groups of 4 time of day colors (each containing 8x RGBAs) and rearranging them with this
+// pattern.  We want to compute:
+// [rgba][0][0] * weights[0] + [rgba][0][1] * weights[1] + [rgba][0][2]... + rgba[0][7] * weights[7]
+// RGBA is already a vector of 4 components, but with AVX we have vectors with 32 bytes which fit
+// 16 colors in them.
+
+// This makes each vector have:
+// colors0 = [rgba][0][0], [rgba][1][0], [rgba][2][0], [rgba][3][0]
+// colors1 = [rgba][0][1], [rgba][1][1], [rgba][2][1], [rgba][3][1]
+// ...
+// so we can basically add up the columns (multiplying by weights in between)
+// and we'll end up with [final0, final1, final2, final3, final4]
+
+// the swizzle function below rearranges to get this pattern.
+// it's not the most efficient way to do it, but it just runs during loading and not on every frame.
 
 SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>& in) {
   SwizzledTimeOfDay out;
@@ -178,38 +194,17 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
   return out;
 }
 
-std::string print_16s(__m256 vals) {
-  u16 mem[16];
-  _mm256_storeu_si256((__m256i*)mem, vals);
-  std::string result = "[";
-  for (int i = 0; i < 16; i++) {
-    result += fmt::format("0x{:4x} ", mem[i]);
-    if (i && (i % 4) == 0) {
-      result += fmt::format("| ");
-    }
-  }
-  result.back() = ']';
-  return result;
-};
-
-std::string print_8s(__m256 vals) {
-  u8 mem[32];
-  _mm256_storeu_si256((__m256i*)mem, vals);
-  std::string result = "[";
-  for (int i = 0; i < 32; i++) {
-    result += fmt::format("0x{:2x} ", mem[i]);
-    if (i && (i % 8) == 0) {
-      result += fmt::format("| ");
-    }
-  }
-  result.back() = ']';
-  return result;
-};
-
+// This does the same thing as interp_time_of_day_slow, but is faster.
+// Due to using integers instead of floats, it may be a tiny bit different.
+// TODO: it might be possible to reorder the loop into two blocks of loads and avoid spilling xmms.
+// It's ~8x faster than the slow version.
 void interp_time_of_day_fast(const float weights[8],
                              const SwizzledTimeOfDay& in,
                              math::Vector<u8, 4>* out) {
+  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
   __m256 zero = _mm256_set1_epi16(0);
+
+  // weight multipliers
   __m256 weights0 = _mm256_set1_epi16(weights[0] * 128.f);
   __m256 weights1 = _mm256_set1_epi16(weights[1] * 128.f);
   __m256 weights2 = _mm256_set1_epi16(weights[2] * 128.f);
@@ -218,19 +213,16 @@ void interp_time_of_day_fast(const float weights[8],
   __m256 weights5 = _mm256_set1_epi16(weights[5] * 128.f);
   __m256 weights6 = _mm256_set1_epi16(weights[6] * 128.f);
   __m256 weights7 = _mm256_set1_epi16(weights[7] * 128.f);
-  //
-  //  fmt::print("weights\n");
-  //  fmt::print("{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n", print_16s(weights0), print_16s(weights1))
 
-    __m256 sat = _mm256_set_epi16(128, 255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128,
-                                  255, 255, 255);
-  __m256 hack = _mm256_set_epi16(128, 255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128,
-                               255, 255, 255);
-//  __m256 sat = _mm256_set_epi16(255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128, 255,
-//                                255, 255, 128);
+  // saturation: note that alpha is saturated to 128 but the rest are 255.
+  // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
+  // change the shader to deal with this.
+  __m256 sat = _mm256_set_epi16(128, 255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128,
+                                255, 255, 255);
 
   for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
-    // first, load colors. We put 16 bytes / register because we will unpack eventually
+    // first, load colors. We put 16 bytes / register and don't touch the upper half because we will
+    // convert u8s to u16s.
     const u8* base = in.data.data() + color_quad * 128;
     __m256 color0 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 0)));
     __m256 color1 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 16)));
@@ -241,7 +233,7 @@ void interp_time_of_day_fast(const float weights[8],
     __m256 color6 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 96)));
     __m256 color7 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 112)));
 
-    // unpack to 16-bits. each has 16.
+    // unpack to 16-bits. each has 16x 16 bit colors.
     color0 = _mm256_unpacklo_epi8(color0, zero);
     color1 = _mm256_unpacklo_epi8(color1, zero);
     color2 = _mm256_unpacklo_epi8(color2, zero);
@@ -251,6 +243,7 @@ void interp_time_of_day_fast(const float weights[8],
     color6 = _mm256_unpacklo_epi8(color6, zero);
     color7 = _mm256_unpacklo_epi8(color7, zero);
 
+    // multiply by weights
     color0 = _mm256_mullo_epi16(color0, weights0);
     color1 = _mm256_mullo_epi16(color1, weights1);
     color2 = _mm256_mullo_epi16(color2, weights2);
@@ -260,6 +253,7 @@ void interp_time_of_day_fast(const float weights[8],
     color6 = _mm256_mullo_epi16(color6, weights6);
     color7 = _mm256_mullo_epi16(color7, weights7);
 
+    // add. This order minimizes dependencies.
     color0 = _mm256_add_epi16(color0, color1);
     color2 = _mm256_add_epi16(color2, color3);
     color4 = _mm256_add_epi16(color4, color5);
@@ -269,35 +263,24 @@ void interp_time_of_day_fast(const float weights[8],
     color4 = _mm256_add_epi16(color4, color6);
 
     color0 = _mm256_add_epi16(color0, color4);
+
+    // divide, because we multiplied our weights by 2^7.
     color0 = _mm256_srli_epi16(color0, 7);
 
-    __m256 mask = _mm256_cmpgt_epi16( sat, color0);
+    // saturate
+    __m256 mask = _mm256_cmpgt_epi16(sat, color0);
     color0 = _mm256_blendv_epi8(sat, color0, mask);
-    __m128i result = _mm256_castsi256_si128(_mm256_packus_epi16(color0, _mm256_permute2f128_si256(color0, color0, 1)));
+
+    // back to u8s.
+    __m128i result = _mm256_castsi256_si128(
+        _mm256_packus_epi16(color0, _mm256_permute2f128_si256(color0, color0, 1)));
+
+    // store result
     _mm_storeu_si128((__m128i_u*)(&out[color_quad * 4]), result);
   }
 }
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {
-  /*
-   *(let ((v1-0 *math-camera*))
-    (.lvf vf6 (&-> arg0 quad))
-    (.lvf vf1 (&-> v1-0 plane 0 quad))
-    (.lvf vf2 (&-> v1-0 plane 1 quad))
-    (.lvf vf3 (&-> v1-0 plane 2 quad))
-    (.lvf vf4 (&-> v1-0 plane 3 quad))
-    )
-   (.mul.x.vf acc vf1 vf6)
-   (.add.mul.y.vf acc vf2 vf6 acc)
-   (.add.mul.z.vf acc vf3 vf6 acc)
-   (.sub.mul.w.vf vf5 vf4 vf0 acc)
-   (.add.w.vf vf5 vf5 vf6)
-   (.mov v1-1 vf5)
-   (.pcgtw v1-2 r0-0 v1-1)
-   (.ppach v1-3 r0-0 v1-2)
-   (zero? (the-as int v1-3))
-   */
-
   math::Vector4f acc =
       planes[0] * sphere.x() + planes[1] * sphere.y() + planes[2] * sphere.z() - planes[3];
 
@@ -305,10 +288,10 @@ bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* plan
          acc.w() > -sphere.w();
 }
 
-
+// this isn't super efficient, but we spend so little time here it's not worth it to go faster.
 void cull_check_all_slow(const math::Vector4f* planes,
-                  const std::vector<tfrag3::VisNode>& nodes,
-                  u8* out) {
+                         const std::vector<tfrag3::VisNode>& nodes,
+                         u8* out) {
   for (size_t i = 0; i < nodes.size(); i++) {
     out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
   }
