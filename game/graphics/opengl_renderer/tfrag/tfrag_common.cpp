@@ -45,6 +45,13 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
       case DrawMode::AlphaBlend::SRC_0_FIX_DST:
         glBlendFunc(GL_ONE, GL_ONE);
         break;
+      case DrawMode::AlphaBlend::SRC_DST_FIX_DST:
+        // Cv = (Cs - Cd) * FIX + Cd
+        // Cs * FIX * 0.5
+        // Cd * FIX * 0.5
+        glBlendFunc(GL_CONSTANT_COLOR, GL_CONSTANT_COLOR);
+        glBlendColor(0.5, 0.5, 0.5, 0.5);
+        break;
       default:
         assert(false);
     }

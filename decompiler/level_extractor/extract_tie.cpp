@@ -1848,7 +1848,17 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     // if fix = 128, it works out to 1.0
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
     // src plus dest
-  } else {
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::DEST &&
+             reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    // Cv = (Cs - Cd) * FIX + Cd
+    fmt::print("fix is {}\n", reg.fix());
+    assert(reg.fix() == 64);
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+  }
+
+  else {
     fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
                (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
@@ -1856,10 +1866,20 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
   }
 }
 
-DrawMode process_draw_mode(const AdgifInfo& info) {
+DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal) {
   DrawMode mode;
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
-  mode.disable_at();
+  if (use_atest) {
+    mode.enable_at();
+    mode.set_aref(0x26);
+    mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+    mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+  } else {
+    mode.disable_at();
+  }
+  if (use_decal) {
+    mode.enable_decal();
+  }
   mode.enable_depth_write();
   mode.enable_zt();                            // :zte #x1
   mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
@@ -1944,7 +1964,11 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
           }
 
           // determine the draw mode
-          DrawMode mode = process_draw_mode(strip.adgif);
+          DrawMode mode =
+              process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit);
+          if (mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_DST_FIX_DST) {
+            fmt::print("has ab: {}\n", proto.name);
+          }
 
           // okay, we now have a texture and draw mode, let's see if we can add to an existing...
           auto existing_draws_in_tex = draws_by_tex.find(idx_in_lev_data);
