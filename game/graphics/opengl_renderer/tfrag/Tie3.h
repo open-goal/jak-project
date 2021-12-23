@@ -35,7 +35,7 @@ class Tie3 : public BucketRenderer {
       u32 index_upload = 0;
       u32 verts = 0;
       u32 draws = 0;
-      u32 full_draws = 0; // ones that have all visible
+      u32 full_draws = 0;  // ones that have all visible
       Filtered<float> cull_time;
       Filtered<float> index_time;
       Filtered<float> tod_time;

@@ -2036,7 +2036,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
 
       for (auto& strip : draw.strips) {
         tfrag3::StripDraw::VisGroup vgroup;
-        vgroup.vis_idx = strip.tfrag_id;    // associate with the tfrag for culling
+        vgroup.vis_idx = strip.tfrag_id;      // associate with the tfrag for culling
         vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
 
         tdraw.num_triangles += strip.verts.size() - 2;

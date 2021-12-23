@@ -10,6 +10,7 @@ class Filtered {
     return m_val;
   }
   const T& get() const { return m_val; }
+
  private:
   T m_val;
   T m_alpha;

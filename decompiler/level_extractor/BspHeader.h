@@ -163,7 +163,7 @@ struct TieFragment : public Drawable {
 
   u16 tex_count;
   u16 gif_count;
-  u16 vertex_count; // qwc of vertex data.
+  u16 vertex_count;  // qwc of vertex data.
 
   std::vector<u8> gif_data;
   std::vector<u8> point_ref;
