@@ -29,8 +29,6 @@ void TfragTree::serialize(Serializer& ser) {
 }
 
 void TieTree::serialize(Serializer& ser) {
-  ser.from_ptr(&tree_idx);
-
   if (ser.is_saving()) {
     ser.save<size_t>(static_draws.size());
   } else {

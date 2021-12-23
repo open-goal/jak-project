@@ -27,10 +27,11 @@ class Tfrag3 {
 
   void render_tree(const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
-                   ScopedProfilerNode& prof,
-                   bool use_vis);
+                   ScopedProfilerNode& prof);
 
-  void setup_for_level(const std::string& level, SharedRenderState* render_state);
+  void setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
+                       const std::string& level,
+                       SharedRenderState* render_state);
   void discard_tree_cache();
 
   void render_tree_cull_debug(const TfragRenderSettings& settings,
@@ -51,13 +52,8 @@ class Tfrag3 {
     u32 vert_count = 0;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
-    const std::vector<tfrag3::VisNode>* vis = nullptr;
-
-    std::vector<u8> vis_temp;
-    std::vector<u32> culled_indices;
-    int num_vis_tree_roots = 0;
-    int vis_tree_root = 0;
-    int first_vis_leaf = 0;
+    const tfrag3::BVH* vis = nullptr;
+    SwizzledTimeOfDay tod_cache;
 
     void reset_stats() {
       rendered_this_frame = false;
@@ -71,6 +67,12 @@ class Tfrag3 {
     bool forced = false;
     bool cull_debug = false;
   };
+
+  struct Cache {
+    std::vector<u8> vis_temp;
+    std::vector<std::pair<int, int>> draw_idx_temp;
+    std::vector<u32> index_list;
+  } m_cache;
 
   std::string m_level_name;
 
@@ -94,6 +96,5 @@ class Tfrag3 {
   static constexpr int DEBUG_TRI_COUNT = 4096;
   std::vector<DebugVertex> m_debug_vert_data;
 
-  bool m_want_hack_tie = false;
-  std::unique_ptr<Tie3> m_hack_tie;
+  bool m_use_fast_time_of_day = true;
 };

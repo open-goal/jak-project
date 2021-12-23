@@ -18,10 +18,10 @@ class Tie3 : public BucketRenderer {
                    const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof);
+  void setup_for_level(const std::string& str, SharedRenderState* render_state);
 
  private:
   void discard_tree_cache();
-  void setup_for_level(const std::string& str, SharedRenderState* render_state);
   struct Tree {
     GLuint vertex_buffer;
     GLuint vao;
@@ -49,12 +49,9 @@ class Tie3 : public BucketRenderer {
   std::string m_level_name;
   std::vector<GLuint> m_textures;  // todo, can we share with tfrag in some cases?
 
-  struct DrawIndices {
-    int start_idx, end_idx;
-  };
   struct Cache {
     std::vector<u8> vis_temp;
-    std::vector<DrawIndices> draw_idx_temp;
+    std::vector<std::pair<int, int>> draw_idx_temp;
     std::vector<u32> index_list;
   } m_cache;
 

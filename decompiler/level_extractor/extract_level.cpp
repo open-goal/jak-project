@@ -81,7 +81,6 @@ void extract_from_level(ObjectFileDB& db,
   tfrag3::Level tfrag_level;
 
   for (auto& draw_tree : bsp_header.drawable_tree_array.trees) {
-    bool added_tfrag_tree = false;
     if (tfrag_trees.count(draw_tree->my_type())) {
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
       fmt::print("  extracting tree {}\n", draw_tree->my_type());
@@ -93,7 +92,6 @@ void extract_from_level(ObjectFileDB& db,
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level);
-      added_tfrag_tree = true;
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       fmt::print("  extracting TIE\n");
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
@@ -102,11 +100,6 @@ void extract_from_level(ObjectFileDB& db,
                   bsp_header.texture_remap_table, tex_db, tfrag_level);
     } else {
       fmt::print("  unsupported tree {}\n", draw_tree->my_type());
-    }
-
-    if (!added_tfrag_tree) {
-      tfrag_level.tfrag_trees.emplace_back();
-      tfrag_level.tfrag_trees.back().kind = tfrag3::TFragmentTreeKind::INVALID;
     }
   }
 

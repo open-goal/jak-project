@@ -303,3 +303,49 @@ void cull_check_all_slow(const math::Vector4f* planes,
     out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
   }
 }
+
+u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
+                                    u32* idx_out,
+                                    const std::vector<tfrag3::StripDraw>& draws,
+                                    const std::vector<u8>& vis_data) {
+  int idx_buffer_ptr = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    int vtx_idx = 0;
+    std::pair<int, int> ds;
+    ds.first = idx_buffer_ptr;
+    bool building_run = false;
+    int run_start_out = 0;
+    int run_start_in = 0;
+    for (auto& grp : draw.vis_groups) {
+      bool vis = grp.vis_idx == 0xffffffff || vis_data[grp.vis_idx];
+      if (building_run) {
+        if (vis) {
+          idx_buffer_ptr += grp.num;
+        } else {
+          building_run = false;
+          idx_buffer_ptr += grp.num;
+          memcpy(&idx_out[run_start_out], &draw.vertex_index_stream[run_start_in],
+                 (idx_buffer_ptr - run_start_out) * sizeof(u32));
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start_out = idx_buffer_ptr;
+          run_start_in = vtx_idx;
+          idx_buffer_ptr += grp.num;
+        } else {
+        }
+      }
+      vtx_idx += grp.num;
+    }
+    if (building_run) {
+      memcpy(&idx_out[run_start_out], &draw.vertex_index_stream[run_start_in],
+             (idx_buffer_ptr - run_start_out) * sizeof(u32));
+    }
+
+    ds.second = idx_buffer_ptr;
+    group_out[i] = ds;
+  }
+  return idx_buffer_ptr;
+}

@@ -329,14 +329,6 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
     }
   }
 
-  //  if (data[15]) {
-  //    fmt::print("--- {}\n", data[15]);
-  //  }
-
-  //  for (int vec = 0; vec < 4; vec++) {
-  //    fmt::print("{} {}\n", vec, result[vec].to_string_aligned());
-  //  }
-
   return result;
 }
 
@@ -354,7 +346,6 @@ std::vector<TieProtoInfo> collect_instance_info(
       info.bsphere[i] = instance.bsphere.data[i];
     }
     info.mat = extract_tie_matrix(instance.origin.data);
-    // todo:
     info.mat[3][0] += info.bsphere[0];
     info.mat[3][1] += info.bsphere[1];
     info.mat[3][2] += info.bsphere[2];
@@ -364,7 +355,6 @@ std::vector<TieProtoInfo> collect_instance_info(
     info.unknown_wind_related_value = info.mat[0][3];
     info.mat[0][3] = 0.f;
 
-    // todo get colors.
     // each fragment has its own color data (3 dmatags)
 
     // the number of colors (qwc) is stored in the prototype, in the color-index-qwc array of bytes.
@@ -378,7 +368,6 @@ std::vector<TieProtoInfo> collect_instance_info(
     for (int frag_idx = 0; frag_idx < proto.frag_count[GEOM_IDX]; frag_idx++) {
       TieInstanceFragInfo frag_info;
       u32 num_color_qwc = proto.color_index_qwc.at(proto.index_start[GEOM_IDX] + frag_idx);
-      // fmt::print("frag: {}, qwc: {}, off: {}\n", frag_idx, num_color_qwc, offset_bytes);
       for (u32 i = 0; i < num_color_qwc * 4; i++) {
         for (u32 j = 0; j < 4; j++) {
           frag_info.color_indices.push_back(
@@ -444,7 +433,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u64 ra_tex0_val;
         memcpy(&ra_tex0_val, &gif_data.at(16 * (tex_idx * 5 + 0)), 8);
         assert(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
-        assert(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // todo: what does this mean
+        assert(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
         frag_info.has_magic_tex0_bit = ra_tex0_val == 0x800000000;
         memcpy(&adgif.first_w, &gif_data.at(16 * (tex_idx * 5 + 0) + 12), 4);
 
@@ -503,36 +492,16 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
       int out_qw = in_qw * 2;
       frag_info.points_data.resize(out_qw * 16);
       {
-        // fmt::print("from {}\n",
-        // proto.geometry[GEOM_IDX].tie_fragments[frag_idx].debug_label_name);
         const s16* in_ptr = (const s16*)pr.data();
         s32* out_ptr = (s32*)frag_info.points_data.data();
         for (int ii = 0; ii < out_qw * 4; ii++) {
           out_ptr[ii] = in_ptr[ii];
-          //          if ((ii % 8) == 0) {
-          //            fmt::print("\n {:4d} : ", ii);
-          //          }
-          //          fmt::print("0x{:04x} ", (u16)in_ptr[ii]);
         }
       }
-      //      for (int pp = 0; pp < 10; pp++) {
-      //        int offset = 16 * pp + 6;
-      //        s16 val;
-      //        memcpy(&val, pr.data() + offset, 2);
-      //        fmt::print("pp: {} {}\n", pp, val);
-      //      }
-      //      assert(false);
-      //      frag_info.points_data.resize(pr.size() * 2);
-      //      for (int p = 0; p < pr.size() / 2; p++) {
-      //        s16 v;
-      //        memcpy(&v, pr.data() + (2 * p), 2);
-      //        s32 vv = v;
-      //        memcpy(frag_info.points_data.data() + (p * 4), &vv, 4);
-      //      }
 
       // just for debug
-      for (int i = 0; i < 4; i++) {
-        frag_info.point_sizes.push_back(proto.geometry[i].tie_fragments[frag_idx].point_ref.size());
+      for (int g = 0; g < 4; g++) {
+        frag_info.point_sizes.push_back(proto.geometry[g].tie_fragments[frag_idx].point_ref.size());
       }
 
       info.frags.push_back(std::move(frag_info));
@@ -645,8 +614,8 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
   float gifbuf_sum = gifbuf_start + gifbuf_middle + gifbuf_end;
   Vector4f vf_extra(gifbuf_sum, 0, gifbuf_sum, 0);
 
-  u16 misc_x = 0;
-  u16 misc_y = 1;
+  // u16 misc_x = 0;
+  // u16 misc_y = 1;
 
   // First, we will emulate the program that runs after model uploads. (L1, imm = 6)
   // it runs once per fragment
@@ -783,7 +752,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       vi_ind = frag.other_gif_data.at(3);
       u16 vf02_x = frag.other_gif_data.at(0);
       u16 vf02_y = frag.other_gif_data.at(1);
-      u16 vf02_z = frag.other_gif_data.at(2);
+      // u16 vf02_z = frag.other_gif_data.at(2);
       u16 vf03_x = frag.other_gif_data.at(4);
       u16 vf03_y = frag.other_gif_data.at(5);
       u16 vf03_z = frag.other_gif_data.at(6);
@@ -791,7 +760,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       u16 vf04_x = frag.other_gif_data.at(8);
       u16 vf04_y = frag.other_gif_data.at(9);
       u16 vf04_z = frag.other_gif_data.at(10);
-      u16 vf04_w = frag.other_gif_data.at(11);
+      // u16 vf04_w = frag.other_gif_data.at(11);
       assert(vi_ind >= frag.adgifs.size());  // at least 1 draw per shader.
       assert(vi_ind < 1000);                 // check for insane value.
       // fmt::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
@@ -1214,7 +1183,6 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       int draw_1_count = 0;
       int draw_2_count = 0;
       int ip_1_count = 0;
-      int ip_2_count = 0;
 
       /////////////////////////////////////
       // SETUP
@@ -1266,7 +1234,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // loading the flags and stuff, which we will ignore too
 
       // iaddi vi_clr_ptr, vi_clr_ptr, 0x7   |  nop
-      u16 clr_ptr_base = clr_ptr;
+      // u16 clr_ptr_base = clr_ptr;
       clr_ptr += 6;  // it says 7, but we want to point to the first index data.
 
       // mtir vi_ind, vf_inds.y              |  addx.w vf_res13, vf_res02, vf00 <- flags crap
@@ -1803,7 +1771,6 @@ BigPalette make_big_palette(std::vector<TieProtoInfo>& protos) {
   for (u32 proto_idx = 0; proto_idx < protos.size(); proto_idx++) {
     auto& proto = protos[proto_idx];
     u32 base_color_of_proto = result.colors.size();
-    u32 total_colors_in_proto = proto.time_of_day_colors.size();
 
     // add all colors
     for (auto& color : proto.time_of_day_colors) {
@@ -1853,7 +1820,6 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::DEST) {
     // Cv = (Cs - Cd) * FIX + Cd
-    fmt::print("fix is {}\n", reg.fix());
     assert(reg.fix() == 64);
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
   }
@@ -1903,8 +1869,7 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
 void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                                   tfrag3::Level& lev,
                                   const TextureDB& tdb,
-                                  const std::vector<TieProtoInfo>& protos,
-                                  BigPalette& pal) {
+                                  const std::vector<TieProtoInfo>& protos) {
   // our current approach for static draws is just to flatten to giant mesh.
 
   std::unordered_map<u32, std::vector<u32>> draws_by_tex;
@@ -1913,8 +1878,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
   for (auto& proto : protos) {
     for (auto& inst : proto.instances) {
-      auto& mat = inst.mat;
-      // for (auto& frag : proto.frags) {
       for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
         auto& frag = proto.frags[frag_idx];
         auto& ifrag = inst.frags.at(frag_idx);
@@ -1935,8 +1898,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             // didn't find it, have to add a new one
             auto tex_it = tdb.textures.find(combo_tex);
             if (tex_it == tdb.textures.end()) {
-              int tpage = combo_tex >> 16;
-              int idx = combo_tex & 0xffff;
               bool ok_to_miss = false;  // TODO
               if (ok_to_miss) {
                 // we're missing a texture, just use the first one.
@@ -1966,9 +1927,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
           // determine the draw mode
           DrawMode mode =
               process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit);
-          if (mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_DST_FIX_DST) {
-            fmt::print("has ab: {}\n", proto.name);
-          }
 
           // okay, we now have a texture and draw mode, let's see if we can add to an existing...
           auto existing_draws_in_tex = draws_by_tex.find(idx_in_lev_data);
@@ -2088,7 +2046,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
 
   auto full_palette = make_big_palette(info);
-  add_vertices_and_static_draw(this_tree, out, tex_db, info, full_palette);
+  add_vertices_and_static_draw(this_tree, out, tex_db, info);
 
   for (auto& draw : this_tree.static_draws) {
     for (auto& str : draw.vis_groups) {
@@ -2102,7 +2060,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   }
 
   this_tree.colors = full_palette.colors;
-  fmt::print("Have {} draws\n", this_tree.static_draws.size());
+  fmt::print("TIE tree has {} draws\n", this_tree.static_draws.size());
   out.tie_trees.push_back(std::move(this_tree));
 }
 }  // namespace decompiler

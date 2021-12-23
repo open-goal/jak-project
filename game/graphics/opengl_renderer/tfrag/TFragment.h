@@ -296,7 +296,8 @@ class TFragment : public BucketRenderer {
 
   struct HackManyLevels {
     static constexpr int NUM_LEVELS = 23;
-    Tfrag3 level_renderers[NUM_LEVELS];
+    std::unique_ptr<Tfrag3> tfrag_level_renderers[NUM_LEVELS];
+    std::unique_ptr<Tie3> tie_level_renderers[NUM_LEVELS];
     bool level_enables[NUM_LEVELS] = {0};
   } m_many_level_render;
 };

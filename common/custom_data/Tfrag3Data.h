@@ -10,7 +10,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 6;
+constexpr int TFRAG3_VERSION = 7;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -116,7 +116,6 @@ struct TfragTree {
 
 // A tie model
 struct TieTree {
-  int tree_idx = -1;
   BVH bvh;
   std::vector<StripDraw> static_draws;    // the actual topology and settings
   std::vector<PreloadedVertex> vertices;  // mesh vertices

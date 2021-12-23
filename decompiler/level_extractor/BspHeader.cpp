@@ -498,7 +498,7 @@ void InstanceTie::read_from_file(TypedRef ref,
   bucket_index = read_plain_data_field<u16>(ref, "bucket-index", dts);
   id = read_plain_data_field<s16>(ref, "id", dts);
   flags = read_plain_data_field<u16>(ref, "flags", dts);
-  assert(flags == 0);
+  //  assert(flags == 0); // TODO
   origin.read_from_file(get_field_ref(ref, "origin", dts));
   wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
   color_indices = deref_label(get_field_ref(ref, "color-indices", dts));

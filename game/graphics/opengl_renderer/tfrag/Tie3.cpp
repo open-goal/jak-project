@@ -18,6 +18,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   auto lev_data = render_state->loader.get_tfrag3_level(level);
 
   if (m_level_name != level) {
+    Timer tie_setup_timer;
     // We changed level!
     fmt::print("TIE3 level change! {} -> {}\n", m_level_name, level);
     fmt::print(" Removing old level...\n");
@@ -137,6 +138,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_level_name = level;
+    fmt::print("TIE setup: {:.3f}\n", tie_setup_timer.getSeconds());
   }
 }
 
@@ -304,45 +306,8 @@ void Tie3::render_tree(int idx,
   tree.perf.cull_time.add(cull_timer.getSeconds());
 
   Timer index_timer;
-  int idx_buffer_ptr = 0;
-  for (size_t i = 0; i < tree.draws->size(); i++) {
-    const auto& draw = tree.draws->operator[](i);
-    int vtx_idx = 0;
-    DrawIndices ds;
-    ds.start_idx = idx_buffer_ptr;
-    bool building_run = false;
-    int run_start_out = 0;
-    int run_start_in = 0;
-    for (auto& grp : draw.vis_groups) {
-      bool vis = grp.vis_idx == 0xffffffff || m_cache.vis_temp.at(grp.vis_idx);
-      if (building_run) {
-        if (vis) {
-          idx_buffer_ptr += grp.num;
-        } else {
-          building_run = false;
-          idx_buffer_ptr += grp.num;
-          memcpy(&m_cache.index_list[run_start_out], &draw.vertex_index_stream[run_start_in],
-                 (idx_buffer_ptr - run_start_out) * sizeof(u32));
-        }
-      } else {
-        if (vis) {
-          building_run = true;
-          run_start_out = idx_buffer_ptr;
-          run_start_in = vtx_idx;
-          idx_buffer_ptr += grp.num;
-        } else {
-        }
-      }
-      vtx_idx += grp.num;
-    }
-    if (building_run) {
-      memcpy(&m_cache.index_list[run_start_out], &draw.vertex_index_stream[run_start_in],
-             (idx_buffer_ptr - run_start_out) * sizeof(u32));
-    }
-
-    ds.end_idx = idx_buffer_ptr;
-    m_cache.draw_idx_temp[i] = ds;
-  }
+  int idx_buffer_ptr = make_index_list_from_vis_string(
+      m_cache.draw_idx_temp.data(), m_cache.index_list.data(), *tree.draws, m_cache.vis_temp);
   tree.perf.index_time.add(index_timer.getSeconds());
   tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
 
@@ -354,7 +319,7 @@ void Tie3::render_tree(int idx,
     const auto& draw = tree.draws->operator[](draw_idx);
     const auto& indices = m_cache.draw_idx_temp[draw_idx];
 
-    if (indices.end_idx <= indices.start_idx) {
+    if (indices.second <= indices.first) {
       continue;
     }
 
@@ -364,8 +329,8 @@ void Tie3::render_tree(int idx,
     }
 
     auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
-    int draw_size = indices.end_idx - indices.start_idx;
-    void* offset = (void*)(indices.start_idx * sizeof(u32));
+    int draw_size = indices.second - indices.first;
+    void* offset = (void*)(indices.first * sizeof(u32));
 
     prof.add_draw_call();
     prof.add_tri(draw.num_triangles * (float)draw_size / draw.vertex_index_stream.size());
@@ -416,7 +381,7 @@ void Tie3::render_tree(int idx,
           settings.fog_x);
       glDisable(GL_BLEND);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)0);
+      glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       prof.add_draw_call();
       prof.add_tri(draw_size);
