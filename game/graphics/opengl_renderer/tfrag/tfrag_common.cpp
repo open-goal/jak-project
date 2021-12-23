@@ -225,7 +225,7 @@ void interp_time_of_day_fast(const float weights[8],
   // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
   // change the shader to deal with this.
   __m256i sat = _mm256_set_epi16(128, 255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128,
-                                255, 255, 255);
+                                 255, 255, 255);
 
   for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
     // first, load colors. We put 16 bytes / register and don't touch the upper half because we will
