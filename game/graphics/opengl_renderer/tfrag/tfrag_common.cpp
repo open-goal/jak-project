@@ -209,7 +209,6 @@ void interp_time_of_day_fast(const float weights[8],
                              const SwizzledTimeOfDay& in,
                              math::Vector<u8, 4>* out) {
   // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
-  __m256i zero = _mm256_set1_epi16(0);
 
   // weight multipliers
   __m256i weights0 = _mm256_set1_epi16(weights[0] * 128.f);
@@ -231,24 +230,24 @@ void interp_time_of_day_fast(const float weights[8],
     // first, load colors. We put 16 bytes / register and don't touch the upper half because we will
     // convert u8s to u16s.
     const u8* base = in.data.data() + color_quad * 128;
-    __m256i color0 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 0)));
-    __m256i color1 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 16)));
-    __m256i color2 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 32)));
-    __m256i color3 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 48)));
-    __m256i color4 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 64)));
-    __m256i color5 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 80)));
-    __m256i color6 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 96)));
-    __m256i color7 = _mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)(base + 112)));
+    __m128i color0_p = _mm_loadu_si128((const __m128i*)(base + 0));
+    __m128i color1_p = _mm_loadu_si128((const __m128i*)(base + 16));
+    __m128i color2_p = _mm_loadu_si128((const __m128i*)(base + 32));
+    __m128i color3_p = _mm_loadu_si128((const __m128i*)(base + 48));
+    __m128i color4_p = _mm_loadu_si128((const __m128i*)(base + 64));
+    __m128i color5_p = _mm_loadu_si128((const __m128i*)(base + 80));
+    __m128i color6_p = _mm_loadu_si128((const __m128i*)(base + 96));
+    __m128i color7_p = _mm_loadu_si128((const __m128i*)(base + 112));
 
     // unpack to 16-bits. each has 16x 16 bit colors.
-    color0 = _mm256_unpacklo_epi8(color0, zero);
-    color1 = _mm256_unpacklo_epi8(color1, zero);
-    color2 = _mm256_unpacklo_epi8(color2, zero);
-    color3 = _mm256_unpacklo_epi8(color3, zero);
-    color4 = _mm256_unpacklo_epi8(color4, zero);
-    color5 = _mm256_unpacklo_epi8(color5, zero);
-    color6 = _mm256_unpacklo_epi8(color6, zero);
-    color7 = _mm256_unpacklo_epi8(color7, zero);
+    __m256i color0 = _mm256_cvtepu8_epi16(color0_p);
+    __m256i color1 = _mm256_cvtepu8_epi16(color1_p);
+    __m256i color2 = _mm256_cvtepu8_epi16(color2_p);
+    __m256i color3 = _mm256_cvtepu8_epi16(color3_p);
+    __m256i color4 = _mm256_cvtepu8_epi16(color4_p);
+    __m256i color5 = _mm256_cvtepu8_epi16(color5_p);
+    __m256i color6 = _mm256_cvtepu8_epi16(color6_p);
+    __m256i color7 = _mm256_cvtepu8_epi16(color7_p);
 
     // multiply by weights
     color0 = _mm256_mullo_epi16(color0, weights0);
@@ -275,12 +274,11 @@ void interp_time_of_day_fast(const float weights[8],
     color0 = _mm256_srli_epi16(color0, 7);
 
     // saturate
-    __m256i mask = _mm256_cmpgt_epi16(sat, color0);
-    color0 = _mm256_blendv_epi8(sat, color0, mask);
+    color0 = _mm256_min_epu16(sat, color0);
 
     // back to u8s.
-    __m128i result = _mm256_castsi256_si128(
-        _mm256_packus_epi16(color0, _mm256_permute2f128_si256(color0, color0, 1)));
+    auto hi = _mm256_extracti128_si256(color0, 1);
+    auto result = _mm_packus_epi16(_mm256_castsi256_si128(color0), hi);
 
     // store result
     _mm_storeu_si128((__m128i*)(&out[color_quad * 4]), result);
