@@ -283,7 +283,7 @@ void interp_time_of_day_fast(const float weights[8],
         _mm256_packus_epi16(color0, _mm256_permute2f128_si256(color0, color0, 1)));
 
     // store result
-    _mm_storeu_si128((__m128i_u*)(&out[color_quad * 4]), result);
+    _mm_storeu_si128((__m128i*)(&out[color_quad * 4]), result);
   }
 }
 

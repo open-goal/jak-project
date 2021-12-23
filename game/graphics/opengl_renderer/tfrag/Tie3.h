@@ -1,4 +1,7 @@
 #pragma once
+
+#include <optional>
+
 #include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
