@@ -1,3 +1,5 @@
+#include <array>
+
 #include "extract_tie.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
