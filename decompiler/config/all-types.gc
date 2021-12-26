@@ -5215,10 +5215,6 @@
    (texture-page              texture-page 9      :offset-assert 60)
    (loaded-texture-page       texture-page 16     :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
-   ; (foreground-sink-group-0   dma-foreground-sink-group :inline :offset-assert 176)
-   ; (foreground-sink-group-1   dma-foreground-sink-group :inline :offset-assert 208)
-   ; (foreground-sink-group-2   dma-foreground-sink-group :inline :offset-assert 240)
-   ; (array-pad uint8 12)
    (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic
    (foreground-draw-engine    engine 3       :offset-assert 272)
    (entity                    entity-links-array           :offset-assert 284)
@@ -6307,7 +6303,7 @@
   :flag-assert         #x1200000020
   (:methods
     (login (_type_) _type_ 9) ;; probably login or init.
-    (draw (_type_ drawable display-frame) none 10) ;; display-frame is from the method inspect tool
+    (draw (_type_ _type_ display-frame) none 10)
     (collide-with-box (_type_ int collide-list) none 11)
     (collide-y-probe (_type_ int collide-list) none 12)
     (collide-ray (_type_ int collide-list) none 13)
@@ -8015,15 +8011,40 @@
     )
   )
 
+(defenum draw-status
+  :type uint8
+  :bitfield #t
+  (drwf00 0)
+  (drwf01 1)
+  (drwf02 2)
+  (drwf03 3)
+  (drwf04 4)
+  (drwf05 5)
+  (drwf06 6)
+  (drwf07 7)
+  )
+
+(defenum draw-effect
+  :type uint8
+  (drweff0 0)
+  (drweff1 1)
+  (drweff2 2)
+  (title 3)
+  (drweff4 4)
+  (drweff5 5)
+  (drweff6 6)
+  (drweff7 7)
+  )
+
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
 (declare-type shadow-geo art-element)
 (declare-type process-drawable process)
 (deftype draw-control (basic)
-  ((status                   uint8           :offset-assert 4)
+  ((status                   draw-status     :offset-assert 4)
    (matrix-type              uint8           :offset-assert 5)
    (data-format              uint8           :offset-assert 6)
-   (global-effect            uint8           :offset-assert 7)
+   (global-effect            draw-effect     :offset-assert 7)
    (art-group                art-group       :offset-assert 8)
    (jgeo                     art-joint-geo   :offset-assert 12)
    (mgeo                     merc-ctrl       :offset-assert 16)
@@ -9598,9 +9619,9 @@
    (root-channel            (inline-array joint-control-channel) :offset 16)
    (blend-index             int32            :offset-assert 20)
    (active-channels         int32            :offset-assert 24)
-   (generate-frame-function (function pointer int process-drawable none) :offset-assert 28)
+   (generate-frame-function (function (inline-array vector) int process-drawable int) :offset-assert 28)
    (prebind-function        (function pointer int process-drawable none) :offset-assert 32)
-   (postbind-function       (function pointer int process-drawable none) :offset-assert 36)
+   (postbind-function       (function process-drawable none) :offset-assert 36)
    (effect                  effect-control   :offset-assert 40)
    (channel                 joint-control-channel 3 :inline :offset-assert 48) ;; actually dynamic?
    (frame-group0            art-joint-anim   :offset 60)
@@ -9659,8 +9680,8 @@
    (jacp-hdr       joint-anim-compressed-hdr   :inline :offset-assert 7328)
    (fixed-data     joint-anim-compressed-fixed :inline :offset-assert 7392)
    (frame-data     joint-anim-compressed-frame 2 :inline :offset-assert 9600)
-   ;(flatten-array  UNKNOWN                     576     :offset-assert 2400) no clue!
-   ;(flattened      UNKNOWN                     24      :offset-assert 2400) no clue!
+   (flatten-array  float 576     :offset 2400) ;; no clue!
+   (flattened      vector 24  :inline    :offset 2400) ;; no clue!
    )
   :method-count-assert 9
   :size-assert         #x3640
@@ -9701,8 +9722,8 @@
   )
 
 (deftype bone-regs (structure)
-  ((joint-ptr (pointer joint) :offset-assert 0)
-   (bone-ptr  (pointer bone)  :offset-assert 4)
+  ((joint-ptr (inline-array joint) :offset-assert 0)
+   (bone-ptr  (inline-array bone)  :offset-assert 4)
    (num-bones uint32          :offset-assert 8)
    )
   :method-count-assert 9
@@ -9717,7 +9738,7 @@
    (distance   vector      :inline :offset-assert 160)
    (next-tag   dma-packet  :inline :offset-assert 176)
    (dma-buf    dma-buffer          :offset-assert 192)
-   (sink-group basic               :offset-assert 196) ;; dma sink
+   (sink-group dma-foreground-sink-group :offset-assert 196) ;; dma sink
    (next-pris  dma-packet          :offset-assert 200)
    (next-merc  dma-packet          :offset-assert 204)
    (wait-count uint32              :offset-assert 208)
@@ -9788,7 +9809,7 @@
 
 ;; - Symbols
 
-(define-extern *merc-globals* symbol)
+(define-extern *merc-globals* merc-globals)
 
 
 ;; ----------------------
@@ -12051,6 +12072,9 @@
     (target-death symbol)
     (target-hit-ground symbol)
     (target-clone-anim handle)
+    target-title
+    target-demo
+    target-warp-in
     )
   )
 
@@ -12519,7 +12543,7 @@
   )
 
 (deftype shrubbery (drawable)
-  ((textures (inline-array adgif-shader)         :offset 4)
+  ((textures (inline-array adgif-shader) :offset 4)
    (header   qword          :offset 8)
    (obj-qwc  uint8          :offset 12)
    (vtx-qwc  uint8          :offset 13)
@@ -12581,7 +12605,7 @@
   )
 
 (deftype prototype-shrubbery (drawable-inline-array)
-  ((data generic-shrub-fragment 1 :inline :offset-assert 32)
+  ((data shrubbery 1 :inline :offset-assert 32)
    (pad uint32)
    )
   :method-count-assert 18
@@ -12777,7 +12801,7 @@
   )
 
 (deftype prototype-tie (drawable-inline-array)
-  ((data instance-tie 1 :inline :offset-assert 32) ;; not sure on type here
+  ((data tie-fragment 1 :inline :offset-assert 32)
    (pad uint32)
    )
   :method-count-assert 18
@@ -13354,7 +13378,7 @@
 (deftype foreground-area (structure)
   ((joint-work   joint-work   :inline :offset-assert 0)
    (generic-work generic-work :inline :offset 0)
-   (bone-mem     bone-memory  :inline :offset 0)
+   (bone-mem     bone-memory  :score 1999999999 :inline :offset 0)
    (shadow-work  shadow-work  :inline :offset 0)
    )
   :method-count-assert 9
@@ -15601,7 +15625,7 @@
 
 (define-extern flatten-joint-control-to-spr (function joint-control int))
 (define-extern make-joint-jump-tables (function int))
-(define-extern calc-animation-from-spr (function joint-control int int))
+(define-extern calc-animation-from-spr (function (inline-array vector) int object))
 (define-extern decompress-fixed-data-to-accumulator (function none))
 (define-extern decompress-frame-data-to-accumulator (function none))
 (define-extern decompress-frame-data-pair-to-accumulator (function none))
@@ -15609,7 +15633,7 @@
 (define-extern matrix-from-control-channel! (function matrix joint joint-control-channel matrix))
 (define-extern matrix-from-control-pair! (function matrix matrix joint matrix))
 (define-extern matrix-from-joint-anim-frame (function joint-anim-compressed-control int int matrix)) ;; ???
-(define-extern create-interpolated-joint-animation-frame (function joint-control int process-drawable int))
+(define-extern create-interpolated-joint-animation-frame (function (inline-array vector) int process-drawable int))
 (define-extern mem-size (function basic symbol int int))
 (define-extern jacc-mem-usage (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
 (define-extern joint-anim-inspect-elt (function joint-anim float joint-anim))
@@ -15621,15 +15645,15 @@
 (define-extern joint-control-copy! (function joint-control joint-control joint-control))
 (define-extern joint-control-remap! (function joint-control art-group art-group pair int string object))
 (define-extern cspace<-cspace! (function cspace cspace matrix))
-(define-extern cspace<-rot-yxy! function) ;; unused
-(define-extern cspace<-transform-yxy! function) ;; unused
+(define-extern cspace<-rot-yxy! (function cspace transform matrix)) ;; unused
+(define-extern cspace<-transform-yxy! (function cspace transform matrix)) ;; unused
 (define-extern cspace<-transformq+trans! (function cspace transformq vector matrix))
 (define-extern cspace<-transformq+world-trans! (function cspace transformq vector matrix))
 (define-extern cspace-calc-total-matrix! (function cspace matrix matrix))
 (define-extern cspace<-matrix-no-push-joint! (function cspace joint-control matrix))
 (define-extern cspace<-matrix-joint! (function cspace matrix matrix))
 (define-extern cspace<-parented-matrix-joint! (function cspace matrix matrix))
-(define-extern clear-frame-accumulator function)
+(define-extern clear-frame-accumulator (function (inline-array vector) none))
 (define-extern normalize-frame-quaternions function)
 
 
@@ -15733,19 +15757,19 @@
 ;; - Unknowns
 
 (define-extern *subdivide-settings* subdivide-settings)
-(define-extern *tfrag-work* tfrag-work) ;; unknown type
-(define-extern *perf-stats* perf-stat-array) ;; unknown type
+(define-extern *tfrag-work* tfrag-work)
+(define-extern *perf-stats* perf-stat-array)
 (define-extern *merc-global-stats* merc-global-stats)
 (define-extern *stat-string-tfrag-near* string)
-(define-extern *stat-string-tfrag* string) ;; unknown type
-(define-extern *stat-string-total* string) ;; unknown type
-(define-extern *terrain-context* terrain-context) ;; unknown type
-(define-extern GSH_ENABLE symbol) ;; unknown type
-(define-extern GSH_BUCKET bucket-id) ;; unknown type
-(define-extern GSH_WHICH_STAT int) ;; unknown type
-(define-extern GSH_MAX_DISPLAY basic) ;; unknown type
-(define-extern GSH_TIME int) ;; unknown type
-(define-extern *gomi-stats-hack* (inline-array perf-stat)) ;; unknown type
+(define-extern *stat-string-tfrag* string)
+(define-extern *stat-string-total* string)
+(define-extern *terrain-context* terrain-context)
+(define-extern GSH_ENABLE symbol)
+(define-extern GSH_BUCKET bucket-id)
+(define-extern GSH_WHICH_STAT int)
+(define-extern GSH_MAX_DISPLAY basic)
+(define-extern GSH_TIME int)
+(define-extern *gomi-stats-hack* (inline-array perf-stat))
 
 
 ;; ----------------------
@@ -15868,15 +15892,15 @@
 
 ;; - Symbols
 
-(define-extern *shadow-middot-texture* texture) ;; unknown type
+(define-extern *shadow-middot-texture* texture)
 
 ;; - Unknowns
 
-(define-extern *sprite-hvdf-data* sprite-hvdf-data) ;; unknown type
-(define-extern *sprite-hvdf-control* sprite-hvdf-control) ;; unknown type
-(define-extern sprite-vu1-block vu-function) ;; unknown type
-(define-extern *sprite-array-3d* sprite-array-3d) ;; unknown type
-(define-extern *sprite-array-2d* sprite-array-2d) ;; unknown type
+(define-extern *sprite-hvdf-data* sprite-hvdf-data)
+(define-extern *sprite-hvdf-control* sprite-hvdf-control)
+(define-extern sprite-vu1-block vu-function)
+(define-extern *sprite-array-3d* sprite-array-3d)
+(define-extern *sprite-array-2d* sprite-array-2d)
 (define-extern *sprite-aux-list* sprite-aux-list)
 
 
@@ -15931,7 +15955,7 @@
 
 ;; - Symbols
 
-(define-extern *debug-sphere-table* debug-sphere-table) ;; unknown type
+(define-extern *debug-sphere-table* debug-sphere-table)
 
 
 ;; ----------------------
@@ -16191,46 +16215,67 @@
 
 ;; - Types
 
-; (deftype bone-calculation (structure)
-;   ((flags               uint16            :offset-assert 0)
-;    (num-bones           uint16            :offset-assert 2)
-;    (matrix-area         uint32            :offset-assert 4)
-;    (joints              uint32            :offset-assert 8)
-;    (bones               uint32            :offset-assert 12)
-;    (ripple-scale        float             :offset-assert 16)
-;    (ripple-y-scale      float             :offset-assert 20)
-;    (ripple-normal-scale float             :offset-assert 24)
-;    (ripple-area         uint32            :offset-assert 28)
-;    (next                bone-calculation  :offset-assert 32)
-;    (dummy-1             uint32            :offset-assert 36)
-;    (dummy-2             uint32            :offset-assert 40)
-;    (dummy-3             uint32            :offset-assert 44)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(defenum bone-calc-flags
+  :type uint16
+  :bitfield #t
+  (bncfl00 0)
+  (bncfl01 1)
+  (bncfl02 2)
+  (bncfl03 3)
+  (bncfl04 4)
+  (bncfl05 5)
+  (bncfl06 6)
+  (bncfl07 7)
+  (bncfl08 8)
+  (bncfl09 9)
+  (bncfl10 10)
+  (bncfl11 11)
+  (bncfl12 12)
+  (bncfl13 13)
+  (bncfl14 14)
+  (bncfl15 15)
+  )
 
-; (deftype bone-calculation-list (structure)
-;   ((first bone-calculation  :offset-assert 0)
-;    (next  bone-calculation  :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
+(deftype bone-calculation (structure)
+  ((flags               bone-calc-flags   :offset-assert 0)
+   (num-bones           uint16            :offset-assert 2)
+   (matrix-area         (inline-array matrix) :offset-assert 4)
+   (joints              (inline-array joint)  :offset-assert 8)
+   (bones               (inline-array bone)   :offset-assert 12)
+   (ripple-scale        float             :offset-assert 16)
+   (ripple-y-scale      float             :offset-assert 20)
+   (ripple-normal-scale float             :offset-assert 24)
+   (ripple-area         (inline-array vector) :offset-assert 28)
+   (next                bone-calculation  :offset-assert 32)
+   (dummy-1             uint32            :offset-assert 36)
+   (dummy-2             uint32            :offset-assert 40)
+   (dummy-3             uint32            :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; (deftype texscroll-globals (structure)
-;   ((requests int32      :offset-assert 0)
-;    (effects  UNKNOWN 32 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x84
-;   :flag-assert         #x900000084
-;   )
+(deftype bone-calculation-list (structure)
+  ((first bone-calculation  :offset-assert 0)
+   (next  bone-calculation  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype texscroll-globals (structure)
+  ((requests int32      :offset-assert 0)
+   (effects  merc-effect 32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
 
 (deftype merc-effect-bucket-info (structure)
-  ((color-fade    uint32  :offset-assert 0)
+  ((color-fade    rgba    :offset-assert 0)
    (use-mercneric uint8   :offset-assert 4)
    (ignore-alpha  uint8   :offset-assert 5)
    (pad0          uint8   :offset-assert 6)
@@ -16257,37 +16302,37 @@
 ;; - Functions
 
 (define-extern paused? (function symbol))
-(define-extern dump-mem function)
-(define-extern bone-list-init function)
-(define-extern texscroll-make-request function)
+(define-extern dump-mem (function pointer int none))
+(define-extern bone-list-init (function none))
+(define-extern texscroll-make-request (function merc-effect none))
 (define-extern texscroll-execute (function none))
-(define-extern bones-set-sqwc function)
-(define-extern bones-reset-sqwc function)
-(define-extern bones-init (function dma-buffer none)) ;; TODO - unconfirmed
-(define-extern draw-bones-mtx-calc function)
-(define-extern bones-mtx-calc function)
+(define-extern bones-set-sqwc (function none))
+(define-extern bones-reset-sqwc (function none))
+(define-extern bones-init (function dma-buffer dma-foreground-sink-group none))
+(define-extern draw-bones-mtx-calc (function bone-calculation int bone-calc-flags object))
+(define-extern bones-mtx-calc (function int pointer pointer int none))
 (define-extern bones-mtx-calc-execute (function none))
-(define-extern bones-wrapup (function none)) ;; TODO - unconfirmed
-(define-extern dump-qword function)
-(define-extern bones-debug function)
-(define-extern dump-bone-mem function)
-(define-extern draw-bones-shadow function)
-(define-extern draw-bones-generic-merc function)
-(define-extern draw-bones-merc function)
-(define-extern draw-bones-check-longest-edge function)
-(define-extern draw-bones-check-longest-edge-asm function)
-(define-extern draw-bones (function draw-control object float none))
+(define-extern bones-wrapup (function none))
+(define-extern dump-qword (function qword none))
+(define-extern bones-debug (function none))
+(define-extern dump-bone-mem (function none))
+(define-extern draw-bones-shadow (function draw-control object object pointer))
+(define-extern draw-bones-generic-merc (function draw-control object object int pointer))
+(define-extern draw-bones-merc (function draw-control object object int int pointer))
+(define-extern draw-bones-check-longest-edge (function draw-control float none))
+(define-extern draw-bones-check-longest-edge-asm (function draw-control float none))
+(define-extern draw-bones (function draw-control dma-buffer float none))
 (define-extern draw-bones-hud (function draw-control dma-buffer none))
 
 ;; - Unknowns
 
-;;(define-extern *merc-bucket-info* object) ;; unknown type
-;;(define-extern *bone-calculation-list* object) ;; unknown type
-;;(define-extern bones-vu0-block object) ;; unknown type
-;;(define-extern *texscroll-globals* object) ;; unknown type
-;;(define-extern *use-generic* object) ;; unknown type
-(define-extern *merc-global-array* merc-global-array) ;; unknown type
-;;(define-extern *bones-first* object) ;; unknown type
+(define-extern *merc-bucket-info* merc-bucket-info)
+(define-extern *bone-calculation-list* bone-calculation-list)
+(define-extern bones-vu0-block vu-function)
+(define-extern *texscroll-globals* texscroll-globals)
+(define-extern *use-generic* symbol)
+(define-extern *merc-global-array* merc-global-array)
+(define-extern *bones-first* symbol)
 (define-extern *default-shadow-settings* shadow-settings)
 
 
@@ -16683,7 +16728,7 @@
 ;; - Functions
 
 (define-extern upload-generic-shrub (function dma-buffer generic-shrub-fragment int int dma-buffer))
-(define-extern shrub-num-tris function)
+(define-extern shrub-num-tris (function shrubbery int))
 (define-extern shrub-init-frame function)
 (define-extern shrub-upload-model function)
 (define-extern shrub-do-init-frame function)
@@ -18271,7 +18316,6 @@
 (define-extern print-game-text-scaled (function string float font-context int none))
 (define-extern disable-level-text-file-loading (function none))
 (define-extern enable-level-text-file-loading (function none))
-(define-extern link (function pointer pointer int kheap int pointer))
 
 ;; - Unknowns
 
@@ -19618,7 +19662,7 @@
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 (define-extern cam-launcher-long-joystick (function vector :behavior camera-slave))
 (define-extern hide-hud-quick (function none))
-(define-extern command-get-process (function object process-drawable process :behavior camera-tracker))
+(define-extern command-get-process (function object process process :behavior camera-tracker))
 (define-extern camera-change-to (function string int symbol symbol))
 (define-extern camera-look-at (function pair uint process :behavior camera-tracker))
 (define-extern camera-pov-from (function pair uint process :behavior camera-tracker))
@@ -20127,9 +20171,6 @@
 (define-extern *deathcam-sg* skeleton-group)
 (define-extern *smack-mods* surface) ;; unknown type
 (define-extern *smack-up-mods* surface) ;; unknown type
-(define-extern target-title (state target)) ;; unknown type
-(define-extern target-demo (state target)) ;; unknown type
-(define-extern target-warp-in (state target)) ;; unknown type
 (define-extern *auto-continue* symbol) ;; unknown type
 
 
@@ -20340,8 +20381,8 @@
 (define-extern draw-instance-info (function string none)) ;; only passed *stdcon*
 (define-extern find-instance-by-name (function string prototype-bucket))
 (define-extern prototype-bucket-type (function prototype-bucket type))
-(define-extern guard-band-cull (function vector symbol)) ;; vf deps - 20-23
-(define-extern find-instance-by-index function)
+(define-extern guard-band-cull (function vector symbol))
+(define-extern find-instance-by-index (function type int bsp-header prototype-bucket))
 (define-extern prototype-bucket-recalc-fields (function prototype-bucket prototype-bucket))
 (define-extern dma-add-process-drawable-hud (function process-drawable draw-control symbol dma-buffer none))
 (define-extern foreground-engine-execute (function engine display-frame int int none))
@@ -20363,14 +20404,14 @@
 
 ;; - Unknowns
 
-(define-extern syncv (function int int)) ;; unknown type
-(define-extern put-display-env (function object none)) ;; unknown type
-(define-extern *surrogate-dma-buffer* dma-buffer) ;; unknown type
-(define-extern *screen-shot* symbol) ;; unknown type
-(define-extern *hud-lights* vu-lights) ;; unknown type
-(define-extern *instance-mem-usage* memory-usage-block) ;; unknown type
-(define-extern *add-sphere* symbol) ;; unknown type
-(define-extern *generic-effect-mode* int) ;; unknown type
+(define-extern syncv (function int int))
+(define-extern put-display-env (function object none))
+(define-extern *surrogate-dma-buffer* dma-buffer)
+(define-extern *screen-shot* symbol)
+(define-extern *hud-lights* vu-lights)
+(define-extern *instance-mem-usage* memory-usage-block)
+(define-extern *add-sphere* symbol)
+(define-extern *generic-effect-mode* int)
 
 
 ;; ----------------------
@@ -20464,8 +20505,8 @@
 
 ;; - Unknowns
 
-(define-extern scf-get-timeout (function int)) ;; unknown type
-(define-extern scf-get-inactive-timeout (function int)) ;; unknown type
+(define-extern scf-get-timeout (function int))
+(define-extern scf-get-inactive-timeout (function int))
 (define-extern kernel-shutdown (function none))
 
 
@@ -22107,7 +22148,7 @@
 (define-extern dm-cam-render-float (function int debug-menu-msg float float float))
 (define-extern dm-cam-settings-func (function int debug-menu-msg symbol))
 (define-extern dm-cam-settings-func-int (function int debug-menu-msg int int int))
-(define-extern debug-create-cam-restore (function none)) ;; TODO - level-group type isn't complete
+(define-extern debug-create-cam-restore (function none))
 (define-extern dm-cam-mode-func (function (state camera-slave) debug-menu-msg object))
 (define-extern dm-instance-pick-func (function string debug-menu-msg basic))
 (define-extern dm-enable-instance-func (function string debug-menu-msg symbol))
@@ -22139,7 +22180,7 @@
 (define-extern dm-task-reward-speech (function int debug-menu-msg symbol))
 (define-extern dm-task-resolution (function int debug-menu-msg symbol))
 (define-extern dm-anim-tester-flag-func (function int debug-menu-msg symbol))
-(define-extern dm-anim-tester-func (function int debug-menu-msg none)) ;; TODO - *anim-tester*
+(define-extern dm-anim-tester-func (function int debug-menu-msg none))
 (define-extern debug-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
 (define-extern popup-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
 
@@ -30474,14 +30515,16 @@
 
 ;; - Types
 
-(declare-type quicksandlurker process-drawable)
 (deftype quicksandlurker-missile (process-drawable)
-  ((parent-override (pointer quicksandlurker) :score 100         :offset 12)
-   (root-override collide-shape-moving :score 100 :offset 112))
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   )
   :method-count-assert 20
   :size-assert         #xb0
   :heap-base           #x40
   :flag-assert         #x14004000b0
+  (:states
+    quicksandlurker-missile-impact
+    )
   )
 
 (deftype quicksandlurker-missile-init-data (structure)
@@ -30506,13 +30549,22 @@
   :size-assert         #xd4
   :heap-base           #x70
   :flag-assert         #x14007000d4
+  (:states
+    quicksandlurker-die
+    quicksandlurker-victory
+    quicksandlurker-hide
+    quicksandlurker-wait
+    quicksandlurker-track
+    quicksandlurker-attack
+    quicksandlurker-popup
+    )
   )
 
 ;; - Functions
 
 (define-extern orient-to-face-target (function quaternion :behavior quicksandlurker))
 (define-extern quicksandlurker-spit (function (pointer process) :behavior quicksandlurker))
-(define-extern spawn-quicksandlurker-missile (function quicksandlurker vector vector entity none))
+(define-extern spawn-quicksandlurker-missile (function process vector vector entity none))
 (define-extern quicksandlurker-check-hide-transition (function none :behavior quicksandlurker))
 (define-extern inc-angle (function (pointer float) float float))
 (define-extern quicksandlurker-missile-init-by-other (function quicksandlurker-missile-init-data entity none :behavior quicksandlurker-missile))
@@ -30525,15 +30577,7 @@
 
 (define-extern *quicksandlurker-sg* skeleton-group)
 (define-extern quicksandlurker-idle (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-track (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-wait (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-popup (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-attack (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-hide (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-die (state quicksandlurker)) ;; unknown type
-(define-extern quicksandlurker-victory (state quicksandlurker)) ;; unknown type
 (define-extern quicksandlurker-missile-idle (state quicksandlurker-missile)) ;; unknown type
-(define-extern quicksandlurker-missile-impact (state quicksandlurker-missile)) ;; unknown type
 (define-extern quicksandlurker-yawn (state quicksandlurker)) ;; unknown type
 
 

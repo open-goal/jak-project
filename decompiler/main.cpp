@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
   }
 
   if (config.process_game_text) {
-    auto result = db.process_game_text_files();
+    auto result = db.process_game_text_files(config.text_version);
     if (!result.empty()) {
       file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
     }

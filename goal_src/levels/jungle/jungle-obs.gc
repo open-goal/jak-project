@@ -86,123 +86,71 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (if (or (= arg2 'touch) (= arg2 'attack))
-    (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+    (if (or (= arg2 'touch) (= arg2 'attack))
+        (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+        )
     )
-   )
   :code
   (behavior ()
-   (transform-post)
-   (while #t
-    (let ((a0-0 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-0 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      )
-     (set!
-      (-> a0-0 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         data
-         0
-         length
-         )
-        -1
+    (transform-post)
+    (while #t
+      (let ((a0-0 (-> self skel root-channel 0)))
+        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+        (set! (-> a0-0 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+              )
+        (set! (-> a0-0 param 1) 1.0)
+        (set! (-> a0-0 frame-num) 0.0)
+        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
         )
-       )
-      )
-     (set! (-> a0-0 param 1) 1.0)
-     (set! (-> a0-0 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-0
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (when (logtest? (-> self draw status) 8)
-      (cond
-       ((> (-> self draw cur-lod) 0)
-        (ja-post)
-        )
-       (else
-        (transform-post)
-        (if *target*
-         (look-at-enemy!
-          (-> *target* neck)
-          (the-as vector (-> self root-override root-prim prim-core))
-          #f
-          self
+      (until (ja-done? 0)
+        (when (logtest? (-> self draw status) (draw-status drwf03))
+          (cond
+            ((> (-> self draw cur-lod) 0)
+             (ja-post)
+             )
+            (else
+              (transform-post)
+              (if *target*
+                  (look-at-enemy! (-> *target* neck) (the-as vector (-> self root-override root-prim prim-core)) #f self)
+                  )
+              )
+            )
           )
-         )
+        (suspend)
+        (let ((a0-2 (-> self skel root-channel 0)))
+          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+          (set! (-> a0-2 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+          )
         )
-       )
       )
-     (suspend)
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 param 0)
-       (the float (+ (-> a0-2 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-2 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       a0-2
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 (defmethod init-from-entity! logtrap ((obj logtrap) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 transform-index) 6)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 19251.2)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 transform-index) 6)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 19251.2)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *logtrap-sg* '())
-  (set!
-   (-> obj draw shadow-ctrl)
-   (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0)
-   )
+  (set! (-> obj draw shadow-ctrl) (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (dummy-47 (-> obj root-override))
   (go (method-of-object obj idle))
@@ -230,53 +178,27 @@
 (defstate towertop-idle (towertop)
   :code
   (behavior ()
-   (while #t
-    (let ((a0-0 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-0 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      )
-     (set!
-      (-> a0-0 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         data
-         0
-         length
-         )
-        -1
+    (while #t
+      (let ((a0-0 (-> self skel root-channel 0)))
+        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+        (set! (-> a0-0 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+              )
+        (set! (-> a0-0 param 1) 0.4)
+        (set! (-> a0-0 frame-num) 0.0)
+        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
         )
-       )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((a0-1 (-> self skel root-channel 0)))
+          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
+          (set! (-> a0-1 param 1) 0.4)
+          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
       )
-     (set! (-> a0-0 param 1) 0.4)
-     (set! (-> a0-0 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-0
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((a0-1 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-1 param 0)
-       (the float (+ (-> a0-1 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-1 param 1) 0.4)
-      (joint-control-channel-group-eval!
-       a0-1
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior towertop) ja-post)
   )
@@ -314,145 +236,90 @@
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'stop)
-                    (process-entity-status!
-                     self
-                     (entity-perm-status complete)
-                     #t
-                     )
-                    (let ((f0-0 0.0))
-                     (set! (-> self speed) f0-0)
-                     f0-0
-                     )
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'stop)
+                       (process-entity-status! self (entity-perm-status complete) #t)
+                       (let ((f0-0 0.0))
+                         (set! (-> self speed) f0-0)
+                         f0-0
+                         )
+                       )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
   :code
   (behavior ()
-   (while #t
-    (let ((a0-0 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-0 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      )
-     (set!
-      (-> a0-0 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         data
-         0
-         length
-         )
-        -1
+    (while #t
+      (let ((a0-0 (-> self skel root-channel 0)))
+        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+        (set! (-> a0-0 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+              )
+        (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
+        (set! (-> a0-0 frame-num) 0.0)
+        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
         )
-       )
+      (until (ja-done? 0)
+        (quaternion-rotate-local-y!
+          (-> self root-override quat)
+          (-> self root-override quat)
+          (* 12743.111 (-> *display* seconds-per-frame) (-> self speed))
+          )
+        (suspend)
+        (let ((a0-2 (-> self skel root-channel 0)))
+          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+          (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
+          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
       )
-     (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
-     (set! (-> a0-0 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-0
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (quaternion-rotate-local-y!
-      (-> self root-override quat)
-      (-> self root-override quat)
-      (* 12743.111 (-> *display* seconds-per-frame) (-> self speed))
-      )
-     (suspend)
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 param 0)
-       (the float (+ (-> a0-2 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
-      (joint-control-channel-group-eval!
-       a0-2
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior lurkerm-tall-sail) rider-post)
   )
 
-(defmethod
-  init-from-entity!
-  lurkerm-tall-sail
-  ((obj lurkerm-tall-sail) (arg0 entity-actor))
+(defmethod init-from-entity! lurkerm-tall-sail ((obj lurkerm-tall-sail) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 36044.8 0.0 47104.0)
-    (set-root-prim! s4-0 s3-0)
-    (let
-     ((s2-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 36044.8 0.0 47104.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-0 collide-with) (the-as uint 16))
+        (set! (-> s2-0 prim-core action) (the-as uint 3))
+        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 transform-index) 3)
+        (set-vector! (-> s2-0 local-sphere) 39321.6 0.0 0.0 43417.6)
+        (append-prim s3-0 s2-0)
         )
-       )
       )
-     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-0 collide-with) (the-as uint 16))
-     (set! (-> s2-0 prim-core action) (the-as uint 3))
-     (set! (-> s2-0 prim-core offense) 4)
-     (set! (-> s2-0 transform-index) 3)
-     (set-vector! (-> s2-0 local-sphere) 39321.6 0.0 0.0 43417.6)
-     (append-prim s3-0 s2-0)
-     )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *lurkerm-tall-sail-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (set! (-> obj speed) 1.0)
-  (if
-   (and
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (set! (-> obj speed) 0.0)
-   )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (set! (-> obj speed) 0.0)
+      )
   (go lurkerm-tall-sail-idle)
   (none)
   )
@@ -480,182 +347,107 @@
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'stop)
-                    (process-entity-status!
-                     self
-                     (entity-perm-status complete)
-                     #t
-                     )
-                    (let ((f0-0 0.0))
-                     (set! (-> self speed) f0-0)
-                     f0-0
-                     )
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'stop)
+                       (process-entity-status! self (entity-perm-status complete) #t)
+                       (let ((f0-0 0.0))
+                         (set! (-> self speed) f0-0)
+                         f0-0
+                         )
+                       )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior lurkerm-short-sail) rider-trans)
   :code
   (behavior ()
-   (while #t
-    (let ((a0-0 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-0 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      )
-     (set!
-      (-> a0-0 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         data
-         0
-         length
-         )
-        -1
+    (while #t
+      (let ((a0-0 (-> self skel root-channel 0)))
+        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+        (set! (-> a0-0 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+              )
+        (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
+        (set! (-> a0-0 frame-num) 0.0)
+        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
         )
-       )
+      (until (ja-done? 0)
+        (quaternion-rotate-local-y!
+          (-> self root-override quat)
+          (-> self root-override quat)
+          (* -12743.111 (-> *display* seconds-per-frame) (-> self speed))
+          )
+        (suspend)
+        (let ((a0-2 (-> self skel root-channel 0)))
+          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+          (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
+          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
       )
-     (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
-     (set! (-> a0-0 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-0
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (quaternion-rotate-local-y!
-      (-> self root-override quat)
-      (-> self root-override quat)
-      (* -12743.111 (-> *display* seconds-per-frame) (-> self speed))
-      )
-     (suspend)
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 param 0)
-       (the float (+ (-> a0-2 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
-      (joint-control-channel-group-eval!
-       a0-2
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior lurkerm-short-sail) rider-post)
   )
 
-(defmethod
-  init-from-entity!
-  lurkerm-short-sail
-  ((obj lurkerm-short-sail) (arg0 entity-actor))
+(defmethod init-from-entity! lurkerm-short-sail ((obj lurkerm-short-sail) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set-vector! (-> s3-0 local-sphere) 0.0 40960.0 0.0 49152.0)
-    (set-root-prim! s4-0 s3-0)
-    (let
-     ((s2-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set-vector! (-> s3-0 local-sphere) 0.0 40960.0 0.0 49152.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-0 collide-with) (the-as uint 16))
+        (set! (-> s2-0 prim-core action) (the-as uint 3))
+        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 transform-index) 4)
+        (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 36864.0)
+        (append-prim s3-0 s2-0)
         )
-       )
-      )
-     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-0 collide-with) (the-as uint 16))
-     (set! (-> s2-0 prim-core action) (the-as uint 3))
-     (set! (-> s2-0 prim-core offense) 4)
-     (set! (-> s2-0 transform-index) 4)
-     (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 36864.0)
-     (append-prim s3-0 s2-0)
-     )
-    (let
-     ((s2-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 0)
+      (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+        (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-1 collide-with) (the-as uint 16))
+        (set! (-> s2-1 prim-core action) (the-as uint 3))
+        (set! (-> s2-1 prim-core offense) 4)
+        (set! (-> s2-1 transform-index) 3)
+        (set-vector! (-> s2-1 local-sphere) 40960.0 0.0 0.0 24576.0)
+        (append-prim s3-0 s2-1)
         )
-       )
-      )
-     (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-1 collide-with) (the-as uint 16))
-     (set! (-> s2-1 prim-core action) (the-as uint 3))
-     (set! (-> s2-1 prim-core offense) 4)
-     (set! (-> s2-1 transform-index) 3)
-     (set-vector! (-> s2-1 local-sphere) 40960.0 0.0 0.0 24576.0)
-     (append-prim s3-0 s2-1)
-     )
-    (let
-     ((s2-2
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 2)
-        (the-as uint 0)
+      (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+        (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-2 collide-with) (the-as uint 16))
+        (set! (-> s2-2 prim-core action) (the-as uint 3))
+        (set! (-> s2-2 prim-core offense) 4)
+        (set! (-> s2-2 transform-index) 3)
+        (set-vector! (-> s2-2 local-sphere) 40960.0 0.0 0.0 24576.0)
+        (append-prim s3-0 s2-2)
         )
-       )
       )
-     (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-2 collide-with) (the-as uint 16))
-     (set! (-> s2-2 prim-core action) (the-as uint 3))
-     (set! (-> s2-2 prim-core offense) 4)
-     (set! (-> s2-2 transform-index) 3)
-     (set-vector! (-> s2-2 local-sphere) 40960.0 0.0 0.0 24576.0)
-     (append-prim s3-0 s2-2)
-     )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *lurkerm-short-sail-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (set! (-> obj speed) 1.0)
-  (if
-   (and
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (set! (-> obj speed) 0.0)
-   )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (set! (-> obj speed) 0.0)
+      )
   (go lurkerm-short-sail-idle)
   (none)
   )
@@ -686,131 +478,74 @@
 (defstate lurkerm-piston-idle (lurkerm-piston)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'stop)
-                    (process-entity-status!
-                     self
-                     (entity-perm-status complete)
-                     #t
-                     )
-                    (let ((f0-0 0.0))
-                     (set! (-> self speed) f0-0)
-                     f0-0
-                     )
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'stop)
+                       (process-entity-status! self (entity-perm-status complete) #t)
+                       (let ((f0-0 0.0))
+                         (set! (-> self speed) f0-0)
+                         f0-0
+                         )
+                       )
+              )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior lurkerm-piston) rider-trans)
   :code
   (behavior ()
-   (while #t
-    (let ((a0-0 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-0 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      )
-     (set!
-      (-> a0-0 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 2))
-         data
-         0
-         length
-         )
-        -1
+    (while #t
+      (let ((a0-0 (-> self skel root-channel 0)))
+        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+        (set! (-> a0-0 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
+              )
+        (set! (-> a0-0 param 1) (-> self speed))
+        (set! (-> a0-0 frame-num) 0.0)
+        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
         )
-       )
-      )
-     (set! (-> a0-0 param 1) (-> self speed))
-     (set! (-> a0-0 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-0
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (let ((gp-0 (new-stack-vector0)))
-      (set! (-> gp-0 quad) (-> self base quad))
-      (+!
-       (-> gp-0 y)
-       (*
-        (get-current-value-with-mirror (-> self sync) (-> self height y))
-        (-> self speed)
+      (until (ja-done? 0)
+        (let ((gp-0 (new-stack-vector0)))
+          (set! (-> gp-0 quad) (-> self base quad))
+          (+! (-> gp-0 y) (* (get-current-value-with-mirror (-> self sync) (-> self height y)) (-> self speed)))
+          (TODO-RENAME-30 (-> self root-override) gp-0)
+          )
+        (suspend)
+        (let ((a0-3 (-> self skel root-channel 0)))
+          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
+          (set! (-> a0-3 param 1) (-> self speed))
+          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+          )
         )
-       )
-      (TODO-RENAME-30 (-> self root-override) gp-0)
       )
-     (suspend)
-     (let ((a0-3 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-3 param 0)
-       (the float (+ (-> a0-3 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-3 param 1) (-> self speed))
-      (joint-control-channel-group-eval!
-       a0-3
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior lurkerm-piston) rider-post)
   )
 
-(defmethod
-  init-from-entity!
-  lurkerm-piston
-  ((obj lurkerm-piston) (arg0 entity-actor))
+(defmethod init-from-entity! lurkerm-piston ((obj lurkerm-piston) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 24576.0 0.0 0.0 20480.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 3)
-    (set-vector! (-> s3-0 local-sphere) 24576.0 0.0 0.0 20480.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton obj *lurkerm-piston-sg* '())
@@ -818,45 +553,35 @@
   (dummy-47 (-> obj root-override))
   (set! (-> obj base quad) (-> obj root-override trans quad))
   (let ((f30-0 (-> obj base y)))
-   (set! sv-16 (new 'static 'res-tag))
-   (let ((v1-32 (res-lump-data arg0 'height-info pointer :tag-ptr (& sv-16))))
-    (set!
-     (-> obj base y)
-     (+ f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
-               (-> (the-as (pointer float) v1-32))
-               0.0
-               )
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-32 (res-lump-data arg0 'height-info pointer :tag-ptr (& sv-16))))
+      (set! (-> obj base y) (+ f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
+                                         (-> (the-as (pointer float) v1-32))
+                                         0.0
+                                         )
+                               )
+            )
       )
-     )
     )
-   )
   (let ((s4-1 (-> obj height)))
-   (set! (-> s4-1 x) 0.0)
-   (set! sv-32 (new 'static 'res-tag))
-   (let
-    ((v1-35
-      (res-lump-data arg0 'height-info (pointer float) :tag-ptr (& sv-32))
+    (set! (-> s4-1 x) 0.0)
+    (set! sv-32 (new 'static 'res-tag))
+    (let ((v1-35 (res-lump-data arg0 'height-info (pointer float) :tag-ptr (& sv-32))))
+      (set! (-> s4-1 y) (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count))))
+                            (-> v1-35 1)
+                            20480.0
+                            )
+            )
       )
-     )
-    (set! (-> s4-1 y) (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count))))
-                       (-> v1-35 1)
-                       20480.0
-                       )
-     )
+    (set! (-> s4-1 z) 0.0)
+    (set! (-> s4-1 w) 1.0)
     )
-   (set! (-> s4-1 z) 0.0)
-   (set! (-> s4-1 w) 1.0)
-   )
   (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
   (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (set! (-> obj speed) 1.0)
-  (if
-   (and
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (set! (-> obj speed) 0.0)
-   )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (set! (-> obj speed) 0.0)
+      )
   (go lurkerm-piston-idle)
   (none)
   )
@@ -883,49 +608,37 @@
 (defstate accordian-idle (accordian)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'stop)
-                    (process-entity-status!
-                     self
-                     (entity-perm-status complete)
-                     #t
-                     )
-                    (let ((f0-0 0.0))
-                     (set! (-> self speed) f0-0)
-                     f0-0
-                     )
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'stop)
+                       (process-entity-status! self (entity-perm-status complete) #t)
+                       (let ((f0-0 0.0))
+                         (set! (-> self speed) f0-0)
+                         f0-0
+                         )
+                       )
+              )
+      )
     )
-   )
   :code
   (behavior ()
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set! (-> a0-0 param 0) 1.0)
-    (set! (-> a0-0 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim #f)
-     num-func-loop!
-     )
-    )
-   (ja-post)
-   (while #t
-    (suspend)
-    (when (logtest? (-> self draw status) 8)
-     (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 param 0) (-> self speed))
-      (joint-control-channel-group-eval!
-       a0-1
-       (the-as art-joint-anim #f)
-       num-func-loop!
-       )
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 param 0) 1.0)
+      (set! (-> a0-0 frame-num) 0.0)
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-loop!)
       )
-     (ja-post)
-     )
+    (ja-post)
+    (while #t
+      (suspend)
+      (when (logtest? (-> self draw status) (draw-status drwf03))
+        (let ((a0-1 (-> self skel root-channel 0)))
+          (set! (-> a0-1 param 0) (-> self speed))
+          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-loop!)
+          )
+        (ja-post)
+        )
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 (defmethod init-from-entity! accordian ((obj accordian) (arg0 entity-actor))
@@ -935,13 +648,9 @@
   (set! (-> obj root pause-adjust-distance) 204800.0)
   (set! (-> obj alt-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (set! (-> obj speed) 1.0)
-  (if
-   (and
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (set! (-> obj speed) 0.0)
-   )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (set! (-> obj speed) 0.0)
+      )
   (go accordian-idle)
   (none)
   )
@@ -975,59 +684,38 @@
   :virtual #t
   :code
   (behavior ()
-   (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
-   (let ((v1-2 (-> self skel root-channel 0)))
-    (set!
-     (-> v1-2 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 8))
-     )
-    )
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 8))
-     )
-    (set! (-> gp-0 param 0) (ja-aframe 0.0 0))
-    (set! (-> gp-0 param 1) 1.0)
-    (set! (-> gp-0 frame-num) 0.0)
-    (joint-control-channel-group!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 8))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
-     (set! (-> gp-1 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
+    (let ((v1-2 (-> self skel root-channel 0)))
+      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
       )
-     )
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
+      (set! (-> gp-0 param 0) (ja-aframe 0.0 0))
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) 0.0)
+      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((gp-1 (-> self skel root-channel 0)))
+        (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
+        (set! (-> gp-1 param 1) 1.0)
+        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      )
+    (send-event (ppointer->process (-> self parent)) 'go)
+    (let ((a0-10 (-> self skel root-channel 0)))
+      (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+      (set! (-> a0-10 param 1) 1.0)
+      (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+      )
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (go-virtual pov-camera-done-playing)
+    (none)
     )
-   (send-event (ppointer->process (-> self parent)) 'go)
-   (let ((a0-10 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-10 param 0)
-     (the float (+ (-> a0-10 frame-group data 0 length) -1))
-     )
-    (set! (-> a0-10 param 1) 1.0)
-    (joint-control-channel-group!
-     a0-10
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (while (not (ja-done? 0))
-    (suspend)
-    (ja-eval)
-    )
-   (go-virtual pov-camera-done-playing)
-   (none)
-   )
   )
 
 (deftype precurbridge-span (structure)
@@ -1062,176 +750,130 @@
 
 (defstate precurbridge-idle (precurbridge)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('go)
-      (go precurbridge-activate)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('go)
+                                                                                    (go precurbridge-activate)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-identity
-     )
-    (set! (-> gp-0 frame-num) 0.0)
-    )
-   (transform-post)
-   (while #t
-    (when
-     (and
-      *target*
-      (<
-       (vector-vector-xz-distance
-        (-> self activation-point)
-        (-> *target* control trans)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        num-func-identity
         )
-       49152.0
-       )
-      (< (-> self activation-point y) (-> *target* control trans y))
-      (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
-      (not (-> self child))
+      (set! (-> gp-0 frame-num) 0.0)
       )
-     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) self)
-      (set! (-> a1-2 num-params) 2)
-      (set! (-> a1-2 message) 'query)
-      (set! (-> a1-2 param 0) (the-as uint 'powerup))
-      (set! (-> a1-2 param 1) (the-as uint 3))
-      (cond
-       ((send-event-function *target* a1-2)
-        (logclear! (-> self mask) (process-mask actor-pause))
-        (logclear! (-> self mask) (process-mask platform))
-        (let ((gp-1 (entity-by-name "junglecam-1")))
-         (cond
-          (gp-1
-           (let
-            ((s5-0 (get-process *default-dead-pool* precurbridgecam #x4000)))
-            (when s5-0
-             (let ((t9-6 (method-of-type precurbridgecam activate)))
-              (t9-6
-               (the-as precurbridgecam s5-0)
-               self
-               'precurbridgecam
-               (the-as pointer #x70004000)
+    (transform-post)
+    (while #t
+      (when (and
+              *target*
+              (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
+              (< (-> self activation-point y) (-> *target* control trans y))
+              (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
+              (not (-> self child))
+              )
+        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-2 from) self)
+          (set! (-> a1-2 num-params) 2)
+          (set! (-> a1-2 message) 'query)
+          (set! (-> a1-2 param 0) (the-as uint 'powerup))
+          (set! (-> a1-2 param 1) (the-as uint 3))
+          (cond
+            ((send-event-function *target* a1-2)
+             (logclear! (-> self mask) (process-mask actor-pause))
+             (logclear! (-> self mask) (process-mask platform))
+             (let ((gp-1 (entity-by-name "junglecam-1")))
+               (cond
+                 (gp-1
+                   (let ((s5-0 (get-process *default-dead-pool* precurbridgecam #x4000)))
+                     (when s5-0
+                       (let ((t9-6 (method-of-type precurbridgecam activate)))
+                         (t9-6 (the-as precurbridgecam s5-0) self 'precurbridgecam (the-as pointer #x70004000))
+                         )
+                       (run-now-in-process
+                         s5-0
+                         pov-camera-init-by-other
+                         (-> gp-1 extra trans)
+                         *junglecam-sg*
+                         "precurbridgecam"
+                         0
+                         #f
+                         '()
+                         )
+                       (-> s5-0 ppointer)
+                       )
+                     )
+                   )
+                 (else
+                   (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%")
+                   (go precurbridge-activate)
+                   )
+                 )
                )
-              )
-             (run-now-in-process
-              s5-0
-              pov-camera-init-by-other
-              (-> gp-1 extra trans)
-              *junglecam-sg*
-              "precurbridgecam"
-              0
-              #f
-              '()
-              )
-             (-> s5-0 ppointer)
              )
+            (else
+              (level-hint-spawn
+                (game-text-id jungle-precursorbridge-hint)
+                "sksp0039"
+                (the-as entity #f)
+                *entity-pool*
+                (game-task none)
+                )
+              )
             )
-           )
-          (else
-           (format
-            #t
-            "ERROR<GMJ>: position for precursor bridge camera not found~%"
-            )
-           (go precurbridge-activate)
-           )
           )
-         )
         )
-       (else
-        (level-hint-spawn
-         (game-text-id jungle-precursorbridge-hint)
-         "sksp0039"
-         (the-as entity #f)
-         *entity-pool*
-         (game-task none)
-         )
-        )
-       )
+      (suspend)
       )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior precurbridge) ja-post)
   )
 
 (defstate precurbridge-activate (precurbridge)
   :exit
-  (behavior ()
-   (logior! (-> self mask) (process-mask actor-pause))
-   (none)
-   )
+  (behavior () (logior! (-> self mask) (process-mask actor-pause)) (none))
   :trans
   (the-as (function none :behavior precurbridge) rider-trans)
   :code
   (behavior ()
-   (process-entity-status! self (entity-perm-status complete) #t)
-   (sound-play-by-name
-    (static-sound-name "blue-eco-on")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    (the-as symbol (-> self root-override trans))
-    )
-   (let ((a0-3 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-3 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     )
-    (set!
-     (-> a0-3 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        data
-        0
-        length
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (sound-play-by-name
+      (static-sound-name "blue-eco-on")
+      (new-sound-id)
+      1024
+      0
+      0
+      1
+      (the-as symbol (-> self root-override trans))
+      )
+    (let ((a0-3 (-> self skel root-channel 0)))
+      (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+      (set! (-> a0-3 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
+            )
+      (set! (-> a0-3 param 1) 0.25)
+      (set! (-> a0-3 frame-num) 0.0)
+      (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (if (rand-vu-percent? 0.1)
+          (spawn-projectile-blue *target*)
+          )
+      (suspend)
+      (let ((a0-6 (-> self skel root-channel 0)))
+        (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
+        (set! (-> a0-6 param 1) 0.25)
+        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> a0-3 param 1) 0.25)
-    (set! (-> a0-3 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-3
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-seek!
-     )
+    (go precurbridge-active #f)
+    (none)
     )
-   (until (ja-done? 0)
-    (if (rand-vu-percent? 0.1)
-     (spawn-projectile-blue *target*)
-     )
-    (suspend)
-    (let ((a0-6 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-6 param 0)
-      (the float (+ (-> a0-6 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-6 param 1) 0.25)
-     (joint-control-channel-group-eval!
-      a0-6
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go precurbridge-active #f)
-   (none)
-   )
   :post
   (the-as (function none :behavior precurbridge) rider-post)
   )
@@ -1239,452 +881,262 @@
 (defstate precurbridge-active (precurbridge)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'bonk)
-                    (let* ((gp-0 (the-as object (-> arg3 param 0)))
-                           (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
-                           (s5-0 (-> self root-override))
-                           )
-                     (get-touched-prim
-                      a0-2
-                      s5-0
-                      (the-as touching-prims-entry gp-0)
-                      )
-                     ((method-of-type touching-shapes-entry get-touched-shape)
-                      (the-as touching-shapes-entry gp-0)
-                      s5-0
-                      )
-                     )
-                    (activate! (-> self smush) -1.0 150 600 1.0 1.0)
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as
+        object
+        (when (= v1-0 'bonk)
+          (let* ((gp-0 (the-as object (-> arg3 param 0)))
+                 (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
+                 (s5-0 (-> self root-override))
+                 )
+            (get-touched-prim a0-2 s5-0 (the-as touching-prims-entry gp-0))
+            ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
+            )
+          (activate! (-> self smush) -1.0 150 600 1.0 1.0)
+          )
+        )
+      )
     )
-   )
   :trans
   (the-as (function none :behavior precurbridge) rider-trans)
   :code
   (behavior ((arg0 symbol))
-   (set! (-> self draw bounds w) 81920.0)
-   (when arg0
-    (ja-channel-set! 1)
-    (let ((gp-0 (-> self skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      gp-0
-      (the-as art-joint-anim (-> self draw art-group data 4))
-      num-func-identity
-      )
-     (set! (-> gp-0 frame-num) 0.0)
-     )
-    )
-   (ja-post)
-   (dummy-47 (-> self root-override))
-   (logior! (-> self mask) (process-mask actor-pause))
-   (while #t
-    (if (not (movie?))
-     (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
-     )
-    (cond
-     ((and
-       *target*
-       (>=
-        61440.0
-        (vector-vector-distance
-         (-> self root-override trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (when (not (= (if (> (-> self skel active-channels) 0)
-                     (-> self skel root-channel 0 frame-group)
-                     )
-                  (-> self draw art-group data 5)
-                  )
-             )
-       (ja-channel-push! 1 60)
-       (let ((gp-1 (-> self skel root-channel 0)))
+    (set! (-> self draw bounds w) 81920.0)
+    (when arg0
+      (ja-channel-set! 1)
+      (let ((gp-0 (-> self skel root-channel 0)))
         (joint-control-channel-group-eval!
-         gp-1
-         (the-as art-joint-anim (-> self draw art-group data 5))
-         num-func-identity
-         )
-        (set! (-> gp-1 frame-num) 0.0)
+          gp-0
+          (the-as art-joint-anim (-> self draw art-group data 4))
+          num-func-identity
+          )
+        (set! (-> gp-0 frame-num) 0.0)
         )
-       )
       )
-     (else
-      (when (not (= (if (> (-> self skel active-channels) 0)
-                     (-> self skel root-channel 0 frame-group)
-                     )
-                  (-> self draw art-group data 4)
-                  )
+    (ja-post)
+    (dummy-47 (-> self root-override))
+    (logior! (-> self mask) (process-mask actor-pause))
+    (while #t
+      (if (not (movie?))
+          (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
+          )
+      (cond
+        ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+         (when (not (= (if (> (-> self skel active-channels) 0)
+                            (-> self skel root-channel 0 frame-group)
+                            )
+                       (-> self draw art-group data 5)
+                       )
+                    )
+           (ja-channel-push! 1 60)
+           (let ((gp-1 (-> self skel root-channel 0)))
+             (joint-control-channel-group-eval!
+               gp-1
+               (the-as art-joint-anim (-> self draw art-group data 5))
+               num-func-identity
+               )
+             (set! (-> gp-1 frame-num) 0.0)
              )
-       (ja-channel-push! 1 60)
-       (let ((gp-2 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-         gp-2
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         num-func-identity
+           )
          )
-        (set! (-> gp-2 frame-num) 0.0)
+        (else
+          (when (not (= (if (> (-> self skel active-channels) 0)
+                             (-> self skel root-channel 0 frame-group)
+                             )
+                        (-> self draw art-group data 4)
+                        )
+                     )
+            (ja-channel-push! 1 60)
+            (let ((gp-2 (-> self skel root-channel 0)))
+              (joint-control-channel-group-eval!
+                gp-2
+                (the-as art-joint-anim (-> self draw art-group data 4))
+                num-func-identity
+                )
+              (set! (-> gp-2 frame-num) 0.0)
+              )
+            )
+          )
         )
-       )
+      (update! (-> self sound))
+      (let ((a0-19 (-> self skel root-channel 0)))
+        (set! (-> a0-19 param 0) 0.4)
+        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-loop!)
+        )
+      (suspend)
       )
-     )
-    (update! (-> self sound))
-    (let ((a0-19 (-> self skel root-channel 0)))
-     (set! (-> a0-19 param 0) 0.4)
-     (joint-control-channel-group-eval!
-      a0-19
-      (the-as art-joint-anim #f)
-      num-func-loop!
-      )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior precurbridge) rider-post)
   )
 
-(defmethod
-  init-from-entity!
-  precurbridge
-  ((obj precurbridge) (arg0 entity-actor))
+(defmethod init-from-entity! precurbridge ((obj precurbridge) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 16) 0)))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
+        (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-0 collide-with) (the-as uint 16))
+        (set! (-> s2-0 prim-core action) (the-as uint 3))
+        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 transform-index) 5)
+        (set-vector! (-> s2-0 local-sphere) -6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-0)
+        )
+      (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-1 collide-with) (the-as uint 16))
+        (set! (-> s2-1 prim-core action) (the-as uint 3))
+        (set! (-> s2-1 prim-core offense) 4)
+        (set! (-> s2-1 transform-index) 7)
+        (set-vector! (-> s2-1 local-sphere) 6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-1)
+        )
+      (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
+        (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-2 collide-with) (the-as uint 16))
+        (set! (-> s2-2 prim-core action) (the-as uint 3))
+        (set! (-> s2-2 prim-core offense) 4)
+        (set! (-> s2-2 transform-index) 9)
+        (set-vector! (-> s2-2 local-sphere) -6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-2)
+        )
+      (let ((s2-3 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-3 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-3 collide-with) (the-as uint 16))
+        (set! (-> s2-3 prim-core action) (the-as uint 3))
+        (set! (-> s2-3 prim-core offense) 4)
+        (set! (-> s2-3 transform-index) 11)
+        (set-vector! (-> s2-3 local-sphere) 6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-3)
+        )
+      (let ((s2-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
+        (set! (-> s2-4 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-4 collide-with) (the-as uint 16))
+        (set! (-> s2-4 prim-core action) (the-as uint 3))
+        (set! (-> s2-4 prim-core offense) 4)
+        (set! (-> s2-4 transform-index) 13)
+        (set-vector! (-> s2-4 local-sphere) -6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-4)
+        )
+      (let ((s2-5 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-5 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-5 collide-with) (the-as uint 16))
+        (set! (-> s2-5 prim-core action) (the-as uint 3))
+        (set! (-> s2-5 prim-core offense) 4)
+        (set! (-> s2-5 transform-index) 15)
+        (set-vector! (-> s2-5 local-sphere) 6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-5)
+        )
+      (let ((s2-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
+        (set! (-> s2-6 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-6 collide-with) (the-as uint 16))
+        (set! (-> s2-6 prim-core action) (the-as uint 3))
+        (set! (-> s2-6 prim-core offense) 4)
+        (set! (-> s2-6 transform-index) 17)
+        (set-vector! (-> s2-6 local-sphere) -6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-6)
+        )
+      (let ((s2-7 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-7 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-7 collide-with) (the-as uint 16))
+        (set! (-> s2-7 prim-core action) (the-as uint 3))
+        (set! (-> s2-7 prim-core offense) 4)
+        (set! (-> s2-7 transform-index) 19)
+        (set-vector! (-> s2-7 local-sphere) 6144.0 0.0 0.0 17203.2)
+        (append-prim s3-0 s2-7)
+        )
+      (let ((s2-8 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+        (set! (-> s2-8 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-8 collide-with) (the-as uint 16))
+        (set! (-> s2-8 prim-core action) (the-as uint 3))
+        (set! (-> s2-8 prim-core offense) 4)
+        (set! (-> s2-8 transform-index) 4)
+        (set-vector! (-> s2-8 local-sphere) -4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-8)
+        )
+      (let ((s2-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-9 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-9 collide-with) (the-as uint 16))
+        (set! (-> s2-9 prim-core action) (the-as uint 3))
+        (set! (-> s2-9 prim-core offense) 4)
+        (set! (-> s2-9 transform-index) 6)
+        (set-vector! (-> s2-9 local-sphere) 4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-9)
+        )
+      (let ((s2-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+        (set! (-> s2-10 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-10 collide-with) (the-as uint 16))
+        (set! (-> s2-10 prim-core action) (the-as uint 3))
+        (set! (-> s2-10 prim-core offense) 4)
+        (set! (-> s2-10 transform-index) 8)
+        (set-vector! (-> s2-10 local-sphere) -4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-10)
+        )
+      (let ((s2-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-11 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-11 collide-with) (the-as uint 16))
+        (set! (-> s2-11 prim-core action) (the-as uint 3))
+        (set! (-> s2-11 prim-core offense) 4)
+        (set! (-> s2-11 transform-index) 10)
+        (set-vector! (-> s2-11 local-sphere) 4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-11)
+        )
+      (let ((s2-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+        (set! (-> s2-12 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-12 collide-with) (the-as uint 16))
+        (set! (-> s2-12 prim-core action) (the-as uint 3))
+        (set! (-> s2-12 prim-core offense) 4)
+        (set! (-> s2-12 transform-index) 12)
+        (set-vector! (-> s2-12 local-sphere) -4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-12)
+        )
+      (let ((s2-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-13 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-13 collide-with) (the-as uint 16))
+        (set! (-> s2-13 prim-core action) (the-as uint 3))
+        (set! (-> s2-13 prim-core offense) 4)
+        (set! (-> s2-13 transform-index) 14)
+        (set-vector! (-> s2-13 local-sphere) 4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-13)
+        )
+      (let ((s2-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+        (set! (-> s2-14 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-14 collide-with) (the-as uint 16))
+        (set! (-> s2-14 prim-core action) (the-as uint 3))
+        (set! (-> s2-14 prim-core offense) 4)
+        (set! (-> s2-14 transform-index) 16)
+        (set-vector! (-> s2-14 local-sphere) -4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-14)
+        )
+      (let ((s2-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-15 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-15 collide-with) (the-as uint 16))
+        (set! (-> s2-15 prim-core action) (the-as uint 3))
+        (set! (-> s2-15 prim-core offense) 4)
+        (set! (-> s2-15 transform-index) 18)
+        (set-vector! (-> s2-15 local-sphere) 4096.0 0.0 0.0 9011.2)
+        (append-prim s3-0 s2-15)
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 16) 0)))
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 81920.0)
-    (set-root-prim! s4-0 s3-0)
-    (let
-     ((s2-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 3)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-0 collide-with) (the-as uint 16))
-     (set! (-> s2-0 prim-core action) (the-as uint 3))
-     (set! (-> s2-0 prim-core offense) 4)
-     (set! (-> s2-0 transform-index) 5)
-     (set-vector! (-> s2-0 local-sphere) -6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-0)
-     )
-    (let
-     ((s2-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-1 collide-with) (the-as uint 16))
-     (set! (-> s2-1 prim-core action) (the-as uint 3))
-     (set! (-> s2-1 prim-core offense) 4)
-     (set! (-> s2-1 transform-index) 7)
-     (set-vector! (-> s2-1 local-sphere) 6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-1)
-     )
-    (let
-     ((s2-2
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 3)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-2 collide-with) (the-as uint 16))
-     (set! (-> s2-2 prim-core action) (the-as uint 3))
-     (set! (-> s2-2 prim-core offense) 4)
-     (set! (-> s2-2 transform-index) 9)
-     (set-vector! (-> s2-2 local-sphere) -6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-2)
-     )
-    (let
-     ((s2-3
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-3 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-3 collide-with) (the-as uint 16))
-     (set! (-> s2-3 prim-core action) (the-as uint 3))
-     (set! (-> s2-3 prim-core offense) 4)
-     (set! (-> s2-3 transform-index) 11)
-     (set-vector! (-> s2-3 local-sphere) 6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-3)
-     )
-    (let
-     ((s2-4
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 3)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-4 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-4 collide-with) (the-as uint 16))
-     (set! (-> s2-4 prim-core action) (the-as uint 3))
-     (set! (-> s2-4 prim-core offense) 4)
-     (set! (-> s2-4 transform-index) 13)
-     (set-vector! (-> s2-4 local-sphere) -6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-4)
-     )
-    (let
-     ((s2-5
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-5 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-5 collide-with) (the-as uint 16))
-     (set! (-> s2-5 prim-core action) (the-as uint 3))
-     (set! (-> s2-5 prim-core offense) 4)
-     (set! (-> s2-5 transform-index) 15)
-     (set-vector! (-> s2-5 local-sphere) 6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-5)
-     )
-    (let
-     ((s2-6
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 3)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-6 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-6 collide-with) (the-as uint 16))
-     (set! (-> s2-6 prim-core action) (the-as uint 3))
-     (set! (-> s2-6 prim-core offense) 4)
-     (set! (-> s2-6 transform-index) 17)
-     (set-vector! (-> s2-6 local-sphere) -6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-6)
-     )
-    (let
-     ((s2-7
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 1)
-        )
-       )
-      )
-     (set! (-> s2-7 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-7 collide-with) (the-as uint 16))
-     (set! (-> s2-7 prim-core action) (the-as uint 3))
-     (set! (-> s2-7 prim-core offense) 4)
-     (set! (-> s2-7 transform-index) 19)
-     (set-vector! (-> s2-7 local-sphere) 6144.0 0.0 0.0 17203.2)
-     (append-prim s3-0 s2-7)
-     )
-    (let
-     ((s2-8
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 2)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-8 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-8 collide-with) (the-as uint 16))
-     (set! (-> s2-8 prim-core action) (the-as uint 3))
-     (set! (-> s2-8 prim-core offense) 4)
-     (set! (-> s2-8 transform-index) 4)
-     (set-vector! (-> s2-8 local-sphere) -4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-8)
-     )
-    (let
-     ((s2-9
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-9 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-9 collide-with) (the-as uint 16))
-     (set! (-> s2-9 prim-core action) (the-as uint 3))
-     (set! (-> s2-9 prim-core offense) 4)
-     (set! (-> s2-9 transform-index) 6)
-     (set-vector! (-> s2-9 local-sphere) 4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-9)
-     )
-    (let
-     ((s2-10
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 2)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-10 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-10 collide-with) (the-as uint 16))
-     (set! (-> s2-10 prim-core action) (the-as uint 3))
-     (set! (-> s2-10 prim-core offense) 4)
-     (set! (-> s2-10 transform-index) 8)
-     (set-vector! (-> s2-10 local-sphere) -4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-10)
-     )
-    (let
-     ((s2-11
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-11 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-11 collide-with) (the-as uint 16))
-     (set! (-> s2-11 prim-core action) (the-as uint 3))
-     (set! (-> s2-11 prim-core offense) 4)
-     (set! (-> s2-11 transform-index) 10)
-     (set-vector! (-> s2-11 local-sphere) 4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-11)
-     )
-    (let
-     ((s2-12
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 2)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-12 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-12 collide-with) (the-as uint 16))
-     (set! (-> s2-12 prim-core action) (the-as uint 3))
-     (set! (-> s2-12 prim-core offense) 4)
-     (set! (-> s2-12 transform-index) 12)
-     (set-vector! (-> s2-12 local-sphere) -4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-12)
-     )
-    (let
-     ((s2-13
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-13 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-13 collide-with) (the-as uint 16))
-     (set! (-> s2-13 prim-core action) (the-as uint 3))
-     (set! (-> s2-13 prim-core offense) 4)
-     (set! (-> s2-13 transform-index) 14)
-     (set-vector! (-> s2-13 local-sphere) 4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-13)
-     )
-    (let
-     ((s2-14
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 2)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-14 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-14 collide-with) (the-as uint 16))
-     (set! (-> s2-14 prim-core action) (the-as uint 3))
-     (set! (-> s2-14 prim-core offense) 4)
-     (set! (-> s2-14 transform-index) 16)
-     (set-vector! (-> s2-14 local-sphere) -4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-14)
-     )
-    (let
-     ((s2-15
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-15 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-15 collide-with) (the-as uint 16))
-     (set! (-> s2-15 prim-core action) (the-as uint 3))
-     (set! (-> s2-15 prim-core offense) 4)
-     (set! (-> s2-15 transform-index) 18)
-     (set-vector! (-> s2-15 local-sphere) 4096.0 0.0 0.0 9011.2)
-     (append-prim s3-0 s2-15)
-     )
-    )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (set-vector! (-> obj activation-point) 1765785.6 61440.0 -1279180.8 1.0)
   (initialize-skeleton obj *precurbridge-sg* '())
@@ -1692,22 +1144,16 @@
   (ja-post)
   (dummy-47 (-> obj root-override))
   (set! (-> obj base quad) (-> obj root-override trans quad))
-  (set!
-   (-> obj sound)
-   (new 'process 'ambient-sound arg0 (-> obj root-override trans))
-   )
+  (set! (-> obj sound) (new 'process 'ambient-sound arg0 (-> obj root-override trans)))
   (cond
-   ((and
-     (-> obj entity)
-     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+     (logclear! (-> obj mask) (process-mask actor-pause))
+     (go precurbridge-active #t)
      )
-    (logclear! (-> obj mask) (process-mask actor-pause))
-    (go precurbridge-active #t)
+    (else
+      (go precurbridge-idle)
+      )
     )
-   (else
-    (go precurbridge-idle)
-    )
-   )
   (none)
   )
 
@@ -1733,188 +1179,133 @@
 (defstate maindoor-closed (maindoor)
   :code
   (behavior ((arg0 symbol))
-   (set! (-> self draw force-lod) 1)
-   (set! (-> self draw status) (logand -3 (-> self draw status)))
-   (when arg0
-    (let ((v1-6 (-> self skel root-channel 0)))
-     (set! (-> v1-6 num-func) num-func-identity)
-     (set! (-> v1-6 frame-num) 0.0)
-     )
-    )
-   (suspend)
-   (dummy-47 (-> self root-override))
-   (while #t
-    (when
-     (or
-      (and
-       (-> self entity)
-       (logtest?
-        (-> self entity extra perm status)
-        (entity-perm-status complete)
+    (set! (-> self draw force-lod) 1)
+    (logclear! (-> self draw status) (draw-status drwf01))
+    (when arg0
+      (let ((v1-6 (-> self skel root-channel 0)))
+        (set! (-> v1-6 num-func) num-func-identity)
+        (set! (-> v1-6 frame-num) 0.0)
         )
-       )
-      (and
-       (and
-        *target*
-        (>=
-         (-> self thresh w)
-         (vector-vector-distance
-          (-> self root-override trans)
-          (-> *target* control trans)
-          )
-         )
-        )
-       (send-event *target* 'query 'powerup 3)
-       )
       )
-     (sound-play-by-name
-      (static-sound-name "blue-eco-on")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self root-override trans))
-      )
-     (go maindoor-open #f)
-     )
-    (if
-     (and
-      *target*
-      (>=
-       (-> self thresh w)
-       (vector-vector-distance
-        (-> self root-override trans)
-        (-> *target* control trans)
-        )
-       )
-      )
-     (level-hint-spawn
-      (game-text-id jungle-maindoor-hint)
-      "sksp0038"
-      (the-as entity #f)
-      *entity-pool*
-      (game-task none)
-      )
-     )
-    (when (ja-min? 0)
-     (set! (-> self root-override root-prim prim-core action) (the-as uint 1))
-     (set! (-> self root-override root-prim prim-core offense) 4)
-     )
-    (let ((a0-19 (-> self skel root-channel 0)))
-     (set! (-> a0-19 param 0) 0.0)
-     (set! (-> a0-19 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-19
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    (ja-post)
     (suspend)
+    (dummy-47 (-> self root-override))
+    (while #t
+      (when (or
+              (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+              (and
+                (and
+                  *target*
+                  (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                  )
+                (send-event *target* 'query 'powerup 3)
+                )
+              )
+        (sound-play-by-name
+          (static-sound-name "blue-eco-on")
+          (new-sound-id)
+          1024
+          0
+          0
+          1
+          (the-as symbol (-> self root-override trans))
+          )
+        (go maindoor-open #f)
+        )
+      (if (and
+              *target*
+              (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+              )
+          (level-hint-spawn
+            (game-text-id jungle-maindoor-hint)
+            "sksp0038"
+            (the-as entity #f)
+            *entity-pool*
+            (game-task none)
+            )
+          )
+      (when (ja-min? 0)
+        (set! (-> self root-override root-prim prim-core action) (the-as uint 1))
+        (set! (-> self root-override root-prim prim-core offense) 4)
+        )
+      (let ((a0-19 (-> self skel root-channel 0)))
+        (set! (-> a0-19 param 0) 0.0)
+        (set! (-> a0-19 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      (ja-post)
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate maindoor-open (maindoor)
   :code
   (behavior ((arg0 symbol))
-   (set! (-> self draw force-lod) 0)
-   (set! (-> self draw status) (logand -3 (-> self draw status)))
-   (process-entity-status! self (entity-perm-status complete) #t)
-   (when arg0
-    (let ((v1-6 (-> self skel root-channel 0)))
-     (set! (-> v1-6 num-func) num-func-identity)
-     (set!
-      (-> v1-6 frame-num)
-      (the float (+ (-> v1-6 frame-group data 0 length) -1))
+    (set! (-> self draw force-lod) 0)
+    (logclear! (-> self draw status) (draw-status drwf01))
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (when arg0
+      (let ((v1-6 (-> self skel root-channel 0)))
+        (set! (-> v1-6 num-func) num-func-identity)
+        (set! (-> v1-6 frame-num) (the float (+ (-> v1-6 frame-group data 0 length) -1)))
+        )
       )
-     )
-    )
-   (set! (-> self root-override root-prim prim-core action) (the-as uint 0))
-   (set! (-> self root-override root-prim prim-core offense) 0)
-   (while (not (ja-max? 0))
-    (let ((a0-10 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-10 param 0)
-      (the float (+ (-> a0-10 frame-group data 0 length) -1))
+    (set! (-> self root-override root-prim prim-core action) (the-as uint 0))
+    (set! (-> self root-override root-prim prim-core offense) 0)
+    (while (not (ja-max? 0))
+      (let ((a0-10 (-> self skel root-channel 0)))
+        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+        (set! (-> a0-10 param 1) 2.0)
+        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      (if (and (not arg0) (rand-vu-percent? 0.2))
+          (spawn-projectile-blue *target*)
+          )
+      (suspend)
       )
-     (set! (-> a0-10 param 1) 2.0)
-     (joint-control-channel-group-eval!
-      a0-10
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (logior! (-> self draw status) (draw-status drwf01))
+    (while #t
+      (suspend)
       )
-     )
-    (if (and (not arg0) (rand-vu-percent? 0.2))
-     (spawn-projectile-blue *target*)
-     )
-    (suspend)
+    (none)
     )
-   (logior! (-> self draw status) 2)
-   (while #t
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior maindoor) ja-post)
   )
 
 (defmethod init-from-entity! maindoor ((obj maindoor) (arg0 entity-actor))
-  (let
-   ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 1))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *maindoor-sg* '())
   (dummy-47 (-> obj root-override))
   (set! (-> obj thresh w) 61440.0)
-  (if
-   (or
-    (and
-     (-> obj entity)
-     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-     )
-    (and
-     (and
-      *target*
-      (>=
-       (-> obj thresh w)
-       (vector-vector-distance
-        (-> obj root-override trans)
-        (-> *target* control trans)
-        )
-       )
+  (if (or
+          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+          (and
+            (and
+              *target*
+              (>= (-> obj thresh w) (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
+              )
+            (send-event *target* 'query 'powerup 3)
+            )
+          )
+      (go maindoor-open #t)
+      (go maindoor-closed #t)
       )
-     (send-event *target* 'query 'powerup 3)
-     )
-    )
-   (go maindoor-open #t)
-   (go maindoor-closed #t)
-   )
   (none)
   )
 
@@ -1936,31 +1327,20 @@
   )
 
 (defmethod TODO-RENAME-24 sidedoor ((obj sidedoor))
-  (let
-   ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-   (let
-    ((s4-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s5-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 512))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 1))
+      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 transform-index) 2)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 14336.0)
+      (set-root-prim! s5-0 s4-0)
       )
-     )
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 512))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 1))
-    (set! (-> s4-0 prim-core offense) 4)
-    (set! (-> s4-0 transform-index) 2)
-    (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 14336.0)
-    (set-root-prim! s5-0 s4-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
     )
-   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (backup-collide-with-as s5-0)
-   (set! (-> obj root-override) s5-0)
-   )
   0
   (none)
   )
@@ -1989,18 +1369,12 @@
 
 (defmethod relocate jngpusher ((obj jngpusher) (arg0 int))
   (if (nonzero? (-> obj back-prim))
-   (&+! (-> obj back-prim) arg0)
-   )
+      (&+! (-> obj back-prim) arg0)
+      )
   (the-as
-   jngpusher
-   ((the-as
-     (function process-drawable int process-drawable)
-     (find-parent-method jngpusher 7)
-     )
-    obj
-    arg0
+    jngpusher
+    ((the-as (function process-drawable int process-drawable) (find-parent-method jngpusher 7)) obj arg0)
     )
-   )
   )
 
 (defskelgroup *jngpusher-sg* jngpusher
@@ -2016,103 +1390,69 @@
   (the-as (function none :behavior jngpusher) rider-trans)
   :code
   (behavior ()
-   (while #t
-    (let ((gp-0 (-> self skel root-channel 0)))
-     (set! (-> gp-0 num-func) num-func-identity)
-     (set!
-      (-> gp-0 frame-num)
-      (get-current-value-with-mirror
-       (-> self sync)
-       (the float (ja-num-frames 0))
-       )
+    (while #t
+      (let ((gp-0 (-> self skel root-channel 0)))
+        (set! (-> gp-0 num-func) num-func-identity)
+        (set! (-> gp-0 frame-num) (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0))))
+        )
+      (cond
+        ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
+         (set! (-> self back-prim prim-core collide-as) (the-as uint 0))
+         (set! (-> self back-prim collide-with) (the-as uint 0))
+         0
+         )
+        (else
+          (set! (-> self back-prim prim-core collide-as) (the-as uint 2048))
+          (set! (-> self back-prim collide-with) (the-as uint 16))
+          )
+        )
+      (suspend)
       )
-     )
-    (cond
-     ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
-      (set! (-> self back-prim prim-core collide-as) (the-as uint 0))
-      (set! (-> self back-prim collide-with) (the-as uint 0))
-      0
-      )
-     (else
-      (set! (-> self back-prim prim-core collide-as) (the-as uint 2048))
-      (set! (-> self back-prim collide-with) (the-as uint 16))
-      )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior jngpusher) rider-post)
   )
 
 (defmethod init-from-entity! jngpusher ((obj jngpusher) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) -32768.0 -8192.0 0.0 32768.0)
-    (set-root-prim! s4-0 s3-0)
-    (let
-     ((s2-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) -32768.0 -8192.0 0.0 32768.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-0 collide-with) (the-as uint 16))
+        (set! (-> s2-0 prim-core action) (the-as uint 3))
+        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 transform-index) 4)
+        (set-vector! (-> s2-0 local-sphere) 8192.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-0)
         )
-       )
-      )
-     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-0 collide-with) (the-as uint 16))
-     (set! (-> s2-0 prim-core action) (the-as uint 3))
-     (set! (-> s2-0 prim-core offense) 4)
-     (set! (-> s2-0 transform-index) 4)
-     (set-vector! (-> s2-0 local-sphere) 8192.0 0.0 0.0 20480.0)
-     (append-prim s3-0 s2-0)
-     )
-    (let
-     ((s2-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 0)
+      (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+        (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-1 collide-with) (the-as uint 16))
+        (set! (-> s2-1 prim-core action) (the-as uint 3))
+        (set! (-> s2-1 prim-core offense) 4)
+        (set! (-> s2-1 transform-index) 4)
+        (set-vector! (-> s2-1 local-sphere) 36864.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-1)
+        (set! (-> obj back-prim) s2-1)
         )
-       )
       )
-     (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-1 collide-with) (the-as uint 16))
-     (set! (-> s2-1 prim-core action) (the-as uint 3))
-     (set! (-> s2-1 prim-core offense) 4)
-     (set! (-> s2-1 transform-index) 4)
-     (set-vector! (-> s2-1 local-sphere) 36864.0 0.0 0.0 20480.0)
-     (append-prim s3-0 s2-1)
-     (set! (-> obj back-prim) s2-1)
-     )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *jngpusher-sg* '())
   (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
@@ -2129,37 +1469,35 @@
   )
 
 
-(define
-  ripple-for-jungle-water
-  (new 'static 'ripple-wave-set
-   :count 3
-   :converted #f
-   :normal-scale 1.5
-   :wave
-   (new 'static 'inline-array ripple-wave 4
-    (new 'static 'ripple-wave :scale 30.0 :xdiv -2 :speed 4.0)
-    (new 'static 'ripple-wave :scale 30.0 :xdiv 1 :zdiv -1 :speed 4.0)
-    (new 'static 'ripple-wave :scale 10.0 :xdiv -5 :zdiv -3 :speed 2.0)
-    (new 'static 'ripple-wave)
-    )
-   )
-  )
+(define ripple-for-jungle-water (new 'static 'ripple-wave-set
+                                  :count 3
+                                  :converted #f
+                                  :normal-scale 1.5
+                                  :wave
+                                  (new 'static 'inline-array ripple-wave 4
+                                    (new 'static 'ripple-wave :scale 30.0 :xdiv -2 :speed 4.0)
+                                    (new 'static 'ripple-wave :scale 30.0 :xdiv 1 :zdiv -1 :speed 4.0)
+                                    (new 'static 'ripple-wave :scale 10.0 :xdiv -5 :zdiv -3 :speed 2.0)
+                                    (new 'static 'ripple-wave)
+                                    )
+                                  )
+        )
 
 (defmethod TODO-RENAME-22 jungle-water ((obj jungle-water))
   (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
-   (t9-0 obj)
-   )
-  (let ((v1-2 (new 'process 'ripple-control)))
-   (set! (-> obj draw ripple) v1-2)
-   (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
-   (set! (-> v1-2 global-scale) 3072.0)
-   (set! (-> v1-2 close-fade-dist) 163840.0)
-   (set! (-> v1-2 far-fade-dist) 245760.0)
-   (let ((v0-2 ripple-for-jungle-water))
-    (set! (-> v1-2 waveform) v0-2)
-    v0-2
+    (t9-0 obj)
     )
-   )
+  (let ((v1-2 (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) v1-2)
+    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> v1-2 global-scale) 3072.0)
+    (set! (-> v1-2 close-fade-dist) 163840.0)
+    (set! (-> v1-2 far-fade-dist) 245760.0)
+    (let ((v0-2 ripple-for-jungle-water))
+      (set! (-> v1-2 waveform) v0-2)
+      v0-2
+      )
+    )
   )
 
 

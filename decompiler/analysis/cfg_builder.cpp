@@ -217,9 +217,8 @@ void clean_up_break_final(const Function& f, BreakElement* ir, const Env& env) {
   }
 
   if (!dead) {
-    lg::error("failed to recognize dead code after break, got {}",
-              ir->dead_code->to_string(f.ir2.env));
-    throw std::runtime_error("failed to recognize dead code");
+    throw std::runtime_error(fmt::format("failed to recognize dead code after break, got {}",
+                                         ir->dead_code->to_string(f.ir2.env)));
   }
   assert(dead);
   auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
