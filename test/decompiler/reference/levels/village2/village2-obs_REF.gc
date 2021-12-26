@@ -151,10 +151,14 @@
 ;; failed to figure out what this is:
 (defstate pontoon-hidden (pontoon)
   :enter
-  (behavior () (logior! (-> self draw status) 2) (clear-collide-with-as (-> self root-overlay)) (none))
+  (behavior ()
+    (logior! (-> self draw status) (draw-status drwf01))
+    (clear-collide-with-as (-> self root-overlay))
+    (none)
+    )
   :exit
   (behavior ()
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (restore-collide-with-as (-> self root-overlay))
     (none)
     )
@@ -618,7 +622,7 @@
     )
   :enter
   (behavior ((arg0 handle))
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
@@ -651,7 +655,7 @@
       )
     )
   :enter
-  (behavior () (logior! (-> self draw status) 2) (none))
+  (behavior () (logior! (-> self draw status) (draw-status drwf01)) (none))
   :code
   (behavior ()
     (while #t
@@ -781,7 +785,7 @@
     (let ((v1-2 (-> self skel root-channel 0)))
       (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
       )
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (set! (-> self root-override trans quad) (-> self entity extra trans quad))
     (vector-reset! (-> self draw origin))
     (logior! (-> self skel status) 1)
@@ -1181,7 +1185,7 @@
 (defstate exit-chamber-dummy-wait-to-appear (exit-chamber-dummy)
   :code
   (behavior ()
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (while (not (skip-reminder? self))
       (suspend)
       )
@@ -1204,7 +1208,7 @@
 (defstate exit-chamber-dummy-idle (exit-chamber-dummy)
   :code
   (behavior ()
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (let ((gp-0 0))
       (while (< gp-0 2)
         (if (skip-reminder? self)
@@ -1260,7 +1264,7 @@
       )
     (set! (-> s5-1 frame-num) 0.0)
     )
-  (logior! (-> obj draw status) 2)
+  (logior! (-> obj draw status) (draw-status drwf01))
   (go exit-chamber-dummy-wait-to-appear)
   (none)
   )

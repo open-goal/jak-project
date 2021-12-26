@@ -68,6 +68,17 @@ class Vector {
     return sum;
   }
 
+  bool operator==(const Vector<T, Size>& other) const {
+    for (int i = 0; i < Size; i++) {
+      if (m_data[i] != other.m_data[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool operator!=(const Vector<T, Size>& other) const { return !((*this) == other); }
+
   const T length() const { return std::sqrt(squared_length()); }
 
   Vector<T, Size> operator+(const Vector<T, Size>& other) const {
@@ -213,8 +224,8 @@ struct Matrix {
     return result;
   }
 
-  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
-  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
+  //  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
+  //  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
 
   Vector<T, Rows> col(int c) const {
     Vector<T, Rows> result;

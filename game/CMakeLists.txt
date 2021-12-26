@@ -19,7 +19,7 @@ if(UNIX)
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
-        -Wsign-promo")
+        -Wsign-promo -O3 -march=haswell")
 else()
         set(CMAKE_CXX_FLAGS "/EHsc")
 endif(UNIX)
@@ -99,8 +99,10 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/tfrag/BufferedRenderer.cpp
         graphics/opengl_renderer/tfrag/program6_cpu.cpp
         graphics/opengl_renderer/tfrag/Tfrag3.cpp
+        graphics/opengl_renderer/tfrag/tfrag_common.cpp
         graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
         graphics/opengl_renderer/tfrag/TFragment.cpp
+        graphics/opengl_renderer/tfrag/Tie3.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp
@@ -121,4 +123,3 @@ endif()
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
 
-install(TARGETS gk)
