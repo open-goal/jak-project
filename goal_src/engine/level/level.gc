@@ -188,6 +188,8 @@
 
 
 (defmethod vis-load level ((obj level))
+  "Start the initial load of a VIS file. After this is done, we can use
+   ramdisk-load to load chunks."
   (when (zero? (-> obj vis-info (-> obj vis-self-index) ramdisk))
     (let ((vis (-> obj other vis-info (-> obj other vis-self-index))))
         (when (and vis (nonzero? (-> vis ramdisk)))
@@ -203,6 +205,7 @@
         (set! *current-ramdisk-id* s5-0)
         (set! (-> cmd filename) (string->sound-name visname))
         (set! (-> cmd ee-id) s5-0)
+        (load-dbg "doing ramdisk vis load: ~A~%" visname)
         (call *ramdisk-rpc* (the-as uint 1) (the-as pointer 0) (the-as uint 0))
         (set! (-> obj vis-info (-> obj vis-self-index) ramdisk) s5-0)
         )
@@ -1033,10 +1036,11 @@
             ;; dsllv v1, v1, a0
             (check-sign-word (the int (shl vis-byte shift-amount))) ;; signed
             )
-    ;; slt v1, v1, r0
+    ;; slt v1, v1, r0    v1 = (csw < 0)
     ;; daddiu v0, s7, 8
-    ;; movz v0, s7, v1
-    (>= check-sign-word 0)
+    ;; movz v0, s7, v1   if (csw >= 0) result = false
+    ;;(format 0 "vis check ~D ~X ~X ~A~%" arg0 vis-byte check-sign-word (>= check-sign-word 0))
+    (< check-sign-word 0)
     )
   )
 
@@ -1062,7 +1066,7 @@
                    (< (-> arg0 y) (-> v1-5 0 max y))
                    (< (-> arg0 z) (-> v1-5 0 max z))
                    )
-              #t
+              (return #t)
               )
           (set! v1-5 (the (inline-array box8s) (-> v1-5 1)))
           )

@@ -111,6 +111,7 @@
 
 (defmethod update-vis! level ((obj level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
   (local-vars (t0-3 uint128) (vis-buffer object))
+  ;(format 0 "call to update-vis!~%")
   
   (let* ((cam-leaf-idx (-> vis-info from-bsp current-leaf-idx))   ;; current bsp leaf of camera
          (curr-vis-str (-> vis-info current-vis-string))          ;; currently loaded vis-string.
@@ -123,10 +124,11 @@
     
     ;; wait on ramdisk load, or do nothing because we already have the right stuff.
     (when (= curr-vis-str desired-vis-str)
+      ;; (format 0 "update-vis: change from ~D to ~D (cam is ~D)~%" curr-vis-str desired-vis-str cam-leaf-idx)
       ;; we match. but are we loading?
       (cond
         ((logtest? (vis-info-flag waiting-for-load) (-> vis-info flags))
-         (if (check-busy *ramdisk-rpc*)
+         (when (check-busy *ramdisk-rpc*)
              ;; loading, and ramdisk not done, return #f, we don't have vis.
              (return #f)
              )
@@ -144,7 +146,7 @@
     
     ;; wait for any pending load to finish.
     (when (logtest? (vis-info-flag waiting-for-load) (-> vis-info flags))
-      (if (check-busy *ramdisk-rpc*)
+      (when (check-busy *ramdisk-rpc*)
           (return #f)
           )
       (logclear! (-> vis-info flags) (vis-info-flag waiting-for-load))
@@ -200,8 +202,8 @@
         ;; setup loaded
         (label cfg-27)
         (let ((lower-flag-bits (the-as int (logand #x1fffffff (-> vis-info flags))))
-              (spad-start (the-as object (+ 16 #x70000000)))
-              (spad-end (+ 2064 #x70000000))
+              (spad-start (the-as object (scratchpad-object object :offset 16)))
+              (spad-end (the-as int (scratchpad-object int :offset 2064)))
               (list-len (-> obj bsp visible-list-length))
               )
           (when (zero? (the-as vis-info-flag lower-flag-bits))
@@ -227,10 +229,10 @@
                        (set! (-> (the-as (pointer uint128) spad-start) a0-32) (the-as uint128 0))
                        )
                      )
-                   (dummy-16
+                   (copy-vis
                      (-> obj bsp drawable-trees)
-                     (the-as int spad-start)
-                     (the-as object vis-buffer)
+                     (the-as (pointer int8) spad-start)
+                     (the-as (pointer int8) vis-buffer)
                      )
                    )
                   ((2)
@@ -240,6 +242,7 @@
                      )
                    )
                   ((3)
+                   ;; (mem-print (the (pointer uint32) vis-buffer) 100)
                    (unpack-comp-huf
                      (the-as (pointer uint8) spad-start)
                      (the-as (pointer uint8) vis-buffer)
@@ -248,6 +251,7 @@
                              (+ (-> vis-info dictionary) (-> vis-info dictionary-length) -4)
                              )
                      )
+                   ;; (mem-print (the (pointer uint32) spad-start) 200)
                    )
                   )
             (set! vis-buffer (the-as (pointer uint8) (the-as int spad-start)))
@@ -259,6 +263,7 @@
                 (s1-1 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
                 (v1-67 #f)
                 )
+            ;;(format 0 "INIT BYTE 0: ~X = ~X~%" s2-1 (-> (the-as (pointer uint8) s2-1) 0))
             (dotimes (s0-1 list-len)
               (when (!= (logand (-> (the-as (pointer uint8) s2-1) 0)
                                 (-> (the-as (pointer uint8) s1-1) 0)
@@ -270,6 +275,7 @@
                         (-> (the-as (pointer uint8) s2-1) 0)
                         (-> (the-as (pointer uint8) s1-1) 0)
                         )
+                (format #t "bad addr: #x~X~%" s2-1)
                 (set! v1-67 #t)
                 )
               (set! s2-1 (&-> (the-as (pointer uint8) s2-1) 1))
