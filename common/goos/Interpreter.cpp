@@ -1692,6 +1692,7 @@ Object Interpreter::eval_get_env(const Object& form,
       return args.get_named("default");
     } else {
       throw_eval_error(form, fmt::format("env-var {} not found and no default provided", var_name));
+      return Object::make_empty_list();
     }
   }
   return StringObject::make_new(env_p);

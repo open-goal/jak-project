@@ -112,7 +112,7 @@
 
 (defmacro copy-str (name)
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "/STR/" name ".STR")))
+         (path (string-append "iso_data/" folder "STR/" name ".STR")))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/iso/" name ".STR")))))
@@ -184,8 +184,15 @@
 ;; Streaming anim (common)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(copy-strs "FUCV3"
-           "FUCV4")
+(copy-strs "FUCVICTO"
+           "FUCV2"
+           "FUCV3"
+           "FUCV4"
+           "FUCV5"
+           "FUCV6"
+           "FUCV7"
+           "FUCV8"
+           )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
