@@ -98,5 +98,3 @@ target_link_libraries(decompiler
         common
         lzokay
         fmt)
-
-install(TARGETS decompiler)

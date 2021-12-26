@@ -57,6 +57,7 @@ int main(int argc, char** argv) {
   }
 
   file_util::create_dir_if_needed(out_folder);
+  file_util::create_dir_if_needed(file_util::get_file_path({"debug_out"}));
 
   fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
 

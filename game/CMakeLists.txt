@@ -123,4 +123,3 @@ endif()
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
 
-install(TARGETS gk)
