@@ -1,18 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: tie-near.gc
-;; name in dgo: tie-near
-;; dgos: GAME, ENGINE
-
-;; The "near" version of TIE.
-;; This correctly handles scissoring triangles.
-;; Like tfrag near, we plan to not port this because it's complicated, and instead let opengl do
-;; the hard work for us.
-
-;; This isn't super well documented or even complete, see tie.gc.
-
-;; uploaded to VU1 once per frame.
+;; definition of type tie-near-consts
 (deftype tie-near-consts (structure)
   ((extra     qword      :inline   :offset-assert   0)
    (gifbufs   qword      :inline   :offset-assert  16)
@@ -32,11 +21,31 @@
   :flag-assert         #x9000000b0
   )
 
-;; the actual program.
+;; definition for method 3 of type tie-near-consts
+(defmethod inspect tie-near-consts ((obj tie-near-consts))
+  (format #t "[~8x] ~A~%" obj 'tie-near-consts)
+  (format #t "~Textra: #<qword @ #x~X>~%" (-> obj extra))
+  (format #t "~Tgifbufs: #<qword @ #x~X>~%" (-> obj gifbufs))
+  (format #t "~Tclrbufs: #<qword @ #x~X>~%" (-> obj clrbufs))
+  (format #t "~Tadgif: #<qword @ #x~X>~%" (-> obj adgif))
+  (format #t "~Tstrgif: #<qword @ #x~X>~%" (-> obj strgif))
+  (format #t "~Tfangif: #<qword @ #x~X>~%" (-> obj fangif))
+  (format #t "~Thvdfoffs: #<vector @ #x~X>~%" (-> obj hvdfoffs))
+  (format #t "~Tinvhscale: #<vector @ #x~X>~%" (-> obj invhscale))
+  (format #t "~Tguard: #<vector @ #x~X>~%" (-> obj guard))
+  (format #t "~Tatest[2] @ #x~X~%" (-> obj atest))
+  (format #t "~Tatest-tra: #<ad-cmd @ #x~X>~%" (-> obj atest))
+  (format #t "~Tatest-def: #<ad-cmd @ #x~X>~%" (-> obj atest-def))
+  obj
+  )
+
+;; definition for symbol tie-near-vu1-block, type vu-function
 (define tie-near-vu1-block (new 'static 'vu-function :length #x6f8 :qlength #x37c))
 
+;; definition for function tie-near-init-consts
+;; INFO: Return type mismatch vector vs none.
+;; Used lq/sq
 (defun tie-near-init-consts ((arg0 tie-near-consts) (arg1 int))
-  "Initialize tie near constant data."
   (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
   (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (set! (-> arg0 atest-tra cmds) (the-as uint 71))
@@ -118,13 +127,151 @@
   (none)
   )
 
-;; SKIPPED tie-near-init-engine
-;; SKIPPED tie-near-end-buffer
+;; definition for function tie-near-init-engine
+;; INFO: Return type mismatch int vs none.
+(defun tie-near-init-engine ((arg0 dma-buffer) (arg1 gs-test) (arg2 int))
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
+    (dma-buffer-add-vu-function arg0 tie-near-vu1-block 1)
+    (let ((s4-0 11))
+      (let* ((v1-2 arg0)
+             (a0-2 (-> v1-2 base))
+             )
+        (set! (-> (the-as (pointer int64) a0-2)) (logior #x10000000 (shr (shl s4-0 48) 48)))
+        (let ((a1-4 #x5000000))
+          (s.w! (+ a0-2 8) a1-4)
+          )
+        (let ((a1-6 (logior #x6c0003c6 (shr (shl s4-0 56) 40))))
+          (s.w! (+ a0-2 12) a1-6)
+          )
+        (set! (-> v1-2 base) (&+ a0-2 16))
+        )
+      (tie-near-init-consts (the-as tie-near-consts (-> arg0 base)) arg2)
+      (&+! (-> arg0 base) (* s4-0 16))
+      )
+    (let* ((v1-5 arg0)
+           (a0-6 (-> v1-5 base))
+           )
+      (set! (-> (the-as (pointer int64) a0-6)) #x10000000)
+      (let ((a1-9 #x15000008))
+        (s.w! (+ a0-6 8) a1-9)
+        )
+      (let ((a1-10 #x13000000))
+        (s.w! (+ a0-6 12) a1-10)
+        )
+      (set! (-> v1-5 base) (&+ a0-6 16))
+      )
+    (let* ((v1-6 arg0)
+           (a0-8 (-> v1-6 base))
+           )
+      (set! (-> (the-as (pointer int64) a0-8)) #x10000002)
+      (s.w! (+ a0-8 8) 0)
+      (let ((a1-12 #x30000000))
+        (s.w! (+ a0-8 12) a1-12)
+        )
+      (set! (-> v1-6 base) (&+ a0-8 16))
+      )
+    (let ((v1-7 (-> arg0 base)))
+      (set! (-> (the-as (pointer int32) v1-7)) #x4b000000)
+      (let ((a0-11 #x4b000000))
+        (s.w! (+ v1-7 4) a0-11)
+        )
+      (let ((a0-12 #x4b000000))
+        (s.w! (+ v1-7 8) a0-12)
+        )
+      (let ((a0-13 #x4b000000))
+        (s.w! (+ v1-7 12) a0-13)
+        )
+      (let ((a0-14 #x3000000))
+        (s.w! (+ v1-7 16) a0-14)
+        )
+      (let ((a0-15 #x200002c))
+        (s.w! (+ v1-7 20) a0-15)
+        )
+      (let ((a0-16 #x5000000))
+        (s.w! (+ v1-7 24) a0-16)
+        )
+      (let ((a0-17 #x1000404))
+        (s.w! (+ v1-7 28) a0-17)
+        )
+      (set! (-> arg0 base) (&+ v1-7 32))
+      )
+    0
+    )
+  (none)
+  )
 
+;; definition for function tie-near-end-buffer
+;; INFO: Return type mismatch int vs none.
+(defun tie-near-end-buffer ((arg0 dma-buffer))
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
+    (let* ((v1-2 arg0)
+           (a1-0 (-> v1-2 base))
+           )
+      (set! (-> (the-as (pointer int64) a1-0)) #x10000002)
+      (s.w! (+ a1-0 8) 0)
+      (let ((a2-1 #x50000002))
+        (s.w! (+ a1-0 12) a2-1)
+        )
+      (set! (-> v1-2 base) (&+ a1-0 16))
+      )
+    (let* ((v1-3 arg0)
+           (a1-2 (-> v1-3 base))
+           )
+      (set! (-> (the-as (pointer uint64) a1-2)) (make-u128 0 (the-as uint #x1000000000008001)))
+      (let ((a2-4 (the-as uint #xeeeeeeeeeeeeeeee)))
+        (s.d! (+ a1-2 8) a2-4)
+        )
+      (set! (-> v1-3 base) (&+ a1-2 16))
+      )
+    (let* ((v1-4 arg0)
+           (a1-4 (-> v1-4 base))
+           )
+      (set! (-> (the-as (pointer int64) a1-4)) #x5026b)
+      (let ((a2-6 71))
+        (s.d! (+ a1-4 8) a2-6)
+        )
+      (set! (-> v1-4 base) (&+ a1-4 16))
+      )
+    (let* ((v1-5 arg0)
+           (a1-6 (-> v1-5 base))
+           )
+      (set! (-> (the-as (pointer int64) a1-6)) #x10000002)
+      (let ((a2-8 #x20000000))
+        (s.w! (+ a1-6 8) a2-8)
+        )
+      (s.w! (+ a1-6 12) 0)
+      (set! (-> v1-5 base) (&+ a1-6 16))
+      )
+    (let* ((v1-6 arg0)
+           (a0-1 (-> v1-6 base))
+           )
+      (set! (-> (the-as (pointer int32) a0-1)) #x15000004)
+      (let ((a1-9 #x5000000))
+        (s.w! (+ a0-1 4) a1-9)
+        )
+      (let ((a1-10 #x13000000))
+        (s.w! (+ a0-1 8) a1-10)
+        )
+      (let ((a1-11 #x30000000))
+        (s.w! (+ a0-1 12) a1-11)
+        )
+      (s.w! (+ a0-1 16) 0)
+      (s.w! (+ a0-1 20) 0)
+      (s.w! (+ a0-1 24) 0)
+      (s.w! (+ a0-1 28) 0)
+      (set! (-> v1-6 base) (&+ a0-1 32))
+      )
+    0
+    )
+  (none)
+  )
+
+;; definition for function tie-near-make-perspective-matrix
 (defun tie-near-make-perspective-matrix ((arg0 matrix))
   (column-scale-matrix! arg0 (-> *math-camera* hmge-scale) (-> *math-camera* camera-temp))
   )
 
+;; definition for function tie-near-int-reg
 (defun tie-near-int-reg ((arg0 int))
   (let ((v1-0 arg0))
     (cond
@@ -162,6 +309,7 @@
     )
   )
 
+;; definition for function tie-near-float-reg
 (defun tie-near-float-reg ((arg0 int))
   (let ((v1-0 arg0))
     (cond
@@ -270,3 +418,7 @@
       )
     )
   )
+
+
+
+

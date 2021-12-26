@@ -23,6 +23,11 @@ struct Vector {
   std::string print_meters(int indent = 0) const;
 };
 
+struct Matrix4h {
+  u16 data[16];
+  void read_from_file(Ref ref);
+};
+
 struct FileInfo {
   std::string file_type;
   std::string file_name;
@@ -156,6 +161,15 @@ struct TieFragment : public Drawable {
   u16 num_tris;
   u16 num_dverts;
 
+  u16 tex_count;
+  u16 gif_count;
+  u16 vertex_count;  // qwc of vertex data.
+
+  std::vector<u8> gif_data;
+  std::vector<u8> point_ref;
+
+  std::string debug_label_name;
+
   // todo, lots more
 };
 
@@ -168,7 +182,13 @@ struct InstanceTie : public Drawable {
 
   // (bucket-index uint16           :offset 6)
   u16 bucket_index;
+  s16 id;
   Vector bsphere;
+  Matrix4h origin;
+  u16 flags;
+  u16 wind_index;
+
+  Ref color_indices;  // can't read this in the first pass because we don't know how long.
 
   // todo, lots more
 };
@@ -201,7 +221,7 @@ struct DrawableInlineArrayTFrag : public DrawableInlineArray {
   std::string my_type() const override;
 };
 
-struct DrawableInlineArrayTie : public DrawableInlineArray {
+struct DrawableInlineArrayInstanceTie : public DrawableInlineArray {
   s16 id;
   s16 length;
   Vector bsphere;
@@ -295,12 +315,18 @@ struct PrototypeBucketTie {
 
   u16 generic_count[4];
   u32 generic_next[4];
-  u8 frag_count[4];
+  u8 frag_count[4] = {0};
   u8 index_start[4];
   u16 base_qw[4];
 
   float envmap_rfade;
   float envmap_fade_far;
+
+  float stiffness;
+
+  std::vector<u8> color_index_qwc;
+
+  TimeOfDayPalette time_of_day;
 
   // todo envmap shader
   // todo collide-frag

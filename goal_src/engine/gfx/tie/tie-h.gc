@@ -7,29 +7,34 @@
 
 ;; DECOMP BEGINS
 
+;; The TIE FRAGMENT is a record for a chunk of TIE DMA data.
+;; The actual data isn't stored in the tie-fragment - this just has some meta-data and a pointer
+;; to the actual data.
+;; Unlike with tfrag, tie-fragments aren't part of the draw-node tree - instead they are associated with a prototype.
 (deftype tie-fragment (drawable)
-  ((gif-ref       uint32  :offset          4)
-   (point-ref     uint32  :offset          8)
-   (color-index   uint16  :offset         12)
-   (base-colors   uint8   :offset         14)
-   (tex-count     uint16  :offset-assert  32)
-   (gif-count     uint16  :offset-assert  34)
-   (vertex-count  uint16  :offset-assert  36)
-   (color-count   uint16  :offset-assert  38)
-   (num-tris      uint16  :offset-assert  40)
-   (num-dverts    uint16  :offset-assert  42)
-   (dp-ref        uint32  :offset-assert  44)
-   (dp-qwc        uint32  :offset-assert  48)
-   (generic-ref   uint32  :offset-assert  52)
-   (generic-count uint32  :offset-assert  56)
-   (debug-lines   basic   :offset-assert  60)
+  ((gif-ref       (inline-array adgif-shader) :offset 4) ;; starts with adgif shaders, may have more after.
+   (point-ref     uint32         :offset 8)
+   (color-index   uint16         :offset 12)
+   (base-colors   uint8          :offset 14)
+   (tex-count     uint16         :offset-assert 32) ;; number of qw's of adgif-shaders in gif-ref (5 qw/shader)
+   (gif-count     uint16         :offset-assert 34)
+   (vertex-count  uint16         :offset-assert 36) ;; number of qw's of vertex data
+   (color-count   uint16         :offset-assert 38)
+   (num-tris      uint16         :offset-assert 40)
+   (num-dverts    uint16         :offset-assert 42)
+   (dp-ref        uint32         :offset-assert 44)
+   (dp-qwc        uint32         :offset-assert 48) ;; number of "draw points", in qw's.
+   (generic-ref   uint32         :offset-assert 52) ;; L891 ish, just a pointer to data.
+   (generic-count uint32         :offset-assert 56) ;; number of qw's of generic data.
+   (debug-lines   (array vector-array)  :offset-assert 60)
    )
   :method-count-assert 18
   :size-assert         #x40
   :flag-assert         #x1200000040
   )
 
-
+;; This is a specialization of the shared instance type for a TIE.
+;; It is the child node type in the draw-node BVH tree.
 (deftype instance-tie (instance)
   ((color-indices uint32                :offset   8)
    (bucket-ptr    prototype-bucket-tie  :offset  12)
@@ -41,9 +46,10 @@
   :flag-assert         #x1200000040
   )
 
-
+;; Wrapper class for lists of consecutive instances.
+;; This is equivalent to drawable-inline-array-tfrag of tfrag.
 (deftype drawable-inline-array-instance-tie (drawable-inline-array)
-  ((data instance-tie 1 :inline :offset-assert  32)
+  ((data instance-tie 1 :inline :offset-assert  32) ;; dynamic sized
    (pad  uint32                 :offset-assert  96)
    )
   :method-count-assert 18
@@ -51,6 +57,9 @@
   :flag-assert         #x1200000064
   )
 
+;; Top-level drawable tree for TIE instances.
+;; this is also a drawable-group, so it has a data array containing drawables.
+;; based on the login methods it seems like the data field has all the drawables.
 (deftype drawable-tree-instance-tie (drawable-tree)
   ((prototypes proxy-prototype-array-tie  :offset   8)
    )
@@ -59,26 +68,30 @@
   :flag-assert         #x1200000024
   )
 
+;; Wrapper class for lists of consecutive prototypes.
+;; It's not known if these are proper draw-node BVH trees.
+;; you could imagine it being for things with only one instance (like generic stuff?)
 (deftype prototype-tie (drawable-inline-array)
-  ((data tie-fragment 1 :inline :offset-assert 32)
-   (pad uint32)
+  ((data tie-fragment 1 :inline :offset-assert  32)
+   (pad  uint32                 :offset-assert  96)
    )
   :method-count-assert 18
   :size-assert         #x64
   :flag-assert         #x1200000064
   )
 
+;; The actual matrix type we will upload to VU1 per instance.
 (deftype tie-matrix (structure)
-  ((mat   matrix :inline :offset-assert   0)
-   (morph qword  :inline :offset-assert  64)
-   (fog   qword  :inline :offset-assert  80)
+  ((mat   matrix :inline :offset-assert   0) ;; the transformation matrix
+   (morph qword  :inline :offset-assert  64) ;; ? LOD stuff?
+   (fog   qword  :inline :offset-assert  80) ;; ? why 4 values?
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
 
-
+;; Temps used in the instance drawing asm functions
 (deftype instance-tie-work (structure)
   ((wind-const                  vector     :inline   :offset-assert   0)
    (hmge-d                      vector     :inline   :offset-assert  16)
@@ -120,7 +133,7 @@
   :flag-assert         #x9000001c0
   )
 
-
+;; DMA storage for instance dma generation (mapped to scratchpad)
 (deftype instance-tie-dma (structure)
   ((banka instance-tie      32 :inline :offset-assert   0)
    (bankb instance-tie      32 :inline :offset-assert 2048)
@@ -133,7 +146,7 @@
   :flag-assert         #x900003000
   )
 
-
+;; temps used in the prototype drawing
 (deftype prototype-tie-work (structure)
   ((upload-palette-0      dma-packet :inline :offset-assert   0)
    (upload-palette-1      dma-packet :inline :offset-assert  16)
@@ -166,7 +179,7 @@
   :flag-assert         #x900000134
   )
 
-
+;; DMA storage for prototype dma generation (mapped to scratchpad)
 (deftype prototype-tie-dma (structure)
   ((colora          rgba    256 :offset-assert   0)
    (colorb          rgba    256 :offset-assert 1024)
@@ -187,5 +200,5 @@
 
 (define *instance-tie-work-copy* (the-as instance-tie-work #f))
 (define-extern *instance-tie-work* instance-tie-work)
-(define-extern tie-near-make-perspective-matrix (function matrix none))
+(define-extern tie-near-make-perspective-matrix (function matrix matrix))
 (define-extern draw-drawable-tree-instance-tie (function drawable-tree-instance-tie level none))

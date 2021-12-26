@@ -101,8 +101,8 @@ void TFragment::render(DmaFollower& dma,
     }
 
     assert(!level_name.empty());
-    m_tfrag3.setup_for_level(level_name, render_state);
-    Tfrag3::RenderSettings settings;
+    m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
+    TfragRenderSettings settings;
     settings.hvdf_offset = m_tfrag_data.hvdf_offset;
     settings.fog_x = m_tfrag_data.fog.x();
     memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
@@ -178,10 +178,22 @@ void TFragment::render(DmaFollower& dma,
   }
 
   if (m_hack_test_many_levels) {
+    std::vector<tfrag3::TFragmentTreeKind> all_kinds = {
+        tfrag3::TFragmentTreeKind::NORMAL, tfrag3::TFragmentTreeKind::TRANS,
+        tfrag3::TFragmentTreeKind::DIRT,   tfrag3::TFragmentTreeKind::ICE,
+        tfrag3::TFragmentTreeKind::LOWRES, tfrag3::TFragmentTreeKind::LOWRES_TRANS};
     for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
       if (m_many_level_render.level_enables[i]) {
-        m_many_level_render.level_renderers[i].setup_for_level(level_names[i], render_state);
-        Tfrag3::RenderSettings settings;
+        if (!m_many_level_render.tfrag_level_renderers[i]) {
+          m_many_level_render.tfrag_level_renderers[i] = std::make_unique<Tfrag3>();
+        }
+        if (!m_many_level_render.tie_level_renderers[i]) {
+          m_many_level_render.tie_level_renderers[i] = std::make_unique<Tie3>("tie", m_my_id);
+        }
+        m_many_level_render.tfrag_level_renderers[i]->setup_for_level(all_kinds, level_names[i],
+                                                                      render_state);
+        m_many_level_render.tie_level_renderers[i]->setup_for_level(level_names[i], render_state);
+        TfragRenderSettings settings;
         settings.hvdf_offset = m_tfrag_data.hvdf_offset;
         settings.fog_x = m_tfrag_data.fog.x();
         memcpy(settings.math_camera.data(),
@@ -193,12 +205,15 @@ void TFragment::render(DmaFollower& dma,
 
         auto t3prof = prof.make_scoped_child(level_names[i]);
 
-        m_many_level_render.level_renderers[i].debug_render_all_trees_nolores(settings,
-                                                                              render_state, t3prof);
+        m_many_level_render.tfrag_level_renderers[i]->debug_render_all_trees_nolores(
+            settings, render_state, t3prof);
+        m_many_level_render.tie_level_renderers[i]->render_all_trees(settings, render_state,
+                                                                     t3prof);
       }
     }
   }
 }
+
 void TFragment::draw_debug_window() {
   ImGui::Separator();
   ImGui::Checkbox("Extra Debug", &m_extra_debug);
@@ -307,8 +322,8 @@ void TFragment::handle_initialization(DmaFollower& dma,
   m_globals.vf04_ambient = m_tfrag_data.ambient;  // TODO get rid?
 
   auto pc_port_data = dma.read_and_advance();
-  assert(pc_port_data.size_bytes == sizeof(PcPortData));
-  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(PcPortData));
+  assert(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
   for (int i = 0; i < 4; i++) {

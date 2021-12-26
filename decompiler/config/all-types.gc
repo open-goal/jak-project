@@ -484,6 +484,8 @@
     (tfrag-tex0 5)
     (tfrag-0 6)
     (tfrag-near-0 7)
+    (tie-near-0 8)
+    (tie-0 9)
     ;; merc0 10
     ;; generic0 11
     (bucket-10 10)
@@ -492,6 +494,8 @@
     (tfrag-tex1 12)
     (tfrag-1 13)
     (tfrag-near-1 14)
+    (tie-near-1 15)
+    (tie-1 16)
     ;; merc1 17
     ;; generic1 18
     (bucket-17 17)
@@ -6763,7 +6767,7 @@
    (quad uint128   :offset 0)
    (data uint64    :offset 0)
    (cmds uint64    :offset 8)
-   (cmd  uint8     :offset 8)
+   (cmd  gs-reg    :offset 8)
    (x    uint32    :offset 0)
    (y    uint32    :offset 4)
    (z    uint32    :offset 8)
@@ -9526,6 +9530,7 @@
   )
 
 (declare-type drawable-inline-array-collide-fragment drawable-inline-array)
+(declare-type prototype-tie drawable)
 (deftype prototype-bucket-tie (prototype-bucket)
   ((generic-count       uint16       4        :offset-assert 88)
    (generic-next        uint32       4        :offset-assert 96)
@@ -9541,6 +9546,7 @@
    (color-index-qwc     uint32       :dynamic :offset-assert 148)
    (generic-next-clear  uint128               :offset 96)
    (generic-count-clear uint128               :offset 80)
+   (geometry-override   prototype-tie 4 :offset 16 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x94
@@ -9554,7 +9560,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (TODO-RENAME-9 (_type_) none 9)
+    (login (_type_) none 9)
     )
   )
 
@@ -12751,7 +12757,7 @@
 ;; - Types
 
 (deftype tie-fragment (drawable)
-  ((gif-ref       uint32         :offset 4)
+  ((gif-ref       (inline-array adgif-shader) :offset 4)
    (point-ref     uint32         :offset 8)
    (color-index   uint16         :offset 12)
    (base-colors   uint8          :offset 14)
@@ -12763,9 +12769,9 @@
    (num-dverts    uint16         :offset-assert 42)
    (dp-ref        uint32         :offset-assert 44)
    (dp-qwc        uint32         :offset-assert 48)
-   (generic-ref   uint32         :offset-assert 52)
+   (generic-ref   uint32         :offset-assert 52) ;; L891 ish, just a pointer to data.
    (generic-count uint32         :offset-assert 56)
-   (debug-lines   basic          :offset-assert 60)
+   (debug-lines   (array vector-array)  :offset-assert 60)
    )
   :method-count-assert 18
   :size-assert         #x40
@@ -12905,6 +12911,7 @@
   :flag-assert         #x900000134
   )
 
+;; stored at spr + 16 (I think)
 (deftype prototype-tie-dma (structure)
   ((colora          rgba 256 :offset-assert 0)
    (colorb          rgba 256 :offset-assert 1024)
@@ -16689,7 +16696,7 @@
 (define-extern draw-drawable-tree-trans-tfrag (function drawable-tree-trans-tfrag none))
 (define-extern draw-drawable-tree-dirt-tfrag (function drawable-tree-dirt-tfrag none))
 (define-extern draw-drawable-tree-ice-tfrag (function drawable-tree-ice-tfrag none))
-(define-extern tie-near-make-perspective-matrix (function matrix none))
+(define-extern tie-near-make-perspective-matrix (function matrix matrix))
 (define-extern draw-drawable-tree-instance-tie (function drawable-tree-instance-tie level none))
 (define-extern init-background (function none))
 (define-extern finish-background (function none))
@@ -16829,35 +16836,35 @@
 
 ;; - Types
 
-; (deftype tie-consts (structure)
-;   ((data      UNKNOWN 24      :offset-assert 0)
-;    (vector    UNKNOWN 6       :offset-assert 0)
-;    (quads     UNKNOWN 6       :offset-assert 0)
-;    (adgif     qword   :inline :offset-assert 0)
-;    (strgif    qword   :inline :offset-assert 16)
-;    (extra     qword   :inline :offset-assert 32)
-;    (gifbufs   qword   :inline :offset-assert 48)
-;    (clrbufs   qword   :inline :offset-assert 64)
-;    (misc      qword   :inline :offset-assert 80)
-;    (atestgif  qword   :inline :offset-assert 96)
-;    (atest     UNKNOWN 2       :offset-assert 112)
-;    (atest-tra ad-cmd  :inline :offset-assert 112)
-;    (atest-def ad-cmd  :inline :offset-assert 128)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x90
-;   :flag-assert         #x900000090
-;   )
+(deftype tie-consts (structure)
+  ((data      uint32  24        :offset-assert 0)
+   (vector    vector  6 :inline :offset 0)
+   (quads     uint128 6         :offset 0)
+   (adgif     gs-gif-tag     :inline :offset 0) ;; was qword
+   (strgif    gs-gif-tag     :inline :offset 16) ;; was qword
+   (extra     vector    :inline :offset 32) ;; was qword
+   (gifbufs   vector    :inline :offset 48) ;; was qword
+   (clrbufs   qword     :inline :offset 64)
+   (misc      qword     :inline :offset 80)
+   (atestgif  gs-gif-tag     :inline :offset 96)
+   (atest     ad-cmd 2  :inline :offset 112)
+   (atest-tra ad-cmd    :inline :offset 112)
+   (atest-def ad-cmd    :inline :offset 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
 
 ;; - Functions
 
-(define-extern tie-init-consts function)
-(define-extern tie-float-reg function)
-(define-extern tie-int-reg function)
-(define-extern tie-init-engine function)
-(define-extern tie-end-buffer function)
-(define-extern tie-ints function)
-(define-extern tie-floats function)
+(define-extern tie-init-consts (function tie-consts int none))
+(define-extern tie-float-reg (function int string))
+(define-extern tie-int-reg (function int string))
+(define-extern tie-init-engine (function dma-buffer gs-test int none)) ;; probably first int is gs-test
+(define-extern tie-end-buffer (function dma-buffer none))
+(define-extern tie-ints (function none))
+(define-extern tie-floats (function none))
 
 ;; - Unknowns
 
@@ -16872,32 +16879,32 @@
 
 ;; - Types
 
-; (deftype tie-near-consts (structure)
-;   ((extra     qword   :inline :offset-assert 0)
-;    (gifbufs   qword   :inline :offset-assert 16)
-;    (clrbufs   qword   :inline :offset-assert 32)
-;    (adgif     qword   :inline :offset-assert 48)
-;    (strgif    qword   :inline :offset-assert 64)
-;    (fangif    qword   :inline :offset-assert 80)
-;    (hvdfoffs  vector  :inline :offset-assert 96)
-;    (invhscale vector  :inline :offset-assert 112)
-;    (guard     vector  :inline :offset-assert 128)
-;    (atest     UNKNOWN 2       :offset-assert 144)
-;    (atest-tra ad-cmd  :inline :offset-assert 144)
-;    (atest-def ad-cmd  :inline :offset-assert 160)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xb0
-;   :flag-assert         #x9000000b0
-;   )
+(deftype tie-near-consts (structure)
+  ((extra     qword   :inline :offset-assert 0)
+   (gifbufs   qword   :inline :offset-assert 16)
+   (clrbufs   qword   :inline :offset-assert 32)
+   (adgif     gs-gif-tag   :inline :offset-assert 48) ;; was qword
+   (strgif    gs-gif-tag   :inline :offset-assert 64) ;; was qword
+   (fangif    gs-gif-tag   :inline :offset-assert 80) ;; was qword
+   (hvdfoffs  vector  :inline :offset-assert 96)
+   (invhscale vector  :inline :offset-assert 112)
+   (guard     vector  :inline :offset-assert 128)
+   (atest     ad-cmd 2  :inline   :offset-assert 144)
+   (atest-tra ad-cmd  :inline :offset 144)
+   (atest-def ad-cmd  :inline :offset 160)
+   )
+  :method-count-assert 9
+  :size-assert         #xb0
+  :flag-assert         #x9000000b0
+  )
 
 ;; - Functions
 
-(define-extern tie-near-init-consts function)
-(define-extern tie-near-init-engine function)
-(define-extern tie-near-end-buffer function)
-(define-extern tie-near-int-reg function)
-(define-extern tie-near-float-reg function)
+(define-extern tie-near-init-consts (function tie-near-consts int none))
+(define-extern tie-near-init-engine (function dma-buffer gs-test int none))
+(define-extern tie-near-end-buffer (function dma-buffer none))
+(define-extern tie-near-int-reg (function int string))
+(define-extern tie-near-float-reg (function int string))
 
 ;; - Unknowns
 
@@ -16935,19 +16942,19 @@
 ;; - Functions
 
 (define-extern tie-init-buffers (function dma-buffer none))
-(define-extern tie-debug-between function)
-(define-extern tie-debug-one function)
-(define-extern walk-tie-generic-prototypes function)
-(define-extern draw-inline-array-instance-tie function)
-(define-extern draw-inline-array-prototype-tie-generic-asm function)
-(define-extern draw-inline-array-prototype-tie-asm function)
-(define-extern draw-inline-array-prototype-tie-near-asm function)
-(define-extern tie-test-cam-restore function)
+(define-extern tie-debug-between (function uint uint uint))
+(define-extern tie-debug-one (function uint uint uint))
+(define-extern walk-tie-generic-prototypes (function none))
+(define-extern draw-inline-array-instance-tie (function pointer drawable int dma-buffer none))
+(define-extern draw-inline-array-prototype-tie-generic-asm (function dma-buffer int prototype-array-tie none))
+(define-extern draw-inline-array-prototype-tie-asm (function dma-buffer int prototype-array-tie none))
+(define-extern draw-inline-array-prototype-tie-near-asm (function dma-buffer int prototype-array-tie none))
+(define-extern tie-test-cam-restore (function none))
 
 ;; - Unknowns
 
-;;(define-extern *tie* object) ;; unknown type
-;;(define-extern *pke-hack* object) ;; unknown type
+(define-extern *tie* tie-instance-debug)
+(define-extern *pke-hack* vector)
 
 
 ;; ----------------------

@@ -76,10 +76,12 @@
   )
 
 (defun tpage-name (id)
+  "Get the name of the tpage obj file with the given id"
   (fmt #f "tpage-{}.go" id)
   )
 
 (defmacro copy-texture (tpage-id)
+  "Copy a texture from the game, using the given tpage ID"
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
          (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
     `(defstep :in ,path
@@ -104,6 +106,18 @@
     ,@(apply (lambda (x) `(copy-go ,x)) gos)
     )
   )
+
+(defmacro copy-strs (&rest strs)
+  `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
+
+(defmacro copy-str (name)
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "iso_data/" folder "/STR/" name ".STR")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/iso/" name ".STR")))))
+
+
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""
@@ -166,6 +180,13 @@
                  
 (copy-textures 463 2 880 256 1278 1032 62 1532)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Streaming anim (common)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(copy-strs "FUCV3"
+           "FUCV4")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Art (Common)
@@ -220,6 +241,8 @@
        "out/iso/BEA.DGO"
        "out/iso/CIT.DGO"
        "out/iso/SUN.DGO"
+       "out/iso/FUCV3.STR"
+       "out/iso/FUCV4.STR"
        )
 
 

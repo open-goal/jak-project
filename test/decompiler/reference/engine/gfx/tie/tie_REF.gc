@@ -1,47 +1,20 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: tie.gc
-;; name in dgo: tie
-;; dgos: GAME, ENGINE
-
-
-;; TIE
-;;  tesselating fragment instance engine
-
-;; The TIE renderer is one of three main background renderers.
-;; TIE has the following features:
-;; - instanced rendering (you can draw the same thing multiple times!)
-;; - time of day lighting (believed to be slightly different in implementation than tfrag)
-
-
-;; Background elements that use the GENERIC render will store their data in tie-fragments.
-;; The exact procedure for GENERIC through TIE is unknown.
-;;  The functions are generic-tie-execute and generic-tie-convert
-
-;;;;;;;;;;;;;;;;;
-;; Basic Methods
-;;;;;;;;;;;;;;;;;
-
-;; something is going wrong mem-usage (believed fixed)
-
+;; definition for method 9 of type tie-fragment
 (defmethod login tie-fragment ((obj tie-fragment))
-  "Initialize the shaders for a tie-fragment"
-  
-  ;; the gif data is just adgif shaders, each are 5 qw's
   (let ((s5-0 (-> obj gif-ref))
         (s4-0 (/ (-> obj tex-count) (the-as uint 5)))
         )
     (dotimes (s3-0 (the-as int s4-0))
-      ;; will modify the adgif-shaders in place to have the appropriate tbp.
       (adgif-shader-login-no-remap (-> s5-0 s3-0))
       )
     )
   obj
   )
 
+;; definition for method 3 of type drawable-inline-array-instance-tie
 (defmethod inspect drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie))
-  "Inspect an array of instances"
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
@@ -51,52 +24,49 @@
   obj
   )
 
+;; definition for method 5 of type drawable-inline-array-instance-tie
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie))
-  "Compute the size in memory of an array of instances."
-  (the-as int (+ (-> drawable-inline-array-instance-tie size)
-                 (* (+ (-> obj length) -1) 64) ;; 64 bytes / instance, minus the 1 in the type.
-                 )
-          )
+  (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> obj length) -1) 64)))
   )
 
-#|
-;; for some reason, this showed up twice.
+;; definition for method 9 of type drawable-tree-instance-tie
+;; INFO: this function exists in multiple non-identical object files
 (defmethod login drawable-tree-instance-tie ((obj drawable-tree-instance-tie))
-obj
-)
-|#
+  obj
+  )
 
+;; definition for method 9 of type drawable-tree-instance-tie
+;; INFO: this function exists in multiple non-identical object files
+;; INFO: Return type mismatch symbol vs drawable-tree-instance-tie.
 (defmethod login drawable-tree-instance-tie ((obj drawable-tree-instance-tie))
-  "Login method for the tie instance tree."
-  ;; just log in all of the drawables.
   (dotimes (s5-0 (-> obj length))
     (login (-> obj data s5-0))
     )
   (the-as drawable-tree-instance-tie #f)
   )
 
+;; definition for method 3 of type prototype-tie
 (defmethod inspect prototype-tie ((obj prototype-tie))
-  "Inspect the inline-array of tie"
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
-  ;; print each fragment
   (dotimes (s5-0 (-> obj length))
     (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
     )
   obj
   )
 
+;; definition for method 9 of type prototype-tie
 (defmethod login prototype-tie ((obj prototype-tie))
-  "Login each tie-fragment."
   (dotimes (s5-0 (-> obj length))
     (login (-> obj data s5-0))
     )
   obj
   )
 
+;; definition for method 8 of type drawable-tree-instance-tie
 (defmethod mem-usage drawable-tree-instance-tie ((obj drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute memory usage for a drawable tree of TIE instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -104,23 +74,17 @@ obj
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  
-  ;; do our drawables
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj data s3-0) arg0 arg1)
     )
-  
-  ;; do our prototypes, but with a flag set!
   (mem-usage (-> obj prototypes prototype-array-tie) arg0 (logior arg1 1))
   obj
   )
 
+;; definition for method 8 of type tie-fragment
 (defmethod mem-usage tie-fragment ((obj tie-fragment) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of a TIE prototype."
   (when (logtest? arg1 2)
-    ;; count for an instance of this prototype.
     (let ((v1-3 (* (-> obj color-count) 4))
-          ;; pick one of the instance color categories.
           (a0-2 (cond
                   ((logtest? arg1 4)
                    20
@@ -142,8 +106,6 @@ obj
     (set! obj obj)
     (goto cfg-13)
     )
-  
-  ;; not an instance, count the memory of the prototype.
   (set! (-> arg0 length) (max 18 (-> arg0 length)))
   (set! (-> arg0 data 9 name) "tie-fragment")
   (set! (-> arg0 data 10 name) "tie-gif")
@@ -179,10 +141,7 @@ obj
     )
   (when (nonzero? (-> obj debug-lines))
     (dotimes (s4-0 (-> obj debug-lines length))
-      (+!
-        (-> arg0 data 14 count)
-        (-> (the-as (pointer int32) (-> obj debug-lines s4-0)) 0)
-        )
+      (+! (-> arg0 data 14 count) (-> (the-as (pointer int32) (-> obj debug-lines s4-0)) 0))
       (let ((v1-52 (asize-of (the-as basic (-> obj debug-lines s4-0)))))
         (+! (-> arg0 data 12 used) v1-52)
         (+! (-> arg0 data 12 total) (logand -16 (+ v1-52 15)))
@@ -193,8 +152,8 @@ obj
   obj
   )
 
+;; definition for method 8 of type instance-tie
 (defmethod mem-usage instance-tie ((obj instance-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of TIE instance."
   (set! (-> arg0 length) (max 19 (-> arg0 length)))
   (set! (-> arg0 data 18 name) "instance-tie")
   (+! (-> arg0 data 18 count) 1)
@@ -211,25 +170,36 @@ obj
     (set! (-> arg0 data 22 name) "instance-tie-colors3")
     (+! (-> arg0 data 23 count) 1)
     (let ((s3-0 (-> obj bucket-ptr)))
-      ;; unused
       (+ (-> arg0 data 19 used) (-> arg0 data 20 used) (-> arg0 data 21 used) (-> arg0 data 22 used))
-      
-      ;; loop over all 4 possible geometries
       (dotimes (s2-0 4)
         (let ((a0-10 (-> s3-0 geometry-override s2-0)))
-          (when (nonzero? a0-10) ;; only if we actually have it.
-            (mem-usage a0-10 arg0 
-                       (logior (logior (cond ;; based on which geom we are, pick the right color bucket.
-                                         ((= s2-0 1) 4)
-                                         ((= s2-0 2) 8)
-                                         ((= s2-0 3) 16)
-                                         (else 0)
-                                         )
-                                       2 ;; set so we count it as an instance of a prototype.
+          (when (nonzero? a0-10)
+            (let ((t9-1 (method-of-object a0-10 mem-usage))
+                  (a1-2 arg0)
+                  (v1-29 s2-0)
+                  )
+              (t9-1 a0-10 a1-2 (logior
+                                 (logior
+                                   (cond
+                                     ((= v1-29 1)
+                                      4
+                                      )
+                                     ((= v1-29 2)
+                                      8
+                                      )
+                                     ((= v1-29 3)
+                                      16
+                                      )
+                                     (else
+                                       0
                                        )
-                               arg1
-                               )
-                       )
+                                     )
+                                   2
+                                   )
+                                 arg1
+                                 )
+                    )
+              )
             )
           )
         )
@@ -238,8 +208,8 @@ obj
   obj
   )
 
+;; definition for method 8 of type drawable-inline-array-instance-tie
 (defmethod mem-usage drawable-inline-array-instance-tie ((obj drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of an entire array of instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -247,15 +217,14 @@ obj
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  ;; just call mem-usage on every element.
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj data s3-0) arg0 arg1)
     )
   obj
   )
 
+;; definition for method 8 of type prototype-tie
 (defmethod mem-usage prototype-tie ((obj prototype-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of an entire array of prototypes."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -263,58 +232,68 @@ obj
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  ;; just call mem-usage on each.
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj data s3-0) arg0 arg1)
     )
   obj
   )
 
+;; definition for method 5 of type prototype-tie
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of prototype-tie ((obj prototype-tie))
-  "Compute the size in memory of a prototype array"
-  ;; 64 bytes/fragment, minus 1 in the type.
   (the-as int (+ (-> prototype-tie size) (* (+ (-> obj length) -1) 64)))
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TIE Renderer
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; these constants are uploaded to the VU once per frame.
+;; definition of type tie-consts
 (deftype tie-consts (structure)
-  ((data      uint32  24        :offset-assert 0)
-   (vector    vector  6 :inline :offset 0)
-   (quads     uint128 6         :offset 0)
-   (adgif     gs-gif-tag     :inline :offset 0) ;; was qword
-   (strgif    gs-gif-tag     :inline :offset 16) ;; was qword
-   (extra     vector    :inline :offset 32) ;; was qword
-   (gifbufs   vector    :inline :offset 48) ;; was qword
-   (clrbufs   qword     :inline :offset 64)
-   (misc      qword     :inline :offset 80)
-   (atestgif  gs-gif-tag     :inline :offset 96)
-   (atest     ad-cmd 2  :inline :offset 112)
-   (atest-tra ad-cmd    :inline :offset 112)
-   (atest-def ad-cmd    :inline :offset 128)
+  ((data      uint32     24        :offset-assert   0)
+   (vector    vector     6 :inline :offset          0)
+   (quads     uint128    6         :offset          0)
+   (adgif     gs-gif-tag :inline   :offset          0)
+   (strgif    gs-gif-tag :inline   :offset         16)
+   (extra     vector     :inline   :offset         32)
+   (gifbufs   vector     :inline   :offset         48)
+   (clrbufs   qword      :inline   :offset         64)
+   (misc      qword      :inline   :offset         80)
+   (atestgif  gs-gif-tag :inline   :offset         96)
+   (atest     ad-cmd     2 :inline :offset        112)
+   (atest-tra ad-cmd     :inline   :offset        112)
+   (atest-def ad-cmd     :inline   :offset        128)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
+
+;; definition for method 3 of type tie-consts
+(defmethod inspect tie-consts ((obj tie-consts))
+  (format #t "[~8x] ~A~%" obj 'tie-consts)
+  (format #t "~Tdata[24] @ #x~X~%" (-> obj data))
+  (format #t "~Tvector[6] @ #x~X~%" (-> obj data))
+  (format #t "~Tquads[6] @ #x~X~%" (-> obj data))
+  (format #t "~Tadgif: #<qword @ #x~X>~%" (-> obj data))
+  (format #t "~Tstrgif: #<qword @ #x~X>~%" (-> obj strgif))
+  (format #t "~Textra: #<qword @ #x~X>~%" (-> obj extra))
+  (format #t "~Tgifbufs: #<qword @ #x~X>~%" (-> obj gifbufs))
+  (format #t "~Tclrbufs: #<qword @ #x~X>~%" (-> obj clrbufs))
+  (format #t "~Tmisc: #<qword @ #x~X>~%" (-> obj misc))
+  (format #t "~Tatestgif: #<qword @ #x~X>~%" (-> obj atestgif))
+  (format #t "~Tatest[2] @ #x~X~%" (-> obj atest))
+  (format #t "~Tatest-tra: #<ad-cmd @ #x~X>~%" (-> obj atest))
+  (format #t "~Tatest-def: #<ad-cmd @ #x~X>~%" (-> obj atest-def))
+  obj
+  )
+
 ;; definition for symbol tie-vu1-block, type vu-function
-(define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)) ;; was 0x3e1, 0x1f1
+(define tie-vu1-block (new 'static 'vu-function :length #x3e1 :qlength #x1f1))
 
 ;; definition for function tie-init-consts
 ;; INFO: Return type mismatch int vs none.
 (defun tie-init-consts ((arg0 tie-consts) (arg1 int))
-  "Initialize TIE constants. arg1 enables alpha blending"
-  
-  ;; set the adgif shader tag (just 5x a+d's)
   (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
   (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  
-  ;; based on the menu drawing mode, create the template tag for geometry.
   (cond
-    ((zero? *subdivide-draw-mode*) ;; normal textured
+    ((zero? *subdivide-draw-mode*)
      (set! (-> arg0 strgif tag)
            (new 'static 'gif-tag64
              :pre #x1
@@ -323,7 +302,7 @@ obj
              )
            )
      )
-    ((= *subdivide-draw-mode* 3) ;; "hack". same as normal.
+    ((= *subdivide-draw-mode* 3)
      (set! (-> arg0 strgif tag)
            (new 'static 'gif-tag64
              :pre #x1
@@ -332,7 +311,7 @@ obj
              )
            )
      )
-    ((= *subdivide-draw-mode* 1) ;; outline (wireframe). just switch to line-strip
+    ((= *subdivide-draw-mode* 1)
      (set! (-> arg0 strgif tag)
            (new 'static 'gif-tag64
              :pre #x1
@@ -341,7 +320,7 @@ obj
              )
            )
      )
-    ((= *subdivide-draw-mode* 2) ;; gouraud - turn off tme.
+    ((= *subdivide-draw-mode* 2)
      (set! (-> arg0 strgif tag)
            (new 'static 'gif-tag64
              :pre #x1
@@ -351,13 +330,9 @@ obj
            )
      )
     )
-  
-  ;; the main drawing tag: st, rgbaq, xyzf per vertex (same in all draws modes)
   (set! (-> arg0 strgif regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
         )
-  
-  ;; some magic constants
   (let ((f1-0 8388894.0)
         (f2-0 8389078.0)
         (f0-0 8389262.0)
@@ -374,41 +349,22 @@ obj
   (set! (-> arg0 clrbufs vector4w y) 242)
   (set! (-> arg0 clrbufs vector4w z) 198)
   (set! (-> arg0 clrbufs vector4w w) 242)
-  
-  ;; looks like tie can toggle on and off alpha testing during the draw
-  ;; tra = transparent, def = default?
   (set! (-> arg0 atestgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
   (set! (-> arg0 atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (set! (-> arg0 atest-tra cmd) (gs-reg test-1))
-  (set! (-> arg0 atest-tra data)
-        (the uint 
-             (new 'static 'gs-test
-                  :ate #x1
-                  :atst (gs-atest greater-equal)
-                  :aref #x26
-                  :zte #x1
-                  :ztst (gs-ztest greater-equal)
-                  )
-             )
-        )
+  (set! (-> arg0 atest-tra data) (the-as uint #x5026b))
   (set! (-> arg0 atest-def cmd) (gs-reg test-1))
-  (set! (-> arg0 atest-def data)
-        (the uint (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
-        )
-  
-  ;; more magic constants
+  (set! (-> arg0 atest-def data) (the-as uint #x5000e))
   (set! (-> arg0 misc vector4w x) 0)
   (set! (-> arg0 misc vector4w y) -1)
   (none)
   )
 
+;; definition for function tie-init-engine
+;; INFO: Return type mismatch int vs none.
 (defun tie-init-engine ((arg0 dma-buffer) (arg1 gs-test) (arg2 int))
-  "Set up tie initialization DMA in the given buffer. arg2 picks abe."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
-    ;; add the tie code
     (dma-buffer-add-vu-function arg0 tie-vu1-block 1)
-    
-    ;; set up the given gs-test register
     (let* ((v1-3 arg0)
            (a0-2 (the-as object (-> v1-3 base)))
            )
@@ -450,8 +406,6 @@ obj
       (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 test-1))
       (set! (-> v1-5 base) (&+ a0-6 16))
       )
-
-    ;; set up the tie constants
     (let ((s4-1 9))
       (let* ((v1-6 arg0)
              (a0-8 (the-as object (-> v1-6 base)))
@@ -466,8 +420,6 @@ obj
       (tie-init-consts (the-as tie-consts (-> arg0 base)) arg2)
       (&+! (-> arg0 base) (* s4-1 16))
       )
-
-    ;; initialize the microprogram
     (let* ((v1-9 arg0)
            (a0-12 (the-as object (-> v1-9 base)))
            )
@@ -476,8 +428,6 @@ obj
       (set! (-> (the-as dma-packet a0-12) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
       (set! (-> v1-9 base) (&+ (the-as pointer a0-12) 16))
       )
-    
-    ;; initialize the VIF's ROW register
     (let* ((v1-10 arg0)
            (a0-14 (the-as object (-> v1-10 base)))
            )
@@ -487,12 +437,10 @@ obj
       (set! (-> v1-10 base) (&+ (the-as pointer a0-14) 16))
       )
     (let ((v1-11 (the-as object (-> arg0 base))))
-      ;; row contants
       (set! (-> (the-as (inline-array vector4w) v1-11) 0 x) #x4b000000)
       (set! (-> (the-as (inline-array vector4w) v1-11) 0 y) #x4b000000)
       (set! (-> (the-as (inline-array vector4w) v1-11) 0 z) #x4b000000)
       (set! (-> (the-as (inline-array vector4w) v1-11) 0 w) #x4b000000)
-      ;; setup VIF unpack and double buffering modes.
       (set! (-> (the-as (pointer vif-tag) v1-11) 4) (new 'static 'vif-tag :cmd (vif-cmd base)))
       (set! (-> (the-as (pointer vif-tag) v1-11) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
       (set! (-> (the-as (pointer vif-tag) v1-11) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
@@ -505,8 +453,9 @@ obj
   (none)
   )
 
+;; definition for function tie-end-buffer
+;; INFO: Return type mismatch int vs none.
 (defun tie-end-buffer ((arg0 dma-buffer))
-  "Add to dma buffer after drawing. This resets things to the usual state."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
     (let* ((v1-3 arg0)
            (a1-0 (the-as object (-> v1-3 base)))
@@ -516,7 +465,6 @@ obj
       (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
       (set! (-> v1-3 base) (&+ (the-as pointer a1-0) 16))
       )
-    ;; restore the test register
     (let* ((v1-4 arg0)
            (a1-2 (the-as object (-> v1-4 base)))
            )
@@ -552,8 +500,6 @@ obj
       (set! (-> (the-as (pointer gs-reg64) a1-4) 1) (gs-reg64 test-1))
       (set! (-> v1-5 base) (&+ a1-4 16))
       )
-    
-    ;; restore the stmask register
     (let* ((v1-6 arg0)
            (a1-6 (the-as object (-> v1-6 base)))
            )
@@ -562,18 +508,13 @@ obj
       (set! (-> (the-as dma-packet a1-6) vif1) (new 'static 'vif-tag))
       (set! (-> v1-6 base) (&+ (the-as pointer a1-6) 16))
       )
-    
-    ;; this calls a TIE program that... does nothing?
     (let* ((v1-7 arg0)
            (a0-1 (-> v1-7 base))
            )
-      ;; run the nothing program
       (set! (-> (the-as (pointer vif-tag) a0-1) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
-      ;; reset VIF stuff we changed
       (set! (-> (the-as (pointer vif-tag) a0-1) 1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
       (set! (-> (the-as (pointer vif-tag) a0-1) 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
       (set! (-> (the-as (pointer vif-tag) a0-1) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
-      ;; actually row constants = 0
       (set! (-> (the-as (pointer vif-tag) a0-1) 4) (new 'static 'vif-tag))
       (set! (-> (the-as (pointer vif-tag) a0-1) 5) (new 'static 'vif-tag))
       (set! (-> (the-as (pointer vif-tag) a0-1) 6) (new 'static 'vif-tag))
@@ -586,12 +527,8 @@ obj
   (none)
   )
 
-;;;;;;;;;;;;;;;;
-;; debug print
-;;;;;;;;;;;;;;;;
-
+;; definition (debug) for function tie-int-reg
 (defun-debug tie-int-reg ((arg0 int))
-  "Convert a VU1 int register ID to the name given to it in the TIE VU1 program"
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -646,8 +583,8 @@ obj
     )
   )
 
+;; definition (debug) for function tie-float-reg
 (defun-debug tie-float-reg ((arg0 int))
-  "Convert a VU1 float register ID to the name given to it in the TIE VU1 program"
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -750,12 +687,10 @@ obj
     )
   )
 
-
-;; NOTE: these dump programs rely on a not-present function that stashes the register values
-;; at the top of the VU memory.
-
+;; definition (debug) for function tie-ints
+;; INFO: Return type mismatch symbol vs none.
+;; Used lq/sq
 (defun-debug tie-ints ()
-  "Dump the VU1 integer registers to stdout."
   (local-vars (sv-16 uint))
   (let ((gp-0 (the-as (pointer uint32) (+ #x3fa0 #x1100c000))))
     (dotimes (s5-0 16)
@@ -778,8 +713,10 @@ obj
   (none)
   )
 
+;; definition (debug) for function tie-floats
+;; INFO: Return type mismatch symbol vs none.
+;; Used lq/sq
 (defun-debug tie-floats ()
-  "Dump the VU1 float registers to stdout."
   (local-vars (sv-16 uint) (sv-32 uint))
   (let ((gp-0 (the-as (pointer uint32) (+ #x3da0 #x1100c000))))
     (dotimes (s5-0 32)
@@ -811,5 +748,7 @@ obj
     )
   (none)
   )
+
+
 
 
