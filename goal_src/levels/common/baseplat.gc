@@ -52,35 +52,35 @@
   (transform-post)
   (suspend)
   (while #t
-   (when (not (-> self bouncing))
-    (logior! (-> self mask) (process-mask sleep))
-    (suspend)
-    0
+    (when (not (-> self bouncing))
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      0
+      )
+    (while (-> self bouncing)
+      (suspend)
+      )
     )
-   (while (-> self bouncing)
-    (suspend)
-    )
-   )
   (none)
   )
 
 (defbehavior plat-trans baseplat ()
   (rider-trans)
   (cond
-   ((-> self bouncing)
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-     (set! (-> gp-0 quad) (-> self basetrans quad))
-     (+! (-> gp-0 y) (* 819.2 (update! (-> self smush))))
-     (TODO-RENAME-30 (-> self root-override) gp-0)
+    ((-> self bouncing)
+     (let ((gp-0 (new 'stack-no-clear 'vector)))
+       (set! (-> gp-0 quad) (-> self basetrans quad))
+       (+! (-> gp-0 y) (* 819.2 (update! (-> self smush))))
+       (TODO-RENAME-30 (-> self root-override) gp-0)
+       )
+     (if (not (!= (-> self smush amp) 0.0))
+         (set! (-> self bouncing) #f)
+         )
      )
-    (if (not (!= (-> self smush amp) 0.0))
-     (set! (-> self bouncing) #f)
-     )
+    (else
+      (TODO-RENAME-30 (-> self root-override) (-> self basetrans))
+      )
     )
-   (else
-    (TODO-RENAME-30 (-> self root-override) (-> self basetrans))
-    )
-   )
   (none)
   )
 
@@ -96,20 +96,18 @@
 
 (defmethod dummy-20 baseplat ((obj baseplat))
   (if (nonzero? (-> obj part))
-   (spawn (-> obj part) (-> obj root-override trans))
-   )
+      (spawn (-> obj part) (-> obj root-override trans))
+      )
   (none)
   )
 
-(defbehavior
-  plat-event baseplat
-  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior plat-event baseplat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
-   (the-as object (if (= v1-0 'bonk)
-                   (dummy-22 self)
-                   )
+    (the-as object (if (= v1-0 'bonk)
+                       (dummy-22 self)
+                       )
+            )
     )
-   )
   )
 
 (deftype eco-door (process-drawable)
@@ -142,42 +140,24 @@
   )
 
 
-(defbehavior
-  eco-door-event-handler eco-door
-  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior eco-door-event-handler eco-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
-   (the-as object (when (= v1-0 'trigger)
-                   (set! (-> self locked) (not (-> self locked)))
-                   (cond
-                    ((-> self locked)
-                     (if (= (-> self next-state name) 'door-closed)
-                      (sound-play-by-name
-                       (static-sound-name "door-lock")
-                       (new-sound-id)
-                       1024
-                       0
-                       0
-                       1
-                       #t
+    (the-as object (when (= v1-0 'trigger)
+                     (set! (-> self locked) (not (-> self locked)))
+                     (cond
+                       ((-> self locked)
+                        (if (= (-> self next-state name) 'door-closed)
+                            (sound-play-by-name (static-sound-name "door-lock") (new-sound-id) 1024 0 0 1 #t)
+                            )
+                        )
+                       (else
+                         (sound-play-by-name (static-sound-name "door-unlock") (new-sound-id) 1024 0 0 1 #t)
+                         )
                        )
-                      )
+                     #t
                      )
-                    (else
-                     (sound-play-by-name
-                      (static-sound-name "door-unlock")
-                      (new-sound-id)
-                      1024
-                      0
-                      0
-                      1
-                      #t
-                      )
-                     )
-                    )
-                   #t
-                   )
+            )
     )
-   )
   )
 
 eco-door-event-handler
@@ -188,65 +168,42 @@ eco-door-event-handler
   eco-door-event-handler
   :code
   (behavior ()
-   (let ((v1-2 (-> self skel root-channel 0)))
-    (set! (-> v1-2 num-func) num-func-identity)
-    (set! (-> v1-2 frame-num) 0.0)
-    )
-   (suspend)
-   (dummy-47 (-> self root-override))
-   (ja-post)
-   (while #t
-    (when
-     (and
-      *target*
-      (>=
-       (-> self open-distance)
-       (vector-vector-distance
-        (-> self root-override trans)
-        (-> *target* control trans)
-        )
-       )
+    (let ((v1-2 (-> self skel root-channel 0)))
+      (set! (-> v1-2 num-func) num-func-identity)
+      (set! (-> v1-2 frame-num) 0.0)
       )
-     (dummy-26 self)
-     (if
-      (and
-       (not (-> self locked))
-       (or
-        (and
-         (-> self entity)
-         (logtest?
-          (-> self entity extra perm status)
-          (entity-perm-status complete)
-          )
-         )
-        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-1 from) self)
-         (set! (-> a1-1 num-params) 2)
-         (set! (-> a1-1 message) 'query)
-         (set! (-> a1-1 param 0) (the-as uint 'powerup))
-         (set! (-> a1-1 param 1) (the-as uint 3))
-         (send-event-function *target* a1-1)
-         )
-        (and
-         (-> self one-way)
-         (< (vector4-dot (-> self out-dir) (target-pos 0)) -8192.0)
-         )
-        )
-       )
-      (go-virtual door-opening)
-      )
-     (level-hint-spawn
-      (game-text-id zero)
-      (the-as string #f)
-      (-> self entity)
-      *entity-pool*
-      (game-task none)
-      )
-     )
     (suspend)
+    (dummy-47 (-> self root-override))
+    (ja-post)
+    (while #t
+      (when (and *target* (>= (-> self open-distance)
+                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                              )
+                 )
+        (dummy-26 self)
+        (if (and
+                (not (-> self locked))
+                (or
+                  (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                  (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                    (set! (-> a1-1 from) self)
+                    (set! (-> a1-1 num-params) 2)
+                    (set! (-> a1-1 message) 'query)
+                    (set! (-> a1-1 param 0) (the-as uint 'powerup))
+                    (set! (-> a1-1 param 1) (the-as uint 3))
+                    (send-event-function *target* a1-1)
+                    )
+                  (and (-> self one-way) (< (vector4-dot (-> self out-dir) (target-pos 0)) -8192.0))
+                  )
+                )
+            (go-virtual door-opening)
+            )
+        (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
+        )
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate door-opening (eco-door)
@@ -255,57 +212,41 @@ eco-door-event-handler
   eco-door-event-handler
   :code
   (behavior ()
-   (let
-    ((gp-0
-      (and
-       (not
-        (and
-         (-> self entity)
-         (logtest?
-          (-> self entity extra perm status)
-          (entity-perm-status complete)
+    (let ((gp-0
+            (and
+              (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+              (send-event *target* 'query 'powerup 3)
+              )
+            )
           )
-         )
+      (if gp-0
+          (sound-play-by-name
+            (static-sound-name "blue-eco-on")
+            (new-sound-id)
+            1024
+            0
+            0
+            1
+            (the-as symbol (-> self root-override trans))
+            )
+          )
+      (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 1 #t)
+      (clear-collide-with-as (-> self root-override))
+      (until (ja-done? 0)
+        (let ((a0-9 (-> self skel root-channel 0)))
+          (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
+          (set! (-> a0-9 param 1) (-> self speed))
+          (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        (if (and gp-0 (rand-vu-percent? 0.5))
+            (spawn-projectile-blue *target*)
+            )
+        (suspend)
         )
-       (send-event *target* 'query 'powerup 3)
-       )
       )
-     )
-    (if gp-0
-     (sound-play-by-name
-      (static-sound-name "blue-eco-on")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self root-override trans))
-      )
-     )
-    (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 1 #t)
-    (clear-collide-with-as (-> self root-override))
-    (until (ja-done? 0)
-     (let ((a0-9 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-9 param 0)
-       (the float (+ (-> a0-9 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-9 param 1) (-> self speed))
-      (joint-control-channel-group-eval!
-       a0-9
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     (if (and gp-0 (rand-vu-percent? 0.5))
-      (spawn-projectile-blue *target*)
-      )
-     (suspend)
-     )
+    (go-virtual door-open)
+    (none)
     )
-   (go-virtual door-open)
-   (none)
-   )
   :post
   (the-as (function none :behavior eco-door) transform-post)
   )
@@ -316,47 +257,37 @@ eco-door-event-handler
   eco-door-event-handler
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (process-entity-status! self (entity-perm-status complete) #t)
-   (clear-collide-with-as (-> self root-override))
-   (let ((v1-6 (-> self skel root-channel 0)))
-    (set! (-> v1-6 num-func) num-func-identity)
-    (set!
-     (-> v1-6 frame-num)
-     (the float (+ (-> v1-6 frame-group data 0 length) -1))
-     )
-    )
-   (logior! (-> self draw status) 2)
-   (suspend)
-   (dummy-47 (-> self root-override))
-   (ja-post)
-   (while #t
-    (let ((f30-0 (vector4-dot (-> self out-dir) (target-pos 0)))
-          (f28-0 (vector4-dot (-> self out-dir) (camera-pos)))
-          )
-     (when
-      (and
-       (-> self auto-close)
-       (or
-        (not *target*)
-        (<
-         (-> self close-distance)
-         (vector-vector-distance
-          (-> self root-override trans)
-          (-> *target* control trans)
-          )
-         )
-        )
-       )
-      (if (and (>= (* f30-0 f28-0) 0.0) (< 16384.0 (fabs f28-0)))
-       (go-virtual door-closing)
-       )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (clear-collide-with-as (-> self root-override))
+    (let ((v1-6 (-> self skel root-channel 0)))
+      (set! (-> v1-6 num-func) num-func-identity)
+      (set! (-> v1-6 frame-num) (the float (+ (-> v1-6 frame-group data 0 length) -1)))
       )
-     )
+    (logior! (-> self draw status) (draw-status drwf01))
     (suspend)
+    (dummy-47 (-> self root-override))
+    (ja-post)
+    (while #t
+      (let ((f30-0 (vector4-dot (-> self out-dir) (target-pos 0)))
+            (f28-0 (vector4-dot (-> self out-dir) (camera-pos)))
+            )
+        (when (and
+                (-> self auto-close)
+                (or (not *target*) (< (-> self close-distance)
+                                      (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                      )
+                    )
+                )
+          (if (and (>= (* f30-0 f28-0) 0.0) (< 16384.0 (fabs f28-0)))
+              (go-virtual door-closing)
+              )
+          )
+        )
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate door-closing (eco-door)
@@ -365,87 +296,60 @@ eco-door-event-handler
   eco-door-event-handler
   :code
   (behavior ()
-   (restore-collide-with-as (-> self root-override))
-   (set! (-> self draw status) (logand -3 (-> self draw status)))
-   (let ((gp-0 (new 'stack 'overlaps-others-params)))
-    (set! (-> gp-0 options) (the-as uint 1))
-    (set! (-> gp-0 tlist) #f)
-    (while (dummy-40 (-> self root-override) (the-as vector2w gp-0))
-     (suspend)
-     )
-    )
-   (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 1 #t)
-   (until (ja-done? 0)
-    (let ((a0-7 (-> self skel root-channel 0)))
-     (set! (-> a0-7 param 0) 0.0)
-     (set! (-> a0-7 param 1) (-> self speed))
-     (joint-control-channel-group-eval!
-      a0-7
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (restore-collide-with-as (-> self root-override))
+    (logclear! (-> self draw status) (draw-status drwf01))
+    (let ((gp-0 (new 'stack 'overlaps-others-params)))
+      (set! (-> gp-0 options) (the-as uint 1))
+      (set! (-> gp-0 tlist) #f)
+      (while (dummy-40 (-> self root-override) gp-0)
+        (suspend)
+        )
       )
-     )
-    (suspend)
+    (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 1 #t)
+    (until (ja-done? 0)
+      (let ((a0-7 (-> self skel root-channel 0)))
+        (set! (-> a0-7 param 0) 0.0)
+        (set! (-> a0-7 param 1) (-> self speed))
+        (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+        )
+      (suspend)
+      )
+    (if (-> self locked)
+        (sound-play-by-name (static-sound-name "door-lock") (new-sound-id) 1024 0 0 1 #t)
+        )
+    (go-virtual door-closed)
+    (none)
     )
-   (if (-> self locked)
-    (sound-play-by-name
-     (static-sound-name "door-lock")
-     (new-sound-id)
-     1024
-     0
-     0
-     1
-     #t
-     )
-    )
-   (go-virtual door-closed)
-   (none)
-   )
   :post
   (the-as (function none :behavior eco-door) transform-post)
   )
 
 (defmethod dummy-26 eco-door ((obj eco-door))
   (when (-> obj state-actor)
-   (if
-    (logtest?
-     (-> obj state-actor extra perm status)
-     (entity-perm-status complete)
-     )
-    (set! (-> obj locked) (logtest? (-> obj flags) 2))
-    (set! (-> obj locked) (logtest? (-> obj flags) 1))
+    (if (logtest? (-> obj state-actor extra perm status) (entity-perm-status complete))
+        (set! (-> obj locked) (logtest? (-> obj flags) 2))
+        (set! (-> obj locked) (logtest? (-> obj flags) 1))
+        )
     )
-   )
   0
   (none)
   )
 
 (defmethod TODO-RENAME-24 eco-door ((obj eco-door))
-  (let
-   ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-   (let
-    ((s4-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s5-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 512))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 1))
+      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
+      (set-root-prim! s5-0 s4-0)
       )
-     )
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 512))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 1))
-    (set! (-> s4-0 prim-core offense) 4)
-    (set! (-> s4-0 transform-index) 0)
-    (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
-    (set-root-prim! s5-0 s4-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
     )
-   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (backup-collide-with-as s5-0)
-   (set! (-> obj root-override) s5-0)
-   )
   0
   (none)
   )
@@ -459,38 +363,34 @@ eco-door-event-handler
   (TODO-RENAME-24 obj)
   (process-drawable-from-entity! obj arg0)
   (let ((f0-0 (res-lump-float (-> obj entity) 'scale :default 1.0)))
-   (set-vector! (-> obj root-override scale) f0-0 f0-0 f0-0 1.0)
-   )
+    (set-vector! (-> obj root-override scale) f0-0 f0-0 f0-0 1.0)
+    )
   (set! (-> obj open-distance) 32768.0)
   (set! (-> obj close-distance) 49152.0)
   (set! (-> obj speed) 1.0)
   (set! (-> obj state-actor) #f)
   (let ((v1-5 (entity-actor-lookup arg0 'state-actor 0)))
-   (if v1-5
-    (set! (-> obj state-actor) v1-5)
+    (if v1-5
+        (set! (-> obj state-actor) v1-5)
+        )
     )
-   )
   (set! (-> obj locked) #f)
   (set! (-> obj flags) (res-lump-value arg0 'flags int))
   (dummy-26 obj)
   (set! (-> obj auto-close) (logtest? (-> obj flags) 4))
   (set! (-> obj one-way) (logtest? (-> obj flags) 8))
   (vector-z-quaternion! (-> obj out-dir) (-> obj root-override quat))
-  (set!
-   (-> obj out-dir w)
-   (- (vector-dot (-> obj out-dir) (-> obj root-override trans)))
-   )
+  (set! (-> obj out-dir w) (- (vector-dot (-> obj out-dir) (-> obj root-override trans))))
   (dummy-47 (-> obj root-override))
   (TODO-RENAME-25 obj)
-  (if
-   (and
-    (not (-> obj auto-close))
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (go (method-of-object obj door-open))
-   (go (method-of-object obj door-closed))
-   )
+  (if (and
+          (not (-> obj auto-close))
+          (-> obj entity)
+          (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+          )
+      (go (method-of-object obj door-open))
+      (go (method-of-object obj door-closed))
+      )
   (none)
   )
 

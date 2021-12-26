@@ -1201,8 +1201,8 @@
       )
   (when (logtest? (-> self state-flags) 32)
     (if (< (logand (- (-> *display* base-frame-counter) (-> self control unknown-dword80)) 3) 1)
-        (logior! (-> self draw status) 2)
-        (set! (-> self draw status) (logand -3 (-> self draw status)))
+        (logior! (-> self draw status) (draw-status drwf01))
+        (logclear! (-> self draw status) (draw-status drwf01))
         )
     (if (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword80)) (-> self control unknown-dword81))
         (target-timed-invulnerable-off self)
@@ -1481,7 +1481,7 @@
     (cond
       ((and
          (= (-> self next-state name) 'target-clone-anim)
-         (zero? (logand (-> self draw status) 2))
+         (zero? (logand (-> self draw status) (draw-status drwf01)))
          (begin
            (vector<-cspace! gp-0 (-> self node-list data 3))
            (set! (-> gp-0 y) (+ -5896.192 (-> gp-0 y)))
@@ -1516,7 +1516,7 @@
             ((logtest? (-> self control root-prim prim-core action) 8192)
              (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control shadow-pos quad))
              )
-            ((logtest? (-> self draw status) 6)
+            ((logtest? (-> self draw status) (draw-status drwf01 drwf02))
              (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
              )
             (else

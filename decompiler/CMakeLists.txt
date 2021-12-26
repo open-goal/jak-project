@@ -57,6 +57,7 @@ add_library(
 
         level_extractor/extract_level.cpp
         level_extractor/extract_tfrag.cpp
+        level_extractor/extract_tie.cpp
         level_extractor/BspHeader.cpp
 
         ObjectFile/LinkedObjectFile.cpp
@@ -97,5 +98,3 @@ target_link_libraries(decompiler
         common
         lzokay
         fmt)
-
-install(TARGETS decompiler)

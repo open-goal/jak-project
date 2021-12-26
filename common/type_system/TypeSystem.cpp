@@ -204,7 +204,7 @@ void TypeSystem::forward_declare_type_method_count(const std::string& name, int 
     if (existing_count != num_methods) {
       throw_typesystem_error(
           "Type {} was defined with {} methods and is now being forward declared with {} methods",
-          name, existing_fwd->second, num_methods);
+          name, existing_count, num_methods);
     }
   }
 

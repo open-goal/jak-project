@@ -9,6 +9,7 @@
 #include "common/util/FileUtil.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
 #include "game/graphics/opengl_renderer/tfrag/TFragment.h"
+#include "game/graphics/opengl_renderer/tfrag/Tie3.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -73,8 +74,10 @@ void OpenGLRenderer::init_bucket_renderers() {
 
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
   init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false);
+  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
   init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false);
+  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);

@@ -26,7 +26,8 @@ tfrag3::Level* Loader::get_tfrag3_level(const std::string& level_name) {
     Serializer ser(data.data(), data.size());
     result.serialize(ser);
     double import_time = import_timer.getSeconds();
-    fmt::print("Load from file: {:.3f}s, import {:.3f}s\n", disk_load_time, import_time);
+    fmt::print("------------> Load from file: {:.3f}s, import {:.3f}s\n", disk_load_time,
+               import_time);
     return &result;
   } else {
     return &existing->second;
