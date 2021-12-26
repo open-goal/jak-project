@@ -28,7 +28,6 @@ files_with_modifications = [
   "cam-master",
   "generic-obs",
   "target-snowball",
-  "quicksandlurker",
   "logic-target",
   "default-menu",
   "collide-shape",

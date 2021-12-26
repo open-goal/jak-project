@@ -5,6 +5,7 @@
 #include "BinaryReader.h"
 #include "common/link_types.h"
 #include "third-party/json.hpp"
+#include "BitUtils.h"
 #include "dgo_util.h"
 
 DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
@@ -47,7 +48,7 @@ DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
     memcpy(entry.data.data(), reader.here(), obj_header.size);
     m_entries.push_back(entry);
 
-    reader.ffwd(obj_header.size);
+    reader.ffwd(align16(obj_header.size));
   }
 
   // check we're at the end
