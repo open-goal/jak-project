@@ -44,7 +44,7 @@ constexpr const T& min(const T& a, const T& b) {
 template <typename T, std::size_t inline_elt_count = max(std::size_t(1), 128 / sizeof(T))>
 class SmallVector {
  private:
-  template<typename U>
+  template <typename U>
   constexpr U* launder(U* in) const {
 #if __cpp_lib_launder >= 201606
     return std::launder(in);
@@ -61,9 +61,7 @@ class SmallVector {
   typename std::aligned_storage<sizeof(T), alignof(T)>::type m_inline[inline_elt_count];
 
   // get a T* at the beginning of our inline storage.
-  constexpr const T* inline_begin() const {
-    return launder(reinterpret_cast<const T*>(m_inline));
-  }
+  constexpr const T* inline_begin() const { return launder(reinterpret_cast<const T*>(m_inline)); }
   constexpr T* inline_begin() { return launder(reinterpret_cast<T*>(m_inline)); }
 
   // regardless of our storage mode, these hold the beginning and end of the storage.
