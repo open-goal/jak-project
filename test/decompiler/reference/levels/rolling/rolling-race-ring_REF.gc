@@ -17,6 +17,11 @@
   :method-count-assert 20
   :size-assert         #x130
   :flag-assert         #x1400c00130
+  (:states
+    race-ring-active
+    race-ring-idle
+    race-ring-wait
+    )
   )
 
 ;; definition for method 3 of type race-ring
@@ -1101,8 +1106,8 @@
                      (logior! (-> *target* mask) (process-mask sleep))
                      )
                  (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-                 (set! (-> self draw status) (logand -3 (-> self draw status)))
-                 (logior! (-> self draw status) 32)
+                 (logclear! (-> self draw status) (draw-status drwf01))
+                 (logior! (-> self draw status) (draw-status drwf05))
                  (if (= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
                      (ja-play-spooled-anim
                        (new 'static 'spool-anim :name "race-ring-second-anim" :index 4 :parts 2 :command-list '())
@@ -1117,8 +1122,8 @@
                        (the-as (function process-drawable symbol) false-func)
                        )
                      )
-                 (set! (-> self draw status) (logand -33 (-> self draw status)))
-                 (logior! (-> self draw status) 2)
+                 (logclear! (-> self draw status) (draw-status drwf05))
+                 (logior! (-> self draw status) (draw-status drwf01))
                  (cond
                    ((handle->process (the-as int gp-2))
                     (deactivate (-> gp-2 process 0))
@@ -1223,7 +1228,7 @@
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj part-track) (the-as handle #f))
   (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (logior! (-> obj draw status) 2)
+  (logior! (-> obj draw status) (draw-status drwf01))
   (set! (-> obj sound) (new
                          'process
                          'ambient-sound
@@ -1292,10 +1297,10 @@
      )
     ((and (last-ring? obj) (= (get-task-status (-> obj entity extra perm task)) (task-status need-resolution)))
      (let ((s5-2 (new 'stack-no-clear 'vector)))
-       (set! (-> obj draw status) (logand -3 (-> obj draw status)))
+       (logclear! (-> obj draw status) (draw-status drwf01))
        (ja-post)
        (vector<-cspace! s5-2 (-> obj node-list data 5))
-       (logior! (-> obj draw status) 2)
+       (logior! (-> obj draw status) (draw-status drwf01))
        (birth-pickup-at-point
          s5-2
          (pickup-type fuel-cell)
@@ -1313,7 +1318,3 @@
   (go race-ring-idle)
   (none)
   )
-
-
-
-
