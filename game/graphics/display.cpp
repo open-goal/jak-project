@@ -104,6 +104,13 @@ void GfxDisplay::set_size(int w, int h) {
 void GfxDisplay::get_scale(float* x, float* y) {
   m_renderer->display_scale(this, x, y);
 }
+
+void GfxDisplay::backup_params() {
+  m_renderer->display_size(this, &m_width, &m_height);
+  m_renderer->display_position(this, &m_xpos, &m_ypos);
+  fmt::print("backed up window: {},{} {}x{}\n", m_xpos, m_ypos, m_width, m_height);
+}
+
 /*
 ********************************
 * DISPLAY

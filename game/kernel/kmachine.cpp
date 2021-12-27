@@ -778,6 +778,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
+  make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
 
   // init ps2 VM
   if (VM::use) {

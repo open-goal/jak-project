@@ -202,6 +202,12 @@ void set_letterbox(int w, int h) {
   g_global_settings.lbox_h = h;
 }
 
+void set_fullscreen(int mode, int screen) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->set_fullscreen(mode, screen);
+  }
+}
+
 void input_mode_set(u32 enable) {
   if (enable == s7.offset + FIX_SYM_TRUE) {  // #t
     Pad::g_input_mode_mapping = g_settings.pad_mapping_info;

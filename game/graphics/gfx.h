@@ -26,9 +26,11 @@ struct GfxRendererModule {
       make_main_display;
   std::function<void(GfxDisplay*)> kill_display;
   std::function<void(GfxDisplay*)> render_display;
+  std::function<void(GfxDisplay*, int*, int*)> display_position;
   std::function<void(GfxDisplay*, int*, int*)> display_size;
   std::function<void(GfxDisplay*, int, int)> display_set_size;
   std::function<void(GfxDisplay*, float*, float*)> display_scale;
+  std::function<void(GfxDisplay*, int, int)> set_fullscreen;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -62,6 +64,8 @@ struct GfxSettings {
 
 // runtime settings
 struct GfxGlobalSettings {
+  // note: this is actually the size of the display that ISN'T letterboxed
+  // the excess space is what will be letterboxed away.
   int lbox_w;
   int lbox_h;
 };
@@ -89,6 +93,7 @@ u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
 void set_letterbox(int w, int h);
+void set_fullscreen(int mode, int screen);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

@@ -242,8 +242,9 @@
     (reset-fixes (_type_) none)
     (reset-extra (_type_) none)
     (draw (_type_ dma-buffer) none)
-    (set-fullscreen (_type_ symbol) none)
-    (set-size (_type_ int int) none)
+    (set-fullscreen! (_type_ symbol) int)
+    (set-size! (_type_ int int) int)
+    (read-from-file (_type_ string) symbol)
     )
   )
 
@@ -447,28 +448,33 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; PC settings
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
-  "make a new pc-settings"
+(defmethod set-fullscreen! pc-settings ((obj pc-settings) (mode symbol))
+  "toggles fullscreen mode"
   
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    
-    (reset obj)
-    
-    (when filename
-      (format #t "pc settings at ~A~%" filename)
-      
-      )
-    
-    obj
-    )
-  )
+  (if (= (-> obj fullscreen?) mode) ;; already fullscreen
+    (return 0))
+  
+  (set! (-> obj fullscreen?) mode)
+  (pc-set-fullscreen
+          (cond ((= mode 'borderless) 2)
+                (mode 1)
+                (else 0)
+                )
+          0)
+  0)
 
-(define *pc-settings* (new 'global 'pc-settings (the-as string #f)))
+(defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
+  "toggles fullscreen mode"
+  
+  (pc-set-window-size width height)
+  0)
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (when *debug-segment*
@@ -490,9 +496,40 @@
 )
 
 
+
+(defmethod read-from-file pc-settings ((obj pc-settings) (filename string))
+  "read settings from a file"
+  
+  (if (not filename)
+    (return #f))
+  
+  (format #t "pc settings file at ~A~%" filename)
+  
+  #f
+  )
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; functions
+;;;; PC settings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
+  "make a new pc-settings"
+  
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    
+    (reset obj)
+    (read-from-file obj filename)
+    
+    obj
+    )
+  )
+
+(define *pc-settings* (new 'global 'pc-settings (the-as string #f)))
+
+
 
 )
 

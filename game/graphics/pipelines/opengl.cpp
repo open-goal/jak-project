@@ -80,7 +80,7 @@ void SetDisplayCallbacks(GLFWwindow* d) {
 }
 
 void ErrorCallback(int err, const char* msg) {
-  lg::error("GLFW ERR {}: " + std::string(msg), err);
+  lg::error("GLFW ERR {}: {}", err, std::string(msg));
 }
 
 bool HasError() {
@@ -309,6 +309,10 @@ void render_dump_frame(int width, int height, int lbox_width, int lbox_height) {
   g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
 }
 
+static void gl_display_position(GfxDisplay* display, int* x, int* y) {
+  glfwGetWindowPos(display->window_glfw, x, y);
+}
+
 static void gl_display_size(GfxDisplay* display, int* width, int* height) {
   glfwGetFramebufferSize(display->window_glfw, width, height);
 }
@@ -319,6 +323,46 @@ static void gl_display_set_size(GfxDisplay* display, int width, int height) {
 
 static void gl_display_scale(GfxDisplay* display, float* xs, float* ys) {
   glfwGetWindowContentScale(display->window_glfw, xs, ys);
+}
+
+static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
+  GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
+  auto window = display->window_glfw;
+  switch (mode) {
+    case 0: {
+      // windowed
+      // display->restore_on_next_vsync = true;
+      glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
+                           display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
+    } break;
+    case 1: {
+      // fullscreen
+      if (display->fullscreen_mode() == 0) {
+        display->backup_params();
+      }
+      const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+      glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, vmode->refreshRate);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
+    } break;
+    case 2: {
+      // borderless fullscreen
+      if (display->fullscreen_mode() == 0) {
+        display->backup_params();
+      }
+      glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
+                           display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
+      int x, y;
+      glfwGetMonitorPos(monitor, &x, &y);
+      const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
+      glfwSetWindowSize(window, vmode->width, vmode->height);
+      glfwSetWindowPos(window, x, y);
+    } break;
+  }
 }
 
 static void gl_render_display(GfxDisplay* display) {
@@ -356,6 +400,15 @@ static void gl_render_display(GfxDisplay* display) {
   g_gfx_data->debug_gui.finish_frame();
   glfwSwapBuffers(window);
   g_gfx_data->debug_gui.start_frame();
+
+  if (display->fullscreen_pending()) {
+    display->fullscreen_flush();
+  }
+  /*if (display->restore_on_next_vsync) {
+    glfwSetWindowSize(display->window_glfw, display->width_backup(), display->height_backup());
+    glfwSetWindowPos(display->window_glfw, display->xpos_backup(), display->ypos_backup());
+    display->restore_on_next_vsync = false;
+  }*/
 
   // toggle even odd and wake up engine waiting on vsync.
   if (!g_gfx_data->debug_gui.want_dump_replay()) {
@@ -458,9 +511,11 @@ const GfxRendererModule moduleOpenGL = {
     gl_make_main_display,   // make_main_display
     gl_kill_display,        // kill_display
     gl_render_display,      // render_display
+    gl_display_position,    // display_position
     gl_display_size,        // display_size
     gl_display_set_size,    // display_set_size
     gl_display_scale,       // display_scale
+    gl_set_fullscreen,      // set_fullscreen
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path
