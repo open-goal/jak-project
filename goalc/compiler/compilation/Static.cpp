@@ -565,6 +565,13 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                             form.as_pair()->car.as_symbol()->name == "lambda")) {
       return compile_static(form, env);
     }
+    // try as a macro
+    if (form.as_pair()->car.is_symbol()) {
+      goos::Object macro_obj;
+      if (try_getting_macro_from_goos(form.as_pair()->car, &macro_obj)) {
+        return compile_static_no_eval_for_pairs(expand_macro_completely(form, env), env, seg);
+      }
+    }
     auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env, seg);
     auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env, seg);
     auto pair_structure = std::make_unique<StaticPair>(car, cdr, seg);

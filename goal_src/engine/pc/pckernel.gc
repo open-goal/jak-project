@@ -32,8 +32,8 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0002)
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x0001)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0002)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0000)
 (defglobalconstant PC_KERNEL_VERSION (logior
                                         (ash PC_KERNEL_VERSION_MAJOR 48)
@@ -98,7 +98,7 @@
 
 
 ;; concept arts
-(defenum pc-jak1-conept-art
+(defenum pc-jak1-concept-art
   :bitfield #t
   :type uint64
   (test)
@@ -106,7 +106,7 @@
 
 ;; secrets and goodies
 (deftype pc-game-secrets (structure)
-  ((art pc-jak1-conept-art) ;; concept art unlocked
+  ((art pc-jak1-concept-art) ;; concept art unlocked
    (music uint64 30) ;; flavas unlocked, for each track (there's like 30 musics, right?)
    (hard-fish-hiscore int32)
    (hard-rats? symbol) ;; enable this crap
@@ -157,6 +157,7 @@
 (deftype pc-pad-info (structure)
   ((device-info pc-device-info :inline)
    (buffered? symbol)
+   (valid? symbol)
    (mapping int 16)
    )
   )
@@ -186,8 +187,8 @@
    (device-audio pc-device-info :inline) ;; used audio device
    (device-screen pc-device-info :inline) ;; used display device
    (device-gpu pc-device-info :inline) ;; used graphics device
-   (device-pad (array pc-pad-info)) ;; used input devices, like controllers.
-   (device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
+   (device-pad pc-pad-info 4 :inline) ;; used input devices, like controllers.
+   ;(device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
 
    (audio-latency-ms int16) ;; audio latency in milliseconds
    (audio-pan-override float) ;; audio pan modifier
@@ -241,6 +242,8 @@
     (reset-fixes (_type_) none)
     (reset-extra (_type_) none)
     (draw (_type_ dma-buffer) none)
+    (set-fullscreen (_type_ symbol) none)
+    (set-size (_type_ int int) none)
     )
   )
 
@@ -358,7 +361,7 @@
     (set! (-> obj secrets music i) 0)
     )
   
-  (set! (-> obj secrets art) (pc-jak1-conept-art))
+  (set! (-> obj secrets art) (pc-jak1-concept-art))
   (set! (-> obj secrets hard-fish-hiscore) 0)
   (set! (-> obj secrets hard-rats-hiscore) 0)
   (set! (-> obj secrets hard-rats-hiwave) 0)
@@ -373,6 +376,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defmethod update-from-os pc-settings ((obj pc-settings))
   "Update settings from the PC kernel to GOAL."
@@ -392,6 +396,7 @@
   (let ((win-aspect (/ (the float (-> obj win-width)) (the float (-> obj win-height)))))
     (cond
       ((-> obj aspect-ratio-auto?)
+       ;; the window determines the resolution
        (set! (-> obj aspect-ratio) win-aspect)
        (set! (-> obj width) (-> obj win-width))
        (set! (-> obj height) (-> obj win-height))
@@ -432,7 +437,8 @@
   (none))
 
 (defmethod update pc-settings ((obj pc-settings))
-  "Update settings to/from PC kernel. Call this at the start of every frame."
+  "Update settings to/from PC kernel. Call this at the start of every frame.
+   This will update things like the aspect-ratio, which will be used for graphics code later."
 
   (update-from-os obj)
   (update-to-os obj)
@@ -465,16 +471,24 @@
 (define *pc-settings* (new 'global 'pc-settings (the-as string #f)))
 
 
+(when *debug-segment*
+
+(define *pc-temp-string* (new 'debug 'string 1024 (the-as string #f)))
+
 (defmethod draw pc-settings ((obj pc-settings) (buf dma-buffer))
   "debug draw"
   
-  (clear *temp-string*)
-  (format *temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
-  (format *temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
-  (format *temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A~% L: ~A" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
-  (draw-string-xy *temp-string* buf 0 (- 240 (* 8 3)) (font-color default) (font-flags shadow kerning))
+  (clear *pc-temp-string*)
+  (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
+  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
+  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A~% L: ~A" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+
+  (draw-string-xy *pc-temp-string* buf 0 (- 240 (* 8 3)) (font-color default) (font-flags shadow kerning))
   
   (none))
+
+)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; functions
