@@ -168,6 +168,22 @@ void poll_events() {
   GetCurrentRenderer()->poll_events();
 }
 
+u64 get_window_width() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->width();
+  } else {
+    return 0;
+  }
+}
+
+u64 get_window_height() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->height();
+  } else {
+    return 0;
+  }
+}
+
 void input_mode_set(u32 enable) {
   if (enable == s7.offset + FIX_SYM_TRUE) {  // #t
     Pad::g_input_mode_mapping = g_settings.pad_mapping_info;

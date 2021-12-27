@@ -1190,6 +1190,7 @@
  "gfx/tie/prototype.gc"
  "collide/main-collide.gc"
  "game/video.gc"
+ "pc/pckernel.gc" ;; added
  "game/main.gc"
  "collide/collide-cache.gc"
  "entity/relocate.gc"

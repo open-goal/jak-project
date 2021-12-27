@@ -32,7 +32,7 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0000)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
 (defglobalconstant PC_KERNEL_VERSION_MINOR #x0001)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0000)
 (defglobalconstant PC_KERNEL_VERSION (logior
@@ -106,10 +106,10 @@
 (deftype pc-game-secrets (structure)
   ((art pc-jak1-conept-art) ;; concept art unlocked
    (music uint64 30) ;; flavas unlocked, for each track (there's like 30 musics, right?)
-   (hard-fish-hiscore)
+   (hard-fish-hiscore int32)
    (hard-rats? symbol) ;; enable this crap
-   (hard-rats-hiscore)
-   (hard-rats-hiwave)
+   (hard-rats-hiscore int32)
+   (hard-rats-hiwave int32)
    (hero-mode? symbol) ;; unsure how this should work
    (hud-map? symbol) ;; enable map in HUD/progress?
    (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
@@ -225,16 +225,16 @@
 
   (:methods
     (new (symbol type string) _type_)
-    (update (_type_) object)
-    (update-from-os (_type_) object)
-    (update-to-os (_type_) object)
-    (reset (_type_) object)
-    (reset-audio (_type_) object)
-    (reset-gfx (_type_) object)
-    (reset-ps2 (_type_) object)
-    (reset-misc (_type_) object)
-    (reset-fixes (_type_) object)
-    (reset-extra (_type_) object)
+    (update (_type_) none)
+    (update-from-os (_type_) none)
+    (update-to-os (_type_) none)
+    (reset (_type_) none)
+    (reset-audio (_type_) none)
+    (reset-gfx (_type_) none)
+    (reset-ps2 (_type_) none)
+    (reset-misc (_type_) none)
+    (reset-fixes (_type_) none)
+    (reset-extra (_type_) none)
     )
   )
 
@@ -255,7 +255,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(define *pc-settings* (new 'global 'pc-settings))
+(define *pc-settings* (new 'global 'pc-settings (the-as string #f)))
 
 
 (defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
@@ -291,7 +291,7 @@
   (reset-fixes obj)
   (reset-extra obj)
   
-  )
+  (none))
 
 
 (defmethod reset-gfx pc-settings ((obj pc-settings))
@@ -303,7 +303,7 @@
   (set! (-> obj use-vis?) #t)
   (set! (-> obj aspect-ratio-auto?) #f)
   (set! (-> obj fullscreen?) #f)
-  )
+  (none))
 
 (defmethod reset-audio pc-settings ((obj pc-settings))
   "Set the default audio settings"
@@ -312,7 +312,7 @@
   (set! (-> obj audio-pan-override) 0.0)
   (set! (-> obj audio-volume-override) 1.0)
   (set! (-> obj audio-channel-nb) PS2_VOICE_AMOUNT)
-  )
+  (none))
 
 (defmethod reset-ps2 pc-settings ((obj pc-settings))
   "Set the default ps2 settings"
@@ -330,7 +330,7 @@
   (set! (-> obj lod-force-tie) 0)
   (set! (-> obj lod-force-ocean) 0)
   (set! (-> obj lod-force-actor) 0)
-  )
+  (none))
 
 (defmethod reset-misc pc-settings ((obj pc-settings))
   "Set the default misc settings"
@@ -340,7 +340,7 @@
   (set! (-> obj subtitles?) #t)
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-language) (pc-subtitle-lang english))
-  )
+  (none))
 
 (defmethod reset-fixes pc-settings ((obj pc-settings))
   "Set the default fixes settings"
@@ -353,7 +353,7 @@
   (set! (-> obj fixes lockout-gambler) #t)
   (set! (-> obj fixes fix-movies) #f)
   (set! (-> obj fixes fix-credits) #t)
-  )
+  (none))
 
 (defmethod reset-extra pc-settings ((obj pc-settings))
   "Set the default goodies settings"
@@ -373,7 +373,7 @@
   (set! (-> obj secrets hero-mode?) #f)
   (set! (-> obj secrets hud-map?) #t)
   (set! (-> obj secrets hud-counters?) #t)
-  )
+  (none))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -381,12 +381,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod update-from-os pc-settings ((obj pc-settings))
-  "Update settings from the PC kernel."
+  "Update settings from the PC kernel to GOAL."
   
   (set! (-> obj os) (pc-get-os))
   (set! (-> obj win-width) (pc-get-window-width))
   (set! (-> obj win-height) (pc-get-window-height))
-  )
+  (none))
+
+(defmethod update-to-os pc-settings ((obj pc-settings))
+  "Update settings from GOAL to the PC kernel."
+  
+  (none))
 
 (defmethod update pc-settings ((obj pc-settings))
   "Update settings to/from PC kernel. Call this at the start of every frame."
@@ -394,7 +399,7 @@
   (update-from-os obj)
   (update-to-os obj)
 
-  )
+  (none))
 
 
 

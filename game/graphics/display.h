@@ -35,6 +35,9 @@ class GfxDisplay {
   void set_title(const char* title);
   const char* title() const { return m_title; }
 
+  int width();
+  int height();
+
   void render_graphics();
 };
 

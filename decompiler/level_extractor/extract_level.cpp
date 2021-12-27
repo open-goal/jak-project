@@ -51,7 +51,7 @@ void extract_from_level(ObjectFileDB& db,
                         TextureDB& tex_db,
                         const std::string& dgo_name,
                         const DecompileHacks& hacks,
-  bool dump_level) {
+                        bool dump_level) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;

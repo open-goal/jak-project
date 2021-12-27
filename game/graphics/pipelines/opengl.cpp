@@ -305,6 +305,11 @@ void render_dump_frame(int width, int height) {
   g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
 }
 
+static void gl_display_size(GfxDisplay* display, int* width, int* height) {
+  GLFWwindow* window = display->window_glfw;
+  glfwGetFramebufferSize(window, width, height);
+}
+
 static void gl_render_display(GfxDisplay* display) {
   GLFWwindow* window = display->window_glfw;
 
@@ -438,6 +443,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_make_main_display,   // make_main_display
     gl_kill_display,        // kill_display
     gl_render_display,      // render_display
+    gl_display_size,        // display_size
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path
@@ -446,5 +452,5 @@ const GfxRendererModule moduleOpenGL = {
     gl_texture_relocate,    // texture_relocate
     gl_poll_events,         // poll_events
     GfxPipeline::OpenGL,    // pipeline
-    "OpenGL 3.3"            // name
+    "OpenGL 4.3"            // name
 };

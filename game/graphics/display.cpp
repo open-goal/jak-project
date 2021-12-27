@@ -85,6 +85,18 @@ void GfxDisplay::render_graphics() {
   m_renderer->render_display(this);
 }
 
+int GfxDisplay::width() {
+  int w;
+  m_renderer->display_size(this, &w, NULL);
+  return w;
+}
+
+int GfxDisplay::height() {
+  int h;
+  m_renderer->display_size(this, NULL, &h);
+  return h;
+}
+
 /*
 ********************************
 * DISPLAY

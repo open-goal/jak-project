@@ -252,6 +252,7 @@
   ("prototype.o" "prototype")
   ("main-collide.o" "main-collide")
   ("video.o" "video")
+  ("pckernel.o" "pckernel") ;; added
   ("main.o" "main")
   ("collide-cache.o" "collide-cache")
   ("relocate.o" "relocate")

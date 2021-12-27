@@ -26,6 +26,7 @@ struct GfxRendererModule {
       make_main_display;
   std::function<void(GfxDisplay*)> kill_display;
   std::function<void(GfxDisplay*)> render_display;
+  std::function<void(GfxDisplay*, int*, int*)> display_size;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -74,6 +75,8 @@ void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
 void poll_events();
+u64 get_window_width();
+u64 get_window_height();
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
