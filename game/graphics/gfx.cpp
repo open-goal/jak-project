@@ -47,6 +47,7 @@ void InitSettings(GfxSettings& settings) {
 
 namespace Gfx {
 
+GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
@@ -194,6 +195,11 @@ void get_window_scale(float* x, float* y) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->get_scale(x, y);
   }
+}
+
+void set_letterbox(int w, int h) {
+  g_global_settings.lbox_w = w;
+  g_global_settings.lbox_h = h;
 }
 
 void input_mode_set(u32 enable) {

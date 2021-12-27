@@ -224,7 +224,7 @@ void make_gfx_dump() {
                                compressed.data(), compressed.size());
 }
 
-void render_game_frame(int width, int height) {
+void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -248,6 +248,8 @@ void render_game_frame(int width, int height) {
     RenderOptions options;
     options.window_height_px = height;
     options.window_width_px = width;
+    options.lbox_height_px = lbox_height;
+    options.lbox_width_px = lbox_width;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.playing_from_dump = false;
@@ -271,7 +273,7 @@ void render_game_frame(int width, int height) {
   }
 }
 
-void render_dump_frame(int width, int height) {
+void render_dump_frame(int width, int height, int lbox_width, int lbox_height) {
   Timer deser_timer;
   if (g_gfx_data->debug_gui.want_dump_load()) {
     auto data =
@@ -294,6 +296,8 @@ void render_dump_frame(int width, int height) {
   RenderOptions options;
   options.window_height_px = height;
   options.window_width_px = width;
+  options.lbox_height_px = lbox_height;
+  options.lbox_width_px = lbox_width;
   options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
   options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
   options.playing_from_dump = true;
@@ -330,13 +334,17 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  int width, height;
-  glfwGetFramebufferSize(window, &width, &height);
+  int width = Gfx::g_global_settings.lbox_w;
+  int height = Gfx::g_global_settings.lbox_h;
+  int fbuf_w, fbuf_h;
+  glfwGetFramebufferSize(window, &fbuf_w, &fbuf_h);
+  int lbox_w = (fbuf_w - width) / 2;
+  int lbox_h = (fbuf_h - height) / 2;
 
   if (g_gfx_data->debug_gui.want_dump_replay()) {
-    render_dump_frame(width, height);
+    render_dump_frame(width, height, lbox_w, lbox_h);
   } else if (g_gfx_data->debug_gui.should_advance_frame()) {
-    render_game_frame(width, height);
+    render_game_frame(width, height, lbox_w, lbox_h);
   }
 
   // render imgui

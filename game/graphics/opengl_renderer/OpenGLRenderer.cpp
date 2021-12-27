@@ -119,7 +119,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
-    setup_frame(settings.window_width_px, settings.window_height_px);
+    setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
+                settings.lbox_height_px);
   }
   {
     auto prof = m_profiler.root()->make_scoped_child("texture-gc");
@@ -187,8 +188,11 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 /*!
  * Pre-render frame setup.
  */
-void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
-  glViewport(0, 0, window_width_px, window_height_px);
+void OpenGLRenderer::setup_frame(int window_width_px,
+                                 int window_height_px,
+                                 int offset_x,
+                                 int offset_y) {
+  glViewport(offset_x, offset_y, window_width_px, window_height_px);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);

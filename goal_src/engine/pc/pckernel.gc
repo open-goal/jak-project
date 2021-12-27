@@ -177,6 +177,7 @@
    (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically.
    (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
    (fullscreen? symbol) ;; fullscreen status. can be #f, #t or borderless
+   (letterbox? symbol) ;; letterbox. #f = stretched
 
    (os symbol) ;; windows, linux, macos
    (user symbol) ;; username. not system username, just debug thing.
@@ -293,6 +294,8 @@
   (set! (-> obj use-vis?) #t)
   (set! (-> obj aspect-ratio-auto?) #f)
   (set! (-> obj fullscreen?) #f)
+  (set! (-> obj letterbox?) #t)
+
   (none))
 
 (defmethod reset-audio pc-settings ((obj pc-settings))
@@ -417,6 +420,15 @@
 (defmethod update-to-os pc-settings ((obj pc-settings))
   "Update settings from GOAL to the PC kernel."
   
+  (cond
+    ((-> obj letterbox?)
+     (pc-set-letterbox (-> obj width) (-> obj height))
+     )
+    (else
+     (pc-set-letterbox (-> obj win-width) (-> obj win-height))
+     )
+    )
+  
   (none))
 
 (defmethod update pc-settings ((obj pc-settings))
@@ -459,7 +471,7 @@
   (clear *temp-string*)
   (format *temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
   (format *temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
-  (format *temp-string* "target aspect: ~,,2f/~,,2f A: ~A/~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?))
+  (format *temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A~% L: ~A" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
   (draw-string-xy *temp-string* buf 0 (- 240 (* 8 3)) (font-color default) (font-flags shadow kerning))
   
   (none))

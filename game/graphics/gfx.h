@@ -60,8 +60,15 @@ struct GfxSettings {
   GfxPipeline renderer;  // which rendering pipeline to use.
 };
 
+// runtime settings
+struct GfxGlobalSettings {
+  int lbox_w;
+  int lbox_h;
+};
+
 namespace Gfx {
 
+extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
 // extern const std::vector<const GfxRendererModule*> renderers;
 
@@ -81,6 +88,7 @@ u64 get_window_width();
 u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
+void set_letterbox(int w, int h);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
