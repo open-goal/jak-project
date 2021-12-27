@@ -33,6 +33,8 @@ class GfxDisplay {
   void set_renderer(GfxPipeline pipeline);
   void set_window(GLFWwindow* window);
   void set_title(const char* title);
+  void set_size(int w, int h);
+  void get_scale(float* w, float* h);
   const char* title() const { return m_title; }
 
   int width();

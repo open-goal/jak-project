@@ -184,6 +184,18 @@ u64 get_window_height() {
   }
 }
 
+void set_window_size(u64 w, u64 h) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->set_size(w, h);
+  }
+}
+
+void get_window_scale(float* x, float* y) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_scale(x, y);
+  }
+}
+
 void input_mode_set(u32 enable) {
   if (enable == s7.offset + FIX_SYM_TRUE) {  // #t
     Pad::g_input_mode_mapping = g_settings.pad_mapping_info;

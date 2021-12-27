@@ -306,8 +306,15 @@ void render_dump_frame(int width, int height) {
 }
 
 static void gl_display_size(GfxDisplay* display, int* width, int* height) {
-  GLFWwindow* window = display->window_glfw;
-  glfwGetFramebufferSize(window, width, height);
+  glfwGetFramebufferSize(display->window_glfw, width, height);
+}
+
+static void gl_display_set_size(GfxDisplay* display, int width, int height) {
+  glfwSetWindowSize(display->window_glfw, width, height);
+}
+
+static void gl_display_scale(GfxDisplay* display, float* xs, float* ys) {
+  glfwGetWindowContentScale(display->window_glfw, xs, ys);
 }
 
 static void gl_render_display(GfxDisplay* display) {
@@ -444,6 +451,8 @@ const GfxRendererModule moduleOpenGL = {
     gl_kill_display,        // kill_display
     gl_render_display,      // render_display
     gl_display_size,        // display_size
+    gl_display_set_size,    // display_set_size
+    gl_display_scale,       // display_scale
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path

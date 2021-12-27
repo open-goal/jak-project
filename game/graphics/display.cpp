@@ -97,6 +97,13 @@ int GfxDisplay::height() {
   return h;
 }
 
+void GfxDisplay::set_size(int w, int h) {
+  m_renderer->display_set_size(this, w, h);
+}
+
+void GfxDisplay::get_scale(float* x, float* y) {
+  m_renderer->display_scale(this, x, y);
+}
 /*
 ********************************
 * DISPLAY
