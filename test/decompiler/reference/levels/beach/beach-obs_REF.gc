@@ -485,7 +485,7 @@
   :size-assert         #xb0
   :flag-assert         #x14004000b0
   (:states
-    ecoventrock-break
+    (ecoventrock-break symbol)
     ecoventrock-idle
     )
   )
@@ -687,8 +687,7 @@
       (('attack)
        (sound-play-by-name (static-sound-name "cannon-shot") (new-sound-id) 1024 0 0 1 #t)
        (increment-success-for-hint (game-text-id beach-eco-rock-increment))
-       enter-state
-       (go ecoventrock-break)
+       (go ecoventrock-break #f)
        )
       )
     )
@@ -711,10 +710,10 @@
     process-drawable-fuel-cell-handler
     )
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ((arg0 symbol)) (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
   :code
-  (behavior ()
-    (local-vars (a0-0 none) (sv-128 symbol))
+  (behavior ((arg0 symbol))
+    (local-vars (sv-128 symbol))
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
     (ja-post)
@@ -727,7 +726,7 @@
         'update
         )
       )
-    (when (not a0-0)
+    (when (not arg0)
       (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
         (when s5-0
           (let ((t9-7 (method-of-type part-tracker activate)))
@@ -799,7 +798,7 @@
           )
         (let ((gp-1
                 (cond
-                  (a0-0
+                  (arg0
                     (the-as int #f)
                     )
                   (else
@@ -866,16 +865,10 @@
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (transform-post)
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
-  (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     enter-state
-     #t
-     (go ecoventrock-break)
-     )
-    (else
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (go ecoventrock-break #t)
       (go ecoventrock-idle)
       )
-    )
   (none)
   )
 
@@ -993,7 +986,7 @@
   (behavior ()
     (clear-collide-with-as (-> self root-override))
     (while (or
-             (logtest? (-> self draw status) 8)
+             (logtest? (-> self draw status) (draw-status drwf03))
              (and
                *target*
                (>= 204800.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -1180,7 +1173,7 @@
     (dummy-20 (_type_ float float float) none 20)
     )
   (:states
-    flutflutegg-break
+    (flutflutegg-break symbol)
     flutflutegg-idle
     flutflutegg-physics
     flutflutegg-physics-fall
@@ -1489,8 +1482,7 @@
               )
         )
       (sound-play-by-name (static-sound-name "sack-land") (new-sound-id) 2048 0 0 1 #t)
-      enter-state
-      (go flutflutegg-break)
+      (go flutflutegg-break #f)
       )
     (none)
     )
@@ -1501,15 +1493,14 @@
 ;; failed to figure out what this is:
 (defstate flutflutegg-break (flutflutegg)
   :code
-  (behavior ()
-    (local-vars (a0-0 none))
-    (when a0-0
+  (behavior ((arg0 symbol))
+    (when arg0
       (set-vector! (-> self root-override trans) -231190.94 64559.105 -1164727.5 1.0)
       (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 -18204.445)
       )
     (suspend)
     (dummy-47 (-> self root-override))
-    (when (not a0-0)
+    (when (not arg0)
       (let ((a0-3 (-> self skel root-channel 0)))
         (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
         (set! (-> a0-3 param 0)
@@ -1638,16 +1629,10 @@
   (reset! (-> obj wobbler) 0.1 0.98 4096.0)
   (set! (-> obj last-impulse-time) 0)
   (set! (-> obj ambients-played) 0)
-  (cond
-    ((task-closed? (game-task beach-flutflut) (task-status need-reminder))
-     enter-state
-     #t
-     (go flutflutegg-break)
-     )
-    (else
+  (if (task-closed? (game-task beach-flutflut) (task-status need-reminder))
+      (go flutflutegg-break #t)
       (go flutflutegg-idle)
       )
-    )
   (none)
   )
 
@@ -1662,7 +1647,7 @@
   :flag-assert         #x14005000b4
   (:states
     harvester-idle
-    harvester-inflate
+    (harvester-inflate symbol)
     )
   )
 
@@ -1690,20 +1675,17 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('update)
-       (when (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
-         enter-state
-         (go harvester-inflate)
-         )
+       (if (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
+           (go harvester-inflate #f)
+           )
        )
       )
     )
   :code
   (behavior ()
-    (when (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
-      enter-state
-      #t
-      (go harvester-inflate)
-      )
+    (if (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
+        (go harvester-inflate #t)
+        )
     (let ((gp-0 (-> self skel root-channel 0)))
       (joint-control-channel-group-eval!
         gp-0
@@ -1724,9 +1706,8 @@
 ;; failed to figure out what this is:
 (defstate harvester-inflate (harvester)
   :code
-  (behavior ()
-    (local-vars (a0-0 none))
-    (when (not a0-0)
+  (behavior ((arg0 symbol))
+    (when (not arg0)
       (let ((a0-1 (-> self skel root-channel 0)))
         (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
         (set! (-> a0-1 param 0)

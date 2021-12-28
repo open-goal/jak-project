@@ -393,7 +393,7 @@
       (set! (-> gp-0 frame-num) 0.0)
       )
     (while #t
-      (when (logtest? (-> self draw status) 8)
+      (when (logtest? (-> self draw status) (draw-status drwf03))
         (if (and
                 (and *target* (>= 16384.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
                 (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
@@ -795,13 +795,13 @@
       )
     )
   :exit
-  (behavior () (set! (-> self draw status) (logand -3 (-> self draw status))) (none))
+  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
   :code
   (behavior ()
     (while #t
       (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
-          (set! (-> self draw status) (logand -3 (-> self draw status)))
-          (logior! (-> self draw status) 2)
+          (logclear! (-> self draw status) (draw-status drwf01))
+          (logior! (-> self draw status) (draw-status drwf01))
           )
       (suspend)
       )
@@ -856,14 +856,9 @@
        (when (and (= (-> arg0 type) fuel-cell) (= (-> arg3 param 0) 'pickup))
          (let ((a0-5 (handle->process (-> self fcell-handle))))
            (when a0-5
-             (let ((v1-10 (new 'stack-no-clear 'event-message-block)))
-               (let ((a1-5 v1-10))
-                 (set! (-> a1-5 to) (the-as process 0.0))
-                 (set! (-> a1-5 from) (the-as process 64102.4))
-                 (set! (-> a1-5 num-params) (the-as int 0.0))
-                 (set! (-> a1-5 message) (the-as symbol 1.0))
-                 )
-               (vector+! (the-as vector v1-10) (the-as vector v1-10) (-> self last-pos))
+             (let ((v1-10 (new 'stack-no-clear 'vector)))
+               (set-vector! v1-10 0.0 64102.4 0.0 1.0)
+               (vector+! v1-10 v1-10 (-> self last-pos))
                (send-event a0-5 'set-movie-pos v1-10)
                )
              )
@@ -873,7 +868,7 @@
       )
     )
   :exit
-  (behavior () (set! (-> self draw status) (logand -3 (-> self draw status))) (none))
+  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
   :code
   (behavior ()
     (save-reminder (get-task-control (game-task sunken-room)) 1 0)
@@ -886,8 +881,8 @@
         )
     (while #t
       (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
-          (set! (-> self draw status) (logand -3 (-> self draw status)))
-          (logior! (-> self draw status) 2)
+          (logclear! (-> self draw status) (draw-status drwf01))
+          (logior! (-> self draw status) (draw-status drwf01))
           )
       (suspend)
       )
@@ -1145,10 +1140,10 @@
         (send-event (ppointer->process (-> self button)) 'untrigger)
         )
     (when arg0
-      (logior! (-> self draw status) 32)
+      (logior! (-> self draw status) (draw-status drwf05))
       (dummy-20 self 1.0)
       (suspend)
-      (set! (-> self draw status) (logand -33 (-> self draw status)))
+      (logclear! (-> self draw status) (draw-status drwf05))
       )
     (while #t
       (dummy-20 self 1.0)
