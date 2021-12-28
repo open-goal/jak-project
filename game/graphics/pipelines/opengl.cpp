@@ -93,6 +93,10 @@ bool HasError() {
   }
 }
 
+void FocusCallback(GLFWwindow* window, int focused) {
+  glfwSetWindowAttrib(window, GLFW_FLOATING, focused);
+}
+
 }  // namespace
 
 static bool gl_inited = false;
@@ -136,6 +140,10 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   if (!window) {
     lg::error("gl_make_main_display failed - Could not create display window");
     return NULL;
+  }
+
+  if (glfwSetWindowFocusCallback(window, FocusCallback) != NULL) {
+    lg::warn("glfwSetWindowFocusCallback has been re-set!");
   }
 
   glfwMakeContextCurrent(window);
@@ -335,7 +343,6 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
                            display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
-      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
     } break;
     case 1: {
       // fullscreen
@@ -344,23 +351,17 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, vmode->refreshRate);
-      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
-      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
     } break;
     case 2: {
       // borderless fullscreen
       if (display->fullscreen_mode() == 0) {
         display->backup_params();
       }
-      glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
-                           display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
       int x, y;
       glfwGetMonitorPos(monitor, &x, &y);
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+      glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
-      glfwSetWindowSize(window, vmode->width, vmode->height);
-      glfwSetWindowPos(window, x, y);
     } break;
   }
 }
