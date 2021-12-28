@@ -175,27 +175,40 @@
 
 (defmethod vis-clear level ((obj level))
   "Clear the visibility info for when the level is loading."
+  
+  ;; clear vis-infos, so we can't try to look up a vis string.
   (countdown (v1-0 8)
     (nop!) ;; the usual.
     (set! (-> obj vis-info v1-0) #f)
     )
+  ;; set the vis string to all 0s.
   (dotimes (v1-3 128)
     (set! (deref int128 (-> obj vis-bits) v1-3) (the-as int128 0))
     )
+  ;; this flag indicates we don't have vis data because loading is in progress
   (set! (-> obj all-visible?) 'loading)
   0
   )
 
 
 (defmethod vis-load level ((obj level))
+  "Start the initial load of a VIS file to the IOP VIS buffer. After this is done, we can use
+   ramdisk-load to load chunks."
+   
+  ;; check to see if we have a buffer for loaded vis data. 
   (when (zero? (-> obj vis-info (-> obj vis-self-index) ramdisk))
+    ;; nope, we have no vis data buffer, we need to set it up.
+    
+    ;; first, we should see if the other level has loaded vis. if so, kill it.
     (let ((vis (-> obj other vis-info (-> obj other vis-self-index))))
         (when (and vis (nonzero? (-> vis ramdisk)))
-          (set! (-> vis flags) (logand #xffffffffbfffffff (-> vis flags))) ;; clear #x40000000
+          (set! (-> vis flags) (logand #xffffffffbfffffff (-> vis flags))) ;; clear waiting-for-load
           (set! (-> vis ramdisk) 0)
           0
           )
         )
+    
+    ;; set up a ramdisk rpc (fill command, actually load the file from DVD to IOP buffer)
     (let ((visname (make-file-name (file-kind vis) (the-as string (-> obj nickname)) 0 #f))
           (cmd (the-as ramdisk-rpc-fill (add-element *ramdisk-rpc*)))
           (s5-0 (+ *current-ramdisk-id* 1))
@@ -203,10 +216,14 @@
         (set! *current-ramdisk-id* s5-0)
         (set! (-> cmd filename) (string->sound-name visname))
         (set! (-> cmd ee-id) s5-0)
-        (call *ramdisk-rpc* (the-as uint 1) (the-as pointer 0) (the-as uint 0))
+        (load-dbg "doing ramdisk vis load: ~A~%" visname)
+        (call *ramdisk-rpc* RAMDISK_RPC_FILL_FNO (the-as pointer 0) (the-as uint 0))
+        ;; remember which ramdisk id we are assigned
         (set! (-> obj vis-info (-> obj vis-self-index) ramdisk) s5-0)
         )
     )
+  
+  ;; return the ramdisk ID.
   (-> obj vis-info (-> obj vis-self-index) ramdisk)
   )
 
@@ -227,30 +244,42 @@
   )
 
 (defmethod init-vis level ((obj level))
-  "Link vis data to level."
+  "Set up the vis info in a level from the vis info in the BSP."
+
   (when (not (or (= (-> obj status) 'inactive) (not (-> obj bsp))))
+    ;; no vis loaded at first, mark as loading/invalid.
     (set! (-> obj all-visible?) 'loading)
+    ;; vis info 0 is always self.
     (let ((s5-0 (-> obj bsp vis-info 0)))
+      ;; check that our vis info is valid.
       (cond
         ((and s5-0 (nonzero? s5-0) (valid? s5-0 level-vis-info #f #f 0))
+         ;; add to the level
          (set! (-> obj vis-info 0) s5-0)
+         ;; don't have a string loaded yet
          (set! (-> s5-0 current-vis-string) (the-as uint -1))
+         ;; link to bsp
          (set! (-> s5-0 from-bsp) (-> obj bsp))
+         ;; the current vis string (uncompressed). The level allocates/manages this.
          (set! (-> s5-0 vis-bits) (-> obj vis-bits))
-         (set!
-           (-> s5-0 flags)
-           (logand (the-as uint #xffffffff3fffffff) (-> s5-0 flags))
-           )
+         ;; clear waiting-for-load, thirty-one
+         (set! (-> s5-0 flags) (logand (the-as uint #xffffffff3fffffff) (-> s5-0 flags)))
+         ;; set twenty-nine
          (set! (-> s5-0 flags) (logior #x20000000 (-> s5-0 flags)))
          (set! (-> s5-0 ramdisk) (the-as uint 0))
          (set! (-> s5-0 string-block) (the-as uint #f))
+         ;; remember that we use the vis system. This will enable warnings in the kernel
+         ;; if we run out of actor memory. Without vis, I guess this happens a lot.
          (set! *vis-boot* #t)
          )
         (else
+          ;; we don't have vis (but it's okay)
           (set! (-> obj vis-info 0) #f)
           )
         )
       )
+    
+    ;; check for up to 6 neighbor level vis info.  The last one is always left as null.
     (dotimes (s5-1 6)
       (let* ((s3-0 (+ s5-1 1))
              (s4-0 (-> obj bsp vis-info s3-0))
@@ -261,10 +290,8 @@
            (set! (-> s4-0 current-vis-string) (the-as uint -1))
            (set! (-> s4-0 from-bsp) #f)
            (set! (-> s4-0 vis-bits) (-> obj vis-bits))
-           (set!
-             (-> s4-0 flags)
-             (logand (the-as uint #xffffffff1fffffff) (-> s4-0 flags))
-             )
+           ;; clear 29, 30, 31
+           (set! (-> s4-0 flags) (logand (the-as uint #xffffffff1fffffff) (-> s4-0 flags)))
            (set! *vis-boot* #t)
            )
           (else
@@ -1017,7 +1044,7 @@
 
 ;; method 10 level
 (defmethod is-object-visible? level ((obj level) (arg0 int))
-  "Is arg0 visible?"
+  "Is arg0 visible? Note that this will return #f if the visibility data is not loaded."
   ;; check the vis bits!
   (let* (;; lwu v1, 388(a0) 
             (vis-data (-> obj vis-bits))
@@ -1033,10 +1060,11 @@
             ;; dsllv v1, v1, a0
             (check-sign-word (the int (shl vis-byte shift-amount))) ;; signed
             )
-    ;; slt v1, v1, r0
+    ;; slt v1, v1, r0    v1 = (csw < 0)
     ;; daddiu v0, s7, 8
-    ;; movz v0, s7, v1
-    (>= check-sign-word 0)
+    ;; movz v0, s7, v1   if (csw >= 0) result = false
+    ;;(format 0 "vis check ~D ~X ~X ~A~%" arg0 vis-byte check-sign-word (>= check-sign-word 0))
+    (< check-sign-word 0)
     )
   )
 
@@ -1062,7 +1090,7 @@
                    (< (-> arg0 y) (-> v1-5 0 max y))
                    (< (-> arg0 z) (-> v1-5 0 max z))
                    )
-              #t
+              (return #t)
               )
           (set! v1-5 (the (inline-array box8s) (-> v1-5 1)))
           )
@@ -1759,23 +1787,33 @@
         )
       )
     )
+  
+  ;; load vis info.
+  ;; The load-state's vis-nick is the level we want vis data for.
+  ;; Note that we won't load vis until we are inside the level's boxes.
+  
+  ;; this will be the level that is currently being used.
   (let ((s5-3 #f))
     (dotimes (v1-121 (-> *level* length))
       (let ((a0-55 (-> *level* level v1-121)))
-          (when (= (-> a0-55 status) 'active)
-            (if (nonzero? (-> a0-55 vis-info (-> a0-55 vis-self-index) ramdisk))
+          (when (= (-> a0-55 status) 'active) ;; level is active
+            (if (nonzero? (-> a0-55 vis-info (-> a0-55 vis-self-index) ramdisk)) ;; and vis is set up.
               (set! s5-3 (-> a0-55 nickname))
               )
             )
           )
       )
+    
+    ;; if we have the wrong vis
     (when (and (!= s5-3 (-> obj vis-nick)) (-> *level* vis?))
+      ;; and we want a vis
       (when (-> obj vis-nick)
+        ;; find matching level and load vis
         (dotimes (s4-3 (-> *level* length))
           (let ((v1-133 (-> *level* level s4-3)))
               (when (= (-> v1-133 status) 'active)
                 (if (and (= (-> v1-133 nickname) (-> obj vis-nick))
-                         (-> v1-133 inside-boxes?)
+                         (-> v1-133 inside-boxes?) ;; note: only start if we are inside boxes.
                          )
                   (load-vis-info (-> obj vis-nick) s5-3)
                   )
@@ -1814,6 +1852,7 @@
       (when (= (-> s4-0 status) 'active)
         (set! (-> s4-0 inside-boxes?) (point-in-boxes? s4-0 (-> *math-camera* trans)))
         (set! (-> s4-0 inside-sphere?) (>= (-> s4-0 bsp bsphere w) (-> s4-0 level-distance)))
+        ;; being inside sets your meta-inside to #t. If you are outside, remember your old inside.
         (if (-> s4-0 inside-boxes?)
             (set! (-> s4-0 meta-inside?) #t)
             )
@@ -1828,6 +1867,7 @@
   (dotimes (s5-2 (-> obj length))
     (let ((s4-1 (-> obj level s5-2)))
       (when (= (-> s4-1 status) 'active)
+        ;; if you're outside here, and inside somewhere else, kick out of meta inside.
         (if (and (-> s4-1 inside-boxes?) (not (-> s4-1 other inside-boxes?)))
             (set! (-> s4-1 other meta-inside?) #f)
             )
@@ -1858,17 +1898,21 @@
       )
     )
   
-  ;; handle visibility stuff
+  ;; determine vis info idx for each level
   (dotimes (v1-67 (-> obj length))
     (let ((a0-26 (-> obj level v1-67)))
       (when (= (-> a0-26 status) 'active)
+        ;; self is always 0
         (set! (-> a0-26 vis-self-index) 0)
+        ;; neighbor level defaults to 7 (null placeholder)...
         (set! (-> a0-26 vis-adj-index) 7)
+        ;; but if there's a second level that's active, search for a vis info for that level...
         (when (= (-> a0-26 other status) 'active)
           (dotimes (a1-10 8)
             (if (and (-> a0-26 vis-info a1-10)
                      (= (-> a0-26 vis-info a1-10 from-level) (-> a0-26 other load-name))
                      )
+                ;; and store it in the adj index.
                 (set! (-> a0-26 vis-adj-index) a1-10)
                 )
             )
@@ -1905,12 +1949,16 @@
       )
     )
   
-  ;; not sure what this does yet...
+  ;; if we have vis for level A, but we aren't "in" it, display an error and
+  ;; force us out of the other level.  Ideally the boxes and the load boundary system
+  ;; will be consistent and there is no way to set a vis to a level that we aren't in.
+  ;; (you can be "in" multiple levels at the same time, when crossing levels, it is expected
+  ;;  that you are in both.)
   (dotimes (s5-4 (-> obj length))
     (let ((s4-4 (-> obj level s5-4)))
       (when (= (-> s4-4 status) 'active)
-        (when (and (= (-> s4-4 nickname) (-> *load-state* vis-nick))
-                   (not (-> s4-4 inside-boxes?))
+        (when (and (= (-> s4-4 nickname) (-> *load-state* vis-nick)) ;; vis for A
+                   (not (-> s4-4 inside-boxes?))                     ;; but not in A
                    )
           (if (and (= *cheat-mode* 'debug) (-> s4-4 other inside-boxes?))
               (format
@@ -1925,7 +1973,9 @@
       )
     )
   
-  ;; do the bsp vis stuff.
+  ;; if we are outside of the boxes, we consider ourselves "outside of bsp"
+  ;; if we are outside of both levels boxes, then we don't really know what to do
+  ;; for vis, and we can display the classic "outside of bsp" error.
   (cond
     ((not (or (-> obj level0 inside-boxes?) (-> obj level1 inside-boxes?)))
      (when (or (-> obj level0 vis-info 0) (-> obj level1 vis-info 0))
@@ -1935,16 +1985,18 @@
        )
      )
     (else
+      ;; we are in at least one bsp.
+      ;; now we need to link vis info to bsps.
       (dotimes (v1-125 (-> obj length))
         (let ((a0-44 (-> obj level v1-125)))
           (when (= (-> a0-44 status) 'active)
+            ;; loop over vis infos
             (dotimes (a1-17 8)
               (let ((a2-18 (-> a0-44 vis-info a1-17)))
                 (when a2-18
-                  (set!
-                    (-> a2-18 flags)
-                    (logand (the-as uint #xffffffff7fffffff) (-> a2-18 flags))
-                    )
+                  ;; clear bit 31
+                  (set! (-> a2-18 flags) (logand (the-as uint #xffffffff7fffffff) (-> a2-18 flags)))
+                  ;; link info to bsp
                   (cond
                     ((= a1-17 (-> a0-44 vis-self-index))
                      (set! (-> a2-18 from-bsp) (-> a0-44 bsp))
@@ -1959,34 +2011,30 @@
                   )
                 )
               )
+            
+            ;; now, handle setting bit 31 (maybe single vis mode?)
             (cond
+              ;; special display self mode.
               ((= (-> a0-44 display?) 'display-self)
                (let ((a0-46 (-> a0-44 vis-info (-> a0-44 vis-self-index))))
                  (if a0-46
-                     (set!
-                       (-> a0-46 flags)
-                       (the-as uint (logior (shl #x8000 16) (-> a0-46 flags)))
-                       )
+                     (set! (-> a0-46 flags) (the-as uint (logior (shl #x8000 16) (-> a0-46 flags))))
                      )
                  )
                )
+              ;; in this level, but not the other, only use vis for this.
               ((and (-> a0-44 inside-boxes?) (not (-> a0-44 other inside-boxes?)))
                (let ((a0-48 (-> a0-44 vis-info (-> a0-44 vis-self-index))))
                  (if a0-48
-                     (set!
-                       (-> a0-48 flags)
-                       (the-as uint (logior (shl #x8000 16) (-> a0-48 flags)))
-                       )
+                     (set! (-> a0-48 flags) (the-as uint (logior (shl #x8000 16) (-> a0-48 flags))))
                      )
                  )
                )
+              ;; only in other level, only use vis for other.
               ((-> a0-44 other inside-boxes?)
                (let ((a0-50 (-> a0-44 vis-info (-> a0-44 vis-adj-index))))
                  (if a0-50
-                     (set!
-                       (-> a0-50 flags)
-                       (the-as uint (logior (shl #x8000 16) (-> a0-50 flags)))
-                       )
+                     (set! (-> a0-50 flags) (the-as uint (logior (shl #x8000 16) (-> a0-50 flags))))
                      )
                  )
                )
@@ -2111,8 +2159,6 @@
         )
       )
   )
-
-
 
 
 (defmacro test-play ()

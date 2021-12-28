@@ -5,7 +5,6 @@
 ;; name in dgo: collide-func
 ;; dgos: GAME, ENGINE
 
-(define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float))
 
 ;; This file contains the primitive intersection functions used for collision.
 ;; Most take a description of primitive and a "probe"
@@ -383,3 +382,22 @@
     )
   )
 
+;; ray-triangle-intersect (unused)
+;; collide-do-primitives (used in moving-sphere-triangle-intersect)
+(def-mips2c collide-do-primitives (function float))
+;; moving-sphere-triangle-intersect (used in cam)
+(def-mips2c moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float))
+;; moving-sphere-sphere-intersect (used in collide)
+(defun moving-sphere-sphere-intersect ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  (let ((f30-0 (ray-sphere-intersect arg0 arg1 arg2 (+ (-> arg0 w) (-> arg2 w)))))
+    (when (>= f30-0 0.0)
+      (let ((s3-1 (vector-normalize! (vector-! (new-stack-vector0) arg2 arg0) (-> arg0 w))))
+        (vector+*! arg3 arg0 arg1 f30-0)
+        (vector+! arg3 arg3 s3-1)
+        )
+      )
+    f30-0
+    )
+  )
+
+;; moving-sphere-moving-sphere-intersect (unused)
