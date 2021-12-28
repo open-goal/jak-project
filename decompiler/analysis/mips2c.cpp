@@ -526,14 +526,28 @@ Mips2C_Line handle_lwc1(const Instruction& i0,
   }
 }
 
-Mips2C_Line handle_lw(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
+Mips2C_Line handle_lw(Mips2C_Output& out,
+                      const Instruction& i0,
+                      const std::string& instr_str,
+                      const LinkedObjectFile* file) {
   if (i0.get_src(1).is_reg(rs7()) && i0.get_src(0).is_sym()) {
     // symbol load.
     out.require_symbol(i0.get_src(0).get_sym());
     return {fmt::format("c->load_symbol({}, cache.{});", reg_to_name(i0.get_dst(0)),
                         goal_to_c_name(i0.get_src(0).get_sym())),
             instr_str};
-
+  }
+  if (i0.get_src(1).is_reg(rfp()) && i0.get_src(0).is_label()) {
+    const auto& label = file->labels.at(i0.get_src(0).get_label());
+    assert((label.offset % 4) == 0);
+    const auto& word = file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    assert(word.kind() == LinkedWord::PLAIN_DATA);
+    u32 val_u32 = word.data;
+    float val_float;
+    memcpy(&val_float, &val_u32, 4);
+    std::string comment = fmt::format("{} {}", instr_str, float_to_string(val_float));
+    return {fmt::format("c->lw_float_constant({}, 0x{:08x});", reg_to_name(i0.get_dst(0)), val_u32),
+            comment};
   } else {
     // fall back to standard loads
     return handle_generic_load(i0, instr_str);
@@ -658,7 +672,7 @@ Mips2C_Line handle_or(const Instruction& i0, const std::string& instr_str) {
         instr_str};
   } else {
     // actually do a logical OR of two registers: or a0, a1, a2
-    return handle_generic_op3(i0, instr_str, "_or");
+    return handle_generic_op3(i0, instr_str, "or_");
   }
 }
 
@@ -735,6 +749,8 @@ Mips2C_Line handle_likely_branch_bc(const Instruction& i0, const std::string& in
       return {fmt::format("((s64){}) != ((s64){})", reg64_or_zero(i0.get_src(0)),
                           reg64_or_zero(i0.get_src(1))),
               instr_str};
+    case InstructionKind::BC1TL:
+      return {"cop1_bc", instr_str};
     default:
       return handle_unknown(instr_str);
   }
@@ -742,6 +758,13 @@ Mips2C_Line handle_likely_branch_bc(const Instruction& i0, const std::string& in
 
 Mips2C_Line handle_vdiv(const Instruction& i0, const std::string& instr_string) {
   return {fmt::format("c->vdiv({}, BC::{}, {}, BC::{});", reg_to_name(i0.get_src(0)),
+                      "xyzw"[i0.get_src(1).get_vf_field()], reg_to_name(i0.get_src(2)),
+                      "xyzw"[i0.get_src(3).get_vf_field()]),
+          instr_string};
+}
+
+Mips2C_Line handle_vrsqrt(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->vrsqrt({}, BC::{}, {}, BC::{});", reg_to_name(i0.get_src(0)),
                       "xyzw"[i0.get_src(1).get_vf_field()], reg_to_name(i0.get_src(2)),
                       "xyzw"[i0.get_src(3).get_vf_field()]),
           instr_string};
@@ -786,6 +809,12 @@ Mips2C_Line handle_vopmula(const Instruction& i0, const std::string& instr_strin
       instr_string};
 }
 
+Mips2C_Line handle_vopmsub(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->vopmsub({}, {}, {});", reg_to_name(i0.get_dst(0)),
+                      reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_string};
+}
+
 Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string) {
   return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
           instr_string};
@@ -808,7 +837,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const LinkedObjectFile* file) {
   switch (i0.kind) {
     case InstructionKind::LW:
-      return handle_lw(output, i0, instr_str);
+      return handle_lw(output, i0, instr_str, file);
     case InstructionKind::LB:
     case InstructionKind::LBU:
     case InstructionKind::LWU:
@@ -845,6 +874,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3_mask(i0, instr_str, "vsub");
     case InstructionKind::VMINI:
       return handle_generic_op3_mask(i0, instr_str, "vmini");
+    case InstructionKind::VMAX:
+      return handle_generic_op3_mask(i0, instr_str, "vmax");
     case InstructionKind::OR:
       return handle_or(i0, instr_str);
     case InstructionKind::SW:
@@ -901,7 +932,6 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMAXW:
     case InstructionKind::SUBU:
     case InstructionKind::DSRAV:
-    case InstructionKind::VOPMSUB:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
@@ -936,6 +966,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vdiv(i0, instr_str);
     case InstructionKind::VSQRT:
       return handle_vsqrt(i0, instr_str);
+    case InstructionKind::VRSQRT:
+      return handle_vrsqrt(i0, instr_str);
     case InstructionKind::VRXOR:
       return handle_vrxor(i0, instr_str);
     case InstructionKind::VRGET:
@@ -973,6 +1005,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_plain_op(i0, instr_str, "vwaitq");
     case InstructionKind::VOPMULA:
       return handle_vopmula(i0, instr_str);
+    case InstructionKind::VOPMSUB:
+      return handle_vopmsub(i0, instr_str);
     case InstructionKind::PMFHL_LH:
       return handle_pmfhl_lh(i0, instr_str);
     default:

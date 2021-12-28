@@ -3,6 +3,7 @@
 #include "extract_level.h"
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_tfrag.h"
+#include "decompiler/level_extractor/extract_tie.h"
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
@@ -91,10 +92,14 @@ void extract_from_level(ObjectFileDB& db,
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level);
+    } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
+      fmt::print("  extracting TIE\n");
+      auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
+      assert(as_tie_tree);
+      extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
+                  bsp_header.texture_remap_table, tex_db, tfrag_level);
     } else {
       fmt::print("  unsupported tree {}\n", draw_tree->my_type());
-      tfrag_level.trees.emplace_back();
-      tfrag_level.trees.back().kind = tfrag3::TFragmentTreeKind::INVALID;
     }
   }
 

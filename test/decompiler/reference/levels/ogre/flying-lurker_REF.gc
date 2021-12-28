@@ -79,9 +79,9 @@
       (send-event
         (handle->process gp-1)
         'eval
-        (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) 32)))
+        (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) (draw-status drwf05))))
                                       (set! (-> self draw status) v0-0)
-                                      v0-0
+                                      (the-as uint v0-0)
                                       )
                                  )
         )
@@ -460,7 +460,7 @@
           )
       (when (-> obj draw shadow)
         (when (or
-                (logtest? (-> obj draw status) 8)
+                (logtest? (-> obj draw status) (draw-status drwf03))
                 (< (vector-vector-xz-distance-squared (-> obj root trans) (camera-pos)) 10485760000.0)
                 )
           (let ((s3-1 (new 'stack-no-clear 'collide-tri-result))
@@ -557,7 +557,7 @@
   :code
   (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (while #t
       (suspend)
       )
@@ -808,7 +808,7 @@
   :enter
   (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (none)
     )
   :trans
@@ -1041,9 +1041,9 @@
     (send-event
       (handle->process gp-1)
       'eval
-      (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) 32)))
+      (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) (draw-status drwf05))))
                                     (set! (-> self draw status) v0-0)
-                                    v0-0
+                                    (the-as uint v0-0)
                                     )
                                )
       )
@@ -1317,7 +1317,7 @@
       )
     )
   :exit
-  (behavior () (set! (-> self draw status) (logand -3 (-> self draw status))) (none))
+  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
   :trans
   (behavior ()
     (spool-push *art-control* "flying-lurker-intro" 0 self -99.0)

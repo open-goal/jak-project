@@ -121,7 +121,100 @@
   dst
   )
 
-;; definition for function matrix*!
+(desfun .vf.vec (reg1 &rest regs)
+  "make a vector for assembly regs.
+   A vector is simply a list of 4 regs, the locations of each of the 4 components (x, y, z, w).
+   If you supply less than 4 regs, the last one will expand to the remaining components.
+   Examples: (.vf.vec vf1) -> (vf1 vf1 vf1 vf1); (.vf.vec vf2 vf2 vf5) -> (vf2 vf2 vf5 vf5)
+   TODO: make keys"
+  (let (
+        (x reg1)
+        (y #f)
+        (z #f)
+        (w #f)
+        )
+    (cond
+      ((= (length regs) 1)
+       (set! y (car regs))
+       (set! z (car regs))
+       (set! w (car regs))
+       )
+      ((= (length regs) 2)
+       (set! y (car regs))
+       (set! z (cadr regs))
+       (set! w (cadr regs))
+       )
+      ((>= (length regs) 3)
+       (set! y (car regs))
+       (set! z (cadr regs))
+       (set! w (caddr regs))
+       )
+      (#t
+       (set! y reg1)
+       (set! z reg1)
+       (set! w reg1)
+       )
+      )
+    (cons x (cons y (cons z (cons w '()))))
+    )
+  )
+
+(desfun .vf.x (vec) (car vec))
+(desfun .vf.y (vec) (cadr vec))
+(desfun .vf.z (vec) (caddr vec))
+(desfun .vf.w (vec) (cadddr vec))
+
+(desfun .vf.vec<-arg (arg)
+  (if (pair? arg)
+      (if (= (length arg) 1) (.vf.vec (car arg))
+        (if (= (length arg) 2) (.vf.vec (car arg) (cadr arg))
+          (if (= (length arg) 3) (.vf.vec (car arg) (cadr arg) (caddr arg))
+            (.vf.vec (car arg) (cadr arg) (caddr arg) (cadddr arg))
+            )
+          )
+        )
+      (.vf.vec arg)
+      )
+  )
+
+(defmacro .matrix*! (acc dest-mat src1-mat src2-mat)
+  "macro for assembly matrix multiplication. dest and src2 shall not overlap.
+   The mats are a list of 4 vectors."
+  (let (
+        (dest-r1 (.vf.x (.vf.vec<-arg (car dest-mat))))
+        (dest-r2 (.vf.x (.vf.vec<-arg (cadr dest-mat))))
+        (dest-r3 (.vf.x (.vf.vec<-arg (caddr dest-mat))))
+        (dest-r4 (.vf.x (.vf.vec<-arg (cadddr dest-mat))))
+        (src1-r1 (.vf.vec<-arg (car src1-mat)))
+        (src1-r2 (.vf.vec<-arg (cadr src1-mat)))
+        (src1-r3 (.vf.vec<-arg (caddr src1-mat)))
+        (src1-r4 (.vf.vec<-arg (cadddr src1-mat)))
+        (src2-r1 (.vf.vec<-arg (car src2-mat)))
+        (src2-r2 (.vf.vec<-arg (cadr src2-mat)))
+        (src2-r3 (.vf.vec<-arg (caddr src2-mat)))
+        (src2-r4 (.vf.vec<-arg (cadddr src2-mat)))
+        )
+    `(begin
+      (.mul.x.vf     ,acc     ,(.vf.x src2-r1) ,(.vf.x src1-r1))
+      (.add.mul.y.vf ,acc     ,(.vf.x src2-r2) ,(.vf.y src1-r1) ,acc)
+      (.add.mul.z.vf ,acc     ,(.vf.x src2-r3) ,(.vf.z src1-r1) ,acc)
+      (.add.mul.w.vf ,dest-r1 ,(.vf.x src2-r4) ,(.vf.w src1-r1) ,acc)
+      (.mul.x.vf     ,acc     ,(.vf.y src2-r1) ,(.vf.x src1-r2))
+      (.add.mul.y.vf ,acc     ,(.vf.y src2-r2) ,(.vf.y src1-r2) ,acc)
+      (.add.mul.z.vf ,acc     ,(.vf.y src2-r3) ,(.vf.z src1-r2) ,acc)
+      (.add.mul.w.vf ,dest-r2 ,(.vf.y src2-r4) ,(.vf.w src1-r2) ,acc)
+      (.mul.x.vf     ,acc     ,(.vf.z src2-r1) ,(.vf.x src1-r3))
+      (.add.mul.y.vf ,acc     ,(.vf.z src2-r2) ,(.vf.y src1-r3) ,acc)
+      (.add.mul.z.vf ,acc     ,(.vf.z src2-r3) ,(.vf.z src1-r3) ,acc)
+      (.add.mul.w.vf ,dest-r3 ,(.vf.z src2-r4) ,(.vf.w src1-r3) ,acc)
+      (.mul.x.vf     ,acc     ,(.vf.w src2-r1) ,(.vf.x src1-r4))
+      (.add.mul.y.vf ,acc     ,(.vf.w src2-r2) ,(.vf.y src1-r4) ,acc)
+      (.add.mul.z.vf ,acc     ,(.vf.w src2-r3) ,(.vf.z src1-r4) ,acc)
+      (.add.mul.w.vf ,dest-r4 ,(.vf.w src2-r4) ,(.vf.w src1-r4) ,acc)
+      )
+    )
+  )
+
 (defun matrix*! ((dst matrix) (src1 matrix) (src2 matrix))
   "Set dst = src1 * src2. It is okay for any arguments to be the same data.
    This is a moderately efficient implementation."
