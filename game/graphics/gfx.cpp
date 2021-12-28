@@ -94,8 +94,13 @@ const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   }
 }
 
+void SetRenderer(GfxPipeline pipeline) {
+  g_global_settings.renderer = GetRenderer(pipeline);
+  g_settings.renderer = pipeline;
+}
+
 const GfxRendererModule* GetCurrentRenderer() {
-  return GetRenderer(g_settings.renderer);
+  return g_global_settings.renderer;
 }
 
 u32 Init() {
@@ -106,6 +111,7 @@ u32 Init() {
   Pad::ForceClearKeys();
 
   LoadSettings();
+  SetRenderer(g_settings.renderer);
 
   if (GetCurrentRenderer()->init(g_settings)) {
     lg::error("Gfx::Init error");
@@ -140,11 +146,17 @@ u32 Exit() {
 }
 
 u32 vsync() {
-  return GetCurrentRenderer()->vsync();
+  if (GetCurrentRenderer()) {
+    return GetCurrentRenderer()->vsync();
+  }
+  return 0;
 }
 
 u32 sync_path() {
-  return GetCurrentRenderer()->sync_path();
+  if (GetCurrentRenderer()) {
+    return GetCurrentRenderer()->sync_path();
+  }
+  return 0;
 }
 
 void send_chain(const void* data, u32 offset) {

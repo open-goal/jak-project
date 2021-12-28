@@ -59,7 +59,7 @@ struct GfxSettings {
   int vsync;   // (temp) number of screen update per frame
   bool debug;  // graphics debugging
 
-  GfxPipeline renderer;  // which rendering pipeline to use.
+  GfxPipeline renderer = GfxPipeline::Invalid;  // which rendering pipeline to use.
 };
 
 // runtime settings
@@ -68,6 +68,9 @@ struct GfxGlobalSettings {
   // the excess space is what will be letterboxed away.
   int lbox_w;
   int lbox_h;
+
+  // current renderer
+  const GfxRendererModule* renderer;
 };
 
 namespace Gfx {
@@ -77,6 +80,7 @@ extern GfxSettings g_settings;
 // extern const std::vector<const GfxRendererModule*> renderers;
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
+const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init();
 void Loop(std::function<bool()> f);
