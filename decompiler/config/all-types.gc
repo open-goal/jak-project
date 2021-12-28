@@ -934,6 +934,8 @@
 
   (MISSING-orb-hint #x233)
 
+  (beach-eco-rock-increment #x239)
+
   (jungle-maindoor-hint #x23c)
 
   (firecanyon-not-enough-cells #x24f)
@@ -998,9 +1000,12 @@
   (red-eco-tutorial #x2a6)
 
   (daxter-blue-eco-plat-tutorial #x2a7)
-  (misty-bone-bridge-hint #x2aa)
 
   (fish? #x2a9)
+
+  (misty-bone-bridge-hint #x2aa)
+
+  (beach-grottopole-increment #x2af)
 
   (firecanyon-collect-cells-collected #x2b1)
   (firecanyon-collect-cells-collected-reminder #x2b2)
@@ -1008,10 +1013,6 @@
   (caught #x2b4)
   (missed #x2b5)
   (lose! #x2b6)
-
-  
-
-  
 
   (village2-gambler-money #x300)
   (village2-geologist-money #x301)
@@ -1052,7 +1053,7 @@
   (reach-center #x323) ;; task name?
   (rolling-ring-chase-1 #x324)
   (rolling-ring-chase-2 #x325)
-
+  (sunken-kiera-you-raised-a-piece-of-lpc #x326)
   (rolling-beat-lurkers #x327)
   (swamp-finished-with-flutflut #x328)
   (rolling-race-beat-record #x335)
@@ -1065,6 +1066,7 @@
   (rolling-ring-hint-be-quick-to-next #x340)
   (rolling-ring-hint-be-quick-all #x341)
 
+  (sunken-pipegame-follow-it #x343)
   (sunken-helix-daxter-bad-feeling #x344)
   (sunken-blue-eco-charger-hint #x345)
   (sunken-double-lurker-hint #x347)
@@ -1492,7 +1494,7 @@
 (define-extern process type) ; deftype provided by C Kernel
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
-   (status basic :offset-assert #x24)
+   (status basic :offset-assert #x24) ; a symbol
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
@@ -23944,6 +23946,8 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    windmill-one-idle)
   )
 
 (deftype grottopole (process-drawable)
@@ -23958,6 +23962,10 @@
   :size-assert         #xc8
   :heap-base           #x60
   :flag-assert         #x14006000c8
+  (:states
+    grottopole-idle
+    grottopole-moving-up
+    grottopole-moving-down)
   )
 
 (deftype ecoventrock (process-drawable)
@@ -23966,6 +23974,9 @@
   :size-assert         #xb0
   :heap-base           #x40
   :flag-assert         #x14004000b0
+  (:states
+    (ecoventrock-break symbol)
+    ecoventrock-idle)
   )
 
 (deftype flying-rock (process-drawable)
@@ -23976,6 +23987,9 @@
   :size-assert         #xc0
   :heap-base           #x50
   :flag-assert         #x14005000c0
+  (:states
+    flying-rock-rolling
+    flying-rock-idle)
   )
 
 (deftype bladeassm (process-drawable)
@@ -23986,6 +24000,8 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    bladeassm-idle)
   )
 
 (deftype flutflutegg (process-drawable)
@@ -24008,6 +24024,11 @@
   (:methods
     (dummy-20 (_type_ float float float) none 20)
     )
+  (:states
+    (flutflutegg-break symbol)
+    flutflutegg-idle
+    flutflutegg-physics-fall
+    flutflutegg-physics)
   )
 
 (deftype harvester (process-drawable)
@@ -24018,6 +24039,9 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    harvester-idle
+    (harvester-inflate symbol))
   )
 
 (deftype beachcam (process-hidden)
@@ -24040,27 +24064,12 @@
 
 (define-extern *beachcam-sg* skeleton-group)
 (define-extern *harvester-sg* skeleton-group)
-(define-extern harvester-idle (state harvester)) ;; unknown type
-(define-extern harvester-inflate (state symbol harvester)) ;; unknown type
 (define-extern *flutflutegg-sg* skeleton-group)
-(define-extern flutflutegg-break (state symbol flutflutegg)) ;; unknown type
-(define-extern flutflutegg-idle (state flutflutegg)) ;; unknown type
-(define-extern flutflutegg-physics-fall (state flutflutegg)) ;; unknown type
-(define-extern flutflutegg-physics (state flutflutegg)) ;; unknown type
 (define-extern *bladeassm-sg* skeleton-group)
-(define-extern bladeassm-idle (state bladeassm)) ;; unknown type
 (define-extern *kickrock-sg* skeleton-group)
-(define-extern flying-rock-rolling (state flying-rock)) ;; unknown type
-(define-extern flying-rock-idle (state flying-rock)) ;; unknown type
 (define-extern *ecoventrock-sg* skeleton-group)
-(define-extern ecoventrock-break (state symbol ecoventrock)) ;; unknown type
-(define-extern ecoventrock-idle (state ecoventrock)) ;; unknown type
 (define-extern *grottopole-sg* skeleton-group)
-(define-extern grottopole-idle (state grottopole)) ;; unknown type
-(define-extern grottopole-moving-up (state grottopole)) ;; unknown type
-(define-extern grottopole-moving-down (state grottopole)) ;; unknown type
 (define-extern *windmill-one-sg* skeleton-group)
-(define-extern windmill-one-idle (state windmill-one)) ;; unknown type
 (define-extern *flutflut-naked-sg* skeleton-group)
 
 
@@ -33330,6 +33339,9 @@
   (:methods
     (dummy-20 (_type_ float) vector 20)
     )
+  (:states
+    blue-eco-charger-orb-idle
+    blue-eco-charger-orb-active)
   )
 
 (deftype blue-eco-charger (process-drawable)
@@ -33346,6 +33358,11 @@
     (dummy-20 (_type_) object 20)
     (dummy-21 (_type_ symbol) object 21)
     )
+  (:states
+    blue-eco-charger-idle
+    (blue-eco-charger-open symbol)
+    blue-eco-charger-close
+    blue-eco-charger-stuck-open)
   )
 
 (deftype exit-chamber-items (structure)
@@ -33385,6 +33402,13 @@
     (dummy-23 (_type_ symbol) object 23)
     (dummy-24 (_type_ float) none 24)
     )
+  (:states
+    exit-chamber-charger-puzzle
+    exit-chamber-idle-in-sunken
+    (exit-chamber-idle-in-village symbol)
+    exit-chamber-lower
+    exit-chamber-rise
+    exit-chamber-charger-puzzle-beaten)
   )
 
 (deftype exit-chamber-button (basebutton)
@@ -33403,20 +33427,8 @@
 ;; - Unknowns
 
 (define-extern *exit-chamber-sg* skeleton-group)
-(define-extern exit-chamber-charger-puzzle (state exit-chamber)) ;; unknown type
-(define-extern exit-chamber-idle-in-sunken (state exit-chamber)) ;; unknown type
-(define-extern exit-chamber-idle-in-village (state exit-chamber)) ;; unknown type
-(define-extern exit-chamber-lower (state exit-chamber)) ;; unknown type
-(define-extern exit-chamber-rise (state exit-chamber)) ;; unknown type
-(define-extern exit-chamber-charger-puzzle-beaten (state exit-chamber)) ;; unknown type
 (define-extern *blue-eco-charger-sg* skeleton-group)
-(define-extern blue-eco-charger-idle (state blue-eco-charger)) ;; unknown type
-(define-extern blue-eco-charger-open (state symbol blue-eco-charger)) ;; unknown type
-(define-extern blue-eco-charger-close (state blue-eco-charger)) ;; unknown type
-(define-extern blue-eco-charger-stuck-open (state blue-eco-charger)) ;; unknown type
 (define-extern *blue-eco-charger-orb-sg* skeleton-group)
-(define-extern blue-eco-charger-orb-idle (state blue-eco-charger-orb)) ;; unknown type
-(define-extern blue-eco-charger-orb-active (state blue-eco-charger-orb)) ;; unknown type
 
 
 ;; ----------------------
@@ -33537,8 +33549,8 @@
    (sucked-up-far-part-pos  vector :inline :offset-assert 80)
    (blown-out-jar-part-pos  vector :inline :offset-assert 96)
    (blown-out-far-part-pos  vector :inline :offset-assert 112)
-   (sucked-up-part          basic          :offset-assert 128)
-   (blown-out-part          basic          :offset-assert 132)
+   (sucked-up-part          sparticle-launch-control          :offset-assert 128) ; guesses
+   (blown-out-part          sparticle-launch-control          :offset-assert 132) ; guesses
    )
   :method-count-assert 9
   :size-assert         #x88
@@ -33546,11 +33558,11 @@
   )
 
 (deftype sunken-pipegame (process-drawable)
-  ((abort-audio-if-beaten? basic           :offset-assert 176)
+  ((abort-audio-if-beaten? symbol           :offset-assert 176)
    (challenges-mask        uint32          :offset-assert 180)
    (challenge              int32           :offset-assert 184)
    (ticker                 ticky   :inline :offset-assert 192)
-   (button                 sunken-pipegame-button 3       :offset-assert 224)
+   (button                 (pointer sunken-pipegame-button) 3       :offset-assert 224)
    (prize                  sunken-pipegame-prize 3       :inline :offset-assert 240)
    )
   :method-count-assert 23
@@ -33558,23 +33570,21 @@
   :heap-base           #x230
   :flag-assert         #x17023002a0
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_ symbol) symbol 21)
+    (dummy-22 (_type_ symbol) none 22)
     )
+  (:states
+    sunken-pipegame-start-up
+    sunken-pipegame-idle
+    sunken-pipegame-end-play
+    sunken-pipegame-beat-challenge
+    sunken-pipegame-begin-play)
   )
 
 ;; - Functions
 
-(define-extern sunken-pipegame-button-init-by-other function)
-
-;; - Unknowns
-
-(define-extern sunken-pipegame-start-up (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-idle (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-end-play (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-beat-challenge (state sunken-pipegame)) ;; unknown type
-(define-extern sunken-pipegame-begin-play (state sunken-pipegame)) ;; unknown type
+(define-extern sunken-pipegame-button-init-by-other (function vector quaternion entity-actor symbol none :behavior sunken-pipegame-button))
 
 
 ;; ----------------------
