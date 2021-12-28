@@ -309,7 +309,11 @@ void OpenGLRenderer::draw_test_triangle() {
 /*!
  * Take a screenshot!
  */
-void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height, int x, int y) {
+void OpenGLRenderer::finish_screenshot(const std::string& output_name,
+                                       int width,
+                                       int height,
+                                       int x,
+                                       int y) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   glReadBuffer(GL_BACK);
