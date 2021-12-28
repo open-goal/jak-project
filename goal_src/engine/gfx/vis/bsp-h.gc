@@ -5,12 +5,16 @@
 ;; name in dgo: bsp-h
 ;; dgos: GAME, ENGINE
 
-;; Each level has . There is a bsp-header, and a list of bsp-nodes.
+;; Each level has a bsp file. There is a bsp-header, and a list of bsp-nodes.
 ;; The bsp-nodes make up a tree.  Each node has a plane and two child nodes.
 ;; The bsp-header also contains (or references) all of the static level information.
 ;; The file containing the bsp-header is called the "bt" and is loaded in a special
 ;; way because that allows it to use all of the remaining level heap memory.
 ;; This file is very large (>8 MB), and always the last file in a level DGO.
+;; The bsp file also contains all the drawable trees and lots of other level data,
+;; so the "bsp-header" name isn't very accurate.
+
+;; Typically, the "bsp" refers to the static level data, and the "level" to the runtime level info.
 
 ;; In the game, all of these bsp-header files have -vis after their name
 ;; I believe this means that this is a version of a level that has an associated vis file
@@ -18,6 +22,9 @@
 
 
 (declare-type entity-camera basic)
+
+;; flags: 1 = load
+;;        2 = display
 
 ;; a node in the bsp tree
 (deftype bsp-node (structure)
@@ -48,7 +55,7 @@
    (unk-zero-0             basic                            :offset-assert  68)
    (name                   symbol                           :offset-assert  72)
    (nickname               symbol                           :offset-assert  76)
-   (vis-info               level-vis-info                8  :offset-assert  80)
+   (vis-info               level-vis-info                8  :offset-assert  80) ;; note: 0 when not present.
    (actors                 drawable-inline-array-actor      :offset-assert 112)
    (cameras                (array entity-camera)            :offset-assert 116)
    (nodes                  (inline-array bsp-node)          :offset-assert 120)

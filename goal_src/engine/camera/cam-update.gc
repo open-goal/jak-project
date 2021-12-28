@@ -5,15 +5,11 @@
 ;; name in dgo: cam-update
 ;; dgos: GAME, ENGINE
 
-;; definition for function plane-from-points
-(defun
-  plane-from-points
-  ((arg0 (inline-array plane))
-   (arg1 vector)
-   (arg2 vector)
-   (arg3 vector)
-   (arg4 int)
-   )
+;; Once the camera's position and orientation has been calculated,
+;; the camera and visibility outputs are updated in this file.
+
+(defun plane-from-points ((arg0 (inline-array plane)) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 int))
+  "Get a plane that contains the 3 given points."
   (let ((s4-0 (new 'stack-no-clear 'vector)))
    (vector-cross! s4-0 arg1 arg2)
    (vector-normalize! s4-0 1.0)
@@ -28,8 +24,8 @@
    )
   )
 
-;; definition for function set-point
 (defun set-point ((arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+  "Set a vector to an xyz point (sets w = 1.0)"
   (set! (-> arg0 x) arg1)
   (set! (-> arg0 y) arg2)
   (set! (-> arg0 z) arg3)
@@ -39,11 +35,8 @@
    )
   )
 
-;; definition for function update-view-planes
-;; Used lq/sq
-(defun
-  update-view-planes
-  ((arg0 math-camera) (arg1 (inline-array plane)) (arg2 float))
+(defun update-view-planes ((arg0 math-camera) (arg1 (inline-array plane)) (arg2 float))
+  "Compute the frustum planes from the given camera."
   (local-vars (sv-240 vector))
   (when (not *artist-fix-frustum*)
    (let ((s5-0 (new 'stack 'view-frustum)))
@@ -129,116 +122,144 @@
    )
   )
 
-;; definition for symbol *update-leaf-when-outside-bsp*, type symbol
+;; if we should still attempt vis updates when outside of the bsp's boxes.
 (define *update-leaf-when-outside-bsp* #t)
 
-;; definition for function update-visible
 (defun update-visible ((arg0 math-camera))
+  "Update occlusion visibility data for the camera position.
+   Each level has a bsp. Each leaf of the bsp stores a list of visible objects.
+   This is used to implement occlusion culling.
+   The vis-bits of the level will be updated if needed."
   (local-vars (a0-16 symbol) (s3-0 level-vis-info) (s4-0 level-vis-info))
   (when (not *artist-fix-visible*)
-   (dotimes (s5-0 (-> *level* length))
-    (let ((v1-4 (-> *level* level s5-0)))
-     (when (= (-> v1-4 status) 'active)
-      (if
-       (and
-        (nonzero? (-> v1-4 bsp nodes))
-        (or *update-leaf-when-outside-bsp* (-> v1-4 inside-boxes?))
-        )
-       (bsp-camera-asm (-> v1-4 bsp) (-> arg0 trans))
-       )
-      )
-     )
-    )
-   (dotimes (gp-1 (-> *level* length))
-    (let ((s5-1 (-> *level* level gp-1)))
-     (when (= (-> s5-1 status) 'active)
-      (let ((a2-0 (/ (+ (-> s5-1 bsp visible-list-length) 15) 16)))
-       (set! (-> s5-1 all-visible?) (if (-> s5-1 all-visible?)
-                                     (-> s5-1 all-visible?)
-                                     #t
-                                     )
-        )
-       (cond
-        ((or (not (-> s5-1 force-all-visible?)) (-> s5-1 inside-boxes?))
-         (cond
-          ((or *artist-all-visible* (zero? (-> s5-1 bsp nodes)))
-           (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
-           )
-          ((begin
-            (set! s4-0 (-> s5-1 vis-info (-> s5-1 vis-self-index)))
-            (set! s3-0 (-> s5-1 vis-info (-> s5-1 vis-adj-index)))
-            (let ((v1-32 #f))
-             (set! a0-16 #f)
-             (when s4-0
-              (set! v1-32 (nonzero? (logand (shl #x8000 16) (-> s4-0 flags))))
-              (if (< (-> s4-0 length) (-> s4-0 from-bsp current-leaf-idx))
-               (set! v1-32 #f)
-               )
+    ;; first, determine which leaf of the bsp we are in (per level).
+    (dotimes (s5-0 (-> *level* length))
+      (let ((v1-4 (-> *level* level s5-0)))
+        (when (= (-> v1-4 status) 'active)
+          (if (and (nonzero? (-> v1-4 bsp nodes))
+                   (or *update-leaf-when-outside-bsp* (-> v1-4 inside-boxes?))
+                   )
+              ;; will store in the bsp's current-leaf-idx.
+              (bsp-camera-asm (-> v1-4 bsp) (-> arg0 trans))
               )
-             (when s3-0
-              (set! a0-16 (nonzero? (logand (shl #x8000 16) (-> s3-0 flags))))
-              (if (< (-> s3-0 length) (-> s3-0 from-bsp current-leaf-idx))
-               (set! a0-16 #f)
-               )
-              )
-             v1-32
-             )
-            )
-           (if (!= (-> s5-1 all-visible?) 'loading)
-            (set! (-> s5-1 all-visible?) #f)
-            )
-           (when
-            (update-vis! s5-1 s4-0 (-> s4-0 ramdisk) (-> s4-0 string-block))
-            (countdown (v1-40 8)
-             (let ((a0-22 (-> s5-1 vis-info v1-40)))
-              (when a0-22
-               (if (!= a0-22 s4-0)
-                (set! (-> a0-22 current-vis-string) (the-as uint -1))
-                )
-               )
-              )
-             )
-            (set! (-> s5-1 all-visible?) #f)
-            )
-           )
-          (a0-16
-           (if (!= (-> s5-1 all-visible?) 'loading)
-            (set! (-> s5-1 all-visible?) #f)
-            )
-           (when
-            (update-vis! s5-1 s3-0 (-> s3-0 ramdisk) (-> s3-0 string-block))
-            (countdown (v1-50 8)
-             (let ((a0-27 (-> s5-1 vis-info v1-50)))
-              (when a0-27
-               (if (!= a0-27 s3-0)
-                (set! (-> a0-27 current-vis-string) (the-as uint -1))
-                )
-               )
-              )
-             )
-            (set! (-> s5-1 all-visible?) #f)
-            )
-           )
-          ((and (= (-> s5-1 all-visible?) 'loading) (-> *level* play?))
-           )
-          (else
-           (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
-           )
           )
-         )
-        (else
-         (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
-         )
         )
-       )
-      (if (and *stats-bsp* (= *master-mode* 'game))
-       (format *stdcon* "~0kleaf-index = ~d~%" (-> s5-1 bsp current-leaf-idx))
-       )
       )
-     )
+
+    ;; do vis updates.
+    (dotimes (gp-1 (-> *level* length))
+      (let ((s5-1 (-> *level* level gp-1)))
+        (when (= (-> s5-1 status) 'active)
+          (let ((a2-0 (/ (+ (-> s5-1 bsp visible-list-length) 15) 16)))
+            
+            ;; start by setting all-visible to something truthy (either original, or #t)
+            ;; below, we'll try to figure out a way to get vis data and set this back to #f.
+            (set! (-> s5-1 all-visible?) (if (-> s5-1 all-visible?)
+                                             (-> s5-1 all-visible?)
+                                             #t
+                                             )
+                  )
+            (cond
+              ((or (not (-> s5-1 force-all-visible?)) (-> s5-1 inside-boxes?))
+               ;; we are inside the level's bsp, we should attempt vis stuff.
+               (cond
+                 ((or *artist-all-visible* (zero? (-> s5-1 bsp nodes)))
+                  ;; we have no bsp, or manual override all visible. Copy the all vis list
+                  ;; to our vis string.
+                  (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
+                  )
+                 ((begin
+                    ;; our vis info
+                    (set! s4-0 (-> s5-1 vis-info (-> s5-1 vis-self-index)))
+                    ;; adj vis info (idx will be 7 if there's no adj right now, and will give us #f)
+                    (set! s3-0 (-> s5-1 vis-info (-> s5-1 vis-adj-index)))
+                    
+                    (let ((v1-32 #f)) ;; should use self vis
+                      (set! a0-16 #f) ;; should use adj vis
+                      
+                      ;; see if we want self vis
+                      (when s4-0
+                        (set! v1-32 (nonzero? (logand (shl #x8000 16) (-> s4-0 flags))))
+                        
+                        ;; not sure when this would happen, but make sure that our leaf
+                        ;; index is in bounds (maybe if you use the wrong version of levels)
+                        (if (< (-> s4-0 length) (-> s4-0 from-bsp current-leaf-idx))
+                            (set! v1-32 #f)
+                            )
+                        )
+                      
+                      ;; see if we want adj vis.
+                      (when s3-0
+                        (set! a0-16 (nonzero? (logand (shl #x8000 16) (-> s3-0 flags))))
+                        (if (< (-> s3-0 length) (-> s3-0 from-bsp current-leaf-idx))
+                            (set! a0-16 #f)
+                            )
+                        )
+                      v1-32 ;; this is the cond condition, and is if we want the self vis.
+                      )
+                    )
+                  ;; want self.  clear all visible if we aren't loading.
+                  (if (!= (-> s5-1 all-visible?) 'loading)
+                      (set! (-> s5-1 all-visible?) #f)
+                      )
+                  (when (update-vis! s5-1 s4-0 (-> s4-0 ramdisk) (-> s4-0 string-block))
+                    ;; success! Remove all other vis strings.
+                    ;; if update vis failed (due to still loading, etc), keep previous.
+                    (countdown (v1-40 8)
+                      (let ((a0-22 (-> s5-1 vis-info v1-40)))
+                        (when a0-22
+                          (if (!= a0-22 s4-0)
+                              (set! (-> a0-22 current-vis-string) (the-as uint -1))
+                              )
+                          )
+                        )
+                      )
+                    ;; successful vis update, remove all-visible.
+                    (set! (-> s5-1 all-visible?) #f)
+                    )
+                  )
+                 ;; same case as above, but if we want to use the other vis.
+                 (a0-16
+                   (if (!= (-> s5-1 all-visible?) 'loading)
+                       (set! (-> s5-1 all-visible?) #f)
+                       )
+                   (when
+                     (update-vis! s5-1 s3-0 (-> s3-0 ramdisk) (-> s3-0 string-block))
+                     (countdown (v1-50 8)
+                       (let ((a0-27 (-> s5-1 vis-info v1-50)))
+                         (when a0-27
+                           (if (!= a0-27 s3-0)
+                               (set! (-> a0-27 current-vis-string) (the-as uint -1))
+                               )
+                           )
+                         )
+                       )
+                     (set! (-> s5-1 all-visible?) #f)
+                     )
+                   )
+                 ((and (= (-> s5-1 all-visible?) 'loading) (-> *level* play?))
+                  ;; if we're in between vis, then leave the old string.
+                  )
+                 (else
+                   ;; couldn't find any vis, just make everything visible
+                   (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
+                   )
+                 )
+               )
+              (else
+                ;; outside boxes, and force all visible is set.
+                (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
+                )
+              )
+            )
+          (if (and *stats-bsp* (= *master-mode* 'game))
+              (format *stdcon* "~0kleaf-index = ~d~%" (-> s5-1 bsp current-leaf-idx))
+              )
+          )
+        )
+      )
+    #f
     )
-   #f
-   )
   )
 
 ;; definition for symbol *save-camera-inv-rot*, type matrix

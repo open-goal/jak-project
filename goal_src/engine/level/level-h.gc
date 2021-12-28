@@ -6,19 +6,35 @@
 ;; dgos: GAME, ENGINE
 
 ;; The level system is responsible for loading and managning the two levels.
+;; The "level" type contains runtime information about a level (possibly one that is loading)
+;; and the "level-group" type contains two levels.
 
 (defconstant LEVEL_COUNT 2) ;; there are two levels in memory!
 
 (defenum vis-info-flag
   :bitfield #t
   :type uint32
-  (waiting-for-load 30)
+  (twenty-nine 29)       ;; is .VIS file vis?
+  (waiting-for-iop-to-ee 30)
+  (thirty-one 31)        ;; single vis?
   )
 
 ;; Information related to visibility data for a level.
-;; Unclear why there are 8 of these per level.
-;; Perhaps there are up to 8 "chunks" of the visibility loaded at a single time?
-;; The full visibility data lives on the IOP.
+;; This is just metadata that describes the actual VIS file.
+;; The typical use is to do (-> info vis-string idx) to get the offset (in the .VIS file) of the
+;; compressed visibility string for a given bsp leaf.
+
+;; Each level may have multiple level-vis-infos.
+;; Each .VIS file can have visibility data for multiple levels.
+;; Each level that is present in a .VIS has a level-vis-info to go with is.
+;; One level-vis-info (the first) is always for the 
+;; actual level, and there is typically one for each neighboring level.
+;; The final level-vis-info (7) should always be empty (set to 0 in the bsp-header)
+
+;; When travelling between two levels, the game will only have one .VIS file loaded,
+;; and it does two lookups in this .VIS file - one for the current level, and one for the nearby
+;; levels.  This means that visibility for "beach" near the border of "village1" is stored in
+;; both BEA.VIS and VI1.VIS.
 (declare-type bsp-header basic)
 (deftype level-vis-info (basic)
   ((level              symbol           :offset-assert 4)
@@ -30,7 +46,7 @@
    (dictionary-length  uint32           :offset-assert 28)
    (dictionary         uint32           :offset-assert 32)
    (string-block       uint32           :offset-assert 36)
-   (ramdisk            uint32           :offset-assert 40)
+   (ramdisk            uint32           :offset-assert 40) ;; ramdisk file ID.
    (vis-bits           pointer          :offset-assert 44)
    (current-vis-string uint32           :offset-assert 48)
    (vis-string         uint32  :dynamic :offset-assert 52)
@@ -135,7 +151,7 @@
    (all-visible?              symbol        :offset-assert 396)
    (force-all-visible?        symbol          :offset-assert 400)
    (linking                   basic           :offset-assert 404)
-   (vis-info                  level-vis-info 8       :offset-assert 408)
+   (vis-info                  level-vis-info 8       :offset-assert 408) ;; note: #f when doesn't exist.
    (vis-self-index            int32           :offset-assert 440)
    (vis-adj-index             int32           :offset-assert 444)
    (vis-buffer                uint8 2048    :offset-assert 448)
