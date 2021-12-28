@@ -1027,6 +1027,7 @@
  "load/loader-h.gc"
  "gfx/texture-h.gc"
  "level/level-h.gc"
+ "pc/pckernel-h.gc" ;; added
  "camera/math-camera-h.gc"
  "camera/math-camera.gc"
  "gfx/font-h.gc"

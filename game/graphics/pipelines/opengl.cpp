@@ -142,10 +142,6 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
     return NULL;
   }
 
-  if (glfwSetWindowFocusCallback(window, FocusCallback) != NULL) {
-    lg::warn("glfwSetWindowFocusCallback has been re-set!");
-  }
-
   glfwMakeContextCurrent(window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -343,6 +339,8 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
                            display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+      glfwSetWindowFocusCallback(window, NULL);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
     } break;
     case 1: {
       // fullscreen
@@ -351,6 +349,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, vmode->refreshRate);
+      glfwSetWindowFocusCallback(window, FocusCallback);
     } break;
     case 2: {
       // borderless fullscreen
@@ -362,6 +361,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+      glfwSetWindowFocusCallback(window, FocusCallback);
     } break;
   }
 }
