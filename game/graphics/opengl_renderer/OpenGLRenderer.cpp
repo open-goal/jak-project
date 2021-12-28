@@ -149,8 +149,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   }
 
   if (settings.save_screenshot) {
-    finish_screenshot(settings.screenshot_path, settings.window_width_px,
-                      settings.window_height_px);
+    finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
+                      settings.lbox_width_px, settings.lbox_height_px);
   }
 }
 
@@ -309,11 +309,11 @@ void OpenGLRenderer::draw_test_triangle() {
 /*!
  * Take a screenshot!
  */
-void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height) {
+void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height, int x, int y) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   glReadBuffer(GL_BACK);
-  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+  glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {

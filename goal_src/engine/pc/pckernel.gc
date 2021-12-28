@@ -33,7 +33,7 @@
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
 (defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x0002)
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0003)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0000)
 (defglobalconstant PC_KERNEL_VERSION (logior
                                         (ash PC_KERNEL_VERSION_MAJOR 48)
@@ -179,10 +179,13 @@
    (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
    (fullscreen? symbol) ;; fullscreen status. can be #f, #t or borderless
    (letterbox? symbol) ;; letterbox. #f = stretched
+   (vsync? symbol) ;; vsync.
 
    (os symbol) ;; windows, linux, macos
    (user symbol) ;; username. not system username, just debug thing.
    (debug? symbol) ;; more debug stuff just in case.
+   (new-lb? symbol) ;; different load boundary graphics.
+   (display-actor-bank symbol) ;; debug stuff.
 
    (device-audio pc-device-info :inline) ;; used audio device
    (device-screen pc-device-info :inline) ;; used display device
@@ -274,6 +277,7 @@
   
   (set! (-> obj user) #f)
   (set! (-> obj debug?) *debug-segment*)
+  (set! (-> obj new-lb?) #f)
   
   (update-from-os obj)
   
@@ -298,6 +302,7 @@
   (set! (-> obj use-vis?) #t)
   (set! (-> obj aspect-ratio-auto?) #f)
   (set! (-> obj fullscreen?) #f)
+  (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
 
   (none))
@@ -487,9 +492,10 @@
   (clear *pc-temp-string*)
   (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
   (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
-  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A~% L: ~A" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+  (format *pc-temp-string* "fullscreen: ~A ~A~%" (-> obj fullscreen?) (-> obj vsync?))
 
-  (draw-string-xy *pc-temp-string* buf 0 (- 240 (* 8 3)) (font-color default) (font-flags shadow kerning))
+  (draw-string-xy *pc-temp-string* buf 0 (- 240 (* 8 4)) (font-color default) (font-flags shadow kerning))
   
   (none))
 
