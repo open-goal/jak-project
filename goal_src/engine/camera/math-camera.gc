@@ -36,17 +36,21 @@
   (set! (-> math-cam x-ratio) (tan (* 0.5 (-> math-cam fov))))
   ;;(format #t "aspect is ~A~%" aspect)
   (if (= aspect 'aspect4x3)
-      (set! (-> math-cam y-ratio) (* (/ 3.0 4.0) (-> math-cam x-ratio)))
-      (set! (-> math-cam y-ratio) (* (/ 9.0 16.0) (-> math-cam x-ratio)))
+      (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio)))
+      (set! (-> math-cam y-ratio) (* (1/ ASPECT_16X9) (-> math-cam x-ratio)))
       )
   (#when PC_PORT
     (cond
       ((-> *pc-settings* use-vis?)
+       ;; using game vis, cannot allow seeing more of the view
+       ;; crops excess aspect ratio at the top and bottom
        (set! (-> math-cam y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
        )
       (else
-       (set! (-> math-cam y-ratio) (* (/ 3.0 4.0) (-> math-cam x-ratio)))
-       (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3))
+       ;; not using game vis, allow *extended* aspect ratios
+       ;; there is no vertical cropping, and you can see more of the sides
+       (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio))) ;; same cropping as 4x3
+       (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
        )
       )
     )

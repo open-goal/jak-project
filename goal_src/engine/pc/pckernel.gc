@@ -31,6 +31,39 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+
+(defmethod set-fullscreen! pc-settings ((obj pc-settings) (mode symbol))
+  "toggles fullscreen mode"
+  
+  (if (= (-> obj fullscreen?) mode) ;; already fullscreen
+    (return 0))
+  
+  (set! (-> obj fullscreen?) mode)
+  (pc-set-fullscreen
+          (cond ((= mode 'borderless) 2)
+                (mode 1)
+                (else 0)
+                )
+          0)
+  0)
+
+(defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
+  "toggles fullscreen mode"
+  
+  (pc-set-window-size width height)
+  0)
+
+
+(defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
+  (let ((aspect (/ (the float aw) (the float ah))))
+    (set! (-> *pc-settings* aspect-ratio) aspect)
+    (set! (-> *pc-settings* aspect-ratio-auto?) #f)
+    (set! (-> *pc-settings* use-vis?) #f)
+    )
+  0)
+
+
+
 (defmethod update-from-os pc-settings ((obj pc-settings))
   "Update settings from the PC kernel to GOAL."
   
@@ -96,30 +129,14 @@
   (update-from-os obj)
   (update-to-os obj)
 
+  (when (not (-> obj use-vis?))
+    (set! (-> *video-parms* relative-x-scale) (/ ASPECT_4X3 (-> obj aspect-ratio)))
+    (set! (-> *video-parms* relative-x-scale-reciprical) (/ (-> obj aspect-ratio) ASPECT_4X3))
+    (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
+    )
+
   (none))
 
-
-
-(defmethod set-fullscreen! pc-settings ((obj pc-settings) (mode symbol))
-  "toggles fullscreen mode"
-  
-  (if (= (-> obj fullscreen?) mode) ;; already fullscreen
-    (return 0))
-  
-  (set! (-> obj fullscreen?) mode)
-  (pc-set-fullscreen
-          (cond ((= mode 'borderless) 2)
-                (mode 1)
-                (else 0)
-                )
-          0)
-  0)
-
-(defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
-  "toggles fullscreen mode"
-  
-  (pc-set-window-size width height)
-  0)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,39 +162,6 @@
   (none))
 
 )
-
-
-(defmethod set-resolution pc-settings ((obj pc-settings) (height int))
-  (set! (-> *video-parms* screen-sy) (/ height 2))
-  (set! (-> *video-parms* relative-y-scale) (/ (the float height) 448.0))
-  (set! (-> *math-camera* isometric vector 1 y) (* 0.5 (/ 448.0 height)))
-  (set! (-> *math-camera* y-pix) (* 0.25 height))
-  (set! (-> *math-camera* y-clip) (the float height))
-  (set! (-> *video-parms* reset-video-mode) #t)
-  (set! (-> *video-parms* screen-hy) (/ (-> *video-parms* screen-sy) 2))
-  (set! (-> *video-parms* screen-miny) (- 2048 (-> *video-parms* screen-hy)))
-  (set! (-> *video-parms* screen-maxy) (+ (-> *video-parms* screen-hy) 2048))
-  (set! (-> *video-parms* screen-masky) (+ (-> *video-parms* screen-sy) -1))
-  (set! (-> *pause-context* origin y) (the float (+ (-> *video-parms* screen-sy) -54)))
-  (set! (-> *pause-context* height) (the float (-> *video-parms* screen-sy)))
-  (set! (-> *font-default-matrix* vector 1 y) (-> *video-parms* relative-y-scale))
-  (set! (-> *font-default-matrix* vector 3 y) (- (the float (-> *video-parms* screen-hy))))
-  (set! (-> *video-parms* relative-y-scale-reciprical) 1.0)
-  (set! *profile-y* (+ (-> *video-parms* screen-miny) 8))
-  0
-  )
-
-(defmethod set-aspect pc-settings ((obj pc-settings) (aw float) (ah float))
-  (let ((aspect (/ aw ah)))
-    (set! (-> *video-parms* relative-x-scale) (/ ASPECT_4X3 aspect))
-    (set! (-> *video-parms* relative-x-scale-reciprical) (/ aspect ASPECT_4X3))
-    (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
-    (set! (-> *pc-settings* aspect-ratio) aspect)
-    (set! (-> *pc-settings* aspect-ratio-auto?) #f)
-    (set! (-> *pc-settings* use-vis?) #f)
-    )
-  0
-  )
 
 
 
