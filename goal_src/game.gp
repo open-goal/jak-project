@@ -246,17 +246,24 @@
        "out/iso/JUN.DGO"
        "out/iso/MAI.DGO"
        "out/iso/BEA.DGO"
+       "out/iso/LAV.DGO"
        "out/iso/CIT.DGO"
        "out/iso/SUN.DGO"
+       "out/iso/FUCVICTO.STR"
+       "out/iso/FUCV2.STR"
        "out/iso/FUCV3.STR"
        "out/iso/FUCV4.STR"
+       "out/iso/FUCV5.STR"
+       "out/iso/FUCV6.STR"
+       "out/iso/FUCV7.STR"
+       "out/iso/FUCV8.STR"
        )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; engine Group
 ;;;;;;;;;;;;;;;;;;;;;
-;; the engine group is a group of files loaded as the game engine with no levels
+;; the engine group is a group of files required to boot the game engine with no levels
 
 (group "engine"
        "out/iso/0COMMON.TXT"
@@ -527,7 +534,7 @@
      "fic.gd"
      )
 
-(copy-textures 1119) ;; might be common/zoomer hud??
+(copy-textures 1119) ;; might be common/zoomer hud?? also in misty, lavatube, ogre and racerpkg
 
 (goal-src-sequence
  "levels/firecanyon/"
@@ -813,6 +820,46 @@
 ;  ("out/obj/default-menu.o" "out/obj/cavecrystal-light.o")
 ;  "darkcave/darkcave-obs.gc"
 ;  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; lavatube
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "LAV.DGO" "lav.gd")
+
+(goal-src-sequence
+  "levels/lavatube/"
+  :deps ("out/obj/default-menu.o")
+
+  "lavatube-obs.gc"
+  "lavatube-energy.gc"
+  "lavatube-part.gc"
+  "assistant-lavatube.gc"
+  )
+
+(copy-textures 1338 1340 1339 1337)
+
+(copy-gos
+  "ecovalve-ag-LAV"
+  "racer-ag-LAV"
+  "assistant-lavatube-start-ag"
+  "chainmine-ag"
+  "darkecobarrel-ag"
+  "energyarm-ag"
+  "energyball-ag"
+  "energybase-ag"
+  "energydoor-ag"
+  "energyhub-ag"
+  "lavaballoon-ag"
+  "lavabase-ag"
+  "lavafall-ag"
+  "lavafallsewera-ag"
+  "lavafallsewerb-ag"
+  "lavashortcut-ag"
+  "lavayellowtarp-ag"
+  "water-anim-lavatube-ag"
+  "lavatube-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; citadel
