@@ -122,32 +122,38 @@
    )
   )
 
+;; if we should still attempt vis updates when outside of the bsp's boxes.
 (define *update-leaf-when-outside-bsp* #t)
 
 (defun update-visible ((arg0 math-camera))
   "Update occlusion visibility data for the camera position.
    Each level has a bsp. Each leaf of the bsp stores a list of visible objects.
-   This is used to implement occlusion culling."
+   This is used to implement occlusion culling.
+   The vis-bits of the level will be updated if needed."
   (local-vars (a0-16 symbol) (s3-0 level-vis-info) (s4-0 level-vis-info))
   (when (not *artist-fix-visible*)
     ;; first, determine which leaf of the bsp we are in (per level).
     (dotimes (s5-0 (-> *level* length))
       (let ((v1-4 (-> *level* level s5-0)))
         (when (= (-> v1-4 status) 'active)
-          ;; (format 0 "lev ~A bsp: ~A ~A~%" (-> *level* level s5-0) (nonzero? (-> v1-4 bsp nodes)) (-> v1-4 inside-boxes?))
           (if (and (nonzero? (-> v1-4 bsp nodes))
                    (or *update-leaf-when-outside-bsp* (-> v1-4 inside-boxes?))
                    )
+              ;; will store in the bsp's current-leaf-idx.
               (bsp-camera-asm (-> v1-4 bsp) (-> arg0 trans))
               )
           )
         )
       )
 
+    ;; do vis updates.
     (dotimes (gp-1 (-> *level* length))
       (let ((s5-1 (-> *level* level gp-1)))
         (when (= (-> s5-1 status) 'active)
           (let ((a2-0 (/ (+ (-> s5-1 bsp visible-list-length) 15) 16)))
+            
+            ;; start by setting all-visible to something truthy (either original, or #t)
+            ;; below, we'll try to figure out a way to get vis data and set this back to #f.
             (set! (-> s5-1 all-visible?) (if (-> s5-1 all-visible?)
                                              (-> s5-1 all-visible?)
                                              #t
@@ -155,35 +161,50 @@
                   )
             (cond
               ((or (not (-> s5-1 force-all-visible?)) (-> s5-1 inside-boxes?))
+               ;; we are inside the level's bsp, we should attempt vis stuff.
                (cond
                  ((or *artist-all-visible* (zero? (-> s5-1 bsp nodes)))
+                  ;; we have no bsp, or manual override all visible. Copy the all vis list
+                  ;; to our vis string.
                   (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
                   )
                  ((begin
+                    ;; our vis info
                     (set! s4-0 (-> s5-1 vis-info (-> s5-1 vis-self-index)))
+                    ;; adj vis info (idx will be 7 if there's no adj right now, and will give us #f)
                     (set! s3-0 (-> s5-1 vis-info (-> s5-1 vis-adj-index)))
-                    (let ((v1-32 #f))
-                      (set! a0-16 #f)
+                    
+                    (let ((v1-32 #f)) ;; should use self vis
+                      (set! a0-16 #f) ;; should use adj vis
+                      
+                      ;; see if we want self vis
                       (when s4-0
                         (set! v1-32 (nonzero? (logand (shl #x8000 16) (-> s4-0 flags))))
+                        
+                        ;; not sure when this would happen, but make sure that our leaf
+                        ;; index is in bounds (maybe if you use the wrong version of levels)
                         (if (< (-> s4-0 length) (-> s4-0 from-bsp current-leaf-idx))
                             (set! v1-32 #f)
                             )
                         )
+                      
+                      ;; see if we want adj vis.
                       (when s3-0
                         (set! a0-16 (nonzero? (logand (shl #x8000 16) (-> s3-0 flags))))
                         (if (< (-> s3-0 length) (-> s3-0 from-bsp current-leaf-idx))
                             (set! a0-16 #f)
                             )
                         )
-                      v1-32
+                      v1-32 ;; this is the cond condition, and is if we want the self vis.
                       )
                     )
+                  ;; want self.  clear all visible if we aren't loading.
                   (if (!= (-> s5-1 all-visible?) 'loading)
                       (set! (-> s5-1 all-visible?) #f)
                       )
-                  (when
-                    (update-vis! s5-1 s4-0 (-> s4-0 ramdisk) (-> s4-0 string-block))
+                  (when (update-vis! s5-1 s4-0 (-> s4-0 ramdisk) (-> s4-0 string-block))
+                    ;; success! Remove all other vis strings.
+                    ;; if update vis failed (due to still loading, etc), keep previous.
                     (countdown (v1-40 8)
                       (let ((a0-22 (-> s5-1 vis-info v1-40)))
                         (when a0-22
@@ -193,9 +214,11 @@
                           )
                         )
                       )
+                    ;; successful vis update, remove all-visible.
                     (set! (-> s5-1 all-visible?) #f)
                     )
                   )
+                 ;; same case as above, but if we want to use the other vis.
                  (a0-16
                    (if (!= (-> s5-1 all-visible?) 'loading)
                        (set! (-> s5-1 all-visible?) #f)
@@ -215,13 +238,16 @@
                      )
                    )
                  ((and (= (-> s5-1 all-visible?) 'loading) (-> *level* play?))
+                  ;; if we're in between vis, then leave the old string.
                   )
                  (else
+                   ;; couldn't find any vis, just make everything visible
                    (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
                    )
                  )
                )
               (else
+                ;; outside boxes, and force all visible is set.
                 (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
                 )
               )
