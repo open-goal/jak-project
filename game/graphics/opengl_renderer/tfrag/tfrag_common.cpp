@@ -302,6 +302,23 @@ void cull_check_all_slow(const math::Vector4f* planes,
   }
 }
 
+u32 make_all_visible_index_list(std::pair<int, int>* group_out,
+                                u32* idx_out,
+                                const std::vector<tfrag3::StripDraw>& draws) {
+  int idx_buffer_ptr = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    std::pair<int, int> ds;
+    ds.first = idx_buffer_ptr;
+    memcpy(&idx_out[idx_buffer_ptr], draw.vertex_index_stream.data(),
+           draw.vertex_index_stream.size() * sizeof(u32));
+    idx_buffer_ptr += draw.vertex_index_stream.size();
+    ds.second = idx_buffer_ptr;
+    group_out[i] = ds;
+  }
+  return idx_buffer_ptr;
+}
+
 u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
                                     u32* idx_out,
                                     const std::vector<tfrag3::StripDraw>& draws,
