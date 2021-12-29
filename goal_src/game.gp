@@ -122,7 +122,7 @@
 
 (defmacro copy-vis-file (name)
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "/VIS/" name ".VIS")))
+         (path (string-append "iso_data/" folder "VIS/" name ".VIS")))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/iso/" name ".VIS")))))
