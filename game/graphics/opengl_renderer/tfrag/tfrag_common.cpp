@@ -179,25 +179,30 @@ void interp_time_of_day_slow(const float weights[8],
 
 SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>& in) {
   SwizzledTimeOfDay out;
-  out.data.resize(in.size() * 8 * 4);
+  out.data.resize((in.size() + 3) * 8 * 4);
 
   // we're rearranging per 4 colors (groups of 32 * 4 = 128)
   // color (lots of these)
   // component (8 of these)
   // channel (4 of these, rgba)
 
-  for (u32 color_quad = 0; color_quad < in.size() / 4; color_quad++) {
+  for (u32 color_quad = 0; color_quad < (in.size() + 3) / 4; color_quad++) {
     u8* quad_out = out.data.data() + color_quad * 128;
     for (u32 component = 0; component < 8; component++) {
       for (u32 color = 0; color < 4; color++) {
         for (u32 channel = 0; channel < 4; channel++) {
-          *quad_out = in.at(color_quad * 4 + color).rgba[component][channel];
+          size_t in_idx = color_quad * 4 + color;
+          if (in_idx < in.size()) {
+            *quad_out = in.at(color_quad * 4 + color).rgba[component][channel];
+          } else {
+            *quad_out = 0;
+          }
           quad_out++;
         }
       }
     }
   }
-  out.color_count = in.size();
+  out.color_count = (in.size() + 3) & (~3);
   return out;
 }
 
@@ -211,14 +216,14 @@ void interp_time_of_day_fast(const float weights[8],
   // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
 
   // weight multipliers
-  __m256i weights0 = _mm256_set1_epi16(weights[0] * 128.f);
-  __m256i weights1 = _mm256_set1_epi16(weights[1] * 128.f);
-  __m256i weights2 = _mm256_set1_epi16(weights[2] * 128.f);
-  __m256i weights3 = _mm256_set1_epi16(weights[3] * 128.f);
-  __m256i weights4 = _mm256_set1_epi16(weights[4] * 128.f);
-  __m256i weights5 = _mm256_set1_epi16(weights[5] * 128.f);
-  __m256i weights6 = _mm256_set1_epi16(weights[6] * 128.f);
-  __m256i weights7 = _mm256_set1_epi16(weights[7] * 128.f);
+  __m256i weights0 = _mm256_set1_epi16(weights[0] * 64.f);
+  __m256i weights1 = _mm256_set1_epi16(weights[1] * 64.f);
+  __m256i weights2 = _mm256_set1_epi16(weights[2] * 64.f);
+  __m256i weights3 = _mm256_set1_epi16(weights[3] * 64.f);
+  __m256i weights4 = _mm256_set1_epi16(weights[4] * 64.f);
+  __m256i weights5 = _mm256_set1_epi16(weights[5] * 64.f);
+  __m256i weights6 = _mm256_set1_epi16(weights[6] * 64.f);
+  __m256i weights7 = _mm256_set1_epi16(weights[7] * 64.f);
 
   // saturation: note that alpha is saturated to 128 but the rest are 255.
   // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
@@ -271,7 +276,7 @@ void interp_time_of_day_fast(const float weights[8],
     color0 = _mm256_add_epi16(color0, color4);
 
     // divide, because we multiplied our weights by 2^7.
-    color0 = _mm256_srli_epi16(color0, 7);
+    color0 = _mm256_srli_epi16(color0, 6);
 
     // saturate
     color0 = _mm256_min_epu16(sat, color0);
