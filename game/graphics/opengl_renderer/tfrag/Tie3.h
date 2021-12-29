@@ -73,6 +73,7 @@ class Tie3 : public BucketRenderer {
   bool m_override_level = false;
   bool m_use_fast_time_of_day = true;
   bool m_debug_wireframe = false;
+  bool m_debug_all_visible = false;
   Filtered<float> m_all_tree_time;
 
   TfragPcPortData m_pc_port_data;

@@ -86,6 +86,14 @@ void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
   }
 }
 
+void VarMapSSA::merge_reg(Register reg) {
+  for (auto& entry : m_entries) {
+    if (entry.reg == reg) {
+      entry.var_id = 0;
+    }
+  }
+}
+
 /*!
  * Make all Bs A.
  */
@@ -489,6 +497,13 @@ std::string SSA::print() const {
     result += "\n";
   }
   return result;
+}
+
+/*!
+ * Merge all variables in the same register to the given register.
+ */
+void SSA::merge_reg_to_single_variable(Register reg) {
+  map.merge_reg(reg);
 }
 
 /*!
@@ -1069,6 +1084,10 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   if (debug_prints) {
     fmt::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
   }
+
+  // merge special registers
+  ssa.merge_reg_to_single_variable(Register(Reg::GPR, Reg::SP));
+  ssa.merge_reg_to_single_variable(Register(Reg::GPR, Reg::S6));
 
   // remember what the SSA mapping was:
   auto ssa_mapping = ssa.get_ssa_mapping();

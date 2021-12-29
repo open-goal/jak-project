@@ -6,26 +6,8 @@
 #include <io.h>
 #endif
 #include "SystemThread.h"
-//#include "shared_config.h"
-//#include "ps2/SCE_IOP.h"
-//#include "overlord/ramdisk.h"
-//#include "ps2/SCE_SIF.h"
-//#include "IOP.h"
-//
-//#include "overlord/dma.h"
-//#include "overlord/fake_iso.h"
-//#include "overlord/iso.h"
-//#include "overlord/iso_api.h"
-//#include "overlord/iso_cd.h"
-//#include "overlord/iso_queue.h"
-//#include "overlord/isocommon.h"
-//#include "overlord/overlord.h"
-//#include "overlord/ramdisk.h"
-//#include "overlord/sbank.h"
-//#include "overlord/soundcommon.h"
-//#include "overlord/srpc.h"
-//#include "overlord/ssound.h"
-//#include "overlord/stream.h"
+
+#include <cstring>
 
 IOP::IOP() {}
 
@@ -68,6 +50,7 @@ void IOP::reset_allocator() {
 
 void* IOP::iop_alloc(int size) {
   void* mem = malloc(size);
+  memset(mem, 0xaa, size);
   allocations.push_back(mem);
   return mem;
 }
