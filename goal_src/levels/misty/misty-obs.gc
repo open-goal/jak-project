@@ -1346,7 +1346,7 @@
   :flag-assert         #x14005000bd
   (:states
     mis-bone-bridge-bump
-    mis-bone-bridge-fall
+    (mis-bone-bridge-fall symbol)
     mis-bone-bridge-hit
     mis-bone-bridge-idle
     )
@@ -1384,15 +1384,10 @@
                 (set! (-> a1-9 message) 'query)
                 (set! (-> a1-9 param 0) (the-as uint 'powerup))
                 (set! (-> a1-9 param 1) (the-as uint 2))
-                (cond
-                  ((send-event-function *target* a1-9)
-                   enter-state
-                   (go mis-bone-bridge-fall)
-                   )
-                  (else
+                (if (send-event-function *target* a1-9)
+                    (go mis-bone-bridge-fall #f)
                     (go mis-bone-bridge-hit)
                     )
-                  )
                 )
               )
              (else
@@ -1473,10 +1468,9 @@
   :code
   (behavior ()
     (+! (-> self hit-points) -1)
-    (when (zero? (-> self hit-points))
-      enter-state
-      (go mis-bone-bridge-fall)
-      )
+    (if (zero? (-> self hit-points))
+        (go mis-bone-bridge-fall #f)
+        )
     (let ((a0-1 (-> self skel root-channel 0)))
       (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
       (set! (-> a0-1 param 0)
@@ -1505,10 +1499,9 @@
   :trans
   (the-as (function none :behavior mis-bone-bridge) rider-trans)
   :code
-  (behavior ()
-    (local-vars (a0-0 none))
+  (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
-    (when (not a0-0)
+    (when (not arg0)
       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
         (when gp-1
           (let ((t9-2 (method-of-type part-tracker activate)))
@@ -1636,16 +1629,10 @@
       )
     )
   (set! (-> obj hit-points) 3)
-  (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     enter-state
-     #t
-     (go mis-bone-bridge-fall)
-     )
-    (else
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (go mis-bone-bridge-fall #t)
       (go mis-bone-bridge-idle)
       )
-    )
   (none)
   )
 
