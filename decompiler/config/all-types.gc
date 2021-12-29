@@ -1155,11 +1155,11 @@
   (dark-crystal-run-away #x439)
   (cave-trap-nest-hint #x440)
   (snow-fort-reminder #x443)
-  
-
   (ram-boss-red-eco-hint #x444)
 
   (ice-cube-hint #x448)
+
+  (snowy-turned-on-yellow-vents #x44c)
 
   (village3-warp-gate-reminder #x452)
   (village3-warp-gate-reminder=annoyed #x453)
@@ -12077,7 +12077,7 @@
     (target-clone-anim handle)
     target-title
     target-demo
-    target-warp-in
+    (target-warp-in vector vector)
     )
   )
 
@@ -18644,7 +18644,7 @@
   (:methods
     (water-vol-idle () _type_ :state 20)
     (water-vol-startup () _type_ :state 21)
-    (TODO-RENAME-22 (_type_) ripple-wave-set 22) ;; can also return an obs?
+    (TODO-RENAME-22 (_type_) none 22) ;; can also return an obs?
     (reset-root! (_type_) none 23)
     (set-stack-size! (_type_) none 24)
     (TODO-RENAME-25 (_type_) object 25)
@@ -34264,13 +34264,23 @@
   :size-assert         #x118
   :heap-base           #xb0
   :flag-assert         #x1400b00118
+  (:states
+    robber-die
+    robber-dead
+    robber-initial
+    robber-initial-notice
+    robber-flee
+    robber-got-away
+    robber-tired
+    robber-idle
+    robber-debug)
   )
 
 ;; - Functions
 
 (define-extern robber-find-ground (function symbol :behavior robber))
 (define-extern robber-move (function float :behavior robber))
-(define-extern robber-calc-speed (function float float vector vector symbol float :behavior robber))
+(define-extern robber-calc-speed (function float float float float symbol float :behavior robber))
 (define-extern robber-rotate (function target float vector :behavior robber))
 (define-extern robber-calc-anim-speed (function float :behavior robber))
 (define-extern robber-task-complete? (function symbol :behavior robber))
@@ -34280,16 +34290,7 @@
 ;; - Unknowns
 
 (define-extern *robber-sg* skeleton-group)
-(define-extern robber-die (state robber)) ;; unknown type
-(define-extern robber-dead (state robber)) ;; unknown type
-(define-extern robber-initial (state robber)) ;; unknown type
-(define-extern robber-initial-notice (state robber)) ;; unknown type
-(define-extern robber-flee (state robber)) ;; unknown type
-(define-extern robber-got-away (state robber)) ;; unknown type
-(define-extern robber-tired (state robber)) ;; unknown type
-(define-extern robber-idle (state robber)) ;; unknown type
 (define-extern fuel-cell-spline-slider (state handle float float fuel-cell)) ;; unknown type
-(define-extern robber-debug (state robber)) ;; unknown type
 
 
 ;; ----------------------
@@ -35369,19 +35370,25 @@
   :size-assert         #xc4
   :heap-base           #x60
   :flag-assert         #x14006000c4
+  (:states
+    snow-eggtop-idle-down
+    snow-eggtop-idle-up
+    snow-eggtop-activate)
   )
 
 (deftype snowpusher (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (max-frame   float                    :offset-assert 176)
-   (open-sound  uint128                  :offset-assert 192)
-   (close-sound uint128                  :offset-assert 208)
+   (open-sound  sound-name                  :offset-assert 192)
+   (close-sound sound-name                  :offset-assert 208)
    (sync        sync-info-paused :inline :offset-assert 224)
    )
   :method-count-assert 20
   :size-assert         #xf0
   :heap-base           #x80
   :flag-assert         #x14008000f0
+  (:states
+    snowpusher-idle)
   )
 
 (deftype snow-spatula (baseplat)
@@ -35392,6 +35399,8 @@
   :size-assert         #x130
   :heap-base           #xc0
   :flag-assert         #x1b00c00130
+  (:states
+    snow-spatula-idle)
   )
 
 (deftype snow-fort-gate (process-drawable)
@@ -35405,6 +35414,10 @@
   :size-assert         #xe0
   :heap-base           #x70
   :flag-assert         #x14007000e0
+  (:states
+    snow-fort-gate-idle-open
+    snow-fort-gate-idle-closed
+    snow-fort-gate-activate)
   )
 
 (deftype snow-gears (process-drawable)
@@ -35416,6 +35429,11 @@
   (:methods
     (TODO-RENAME-20 (_type_) none 20)
     )
+  (:states
+    snow-gears-idle
+    snow-gears-stopped
+    snow-gears-halt
+    snow-gears-activate)
   )
 
 (deftype snow-switch (process-drawable)
@@ -35428,6 +35446,10 @@
   :size-assert         #xd0
   :heap-base           #x60
   :flag-assert         #x14006000d0
+  (:states
+    snow-switch-idle-down
+    snow-switch-idle-up
+    snow-switch-activate)
   )
 
 (deftype snow-log (process-drawable)
@@ -35438,6 +35460,11 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    snow-log-wait-for-master
+    snow-log-active
+    snow-log-activate
+    snow-log-hidden)
   )
 
 (deftype snow-log-button (process-drawable)
@@ -35449,6 +35476,10 @@
   :size-assert         #xd0
   :heap-base           #x60
   :flag-assert         #x14006000d0
+  (:states
+    snow-log-button-idle-down
+    snow-log-button-idle-up
+    snow-log-button-activate)
   )
 
 ;; - Functions
@@ -35459,35 +35490,13 @@
 ;; - Unknowns
 
 (define-extern *snow-switch-sg* skeleton-group)
-(define-extern snow-log-button-idle-down (state snow-log-button)) ;; unknown type
-(define-extern snow-log-button-idle-up (state snow-log-button)) ;; unknown type
-(define-extern snow-log-button-activate (state snow-log-button)) ;; unknown type
 (define-extern *snow-log-sg* skeleton-group)
-(define-extern snow-log-wait-for-master (state snow-log)) ;; unknown type
-(define-extern snow-log-active (state snow-log)) ;; unknown type
-(define-extern snow-log-activate (state snow-log)) ;; unknown type
-(define-extern snow-log-hidden (state snow-log)) ;; unknown type
-(define-extern snow-switch-idle-down (state snow-switch)) ;; unknown type
-(define-extern snow-switch-idle-up (state snow-switch)) ;; unknown type
 (define-extern *snowcam-sg* skeleton-group)
-(define-extern snow-switch-activate (state snow-switch)) ;; unknown type
 (define-extern *snow-gears-sg* skeleton-group)
-(define-extern snow-gears-idle (state snow-gears)) ;; unknown type
-(define-extern snow-gears-stopped (state snow-gears)) ;; unknown type
-(define-extern snow-gears-halt (state snow-gears)) ;; unknown type
-(define-extern snow-gears-activate (state snow-gears)) ;; unknown type
 (define-extern *snow-fort-gate-sg* skeleton-group)
-(define-extern snow-fort-gate-idle-open (state snow-fort-gate)) ;; unknown type
-(define-extern snow-fort-gate-idle-closed (state snow-fort-gate)) ;; unknown type
-(define-extern snow-fort-gate-activate (state snow-fort-gate)) ;; unknown type
 (define-extern *snow-spatula-sg* skeleton-group)
-(define-extern snow-spatula-idle (state snow-spatula)) ;; unknown type
 (define-extern *snowpusher-sg* skeleton-group)
-(define-extern snowpusher-idle (state snowpusher)) ;; unknown type
 (define-extern *snow-eggtop-sg* skeleton-group)
-(define-extern snow-eggtop-idle-down (state snow-eggtop)) ;; unknown type
-(define-extern snow-eggtop-idle-up (state snow-eggtop)) ;; unknown type
-(define-extern snow-eggtop-activate (state snow-eggtop)) ;; unknown type
 
 
 ;; ----------------------
@@ -35916,7 +35925,7 @@
 
 (deftype darkecobarrel (darkecobarrel-base)
   ((self-override darkecobarrel :score 100 :offset 28)
-   (spawn-array (array handle)  :offset-assert 192) ;; likely to darkecobarrels
+   (spawn-array (array int64)  :offset-assert 192) ;; likely to darkecobarrels
    (cur-spawn   int32  :offset-assert 196)
    )
   :method-count-assert 20
@@ -35987,12 +35996,12 @@
 
 (define-extern darkecobarrel-base-init (function res-lump path-control-flag :behavior darkecobarrel-base))
 (define-extern darkecobarrel-base-time (function int :behavior darkecobarrel-base))
-(define-extern darkecobarrel-cycle-time (function handle :behavior darkecobarrel)) ;; likely to darkecobarrels
+(define-extern darkecobarrel-cycle-time (function int :behavior darkecobarrel)) ;; likely to darkecobarrels
 (define-extern darkecobarrel-advance-curspawn (function none :behavior darkecobarrel))
 (define-extern darkecobarrel-mover-init-by-other (function res-lump float uint uint none :behavior darkecobarrel-mover))
 (define-extern darkecobarrel-base-done? (function float symbol :behavior darkecobarrel-base))
 (define-extern darkecobarrel-base-pos (function int float :behavior darkecobarrel-base))
-(define-extern darkecobarrel-mover-pos (function uint :behavior darkecobarrel-mover))
+(define-extern darkecobarrel-mover-pos (function none :behavior darkecobarrel-mover))
 
 ;; - Unknowns
 
