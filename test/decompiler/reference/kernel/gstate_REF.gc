@@ -47,7 +47,7 @@
 ;; WARN: Unsupported inline assembly instruction kind - [jr t9]
 ;; WARN: Unsupported inline assembly instruction kind - [sw v0, 0(sp)]
 (defun enter-state ((arg0 object) (arg1 object) (arg2 object) (arg3 object) (arg4 object) (arg5 object))
-  (local-vars (s7-0 none) (sp-0 none) (sp-1 int) (ra-0 int) (sv-0 none))
+  (local-vars (s7-0 none) (sp-0 int) (ra-0 int) (sv-0 none))
   (with-pp
     (logclear! (-> pp mask) (process-mask sleep sleep-code))
     (logior! (-> pp mask) (process-mask going))
@@ -99,7 +99,7 @@
                )
            )
          (let ((v1-28 (-> pp main-thread)))
-           (.lwu sp-1 28 v1-28)
+           (.lwu sp-0 28 v1-28)
            )
          (let ((t9-6 (-> s0-2 code)))
            (.lw ra-0 return-from-thread-dead s7-0)
@@ -113,7 +113,7 @@
         (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
         (when (!= (-> pp top-thread name) 'post)
           (let ((v0-2 (the-as object return-from-thread)))
-            (.sw (the-as (function none) v0-2) 0 sp-0)
+            (.sw (the-as (function none) v0-2) 0 (the-as none sp-0))
             v0-2
             )
           )
@@ -127,11 +127,9 @@
   (with-pp
     (when (and arg0 (!= (-> arg0 type) process-tree) (-> (the-as process arg0) event-hook))
       (let ((gp-0 pp))
-        (let ((s6-1 (the-as process arg0)))
-          )
+        (set! pp (the-as process arg0))
         (let ((v0-0 ((-> (the-as process arg0) event-hook) (-> arg1 from) (-> arg1 num-params) (-> arg1 message) arg1)))
-          (let ((s6-2 gp-0))
-            )
+          (set! pp gp-0)
           v0-0
           )
         )
