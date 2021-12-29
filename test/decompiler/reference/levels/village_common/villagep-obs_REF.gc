@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: villagep-obs.gc
-;; name in dgo: villagep-obs
-;; dgos: CIT, L1, VI1, VI2, VI3, VILLAGEP
-
-;; DECOMP BEGINS
-
+;; definition of type warpgate
 (deftype warpgate (process-hidden)
   ()
   :method-count-assert 15
@@ -14,7 +9,39 @@
   :flag-assert         #xf00000070
   )
 
+;; definition for method 3 of type warpgate
+(defmethod inspect warpgate ((obj warpgate))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tmask: ~D~%" (-> obj mask))
+  (format #t "~Tparent: #x~X~%" (-> obj parent))
+  (format #t "~Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~Tchild: #x~X~%" (-> obj child))
+  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~Tself: ~A~%" (-> obj self))
+  (format #t "~Tpool: ~A~%" (-> obj pool))
+  (format #t "~Tstatus: ~A~%" (-> obj status))
+  (format #t "~Tpid: ~D~%" (-> obj pid))
+  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~Tentity: ~A~%" (-> obj entity))
+  (format #t "~Tstate: ~A~%" (-> obj state))
+  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
+  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
+  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> obj connection-list))
+  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate target-warp-in (target)
   :event
   target-generic-event-handler
@@ -114,6 +141,7 @@
   target-no-move-post
   )
 
+;; failed to figure out what this is:
 (defstate idle (warp-gate)
   :virtual #t
   :event
@@ -190,6 +218,7 @@
     )
   )
 
+;; definition for function get-next-slot-up
 (defun get-next-slot-up ((arg0 warp-gate) (arg1 int))
   (let ((v0-0 (+ arg1 1)))
     (if (< (-> arg0 max-slot) v0-0)
@@ -205,6 +234,7 @@
     )
   )
 
+;; definition for function get-next-slot-down
 (defun get-next-slot-down ((arg0 warp-gate) (arg1 int))
   (let ((v0-0 (+ arg1 -1)))
     (if (< v0-0 (-> arg0 min-slot))
@@ -220,6 +250,7 @@
     )
   )
 
+;; definition for function print-level-name
 (defun print-level-name ((arg0 int) (arg1 font-context) (arg2 int) (arg3 int))
   (let ((s5-0 (if arg3
                   arg2
@@ -242,6 +273,7 @@
   arg1
   )
 
+;; failed to figure out what this is:
 (defstate active (warp-gate)
   :virtual #t
   :enter
@@ -425,12 +457,16 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hidden (warp-gate)
   :virtual #t
   :code
   (the-as (function none :behavior warp-gate) anim-loop)
   )
 
+;; definition for function warp-gate-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior warp-gate-init-by-other warp-gate ((arg0 vector))
   (stack-size-set! (-> self main-thread) 512)
   (set! (-> self root) (new 'process 'trsqv))
@@ -480,6 +516,7 @@
   (none)
   )
 
+;; definition of type warp-gate-switch
 (deftype warp-gate-switch (basebutton)
   ((warp handle  :offset-assert 256)
    )
@@ -492,7 +529,16 @@
     )
   )
 
+;; definition for method 3 of type warp-gate-switch
+(defmethod inspect warp-gate-switch ((obj warp-gate-switch))
+  (let ((t9-0 (method-of-type basebutton inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Twarp: ~D~%" (-> obj warp))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *warp-gate-switch-sg* warp-gate-switch
   0
   2
@@ -501,6 +547,7 @@
   :longest-edge (meters 0)
   )
 
+;; definition for method 27 of type warp-gate-switch
 (defmethod TODO-RENAME-27 warp-gate-switch ((obj warp-gate-switch))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -532,6 +579,7 @@
     )
   )
 
+;; definition for method 32 of type warp-gate-switch
 (defmethod pressable? warp-gate-switch ((obj warp-gate-switch))
   (let ((v1-2 (-> obj entity extra perm task)))
     (cond
@@ -567,6 +615,7 @@
     )
   )
 
+;; definition for method 26 of type warp-gate-switch
 (defmethod TODO-RENAME-26 warp-gate-switch ((obj warp-gate-switch))
   (set! (-> obj warp) (the-as handle #f))
   (let ((v1-2 (-> obj entity extra perm task)))
@@ -619,6 +668,8 @@
   (none)
   )
 
+;; definition for method 31 of type warp-gate-switch
+;; INFO: Return type mismatch none vs int.
 (defmethod press! warp-gate-switch ((obj warp-gate-switch) (arg0 symbol))
   (with-pp
     (when arg0
@@ -661,6 +712,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate basebutton-up-idle (warp-gate-switch)
   :virtual #t
   :event
@@ -784,6 +836,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate basebutton-down-idle (warp-gate-switch)
   :virtual #t
   :event
@@ -862,6 +915,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate basebutton-going-down (warp-gate-switch)
   :virtual #t
   :code
@@ -908,6 +962,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defskelgroup *village-cam-sg* village-cam
   0
   -1
@@ -916,6 +971,7 @@
   :longest-edge (meters 0)
   )
 
+;; definition of type village-cam
 (deftype village-cam (process)
   ((root-override trsq    :offset-assert 112)
    (range         meters  :offset-assert 116)
@@ -931,7 +987,20 @@
     )
   )
 
+;; definition for method 3 of type village-cam
+(defmethod inspect village-cam ((obj village-cam))
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Troot: ~A~%" (-> obj root-override))
+  (format #t "~T~Trange: (meters ~m)~%" (-> obj range))
+  (format #t "~T~Tindex: ~D~%" (-> obj index))
+  (format #t "~T~Tstate-time: ~D~%" (-> obj state-time))
+  obj
+  )
 
+;; definition for method 7 of type village-cam
+;; INFO: Return type mismatch process vs village-cam.
 (defmethod relocate village-cam ((obj village-cam) (arg0 int))
   (if (nonzero? (-> obj root-override))
       (&+! (-> obj root-override) arg0)
@@ -939,6 +1008,7 @@
   (the-as village-cam ((method-of-type process relocate) obj arg0))
   )
 
+;; failed to figure out what this is:
 (defstate idle (village-cam)
   :virtual #t
   :code
@@ -1246,6 +1316,9 @@
     )
   )
 
+;; definition for method 11 of type village-cam
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defmethod init-from-entity! village-cam ((obj village-cam) (arg0 entity-actor))
   "Copy defaults from the entity."
   (logior! (-> obj mask) (process-mask actor-pause))
@@ -1258,7 +1331,3 @@
   (go (method-of-object obj idle))
   (none)
   )
-
-
-
-
