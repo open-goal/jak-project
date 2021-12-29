@@ -154,19 +154,9 @@
 (defbehavior robber-find-ground robber ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self root-override trans quad))
-    (let ((t2-0 (new 'stack-no-clear 'collide-mesh-cache-tri)))
+    (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
       (set! (-> gp-0 y) (+ 8192.0 (-> gp-0 y)))
-      (let ((f0-2 (dummy-10
-                    *collide-cache*
-                    gp-0
-                    (new 'static 'vector :y -81920.0 :w 1.0)
-                    40.96
-                    1
-                    self
-                    (the-as collide-tri-result t2-0)
-                    1
-                    )
-                  )
+      (let ((f0-2 (dummy-10 *collide-cache* gp-0 (new 'static 'vector :y -81920.0 :w 1.0) 40.96 1 self t2-0 1))
             (v1-5 (new 'stack-no-clear 'vector))
             )
         (set! (-> v1-5 quad) (-> self root-override trans quad))
@@ -266,12 +256,12 @@
     )
   )
 
-(defbehavior robber-calc-speed robber ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector) (arg4 symbol))
+(defbehavior robber-calc-speed robber ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 symbol))
   (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self root-override trans) (target-pos 0))))
     (set! (-> gp-1 y) 0.0)
     (let* ((f2-1 (/ (- (vector-length gp-1) arg0) (- arg1 arg0)))
            (f0-4 (- 1.0 (fmax 0.0 (fmin 1.0 f2-1))))
-           (f0-5 (lerp (the-as float arg3) (the-as float arg2) f0-4))
+           (f0-5 (lerp arg3 arg2 f0-4))
            (f30-0 (* 0.0033333334 f0-5))
            )
       (cond
@@ -410,7 +400,7 @@
              )
             (else
               (set! gp-0 #f)
-              (logior! (-> self draw status) 2)
+              (logior! (-> self draw status) (draw-status drwf01))
               (let ((s5-1 (new 'stack-no-clear 'vector)))
                 (eval-path-curve! (-> self path) s5-1 (the-as float (-> v1-3 user-object 0)) 'interp)
                 (set! (-> s5-1 y) (+ 8192.0 (-> s5-1 y)))
@@ -438,7 +428,7 @@
           (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
           )
         (until (ja-done? 0)
-          (robber-calc-speed 4096.0 8192.0 (the-as vector 122880.0) (the-as vector 122880.0) #f)
+          (robber-calc-speed 4096.0 8192.0 122880.0 122880.0 #f)
           (robber-move)
           (robber-rotate (the-as target #f) 1820.4445)
           (suspend)
@@ -550,7 +540,7 @@
         (set! (-> gp-0 param 0) (robber-calc-anim-speed))
         (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
         )
-      (robber-calc-speed 32768.0 122880.0 (the-as vector 122060.8) (the-as vector 20480.0) #f)
+      (robber-calc-speed 32768.0 122880.0 122060.8 20480.0 #f)
       (robber-move)
       (robber-rotate (the-as target #f) 1820.4445)
       (suspend)
@@ -568,7 +558,7 @@
           (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
           )
         (until (ja-done? 0)
-          (robber-calc-speed 32768.0 122880.0 (the-as vector 122060.8) (the-as vector 20480.0) #f)
+          (robber-calc-speed 32768.0 122880.0 122060.8 20480.0 #f)
           (robber-move)
           (robber-rotate (the-as target #f) 1820.4445)
           (suspend)
@@ -651,7 +641,7 @@
         (set! (-> gp-0 param 0) (robber-calc-anim-speed))
         (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
         )
-      (robber-calc-speed 61440.0 122880.0 (the-as vector 204800.0) (the-as vector 16384.0) #t)
+      (robber-calc-speed 61440.0 122880.0 204800.0 16384.0 #t)
       (robber-move)
       (robber-rotate (the-as target #f) 1820.4445)
       (suspend)
@@ -669,7 +659,7 @@
           (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
           )
         (until (ja-done? 0)
-          (robber-calc-speed 61440.0 122880.0 (the-as vector 204800.0) (the-as vector 16384.0) #t)
+          (robber-calc-speed 61440.0 122880.0 204800.0 16384.0 #t)
           (robber-move)
           (robber-rotate (the-as target #f) 1820.4445)
           (suspend)
@@ -748,7 +738,7 @@
   robber-event-handler
   :trans
   (behavior ()
-    (when (logtest? (-> self draw status) 8)
+    (when (logtest? (-> self draw status) (draw-status drwf03))
       (if (and
               *target*
               (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -794,7 +784,7 @@
         (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
         )
       (until (ja-done? 0)
-        (robber-calc-speed 61440.0 122880.0 (the-as vector 2048.0) (the-as vector 2048.0) #t)
+        (robber-calc-speed 61440.0 122880.0 2048.0 2048.0 #t)
         (robber-rotate (the-as target #f) 1820.4445)
         (suspend)
         (let ((a0-6 (-> self skel root-channel 0)))
