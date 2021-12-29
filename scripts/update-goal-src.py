@@ -33,8 +33,7 @@ files_with_modifications = [
   "collide-shape",
   "cam-states",
   "plant-boss",
-  "helix-water",
-  "lavatube-obs"
+  "helix-water"
 ]
 
 for file in files:
