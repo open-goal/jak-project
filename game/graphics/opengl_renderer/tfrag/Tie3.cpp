@@ -300,16 +300,26 @@ void Tie3::render_tree(int idx,
   tree.perf.tod_time.add(setup_timer.getSeconds());
 
   int last_texture = -1;
+  u32 idx_buffer_ptr = 0;
 
-  Timer cull_timer;
-  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
-  tree.perf.cull_time.add(cull_timer.getSeconds());
+  if (m_debug_all_visible) {
+    tree.perf.cull_time.add(0);
+    Timer index_timer;
+    idx_buffer_ptr = make_all_visible_index_list(m_cache.draw_idx_temp.data(),
+                                                 m_cache.index_list.data(), *tree.draws);
+    tree.perf.index_time.add(index_timer.getSeconds());
+    tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
+  } else {
+    Timer cull_timer;
+    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
+    tree.perf.cull_time.add(cull_timer.getSeconds());
 
-  Timer index_timer;
-  int idx_buffer_ptr = make_index_list_from_vis_string(
-      m_cache.draw_idx_temp.data(), m_cache.index_list.data(), *tree.draws, m_cache.vis_temp);
-  tree.perf.index_time.add(index_timer.getSeconds());
-  tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
+    Timer index_timer;
+    idx_buffer_ptr = make_index_list_from_vis_string(
+        m_cache.draw_idx_temp.data(), m_cache.index_list.data(), *tree.draws, m_cache.vis_temp);
+    tree.perf.index_time.add(index_timer.getSeconds());
+    tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
+  }
 
   Timer draw_timer;
   glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32),
@@ -401,6 +411,8 @@ void Tie3::draw_debug_window() {
   ImGui::Checkbox("Override level", &m_override_level);
   ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
   ImGui::Checkbox("Wireframe", &m_debug_wireframe);
+  ImGui::SameLine();
+  ImGui::Checkbox("All Visible", &m_debug_all_visible);
   ImGui::Separator();
   for (u32 i = 0; i < m_trees.size(); i++) {
     auto& perf = m_trees[i].perf;
