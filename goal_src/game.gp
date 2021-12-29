@@ -872,7 +872,7 @@
 
 (cgo "LAV.DGO" "lav.gd")
 
-(copy-vis-files "TRA")
+(copy-vis-files "LAV")
 
 (goal-src-sequence
   "levels/lavatube/"
