@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: double-lurker.gc
-;; name in dgo: double-lurker
-;; dgos: L1, SUN, SUNKEN
-
-(declare-type double-lurker nav-enemy)
-
-;; DECOMP BEGINS
-
+;; definition of type double-lurker-top
 (deftype double-lurker-top (nav-enemy)
   ((parent-process (pointer double-lurker)         :offset         12)
    (fall-dest      vector                  :inline :offset-assert 400)
@@ -25,7 +18,16 @@
     )
   )
 
+;; definition for method 3 of type double-lurker-top
+(defmethod inspect double-lurker-top ((obj double-lurker-top))
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tfall-dest: #<vector @ #x~X>~%" (-> obj fall-dest))
+  obj
+  )
 
+;; definition of type double-lurker
 (deftype double-lurker (nav-enemy)
   ((knocked-back-speed  float   :offset-assert 400)
    (buddy-on-shoulders? symbol  :offset-assert 404)
@@ -52,7 +54,20 @@
     )
   )
 
+;; definition for method 3 of type double-lurker
+(defmethod inspect double-lurker ((obj double-lurker))
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tknocked-back-speed: ~f~%" (-> obj knocked-back-speed))
+  (format #t "~T~Tbuddy-on-shoulders?: ~A~%" (-> obj buddy-on-shoulders?))
+  (format #t "~T~Tdead?: ~A~%" (-> obj dead?))
+  (format #t "~T~Tbuddy-dead?: ~A~%" (-> obj buddy-dead?))
+  (format #t "~T~Tbuddy-handle: ~D~%" (-> obj buddy-handle))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *double-lurker-sg* double-lurker
   0
   5
@@ -62,6 +77,7 @@
   :shadow 4
   )
 
+;; failed to figure out what this is:
 (defskelgroup *double-lurker-top-sg* double-lurker-top
   0
   -1
@@ -71,6 +87,7 @@
   :shadow 4
   )
 
+;; definition for symbol *double-lurker-top-nav-enemy-info*, type nav-enemy-info
 (define *double-lurker-top-nav-enemy-info* (new 'static 'nav-enemy-info
                                              :idle-anim 12
                                              :walk-anim 13
@@ -125,6 +142,7 @@
                                              )
         )
 
+;; definition for symbol *double-lurker-when-both-nav-enemy-info*, type nav-enemy-info
 (define *double-lurker-when-both-nav-enemy-info* (new 'static 'nav-enemy-info
                                                    :idle-anim 5
                                                    :walk-anim 6
@@ -179,6 +197,7 @@
                                                    )
         )
 
+;; definition for symbol *double-lurker-nav-enemy-info*, type nav-enemy-info
 (define *double-lurker-nav-enemy-info* (new 'static 'nav-enemy-info
                                          :idle-anim 12
                                          :walk-anim 13
@@ -233,6 +252,7 @@
                                          )
         )
 
+;; failed to figure out what this is:
 (defstate double-lurker-top-on-shoulders (double-lurker-top)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -275,6 +295,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-top-on-shoulders-die (double-lurker-top)
   :code
   (behavior ()
@@ -303,6 +324,7 @@
   (the-as (function none :behavior double-lurker-top) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-top-knocked-down (double-lurker-top)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -371,6 +393,7 @@
   (the-as (function none :behavior double-lurker-top) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-top-resume (double-lurker-top)
   :code
   (behavior ()
@@ -398,6 +421,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-patrol (double-lurker-top)
   :virtual #t
   :code
@@ -421,6 +445,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-die (double-lurker-top)
   :virtual #t
   :enter
@@ -439,12 +464,15 @@
     )
   )
 
+;; definition for method 51 of type double-lurker-top
+;; INFO: Return type mismatch none vs object.
 (defmethod dummy-51 double-lurker-top ((obj double-lurker-top))
   (restore-collide-with-as (-> obj collide-info))
   (logior! (-> obj collide-info nav-flags) 1)
   (the-as object (dummy-27 (-> obj nav)))
   )
 
+;; definition for method 47 of type double-lurker-top
 (defmethod initialize-collision double-lurker-top ((obj double-lurker-top))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -515,6 +543,9 @@
   (none)
   )
 
+;; definition for method 48 of type double-lurker-top
+;; INFO: Return type mismatch uint vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-48 double-lurker-top ((obj double-lurker-top))
   (initialize-skeleton obj *double-lurker-top-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
@@ -528,6 +559,9 @@
   (none)
   )
 
+;; definition for function double-lurker-top-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior double-lurker-top-init-by-other double-lurker-top ((arg0 entity) (arg1 double-lurker) (arg2 symbol) (arg3 vector))
   (initialize-collision self)
   (set! (-> self entity) (-> arg1 entity))
@@ -570,6 +604,7 @@
   (none)
   )
 
+;; definition for function double-lurker-default-event-handler
 ;; WARN: disable def twice: 80. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 120. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defbehavior double-lurker-default-event-handler double-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -655,6 +690,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-show-anims (double-lurker)
   :trans
   (behavior () 0 (none))
@@ -664,6 +700,7 @@
   (the-as (function none :behavior double-lurker) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-resume (double-lurker)
   :code
   (behavior ()
@@ -691,12 +728,14 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-idle (double-lurker)
   :virtual #t
   :event
   double-lurker-default-event-handler
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-patrol (double-lurker)
   :virtual #t
   :event
@@ -722,6 +761,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-notice (double-lurker)
   :virtual #t
   :event
@@ -738,30 +778,35 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-chase (double-lurker)
   :virtual #t
   :event
   double-lurker-default-event-handler
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (double-lurker)
   :virtual #t
   :event
   double-lurker-default-event-handler
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-stare (double-lurker)
   :virtual #t
   :event
   double-lurker-default-event-handler
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-victory (double-lurker)
   :virtual #t
   :event
   double-lurker-default-event-handler
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-die (double-lurker)
   :virtual #t
   :enter
@@ -780,6 +825,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-both-knocked-back (double-lurker)
   :enter
   (behavior () (set! (-> self knocked-back-speed) 40960.0) (none))
@@ -872,6 +918,8 @@
   (the-as (function none :behavior double-lurker) nav-enemy-simple-post)
   )
 
+;; definition for method 52 of type double-lurker
+;; Used lq/sq
 (defmethod dummy-52 double-lurker ((obj double-lurker) (arg0 vector))
   (dummy-28 (-> obj nav) -1)
   (let ((a1-2 (new 'stack-no-clear 'vector)))
@@ -895,6 +943,7 @@
   #f
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-buddy-was-hit (double-lurker)
   :code
   (behavior ()
@@ -916,6 +965,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-break-apart (double-lurker)
   :event
   double-lurker-default-event-handler
@@ -945,6 +995,7 @@
   (the-as (function none :behavior double-lurker) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-knocked-back (double-lurker)
   :enter
   (behavior () (set! (-> self knocked-back-speed) 40960.0) (none))
@@ -1037,6 +1088,7 @@
   (the-as (function none :behavior double-lurker) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate double-lurker-waiting-to-die (double-lurker)
   :code
   (behavior ()
@@ -1049,6 +1101,7 @@
     )
   )
 
+;; definition for method 53 of type double-lurker
 (defmethod dummy-53 double-lurker ((obj double-lurker) (arg0 vector))
   (let* ((s3-0 (-> obj path curve num-cverts))
          (s4-0 (rand-vu-int-count s3-0))
@@ -1064,6 +1117,7 @@
   #f
   )
 
+;; definition for method 47 of type double-lurker
 (defmethod initialize-collision double-lurker ((obj double-lurker))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1157,6 +1211,8 @@
     )
   )
 
+;; definition for method 51 of type double-lurker
+;; INFO: Return type mismatch symbol vs object.
 (defmethod dummy-51 double-lurker ((obj double-lurker))
   (let ((v1-1 (-> obj collide-info root-prim)))
     (let ((a0-1 0))
@@ -1182,6 +1238,9 @@
   (the-as object #f)
   )
 
+;; definition for method 48 of type double-lurker
+;; INFO: Return type mismatch float vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-48 double-lurker ((obj double-lurker))
   (set! (-> obj buddy-handle) (the-as handle #f))
   (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
@@ -1253,6 +1312,8 @@
   (none)
   )
 
+;; definition for method 11 of type double-lurker
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! double-lurker ((obj double-lurker) (arg0 entity-actor))
   (initialize-collision obj)
   (TODO-RENAME-48 obj)
@@ -1262,7 +1323,3 @@
       )
   (none)
   )
-
-
-
-
