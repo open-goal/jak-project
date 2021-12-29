@@ -1,0 +1,2147 @@
+;; debug notes
+
+;; getting bad adgif a+d data (messed up registers)
+;;;;;;;;;
+
+unpacked with v4-32 (makes sense)
+  VIF: STROW
+  VIF: STMOD 0b1
+  VIF: UNPACK-V4-8: 4 addr: 113 us: true tops: true
+  VIF: STMOD 0b0
+  VIF: UNPACK-V4-8: 4 addr: 123 us: false tops: true
+  VIF: NOP
+  VIF: NOP
+  VIF: NOP
+  VIF: UNPACK-V4-16: 5 addr: 0 us: true tops: true
+  VIF: UNPACK-V4-32: 15 addr: 9 us: false tops: true  <--------- 9 is the ad data
+
+;; here's one set of data (printing the 8-bit addr field of each qw, assuming it's a+d data)
+UNPACK V4: 0x6 from offset: 128  ;; tex0_1  <--- all these register make sense
+UNPACK V4: 0x14 from offset: 144 ;; tex1_1
+UNPACK V4: 0x34 from offset: 160 ;; miptbp
+UNPACK V4: 0x8 from offset: 176  ;; clamp
+UNPACK V4: 0x42 from offset: 192 ;; alpha
+
+;; next (repeated pattern of addrs)
+UNPACK V4: 0x6 from offset: 208
+UNPACK V4: 0x14 from offset: 224
+UNPACK V4: 0x34 from offset: 240
+UNPACK V4: 0x8 from offset: 256
+UNPACK V4: 0x36 from offset: 272
+
+UNPACK V4: 0x6 from offset: 288
+UNPACK V4: 0x14 from offset: 304
+UNPACK V4: 0x34 from offset: 320
+UNPACK V4: 0x8 from offset: 336
+UNPACK V4: 0x36 from offset: 352
+
+;; unpack math was bad....
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; getting bad tex coords
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Packet structure for most draws:
+
+Tag at offset 112: packed nloop: 4 prim: 0x3c 
+ ST RGBAQ XYZF2 
+
+;; getting tc's like
+q = 4.4845376 tc = 0, 4.484537
+q = 4.5222845 tc = 0, 4.520077
+q = 4.4883046 tc = 0.004379901, 4.4883046
+q = 4.5170135 tc = 0.0044089933, 4.514809
+
+;; from a store in the kick area of
+A: vf27 store: [ 0.004  4.515  4.517  0.000]
+;; looks a lot like a screwed up unpack??
+;; messed up vector math on subtract...
+
+
+;;;;;;;;;;;;;;;;;;;
+;; sps
+;;;;;;;;;;;;;;;;;;;
+
+coords sent to GS:
+...
+tfrag coords: 7cf6 8074 ;; ok
+tfrag coords: 7cb9 7f9c ;; ok
+tfrag coords: 0 0       ;; sps
+tfrag coords: 0 0
+
+;; the vert count stuff works out correctly, we do 8 verts then go to the kicking zone.
+;; I don't remember what the fix is lol
+;; note that we haven't filled the kicking zone, so we should probably reload then keep adding, or kick a smaller group.
+
+;;;;;;;;;;;;;;;;;;;;
+;; verts on top of each other
+;;;;;;;;;;;;;;;;;;;;
+
+;; bad killed pipelining?
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; flames applied everywhere
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the itimes are:
+;; this is for "sunrise, which is [1, 0, 0, 0, 0, 0, 0, 0]"
+[2] t0: 40 40 40 40 00 00 00 00
+[2] t1: 00 00 00 00 00 00 00 00
+[2] t2: 00 00 00 00 00 00 00 00
+[2] a2: 00 00 00 00 00 00 00 00
+
+
+;; an example color:
+ N0 46 46 40 80 | 31 33 41 80 | 00 00 00 80 | 4a 4f 72 80 |
+ N1 3e 72 53 80 | 3a 21 38 80 | 3b 32 2e 80 | 3f 35 2c 80 |
+
+
+;; Data Layout
+
+;; Code Layout
+
+;; 0, init-globals
+  b L11                      |  nop                      
+  nop                        |  nop                      
+;; 2, reset VF04
+  b L10                      |  nop                      
+  xtop vi14                  |  nop                      
+;; 4
+  b L1                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 6
+  b L2                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 8
+  b L3                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 10
+  b L4                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 12
+  b L5                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 14
+  b L6                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 16
+  b L7                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 18
+  b L8                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 20
+  b L9                       |  nop                      
+  xtop vi14                  |  nop                      
+;; 22
+  b L10                      |  nop                      
+  xtop vi14                  |  nop                      
+;; 24
+  b L10                      |  nop                      
+  xtop vi14                  |  nop                      
+
+;; PRGOGRAM 4
+L1:
+  b L112                     |  nop                      
+  nop                        |  nop                      
+
+;; PROGRAM 6
+L2:
+  b L127                     |  nop                      
+  nop                        |  nop                      
+
+
+L3:
+  bal vi15, L12              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L26              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L48              |  nop                      
+  nop                        |  nop                      
+  b L102                     |  nop                      
+  nop                        |  nop                      
+L4:
+  bal vi15, L12              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L18              |  nop                      
+  nop                        |  nop                      
+  b L102                     |  nop                      
+  nop                        |  nop                      
+L5:
+  b L127                     |  nop                      
+  nop                        |  nop                      
+L6:
+  bal vi15, L12              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L18              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L25              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L47              |  nop                      
+  nop                        |  nop                      
+  b L102                     |  nop                      
+  nop                        |  nop                      
+L7:
+  bal vi15, L13              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L17              |  nop                      
+  nop                        |  nop                      
+  b L102                     |  nop                      
+  nop                        |  nop                      
+L8:
+  bal vi15, L13              |  nop                      
+  nop                        |  nop                      
+  bal vi15, L17              |  nop                      
+  nop                        |  nop                      
+  b L84                      |  nop                      
+  nop                        |  nop                      
+L9:
+  b L127                     |  nop                      
+  nop                        |  nop                      
+L10:
+  lq.xyzw vf04, 664(vi00)    |  nop :e                   
+  nop                        |  nop                      
+L11:
+  iaddiu vi14, vi00, 0x2a0   |  nop                      
+  iaddiu vi01, vi00, 0x350   |  nop                      
+  mfir.x vf03, vi14          |  nop                      
+  mfir.y vf03, vi01          |  nop                      
+  mfir.z vf03, vi14          |  nop                      
+  mfir.w vf03, vi01          |  nop :e                   
+  lq.xyzw vf04, 664(vi00)    |  nop                      
+L12:
+  ilw.z vi05, 1(vi14)        |  nop                      
+  b L14                      |  nop                      
+  ilwr.x vi02, vi14          |  nop                      
+L13:
+  ilwr.z vi02, vi14          |  nop                      
+  ilwr.x vi04, vi14          |  nop                      
+  ilw.z vi05, 1(vi14)        |  nop                      
+  b L14                      |  nop                      
+  iadd vi02, vi02, vi04      |  nop                      
+  ilwr.z vi02, vi14          |  nop                      
+  ilw.x vi01, 1(vi14)        |  nop                      
+  ilwr.x vi04, vi14          |  nop                      
+  ilw.z vi05, 1(vi14)        |  nop                      
+  iadd vi02, vi02, vi04      |  nop                      
+  iadd vi02, vi02, vi01      |  nop                      
+L14:
+  iadd vi05, vi05, vi14      |  nop                      
+  lqi.xyzw vf12, vi05        |  nop                      
+  lqi.xyzw vf16, vi05        |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  nop                      
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  lq.xyzw vf05, 5(vi14)      |  itof0.xyzw vf12, vf12    
+  lq.xyzw vf08, 8(vi14)      |  itof0.xyzw vf16, vf16    
+  lqi.xyzw vf13, vi05        |  nop                      
+  lqi.xyzw vf17, vi05        |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf06, 6(vi14)      |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf07, 7(vi14)      |  itof0.xyzw vf13, vf13    
+  nop                        |  itof0.xyzw vf17, vf17    
+  lqi.xyzw vf14, vi05        |  maddax.xyzw ACC, vf05, vf12
+  lqi.xyzw vf18, vi05        |  madday.xyzw ACC, vf06, vf12
+  nop                        |  maddz.xyzw vf12, vf07, vf12
+  nop                        |  mulaw.xyzw ACC, vf08, vf00
+  nop                        |  itof0.xyzw vf14, vf14    
+  iaddi vi06, vi05, -0x6     |  itof0.xyzw vf18, vf18    
+L15:
+  lqi.xyzw vf15, vi05        |  maddax.xyzw ACC, vf05, vf13
+  lqi.xyzw vf19, vi05        |  madday.xyzw ACC, vf06, vf13
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf13, vf07, vf13
+  sqi.xyzw vf12, vi06        |  mulaw.xyzw ACC, vf08, vf00
+  ibeq vi00, vi02, L16       |  itof0.xyzw vf15, vf15    
+  sqi.xyzw vf16, vi06        |  itof0.xyzw vf19, vf19    
+  lqi.xyzw vf12, vi05        |  maddax.xyzw ACC, vf05, vf14
+  lqi.xyzw vf16, vi05        |  madday.xyzw ACC, vf06, vf14
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf14, vf07, vf14
+  sqi.xyzw vf13, vi06        |  mulaw.xyzw ACC, vf08, vf00
+  ibeq vi00, vi02, L16       |  itof0.xyzw vf12, vf12    
+  sqi.xyzw vf17, vi06        |  itof0.xyzw vf16, vf16    
+  lqi.xyzw vf13, vi05        |  maddax.xyzw ACC, vf05, vf15
+  lqi.xyzw vf17, vi05        |  madday.xyzw ACC, vf06, vf15
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf15, vf07, vf15
+  sqi.xyzw vf14, vi06        |  mulaw.xyzw ACC, vf08, vf00
+  ibeq vi00, vi02, L16       |  itof0.xyzw vf13, vf13    
+  sqi.xyzw vf18, vi06        |  itof0.xyzw vf17, vf17    
+  lqi.xyzw vf14, vi05        |  maddax.xyzw ACC, vf05, vf12
+  lqi.xyzw vf18, vi05        |  madday.xyzw ACC, vf06, vf12
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf12, vf07, vf12
+  sqi.xyzw vf15, vi06        |  mulaw.xyzw ACC, vf08, vf00
+  ibne vi00, vi02, L15       |  itof0.xyzw vf14, vf14    
+  sqi.xyzw vf19, vi06        |  itof0.xyzw vf18, vf18    
+L16:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L17:
+  ilw.x vi02, 1(vi14)        |  nop                      
+  ilw.w vi03, 2(vi14)        |  nop                      
+  ilw.x vi04, 4(vi14)        |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  nop                      
+  ibeq vi00, vi02, L21       |  nop                      
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  lq.xy vf18, 667(vi00)      |  nop                      
+  b L19                      |  nop                      
+  lq.xy vf19, 669(vi00)      |  nop                      
+L18:
+  ilwr.z vi02, vi14          |  nop                      
+  ilw.y vi03, 2(vi14)        |  nop                      
+  ilw.z vi04, 3(vi14)        |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  nop                      
+  ibeq vi00, vi02, L21       |  nop                      
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  lq.xy vf18, 666(vi00)      |  nop                      
+  lq.xy vf19, 668(vi00)      |  nop                      
+L19:
+  lq.xyzw vf05, 5(vi14)      |  nop                      
+  lq.xyzw vf06, 6(vi14)      |  nop                      
+  lq.xyzw vf07, 7(vi14)      |  nop                      
+  ibne vi00, vi14, L22       |  nop                      
+  lq.xyzw vf08, 8(vi14)      |  nop                      
+  ilwr.w vi05, vi03          |  nop                      
+  iaddi vi03, vi03, 0x1      |  nop                      
+  ilwr.x vi07, vi04          |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf27, 0(vi05)      |  nop                      
+  nop                        |  nop                      
+  ilwr.w vi08, vi07          |  nop                      
+  nop                        |  nop                      
+  nop                        |  itof0.xyzw vf12, vf27    
+  ilw.z vi09, -1(vi03)       |  nop                      
+  lq.xyzw vf20, 0(vi08)      |  nop                      
+  nop                        |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf14, 1(vi05)      |  maddax.xyzw ACC, vf05, vf12
+  lq.xyzw vf22, 0(vi09)      |  madday.xyzw ACC, vf06, vf12
+  nop                        |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf23, 1(vi09)      |  nop                      
+  ilwr.w vi06, vi03          |  nop                      
+  iaddi vi03, vi03, 0x1      |  mulaw.xy ACC, vf19, vf00 
+  ilwr.y vi07, vi04          |  maddw.xy vf16, vf18, vf12
+  lq.xyzw vf21, 1(vi08)      |  nop                      
+  lq.xyzw vf27, 0(vi06)      |  nop                      
+  nop                        |  add.xyzw vf25, vf20, vf22
+  ilwr.w vi08, vi07          |  mini.xy vf16, vf16, vf02 
+  nop                        |  add.xyzw vf26, vf21, vf23
+  nop                        |  itof0.xyzw vf13, vf27    
+L20:
+  ilw.z vi09, -1(vi03)       |  itof0.xyzw vf14, vf14    
+  lq.xyzw vf20, 0(vi08)      |  maxx.xy vf16, vf16, vf00 
+  ior vi10, vi05, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf15, 1(vi06)      |  maddax.xyzw ACC, vf05, vf13
+  lq.xyzw vf22, 0(vi09)      |  madday.xyzw ACC, vf06, vf13
+  nop                        |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf23, 1(vi09)      |  mulax.xyzw ACC, vf25, vf16
+  ilwr.w vi05, vi03          |  maddy.xyzw vf12, vf12, vf16
+  iaddi vi02, vi02, -0x1     |  mulaw.xy ACC, vf19, vf00 
+  ilwr.z vi07, vi04          |  maddw.xy vf17, vf18, vf13
+  lq.xyzw vf21, 1(vi08)      |  mulax.xyzw ACC, vf26, vf16
+  lq.xyzw vf27, 0(vi05)      |  maddy.xyzw vf14, vf14, vf16
+  sq.xyzw vf12, 0(vi10)      |  add.xyzw vf25, vf20, vf22
+  ilwr.w vi08, vi07          |  mini.xy vf17, vf17, vf02 
+  ibeq vi00, vi02, L21       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf14, 1(vi10)      |  itof0.xyzw vf12, vf27    
+  ilwr.z vi09, vi03          |  itof0.xyzw vf15, vf15    
+  lq.xyzw vf20, 0(vi08)      |  maxx.xy vf17, vf17, vf00 
+  ior vi10, vi06, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf14, 1(vi05)      |  maddax.xyzw ACC, vf05, vf12
+  lq.xyzw vf22, 0(vi09)      |  madday.xyzw ACC, vf06, vf12
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf23, 1(vi09)      |  mulax.xyzw ACC, vf25, vf17
+  ilw.w vi06, 1(vi03)        |  maddy.xyzw vf13, vf13, vf17
+  iaddi vi03, vi03, 0x2      |  mulaw.xy ACC, vf19, vf00 
+  ilwr.w vi07, vi04          |  maddw.xy vf16, vf18, vf12
+  lq.xyzw vf21, 1(vi08)      |  mulax.xyzw ACC, vf26, vf17
+  lq.xyzw vf27, 0(vi06)      |  maddy.xyzw vf15, vf15, vf17
+  sq.xyzw vf13, 0(vi10)      |  add.xyzw vf25, vf20, vf22
+  ilwr.w vi08, vi07          |  mini.xy vf16, vf16, vf02 
+  ibeq vi00, vi02, L21       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf15, 1(vi10)      |  itof0.xyzw vf13, vf27    
+  ilw.z vi09, -1(vi03)       |  itof0.xyzw vf14, vf14    
+  lq.xyzw vf20, 0(vi08)      |  maxx.xy vf16, vf16, vf00 
+  ior vi10, vi05, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf15, 1(vi06)      |  maddax.xyzw ACC, vf05, vf13
+  lq.xyzw vf22, 0(vi09)      |  madday.xyzw ACC, vf06, vf13
+  iaddi vi04, vi04, 0x1      |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf23, 1(vi09)      |  mulax.xyzw ACC, vf25, vf16
+  ilwr.w vi05, vi03          |  maddy.xyzw vf12, vf12, vf16
+  iaddi vi02, vi02, -0x1     |  mulaw.xy ACC, vf19, vf00 
+  ilwr.x vi07, vi04          |  maddw.xy vf17, vf18, vf13
+  lq.xyzw vf21, 1(vi08)      |  mulax.xyzw ACC, vf26, vf16
+  lq.xyzw vf27, 0(vi05)      |  maddy.xyzw vf14, vf14, vf16
+  sq.xyzw vf12, 0(vi10)      |  add.xyzw vf25, vf20, vf22
+  ilwr.w vi08, vi07          |  mini.xy vf17, vf17, vf02 
+  ibeq vi00, vi02, L21       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf14, 1(vi10)      |  itof0.xyzw vf12, vf27    
+  ilwr.z vi09, vi03          |  itof0.xyzw vf15, vf15    
+  lq.xyzw vf20, 0(vi08)      |  maxx.xy vf17, vf17, vf00 
+  ior vi10, vi06, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf14, 1(vi05)      |  maddax.xyzw ACC, vf05, vf12
+  lq.xyzw vf22, 0(vi09)      |  madday.xyzw ACC, vf06, vf12
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf23, 1(vi09)      |  mulax.xyzw ACC, vf25, vf17
+  ilw.w vi06, 1(vi03)        |  maddy.xyzw vf13, vf13, vf17
+  iaddi vi03, vi03, 0x2      |  mulaw.xy ACC, vf19, vf00 
+  ilwr.y vi07, vi04          |  maddw.xy vf16, vf18, vf12
+  lq.xyzw vf21, 1(vi08)      |  mulax.xyzw ACC, vf26, vf17
+  lq.xyzw vf27, 0(vi06)      |  maddy.xyzw vf15, vf15, vf17
+  sq.xyzw vf13, 0(vi10)      |  add.xyzw vf25, vf20, vf22
+  ilwr.w vi08, vi07          |  mini.xy vf16, vf16, vf02 
+  ibne vi00, vi02, L20       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf15, 1(vi10)      |  itof0.xyzw vf13, vf27    
+L21:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L22:
+  ilw.w vi05, 328(vi03)      |  nop                      
+  iaddi vi03, vi03, 0x1      |  nop                      
+  ilw.x vi07, 328(vi04)      |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf27, 328(vi05)    |  nop                      
+  nop                        |  nop                      
+  ilw.w vi08, 328(vi07)      |  nop                      
+  nop                        |  nop                      
+  nop                        |  itof0.xyzw vf12, vf27    
+  ilw.z vi09, 327(vi03)      |  nop                      
+  lq.xyzw vf20, 328(vi08)    |  nop                      
+  nop                        |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf14, 329(vi05)    |  maddax.xyzw ACC, vf05, vf12
+  lq.xyzw vf22, 328(vi09)    |  madday.xyzw ACC, vf06, vf12
+  nop                        |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf23, 329(vi09)    |  nop                      
+  ilw.w vi06, 328(vi03)      |  nop                      
+  iaddi vi03, vi03, 0x1      |  mulaw.xy ACC, vf19, vf00 
+  ilw.y vi07, 328(vi04)      |  maddw.xy vf16, vf18, vf12
+  lq.xyzw vf21, 329(vi08)    |  nop                      
+  lq.xyzw vf27, 328(vi06)    |  nop                      
+  nop                        |  add.xyzw vf25, vf20, vf22
+  ilw.w vi08, 328(vi07)      |  mini.xy vf16, vf16, vf02 
+  nop                        |  add.xyzw vf26, vf21, vf23
+  nop                        |  itof0.xyzw vf13, vf27    
+L23:
+  ilw.z vi09, 327(vi03)      |  itof0.xyzw vf14, vf14    
+  lq.xyzw vf20, 328(vi08)    |  maxx.xy vf16, vf16, vf00 
+  ior vi10, vi05, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf15, 329(vi06)    |  maddax.xyzw ACC, vf05, vf13
+  lq.xyzw vf22, 328(vi09)    |  madday.xyzw ACC, vf06, vf13
+  nop                        |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf23, 329(vi09)    |  mulax.xyzw ACC, vf25, vf16
+  ilw.w vi05, 328(vi03)      |  maddy.xyzw vf12, vf12, vf16
+  iaddi vi02, vi02, -0x1     |  mulaw.xy ACC, vf19, vf00 
+  ilw.z vi07, 328(vi04)      |  maddw.xy vf17, vf18, vf13
+  lq.xyzw vf21, 329(vi08)    |  mulax.xyzw ACC, vf26, vf16
+  lq.xyzw vf27, 328(vi05)    |  maddy.xyzw vf14, vf14, vf16
+  sq.xyzw vf12, 328(vi10)    |  add.xyzw vf25, vf20, vf22
+  ilw.w vi08, 328(vi07)      |  mini.xy vf17, vf17, vf02 
+  ibeq vi00, vi02, L24       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf14, 329(vi10)    |  itof0.xyzw vf12, vf27    
+  ilw.z vi09, 328(vi03)      |  itof0.xyzw vf15, vf15    
+  lq.xyzw vf20, 328(vi08)    |  maxx.xy vf17, vf17, vf00 
+  ior vi10, vi06, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf14, 329(vi05)    |  maddax.xyzw ACC, vf05, vf12
+  lq.xyzw vf22, 328(vi09)    |  madday.xyzw ACC, vf06, vf12
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf23, 329(vi09)    |  mulax.xyzw ACC, vf25, vf17
+  ilw.w vi06, 329(vi03)      |  maddy.xyzw vf13, vf13, vf17
+  iaddi vi03, vi03, 0x2      |  mulaw.xy ACC, vf19, vf00 
+  ilw.w vi07, 328(vi04)      |  maddw.xy vf16, vf18, vf12
+  lq.xyzw vf21, 329(vi08)    |  mulax.xyzw ACC, vf26, vf17
+  lq.xyzw vf27, 328(vi06)    |  maddy.xyzw vf15, vf15, vf17
+  sq.xyzw vf13, 328(vi10)    |  add.xyzw vf25, vf20, vf22
+  ilw.w vi08, 328(vi07)      |  mini.xy vf16, vf16, vf02 
+  ibeq vi00, vi02, L24       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf15, 329(vi10)    |  itof0.xyzw vf13, vf27    
+  ilw.z vi09, 327(vi03)      |  itof0.xyzw vf14, vf14    
+  lq.xyzw vf20, 328(vi08)    |  maxx.xy vf16, vf16, vf00 
+  ior vi10, vi05, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf15, 329(vi06)    |  maddax.xyzw ACC, vf05, vf13
+  lq.xyzw vf22, 328(vi09)    |  madday.xyzw ACC, vf06, vf13
+  iaddi vi04, vi04, 0x1      |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf23, 329(vi09)    |  mulax.xyzw ACC, vf25, vf16
+  ilw.w vi05, 328(vi03)      |  maddy.xyzw vf12, vf12, vf16
+  iaddi vi02, vi02, -0x1     |  mulaw.xy ACC, vf19, vf00 
+  ilw.x vi07, 328(vi04)      |  maddw.xy vf17, vf18, vf13
+  lq.xyzw vf21, 329(vi08)    |  mulax.xyzw ACC, vf26, vf16
+  lq.xyzw vf27, 328(vi05)    |  maddy.xyzw vf14, vf14, vf16
+  sq.xyzw vf12, 328(vi10)    |  add.xyzw vf25, vf20, vf22
+  ilw.w vi08, 328(vi07)      |  mini.xy vf17, vf17, vf02 
+  ibeq vi00, vi02, L24       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf14, 329(vi10)    |  itof0.xyzw vf12, vf27    
+  ilw.z vi09, 328(vi03)      |  itof0.xyzw vf15, vf15    
+  lq.xyzw vf20, 328(vi08)    |  maxx.xy vf17, vf17, vf00 
+  ior vi10, vi06, vi00       |  mulaw.xyzw ACC, vf08, vf00
+  lq.xyzw vf14, 329(vi05)    |  maddax.xyzw ACC, vf05, vf12
+  lq.xyzw vf22, 328(vi09)    |  madday.xyzw ACC, vf06, vf12
+  iaddi vi02, vi02, -0x1     |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf23, 329(vi09)    |  mulax.xyzw ACC, vf25, vf17
+  ilw.w vi06, 329(vi03)      |  maddy.xyzw vf13, vf13, vf17
+  iaddi vi03, vi03, 0x2      |  mulaw.xy ACC, vf19, vf00 
+  ilw.y vi07, 328(vi04)      |  maddw.xy vf16, vf18, vf12
+  lq.xyzw vf21, 329(vi08)    |  mulax.xyzw ACC, vf26, vf17
+  lq.xyzw vf27, 328(vi06)    |  maddy.xyzw vf15, vf15, vf17
+  sq.xyzw vf13, 328(vi10)    |  add.xyzw vf25, vf20, vf22
+  ilw.w vi08, 328(vi07)      |  mini.xy vf16, vf16, vf02 
+  ibne vi00, vi02, L23       |  add.xyzw vf26, vf21, vf23
+  sq.xyzw vf15, 329(vi10)    |  itof0.xyzw vf13, vf27    
+L24:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L25:
+  ilw.x vi02, 1(vi14)        |  nop                      
+  ilw.w vi03, 2(vi14)        |  nop                      
+  ilw.x vi04, 4(vi14)        |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  nop                      
+  ibeq vi00, vi02, L32       |  nop                      
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  lq.xy vf18, 667(vi00)      |  nop                      
+  lq.xy vf19, 669(vi00)      |  nop                      
+  b L27                      |  nop                      
+  lq.w vf26, 667(vi00)       |  nop                      
+L26:
+  ilwr.z vi02, vi14          |  nop                      
+  ilw.y vi03, 2(vi14)        |  nop                      
+  ilw.z vi04, 3(vi14)        |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  nop                      
+  ibeq vi00, vi02, L32       |  nop                      
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  lq.xy vf18, 666(vi00)      |  nop                      
+  lq.xy vf19, 668(vi00)      |  nop                      
+  lq.w vf26, 666(vi00)       |  nop                      
+L27:
+  lq.xyzw vf05, 5(vi14)      |  nop                      
+  lq.xyzw vf06, 6(vi14)      |  nop                      
+  lq.xyzw vf07, 7(vi14)      |  nop                      
+  ibne vi00, vi14, L37       |  nop                      
+  lq.xyzw vf08, 8(vi14)      |  nop                      
+  ilwr.w vi05, vi03          |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf12, 0(vi05)      |  nop                      
+  ilwr.z vi10, vi03          |  nop                      
+  ilwr.x vi07, vi04          |  nop                      
+  nop                        |  nop                      
+  nop                        |  itof0.xyzw vf12, vf12    
+  nop                        |  nop                      
+  nop                        |  mulaw.xyzw ACC, vf08, vf00
+  ilwr.w vi09, vi07          |  nop                      
+  lq.xyzw vf22, 0(vi10)      |  maddax.xyzw ACC, vf05, vf12
+  nop                        |  madday.xyzw ACC, vf06, vf12
+  lq.xyzw vf23, 1(vi10)      |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf20, 0(vi09)      |  nop                      
+  lq.xyzw vf21, 1(vi09)      |  nop                      
+  lq.xyzw vf14, 1(vi05)      |  nop                      
+  ilw.w vi06, 1(vi03)        |  nop                      
+  nop                        |  mulaw.xy ACC, vf19, vf00 
+  nop                        |  maddw.xy vf16, vf18, vf12
+  nop                        |  add.xyzw vf24, vf20, vf22
+  nop                        |  add.xyzw vf25, vf21, vf23
+L28:
+  lq.xyzw vf13, 0(vi06)      |  nop                      
+  ilw.z vi10, 1(vi03)        |  subw.w vf00, vf20, vf26  
+  ilwr.y vi08, vi04          |  subw.w vf00, vf22, vf26  
+  ior vi11, vi05, vi00       |  mini.xy vf16, vf16, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf13, vf13    
+  fsand vi01, 0x2            |  itof0.xyzw vf14, vf14    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilwr.w vi09, vi08          |  maxx.xy vf16, vf16, vf00 
+  lq.xyzw vf22, 0(vi10)      |  maddax.xyzw ACC, vf05, vf13
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf13
+  lq.xyzw vf23, 1(vi10)      |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf20, 0(vi09)      |  mulax.xyzw ACC, vf24, vf16
+  lq.xyzw vf21, 1(vi09)      |  maddy.xyzw vf12, vf12, vf16
+  ibne vi00, vi01, L33       |  mulax.xyzw ACC, vf25, vf16
+  lq.xyzw vf15, 1(vi06)      |  maddy.xyzw vf14, vf14, vf16
+  ilw.w vi05, 2(vi03)        |  nop                      
+  nop                        |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf12, 0(vi11)      |  maddw.xy vf17, vf18, vf13
+  ibeq vi00, vi02, L32       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf14, 1(vi11)      |  add.xyzw vf25, vf21, vf23
+L29:
+  lq.xyzw vf12, 0(vi05)      |  nop                      
+  ilw.z vi10, 2(vi03)        |  subw.w vf00, vf20, vf26  
+  ilwr.z vi07, vi04          |  subw.w vf00, vf22, vf26  
+  ior vi11, vi06, vi00       |  mini.xy vf17, vf17, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf12, vf12    
+  fsand vi01, 0x2            |  itof0.xyzw vf15, vf15    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilwr.w vi09, vi07          |  maxx.xy vf17, vf17, vf00 
+  lq.xyzw vf22, 0(vi10)      |  maddax.xyzw ACC, vf05, vf12
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf12
+  lq.xyzw vf23, 1(vi10)      |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf20, 0(vi09)      |  mulax.xyzw ACC, vf24, vf17
+  lq.xyzw vf21, 1(vi09)      |  maddy.xyzw vf13, vf13, vf17
+  ibne vi00, vi01, L34       |  mulax.xyzw ACC, vf25, vf17
+  lq.xyzw vf14, 1(vi05)      |  maddy.xyzw vf15, vf15, vf17
+  ilw.w vi06, 3(vi03)        |  nop                      
+  nop                        |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf13, 0(vi11)      |  maddw.xy vf16, vf18, vf12
+  ibeq vi00, vi02, L32       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf15, 1(vi11)      |  add.xyzw vf25, vf21, vf23
+L30:
+  lq.xyzw vf13, 0(vi06)      |  nop                      
+  ilw.z vi10, 3(vi03)        |  subw.w vf00, vf20, vf26  
+  ilwr.w vi08, vi04          |  subw.w vf00, vf22, vf26  
+  ior vi11, vi05, vi00       |  mini.xy vf16, vf16, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf13, vf13    
+  fsand vi01, 0x2            |  itof0.xyzw vf14, vf14    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilwr.w vi09, vi08          |  maxx.xy vf16, vf16, vf00 
+  lq.xyzw vf22, 0(vi10)      |  maddax.xyzw ACC, vf05, vf13
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf13
+  lq.xyzw vf23, 1(vi10)      |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf20, 0(vi09)      |  mulax.xyzw ACC, vf24, vf16
+  lq.xyzw vf21, 1(vi09)      |  maddy.xyzw vf12, vf12, vf16
+  ibne vi00, vi01, L35       |  mulax.xyzw ACC, vf25, vf16
+  lq.xyzw vf15, 1(vi06)      |  maddy.xyzw vf14, vf14, vf16
+  ilw.w vi05, 4(vi03)        |  nop                      
+  iaddi vi04, vi04, 0x1      |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf12, 0(vi11)      |  maddw.xy vf17, vf18, vf13
+  ibeq vi00, vi02, L32       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf14, 1(vi11)      |  add.xyzw vf25, vf21, vf23
+L31:
+  lq.xyzw vf12, 0(vi05)      |  nop                      
+  ilw.z vi10, 4(vi03)        |  subw.w vf00, vf20, vf26  
+  ilwr.x vi07, vi04          |  subw.w vf00, vf22, vf26  
+  ior vi11, vi06, vi00       |  mini.xy vf17, vf17, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf12, vf12    
+  fsand vi01, 0x2            |  itof0.xyzw vf15, vf15    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilwr.w vi09, vi07          |  maxx.xy vf17, vf17, vf00 
+  lq.xyzw vf22, 0(vi10)      |  maddax.xyzw ACC, vf05, vf12
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf12
+  lq.xyzw vf23, 1(vi10)      |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf20, 0(vi09)      |  mulax.xyzw ACC, vf24, vf17
+  lq.xyzw vf21, 1(vi09)      |  maddy.xyzw vf13, vf13, vf17
+  ibne vi00, vi01, L36       |  mulax.xyzw ACC, vf25, vf17
+  lq.xyzw vf14, 1(vi05)      |  maddy.xyzw vf15, vf15, vf17
+  ilw.w vi06, 5(vi03)        |  nop                      
+  iaddi vi03, vi03, 0x4      |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf13, 0(vi11)      |  maddw.xy vf16, vf18, vf12
+  ibne vi00, vi02, L28       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf15, 1(vi11)      |  add.xyzw vf25, vf21, vf23
+L32:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L33:
+  lq.xyzw vf27, 0(vi07)      |  nop                      
+  ilw.w vi05, 2(vi03)        |  mulaw.xy ACC, vf19, vf00 
+  nop                        |  maddw.xy vf17, vf18, vf13
+  ibne vi00, vi02, L29       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 0(vi03)      |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L34:
+  lq.xyzw vf27, 0(vi08)      |  nop                      
+  ilw.w vi06, 3(vi03)        |  mulaw.xy ACC, vf19, vf00 
+  nop                        |  maddw.xy vf16, vf18, vf12
+  ibne vi00, vi02, L30       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 1(vi03)      |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L35:
+  lq.xyzw vf27, 0(vi07)      |  nop                      
+  ilw.w vi05, 4(vi03)        |  mulaw.xy ACC, vf19, vf00 
+  iaddi vi04, vi04, 0x1      |  maddw.xy vf17, vf18, vf13
+  ibne vi00, vi02, L31       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 2(vi03)      |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L36:
+  lq.xyzw vf27, 0(vi08)      |  nop                      
+  ilw.w vi06, 5(vi03)        |  mulaw.xy ACC, vf19, vf00 
+  iaddi vi03, vi03, 0x4      |  maddw.xy vf16, vf18, vf12
+  ibne vi00, vi02, L28       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, -1(vi03)     |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L37:
+  ilw.w vi05, 328(vi03)      |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf12, 328(vi05)    |  nop                      
+  ilw.z vi10, 328(vi03)      |  nop                      
+  ilw.x vi07, 328(vi04)      |  nop                      
+  nop                        |  nop                      
+  nop                        |  itof0.xyzw vf12, vf12    
+  nop                        |  nop                      
+  nop                        |  mulaw.xyzw ACC, vf08, vf00
+  ilw.w vi09, 328(vi07)      |  nop                      
+  lq.xyzw vf22, 328(vi10)    |  maddax.xyzw ACC, vf05, vf12
+  nop                        |  madday.xyzw ACC, vf06, vf12
+  lq.xyzw vf23, 329(vi10)    |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf20, 328(vi09)    |  nop                      
+  lq.xyzw vf21, 329(vi09)    |  nop                      
+  lq.xyzw vf14, 329(vi05)    |  nop                      
+  ilw.w vi06, 329(vi03)      |  nop                      
+  nop                        |  mulaw.xy ACC, vf19, vf00 
+  nop                        |  maddw.xy vf16, vf18, vf12
+  nop                        |  add.xyzw vf24, vf20, vf22
+  nop                        |  add.xyzw vf25, vf21, vf23
+L38:
+  lq.xyzw vf13, 328(vi06)    |  nop                      
+  ilw.z vi10, 329(vi03)      |  subw.w vf00, vf20, vf26  
+  ilw.y vi08, 328(vi04)      |  subw.w vf00, vf22, vf26  
+  ior vi11, vi05, vi00       |  mini.xy vf16, vf16, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf13, vf13    
+  fsand vi01, 0x2            |  itof0.xyzw vf14, vf14    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilw.w vi09, 328(vi08)      |  maxx.xy vf16, vf16, vf00 
+  lq.xyzw vf22, 328(vi10)    |  maddax.xyzw ACC, vf05, vf13
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf13
+  lq.xyzw vf23, 329(vi10)    |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf20, 328(vi09)    |  mulax.xyzw ACC, vf24, vf16
+  lq.xyzw vf21, 329(vi09)    |  maddy.xyzw vf12, vf12, vf16
+  ibne vi00, vi01, L43       |  mulax.xyzw ACC, vf25, vf16
+  lq.xyzw vf15, 329(vi06)    |  maddy.xyzw vf14, vf14, vf16
+  ilw.w vi05, 330(vi03)      |  nop                      
+  nop                        |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf12, 328(vi11)    |  maddw.xy vf17, vf18, vf13
+  ibeq vi00, vi02, L42       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf14, 329(vi11)    |  add.xyzw vf25, vf21, vf23
+L39:
+  lq.xyzw vf12, 328(vi05)    |  nop                      
+  ilw.z vi10, 330(vi03)      |  subw.w vf00, vf20, vf26  
+  ilw.z vi07, 328(vi04)      |  subw.w vf00, vf22, vf26  
+  ior vi11, vi06, vi00       |  mini.xy vf17, vf17, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf12, vf12    
+  fsand vi01, 0x2            |  itof0.xyzw vf15, vf15    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilw.w vi09, 328(vi07)      |  maxx.xy vf17, vf17, vf00 
+  lq.xyzw vf22, 328(vi10)    |  maddax.xyzw ACC, vf05, vf12
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf12
+  lq.xyzw vf23, 329(vi10)    |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf20, 328(vi09)    |  mulax.xyzw ACC, vf24, vf17
+  lq.xyzw vf21, 329(vi09)    |  maddy.xyzw vf13, vf13, vf17
+  ibne vi00, vi01, L44       |  mulax.xyzw ACC, vf25, vf17
+  lq.xyzw vf14, 329(vi05)    |  maddy.xyzw vf15, vf15, vf17
+  ilw.w vi06, 331(vi03)      |  nop                      
+  nop                        |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf13, 328(vi11)    |  maddw.xy vf16, vf18, vf12
+  ibeq vi00, vi02, L42       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf15, 329(vi11)    |  add.xyzw vf25, vf21, vf23
+L40:
+  lq.xyzw vf13, 328(vi06)    |  nop                      
+  ilw.z vi10, 331(vi03)      |  subw.w vf00, vf20, vf26  
+  ilw.w vi08, 328(vi04)      |  subw.w vf00, vf22, vf26  
+  ior vi11, vi05, vi00       |  mini.xy vf16, vf16, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf13, vf13    
+  fsand vi01, 0x2            |  itof0.xyzw vf14, vf14    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilw.w vi09, 328(vi08)      |  maxx.xy vf16, vf16, vf00 
+  lq.xyzw vf22, 328(vi10)    |  maddax.xyzw ACC, vf05, vf13
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf13
+  lq.xyzw vf23, 329(vi10)    |  maddz.xyzw vf13, vf07, vf13
+  lq.xyzw vf20, 328(vi09)    |  mulax.xyzw ACC, vf24, vf16
+  lq.xyzw vf21, 329(vi09)    |  maddy.xyzw vf12, vf12, vf16
+  ibne vi00, vi01, L45       |  mulax.xyzw ACC, vf25, vf16
+  lq.xyzw vf15, 329(vi06)    |  maddy.xyzw vf14, vf14, vf16
+  ilw.w vi05, 332(vi03)      |  nop                      
+  iaddi vi04, vi04, 0x1      |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf12, 328(vi11)    |  maddw.xy vf17, vf18, vf13
+  ibeq vi00, vi02, L42       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf14, 329(vi11)    |  add.xyzw vf25, vf21, vf23
+L41:
+  lq.xyzw vf12, 328(vi05)    |  nop                      
+  ilw.z vi10, 332(vi03)      |  subw.w vf00, vf20, vf26  
+  ilw.x vi07, 328(vi04)      |  subw.w vf00, vf22, vf26  
+  ior vi11, vi06, vi00       |  mini.xy vf17, vf17, vf02 
+  iaddi vi02, vi02, -0x1     |  itof0.xyzw vf12, vf12    
+  fsand vi01, 0x2            |  itof0.xyzw vf15, vf15    
+  fsand vi12, 0x2            |  mulaw.xyzw ACC, vf08, vf00
+  ilw.w vi09, 328(vi07)      |  maxx.xy vf17, vf17, vf00 
+  lq.xyzw vf22, 328(vi10)    |  maddax.xyzw ACC, vf05, vf12
+  iand vi01, vi01, vi12      |  madday.xyzw ACC, vf06, vf12
+  lq.xyzw vf23, 329(vi10)    |  maddz.xyzw vf12, vf07, vf12
+  lq.xyzw vf20, 328(vi09)    |  mulax.xyzw ACC, vf24, vf17
+  lq.xyzw vf21, 329(vi09)    |  maddy.xyzw vf13, vf13, vf17
+  ibne vi00, vi01, L46       |  mulax.xyzw ACC, vf25, vf17
+  lq.xyzw vf14, 329(vi05)    |  maddy.xyzw vf15, vf15, vf17
+  ilw.w vi06, 333(vi03)      |  nop                      
+  iaddi vi03, vi03, 0x4      |  mulaw.xy ACC, vf19, vf00 
+  sq.xyzw vf13, 328(vi11)    |  maddw.xy vf16, vf18, vf12
+  ibne vi00, vi02, L38       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf15, 329(vi11)    |  add.xyzw vf25, vf21, vf23
+L42:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L43:
+  lq.xyzw vf27, 328(vi07)    |  nop                      
+  ilw.w vi05, 330(vi03)      |  mulaw.xy ACC, vf19, vf00 
+  nop                        |  maddw.xy vf17, vf18, vf13
+  ibne vi00, vi02, L39       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 328(vi03)    |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L44:
+  lq.xyzw vf27, 328(vi08)    |  nop                      
+  ilw.w vi06, 331(vi03)      |  mulaw.xy ACC, vf19, vf00 
+  nop                        |  maddw.xy vf16, vf18, vf12
+  ibne vi00, vi02, L40       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 329(vi03)    |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L45:
+  lq.xyzw vf27, 328(vi07)    |  nop                      
+  ilw.w vi05, 332(vi03)      |  mulaw.xy ACC, vf19, vf00 
+  iaddi vi04, vi04, 0x1      |  maddw.xy vf17, vf18, vf13
+  ibne vi00, vi02, L41       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 330(vi03)    |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L46:
+  lq.xyzw vf27, 328(vi08)    |  nop                      
+  ilw.w vi06, 333(vi03)      |  mulaw.xy ACC, vf19, vf00 
+  iaddi vi03, vi03, 0x4      |  maddw.xy vf16, vf18, vf12
+  ibne vi00, vi02, L38       |  add.xyzw vf24, vf20, vf22
+  sq.xyzw vf27, 327(vi03)    |  add.xyzw vf25, vf21, vf23
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L47:
+  ilw.y vi11, 1(vi14)        |  nop                      
+  ilw.x vi02, 3(vi14)        |  nop                      
+  ilw.y vi03, 4(vi14)        |  nop                      
+  b L49                      |  nop                      
+  lq.w vf10, 667(vi00)       |  nop                      
+L48:
+  ilwr.w vi11, vi14          |  nop                      
+  ilw.z vi02, 2(vi14)        |  nop                      
+  ilw.w vi03, 3(vi14)        |  nop                      
+  lq.w vf10, 666(vi00)       |  nop                      
+L49:
+  ibeq vi00, vi11, L59       |  nop                      
+  iadd vi02, vi02, vi14      |  nop                      
+  iadd vi10, vi02, vi11      |  nop                      
+  ibne vi00, vi14, L64       |  nop                      
+  iaddi vi10, vi10, 0x3      |  nop                      
+  lqi.xyzw vf06, vi02        |  nop                      
+  ilwr.x vi04, vi03          |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  nop                      
+  ilwr.w vi08, vi04          |  nop                      
+  ilwr.y vi05, vi03          |  nop                      
+  lq.xyzw vf08, 0(vi09)      |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf07, 0(vi08)      |  nop                      
+  nop                        |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+L50:
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L51:
+  ilwr.w vi08, vi05          |  nop                      
+  ilwr.z vi06, vi03          |  nop                      
+  lq.xyzw vf08, 0(vi09)      |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L60       |  nop                      
+  lq.xyzw vf07, 0(vi08)      |  nop                      
+L52:
+  ibeq vi10, vi02, L59       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L53:
+  ilwr.w vi08, vi06          |  nop                      
+  ilwr.w vi07, vi03          |  nop                      
+  lq.xyzw vf08, 0(vi09)      |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L61       |  nop                      
+  lq.xyzw vf07, 0(vi08)      |  nop                      
+L54:
+  ibeq vi10, vi02, L59       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L55:
+  ilwr.w vi08, vi07          |  nop                      
+  ilw.x vi04, 1(vi03)        |  nop                      
+  lq.xyzw vf08, 0(vi09)      |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L62       |  nop                      
+  lq.xyzw vf07, 0(vi08)      |  nop                      
+L56:
+  ibeq vi10, vi02, L59       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L57:
+  ilwr.w vi08, vi04          |  nop                      
+  ilw.y vi05, 1(vi03)        |  nop                      
+  lq.xyzw vf08, 0(vi09)      |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L63       |  nop                      
+  lq.xyzw vf07, 0(vi08)      |  nop                      
+L58:
+  iaddi vi03, vi03, 0x1      |  nop                      
+  ibne vi10, vi02, L50       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+L59:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L60:
+  lq.xyzw vf09, 0(vi04)      |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L52       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L59       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  b L53                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L61:
+  lq.xyzw vf09, 0(vi05)      |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L54       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L59       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  b L55                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L62:
+  lq.xyzw vf09, 0(vi06)      |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L56       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L59       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  b L57                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L63:
+  lq.xyzw vf09, 0(vi07)      |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L58       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L59       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  iaddi vi03, vi03, 0x1      |  nop                      
+  b L51                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L64:
+  lqi.xyzw vf06, vi02        |  nop                      
+  ilw.x vi04, 328(vi03)      |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  nop                      
+  ilw.w vi08, 328(vi04)      |  nop                      
+  ilw.y vi05, 328(vi03)      |  nop                      
+  lq.xyzw vf08, 328(vi09)    |  nop                      
+  nop                        |  nop                      
+  nop                        |  nop                      
+  lq.xyzw vf07, 328(vi08)    |  nop                      
+  nop                        |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+L65:
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L66:
+  ilw.w vi08, 328(vi05)      |  nop                      
+  ilw.z vi06, 328(vi03)      |  nop                      
+  lq.xyzw vf08, 328(vi09)    |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L75       |  nop                      
+  lq.xyzw vf07, 328(vi08)    |  nop                      
+L67:
+  ibeq vi10, vi02, L74       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L68:
+  ilw.w vi08, 328(vi06)      |  nop                      
+  ilw.w vi07, 328(vi03)      |  nop                      
+  lq.xyzw vf08, 328(vi09)    |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L76       |  nop                      
+  lq.xyzw vf07, 328(vi08)    |  nop                      
+L69:
+  ibeq vi10, vi02, L74       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L70:
+  ilw.w vi08, 328(vi07)      |  nop                      
+  ilw.x vi04, 329(vi03)      |  nop                      
+  lq.xyzw vf08, 328(vi09)    |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L77       |  nop                      
+  lq.xyzw vf07, 328(vi08)    |  nop                      
+L71:
+  ibeq vi10, vi02, L74       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L72:
+  ilw.w vi08, 328(vi04)      |  nop                      
+  ilw.y vi05, 329(vi03)      |  nop                      
+  lq.xyzw vf08, 328(vi09)    |  nop                      
+  fsand vi01, 0x2            |  subw.w vf00, vf07, vf10  
+  ibne vi00, vi01, L78       |  nop                      
+  lq.xyzw vf07, 328(vi08)    |  nop                      
+L73:
+  iaddi vi03, vi03, 0x1      |  nop                      
+  ibne vi10, vi02, L65       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+L74:
+  jr vi15                    |  nop                      
+  nop                        |  nop                      
+L75:
+  lq.xyzw vf09, 328(vi04)    |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L67       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L74       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  b L68                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L76:
+  lq.xyzw vf09, 328(vi05)    |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L69       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L74       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  b L70                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L77:
+  lq.xyzw vf09, 328(vi06)    |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L71       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L74       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  b L72                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L78:
+  lq.xyzw vf09, 328(vi07)    |  nop                      
+  fsand vi01, 0x2            |  nop                      
+  ibeq vi00, vi01, L73       |  nop                      
+  mtir vi09, vf06.z          |  nop                      
+  ibeq vi10, vi02, L74       |  nop                      
+  sq.xyzw vf09, -3(vi02)     |  nop                      
+  iaddi vi03, vi03, 0x1      |  nop                      
+  b L66                      |  nop                      
+  lqi.xyzw vf06, vi02        |  subw.w vf00, vf08, vf10  
+L79:
+  fcset 0x0                  |  nop                      
+  iblez vi12, L80            |  nop                      
+  iaddi vi09, vi09, 0x1      |  nop                      
+  ior vi10, vi06, vi00       |  nop                      
+  iadd vi01, vi12, vi12      |  nop                      
+  iadd vi01, vi01, vi12      |  nop                      
+  iadd vi05, vi06, vi01      |  nop                      
+  sqi.xyzw vf06, vi06        |  nop                      
+  isw.x vi12, -1(vi06)       |  nop                      
+  jr vi15                    |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+L80:
+  ilw.y vi01, -1(vi09)       |  nop                      
+  ilw.z vi13, -1(vi09)       |  nop                      
+  ibeq vi00, vi12, L83       |  nop                      
+  ilwr.x vi07, vi10          |  nop                      
+  ibltz vi01, L81            |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  sqi.xyzw vf05, vi06        |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  sqi.xyzw vf31, vi06        |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  iadd vi01, vi12, vi12      |  nop                      
+  iadd vi01, vi01, vi12      |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  ior vi10, vi06, vi00       |  nop                      
+  iadd vi05, vi06, vi01      |  nop                      
+  sqi.xyzw vf06, vi06        |  nop                      
+  isw.x vi12, -1(vi06)       |  nop                      
+  jr vi15                    |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+L81:
+  mtir vi01, vf03.x          |  nop                      
+  mtir vi06, vf03.y          |  nop                      
+  mr32.xyzw vf03, vf03       |  nop                      
+  iadd vi07, vi07, vi11      |  nop                      
+  ibgez vi13, L82            |  nop                      
+  iswr.x vi07, vi10          |  nop                      
+  xgkick vi01                |  nop                      
+  ior vi10, vi06, vi00       |  nop                      
+  iadd vi01, vi12, vi12      |  nop                      
+  iadd vi01, vi01, vi12      |  nop                      
+  iadd vi05, vi06, vi01      |  nop                      
+  sqi.xyzw vf06, vi06        |  nop                      
+  isw.x vi12, -1(vi06)       |  nop                      
+  jr vi15                    |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+L82:
+  iadd vi13, vi13, vi08      |  nop                      
+  xgkick vi01                |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  sqi.xyzw vf05, vi06        |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  sqi.xyzw vf31, vi06        |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  iadd vi01, vi12, vi12      |  nop                      
+  iadd vi01, vi01, vi12      |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  ior vi10, vi06, vi00       |  nop                      
+  iadd vi05, vi06, vi01      |  nop                      
+  sqi.xyzw vf06, vi06        |  nop                      
+  isw.x vi12, -1(vi06)       |  nop                      
+  jr vi15                    |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+L83:
+  mtir vi01, vf03.x          |  nop                      
+  mr32.xyzw vf03, vf03       |  nop                      
+  iadd vi07, vi07, vi11      |  nop                      
+  iswr.x vi07, vi10          |  nop                      
+  xgkick vi01                |  nop                      
+  lq.xyzw vf04, 664(vi00)    |  nop :e                   
+  nop                        |  nop                      
+L84:
+  ilw.w vi08, 4(vi14)        |  addw.z vf25, vf00, vf00  
+  lq.xyzw vf06, 658(vi00)    |  nop                      
+  lq.xyzw vf07, 661(vi00)    |  nop                      
+  lq.xyzw vf05, 660(vi00)    |  nop                      
+  iadd vi08, vi08, vi14      |  nop                      
+  lq.w vf29, 1(vi08)         |  nop                      
+  fcset 0x0                  |  nop                      
+  ilw.z vi09, 4(vi14)        |  nop                      
+  ilw.y vi03, 3(vi14)        |  nop                      
+  lq.xyzw vf08, 662(vi00)    |  nop                      
+  iadd vi09, vi09, vi14      |  addw.z vf02, vf00, vf29  
+  ibne vi00, vi14, L93       |  nop                      
+  mtir vi06, vf03.x          |  addw.z vf25, vf25, vf29  
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  ilwr.x vi02, vi03          |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  ilwr.w vi04, vi02          |  nop                      
+  lq.xy vf25, 0(vi02)        |  nop                      
+  sqi.xyzw vf05, vi06        |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  lq.xyzw vf09, 0(vi04)      |  nop                      
+  lq.xyzw vf17, 1(vi04)      |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  sqi.xyzw vf31, vi06        |  nop                      
+  ilwr.y vi02, vi03          |  nop                      
+  lqi.xyzw vf29, vi13        |  subz.xyz vf21, vf25, vf02
+  lqi.xyzw vf30, vi13        |  nop                      
+  div Q, vf01.x, vf09.w      |  nop                      
+  ilwr.w vi04, vi02          |  nop                      
+  lq.xy vf25, 0(vi02)        |  mul.xyzw vf13, vf09, vf08
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lq.xyzw vf10, 0(vi04)      |  nop                      
+  lq.xyzw vf18, 1(vi04)      |  nop                      
+  iadd vi01, vi12, vi12      |  mul.xyz vf09, vf09, Q    
+  iadd vi01, vi01, vi12      |  mul.xyz vf21, vf21, Q    
+  ilwr.z vi02, vi03          |  nop                      
+  iadd vi05, vi06, vi01      |  subz.xyz vf22, vf25, vf02
+  ior vi10, vi06, vi00       |  nop                      
+  div Q, vf01.x, vf10.w      |  nop                      
+  ilwr.w vi04, vi02          |  add.xyzw vf09, vf09, vf07
+  lq.xy vf25, 0(vi02)        |  mul.xyzw vf14, vf10, vf08
+  sqi.xyzw vf06, vi06        |  nop                      
+  isw.x vi12, -1(vi06)       |  mul.xyzw vf17, vf17, vf04
+  lq.xyzw vf11, 0(vi04)      |  miniz.w vf09, vf09, vf01 
+  lq.xyzw vf19, 1(vi04)      |  clipw.xyz vf13, vf13     
+  iaddi vi09, vi09, 0x1      |  mul.xyz vf10, vf10, Q    
+  ilwr.x vi12, vi09          |  mul.xyz vf22, vf22, Q    
+L85:
+  ilwr.w vi02, vi03          |  maxy.w vf09, vf09, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf23, vf25, vf02
+  ibeq vi00, vi01, L86       |  nop                      
+  div Q, vf01.x, vf11.w      |  ftoi0.xyzw vf17, vf17    
+  nop                        |  addw.w vf09, vf09, vf01  
+L86:
+  ilwr.w vi04, vi02          |  add.xyzw vf10, vf10, vf07
+  lq.xy vf25, 0(vi02)        |  mul.xyzw vf15, vf11, vf08
+  sqi.xyzw vf21, vi06        |  nop                      
+  sqi.xyzw vf17, vi06        |  ftoi4.xyzw vf09, vf09    
+  iaddi vi03, vi03, 0x1      |  mul.xyzw vf18, vf18, vf04
+  lq.xyzw vf12, 0(vi04)      |  miniz.w vf10, vf10, vf01 
+  lq.xyzw vf20, 1(vi04)      |  clipw.xyz vf14, vf14     
+  ibeq vi05, vi06, L90       |  mul.xyz vf11, vf11, Q    
+  sqi.xyzw vf09, vi06        |  mul.xyz vf23, vf23, Q    
+  ilwr.x vi02, vi03          |  maxy.w vf10, vf10, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf24, vf25, vf02
+  ibeq vi00, vi01, L87       |  nop                      
+  div Q, vf01.x, vf12.w      |  ftoi0.xyzw vf18, vf18    
+  nop                        |  addw.w vf10, vf10, vf01  
+L87:
+  ilwr.w vi04, vi02          |  add.xyzw vf11, vf11, vf07
+  lq.xy vf25, 0(vi02)        |  mul.xyzw vf16, vf12, vf08
+  sqi.xyzw vf22, vi06        |  mul.xyzw vf19, vf19, vf04
+  sqi.xyzw vf18, vi06        |  ftoi4.xyzw vf10, vf10    
+  lq.xyzw vf09, 0(vi04)      |  miniz.w vf11, vf11, vf01 
+  lq.xyzw vf17, 1(vi04)      |  clipw.xyz vf15, vf15     
+  ibeq vi05, vi06, L91       |  mul.xyz vf12, vf12, Q    
+  sqi.xyzw vf10, vi06        |  mul.xyz vf24, vf24, Q    
+  ilwr.y vi02, vi03          |  maxy.w vf11, vf11, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf21, vf25, vf02
+  ibeq vi00, vi01, L88       |  ftoi0.xyzw vf19, vf19    
+  div Q, vf01.x, vf09.w      |  nop                      
+  nop                        |  addw.w vf11, vf11, vf01  
+L88:
+  ilwr.w vi04, vi02          |  add.xyzw vf12, vf12, vf07
+  lq.xy vf25, 0(vi02)        |  mul.xyzw vf13, vf09, vf08
+  sqi.xyzw vf23, vi06        |  mul.xyzw vf20, vf20, vf04
+  sqi.xyzw vf19, vi06        |  ftoi4.xyzw vf11, vf11    
+  lq.xyzw vf10, 0(vi04)      |  miniz.w vf12, vf12, vf01 
+  lq.xyzw vf18, 1(vi04)      |  clipw.xyz vf16, vf16     
+  ibeq vi05, vi06, L92       |  mul.xyz vf09, vf09, Q    
+  sqi.xyzw vf11, vi06        |  mul.xyz vf21, vf21, Q    
+  ilwr.z vi02, vi03          |  maxy.w vf12, vf12, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf22, vf25, vf02
+  ibeq vi00, vi01, L89       |  ftoi0.xyzw vf20, vf20    
+  div Q, vf01.x, vf10.w      |  nop                      
+  nop                        |  addw.w vf12, vf12, vf01  
+L89:
+  ilwr.w vi04, vi02          |  add.xyzw vf09, vf09, vf07
+  lq.xy vf25, 0(vi02)        |  mul.xyzw vf14, vf10, vf08
+  sqi.xyzw vf24, vi06        |  mul.xyzw vf17, vf17, vf04
+  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12    
+  lq.xyzw vf11, 0(vi04)      |  miniz.w vf09, vf09, vf01 
+  lq.xyzw vf19, 1(vi04)      |  clipw.xyz vf13, vf13     
+  ibne vi05, vi06, L85       |  mul.xyz vf10, vf10, Q    
+  sqi.xyzw vf12, vi06        |  mul.xyz vf22, vf22, Q    
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x3b9   |  nop                      
+L90:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x3c7   |  nop                      
+L91:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x3d4   |  nop                      
+L92:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x3e1   |  nop                      
+L93:
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  ilw.x vi02, 328(vi03)      |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  ilw.w vi04, 328(vi02)      |  nop                      
+  lq.xy vf25, 328(vi02)      |  nop                      
+  sqi.xyzw vf05, vi06        |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  lq.xyzw vf09, 328(vi04)    |  nop                      
+  lq.xyzw vf17, 329(vi04)    |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  sqi.xyzw vf31, vi06        |  nop                      
+  ilw.y vi02, 328(vi03)      |  nop                      
+  lqi.xyzw vf29, vi13        |  subz.xyz vf21, vf25, vf02
+  lqi.xyzw vf30, vi13        |  nop                      
+  div Q, vf01.x, vf09.w      |  nop                      
+  ilw.w vi04, 328(vi02)      |  nop                      
+  lq.xy vf25, 328(vi02)      |  mul.xyzw vf13, vf09, vf08
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lq.xyzw vf10, 328(vi04)    |  nop                      
+  lq.xyzw vf18, 329(vi04)    |  nop                      
+  iadd vi01, vi12, vi12      |  mul.xyz vf09, vf09, Q    
+  iadd vi01, vi01, vi12      |  mul.xyz vf21, vf21, Q    
+  ilw.z vi02, 328(vi03)      |  nop                      
+  iadd vi05, vi06, vi01      |  subz.xyz vf22, vf25, vf02
+  ior vi10, vi06, vi00       |  nop                      
+  div Q, vf01.x, vf10.w      |  nop                      
+  ilw.w vi04, 328(vi02)      |  add.xyzw vf09, vf09, vf07
+  lq.xy vf25, 328(vi02)      |  mul.xyzw vf14, vf10, vf08
+  sqi.xyzw vf06, vi06        |  nop                      
+  isw.x vi12, -1(vi06)       |  mul.xyzw vf17, vf17, vf04
+  lq.xyzw vf11, 328(vi04)    |  miniz.w vf09, vf09, vf01 
+  lq.xyzw vf19, 329(vi04)    |  clipw.xyz vf13, vf13     
+  iaddi vi09, vi09, 0x1      |  mul.xyz vf10, vf10, Q    
+  ilwr.x vi12, vi09          |  mul.xyz vf22, vf22, Q    
+L94:
+  ilw.w vi02, 328(vi03)      |  maxy.w vf09, vf09, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf23, vf25, vf02
+  ibeq vi00, vi01, L95       |  nop                      
+  div Q, vf01.x, vf11.w      |  ftoi0.xyzw vf17, vf17    
+  nop                        |  addw.w vf09, vf09, vf01  
+L95:
+  ilw.w vi04, 328(vi02)      |  add.xyzw vf10, vf10, vf07
+  lq.xy vf25, 328(vi02)      |  mul.xyzw vf15, vf11, vf08
+  sqi.xyzw vf21, vi06        |  nop                      
+  sqi.xyzw vf17, vi06        |  ftoi4.xyzw vf09, vf09    
+  iaddi vi03, vi03, 0x1      |  mul.xyzw vf18, vf18, vf04
+  lq.xyzw vf12, 328(vi04)    |  miniz.w vf10, vf10, vf01 
+  lq.xyzw vf20, 329(vi04)    |  clipw.xyz vf14, vf14     
+  ibeq vi05, vi06, L99       |  mul.xyz vf11, vf11, Q    
+  sqi.xyzw vf09, vi06        |  mul.xyz vf23, vf23, Q    
+  ilw.x vi02, 328(vi03)      |  maxy.w vf10, vf10, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf24, vf25, vf02
+  ibeq vi00, vi01, L96       |  nop                      
+  div Q, vf01.x, vf12.w      |  ftoi0.xyzw vf18, vf18    
+  nop                        |  addw.w vf10, vf10, vf01  
+L96:
+  ilw.w vi04, 328(vi02)      |  add.xyzw vf11, vf11, vf07
+  lq.xy vf25, 328(vi02)      |  mul.xyzw vf16, vf12, vf08
+  sqi.xyzw vf22, vi06        |  mul.xyzw vf19, vf19, vf04
+  sqi.xyzw vf18, vi06        |  ftoi4.xyzw vf10, vf10    
+  lq.xyzw vf09, 328(vi04)    |  miniz.w vf11, vf11, vf01 
+  lq.xyzw vf17, 329(vi04)    |  clipw.xyz vf15, vf15     
+  ibeq vi05, vi06, L100      |  mul.xyz vf12, vf12, Q    
+  sqi.xyzw vf10, vi06        |  mul.xyz vf24, vf24, Q    
+  ilw.y vi02, 328(vi03)      |  maxy.w vf11, vf11, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf21, vf25, vf02
+  ibeq vi00, vi01, L97       |  ftoi0.xyzw vf19, vf19    
+  div Q, vf01.x, vf09.w      |  nop                      
+  nop                        |  addw.w vf11, vf11, vf01  
+L97:
+  ilw.w vi04, 328(vi02)      |  add.xyzw vf12, vf12, vf07
+  lq.xy vf25, 328(vi02)      |  mul.xyzw vf13, vf09, vf08
+  sqi.xyzw vf23, vi06        |  mul.xyzw vf20, vf20, vf04
+  sqi.xyzw vf19, vi06        |  ftoi4.xyzw vf11, vf11    
+  lq.xyzw vf10, 328(vi04)    |  miniz.w vf12, vf12, vf01 
+  lq.xyzw vf18, 329(vi04)    |  clipw.xyz vf16, vf16     
+  ibeq vi05, vi06, L101      |  mul.xyz vf09, vf09, Q    
+  sqi.xyzw vf11, vi06        |  mul.xyz vf21, vf21, Q    
+  ilw.z vi02, 328(vi03)      |  maxy.w vf12, vf12, vf01  
+  fcand vi01, 0x3ffff        |  subz.xyz vf22, vf25, vf02
+  ibeq vi00, vi01, L98       |  ftoi0.xyzw vf20, vf20    
+  div Q, vf01.x, vf10.w      |  nop                      
+  nop                        |  addw.w vf12, vf12, vf01  
+L98:
+  ilw.w vi04, 328(vi02)      |  add.xyzw vf09, vf09, vf07
+  lq.xy vf25, 328(vi02)      |  mul.xyzw vf14, vf10, vf08
+  sqi.xyzw vf24, vi06        |  mul.xyzw vf17, vf17, vf04
+  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12    
+  lq.xyzw vf11, 328(vi04)    |  miniz.w vf09, vf09, vf01 
+  lq.xyzw vf19, 329(vi04)    |  clipw.xyz vf13, vf13     
+  ibne vi05, vi06, L94       |  mul.xyz vf10, vf10, Q    
+  sqi.xyzw vf12, vi06        |  mul.xyz vf22, vf22, Q    
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x420   |  nop                      
+L99:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x42e   |  nop                      
+L100:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x43b   |  nop                      
+L101:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x448   |  nop                      
+L102:
+  lq.xyzw vf05, 660(vi00)    |  addw.z vf13, vf00, vf00  
+  lq.xyzw vf06, 658(vi00)    |  nop                      
+  ilw.w vi08, 4(vi14)        |  nop                      
+  ilw.z vi09, 4(vi14)        |  nop                      
+  ilw.y vi03, 3(vi14)        |  addz.z vf13, vf13, vf02  
+  lq.xyzw vf07, 661(vi00)    |  nop                      
+  iadd vi08, vi08, vi14      |  nop                      
+  iadd vi09, vi09, vi14      |  nop                      
+  ibne vi00, vi14, L107      |  nop                      
+  mtir vi06, vf03.x          |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  sqi.xyzw vf05, vi06        |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  ilwr.x vi02, vi03          |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  ilwr.w vi04, vi02          |  nop                      
+  lq.xy vf13, 0(vi02)        |  nop                      
+  ilwr.y vi02, vi03          |  nop                      
+  sqi.xyzw vf31, vi06        |  nop                      
+  lq.xyzw vf09, 0(vi04)      |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lq.xyzw vf14, 1(vi04)      |  nop                      
+  div Q, vf01.x, vf09.w      |  subz.xyz vf18, vf13, vf02
+  iadd vi01, vi12, vi12      |  nop                      
+  ilwr.w vi04, vi02          |  nop                      
+  lq.xy vf13, 0(vi02)        |  nop                      
+  ilwr.z vi02, vi03          |  mul.xyzw vf14, vf14, vf04
+  iadd vi01, vi01, vi12      |  nop                      
+  lq.xyzw vf10, 0(vi04)      |  nop                      
+  iadd vi05, vi06, vi01      |  mul.xyz vf09, vf09, Q    
+  ior vi10, vi06, vi00       |  mul.xyz vf18, vf18, Q    
+  lq.xyzw vf15, 1(vi04)      |  nop                      
+  div Q, vf01.x, vf10.w      |  subz.xyz vf19, vf13, vf02
+  sqi.xyzw vf06, vi06        |  add.xyzw vf09, vf09, vf07
+  ilwr.w vi04, vi02          |  ftoi0.xyzw vf14, vf14    
+  lq.xy vf13, 0(vi02)        |  nop                      
+  ilwr.w vi02, vi03          |  mul.xyzw vf15, vf15, vf04
+  isw.x vi12, -1(vi06)       |  maxy.w vf09, vf09, vf01  
+  lq.xyzw vf11, 0(vi04)      |  nop                      
+  iaddi vi09, vi09, 0x1      |  mul.xyz vf10, vf10, Q    
+  ilwr.x vi12, vi09          |  mul.xyz vf19, vf19, Q    
+L103:
+  iaddi vi03, vi03, 0x1      |  nop                      
+  lq.xyzw vf16, 1(vi04)      |  miniz.w vf09, vf09, vf01 
+  div Q, vf01.x, vf11.w      |  subz.xyz vf20, vf13, vf02
+  sqi.xyzw vf18, vi06        |  add.xyzw vf10, vf10, vf07
+  ilwr.w vi04, vi02          |  ftoi0.xyzw vf15, vf15    
+  lq.xy vf13, 0(vi02)        |  ftoi4.xyzw vf09, vf09    
+  ilwr.x vi02, vi03          |  mul.xyzw vf16, vf16, vf04
+  sqi.xyzw vf14, vi06        |  maxy.w vf10, vf10, vf01  
+  lq.xyzw vf12, 0(vi04)      |  nop                      
+  ibeq vi05, vi06, L104      |  mul.xyz vf11, vf11, Q    
+  sqi.xyzw vf09, vi06        |  mul.xyz vf20, vf20, Q    
+  lq.xyzw vf17, 1(vi04)      |  miniz.w vf10, vf10, vf01 
+  div Q, vf01.x, vf12.w      |  subz.xyz vf21, vf13, vf02
+  sqi.xyzw vf19, vi06        |  add.xyzw vf11, vf11, vf07
+  ilwr.w vi04, vi02          |  ftoi0.xyzw vf16, vf16    
+  lq.xy vf13, 0(vi02)        |  ftoi4.xyzw vf10, vf10    
+  ilwr.y vi02, vi03          |  mul.xyzw vf17, vf17, vf04
+  sqi.xyzw vf15, vi06        |  maxy.w vf11, vf11, vf01  
+  lq.xyzw vf09, 0(vi04)      |  nop                      
+  ibeq vi05, vi06, L105      |  mul.xyz vf12, vf12, Q    
+  sqi.xyzw vf10, vi06        |  mul.xyz vf21, vf21, Q    
+  lq.xyzw vf14, 1(vi04)      |  miniz.w vf11, vf11, vf01 
+  div Q, vf01.x, vf09.w      |  subz.xyz vf18, vf13, vf02
+  sqi.xyzw vf20, vi06        |  add.xyzw vf12, vf12, vf07
+  ilwr.w vi04, vi02          |  ftoi0.xyzw vf17, vf17    
+  lq.xy vf13, 0(vi02)        |  ftoi4.xyzw vf11, vf11    
+  ilwr.z vi02, vi03          |  mul.xyzw vf14, vf14, vf04
+  sqi.xyzw vf16, vi06        |  maxy.w vf12, vf12, vf01  
+  lq.xyzw vf10, 0(vi04)      |  nop                      
+  ibeq vi05, vi06, L106      |  mul.xyz vf09, vf09, Q    
+  sqi.xyzw vf11, vi06        |  mul.xyz vf18, vf18, Q    
+  lq.xyzw vf15, 1(vi04)      |  miniz.w vf12, vf12, vf01 
+  div Q, vf01.x, vf10.w      |  subz.xyz vf19, vf13, vf02
+  sqi.xyzw vf21, vi06        |  add.xyzw vf09, vf09, vf07
+  ilwr.w vi04, vi02          |  ftoi0.xyzw vf14, vf14    
+  lq.xy vf13, 0(vi02)        |  ftoi4.xyzw vf12, vf12    
+  ilwr.w vi02, vi03          |  mul.xyzw vf15, vf15, vf04
+  sqi.xyzw vf17, vi06        |  maxy.w vf09, vf09, vf01  
+  lq.xyzw vf11, 0(vi04)      |  nop                      
+  ibne vi05, vi06, L103      |  mul.xyz vf10, vf10, Q    
+  sqi.xyzw vf12, vi06        |  mul.xyz vf19, vf19, Q    
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x491   |  nop                      
+L104:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x49c   |  nop                      
+L105:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x4a6   |  nop                      
+L106:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x4b0   |  nop                      
+L107:
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  sqi.xyzw vf05, vi06        |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  ilw.x vi02, 328(vi03)      |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  ilw.w vi04, 328(vi02)      |  nop                      
+  lq.xy vf13, 328(vi02)      |  nop                      
+  ilw.y vi02, 328(vi03)      |  nop                      
+  sqi.xyzw vf31, vi06        |  nop                      
+  lq.xyzw vf09, 328(vi04)    |  nop                      
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lq.xyzw vf14, 329(vi04)    |  nop                      
+  div Q, vf01.x, vf09.w      |  subz.xyz vf18, vf13, vf02
+  iadd vi01, vi12, vi12      |  nop                      
+  ilw.w vi04, 328(vi02)      |  nop                      
+  lq.xy vf13, 328(vi02)      |  nop                      
+  ilw.z vi02, 328(vi03)      |  mul.xyzw vf14, vf14, vf04
+  iadd vi01, vi01, vi12      |  nop                      
+  lq.xyzw vf10, 328(vi04)    |  nop                      
+  iadd vi05, vi06, vi01      |  mul.xyz vf09, vf09, Q    
+  ior vi10, vi06, vi00       |  mul.xyz vf18, vf18, Q    
+  lq.xyzw vf15, 329(vi04)    |  nop                      
+  div Q, vf01.x, vf10.w      |  subz.xyz vf19, vf13, vf02
+  sqi.xyzw vf06, vi06        |  add.xyzw vf09, vf09, vf07
+  ilw.w vi04, 328(vi02)      |  ftoi0.xyzw vf14, vf14    
+  lq.xy vf13, 328(vi02)      |  nop                      
+  ilw.w vi02, 328(vi03)      |  mul.xyzw vf15, vf15, vf04
+  isw.x vi12, -1(vi06)       |  maxy.w vf09, vf09, vf01  
+  lq.xyzw vf11, 328(vi04)    |  nop                      
+  iaddi vi09, vi09, 0x1      |  mul.xyz vf10, vf10, Q    
+  ilwr.x vi12, vi09          |  mul.xyz vf19, vf19, Q    
+L108:
+  iaddi vi03, vi03, 0x1      |  nop                      
+  lq.xyzw vf16, 329(vi04)    |  miniz.w vf09, vf09, vf01 
+  div Q, vf01.x, vf11.w      |  subz.xyz vf20, vf13, vf02
+  sqi.xyzw vf18, vi06        |  add.xyzw vf10, vf10, vf07
+  ilw.w vi04, 328(vi02)      |  ftoi0.xyzw vf15, vf15    
+  lq.xy vf13, 328(vi02)      |  ftoi4.xyzw vf09, vf09    
+  ilw.x vi02, 328(vi03)      |  mul.xyzw vf16, vf16, vf04
+  sqi.xyzw vf14, vi06        |  maxy.w vf10, vf10, vf01  
+  lq.xyzw vf12, 328(vi04)    |  nop                      
+  ibeq vi05, vi06, L109      |  mul.xyz vf11, vf11, Q    
+  sqi.xyzw vf09, vi06        |  mul.xyz vf20, vf20, Q    
+  lq.xyzw vf17, 329(vi04)    |  miniz.w vf10, vf10, vf01 
+  div Q, vf01.x, vf12.w      |  subz.xyz vf21, vf13, vf02
+  sqi.xyzw vf19, vi06        |  add.xyzw vf11, vf11, vf07
+  ilw.w vi04, 328(vi02)      |  ftoi0.xyzw vf16, vf16    
+  lq.xy vf13, 328(vi02)      |  ftoi4.xyzw vf10, vf10    
+  ilw.y vi02, 328(vi03)      |  mul.xyzw vf17, vf17, vf04
+  sqi.xyzw vf15, vi06        |  maxy.w vf11, vf11, vf01  
+  lq.xyzw vf09, 328(vi04)    |  nop                      
+  ibeq vi05, vi06, L110      |  mul.xyz vf12, vf12, Q    
+  sqi.xyzw vf10, vi06        |  mul.xyz vf21, vf21, Q    
+  lq.xyzw vf14, 329(vi04)    |  miniz.w vf11, vf11, vf01 
+  div Q, vf01.x, vf09.w      |  subz.xyz vf18, vf13, vf02
+  sqi.xyzw vf20, vi06        |  add.xyzw vf12, vf12, vf07
+  ilw.w vi04, 328(vi02)      |  ftoi0.xyzw vf17, vf17    
+  lq.xy vf13, 328(vi02)      |  ftoi4.xyzw vf11, vf11    
+  ilw.z vi02, 328(vi03)      |  mul.xyzw vf14, vf14, vf04
+  sqi.xyzw vf16, vi06        |  maxy.w vf12, vf12, vf01  
+  lq.xyzw vf10, 328(vi04)    |  nop                      
+  ibeq vi05, vi06, L111      |  mul.xyz vf09, vf09, Q    
+  sqi.xyzw vf11, vi06        |  mul.xyz vf18, vf18, Q    
+  lq.xyzw vf15, 329(vi04)    |  miniz.w vf12, vf12, vf01 
+  div Q, vf01.x, vf10.w      |  subz.xyz vf19, vf13, vf02
+  sqi.xyzw vf21, vi06        |  add.xyzw vf09, vf09, vf07
+  ilw.w vi04, 328(vi02)      |  ftoi0.xyzw vf14, vf14    
+  lq.xy vf13, 328(vi02)      |  ftoi4.xyzw vf12, vf12    
+  ilw.w vi02, 328(vi03)      |  mul.xyzw vf15, vf15, vf04
+  sqi.xyzw vf17, vi06        |  maxy.w vf09, vf09, vf01  
+  lq.xyzw vf11, 328(vi04)    |  nop                      
+  ibne vi05, vi06, L108      |  mul.xyz vf10, vf10, Q    
+  sqi.xyzw vf12, vi06        |  mul.xyz vf19, vf19, Q    
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x4ec   |  nop                      
+L109:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x4f7   |  nop                      
+L110:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x501   |  nop                      
+L111:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x50b   |  nop                      
+
+;; PROGRAM 4 START
+L112:
+  lq.xyzw vf05, 660(vi00)    |  nop                      
+  lq.xyzw vf06, 658(vi00)    |  nop                      
+  lq.xyzw vf25, 661(vi00)    |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  nop                      
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  ilw.w vi08, 4(vi14)        |  nop                      
+  ilw.z vi09, 4(vi14)        |  nop                      
+  ilw.y vi03, 3(vi14)        |  nop                      
+  lq.xyzw vf07, 5(vi14)      |  nop                      
+  lq.xyzw vf08, 6(vi14)      |  nop                      
+  lq.xyzw vf09, 7(vi14)      |  nop                      
+  lq.xyzw vf10, 8(vi14)      |  nop                      
+  iadd vi08, vi08, vi14      |  nop                      
+  iadd vi09, vi09, vi14      |  nop                      
+  ibne vi00, vi14, L117      |  nop                      
+  mtir vi06, vf03.x          |  nop                      
+  ilwr.x vi02, vi03          |  maxw.xyzw vf24, vf00, vf00
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  lq.xyzw vf23, 0(vi02)      |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  mtir vi04, vf23.w          |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  ilwr.y vi02, vi03          |  nop                      
+  lq.xyzw vf11, 0(vi04)      |  nop                      
+  lq.xyzw vf15, 1(vi04)      |  nop                      
+  lqi.xyzw vf31, vi13        |  subz.xy vf19, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  nop                      
+  sqi.xyzw vf05, vi06        |  itof0.xyzw vf11, vf11    
+  sqi.xyzw vf29, vi06        |  nop                      
+  lqi.xyzw vf29, vi13        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lqi.xyzw vf30, vi13        |  maddax.xyzw ACC, vf07, vf11
+  sqi.xyzw vf31, vi06        |  madday.xyzw ACC, vf08, vf11
+  sqi.xyzw vf29, vi06        |  maddz.xyzw vf11, vf09, vf11
+  ilwr.z vi02, vi03          |  nop                      
+  lq.xyzw vf12, 0(vi04)      |  nop                      
+  lq.xyzw vf16, 1(vi04)      |  nop                      
+  div Q, vf01.x, vf11.w      |  subz.xy vf20, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  nop                      
+  sqi.xyzw vf30, vi06        |  itof0.xyzw vf12, vf12    
+  move.z vf19, vf24          |  nop                      
+  iadd vi01, vi12, vi12      |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  nop                      
+  iadd vi01, vi01, vi12      |  maddax.xyzw ACC, vf07, vf12
+  iadd vi05, vi06, vi01      |  madday.xyzw ACC, vf08, vf12
+  ior vi10, vi06, vi00       |  maddz.xyzw vf12, vf09, vf12
+  ilwr.w vi02, vi03          |  mul.xyz vf11, vf11, Q    
+  lq.xyzw vf13, 0(vi04)      |  mul.xyz vf19, vf19, Q    
+  lq.xyzw vf17, 1(vi04)      |  nop                      
+  div Q, vf01.x, vf12.w      |  subz.xy vf21, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  add.xyzw vf11, vf11, vf25
+  iaddi vi03, vi03, 0x1      |  itof0.xyzw vf13, vf13    
+  move.z vf20, vf24          |  nop                      
+  sqi.xyzw vf06, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf11, vf11, vf01  
+  isw.x vi12, -1(vi06)       |  maddax.xyzw ACC, vf07, vf13
+  iaddi vi09, vi09, 0x1      |  madday.xyzw ACC, vf08, vf13
+  ilwr.x vi12, vi09          |  maddz.xyzw vf13, vf09, vf13
+L113:
+  ilwr.x vi02, vi03          |  mul.xyz vf12, vf12, Q    
+  lq.xyzw vf14, 0(vi04)      |  mul.xyz vf20, vf20, Q    
+  lq.xyzw vf18, 1(vi04)      |  miniz.w vf11, vf11, vf01 
+  div Q, vf01.x, vf13.w      |  subz.xy vf22, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  add.xyzw vf12, vf12, vf25
+  nop                        |  itof0.xyzw vf14, vf14    
+  sqi.xyzw vf19, vi06        |  ftoi4.xyzw vf11, vf11    
+  sqi.xyzw vf15, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf12, vf12, vf01  
+  move.z vf21, vf24          |  maddax.xyzw ACC, vf07, vf14
+  ibeq vi05, vi06, L114      |  madday.xyzw ACC, vf08, vf14
+  sqi.xyzw vf11, vi06        |  maddz.xyzw vf14, vf09, vf14
+  ilwr.y vi02, vi03          |  mul.xyz vf13, vf13, Q    
+  lq.xyzw vf11, 0(vi04)      |  mul.xyz vf21, vf21, Q    
+  lq.xyzw vf15, 1(vi04)      |  miniz.w vf12, vf12, vf01 
+  div Q, vf01.x, vf14.w      |  subz.xy vf19, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  add.xyzw vf13, vf13, vf25
+  nop                        |  itof0.xyzw vf11, vf11    
+  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12    
+  sqi.xyzw vf16, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf13, vf13, vf01  
+  move.z vf22, vf24          |  maddax.xyzw ACC, vf07, vf11
+  ibeq vi05, vi06, L115      |  madday.xyzw ACC, vf08, vf11
+  sqi.xyzw vf12, vi06        |  maddz.xyzw vf11, vf09, vf11
+  ilwr.z vi02, vi03          |  mul.xyz vf14, vf14, Q    
+  lq.xyzw vf12, 0(vi04)      |  mul.xyz vf22, vf22, Q    
+  lq.xyzw vf16, 1(vi04)      |  miniz.w vf13, vf13, vf01 
+  div Q, vf01.x, vf11.w      |  subz.xy vf20, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  add.xyzw vf14, vf14, vf25
+  nop                        |  itof0.xyzw vf12, vf12    
+  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13    
+  sqi.xyzw vf17, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf14, vf14, vf01  
+  move.z vf19, vf24          |  maddax.xyzw ACC, vf07, vf12
+  ibeq vi05, vi06, L116      |  madday.xyzw ACC, vf08, vf12
+  sqi.xyzw vf13, vi06        |  maddz.xyzw vf12, vf09, vf12
+  ilwr.w vi02, vi03          |  mul.xyz vf11, vf11, Q    
+  lq.xyzw vf13, 0(vi04)      |  mul.xyz vf19, vf19, Q    
+  lq.xyzw vf17, 1(vi04)      |  miniz.w vf14, vf14, vf01 
+  div Q, vf01.x, vf12.w      |  subz.xy vf21, vf23, vf02 
+  lq.xyzw vf23, 0(vi02)      |  add.xyzw vf11, vf11, vf25
+  iaddi vi03, vi03, 0x1      |  itof0.xyzw vf13, vf13    
+  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14    
+  sqi.xyzw vf18, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf11, vf11, vf01  
+  move.z vf20, vf24          |  maddax.xyzw ACC, vf07, vf13
+  ibne vi05, vi06, L113      |  madday.xyzw ACC, vf08, vf13
+  sqi.xyzw vf14, vi06        |  maddz.xyzw vf13, vf09, vf13
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x55d   |  nop                      
+L114:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x569   |  nop                      
+L115:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x575   |  nop                      
+L116:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x581   |  nop                      
+L117:
+  ilw.x vi02, 328(vi03)      |  maxw.xyzw vf24, vf00, vf00
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  lq.xyzw vf23, 328(vi02)    |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  mtir vi04, vf23.w          |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  ilw.y vi02, 328(vi03)      |  nop                      
+  lq.xyzw vf11, 328(vi04)    |  nop                      
+  lq.xyzw vf15, 329(vi04)    |  nop                      
+  lqi.xyzw vf31, vi13        |  subz.xy vf19, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  nop                      
+  sqi.xyzw vf05, vi06        |  itof0.xyzw vf11, vf11    
+  sqi.xyzw vf29, vi06        |  nop                      
+  lqi.xyzw vf29, vi13        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  lqi.xyzw vf30, vi13        |  maddax.xyzw ACC, vf07, vf11
+  sqi.xyzw vf31, vi06        |  madday.xyzw ACC, vf08, vf11
+  sqi.xyzw vf29, vi06        |  maddz.xyzw vf11, vf09, vf11
+  ilw.z vi02, 328(vi03)      |  nop                      
+  lq.xyzw vf12, 328(vi04)    |  nop                      
+  lq.xyzw vf16, 329(vi04)    |  nop                      
+  div Q, vf01.x, vf11.w      |  subz.xy vf20, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  nop                      
+  sqi.xyzw vf30, vi06        |  itof0.xyzw vf12, vf12    
+  move.z vf19, vf24          |  nop                      
+  iadd vi01, vi12, vi12      |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  nop                      
+  iadd vi01, vi01, vi12      |  maddax.xyzw ACC, vf07, vf12
+  iadd vi05, vi06, vi01      |  madday.xyzw ACC, vf08, vf12
+  ior vi10, vi06, vi00       |  maddz.xyzw vf12, vf09, vf12
+  ilw.w vi02, 328(vi03)      |  mul.xyz vf11, vf11, Q    
+  lq.xyzw vf13, 328(vi04)    |  mul.xyz vf19, vf19, Q    
+  lq.xyzw vf17, 329(vi04)    |  nop                      
+  div Q, vf01.x, vf12.w      |  subz.xy vf21, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  add.xyzw vf11, vf11, vf25
+  iaddi vi03, vi03, 0x1      |  itof0.xyzw vf13, vf13    
+  move.z vf20, vf24          |  nop                      
+  sqi.xyzw vf06, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf11, vf11, vf01  
+  isw.x vi12, -1(vi06)       |  maddax.xyzw ACC, vf07, vf13
+  iaddi vi09, vi09, 0x1      |  madday.xyzw ACC, vf08, vf13
+  ilwr.x vi12, vi09          |  maddz.xyzw vf13, vf09, vf13
+L118:
+  ilw.x vi02, 328(vi03)      |  mul.xyz vf12, vf12, Q    
+  lq.xyzw vf14, 328(vi04)    |  mul.xyz vf20, vf20, Q    
+  lq.xyzw vf18, 329(vi04)    |  miniz.w vf11, vf11, vf01 
+  div Q, vf01.x, vf13.w      |  subz.xy vf22, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  add.xyzw vf12, vf12, vf25
+  nop                        |  itof0.xyzw vf14, vf14    
+  sqi.xyzw vf19, vi06        |  ftoi4.xyzw vf11, vf11    
+  sqi.xyzw vf15, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf12, vf12, vf01  
+  move.z vf21, vf24          |  maddax.xyzw ACC, vf07, vf14
+  ibeq vi05, vi06, L119      |  madday.xyzw ACC, vf08, vf14
+  sqi.xyzw vf11, vi06        |  maddz.xyzw vf14, vf09, vf14
+  ilw.y vi02, 328(vi03)      |  mul.xyz vf13, vf13, Q    
+  lq.xyzw vf11, 328(vi04)    |  mul.xyz vf21, vf21, Q    
+  lq.xyzw vf15, 329(vi04)    |  miniz.w vf12, vf12, vf01 
+  div Q, vf01.x, vf14.w      |  subz.xy vf19, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  add.xyzw vf13, vf13, vf25
+  nop                        |  itof0.xyzw vf11, vf11    
+  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12    
+  sqi.xyzw vf16, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf13, vf13, vf01  
+  move.z vf22, vf24          |  maddax.xyzw ACC, vf07, vf11
+  ibeq vi05, vi06, L120      |  madday.xyzw ACC, vf08, vf11
+  sqi.xyzw vf12, vi06        |  maddz.xyzw vf11, vf09, vf11
+  ilw.z vi02, 328(vi03)      |  mul.xyz vf14, vf14, Q    
+  lq.xyzw vf12, 328(vi04)    |  mul.xyz vf22, vf22, Q    
+  lq.xyzw vf16, 329(vi04)    |  miniz.w vf13, vf13, vf01 
+  div Q, vf01.x, vf11.w      |  subz.xy vf20, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  add.xyzw vf14, vf14, vf25
+  nop                        |  itof0.xyzw vf12, vf12    
+  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13    
+  sqi.xyzw vf17, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf14, vf14, vf01  
+  move.z vf19, vf24          |  maddax.xyzw ACC, vf07, vf12
+  ibeq vi05, vi06, L121      |  madday.xyzw ACC, vf08, vf12
+  sqi.xyzw vf13, vi06        |  maddz.xyzw vf12, vf09, vf12
+  ilw.w vi02, 328(vi03)      |  mul.xyz vf11, vf11, Q    
+  lq.xyzw vf13, 328(vi04)    |  mul.xyz vf19, vf19, Q    
+  lq.xyzw vf17, 329(vi04)    |  miniz.w vf14, vf14, vf01 
+  div Q, vf01.x, vf12.w      |  subz.xy vf21, vf23, vf02 
+  lq.xyzw vf23, 328(vi02)    |  add.xyzw vf11, vf11, vf25
+  iaddi vi03, vi03, 0x1      |  itof0.xyzw vf13, vf13    
+  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14    
+  sqi.xyzw vf18, vi06        |  mulaw.xyzw ACC, vf10, vf00
+  mtir vi04, vf23.w          |  maxy.w vf11, vf11, vf01  
+  move.z vf20, vf24          |  maddax.xyzw ACC, vf07, vf13
+  ibne vi05, vi06, L118      |  madday.xyzw ACC, vf08, vf13
+  sqi.xyzw vf14, vi06        |  maddz.xyzw vf13, vf09, vf13
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x5c5   |  nop                      
+L119:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x5d1   |  nop                      
+L120:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x5dd   |  nop                      
+L121:
+  b L79                      |  nop                      
+  iaddiu vi15, vi00, 0x5e9   |  nop                      
+
+;; COMMON KICKING ZONE for L127 programs
+L122:
+  fcset 0x0                  
+  iaddi vi07, vi00, -0x1     
+  iblez vi12, L123           
+  iaddi vi09, vi09, 0x1      
+  ior vi10, vi06, vi00       
+  iadd vi01, vi12, vi12      
+  iadd vi01, vi01, vi12      
+  iadd vi05, vi06, vi01      
+  sqi.xyzw vf06, vi06        
+  isw.x vi12, -1(vi06)       
+  jr vi15                    
+  ilwr.x vi12, vi09          
+L123:
+  ilw.y vi01, -1(vi09)       
+  ilw.z vi13, -1(vi09)       
+  ibeq vi00, vi12, L126      
+  ilwr.x vi14, vi10          
+  ibltz vi01, L124           
+  iaddiu vi12, vi12, 0x80    
+  iadd vi13, vi13, vi08      
+  lqi.xyzw vf29, vi13        
+  lqi.xyzw vf30, vi13        
+  lqi.xyzw vf31, vi13        
+  sqi.xyzw vf05, vi06        
+  sqi.xyzw vf29, vi06        
+  sqi.xyzw vf30, vi06        
+  sqi.xyzw vf31, vi06        
+  lqi.xyzw vf29, vi13        
+  lqi.xyzw vf30, vi13        
+  iadd vi01, vi12, vi12      
+  iadd vi01, vi01, vi12      
+  sqi.xyzw vf29, vi06        
+  sqi.xyzw vf30, vi06        
+  ior vi10, vi06, vi00       
+  iadd vi05, vi06, vi01      
+  sqi.xyzw vf06, vi06        
+  isw.x vi12, -1(vi06)       
+  jr vi15                    
+  ilwr.x vi12, vi09          
+L124:
+  mtir vi01, vf24.w          
+  mtir vi06, vf03.y          
+  mr32.xyzw vf03, vf03       
+  iadd vi14, vi14, vi11      
+  ibgez vi13, L125           
+  iswr.x vi14, vi10          
+  xgkick vi01                
+  ior vi10, vi06, vi00       
+  mfir.w vf24, vi06          
+  iadd vi01, vi12, vi12      
+  iadd vi01, vi01, vi12      
+  iadd vi05, vi06, vi01      
+  sqi.xyzw vf06, vi06        
+  isw.x vi12, -1(vi06)       
+  jr vi15                    
+  ilwr.x vi12, vi09          
+L125:
+  iadd vi13, vi13, vi08      
+  xgkick vi01                
+  lqi.xyzw vf29, vi13        
+  lqi.xyzw vf30, vi13        
+  lqi.xyzw vf31, vi13        
+  mfir.w vf24, vi06          
+  sqi.xyzw vf05, vi06        
+  sqi.xyzw vf29, vi06        
+  sqi.xyzw vf30, vi06        
+  sqi.xyzw vf31, vi06        
+  lqi.xyzw vf29, vi13        
+  lqi.xyzw vf30, vi13        
+  iadd vi01, vi12, vi12      
+  iadd vi01, vi01, vi12      
+  sqi.xyzw vf29, vi06        
+  sqi.xyzw vf30, vi06        
+  nop                        
+  ior vi10, vi06, vi00       
+  iadd vi05, vi06, vi01      
+  sqi.xyzw vf06, vi06        
+  isw.x vi12, -1(vi06)       
+  jr vi15                    
+  ilwr.x vi12, vi09          
+L126:
+  mtir vi01, vf24.w          
+  mr32.xyzw vf03, vf03       
+  iadd vi14, vi14, vi11      
+  iswr.x vi14, vi10          
+  lq.xyzw vf04, 664(vi00)    
+  xgkick vi01                
+  nop                        |  nop :e                   
+  nop                        |  nop                      
+
+;; PROGRAM 6:
+L127:
+  lq.xyzw vf02, 657(vi00)    |  nop                      
+  lq.xyzw vf05, 660(vi00)    |  addw.z vf28, vf00, vf00  
+  lq.xyzw vf06, 658(vi00)    |  nop                      
+  lq.xyzw vf10, 661(vi00)    |  nop                      
+  lq.xyzw vf11, 662(vi00)    |  nop                      
+  lq.xyzw vf01, 656(vi00)    |  addz.z vf28, vf28, vf02  
+  ilw.w vi08, 4(vi14)        |  nop                      
+  ilw.z vi09, 4(vi14)        |  nop                      
+  ilw.y vi03, 3(vi14)        |  nop                      
+  fcset 0x0                  |  nop                      
+  iaddi vi07, vi00, -0x1     |  nop                      
+  lq.xyzw vf04, 5(vi14)      |  mulw.xyzw vf16, vf00, vf00
+  lq.xyzw vf07, 6(vi14)      |  mulw.xyzw vf17, vf00, vf00
+  ibne vi00, vi14, L136      |  mulw.xyzw vf18, vf00, vf00
+  lq.xyzw vf08, 7(vi14)      |  mulw.xyzw vf19, vf00, vf00
+
+;; vi14 = 0 version is here
+  ilwr.x vi02, vi03          |  nop                      
+  lq.xyzw vf09, 8(vi14)      |  nop                      
+  iadd vi08, vi08, vi14      |  nop                      
+  iadd vi09, vi09, vi14      |  nop                      
+  lq.xyw vf28, 0(vi02)       |  nop                      
+  mtir vi06, vf03.x          |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  mtir vi04, vf28.w          |  subz.xyz vf24, vf28, vf02
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  ilwr.y vi02, vi03          |  nop                      
+  lq.xyzw vf12, 0(vi04)      |  nop                      
+  lq.xyzw vf20, 1(vi04)      |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf12, vf12    
+  mfir.w vf24, vi06          |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  sqi.xyzw vf05, vi06        |  subz.xyz vf25, vf28, vf02
+  sqi.xyzw vf29, vi06        |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  nop                      
+  sqi.xyzw vf30, vi06        |  maddax.xyzw ACC, vf04, vf12
+  sqi.xyzw vf31, vi06        |  nop                      
+  ilwr.z vi02, vi03          |  nop                      
+  lq.xyzw vf13, 0(vi04)      |  madday.xyzw ACC, vf07, vf12
+  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf13, vf13    
+  div Q, vf01.x, vf12.w      |  mul.xyzw vf16, vf12, vf11
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  iadd vi01, vi12, vi12      |  subz.xyz vf26, vf28, vf02
+  iadd vi01, vi01, vi12      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  nop                      
+  iadd vi05, vi06, vi01      |  maddax.xyzw ACC, vf04, vf13
+  ior vi10, vi06, vi00       |  mul.xyz vf12, vf12, Q    
+  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q    
+  lq.xyzw vf14, 0(vi04)      |  madday.xyzw ACC, vf07, vf13
+  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
+  sqi.xyzw vf06, vi06        |  add.xyzw vf12, vf12, vf10
+  isw.x vi12, -1(vi06)       |  nop                      
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf14, vf14    
+  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
+  iaddi vi09, vi09, 0x1      |  miniz.w vf12, vf12, vf01 
+  ilwr.x vi12, vi09          |  clipw.xyz vf16, vf16     
+L128:
+  iaddi vi03, vi03, 0x1      |  subz.xyz vf27, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf12, vf12, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf14
+  ibeq vi00, vi01, L129      |  mul.xyz vf13, vf13, Q    
+  ilwr.x vi02, vi03          |  mul.xyz vf25, vf25, Q    
+  nop                        |  addw.w vf12, vf12, vf01  
+L129:
+  lq.xyzw vf15, 0(vi04)      |  madday.xyzw ACC, vf07, vf14
+  lq.xyzw vf23, 1(vi04)      |  maddz.xyzw vf14, vf08, vf14
+  sqi.xyz vf24, vi06         |  add.xyzw vf13, vf13, vf10
+  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12    
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf15, vf15    
+  div Q, vf01.x, vf14.w      |  mul.xyzw vf18, vf14, vf11
+  ibeq vi05, vi06, L133      |  miniz.w vf13, vf13, vf01 
+  sqi.xyzw vf12, vi06        |  clipw.xyz vf17, vf17     
+L0x6a1
+  nop                        |  subz.xyz vf24, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf13, vf13, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf15
+  ibeq vi00, vi01, L130      |  mul.xyz vf14, vf14, Q    
+  ilwr.y vi02, vi03          |  mul.xyz vf26, vf26, Q    
+  nop                        |  addw.w vf13, vf13, vf01  
+L130:
+  lq.xyzw vf12, 0(vi04)      |  madday.xyzw ACC, vf07, vf15
+  lq.xyzw vf20, 1(vi04)      |  maddz.xyzw vf15, vf08, vf15
+  sqi.xyzw vf25, vi06        |  add.xyzw vf14, vf14, vf10
+  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13    
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf12, vf12    
+  div Q, vf01.x, vf15.w      |  mul.xyzw vf19, vf15, vf11
+  ibeq vi05, vi06, L134      |  miniz.w vf14, vf14, vf01 
+  sqi.xyzw vf13, vi06        |  clipw.xyz vf18, vf18     
+L0x6b0
+  nop                        |  subz.xyz vf25, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf14, vf14, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf12
+  ibeq vi00, vi01, L131      |  mul.xyz vf15, vf15, Q    
+  ilwr.z vi02, vi03          |  mul.xyz vf27, vf27, Q    
+  nop                        |  addw.w vf14, vf14, vf01  
+L131:
+  lq.xyzw vf13, 0(vi04)      |  madday.xyzw ACC, vf07, vf12
+  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
+  sqi.xyzw vf26, vi06        |  add.xyzw vf15, vf15, vf10
+  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14    
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf13, vf13    
+  div Q, vf01.x, vf12.w      |  mul.xyzw vf16, vf12, vf11
+  ibeq vi05, vi06, L135      |  miniz.w vf15, vf15, vf01 
+  sqi.xyzw vf14, vi06        |  clipw.xyz vf19, vf19     
+L0x6bf
+  nop                        |  subz.xyz vf26, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf15, vf15, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf13
+  ibeq vi00, vi01, L132      |  mul.xyz vf12, vf12, Q    
+  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q    
+  nop                        |  addw.w vf15, vf15, vf01  
+L132:
+  lq.xyzw vf14, 0(vi04)      |  madday.xyzw ACC, vf07, vf13
+  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
+  sqi.xyzw vf27, vi06        |  add.xyzw vf12, vf12, vf10
+  sqi.xyzw vf23, vi06        |  ftoi4.xyzw vf15, vf15    
+  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf14, vf14    
+  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
+  ibne vi05, vi06, L128      |  miniz.w vf12, vf12, vf01 
+  sqi.xyzw vf15, vi06        |  clipw.xyz vf16, vf16     
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x692   |  nop                      ;; L128
+L133:
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x6a1   |  nop                      
+L134:
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x6b0   |  nop                      
+L135:
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x6bf   |  nop                      
+;; END of 0 VERSION of program 6
+
+;; OTHER VERSION
+L136:
+  ilw.x vi02, 328(vi03)      |  nop                      
+  lq.xyzw vf09, 8(vi14)      |  nop                      
+  iadd vi08, vi08, vi14      |  nop                      
+  iadd vi09, vi09, vi14      |  nop                      
+  lq.xyw vf28, 328(vi02)     |  nop                      
+  mtir vi06, vf03.x          |  nop                      
+  ilwr.x vi12, vi09          |  nop                      
+  ilwr.z vi13, vi09          |  nop                      
+  mtir vi04, vf28.w          |  subz.xyz vf24, vf28, vf02
+  iaddiu vi11, vi00, 0x4000  |  nop                      
+  iaddiu vi11, vi11, 0x4000  |  nop                      
+  ilw.y vi02, 328(vi03)      |  nop                      
+  lq.xyzw vf12, 328(vi04)    |  nop                      
+  lq.xyzw vf20, 329(vi04)    |  nop                      
+  iaddiu vi12, vi12, 0x80    |  nop                      
+  iadd vi13, vi13, vi08      |  nop                      
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf12, vf12    
+  mfir.w vf24, vi06          |  nop                      
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lqi.xyzw vf31, vi13        |  nop                      
+  sqi.xyzw vf05, vi06        |  subz.xyz vf25, vf28, vf02
+  sqi.xyzw vf29, vi06        |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  nop                      
+  sqi.xyzw vf30, vi06        |  maddax.xyzw ACC, vf04, vf12
+  sqi.xyzw vf31, vi06        |  nop                      
+  ilw.z vi02, 328(vi03)      |  nop                      
+  lq.xyzw vf13, 328(vi04)    |  madday.xyzw ACC, vf07, vf12
+  lq.xyzw vf21, 329(vi04)    |  maddz.xyzw vf12, vf08, vf12
+  lqi.xyzw vf29, vi13        |  nop                      
+  lqi.xyzw vf30, vi13        |  nop                      
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf13, vf13    
+  div Q, vf01.x, vf12.w      |  mul.xyzw vf16, vf12, vf11
+  sqi.xyzw vf29, vi06        |  nop                      
+  sqi.xyzw vf30, vi06        |  nop                      
+  iadd vi01, vi12, vi12      |  subz.xyz vf26, vf28, vf02
+  iadd vi01, vi01, vi12      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  nop                      
+  iadd vi05, vi06, vi01      |  maddax.xyzw ACC, vf04, vf13
+  ior vi10, vi06, vi00       |  mul.xyz vf12, vf12, Q    
+  ilw.w vi02, 328(vi03)      |  mul.xyz vf24, vf24, Q    
+  lq.xyzw vf14, 328(vi04)    |  madday.xyzw ACC, vf07, vf13
+  lq.xyzw vf22, 329(vi04)    |  maddz.xyzw vf13, vf08, vf13
+  sqi.xyzw vf06, vi06        |  add.xyzw vf12, vf12, vf10
+  isw.x vi12, -1(vi06)       |  nop                      
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf14, vf14    
+  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
+  iaddi vi09, vi09, 0x1      |  miniz.w vf12, vf12, vf01 
+  ilwr.x vi12, vi09          |  clipw.xyz vf16, vf16     
+L137:
+  iaddi vi03, vi03, 0x1      |  subz.xyz vf27, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf12, vf12, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf14
+  ibeq vi00, vi01, L138      |  mul.xyz vf13, vf13, Q    
+  ilw.x vi02, 328(vi03)      |  mul.xyz vf25, vf25, Q    
+  nop                        |  addw.w vf12, vf12, vf01  
+L138:
+  lq.xyzw vf15, 328(vi04)    |  madday.xyzw ACC, vf07, vf14
+  lq.xyzw vf23, 329(vi04)    |  maddz.xyzw vf14, vf08, vf14
+  sqi.xyz vf24, vi06         |  add.xyzw vf13, vf13, vf10
+  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12    
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf15, vf15    
+  div Q, vf01.x, vf14.w      |  mul.xyzw vf18, vf14, vf11
+  ibeq vi05, vi06, L142      |  miniz.w vf13, vf13, vf01 
+  sqi.xyzw vf12, vi06        |  clipw.xyz vf17, vf17     
+  nop                        |  subz.xyz vf24, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf13, vf13, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf15
+  ibeq vi00, vi01, L139      |  mul.xyz vf14, vf14, Q    
+  ilw.y vi02, 328(vi03)      |  mul.xyz vf26, vf26, Q    
+  nop                        |  addw.w vf13, vf13, vf01  
+L139:
+  lq.xyzw vf12, 328(vi04)    |  madday.xyzw ACC, vf07, vf15
+  lq.xyzw vf20, 329(vi04)    |  maddz.xyzw vf15, vf08, vf15
+  sqi.xyzw vf25, vi06        |  add.xyzw vf14, vf14, vf10
+  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13    
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf12, vf12    
+  div Q, vf01.x, vf15.w      |  mul.xyzw vf19, vf15, vf11
+  ibeq vi05, vi06, L143      |  miniz.w vf14, vf14, vf01 
+  sqi.xyzw vf13, vi06        |  clipw.xyz vf18, vf18     
+  nop                        |  subz.xyz vf25, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf14, vf14, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf12
+  ibeq vi00, vi01, L140      |  mul.xyz vf15, vf15, Q    
+  ilw.z vi02, 328(vi03)      |  mul.xyz vf27, vf27, Q    
+  nop                        |  addw.w vf14, vf14, vf01  
+L140:
+  lq.xyzw vf13, 328(vi04)    |  madday.xyzw ACC, vf07, vf12
+  lq.xyzw vf21, 329(vi04)    |  maddz.xyzw vf12, vf08, vf12
+  sqi.xyzw vf26, vi06        |  add.xyzw vf15, vf15, vf10
+  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14    
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf13, vf13    
+  div Q, vf01.x, vf12.w      |  mul.xyzw vf16, vf12, vf11
+  ibeq vi05, vi06, L144      |  miniz.w vf15, vf15, vf01 
+  sqi.xyzw vf14, vi06        |  clipw.xyz vf19, vf19     
+  nop                        |  subz.xyz vf26, vf28, vf02
+  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+  mtir vi04, vf28.w          |  maxy.w vf15, vf15, vf01  
+  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf13
+  ibeq vi00, vi01, L141      |  mul.xyz vf12, vf12, Q    
+  ilw.w vi02, 328(vi03)      |  mul.xyz vf24, vf24, Q    
+  nop                        |  addw.w vf15, vf15, vf01  
+L141:
+  lq.xyzw vf14, 328(vi04)    |  madday.xyzw ACC, vf07, vf13
+  lq.xyzw vf22, 329(vi04)    |  maddz.xyzw vf13, vf08, vf13
+  sqi.xyzw vf27, vi06        |  add.xyzw vf12, vf12, vf10
+  sqi.xyzw vf23, vi06        |  ftoi4.xyzw vf15, vf15    
+  lq.xyw vf28, 328(vi02)     |  itof0.xyzw vf14, vf14    
+  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
+  ibne vi05, vi06, L137      |  miniz.w vf12, vf12, vf01 
+  sqi.xyzw vf15, vi06        |  clipw.xyz vf16, vf16     
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x707   |  nop                      
+L142:
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x716   |  nop                      
+L143:
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x725   |  nop                      
+L144:
+  b L122                     |  nop                      
+  iaddiu vi15, vi00, 0x734   |  nop                      

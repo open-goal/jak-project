@@ -28,6 +28,7 @@ Config read_config_file(const std::string& path_to_config_file) {
   auto cfg = parse_commented_json(config_str, path_to_config_file);
 
   config.game_version = cfg.at("game_version").get<int>();
+  config.text_version = cfg.at("text_version").get<GameTextVersion>();
 
   auto inputs_json = read_json_file_from_config(cfg, "inputs_file");
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();

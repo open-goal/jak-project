@@ -349,7 +349,13 @@ struct AdGifData {
 // it can also represent "invalid".
 class DrawMode {
  public:
-  enum class AlphaBlend { DISABLED = 0, SRC_DST_SRC_DST = 1, SRC_0_SRC_DST = 2, SRC_0_FIX_DST = 3 };
+  enum class AlphaBlend {
+    DISABLED = 0,
+    SRC_DST_SRC_DST = 1,
+    SRC_0_SRC_DST = 2,
+    SRC_0_FIX_DST = 3,   // fix = 128
+    SRC_DST_FIX_DST = 4  // fix = 64
+  };
 
   enum class AlphaTest {
     NEVER = 0,
@@ -364,8 +370,8 @@ class DrawMode {
   GsTest::ZTest get_depth_test() const { return (GsTest::ZTest)((m_val >> 1) & 0b11); }
   void set_depth_test(GsTest::ZTest dt) { m_val = (m_val & ~(0b110)) | ((u32)(dt) << 1); }
 
-  AlphaBlend get_alpha_blend() const { return (AlphaBlend)((m_val >> 3) & 0b11); }
-  void set_alpha_blend(AlphaBlend ab) { m_val = (m_val & ~(0b11000)) | ((u32)(ab) << 3); }
+  AlphaBlend get_alpha_blend() const { return (AlphaBlend)((m_val >> 24) & 0b111); }
+  void set_alpha_blend(AlphaBlend ab) { m_val = (m_val & ~(0b111 << 24)) | ((u32)(ab) << 24); }
 
   u8 get_aref() const { return m_val >> 8; }
   void set_aref(u8 val) { m_val = (m_val & ~(0xff00)) | (val << 8); }
@@ -457,6 +463,10 @@ class DrawMode {
   void enable_t_clamp() { m_val = m_val | (1 << 23); }
   void disable_t_clamp() { m_val = m_val & (~(1 << 23)); }
 
+  bool get_decal() const { return !(m_val & (1 << 28)); }
+  void enable_decal() { m_val = m_val & (~(1 << 28)); }
+  void disable_decal() { m_val = m_val | (1 << 28); }
+
   u32& as_int() { return m_val; }
 
   bool operator==(const DrawMode& other) const { return m_val == other.m_val; }
@@ -467,7 +477,8 @@ class DrawMode {
  private:
   // 0 - depth write enable
   // 1, 2 - test: never, always, gequal, greater
-  // 3, 4 - alpha: disable, [src,dst,src,dst], [src,0,src,dst], XX
+  // 3, 4 - free
+
   // 5 - clamp enable
   // 6 - filt enable
   // 7 - tcc enable
@@ -478,5 +489,7 @@ class DrawMode {
   // 20 - abe
   // 21, 22 - afail
   // 23 t clamp
+  // 24 - 27 alpha blend
+  // 28 !decal
   u32 m_val = UINT32_MAX;
 };

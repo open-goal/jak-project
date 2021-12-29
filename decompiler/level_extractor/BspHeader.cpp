@@ -31,6 +31,19 @@ void Vector::read_from_file(Ref ref) {
   }
 }
 
+void Matrix4h::read_from_file(Ref ref) {
+  if ((ref.byte_offset % 16) != 0) {
+    throw Error("misaligned Matrix4h");
+  }
+  for (int i = 0; i < 8; i++) {
+    const auto& word = ref.data->words_by_seg.at(ref.seg).at((ref.byte_offset / 4) + i);
+    if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+      throw Error("Matrix4h didn't get plain data.");
+    }
+    memcpy(&data[i * 2], &word.data, 4);
+  }
+}
+
 std::string Vector::print(int indent) const {
   std::string is(indent, ' ');
   std::string result;
@@ -426,6 +439,32 @@ void TieFragment::read_from_file(TypedRef ref,
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   num_tris = read_plain_data_field<u16>(ref, "num-tris", dts);
   num_dverts = read_plain_data_field<u16>(ref, "num-dverts", dts);
+  tex_count = read_plain_data_field<u16>(ref, "tex-count", dts);
+  gif_count = read_plain_data_field<u16>(ref, "gif-count", dts);
+  vertex_count = read_plain_data_field<u16>(ref, "vertex-count", dts);
+
+  auto gif_data_ref = deref_label(get_field_ref(ref, "gif-ref", dts));
+
+  assert((tex_count % 5) == 0);
+  u32 total_gif_qw = tex_count + gif_count;
+  gif_data.resize(16 * total_gif_qw);
+  for (u32 i = 0; i < total_gif_qw * 4; i++) {
+    auto& word =
+        gif_data_ref.data->words_by_seg.at(gif_data_ref.seg).at((gif_data_ref.byte_offset / 4) + i);
+    assert(word.kind() == decompiler::LinkedWord::PLAIN_DATA);
+    memcpy(gif_data.data() + (i * 4), &word.data, 4);
+  }
+
+  auto points_data_ref = deref_label(get_field_ref(ref, "point-ref", dts));
+  point_ref.resize(16 * vertex_count);
+  debug_label_name = inspect_ref(get_field_ref(ref, "point-ref", dts));
+  for (u32 i = 0; i < vertex_count * 4; i++) {
+    auto& word = points_data_ref.data->words_by_seg.at(points_data_ref.seg)
+                     .at((points_data_ref.byte_offset / 4) + i);
+    assert(word.kind() == decompiler::LinkedWord::PLAIN_DATA);
+    memcpy(point_ref.data() + (i * 4), &word.data, 4);
+  }
+
   stats->total_tie_prototype_tris += num_tris;
 }
 
@@ -457,6 +496,12 @@ void InstanceTie::read_from_file(TypedRef ref,
                                  DrawStats* stats) {
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   bucket_index = read_plain_data_field<u16>(ref, "bucket-index", dts);
+  id = read_plain_data_field<s16>(ref, "id", dts);
+  flags = read_plain_data_field<u16>(ref, "flags", dts);
+  //  assert(flags == 0); // TODO
+  origin.read_from_file(get_field_ref(ref, "origin", dts));
+  wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
+  color_indices = deref_label(get_field_ref(ref, "color-indices", dts));
   stats->total_tie_instances++;
 }
 
@@ -596,9 +641,9 @@ std::string DrawableInlineArrayTFrag::my_type() const {
   return "drawable-inline-array-tfrag";
 }
 
-void DrawableInlineArrayTie::read_from_file(TypedRef ref,
-                                            const decompiler::DecompilerTypeSystem& dts,
-                                            DrawStats* stats) {
+void DrawableInlineArrayInstanceTie::read_from_file(TypedRef ref,
+                                                    const decompiler::DecompilerTypeSystem& dts,
+                                                    DrawStats* stats) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -616,7 +661,7 @@ void DrawableInlineArrayTie::read_from_file(TypedRef ref,
   }
 }
 
-std::string DrawableInlineArrayTie::print(const PrintSettings& settings, int indent) const {
+std::string DrawableInlineArrayInstanceTie::print(const PrintSettings& settings, int indent) const {
   std::string is(indent, ' ');
   std::string result;
   int next_indent = indent + 4;
@@ -634,7 +679,7 @@ std::string DrawableInlineArrayTie::print(const PrintSettings& settings, int ind
   return result;
 }
 
-std::string DrawableInlineArrayTie::my_type() const {
+std::string DrawableInlineArrayInstanceTie::my_type() const {
   return "drawable-inline-array-instance-tie";
 }
 
@@ -703,7 +748,7 @@ std::unique_ptr<DrawableInlineArray> make_drawable_inline_array(
   }
 
   if (ref.type->get_name() == "drawable-inline-array-instance-tie") {
-    auto result = std::make_unique<DrawableInlineArrayTie>();
+    auto result = std::make_unique<DrawableInlineArrayInstanceTie>();
     result->read_from_file(ref, dts, stats);
     return result;
   }
@@ -824,11 +869,13 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
                                         DrawStats* stats) {
   name = read_string_field(ref, "name", dts, true);
   flags = read_plain_data_field<u32>(ref, "flags", dts);
+  assert(flags == 0 || flags == 2);
   in_level = read_plain_data_field<u16>(ref, "in-level", dts);
   utextures = read_plain_data_field<u16>(ref, "utextures", dts);
   // todo drawables
   dists.read_from_file(get_field_ref(ref, "dists", dts));
   rdists.read_from_file(get_field_ref(ref, "rdists", dts));
+  stiffness = read_plain_data_field<float>(ref, "stiffness", dts);
 
   auto next_slot = get_field_ref(ref, "next", dts);
   for (int i = 0; i < 4; i++) {
@@ -881,6 +928,37 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   }
   for (auto x : generic_next) {
     assert(x == 0);
+  }
+
+  // get the color count data
+  {
+    u32 num_color_qwcs = 0;
+    for (int i = 0; i < 4; i++) {
+      u32 start = index_start[i];
+      u32 end = start + frag_count[i];
+      // fmt::print("i = {}: {} -> {}\n", i, start, end);
+      assert(num_color_qwcs <= end);
+      num_color_qwcs = std::max(end, num_color_qwcs);
+    }
+
+    auto data_array = get_field_ref(ref, "color-index-qwc", dts);
+    for (u32 i = 0; i < num_color_qwcs; i++) {
+      int byte_offset = data_array.byte_offset + i;
+      auto word = data_array.data->words_by_seg.at(data_array.seg).at(byte_offset / 4);
+      color_index_qwc.push_back(word.get_byte(byte_offset % 4));
+    }
+  }
+
+  // get the colors
+  auto palette = deref_label(get_field_ref(ref, "tie-colors", dts));
+  time_of_day.width = deref_u32(palette, 0);
+
+  assert(time_of_day.width == 8);
+  time_of_day.height = deref_u32(palette, 1);
+  time_of_day.pad = deref_u32(palette, 2);
+  assert(time_of_day.pad == 0);
+  for (int i = 0; i < int(8 * time_of_day.height); i++) {
+    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
   }
 }
 

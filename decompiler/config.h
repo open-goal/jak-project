@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <optional>
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/data/game_text.h"
 
 namespace decompiler {
 struct RegisterTypeCast {
@@ -108,6 +109,8 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   bool is_pal = false;
+
+  GameTextVersion text_version = GameTextVersion::JAK1_V1;
 
   std::unordered_set<std::string> allowed_objects;
   std::unordered_set<std::string> banned_objects;

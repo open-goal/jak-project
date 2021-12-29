@@ -247,8 +247,11 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
           fmt::print("Unknown Function at rip\n");
         }
 
+        /*
+        bool found = false;
         if (s32(rip - m_debug_context.base) > 0 &&
             m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
+          fmt::print("Attempting to find function at this address.\n");
           u32 function_sym_val = m_symbol_name_to_value_map.at("function");
           u32 goal_pc = u32(rip - m_debug_context.base) & -8;
 
@@ -270,30 +273,29 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
             }
           }
 
-          if (goal_pc == symtable_end) {
+          if (goal_pc <= symtable_end) {
             fmt::print("Could not find function within this address.\n");
-            break;
+          } else {
+            rip = goal_pc + m_debug_context.base + BASIC_OFFSET;
+            found = true;
           }
-
-          rip = goal_pc + m_debug_context.base + BASIC_OFFSET;
-          rsp = rsp + 8;  // 8 for the call itself.
-        } else if (fails > 50) {
+        } else*/
+        if (fails > 50) {
           fmt::print(
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
               "stack frame is too long.\n");
           break;
-        } else {
-          // attempt to backtrace anyway! if this fails then rip
-          u64 next_rip = 0;
-          if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-            fmt::print("Invalid return address encountered!\n");
-            break;
-          }
-
-          rip = next_rip;
-          rsp = rsp + 8;  // 8 for the call itself.
-          ++fails;
         }
+        // attempt to backtrace anyway! if this fails then rip
+        u64 next_rip = 0;
+        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+          fmt::print("Invalid return address encountered!\n");
+          break;
+        }
+
+        rip = next_rip;
+        rsp = rsp + 8;  // 8 for the call itself.
+        ++fails;
         // break;
       } else if (!frame.rip_info.func_debug) {
         fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);

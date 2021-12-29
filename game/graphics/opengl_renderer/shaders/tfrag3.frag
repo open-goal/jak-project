@@ -14,7 +14,7 @@ void main() {
     vec4 T0 = texture(tex_T0, tex_coord.xy / tex_coord.z);
     color = fragment_color * T0 * 2.0;
 
-    if (color.a <= alpha_min) {
+    if (color.a < alpha_min) {
         discard;
     }
 
