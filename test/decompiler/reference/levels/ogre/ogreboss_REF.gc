@@ -114,6 +114,11 @@
   :method-count-assert 20
   :size-assert         #x128
   :flag-assert         #x1400c00128
+  (:states
+    ogreboss-missile-idle
+    ogreboss-missile-impact
+    ogreboss-missile-seek
+    )
   )
 
 ;; definition for method 3 of type ogreboss-missile
@@ -525,6 +530,15 @@
   :method-count-assert 20
   :size-assert         #x110
   :flag-assert         #x1400a00110
+  (:states
+    ogreboss-super-boulder-die
+    ogreboss-super-boulder-hit
+    ogreboss-super-boulder-idle
+    ogreboss-super-boulder-killed-player
+    ogreboss-super-boulder-land
+    ogreboss-super-boulder-roll
+    ogreboss-super-boulder-throw
+    )
   )
 
 ;; definition for method 3 of type ogreboss-super-boulder
@@ -1054,6 +1068,9 @@
   :method-count-assert 20
   :size-assert         #xd9
   :flag-assert         #x14007000d9
+  (:states
+    ogreboss-bounce-boulder-idle
+    )
   )
 
 ;; definition for method 3 of type ogreboss-bounce-boulder
@@ -1253,6 +1270,18 @@
   :method-count-assert 20
   :size-assert         #x1bc
   :flag-assert         #x14015001bc
+  (:states
+    ogreboss-dead
+    ogreboss-die
+    ogreboss-idle
+    ogreboss-intro
+    ogreboss-stage1
+    ogreboss-stage2
+    ogreboss-stage3-hit
+    ogreboss-stage3-shuffle
+    ogreboss-stage3-throw
+    ogreboss-wait-for-player
+    )
   )
 
 ;; definition for method 3 of type ogreboss
@@ -1768,7 +1797,7 @@
           )
         )
       )
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (set! (-> self submerged) #t)
     (let ((s5-1 (-> *display* base-frame-counter)))
       (until (>= (- (-> *display* base-frame-counter) s5-1) arg0)
@@ -1785,7 +1814,7 @@
 (defbehavior ogreboss-emerge ogreboss ((arg0 float))
   (when (-> self submerged)
     (set! (-> self submerged) #f)
-    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    (logclear! (-> self draw status) (draw-status drwf01))
     (cond
       ((-> self at-near-spot)
        (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
