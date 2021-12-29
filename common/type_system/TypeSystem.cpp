@@ -1102,11 +1102,11 @@ void TypeSystem::add_builtin_types() {
   // todo
   builtin_structure_inherit(file_stream_type);
   add_field_to_type(file_stream_type, "flags", make_typespec("uint32"));
-  add_field_to_type(file_stream_type, "mode", make_typespec("basic"));
+  add_field_to_type(file_stream_type, "mode", make_typespec("symbol"));
   add_field_to_type(file_stream_type, "name", make_typespec("string"));
   add_field_to_type(file_stream_type, "file", make_typespec("uint32"));
   declare_method(file_stream_type, "new", false,
-                 make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"), false);
+                 make_function_typespec({"symbol", "type", "string", "symbol"}, "_type_"), false);
 }
 
 /*!

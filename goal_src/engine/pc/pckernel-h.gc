@@ -31,10 +31,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x0004)
-(defglobalconstant PC_KERNEL_VERSION_MAJOR #x0000)
+(defglobalconstant PC_KERNEL_VERSION_BUILD #x0000)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0000)
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0000)
+(defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
 (defglobalconstant PC_KERNEL_VERSION (logior
                                         (ash PC_KERNEL_VERSION_MAJOR 48)
                                         (ash PC_KERNEL_VERSION_MINOR 32)
@@ -49,6 +49,9 @@
 (defconstant ASPECT_16X9 (/ 16.0 9.0))
 (defconstant PC_BASE_WIDTH 640)
 (defconstant PC_BASE_HEIGHT 480)
+
+
+(defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
 
 
 
@@ -255,6 +258,7 @@
     (set-size! (_type_ int int) int)
     (set-aspect! (_type_ int int) int)
     (read-from-file (_type_ string) symbol)
+    (write-to-file (_type_ string) symbol)
     )
   )
 
@@ -269,6 +273,9 @@
    )
   )
 
+
+(define *pc-temp-string* (new 'global 'string 512 (the-as string #f)))
+(define *pc-settings* (the-as pc-settings #f))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; resets
@@ -391,40 +398,6 @@
   (set! (-> obj secrets hud-map?) #t)
   (set! (-> obj secrets hud-counters?) #t)
   (none))
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; PC settings
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-(defmethod read-from-file pc-settings ((obj pc-settings) (filename string))
-  "read settings from a file"
-  
-  (if (not filename)
-    (return #f))
-  
-  (format #t "pc settings file at ~A~%" filename)
-  
-  #f
-  )
-
-
-(defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
-  "make a new pc-settings"
-  
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    
-    (reset obj)
-    (read-from-file obj filename)
-    
-    obj
-    )
-  )
-
-(define *pc-settings* (new 'global 'pc-settings (the-as string #f)))
 
 
 

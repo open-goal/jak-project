@@ -149,8 +149,6 @@
 
 (when *debug-segment*
 
-(define *pc-temp-string* (new 'debug 'string 1024 (the-as string #f)))
-
 (defmethod draw pc-settings ((obj pc-settings) (buf dma-buffer))
   "debug draw"
   
@@ -165,6 +163,154 @@
   (none))
 
 )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; file IO
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmethod read-from-file pc-settings ((obj pc-settings) (filename string))
+  "read settings from a file"
+  
+  (if (not filename)
+    (return #f))
+  
+  (let ((file (new 'stack 'file-stream filename 'read)))
+    (if (not (file-stream-valid? file))
+      (return #f))
+    
+    (file-stream-close file)
+    )
+  
+  (format 0 "pc settings file read: ~A~%" filename)
+  
+  #t
+  )
+
+(defmethod write-to-file pc-settings ((obj pc-settings) (filename string))
+  "write settings to a file"
+  
+  (if (not filename)
+    (return #f))
+  
+  (let ((file (new 'stack 'file-stream filename 'write)))
+    (if (not (file-stream-valid? file))
+      (return #f))
+    
+
+    (format file "(settings #x~X~%" (-> obj version))
+
+    (format file "  (fps ~D)~%" (-> obj target-fps))
+    (format file "  (size ~D ~D)~%" (-> obj width) (-> obj height))
+    (format file "  (aspect ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
+    (format file "  (aspect-auto ~A)~%" (-> obj aspect-ratio-auto?))
+    (format file "  (fullscreen ~A)~%" (-> obj fullscreen?))
+    (format file "  (letterbox ~A)~%" (-> obj letterbox?))
+    (format file "  (vsync ~A)~%" (-> obj vsync?))
+    (format file "  (font-scale ~f)~%" (-> obj font-scale))
+
+    (format file "  (audio-latency-ms ~D)~%" (-> obj audio-latency-ms))
+    (format file "  (audio-pan-override ~f)~%" (-> obj audio-pan-override))
+    (format file "  (audio-volume-override ~f)~%" (-> obj audio-volume-override))
+    (format file "  (audio-channel-nb ~D)~%" (-> obj audio-channel-nb))
+
+    (format file "  (gfx-renderer ~D)~%" (-> obj gfx-renderer))
+    (format file "  (gfx-resolution ~f)~%" (-> obj gfx-resolution))
+    (format file "  (gfx-anisotropy ~f)~%" (-> obj gfx-anisotropy))
+    (format file "  (shrub-dist-mod ~f)~%" (-> obj shrub-dist-mod))
+    (format file "  (lod-dist-mod ~f)~%" (-> obj lod-dist-mod))
+    (format file "  (lod-force-tfrag ~D)~%" (-> obj lod-force-tfrag))
+    (format file "  (lod-force-tie ~D)~%" (-> obj lod-force-tie))
+    (format file "  (lod-force-ocean ~D)~%" (-> obj lod-force-ocean))
+    (format file "  (lod-force-actor ~D)~%" (-> obj lod-force-actor))
+
+    (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
+
+    (format file "  (ps2-read-speed? ~A)~%" (-> obj ps2-read-speed?))
+    (format file "  (ps2-parts? ~A)~%" (-> obj ps2-parts?))
+    (format file "  (ps2-music? ~A)~%" (-> obj ps2-music?))
+    (format file "  (ps2-se? ~A)~%" (-> obj ps2-se?))
+    (format file "  (ps2-hints? ~A)~%" (-> obj ps2-hints?))
+    (format file "  (ps2-lod-dist? ~A)~%" (-> obj ps2-lod-dist?))
+    (format file "  (music-fade? ~A)~%" (-> obj music-fade?))
+    (format file "  (use-vis? ~A)~%" (-> obj use-vis?))
+    (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
+    (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
+    (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
+    (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
+
+    (format file "  (scenes-seen")
+    (dotimes (i 197)
+      (if (zero? (mod i 16))
+        (format file "~%   ")
+        )
+      (format file " ~D" (-> obj scenes-seen i))
+      )
+    (format file "~%    )~%")
+
+    (format file "  (fixes~%")
+    (format file "    (crash-sagecage ~A)~%" (-> obj fixes crash-sagecage))
+    (format file "    (crash-dma ~A)~%" (-> obj fixes crash-dma))
+    (format file "    (crash-light-eco ~A)~%" (-> obj fixes crash-light-eco))
+    (format file "    (lockout-pelican ~A)~%" (-> obj fixes lockout-pelican))
+    (format file "    (lockout-pipegame ~A)~%" (-> obj fixes lockout-pipegame))
+    (format file "    (lockout-gambler ~A)~%" (-> obj fixes lockout-gambler))
+    (format file "    (fix-movies ~A)~%" (-> obj fixes fix-movies))
+    (format file "    (fix-credits ~A)~%" (-> obj fixes fix-credits))
+    (format file "    )~%")
+
+    (format file "  (secrets~%")
+    (format file "    (art #x~X)~%" (-> obj secrets art))
+    (format file "    (hard-rats? ~A)~%" (-> obj secrets hard-rats?))
+    (format file "    (hero-mode? ~A)~%" (-> obj secrets hero-mode?))
+    (format file "    (hud-map? ~A)~%" (-> obj secrets hud-map?))
+    (format file "    (hud-counters? ~A)~%" (-> obj secrets hud-counters?))
+    (format file "    (hard-fish-hiscore ~D)~%" (-> obj secrets hard-fish-hiscore))
+    (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
+    (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
+    (format file "    (music")
+    (dotimes (i 30)
+      (if (zero? (mod i 4))
+        (format file "~%     ")
+        )
+      (format file " #x~X" (-> obj secrets music i))
+      )
+    (format file "~%      )~%")
+    (format file "    )~%")
+
+    (format file "  )~%")
+    (file-stream-close file)
+    )
+  
+  (format 0 "pc settings file write: ~A~%" filename)
+  
+  #t
+  )
+
+
+(defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
+  "make a new pc-settings"
+  
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    
+    (reset obj)
+    (read-from-file obj filename)
+    
+    obj
+    )
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define *pc-settings* (new 'global 'pc-settings PC_SETTINGS_FILE_NAME))
 
 
 
