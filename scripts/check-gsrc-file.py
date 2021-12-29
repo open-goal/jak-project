@@ -15,6 +15,7 @@ method_split_pattern = re.compile('t9-\d+\s\(method-of-object')
 function_split_pattern = re.compile('\(t9-\d+\)')
 missing_res_tag_pattern = re.compile('(sv-\d{2,} int)')
 decompiler_error_pattern = re.compile(';; ERROR')
+missing_arg = re.compile('local-vars.*none\)')
 
 for file in files:
   src_path = ""
@@ -51,6 +52,11 @@ for file in files:
       decompiler_error_match = decompiler_error_pattern.search(line)
       if decompiler_error_match:
         print("decompiler_error - {}:{}".format(file_path, lineno + 1))
+        throw_error = True
+        continue
+      missing_arg_match = missing_arg.search(line)
+      if missing_arg_match:
+        print("missing_arg - {}:{}".format(file_path, lineno + 1))
         throw_error = True
         continue
 

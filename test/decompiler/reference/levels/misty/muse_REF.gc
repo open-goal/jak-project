@@ -175,7 +175,7 @@
 
 ;; definition for method 51 of type muse
 ;; INFO: Return type mismatch int vs object.
-(defmethod dummy-51 muse ((obj muse) (arg0 vector))
+(defmethod dummy-51 muse ((obj muse))
   (dotimes (s5-0 2)
     (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
       (sp-launch-particles-var
@@ -193,13 +193,8 @@
 
 ;; definition for method 39 of type muse
 (defmethod common-post muse ((obj muse))
-  (let* ((a0-1 *art-control*)
-         (t9-0 (method-of-object a0-1 spool-push))
-         (a1-0 (-> obj anim name))
-         )
-    (t9-0 a0-1 a1-0 0 obj -99.0)
-    (dummy-51 obj (the-as vector a1-0))
-    )
+  (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
+  (dummy-51 obj)
   ((method-of-type nav-enemy common-post) obj)
   (none)
   )
@@ -289,13 +284,8 @@ nav-enemy-default-event-handler
         (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
         )
       (until (ja-done? 0)
-        (let* ((a0-10 *art-control*)
-               (t9-7 (method-of-object a0-10 spool-push))
-               (a1-5 (-> self anim name))
-               )
-          (t9-7 a0-10 a1-5 0 self -99.0)
-          (dummy-51 self (the-as vector a1-5))
-          )
+        (spool-push *art-control* (-> self anim name) 0 self -99.0)
+        (dummy-51 self)
         (suspend)
         (let ((a0-12 (-> self skel root-channel 0)))
           (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
@@ -556,18 +546,16 @@ nav-enemy-default-event-handler
            (ja-post)
            (clear-collide-with-as (-> self collide-info))
            (send-event *target* 'trans 'reset)
-           (let ((gp-4
-                   (ppointer->handle
-                     (birth-pickup-at-point
-                       (target-pos 0)
-                       (pickup-type fuel-cell)
-                       (the float (-> self entity extra perm task))
-                       #f
-                       self
-                       (the-as fact-info #f)
+           (let ((gp-4 (ppointer->handle (birth-pickup-at-point
+                                           (target-pos 0)
+                                           (pickup-type fuel-cell)
+                                           (the float (-> self entity extra perm task))
+                                           #f
+                                           self
+                                           (the-as fact-info #f)
+                                           )
+                                         )
                        )
-                     )
-                   )
                  )
              (send-event (handle->process (the-as handle gp-4)) 'pickup)
              (while (handle->process (the-as handle gp-4))
@@ -586,14 +574,7 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior ()
-    (local-vars (a1-0 none))
-    (dummy-51 self (the-as vector a1-0))
-    (level-hint-surpress!)
-    (kill-current-level-hint '() '() 'exit)
-    (ja-post)
-    (none)
-    )
+  (behavior () (dummy-51 self) (level-hint-surpress!) (kill-current-level-hint '() '() 'exit) (ja-post) (none))
   )
 
 ;; definition for symbol *muse-nav-enemy-info*, type nav-enemy-info

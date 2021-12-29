@@ -12,4 +12,3 @@ add_executable(memory_dump_tool
         MemoryDumpTool/main.cpp)
 target_link_libraries(memory_dump_tool common decomp elzip)
 
-install(TARGETS dgo_unpacker dgo_packer)

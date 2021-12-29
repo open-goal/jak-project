@@ -16,14 +16,14 @@ GOAL's `printf`.
 
 The following destinations are currently supported:
 - `#t` - print to the listener. After the current game frame is over, this will be sent to the compiler and you can see it at the GOAL prompt.
-- `0` - print to `stdout` in the runtime immediately. This won't be visible from within the compiler - you must look at the runtime to see it.  This is useful for debugging if the runtime crashes before flushing the normal print buffer.
+- `0` - print to `stdout` in the runtime immediately. This won't be visible from within the compiler - you must look at the runtime to see it. This is useful for debugging if the runtime crashes before flushing the normal print buffer.
 - `#f` - print to a new string allocated on the global heap.
 - a GOAL `string` object - append to an existing string
 - a GOAL `file-stream` object - currently unsupported but eventually may allow printing into a file somewhere
 
-The global variable `*print-column*` can be used to automatically print at a certain indentation.  The very first thing printed during a frame will not have the indentation applied.
+The global variable `*print-column*` can be used to automatically print at a certain indentation. The very first thing printed during a frame will not have the indentation applied.
 
-The format string escape sequences all start with `~`, then have arguments (possibly none), then have a single character code.  The arguments look like:
+The format string escape sequences all start with `~`, then have arguments (possibly none), then have a single character code. The arguments look like:
 - `~A`, the `A` code with no arguments
 - `~12A`, the `A` code with an integer argument of `12`
 - `~'zA`, the `A` code with a character argument of `z`
@@ -47,7 +47,7 @@ Replace with a C-style string given in `args`. Note that this will not work on a
 
 #### `~A` or `~a`
 
-Print a boxed object given in `args`. Uses the `print` method. Can take optional arguments for length and padding character. If the `print` method gives something shorter than the length argument, it will be padded on the left with the padding character (default is space).  If the `print` method gives something too long, it will be truncated on the right. The last character printed will be changed to `~` to indicate it was truncated here.
+Print a boxed object given in `args`. Uses the `print` method. Can take optional arguments for length and padding character. If the `print` method gives something shorter than the length argument, it will be padded on the left with the padding character (default is space). If the `print` method gives something too long, it will be truncated on the right. The last character printed will be changed to `~` to indicate it was truncated here.
 
 There is an option to left justify instead but I don't think there's a way to turn it on.
 
@@ -61,7 +61,7 @@ Print a single character (GOAL `uint8` or `int8` type)
 
 #### `~P` or `~p`
 
-Print an object, similar to `~A`, but does not have optional arguments for length or padding. Instead, there is an optional argument to give a type name, then use that types `print` method.  This is useful for printing non-boxed objects. If no type name is given, behaves like `~A`.
+Print an object, similar to `~A`, but does not have optional arguments for length or padding. Instead, there is an optional argument to give a type name, then use that types `print` method. This is useful for printing non-boxed objects. If no type name is given, behaves like `~A`.
 
 #### `~I` or `~i`
 
@@ -69,7 +69,7 @@ Like `~P`, but uses the inspect method instead.
 
 #### `~Q` or `~q`
 
-Likely was supposed to be for printing 128-bit integers stored in registers, but will always prints `0`.  The `format` function is written in C using varargs, which doesn't support 128-bit register values.
+Likely was supposed to be for printing 128-bit integers stored in registers, but will always prints `0`. The `format` function is written in C using varargs, which doesn't support 128-bit register values.
 
 #### `~B` or `~b`
 
@@ -89,19 +89,19 @@ Print floating point. Will print 4 digits after the decimal and pad with space t
 
 #### `~f`
 
-Print floating point.  Takes optional arguments for pad-length (default don't pad), pad-character (default space), and precision (default 4).
+Print floating point. Takes optional arguments for pad-length (default don't pad), pad-character (default space), and precision (default 4).
 
 #### `~R` or `~r`
 
-Like `~f` but scales in-game rotation units to degrees.  The float `65536.0` is 360 degrees.
+Like `~f` but scales in-game rotation units to degrees. The float `65536.0` is 360 degrees.
 
 #### `~M` or `~m`
 
-Like `~f` but scales in-game distance units to meters.  The float `4096.0` is 1 meter.
+Like `~f` but scales in-game distance units to meters. The float `4096.0` is 1 meter.
 
 #### `~E` or `~e`
 
-Like `~f` for argument, but takes an integer time-code as an input and scales time-code units to seconds.  There are 300 ticks / second, which is the smallest number which has an integer number of ticks per NTSC and PAL frame.  Something very weird happens when the input is negative?
+Like `~f` for argument, but takes an integer time-code as an input and scales time-code units to seconds. There are 300 ticks / second, which is the smallest number which has an integer number of ticks per NTSC and PAL frame. Something very weird happens when the input is negative?
 
 #### `~T` or `~t`
 
@@ -109,7 +109,7 @@ Insert a tab character.
 
 #### Pass Through Codes
 
-Some codes will be passed through automatically, along with any arguments.  This will also pass through arguments of `+` or `-`.  I believe that these options could later be interpreted by the code for printing on-screen characters.
+Some codes will be passed through automatically, along with any arguments. This will also pass through arguments of `+` or `-`. I believe that these options could later be interpreted by the code for printing on-screen characters.
 
 The pass through codes are `H,J,K,L,N,V,W,Y,Z,h,j,k,l,n,v,w,y,z`.
 
@@ -160,7 +160,7 @@ Example:
   )
 ```
 
-will print `hello ` only and the value of the entire `block` form is `7`.  The type of the `block` is the most specific type that describes all of the possible return values from any `return-from` or from reaching the end (even if its technically not possible to reach the end). In the case above, the possible return types are `int` and `string`, so the return type of the whole block is `object`, the lowest common ancestor type of `int` and `string`.
+will print `hello ` only and the value of the entire `block` form is `7`. The type of the `block` is the most specific type that describes all of the possible return values from any `return-from` or from reaching the end (even if its technically not possible to reach the end). In the case above, the possible return types are `int` and `string`, so the return type of the whole block is `object`, the lowest common ancestor type of `int` and `string`.
 
 Block is used rarely, and possibly almost never?
 
@@ -172,7 +172,7 @@ Exit a `block` or function early.
 (return-from block-name value)
 ```
 
-Looks up the block and exits from it with the value. You can exit out nested blocks. If you are enclosed in multiple blocks with the same name, exits from the inner-most one with a matching name. Everything in a function is wrapped in a block named `#f`, so you can use `(return-from #f x)` to return early from a function with `x`.  When using this form, it may change the return type of the function or block. The return type will be the lowest common ancestor type of all written return paths. If there is an unreachable return path, it will still be considered.
+Looks up the block and exits from it with the value. You can exit out nested blocks. If you are enclosed in multiple blocks with the same name, exits from the inner-most one with a matching name. Everything in a function is wrapped in a block named `#f`, so you can use `(return-from #f x)` to return early from a function with `x`. When using this form, it may change the return type of the function or block. The return type will be the lowest common ancestor type of all written return paths. If there is an unreachable return path, it will still be considered.
 
 Example
 
@@ -241,7 +241,7 @@ This form is reserved by the compiler. Internally all forms in a file are groupe
 
 ### GOAL "Two Element" Conditions
 
-These are `!=`, `eq?`, `neq?`, `=`, `>`, `<`, `>=`, `<=`.  The default is to compare the two objects as unsigned 64-bit integers, unless a special case is hit. The special case is determined by the type of the __first__ argument:
+These are `!=`, `eq?`, `neq?`, `=`, `>`, `<`, `>=`, `<=`. The default is to compare the two objects as unsigned 64-bit integers, unless a special case is hit. The special case is determined by the type of the __first__ argument:
 - Floating point: if second argument is a number, convert to floating point. Use floating point comparisons
 - Binteger: convert first argument to integer. If second argument is a number, convert to integer. Use signed integer comparisons
 - Integer: If second argument is a number, convert to integer. Use signed integer comparison
@@ -282,7 +282,7 @@ Examples:
 (when-goto (is-player-dead?) some-label)
 ```
 
-Jump to `destination` if the condition is truthy (not `#f`).  This ends up generating much better code than `(if condition (goto x))`.
+Jump to `destination` if the condition is truthy (not `#f`). This ends up generating much better code than `(if condition (goto x))`.
 
 Like normal `goto`, this isn't used much outside of macros.
 
@@ -294,11 +294,11 @@ A normal Lisp/Scheme `cond`.
 (cond (test clause...)...)
 ```
 
-Evaluates `test`s until one is truthy. Then evaluates all `clause`s in that case and returns the value of the last one.  Optionally there can be a case with `else` as the test which runs if no other cases match. This must be the last case.
+Evaluates `test`s until one is truthy. Then evaluates all `clause`s in that case and returns the value of the last one. Optionally there can be a case with `else` as the test which runs if no other cases match. This must be the last case.
 
 If there is no `else`, and no cases match, return `#f`. (is it always `#f`?)
 
-The return type is the lowest common ancestor type of all cases.  Note that for a `cond` without `else`, the possible return value of `#f` is __not__ considered when determining the return type. So:
+The return type is the lowest common ancestor type of all cases. Note that for a `cond` without `else`, the possible return value of `#f` is __not__ considered when determining the return type. So:
 
 ```lisp
 (print-type
@@ -320,7 +320,7 @@ A normal Lisp/Scheme `if`.
 (if test true-case [false-case])
 ```
 
-The value of the entire statement is the value of the taken case. The false case can be left out. If the condition evaluates to false and the false case is left out, `#f` is returned.  The return type follows the same logic as `cond`, as `if` is a macro using `cond`.
+The value of the entire statement is the value of the taken case. The false case can be left out. If the condition evaluates to false and the false case is left out, `#f` is returned. The return type follows the same logic as `cond`, as `if` is a macro using `cond`.
 
 ### `when`
 
@@ -401,7 +401,7 @@ Example:
   )
 ```
 
-Note, if you define multiple variables in a `let`, you cannot refer to variables defined previously in the same `let`.  In the example above, `count-2`'s value couldn't be defined in terms of `count-1` for example.  See `let*`.
+Note, if you define multiple variables in a `let`, you cannot refer to variables defined previously in the same `let`. In the example above, `count-2`'s value couldn't be defined in terms of `count-1` for example. See `let*`.
 
 ### `let*`
 
@@ -444,7 +444,7 @@ Example:
   )
 ```
 
-Define a new function with the given name. Note that until the `defun` itself executes, the function __cannot be used!__. So don't call functions before the `defun`.  This is unlike C, where you can forward declare a function and use it before the actual definition.
+Define a new function with the given name. Note that until the `defun` itself executes, the function __cannot be used!__. So don't call functions before the `defun`. This is unlike C, where you can forward declare a function and use it before the actual definition.
 
 There is an optional docstring. Currently the docstring is just thrown away but in the future we could save them and and generate documentation or something.
 
@@ -494,11 +494,11 @@ arg = (arg-name arg-type)|arg-name
 
 The `:name` option is only used for debugging the compiler - it cannot be accessed or referenced outside of internal compiler debugging features. It should be ignored unless you are debugging the compiler.
 
-The `:inline-only` flag defaults to `#f`, but can be set to `#t` to force the compiler to not generate x86-64 code for the function. In this case, the lambda cannot be used as a function pointer/GOAL `function` object.  This is used in the `let` macro and not really useful for general programming.  If the flag is `#f` (default value), it will generate and store an x86-64 function, regardless of if the function is ever called.
+The `:inline-only` flag defaults to `#f`, but can be set to `#t` to force the compiler to not generate x86-64 code for the function. In this case, the lambda cannot be used as a function pointer/GOAL `function` object. This is used in the `let` macro and not really useful for general programming. If the flag is `#f` (default value), it will generate and store an x86-64 function, regardless of if the function is ever called.
 
-The `:segment` option defaults to `main`, unless the `lambda` is defined in a function in the `debug` segment, in which case it defaults to `debug`. It can be overridden by this flag.  This picks the segment of the object file where the function will be stored.
+The `:segment` option defaults to `main`, unless the `lambda` is defined in a function in the `debug` segment, in which case it defaults to `debug`. It can be overridden by this flag. This picks the segment of the object file where the function will be stored.
 
-The arguments default to type of `object` if no type is provided.  In the case where a lambda is used immediately (a `let`) the compiler will propagate more specific types. This is why you don't have to give types when using `let`.
+The arguments default to type of `object` if no type is provided. In the case where a lambda is used immediately (a `let`) the compiler will propagate more specific types. This is why you don't have to give types when using `let`.
 
 A GOAL lambda has three purposes:
 1. Generate a function as a "real" x86-64 function.
@@ -509,7 +509,7 @@ __Example of 1:__
 ```
 (sort my-list (lambda ((x int) (y int) (< x y))))
 ```
-We create a real x86-64 function to pass to the `sort` function.  In this case you should specify types - the default of `object` is not suitable.
+We create a real x86-64 function to pass to the `sort` function. In this case you should specify types - the default of `object` is not suitable.
 
 The other two cases are handled by `let` and `defun` macros, and shouldn't show up in other places, so they are left out.
 
@@ -534,7 +534,7 @@ Example:
 - `inline` means "inline whenever possible". See function inlining section for why inlining may be impossible in some cases.
 - `allow-inline` or `disallow-inline`. You can control if inlining is allowed, though it is not clear why I thought this would be useful. Currently the default is to allow always.
 - `print-asm` if codegen runs on this function (`:color #t`), disassemble the result and print it. This is intended for compiler debugging.
-- `asm-func` will disable the prologue and epilogue from being generated. You need to include your own `ret` instruction or similar. The compiler will error if it needs to use the stack for a stack variable or a spilled register. The coloring system will not use callee saved registers and will error if you force it to use one.  As a result, complicated GOAL expression may fail inside an `asm-func` function. The intent is to use it for context switching routines inside in the kernel, where you may not be able to use the stack, or may not want to return with `ret`.  The return type of an `asm-func` must manually be specified as the compiler doesn't automatically put the result in the return register and cannot do type analysis to figure out the real return type.
+- `asm-func` will disable the prologue and epilogue from being generated. You need to include your own `ret` instruction or similar. The compiler will error if it needs to use the stack for a stack variable or a spilled register. The coloring system will not use callee saved registers and will error if you force it to use one. As a result, complicated GOAL expression may fail inside an `asm-func` function. The intent is to use it for context switching routines inside in the kernel, where you may not be able to use the stack, or may not want to return with `ret`. The return type of an `asm-func` must manually be specified as the compiler doesn't automatically put the result in the return register and cannot do type analysis to figure out the real return type.
 - `allow-saved-regs` allows an `asm-func`'s coloring to use saved registers without an error. Stacks spills are still an error. The compiler will not automatically put things in a saved register, you must do this yourself. The move eliminator may still be used on your variables which use saved registers, so you should be careful if you really care about where saved variables are used.
 
 This form will probably get more options in the future.
@@ -547,7 +547,7 @@ Declare variables local to a function, without an initial value. This will be us
 (local-vars (name type-spec)...)
 ```
 
-The name can be any valid symbol. The scope of the variable is _always_ the function scope. Other scopes inside a function will always hide variables declared with `local-vars`.  The type can be any GOAL typespec. If you use `float`, you get a floating point register, otherwise you get a normal GPR.
+The name can be any valid symbol. The scope of the variable is _always_ the function scope. Other scopes inside a function will always hide variables declared with `local-vars`. The type can be any GOAL typespec. If you use `float`, you get a floating point register, otherwise you get a normal GPR.
 
 It's recommended to avoid using this form.
 
@@ -628,7 +628,7 @@ Example:
 
 ## Math Forms
 
-Math forms will look at the type of the first argument to determine the "mode".  So if you have `(+ 1 1.2)`, it will convert the `1.2` to an integer, do the add, and return an integer.
+Math forms will look at the type of the first argument to determine the "mode". So if you have `(+ 1 1.2)`, it will convert the `1.2` to an integer, do the add, and return an integer.
 
 ### `+`
 
@@ -773,7 +773,7 @@ Get element from pair
 (cdr some-pair)
 ```
 
-The type of the result is always `object`, as pairs can hold any `object`. The type-check for `car` and `cdr` is relaxed - it allows it to be applied to any `pair` or `object`.  The reason for allowing `object` is so you can write `(car (car x))` instead of `(car (the pair (car x)))`. However, if the argument to `car` is not a `pair`, you will get garbage or a crash.
+The type of the result is always `object`, as pairs can hold any `object`. The type-check for `car` and `cdr` is relaxed - it allows it to be applied to any `pair` or `object`. The reason for allowing `object` is so you can write `(car (car x))` instead of `(car (the pair (car x)))`. However, if the argument to `car` is not a `pair`, you will get garbage or a crash.
 
 ### `new`
 
@@ -807,7 +807,7 @@ Convert between types, doing the expected thing for number conversions.
 (the type thing)
 ```
 
-If the `type` and the `thing` are both numbers, it will automatically convert between the different numeric types as needed. In all other cases, it does a dangerous `reinterpret_cast`.  cppreference.com explains this idea clearly with "Converts between types by reinterpreting the underlying bit pattern."
+If the `type` and the `thing` are both numbers, it will automatically convert between the different numeric types as needed. In all other cases, it does a dangerous `reinterpret_cast`. cppreference.com explains this idea clearly with "Converts between types by reinterpreting the underlying bit pattern."
 
 If the `thing` is a number:
 - If `type` is `binteger`, convert the number to a `binteger`
@@ -844,7 +844,7 @@ There are some weird edge cases with `the` that are worth mentioning, if you try
 ```lisp
 (set! (-> (the (pointer uint8) x)) 1)      ;; OK, not casting the actual value
 (set! (the int (-> obj x)) 1)              ;; NOT OK. Int is a value type
-;; Will actually work if x is already an int/uint, and with non-numeric values types like pointer.  Avoid just to be safe.
+;; Will actually work if x is already an int/uint, and with non-numeric values types like pointer. Avoid just to be safe.
 (set! (the string (-> obj x)) "test")      ;; OK, string is a basic, which is a reference type.
 ```
 
@@ -904,11 +904,11 @@ Not implemented well yet.
 
 ## Inline Assembly Forms
 
-In general, assembly forms have a name that begins with a `.`. They all evaluate to `none` and copy the form of an x86-64 instruction. For example `(.sub dst src)`. A destination must be a settable register (ok if it's spilled). So you can't do something like `(.sub (-> obj field) x)`. Instead, do `(set! temp (-> obj field))`, `(.sub temp x)`, `(set! (-> obj field) temp)`.   The sources can be any expression, or a register. This allows you to mix high-level code with assembly easily, like `(.mov rax (-> obj field))` or `(.push (+ 1 (-> obj field)))`.
+In general, assembly forms have a name that begins with a `.`. They all evaluate to `none` and copy the form of an x86-64 instruction. For example `(.sub dst src)`. A destination must be a settable register (ok if it's spilled). So you can't do something like `(.sub (-> obj field) x)`. Instead, do `(set! temp (-> obj field))`, `(.sub temp x)`, `(set! (-> obj field) temp)`.  The sources can be any expression, or a register. This allows you to mix high-level code with assembly easily, like `(.mov rax (-> obj field))` or `(.push (+ 1 (-> obj field)))`.
 
-By default, assembly forms work with the coloring system. This means that assembly and high level expression can be mixed together without clobbering each other. It also means use of callee-saved registers will cause them to be backed up/restored in the function prologue and epilogue.  Use of weird registers like `r15`, `r14`, and `rsp` works as you would expect with the coloring system.
+By default, assembly forms work with the coloring system. This means that assembly and high level expression can be mixed together without clobbering each other. It also means use of callee-saved registers will cause them to be backed up/restored in the function prologue and epilogue. Use of weird registers like `r15`, `r14`, and `rsp` works as you would expect with the coloring system.
 
-But you can also request to skip this with `:color #f` option, like `(.push my-reg-var :color #f)`. Be very careful with this. The `:color #f` option will only work with register variables from `rlet` which have a manually specified register. It will entirely bypass the coloring system and use this register. Use of this near high level GOAL variables is extremely dangerous and should be done very carefully or avoided, as the GOAL compiler will not know that you could be modifying its registers.  In a form with `:color #f`, you cannot use higher level code or variables - all variables must be defined in `rlet`s. This is because higher level expressions and variables cannot be used without the coloring system.
+But you can also request to skip this with `:color #f` option, like `(.push my-reg-var :color #f)`. Be very careful with this. The `:color #f` option will only work with register variables from `rlet` which have a manually specified register. It will entirely bypass the coloring system and use this register. Use of this near high level GOAL variables is extremely dangerous and should be done very carefully or avoided, as the GOAL compiler will not know that you could be modifying its registers. In a form with `:color #f`, you cannot use higher level code or variables - all variables must be defined in `rlet`s. This is because higher level expressions and variables cannot be used without the coloring system.
 
 ### `rlet`
 
@@ -918,12 +918,12 @@ But you can also request to skip this with `:color #f` option, like `(.push my-r
   )
 ```
 
-Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr`, a normal 64-bit integer register; `fpr`, a 32-bit single precision float; or  `vf`, and 128-bit floating point vector register) and the compiler will pick a GPR or XMM for you.
+Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`. If you don't specify a register, you can specify a register class (`gpr`, a normal 64-bit integer register; `fpr`, a 32-bit single precision float; or  `vf`, and 128-bit floating point vector register) and the compiler will pick a GPR or XMM for you.
 
 If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you in the prologue and restore it in the epilogue.
 If you pick a special register like `rsp`, it won't be backed up.
 
-Inside the `rlet`, all uses of `var-name` will always be in the given register.  If the variable goes dead (or is never live), the compiler may reuse the register as it wants.  The compiler may also spill the variable onto the stack.  Of course, if you are in an `asm-func`, the stack will never be used.  Be extremely careful about using "normal" registers without the coloring system and with higher-level code as the compiler may use your "normal" register as a temporary.  If you read the value of a register and use the coloring system, the variable will then be alive starting at the beginning of the function, and will make that register unavailable to the compiler and other `rlet`s that occur before. This is useful to preserve the value of a temporary register if needed, but can also be undesirable in other cases.  If you add the `:reset-here #t` flag, it will make the variable dead until the start of the `rlet`. It "resets" the value of the register in the coloring system at the start of the `rlet`.  The default value is false. It is recommended to keep the default value when accessing specific registers that are also normally used by the compiler.  For special registers like `rsp`, `r15`, `r14`, and `r13`, if you plan to use them with the coloring system, it is recommended to set the `reset-here` flag.
+Inside the `rlet`, all uses of `var-name` will always be in the given register. If the variable goes dead (or is never live), the compiler may reuse the register as it wants. The compiler may also spill the variable onto the stack. Of course, if you are in an `asm-func`, the stack will never be used. Be extremely careful about using "normal" registers without the coloring system and with higher-level code as the compiler may use your "normal" register as a temporary. If you read the value of a register and use the coloring system, the variable will then be alive starting at the beginning of the function, and will make that register unavailable to the compiler and other `rlet`s that occur before. This is useful to preserve the value of a temporary register if needed, but can also be undesirable in other cases. If you add the `:reset-here #t` flag, it will make the variable dead until the start of the `rlet`. It "resets" the value of the register in the coloring system at the start of the `rlet`. The default value is false. It is recommended to keep the default value when accessing specific registers that are also normally used by the compiler. For special registers like `rsp`, `r15`, `r14`, and `r13`, if you plan to use them with the coloring system, it is recommended to set the `reset-here` flag.
 
 Here is an example of using an `rlet` to access registers:
 
@@ -943,7 +943,7 @@ Here is an example of using an `rlet` to access registers:
 (.sub dest src [:color #t|#f])
 ```
 
-x86-64 subtraction (64-bit). If coloring is on (the default), the `dest` must be a settable register (`rlet` var, `let` var, function argument, ...). It can't be a place like a symbol, field, stack variable, etc.  If coloring is off, both `src` and `dest` must be registers defined and constrained in an enclosing `rlet`.
+x86-64 subtraction (64-bit). If coloring is on (the default), the `dest` must be a settable register (`rlet` var, `let` var, function argument, ...). It can't be a place like a symbol, field, stack variable, etc. If coloring is off, both `src` and `dest` must be registers defined and constrained in an enclosing `rlet`.
 
 Example:
 
@@ -987,7 +987,7 @@ Jump-register. Jumps to the address given. The address is treated as a 64-bit po
 (.load-sym dest symbol-name [:sext #t|#f] [:color #t|#f])
 ```
 
-Load the value of a symbol into a register.  By default, it will look at the type of the symbol to determine if it should be sign extended or not. You can override this with the `:sext` option if needed. The symbol must be known to the type system.
+Load the value of a symbol into a register. By default, it will look at the type of the symbol to determine if it should be sign extended or not. You can override this with the `:sext` option if needed. The symbol must be known to the type system.
 
 ### `.push`
 
@@ -995,7 +995,7 @@ Load the value of a symbol into a register.  By default, it will look at the typ
 (.push src [:color #t|#f])
 ```
 
-The x86-64 push instruction. Does a 64-bit GPR.  The `src` can be any expression that can be put in a gpr if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
+The x86-64 push instruction. Does a 64-bit GPR. The `src` can be any expression that can be put in a gpr if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
 
 ### `.pop`
 
@@ -1003,7 +1003,7 @@ The x86-64 push instruction. Does a 64-bit GPR.  The `src` can be any expression
 (.pop dst [:color #t|#f])
 ```
 
-The x86-64 pop instruction.  Does a 64-bit GPR. The `dst` can be any expression which evaluates to a settable register if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
+The x86-64 pop instruction. Does a 64-bit GPR. The `dst` can be any expression which evaluates to a settable register if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
 
 ### `.ret`
 
@@ -1019,7 +1019,7 @@ The x86-64 ret instruction. The color option does nothing. This is not recognize
 (.mov dst src [:color #t|#f])
 ```
 
-Move between two registers. The `dst` should be a register (either `rlet` or `let` variable), and the `src` can be a register or any expression.  The following moves are supported:
+Move between two registers. The `dst` should be a register (either `rlet` or `let` variable), and the `src` can be a register or any expression. The following moves are supported:
 - `gpr` to `gpr`
 - `fpr` to `fpr` (only moves lower 32-bits of the xmms, uses `movss`)
 - `vf` to `vf` (moves all 128-bits of the xmms, uses `vmovaps`)
@@ -1061,7 +1061,7 @@ Inserts a `FWAIT` assembly instruction, x86 does not require as much synchroniza
 
 Load a vector float register from `src-loc`. The `dst-reg` must be a vector float register. The `src-loc` can be a gpr containing a GOAL pointer or expression which gives a GOAL pointer. There is no type checking on the `src-loc` so be careful. The load uses `vmovaps`, so the source must be 16-byte aligned.
 
-If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, the constant offset will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`.  An explicit offset can be provided via the `:offset` keyword, and will be used if applicable.
+If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, the constant offset will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`. An explicit offset can be provided via the `:offset` keyword, and will be used if applicable.
 
 If the source is an immediate `(new 'static ...)` form that results in a statically allocated variable, it will use `RIP` relative addressing (32-bit immediate) form. This means that the code:
 
@@ -1093,9 +1093,9 @@ All the three operand forms work similarly. You can do something like `(.add.vf 
 - `min`
 - `max`
 
-An optional `:mask` value can be provided as a binary number between 0-15 (inclusive).  This determines _which_ of the resulting elements will be committed to the destination vector.  For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed.  Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most.  This aligns with the PS2's VU implementation.
+An optional `:mask` value can be provided as a binary number between 0-15 (inclusive). This determines _which_ of the resulting elements will be committed to the destination vector. For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed. Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most. This aligns with the PS2's VU implementation.
 
-Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.  Take the following for an example: `(.add.x.xyzw vf10, vf20, vf30)`, translates into:
+Additionally, all of these operations support defining a single `broadcast-element`. This can be one of the 4 vector components `x|y|z|w`. Take the following for an example: `(.add.x.xyzw vf10, vf20, vf30)`, translates into:
 
 ```cpp
 vf10[x] = vf20[x] + vf30[x]
@@ -1114,9 +1114,9 @@ There are a few functions that will perform multiple operations involving the ac
 - `add.mul` - Calculate the product of `src0` and `src1` and add it to the value of `acc` => `acc + (src0 * src1)`
 - `sub.mul` - Calculate the product of `src0` and `src1` and subtract it from the value of `acc` => `acc - (src0 * src1)`
 
-An optional `:mask` value can be provided as a binary number between 0-15 (inclusive).  This determines _which_ of the resulting elements will be committed to the destination vector.  For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed.  Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most.  This aligns with the PS2's VU implementation.
+An optional `:mask` value can be provided as a binary number between 0-15 (inclusive). This determines _which_ of the resulting elements will be committed to the destination vector. For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed. Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most. This aligns with the PS2's VU implementation.
 
-Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.
+Additionally, all of these operations support defining a single `broadcast-element`. This can be one of the 4 vector components `x|y|z|w`.
 
 ### `.abs.vf`
 
@@ -1140,9 +1140,9 @@ Calculates the quotient of _one_ of `src1`'s components specified by `fsf` _one_
 
 Calculates the square-root of _one_ of `src`'s components specified by `ftf` and stores in every component of `dst`
 
-These instructions are interesting as they behave differently than the other math operations.  In the original VU, results were stored in a seperate `Q` register, which was _NOT_ 128-bit.  Instead it was a 32-bit register, meaning you have to pick which component from `src` you want to use. `:fsf` and `:ftf` are used to accomplish this, as usual, this is through bit flags -- `00` will select `x` and `11` will select `w`.
+These instructions are interesting as they behave differently than the other math operations. In the original VU, results were stored in a seperate `Q` register, which was _NOT_ 128-bit. Instead it was a 32-bit register, meaning you have to pick which component from `src` you want to use. `:fsf` and `:ftf` are used to accomplish this, as usual, this is through bit flags -- `00` will select `x` and `11` will select `w`.
 
-As `dst` is just yet another vector / xmm register in x86, things are kept simple and the quotient is copied to _all_ packed single-float positions.  This allows:
+As `dst` is just yet another vector / xmm register in x86, things are kept simple and the quotient is copied to _all_ packed single-float positions. This allows:
 - Selecting any of the resulting vector slots will be equal to the quotient.
 - Since the low-floating-point (X) is defined, the xmm register should function as expected for normal math operations
 
@@ -1152,20 +1152,25 @@ As `dst` is just yet another vector / xmm register in x86, things are kept simpl
 (.outer.product.vf dst src1 src2 [:color #t|#f])
 ```
 
-Calculates the outer-product of `src1` and `src2` and stores the result in `dst`.  _ONLY_ the x,y,z components are considered, and `dst`'s `w` component will be untouched.  The following example illustrates what the outer-product is:
+Calculates the outer-product of `src1` and `src2` and stores the result in `dst`. _ONLY_ the x,y,z components are considered, and `dst`'s `w` component will be untouched. The following example illustrates what the outer-product is:
 
 Given 2 vectors `V1 = <1,2,3,4>` and `V2 = <5,6,7,8>` and assume `VDEST = <0, 0, 0, 999>`
 The outer product is computed like so (only x,y,z components are operated on):
 
-`x = (V1y * V2z) - (V2y * V1z) => (2 * 7) - (6 * 3) => -4`
-
-`y = (V1z * V2x) - (V2z * V1x) => (3 * 5) - (7 * 1) =>  8`
-
-`z = (V1x * V2y) - (V2x * V1y) => (1 * 6) - (5 * 2) => -4`
-
-`w = N/A, left alone                                => 999`
+```
+x = (V1y * V2z) - (V2y * V1z) => (2 * 7) - (6 * 3) => -4
+y = (V1z * V2x) - (V2z * V1x) => (3 * 5) - (7 * 1) =>  8
+z = (V1x * V2y) - (V2x * V1y) => (1 * 6) - (5 * 2) => -4
+w = N/A, left alone                                => 999
+```
 
 > `VDEST = <-4, 8, -4, 999>`
+
+This is equivalent to the following on the PS2:
+```mips
+vopmula.xyz acc src1 src2
+vopmsub.xyz dst src2 src1
+```
 
 ### `.blend.vf`
 
@@ -1182,7 +1187,7 @@ Wrapper around `vblendps` (VEX xmm128 version) instruction. The `mask` must eval
 (.ftoi.vf dst src [:mask mask-val] [:color #t|#f])
 ```
 
-Wrapper around `vcvtdq2ps` and `vcvtps2dq` to convert packed 32-bit signed integers to packed 32-bit floats and back.  The `mask` and `color` arguments behave like other assembly operations.
+Wrapper around `vcvtdq2ps` and `vcvtps2dq` to convert packed 32-bit signed integers to packed 32-bit floats and back. The `mask` and `color` arguments behave like other assembly operations.
 
 ### `.pw.sra`, `.pw.srl`, and `pw.sll`
 
@@ -1205,7 +1210,7 @@ Wrapper around `vpsrld`, `vpsrad`, and `vpslld`. Does shifts on each of the 4 32
 (.ppach dest src0 src1)
 ```
 
-Equivalents of the EE's MMI instructions with the same name. These can only be used on 128-bit variables.  Most map to single x86 instructions:
+Equivalents of the EE's MMI instructions with the same name. These can only be used on 128-bit variables. Most map to single x86 instructions:
 - `pextlw` is `VPUNPCKLDQ` (sources swapped)
 - `pextuw` is `VPUNPCKHDQ` (sources swapped)
 - `pcpyld` is `VPUNPCKLQDQ` (sources swapped)

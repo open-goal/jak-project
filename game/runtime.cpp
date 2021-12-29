@@ -260,7 +260,7 @@ void dmac_runner(SystemThreadInterface& iface) {
     //      }
     //    }
     // avoid running the DMAC on full blast (this does not sync to its clockrate)
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
   }
 
   VM::unsubscribe_component();

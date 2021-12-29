@@ -355,13 +355,15 @@
 
 ;; definition of type quicksandlurker-missile
 (deftype quicksandlurker-missile (process-drawable)
-  ((parent-override (pointer quicksandlurker)  :offset  12)
-   (root-override   collide-shape-moving       :offset 112)
+  ((root-override collide-shape-moving  :offset 112)
    )
   :heap-base #x40
   :method-count-assert 20
   :size-assert         #xb0
   :flag-assert         #x14004000b0
+  (:states
+    quicksandlurker-missile-impact
+    )
   )
 
 ;; definition for method 3 of type quicksandlurker-missile
@@ -408,7 +410,7 @@
                    )
                  )
                )
-         (send-event (ppointer->process (-> self parent-override)) 'victory)
+         (send-event (ppointer->process (-> self parent)) 'victory)
          (go quicksandlurker-missile-impact)
          )
        )
@@ -535,7 +537,9 @@
     (set! (-> self root-override) s5-0)
     )
   (set! (-> self root-override trans quad) (-> arg0 position quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root-override quat vec quad))
+  (set! (-> self root-override quat vec quad)
+        (-> (the-as process-drawable (-> self parent 0)) root quat vec quad)
+        )
   (vector-identity! (-> self root-override scale))
   (set! (-> self root-override transv quad) (-> arg0 velocity quad))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 198) self))
@@ -545,7 +549,7 @@
 
 ;; definition for function spawn-quicksandlurker-missile
 ;; INFO: Return type mismatch int vs none.
-(defun spawn-quicksandlurker-missile ((arg0 quicksandlurker) (arg1 vector) (arg2 vector) (arg3 entity))
+(defun spawn-quicksandlurker-missile ((arg0 process) (arg1 vector) (arg2 vector) (arg3 entity))
   (let ((s5-0 (new 'stack-no-clear 'quicksandlurker-missile-init-data)))
     (set! (-> s5-0 position) arg1)
     (set! (-> s5-0 velocity) arg2)
@@ -577,6 +581,15 @@
   :method-count-assert 20
   :size-assert         #xd4
   :flag-assert         #x14007000d4
+  (:states
+    quicksandlurker-attack
+    quicksandlurker-die
+    quicksandlurker-hide
+    quicksandlurker-popup
+    quicksandlurker-track
+    quicksandlurker-victory
+    quicksandlurker-wait
+    )
   )
 
 ;; definition for method 3 of type quicksandlurker
@@ -704,9 +717,9 @@
   :event
   (the-as (function process int symbol event-message-block object :behavior quicksandlurker) #f)
   :enter
-  (behavior () (logior! (-> self draw status) 2) (none))
+  (behavior () (logior! (-> self draw status) (draw-status drwf01)) (none))
   :exit
-  (behavior () (set! (-> self draw status) (logand -3 (-> self draw status))) (none))
+  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
   :trans
   (behavior ()
     (if (and
@@ -895,7 +908,7 @@
           (set! (-> self state-time) (-> *display* base-frame-counter))
           (+! s4-0 1)
           (when (>= s4-0 s5-0)
-            (if (logtest? (-> self draw status) 8)
+            (if (logtest? (-> self draw status) (draw-status drwf03))
                 (go quicksandlurker-attack)
                 )
             )

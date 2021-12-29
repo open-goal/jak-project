@@ -1645,13 +1645,13 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::parallel_compare_e_w(dst, src2, src1), irec);
       break;
     case Kind::PCGTB:
-      gen->add_instr(IGen::parallel_compare_gt_b(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_compare_gt_b(dst, src1, src2), irec);
       break;
     case Kind::PCGTH:
-      gen->add_instr(IGen::parallel_compare_gt_h(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_compare_gt_h(dst, src1, src2), irec);
       break;
     case Kind::PCGTW:
-      gen->add_instr(IGen::parallel_compare_gt_w(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_compare_gt_w(dst, src1, src2), irec);
       break;
     case Kind::PSUBW:
       // psubW on mips is psubD on x86...
