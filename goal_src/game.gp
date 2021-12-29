@@ -117,6 +117,17 @@
               :tool 'copy
               :out '(,(string-append "out/iso/" name ".STR")))))
 
+(defmacro copy-vis-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
+
+(defmacro copy-vis-file (name)
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "iso_data/" folder "/VIS/" name ".VIS")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/iso/" name ".VIS")))))
+
+
 
 
 (defmacro group (name &rest stuff)
@@ -184,15 +195,16 @@
 ;; Streaming anim (common)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(copy-strs "FUCVICTO"
-           "FUCV2"
-           "FUCV3"
-           "FUCV4"
-           "FUCV5"
-           "FUCV6"
-           "FUCV7"
-           "FUCV8"
-           )
+(copy-strs
+  "FUCVICTO"
+  "FUCV2"
+  "FUCV3"
+  "FUCV4"
+  "FUCV5"
+  "FUCV6"
+  "FUCV7"
+  "FUCV8"
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -237,6 +249,7 @@
        "out/iso/0COMMON.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
+       ;; level dgo
        "out/iso/VI1.DGO"
        "out/iso/VI2.DGO"
        "out/iso/VI3.DGO"
@@ -249,6 +262,19 @@
        "out/iso/LAV.DGO"
        "out/iso/CIT.DGO"
        "out/iso/SUN.DGO"
+       ;; level vis
+       "out/iso/VI1.VIS"
+       "out/iso/VI2.VIS"
+       "out/iso/VI3.VIS"
+       "out/iso/TRA.VIS"
+       "out/iso/FIN.VIS"
+       "out/iso/FIC.VIS"
+       "out/iso/JUN.VIS"
+       "out/iso/MAI.VIS"
+       "out/iso/BEA.VIS"
+       "out/iso/CIT.VIS"
+       "out/iso/SUN.VIS"
+
        "out/iso/FUCVICTO.STR"
        "out/iso/FUCV2.STR"
        "out/iso/FUCV3.STR"
@@ -341,6 +367,9 @@
      "vi1.gd"
      )
 
+;; the VIS file
+(copy-vis-files "VI1")
+
 ;; the code
 (goal-src-sequence
  "levels/"
@@ -410,6 +439,8 @@
 (cgo "JUN.DGO"
   "jun.gd")
 
+(copy-vis-files "JUN")
+
 (goal-src-sequence
  "levels/jungle/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
@@ -474,6 +505,8 @@
   "bea.gd"
   )
 
+(copy-vis-files "BEA")
+
 (goal-src-sequence
   "levels/beach/"
   :deps ("out/obj/default-menu.o")
@@ -534,6 +567,8 @@
      "fic.gd"
      )
 
+(copy-vis-files "FIC")
+
 (copy-textures 1119) ;; might be common/zoomer hud?? also in misty, lavatube, ogre and racerpkg
 
 (goal-src-sequence
@@ -567,6 +602,8 @@
 (cgo "TRA.DGO"
      "tra.gd")
 
+(copy-vis-files "TRA")
+
 ;; The code
 (goal-src-sequence
   "levels/training/"
@@ -597,6 +634,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (cgo "VI2.DGO" "vi2.gd")
+
+(copy-vis-files "VI2")
 
 (goal-src-sequence
  "levels/village2/"
@@ -657,6 +696,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (cgo "SUN.DGO" "sun.gd")
+
+(copy-vis-files "SUN")
 
 (goal-src-sequence
   "levels/sunken/"
@@ -729,6 +770,8 @@
 ;; the definition for the DGO file.
 (cgo "VI3.DGO" "vi3.gd")
 
+(copy-vis-files "VI3")
+
 ;; the code
 (goal-src-sequence
  "levels/"
@@ -773,6 +816,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (cgo "MAI.DGO" "mai.gd")
+
+(copy-vis-files "MAI")
 
 (goal-src-sequence
  "levels/"
@@ -827,6 +872,8 @@
 
 (cgo "LAV.DGO" "lav.gd")
 
+(copy-vis-files "TRA")
+
 (goal-src-sequence
   "levels/lavatube/"
   :deps ("out/obj/default-menu.o")
@@ -866,6 +913,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (cgo "CIT.DGO" "cit.gd")
+
+(copy-vis-files "CIT")
 
 (goal-src-sequence
   "levels/citadel/"
@@ -925,6 +974,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (cgo "FIN.DGO" "fin.gd")
+
+(copy-vis-files "FIN")
 
 (goal-src-sequence
   "levels/finalboss/"

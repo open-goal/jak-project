@@ -288,7 +288,7 @@ baby-spider-default-event-handler
 
 ;; definition for method 51 of type baby-spider
 ;; INFO: Return type mismatch float vs object.
-(defmethod dummy-51 baby-spider ((obj baby-spider) (arg0 vector))
+(defmethod dummy-51 baby-spider ((obj baby-spider))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
@@ -575,26 +575,23 @@ baby-spider-default-event-handler
     (set! (-> self wiggle-angle) 0.0)
     (set! (-> self chase-rest-time) (rand-vu-int-range 300 1200))
     (ja-channel-push! 1 51)
-    (let* ((gp-0 (-> self skel root-channel 0))
-           (t9-2 joint-control-channel-group-eval!)
-           (a0-2 gp-0)
-           (a1-2 (-> self draw art-group data 7))
-           )
-      (t9-2 a0-2 (the-as art-joint-anim a1-2) num-func-identity)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 7))
+        num-func-identity
+        )
       (set! (-> gp-0 frame-num) 0.0)
-      (while #t
-        (when (>= (- (-> *display* base-frame-counter) (-> self wiggle-time)) 300)
-          (set! (-> self wiggle-time) (-> *display* base-frame-counter))
-          (dummy-51 self (the-as vector a1-2))
-          )
-        (suspend)
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) 1.0)
-          (let ((t9-4 joint-control-channel-group-eval!))
-            (set! a1-2 (the-as art-element #f))
-            (t9-4 a0-5 (the-as art-joint-anim a1-2) num-func-loop!)
-            )
-          )
+      )
+    (while #t
+      (when (>= (- (-> *display* base-frame-counter) (-> self wiggle-time)) 300)
+        (set! (-> self wiggle-time) (-> *display* base-frame-counter))
+        (dummy-51 self)
+        )
+      (suspend)
+      (let ((a0-5 (-> self skel root-channel 0)))
+        (set! (-> a0-5 param 0) 1.0)
+        (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
         )
       )
     (none)
