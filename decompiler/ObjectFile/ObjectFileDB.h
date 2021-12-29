@@ -99,7 +99,7 @@ class ObjectFileDB {
 
   std::string process_tpages(TextureDB& tex_db);
   std::string process_game_count_file();
-  std::string process_game_text_files();
+  std::string process_game_text_files(GameTextVersion version);
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;

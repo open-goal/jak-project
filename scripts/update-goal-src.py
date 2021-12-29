@@ -28,11 +28,12 @@ files_with_modifications = [
   "cam-master",
   "generic-obs",
   "target-snowball",
-  "quicksandlurker",
   "logic-target",
   "default-menu",
   "collide-shape",
-  "cam-states"
+  "cam-states",
+  "plant-boss",
+  "helix-water"
 ]
 
 for file in files:

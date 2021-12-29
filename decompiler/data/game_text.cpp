@@ -43,14 +43,14 @@ DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
   )
  */
 
-GameTextResult process_game_text(ObjectFileData& data) {
+GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) {
   GameTextResult result;
   auto& words = data.linked_data.words_by_seg.at(0);
   std::vector<int> read_words(words.size(), false);
 
   int offset = 0;
 
-  // type tage for game-text-info
+  // type tag for game-text-info
   if (words.at(offset).kind() != LinkedWord::TYPE_PTR ||
       words.front().symbol_name() != "game-text-info") {
     assert(false);
@@ -99,12 +99,15 @@ GameTextResult process_game_text(ObjectFileData& data) {
     }
 
     // escape characters
-    result.text[text_id] = convert_from_jak1_encoding(text.c_str());
+    result.text[text_id] = version == GameTextVersion::JAK1_V1
+                               ? convert_from_jak1_encoding(text.c_str())
+                               : goos::get_readable_string(text.c_str());  // HACK!
 
     // remember what we read (-1 for the type tag)
     auto string_start = (text_label.offset / 4) - 1;
     // 8 for type tag and length fields, 1 for null char.
-    for (int j = 0; j < align16(8 + 1 + (int)text.length()) / 4; j++) {
+    for (int j = 0, m = align16(8 + 1 + (int)text.length()) / 4;
+         j < m && string_start + j < read_words.size(); j++) {
       read_words.at(string_start + j)++;
     }
   }

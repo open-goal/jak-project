@@ -57,6 +57,7 @@ int main(int argc, char** argv) {
   }
 
   file_util::create_dir_if_needed(out_folder);
+  file_util::create_dir_if_needed(file_util::get_file_path({"debug_out"}));
 
   fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
 
@@ -121,7 +122,7 @@ int main(int argc, char** argv) {
   }
 
   if (config.process_game_text) {
-    auto result = db.process_game_text_files();
+    auto result = db.process_game_text_files(config.text_version);
     if (!result.empty()) {
       file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
     }

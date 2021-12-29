@@ -59,4 +59,3 @@ endif ()
 add_executable(goalc main.cpp)
 target_link_libraries(goalc common Zydis compiler)
 
-install(TARGETS goalc)

@@ -5,6 +5,8 @@
 ;; name in dgo: decomp
 ;; dgos: GAME, ENGINE
 
+;; This file contains update-vis! which updates the vis-bits string from the loaded VIS file.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; decompression functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,56 +112,64 @@
   )
 
 (defmethod update-vis! level ((obj level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
+  "Update the vis-bits for the level with the given vis info.
+   arg1 unused. if the vis-file flag isn't set, will use arg2 as vis data."
   (local-vars (t0-3 uint128) (vis-buffer object))
   
   (let* ((cam-leaf-idx (-> vis-info from-bsp current-leaf-idx))   ;; current bsp leaf of camera
          (curr-vis-str (-> vis-info current-vis-string))          ;; currently loaded vis-string.
-         (desired-vis-str (-> vis-info vis-string cam-leaf-idx))  ;; vis-string ptr for what we want.
+         (desired-vis-str (-> vis-info vis-string cam-leaf-idx))  ;; vis-string offset for bsp leaf.
          )
     ;; oops
     0
     (+ 16 #x70000000)
     (+ 2064 #x70000000)
     
-    ;; wait on ramdisk load, or do nothing because we already have the right stuff.
+    ;; this is the same string we asked for last time.
     (when (= curr-vis-str desired-vis-str)
-      ;; we match. but are we loading?
       (cond
-        ((logtest? (vis-info-flag waiting-for-load) (-> vis-info flags))
-         (if (check-busy *ramdisk-rpc*)
-             ;; loading, and ramdisk not done, return #f, we don't have vis.
-             (return #f)
-             )
-         ;; we are done loading. Jump to code that sets it up.
-         (logclear! (-> vis-info flags) (vis-info-flag waiting-for-load))
+        ((logtest? (vis-info-flag waiting-for-iop-to-ee) (-> vis-info flags))
+         ;; we started IOP -> EE, but it might not be done yet.
+         (when (check-busy *ramdisk-rpc*)
+           ;; not done, wait.
+           (return #f)
+           )
+         ;; we're done! Deal with the vis data.
+         (logclear! (-> vis-info flags) (vis-info-flag waiting-for-iop-to-ee))
          (set! vis-buffer (-> obj vis-buffer))
          (b! #t cfg-27 :delay (nop!))
          )
         (else
-          ;; matched, and loaded!
+          ;; matched, and loaded! A previous run would have done setup.
           (return #t)
           )
         )
       )
     
-    ;; wait for any pending load to finish.
-    (when (logtest? (vis-info-flag waiting-for-load) (-> vis-info flags))
-      (if (check-busy *ramdisk-rpc*)
+    ;; wait for any pending load to finish before trying to change things.
+    (when (logtest? (vis-info-flag waiting-for-iop-to-ee) (-> vis-info flags))
+      (when (check-busy *ramdisk-rpc*)
           (return #f)
           )
-      (logclear! (-> vis-info flags) (vis-info-flag waiting-for-load))
+      (logclear! (-> vis-info flags) (vis-info-flag waiting-for-iop-to-ee))
       )
     
-    ;; not sure what this does yet.
+    ;; ok, we can now change the current string and request from iop.
     (set! (-> vis-info current-vis-string) desired-vis-str)
+    ;; this branch picks between .VIS file ramdisk and BSP file visibility data.
+    ;; the self vis is always in the ramdisk, and the adj file is in the BSP file.
     (b! (logtest? #x20000000 (-> vis-info flags)) cfg-15)
+    ;; we're a BSP file file vis. Just use the given pointer and skip the ramdisk stuff.
     (set! vis-buffer (the-as (pointer uint8) (+ arg2 desired-vis-str)))
     (b! #t cfg-27 :delay (nop!))
     (label cfg-15)
     
-    ;; start a ramdisk load.
+    ;; start a ramdisk load.  This should have already been done as part of level loading anyway.
+    ;; so this will just get the ramdisk file ID.
     (let ((vis-load-result (vis-load obj)))
       (b! (nonzero? vis-load-result) cfg-21)
+      
+      ;; ramdisk failed, make everything visible.
       (let* ((dest-bits (-> vis-info vis-bits))
              (len (-> obj bsp visible-list-length))
              (bsp-bits (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
@@ -178,6 +188,8 @@
         (b! #t cfg-55 :delay (nop!))
         (the-as none 0)
         (label cfg-21)
+        ;; if the ramdisk is busy at this point, it means that it's still loading the file
+        ;; from the DVD.  So display a message and keep us in loading.
         (when (check-busy *ramdisk-rpc*)
           (set! (-> vis-info current-vis-string) (the-as uint -1))
           (set! (-> obj all-visible?) 'loading)
@@ -186,60 +198,64 @@
               )
           (return #f)
           )
+        ;; now the ramdisk has the file in the IOP for sure. we want to ask for the IOP->EE transfer
+        ;; for the string for our leaf node.  Set a flag to remember that we're waiting on IOP->EE:
         (set! (-> vis-info flags) (logior (-> vis-info flags) #x40000000))
+        ;; and kick off a load
         (ramdisk-load
-          (the-as int vis-load-result)
-          desired-vis-str
-          (the-as uint 2048)
-          (-> obj vis-buffer)
+          (the-as int vis-load-result)  ;; file ID in ramdisk
+          desired-vis-str               ;; the offset in the VIS file
+          (the-as uint 2048)            ;; always do 2kB. it's a worst case if the string can't be compressed
+          (-> obj vis-buffer)           ;; copy to the level buffer for vis data
           )
-        (set! result #f)
+        (set! result #f)                ;; this takes time, so quit and report that we failed.
         (b! #t cfg-55 :delay (nop!))
         
         
-        ;; setup loaded
+        ;; we'll get here once the compressed vis data is in vis-buffer
+        ;; this can come from IOP->EE or from the BSP file directly
         (label cfg-27)
+        ;; the vis info has data on how to decompress the data in the lower flag bits
         (let ((lower-flag-bits (the-as int (logand #x1fffffff (-> vis-info flags))))
-              (spad-start (the-as object (+ 16 #x70000000)))
-              (spad-end (+ 2064 #x70000000))
+              (spad-start (the-as object (scratchpad-object object :offset 16)))
+              (spad-end (the-as int (scratchpad-object int :offset 2064)))
               (list-len (-> obj bsp visible-list-length))
               )
           (when (zero? (the-as vis-info-flag lower-flag-bits))
+            ;; set the spad buffer to 0 (but we write over this next??)
             (let ((list-qwc (/ (+ list-len 15) 16)))
               (dotimes (a0-28 list-qwc)
-                (set!
-                  (-> (the-as (pointer uint128) spad-start) a0-28)
-                  (the-as uint128 0)
-                  )
+                (set! (-> (the-as (pointer uint128) spad-start) a0-28) (the-as uint128 0))
                 )
               )
-            (mem-copy!
-              (the-as pointer spad-start)
-              (the-as pointer vis-buffer)
-              list-len
-              )
+            ;; but then copy the vis buffer directly.
+            (mem-copy! (the-as pointer spad-start) (the-as pointer vis-buffer) list-len)
             )
+          
           (while (nonzero? lower-flag-bits)
             (case (logand lower-flag-bits 7) 
-                  ((1)
+                  ((1) ;; decomp type 1: this unpacks data that exploits the BVH tree structure.
+                       ;; it omits 0's for children of invisible parents. But to unpack, we need
+                       ;; to know all the BVHs in the level.
                    (let ((v1-55 (/ (+ list-len 15) 16)))
                      (dotimes (a0-32 v1-55)
                        (set! (-> (the-as (pointer uint128) spad-start) a0-32) (the-as uint128 0))
                        )
                      )
-                   (dummy-16
+                   (unpack-vis
                      (-> obj bsp drawable-trees)
-                     (the-as int spad-start)
-                     (the-as object vis-buffer)
+                     (the-as (pointer int8) spad-start)
+                     (the-as (pointer int8) vis-buffer)
                      )
                    )
-                  ((2)
+                  ((2) ;; decomp type 2: run length encoding. Haven't seen this yet.
+                   (format 0 "hit RLE case in decomp.gc, probably worth checking.~%")
                    (unpack-comp-rle
                      (the-as (pointer int8) spad-start)
                      (the-as (pointer int8) vis-buffer)
                      )
                    )
-                  ((3)
+                  ((3) ;; decomp type 3: huffman encoding. most common.
                    (unpack-comp-huf
                      (the-as (pointer uint8) spad-start)
                      (the-as (pointer uint8) vis-buffer)
@@ -250,14 +266,24 @@
                      )
                    )
                   )
+            ;; we have 3 rotating 2kB buffers for this unpacking process.
+            ;; we really only need 2, but I think they did 3 like this so we do RAM -> SPAD, SPAD->SPAD
+            ;; in practice, I've only seen this hit exactly 2 decompressions, so no need for more complicated
+            ;; logic to keep us in scratch after the first.
             (set! vis-buffer (the-as (pointer uint8) (the-as int spad-start)))
             (set! spad-start spad-end)
             (set! spad-end (the-as int vis-buffer))
             (.sra lower-flag-bits lower-flag-bits 3)
             )
+          
+          ;; now vis-buffer points to the uncompressed data.
+          ;; if things went well, we shouldn't have any bits set for drawables that don't exist.
+          ;; we can check this by anding with the all visible list, and confirming it doesn't
+          ;; remove any bits.
+          ;; this just prints errors.
           (let ((s2-1 (the-as object vis-buffer))
                 (s1-1 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
-                (v1-67 #f)
+                (v1-67 #f) ;; found error
                 )
             (dotimes (s0-1 list-len)
               (when (!= (logand (-> (the-as (pointer uint8) s2-1) 0)
@@ -270,6 +296,7 @@
                         (-> (the-as (pointer uint8) s2-1) 0)
                         (-> (the-as (pointer uint8) s1-1) 0)
                         )
+                (format #t "bad addr: #x~X~%" s2-1) ;; added
                 (set! v1-67 #t)
                 )
               (set! s2-1 (&-> (the-as (pointer uint8) s2-1) 1))
@@ -286,6 +313,9 @@
               0
               )
             )
+          
+          ;; just in case we failed the above check, and with the all visible list anyway.
+          ;; also copy from vis-buffer (may be spad) to the final vis-bits output
           (let ((v1-71 (the-as object vis-buffer))
                 (a0-47 (-> vis-info vis-bits))
                 (a1-22 (the-as (pointer uinteger) (-> obj bsp all-visible-list)))
@@ -304,6 +334,7 @@
               )
             )
           )
+        ;; succeeded!
         (set! result #t)
         (label cfg-55)
         result
