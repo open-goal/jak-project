@@ -1019,6 +1019,7 @@
  "dma/dma-buffer.gc"
  "dma/dma-bucket.gc"
  "dma/dma-disasm.gc"
+ "pc/pckernel-h.gc" ;; added
  "ps2/pad.gc"
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
@@ -1027,7 +1028,6 @@
  "load/loader-h.gc"
  "gfx/texture-h.gc"
  "level/level-h.gc"
- "pc/pckernel-h.gc" ;; added
  "camera/math-camera-h.gc"
  "camera/math-camera.gc"
  "gfx/font-h.gc"

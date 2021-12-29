@@ -30,6 +30,7 @@
   ("dma-buffer.o" "dma-buffer")
   ("dma-bucket.o" "dma-bucket")
   ("dma-disasm.o" "dma-disasm")
+  ("pckernel-h.o" "pckernel-h") ;; added
   ("pad.o" "pad")
   ("gs.o" "gs")
   ("display-h.o" "display-h")
@@ -38,7 +39,6 @@
   ("loader-h.o" "loader-h")
   ("texture-h.o" "texture-h")
   ("level-h.o" "level-h")
-  ("pckernel-h.o" "pckernel-h") ;; added
   ("math-camera-h.o" "math-camera-h")
   ("math-camera.o" "math-camera")
   ("font-h.o" "font-h")
