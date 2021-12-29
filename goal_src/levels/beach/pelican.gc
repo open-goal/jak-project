@@ -77,7 +77,7 @@
     pelican-from-nest
     pelican-spit
     (pelican-to-nest path-control int)
-    pelican-wait-at-end
+    (pelican-wait-at-end symbol)
     (pelican-wait-at-nest symbol)
     )
   )
@@ -129,7 +129,7 @@
     )
   )
 
-(defbehavior pelican-fly pelican ((arg0 (function int)) (arg1 (function int)))
+(defbehavior pelican-fly pelican ((arg0 (function pelican int)) (arg1 (function pelican int)))
   (while #t
     (cond
       ((= (if (> (-> self skel active-channels) 0)
@@ -151,8 +151,7 @@
         (ja-channel-push! 1 75)
         )
       )
-    self
-    (let ((s4-0 (arg0)))
+    (let ((s4-0 (arg0 self)))
       (dotimes (s3-0 s4-0)
         (let ((a0-9 (-> self skel root-channel 0)))
           (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
@@ -174,8 +173,7 @@
           )
         )
       )
-    self
-    (let ((s4-1 (arg1)))
+    (let ((s4-1 (arg1 self)))
       (when (> s4-1 0)
         (let ((s3-1 (-> self skel root-channel 0)))
           (set! (-> s3-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
@@ -315,57 +313,56 @@
             )
       (let ((gp-1 (get-process *default-dead-pool* camera-tracker #x4000)))
         (set! (-> self cam-tracker)
-              (ppointer->handle
-                (when gp-1
-                  (let ((t9-4 (method-of-type camera-tracker activate)))
-                    (t9-4 (the-as camera-tracker gp-1) self 'camera-tracker (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process
-                    gp-1
-                    camera-tracker-init
-                    (lambda :behavior camera-tracker
-                      ()
-                      (local-vars
-                        (a0-6 process-tree)
-                        (a1-5 event-message-block)
-                        (t9-6 (function process-tree event-message-block object))
-                        )
-                      (while (not (process-grab? *target*))
-                        (suspend)
-                        )
-                      (send-event (ppointer->process (-> self parent)) 'position 4.0)
-                      (send-event (ppointer->process (-> self parent)) 'dive)
-                      (suspend)
-                      (suspend)
-                      (send-event *camera* 'blend-from-as-fixed)
-                      (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 0))
-                      (camera-change-to "camera-215" 0 #f)
-                      (until (t9-6 a0-6 a1-5)
-                        (suspend)
-                        (set! a1-5 (new 'stack-no-clear 'event-message-block))
-                        (set! (-> a1-5 from) self)
-                        (set! (-> a1-5 num-params) 0)
-                        (set! (-> a1-5 message) 'got-cell?)
-                        (set! t9-6 send-event-function)
-                        (set! a0-6 (ppointer->process (-> self parent)))
-                        )
-                      (send-event *camera* 'point-of-interest #f)
-                      (while (!= (-> self message) 'release)
-                        (suspend)
-                        )
-                      (set! (-> self message) #f)
-                      (while (not (process-release? (handle->process (-> self grab-target))))
-                        (suspend)
-                        )
-                      (send-event *camera* 'blend-from-as-fixed)
-                      (camera-look-at (the-as pair *target*) (the-as uint 0))
-                      (camera-change-to (the-as string 'base) 150 #f)
-                      (none)
-                      )
-                    )
-                  (-> gp-1 ppointer)
-                  )
-                )
+              (ppointer->handle (when gp-1
+                                  (let ((t9-4 (method-of-type camera-tracker activate)))
+                                    (t9-4 (the-as camera-tracker gp-1) self 'camera-tracker (the-as pointer #x70004000))
+                                    )
+                                  (run-now-in-process
+                                    gp-1
+                                    camera-tracker-init
+                                    (lambda :behavior camera-tracker
+                                      ()
+                                      (local-vars
+                                        (a0-6 process-tree)
+                                        (a1-5 event-message-block)
+                                        (t9-6 (function process-tree event-message-block object))
+                                        )
+                                      (while (not (process-grab? *target*))
+                                        (suspend)
+                                        )
+                                      (send-event (ppointer->process (-> self parent)) 'position 4.0)
+                                      (send-event (ppointer->process (-> self parent)) 'dive)
+                                      (suspend)
+                                      (suspend)
+                                      (send-event *camera* 'blend-from-as-fixed)
+                                      (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 0))
+                                      (camera-change-to "camera-215" 0 #f)
+                                      (until (t9-6 a0-6 a1-5)
+                                        (suspend)
+                                        (set! a1-5 (new 'stack-no-clear 'event-message-block))
+                                        (set! (-> a1-5 from) self)
+                                        (set! (-> a1-5 num-params) 0)
+                                        (set! (-> a1-5 message) 'got-cell?)
+                                        (set! t9-6 send-event-function)
+                                        (set! a0-6 (ppointer->process (-> self parent)))
+                                        )
+                                      (send-event *camera* 'point-of-interest #f)
+                                      (while (!= (-> self message) 'release)
+                                        (suspend)
+                                        )
+                                      (set! (-> self message) #f)
+                                      (while (not (process-release? (handle->process (-> self grab-target))))
+                                        (suspend)
+                                        )
+                                      (send-event *camera* 'blend-from-as-fixed)
+                                      (camera-look-at (the-as pair *target*) (the-as uint 0))
+                                      (camera-change-to (the-as string 'base) 150 #f)
+                                      (none)
+                                      )
+                                    )
+                                  (-> gp-1 ppointer)
+                                  )
+                                )
               )
         )
       (set! (-> self draw force-lod) 0)
@@ -384,7 +381,10 @@
   (behavior ()
     (suspend)
     (send-event (-> self fuel-cell process 0) 'trans-hook fuel-cell-animate)
-    (pelican-fly (lambda () (rand-vu-int-range 2 4)) (lambda () (rand-vu-int-range 3 5)))
+    (pelican-fly
+      (the-as (function pelican int) (lambda () (rand-vu-int-range 2 4)))
+      (the-as (function pelican int) (lambda () (rand-vu-int-range 3 5)))
+      )
     (none)
     )
   :post
@@ -539,15 +539,12 @@
   :code
   (behavior ((arg0 path-control) (arg1 int))
     (pelican-fly
-      (lambda () 1)
-      (the-as
-        (function int)
-        (lambda ((arg0 pelican)) (if (and (>= (-> arg0 path-pos) 4.0) (>= 6.0 (-> arg0 path-pos)))
-                                     1
-                                     0
-                                     )
-                )
-        )
+      (the-as (function pelican int) (lambda () 1))
+      (lambda ((arg0 pelican)) (if (and (>= (-> arg0 path-pos) 4.0) (>= 6.0 (-> arg0 path-pos)))
+                                   1
+                                   0
+                                   )
+              )
       )
     (none)
     )
@@ -930,7 +927,13 @@
     (none)
     )
   :code
-  (behavior () (pelican-fly (lambda () (rand-vu-int-range 2 4)) zero-func) (none))
+  (behavior ()
+    (pelican-fly
+      (the-as (function pelican int) (lambda () (rand-vu-int-range 2 4)))
+      (the-as (function pelican int) zero-func)
+      )
+    (none)
+    )
   :post
   pelican-post
   )
@@ -962,10 +965,9 @@
     (set! (-> self path-pos)
           (seek (-> self path-pos) (-> self path-max) (* (-> self path-speed) (-> *display* seconds-per-frame)))
           )
-    (when (= (-> self path-pos) (-> self path-max))
-      enter-state
-      (go pelican-wait-at-end)
-      )
+    (if (= (-> self path-pos) (-> self path-max))
+        (go pelican-wait-at-end #f)
+        )
     (when (< (- (-> *display* base-frame-counter) (-> self state-time)) (the int (-> self state-float 1)))
       (set! (-> self state-float 0)
             (/ (the float (- (-> *display* base-frame-counter) (-> self state-time))) (-> self state-float 1))
@@ -982,15 +984,12 @@
   :code
   (behavior ((arg0 path-control) (arg1 int))
     (pelican-fly
-      (lambda () 1)
-      (the-as
-        (function int)
-        (lambda ((arg0 pelican)) (if (and (>= (-> arg0 path-pos) 4.0) (>= 6.0 (-> arg0 path-pos)))
-                                     1
-                                     0
-                                     )
-                )
-        )
+      (the-as (function pelican int) (lambda () 1))
+      (lambda ((arg0 pelican)) (if (and (>= (-> arg0 path-pos) 4.0) (>= 6.0 (-> arg0 path-pos)))
+                                   1
+                                   0
+                                   )
+              )
       )
     (none)
     )
@@ -1000,7 +999,7 @@
 
 (defstate pelican-wait-at-end (pelican)
   :code
-  (behavior () (dummy-18 self) (none))
+  (behavior ((arg0 symbol)) (dummy-18 self) (none))
   )
 
 (defstate pelican-explode (pelican)
@@ -1108,9 +1107,7 @@
   (set! (-> obj neck ignore-angle) 16384.0)
   (case (-> obj entity extra perm user-int8 0)
     ((10)
-     enter-state
-     #t
-     (go pelican-wait-at-end)
+     (go pelican-wait-at-end #t)
      )
     ((5)
      (go pelican-wait-at-nest #t)
