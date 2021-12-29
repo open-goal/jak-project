@@ -77,6 +77,7 @@ class VarMapSSA {
   bool same(const VarSSA& var_a, const VarSSA& var_b) const;
   int var_id(const VarSSA& var) const;
   void remap_reg(Register reg, const std::unordered_map<int, int>& remap);
+  void merge_reg(Register reg);
   void debug_print_map() const;
 
  private:
@@ -143,6 +144,7 @@ struct SSA {
   RegAccessMap<int> get_ssa_mapping();
 
   bool simplify();
+  void merge_reg_to_single_variable(Register reg);
   void merge_all_phis();
   void remap(int nargs);
   void make_vars(const Function& function, const DecompilerTypeSystem& dts);
