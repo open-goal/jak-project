@@ -6,9 +6,6 @@
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
  */
 
-#ifndef JAK1_DECI2SERVER_H
-#define JAK1_DECI2SERVER_H
-
 #ifdef __linux
 #include <netinet/in.h>
 #elif _WIN32
@@ -56,5 +53,3 @@ class Deci2Server {
   Deci2Driver* d2_drivers = nullptr;
   int* d2_driver_count = nullptr;
 };
-
-#endif  // JAK1_DECI2SERVER_H

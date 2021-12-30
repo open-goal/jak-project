@@ -175,6 +175,7 @@ const std::unordered_map<
         {"dbs", &Compiler::compile_dbs},
         {"dbg", &Compiler::compile_dbg},
         {":cont", &Compiler::compile_cont},
+        {":stop", &Compiler::compile_stop},
         {":break", &Compiler::compile_break},
         {":dump-all-mem", &Compiler::compile_dump_all},
         {":pm", &Compiler::compile_pm},

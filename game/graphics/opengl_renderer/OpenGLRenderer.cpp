@@ -26,7 +26,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
     // On some drivers this prints on every single texture upload, which is too much spam
-    // lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
@@ -40,15 +40,12 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
     : m_render_state(texture_pool) {
   // setup OpenGL errors
 
-  // disable specific errors
-  const GLuint l_gl_error_ignores[1] = {
-      0x64  // [API-PERFORMANCE] glDrawArrays uses non-native input attribute type
-  };
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
-  // filter
-  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
-                        &l_gl_error_ignores[0], GL_FALSE);
+  // disable specific errors
+  // const GLuint gl_error_ignores_api_perf[1] = {};
+  // glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0,
+  // &gl_error_ignores_api_perf[0], GL_FALSE);
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
@@ -119,7 +116,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
-    setup_frame(settings.window_width_px, settings.window_height_px);
+    setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
+                settings.lbox_height_px);
   }
   {
     auto prof = m_profiler.root()->make_scoped_child("texture-gc");
@@ -148,8 +146,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   }
 
   if (settings.save_screenshot) {
-    finish_screenshot(settings.screenshot_path, settings.window_width_px,
-                      settings.window_height_px);
+    finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
+                      settings.lbox_width_px, settings.lbox_height_px);
   }
 }
 
@@ -187,8 +185,11 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 /*!
  * Pre-render frame setup.
  */
-void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
-  glViewport(0, 0, window_width_px, window_height_px);
+void OpenGLRenderer::setup_frame(int window_width_px,
+                                 int window_height_px,
+                                 int offset_x,
+                                 int offset_y) {
+  glViewport(offset_x, offset_y, window_width_px, window_height_px);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
@@ -305,11 +306,15 @@ void OpenGLRenderer::draw_test_triangle() {
 /*!
  * Take a screenshot!
  */
-void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height) {
+void OpenGLRenderer::finish_screenshot(const std::string& output_name,
+                                       int width,
+                                       int height,
+                                       int x,
+                                       int y) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   glReadBuffer(GL_BACK);
-  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+  glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {

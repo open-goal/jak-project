@@ -493,6 +493,10 @@
   `(set! ,place (* ,place ,amount))
   )
 
+(defmacro /! (place amount)
+  `(set! ,place (/ ,place ,amount))
+  )
+
 (defmacro zero? (thing)
   `(eq? ,thing 0)
   )
@@ -582,6 +586,19 @@
 
 (defmacro align64 (val)
   `(align-n ,val 64)
+  )
+
+(defmacro bit-field (type val base size &key (signed #t))
+  "extract bits from an integer value."
+  (when (and (integer? base) (integer? size))
+      (when (> (+ base size) 64)
+          (error "cannot extract fields across 64-bit boundaries"))
+      (when (< base 0)
+          (error "bitfield base cannot be negative"))
+      (when (< size 0)
+          (error "bitfield size cannot be negative"))
+      )
+  `(,(if signed 'sar 'shr) (shl ,val (- 64 (+ ,size ,base))) (- 64 ,size))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

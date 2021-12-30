@@ -102,12 +102,11 @@ void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
                               (void*)offsetof(tfrag3::PreloadedVertex, s)  // offset (0)
         );
 
-        glVertexAttribPointer(2,                                // location 2 in the shader
-                              1,                                // 1 values per vert
-                              GL_UNSIGNED_SHORT,                // u16
-                              GL_FALSE,                         // don't normalize
-                              sizeof(tfrag3::PreloadedVertex),  // stride
-                              (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
+        glVertexAttribIPointer(2,                                // location 2 in the shader
+                               1,                                // 1 values per vert
+                               GL_UNSIGNED_SHORT,                // u16
+                               sizeof(tfrag3::PreloadedVertex),  // stride
+                               (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
         );
         glBindVertexArray(0);
       }

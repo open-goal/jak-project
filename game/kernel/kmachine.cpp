@@ -718,6 +718,42 @@ void c_memmove(u32 dst, u32 src, u32 size) {
   memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
 }
 
+/*!
+ * PC Port function to return the current OS as a symbol.
+ */
+u64 get_os() {
+#ifdef _WIN32
+  return intern_from_c("windows").offset;
+#elif __linux__
+  return intern_from_c("linux").offset;
+#else
+  return s7.offset;
+#endif
+}
+
+/*!
+ * PC Port function
+ */
+void get_window_size(u32 w_ptr, u32 h_ptr) {
+  if (w_ptr) {
+    auto w = Ptr<u32>(w_ptr).c();
+    *w = Gfx::get_window_width();
+  }
+  if (h_ptr) {
+    auto h = Ptr<u32>(h_ptr).c();
+    *h = Gfx::get_window_height();
+  }
+}
+
+/*!
+ * PC Port function
+ */
+void get_window_scale(u32 x_ptr, u32 y_ptr) {
+  float* x = x_ptr ? Ptr<float>(x_ptr).c() : NULL;
+  float* y = y_ptr ? Ptr<float>(y_ptr).c() : NULL;
+  Gfx::get_window_scale(x, y);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
@@ -735,6 +771,14 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
   make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
   make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
+
+  // os stuff
+  make_function_symbol_from_c("pc-get-os", (void*)get_os);
+  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
+  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
+  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
+  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
+  make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
 
   // init ps2 VM
   if (VM::use) {
@@ -826,7 +870,7 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value);
 
-    lg::info("calling fake play~");
+    lg::info("calling fake play");
     call_goal_function_by_name("play");
   }
 }

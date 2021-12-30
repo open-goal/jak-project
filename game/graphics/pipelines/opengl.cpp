@@ -80,7 +80,7 @@ void SetDisplayCallbacks(GLFWwindow* d) {
 }
 
 void ErrorCallback(int err, const char* msg) {
-  lg::error("GLFW ERR {}: " + std::string(msg), err);
+  lg::error("GLFW ERR {}: {}", err, std::string(msg));
 }
 
 bool HasError() {
@@ -91,6 +91,10 @@ bool HasError() {
   } else {
     return false;
   }
+}
+
+void FocusCallback(GLFWwindow* window, int focused) {
+  glfwSetWindowAttrib(window, GLFW_FLOATING, focused);
 }
 
 }  // namespace
@@ -224,7 +228,7 @@ void make_gfx_dump() {
                                compressed.data(), compressed.size());
 }
 
-void render_game_frame(int width, int height) {
+void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -248,6 +252,8 @@ void render_game_frame(int width, int height) {
     RenderOptions options;
     options.window_height_px = height;
     options.window_width_px = width;
+    options.lbox_height_px = lbox_height;
+    options.lbox_width_px = lbox_width;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.playing_from_dump = false;
@@ -271,7 +277,7 @@ void render_game_frame(int width, int height) {
   }
 }
 
-void render_dump_frame(int width, int height) {
+void render_dump_frame(int width, int height, int lbox_width, int lbox_height) {
   Timer deser_timer;
   if (g_gfx_data->debug_gui.want_dump_load()) {
     auto data =
@@ -294,6 +300,8 @@ void render_dump_frame(int width, int height) {
   RenderOptions options;
   options.window_height_px = height;
   options.window_width_px = width;
+  options.lbox_height_px = lbox_height;
+  options.lbox_width_px = lbox_width;
   options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
   options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
   options.playing_from_dump = true;
@@ -303,6 +311,63 @@ void render_dump_frame(int width, int height) {
   }
 
   g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
+}
+
+static void gl_display_position(GfxDisplay* display, int* x, int* y) {
+  glfwGetWindowPos(display->window_glfw, x, y);
+}
+
+static void gl_display_size(GfxDisplay* display, int* width, int* height) {
+  glfwGetFramebufferSize(display->window_glfw, width, height);
+}
+
+static void gl_display_set_size(GfxDisplay* display, int width, int height) {
+  glfwSetWindowSize(display->window_glfw, width, height);
+}
+
+static void gl_display_scale(GfxDisplay* display, float* xs, float* ys) {
+  glfwGetWindowContentScale(display->window_glfw, xs, ys);
+}
+
+static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
+  GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
+  auto window = display->window_glfw;
+  switch (mode) {
+    case 0: {
+      // windowed
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+      glfwSetWindowFocusCallback(window, NULL);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
+      glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
+                           display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
+    } break;
+    case 1: {
+      // fullscreen
+      if (display->fullscreen_mode() == 0) {
+        display->backup_params();
+      }
+      const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+      glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, 60);
+      glfwSetWindowFocusCallback(window, FocusCallback);
+    } break;
+    case 2: {
+      // borderless fullscreen
+      if (display->fullscreen_mode() == 0) {
+        display->backup_params();
+      }
+      int x, y;
+      glfwGetMonitorPos(monitor, &x, &y);
+      const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
+      glfwSetWindowFocusCallback(window, FocusCallback);
+#ifdef _WIN32
+      glfwSetWindowMonitor(window, NULL, x, y - 1, vmode->width, vmode->height + 1, GLFW_DONT_CARE);
+#else
+      glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
+#endif
+    } break;
+  }
 }
 
 static void gl_render_display(GfxDisplay* display) {
@@ -318,13 +383,23 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  int width, height;
-  glfwGetFramebufferSize(window, &width, &height);
+  int width = Gfx::g_global_settings.lbox_w;
+  int height = Gfx::g_global_settings.lbox_h;
+  int fbuf_w, fbuf_h;
+  glfwGetFramebufferSize(window, &fbuf_w, &fbuf_h);
+#ifdef _WIN32
+  if (display->fullscreen_mode() == 2) {
+    // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
+    fbuf_h--;
+  }
+#endif
+  int lbox_w = (fbuf_w - width) / 2;
+  int lbox_h = (fbuf_h - height) / 2;
 
   if (g_gfx_data->debug_gui.want_dump_replay()) {
-    render_dump_frame(width, height);
+    render_dump_frame(width, height, lbox_w, lbox_h);
   } else if (g_gfx_data->debug_gui.should_advance_frame()) {
-    render_game_frame(width, height);
+    render_game_frame(width, height, lbox_w, lbox_h);
   }
 
   // render imgui
@@ -336,6 +411,10 @@ static void gl_render_display(GfxDisplay* display) {
   g_gfx_data->debug_gui.finish_frame();
   glfwSwapBuffers(window);
   g_gfx_data->debug_gui.start_frame();
+
+  if (display->fullscreen_pending()) {
+    display->fullscreen_flush();
+  }
 
   // toggle even odd and wake up engine waiting on vsync.
   if (!g_gfx_data->debug_gui.want_dump_replay()) {
@@ -438,6 +517,11 @@ const GfxRendererModule moduleOpenGL = {
     gl_make_main_display,   // make_main_display
     gl_kill_display,        // kill_display
     gl_render_display,      // render_display
+    gl_display_position,    // display_position
+    gl_display_size,        // display_size
+    gl_display_set_size,    // display_set_size
+    gl_display_scale,       // display_scale
+    gl_set_fullscreen,      // set_fullscreen
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path
@@ -446,5 +530,5 @@ const GfxRendererModule moduleOpenGL = {
     gl_texture_relocate,    // texture_relocate
     gl_poll_events,         // poll_events
     GfxPipeline::OpenGL,    // pipeline
-    "OpenGL 3.3"            // name
+    "OpenGL 4.3"            // name
 };
