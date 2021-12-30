@@ -33,7 +33,8 @@ files_with_modifications = [
   "collide-shape",
   "cam-states",
   "plant-boss",
-  "helix-water"
+  "helix-water",
+  "sage-finalboss-FIN"
 ]
 
 for file in files:
