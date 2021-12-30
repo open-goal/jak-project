@@ -336,6 +336,7 @@
                   (set! (-> obj width) (file-stream-read-int file))
                   (set! (-> obj height) (file-stream-read-int file))
                   (set-size! obj (-> obj width) (-> obj height))
+                  (set-aspect! obj (-> obj width) (-> obj height))
                   )
                 ((string= *pc-temp-string* "aspect")
                   (set! (-> obj aspect-custom-x) (file-stream-read-int file))
@@ -409,6 +410,13 @@
                           )
                         )
                       )
+                    )
+                  )
+                ((string= *pc-temp-string* "panic")
+                  (when (file-stream-read-symbol file)
+                    (reset obj)
+                    (set-fullscreen! obj #f)
+                    (return #f)
                     )
                   )
                 )
@@ -541,13 +549,12 @@
   )
 
 
-(defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
+(defmethod new pc-settings ((allocation symbol) (type-to-make type))
   "make a new pc-settings"
 
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
 
     (reset obj)
-    (read-from-file obj filename)
 
     obj
     )
@@ -560,7 +567,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(define *pc-settings* (new 'global 'pc-settings PC_SETTINGS_FILE_NAME))
+(define *pc-settings* (new 'global 'pc-settings))
 
 
 
