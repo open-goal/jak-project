@@ -84,7 +84,7 @@ void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
         vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
         glBindBuffer(GL_ARRAY_BUFFER, tree_cache.vertex_buffer);
         glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
-                     GL_DYNAMIC_DRAW);
+                     GL_STREAM_DRAW);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);

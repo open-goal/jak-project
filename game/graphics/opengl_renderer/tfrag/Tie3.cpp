@@ -137,7 +137,6 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
     fmt::print("level max time of day: {}\n", time_of_day_count);
     assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
 
-
     m_level_name = level;
     fmt::print("TIE setup: {:.3f}\n", tie_setup_timer.getSeconds());
   }

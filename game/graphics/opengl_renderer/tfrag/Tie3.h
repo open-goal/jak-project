@@ -60,7 +60,6 @@ class Tie3 : public BucketRenderer {
     std::vector<std::pair<int, int>> draw_idx_temp;
   } m_cache;
 
-
   std::vector<math::Vector<u8, 4>> m_color_result;
 
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;

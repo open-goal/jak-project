@@ -13,6 +13,10 @@
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
+namespace {
+std::string g_current_render;
+
+}
 
 /*!
  * OpenGL Error callback. If we do something invalid, this will be called.
@@ -28,11 +32,14 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
     // On some drivers this prints on every single texture upload, which is too much spam
     // lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
-    lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::info("[{}] OpenGL message 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+             message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
-    lg::warn("OpenGL warn 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::warn("[{}] OpenGL warn 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+             message);
   } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
-    lg::error("OpenGL error 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::error("[{}] OpenGL error 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+              message);
   }
 }
 
@@ -97,7 +104,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 1024,
                                        DirectRenderer::Mode::NORMAL);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 1024,
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 4096,
                                        DirectRenderer::Mode::NORMAL);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
@@ -231,8 +238,11 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
+    // lg::info("Render: {} start\n", renderer->name_and_id());
+    g_current_render = renderer->name_and_id();
     renderer->render(dma, &m_render_state, bucket_prof);
-    // should have ended at the start of the next chain
+    // lg::info("Render: {} end\n", renderer->name_and_id());
+    //  should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
 
@@ -240,6 +250,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
       vif_interrupt_callback();
     }
   }
+  g_current_render = "";
 
   // TODO ending data.
 }

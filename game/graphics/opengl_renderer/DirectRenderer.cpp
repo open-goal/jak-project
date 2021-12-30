@@ -14,7 +14,7 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   m_ogl.vertex_buffer_max_verts = batch_size * 3 * 2;
   m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(Vertex);
   glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr,
-               GL_DYNAMIC_DRAW);  // todo stream?
+               GL_STREAM_DRAW);  // todo stream?
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -150,6 +150,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   // update buffers:
   u32 vertex_offset = m_ogl.last_vertex_offset;
   if (vertex_offset + m_prim_buffer.vert_count >= m_ogl.vertex_buffer_max_verts) {
+    lg::warn("Buffer wrapped in {} (upcoming size is {}, {} bytes)\n", m_name,
+             m_prim_buffer.vert_count, m_prim_buffer.vert_count * sizeof(Vertex));
     vertex_offset = 0;
   }
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
