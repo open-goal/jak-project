@@ -1134,7 +1134,7 @@ int TypeSystem::get_next_method_id(const Type* type) const {
     if (type->has_parent()) {
       type = lookup_type(type->get_parent());
     } else {
-      // nobody has defined any method yet. New is special and doens't use this, so we return
+      // nobody has defined any method yet. New is special and doesn't use this, so we return
       // one after new.
       return 1;
     }
