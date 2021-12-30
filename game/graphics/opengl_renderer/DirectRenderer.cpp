@@ -9,13 +9,43 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size), m_mode(mode) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
-
+  glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   m_ogl.vertex_buffer_max_verts = batch_size * 3 * 2;
   m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(Vertex);
   glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr,
                GL_STREAM_DRAW);  // todo stream?
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(
+      0,                            // location 0 in the shader
+      3,                            // 3 floats per vert
+      GL_UNSIGNED_INT,              // floats
+      GL_TRUE,                      // normalized, ignored,
+      sizeof(Vertex),               //
+      (void*)offsetof(Vertex, xyz)  // offset in array (why is is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(
+      1,                             // location 0 in the shader
+      4,                             // 3 floats per vert
+      GL_UNSIGNED_BYTE,              // floats
+      GL_TRUE,                       // normalized, ignored,
+      sizeof(Vertex),                //
+      (void*)offsetof(Vertex, rgba)  // offset in array (why is is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(
+      2,                            // location 0 in the shader
+      3,                            // 3 floats per vert
+      GL_FLOAT,                     // floats
+      GL_FALSE,                     // normalized, ignored,
+      sizeof(Vertex),               //
+      (void*)offsetof(Vertex, stq)  // offset in array (why is is this a pointer...)
+  );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 }
 
 DirectRenderer::~DirectRenderer() {
@@ -157,40 +187,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferSubData(GL_ARRAY_BUFFER, vertex_offset * sizeof(Vertex),
                   m_prim_buffer.vert_count * sizeof(Vertex), m_prim_buffer.vertices.data());
-
-  // setup attributes:
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(
-      0,                            // location 0 in the shader
-      3,                            // 3 floats per vert
-      GL_UNSIGNED_INT,              // floats
-      GL_TRUE,                      // normalized, ignored,
-      sizeof(Vertex),               //
-      (void*)offsetof(Vertex, xyz)  // offset in array (why is is this a pointer...)
-  );
-
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(
-      1,                             // location 0 in the shader
-      4,                             // 3 floats per vert
-      GL_UNSIGNED_BYTE,              // floats
-      GL_TRUE,                       // normalized, ignored,
-      sizeof(Vertex),                //
-      (void*)offsetof(Vertex, rgba)  // offset in array (why is is this a pointer...)
-  );
-
-  glEnableVertexAttribArray(2);
-  glVertexAttribPointer(
-      2,                            // location 0 in the shader
-      3,                            // 3 floats per vert
-      GL_FLOAT,                     // floats
-      GL_FALSE,                     // normalized, ignored,
-      sizeof(Vertex),               //
-      (void*)offsetof(Vertex, stq)  // offset in array (why is is this a pointer...)
-  );
   glActiveTexture(GL_TEXTURE0);
-  // assert(false);
 
   int draw_count = 0;
   if (m_mode == Mode::SPRITE_CPU) {
