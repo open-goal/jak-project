@@ -6,7 +6,6 @@
 #include "game/graphics//opengl_renderer/SkyBlendGPU.h"
 #include "game/graphics//opengl_renderer/SkyBlendCPU.h"
 
-
 /*!
  * Handles texture blending for the sky.
  * Will insert the result texture into the texture pool.
