@@ -65,7 +65,7 @@ class Debugger {
   bool is_valid() const;
   bool is_attached() const;
   bool is_running() const;
-  void detach();
+  bool detach();
   void invalidate();
   void set_context(u32 s7, uintptr_t base, const std::string& thread_id);
   std::string get_context_string() const;

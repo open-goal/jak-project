@@ -576,6 +576,7 @@ class Compiler {
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_stop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_pm(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_di(const goos::Object& form, const goos::Object& rest, Env* env);
