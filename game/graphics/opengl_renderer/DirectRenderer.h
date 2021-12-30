@@ -180,7 +180,7 @@ class DirectRenderer : public BucketRenderer {
   } m_prim_building;
 
   struct Vertex {
-    math::Vector<u32, 4> xyz;
+    math::Vector<float, 4> xyz;
     math::Vector<float, 3> stq;
     math::Vector<u8, 4> rgba;
   };

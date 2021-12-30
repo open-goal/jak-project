@@ -18,8 +18,8 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(
       0,                            // location 0 in the shader
-      3,                            // 3 floats per vert
-      GL_UNSIGNED_INT,              // floats
+      4,                            // 3 floats per vert
+      GL_FLOAT,                     // floats
       GL_TRUE,                      // normalized, ignored,
       sizeof(Vertex),               //
       (void*)offsetof(Vertex, xyz)  // offset in array (why is is this a pointer...)
@@ -1074,9 +1074,9 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<float, 3>& st) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
-  v.xyz[0] = vert[0];
-  v.xyz[1] = vert[1];
-  v.xyz[2] = vert[2];
+  v.xyz[0] = (float)vert[0]/UINT32_MAX;
+  v.xyz[1] = (float)vert[1]/UINT32_MAX;
+  v.xyz[2] = (float)vert[2]/UINT32_MAX;
   v.stq = st;
   vert_count++;
 }
