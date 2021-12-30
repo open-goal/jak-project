@@ -4,6 +4,8 @@
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/tfrag/TFragment.h"
 #include "game/graphics//opengl_renderer/SkyBlendGPU.h"
+#include "game/graphics//opengl_renderer/SkyBlendCPU.h"
+
 
 /*!
  * Handles texture blending for the sky.
@@ -23,7 +25,7 @@ class SkyBlendHandler : public BucketRenderer {
                          ScopedProfilerNode& prof);
 
   std::shared_ptr<SkyBlendGPU> m_shared_gpu_blender;
-  SkyBlendGPU::Stats m_gpu_stats;
+  SkyBlendStats m_gpu_stats;
   TFragment m_tfrag_renderer;
 };
 

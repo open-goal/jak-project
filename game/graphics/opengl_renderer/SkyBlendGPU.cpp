@@ -59,10 +59,10 @@ SkyBlendGPU::~SkyBlendGPU() {
   glDeleteTextures(2, m_textures);
 }
 
-SkyBlendGPU::Stats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
-                                              SharedRenderState* render_state,
-                                              ScopedProfilerNode& prof) {
-  Stats stats;
+SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
+                                         SharedRenderState* render_state,
+                                         ScopedProfilerNode& prof) {
+  SkyBlendStats stats;
   GLuint vao;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
