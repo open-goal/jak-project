@@ -124,7 +124,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     return 127;
   }
   // TODO - dead-zone support needed?
-  return (g_gamepad_analogs[(int)analog] * 127) + 127;
+  return int((g_gamepad_analogs[(int)analog] + 1) * 127);
   // TODO - support keyboard inputs as well
 }
 

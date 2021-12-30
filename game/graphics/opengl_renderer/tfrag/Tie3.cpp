@@ -84,12 +84,11 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
                             (void*)offsetof(tfrag3::PreloadedVertex, s)  // offset (0)
       );
 
-      glVertexAttribPointer(2,                                // location 2 in the shader
-                            1,                                // 1 values per vert
-                            GL_UNSIGNED_SHORT,                // u16
-                            GL_FALSE,                         // don't normalize
-                            sizeof(tfrag3::PreloadedVertex),  // stride
-                            (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
+      glVertexAttribIPointer(2,                                // location 2 in the shader
+                             1,                                // 1 values per vert
+                             GL_UNSIGNED_SHORT,                // u16
+                             sizeof(tfrag3::PreloadedVertex),  // stride
+                             (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
       );
 
       glGenBuffers(1, &m_trees[tree_idx].index_buffer);

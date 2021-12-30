@@ -1,0 +1,409 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file contains code that we need for the PC port of the game specifically.
+  It should be included as part of the game engine package (engine.cgo).
+
+  This file contains various types and functions to store PC-specific information
+  and also to communicate between the game (GOAL) and the operating system.
+  This way we can poll, change and display information about the system the game
+  is running on, such as:
+  - display devices and their settings, such as fullscreen, DPI, refresh rate, etc.
+  - audio devices and their settings, such as audio latency, channel number, etc.
+  - graphics devices and their settings, such as resolution, FPS, anisotropy, shaders, etc.
+  - input devices and their settings, such as controllers, keyboards, mice, etc.
+  - information about the game window (position, size)
+  - PC-specific goodies, enhancements, fixes and settings.
+  - whatever else.
+
+  If you do not want to include these PC things, you should exclude it from the build system.
+
+ |#
+
+
+(#when PC_PORT
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defglobalconstant PC_KERNEL_VERSION_BUILD #x0000)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0000)
+
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0000)
+(defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
+(defglobalconstant PC_KERNEL_VERSION (logior
+                                        (ash PC_KERNEL_VERSION_MAJOR 48)
+                                        (ash PC_KERNEL_VERSION_MINOR 32)
+                                        (ash PC_KERNEL_VERSION_REVISION 16)
+                                        (ash PC_KERNEL_VERSION_BUILD 0)
+                                        ))
+
+(defconstant PS2_VOICE_AMOUNT 48)
+(defconstant PC_VOICE_AMOUNT 256)
+
+(defconstant ASPECT_4X3 (/ 4.0 3.0))
+(defconstant ASPECT_16X9 (/ 16.0 9.0))
+(defconstant PC_BASE_WIDTH 640)
+(defconstant PC_BASE_HEIGHT 480)
+
+
+(defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;; graphics renderers
+(defenum pc-gfx-renderer
+  :type uint8
+  (software)
+  (opengl)
+  (vulkan)
+  (direct3d)
+  )
+
+
+;; subtitle languages.
+(defenum pc-subtitle-lang
+  :type uint16
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (uk-english)
+
+  ;; additional languages.
+  ;; these don't neccessarily have to work but I'm future-proofing a bit here, just in case.
+
+  ;; languages that use the existing glyphs
+  (portuguese)
+  (finnish)
+  (swedish)
+  (danish)
+  (norwegian)
+
+  ;; jak 1 has no glyphs for korean or cyrillic.
+  (korean) ;; future-proofing here
+  (russian) ;; same thing
+
+  (custom 500) ;; temp
+  )
+
+
+;; concept arts
+(defenum pc-jak1-concept-art
+  :bitfield #t
+  :type uint64
+  (test)
+  )
+
+;; secrets and goodies
+(deftype pc-game-secrets (structure)
+  ((art pc-jak1-concept-art) ;; concept art unlocked
+   (music uint64 30) ;; flavas unlocked, for each track (there's like 30 musics, right?)
+   (hard-fish-hiscore int32)
+   (hard-rats? symbol) ;; enable this crap
+   (hard-rats-hiscore int32)
+   (hard-rats-hiwave int32)
+   (hero-mode? symbol) ;; unsure how this should work
+   (hud-map? symbol) ;; enable map in HUD/progress?
+   (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
+   )
+  )
+
+;; general fixes
+(deftype pc-fixes (structure)
+  ((crash-sagecage symbol) ;; citadel
+   (crash-dma symbol) ;; general out of memory crash
+   (crash-light-eco symbol) ;; why does this one even happen?
+   (lockout-pelican symbol) ;; kill pelican during chase
+   (lockout-pipegame symbol) ;; last buzzer is pipegame
+   (lockout-gambler symbol) ;; talk without completing
+   (fix-movies symbol) ;; bad camera and single-frame crappiness
+   (fix-credits symbol) ;; one of the credits lines has the wrong color!!
+   )
+  )
+
+;; bingo integration. placeholder for now.
+(deftype pc-bingo-info (structure)
+  ()
+  )
+
+
+;; a 64-byte C-string. not sure if we need this.
+(deftype pc-cstring-64 (structure)
+  ((chars uint8 64)
+   (last uint8 :offset 63)
+   )
+  )
+
+
+;; generic device information: name and some ID
+(deftype pc-device-info (structure)
+  ((id int)
+   (name pc-cstring-64 :inline)
+   )
+  )
+
+
+;; input device information. comes with button mappings!
+(deftype pc-pad-info (structure)
+  ((device-info pc-device-info :inline)
+   (buffered? symbol)
+   (valid? symbol)
+   (mapping int 16)
+   )
+  )
+
+
+;; All of the configuration for the PC port in GOAL. Access things from here!
+;; Includes some methods to change parameters.
+(deftype pc-settings (basic)
+  ((version uint64) ;; version of this settings
+
+   (target-fps int16) ;; the target framerate of the game
+   (width int32) ;; the width of the rendering, may not match window
+   (height int32)
+   (win-width int32) ;; the width of the display window
+   (win-height int32)
+   (dpi-x float) ;; DPI width scale
+   (dpi-y float) ;; DPI height scale
+   (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically.
+   (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
+   (fullscreen? symbol) ;; fullscreen status. can be #f, #t or borderless
+   (letterbox? symbol) ;; letterbox. #f = stretched
+   (vsync? symbol) ;; vsync.
+   (font-scale float) ;; font scaling.
+
+   (os symbol) ;; windows, linux, macos
+   (user symbol) ;; username. not system username, just debug thing.
+   (debug? symbol) ;; more debug stuff just in case.
+   (new-lb? symbol) ;; different load boundary graphics.
+   (display-actor-bank symbol) ;; debug stuff.
+   (aspect-custom-x int)
+   (aspect-custom-y int)
+   (debug-pad-display symbol)
+
+   (device-audio pc-device-info :inline) ;; used audio device
+   (device-screen pc-device-info :inline) ;; used display device
+   (device-gpu pc-device-info :inline) ;; used graphics device
+   (device-pad pc-pad-info 4 :inline) ;; used input devices, like controllers.
+   ;(device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
+   (stick-deadzone float) ;; analog stick deadzone. 0-1
+
+   (audio-latency-ms int16) ;; audio latency in milliseconds
+   (audio-pan-override float) ;; audio pan modifier
+   (audio-volume-override float) ;; audio volume modifier
+   (audio-channel-nb int16) ;; audio channel amount. will be 48 on PS2 mode.
+
+   (gfx-renderer pc-gfx-renderer) ;; the renderer to use
+   (gfx-resolution float) ;; for supersampling
+   (gfx-anisotropy float) ;; for anisotropy
+
+   (ps2-read-speed? symbol) ;; emulate DVD loads
+   (ps2-parts? symbol) ;; if off, increase particle cap
+   (ps2-music? symbol) ;; if off, use .wav files stored somewhere
+   (ps2-se? symbol) ;; if off, use adjusted sound effects
+   (ps2-hints? symbol) ;; if off, enables extra game hints
+
+   (ps2-lod-dist? symbol) ;; use original lod distances
+   (shrub-dist-mod float) ;; shrub render distance modifier
+   (lod-dist-mod float) ;; non-shrub lod distance modifier
+   (lod-force-tfrag int8) ;; tfrag lod tier override. 0 = highest detail
+   (lod-force-tie int8) ;; tie lod tier override
+   (lod-force-ocean int8) ;; ocean lod tier override
+   (lod-force-actor int8) ;; merc lod tier override
+
+   (music-fade? symbol) ;; if off, music has no fade in
+   (use-vis? symbol) ;; if off, don't use vis trees. this MUST be off for custom (non-cropping) aspect ratios.
+   (skip-movies? symbol) ;; if on, enable cutscene skipping
+   (subtitles? symbol) ;; if on, cutscene subtitles will show up
+   (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
+   (subtitle-language pc-subtitle-lang) ;; language for subtitles
+
+   (fixes pc-fixes :inline) ;; extra game fixes
+
+   (bingo pc-bingo-info :inline) ;; bingo integration. does nothing for now.
+
+   (secrets pc-game-secrets :inline) ;; hidden goodies and additional secrets!
+
+   (scenes-seen uint8 197) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
+   )
+
+  (:methods
+    (new (symbol type) _type_)
+    (update (_type_) none)
+    (update-from-os (_type_) none)
+    (update-to-os (_type_) none)
+    (reset (_type_) none)
+    (reset-audio (_type_) none)
+    (reset-input (_type_) none)
+    (reset-gfx (_type_) none)
+    (reset-ps2 (_type_) none)
+    (reset-misc (_type_) none)
+    (reset-fixes (_type_) none)
+    (reset-extra (_type_) none)
+    (draw (_type_ dma-buffer) none)
+    (set-fullscreen! (_type_ symbol) int)
+    (set-size! (_type_ int int) int)
+    (set-aspect! (_type_ int int) int)
+    (read-from-file (_type_ string) symbol)
+    (write-to-file (_type_ string) symbol)
+    )
+  )
+
+;; information about a cutscene. placeholder. TODO look at jak 2
+(deftype pc-scene-info (structure)
+  ((name string)
+   (commands pair)
+   (level0 symbol)
+   (level1 symbol)
+   (level0-disp symbol)
+   (level1-disp symbol)
+   )
+  )
+
+(defconstant PC_TEMP_STRING_LEN 512)
+(define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the-as string #f)))
+(define *pc-settings* (the-as pc-settings #f))
+(format 0 "PC kernel version: ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; resets
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod reset pc-settings ((obj pc-settings))
+  "Set the default settings"
+
+  ;(format #t "pc settings reset~%")
+
+  (set! (-> obj version) PC_KERNEL_VERSION)
+
+  (set! (-> obj user) #f)
+  (set! (-> obj debug?) #f)
+  (set! (-> obj new-lb?) #f)
+  (set! (-> obj display-actor-bank) #f)
+  (set! (-> obj debug-pad-display) #f)
+  (set! (-> obj font-scale) 1.0)
+  (set! (-> obj aspect-custom-x) 1)
+  (set! (-> obj aspect-custom-y) 1)
+
+  (reset-gfx obj)
+  (reset-audio obj)
+  (reset-input obj)
+  (reset-ps2 obj)
+  (reset-misc obj)
+  (reset-fixes obj)
+  (reset-extra obj)
+
+  (none))
+
+
+(defmethod reset-gfx pc-settings ((obj pc-settings))
+  "Set the default graphics settings"
+
+  (set! (-> obj target-fps) 60)
+  (set! (-> obj width) PC_BASE_WIDTH)
+  (set! (-> obj height) PC_BASE_HEIGHT)
+  (set! (-> obj use-vis?) #t)
+  (set! (-> obj aspect-ratio-auto?) #f)
+  (set! (-> obj fullscreen?) #f)
+  (set! (-> obj vsync?) #t)
+  (set! (-> obj letterbox?) #t)
+
+  (none))
+
+(defmethod reset-audio pc-settings ((obj pc-settings))
+  "Set the default audio settings"
+
+  (set! (-> obj audio-latency-ms) 80)
+  (set! (-> obj audio-pan-override) 0.0)
+  (set! (-> obj audio-volume-override) 1.0)
+  (set! (-> obj audio-channel-nb) PS2_VOICE_AMOUNT)
+  (none))
+
+(defmethod reset-input pc-settings ((obj pc-settings))
+  "Set the default input settings"
+
+  (set! (-> obj stick-deadzone) 0.3)
+  (none))
+
+(defmethod reset-ps2 pc-settings ((obj pc-settings))
+  "Set the default ps2 settings"
+
+  (set! (-> obj ps2-read-speed?) #f)
+  (set! (-> obj ps2-parts?) #t)
+  (set! (-> obj ps2-music?) #t)
+  (set! (-> obj ps2-se?) #t)
+  (set! (-> obj ps2-hints?) #t)
+
+  (set! (-> obj ps2-lod-dist?) #f)
+  (set! (-> obj shrub-dist-mod) 1.0)
+  (set! (-> obj lod-dist-mod) 1.0)
+  (set! (-> obj lod-force-tfrag) 0)
+  (set! (-> obj lod-force-tie) 0)
+  (set! (-> obj lod-force-ocean) 0)
+  (set! (-> obj lod-force-actor) 0)
+  (none))
+
+(defmethod reset-misc pc-settings ((obj pc-settings))
+  "Set the default misc settings"
+
+  (set! (-> obj music-fade?) #f)
+  (set! (-> obj skip-movies?) #t)
+  (set! (-> obj subtitles?) #t)
+  (set! (-> obj hinttitles?) #t)
+  (set! (-> obj subtitle-language) (pc-subtitle-lang english))
+  (none))
+
+(defmethod reset-fixes pc-settings ((obj pc-settings))
+  "Set the default fixes settings"
+
+  (set! (-> obj fixes crash-sagecage) #t)
+  (set! (-> obj fixes crash-dma) #t)
+  (set! (-> obj fixes crash-light-eco) #t)
+  (set! (-> obj fixes lockout-pelican) #t)
+  (set! (-> obj fixes lockout-pipegame) #t)
+  (set! (-> obj fixes lockout-gambler) #t)
+  (set! (-> obj fixes fix-movies) #f)
+  (set! (-> obj fixes fix-credits) #t)
+  (none))
+
+(defmethod reset-extra pc-settings ((obj pc-settings))
+  "Set the default goodies settings"
+
+  (dotimes (i 197)
+    (set! (-> obj scenes-seen i) 0)
+    )
+  (dotimes (i 30)
+    (set! (-> obj secrets music i) 0)
+    )
+
+  (set! (-> obj secrets art) (pc-jak1-concept-art))
+  (set! (-> obj secrets hard-fish-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiwave) 0)
+  (set! (-> obj secrets hard-rats?) #f)
+  (set! (-> obj secrets hero-mode?) #f)
+  (set! (-> obj secrets hud-map?) #t)
+  (set! (-> obj secrets hud-counters?) #t)
+  (none))
+
+
+
+)
+
+
+
