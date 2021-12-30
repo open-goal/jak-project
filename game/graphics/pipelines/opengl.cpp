@@ -335,12 +335,11 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   switch (mode) {
     case 0: {
       // windowed
-      // display->restore_on_next_vsync = true;
-      glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
-                           display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(window, NULL);
       glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
+      glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
+                           display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
     } break;
     case 1: {
       // fullscreen
@@ -348,7 +347,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
         display->backup_params();
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
-      glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, vmode->refreshRate);
+      glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, 60);
       glfwSetWindowFocusCallback(window, FocusCallback);
     } break;
     case 2: {
@@ -359,9 +358,14 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       int x, y;
       glfwGetMonitorPos(monitor, &x, &y);
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
-      glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
       glfwSetWindowFocusCallback(window, FocusCallback);
+#ifdef _WIN32
+      glfwSetWindowMonitor(window, NULL, x, y - 1, vmode->width, vmode->height + 1, GLFW_DONT_CARE);
+#else
+      glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
+#endif
     } break;
   }
 }
@@ -383,6 +387,12 @@ static void gl_render_display(GfxDisplay* display) {
   int height = Gfx::g_global_settings.lbox_h;
   int fbuf_w, fbuf_h;
   glfwGetFramebufferSize(window, &fbuf_w, &fbuf_h);
+#ifdef _WIN32
+  if (display->fullscreen_mode() == 2) {
+    // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
+    fbuf_h--;
+  }
+#endif
   int lbox_w = (fbuf_w - width) / 2;
   int lbox_h = (fbuf_h - height) / 2;
 
@@ -405,11 +415,6 @@ static void gl_render_display(GfxDisplay* display) {
   if (display->fullscreen_pending()) {
     display->fullscreen_flush();
   }
-  /*if (display->restore_on_next_vsync) {
-    glfwSetWindowSize(display->window_glfw, display->width_backup(), display->height_backup());
-    glfwSetWindowPos(display->window_glfw, display->xpos_backup(), display->ypos_backup());
-    display->restore_on_next_vsync = false;
-  }*/
 
   // toggle even odd and wake up engine waiting on vsync.
   if (!g_gfx_data->debug_gui.want_dump_replay()) {
