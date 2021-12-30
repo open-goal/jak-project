@@ -82,7 +82,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);
-  auto sky_blender = std::make_shared<SkyBlender>();
+  auto sky_blender = std::make_shared<SkyBlendGPU>();
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
                                         BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, sky_blender);
   init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false);

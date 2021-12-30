@@ -179,11 +179,17 @@ class DirectRenderer : public BucketRenderer {
 
   } m_prim_building;
 
+  struct Vertex {
+    math::Vector<u32, 3> xyz;
+    math::Vector<u8, 4> rgba;
+    math::Vector<float, 3> stq;
+    float pad;
+  };
+  static_assert(sizeof(Vertex) == 32);
+
   struct PrimitiveBuffer {
     PrimitiveBuffer(int max_triangles);
-    std::vector<math::Vector<u8, 4>> rgba_u8;
-    std::vector<math::Vector<u32, 3>> verts;
-    std::vector<math::Vector<float, 3>> stqs;
+    std::vector<Vertex> vertices;
     int vert_count = 0;
     int max_verts = 0;
 
@@ -195,11 +201,11 @@ class DirectRenderer : public BucketRenderer {
   } m_prim_buffer;
 
   struct {
-    GLuint vertex_buffer, color_buffer, st_buffer;
+    GLuint vertex_buffer;
     GLuint vao;
     u32 vertex_buffer_bytes = 0;
-    u32 color_buffer_bytes = 0;
-    u32 st_buffer_bytes = 0;
+    u32 vertex_buffer_max_verts = 0;
+    u32 last_vertex_offset = 0;
   } m_ogl;
 
   struct {
