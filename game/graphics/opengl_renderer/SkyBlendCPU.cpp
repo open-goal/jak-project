@@ -17,13 +17,26 @@ SkyBlendCPU::~SkyBlendCPU() {
   glDeleteTextures(2, m_textures);
 }
 
+void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
+  __m256i intensity_vec = _mm256_set1_epi16(intensity);
+  for (u32 i = 0; i < size / 16; i++) {
+    __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
+    __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
+    tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
+    tex_data16 = _mm256_srli_epi16(tex_data16, 7);
+    auto hi = _mm256_extracti128_si256(tex_data16, 1);
+    auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
+    _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
+  }
+}
+
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
   __m256i intensity_vec = _mm256_set1_epi16(intensity);
   for (u32 i = 0; i < size / 16; i++) {
     __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
     __m128i out_val = _mm_loadu_si128((const __m128i*)(out + (i * 16)));
     __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
-    tex_data16 = _mm256_mullo_epi32(tex_data16, intensity_vec);
+    tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
     tex_data16 = _mm256_srli_epi16(tex_data16, 7);
     auto hi = _mm256_extracti128_si256(tex_data16, 1);
     auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
@@ -82,7 +95,8 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
     assert(tex);
     assert(!tex->only_on_gpu);  // we need the actual data!!
 
-    // clear the data (todo, can be more efficient and just special case it)
+    // slow version
+    /*
     if (is_first_draw) {
       memset(m_texture_data[buffer_idx].data(), 0, m_texture_data[buffer_idx].size());
     }
@@ -95,6 +109,14 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
       u32 val = tex->data[i] * intensity;
       val >>= 7;
       m_texture_data[buffer_idx][i] += val;
+    }
+     */
+    if (is_first_draw) {
+      blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->data.data(),
+                             tex->data.size());
+    } else {
+      blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->data.data(),
+                     tex->data.size());
     }
 
     if (buffer_idx == 0) {
@@ -132,13 +154,13 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
 
     tex->gpu_texture = m_textures[i];
     tex->on_gpu = true;
-    tex->only_on_gpu = false;
+    tex->only_on_gpu = true;
     tex->do_gc = false;
     tex->w = m_sizes[i];
     tex->h = m_sizes[i];
     tex->name = fmt::format("PC-SKY-{}", i);
   }
-  fmt::print("sky blend took {:.2f} ms\n", sky_timer.getMs());
+  //  fmt::print("sky blend took {:.2f} ms\n", sky_timer.getMs());
 
   return stats;
 }
