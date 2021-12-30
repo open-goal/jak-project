@@ -180,10 +180,9 @@ class DirectRenderer : public BucketRenderer {
   } m_prim_building;
 
   struct Vertex {
-    math::Vector<u32, 3> xyz;
-    math::Vector<u8, 4> rgba;
+    math::Vector<u32, 4> xyz;
     math::Vector<float, 3> stq;
-    float pad;
+    math::Vector<u8, 4> rgba;
   };
   static_assert(sizeof(Vertex) == 32);
 

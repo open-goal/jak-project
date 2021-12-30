@@ -28,7 +28,7 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(
       1,                             // location 0 in the shader
-      4,                             // 3 floats per vert
+      4,                             // 4 floats per vert (w unused)
       GL_UNSIGNED_BYTE,              // floats
       GL_TRUE,                       // normalized, ignored,
       sizeof(Vertex),                //
@@ -236,6 +236,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   m_stats.triangles += n_tris;
   m_stats.draw_calls += draw_count;
   m_ogl.last_vertex_offset = vertex_offset + m_prim_buffer.vert_count;
+  m_ogl.last_vertex_offset = (m_ogl.last_vertex_offset + 3) & ~3;
   m_prim_buffer.vert_count = 0;
 }
 
@@ -1073,7 +1074,9 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<float, 3>& st) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
-  v.xyz = vert;
+  v.xyz[0] = vert[0];
+  v.xyz[1] = vert[1];
+  v.xyz[2] = vert[2];
   v.stq = st;
   vert_count++;
 }
