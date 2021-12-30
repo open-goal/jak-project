@@ -26,7 +26,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
     // On some drivers this prints on every single texture upload, which is too much spam
-    // lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
@@ -41,14 +41,12 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
   // setup OpenGL errors
 
   // disable specific errors
-  const GLuint l_gl_error_ignores[1] = {
-      0x64  // [API-PERFORMANCE] glDrawArrays uses non-native input attribute type
-  };
+  const GLuint gl_error_ignores_api_perf[1] = {};
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // filter
-  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
-                        &l_gl_error_ignores[0], GL_FALSE);
+  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0,
+                        &gl_error_ignores_api_perf[0], GL_FALSE);
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
