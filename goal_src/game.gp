@@ -42,7 +42,7 @@
   )
 
 (defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
-  "Add a sequence of GOAL files (each depending on the previous) in the given directory, 
+  "Add a sequence of GOAL files (each depending on the previous) in the given directory,
    with all depending on the given deps."
   (let* ((first-thing `(goal-src ,(string-append prefix (first sequence)) ,@deps))
          (result (cons first-thing '()))
@@ -188,7 +188,7 @@
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Textures (Common)
 ;;;;;;;;;;;;;;;;;;;;;
-                 
+
 (copy-textures 463 2 880 256 1278 1032 62 1532)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -254,26 +254,38 @@
        "out/iso/VI2.DGO"
        "out/iso/VI3.DGO"
        "out/iso/TRA.DGO"
-       "out/iso/FIN.DGO"
        "out/iso/FIC.DGO"
+       "out/iso/ROL.DGO"
+       "out/iso/SUN.DGO"
+       "out/iso/SUB.DGO"
+       "out/iso/SWA.DGO"
+       "out/iso/OGR.DGO"
        "out/iso/JUN.DGO"
+       "out/iso/JUB.DGO"
        "out/iso/MAI.DGO"
+       "out/iso/SNO.DGO"
        "out/iso/BEA.DGO"
        "out/iso/LAV.DGO"
        "out/iso/CIT.DGO"
-       "out/iso/SUN.DGO"
+       "out/iso/FIN.DGO"
        ;; level vis
        "out/iso/VI1.VIS"
        "out/iso/VI2.VIS"
        "out/iso/VI3.VIS"
        "out/iso/TRA.VIS"
-       "out/iso/FIN.VIS"
        "out/iso/FIC.VIS"
+       "out/iso/ROL.VIS"
+       "out/iso/SUN.VIS"
+       "out/iso/SUB.VIS"
+       "out/iso/SWA.VIS"
+       "out/iso/OGR.VIS"
        "out/iso/JUN.VIS"
+       "out/iso/JUB.VIS"
        "out/iso/MAI.VIS"
+       "out/iso/SNO.VIS"
        "out/iso/BEA.VIS"
        "out/iso/CIT.VIS"
-       "out/iso/SUN.VIS"
+       "out/iso/FIN.VIS"
 
        "out/iso/FUCVICTO.STR"
        "out/iso/FUCV2.STR"
@@ -326,6 +338,8 @@
  "eichar-racer+0-ag"
 
  "babak-ag"
+
+ "eichar-flut+0-ag"
   )
 
 
@@ -355,6 +369,9 @@
    "racer_common/racer-states-FIC-LAV-MIS-OGR-ROL.gc"
    "racer_common/collide-reaction-racer.gc"
 
+   "flut_common/flut-part.gc"
+   "flut_common/flutflut.gc"
+   "flut_common/target-flut.gc"
    )
 
 
@@ -432,6 +449,7 @@
  "village1-vis"
  )
 
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle
 ;;;;;;;;;;;;;;;;;;;;;
@@ -457,6 +475,8 @@
  "fisher-JUN.gc"
  "jungle-part.gc"
  )
+
+(copy-textures 385 531 386 388 765)
 
 (copy-gos
   "eichar-fish+0-ag-JUN"
@@ -494,7 +514,39 @@
   "jungle-vis"
   )
 
-(copy-textures 385 531 386 388 765)
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Jungle temple
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "JUB.DGO" "jub.gd")
+
+(copy-vis-files "JUB")
+
+(goal-src-sequence
+ "levels/jungleb/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "jungleb-obs.gc"
+ "plat-flip.gc"
+ "aphid.gc"
+ "plant-boss.gc"
+ )
+
+(copy-textures 485 510 507 966)
+
+(copy-gos
+  "plant-boss-main+0-ag"
+  "aphid-lurker-ag"
+  "darkvine-ag-JUB"
+  "eggtop-ag"
+  "jng-iris-door-ag-JUB"
+  "plant-boss-ag"
+  "plat-flip-ag"
+  "plat-jungleb-ag"
+  "jungleb-vis"
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -692,6 +744,40 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; rolling hills
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "ROL.DGO" "rol.gd")
+
+(copy-vis-files "ROL")
+
+(goal-src-sequence
+ "levels/rolling/"
+ :deps ("out/obj/default-menu.o")
+ "rolling-obs.gc"
+ "rolling-lightning-mole.gc"
+ "rolling-robber.gc"
+ "rolling-race-ring.gc"
+ )
+
+(copy-textures 923 926 924 925 1353)
+
+(copy-gos
+  "ecovalve-ag-ROL"
+  "dark-plant-ag"
+  "happy-plant-ag"
+  "lightning-mole-ag"
+  "pusher-ag"
+  "race-ring-ag"
+  "robber-ag"
+  "rolling-start-ag"
+  "rollingcam-ag"
+  "water-anim-rolling-ag"
+  "rolling-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; LPC
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -762,7 +848,114 @@
   "whirlpool-ag"
   "sunken-vis"
   )
- 
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; sunken city b
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SUB.DGO" "sub.gd")
+
+(copy-vis-files "SUB")
+
+(copy-textures 163 164 166 162 764)
+
+(copy-gos
+  "ecovalve-ag-SUB"
+  "eichar-tube+0-ag-SUB"
+  "blue-eco-charger-ag"
+  "blue-eco-charger-orb-ag"
+  "floating-launcher-ag"
+  "helix-button-ag"
+  "helix-slide-door-ag"
+  "shover-ag-SUB"
+  "steam-cap-ag-SUB"
+  "sunkencam-ag-SUB"
+  "sunkenb-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; swamp
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SWA.DGO" "swa.gd")
+
+(copy-vis-files "SWA")
+
+(goal-src-sequence
+ "levels/swamp/"
+ :deps ("out/obj/default-menu.o")
+ "swamp-obs.gc"
+ "swamp-bat.gc"
+ "swamp-rat.gc"
+ "swamp-rat-nest.gc"
+ "kermit.gc"
+ "swamp-part.gc"
+ "billy.gc"
+ )
+
+(copy-textures 358 659 629 630)
+
+(copy-gos
+  "ecovalve-ag-SWA"
+  "sharkey-ag-SWA"
+  "eichar-pole+0-ag-SWA"
+  "flut-saddle-ag-SWA"
+  "balance-plat-ag"
+  "billy-ag"
+  "billy-sidekick-ag"
+  "farthy-snack-ag"
+  "kermit-ag"
+  "swamp-bat-ag"
+  "swamp-rat-ag"
+  "swamp-rat-nest-ag"
+  "swamp-rock-ag"
+  "swamp-spike-ag"
+  "swampcam-ag-SWA"
+  "tar-plat-ag"
+  "swamp-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; ogre boss
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "OGR.DGO" "ogr.gd")
+
+(copy-vis-files "OGR")
+
+(goal-src-sequence
+ "levels/ogre/"
+ :deps ("out/obj/default-menu.o")
+ "ogre-part.gc"
+ "ogreboss.gc"
+ "ogre-obs.gc"
+ "flying-lurker.gc"
+ )
+
+(copy-textures 875 967 884 1117)
+
+(copy-gos
+  "crate-darkeco-cluster-ag-OGR"
+  "racer-ag-OGR"
+  "flying-lurker-ag"
+  "medres-snow-ag"
+  "ogre-bridge-ag"
+  "ogre-bridgeend-ag"
+  "ogre-isle-ag"
+  "ogre-step-ag"
+  "ogreboss-ag"
+  "ogrecam-ag"
+  "plunger-lurker-ag"
+  "shortcut-boulder-ag"
+  "tntbarrel-ag"
+  "water-anim-ogre-ag"
+  "ogre-vis"
+  )
+
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 3
 ;;;;;;;;;;;;;;;;;;;;;
@@ -865,6 +1058,65 @@
 ;  ("out/obj/default-menu.o" "out/obj/cavecrystal-light.o")
 ;  "darkcave/darkcave-obs.gc"
 ;  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; snow mountain
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SNO.DGO" "sno.gd")
+
+(copy-vis-files "SNO")
+
+(goal-src-sequence
+ "levels/snow/"
+ :deps ("out/obj/default-menu.o")
+ "target-snowball.gc"
+ "target-ice.gc"
+ "ice-cube.gc"
+ "snow-ball.gc"
+ "snow-obs.gc"
+ "snow-flutflut-obs.gc"
+ "snow-bumper.gc"
+ "snow-ram-h.gc"
+ "snow-ram-boss.gc"
+ "snow-ram.gc"
+ "snow-part.gc"
+ "yeti.gc"
+ )
+
+(copy-textures 710 842 711 712)
+
+(copy-gos
+  "ecovalve-ag-SNO"
+  "orb-cache-top-ag-SNO"
+  "eichar-pole+0-ag-SNO"
+  "eichar-ice+0-ag"
+  "flut-saddle-ag-SNO"
+  "flutflut-plat-large-ag"
+  "flutflut-plat-med-ag"
+  "flutflut-plat-small-ag"
+  "ice-cube-ag"
+  "ice-cube-break-ag"
+  "ram-ag"
+  "ram-boss-ag"
+  "snow-ball-ag"
+  "snow-bridge-36-ag"
+  "snow-bumper-ag"
+  "snow-bunny-ag"
+  "snow-button-ag"
+  "snow-eggtop-ag"
+  "snow-fort-gate-ag"
+  "snow-gears-ag"
+  "snow-log-ag"
+  "snow-spatula-ag"
+  "snow-switch-ag"
+  "snowcam-ag"
+  "snowpusher-ag"
+  "yeti-ag"
+  "snow-vis"
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; lavatube
