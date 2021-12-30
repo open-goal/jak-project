@@ -1615,7 +1615,7 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       result.append("  :pack-me\n");
     }
     if (as_structure->is_allowed_misalign()) {
-      result.append("  :allow-misaligned");
+      result.append("  :allow-misaligned\n");
     }
   }
 
