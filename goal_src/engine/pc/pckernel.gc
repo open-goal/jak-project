@@ -34,10 +34,10 @@
 
 (defmethod set-fullscreen! pc-settings ((obj pc-settings) (mode symbol))
   "toggles fullscreen mode"
-  
+
   (if (= (-> obj fullscreen?) mode) ;; already fullscreen
     (return 0))
-  
+
   (set! (-> obj fullscreen?) mode)
   (pc-set-fullscreen
           (cond ((= mode 'borderless) 2)
@@ -49,7 +49,7 @@
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "toggles fullscreen mode"
-  
+
   (pc-set-window-size width height)
   0)
 
@@ -66,22 +66,21 @@
 
 (defmethod update-from-os pc-settings ((obj pc-settings))
   "Update settings from the PC kernel to GOAL."
-  
+
   (set! (-> obj os) (pc-get-os))
   (pc-get-window-size (&-> obj win-width) (&-> obj win-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
-  
+
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
         (set! (-> obj aspect-ratio) ASPECT_4X3)
         (set! (-> obj aspect-ratio) ASPECT_16X9)
         )
-    (set! (-> obj aspect-ratio-auto?) #f)
     )
-  
+
   (let ((win-aspect (/ (the float (-> obj win-width)) (the float (-> obj win-height)))))
     (cond
-      ((-> obj aspect-ratio-auto?)
+      ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
        ;; the window determines the resolution
        (set! (-> obj aspect-ratio) win-aspect)
        (set! (-> obj width) (-> obj win-width))
@@ -104,13 +103,13 @@
        )
       )
     )
-  
+
 
   (none))
 
 (defmethod update-to-os pc-settings ((obj pc-settings))
   "Update settings from GOAL to the PC kernel."
-  
+
   (cond
     ((-> obj letterbox?)
      (pc-set-letterbox (-> obj width) (-> obj height))
@@ -119,7 +118,7 @@
      (pc-set-letterbox (-> obj win-width) (-> obj win-height))
      )
     )
-  
+
   (none))
 
 (defmethod update pc-settings ((obj pc-settings))
@@ -151,7 +150,7 @@
 
 (defmethod draw pc-settings ((obj pc-settings) (buf dma-buffer))
   "debug draw"
-  
+
   (clear *pc-temp-string*)
   (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
   (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
@@ -159,7 +158,7 @@
   (format *pc-temp-string* "fullscreen: ~A ~A~%" (-> obj fullscreen?) (-> obj vsync?))
 
   (draw-string-xy *pc-temp-string* buf 0 (- 240 (* 8 4)) (font-color default) (font-flags shadow kerning))
-  
+
   (none))
 
 )
@@ -175,16 +174,16 @@
 (defmacro file-stream-seek-until (fs func-name)
   `(let ((done? #f)
         (tell -1))
-    
+
     (until done?
-      
+
       (let ((read (file-stream-read ,fs (-> *pc-temp-string* data) PC_TEMP_STRING_LEN)))
         (cond
-          ((< read PC_TEMP_STRING_LEN)
+          ((zero? read)
            (set! (-> *pc-temp-string* data read) 0)
            (true! done?)
            )
-          (else 
+          (else
            (dotimes (i read)
              (when (,func-name (-> *pc-temp-string* data i))
                (true! done?)
@@ -194,10 +193,10 @@
              )
            )
           )
-      
+
 
         )
-      
+
       )
     (if (!= tell -1)
         (file-stream-seek ,fs tell SCE_SEEK_SET)
@@ -233,8 +232,9 @@
   )
 
 (defmacro file-stream-getc (fs)
-  `(let ((buf 0))
+  `(let ((buf 255))
     (file-stream-read ,fs (& buf) 1)
+    ;(format 0 "getc got #x~X~%" buf)
     buf
     )
   )
@@ -284,9 +284,9 @@
       (when (!= #x28 (file-stream-getc ,fs))
         (pc-settings-read-throw-error ,fs "invalid char, ( not found")
         )
-        
+
       ,@body
-        
+
       (file-stream-seek-past-whitespace ,fs)
       (when (!= #x29 (file-stream-getc ,fs))
         (pc-settings-read-throw-error ,fs "invalid char, ) not found")
@@ -295,24 +295,45 @@
     )
   )
 
+(defmacro dosettings (bindings &rest body)
+  "iterate over a list of key-value pairs like so: (<key> <value>) (<key> <value>) ...
+   the name of key is stored in *pc-temp-string*"
+  (let ((fs (first bindings)))
+    `(let ((c -1))
+        (while (begin (file-stream-seek-past-whitespace ,fs) (set! c (file-stream-getc ,fs)) (= #x28 c))
+            (file-stream-read-word ,fs)
+
+            ,@body
+
+            (file-stream-seek-past-whitespace ,fs)
+            (set! c (file-stream-getc ,fs))
+            (when (!= #x29 c)
+              (break!)
+              (pc-settings-read-throw-error ,fs (string-format "invalid char, ) not found, got #x~X ~A" c *pc-temp-string*))
+              )
+            )
+        (file-stream-seek ,fs -1 SCE_SEEK_CUR)
+        )
+    )
+  )
+
 (defmethod read-from-file pc-settings ((obj pc-settings) (filename string))
   "read settings from a file"
-  
+
   (if (not filename)
     (return #f))
-  
+
   (let ((file (new 'stack 'file-stream filename 'read)))
     (if (not (file-stream-valid? file))
       (return #f))
-    
+
     (let ((version PC_KERNEL_VERSION))
       (with-settings-scope (file)
         (file-stream-read-word file)
         (cond
           ((string= *pc-temp-string* "settings")
             (set! version (file-stream-read-int file))
-            (while (begin (file-stream-seek-past-whitespace file) (= #x28 (file-stream-getc file)))
-              (file-stream-read-word file)
+            (dosettings (file)
               (cond
                 ((string= *pc-temp-string* "fps") (set! (-> obj target-fps) (file-stream-read-int file)))
                 ((string= *pc-temp-string* "size")
@@ -360,36 +381,77 @@
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
                     )
                   )
-                )
-              
-              (file-stream-seek-past-whitespace file)
-              (when (!= #x29 (file-stream-getc file))
-                (pc-settings-read-throw-error file "invalid char, ) not found")
+                ((string= *pc-temp-string* "fixes")
+                  (dosettings (file)
+                    (cond
+                      ((string= *pc-temp-string* "crash-sagecage") (set! (-> obj fixes crash-sagecage) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "crash-dma") (set! (-> obj fixes crash-dma) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "crash-light-eco") (set! (-> obj fixes crash-light-eco) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "lockout-pelican") (set! (-> obj fixes lockout-pelican) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "lockout-pipegame") (set! (-> obj fixes lockout-pipegame) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "lockout-gambler") (set! (-> obj fixes lockout-gambler) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "fix-movies") (set! (-> obj fixes fix-movies) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "fix-credits") (set! (-> obj fixes fix-credits) (file-stream-read-symbol file)))
+                      )
+                    )
+                  )
+                ((string= *pc-temp-string* "secrets")
+                  (dosettings (file)
+                    (cond
+                      ((string= *pc-temp-string* "hard-rats?") (set! (-> obj secrets hard-rats?) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
+                      ((string= *pc-temp-string* "art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
+                      ((string= *pc-temp-string* "hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
+                      ((string= *pc-temp-string* "hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
+                      ((string= *pc-temp-string* "hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
+                      ((string= *pc-temp-string* "music")
+                        (dotimes (i 30)
+                          (set! (-> obj secrets music i) (file-stream-read-int file))
+                          )
+                        )
+                      )
+                    )
+                  )
                 )
               )
             )
           )
         )
+
+      (when (!= PC_KERNEL_VERSION version)
+        (cond
+          ((= (logand version #xffffffff00000000) (logand PC_KERNEL_VERSION #xffffffff00000000))
+            ;; minor difference
+            )
+          (else
+            ;; major difference
+            (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR (bit-field int version 32 16) (bit-field int version 48 16))
+            )
+          )
+        )
+
       )
-    
+
     (file-stream-close file)
     )
-  
+
   (format 0 "pc settings file read: ~A~%" filename)
-  
+
   #t
   )
 
 (defmethod write-to-file pc-settings ((obj pc-settings) (filename string))
   "write settings to a file"
-  
+
   (if (not filename)
     (return #f))
-  
+
   (let ((file (new 'stack 'file-stream filename 'write)))
     (if (not (file-stream-valid? file))
       (return #f))
-    
+
 
     (format file "(settings #x~X~%" (-> obj version))
 
@@ -474,21 +536,21 @@
     (format file "  )~%")
     (file-stream-close file)
     )
-  
+
   (format 0 "pc settings file write: ~A~%" filename)
-  
+
   #t
   )
 
 
 (defmethod new pc-settings ((allocation symbol) (type-to-make type) (filename string))
   "make a new pc-settings"
-  
+
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    
+
     (reset obj)
     (read-from-file obj filename)
-    
+
     obj
     )
   )
