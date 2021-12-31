@@ -1095,7 +1095,6 @@
 
   (swamp-tethers-completion-sage-precursor-arm #x36b)
 
-  
   (village2-warp-gate-reminder #x36f)
   (village2-warp-gate-reminder-annoyed #x370)
   (village2-warp-gate-reminder-very-annoyed #x371)
@@ -1107,6 +1106,7 @@
   (rolling-race-record-string-prefix #x374)
   (rolling-race-new-record-string-prefix #x375)
   (rolling-race-try-again-string #x376)
+  (rolling-race-start-race-aborted #x377) ;; double check this
 
   (village3-miner-money #x400)
   (village3-oracle-money #x401)
@@ -12077,6 +12077,8 @@
     (target-clone-anim handle)
     target-title
     target-demo
+    target-title-play
+    target-title-wait
     (target-warp-in vector vector)
     )
   )
@@ -21289,7 +21291,7 @@
 (define-extern hud-hidden (state hud))
 (define-extern hud-leaving (state int hud))
 (define-extern hud-in (state hud))
-(define-extern hud-collecting (state handle hud)) ;; TODO accepts a handle - CRASH in `hud`
+(define-extern hud-collecting (state handle collectable))
 
 
 ;; ----------------------
@@ -26221,6 +26223,9 @@
     (update-connected-crystals! (_type_) none 20)
     (compute-glow (_type_) float 21)
     )
+  (:states
+    cavecrystal-active
+    cavecrystal-idle)
   )
 
 ;; - Unknowns
@@ -31993,6 +31998,8 @@
   :size-assert         #xb0
   :heap-base           #x40
   :flag-assert         #x14004000b0
+  (:states
+    cavecrusher-idle)
   )
 
 (deftype cavetrapdoor (process-drawable)
@@ -32023,6 +32030,8 @@
   :size-assert         #xf0
   :heap-base           #x80
   :flag-assert         #x14008000f0
+  (:states
+    caveflamepots-active)
   )
 
 (deftype cavespatula (process-drawable)
@@ -32033,6 +32042,8 @@
   :size-assert         #xb8
   :heap-base           #x50
   :flag-assert         #x14005000b8
+  (:states
+    cavespatula-idle)
   )
 
 (deftype cavespatulatwo (process-drawable)
@@ -32043,6 +32054,8 @@
   :size-assert         #xb8
   :heap-base           #x50
   :flag-assert         #x14005000b8
+  (:states
+    cavespatulatwo-idle)
   )
 
 (deftype caveelevator (process-drawable)
@@ -32054,8 +32067,8 @@
    (orig-trans              vector        :inline :offset-assert 208)
    (sync                    sync-info     :inline :offset-assert 224)
    (smush                   smush-control :inline :offset-assert 232)
-   (anim                    spool-anim       2    :offset-assert 264)
-   (wheel-ry-mat            matrix        :inline :offset-assert 272)
+   (anim                    int32    2     :offset-assert 264)
+   (wheel-ry-mat            matrix        :inline :offset 272)
    )
   :method-count-assert 22
   :size-assert         #x150
@@ -32065,6 +32078,12 @@
     (TODO-RENAME-20 (_type_) none 20)
     (TODO-RENAME-21 (_type_) float 21)
     )
+  (:states
+    caveelevator-cycle-active
+    caveelevator-one-way-idle-start
+    caveelevator-one-way-travel-to-start
+    caveelevator-one-way-idle-end
+    caveelevator-one-way-travel-to-end)
   )
 
 ;; - Functions
@@ -32075,20 +32094,11 @@
 ;; - Unknowns
 
 (define-extern *caveelevator-sg* skeleton-group)
-(define-extern caveelevator-cycle-active (state caveelevator)) ;; unknown type
-(define-extern caveelevator-one-way-idle-start (state caveelevator)) ;; unknown type
-(define-extern caveelevator-one-way-travel-to-start (state caveelevator)) ;; unknown type
-(define-extern caveelevator-one-way-idle-end (state caveelevator)) ;; unknown type
-(define-extern caveelevator-one-way-travel-to-end (state caveelevator)) ;; unknown type
 (define-extern *cavespatulatwo-sg* skeleton-group)
-(define-extern cavespatulatwo-idle (state cavespatulatwo)) ;; unknown type
 (define-extern *cavespatula-darkcave-sg* skeleton-group)
 (define-extern *cavespatula-sg* skeleton-group)
-(define-extern cavespatula-idle (state cavespatula)) ;; unknown type
-(define-extern caveflamepots-active (state caveflamepots)) ;; unknown type
 (define-extern *cavetrapdoor-sg* skeleton-group)
 (define-extern *cavecrusher-sg* skeleton-group)
-(define-extern cavecrusher-idle (state cavecrusher)) ;; unknown type
 (define-extern ripple-for-cave-water ripple-wave-set) ;; unknown type
 (define-extern *maincavecam-sg* skeleton-group)
 
@@ -33935,6 +33945,8 @@
   :size-assert         #xf8
   :heap-base           #x90
   :flag-assert         #x14009000f8
+  (:states
+    pusher-idle)
   )
 
 (deftype gorge-pusher (pusher-base)
@@ -33944,6 +33956,8 @@
   :size-assert         #xb8
   :heap-base           #x50
   :flag-assert         #x14005000b8
+  (:states
+    gorge-pusher-idle)
   )
 
 (deftype dark-plant (process-drawable)
@@ -33954,6 +33968,12 @@
   :size-assert         #xc4
   :heap-base           #x60
   :flag-assert         #x14006000c4
+  (:states
+    dark-plant-gone
+    dark-plant-startup
+    dark-plant-idle
+    dark-plant-sprout
+    dark-plant-death)
   )
 
 (deftype happy-plant (process-drawable)
@@ -33964,6 +33984,10 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
+  (:states
+    happy-plant-opened
+    happy-plant-init
+    happy-plant-opening)
   )
 
 (deftype race-time (structure)
@@ -33983,6 +34007,9 @@
   :size-assert         #xf5
   :heap-base           #x90
   :flag-assert         #x14009000f5
+  (:states
+    rolling-start-whole
+    (rolling-start-break symbol))
   )
 
 (deftype gorge (process-drawable)
@@ -34010,6 +34037,12 @@
   :size-assert         #x140
   :heap-base           #xd0
   :flag-assert         #x1400d00140
+  (:states
+    gorge-start-idle
+    gorge-start-ready
+    gorge-start-racing
+    gorge-start-race-finished
+    gorge-start-race-aborted)
   )
 
 (deftype gorge-finish (gorge)
@@ -34019,6 +34052,8 @@
   :size-assert         #xfc
   :heap-base           #x90
   :flag-assert         #x14009000fc
+  (:states
+    gorge-finish-idle)
   )
 
 (deftype gorge-abort (gorge)
@@ -34027,6 +34062,8 @@
   :size-assert         #xf8
   :heap-base           #x90
   :flag-assert         #x14009000f8
+  (:states
+    gorge-abort-idle)
   )
 
 (deftype rolling-water (water-anim)
@@ -34065,31 +34102,12 @@
 ;; - Unknowns
 
 (define-extern ripple-for-rolling-water object) ;; unknown type
-(define-extern gorge-start-idle (state gorge-start)) ;; unknown type
-(define-extern gorge-start-ready (state gorge-start)) ;; unknown type
-(define-extern gorge-start-racing (state gorge-start)) ;; unknown type
-(define-extern gorge-start-race-finished (state gorge-start)) ;; unknown type
-(define-extern gorge-start-race-aborted (state gorge-start)) ;; unknown type
-(define-extern gorge-finish-idle (state gorge-finish)) ;; unknown type
-(define-extern gorge-abort-idle (state gorge-abort)) ;; unknown type
 (define-extern *rolling-start-whole-sg* skeleton-group)
 (define-extern *rolling-start-broken-sg* skeleton-group)
-(define-extern rolling-start-whole (state rolling-start)) ;; unknown type
-(define-extern rolling-start-break (state rolling-start)) ;; unknown type
 (define-extern *happy-plant-sg* skeleton-group)
-(define-extern happy-plant-opened (state happy-plant)) ;; unknown type
-(define-extern happy-plant-init (state happy-plant)) ;; unknown type
-(define-extern happy-plant-opening (state happy-plant)) ;; unknown type
 (define-extern *rollingcam-sg* skeleton-group)
 (define-extern *dark-plant-sg* skeleton-group)
-(define-extern dark-plant-gone (state dark-plant)) ;; unknown type
-(define-extern dark-plant-startup (state dark-plant)) ;; unknown type
-(define-extern dark-plant-idle (state dark-plant)) ;; unknown type
-(define-extern dark-plant-sprout (state dark-plant)) ;; unknown type
-(define-extern dark-plant-death (state dark-plant)) ;; unknown type
 (define-extern *pusher-sg* skeleton-group)
-(define-extern gorge-pusher-idle (state gorge-pusher)) ;; unknown type
-(define-extern pusher-idle (state pusher)) ;; unknown type
 
 
 ;; ----------------------
@@ -36091,7 +36109,7 @@
 ;; - Functions
 
 (define-extern energyarm-init-by-other (function vector float none :behavior energyarm))
-(define-extern energyhub-set-lava-height (function float :behavior energyhub))
+(define-extern energyhub-set-lava-height (function float float :behavior energyhub))
 (define-extern energyhub-trans (function quaternion :behavior energyhub))
 (define-extern energyarm-init (function energyarm sparticle-launch-control))
 (define-extern energyball-init-by-other (function vector none :behavior energyball))
@@ -38100,8 +38118,6 @@
 
 ;; - Unknowns
 
-(define-extern target-title-play (state target)) ;; unknown type
-(define-extern target-title-wait (state target)) ;; unknown type
 (define-extern *logo-japan-sg* skeleton-group)
 (define-extern *logo-sg* skeleton-group)
 (define-extern *ndi-sg* skeleton-group)

@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: rolling-obs.gc
-;; name in dgo: rolling-obs
-;; dgos: L1, ROL
-
-;; DECOMP BEGINS
-
+;; definition of type rolling-part
 (deftype rolling-part (part-spawner)
   ((root-override basic  :offset 112)
    )
@@ -16,7 +11,15 @@
   :flag-assert         #x15006000d0
   )
 
+;; definition for method 3 of type rolling-part
+(defmethod inspect rolling-part ((obj rolling-part))
+  (let ((t9-0 (method-of-type part-spawner inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
 
+;; definition of type rollingcam
 (deftype rollingcam (process-hidden)
   ()
   :method-count-assert 15
@@ -24,7 +27,39 @@
   :flag-assert         #xf00000070
   )
 
+;; definition for method 3 of type rollingcam
+(defmethod inspect rollingcam ((obj rollingcam))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tmask: ~D~%" (-> obj mask))
+  (format #t "~Tparent: #x~X~%" (-> obj parent))
+  (format #t "~Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~Tchild: #x~X~%" (-> obj child))
+  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~Tself: ~A~%" (-> obj self))
+  (format #t "~Tpool: ~A~%" (-> obj pool))
+  (format #t "~Tstatus: ~A~%" (-> obj status))
+  (format #t "~Tpid: ~D~%" (-> obj pid))
+  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~Tentity: ~A~%" (-> obj entity))
+  (format #t "~Tstate: ~A~%" (-> obj state))
+  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
+  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
+  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> obj connection-list))
+  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *rollingcam-sg* rollingcam
   0
   2
@@ -33,6 +68,7 @@
   :longest-edge (meters 0)
   )
 
+;; definition of type pusher-base
 (deftype pusher-base (process-drawable)
   ((root-override collide-shape-moving  :offset        112)
    (max-frame     float                 :offset-assert 176)
@@ -43,7 +79,16 @@
   :flag-assert         #x14005000b4
   )
 
+;; definition for method 3 of type pusher-base
+(defmethod inspect pusher-base ((obj pusher-base))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tmax-frame: ~f~%" (-> obj max-frame))
+  obj
+  )
 
+;; definition of type pusher
 (deftype pusher (pusher-base)
   ((sync sync-info-paused :inline :offset-assert 180)
    (cyl  cylinder         :inline :offset-assert 208)
@@ -57,7 +102,17 @@
     )
   )
 
+;; definition for method 3 of type pusher
+(defmethod inspect pusher ((obj pusher))
+  (let ((t9-0 (method-of-type pusher-base inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tsync: #<sync-info-paused @ #x~X>~%" (-> obj sync))
+  (format #t "~T~Tcyl: #<cylinder @ #x~X>~%" (-> obj cyl))
+  obj
+  )
 
+;; definition of type gorge-pusher
 (deftype gorge-pusher (pusher-base)
   ((min-frame float  :offset-assert 180)
    )
@@ -70,7 +125,16 @@
     )
   )
 
+;; definition for method 3 of type gorge-pusher
+(defmethod inspect gorge-pusher ((obj gorge-pusher))
+  (let ((t9-0 (method-of-type pusher-base inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tmin-frame: ~f~%" (-> obj min-frame))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *pusher-sg* pusher
   0
   2
@@ -79,6 +143,7 @@
   :longest-edge (meters 0)
   )
 
+;; definition for function pusher-base-init
 (defbehavior pusher-base-init pusher-base ()
   (set! (-> self mask) (logior (process-mask enemy platform) (-> self mask)))
   (let ((gp-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-others))))
@@ -111,6 +176,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pusher-idle (pusher)
   :trans
   (the-as (function none :behavior pusher) rider-trans)
@@ -149,6 +215,9 @@
   (the-as (function none :behavior pusher) rider-post)
   )
 
+;; definition for method 11 of type pusher
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defmethod init-from-entity! pusher ((obj pusher) (arg0 entity-actor))
   (pusher-base-init)
   (process-drawable-from-entity! obj arg0)
@@ -164,6 +233,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate gorge-pusher-idle (gorge-pusher)
   :trans
   (the-as (function none :behavior gorge-pusher) rider-trans)
@@ -194,6 +264,8 @@
   (the-as (function none :behavior gorge-pusher) rider-post)
   )
 
+;; definition for method 11 of type gorge-pusher
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! gorge-pusher ((obj gorge-pusher) (arg0 entity-actor))
   (pusher-base-init)
   (process-drawable-from-entity! obj arg0)
@@ -220,6 +292,7 @@
   (none)
   )
 
+;; definition of type dark-plant
 (deftype dark-plant (process-drawable)
   ((num-alts int32          :offset-assert 176)
    (alts     entity-actor 4 :offset-assert 180)
@@ -237,7 +310,17 @@
     )
   )
 
+;; definition for method 3 of type dark-plant
+(defmethod inspect dark-plant ((obj dark-plant))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tnum-alts: ~D~%" (-> obj num-alts))
+  (format #t "~T~Talts[4] @ #x~X~%" (-> obj alts))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *dark-plant-sg* dark-plant
   0
   2
@@ -246,6 +329,8 @@
   :longest-edge (meters 0)
   )
 
+;; definition for function dark-plant-check-target
+;; INFO: Return type mismatch object vs symbol.
 (defun dark-plant-check-target ((arg0 dark-plant))
   (the-as symbol (and *target* (and
                                  (< (vector-vector-distance (-> arg0 root trans) (target-pos 0)) 16384.0)
@@ -255,6 +340,7 @@
           )
   )
 
+;; definition for function dark-plant-randomize
 (defun dark-plant-randomize ((arg0 dark-plant))
   (quaternion-axis-angle! (-> arg0 root quat) 0.0 1.0 0.0 (rand-vu-float-range 0.0 65536.0))
   (let ((s5-1 (new 'stack-no-clear 'vector)))
@@ -263,6 +349,7 @@
     )
   )
 
+;; definition for function dark-plants-all-done
 (defun dark-plants-all-done ((arg0 dark-plant))
   (while #t
     (if (!= (-> (the-as process arg0) state) dark-plant-gone)
@@ -284,6 +371,7 @@
   (the-as symbol #f)
   )
 
+;; definition for function dark-plant-has-bad-neighbor
 (defun dark-plant-has-bad-neighbor ((arg0 dark-plant))
   (dotimes (v1-0 (-> arg0 num-alts))
     (let ((a1-4 (-> arg0 alts v1-0 extra process)))
@@ -295,6 +383,8 @@
   #f
   )
 
+;; definition for function dark-plant-trans
+;; INFO: Return type mismatch object vs none.
 (defbehavior dark-plant-trans dark-plant ()
   (if (dark-plant-check-target self)
       (go dark-plant-death)
@@ -302,6 +392,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate dark-plant-sprout (dark-plant)
   :trans
   dark-plant-trans
@@ -334,6 +425,7 @@
   (the-as (function none :behavior dark-plant) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate dark-plant-gone (dark-plant)
   :code
   (behavior ()
@@ -372,6 +464,7 @@
   (the-as (function none :behavior dark-plant) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate dark-plant-death (dark-plant)
   :code
   (behavior ()
@@ -402,6 +495,7 @@
   (the-as (function none :behavior dark-plant) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate dark-plant-idle (dark-plant)
   :trans
   dark-plant-trans
@@ -478,6 +572,7 @@
   (the-as (function none :behavior dark-plant) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate dark-plant-startup (dark-plant)
   :trans
   dark-plant-trans
@@ -511,6 +606,7 @@
   (the-as (function none :behavior dark-plant) ja-post)
   )
 
+;; failed to figure out what this is:
 (set! (-> *part-group-id-table* 455)
       (new 'static 'sparticle-launch-group
         :length 2
@@ -524,6 +620,7 @@
         )
       )
 
+;; failed to figure out what this is:
 (set! (-> *part-id-table* 2356) (new 'static 'sparticle-launcher
                                   :init-specs
                                   (new 'static 'inline-array sp-field-init-spec 15
@@ -546,6 +643,7 @@
                                   )
       )
 
+;; failed to figure out what this is:
 (set! (-> *part-id-table* 1764) (new 'static 'sparticle-launcher
                                   :init-specs
                                   (new 'static 'inline-array sp-field-init-spec 21
@@ -574,6 +672,8 @@
                                   )
       )
 
+;; definition for method 11 of type dark-plant
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! dark-plant ((obj dark-plant) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
@@ -598,6 +698,7 @@
   (none)
   )
 
+;; definition of type happy-plant
 (deftype happy-plant (process-drawable)
   ((root-override collide-shape  :offset        112)
    (alt-actor     entity-actor   :offset-assert 176)
@@ -613,7 +714,16 @@
     )
   )
 
+;; definition for method 3 of type happy-plant
+(defmethod inspect happy-plant ((obj happy-plant))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *happy-plant-sg* happy-plant
   0
   3
@@ -622,6 +732,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defstate happy-plant-opened (happy-plant)
   :code
   (behavior ()
@@ -650,6 +761,7 @@
   (the-as (function none :behavior happy-plant) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate happy-plant-opening (happy-plant)
   :exit
   (behavior ()
@@ -744,6 +856,7 @@
   (the-as (function none :behavior happy-plant) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate happy-plant-init (happy-plant)
   :trans
   (behavior ()
@@ -809,6 +922,8 @@
   (the-as (function none :behavior happy-plant) ja-post)
   )
 
+;; definition for method 11 of type happy-plant
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! happy-plant ((obj happy-plant) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -854,6 +969,7 @@
   (none)
   )
 
+;; definition of type race-time
 (deftype race-time (structure)
   ((digit int8 5 :offset-assert   0)
    )
@@ -863,7 +979,14 @@
   :flag-assert         #x900000005
   )
 
+;; definition for method 3 of type race-time
+(defmethod inspect race-time ((obj race-time))
+  (format #t "[~8x] ~A~%" obj 'race-time)
+  (format #t "~Tdigit[5] @ #x~X~%" (-> obj digit))
+  obj
+  )
 
+;; definition for function race-time-copy!
 (defun race-time-copy! ((arg0 race-time) (arg1 race-time))
   (dotimes (v1-0 5)
     (set! (-> arg0 digit v1-0) (-> arg1 digit v1-0))
@@ -871,6 +994,7 @@
   #f
   )
 
+;; definition for function seconds->race-time
 (defun seconds->race-time ((arg0 race-time) (arg1 int))
   (let* ((v1-1 (max 0 (min #x2bf1d arg1)))
          (f0-1 (* 0.0033333334 (the float v1-1)))
@@ -894,6 +1018,7 @@
     )
   )
 
+;; definition for function race-time->seconds
 (defun race-time->seconds ((arg0 race-time))
   (let ((f0-5 (+ (the float (* 60 (-> arg0 digit 0)))
                  (the float (* 10 (-> arg0 digit 1)))
@@ -907,6 +1032,7 @@
     )
   )
 
+;; definition for function race-time-less-than
 (defun race-time-less-than ((arg0 race-time) (arg1 race-time))
   (dotimes (v1-0 5)
     (cond
@@ -921,6 +1047,7 @@
   #f
   )
 
+;; definition for function race-time-save
 (defun race-time-save ((arg0 race-time) (arg1 int) (arg2 task-control))
   (dotimes (s3-0 5)
     (save-reminder arg2 (-> arg0 digit s3-0) (+ arg1 s3-0))
@@ -928,6 +1055,8 @@
   #f
   )
 
+;; definition for function race-time-read
+;; INFO: Return type mismatch int vs symbol.
 (defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 int))
   (dotimes (s2-0 5)
     (set! (-> arg0 digit s2-0) (get-reminder arg2 (+ arg1 s2-0)))
@@ -941,6 +1070,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defskelgroup *rolling-start-whole-sg* rolling-start
   0
   4
@@ -949,6 +1079,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *rolling-start-broken-sg* rolling-start
   2
   4
@@ -957,6 +1088,7 @@
   :longest-edge (meters 0)
   )
 
+;; definition of type rolling-start
 (deftype rolling-start (process-drawable)
   ((whole-look  lod-set :inline :offset-assert 176)
    (broken-look lod-set :inline :offset-assert 212)
@@ -971,7 +1103,17 @@
     )
   )
 
+;; definition for method 3 of type rolling-start
+(defmethod inspect rolling-start ((obj rolling-start))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Twhole-look: #<lod-set @ #x~X>~%" (-> obj whole-look))
+  (format #t "~T~Tbroken-look: #<lod-set @ #x~X>~%" (-> obj broken-look))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate rolling-start-break (rolling-start)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
@@ -1045,6 +1187,7 @@
   (the-as (function none :behavior rolling-start) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate rolling-start-whole (rolling-start)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1086,6 +1229,9 @@
   (the-as (function none :behavior rolling-start) ja-post)
   )
 
+;; definition for function rolling-start-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior rolling-start-init-by-other rolling-start ((arg0 vector) (arg1 float))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
@@ -1100,6 +1246,7 @@
   (none)
   )
 
+;; definition of type gorge
 (deftype gorge (process-drawable)
   ((root-override collide-shape-moving         :offset        112)
    (coord         matrix               :inline :offset-assert 176)
@@ -1112,7 +1259,18 @@
   :flag-assert         #x14009000f8
   )
 
+;; definition for method 3 of type gorge
+(defmethod inspect gorge ((obj gorge))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tcoord: #<matrix @ #x~X>~%" (-> obj coord))
+  (format #t "~T~Tradius: ~f~%" (-> obj radius))
+  (format #t "~T~Tthickness: ~f~%" (-> obj thickness))
+  obj
+  )
 
+;; definition for function gorge-init
 (defbehavior gorge-init gorge ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (forward-down->inv-matrix (-> self coord) arg1 (new 'static 'vector :y -1.0))
   (matrix-transpose! (-> self coord) (-> self coord))
@@ -1128,6 +1286,7 @@
     )
   )
 
+;; definition of type gorge-start
 (deftype gorge-start (gorge)
   ((tasks            task-control         :offset-assert 248)
    (record-time      race-time    :inline :offset-assert 252)
@@ -1150,7 +1309,22 @@
     )
   )
 
+;; definition for method 3 of type gorge-start
+(defmethod inspect gorge-start ((obj gorge-start))
+  (let ((t9-0 (method-of-type gorge inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Ttasks: ~A~%" (-> obj tasks))
+  (format #t "~T~Trecord-time: #<race-time @ #x~X>~%" (-> obj record-time))
+  (format #t "~T~Tthis-time: #<race-time @ #x~X>~%" (-> obj this-time))
+  (format #t "~T~Tstart-banner: ~D~%" (-> obj start-banner))
+  (format #t "~T~Tend-banner: ~D~%" (-> obj end-banner))
+  (format #t "~T~Ttimer-pos-offset: ~D~%" (-> obj timer-pos-offset))
+  (format #t "~T~Tticker: #<ticky @ #x~X>~%" (-> obj ticker))
+  obj
+  )
 
+;; definition of type gorge-finish
 (deftype gorge-finish (gorge)
   ((alt-actor entity-actor  :offset-assert 248)
    )
@@ -1163,7 +1337,16 @@
     )
   )
 
+;; definition for method 3 of type gorge-finish
+(defmethod inspect gorge-finish ((obj gorge-finish))
+  (let ((t9-0 (method-of-type gorge inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
+  obj
+  )
 
+;; definition of type gorge-abort
 (deftype gorge-abort (gorge)
   ()
   :heap-base #x90
@@ -1175,7 +1358,16 @@
     )
   )
 
+;; definition for method 3 of type gorge-abort
+(defmethod inspect gorge-abort ((obj gorge-abort))
+  (let ((t9-0 (method-of-type gorge inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
 
+;; definition for function gorge-behind
+;; Used lq/sq
 (defun gorge-behind ((arg0 gorge))
   (if (not *target*)
       (return #f)
@@ -1191,6 +1383,8 @@
     )
   )
 
+;; definition for function gorge-in-front
+;; Used lq/sq
 (defun gorge-in-front ((arg0 gorge))
   (if (not *target*)
       (return #f)
@@ -1207,10 +1401,13 @@
     )
   )
 
+;; definition for function gorge-trans
+;; INFO: Return type mismatch symbol vs none.
 (defun gorge-trans ()
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate gorge-abort-idle (gorge-abort)
   :trans
   (the-as (function none :behavior gorge-abort) gorge-trans)
@@ -1226,6 +1423,9 @@
     )
   )
 
+;; definition for function gorge-abort-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior gorge-abort-init-by-other gorge-abort ((arg0 vector) (arg1 vector) (arg2 float))
   (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
   (set! (-> self root-override trans quad) (-> arg0 quad))
@@ -1234,6 +1434,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate gorge-finish-idle (gorge-finish)
   :trans
   (the-as (function none :behavior gorge-finish) gorge-trans)
@@ -1249,6 +1450,9 @@
     )
   )
 
+;; definition for function gorge-finish-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior gorge-finish-init-by-other gorge-finish ((arg0 vector) (arg1 vector) (arg2 float))
   (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
   (set! (-> self root-override trans quad) (-> arg0 quad))
@@ -1257,6 +1461,7 @@
   (none)
   )
 
+;; definition for function race-time->string
 (defun race-time->string ((arg0 race-time))
   (cond
     ((zero? (-> arg0 digit 0))
@@ -1285,6 +1490,8 @@
     )
   )
 
+;; definition for function gorge-start-draw-time
+;; INFO: Return type mismatch object vs none.
 (defbehavior gorge-start-draw-time gorge-start ((arg0 symbol) (arg1 symbol))
   (let ((gp-0
           (new
@@ -1390,6 +1597,9 @@
   (none)
   )
 
+;; definition for function gorge-start-launch-start-banner
+;; INFO: Return type mismatch int vs handle.
+;; Used lq/sq
 (defbehavior gorge-start-launch-start-banner gorge-start ()
   (the-as
     handle
@@ -1418,6 +1628,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate gorge-start-race-finished (gorge-start)
   :trans
   (behavior () (gorge-trans) (none))
@@ -1445,6 +1656,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate gorge-start-race-aborted (gorge-start)
   :trans
   (behavior () (gorge-trans) (none))
@@ -1501,6 +1713,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate gorge-start-racing (gorge-start)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1656,6 +1869,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate gorge-start-ready (gorge-start)
   :trans
   (the-as (function none :behavior gorge-start) gorge-trans)
@@ -1686,6 +1900,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate gorge-start-idle (gorge-start)
   :enter
   (behavior ()
@@ -1720,6 +1935,9 @@
     )
   )
 
+;; definition for method 11 of type gorge-start
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defmethod init-from-entity! gorge-start ((obj gorge-start) (arg0 entity-actor))
   (set! (-> obj root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
   (process-drawable-from-entity! obj arg0)
@@ -1736,6 +1954,7 @@
   (none)
   )
 
+;; definition of type rolling-water
 (deftype rolling-water (water-anim)
   ()
   :heap-base #x70
@@ -1744,7 +1963,15 @@
   :flag-assert         #x1e007000dc
   )
 
+;; definition for method 3 of type rolling-water
+(defmethod inspect rolling-water ((obj rolling-water))
+  (let ((t9-0 (method-of-type water-anim inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
 
+;; definition for symbol ripple-for-rolling-water, type object
 (define
   ripple-for-rolling-water
   (the-as object (new 'static 'ripple-wave-set
@@ -1762,6 +1989,8 @@
                  )
   )
 
+;; definition for method 22 of type rolling-water
+;; INFO: Return type mismatch uint vs none.
 (defmethod TODO-RENAME-22 rolling-water ((obj rolling-water))
   (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
     (t9-0 obj)
@@ -1777,7 +2006,3 @@
   (set! (-> obj flags) (logand -8388609 (-> obj flags)))
   (none)
   )
-
-
-
-
