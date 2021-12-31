@@ -938,7 +938,10 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
     SendMbx(sync_mbx, nullptr);
     // wait for it to abort.
     WaitMbx(dgo_mbx);
-    assert(cmd);  // bug
+    // this will cause a crash if we cancel because we try to load 2 dgos at the same time.
+    // this should succeed if it's an actual cancel because we changed which level we're trying to
+    // load.
+    assert(cmd);
     cmd->result = DGO_RPC_RESULT_ABORTED;
     scmd.cmd_id = 0;
   }

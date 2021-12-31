@@ -27,6 +27,9 @@ class Tie3 : public BucketRenderer {
   void discard_tree_cache();
   struct Tree {
     GLuint vertex_buffer;
+    GLuint index_buffer;
+    GLuint time_of_day_texture;
+    std::vector<u32> index_list;
     GLuint vao;
     u32 vert_count;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
@@ -55,16 +58,9 @@ class Tie3 : public BucketRenderer {
   struct Cache {
     std::vector<u8> vis_temp;
     std::vector<std::pair<int, int>> draw_idx_temp;
-    std::vector<u32> index_list;
   } m_cache;
 
-  GLuint m_time_of_day_texture = -1;
-  bool m_has_time_of_day_texture = false;
-
   std::vector<math::Vector<u8, 4>> m_color_result;
-
-  bool m_has_index_buffer = false;
-  GLuint m_index_buffer = -1;
 
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
 

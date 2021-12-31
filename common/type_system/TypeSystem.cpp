@@ -1102,11 +1102,11 @@ void TypeSystem::add_builtin_types() {
   // todo
   builtin_structure_inherit(file_stream_type);
   add_field_to_type(file_stream_type, "flags", make_typespec("uint32"));
-  add_field_to_type(file_stream_type, "mode", make_typespec("basic"));
+  add_field_to_type(file_stream_type, "mode", make_typespec("symbol"));
   add_field_to_type(file_stream_type, "name", make_typespec("string"));
   add_field_to_type(file_stream_type, "file", make_typespec("uint32"));
   declare_method(file_stream_type, "new", false,
-                 make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"), false);
+                 make_function_typespec({"symbol", "type", "string", "symbol"}, "_type_"), false);
 }
 
 /*!
@@ -1134,7 +1134,7 @@ int TypeSystem::get_next_method_id(const Type* type) const {
     if (type->has_parent()) {
       type = lookup_type(type->get_parent());
     } else {
-      // nobody has defined any method yet. New is special and doens't use this, so we return
+      // nobody has defined any method yet. New is special and doesn't use this, so we return
       // one after new.
       return 1;
     }

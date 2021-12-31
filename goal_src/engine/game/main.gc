@@ -530,6 +530,10 @@
   (stack-size-set! (-> self main-thread) 512)
 
   (let ((disp *display*))
+    (#when PC_PORT
+      (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)
+      )
+
     ;; todo spad terrain context
     (set! *teleport* #t)
     (update-per-frame-settings! *setting-control*)
@@ -659,7 +663,14 @@
               )
 
             ;; added
-            #|
+            (#when PC_PORT
+              (when (-> *pc-settings* debug?)
+                (draw *pc-settings* debug-buf)
+                )
+              (when (-> *pc-settings* display-actor-bank)
+                (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) debug-buf 512 232 (font-color default) (font-flags shadow kerning right))
+                )
+              )
             (let (
                   (remain (&- (-> global top) (-> global current)))
                   (total (&- (-> global top) (-> global base)))
@@ -669,13 +680,11 @@
                                   (* 100.0 (/ (the float remain) (the float total)))
                                   )
                 )
-            
-            ;; added
-            (format *stdcon* "~3LDMA global: ~d debug: ~d~0L~%"
+            (format *stdcon* "~3Lfree DMA global: ~d debug: ~d~0L~%"
                     (dma-buffer-free (-> disp frames (-> disp on-screen) frame global-buf))
                     (dma-buffer-free (-> disp frames (-> disp on-screen) frame debug-buf))
                     )
-            
+            #|
             ;; added, prints some level status.
             (dotimes (i 2)
               (let ((level-heap (-> *level* level i heap)))
@@ -744,10 +753,10 @@
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       (swap-display disp)
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      
+
       ;; teleport stuff
       ;; perf stats
-      
+
       (process-particles)
 
 
@@ -757,8 +766,12 @@
       (level-update *level*) ;; also updates settings.
       (mc-run)
       ;; auto save check
-      ;; suspend
 
+      (#when PC_PORT
+        (update *pc-settings*)
+        )
+
+      ;; suspend
       (suspend)
       )
     )

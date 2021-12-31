@@ -5,18 +5,15 @@
  * Common types shared between the compiler and the runtime for the listener connection.
  */
 
-#ifndef JAK1_LISTENER_COMMON_H
-#define JAK1_LISTENER_COMMON_H
-
 #include "common/common_types.h"
 
 /*!
  * Header of a DECI2 protocol message
- * TODO - there are other copies of this somewhere
+ * NOTE: we've changed this to use 32-bit integers for len/rsvd
  */
 struct Deci2Header {
-  u16 len;    //! size of data following header
-  u16 rsvd;   //! zero, used internally by runtime.
+  u32 len;    //! size of data following header
+  u32 rsvd;   //! zero, used internally by runtime.
   u16 proto;  //! protocol identification number
   u8 src;     //! identification code of sender
   u8 dst;     //! identification code of recipient
@@ -64,5 +61,3 @@ struct ListenerMessageHeader {
 constexpr int DECI2_PORT = 8112;  // TODO - is this a good choice?
 
 constexpr u16 DECI2_PROTOCOL = 0xe042;
-
-#endif  // JAK1_LISTENER_COMMON_H

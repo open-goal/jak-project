@@ -429,7 +429,7 @@ struct BspHeader {
   //  (pat pointer :offset-assert 44)
   //  (pat-length int32 :offset-assert 48)
   //
-  //  ;; some osrt of texture remapping info
+  //  ;; some sort of texture remapping info
   //      (texture-remap-table (pointer uint64) :offset-assert 52)
   //  (texture-remap-table-len int32 :offset-assert 56)
   std::vector<TextureRemap> texture_remap_table;

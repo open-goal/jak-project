@@ -221,7 +221,7 @@ void Deci2Server::run() {
 
   auto& driver = d2_drivers[handler];
 
-  int sent_to_program = 0;
+  u32 sent_to_program = 0;
   while (!want_exit() && (hdr->rsvd < hdr->len || sent_to_program < hdr->rsvd)) {
     // send what we have to the program
     if (sent_to_program < hdr->rsvd) {

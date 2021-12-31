@@ -26,9 +26,11 @@ enum class BucketId {
   ALPHA_TEX_LEVEL0 = 31,
   TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0 = 32,
   TFRAG_DIRT_LEVEL0 = 34,
+  TFRAG_ICE_LEVEL0 = 36,
   ALPHA_TEX_LEVEL1 = 38,
   TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1 = 39,
   TFRAG_DIRT_LEVEL1 = 41,
+  TFRAG_ICE_LEVEL1 = 43,
   PRIS_TEX_LEVEL0 = 48,
   PRIS_TEX_LEVEL1 = 51,
   WATER_TEX_LEVEL0 = 57,
@@ -59,6 +61,8 @@ struct SharedRenderState {
   void* ee_main_memory = nullptr;
   u32 offset_of_s7;
   bool dump_playback = false;
+
+  bool use_sky_cpu = true;
 };
 
 /*!

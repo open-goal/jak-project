@@ -67,6 +67,8 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
     if (ImGui::Button("Single Frame Advance")) {
       m_single_frame = true;
     }
+    ImGui::SameLine();
+    ImGui::Checkbox("GLFinish", &do_gl_finish);
   }
   ImGui::End();
 }

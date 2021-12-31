@@ -557,7 +557,8 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
  */
 StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form,
                                                         Env* env,
-                                                        int seg) {
+                                                        int seg,
+                                                        bool can_macro) {
   auto fie = env->file_env();
   if (form.is_pair()) {
     if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
@@ -565,8 +566,17 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                             form.as_pair()->car.as_symbol()->name == "lambda")) {
       return compile_static(form, env);
     }
-    auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env, seg);
-    auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env, seg);
+    // try as a macro
+    if (can_macro && form.as_pair()->car.is_symbol()) {
+      goos::Object macro_obj;
+      if (try_getting_macro_from_goos(form.as_pair()->car, &macro_obj)) {
+        return compile_static_no_eval_for_pairs(expand_macro_completely(form, env), env, seg,
+                                                false);
+      }
+    }
+    auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env, seg,
+                                                form.as_pair()->car.is_pair());
+    auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env, seg, false);
     auto pair_structure = std::make_unique<StaticPair>(car, cdr, seg);
     auto result =
         StaticResult::make_structure_reference(pair_structure.get(), m_ts.make_typespec("pair"));
@@ -655,7 +665,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
           throw_compiler_error(form, "The form {} is an invalid quoted form.", form.print());
         }
         if (second.is_pair() || second.is_empty_list()) {
-          return compile_static_no_eval_for_pairs(second, env, segment);
+          return compile_static_no_eval_for_pairs(second, env, segment, true);
         } else {
           throw_compiler_error(form, "Could not evaluate the quoted form {} at compile time.",
                                second.print());
@@ -1033,7 +1043,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   assert(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env, seg);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
   assert(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());

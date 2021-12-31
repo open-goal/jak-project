@@ -98,6 +98,7 @@ struct Config {
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+  bool rip_levels = false;
 
   bool regenerate_all_types = false;
   bool write_hex_near_instructions = false;
