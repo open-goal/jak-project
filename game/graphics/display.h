@@ -18,6 +18,19 @@ class GfxDisplay {
 
   const GfxRendererModule* m_renderer = nullptr;
 
+  // NOT actual size! just backups
+  int m_width;
+  int m_height;
+  // same here
+  int m_xpos;
+  int m_ypos;
+
+  bool m_update_fullscreen = false;
+  int m_fullscreen_mode = 0;
+  int m_fullscreen_screen;
+  int m_fullscreen_target_mode;
+  int m_fullscreen_target_screen;
+
  public:
   GfxDisplay(GLFWwindow* a_window);  // OpenGL window constructor
   ~GfxDisplay();  // destructor - this calls the renderer's function for getting rid of a window,
@@ -33,7 +46,32 @@ class GfxDisplay {
   void set_renderer(GfxPipeline pipeline);
   void set_window(GLFWwindow* window);
   void set_title(const char* title);
+  void set_size(int w, int h);
+  void get_scale(float* w, float* h);
   const char* title() const { return m_title; }
+
+  bool fullscreen_pending() { return m_update_fullscreen; }
+  void fullscreen_flush() {
+    m_renderer->set_fullscreen(this, m_fullscreen_target_mode, m_fullscreen_target_screen);
+    m_fullscreen_mode = m_fullscreen_target_mode;
+    m_fullscreen_screen = m_fullscreen_target_screen;
+    m_update_fullscreen = false;
+  }
+  void set_fullscreen(int mode, int screen) {
+    m_fullscreen_target_mode = mode;
+    m_fullscreen_target_screen = screen;
+    m_update_fullscreen = true;
+  }
+  int fullscreen_mode() { return m_fullscreen_mode; }
+  int fullscreen_screen() { return m_fullscreen_screen; }
+  void backup_params();
+  int width_backup() { return m_width; }
+  int height_backup() { return m_height; }
+  int xpos_backup() { return m_xpos; }
+  int ypos_backup() { return m_ypos; }
+
+  int width();
+  int height();
 
   void render_graphics();
 };

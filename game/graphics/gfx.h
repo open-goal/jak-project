@@ -26,6 +26,11 @@ struct GfxRendererModule {
       make_main_display;
   std::function<void(GfxDisplay*)> kill_display;
   std::function<void(GfxDisplay*)> render_display;
+  std::function<void(GfxDisplay*, int*, int*)> display_position;
+  std::function<void(GfxDisplay*, int*, int*)> display_size;
+  std::function<void(GfxDisplay*, int, int)> display_set_size;
+  std::function<void(GfxDisplay*, float*, float*)> display_scale;
+  std::function<void(GfxDisplay*, int, int)> set_fullscreen;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -54,15 +59,28 @@ struct GfxSettings {
   int vsync;   // (temp) number of screen update per frame
   bool debug;  // graphics debugging
 
-  GfxPipeline renderer;  // which rendering pipeline to use.
+  GfxPipeline renderer = GfxPipeline::Invalid;  // which rendering pipeline to use.
+};
+
+// runtime settings
+struct GfxGlobalSettings {
+  // note: this is actually the size of the display that ISN'T letterboxed
+  // the excess space is what will be letterboxed away.
+  int lbox_w;
+  int lbox_h;
+
+  // current renderer
+  const GfxRendererModule* renderer;
 };
 
 namespace Gfx {
 
+extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
 // extern const std::vector<const GfxRendererModule*> renderers;
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
+const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init();
 void Loop(std::function<bool()> f);
@@ -74,6 +92,12 @@ void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
 void poll_events();
+u64 get_window_width();
+u64 get_window_height();
+void set_window_size(u64 w, u64 h);
+void get_window_scale(float* x, float* y);
+void set_letterbox(int w, int h);
+void set_fullscreen(int mode, int screen);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

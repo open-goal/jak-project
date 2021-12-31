@@ -410,6 +410,10 @@
        )
   )
 
+(defmacro not-whitespace-char? (c)
+  `(not (is-whitespace-char? ,c))
+  )
+
 (defun string-skip-whitespace ((arg0 (pointer uint8)))
   "Skip over spaces, tabs, r's and n's"
   (while
@@ -436,7 +440,7 @@
       ;; null terminate
       (set! (-> str-ptr 0) 0)
       )
-    '#f
+    #f
     )
   )
 
@@ -450,26 +454,26 @@
 
 (defun string-strip-trailing-whitespace! ((str string))
   "Remove whitespace at the end of a string"
-  (local-vars (ptr (pointer uint8)))
-  (when (nonzero? ((method-of-type string length) str))
-    (set! ptr (&+ (-> str data)
-                  (the-as uint (+ ((method-of-type string length) str) -1)))
-          )
-    (while (and (>= (the-as int ptr) (the-as int (-> str data)))
-                (is-whitespace-char? (-> ptr 0))
-                )
-      (set! ptr (&-> ptr -1))
+  (when (nonzero? (length str))
+    (let ((ptr (&+ (-> str data) (+ (length str) -1))))
+      (while (and
+               (>= (the-as int ptr) (the-as int (-> str data)))
+               (is-whitespace-char? (-> ptr 0))
+               )
+        (set! ptr (&-> ptr -1))
+        )
+      (set! (-> ptr 1) (the-as uint 0))
       )
-    (set! (-> ptr 1) 0)
+    0
     )
-  '#f
+  #f
   )
 
 (defun string-strip-whitespace! ((arg0 string))
   "Remove whitespace at the beginning and end of a string"
   (string-strip-trailing-whitespace! arg0)
   (string-strip-leading-whitespace! arg0)
-  '#f
+  #f
   )
 
 (defun string-get-arg!! ((a-str string) (arg string))
@@ -532,130 +536,130 @@
 (defun string->int ((str string))
   "String to int. Supports binary, hex, and decimal. Negative is implemented for decimal and hex
    But I think it's broken?"
-  (local-vars
-   (result int)
-   (negative symbol)
-   (str-ptr (pointer uint8))
-   (next-char-1 (pointer uint8))
-   (next-char-2 (pointer uint8))
-   (a0-4 (pointer uint8))
-   (a0-5 symbol)
-   (a1-14 uint)
-   (a1-16 symbol)
-   (a1-20 uint)
-   (a1-23 uint)
-   (a1-33 symbol)
-   (a1-44 symbol)
-   (a1-47 (pointer uint8))
-   )
-  (set! str-ptr (-> str data))
-  (set! result 0)
-  (set! negative '#f)
-  (cond
-    ((= (-> str-ptr 0) 35) ;; #
-     ;; starts with #.
-     (set! next-char-1 (&-> str-ptr 1))
-     (cond
-       ((or (= (-> next-char-1 0) #\x) (= (-> next-char-1 0) #\X))
-        ;; starts with #x or #X
-        (set! next-char-2 (&-> next-char-1 1))
-        (when (= (-> next-char-2 1) #\-)
-          ;; negate!
-          (set! negative '#t)
-          (set! next-char-2 (&-> next-char-2 1))
-          )
-        (while
-            (or
-             ;; is in [0-9]
-             (and
-              (>= (-> next-char-2 0) #\0)
-              (>= (the-as uint #\9) (-> next-char-2 0))
-              )
-             ;; is in [A-F]
-             (and
-              (>= (-> next-char-2 0) (the-as uint 65))
-              (>= (the-as uint 70) (-> next-char-2 0))
-              )
-             ;; is in [a-f]
-             (and
-              (>= (-> next-char-2 0) (the-as uint 97))
-              (>= (the-as uint 102) (-> next-char-2 0))
-              )
-             )
-          (cond
-            ;; is in [A-F]
-            ((and
-              (>= (-> next-char-2 0) (the-as uint 65))
-              (>= (the-as uint 70) (-> next-char-2 0))
-              )
-             (set!
-              result
-              (the int (+ (+ (-> next-char-2 0) -55) (the-as uint (shl result 4))))
-              )
-             )
-            (else
-             (set!
-              a1-16
-              (and
-               (>= (-> next-char-2 0) (the-as uint 97))
-               (>= (the-as uint 102) (-> next-char-2 0))
-               )
-              )
-             (cond
-               (a1-16
-                ;; in [a-f]
-                (set! result
-                 (the int (+ (+ (-> next-char-2 0) -87) (the-as uint (shl result 4))))
-                 )
+  (let ((str-ptr (-> str data))
+        (result 0)
+        (negative #f)
+        )
+    (cond
+      ((= (-> str-ptr 0) 35)
+       ;; starts with #.
+       (let ((next-char-1 (&-> str-ptr 1)))
+         (cond
+           ((or (= (-> next-char-1 0) 120) (= (-> next-char-1 0) 88))
+            ;; starts with #x or #X
+            (let ((next-char-2 (&-> next-char-1 1)))
+              (when (= (-> next-char-2 1) 45)
+                ;; negate!
+                (set! negative #t)
+                (set! next-char-2 (&-> next-char-2 1))
                 )
-               (else
-                ;; numeric
-                (set! result
-                 (the int (+ (+ (-> next-char-2 0) -48) (the-as uint (shl result 4))))
-                 )
-                ) ;; end numeric
-               ) ;; end numeric or [a-f]
-             ) ;; end not [A-F]
-            ) ;; end cond
-          (set! next-char-2 (&-> next-char-2 1))
-          ) ;; end while
-        )
-       ((or (zero? (+ (-> next-char-1 0) -98)) (zero? (+ (-> next-char-1 0) -66)))
-        ;; is #b (I guess we can't do negative binary?)
-        (set! a0-4 (&-> next-char-1 1))
-        (while (and (>= (-> a0-4 0) (the-as uint 48)) (>= (the-as uint 49) (-> a0-4 0)))
-          (set! result (the int (+ (+ (-> a0-4 0) -48) (the-as uint (shl result 1)))))
-          (set! a0-4 (&-> a0-4 1))
+              (while (or
+                       (and (>= (-> next-char-2 0) (the-as uint 48)) (>= (the-as uint 57) (-> next-char-2 0)))
+                       (and (>= (-> next-char-2 0) (the-as uint 65)) (>= (the-as uint 70) (-> next-char-2 0)))
+                       (and (>= (-> next-char-2 0) (the-as uint 97)) (>= (the-as uint 102) (-> next-char-2 0)))
+                       )
+                (cond
+                  ((and (>= (-> next-char-2 0) (the-as uint 65)) (>= (the-as uint 70) (-> next-char-2 0)))
+                    ;; is in [A-F]
+                   (set! result (the-as int (+ (-> next-char-2 0) -55 (* result 16))))
+                   )
+                  ((and (>= (-> next-char-2 0) (the-as uint 97)) (>= (the-as uint 102) (-> next-char-2 0)))
+                    ;; is in [a-f]
+                   (set! result (the-as int (+ (-> next-char-2 0) -87 (* result 16))))
+                   )
+                  (else
+                    ;; is in [0-9]
+                    (set! result (the-as int (+ (-> next-char-2 0) -48 (* result 16))))
+                    )
+                  )
+                (set! next-char-2 (&-> next-char-2 1))
+                )
+              )
+            )
+           ((or (= (-> next-char-1 0) 98) (= (-> next-char-1 0) 66))
+            ;; is #b (I guess we can't do negative binary?)
+            (let ((a0-4 (&-> next-char-1 1)))
+              (while (and (>= (-> a0-4 0) (the-as uint 48)) (>= (the-as uint 49) (-> a0-4 0)))
+                (set! result (the-as int (+ (-> a0-4 0) -48 (* result 2))))
+                (set! a0-4 (&-> a0-4 1))
+                )
+              )
+            )
+           )
+         )
+       )
+      (else
+        ;; decimal
+
+        ;; check for negative
+        (when (= (-> str-ptr 1) 45)
+          (set! negative #t)
+          (set! str-ptr (&-> str-ptr 1))
+          )
+        (while (and (>= (-> str-ptr 0) (the-as uint 48)) (>= (the-as uint 57) (-> str-ptr 0)))
+          (set! result (the-as int (+ (-> str-ptr 0) -48 (* 10 result))))
+          (set! str-ptr (&-> str-ptr 1))
           )
         )
-       )
-     )
-    (else
-     ;; decimal
-
-     ;; check for negative
-     (when (= (-> str-ptr 1) 45)
-       (set! negative '#t)
-       (set! str-ptr (&-> str-ptr 1))
-       (set! a1-47 str-ptr)
-       )
-
-     (while (and
-          (>= (-> str-ptr 0) (the-as uint 48))
-          (>= (the-as uint 57) (-> str-ptr 0))
-          )
-       (set! result (the int (+ (+ (-> str-ptr 0) -48) (the-as uint (* 10 result)))))
-       (set! str-ptr (&-> str-ptr 1))
-       )
-     )
+      )
+    (cond
+      (negative
+        (- result)
+        )
+      (else
+        result
+        )
+      )
     )
-  (cond (negative (- result)) (else result))
   )
 
-(defun string->float ((arg0 string))
+(defun string->float ((str string))
   "Convert a string to a float, but it is not implemented."
-  (format 0 "string->float left as an excersize for the reader~%")
-  0.0
+  ;(format 0 "string->float left as an excersize for the reader~%")
+  ;0.0
+
+  ;; added...
+  (let ((charp (-> str data))
+        (result 0.0)
+        (negative #f))
+
+    (when (= (-> charp) #\-)
+      (set! negative #t)
+      (&+! charp 1)
+      )
+
+    (while (and (>= (-> charp) #\0) (<= (-> charp) #\9))
+      ;; number
+
+      (*! result 10) ;; bump oom (e.g. 123 -> 1230)
+      (+! result (- (-> charp) #\0)) ;; add unit (e.g. 1230 -> 1234)
+      (&+! charp 1)
+      )
+
+    (when (= (-> charp) #\.)
+      ;; dot
+      (&+! charp 1)
+      ;; fractional part begin
+      (let ((frac 1.0))
+        (while (and (>= (-> charp) #\0) (<= (-> charp) #\9))
+          ;; number
+
+          (*! frac 10) ;; bump frac oom
+          (+! result (/ (the float (- (-> charp) #\0)) frac)) ;; add frac (e.g. 1234 -> 1234.5)
+          (&+! charp 1)
+          )
+        )
+      )
+
+    (cond
+      (negative
+        (- result)
+        )
+      (else
+        result
+        )
+      )
+    )
   )
 
 (defun string-get-int32!! ((arg0 (pointer int32)) (arg1 string))
@@ -663,9 +667,9 @@
   (cond
    ((string-get-arg!! *string-tmp-str* arg1)
     (set! (-> arg0 0) (string->int *string-tmp-str*))
-    '#t
+    #t
     )
-   (else '#f)
+   (else #f)
    )
   )
 
@@ -673,14 +677,13 @@
   (cond
    ((string-get-arg!! *string-tmp-str* arg1)
     (set! (-> arg0 0) (string->float *string-tmp-str*))
-    '#t
+    #t
     )
-   (else '#f)
+   (else #f)
    )
   )
 
 (defun string-get-flag!! ((result (pointer symbol)) (in string) (first-flag string) (second-flag string))
-  (local-vars (v1-0 symbol))
   (cond
     ((string-get-arg!! *string-tmp-str* in)
      (cond
@@ -688,21 +691,22 @@
             (string= *string-tmp-str* second-flag)
             )
         (set! (-> result 0) (string= *string-tmp-str* first-flag))
-        '#t
+        #t
         )
-       (else '#f)
+       (else #f)
        )
      )
-    (else '#f)
+    (else #f)
     )
   )
 
 ;; what is this?
 (define *debug-draw-pauseable* #f)
 
-;; console buffers. not sure what the two are for.
+;; console buffers. sometimes console 0 is backed up and the game switches to console 1.
 (define *stdcon0* (new 'global 'string 16384 (the string #f)))
 (define *stdcon1* (new 'global 'string 16384 (the string #f)))
+;; the current onscreen console
 (define *stdcon* *stdcon0*)
 
 ;; shared temporary string.

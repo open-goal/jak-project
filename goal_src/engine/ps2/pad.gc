@@ -231,6 +231,11 @@
 ;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
 (define *cpad-debug* #f)
 
+(#if PC_PORT
+    (defconstant STICK_DEADZONE (-> *pc-settings* stick-deadzone))
+    (defconstant STICK_DEADZONE 0.3)
+    )
+
 (defun service-cpads ()
   "Read from cpads and update vibration"
   ;; iterate over pads
@@ -244,21 +249,14 @@
            (dotimes (buzz-idx 2)
              (cond
                ;; check if okay to buzz:
-               ((and (-> pad buzz)
-                     (< (get-current-time) (-> pad buzz-time buzz-idx))
-                     (= *master-mode* 'game)
-                     )
+               ((and (-> pad buzz) (< (get-current-time) (-> pad buzz-time buzz-idx)) (= *master-mode* 'game))
                 (let ((v1-10 buzz-idx))
                   (cond
                     ((zero? v1-10)
                      ;; vibration motor 0 only has on/off. This pulses it to approximate
                      ;; an analog control
                      (set! (-> pad direct buzz-idx)
-                           (logand (ash (-> pad buzz-val buzz-idx)
-                                        (- (logand (get-integral-current-time) 7))
-                                        )
-                                   1
-                                   )
+                           (logand (ash (-> pad buzz-val buzz-idx) (- (logand (get-integral-current-time) 7))) 1)
                            )
                      )
                     ((= v1-10 1)
@@ -269,10 +267,10 @@
                   )
                 )
                (else
-                ;; not okay to buzz this motor, set to zero.
-                (set! (-> pad buzz-val buzz-idx) 0)
-                (set! (-> pad direct buzz-idx) 0)
-                )
+                 ;; not okay to buzz this motor, set to zero.
+                 (set! (-> pad buzz-val buzz-idx) (the-as uint 0))
+                 (set! (-> pad direct buzz-idx) (the-as uint 0))
+                 )
                )
              )
            ;; update button history.
@@ -280,15 +278,13 @@
            (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
            (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
            (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
-           ;; update current button
-           (let ((current-button0 (the pad-buttons (-> pad button0))))
-             (set! (-> pad button0-shadow-abs 0) current-button0)
-             (set! (-> pad button0-abs 0) current-button0)
+           ;; we might want to clear a button so we back it up in a "shadow" field
+           (let ((current-button0 (-> pad button0)))
+             (set! (-> pad button0-shadow-abs 0) (the-as pad-buttons current-button0))
+             (set! (-> pad button0-abs 0) (the-as pad-buttons current-button0))
              )
            ;; buttons going down
-           (set! (-> pad button0-rel 0)
-                 (logclear (-> pad button0-abs 0) (-> pad button0-abs 1))
-                 )
+           (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
            ;; ??
            (when *cpad-debug*
              (set! (-> pad leftx) (the-as uint 255))
@@ -305,35 +301,33 @@
                     (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
                     )
                 (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
-                (set! (-> pad stick0-speed)
-                      (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0))))
-                      )
+                (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
                 )
-              (if (< (-> pad stick0-speed) 0.3)
+              (if (< (-> pad stick0-speed) STICK_DEADZONE)
                   (set! (-> pad stick0-speed) 0.0)
                   )
               )
              (else
-              ;; analog is invalid? set to zero.
-              (set! (-> pad leftx) (the-as uint 128))
-              (set! (-> pad lefty) (the-as uint 128))
-              (set! (-> pad rightx) (the-as uint 128))
-              (set! (-> pad righty) (the-as uint 128))
-              (set! (-> pad stick0-dir) 0.0)
-              (set! (-> pad stick0-speed) 0.0)
-              )
+               ;; analog is invalid? set to zero.
+               (set! (-> pad leftx) (the-as uint 128))
+               (set! (-> pad lefty) (the-as uint 128))
+               (set! (-> pad rightx) (the-as uint 128))
+               (set! (-> pad righty) (the-as uint 128))
+               (set! (-> pad stick0-dir) 0.0)
+               (set! (-> pad stick0-speed) 0.0)
+               )
              )
            ;; if the pad was changed or stick0 pushed, update the last changed time.
            (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
-                   (or (< 0.3 (-> pad stick0-speed)) (zero? (-> pad change-time)))
+                   (or (< STICK_DEADZONE (-> pad stick0-speed)) (zero? (-> pad change-time)))
                    )
                (set! (-> pad change-time) (get-current-time))
                )
            )
           (else
-           ;; invalid bits set, controller is not connected.
-           (cpad-invalid! pad)
-           )
+            ;; invalid bits set, controller is not connected.
+            (cpad-invalid! pad)
+            )
           )
         )
       )

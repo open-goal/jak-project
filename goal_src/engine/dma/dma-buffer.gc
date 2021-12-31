@@ -55,7 +55,7 @@
    ;; these two were added to make it easier.
    (gif0    uint64 :offset 16)
    (gif1    uint64 :offset 24)
-   
+
    (quad    uint128    2       :offset 0)
    )
   :method-count-assert 9
@@ -126,15 +126,15 @@
 
 (defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
   "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
-  
+
   (with-gensyms (dma-buf)
     `(let* ((,dma-buf ,buf)
             (,pkt (the-as ,dma-type (-> ,dma-buf base))))
-        
+
           ,@body
-          
+
           (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type)))
-        
+
         )
     )
   )
@@ -142,15 +142,15 @@
 (defmacro dma-buffer-add-base-data (buf data-type forms)
   "Base macro for adding data words to a dma-buffer.
    Each form in forms is converted into data-type and added to the buffer. NO TYPE CHECKING is performed, so be careful!"
-  
+
   (with-gensyms (dma-buf ptr)
     `(let* ((,dma-buf ,buf)
             (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
-        
+
           ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
-          
+
           (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type))))
-        
+
         )
     )
   )
@@ -163,12 +163,12 @@
 
   (with-gensyms (pkt)
     `(dma-buffer-add-base-type ,buf ,pkt dma-packet
-        
+
         (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,qwc))
-            
+
         (set! (-> ,pkt vif0) ,vif0)
         (set! (-> ,pkt vif1) ,vif1)
-        
+
         )
     )
   )
@@ -180,12 +180,12 @@
 
   (with-gensyms (pkt)
     `(dma-buffer-add-base-type ,buf ,pkt dma-packet
-        
+
         (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ref) :qwc ,qwc :addr (the-as int ,addr)))
-            
+
         (set! (-> ,pkt vif0) ,vif0)
         (set! (-> ,pkt vif1) ,vif1)
-        
+
         )
     )
   )
@@ -195,39 +195,39 @@
 
   (with-gensyms (pkt)
     `(dma-buffer-add-base-type ,buf ,pkt dma-packet
-        
+
         (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ret) :qwc 0))
-            
+
         (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
         (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
-        
+
         )
     )
   )
 
 (defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
   "Add a giftag to a dma-buffer."
-  
+
   (with-gensyms (pkt)
     `(dma-buffer-add-base-type ,buf ,pkt gs-gif-tag
-        
+
         (set! (-> ,pkt tag) ,giftag)
-        
+
         (set! (-> ,pkt regs) ,gifregs)
-        
+
         )
     )
   )
 
 (defmacro dma-buffer-add-uint64 (buf &rest body)
   "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
-  
+
   `(dma-buffer-add-base-data ,buf uint64 ,body)
   )
 
 (defmacro dma-buffer-add-uint128 (buf &rest body)
   "Add 128-bit words to a dma-buffer. See dma-buffer-add-base-data"
-  
+
   `(dma-buffer-add-base-data ,buf uint128 ,body)
   )
 
@@ -295,7 +295,7 @@
   "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
    The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
    reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
-  
+
   (let ((reg-count (length reg-list))
         (qwc (+ (length reg-list) 1))
         (reg-names (apply first reg-list))
@@ -307,12 +307,12 @@
                               (new 'static 'vif-tag :cmd (vif-cmd flusha))
                               (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
                               )
-      
+
       ;; gif tag for editing gs regs
       (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
                                    (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
                                    )
-      
+
       ;; gs regs
       (dma-buffer-add-uint64 ,buf
           ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
@@ -324,7 +324,7 @@
 (defmacro dma-buffer-add-gs-set (buf &rest reg-list)
   "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
    reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
-  
+
   (let ((reg-count (length reg-list))
         (qwc (+ (length reg-list) 1))
         (reg-names (apply first reg-list))
@@ -341,7 +341,7 @@
       (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
                                    (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
                                    )
-      
+
       ;; gs regs
       (dma-buffer-add-uint64 ,buf
           ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
@@ -354,21 +354,21 @@
   "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
    With this, you can transfer data through PATH2 without having to setup the tag yourself.
    The qwc of the transfer is determined at runtime at the end of this block."
-  
+
   (let ((buf (first bindings)))
-  
+
   (with-gensyms (buf-start buf-qwc)
     `(let ((,buf-start (-> ,buf base)))
-        
+
         ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
         (dma-buffer-add-cnt-vif2 ,buf 0
                         (new 'static 'vif-tag :cmd (vif-cmd nop))
                         (new 'static 'vif-tag :cmd (vif-cmd direct))
                         )
-        
+
         ;; things with this buffer!
         ,@body
-        
+
         ;; patch qwc! just do the difference between the current ptr and the old one and turn it into qwords.
         ;; we take one qword out because it's the initial dmatag which isnt part of the count.
         ;; this rounds *down*, so make sure to fill the buffer in 128-bit boundaries.
@@ -390,31 +390,64 @@
     ))
   )
 
+(defmacro with-cnt-vif-block-qwc (bindings &rest body)
+  "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
+   With this, you can transfer data through PATH2 without having to setup the tag yourself.
+   The qwc of the transfer is determined at runtime at the end of this block.
+   WARNING: You MUST guarantee that the resulting qwc is NOT zero!"
+
+  (let ((buf (first bindings)))
+
+  (with-gensyms (buf-start buf-qwc)
+    `(let ((,buf-start (the-as dma-packet (-> ,buf base))))
+        ;; dmatag will be added at the end so we reserve
+        (&+! (-> ,buf base) 16)
+
+        ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
+        (dma-buffer-add-cnt-vif2 ,buf 0
+                        (new 'static 'vif-tag :cmd (vif-cmd nop))
+                        (new 'static 'vif-tag :cmd (vif-cmd direct))
+                        )
+
+        ;; things with this buffer!
+        ,@body
+
+        ;; we make the dmatag now! its at the start.
+        (let ((,buf-qwc (/ (+ (- -16 (the-as int ,buf-start)) (the-as int (-> ,buf base))) 16)))
+          (set! (-> ,buf-start dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,buf-qwc))
+          (set! (-> ,buf-start vif0) (new 'static 'vif-tag))
+          (set! (-> ,buf-start vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm ,buf-qwc))
+          )
+        )
+
+    ))
+  )
+
 (defmacro with-dma-bucket (bindings &rest body)
   "Start a new dma-bucket in body that will be finished at the end.
    The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
-  
+
   (let ((buf (first bindings))
         (bucket (second bindings))
         (bucket-id (third bindings))
         )
-      
+
       (with-gensyms (buf-start bucket-edge pkt)
         `(let ((,buf-start (-> ,buf base)))
-            
+
             ,@body
-            
+
             ;; we end the chain with a next.  The bucket system will patch the next chain to this,
             ;; and then patch all the buckets togehter before sending the DMA.
             (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
                 (let ((,pkt (the-as dma-packet (-> ,buf base))))
-                
+
                   (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
                   (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
                   (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
-                  
+
                   (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
-                
+
                   )
                 (dma-bucket-insert-tag ,bucket ,bucket-id
                       ,buf-start ;; the first thing in this chain, bucket will patch previous to this
@@ -423,15 +456,15 @@
                 )
             )
         )
-      
+
       )
   )
 
 (defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (-> (current-frame) bucket-group)) &rest body)
   "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
-   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body
+   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body)
    example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-draw1)) ...)"
-  
+
   `(let ((,(caar bindings) ,(cadar bindings)))
     (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings))
       ,@body

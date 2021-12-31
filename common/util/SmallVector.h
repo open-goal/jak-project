@@ -44,6 +44,14 @@ constexpr const T& min(const T& a, const T& b) {
 template <typename T, std::size_t inline_elt_count = max(std::size_t(1), 128 / sizeof(T))>
 class SmallVector {
  private:
+  template <typename U>
+  constexpr U* launder(U* in) const {
+#if __cpp_lib_launder >= 201606
+    return std::launder(in);
+#else
+    return in;
+#endif
+  }
   // how much to increase the storage amount when we run out.
   static constexpr double GROW_AMOUNT = 1.5;
 
@@ -53,10 +61,8 @@ class SmallVector {
   typename std::aligned_storage<sizeof(T), alignof(T)>::type m_inline[inline_elt_count];
 
   // get a T* at the beginning of our inline storage.
-  constexpr const T* inline_begin() const {
-    return std::launder(reinterpret_cast<const T*>(m_inline));
-  }
-  constexpr T* inline_begin() { return std::launder(reinterpret_cast<T*>(m_inline)); }
+  constexpr const T* inline_begin() const { return launder(reinterpret_cast<const T*>(m_inline)); }
+  constexpr T* inline_begin() { return launder(reinterpret_cast<T*>(m_inline)); }
 
   // regardless of our storage mode, these hold the beginning and end of the storage.
   // by default, they are initialized to the inline storage.
@@ -73,14 +79,14 @@ class SmallVector {
    * The objects in storage are uninitialized.
    */
   void allocate_and_set_heap_storage(std::size_t elt_count) {
-    m_storage_begin = std::launder(reinterpret_cast<T*>(new uint8_t[elt_count * sizeof(T)]));
+    m_storage_begin = launder(reinterpret_cast<T*>(new uint8_t[elt_count * sizeof(T)]));
     m_storage_end = m_storage_begin + elt_count;
   }
 
   /*!
    * Free heap storage, without calling destructors of objects.
    */
-  void free_heap_storage(T* ptr) { delete[] std::launder(reinterpret_cast<uint8_t*>(ptr)); }
+  void free_heap_storage(T* ptr) { delete[] launder(reinterpret_cast<uint8_t*>(ptr)); }
 
   /*!
    * Set the current storage to the inline memory.

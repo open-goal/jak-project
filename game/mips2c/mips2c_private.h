@@ -155,7 +155,7 @@ struct ExecutionContext {
   // EE general purpose registers
   u128 gprs[32];
   // EE fprs
-  float fprs[16];
+  float fprs[32];
   // VU0 vf registers
   u128 vfs[32];
 
@@ -228,6 +228,11 @@ struct ExecutionContext {
   void lw(int dst, int offset, int src) {
     s32 val;
     memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 4);
+    gprs[dst].ds64[0] = val;
+  }
+
+  void lw_float_constant(int dst, u32 src) {
+    s32 val = src;
     gprs[dst].ds64[0] = val;
   }
 
@@ -613,6 +618,17 @@ struct ExecutionContext {
     }
   }
 
+  void vmax(DEST mask, int dest, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dest].f[i] = std::max(s0.f[i], s1.f[i]);
+      }
+    }
+  }
+
   void vsub(DEST mask, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -681,6 +697,10 @@ struct ExecutionContext {
 
   void vdiv(int src0, BC bc0, int src1, BC bc1) {
     Q = vf_src(src0).f[(int)bc0] / vf_src(src1).f[(int)bc1];
+  }
+
+  void vrsqrt(int src0, BC bc0, int src1, BC bc1) {
+    Q = vf_src(src0).f[(int)bc0] / std::sqrt(std::abs(vf_src(src1).f[(int)bc1]));
   }
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
@@ -984,6 +1004,8 @@ struct ExecutionContext {
     return fmt::format("{} {} {} {}", src.f[0], src.f[1], src.f[2], src.f[3]);
   }
 };
+
+static_assert(sizeof(ExecutionContext) <= 1280);
 
 inline void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
   u32 val;

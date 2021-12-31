@@ -8,28 +8,48 @@
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size), m_mode(mode) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
-  glGenBuffers(1, &m_ogl.color_buffer);
-  glGenBuffers(1, &m_ogl.st_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
-
+  glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  m_ogl.vertex_buffer_bytes = batch_size * 3 * 3 * sizeof(u32);
-  glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
+  m_ogl.vertex_buffer_max_verts = batch_size * 3 * 2;
+  m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(Vertex);
+  glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr,
+               GL_STREAM_DRAW);  // todo stream?
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(
+      0,                            // location 0 in the shader
+      4,                            // 3 floats per vert
+      GL_FLOAT,                     // floats
+      GL_TRUE,                      // normalized, ignored,
+      sizeof(Vertex),               //
+      (void*)offsetof(Vertex, xyz)  // offset in array (why is is this a pointer...)
+  );
 
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
-  m_ogl.color_buffer_bytes = batch_size * 3 * 4 * sizeof(u8);
-  glBufferData(GL_ARRAY_BUFFER, m_ogl.color_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(
+      1,                             // location 0 in the shader
+      4,                             // 4 floats per vert (w unused)
+      GL_UNSIGNED_BYTE,              // floats
+      GL_TRUE,                       // normalized, ignored,
+      sizeof(Vertex),                //
+      (void*)offsetof(Vertex, rgba)  // offset in array (why is is this a pointer...)
+  );
 
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-  m_ogl.st_buffer_bytes = batch_size * 3 * 3 * sizeof(float);
-  glBufferData(GL_ARRAY_BUFFER, m_ogl.st_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(
+      2,                            // location 0 in the shader
+      3,                            // 3 floats per vert
+      GL_FLOAT,                     // floats
+      GL_FALSE,                     // normalized, ignored,
+      sizeof(Vertex),               //
+      (void*)offsetof(Vertex, stq)  // offset in array (why is is this a pointer...)
+  );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 }
 
 DirectRenderer::~DirectRenderer() {
-  glDeleteBuffers(1, &m_ogl.color_buffer);
   glDeleteBuffers(1, &m_ogl.vertex_buffer);
-  glDeleteBuffers(1, &m_ogl.st_buffer);
   glDeleteVertexArrays(1, &m_ogl.vao);
 }
 
@@ -158,50 +178,16 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
 
   // render!
   // update buffers:
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<u32, 3>),
-                  m_prim_buffer.verts.data());
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<u8, 4>),
-                  m_prim_buffer.rgba_u8.data());
-  if (m_prim_gl_state.texture_enable) {
-    glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<float, 3>),
-                    m_prim_buffer.stqs.data());
+  u32 vertex_offset = m_ogl.last_vertex_offset;
+  if (vertex_offset + m_prim_buffer.vert_count >= m_ogl.vertex_buffer_max_verts) {
+    lg::warn("Buffer wrapped in {} (upcoming size is {}, {} bytes)\n", m_name,
+             m_prim_buffer.vert_count, m_prim_buffer.vert_count * sizeof(Vertex));
+    vertex_offset = 0;
   }
-
-  // setup attributes:
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,                // location 0 in the shader
-                        3,                // 3 floats per vert
-                        GL_UNSIGNED_INT,  // floats
-                        GL_TRUE,          // normalized, ignored,
-                        0,                // tightly packed
-                        0                 // offset in array (why is is this a pointer...)
-  );
-
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1,                 // location 0 in the shader
-                        4,                 // 3 floats per vert
-                        GL_UNSIGNED_BYTE,  // floats
-                        GL_TRUE,           // normalized, ignored,
-                        0,                 // tightly packed
-                        0);
-
-  if (m_prim_gl_state.texture_enable) {
-    glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2,         // location 0 in the shader
-                          3,         // 3 floats per vert
-                          GL_FLOAT,  // floats
-                          GL_FALSE,  // normalized, ignored,
-                          0,         // tightly packed
-                          0);
-    glActiveTexture(GL_TEXTURE0);
-  }
-  // assert(false);
+  glBufferSubData(GL_ARRAY_BUFFER, vertex_offset * sizeof(Vertex),
+                  m_prim_buffer.vert_count * sizeof(Vertex), m_prim_buffer.vertices.data());
+  glActiveTexture(GL_TEXTURE0);
 
   int draw_count = 0;
   if (m_mode == Mode::SPRITE_CPU) {
@@ -214,13 +200,13 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     }
 
     if (m_sprite_mode.do_first_draw) {
-      glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+      glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
       draw_count++;
     }
     if (m_sprite_mode.do_second_draw) {
       render_state->shaders[ShaderId::SPRITE_CPU_AFAIL].activate();
       glDepthMask(GL_FALSE);
-      glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+      glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
       if (m_test_state.depth_writes) {
         glDepthMask(GL_TRUE);
       }
@@ -230,7 +216,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
       draw_count++;
     }
   } else {
-    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
     draw_count++;
   }
 
@@ -238,7 +224,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     draw_count++;
   }
@@ -249,6 +235,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   prof.add_draw_call(draw_count);
   m_stats.triangles += n_tris;
   m_stats.draw_calls += draw_count;
+  m_ogl.last_vertex_offset = vertex_offset + m_prim_buffer.vert_count;
+  m_ogl.last_vertex_offset = (m_ogl.last_vertex_offset + 3) & ~3;
   m_prim_buffer.vert_count = 0;
 }
 
@@ -1033,6 +1021,8 @@ void DirectRenderer::reset_state() {
 
   m_prim_building = PrimBuildState();
 
+  m_ogl.last_vertex_offset = 0;
+
   m_stats = {};
 }
 
@@ -1075,17 +1065,18 @@ void DirectRenderer::PrimGlState::from_register(GsPrim reg) {
 }
 
 DirectRenderer::PrimitiveBuffer::PrimitiveBuffer(int max_triangles) {
-  rgba_u8.resize(max_triangles * 3);
-  verts.resize(max_triangles * 3);
-  stqs.resize(max_triangles * 3);
+  vertices.resize(max_triangles * 3);
   max_verts = max_triangles * 3;
 }
 
 void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<u32, 3>& vert,
                                            const math::Vector<float, 3>& st) {
-  rgba_u8[vert_count] = rgba;
-  verts[vert_count] = vert;
-  stqs[vert_count] = st;
+  auto& v = vertices[vert_count];
+  v.rgba = rgba;
+  v.xyz[0] = (float)vert[0] / UINT32_MAX;
+  v.xyz[1] = (float)vert[1] / UINT32_MAX;
+  v.xyz[2] = (float)vert[2] / UINT32_MAX;
+  v.stq = st;
   vert_count++;
 }
