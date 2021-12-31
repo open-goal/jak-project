@@ -87,103 +87,79 @@
 ;; definition for function calc-terminal2-vel
 (defun calc-terminal2-vel ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (let ((f0-4 (sqrtf (/ (- (* 0.016666668 arg0) arg1) arg2))))
-   (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))
-   )
+    (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))
+    )
   )
 
 ;; definition for function calc-terminal4-vel
 (defun calc-terminal4-vel ((arg0 float) (arg1 float) (arg2 float))
   (let ((f0-5 (sqrtf (sqrtf (/ (- (* 0.016666668 arg0) arg1) arg2)))))
-   (- f0-5 (+ arg1 (* arg2 (* f0-5 f0-5 f0-5 f0-5))))
-   )
+    (- f0-5 (+ arg1 (* arg2 (* f0-5 f0-5 f0-5 f0-5))))
+    )
   )
 
 ;; definition for method 2 of type surface
 (defmethod print surface ((obj surface))
   (format
-   #t
-   "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m"
-   (-> obj turnv)
-   (-> obj turnvv)
-   (-> obj tiltv)
-   (-> obj tiltvv)
-   (-> obj transv-max)
-   )
-  (format
-   #t
-   "  tm:~m rv:~R rvv:~R @ #x~X>"
-   (-> obj target-speed)
-   (-> obj seek0)
-   (-> obj seek90)
-   obj
-   )
+    #t
+    "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m"
+    (-> obj turnv)
+    (-> obj turnvv)
+    (-> obj tiltv)
+    (-> obj tiltvv)
+    (-> obj transv-max)
+    )
+  (format #t "  tm:~m rv:~R rvv:~R @ #x~X>" (-> obj target-speed) (-> obj seek0) (-> obj seek90) obj)
   obj
   )
 
 ;; definition for function surface-interp!
-(defun
-  surface-interp!
-  ((dst surface) (src0 surface) (src1 surface) (amount float))
+(defun surface-interp! ((dst surface) (src0 surface) (src1 surface) (amount float))
   (dotimes (v1-0 30)
-   (set!
-    (-> dst data v1-0)
-    (+ (* (-> src1 data v1-0) amount) (* (-> src0 data v1-0) (- 1.0 amount)))
+    (set! (-> dst data v1-0) (+ (* (-> src1 data v1-0) amount) (* (-> src0 data v1-0) (- 1.0 amount))))
     )
-   )
   (dotimes (v1-3 4)
-   (set! (-> dst hook v1-3) (cond
-                             ((and
-                               (nonzero? (-> src1 hook v1-3))
-                               (!= (-> src1 hook v1-3) nothing)
+    (set! (-> dst hook v1-3) (cond
+                               ((and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing))
+                                (-> src1 hook v1-3)
+                                )
+                               ((and (nonzero? (-> src0 hook v1-3)) (!= (-> src0 hook v1-3) nothing))
+                                (-> src0 hook v1-3)
+                                )
+                               (else
+                                 nothing
+                                 )
                                )
-                              (-> src1 hook v1-3)
-                              )
-                             ((and
-                               (nonzero? (-> src0 hook v1-3))
-                               (!= (-> src0 hook v1-3) nothing)
-                               )
-                              (-> src0 hook v1-3)
-                              )
-                             (else
-                              nothing
-                              )
-                             )
+          )
     )
-   )
   (dotimes (v1-6 2)
-   (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
-   )
+    (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
+    )
   dst
   )
 
 ;; definition for function surface-mult!
 (defun surface-mult! ((dst surface) (src0 surface) (src1 surface))
   (dotimes (v1-0 30)
-   (set! (-> dst data v1-0) (* (-> src1 data v1-0) (-> src0 data v1-0)))
-   )
-  (dotimes (v1-3 4)
-   (set! (-> dst hook v1-3) (cond
-                             ((and
-                               (nonzero? (-> src1 hook v1-3))
-                               (!= (-> src1 hook v1-3) nothing)
-                               )
-                              (-> src1 hook v1-3)
-                              )
-                             ((and
-                               (nonzero? (-> src0 hook v1-3))
-                               (!= (-> src0 hook v1-3) nothing)
-                               )
-                              (-> src0 hook v1-3)
-                              )
-                             (else
-                              nothing
-                              )
-                             )
+    (set! (-> dst data v1-0) (* (-> src1 data v1-0) (-> src0 data v1-0)))
     )
-   )
+  (dotimes (v1-3 4)
+    (set! (-> dst hook v1-3) (cond
+                               ((and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing))
+                                (-> src1 hook v1-3)
+                                )
+                               ((and (nonzero? (-> src0 hook v1-3)) (!= (-> src0 hook v1-3) nothing))
+                                (-> src0 hook v1-3)
+                                )
+                               (else
+                                 nothing
+                                 )
+                               )
+          )
+    )
   (dotimes (v1-6 2)
-   (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
-   )
+    (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
+    )
   (set! (-> dst flags) (logior (-> src0 flags) (-> src1 flags)))
   ((-> dst mult-hook) dst src0 src1 1)
   dst
@@ -191,820 +167,763 @@
 
 ;; definition for function surface-clamp-speed
 ;; INFO: Return type mismatch float vs none.
-(defun
-  surface-clamp-speed
-  ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
+(defun surface-clamp-speed ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
   (when (= arg3 1)
-   (set! (-> arg0 transv-max) (fmin (-> arg0 transv-max) (-> arg1 transv-max)))
-   (set!
-    (-> arg0 target-speed)
-    (fmin (-> arg0 target-speed) (-> arg1 target-speed))
+    (set! (-> arg0 transv-max) (fmin (-> arg0 transv-max) (-> arg1 transv-max)))
+    (set! (-> arg0 target-speed) (fmin (-> arg0 target-speed) (-> arg1 target-speed)))
     )
-   )
   (none)
   )
 
 ;; definition for symbol *walk-mods*, type surface
-(define
-  *walk-mods*
-  (new 'static 'surface
-   :name 'run
-   :turnv 131072.0
-   :turnvv 524288.0
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 1.0
-   :seek90 1.0
-   :seek180 1.0
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :flags #x1
-   )
-  )
+(define *walk-mods* (new 'static 'surface
+                      :name 'run
+                      :turnv 131072.0
+                      :turnvv 524288.0
+                      :tiltv 65536.0
+                      :tiltvv 131072.0
+                      :transv-max 40960.0
+                      :target-speed 40960.0
+                      :seek0 1.0
+                      :seek90 1.0
+                      :seek180 1.0
+                      :fric 1.0
+                      :nonlin-fric-dist 1.0
+                      :slip-factor 1.0
+                      :slide-factor 1.0
+                      :slope-up-factor 1.0
+                      :slope-down-factor 1.0
+                      :slope-slip-angle 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :slope-up-traction 1.0
+                      :align-speed 1.0
+                      :flags #x1
+                      )
+        )
 
 ;; definition for symbol *walk-no-turn-mods*, type surface
-(define
-  *walk-no-turn-mods*
-  (new 'static 'surface
-   :name 'run
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 1.0
-   :seek90 1.0
-   :seek180 1.0
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   )
-  )
+(define *walk-no-turn-mods* (new 'static 'surface
+                              :name 'run
+                              :tiltv 65536.0
+                              :tiltvv 131072.0
+                              :transv-max 40960.0
+                              :target-speed 40960.0
+                              :seek0 1.0
+                              :seek90 1.0
+                              :seek180 1.0
+                              :fric 1.0
+                              :nonlin-fric-dist 1.0
+                              :slip-factor 1.0
+                              :slide-factor 1.0
+                              :slope-up-factor 1.0
+                              :slope-down-factor 1.0
+                              :slope-slip-angle 1.0
+                              :impact-fric 1.0
+                              :bend-factor 1.0
+                              :bend-speed 1.0
+                              :alignv 1.0
+                              :slope-up-traction 1.0
+                              :align-speed 1.0
+                              )
+        )
 
 ;; definition for symbol *turn-around-mods*, type surface
-(define
-  *turn-around-mods*
-  (new 'static 'surface
-   :name 'run
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :fric 0.1
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   )
-  )
+(define *turn-around-mods* (new 'static 'surface
+                             :name 'run
+                             :tiltv 65536.0
+                             :tiltvv 131072.0
+                             :transv-max 40960.0
+                             :target-speed 40960.0
+                             :fric 0.1
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             )
+        )
 
 ;; failed to figure out what this is:
-(let
-  ((a0-3
-    (new 'static 'surface
-     :name 'duck
-     :turnv 131072.0
-     :turnvv 524288.0
-     :tiltv 65536.0
-     :tiltvv 291271.12
-     :transv-max 16384.0
-     :target-speed 16384.0
-     :seek0 1.0
-     :seek90 1.0
-     :seek180 1.0
-     :fric 1.0
-     :nonlin-fric-dist 1.0
-     :slip-factor 1.0
-     :slide-factor 1.0
-     :slope-up-factor 1.0
-     :slope-down-factor 1.0
-     :slope-slip-angle 1.0
-     :impact-fric 1.0
-     :bend-factor 1.0
-     :bend-speed 1.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     :flags #x2000
-     )
-    )
-   )
+(let ((a0-3 (new 'static 'surface
+              :name 'duck
+              :turnv 131072.0
+              :turnvv 524288.0
+              :tiltv 65536.0
+              :tiltvv 291271.12
+              :transv-max 16384.0
+              :target-speed 16384.0
+              :seek0 1.0
+              :seek90 1.0
+              :seek180 1.0
+              :fric 1.0
+              :nonlin-fric-dist 1.0
+              :slip-factor 1.0
+              :slide-factor 1.0
+              :slope-up-factor 1.0
+              :slope-down-factor 1.0
+              :slope-slip-angle 1.0
+              :impact-fric 1.0
+              :bend-factor 1.0
+              :bend-speed 1.0
+              :alignv 1.0
+              :slope-up-traction 1.0
+              :align-speed 1.0
+              :flags #x2000
+              )
+            )
+      )
   (set! (-> a0-3 mult-hook) surface-clamp-speed)
   (set! *duck-mods* a0-3)
   )
 
 ;; definition for symbol *duck-attack-mods*, type surface
-(define
-  *duck-attack-mods*
-  (new 'static 'surface
-   :name 'duck
-   :tiltv 65536.0
-   :tiltvv 291271.12
-   :transv-max 16384.0
-   :target-speed 16384.0
-   :seek0 1.0
-   :seek90 1.0
-   :seek180 1.0
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'attack
-   :flags #x3000
-   )
-  )
+(define *duck-attack-mods* (new 'static 'surface
+                             :name 'duck
+                             :tiltv 65536.0
+                             :tiltvv 291271.12
+                             :transv-max 16384.0
+                             :target-speed 16384.0
+                             :seek0 1.0
+                             :seek90 1.0
+                             :seek180 1.0
+                             :fric 1.0
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :mode 'attack
+                             :flags #x3000
+                             )
+        )
 
 ;; definition for symbol *jump-mods*, type surface
-(define
-  *jump-mods*
-  (new 'static 'surface
-   :name 'jump
-   :turnv 131072.0
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 0.3
-   :seek90 0.3
-   :seek180 0.3
-   :fric 0.2
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *jump-mods* (new 'static 'surface
+                      :name 'jump
+                      :turnv 131072.0
+                      :turnvv 18204.445
+                      :tiltv 32768.0
+                      :tiltvv 131072.0
+                      :transv-max 40960.0
+                      :target-speed 40960.0
+                      :seek0 0.3
+                      :seek90 0.3
+                      :seek180 0.3
+                      :fric 0.2
+                      :nonlin-fric-dist 1.0
+                      :slip-factor 1.0
+                      :slide-factor 1.0
+                      :slope-up-factor 1.0
+                      :slope-down-factor 1.0
+                      :slope-slip-angle 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :slope-up-traction 1.0
+                      :align-speed 1.0
+                      :mode 'air
+                      :flags #xc00
+                      )
+        )
 
 ;; definition for symbol *double-jump-mods*, type surface
-(define
-  *double-jump-mods*
-  (new 'static 'surface
-   :name 'jump-double
-   :turnv 131072.0
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 32768.0
-   :target-speed 32768.0
-   :seek0 0.3
-   :seek90 0.3
-   :seek180 0.3
-   :fric 0.2
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *double-jump-mods* (new 'static 'surface
+                             :name 'jump-double
+                             :turnv 131072.0
+                             :turnvv 18204.445
+                             :tiltv 32768.0
+                             :tiltvv 131072.0
+                             :transv-max 32768.0
+                             :target-speed 32768.0
+                             :seek0 0.3
+                             :seek90 0.3
+                             :seek180 0.3
+                             :fric 0.2
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :mode 'air
+                             :flags #xc00
+                             )
+        )
 
 ;; definition for symbol *smack-jump-mods*, type surface
-(define
-  *smack-jump-mods*
-  (new 'static 'surface
-   :name 'jump
-   :turnv 131072.0
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 0.3
-   :seek90 0.3
-   :seek180 0.3
-   :fric 0.05
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *smack-jump-mods* (new 'static 'surface
+                            :name 'jump
+                            :turnv 131072.0
+                            :turnvv 18204.445
+                            :tiltv 32768.0
+                            :tiltvv 131072.0
+                            :transv-max 40960.0
+                            :target-speed 40960.0
+                            :seek0 0.3
+                            :seek90 0.3
+                            :seek180 0.3
+                            :fric 0.05
+                            :nonlin-fric-dist 1.0
+                            :slip-factor 1.0
+                            :slide-factor 1.0
+                            :slope-up-factor 1.0
+                            :slope-down-factor 1.0
+                            :slope-slip-angle 1.0
+                            :impact-fric 1.0
+                            :bend-factor 1.0
+                            :bend-speed 1.0
+                            :alignv 1.0
+                            :slope-up-traction 1.0
+                            :align-speed 1.0
+                            :mode 'air
+                            :flags #xc00
+                            )
+        )
 
 ;; definition for symbol *high-jump-mods*, type surface
-(define
-  *high-jump-mods*
-  (new 'static 'surface
-   :name 'high-jump
-   :turnv 131072.0
-   :turnvv 65536.0
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 26624.0
-   :target-speed 26624.0
-   :seek0 0.9
-   :seek90 0.9
-   :seek180 0.9
-   :fric 0.3
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *high-jump-mods* (new 'static 'surface
+                           :name 'high-jump
+                           :turnv 131072.0
+                           :turnvv 65536.0
+                           :tiltv 32768.0
+                           :tiltvv 131072.0
+                           :transv-max 26624.0
+                           :target-speed 26624.0
+                           :seek0 0.9
+                           :seek90 0.9
+                           :seek180 0.9
+                           :fric 0.3
+                           :nonlin-fric-dist 1.0
+                           :slip-factor 1.0
+                           :slide-factor 1.0
+                           :slope-up-factor 1.0
+                           :slope-down-factor 1.0
+                           :slope-slip-angle 1.0
+                           :impact-fric 1.0
+                           :bend-factor 1.0
+                           :bend-speed 1.0
+                           :alignv 1.0
+                           :slope-up-traction 1.0
+                           :align-speed 1.0
+                           :mode 'air
+                           :flags #xc00
+                           )
+        )
 
 ;; definition for symbol *launch-jump-mods*, type surface
-(define
-  *launch-jump-mods*
-  (new 'static 'surface
-   :name 'launch-jump
-   :turnv 18204.445
-   :turnvv 65536.0
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 61440.0
-   :target-speed 61440.0
-   :seek0 0.9
-   :seek90 0.9
-   :seek180 0.9
-   :fric 0.3
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc80
-   )
-  )
+(define *launch-jump-mods* (new 'static 'surface
+                             :name 'launch-jump
+                             :turnv 18204.445
+                             :turnvv 65536.0
+                             :tiltv 32768.0
+                             :tiltvv 131072.0
+                             :transv-max 61440.0
+                             :target-speed 61440.0
+                             :seek0 0.9
+                             :seek90 0.9
+                             :seek180 0.9
+                             :fric 0.3
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :mode 'air
+                             :flags #xc80
+                             )
+        )
 
 ;; definition for symbol *forward-high-jump-mods*, type surface
-(define
-  *forward-high-jump-mods*
-  (new 'static 'surface
-   :name 'high-jump
-   :turnv 131072.0
-   :turnvv 65536.0
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 45056.0
-   :target-speed 45056.0
-   :seek0 0.9
-   :seek90 0.9
-   :seek180 0.9
-   :fric 0.3
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *forward-high-jump-mods* (new 'static 'surface
+                                   :name 'high-jump
+                                   :turnv 131072.0
+                                   :turnvv 65536.0
+                                   :tiltv 32768.0
+                                   :tiltvv 131072.0
+                                   :transv-max 45056.0
+                                   :target-speed 45056.0
+                                   :seek0 0.9
+                                   :seek90 0.9
+                                   :seek180 0.9
+                                   :fric 0.3
+                                   :nonlin-fric-dist 1.0
+                                   :slip-factor 1.0
+                                   :slide-factor 1.0
+                                   :slope-up-factor 1.0
+                                   :slope-down-factor 1.0
+                                   :slope-slip-angle 1.0
+                                   :impact-fric 1.0
+                                   :bend-factor 1.0
+                                   :bend-speed 1.0
+                                   :alignv 1.0
+                                   :slope-up-traction 1.0
+                                   :align-speed 1.0
+                                   :mode 'air
+                                   :flags #xc00
+                                   )
+        )
 
 ;; definition for symbol *flip-jump-mods*, type surface
-(define
-  *flip-jump-mods*
-  (new 'static 'surface
-   :name 'high-jump
-   :turnv 131072.0
-   :turnvv 65536.0
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 80281.6
-   :target-speed 51200.0
-   :seek0 0.9
-   :seek90 0.9
-   :seek180 0.9
-   :fric 0.3
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *flip-jump-mods* (new 'static 'surface
+                           :name 'high-jump
+                           :turnv 131072.0
+                           :turnvv 65536.0
+                           :tiltv 32768.0
+                           :tiltvv 131072.0
+                           :transv-max 80281.6
+                           :target-speed 51200.0
+                           :seek0 0.9
+                           :seek90 0.9
+                           :seek180 0.9
+                           :fric 0.3
+                           :nonlin-fric-dist 1.0
+                           :slip-factor 1.0
+                           :slide-factor 1.0
+                           :slope-up-factor 1.0
+                           :slope-down-factor 1.0
+                           :slope-slip-angle 1.0
+                           :impact-fric 1.0
+                           :bend-factor 1.0
+                           :bend-speed 1.0
+                           :alignv 1.0
+                           :slope-up-traction 1.0
+                           :align-speed 1.0
+                           :mode 'air
+                           :flags #xc00
+                           )
+        )
 
 ;; definition for symbol *forward-jump-mods*, type surface
-(define
-  *forward-jump-mods*
-  (new 'static 'surface
-   :name 'jump
-   :turnv 131072.0
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 65536.0
-   :target-speed 65536.0
-   :seek0 0.3
-   :seek90 0.3
-   :seek180 0.3
-   :fric 0.05
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *forward-jump-mods* (new 'static 'surface
+                              :name 'jump
+                              :turnv 131072.0
+                              :turnvv 18204.445
+                              :tiltv 32768.0
+                              :tiltvv 131072.0
+                              :transv-max 65536.0
+                              :target-speed 65536.0
+                              :seek0 0.3
+                              :seek90 0.3
+                              :seek180 0.3
+                              :fric 0.05
+                              :nonlin-fric-dist 1.0
+                              :slip-factor 1.0
+                              :slide-factor 1.0
+                              :slope-up-factor 1.0
+                              :slope-down-factor 1.0
+                              :slope-slip-angle 1.0
+                              :impact-fric 1.0
+                              :bend-factor 1.0
+                              :bend-speed 1.0
+                              :alignv 1.0
+                              :slope-up-traction 1.0
+                              :align-speed 1.0
+                              :mode 'air
+                              :flags #xc00
+                              )
+        )
 
 ;; definition for symbol *forward-pole-jump-mods*, type surface
-(define
-  *forward-pole-jump-mods*
-  (new 'static 'surface
-   :name 'jump
-   :turnv 131072.0
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 53248.0
-   :target-speed 53248.0
-   :seek0 0.3
-   :seek90 0.3
-   :seek180 0.3
-   :fric 0.05
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #xc00
-   )
-  )
+(define *forward-pole-jump-mods* (new 'static 'surface
+                                   :name 'jump
+                                   :turnv 131072.0
+                                   :turnvv 18204.445
+                                   :tiltv 32768.0
+                                   :tiltvv 131072.0
+                                   :transv-max 53248.0
+                                   :target-speed 53248.0
+                                   :seek0 0.3
+                                   :seek90 0.3
+                                   :seek180 0.3
+                                   :fric 0.05
+                                   :nonlin-fric-dist 1.0
+                                   :slip-factor 1.0
+                                   :slide-factor 1.0
+                                   :slope-up-factor 1.0
+                                   :slope-down-factor 1.0
+                                   :slope-slip-angle 1.0
+                                   :impact-fric 1.0
+                                   :bend-factor 1.0
+                                   :bend-speed 1.0
+                                   :alignv 1.0
+                                   :slope-up-traction 1.0
+                                   :align-speed 1.0
+                                   :mode 'air
+                                   :flags #xc00
+                                   )
+        )
 
 ;; definition for symbol *attack-mods*, type surface
-(define
-  *attack-mods*
-  (new 'static 'surface
-   :name 'attack
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 1.0
-   :seek90 1.0
-   :seek180 1.0
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'attack
-   :flags #x1000
-   )
-  )
+(define *attack-mods* (new 'static 'surface
+                        :name 'attack
+                        :tiltv 65536.0
+                        :tiltvv 131072.0
+                        :transv-max 40960.0
+                        :target-speed 40960.0
+                        :seek0 1.0
+                        :seek90 1.0
+                        :seek180 1.0
+                        :fric 1.0
+                        :nonlin-fric-dist 1.0
+                        :slip-factor 1.0
+                        :slide-factor 1.0
+                        :slope-up-factor 1.0
+                        :slope-down-factor 1.0
+                        :slope-slip-angle 1.0
+                        :impact-fric 1.0
+                        :bend-factor 1.0
+                        :bend-speed 1.0
+                        :alignv 1.0
+                        :slope-up-traction 1.0
+                        :align-speed 1.0
+                        :mode 'attack
+                        :flags #x1000
+                        )
+        )
 
 ;; definition for symbol *jump-attack-mods*, type surface
-(define
-  *jump-attack-mods*
-  (new 'static 'surface
-   :name 'attack
-   :turnvv 18204.445
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 24576.0
-   :target-speed 24576.0
-   :seek0 0.9
-   :seek90 0.9
-   :seek180 0.9
-   :fric 0.2
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'air
-   :flags #x1c00
-   )
-  )
+(define *jump-attack-mods* (new 'static 'surface
+                             :name 'attack
+                             :turnvv 18204.445
+                             :tiltv 32768.0
+                             :tiltvv 131072.0
+                             :transv-max 24576.0
+                             :target-speed 24576.0
+                             :seek0 0.9
+                             :seek90 0.9
+                             :seek180 0.9
+                             :fric 0.2
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :mode 'air
+                             :flags #x1c00
+                             )
+        )
 
 ;; failed to figure out what this is:
-(let
-  ((a0-4
-    (new 'static 'surface
-     :name 'uppercut
-     :turnvv 18204.445
-     :tiltv 32768.0
-     :tiltvv 131072.0
-     :transv-max 32768.0
-     :target-speed 32768.0
-     :seek0 0.3
-     :seek90 0.3
-     :seek180 0.3
-     :fric 0.2
-     :nonlin-fric-dist 1.0
-     :slip-factor 1.0
-     :slide-factor 1.0
-     :slope-up-factor 1.0
-     :slope-down-factor 1.0
-     :slope-slip-angle 1.0
-     :impact-fric 1.0
-     :bend-factor 1.0
-     :bend-speed 1.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     :mode 'air
-     :flags #x1c00
-     )
-    )
-   )
+(let ((a0-4 (new 'static 'surface
+              :name 'uppercut
+              :turnvv 18204.445
+              :tiltv 32768.0
+              :tiltvv 131072.0
+              :transv-max 32768.0
+              :target-speed 32768.0
+              :seek0 0.3
+              :seek90 0.3
+              :seek180 0.3
+              :fric 0.2
+              :nonlin-fric-dist 1.0
+              :slip-factor 1.0
+              :slide-factor 1.0
+              :slope-up-factor 1.0
+              :slope-down-factor 1.0
+              :slope-slip-angle 1.0
+              :impact-fric 1.0
+              :bend-factor 1.0
+              :bend-speed 1.0
+              :alignv 1.0
+              :slope-up-traction 1.0
+              :align-speed 1.0
+              :mode 'air
+              :flags #x1c00
+              )
+            )
+      )
   (set! (-> a0-4 mult-hook) surface-clamp-speed)
   (set! *uppercut-jump-mods* a0-4)
   )
 
 ;; definition for symbol *run-attack-mods*, type surface
-(define
-  *run-attack-mods*
-  (new 'static 'surface
-   :name 'wheel-flip
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 91750.4
-   :target-speed 122880.0
-   :seek90 0.5
-   :seek180 0.15
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 0.25
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'attack
-   :flags #x1018
-   )
-  )
+(define *run-attack-mods* (new 'static 'surface
+                            :name 'wheel-flip
+                            :tiltv 32768.0
+                            :tiltvv 131072.0
+                            :transv-max 91750.4
+                            :target-speed 122880.0
+                            :seek90 0.5
+                            :seek180 0.15
+                            :slip-factor 1.0
+                            :slide-factor 1.0
+                            :slope-up-factor 0.25
+                            :slope-down-factor 1.0
+                            :slope-slip-angle 1.0
+                            :impact-fric 1.0
+                            :bend-factor 1.0
+                            :bend-speed 1.0
+                            :alignv 1.0
+                            :slope-up-traction 1.0
+                            :align-speed 1.0
+                            :mode 'attack
+                            :flags #x1018
+                            )
+        )
 
 ;; definition for symbol *wheel-mods*, type surface
-(define
-  *wheel-mods*
-  (new 'static 'surface
-   :name 'wheel
-   :turnv 131072.0
-   :turnvv 5461.3335
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 91750.4
-   :target-speed 11468.8
-   :seek0 1.0
-   :seek90 1.0
-   :seek180 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 0.25
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'attack
-   :flags #x1000
-   )
-  )
+(define *wheel-mods* (new 'static 'surface
+                       :name 'wheel
+                       :turnv 131072.0
+                       :turnvv 5461.3335
+                       :tiltv 32768.0
+                       :tiltvv 131072.0
+                       :transv-max 91750.4
+                       :target-speed 11468.8
+                       :seek0 1.0
+                       :seek90 1.0
+                       :seek180 1.0
+                       :slip-factor 1.0
+                       :slide-factor 1.0
+                       :slope-up-factor 0.25
+                       :slope-down-factor 1.0
+                       :slope-slip-angle 1.0
+                       :impact-fric 1.0
+                       :bend-factor 1.0
+                       :bend-speed 1.0
+                       :alignv 1.0
+                       :slope-up-traction 1.0
+                       :align-speed 1.0
+                       :mode 'attack
+                       :flags #x1000
+                       )
+        )
 
 ;; definition for symbol *wheel-flip-mods*, type surface
-(define
-  *wheel-flip-mods*
-  (new 'static 'surface
-   :name 'wheel-flip
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 91750.4
-   :target-speed 103219.195
-   :seek90 0.5
-   :seek180 0.15
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 0.25
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'attack
-   :flags #x1c00
-   )
-  )
+(define *wheel-flip-mods* (new 'static 'surface
+                            :name 'wheel-flip
+                            :tiltv 32768.0
+                            :tiltvv 131072.0
+                            :transv-max 91750.4
+                            :target-speed 103219.195
+                            :seek90 0.5
+                            :seek180 0.15
+                            :slip-factor 1.0
+                            :slide-factor 1.0
+                            :slope-up-factor 0.25
+                            :slope-down-factor 1.0
+                            :slope-slip-angle 1.0
+                            :impact-fric 1.0
+                            :bend-factor 1.0
+                            :bend-speed 1.0
+                            :alignv 1.0
+                            :slope-up-traction 1.0
+                            :align-speed 1.0
+                            :mode 'attack
+                            :flags #x1c00
+                            )
+        )
 
 ;; definition for symbol *flop-mods*, type surface
-(define
-  *flop-mods*
-  (new 'static 'surface
-   :name 'flop
-   :tiltv 32768.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 1.0
-   :seek90 0.3
-   :seek180 1.5
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 0.25
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'attack
-   :flags #x1800
-   )
-  )
+(define *flop-mods* (new 'static 'surface
+                      :name 'flop
+                      :tiltv 32768.0
+                      :tiltvv 131072.0
+                      :transv-max 40960.0
+                      :target-speed 40960.0
+                      :seek0 1.0
+                      :seek90 0.3
+                      :seek180 1.5
+                      :slip-factor 1.0
+                      :slide-factor 1.0
+                      :slope-up-factor 0.25
+                      :slope-down-factor 1.0
+                      :slope-slip-angle 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :slope-up-traction 1.0
+                      :align-speed 1.0
+                      :mode 'attack
+                      :flags #x1800
+                      )
+        )
 
 ;; failed to figure out what this is:
-(let
-  ((a0-5
-    (new 'static 'surface
-     :name 'flop
-     :turnv 9102.223
-     :turnvv 9102.223
-     :tiltv 32768.0
-     :tiltvv 131072.0
-     :transv-max 40960.0
-     :target-speed 40960.0
-     :seek0 0.3
-     :seek90 0.1
-     :seek180 0.15
-     :fric 0.2
-     :nonlin-fric-dist 1.0
-     :slip-factor 1.0
-     :slide-factor 1.0
-     :slope-up-factor 0.25
-     :slope-down-factor 1.0
-     :slope-slip-angle 1.0
-     :impact-fric 1.0
-     :bend-factor 1.0
-     :bend-speed 1.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     :mode 'air
-     :flags #x800
-     )
-    )
-   )
+(let ((a0-5 (new 'static 'surface
+              :name 'flop
+              :turnv 9102.223
+              :turnvv 9102.223
+              :tiltv 32768.0
+              :tiltvv 131072.0
+              :transv-max 40960.0
+              :target-speed 40960.0
+              :seek0 0.3
+              :seek90 0.1
+              :seek180 0.15
+              :fric 0.2
+              :nonlin-fric-dist 1.0
+              :slip-factor 1.0
+              :slide-factor 1.0
+              :slope-up-factor 0.25
+              :slope-down-factor 1.0
+              :slope-slip-angle 1.0
+              :impact-fric 1.0
+              :bend-factor 1.0
+              :bend-speed 1.0
+              :alignv 1.0
+              :slope-up-traction 1.0
+              :align-speed 1.0
+              :mode 'air
+              :flags #x800
+              )
+            )
+      )
   (set! (-> a0-5 mult-hook) surface-clamp-speed)
   (set! *flop-land-mods* a0-5)
   )
 
 ;; definition for symbol *wade-mods*, type surface
-(define
-  *wade-mods*
-  (new 'static 'surface
-   :name 'wade
-   :turnv 131072.0
-   :turnvv 524288.0
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :seek0 1.0
-   :seek90 0.5
-   :seek180 0.5
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'wade
-   :flags #x1
-   )
-  )
+(define *wade-mods* (new 'static 'surface
+                      :name 'wade
+                      :turnv 131072.0
+                      :turnvv 524288.0
+                      :tiltv 65536.0
+                      :tiltvv 131072.0
+                      :transv-max 40960.0
+                      :target-speed 40960.0
+                      :seek0 1.0
+                      :seek90 0.5
+                      :seek180 0.5
+                      :fric 1.0
+                      :nonlin-fric-dist 1.0
+                      :slip-factor 1.0
+                      :slide-factor 1.0
+                      :slope-up-factor 1.0
+                      :slope-down-factor 1.0
+                      :slope-slip-angle 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :slope-up-traction 1.0
+                      :align-speed 1.0
+                      :mode 'wade
+                      :flags #x1
+                      )
+        )
 
 ;; definition for symbol *swim-mods*, type surface
-(define
-  *swim-mods*
-  (new 'static 'surface
-   :name 'swim
-   :turnv 49152.0
-   :turnvv 524288.0
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 28672.0
-   :target-speed 28672.0
-   :seek0 0.75
-   :seek90 0.2
-   :seek180 0.2
-   :fric 0.05
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'swim
-   )
-  )
+(define *swim-mods* (new 'static 'surface
+                      :name 'swim
+                      :turnv 49152.0
+                      :turnvv 524288.0
+                      :tiltv 65536.0
+                      :tiltvv 131072.0
+                      :transv-max 28672.0
+                      :target-speed 28672.0
+                      :seek0 0.75
+                      :seek90 0.2
+                      :seek180 0.2
+                      :fric 0.05
+                      :nonlin-fric-dist 1.0
+                      :slip-factor 1.0
+                      :slide-factor 1.0
+                      :slope-up-factor 1.0
+                      :slope-down-factor 1.0
+                      :slope-slip-angle 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :slope-up-traction 1.0
+                      :align-speed 1.0
+                      :mode 'swim
+                      )
+        )
 
 ;; definition for symbol *dive-mods*, type surface
-(define
-  *dive-mods*
-  (new 'static 'surface
-   :name 'swim
-   :turnv 21845.334
-   :turnvv 32768.0
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 20480.0
-   :target-speed 20480.0
-   :seek0 0.05
-   :seek90 0.05
-   :seek180 0.05
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :align-speed 1.0
-   :mode 'dive
-   :flags #x2
-   )
-  )
+(define *dive-mods* (new 'static 'surface
+                      :name 'swim
+                      :turnv 21845.334
+                      :turnvv 32768.0
+                      :tiltv 65536.0
+                      :tiltvv 131072.0
+                      :transv-max 20480.0
+                      :target-speed 20480.0
+                      :seek0 0.05
+                      :seek90 0.05
+                      :seek180 0.05
+                      :fric 1.0
+                      :nonlin-fric-dist 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :align-speed 1.0
+                      :mode 'dive
+                      :flags #x2
+                      )
+        )
 
 ;; definition for symbol *dive-bottom-mods*, type surface
-(define
-  *dive-bottom-mods*
-  (new 'static 'surface
-   :name 'swim-bottom
-   :turnv 21845.334
-   :turnvv 32768.0
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 20480.0
-   :target-speed 20480.0
-   :seek0 0.1
-   :seek90 0.05
-   :seek180 0.05
-   :fric 1.0
-   :nonlin-fric-dist 1.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :alignv 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   :mode 'dive
-   :flags #x2
-   )
-  )
+(define *dive-bottom-mods* (new 'static 'surface
+                             :name 'swim-bottom
+                             :turnv 21845.334
+                             :turnvv 32768.0
+                             :tiltv 65536.0
+                             :tiltvv 131072.0
+                             :transv-max 20480.0
+                             :target-speed 20480.0
+                             :seek0 0.1
+                             :seek90 0.05
+                             :seek180 0.05
+                             :fric 1.0
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :mode 'dive
+                             :flags #x2
+                             )
+        )
 
 ;; failed to figure out what this is:
 (let ((a0-7 (copy *walk-mods* 'global)))
@@ -1028,363 +947,307 @@
   )
 
 ;; definition for symbol *empty-mods*, type surface
-(define
-  *empty-mods*
-  (new 'static 'surface
-   :name 'empty
-   :seek0 1.0
-   :seek90 1.0
-   :seek180 1.0
-   :fric 1.0
-   )
-  )
+(define *empty-mods* (new 'static 'surface :name 'empty :seek0 1.0 :seek90 1.0 :seek180 1.0 :fric 1.0))
 
 ;; definition for symbol *neutral-mods*, type surface
-(define
-  *neutral-mods*
-  (new 'static 'surface
-   :name 'walk
-   :turnv 131072.0
-   :turnvv 524288.0
-   :tiltv 65536.0
-   :tiltvv 131072.0
-   :transv-max 40960.0
-   :target-speed 40960.0
-   :slip-factor 1.0
-   :slide-factor 1.0
-   :slope-up-factor 1.0
-   :slope-down-factor 1.0
-   :slope-slip-angle 1.0
-   :impact-fric 1.0
-   :bend-factor 1.0
-   :bend-speed 1.0
-   :slope-up-traction 1.0
-   :align-speed 1.0
-   )
-  )
+(define *neutral-mods* (new 'static 'surface
+                         :name 'walk
+                         :turnv 131072.0
+                         :turnvv 524288.0
+                         :tiltv 65536.0
+                         :tiltvv 131072.0
+                         :transv-max 40960.0
+                         :target-speed 40960.0
+                         :slip-factor 1.0
+                         :slide-factor 1.0
+                         :slope-up-factor 1.0
+                         :slope-down-factor 1.0
+                         :slope-slip-angle 1.0
+                         :impact-fric 1.0
+                         :bend-factor 1.0
+                         :bend-speed 1.0
+                         :slope-up-traction 1.0
+                         :align-speed 1.0
+                         )
+        )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-41
-    (new 'static 'surface
-     :name '*stone-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.0
-     :target-speed 1.0
-     :seek0 153600.0
-     :seek90 153600.0
-     :seek180 256000.0
-     :fric 153600.0
-     :nonlin-fric-dist 5120.0
-     :slip-factor 1.0
-     :slope-down-factor 10240.0
-     :slope-slip-angle 8192.0
-     :impact-fric 1.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     )
-    )
-   )
+(let ((v1-41 (new 'static 'surface
+               :name '*stone-surface*
+               :turnv 1.0
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 1.0
+               :target-speed 1.0
+               :seek0 153600.0
+               :seek90 153600.0
+               :seek180 256000.0
+               :fric 153600.0
+               :nonlin-fric-dist 5120.0
+               :slip-factor 1.0
+               :slope-down-factor 10240.0
+               :slope-slip-angle 8192.0
+               :impact-fric 1.0
+               :bend-factor 0.8
+               :bend-speed 4.0
+               :alignv 1.0
+               :slope-up-traction 1.0
+               :align-speed 1.0
+               )
+             )
+      )
   (set! *stone-surface* v1-41)
-  (set!
-   (-> v1-41 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-41 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-41 touch-hook) nothing)
   (set! (-> v1-41 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-42
-    (new 'static 'surface
-     :name '*edge-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.0
-     :target-speed 1.0
-     :seek0 153600.0
-     :seek90 153600.0
-     :seek180 256000.0
-     :fric 30720.0
-     :nonlin-fric-dist 5120.0
-     :slip-factor 1.0
-     :slope-down-factor 18432.0
-     :slope-slip-angle 8192.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 1.0
-     :align-speed 1.0
-     )
-    )
-   )
+(let ((v1-42 (new 'static 'surface
+               :name '*edge-surface*
+               :turnv 1.0
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 1.0
+               :target-speed 1.0
+               :seek0 153600.0
+               :seek90 153600.0
+               :seek180 256000.0
+               :fric 30720.0
+               :nonlin-fric-dist 5120.0
+               :slip-factor 1.0
+               :slope-down-factor 18432.0
+               :slope-slip-angle 8192.0
+               :bend-factor 0.8
+               :bend-speed 4.0
+               :alignv 1.0
+               :align-speed 1.0
+               )
+             )
+      )
   (set! *edge-surface* v1-42)
-  (set!
-   (-> v1-42 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-42 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-42 touch-hook) nothing)
   (set! (-> v1-42 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-43
-    (new 'static 'surface
-     :name '*wade-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 0.7
-     :target-speed 0.7
-     :seek0 153600.0
-     :seek90 153600.0
-     :seek180 256000.0
-     :fric 153600.0
-     :nonlin-fric-dist 5120.0
-     :slip-factor 1.0
-     :slope-down-factor 10240.0
-     :slope-slip-angle 8192.0
-     :impact-fric 1.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 0.6
-     :slope-up-traction 1.0
-     :align-speed 0.6
-     )
-    )
-   )
+(let ((v1-43 (new 'static 'surface
+               :name '*wade-surface*
+               :turnv 1.0
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 0.7
+               :target-speed 0.7
+               :seek0 153600.0
+               :seek90 153600.0
+               :seek180 256000.0
+               :fric 153600.0
+               :nonlin-fric-dist 5120.0
+               :slip-factor 1.0
+               :slope-down-factor 10240.0
+               :slope-slip-angle 8192.0
+               :impact-fric 1.0
+               :bend-factor 0.8
+               :bend-speed 4.0
+               :alignv 0.6
+               :slope-up-traction 1.0
+               :align-speed 0.6
+               )
+             )
+      )
   (set! *wade-surface* v1-43)
-  (set!
-   (-> v1-43 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-43 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-43 touch-hook) nothing)
   (set! (-> v1-43 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-44
-    (new 'static 'surface
-     :name '*slope-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.0
-     :target-speed 1.0
-     :seek0 122880.0
-     :seek90 245760.0
-     :seek180 409600.0
-     :fric 122880.0
-     :nonlin-fric-dist 4096.0
-     :slip-factor 1.0
-     :slope-up-factor 40960.0
-     :slope-down-factor 8192.0
-     :slope-slip-angle 8192.0
-     :impact-fric 1.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 1.0
-     :align-speed 1.0
-     )
-    )
-   )
+(let ((v1-44 (new 'static 'surface
+               :name '*slope-surface*
+               :turnv 1.0
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 1.0
+               :target-speed 1.0
+               :seek0 122880.0
+               :seek90 245760.0
+               :seek180 409600.0
+               :fric 122880.0
+               :nonlin-fric-dist 4096.0
+               :slip-factor 1.0
+               :slope-up-factor 40960.0
+               :slope-down-factor 8192.0
+               :slope-slip-angle 8192.0
+               :impact-fric 1.0
+               :bend-factor 0.8
+               :bend-speed 4.0
+               :alignv 1.0
+               :align-speed 1.0
+               )
+             )
+      )
   (set! *slope-surface* v1-44)
-  (set!
-   (-> v1-44 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-44 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-44 touch-hook) nothing)
   (set! (-> v1-44 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-45
-    (new 'static 'surface
-     :name '*quicksand-surface*
-     :turnv 0.25
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 0.5
-     :target-speed 0.5
-     :seek0 81920.0
-     :seek90 83968.0
-     :seek180 165888.0
-     :fric 329728.0
-     :nonlin-fric-dist 5120.0
-     :slip-factor 1.0
-     :slope-down-factor 10240.0
-     :slope-slip-angle 8192.0
-     :impact-fric 1.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 0.5
-     :slope-up-traction 1.0
-     :align-speed 0.5
-     )
-    )
-   )
+(let ((v1-45 (new 'static 'surface
+               :name '*quicksand-surface*
+               :turnv 0.25
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 0.5
+               :target-speed 0.5
+               :seek0 81920.0
+               :seek90 83968.0
+               :seek180 165888.0
+               :fric 329728.0
+               :nonlin-fric-dist 5120.0
+               :slip-factor 1.0
+               :slope-down-factor 10240.0
+               :slope-slip-angle 8192.0
+               :impact-fric 1.0
+               :bend-factor 0.8
+               :bend-speed 4.0
+               :alignv 0.5
+               :slope-up-traction 1.0
+               :align-speed 0.5
+               )
+             )
+      )
   (set! *quicksand-surface* v1-45)
-  (set!
-   (-> v1-45 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-45 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-45 touch-hook) nothing)
   (set! (-> v1-45 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-46
-    (new 'static 'surface
-     :name '*tar-surface*
-     :turnv 0.25
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 0.4
-     :target-speed 0.4
-     :seek0 81920.0
-     :seek90 83968.0
-     :seek180 165888.0
-     :fric 329728.0
-     :nonlin-fric-dist 5120.0
-     :slip-factor 1.0
-     :slope-down-factor 10240.0
-     :slope-slip-angle 8192.0
-     :impact-fric 1.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 0.5
-     :slope-up-traction 1.0
-     :align-speed 0.5
-     )
-    )
-   )
+(let ((v1-46 (new 'static 'surface
+               :name '*tar-surface*
+               :turnv 0.25
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 0.4
+               :target-speed 0.4
+               :seek0 81920.0
+               :seek90 83968.0
+               :seek180 165888.0
+               :fric 329728.0
+               :nonlin-fric-dist 5120.0
+               :slip-factor 1.0
+               :slope-down-factor 10240.0
+               :slope-slip-angle 8192.0
+               :impact-fric 1.0
+               :bend-factor 0.8
+               :bend-speed 4.0
+               :alignv 0.5
+               :slope-up-traction 1.0
+               :align-speed 0.5
+               )
+             )
+      )
   (set! *tar-surface* v1-46)
-  (set!
-   (-> v1-46 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-46 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-46 touch-hook) nothing)
   (set! (-> v1-46 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-47
-    (new 'static 'surface
-     :name '*grass-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.0
-     :target-speed 1.0
-     :seek0 122880.0
-     :seek90 122880.0
-     :seek180 409600.0
-     :fric 122880.0
-     :nonlin-fric-dist 4096.0
-     :slip-factor 1.0
-     :slope-slip-angle 16384.0
-     :impact-fric 0.5
-     :bend-speed 4.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     )
-    )
-   )
+(let ((v1-47 (new 'static 'surface
+               :name '*grass-surface*
+               :turnv 1.0
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 1.0
+               :target-speed 1.0
+               :seek0 122880.0
+               :seek90 122880.0
+               :seek180 409600.0
+               :fric 122880.0
+               :nonlin-fric-dist 4096.0
+               :slip-factor 1.0
+               :slope-slip-angle 16384.0
+               :impact-fric 0.5
+               :bend-speed 4.0
+               :alignv 1.0
+               :slope-up-traction 1.0
+               :align-speed 1.0
+               )
+             )
+      )
   (set! *grass-surface* v1-47)
-  (set!
-   (-> v1-47 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-47 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-47 touch-hook) nothing)
   (set! (-> v1-47 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-48
-    (new 'static 'surface
-     :name '*ice-surface*
-     :turnv 0.5
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.5
-     :target-speed 1.5
-     :seek0 24576.0
-     :seek90 24576.0
-     :seek180 24576.0
-     :fric 23756.8
-     :nonlin-fric-dist 4091904.0
-     :slip-factor 0.7
-     :slope-slip-angle 16384.0
-     :bend-speed 4.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     :flags #x18
-     )
-    )
-   )
+(let ((v1-48 (new 'static 'surface
+               :name '*ice-surface*
+               :turnv 0.5
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 1.5
+               :target-speed 1.5
+               :seek0 24576.0
+               :seek90 24576.0
+               :seek180 24576.0
+               :fric 23756.8
+               :nonlin-fric-dist 4091904.0
+               :slip-factor 0.7
+               :slope-slip-angle 16384.0
+               :bend-speed 4.0
+               :alignv 1.0
+               :slope-up-traction 1.0
+               :align-speed 1.0
+               :flags #x18
+               )
+             )
+      )
   (set! *ice-surface* v1-48)
-  (set!
-   (-> v1-48 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-48 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-48 touch-hook) nothing)
   (set! (-> v1-48 active-hook) nothing)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-49
-    (new 'static 'surface
-     :name '*tread-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.0
-     :target-speed 1.0
-     :seek0 122880.0
-     :seek90 245760.0
-     :seek180 409600.0
-     :fric 122880.0
-     :nonlin-fric-dist 4096.0
-     :slip-factor 1.0
-     :slope-up-factor 8192.0
-     :slope-down-factor 8192.0
-     :impact-fric 1.0
-     :bend-speed 4.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     )
-    )
-   )
+(let ((v1-49 (new 'static 'surface
+               :name '*tread-surface*
+               :turnv 1.0
+               :turnvv 1.0
+               :tiltv 1.0
+               :tiltvv 1.0
+               :transv-max 1.0
+               :target-speed 1.0
+               :seek0 122880.0
+               :seek90 245760.0
+               :seek180 409600.0
+               :fric 122880.0
+               :nonlin-fric-dist 4096.0
+               :slip-factor 1.0
+               :slope-up-factor 8192.0
+               :slope-down-factor 8192.0
+               :impact-fric 1.0
+               :bend-speed 4.0
+               :alignv 1.0
+               :slope-up-traction 1.0
+               :align-speed 1.0
+               )
+             )
+      )
   (set! *tread-surface* v1-49)
-  (set!
-   (-> v1-49 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! (-> v1-49 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-49 touch-hook) nothing)
   (set! (-> v1-49 active-hook) nothing)
   )

@@ -46,6 +46,10 @@ gc> (dbs)
 
 Continue the target if it has been stopped.
 
+### `(:stop)`
+
+Detach from target.
+
 ### `(:break)`
 
 Immediately stop the target if it is running. Will print some registers.

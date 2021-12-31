@@ -82,40 +82,35 @@
 ;; INFO: Return type mismatch symbol vs none.
 (defmethod init-list! touching-prims-entry-pool ((obj touching-prims-entry-pool))
   (let ((prev (the-as touching-prims-entry #f)))
-   (let ((current (the-as touching-prims-entry (-> obj nodes))))
-    (set! (-> obj head) current)
-    (countdown (a0-1 64)
-     (set! (-> current prev) prev)
-     (let ((next (&+ current 240)))
-      (set! (-> current next) (the-as touching-prims-entry next))
-      (set! (-> current allocated?) #f)
-      (set! prev current)
-      (set! current (the-as touching-prims-entry next))
+    (let ((current (the-as touching-prims-entry (-> obj nodes))))
+      (set! (-> obj head) current)
+      (countdown (a0-1 64)
+        (set! (-> current prev) prev)
+        (let ((next (&+ current 240)))
+          (set! (-> current next) (the-as touching-prims-entry next))
+          (set! (-> current allocated?) #f)
+          (set! prev current)
+          (set! current (the-as touching-prims-entry next))
+          )
+        )
       )
-     )
+    (set! (-> prev next) #f)
     )
-   (set! (-> prev next) #f)
-   )
   (none)
   )
 
 ;; definition for method 0 of type touching-prims-entry-pool
 ;; INFO: Return type mismatch structure vs touching-prims-entry-pool.
-(defmethod
-  new
-  touching-prims-entry-pool
-  ((allocation symbol) (type-to-make type))
+(defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
         )
-   (-> type-to-make size)
-   (let ((gp-0 (t9-0 allocation v1-1)))
-    ((method-of-type touching-prims-entry-pool init-list!)
-     (the-as touching-prims-entry-pool gp-0)
-     )
-    (the-as touching-prims-entry-pool gp-0)
+    (-> type-to-make size)
+    (let ((gp-0 (t9-0 allocation v1-1)))
+      ((method-of-type touching-prims-entry-pool init-list!) (the-as touching-prims-entry-pool gp-0))
+      (the-as touching-prims-entry-pool gp-0)
+      )
     )
-   )
   )
 
 ;; definition of type touching-shapes-entry
@@ -186,13 +181,13 @@
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
         )
-   (-> type-to-make size)
-   (let ((obj (the-as touching-list (t9-0 allocation v1-1))))
-    (set! (-> obj num-touching-shapes) 0)
-    (set! (-> obj resolve-u) 0)
-    obj
+    (-> type-to-make size)
+    (let ((obj (the-as touching-list (t9-0 allocation v1-1))))
+      (set! (-> obj num-touching-shapes) 0)
+      (set! (-> obj resolve-u) 0)
+      obj
+      )
     )
-   )
   )
 
 ;; definition for method 16 of type touching-shapes-entry
@@ -201,17 +196,12 @@
   )
 
 ;; definition for method 17 of type touching-shapes-entry
-(defmethod
-  unknown1
-  touching-shapes-entry
-  ((obj touching-shapes-entry) (arg0 (pointer uint32)))
+(defmethod unknown1 touching-shapes-entry ((obj touching-shapes-entry) (arg0 (pointer uint32)))
   (-> arg0 0)
   )
 
 ;; definition (perm) for symbol *touching-prims-entry-pool*, type touching-prims-entry-pool
-(define-perm *touching-prims-entry-pool* touching-prims-entry-pool
-  (new 'global 'touching-prims-entry-pool)
-  )
+(define-perm *touching-prims-entry-pool* touching-prims-entry-pool (new 'global 'touching-prims-entry-pool))
 
 ;; definition (perm) for symbol *touching-list*, type touching-list
 (define-perm *touching-list* touching-list (new 'global 'touching-list))

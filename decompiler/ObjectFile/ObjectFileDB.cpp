@@ -12,6 +12,7 @@
 #include <map>
 #include "common/link_types.h"
 #include "common/util/dgo_util.h"
+#include "common/util/BitUtils.h"
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
@@ -244,7 +245,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
 
     add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name,
                      config);
-    reader.ffwd(obj_header.object_count);
+    reader.ffwd(align16(obj_header.object_count));
   }
 
   // check we're at the end
@@ -612,7 +613,7 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
   return result;
 }
 
-std::string ObjectFileDB::process_game_text_files() {
+std::string ObjectFileDB::process_game_text_files(GameTextVersion version) {
   lg::info("- Finding game text...");
   std::string text_string = "COMMON";
   Timer timer;
@@ -624,7 +625,7 @@ std::string ObjectFileDB::process_game_text_files() {
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(1) == text_string) {
       file_count++;
-      auto statistics = process_game_text(data);
+      auto statistics = process_game_text(data, version);
       string_count += statistics.total_text;
       char_count += statistics.total_chars;
       if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {

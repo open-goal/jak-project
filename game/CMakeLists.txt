@@ -19,7 +19,7 @@ if(UNIX)
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
-        -Wsign-promo")
+        -Wsign-promo -O3 -march=haswell")
 else()
         set(CMAKE_CXX_FLAGS "/EHsc")
 endif(UNIX)
@@ -60,6 +60,7 @@ set(RUNTIME_SOURCE
         kernel/ksocket.cpp
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
+        mips2c/functions/collide_func.cpp
         mips2c/functions/draw_string.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
@@ -93,14 +94,18 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
+        graphics/opengl_renderer/SkyBlendCPU.cpp
+        graphics/opengl_renderer/SkyBlendGPU.cpp
         graphics/opengl_renderer/SkyRenderer.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/tfrag/BufferedRenderer.cpp
         graphics/opengl_renderer/tfrag/program6_cpu.cpp
         graphics/opengl_renderer/tfrag/Tfrag3.cpp
+        graphics/opengl_renderer/tfrag/tfrag_common.cpp
         graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
         graphics/opengl_renderer/tfrag/TFragment.cpp
+        graphics/opengl_renderer/tfrag/Tie3.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp
@@ -121,4 +126,3 @@ endif()
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
 
-install(TARGETS gk)

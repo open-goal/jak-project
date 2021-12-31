@@ -3,6 +3,7 @@
 #include "extract_level.h"
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_tfrag.h"
+#include "decompiler/level_extractor/extract_tie.h"
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
@@ -10,8 +11,8 @@ namespace decompiler {
 /*!
  * Look through files in a DGO and find the bsp-header file (the level)
  */
-ObjectFileRecord get_bsp_file(const std::vector<ObjectFileRecord>& records) {
-  ObjectFileRecord result;
+std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records) {
+  std::optional<ObjectFileRecord> result;
   bool found = false;
   for (auto& file : records) {
     if (file.name.length() > 4 && file.name.substr(file.name.length() - 4) == "-vis") {
@@ -20,7 +21,6 @@ ObjectFileRecord get_bsp_file(const std::vector<ObjectFileRecord>& records) {
       result = file;
     }
   }
-  assert(found);
   return result;
 }
 
@@ -50,17 +50,22 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
 void extract_from_level(ObjectFileDB& db,
                         TextureDB& tex_db,
                         const std::string& dgo_name,
-                        const DecompileHacks& hacks) {
+                        const DecompileHacks& hacks,
+                        bool dump_level) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;
   }
 
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
-  std::string level_name = bsp_rec.name.substr(0, bsp_rec.name.length() - 4);
+  if (!bsp_rec) {
+    lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
+    return;
+  }
+  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
   fmt::print("Processing level {} ({})\n", dgo_name, level_name);
-  auto& bsp_file = db.lookup_record(bsp_rec);
+  auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   assert(ok);
 
@@ -87,11 +92,16 @@ void extract_from_level(ObjectFileDB& db,
         expected_missing_textures = it->second;
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
-                    bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level);
+                    bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level,
+                    dump_level);
+    } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
+      fmt::print("  extracting TIE\n");
+      auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
+      assert(as_tie_tree);
+      extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
+                  bsp_header.texture_remap_table, tex_db, tfrag_level, dump_level);
     } else {
       fmt::print("  unsupported tree {}\n", draw_tree->my_type());
-      tfrag_level.trees.emplace_back();
-      tfrag_level.trees.back().kind = tfrag3::TFragmentTreeKind::INVALID;
     }
   }
 

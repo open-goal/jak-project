@@ -1572,7 +1572,7 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
       if (m_expr.get_arg(1).is_var()) {
         auto eti = env.dts->ts.try_enum_lookup(arg1_type.base_type());
         if (eti) {
-          auto integer = get_goal_integer_constant(args.at(0), env);
+          auto integer = get_goal_integer_constant(strip_int_or_uint_cast(args.at(0)), env);
           if (integer && ((s64)*integer) < 0) {
             // clearing a bitfield.
             auto elts = decompile_bitfield_enum_from_int(arg1_type, env.dts->ts, ~*integer);

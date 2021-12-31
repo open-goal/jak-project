@@ -191,8 +191,8 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
 void Listener::receive_func() {
   while (m_connected) {
     // attempt to receive a ListenerMessageHeader
-    int rcvd = 0;
-    int rcvd_desired = sizeof(ListenerMessageHeader);
+    u32 rcvd = 0;
+    u32 rcvd_desired = sizeof(ListenerMessageHeader);
     char buff[sizeof(ListenerMessageHeader)];
     while (rcvd < rcvd_desired) {
       auto got = read_from_socket(listen_socket, buff + rcvd, rcvd_desired - rcvd);

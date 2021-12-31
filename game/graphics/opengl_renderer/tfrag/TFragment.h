@@ -212,12 +212,7 @@ class TFragment : public BucketRenderer {
   TFragData m_tfrag_data;
   TFragKickZone m_kick_data;
 
-  struct PcPortData {
-    Vector4f planes[4];
-    math::Vector<s32, 4> itimes[4];
-    char level_name[12];
-    u32 tree_idx;
-  } m_pc_port_data;
+  TfragPcPortData m_pc_port_data;
 
   // buffers
   TFragBufferedData m_buffered_data[2];
@@ -301,7 +296,8 @@ class TFragment : public BucketRenderer {
 
   struct HackManyLevels {
     static constexpr int NUM_LEVELS = 23;
-    Tfrag3 level_renderers[NUM_LEVELS];
+    std::unique_ptr<Tfrag3> tfrag_level_renderers[NUM_LEVELS];
+    std::unique_ptr<Tie3> tie_level_renderers[NUM_LEVELS];
     bool level_enables[NUM_LEVELS] = {0};
   } m_many_level_render;
 };

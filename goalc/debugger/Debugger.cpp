@@ -55,18 +55,35 @@ bool Debugger::is_attached() const {
  * Will silently do nothing if we aren't attached, so it is safe to just call detach() to try to
  * clean up when exiting.
  */
-void Debugger::detach() {
+bool Debugger::detach() {
+  bool succ = true;
   if (is_valid() && m_attached) {
+#ifdef __linux__
     if (!is_halted()) {
-      do_break();
+      succ = do_break();
     }
     stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
-    m_context_valid = false;
+#elif _WIN32
+    if (is_halted()) {
+      succ = do_continue();
+    }
+    {
+      std::unique_lock<std::mutex> lk(m_watcher_mutex);
+      m_attach_return = false;
+      stop_watcher();
+      m_attach_cv.wait(lk, [&]() { return m_attach_return; });
+    }
+    xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
+#endif
+    // m_context_valid = false;
     m_attached = false;
+  } else {
+    succ = false;
   }
   // todo, should we print something if we can't detach?
+  return succ;
 }
 
 /*!
@@ -214,6 +231,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
     rsp += 8;
   }
 
+  int fails = 0;
   while (true) {
     fmt::print("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base,
                rip, rip - m_debug_context.base);
@@ -223,6 +241,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
+      fails = 0;
       fmt::print("<====================== CALL STACK ======================>\n");
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
@@ -241,8 +260,49 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     } else {
       if (!frame.rip_info.knows_function) {
-        fmt::print("Unknown Function at 0x{:x} (#x{:x})\n", rip, rip - m_debug_context.base);
+        if (fails == 0) {
+          fmt::print("Unknown Function at rip\n");
+        }
 
+        /*
+        bool found = false;
+        if (s32(rip - m_debug_context.base) > 0 &&
+            m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
+          fmt::print("Attempting to find function at this address.\n");
+          u32 function_sym_val = m_symbol_name_to_value_map.at("function");
+          u32 goal_pc = u32(rip - m_debug_context.base) & -8;
+
+          // go back through memory, but stop before reading the symbol table
+          u32 symtable_end = m_symbol_name_to_value_map.at("#f") + 0xff38;
+          while (goal_pc > symtable_end) {
+            goal_pc -= 8;
+            u32 wordval;
+            if (!read_memory_if_safe<u32>(&wordval, goal_pc)) {
+              goal_pc = symtable_end;
+              break;
+            }
+
+            if (wordval == function_sym_val) {
+              // found a function!
+              fmt::print("Found function after {} bytes!\n",
+                         (rip - m_debug_context.base) - goal_pc);
+              break;
+            }
+          }
+
+          if (goal_pc <= symtable_end) {
+            fmt::print("Could not find function within this address.\n");
+          } else {
+            rip = goal_pc + m_debug_context.base + BASIC_OFFSET;
+            found = true;
+          }
+        } else*/
+        if (fails > 50) {
+          fmt::print(
+              "Backtrace was too long. Exception might have happened outside GOAL code, or the "
+              "stack frame is too long.\n");
+          break;
+        }
         // attempt to backtrace anyway! if this fails then rip
         u64 next_rip = 0;
         if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
@@ -252,6 +312,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
         rip = next_rip;
         rsp = rsp + 8;  // 8 for the call itself.
+        ++fails;
         // break;
       } else if (!frame.rip_info.func_debug) {
         fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);
@@ -707,6 +768,13 @@ void Debugger::watcher() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+
+// watcher will now detach from target.
+// again, windows needs the debugger thread to remain consistent
+#ifdef _WIN32
+  m_attach_response = xdbg::detach_and_resume(m_debug_context.tid);
+  m_attach_return = true;
+#endif
 }
 
 void Debugger::handle_disappearance() {

@@ -19,8 +19,8 @@
 ;; definition for method 3 of type wall-plat
 (defmethod inspect wall-plat ((obj wall-plat))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tuse-sync?: ~A~%" (-> obj use-sync?))
   (format #t "~T~Textended-amount: ~f~%" (-> obj extended-amount))
   (format #t "~T~Tin-trans: #<vector @ #x~X>~%" (-> obj in-trans))
@@ -41,83 +41,59 @@
 ;; failed to figure out what this is:
 (defstate wall-plat-retracted (wall-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('trigger)
-      (go wall-plat-extending)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('trigger)
+                                                                                    (go wall-plat-extending)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (set! (-> self extended-amount) 0.0)
-   (TODO-RENAME-30 (-> self root-override) (-> self in-trans))
-   (transform-post)
-   (clear-collide-with-as (-> self root-override))
-   (while #t
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
+    (set! (-> self extended-amount) 0.0)
+    (TODO-RENAME-30 (-> self root-override) (-> self in-trans))
+    (transform-post)
+    (clear-collide-with-as (-> self root-override))
+    (while #t
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-extending (wall-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touch)
-                    (send-event arg0 'no-look-around 450)
-                    #f
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'touch)
+                       (send-event arg0 'no-look-around 450)
+                       #f
+                       )
+              )
+      )
     )
-   )
   :enter
-  (behavior ()
-   (sound-play-by-name
-    (static-sound-name "wall-plat")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (none)
-   )
+  (behavior () (sound-play-by-name (static-sound-name "wall-plat") (new-sound-id) 1024 0 0 1 #t) (none))
   :trans
   (the-as (function none :behavior wall-plat) rider-trans)
   :code
   (behavior ()
-   (restore-collide-with-as (-> self root-override))
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (while #t
-    (set!
-     (-> self extended-amount)
-     (seek
-      (-> self extended-amount)
-      1.0
-      (* 2.5 (-> *display* seconds-per-frame))
+    (restore-collide-with-as (-> self root-override))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (while #t
+      (set! (-> self extended-amount) (seek (-> self extended-amount) 1.0 (* 2.5 (-> *display* seconds-per-frame))))
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
+        (TODO-RENAME-30 (-> self root-override) gp-0)
+        )
+      (suspend)
+      (if (= (-> self extended-amount) 1.0)
+          (go wall-plat-extended)
+          )
       )
-     )
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-     (vector-lerp!
-      gp-0
-      (-> self in-trans)
-      (-> self out-trans)
-      (-> self extended-amount)
-      )
-     (TODO-RENAME-30 (-> self root-override) gp-0)
-     )
-    (suspend)
-    (if (= (-> self extended-amount) 1.0)
-     (go wall-plat-extended)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior wall-plat) rider-post)
   )
@@ -125,81 +101,57 @@
 ;; failed to figure out what this is:
 (defstate wall-plat-extended (wall-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('untrigger)
-      (go wall-plat-retracting)
-      )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('untrigger)
+                                                                                    (go wall-plat-retracting)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (set! (-> self extended-amount) 1.0)
-   (TODO-RENAME-30 (-> self root-override) (-> self out-trans))
-   (transform-post)
-   (while #t
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
+    (set! (-> self extended-amount) 1.0)
+    (TODO-RENAME-30 (-> self root-override) (-> self out-trans))
+    (transform-post)
+    (while #t
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-retracting (wall-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touch)
-                    (send-event arg0 'no-look-around 450)
-                    #f
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'touch)
+                       (send-event arg0 'no-look-around 450)
+                       #f
+                       )
+              )
+      )
     )
-   )
   :enter
-  (behavior ()
-   (sound-play-by-name
-    (static-sound-name "wall-plat")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (none)
-   )
+  (behavior () (sound-play-by-name (static-sound-name "wall-plat") (new-sound-id) 1024 0 0 1 #t) (none))
   :trans
   (the-as (function none :behavior wall-plat) rider-trans)
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (while #t
-    (set!
-     (-> self extended-amount)
-     (seek
-      (-> self extended-amount)
-      0.0
-      (* 2.5 (-> *display* seconds-per-frame))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (while #t
+      (set! (-> self extended-amount) (seek (-> self extended-amount) 0.0 (* 2.5 (-> *display* seconds-per-frame))))
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
+        (TODO-RENAME-30 (-> self root-override) gp-0)
+        )
+      (suspend)
+      (if (= (-> self extended-amount) 0.0)
+          (go wall-plat-retracted)
+          )
       )
-     )
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-     (vector-lerp!
-      gp-0
-      (-> self in-trans)
-      (-> self out-trans)
-      (-> self extended-amount)
-      )
-     (TODO-RENAME-30 (-> self root-override) gp-0)
-     )
-    (suspend)
-    (if (= (-> self extended-amount) 0.0)
-     (go wall-plat-retracted)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior wall-plat) rider-post)
   )
@@ -208,66 +160,52 @@
 (defstate wall-plat-sync-idle (wall-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touch)
-                    (send-event arg0 'no-look-around 450)
-                    #f
-                    )
-     )
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'touch)
+                       (send-event arg0 'no-look-around 450)
+                       #f
+                       )
+              )
+      )
     )
-   )
   :enter
-  (behavior ()
-   (logclear! (-> self mask) (process-mask actor-pause))
-   (none)
-   )
+  (behavior () (logclear! (-> self mask) (process-mask actor-pause)) (none))
   :exit
-  (behavior ()
-   (logior! (-> self mask) (process-mask actor-pause))
-   (none)
-   )
+  (behavior () (logior! (-> self mask) (process-mask actor-pause)) (none))
   :trans
   (the-as (function none :behavior wall-plat) rider-trans)
   :code
   (behavior ()
-   (let ((gp-0 #f))
-    (while #t
-     (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
-      (let ((s5-0 (new 'stack-no-clear 'vector)))
-       (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
-       (TODO-RENAME-30 (-> self root-override) s5-0)
-       )
-      (cond
-       ((= f30-0 0.0)
-        (set! gp-0 #f)
-        (clear-collide-with-as (-> self root-override))
-        )
-       ((= f30-0 1.0)
-        (set! gp-0 #f)
-        (restore-collide-with-as (-> self root-override))
-        )
-       (else
-        (when (not gp-0)
-         (sound-play-by-name
-          (static-sound-name "wall-plat")
-          (new-sound-id)
-          1024
-          0
-          0
-          1
-          #t
+    (let ((gp-0 #f))
+      (while #t
+        (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
+          (let ((s5-0 (new 'stack-no-clear 'vector)))
+            (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
+            (TODO-RENAME-30 (-> self root-override) s5-0)
+            )
+          (cond
+            ((= f30-0 0.0)
+             (set! gp-0 #f)
+             (clear-collide-with-as (-> self root-override))
+             )
+            ((= f30-0 1.0)
+             (set! gp-0 #f)
+             (restore-collide-with-as (-> self root-override))
+             )
+            (else
+              (when (not gp-0)
+                (sound-play-by-name (static-sound-name "wall-plat") (new-sound-id) 1024 0 0 1 #t)
+                (set! gp-0 #t)
+                )
+              (restore-collide-with-as (-> self root-override))
+              )
+            )
           )
-         (set! gp-0 #t)
-         )
-        (restore-collide-with-as (-> self root-override))
+        (suspend)
         )
-       )
       )
-     (suspend)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior wall-plat) rider-post)
   )
@@ -277,80 +215,59 @@
 (defmethod init-from-entity! wall-plat ((obj wall-plat) (arg0 entity-actor))
   (set! (-> obj extended-amount) 0.0)
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 19))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 2)
+      (set-vector! (-> s3-0 local-sphere) 0.0 -6144.0 -12288.0 19456.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 19))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 2)
-    (set-vector! (-> s3-0 local-sphere) 0.0 -6144.0 -12288.0 19456.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *wall-plat-sg* '())
   (logior! (-> obj skel status) 1)
-  (set!
-   (-> obj use-sync?)
-   (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.2 0.2)
-   )
+  (set! (-> obj use-sync?) (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.2 0.2))
   (let ((f30-0 (quaternion-y-angle (-> obj root-override quat)))
         (s4-1 (new 'stack-no-clear 'vector))
         )
-   (set-vector! s4-1 0.0 0.0 (+ 1638.4 (res-lump-float arg0 'tunemeters)) 1.0)
-   (vector-rotate-around-y! s4-1 s4-1 f30-0)
-   (vector+! (-> obj out-trans) (-> obj root-override trans) s4-1)
-   (set-vector! s4-1 0.0 0.0 20480.0 1.0)
-   (vector-rotate-around-y! s4-1 s4-1 f30-0)
-   (vector+! (-> obj in-trans) (-> obj out-trans) s4-1)
-   )
+    (set-vector! s4-1 0.0 0.0 (+ 1638.4 (res-lump-float arg0 'tunemeters)) 1.0)
+    (vector-rotate-around-y! s4-1 s4-1 f30-0)
+    (vector+! (-> obj out-trans) (-> obj root-override trans) s4-1)
+    (set-vector! s4-1 0.0 0.0 20480.0 1.0)
+    (vector-rotate-around-y! s4-1 s4-1 f30-0)
+    (vector+! (-> obj in-trans) (-> obj out-trans) s4-1)
+    )
   (ja-channel-push! 1 0)
   (let ((s5-1 (-> obj skel root-channel 0)))
-   (joint-control-channel-group-eval!
-    s5-1
-    (the-as art-joint-anim (-> obj draw art-group data 2))
-    num-func-identity
+    (joint-control-channel-group-eval!
+      s5-1
+      (the-as art-joint-anim (-> obj draw art-group data 2))
+      num-func-identity
+      )
+    (set! (-> s5-1 frame-num) 0.0)
     )
-   (set! (-> s5-1 frame-num) 0.0)
-   )
   (ja-post)
   (dummy-47 (-> obj root-override))
   (cond
-   ((-> obj use-sync?)
-    (logclear! (-> obj mask) (process-mask actor-pause))
-    (go wall-plat-sync-idle)
+    ((-> obj use-sync?)
+     (logclear! (-> obj mask) (process-mask actor-pause))
+     (go wall-plat-sync-idle)
+     )
+    (else
+      (go wall-plat-retracted)
+      )
     )
-   (else
-    (go wall-plat-retracted)
-    )
-   )
   (none)
   )

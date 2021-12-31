@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
-layout (location = 2) in float time_of_day_index;
+layout (location = 2) in int time_of_day_index;
 
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
@@ -65,7 +65,7 @@ void main() {
     gl_Position = transformed;
 
     // time of day lookup
-    fragment_color = texture(tex_T1, time_of_day_index / 8192.f);
+    fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
     fragment_color.w *= 2;
     tex_coord = tex_coord_in;
 }
