@@ -547,16 +547,33 @@
   `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
   )
 
+(defglobalconstant DEBUG_PRINT_SUSPEND_FAIL #t)
+
 (defmacro suspend ()
   ;; suspend the current process.
+  
   `(rlet ((pp :reg r13 :reset-here #t))
-         ;; set to the current thread
-         (set! pp (-> (the process pp) top-thread))
-         ;; call the suspend hook (put nothing as the argument)
-         ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
-         ;; the kernel will set pp (possibly to a new value) on resume.
+         (#when DEBUG_PRINT_SUSPEND_FAIL
+                (rlet ((sp :reg rsp :reset-here #t :type int)
+                       (off :reg r15 :type uint))
+                      (let* ((sp-goal (- sp off))
+                             (stack-top-goal (-> (the process pp) top-thread stack-top))
+                             (stack-used (&- stack-top-goal sp-goal))
+                             (stack-size (-> (the process pp) top-thread stack-size))
+                             )
+                        (when (> stack-used stack-size)
+                          (format 0 "ERROR: suspend called without enough stack in proc:~%~A~%Stack: ~D/~D~%" pp stack-used stack-size)
+                          )
+                        )
+                      )
+                )
+                ;; set to the current thread
+                (set! pp (-> (the process pp) top-thread))
+                ;; call the suspend hook (put nothing as the argument)
+                ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
+                ;; the kernel will set pp (possibly to a new value) on resume.
+                )
          )
-  )
 
 (defmacro process-deactivate ()
   ;; deactivate the current process

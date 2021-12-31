@@ -64,6 +64,7 @@
     )
   :code
   (behavior ((arg0 continue-point))
+    (format 0 "in code of target-continue~%")
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> *art-control* reserve-buffer)
         (reserve-free *art-control* (-> *art-control* reserve-buffer heap))
@@ -84,7 +85,7 @@
     (target-exit)
     (ja-channel-set! 0)
     (quaternion-copy! (-> self control unknown-quaternion00) (-> arg0 quat))
-    (TODO-RENAME-30 (-> self control) (-> arg0 trans))
+    (move-to-point! (-> self control) (-> arg0 trans))
     (rot->dir-targ! (-> self control))
     (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
     (cond
@@ -168,7 +169,9 @@
        (send-event *camera* 'clear-entity)
        (send-event *camera* 'force-blend 0)
        (send-event *camera* 'change-state cam-fixed 0)
-       (send-event *camera* 'change-state cam-string 0)
+       (#unless FAKE_TARGET
+        (send-event *camera* 'change-state cam-string 0)
+        )
        )
       (else
         (send-event *camera* 'change-target self)
@@ -1036,7 +1039,7 @@
                       (suspend)
                       )
                     )
-                  (TODO-RENAME-30 (-> self control) s4-1)
+                  (move-to-point! (-> self control) s4-1)
                   )
                 (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
                 (send-event *camera* 'teleport)

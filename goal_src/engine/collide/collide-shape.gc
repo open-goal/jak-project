@@ -403,7 +403,7 @@
   (set! (-> sv-72 quad) (-> arg3 quad))
   (let ((a1-1 (new 'stack-no-clear 'vector)))
     (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
-    (TODO-RENAME-28 arg0 a1-1)
+    (move-by-vector! arg0 a1-1)
     )
   (dummy-56 arg0 (-> arg1 best-tri pat))
   (vector-! sv-64 (the-as vector (-> arg1 best-from-prim prim-core)) (-> arg1 best-tri intersect))
@@ -414,7 +414,7 @@
     (set! (-> sv-68 quad) v1-16)
     )
   (if (= (-> arg1 best-u) 0.0)
-      (TODO-RENAME-28 arg0 sv-68)
+      (move-by-vector! arg0 sv-68)
       )
   (set! (-> arg0 surface-normal quad) (-> sv-68 quad))
   (set! (-> arg0 poly-normal quad) (-> arg1 best-tri normal quad))
@@ -486,7 +486,7 @@
   (let ((s5-0 0))
     (let ((a1-1 (new 'stack-no-clear 'vector)))
       (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
-      (TODO-RENAME-28 arg0 a1-1)
+      (move-by-vector! arg0 a1-1)
       )
     (let ((f0-2 (vector-dot (-> arg0 transv) (-> arg1 best-tri normal)))
           (v1-6 (new 'stack-no-clear 'vector))
@@ -577,7 +577,7 @@
           (set! (-> obj reaction-flag) (the-as uint 0))
           ((-> obj no-reaction) obj s5-0 arg0 arg1)
           (set! (-> obj prev-status) (the-as uint 0))
-          (TODO-RENAME-28 obj s2-0)
+          (move-by-vector! obj s2-0)
           (set! (-> arg0 quad) (-> arg1 quad))
           (return 1.0)
           )
@@ -588,6 +588,7 @@
   (the-as float 1.0)
   )
 
+
 (defmethod dummy-37 collide-shape ((obj collide-shape) (arg0 vector))
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
@@ -595,7 +596,7 @@
          (vf2 :class vf)
          )
     (init-vf0-vector)
-    (let ((t9-0 (method-of-object obj TODO-RENAME-28))
+    (let ((t9-0 (method-of-object obj move-by-vector!))
           (v1-1 (new 'stack-no-clear 'vector))
           )
       (.lvf vf1 (&-> arg0 quad))
@@ -611,6 +612,7 @@
     (none)
     )
   )
+
 
 (defmethod dummy-37 collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
   (dummy-47 obj)
@@ -753,7 +755,7 @@
   )
 
 (defmethod TODO-RENAME-61 collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 vector))
-  (TODO-RENAME-30 obj arg0)
+  (move-to-point! obj arg0)
   (set! (-> arg1 y) 0.0)
   (logior! (-> obj status) 7)
   (set! (-> obj poly-normal quad) (-> arg2 quad))
@@ -785,7 +787,7 @@
     (set! (-> obj coverage) 0.0)
     (set! (-> obj touch-angle) 0.0)
     (let* ((a0-12 obj)
-           (t9-1 (method-of-object a0-12 TODO-RENAME-28))
+           (t9-1 (method-of-object a0-12 move-by-vector!))
            (a1-1 (new 'stack-no-clear 'vector))
            )
       (.lvf vf1 (&-> arg0 quad))
@@ -804,13 +806,14 @@
     )
   )
 
+
 (defmethod dummy-58 collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
   (dummy-57 obj arg0)
   (let ((a1-1 (new 'stack-no-clear 'touching-shapes-entry)))
     (set! (-> a1-1 cshape1) (the-as collide-shape 1))
     (set! (-> a1-1 cshape2) (the-as collide-shape *touching-list*))
     (when (dummy-40 obj a1-1)
-      (TODO-RENAME-30 obj (the-as vector (-> obj trans-old)))
+      (move-to-point! obj (the-as vector (-> obj trans-old)))      
       (return #t)
       )
     )
@@ -818,7 +821,7 @@
   )
 
 (defmethod dummy-64 collide-shape-moving ((obj collide-shape-moving) (arg0 collide-tri-result) (arg1 vector))
-  (TODO-RENAME-30 obj arg1)
+  (move-to-point! obj arg1)
   (logior! (-> obj status) 7)
   (let ((v1-4 (-> arg0 normal)))
     (set! (-> obj poly-normal quad) (-> v1-4 quad))
@@ -894,7 +897,7 @@
         (set! (-> a1-7 cshape2) (the-as collide-shape *touching-list*))
         (when (dummy-40 obj a1-7)
           (if s5-0
-              (TODO-RENAME-30 obj (the-as vector (-> obj trans-old)))
+              (move-to-point! obj (the-as vector (-> obj trans-old)))
               )
           )
         )
@@ -1384,27 +1387,31 @@
     )
   )
 
-(defmethod TODO-RENAME-28 collide-shape ((obj collide-shape) (arg0 vector))
+(defmethod move-by-vector! collide-shape ((obj collide-shape) (arg0 vector))
+  "Add arg0 to our current translation."
+  ;; move the trsqv
   (vector+! (-> obj trans) (-> obj trans) arg0)
-  (dummy-9 (-> obj root-prim) arg0)
+  ;; and move the primitive
+  (move-by-vector! (-> obj root-prim) arg0)
+  (none)
   )
 
-(defmethod dummy-9 collide-shape-prim ((obj collide-shape-prim) (arg0 vector))
+(defmethod move-by-vector! collide-shape-prim ((obj collide-shape-prim) (arg0 vector))
+  "Add arg0 to our current position"
   (vector+! (the-as vector (-> obj prim-core)) (the-as vector (-> obj prim-core)) arg0)
-  (let ((f0-0 (-> obj local-sphere w)))
-    (set! (-> obj prim-core world-sphere w) f0-0)
-    (the-as object f0-0)
-    )
+  ;; we just overwrote our radius, restore it.
+  (set! (-> obj prim-core world-sphere w) (-> obj local-sphere w))
+  (none)
   )
 
-(defmethod dummy-9 collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 vector))
+(defmethod move-by-vector! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 vector))
   (vector+! (the-as vector (-> obj prim-core)) (the-as vector (-> obj prim-core)) arg0)
   (set! (-> obj prim-core world-sphere w) (-> obj local-sphere w))
   (countdown (s4-0 (-> obj num-prims))
     (let ((a0-2 (-> obj prims s4-0)))
       (cond
         ((= (-> a0-2 type) collide-shape-prim-group)
-         (dummy-9 a0-2 arg0)
+         (move-by-vector! a0-2 arg0)
          )
         (else
           (vector+! (the-as vector (-> a0-2 prim-core)) (the-as vector (-> a0-2 prim-core)) arg0)
@@ -1413,14 +1420,18 @@
         )
       )
     )
-  (the-as object #f)
+  (none)
   )
 
-(defmethod TODO-RENAME-30 collide-shape ((obj collide-shape) (arg0 vector))
+(defmethod move-to-point! collide-shape ((obj collide-shape) (arg0 vector))
+  "Move our translation to the given point."
   (let ((v1-0 (new 'stack-no-clear 'vector)))
+    ;; how far to move
     (vector-! v1-0 arg0 (-> obj trans))
-    (TODO-RENAME-28 obj v1-0)
+    ;; do the move.
+    (move-by-vector! obj v1-0)
     )
+  (none)
   )
 
 (defmethod set-root-prim! collide-shape ((obj collide-shape) (arg0 collide-shape-prim))

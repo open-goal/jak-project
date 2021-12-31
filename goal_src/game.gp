@@ -196,7 +196,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (copy-strs
-  "FUCVICTO"
+  "FUCVICTO" ;; power cell victor anims
   "FUCV2"
   "FUCV3"
   "FUCV4"
@@ -204,6 +204,10 @@
   "FUCV6"
   "FUCV7"
   "FUCV8"
+  "EIA1"
+  "EIA2"
+  "EIA3" ;; ambient jak anim
+  "EIA4"
   )
 
 
@@ -296,6 +300,11 @@
        "out/iso/FUCV6.STR"
        "out/iso/FUCV7.STR"
        "out/iso/FUCV8.STR"
+
+       "out/iso/EIA1.STR"
+       "out/iso/EIA2.STR"
+       "out/iso/EIA3.STR"
+       "out/iso/EIA4.STR"
        )
 
 
