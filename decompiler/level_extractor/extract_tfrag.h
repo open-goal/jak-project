@@ -35,6 +35,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::vector<level_tools::TextureRemap>& map,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
-                   tfrag3::Level& out);
+                   tfrag3::Level& out,
+                   bool dump_level);
 
 }  // namespace decompiler

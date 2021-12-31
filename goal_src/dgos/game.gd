@@ -30,6 +30,7 @@
   ("dma-buffer.o" "dma-buffer")
   ("dma-bucket.o" "dma-bucket")
   ("dma-disasm.o" "dma-disasm")
+  ("pckernel-h.o" "pckernel-h") ;; added
   ("pad.o" "pad")
   ("gs.o" "gs")
   ("display-h.o" "display-h")
@@ -248,6 +249,7 @@
   ("prototype.o" "prototype")
   ("main-collide.o" "main-collide")
   ("video.o" "video")
+  ("pckernel.o" "pckernel") ;; added
   ("main.o" "main")
   ("collide-cache.o" "collide-cache")
   ("relocate.o" "relocate")

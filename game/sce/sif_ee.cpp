@@ -99,24 +99,19 @@ s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode) {
 
 s32 sceOpen(const char* filename, s32 flag) {
   FILE* fp = nullptr;
+  auto name = file_util::get_file_path({filename});
   switch (flag) {
     case SCE_RDONLY: {
-      auto name = file_util::get_file_path({filename});
-      fp = fopen(name.c_str(), "r");
-      if (!fp) {
-        printf("[SCE] sceOpen(%s) failed.\n", name.c_str());
-        return -1;
-      }
+      fp = fopen(name.c_str(), "rb");
     } break;
 
     default: {
-      auto name = file_util::get_file_path({"debug_out", filename});
       fp = fopen(name.c_str(), "w");
-      if (!fp) {
-        printf("[SCE] sceOpen(%s) failed.\n", name.c_str());
-        return -1;
-      }
     } break;
+  }
+  if (!fp) {
+    printf("[SCE] sceOpen(%s) failed.\n", name.c_str());
+    return -1;
   }
 
   s32 fp_idx = sce_fds.size() + 1;

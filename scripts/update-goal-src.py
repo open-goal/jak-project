@@ -34,6 +34,7 @@ files_with_modifications = [
   "cam-states",
   "plant-boss",
   "helix-water",
+  "lavatube-energy",
   "ogreboss"
 ]
 

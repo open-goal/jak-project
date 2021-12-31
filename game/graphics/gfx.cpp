@@ -47,6 +47,7 @@ void InitSettings(GfxSettings& settings) {
 
 namespace Gfx {
 
+GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
@@ -93,8 +94,13 @@ const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   }
 }
 
+void SetRenderer(GfxPipeline pipeline) {
+  g_global_settings.renderer = GetRenderer(pipeline);
+  g_settings.renderer = pipeline;
+}
+
 const GfxRendererModule* GetCurrentRenderer() {
-  return GetRenderer(g_settings.renderer);
+  return g_global_settings.renderer;
 }
 
 u32 Init() {
@@ -105,6 +111,7 @@ u32 Init() {
   Pad::ForceClearKeys();
 
   LoadSettings();
+  SetRenderer(g_settings.renderer);
 
   if (GetCurrentRenderer()->init(g_settings)) {
     lg::error("Gfx::Init error");
@@ -139,11 +146,17 @@ u32 Exit() {
 }
 
 u32 vsync() {
-  return GetCurrentRenderer()->vsync();
+  if (GetCurrentRenderer()) {
+    return GetCurrentRenderer()->vsync();
+  }
+  return 0;
 }
 
 u32 sync_path() {
-  return GetCurrentRenderer()->sync_path();
+  if (GetCurrentRenderer()) {
+    return GetCurrentRenderer()->sync_path();
+  }
+  return 0;
 }
 
 void send_chain(const void* data, u32 offset) {
@@ -166,6 +179,45 @@ void texture_relocate(u32 destination, u32 source, u32 format) {
 
 void poll_events() {
   GetCurrentRenderer()->poll_events();
+}
+
+u64 get_window_width() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->width();
+  } else {
+    return 0;
+  }
+}
+
+u64 get_window_height() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->height();
+  } else {
+    return 0;
+  }
+}
+
+void set_window_size(u64 w, u64 h) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->set_size(w, h);
+  }
+}
+
+void get_window_scale(float* x, float* y) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_scale(x, y);
+  }
+}
+
+void set_letterbox(int w, int h) {
+  g_global_settings.lbox_w = w;
+  g_global_settings.lbox_h = h;
+}
+
+void set_fullscreen(int mode, int screen) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->set_fullscreen(mode, screen);
+  }
 }
 
 void input_mode_set(u32 enable) {

@@ -34,7 +34,7 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
       m_sprite_renderer(fmt::format("{}.sprites", name),
                         my_id,
-                        100,
+                        4000,
                         DirectRenderer::Mode::SPRITE_CPU),
       m_direct_renderer(fmt::format("{}.direct", name), my_id, 100, DirectRenderer::Mode::NORMAL) {}
 
