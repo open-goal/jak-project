@@ -37,6 +37,11 @@ Tfrag3::~Tfrag3() {
 void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
                              const std::string& level,
                              SharedRenderState* render_state) {
+  // regardless of how many we use some fixed max
+  // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
+  // indexing works properly.
+  m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
+
   // make sure we have the level data.
   auto lev_data = render_state->loader.get_tfrag3_level(level);
   if (m_level_name != level) {
@@ -47,12 +52,13 @@ void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
     fmt::print("level has {} trees\n", lev_data->tfrag_trees.size());
     m_cached_trees.clear();
 
-    size_t idx_buffer_len = 0;
     size_t time_of_day_count = 0;
     size_t vis_temp_len = 0;
     size_t max_draw = 0;
 
     for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees.size(); tree_idx++) {
+      size_t idx_buffer_len = 0;
+
       const auto& tree = lev_data->tfrag_trees[tree_idx];
       m_cached_trees.emplace_back();
       auto& tree_cache = m_cached_trees.back();
@@ -78,7 +84,7 @@ void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
         vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
         glBindBuffer(GL_ARRAY_BUFFER, tree_cache.vertex_buffer);
         glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
-                     GL_DYNAMIC_DRAW);
+                     GL_STREAM_DRAW);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
@@ -108,6 +114,20 @@ void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
                                sizeof(tfrag3::PreloadedVertex),  // stride
                                (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
         );
+
+        glGenBuffers(1, &tree_cache.index_buffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree_cache.index_buffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr,
+                     GL_STREAM_DRAW);
+        tree_cache.index_list.resize(idx_buffer_len);
+
+        glGenTextures(1, &tree_cache.time_of_day_texture);
+        glBindTexture(GL_TEXTURE_1D, tree_cache.time_of_day_texture);
+        // just fill with zeros. this lets use use the faster texsubimage later
+        glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+                     GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
+        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glBindVertexArray(0);
       }
     }
@@ -136,28 +156,8 @@ void Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
       m_textures.push_back(gl_tex);
     }
 
-    fmt::print("level max index stream: {}\n", idx_buffer_len);
-    m_cache.index_list.resize(idx_buffer_len);
-    m_has_index_buffer = true;
-    glGenBuffers(1, &m_index_buffer);
-    glActiveTexture(GL_TEXTURE1);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_DYNAMIC_DRAW);
-
     fmt::print("level max time of day: {}\n", time_of_day_count);
     assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
-    // regardless of how many we use some fixed max
-    // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
-    // indexing works properly.
-    m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
-    glGenTextures(1, &m_time_of_day_texture);
-    m_has_time_of_day_texture = true;
-    glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
-    // just fill with zeros. this lets use use the faster texsubimage later
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
-                 GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_level_name = level;
     fmt::print("TFRAG3 setup: {:.3f}\n", tfrag3_setup_timer.getSeconds());
@@ -179,7 +179,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
     interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
   }
   glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
+  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
 
@@ -187,7 +187,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree.index_buffer);
   glActiveTexture(GL_TEXTURE0);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
@@ -195,10 +195,9 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
   cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
 
   int idx_buffer_ptr = make_index_list_from_vis_string(
-      m_cache.draw_idx_temp.data(), m_cache.index_list.data(), *tree.draws, m_cache.vis_temp);
+      m_cache.draw_idx_temp.data(), tree.index_list.data(), *tree.draws, m_cache.vis_temp);
 
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32),
-                  m_cache.index_list.data());
+  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32), tree.index_list.data());
 
   for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
     const auto& draw = tree.draws->operator[](draw_idx);
@@ -332,20 +331,12 @@ void Tfrag3::discard_tree_cache() {
 
   for (auto& tree : m_cached_trees) {
     if (tree.kind != tfrag3::TFragmentTreeKind::INVALID) {
+      glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+      glDeleteTextures(1, &tree.time_of_day_texture);
       glDeleteBuffers(1, &tree.vertex_buffer);
+      glDeleteBuffers(1, &tree.index_buffer);
       glDeleteVertexArrays(1, &tree.vao);
     }
-  }
-
-  if (m_has_index_buffer) {
-    glDeleteBuffers(1, &m_index_buffer);
-    m_has_index_buffer = false;
-  }
-
-  if (m_has_time_of_day_texture) {
-    glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
-    glDeleteTextures(1, &m_time_of_day_texture);
-    m_has_time_of_day_texture = false;
   }
 
   // delete textures and stuff.

@@ -402,6 +402,10 @@ static void gl_render_display(GfxDisplay* display) {
     render_game_frame(width, height, lbox_w, lbox_h);
   }
 
+  if (g_gfx_data->debug_gui.should_gl_finish()) {
+    glFinish();
+  }
+
   // render imgui
   g_gfx_data->debug_gui.draw(g_gfx_data->dma_copier.get_last_result().stats);
   ImGui::Render();

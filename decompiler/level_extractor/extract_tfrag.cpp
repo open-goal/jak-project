@@ -2049,6 +2049,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
           vtx.q = vert.stq.z();
+          // if this is true, we can remove a divide in the shader
+          assert(vtx.q == 1.f);
           vtx.color_index = vert.rgba / 4;
           // assert((vert.rgba >> 2) < 1024); spider cave has 2048?
           assert((vert.rgba & 3) == 0);

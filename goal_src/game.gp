@@ -284,6 +284,7 @@
        "out/iso/MAI.VIS"
        "out/iso/SNO.VIS"
        "out/iso/BEA.VIS"
+       "out/iso/LAV.VIS"
        "out/iso/CIT.VIS"
        "out/iso/FIN.VIS"
 

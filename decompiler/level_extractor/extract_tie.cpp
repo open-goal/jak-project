@@ -1965,6 +1965,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             vtx.s = vert.tex.x();
             vtx.t = vert.tex.y();
             vtx.q = vert.tex.z();
+            // if this is true, we can remove a divide in the shader
+            assert(vtx.q == 1.f);
             if (vert.color_index_index == UINT32_MAX) {
               vtx.color_index = 0;
             } else {

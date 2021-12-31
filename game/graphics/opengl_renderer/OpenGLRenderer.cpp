@@ -13,6 +13,10 @@
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
+namespace {
+std::string g_current_render;
+
+}
 
 /*!
  * OpenGL Error callback. If we do something invalid, this will be called.
@@ -28,11 +32,14 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
     // On some drivers this prints on every single texture upload, which is too much spam
     lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
-    lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::info("[{}] OpenGL message 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+             message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
-    lg::warn("OpenGL warn 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::warn("[{}] OpenGL warn 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+             message);
   } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
-    lg::error("OpenGL error 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::error("[{}] OpenGL error 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+              message);
   }
 }
 
@@ -60,11 +67,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   std::vector<tfrag3::TFragmentTreeKind> normal_tfrags = {tfrag3::TFragmentTreeKind::NORMAL,
                                                           tfrag3::TFragmentTreeKind::LOWRES};
   std::vector<tfrag3::TFragmentTreeKind> dirt_tfrags = {tfrag3::TFragmentTreeKind::DIRT};
-  // TODO ice
-  // std::vector<tfrag3::TFragmentTreeKind> ice_tfrags = {tfrag3::TFragmentTreeKind::ICE};
-
-  // std::vector<tfrag3::TFragmentTreeKind> trans_tfrags = {tfrag3::TFragmentTreeKind::TRANS,
-  //                                                       tfrag3::TFragmentTreeKind::LOWRES_TRANS};
+  std::vector<tfrag3::TFragmentTreeKind> ice_tfrags = {tfrag3::TFragmentTreeKind::ICE};
 
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
   init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
@@ -79,13 +82,18 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);
-  auto sky_blender = std::make_shared<SkyBlender>();
+  auto sky_gpu_blender = std::make_shared<SkyBlendGPU>();
+  auto sky_cpu_blender = std::make_shared<SkyBlendCPU>();
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
-                                        BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, sky_blender);
+                                        BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0,
+                                        sky_gpu_blender, sky_cpu_blender);
   init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false);
+  init_bucket_renderer<TFragment>("tfrag-ice-0", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags, false);
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-1",
-                                        BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1, sky_blender);
+                                        BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1,
+                                        sky_gpu_blender, sky_cpu_blender);
   init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false);
+  init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
@@ -94,7 +102,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 1024,
                                        DirectRenderer::Mode::NORMAL);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 1024,
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 4096,
                                        DirectRenderer::Mode::NORMAL);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
@@ -163,6 +171,9 @@ void OpenGLRenderer::serialize(Serializer& ser) {
  */
 void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
+
+  ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
+
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
     if (renderer && !renderer->empty()) {
@@ -232,8 +243,11 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
+    // lg::info("Render: {} start\n", renderer->name_and_id());
+    g_current_render = renderer->name_and_id();
     renderer->render(dma, &m_render_state, bucket_prof);
-    // should have ended at the start of the next chain
+    // lg::info("Render: {} end\n", renderer->name_and_id());
+    //  should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
 
@@ -241,6 +255,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
       vif_interrupt_callback();
     }
   }
+  g_current_render = "";
 
   // TODO ending data.
 }

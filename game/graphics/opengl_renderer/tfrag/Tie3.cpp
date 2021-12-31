@@ -17,6 +17,11 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   // TODO: right now this will wait to load from disk and unpack it.
   auto lev_data = render_state->loader.get_tfrag3_level(level);
 
+  // regardless of how many we use some fixed max
+  // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
+  // indexing works properly.
+  m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
+
   if (m_level_name != level) {
     Timer tie_setup_timer;
     // We changed level!
@@ -26,7 +31,6 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
     fmt::print(" New level has {} tie trees\n", lev_data->tie_trees.size());
     m_trees.resize(lev_data->tie_trees.size());
 
-    size_t idx_buffer_len = 0;
     size_t time_of_day_count = 0;
     size_t vis_temp_len = 0;
     size_t max_draw = 0;
@@ -34,6 +38,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
 
     // set up each tree
     for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees.size(); tree_idx++) {
+      size_t idx_buffer_len = 0;
       const auto& tree = lev_data->tie_trees[tree_idx];
       max_draw = std::max(tree.static_draws.size(), max_draw);
       for (auto& draw : tree.static_draws) {
@@ -85,6 +90,21 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
                              sizeof(tfrag3::PreloadedVertex),  // stride
                              (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
       );
+
+      glGenBuffers(1, &m_trees[tree_idx].index_buffer);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_trees[tree_idx].index_buffer);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_STREAM_DRAW);
+      m_trees[tree_idx].index_list.resize(idx_buffer_len);
+
+      glActiveTexture(GL_TEXTURE1);
+      glGenTextures(1, &m_trees[tree_idx].time_of_day_texture);
+      glBindTexture(GL_TEXTURE_1D, m_trees[tree_idx].time_of_day_texture);
+      // just fill with zeros. this lets use use the faster texsubimage later
+      glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+                   GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
+      glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
       glBindVertexArray(0);
     }
 
@@ -113,28 +133,8 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_textures.push_back(gl_tex);
     }
 
-    fmt::print("level TIE index stream: {}\n", idx_buffer_len);
-    m_cache.index_list.resize(idx_buffer_len);
-    m_has_index_buffer = true;
-    glGenBuffers(1, &m_index_buffer);
-    glActiveTexture(GL_TEXTURE1);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_STREAM_DRAW);
-
     fmt::print("level max time of day: {}\n", time_of_day_count);
     assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
-    // regardless of how many we use some fixed max
-    // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
-    // indexing works properly.
-    m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
-    glGenTextures(1, &m_time_of_day_texture);
-    m_has_time_of_day_texture = true;
-    glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
-    // just fill with zeros. this lets use use the faster texsubimage later
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
-                 GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_level_name = level;
     fmt::print("TIE setup: {:.3f}\n", tie_setup_timer.getSeconds());
@@ -149,19 +149,11 @@ void Tie3::discard_tree_cache() {
   m_textures.clear();
 
   for (auto& tree : m_trees) {
+    glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+    glDeleteTextures(1, &tree.time_of_day_texture);
     glDeleteBuffers(1, &tree.vertex_buffer);
+    glDeleteBuffers(1, &tree.index_buffer);
     glDeleteVertexArrays(1, &tree.vao);
-  }
-
-  if (m_has_index_buffer) {
-    glDeleteBuffers(1, &m_index_buffer);
-    m_has_index_buffer = false;
-  }
-
-  if (m_has_time_of_day_texture) {
-    glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
-    glDeleteTextures(1, &m_time_of_day_texture);
-    m_has_time_of_day_texture = false;
   }
 
   m_trees.clear();
@@ -284,7 +276,7 @@ void Tie3::render_tree(int idx,
 
   Timer setup_timer;
   glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
+  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
 
@@ -292,7 +284,7 @@ void Tie3::render_tree(int idx,
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree.index_buffer);
   glActiveTexture(GL_TEXTURE0);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
@@ -305,7 +297,7 @@ void Tie3::render_tree(int idx,
     tree.perf.cull_time.add(0);
     Timer index_timer;
     idx_buffer_ptr = make_all_visible_index_list(m_cache.draw_idx_temp.data(),
-                                                 m_cache.index_list.data(), *tree.draws);
+                                                 tree.index_list.data(), *tree.draws);
     tree.perf.index_time.add(index_timer.getSeconds());
     tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
   } else {
@@ -315,14 +307,13 @@ void Tie3::render_tree(int idx,
 
     Timer index_timer;
     idx_buffer_ptr = make_index_list_from_vis_string(
-        m_cache.draw_idx_temp.data(), m_cache.index_list.data(), *tree.draws, m_cache.vis_temp);
+        m_cache.draw_idx_temp.data(), tree.index_list.data(), *tree.draws, m_cache.vis_temp);
     tree.perf.index_time.add(index_timer.getSeconds());
     tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
   }
 
   Timer draw_timer;
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32),
-                  m_cache.index_list.data());
+  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32), tree.index_list.data());
 
   for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
     const auto& draw = tree.draws->operator[](draw_idx);
