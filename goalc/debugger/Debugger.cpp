@@ -55,18 +55,35 @@ bool Debugger::is_attached() const {
  * Will silently do nothing if we aren't attached, so it is safe to just call detach() to try to
  * clean up when exiting.
  */
-void Debugger::detach() {
+bool Debugger::detach() {
+  bool succ = true;
   if (is_valid() && m_attached) {
+#ifdef __linux__
     if (!is_halted()) {
-      do_break();
+      succ = do_break();
     }
     stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
-    m_context_valid = false;
+#elif _WIN32
+    if (is_halted()) {
+      succ = do_continue();
+    }
+    {
+      std::unique_lock<std::mutex> lk(m_watcher_mutex);
+      m_attach_return = false;
+      stop_watcher();
+      m_attach_cv.wait(lk, [&]() { return m_attach_return; });
+    }
+    xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
+#endif
+    // m_context_valid = false;
     m_attached = false;
+  } else {
+    succ = false;
   }
   // todo, should we print something if we can't detach?
+  return succ;
 }
 
 /*!
@@ -751,6 +768,13 @@ void Debugger::watcher() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+
+// watcher will now detach from target.
+// again, windows needs the debugger thread to remain consistent
+#ifdef _WIN32
+  m_attach_response = xdbg::detach_and_resume(m_debug_context.tid);
+  m_attach_return = true;
+#endif
 }
 
 void Debugger::handle_disappearance() {

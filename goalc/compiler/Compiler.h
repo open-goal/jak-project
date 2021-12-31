@@ -339,7 +339,10 @@ class Compiler {
                                              int seg);
   Val* compile_static_pair(const goos::Object& form, Env* env, int seg);
   StaticResult compile_static(const goos::Object& form, Env* env);
-  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form, Env* env, int seg);
+  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form,
+                                                Env* env,
+                                                int seg,
+                                                bool can_macro);
 
   Val* compile_bitfield_definition(const goos::Object& form,
                                    const TypeSpec& type,
@@ -573,6 +576,7 @@ class Compiler {
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_stop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_pm(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_di(const goos::Object& form, const goos::Object& rest, Env* env);

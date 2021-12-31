@@ -115,6 +115,22 @@ Val* Compiler::compile_cont(const goos::Object& form, const goos::Object& rest, 
   return get_none();
 }
 
+Val* Compiler::compile_stop(const goos::Object& form, const goos::Object& rest, Env* env) {
+  // todo - do something with args.
+  (void)form;
+  (void)rest;
+  (void)env;
+
+  if (m_debugger.is_valid() && m_debugger.is_attached() && m_debugger.is_halted()) {
+    m_debugger.detach();
+  } else {
+    fmt::print("Couldn't do :stop. Valid {}, attached {}, halted {}\n", m_debugger.is_valid(),
+               m_debugger.is_attached(), m_debugger.is_halted());
+  }
+
+  return get_none();
+}
+
 Val* Compiler::compile_break(const goos::Object& form, const goos::Object& rest, Env* env) {
   // todo - do something with args.
   (void)form;

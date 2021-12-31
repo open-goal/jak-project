@@ -50,7 +50,8 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
 void extract_from_level(ObjectFileDB& db,
                         TextureDB& tex_db,
                         const std::string& dgo_name,
-                        const DecompileHacks& hacks) {
+                        const DecompileHacks& hacks,
+                        bool dump_level) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -91,13 +92,14 @@ void extract_from_level(ObjectFileDB& db,
         expected_missing_textures = it->second;
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
-                    bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level);
+                    bsp_header.texture_remap_table, tex_db, expected_missing_textures, tfrag_level,
+                    dump_level);
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       fmt::print("  extracting TIE\n");
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       assert(as_tie_tree);
       extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
-                  bsp_header.texture_remap_table, tex_db, tfrag_level);
+                  bsp_header.texture_remap_table, tex_db, tfrag_level, dump_level);
     } else {
       fmt::print("  unsupported tree {}\n", draw_tree->my_type());
     }

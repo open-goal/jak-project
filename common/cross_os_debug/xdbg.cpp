@@ -341,6 +341,9 @@ bool attach_and_break(const ThreadID& tid) {
     return false;
   }
 
+  // by default, windows debuggers will kill their debuggees on detach
+  DebugSetProcessKillOnExit(FALSE);
+
   return true;
 }
 

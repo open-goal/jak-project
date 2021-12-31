@@ -1965,6 +1965,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             vtx.s = vert.tex.x();
             vtx.t = vert.tex.y();
             vtx.q = vert.tex.z();
+            // if this is true, we can remove a divide in the shader
+            assert(vtx.q == 1.f);
             if (vert.color_index_index == UINT32_MAX) {
               vtx.color_index = 0;
             } else {
@@ -1994,7 +1996,8 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
                  const std::string& debug_name,
                  const std::vector<level_tools::TextureRemap>& tex_map,
                  const TextureDB& tex_db,
-                 tfrag3::Level& out) {
+                 tfrag3::Level& out,
+                 bool dump_level) {
   tfrag3::TieTree this_tree;
 
   // sanity check the vis tree (not a perfect check, but this is used in game and should be right)
@@ -2036,16 +2039,18 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   emulate_tie_instance_program(info);
   emulate_kicks(info);
 
-  auto dir = file_util::get_file_path({fmt::format("debug_out/tie-{}/", debug_name)});
-  file_util::create_dir_if_needed(dir);
-  for (auto& proto : info) {
-    auto data = debug_dump_proto_to_obj(proto);
-    file_util::write_text_file(fmt::format("{}/{}.obj", dir, proto.name), data);
-    // file_util::create_dir_if_needed()
-  }
+  if (dump_level) {
+    auto dir = file_util::get_file_path({fmt::format("debug_out/tie-{}/", debug_name)});
+    file_util::create_dir_if_needed(dir);
+    for (auto& proto : info) {
+      auto data = debug_dump_proto_to_obj(proto);
+      file_util::write_text_file(fmt::format("{}/{}.obj", dir, proto.name), data);
+      // file_util::create_dir_if_needed()
+    }
 
-  auto full = dump_full_to_obj(info);
-  file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
+    auto full = dump_full_to_obj(info);
+    file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
+  }
 
   auto full_palette = make_big_palette(info);
   add_vertices_and_static_draw(this_tree, out, tex_db, info);
