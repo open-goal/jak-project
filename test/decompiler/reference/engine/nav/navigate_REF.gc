@@ -1298,7 +1298,7 @@
   )
 
 ;; definition for method 17 of type nav-mesh
-;; WARN: Type Propagation failed: Failed type prop at op 36 ((set! a0 (+ s4 s3))): Cannot get_type_int2: (+ s4 s3), args matrix and <integer -1 + int>
+;; WARN: Type Propagation failed: Failed type prop at op 36 ((set! a0 (+ s4 s3))): Cannot get_type_int2: (+ s4 s3), args (inline-array nav-poly) and <integer -1 + int>
 ;; WARN: Type Propagation failed: Type analysis failed
 (defmethod dummy-17 nav-mesh ((a0-0 nav-mesh))
   (local-vars
@@ -1327,7 +1327,7 @@
     (a0-2 stopwatch)
     (a0-3 int)
     (a0-4 nav-mesh)
-    (a0-5 matrix)
+    (a0-5 (inline-array nav-poly))
     (a0-6 none)
     (a0-7 none)
     (a0-8 none)
@@ -1341,7 +1341,7 @@
     (s1-0 none)
     (s2-0 nav-poly)
     (s3-0 int)
-    (s4-0 matrix)
+    (s4-0 (inline-array nav-poly))
     (s5-0 vector)
     (t9-0 (function stopwatch int))
     (t9-1 (function stopwatch int))
@@ -1359,7 +1359,7 @@
     (call! a0-2)
     (set! s5-0 (new 'stack-no-clear 'vector))
     (set! v1-2 (new 'stack-no-clear 'vector))
-    (set! s4-0 (new 'stack-no-clear 'matrix))
+    (set! s4-0 (new 'stack-no-clear 'inline-array 'nav-poly 8))
     (set! *nav-update-route-table-ray-count* 0)
     (set! *nav-update-route-table-route-count* 0)
     (set! s3-0 (-> a0-0 poly-count))
@@ -1767,15 +1767,15 @@
   )
 
 ;; definition for method 22 of type nav-mesh
-(defmethod TODO-RENAME-22 nav-mesh ((obj nav-mesh) (arg0 (pointer uint8)) (arg1 (pointer uint8)))
+(defmethod TODO-RENAME-22 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 nav-poly))
   (when (!= arg0 arg1)
     (dotimes (v1-1 3)
       (dotimes (a0-1 3)
-        (when (= (-> (+ v1-1 (the-as int arg0)) 1) (-> (+ a0-1 (the-as int arg1)) 1))
-          (let ((a3-6 (-> (+ (mod (+ v1-1 1) 3) (the-as int arg0)) 1)))
+        (when (= (-> arg0 vertex v1-1) (-> arg1 vertex a0-1))
+          (let ((a3-6 (-> arg0 vertex (mod (+ v1-1 1) 3))))
             (dotimes (t0-3 3)
-              (if (and (!= t0-3 a0-1) (= a3-6 (-> (+ t0-3 (the-as int arg1)) 1)))
-                  (return (logior a3-6 (shl (-> (+ v1-1 (the-as int arg0)) 1) 16)))
+              (if (and (!= t0-3 a0-1) (= a3-6 (-> arg1 vertex t0-3)))
+                  (return (logior a3-6 (shl (-> arg0 vertex v1-1) 16)))
                   )
               )
             )
@@ -1853,15 +1853,15 @@
 
 ;; definition for method 23 of type nav-mesh
 ;; Used lq/sq
-(defmethod dummy-23 nav-mesh ((obj nav-mesh) (arg0 basic) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 basic))
+(defmethod dummy-23 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 nav-route-portal))
   (local-vars (v1-32 int) (a0-14 int) (a0-17 int) (a1-10 int) (sv-16 nav-vertex))
   (let ((s1-0 (-> obj vertex))
         (s0-0 -1)
         )
     (set! (-> arg2 quad) (-> arg3 quad))
     (dotimes (v1-1 3)
-      (let* ((a0-8 (-> s1-0 (l.bu (+ (-> *edge-vert0-table* v1-1) (the-as int arg0) 1))))
-             (a1-7 (-> s1-0 (l.bu (+ (-> *edge-vert1-table* v1-1) (the-as int arg0) 1))))
+      (let* ((a0-8 (-> s1-0 (-> arg0 vertex (-> *edge-vert0-table* v1-1))))
+             (a1-7 (-> s1-0 (-> arg0 vertex (-> *edge-vert1-table* v1-1))))
              (f0-1 (- (-> a0-8 z) (-> a1-7 z)))
              (f1-2 (- (-> a1-7 x) (-> a0-8 x)))
              (f2-4 (+ (* f0-1 (- (-> a0-8 x) (-> arg1 x))) (* f1-2 (- (-> a0-8 z) (-> arg1 z)))))
@@ -1879,20 +1879,18 @@
     (when arg4
       (cond
         ((= s0-0 -1)
-         (s.w! arg4 #f)
+         (set! (-> arg4 next-poly) #f)
          )
         (else
           (while (!= s0-0 -1)
-            (let ((v1-11 (-> (the-as nav-poly (+ (-> *edge-vert0-table* s0-0) (the-as int arg0))) adj-poly 0)))
+            (let ((v1-11 (-> arg0 adj-poly (-> *edge-vert0-table* s0-0))))
               (cond
                 ((!= v1-11 255)
-                 (let ((v1-13 (-> obj poly v1-11)))
-                   (s.w! arg4 v1-13)
-                   )
+                 (set! (-> arg4 next-poly) (-> obj poly v1-11))
                  (set! s0-0 -1)
                  )
-                ((let ((a1-8 (-> s1-0 (l.bu (+ (-> *edge-vert0-table* s0-0) (the-as int arg0) 1)))))
-                   (set! sv-16 (-> s1-0 (l.bu (+ (-> *edge-vert1-table* s0-0) (the-as int arg0) 1))))
+                ((let ((a1-8 (-> s1-0 (-> arg0 vertex (-> *edge-vert0-table* s0-0)))))
+                   (set! sv-16 (-> s1-0 (-> arg0 vertex (-> *edge-vert1-table* s0-0))))
                    (< (vector-vector-xz-distance arg1 a1-8) 204.8)
                    )
                  (let ((a1-9 (+ s0-0 -1))
@@ -1913,7 +1911,7 @@
                  (set! s0-0 v1-32)
                  )
                 (else
-                  (s.w! arg4 #f)
+                  (set! (-> arg4 next-poly) #f)
                   (set! s0-0 -1)
                   )
                 )
@@ -2529,17 +2527,16 @@
   )
 
 ;; definition for method 35 of type nav-control
-(defmethod dummy-35 nav-control ((obj nav-control) (arg0 basic) (arg1 vector) (arg2 basic) (arg3 basic) (arg4 float) (arg5 vector))
+(defmethod dummy-35 nav-control ((obj nav-control)
+                               (arg0 vector)
+                               (arg1 vector)
+                               (arg2 vector)
+                               (arg3 clip-travel-vector-to-mesh-return-info)
+                               (arg4 float)
+                               )
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg1 (-> obj mesh origin))
-    (TODO-ASM-32
-      obj
-      (the-as vector arg0)
-      v1-0
-      (the-as vector arg2)
-      (the-as clip-travel-vector-to-mesh-return-info arg3)
-      arg4
-      )
+    (TODO-ASM-32 obj arg0 v1-0 arg2 arg3 arg4)
     )
   (none)
   )
@@ -3442,3 +3439,7 @@
   0
   (none)
   )
+
+
+
+

@@ -15241,8 +15241,8 @@
     (compute-bounding-box (_type_ vector vector) none 19)
     (TODO-RENAME-20 (_type_ nav-poly rgba) none 20) ;; TODO - is rgba a vector4w?
     (TODO-RENAME-21 (_type_ nav-poly vector) symbol 21)
-    (TODO-RENAME-22 (_type_ (pointer uint8) (pointer uint8)) uint 22) ;; TODO - unused, hard to tell what these types are...
-    (dummy-23 (_type_ basic vector vector vector basic) vector 23) ;; TODO - basics - what are they?
+    (TODO-RENAME-22 (_type_ nav-poly nav-poly) uint 22)
+    (dummy-23 (_type_ nav-poly vector vector vector nav-route-portal) vector 23)
     (TODO-RENAME-24 (_type_ nav-poly vector vector) vector 24)
     (dummy-25 (_type_ nav-poly vector vector) none 25)
     (TODO-RENAME-26 (_type_ nav-poly vector vector) vector 26)
@@ -15330,7 +15330,7 @@
     (TODO-ASM-32 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) none 32)
     (TODO-RENAME-33 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) symbol 33)
     (dummy-34 () none 34)
-    (dummy-35 (_type_ vector vector vector vector float) none 35) ;; basic/vector/basic/basic/float/float
+    (dummy-35 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) none 35)
     )
   )
 
@@ -34162,7 +34162,8 @@
   :size-assert         #x20c
   :heap-base           #x1a0
   :flag-assert         #x4c01a0020c
-  ;; inherited inspect of nav-enemy
+  (:states
+    fleeing-nav-enemy-debug)
   )
 
 (deftype lightning-mole (fleeing-nav-enemy)
@@ -34173,6 +34174,14 @@
   :size-assert         #x224
   :heap-base           #x1c0
   :flag-assert         #x4c01c00224
+  (:states
+    lightning-mole-gone
+    lightning-mole-hiding
+    lightning-mole-yelp
+    lightning-mole-head-for-hole
+    lightning-mole-dive
+    lightning-mole-debug-run
+    lightning-mole-debug-blend)
   )
 
 (deftype peeper (process-drawable)
@@ -34181,6 +34190,11 @@
   :size-assert         #xb0
   :heap-base           #x40
   :flag-assert         #x14004000b0
+  (:states
+    peeper-up
+    peeper-down
+    peeper-hide
+    peeper-wait)
   )
 
 ;; - Functions
@@ -34190,8 +34204,8 @@
 (define-extern fleeing-nav-enemy-adjust-travel (function fleeing-nav-enemy vector))
 (define-extern fleeing-nav-enemy-chase-post-func (function float :behavior fleeing-nav-enemy))
 (define-extern fleeing-nav-enemy-adjust-nav-info (function float :behavior fleeing-nav-enemy))
-(define-extern find-adjacent-bounds-one function)
-(define-extern find-adjacent-bounds (function basic clip-travel-vector-to-mesh-return-info none))
+(define-extern find-adjacent-bounds-one (function nav-mesh nav-poly int (array int8) (array int8) vector symbol))
+(define-extern find-adjacent-bounds (function nav-mesh clip-travel-vector-to-mesh-return-info none))
 (define-extern fleeing-nav-enemy-chase-post (function none :behavior fleeing-nav-enemy))
 (define-extern lightning-mole-hole-post (function none :behavior lightning-mole))
 (define-extern lightning-mole-run-code (function none :behavior lightning-mole))
@@ -34201,20 +34215,8 @@
 ;; - Unknowns
 
 (define-extern *lightning-mole-sg* skeleton-group)
-(define-extern peeper-up (state peeper)) ;; unknown type
-(define-extern peeper-down (state peeper)) ;; unknown type
-(define-extern peeper-hide (state peeper)) ;; unknown type
-(define-extern peeper-wait (state peeper)) ;; unknown type
 (define-extern *lightning-mole-nav-enemy-info* nav-enemy-info)
-(define-extern lightning-mole-gone (state lightning-mole)) ;; unknown type
-(define-extern lightning-mole-hiding (state lightning-mole)) ;; unknown type
-(define-extern lightning-mole-yelp (state lightning-mole)) ;; unknown type
 (define-extern *lightning-mole-hole* vector) ;; unknown type
-(define-extern lightning-mole-head-for-hole (state lightning-mole)) ;; unknown type
-(define-extern lightning-mole-dive (state lightning-mole)) ;; unknown type
-(define-extern lightning-mole-debug-run (state lightning-mole)) ;; unknown type
-(define-extern fleeing-nav-enemy-debug (state fleeing-nav-enemy)) ;; unknown type
-(define-extern lightning-mole-debug-blend (state lightning-mole)) ;; unknown type
 
 
 ;; ----------------------
