@@ -1013,13 +1013,15 @@
 
 (copy-vis-files "MAI")
 
+
+
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
  ("out/obj/default-menu.o"
-  ;;"out/obj/darkcave-obs.o"
   )
  "maincave/cavecrystal-light.gc"
+ "darkcave/darkcave-obs.gc"
  "maincave/maincave-obs.gc"
  "maincave/maincave-part.gc"
  "maincave/spiderwebs.gc"
@@ -1052,13 +1054,6 @@
   "water-anim-maincave-water-ag"
   "maincave-vis"
   )
-
-; (goal-src-sequence
-;  "levels/"
-;  :deps ;; no idea what these depend on, make it depend on the whole engine
-;  ("out/obj/default-menu.o" "out/obj/cavecrystal-light.o")
-;  "darkcave/darkcave-obs.gc"
-;  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
