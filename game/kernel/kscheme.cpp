@@ -4,7 +4,6 @@
  */
 
 #include <cstring>
-#include "common/util/assert.h"
 #include "kscheme.h"
 #include "common/common_types.h"
 #include "common/goal_constants.h"
@@ -24,6 +23,7 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 #include "game/mips2c/mips2c_table.h"
+#include "common/util/assert.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1

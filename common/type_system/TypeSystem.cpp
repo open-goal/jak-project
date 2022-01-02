@@ -5,12 +5,12 @@
  * access types, and reverse type lookups.
  */
 
-#include "common/util/assert.h"
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/color.h"
 #include <stdexcept>
-#include <third-party/fmt/core.h>
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
-#include "third-party/fmt/color.h"
+#include "common/util/assert.h"
 
 namespace {
 template <typename... Args>

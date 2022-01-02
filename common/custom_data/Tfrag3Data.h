@@ -4,10 +4,10 @@
 #include <array>
 
 #include "common/common_types.h"
-#include "common/util/assert.h"
 #include "common/dma/gs.h"
 #include "common/util/Serializer.h"
 #include "common/math/Vector.h"
+#include "common/util/assert.h"
 
 namespace tfrag3 {
 

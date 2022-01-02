@@ -1,10 +1,10 @@
 #pragma once
 
 #include <string>
-#include "common/util/assert.h"
 #include "common/common_types.h"
 #include "common/util/BitUtils.h"
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 struct U128 {
   U128() = default;

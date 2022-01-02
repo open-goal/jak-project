@@ -1,6 +1,6 @@
 #include "common/log/log.h"
-#include "common/util/assert.h"
 #include "json_util.h"
+#include "common/util/assert.h"
 
 /*!
  * Strip out // and / * comments

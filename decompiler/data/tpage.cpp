@@ -14,7 +14,7 @@
  * check duplicate names
  */
 
-#include <common/util/FileUtil.h>
+#include "common/util/FileUtil.h"
 #include "tpage.h"
 #include "common/versions.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"

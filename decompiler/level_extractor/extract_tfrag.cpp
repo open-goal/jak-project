@@ -1,10 +1,10 @@
 #include "extract_tfrag.h"
 #include "common/dma/dma.h"
-#include "common/util/assert.h"
 #include "decompiler/util/Error.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/util/FileUtil.h"
 #include "common/dma/gs.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 namespace {

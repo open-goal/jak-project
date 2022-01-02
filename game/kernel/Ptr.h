@@ -5,9 +5,9 @@
  * Representation of a GOAL pointer which can be converted to/from a C pointer.
  */
 
-#include "common/util/assert.h"
 #include "game/runtime.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 /*!
  * GOAL pointer to a T.  Represented as a 32-bit unsigned offset from g_ee_main_mem.
