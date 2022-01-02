@@ -99,7 +99,7 @@ class Tie3 : public BucketRenderer {
 
   TfragPcPortData m_pc_port_data;
 
-  std::vector<float> m_wind_vectors; // note: I suspect these are shared with shrub.
+  std::vector<float> m_wind_vectors;  // note: I suspect these are shared with shrub.
 
   float m_wind_multiplier = 1.f;
 
