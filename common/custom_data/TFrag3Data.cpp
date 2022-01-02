@@ -22,6 +22,7 @@ void InstancedStripDraw::serialize(Serializer& ser) {
 void TieWindInstance::serialize(Serializer& ser) {
   ser.from_ptr(&matrix);
   ser.from_ptr(&wind_idx);
+  ser.from_ptr(&stiffness);
 }
 
 void TfragTree::serialize(Serializer& ser) {

@@ -254,6 +254,21 @@
   obj
   )
 
+(defun add-pc-wind-data ((dma-buf dma-buffer))
+  ;; packet to send 84 qw's
+  (let ((packet (the-as dma-packet (-> dma-buf base))))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 84))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+    )
+  (quad-copy! (-> dma-buf base) (the pointer (&- (the pointer *wind-work*) 4)) 84)
+  (set! (-> (the (pointer uint32) (-> dma-buf base)) 0)
+        (if (paused?) 1 0)
+        )
+  (&+! (-> dma-buf base) (* 16 84))
+  )
+
 (defun draw-drawable-tree-instance-tie ((arg0 drawable-tree-instance-tie) (arg1 level))
   "Actually draw TIE instances.
   Will draw TIE, TIE-NEAR, and GENERIC"
@@ -418,6 +433,7 @@
                     (reset! (-> *perf-stats* data 11))
                     ;;(draw-inline-array-prototype-tie-asm s1-1 s5-1 s4-1)
                     (add-pc-tfrag3-data s1-1 (-> *level* data (-> (scratchpad-object terrain-context) bsp lev-index)))
+                    (add-pc-wind-data s1-1)
                     (read! (-> *perf-stats* data 11))
                     (update-wait-stats (-> *perf-stats* data 11) (the-as uint 0)
                                        (-> *prototype-tie-work* wait-to-spr)

@@ -62,7 +62,7 @@ struct InstancedStripDraw {
 
   // the vertex stream above is segmented by instance.
   struct InstanceGroup {
-    u32 num = 0;      // number of vertex indices in this group
+    u32 num = 0;           // number of vertex indices in this group
     u32 instance_idx = 0;  // the instance they belong to
     u32 vis_idx = 0;
   };
@@ -139,6 +139,7 @@ struct TfragTree {
 struct TieWindInstance {
   std::array<math::Vector4f, 4> matrix;
   u16 wind_idx;
+  float stiffness;
   void serialize(Serializer& ser);
 };
 

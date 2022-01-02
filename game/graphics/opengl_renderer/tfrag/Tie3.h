@@ -23,6 +23,17 @@ class Tie3 : public BucketRenderer {
                    ScopedProfilerNode& prof);
   void setup_for_level(const std::string& str, SharedRenderState* render_state);
 
+  struct WindWork {
+    u32 paused;
+    u32 pad[3];
+    math::Vector4f wind_array[64];
+    math::Vector4f wind_normal;
+    math::Vector4f wind_temp;
+    float wind_force[64];
+    u32 wind_time;
+    u32 pad2[3];
+  } m_wind_data;
+
  private:
   void discard_tree_cache();
   void render_tree_wind(int idx,
@@ -87,4 +98,10 @@ class Tie3 : public BucketRenderer {
   Filtered<float> m_all_tree_time;
 
   TfragPcPortData m_pc_port_data;
+
+  std::vector<float> m_wind_vectors; // note: I suspect these are shared with shrub.
+
+  float m_wind_multiplier = 1.f;
+
+  static_assert(sizeof(WindWork) == 84 * 16);
 };

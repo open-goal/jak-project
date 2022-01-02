@@ -24,6 +24,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
 
   if (m_level_name != level) {
     Timer tie_setup_timer;
+    m_wind_vectors.clear();
     // We changed level!
     fmt::print("TIE3 level change! {} -> {}\n", m_level_name, level);
     fmt::print(" Removing old level...\n");
@@ -35,6 +36,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
     size_t vis_temp_len = 0;
     size_t max_draw = 0;
     size_t max_idx_per_draw = 0;
+    u16 max_wind_idx = 0;
 
     // set up each tree
     for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees.size(); tree_idx++) {
@@ -49,6 +51,9 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       for (auto& draw : tree.instanced_wind_draws) {
         wind_idx_buffer_len += draw.vertex_index_stream.size();
         max_idx_per_draw = std::max(max_idx_per_draw, draw.vertex_index_stream.size());
+      }
+      for (auto& inst : tree.instance_info) {
+        max_wind_idx = std::max(max_wind_idx, inst.wind_idx);
       }
       time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
       u32 verts = tree.vertices.size();
@@ -162,9 +167,122 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
     fmt::print("level max time of day: {}\n", time_of_day_count);
     assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
 
+    fmt::print("wind: {}\n", max_wind_idx);
+    m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
+
     m_level_name = level;
     fmt::print("TIE setup: {:.3f}\n", tie_setup_timer.getSeconds());
   }
+}
+
+void vector_min_in_place(math::Vector4f& v, float val) {
+  for (int i = 0; i < 4; i++) {
+    if (v[i] > val) {
+      v[i] = val;
+    }
+  }
+}
+
+math::Vector4f vector_max(const math::Vector4f& v, float val) {
+  math::Vector4f result;
+  for (int i = 0; i < 4; i++) {
+    result[i] = std::max(val, v[i]);
+  }
+  return result;
+}
+
+void do_wind_math(u16 wind_idx,
+                  float* wind_vector_data,
+                  const Tie3::WindWork& wind_work,
+                  float stiffness,
+                  std::array<math::Vector4f, 4>& mat) {
+  float* my_vector = wind_vector_data + (4 * wind_idx);
+  const auto& work_vector = wind_work.wind_array[(wind_work.wind_time + wind_idx) & 63];
+  constexpr float cx = 0.5;
+  constexpr float cy = 100.0;
+  constexpr float cz = 0.0166;
+  constexpr float cw = -1.0;
+
+  // ld s1, 8(s5)                    # load wind vector 1
+  // pextlw s1, r0, s1               # convert to 2x 64 bits, by shifting left
+  // qmtc2.i vf18, s1                # put in vf
+  float vf18_x = my_vector[2];
+  float vf18_z = my_vector[3];
+
+  // ld s2, 0(s5)                    # load wind vector 0
+  // pextlw s3, r0, s2               # convert to 2x 64 bits, by shifting left
+  // qmtc2.i vf17, s3                # put in vf
+  float vf17_x = my_vector[0];
+  float vf17_z = my_vector[1];
+
+  // lqc2 vf16, 12(s3)               # load wind vector
+  math::Vector4f vf16 = work_vector;
+
+  // vmula.xyzw acc, vf16, vf1       # acc = vf16
+  // vmsubax.xyzw acc, vf18, vf19    # acc = vf16 - vf18 * wind_const.x
+  // vmsuby.xyzw vf16, vf17, vf19
+  //# vf16 -= (vf18 * wind_const.x) + (vf17 * wind_const.y)
+  vf16.x() -= cx * vf18_x + cy * vf17_x;
+  vf16.z() -= cx * vf18_z + cy * vf17_z;
+
+  // vmulaz.xyzw acc, vf16, vf19     # acc = vf16 * wind_const.z
+  // vmadd.xyzw vf18, vf1, vf18
+  //# vf18 += vf16 * wind_const.z
+  math::Vector4f vf18(vf18_x, 0.f, vf18_z, 0.f);
+  vf18 += vf16 * cz;
+
+  // vmulaz.xyzw acc, vf18, vf19    # acc = vf18 * wind_const.z
+  // vmadd.xyzw vf17, vf17, vf1
+  //# vf17 += vf18 * wind_const.z
+  math::Vector4f vf17(vf17_x, 0.f, vf17_z, 0.f);
+  vf17 += vf18 * cz;
+
+  // vitof12.xyzw vf11, vf11 # normal convert
+  // vitof12.xyzw vf12, vf12 # normal convert
+
+  // vminiw.xyzw vf17, vf17, vf0
+  vector_min_in_place(vf17, 1.f);
+
+  // qmfc2.i s3, vf18
+  // ppacw s3, r0, s3
+
+  // vmaxw.xyzw vf27, vf17, vf19
+  auto vf27 = vector_max(vf17, cw);
+
+  // vmulw.xyzw vf27, vf27, vf15
+  vf27 *= stiffness;
+
+  // vmulax.yw acc, vf0, vf0
+  // vmulay.xz acc, vf27, vf10
+  // vmadd.xyzw vf10, vf1, vf10
+  mat[0].x() += vf27.x() * mat[0].y();
+  mat[0].z() += vf27.z() * mat[0].y();
+
+  // qmfc2.i s2, vf27
+  if (!wind_work.paused) {
+    my_vector[0] = vf27.x();
+    my_vector[1] = vf27.z();
+    my_vector[2] = vf18.x();
+    my_vector[3] = vf18.z();
+  }
+
+  // vmulax.yw acc, vf0, vf0
+  // vmulay.xz acc, vf27, vf11
+  // vmadd.xyzw vf11, vf1, vf11
+  mat[1].x() += vf27.x() * mat[1].y();
+  mat[1].z() += vf27.z() * mat[1].y();
+
+  // ppacw s2, r0, s2
+  // vmulax.yw acc, vf0, vf0
+  // vmulay.xz acc, vf27, vf12
+  // vmadd.xyzw vf12, vf1, vf12
+  mat[2].x() += vf27.x() * mat[2].y();
+  mat[2].z() += vf27.z() * mat[2].y();
+
+  //
+  // if not paused
+  // sd s3, 8(s5)
+  // sd s2, 0(s5)
 }
 
 void Tie3::discard_tree_cache() {
@@ -235,6 +353,10 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
+  auto wind_data = dma.read_and_advance();
+  assert(wind_data.size_bytes == sizeof(WindWork));
+  memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+
   while (dma.current_tag_offset() != render_state->next_bucket) {
     dma.read_and_advance();
   }
@@ -302,9 +424,14 @@ void Tie3::render_tree_wind(int idx,
   }
 
   for (size_t inst_id = 0; inst_id < tree.instance_info->size(); inst_id++) {
+    auto& info = tree.instance_info->operator[](inst_id);
     auto& out = tree.wind_matrix_cache[inst_id];
-    //auto& mat = tree.instance_info->operator[](inst_id).matrix;
-    auto mat = tree.instance_info->operator[](inst_id).matrix;
+    // auto& mat = tree.instance_info->operator[](inst_id).matrix;
+    auto mat = info.matrix;
+
+    assert(info.wind_idx * 4 <= m_wind_vectors.size());
+    do_wind_math(info.wind_idx, m_wind_vectors.data(), m_wind_data,
+                 info.stiffness * m_wind_multiplier, mat);
 
     // vmulax.xyzw acc, vf20, vf10
     // vmadday.xyzw acc, vf21, vf10
@@ -547,6 +674,7 @@ void Tie3::draw_debug_window() {
   ImGui::SameLine();
   ImGui::Checkbox("All Visible", &m_debug_all_visible);
   ImGui::Checkbox("Hide Wind", &m_hide_wind);
+  ImGui::SliderFloat("Wind Multiplier", &m_wind_multiplier, 0., 40.f);
   ImGui::Separator();
   for (u32 i = 0; i < m_trees.size(); i++) {
     auto& perf = m_trees[i].perf;

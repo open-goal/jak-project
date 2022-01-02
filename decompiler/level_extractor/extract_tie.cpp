@@ -1906,6 +1906,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       if (using_wind) {
         tfrag3::TieWindInstance wind_instance_info;
         wind_instance_info.wind_idx = inst.wind_index;
+        wind_instance_info.stiffness = proto.stiffness;
         wind_instance_info.matrix = inst.mat;
         tree.instance_info.push_back(wind_instance_info);
       }
