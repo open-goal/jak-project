@@ -21,7 +21,6 @@
 #include "common/cross_sockets/xsocket.h"
 
 #include <stdexcept>
-#include "common/util/assert.h"
 #include <cstring>
 #include <chrono>
 #include <thread>
@@ -30,6 +29,7 @@
 #include "common/versions.h"
 
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 using namespace versions;
 constexpr bool debug_listener = false;

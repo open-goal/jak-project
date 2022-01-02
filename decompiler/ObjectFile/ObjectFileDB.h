@@ -7,7 +7,6 @@
  * (there may be different object files with the same name sometimes)
  */
 
-#include "common/util/assert.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,6 +15,7 @@
 #include "common/common_types.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/analysis/symbol_def_map.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!

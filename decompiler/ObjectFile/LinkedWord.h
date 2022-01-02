@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <string>
 #include <cstring>
-#include "common/util/assert.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 class LinkedWord {

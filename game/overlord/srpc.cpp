@@ -1,6 +1,5 @@
 #include <cstring>
 #include <cstdio>
-#include "common/util/assert.h"
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
@@ -8,6 +7,7 @@
 #include "common/versions.h"
 #include "sbank.h"
 #include "iso_api.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 

@@ -1,24 +1,19 @@
-#pragma once
-
 /*!
  * @file assert.h
  * Wrapper around <cassert>.
+ * Make sure this file is always the last one included.
  */
 
-#if defined NDEBUG && defined _WIN32
-
-#pragma push_macro("NDEBUG")
+#if defined NDEBUG
 
 #undef NDEBUG
 #undef assert
 #include <cassert>
 
-#pragma pop_macro("NDEBUG")
+#define NDEBUG 1
 
 #else
 
 #include <cassert>
 
 #endif
-
-#define ASSERT assert

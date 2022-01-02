@@ -1,7 +1,6 @@
-#include "common/util/assert.h"
 #include "third-party/fmt/core.h"
-
 #include "VuInstruction.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 VuInstructionAtom VuInstructionAtom::make_vf(int idx) {

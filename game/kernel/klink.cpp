@@ -7,7 +7,6 @@
  */
 
 #include <cstring>
-#include "common/util/assert.h"
 #include <cstdio>
 #include <common/versions.h>
 #include "klink.h"
@@ -18,6 +17,7 @@
 #include "common/symbols.h"
 #include "common/goal_constants.h"
 #include "game/mips2c/mips2c_table.h"
+#include "common/util/assert.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
