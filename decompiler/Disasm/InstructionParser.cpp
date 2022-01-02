@@ -1,9 +1,9 @@
-#include "common/util/assert.h"
 #include <algorithm>
 #include <stdexcept>
 #include <optional>
 #include "common/common_types.h"
 #include "InstructionParser.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 InstructionParser::InstructionParser() {

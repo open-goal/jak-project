@@ -4,9 +4,9 @@
  */
 
 #include <stdexcept>
-#include "common/util/assert.h"
-#include <third-party/fmt/core.h>
+#include "third-party/fmt/core.h"
 #include "Type.h"
+#include "common/util/assert.h"
 
 namespace {
 std::string reg_kind_to_string(RegClass kind) {

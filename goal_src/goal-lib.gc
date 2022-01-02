@@ -423,7 +423,7 @@
   `(none)
   )
 
-(defmacro case (switch &rest cases)
+(defmacro case (switch &key (comp =) &rest cases)
   "A switch-case construct. switch is saved onto a local variable and compared against each case, sequentially.
    else can be used like the 'default' case, but it must be the last one."
 
@@ -444,11 +444,11 @@
                             )
                           ;; if the list is made up of a single condition
                           ( (= (length conditions) 1)
-                            `((= sw ,(first conditions)) ,@body)
+                            `((,comp sw ,(first conditions)) ,@body)
                             )
                           ;; otherwise it is made up of multiple conditions, or them together!
                           (#t
-                            `((or ,@(apply (lambda (c) `(= sw ,c)) conditions)) ,@body)
+                            `((or ,@(apply (lambda (c) `(,comp sw ,c)) conditions)) ,@body)
                             )
                           )
 
@@ -459,6 +459,12 @@
                    )
         )
     )
+  )
+
+(defmacro case-str (switch &rest cases)
+  "Same as case, but for string comparisons instead."
+
+  `(case ,switch ,@cases :comp string=)
   )
 
 ;;;;;;;;;;;;;;;;;;;

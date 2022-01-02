@@ -1,11 +1,11 @@
 #include <cstring>
-#include "common/util/assert.h"
 #include <cstdio>
 #include <unordered_map>
 #include "common/util/FileUtil.h"
 #include "sif_ee.h"
 #include "game/system/iop_thread.h"
 #include "game/runtime.h"
+#include "common/util/assert.h"
 
 namespace ee {
 

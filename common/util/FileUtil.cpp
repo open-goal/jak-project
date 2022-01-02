@@ -9,7 +9,6 @@
 #include <cstdio> /* defines FILENAME_MAX */
 #include <fstream>
 #include <sstream>
-#include "common/util/assert.h"
 #include <cstdlib>
 #include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
@@ -24,6 +23,7 @@
 #include <unistd.h>
 #include <cstring>
 #endif
+#include "common/util/assert.h"
 
 namespace file_util {
 std::filesystem::path get_user_home_dir() {

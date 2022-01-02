@@ -2,9 +2,8 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include "common/util/assert.h"
-
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 class DecompWarnings {

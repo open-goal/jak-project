@@ -10,7 +10,7 @@
 #include "inja.hpp"
 #include "third-party/json.hpp"
 #include "common/util/FileUtil.h"
-#include <test/goalc/framework/test_runner.h>
+#include "test/goalc/framework/test_runner.h"
 #include "third-party/fmt/core.h"
 
 #include <iostream>

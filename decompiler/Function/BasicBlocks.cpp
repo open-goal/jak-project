@@ -1,8 +1,8 @@
 #include <algorithm>
-#include "common/util/assert.h"
 #include "BasicBlocks.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!

@@ -1,6 +1,5 @@
-#include "common/util/assert.h"
-
 #include "CallingConvention.h"
+#include "common/util/assert.h"
 
 CallingConvention get_function_calling_convention(const TypeSpec& function_type,
                                                   const TypeSystem& type_system) {

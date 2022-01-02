@@ -2,7 +2,6 @@
 
 #include <string>
 #include <optional>
-#include "common/util/assert.h"
 #include <utility>
 #include <map>
 #include "common/goos/Object.h"
@@ -11,6 +10,7 @@
 #include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
 #include "AtomicOp.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 
