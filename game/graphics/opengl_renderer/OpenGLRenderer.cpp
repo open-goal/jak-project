@@ -29,7 +29,6 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    // On some drivers this prints on every single texture upload, which is too much spam
     lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("[{}] OpenGL message 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
@@ -338,8 +337,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
   }
 
   // set alpha. For some reason, image viewers do weird stuff with alpha.
-  for (auto& x : buffer) {
-    x |= 0xff000000;
+  for (auto& px : buffer) {
+    px |= 0xff000000;
   }
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
 }

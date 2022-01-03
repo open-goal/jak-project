@@ -1,5 +1,4 @@
 #include <string>
-#include <cassert>
 #include <fstream>
 #include <iomanip>
 #include "third-party/fmt/core.h"
@@ -12,6 +11,7 @@
 #include "common/type_system/TypeSystem.h"
 
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "common/util/assert.h"
 
 struct Ram {
   const u8* data = nullptr;

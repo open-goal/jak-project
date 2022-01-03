@@ -5,7 +5,6 @@
  */
 
 #include <cstdio>
-#include "common/util/assert.h"
 #include <utility>
 
 // TODO - i think im not including the dependency right..?
@@ -24,6 +23,7 @@
 #include "common/listener_common.h"
 #include "common/versions.h"
 #include "Deci2Server.h"
+#include "common/util/assert.h"
 
 Deci2Server::Deci2Server(std::function<bool()> shutdown_callback) {
   buffer = new char[BUFFER_SIZE];

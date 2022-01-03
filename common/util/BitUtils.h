@@ -1,9 +1,9 @@
 #pragma once
 
 #include <optional>
-#include "common/util/assert.h"
 #include "common/util/Range.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 constexpr int BITS_PER_BYTE = 8;
 template <typename T>

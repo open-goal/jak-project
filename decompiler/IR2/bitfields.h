@@ -1,10 +1,9 @@
 #pragma once
 
-#include "common/util/assert.h"
-
 #include "common/common_types.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/util/data_decompile.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 struct BitfieldManip {

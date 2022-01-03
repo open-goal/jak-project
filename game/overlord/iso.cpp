@@ -5,7 +5,6 @@
  */
 
 #include "common/log/log.h"
-#include <assert.h>
 #include <cstring>
 #include <cstdio>
 #include "iso.h"
@@ -17,6 +16,7 @@
 #include "dma.h"
 #include "fake_iso.h"
 #include "game/common/dgo_rpc_types.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 

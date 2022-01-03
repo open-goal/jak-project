@@ -12448,7 +12448,7 @@
     (dummy-15 (_type_ collide-using-spheres-params) none 15)
     (dummy-16 (_type_ vector float uint process-drawable uint) none 16)
     (initialize (_type_) none 17)
-    (dummy-18 (_type_ vector vector float int collide-mesh-cache-tri int) float 18)
+    (dummy-18 (_type_ vector vector float int collide-tri-result int) float 18)
     (probe-using-spheres (_type_) none 19)
     (dummy-20 (_type_ vector float uint collide-tri-result uint) float 20)
     (dummy-21 (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
@@ -23209,7 +23209,7 @@
   )
 
 (deftype joint-exploder-static-params (basic)
-  ((joints array  :offset-assert 4) ;; an array of...what?
+  ((joints (array joint-exploder-static-joint-params)  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -23233,13 +23233,13 @@
 
 (deftype joint-exploder-joints (basic)
   ((num-joints int32            :offset-assert 4)
-   (joint      joint-exploder-joint :dynamic :offset 16)
+   (joint      joint-exploder-joint :dynamic :inline :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   (:methods
-    (new (symbol _type_ int) _type_ 0))
+    (new (symbol type joint-exploder-static-params) _type_ 0))
   )
 
 (deftype joint-exploder-list (structure)
@@ -23254,7 +23254,8 @@
   )
 
 (deftype joint-exploder (process-drawable)
-  ((die-if-below-y             float                         :offset-assert 176)
+  ((parent-override  (pointer process-drawable) :score 100 :offset 12)
+   (die-if-below-y             float                         :offset-assert 176)
    (die-if-beyond-xz-dist-sqrd float                         :offset-assert 180)
    (joints                     joint-exploder-joints                         :offset-assert 184)
    (static-params              joint-exploder-static-params                         :offset-assert 188)
@@ -23268,22 +23269,22 @@
   :heap-base           #x1a0
   :flag-assert         #x1d01a00210
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 (_type_) none 24)
-    (dummy-25 () none 25)
-    (dummy-26 (_type_) none 26)
-    (dummy-27 (_type_ joint-exploder-list) none 27)
-    (dummy-28 (_type_) none 28)
+    (TODO-RENAME-20 (_type_ joint-exploder-list int) int 20)
+    (TODO-RENAME-21 (_type_ joint-exploder-list joint-exploder-joint) none 21)
+    (TODO-RENAME-22 (_type_ joint-exploder-list) symbol 22)
+    (TODO-RENAME-23 (_type_) symbol 23)
+    (TODO-RENAME-24 (_type_ joint-exploder-list int) int 24)
+    (TODO-RENAME-25 (_type_ joint-exploder-list) symbol 25)
+    (TODO-RENAME-26 (_type_ joint-exploder-list int) int 26)
+    (TODO-RENAME-27 (_type_ joint-exploder-list int) joint-exploder-list 27)
+    (TODO-RENAME-28 (_type_ joint-exploder-list) none 28)
     )
   )
 
 ;; - Functions
 
 (define-extern joint-exploder-joint-callback (function joint-exploder none))
-(define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-static-params joint-exploder-tuning none :behavior joint-exploder))
+(define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-static-params joint-exploder-static-params none :behavior joint-exploder))
 
 ;; - Unknowns
 
@@ -30617,8 +30618,9 @@
 (deftype balloonlurker (rigid-body-platform)
   ((explosion-force-position vector  :inline :offset-assert 736)
    (explosion-force          vector  :inline :offset-assert 752)
-   (explosion                basic           :offset-assert 768) ;; ??
+   (explosion                symbol          :offset-assert 768)
    (explosion-joint-index    uint16  2       :offset-assert 772)
+   (explosion-joint-index-bytes int8 4       :offset 772) ;; added overlay
    (vulnerable               symbol           :offset-assert 776)
    (water-y                  float           :offset-assert 780)
    (propeller                joint-mod-set-local           :offset-assert 784)
@@ -30642,6 +30644,10 @@
   :size-assert         #x369
   :heap-base           #x300
   :flag-assert         #x2303000369
+  (:states
+    balloonlurker-patrol
+    balloonlurker-die
+    (balloonlurker-mine-explode int))
   )
 
 (deftype balloonlurker-pilot (process-drawable)
@@ -30655,6 +30661,9 @@
     (dummy-20 (_type_) none 20)
     (dummy-21 (_type_) none 21)
     )
+  (:states
+    balloonlurker-pilot-idle
+    balloonlurker-pilot-die)
   )
 
 ;; - Functions
@@ -30671,16 +30680,11 @@
 
 ;; - Unknowns
 
-(define-extern balloonlurker-patrol (state balloonlurker)) ;; unknown type
 (define-extern *balloonlurker-sg* skeleton-group)
 (define-extern *balloonlurker-constants* rigid-body-platform-constants) ;; unknown type
-(define-extern balloonlurker-pilot-idle (state balloonlurker-pilot)) ;; unknown type
 (define-extern *balloonlurker-pilot-sg* skeleton-group)
-(define-extern balloonlurker-pilot-die (state balloonlurker-pilot)) ;; unknown type
 (define-extern *BALLOONLURKER-bank* balloonlurker-bank) ;; unknown type
-(define-extern balloonlurker-die (state balloonlurker)) ;; unknown type
 (define-extern *balloonlurker-rudder-joint-home* vector) ;; unknown type
-(define-extern balloonlurker-mine-explode (state int balloonlurker)) ;; unknown type
 
 
 ;; ----------------------

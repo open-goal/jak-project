@@ -4,7 +4,6 @@
  * Supports loading a file directly to the EE, or loading chunks of a chunked file.
  */
 
-#include "common/util/assert.h"
 #include <cstring>
 #include "stream.h"
 #include "game/sce/iop.h"
@@ -12,6 +11,7 @@
 #include "game/common/play_rpc_types.h"
 #include "game/overlord/isocommon.h"
 #include "game/overlord/iso_api.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 

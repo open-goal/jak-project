@@ -1,9 +1,9 @@
 #pragma once
 
-#include "common/util/assert.h"
 #include <cstring>
 #include <string>
 #include <vector>
+#include "common/util/assert.h"
 
 /*!
  * The Serializer is a tool to load or save data from a buffer.
