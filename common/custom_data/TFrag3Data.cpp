@@ -11,6 +11,20 @@ void StripDraw::serialize(Serializer& ser) {
   ser.from_ptr(&num_triangles);
 }
 
+void InstancedStripDraw::serialize(Serializer& ser) {
+  ser.from_ptr(&mode);
+  ser.from_ptr(&tree_tex_id);
+  ser.from_pod_vector(&vertex_index_stream);
+  ser.from_pod_vector(&instance_groups);
+  ser.from_ptr(&num_triangles);
+}
+
+void TieWindInstance::serialize(Serializer& ser) {
+  ser.from_ptr(&matrix);
+  ser.from_ptr(&wind_idx);
+  ser.from_ptr(&stiffness);
+}
+
 void TfragTree::serialize(Serializer& ser) {
   ser.from_ptr(&kind);
 
@@ -36,6 +50,24 @@ void TieTree::serialize(Serializer& ser) {
   }
   for (auto& draw : static_draws) {
     draw.serialize(ser);
+  }
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(instanced_wind_draws.size());
+  } else {
+    instanced_wind_draws.resize(ser.load<size_t>());
+  }
+  for (auto& draw : instanced_wind_draws) {
+    draw.serialize(ser);
+  }
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(instance_info.size());
+  } else {
+    instance_info.resize(ser.load<size_t>());
+  }
+  for (auto& inst : instance_info) {
+    inst.serialize(ser);
   }
 
   ser.from_pod_vector(&vertices);

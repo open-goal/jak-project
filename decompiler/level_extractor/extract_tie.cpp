@@ -165,6 +165,8 @@ struct TieInstanceFragInfo {
   // this contains indices into the shared palette.
   std::vector<u8> color_indices;
 
+  // in the PC port format, we upload a single giant time of day color. this points to the offset
+  // of the colors from this frag instance.
   u16 color_index_offset_in_big_palette = -1;
 
   math::Vector<u32, 4> lq_colors_ui(u32 qw) const {
@@ -336,6 +338,25 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
 
 constexpr int GEOM_IDX = 1;  // todo 0 or 1??
 
+/*!
+ * Confirm that the initial value of all wind vectors is 0.
+ */
+void check_wind_vectors_zero(const std::vector<TieProtoInfo>& protos, Ref wind_ref) {
+  u16 max_wind = 0;
+  for (auto& proto : protos) {
+    for (auto& inst : proto.instances) {
+      max_wind = std::max(inst.wind_index, max_wind);
+    }
+  }
+  u32 wind_words = max_wind;
+  wind_words *= 4;
+  for (size_t i = 0; i < wind_words; i++) {
+    auto& word = wind_ref.data->words_by_seg.at(wind_ref.seg).at(wind_ref.byte_offset / 4 + i);
+    assert(word.kind() == LinkedWord::PLAIN_DATA);
+    assert(word.data == 0);
+  }
+}
+
 std::vector<TieProtoInfo> collect_instance_info(
     const level_tools::DrawableInlineArrayInstanceTie* instances,
     const std::vector<level_tools::PrototypeBucketTie>* protos) {
@@ -416,6 +437,9 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     info.uses_generic = (proto.flags == 2);
     info.name = proto.name;
     info.stiffness = proto.stiffness;
+    if (info.stiffness != 0) {
+      fmt::print("--------------------proto {} wind {}\n", info.name, info.stiffness);
+    }
     info.generic_flag = proto.flags & 2;
 
     info.time_of_day_colors.resize(proto.time_of_day.height);
@@ -1674,13 +1698,6 @@ std::string debug_dump_proto_to_obj(const TieProtoInfo& proto) {
 math::Vector<float, 3> transform_tie(const std::array<math::Vector4f, 4> mat,
                                      const math::Vector3f& pt) {
   auto temp = mat[0] * pt.x() + mat[1] * pt.y() + mat[2] * pt.z() + mat[3];
-
-  //  math::Vector4f temp;
-  //  temp.x() = pt.x();
-  //  temp.y() = pt.y();
-  //  temp.z() = pt.z();
-  //  temp += mat[3];
-
   math::Vector3f result;
   result.x() = temp.x();
   result.y() = temp.y();
@@ -1872,17 +1889,33 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                                   tfrag3::Level& lev,
                                   const TextureDB& tdb,
                                   const std::vector<TieProtoInfo>& protos) {
-  // our current approach for static draws is just to flatten to giant mesh.
+  // our current approach for static draws is just to flatten to giant mesh, except for wind stuff.
+  std::unordered_map<u32, std::vector<u32>> static_draws_by_tex;
+  std::unordered_map<u32, std::vector<u32>> wind_draws_by_tex;
 
-  std::unordered_map<u32, std::vector<u32>> draws_by_tex;
+  // renumbering instances.
 
-  std::unordered_map<u32, u32> interp_hack_colors;
-
+  // loop over all prototypes
   for (auto& proto : protos) {
+    //    bool using_wind = true;  // hack, for testing
+    bool using_wind = proto.stiffness != 0.f;
+
+    // loop over instances of the prototypes
     for (auto& inst : proto.instances) {
+      u32 wind_instance_idx = tree.instance_info.size();
+      if (using_wind) {
+        tfrag3::TieWindInstance wind_instance_info;
+        wind_instance_info.wind_idx = inst.wind_index;
+        wind_instance_info.stiffness = proto.stiffness;
+        wind_instance_info.matrix = inst.mat;
+        tree.instance_info.push_back(wind_instance_info);
+      }
+
+      // loop over fragments of the prototype
       for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
         auto& frag = proto.frags[frag_idx];
         auto& ifrag = inst.frags.at(frag_idx);
+        // loop over triangle strips within the fragment
         for (auto& strip : frag.strips) {
           // what texture are we using?
           u32 combo_tex = strip.adgif.combo_tex;
@@ -1930,57 +1963,111 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
           DrawMode mode =
               process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit);
 
-          // okay, we now have a texture and draw mode, let's see if we can add to an existing...
-          auto existing_draws_in_tex = draws_by_tex.find(idx_in_lev_data);
-          tfrag3::StripDraw* draw_to_add_to = nullptr;
-          if (existing_draws_in_tex != draws_by_tex.end()) {
-            for (auto idx : existing_draws_in_tex->second) {
-              if (tree.static_draws.at(idx).mode == mode) {
-                draw_to_add_to = &tree.static_draws[idx];
+          if (using_wind) {
+            // okay, we now have a texture and draw mode, let's see if we can add to an existing...
+            auto existing_draws_in_tex = wind_draws_by_tex.find(idx_in_lev_data);
+            tfrag3::InstancedStripDraw* draw_to_add_to = nullptr;
+            if (existing_draws_in_tex != wind_draws_by_tex.end()) {
+              for (auto idx : existing_draws_in_tex->second) {
+                if (tree.instanced_wind_draws.at(idx).mode == mode) {
+                  draw_to_add_to = &tree.instanced_wind_draws[idx];
+                }
               }
             }
-          }
 
-          if (!draw_to_add_to) {
-            // nope, need to create a new draw
-            tree.static_draws.emplace_back();
-            draws_by_tex[idx_in_lev_data].push_back(tree.static_draws.size() - 1);
-            draw_to_add_to = &tree.static_draws.back();
-            draw_to_add_to->mode = mode;
-            draw_to_add_to->tree_tex_id = idx_in_lev_data;
-          }
-
-          // now we have a draw, time to add vertices
-          tfrag3::StripDraw::VisGroup vgroup;
-          vgroup.vis_idx = inst.vis_id;         // associate with the tfrag for culling
-          vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
-          draw_to_add_to->num_triangles += strip.verts.size() - 2;
-          for (auto& vert : strip.verts) {
-            tfrag3::PreloadedVertex vtx;
-            // todo fields
-            auto tf = transform_tie(inst.mat, vert.pos);
-            vtx.x = tf.x();
-            vtx.y = tf.y();
-            vtx.z = tf.z();
-            vtx.s = vert.tex.x();
-            vtx.t = vert.tex.y();
-            vtx.q = vert.tex.z();
-            // if this is true, we can remove a divide in the shader
-            assert(vtx.q == 1.f);
-            if (vert.color_index_index == UINT32_MAX) {
-              vtx.color_index = 0;
-            } else {
-              vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
-              assert(vert.color_index_index < ifrag.color_indices.size());
-              vtx.color_index += ifrag.color_index_offset_in_big_palette;
+            if (!draw_to_add_to) {
+              // nope, need to create a new draw
+              tree.instanced_wind_draws.emplace_back();
+              wind_draws_by_tex[idx_in_lev_data].push_back(tree.instanced_wind_draws.size() - 1);
+              draw_to_add_to = &tree.instanced_wind_draws.back();
+              draw_to_add_to->mode = mode;
+              draw_to_add_to->tree_tex_id = idx_in_lev_data;
             }
 
-            size_t vert_idx = tree.vertices.size();
-            tree.vertices.push_back(vtx);
-            draw_to_add_to->vertex_index_stream.push_back(vert_idx);
+            // now we have a draw, time to add vertices
+            tfrag3::InstancedStripDraw::InstanceGroup igroup;
+            igroup.vis_idx = inst.vis_id;         // associate with the tfrag for culling
+            igroup.num = strip.verts.size() + 1;  // one for the primitive restart!
+            igroup.instance_idx = wind_instance_idx;
+            draw_to_add_to->num_triangles += strip.verts.size() - 2;
+            // note: this is a bit wasteful to duplicate the xyz/stq.
+            for (auto& vert : strip.verts) {
+              tfrag3::PreloadedVertex vtx;
+              vtx.x = vert.pos.x();
+              vtx.y = vert.pos.y();
+              vtx.z = vert.pos.z();
+              vtx.s = vert.tex.x();
+              vtx.t = vert.tex.y();
+              vtx.q = vert.tex.z();
+              // if this is true, we can remove a divide in the shader
+              assert(vtx.q == 1.f);
+              if (vert.color_index_index == UINT32_MAX) {
+                vtx.color_index = 0;
+              } else {
+                vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
+                assert(vert.color_index_index < ifrag.color_indices.size());
+                vtx.color_index += ifrag.color_index_offset_in_big_palette;
+              }
+
+              size_t vert_idx = tree.vertices.size();
+              tree.vertices.push_back(vtx);
+              draw_to_add_to->vertex_index_stream.push_back(vert_idx);
+            }
+            draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+            draw_to_add_to->instance_groups.push_back(igroup);
+          } else {
+            // okay, we now have a texture and draw mode, let's see if we can add to an existing...
+            auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
+            tfrag3::StripDraw* draw_to_add_to = nullptr;
+            if (existing_draws_in_tex != static_draws_by_tex.end()) {
+              for (auto idx : existing_draws_in_tex->second) {
+                if (tree.static_draws.at(idx).mode == mode) {
+                  draw_to_add_to = &tree.static_draws[idx];
+                }
+              }
+            }
+
+            if (!draw_to_add_to) {
+              // nope, need to create a new draw
+              tree.static_draws.emplace_back();
+              static_draws_by_tex[idx_in_lev_data].push_back(tree.static_draws.size() - 1);
+              draw_to_add_to = &tree.static_draws.back();
+              draw_to_add_to->mode = mode;
+              draw_to_add_to->tree_tex_id = idx_in_lev_data;
+            }
+
+            // now we have a draw, time to add vertices
+            tfrag3::StripDraw::VisGroup vgroup;
+            vgroup.vis_idx = inst.vis_id;         // associate with the tfrag for culling
+            vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
+            draw_to_add_to->num_triangles += strip.verts.size() - 2;
+            for (auto& vert : strip.verts) {
+              tfrag3::PreloadedVertex vtx;
+              // todo fields
+              auto tf = transform_tie(inst.mat, vert.pos);
+              vtx.x = tf.x();
+              vtx.y = tf.y();
+              vtx.z = tf.z();
+              vtx.s = vert.tex.x();
+              vtx.t = vert.tex.y();
+              vtx.q = vert.tex.z();
+              // if this is true, we can remove a divide in the shader
+              assert(vtx.q == 1.f);
+              if (vert.color_index_index == UINT32_MAX) {
+                vtx.color_index = 0;
+              } else {
+                vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
+                assert(vert.color_index_index < ifrag.color_indices.size());
+                vtx.color_index += ifrag.color_index_offset_in_big_palette;
+              }
+
+              size_t vert_idx = tree.vertices.size();
+              tree.vertices.push_back(vtx);
+              draw_to_add_to->vertex_index_stream.push_back(vert_idx);
+            }
+            draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+            draw_to_add_to->vis_groups.push_back(vgroup);
           }
-          draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-          draw_to_add_to->vis_groups.push_back(vgroup);
         }
       }
     }
@@ -1990,6 +2077,33 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                    [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
                      return a.tree_tex_id < b.tree_tex_id;
                    });
+}
+
+void merge_groups(std::vector<tfrag3::InstancedStripDraw::InstanceGroup>& grps) {
+  std::vector<tfrag3::InstancedStripDraw::InstanceGroup> result;
+  result.push_back(grps.at(0));
+  for (size_t i = 1; i < grps.size(); i++) {
+    if (grps[i].vis_idx == result.back().vis_idx &&
+        grps[i].instance_idx == result.back().instance_idx) {
+      result.back().num += grps[i].num;
+    } else {
+      result.push_back(grps[i]);
+    }
+  }
+  std::swap(result, grps);
+}
+
+void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
+  std::vector<tfrag3::StripDraw::VisGroup> result;
+  result.push_back(grps.at(0));
+  for (size_t i = 1; i < grps.size(); i++) {
+    if (grps[i].vis_idx == result.back().vis_idx) {
+      result.back().num += grps[i].num;
+    } else {
+      result.push_back(grps[i]);
+    }
+  }
+  std::swap(result, grps);
 }
 
 void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
@@ -2034,6 +2148,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
 
   auto info = collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data);
   update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data);
+  check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
   // debug_print_info(info);
   emulate_tie_prototype_program(info);
   emulate_tie_instance_program(info);
@@ -2064,6 +2179,20 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
         str.vis_idx = it->second;
       }
     }
+    merge_groups(draw.vis_groups);
+  }
+
+  for (auto& draw : this_tree.instanced_wind_draws) {
+    for (auto& str : draw.instance_groups) {
+      auto it = instance_parents.find(str.vis_idx);
+      if (it == instance_parents.end()) {
+        str.vis_idx = UINT32_MAX;
+      } else {
+        str.vis_idx = it->second;
+      }
+    }
+
+    merge_groups(draw.instance_groups);
   }
 
   this_tree.colors = full_palette.colors;

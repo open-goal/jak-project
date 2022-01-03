@@ -1,6 +1,7 @@
 #pragma once
 
 // Data format for the tfrag3 renderer.
+#include <array>
 
 #include "common/common_types.h"
 #include "common/dma/gs.h"
@@ -10,7 +11,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 7;
+constexpr int TFRAG3_VERSION = 8;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -45,6 +46,27 @@ struct StripDraw {
     u32 vis_idx = 0;  // the visibility group they belong to
   };
   std::vector<VisGroup> vis_groups;
+
+  // for debug counting.
+  u32 num_triangles = 0;
+  void serialize(Serializer& ser);
+};
+
+struct InstancedStripDraw {
+  DrawMode mode;        // the OpenGL draw settings.
+  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+
+  // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
+  // will use to start a new strip.
+  std::vector<u32> vertex_index_stream;
+
+  // the vertex stream above is segmented by instance.
+  struct InstanceGroup {
+    u32 num = 0;           // number of vertex indices in this group
+    u32 instance_idx = 0;  // the instance they belong to
+    u32 vis_idx = 0;
+  };
+  std::vector<InstanceGroup> instance_groups;
 
   // for debug counting.
   u32 num_triangles = 0;
@@ -114,6 +136,13 @@ struct TfragTree {
   void serialize(Serializer& ser);
 };
 
+struct TieWindInstance {
+  std::array<math::Vector4f, 4> matrix;
+  u16 wind_idx;
+  float stiffness;
+  void serialize(Serializer& ser);
+};
+
 // A tie model
 struct TieTree {
   BVH bvh;
@@ -121,7 +150,8 @@ struct TieTree {
   std::vector<PreloadedVertex> vertices;  // mesh vertices
   std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
 
-  // TODO wind stuff
+  std::vector<InstancedStripDraw> instanced_wind_draws;
+  std::vector<TieWindInstance> instance_info;
 
   void serialize(Serializer& ser);
 };
