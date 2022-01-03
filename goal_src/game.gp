@@ -365,8 +365,6 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
-   "common/mistycannon.gc"
-   "common/babak-with-cannon.gc"
    "common/snow-bunny.gc"
    "common/battlecontroller.gc"
 
@@ -548,6 +546,64 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; misty island
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MIS.DGO" "mis.gd")
+
+(copy-vis-files "MIS")
+
+(goal-src-sequence
+  "levels/misty/"
+  :deps ("out/obj/default-menu.o")
+  "mistycannon.gc"
+  "babak-with-cannon.gc"
+  "misty-obs.gc"
+  "misty-warehouse.gc"
+  "misty-conveyor.gc"
+  "mud.gc"
+  "muse.gc"
+  "bonelurker.gc"
+  "quicksandlurker.gc"
+  "misty-teetertotter.gc"
+  "balloonlurker.gc"
+  "misty-part.gc"
+  "sidekick-human.gc"
+  )
+
+(copy-textures 516 521 518 520)
+
+(copy-gos
+  "mistycannon-ag"
+  "sack-ag"
+  "balloonlurker-ag"
+  "boatpaddle-ag"
+  "bonelurker-ag"
+  "breakaway-left-ag"
+  "breakaway-mid-ag"
+  "breakaway-right-ag"
+  "darkecocan-ag"
+  "keg-ag"
+  "keg-conveyor-ag"
+  "keg-conveyor-paddle-ag"
+  "mis-bone-bridge-ag"
+  "mis-bone-platform-ag"
+  "mistycam-ag"
+  "muse-ag"
+  "quicksandlurker-ag"
+  "ropebridge-36-ag"
+  "rounddoor-ag"
+  "sidekick-human-ag"
+  "silostep-ag"
+  "teetertotter-ag"
+  "water-anim-misty-ag"
+  "wheel-ag"
+  "windturbine-ag"
+  "misty-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; Beach
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -597,9 +653,7 @@
   "lurkerpuppy-ag"
   "lurkerworm-ag"
   "mayor-ag"
-  "mistycannon-ag"
   "pelican-ag"
-  "sack-ag" ;; todo move to misty
   "sculptor-ag"
   "sculptor-muse-ag"
   "seagull-ag"
