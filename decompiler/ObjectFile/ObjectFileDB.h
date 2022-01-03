@@ -54,7 +54,7 @@ class ObjectFileDB {
                const std::vector<std::string>& str_files,
                const Config& config);
   std::string generate_dgo_listing();
-  std::string generate_obj_listing();
+  std::string generate_obj_listing(const std::unordered_set<std::string>& merged_objs);
   void process_link_data(const Config& config);
   void process_labels();
   void find_code(const Config& config);
@@ -81,7 +81,7 @@ class ObjectFileDB {
   void ir2_register_usage_pass(int seg, ObjectFileData& data);
   void ir2_variable_pass(int seg, ObjectFileData& data);
   void ir2_cfg_build_pass(int seg, ObjectFileData& data);
-  void ir2_store_current_forms(int seg);
+  // void ir2_store_current_forms(int seg);
   void ir2_build_expressions(int seg, const Config& config, ObjectFileData& data);
   void ir2_insert_lets(int seg, ObjectFileData& data);
   void ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data);

@@ -36,7 +36,7 @@
   ("medres-village12-ag.go" "medres-village12")
   ("medres-village13-ag.go" "medres-village13")
   ("oracle-ag-VI1.go" "oracle")
-  ("orb-cache-top-ag-VI1.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("reflector-middle-ag.go" "reflector-middle")
   ("revcycle-ag.go" "revcycle")
   ("revcycleprop-ag.go" "revcycleprop")

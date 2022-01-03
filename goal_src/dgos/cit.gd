@@ -43,7 +43,7 @@
   ("evilbro-citadel-ag.go" "evilbro-citadel")
   ("evilsis-citadel-ag.go" "evilsis-citadel")
   ("green-sagecage-ag.go" "green-sagecage")
-  ("orb-cache-top-ag-CIT.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("plat-citb-ag.go" "plat-citb")
   ("plat-eco-citb-ag.go" "plat-eco-citb")
   ("redsage-ag.go" "redsage")

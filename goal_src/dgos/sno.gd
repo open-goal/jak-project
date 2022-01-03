@@ -33,7 +33,7 @@
   ("flutflut-plat-small-ag.go" "flutflut-plat-small")
   ("ice-cube-ag.go" "ice-cube")
   ("ice-cube-break-ag.go" "ice-cube-break")
-  ("orb-cache-top-ag-SNO.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("ram-ag.go" "ram")
   ("ram-boss-ag.go" "ram-boss")
   ("snow-ball-ag.go" "snow-ball")

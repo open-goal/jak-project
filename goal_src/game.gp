@@ -334,6 +334,7 @@
 ;; as we find objects that exist in multiple levels, put them here
 
 (copy-gos
+ "orb-cache-top-ag"
  "warpgate-ag"
  "sharkey-ag-BEA-TRA-VI2"
  "eichar-racer+0-ag"
@@ -431,7 +432,6 @@
  "medres-village12-ag"
  "medres-village13-ag"
  "oracle-ag-VI1"
- "orb-cache-top-ag-VI1"
  "reflector-middle-ag"
  "revcycle-ag"
  "revcycleprop-ag"
@@ -500,7 +500,6 @@
   "lurkerm-tall-sail-ag"
   "maindoor-ag"
   "medres-firecanyon-ag"
-  "orb-cache-top-ag-JUN"
   "periscope-ag"
   "plat-button-ag"
   "plat-eco-ag-JUN"
@@ -602,7 +601,6 @@
   "lurkerworm-ag"
   "mayor-ag"
   "mistycannon-ag"
-  "orb-cache-top-ag-BEA"
   "pelican-ag"
   "sack-ag-BEA"
   "sculptor-ag"
@@ -724,7 +722,6 @@
   "medres-village2-ag"
   "ogreboss-village2-ag"
   "oracle-ag-VI2"
-  "orb-cache-top-ag-VI2"
   "pontoonfive-ag-VI2"
   "pontoonten-ag"
   "precursor-arm-ag"
@@ -826,7 +823,6 @@
   "exit-chamber-ag"
   "generic-button-ag"
   "launcherdoor-ag-SUN"
-  "orb-cache-top-ag-SUN"
   "orbit-plat-ag"
   "orbit-plat-bottom-ag"
   "plat-sunken-ag"
@@ -1085,7 +1081,6 @@
 
 (copy-gos
   "ecovalve-ag-SNO"
-  "orb-cache-top-ag-SNO"
   "eichar-pole+0-ag-SNO"
   "eichar-ice+0-ag"
   "flut-saddle-ag-SNO"
@@ -1182,7 +1177,6 @@
 (copy-gos
   "babak-ag-CIT"
   "ecovalve-ag-CIT"
-  "orb-cache-top-ag-CIT"
   "assistant-lavatube-end-ag"
   "bluesage-ag"
   "citadelcam-ag"

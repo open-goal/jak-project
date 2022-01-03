@@ -38,7 +38,7 @@
   ("exit-chamber-ag.go" "exit-chamber")
   ("generic-button-ag.go" "generic-button")
   ("launcherdoor-ag-SUN.go" "launcherdoor")
-  ("orb-cache-top-ag-SUN.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("orbit-plat-ag.go" "orbit-plat")
   ("orbit-plat-bottom-ag.go" "orbit-plat-bottom")
   ("plat-sunken-ag.go" "plat-sunken")

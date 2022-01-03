@@ -41,7 +41,7 @@
   ("lurkerworm-ag.go" "lurkerworm")
   ("mayor-ag.go" "mayor")
   ("mistycannon-ag.go" "mistycannon")
-  ("orb-cache-top-ag-BEA.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("pelican-ag.go" "pelican")
   ("sack-ag-BEA.go" "sack")
   ("sculptor-ag.go" "sculptor")

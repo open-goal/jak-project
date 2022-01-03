@@ -36,7 +36,7 @@
   ("lurkerm-tall-sail-ag.go" "lurkerm-tall-sail")
   ("maindoor-ag.go" "maindoor")
   ("medres-firecanyon-ag.go" "medres-firecanyon")
-  ("orb-cache-top-ag-JUN.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("periscope-ag.go" "periscope")
   ("plat-button-ag.go" "plat-button")
   ("plat-eco-ag-JUN.go" "plat-eco")

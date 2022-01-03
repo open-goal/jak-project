@@ -32,7 +32,7 @@
   ("medres-village2-ag.go" "medres-village2")
   ("ogreboss-village2-ag.go" "ogreboss-village2")
   ("oracle-ag-VI2.go" "oracle")
-  ("orb-cache-top-ag-VI2.go" "orb-cache-top")
+  ("orb-cache-top-ag.go" "orb-cache-top")
   ("pontoonfive-ag-VI2.go" "pontoonfive")
   ("pontoonten-ag.go" "pontoonten")
   ("precursor-arm-ag.go" "precursor-arm")

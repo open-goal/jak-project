@@ -376,7 +376,7 @@ std::string pad_string(const std::string& in, size_t length) {
 }
 }  // namespace
 
-std::string ObjectFileDB::generate_obj_listing() {
+std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::string>& merged_objs) {
   std::string result = "[";
   std::set<std::string> all_unique_names;
   int unique_count = 0;
@@ -391,20 +391,22 @@ std::string ObjectFileDB::generate_obj_listing() {
       dgos.pop_back();
       dgos.pop_back();
       dgos += "]";
-      result += "[\"" + pad_string(x.to_unique_name() + "\", ", 50) + "\"" +
+      auto name = x.to_unique_name();
+      result += "[\"" + pad_string(name + "\", ", 50) + "\"" +
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
-      if (all_unique_names.find(x.to_unique_name()) != all_unique_names.end()) {
-        lg::error("Object file {} appears multiple times with the same name.", x.to_unique_name());
+      if (all_unique_names.find(name) != all_unique_names.end() &&
+          merged_objs.find(name) == merged_objs.end()) {
+        lg::error("Object file {} appears multiple times with the same name.", name);
       }
-      all_unique_names.insert(x.to_unique_name());
+      all_unique_names.insert(name);
     }
-    // this check is extremely important. It makes sure we don't have any repeat names. This could
-    // be caused by two files with the same name, in the same DGOs, but different data.
-    if (int(all_unique_names.size()) != unique_count) {
-      lg::error("Object files are not named properly, data will be lost!");
-    }
+  }
+  // this check is extremely important. It makes sure we don't have any repeat names. This could
+  // be caused by two files with the same name, in the same DGOs, but different data.
+  if (int(all_unique_names.size()) != unique_count) {
+    lg::error("Object files are not named properly, data will be lost!");
   }
 
   if (result.length() >= 2) {
