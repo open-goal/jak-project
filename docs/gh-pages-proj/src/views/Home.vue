@@ -9,19 +9,19 @@
         >
         </v-img>
         <br />
-        <h4>
+        <h4 class="text-stroke">
           Reviving the Language that Brought us the Jak & Daxter Series
         </h4>
         <br />
         <v-row justify="center">
           <v-col cols="auto">
-            <v-btn href="#project-status" rounded color="primary">
+            <v-btn href="#project-status" rounded color="pink darken-4">
               <v-icon>mdi-calendar-check</v-icon>
               Project Status
             </v-btn>
           </v-col>
           <v-col cols="auto">
-            <v-btn href="#project-status" rounded color="primary">
+            <v-btn href="/gallery" rounded color="green darken-1">
               <v-icon>mdi-calendar-check</v-icon>
               Gallery
             </v-btn>
@@ -31,7 +31,7 @@
               href="/jak-project/api-docs.html"
               target="_blank"
               rounded
-              color="deep-purple"
+              color="indigo darken-1"
             >
               <v-icon>mdi-file-document</v-icon>
               Documentation
@@ -42,7 +42,7 @@
               href="https://github.com/water111/jak-project"
               target="_blank"
               rounded
-              color="accent"
+              color="deep-purple darken-1"
             >
               <v-icon>mdi-git</v-icon>
               Contribute
@@ -192,6 +192,13 @@
   word-wrap: normal;
   white-space: pre-wrap;
   font-family: "Lexend", sans-serif !important;
+}
+.text-stroke {
+  text-shadow:
+   -1px -1px 0 #000,  
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+     1px 1px 0 #000;
 }
 </style>
 
