@@ -376,6 +376,7 @@
    "flut_common/target-flut.gc"
    )
 
+;; TODO village common
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -441,7 +442,7 @@
  "villa-starfish-ag"
  "village-cam-ag-VI1"
  "village1cam-ag"
- "warp-gate-switch-ag-VI1-VI3"
+ "warp-gate-switch-ag"
  "water-anim-village1-ag"
  "windmill-sail-ag"
  "windspinner-ag"
@@ -669,7 +670,6 @@
   "scarecrow-a-ag"
   "scarecrow-b-ag"
   "trainingcam-ag"
-  "warp-gate-switch-ag-TRA"
   "water-anim-training-ag"
   "training-vis"
   )
@@ -727,7 +727,6 @@
   "swampcam-ag-VI2"
   "village-cam-ag-VI2"
   "village2cam-ag"
-  "warp-gate-switch-ag-VI2"
   "warrior-ag"
   "water-anim-village2-ag"
   "village2-vis"
@@ -1191,7 +1190,6 @@
   "plat-citb-ag"
   "plat-eco-citb-ag"
   "redsage-ag"
-  "warp-gate-switch-ag-CIT"
   "yellowsage-ag"
   "citadel-vis"
   )

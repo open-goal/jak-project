@@ -14,7 +14,7 @@
   ("scarecrow-b-ag.go" "scarecrow-b")
   ("sharkey-ag.go" "sharkey")
   ("trainingcam-ag.go" "trainingcam")
-  ("warp-gate-switch-ag-TRA.go" "warp-gate-switch")
+  ("warp-gate-switch-ag.go" "warp-gate-switch")
   ("warpgate-ag.go" "warpgate")
   ("water-anim-training-ag.go" "water-anim-training")
   ("training-vis.go" "training-vis")

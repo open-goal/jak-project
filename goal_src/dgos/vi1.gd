@@ -47,7 +47,7 @@
   ("villa-starfish-ag.go" "villa-starfish")
   ("village-cam-ag-VI1.go" "village-cam")
   ("village1cam-ag.go" "village1cam")
-  ("warp-gate-switch-ag-VI1-VI3.go" "warp-gate-switch")
+  ("warp-gate-switch-ag.go" "warp-gate-switch")
   ("warpgate-ag.go" "warpgate")
   ("water-anim-village1-ag.go" "water-anim-village1")
   ("windmill-sail-ag.go" "windmill-sail")

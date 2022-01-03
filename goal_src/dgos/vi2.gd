@@ -46,7 +46,7 @@
   ("swampcam-ag-VI2.go" "swampcam")
   ("village-cam-ag-VI2.go" "village-cam")
   ("village2cam-ag.go" "village2cam")
-  ("warp-gate-switch-ag-VI2.go" "warp-gate-switch")
+  ("warp-gate-switch-ag.go" "warp-gate-switch")
   ("warpgate-ag.go" "warpgate")
   ("warrior-ag.go" "warrior")
   ("water-anim-village2-ag.go" "water-anim-village2")

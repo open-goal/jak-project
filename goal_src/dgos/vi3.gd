@@ -30,7 +30,7 @@
   ("sage-village3-ag.go" "sage-village3")
   ("vil3-bridge-36-ag.go" "vil3-bridge-36")
   ("village-cam-ag-VI3.go" "village-cam")
-  ("warp-gate-switch-ag-VI1-VI3.go" "warp-gate-switch")
+  ("warp-gate-switch-ag.go" "warp-gate-switch")
   ("warpgate-ag.go" "warpgate")
   ("water-anim-village3-ag.go" "water-anim-village3")
   ("village3-vis.go" "village3-vis")

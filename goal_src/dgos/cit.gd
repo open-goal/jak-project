@@ -47,7 +47,7 @@
   ("plat-citb-ag.go" "plat-citb")
   ("plat-eco-citb-ag.go" "plat-eco-citb")
   ("redsage-ag.go" "redsage")
-  ("warp-gate-switch-ag-CIT.go" "warp-gate-switch")
+  ("warp-gate-switch-ag.go" "warp-gate-switch")
   ("warpgate-ag.go" "warpgate")
   ("yellowsage-ag.go" "yellowsage")
   ("citadel-vis.go" "citadel-vis")
