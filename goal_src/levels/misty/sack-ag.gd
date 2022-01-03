@@ -1,6 +1,6 @@
 ;;-*-Lisp-*-
 ;; GOAL Data Description File
 
-;; name: sack-ag-MIS.gd
+;; name: sack-ag.gd
 ;; name in dgo: sack
-;; dgos: MIS
+;; dgos: MIS, BEA

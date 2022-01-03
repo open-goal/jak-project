@@ -43,7 +43,7 @@
   ("ropebridge-32-ag.go" "ropebridge-32")
   ("sage-ag.go" "sage")
   ("sagesail-ag.go" "sagesail")
-  ("sharkey-ag-VI1.go" "sharkey")
+  ("sharkey-ag.go" "sharkey")
   ("villa-starfish-ag.go" "villa-starfish")
   ("village-cam-ag-VI1.go" "village-cam")
   ("village1cam-ag.go" "village1cam")

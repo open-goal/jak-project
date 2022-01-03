@@ -336,7 +336,7 @@
 (copy-gos
  "orb-cache-top-ag"
  "warpgate-ag"
- "sharkey-ag-BEA-TRA-VI2"
+ "sharkey-ag"
  "eichar-racer+0-ag"
 
  "babak-ag"
@@ -438,7 +438,6 @@
  "ropebridge-32-ag"
  "sage-ag"
  "sagesail-ag"
- "sharkey-ag-VI1"
  "villa-starfish-ag"
  "village-cam-ag-VI1"
  "village1cam-ag"
@@ -506,7 +505,6 @@
   "reflector-mirror-ag"
   "ropebridge-52-ag"
   "ropebridge-70-ag"
-  "sharkey-ag-JUN-MIS"
   "sidedoor-ag"
   "towertop-ag"
   "water-anim-jungle-ag"
@@ -582,7 +580,7 @@
 (copy-textures 212 214 213 215)
 
 (copy-gos
-  "barrel-ag-BEA"
+  "barrel-ag"
   "beachcam-ag"
   "bird-lady-ag"
   "bird-lady-beach-ag"
@@ -600,7 +598,7 @@
   "mayor-ag"
   "mistycannon-ag"
   "pelican-ag"
-  "sack-ag-BEA"
+  "sack-ag" ;; todo move to misty
   "sculptor-ag"
   "sculptor-muse-ag"
   "seagull-ag"
@@ -705,7 +703,6 @@
 (copy-gos
   "allpontoons-ag"
   "assistant-village2-ag"
-  "barrel-ag-VI2"
   "ceilingflag-ag"
   "exit-chamber-dummy-ag"
   "fireboulder-ag"
@@ -889,7 +886,6 @@
 (copy-textures 358 659 629 630)
 
 (copy-gos
-  "sharkey-ag-SWA"
   "eichar-pole+0-ag-SWA"
   "flut-saddle-ag-SWA"
   "balance-plat-ag"

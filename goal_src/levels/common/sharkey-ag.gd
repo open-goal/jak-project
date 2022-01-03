@@ -1,6 +1,6 @@
 ;;-*-Lisp-*-
 ;; GOAL Data Description File
 
-;; name: sharkey-ag-BEA-TRA-VI2.gd
+;; name: sharkey-ag.gd
 ;; name in dgo: sharkey
-;; dgos: BEA, TRA, VI2
+;; dgos: BEA, TRA, VI2, JUN, MIS, SWA, VI1

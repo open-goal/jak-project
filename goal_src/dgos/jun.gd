@@ -44,7 +44,7 @@
   ("reflector-mirror-ag.go" "reflector-mirror")
   ("ropebridge-52-ag.go" "ropebridge-52")
   ("ropebridge-70-ag.go" "ropebridge-70")
-  ("sharkey-ag-JUN-MIS.go" "sharkey")
+  ("sharkey-ag.go" "sharkey")
   ("sidedoor-ag.go" "sidedoor")
   ("towertop-ag.go" "towertop")
   ("water-anim-jungle-ag.go" "water-anim-jungle")

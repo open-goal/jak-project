@@ -1,6 +1,6 @@
 ;;-*-Lisp-*-
 ;; GOAL Data Description File
 
-;; name: barrel-ag-BEA.gd
+;; name: barrel-ag.gd
 ;; name in dgo: barrel
-;; dgos: BEA
+;; dgos: BEA, VI2

@@ -27,7 +27,7 @@
   ("farthy-snack-ag.go" "farthy-snack")
   ("flut-saddle-ag-SWA.go" "flut-saddle")
   ("kermit-ag.go" "kermit")
-  ("sharkey-ag-SWA.go" "sharkey")
+  ("sharkey-ag.go" "sharkey")
   ("swamp-bat-ag.go" "swamp-bat")
   ("swamp-rat-ag.go" "swamp-rat")
   ("swamp-rat-nest-ag.go" "swamp-rat-nest")

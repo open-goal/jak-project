@@ -12,7 +12,7 @@
   ("pontoonfive-ag-TRA.go" "pontoonfive")
   ("scarecrow-a-ag.go" "scarecrow-a")
   ("scarecrow-b-ag.go" "scarecrow-b")
-  ("sharkey-ag-BEA-TRA-VI2.go" "sharkey")
+  ("sharkey-ag.go" "sharkey")
   ("trainingcam-ag.go" "trainingcam")
   ("warp-gate-switch-ag-TRA.go" "warp-gate-switch")
   ("warpgate-ag.go" "warpgate")
