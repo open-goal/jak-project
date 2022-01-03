@@ -133,7 +133,6 @@ void SpriteRenderer::render_3d(DmaFollower& dma) {
 void SpriteRenderer::render_2d_group0(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  (void)dma;
   while (looks_like_2d_chunk_start(dma)) {
     m_debug_stats.blocks_2d_grp0++;
     // 4 packets per chunk
