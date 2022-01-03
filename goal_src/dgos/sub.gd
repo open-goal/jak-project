@@ -9,7 +9,7 @@
   ("blue-eco-charger-ag.go" "blue-eco-charger")
   ("blue-eco-charger-orb-ag.go" "blue-eco-charger-orb")
   ("bully-ag.go" "bully")
-  ("ecovalve-ag-SUB.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("floating-launcher-ag.go" "floating-launcher")
   ("helix-button-ag.go" "helix-button")
   ("helix-slide-door-ag.go" "helix-slide-door")

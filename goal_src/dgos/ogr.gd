@@ -19,7 +19,7 @@
   ("tpage-884.go" "tpage-884")
   ("tpage-1117.go" "tpage-1117")
   ("crate-darkeco-cluster-ag-OGR.go" "crate-darkeco-cluster")
-  ("ecovalve-ag-FIC-OGR.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA.go" "ef-plane")
   ("flying-lurker-ag.go" "flying-lurker")
   ("medres-snow-ag.go" "medres-snow")

@@ -39,7 +39,7 @@
   ("citb-rotatebox-ag.go" "citb-rotatebox")
   ("citb-sagecage-ag.go" "citb-sagecage")
   ("citb-stopbox-ag.go" "citb-stopbox")
-  ("ecovalve-ag-CIT.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("evilbro-citadel-ag.go" "evilbro-citadel")
   ("evilsis-citadel-ag.go" "evilsis-citadel")
   ("green-sagecage-ag.go" "green-sagecage")

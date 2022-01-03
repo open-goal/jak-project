@@ -20,7 +20,7 @@
   ("assistant-lavatube-start-ag.go" "assistant-lavatube-start")
   ("chainmine-ag.go" "chainmine")
   ("darkecobarrel-ag.go" "darkecobarrel")
-  ("ecovalve-ag-LAV.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA.go" "ef-plane")
   ("energyarm-ag.go" "energyarm")
   ("energyball-ag.go" "energyball")

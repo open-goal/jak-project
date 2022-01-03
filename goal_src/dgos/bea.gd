@@ -28,7 +28,7 @@
   ("bird-lady-ag.go" "bird-lady")
   ("bird-lady-beach-ag.go" "bird-lady-beach")
   ("bladeassm-ag.go" "bladeassm")
-  ("ecovalve-ag-BEA.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("ecoventrock-ag.go" "ecoventrock")
   ("flutflut-ag.go" "flutflut")
   ("flutflutegg-ag.go" "flutflutegg")

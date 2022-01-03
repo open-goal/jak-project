@@ -20,7 +20,7 @@
   ("babak-ag.go" "babak")
   ("balloon-ag.go" "balloon")
   ("crate-darkeco-cluster-ag-FIC.go" "crate-darkeco-cluster")
-  ("ecovalve-ag-FIC-OGR.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA.go" "ef-plane")
   ("racer-ag-FIC-ROL.go" "racer")
   ("spike-ag.go" "spike")

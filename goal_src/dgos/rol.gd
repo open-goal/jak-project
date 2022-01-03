@@ -20,7 +20,7 @@
   ("tpage-1353.go" "tpage-1353")
   ("babak-ag.go" "babak")
   ("dark-plant-ag.go" "dark-plant")
-  ("ecovalve-ag-ROL.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA.go" "ef-plane")
   ("happy-plant-ag.go" "happy-plant")
   ("lightning-mole-ag.go" "lightning-mole")

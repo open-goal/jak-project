@@ -215,7 +215,7 @@
  "fuel-cell-ag"
  "money-ag"
  "buzzer-ag"
- "ecovalve-ag-ART-GAME"
+ "ecovalve-ag"
  "crate-ag"
  "speaker-ag"
  "fuelcell-naked-ag"
@@ -487,7 +487,6 @@
   "catch-fishb-ag"
   "catch-fishc-ag"
   "darkvine-ag-JUN"
-  "ecovalve-ag-JUB-JUN"
   "fish-net-ag"
   "fisher-ag"
   "hopper-ag"
@@ -588,7 +587,6 @@
   "bird-lady-ag"
   "bird-lady-beach-ag"
   "bladeassm-ag"
-  "ecovalve-ag-BEA"
   "ecoventrock-ag"
   "flutflut-ag"
   "flutflutegg-ag"
@@ -639,7 +637,6 @@
   "assistant-firecanyon-ag"
   "balloon-ag"
   "crate-darkeco-cluster-ag-FIC"
-  "ecovalve-ag-FIC-OGR"
   "ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA"
   "racer-ag-FIC-ROL"
   "spike-ag"
@@ -668,7 +665,6 @@
 (copy-textures 1309 1311 1310 1308 775)
 
 (copy-gos
-  "ecovalve-ag-TRA"
   "jng-iris-door-ag-TRA"
   "plat-eco-ag-TRA"
   "pontoonfive-ag-TRA"
@@ -761,7 +757,6 @@
 (copy-textures 923 926 924 925 1353)
 
 (copy-gos
-  "ecovalve-ag-ROL"
   "dark-plant-ag"
   "happy-plant-ag"
   "lightning-mole-ag"
@@ -858,7 +853,6 @@
 (copy-textures 163 164 166 162 764)
 
 (copy-gos
-  "ecovalve-ag-SUB"
   "eichar-tube+0-ag-SUB"
   "blue-eco-charger-ag"
   "blue-eco-charger-orb-ag"
@@ -895,7 +889,6 @@
 (copy-textures 358 659 629 630)
 
 (copy-gos
-  "ecovalve-ag-SWA"
   "sharkey-ag-SWA"
   "eichar-pole+0-ag-SWA"
   "flut-saddle-ag-SWA"
@@ -1038,7 +1031,6 @@
   "cavetrapdoor-ag-MAI"
   "dark-crystal-ag"
   "driller-lurker-ag"
-  "ecovalve-ag-MAI"
   "gnawer-ag"
   "launcherdoor-maincave-ag"
   "maincavecam-ag"
@@ -1080,7 +1072,6 @@
 (copy-textures 710 842 711 712)
 
 (copy-gos
-  "ecovalve-ag-SNO"
   "eichar-pole+0-ag-SNO"
   "eichar-ice+0-ag"
   "flut-saddle-ag-SNO"
@@ -1130,7 +1121,6 @@
 (copy-textures 1338 1340 1339 1337)
 
 (copy-gos
-  "ecovalve-ag-LAV"
   "racer-ag-LAV"
   "assistant-lavatube-start-ag"
   "chainmine-ag"
@@ -1176,7 +1166,6 @@
 
 (copy-gos
   "babak-ag-CIT"
-  "ecovalve-ag-CIT"
   "assistant-lavatube-end-ag"
   "bluesage-ag"
   "citadelcam-ag"
@@ -1240,7 +1229,6 @@
 (copy-gos
   "darkecobomb-ag"
   "ecoclaw-ag"
-  "ecovalve-ag-FIN"
   "finalbosscam-ag"
   "green-eco-lurker-ag"
   "greenshot-ag"

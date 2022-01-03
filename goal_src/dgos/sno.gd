@@ -25,7 +25,7 @@
   ("tpage-711.go" "tpage-711")
   ("tpage-712.go" "tpage-712")
   ("babak-ag.go" "babak")
-  ("ecovalve-ag-SNO.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA.go" "ef-plane")
   ("flut-saddle-ag-SNO.go" "flut-saddle")
   ("flutflut-plat-large-ag.go" "flutflut-plat-large")

@@ -23,7 +23,7 @@
   ("catch-fishb-ag.go" "catch-fishb")
   ("catch-fishc-ag.go" "catch-fishc")
   ("darkvine-ag-JUN.go" "darkvine")
-  ("ecovalve-ag-JUB-JUN.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("fish-net-ag.go" "fish-net")
   ("fisher-ag.go" "fisher")
   ("hopper-ag.go" "hopper")

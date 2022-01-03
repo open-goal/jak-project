@@ -22,7 +22,7 @@
   ("cavetrapdoor-ag-MAI.go" "cavetrapdoor")
   ("dark-crystal-ag.go" "dark-crystal")
   ("driller-lurker-ag.go" "driller-lurker")
-  ("ecovalve-ag-MAI.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("gnawer-ag.go" "gnawer")
   ("launcherdoor-maincave-ag.go" "launcherdoor-maincave")
   ("maincavecam-ag.go" "maincavecam")

@@ -11,7 +11,7 @@
   ("tpage-966.go" "tpage-966")
   ("aphid-lurker-ag.go" "aphid-lurker")
   ("darkvine-ag-JUB.go" "darkvine")
-  ("ecovalve-ag-JUB-JUN.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("eggtop-ag.go" "eggtop")
   ("jng-iris-door-ag-JUB.go" "jng-iris-door")
   ("plant-boss-ag.go" "plant-boss")

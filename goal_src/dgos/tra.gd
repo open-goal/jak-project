@@ -6,7 +6,7 @@
   ("tpage-1310.go" "tpage-1310")
   ("tpage-1308.go" "tpage-1308")
   ("tpage-775.go" "tpage-775")
-  ("ecovalve-ag-TRA.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("jng-iris-door-ag-TRA.go" "jng-iris-door")
   ("plat-eco-ag-TRA.go" "plat-eco")
   ("pontoonfive-ag-TRA.go" "pontoonfive")
