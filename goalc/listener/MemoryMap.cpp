@@ -1,10 +1,10 @@
-#include "common/util/assert.h"
 #include <algorithm>
 #include <stdexcept>
 #include "MemoryMap.h"
 #include "third-party/fmt/core.h"
 #include "common/link_types.h"
 #include "common/util/BitUtils.h"
+#include "common/util/assert.h"
 
 namespace listener {
 std::string LoadEntry::print() const {

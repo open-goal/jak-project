@@ -7,7 +7,7 @@
 #include "Interpreter.h"
 #include "ParseHelpers.h"
 #include "common/util/FileUtil.h"
-#include <third-party/fmt/core.h>
+#include "third-party/fmt/core.h"
 
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {

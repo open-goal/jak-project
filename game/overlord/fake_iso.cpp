@@ -10,13 +10,13 @@
  */
 
 #include <cstring>
-#include "common/util/assert.h"
 #include "fake_iso.h"
 #include "game/sce/iop.h"
 #include "isocommon.h"
 #include "overlord.h"
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 

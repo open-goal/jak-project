@@ -47,7 +47,7 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
 
 SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
                                          SharedRenderState* render_state,
-                                         ScopedProfilerNode& prof) {
+                                         ScopedProfilerNode& /*prof*/) {
   SkyBlendStats stats;
 
   Timer sky_timer;

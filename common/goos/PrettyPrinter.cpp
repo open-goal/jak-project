@@ -4,7 +4,6 @@
  * It is not very good, but significantly better than putting everything on one line
  */
 
-#include "common/util/assert.h"
 #include <stdexcept>
 #include <utility>
 #include <cstring>
@@ -14,6 +13,7 @@
 #include "common/log/log.h"
 
 #include "common/goos/PrettyPrinter2.h"
+#include "common/util/assert.h"
 
 namespace pretty_print {
 

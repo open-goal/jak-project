@@ -6,8 +6,8 @@
  */
 
 #include <cstdint>
-#include "common/util/assert.h"
 #include <string>
+#include "common/util/assert.h"
 
 namespace decompiler {
 // Namespace for register name constants

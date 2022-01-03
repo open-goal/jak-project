@@ -1,12 +1,12 @@
 #include <cstdio>
 #include <cstdlib>
-#include "common/util/assert.h"
 #include <mutex>
 #include "third-party/fmt/color.h"
 #include "log.h"
 #ifdef _WIN32  // see lg::initialize
 #include <Windows.h>
 #endif
+#include "common/util/assert.h"
 
 namespace lg {
 struct Logger {

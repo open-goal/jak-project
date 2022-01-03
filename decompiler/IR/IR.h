@@ -1,7 +1,8 @@
+#pragma once
+
 #ifndef JAK_IR_H
 #define JAK_IR_H
 
-#include "common/util/assert.h"
 #include <utility>
 #include <memory>
 #include <unordered_map>
@@ -10,6 +11,7 @@
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
+#include "common/util/assert.h"
 
 namespace goos {
 class Object;
