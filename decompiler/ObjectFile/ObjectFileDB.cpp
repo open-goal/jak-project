@@ -396,6 +396,8 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
+      // this check is extremely important. It makes sure we don't have any repeat names. This could
+      // be caused by two files with the same name, in the same DGOs, but different data.
       if (all_unique_names.find(name) != all_unique_names.end() &&
           merged_objs.find(name) == merged_objs.end()) {
         lg::error("Object file {} appears multiple times with the same name.", name);
@@ -403,13 +405,11 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
       all_unique_names.insert(name);
     }
   }
-  // this check is extremely important. It makes sure we don't have any repeat names. This could
-  // be caused by two files with the same name, in the same DGOs, but different data.
   if (int(all_unique_names.size()) != unique_count) {
     lg::error("Object files are not named properly, data will be lost!");
   }
 
-  if (result.length() >= 2) {
+  if (unique_count > 0) {
     result.pop_back();  // kill last new line
     result.pop_back();  // kill last comma
   }
