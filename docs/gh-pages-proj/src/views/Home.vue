@@ -182,7 +182,7 @@
 
 <style scoped>
 .bg-img {
-  background-image: url("~@/assets/img/background-new.png");
+  background-image: url("~@/assets/img/background-new.jpg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
