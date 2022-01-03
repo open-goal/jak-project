@@ -254,6 +254,7 @@
        "out/iso/VI2.DGO"
        "out/iso/VI3.DGO"
        "out/iso/TRA.DGO"
+       "out/iso/INT.DGO"
        "out/iso/MIS.DGO"
        "out/iso/FIC.DGO"
        "out/iso/ROL.DGO"
@@ -274,6 +275,7 @@
        "out/iso/VI2.VIS"
        "out/iso/VI3.VIS"
        "out/iso/TRA.VIS"
+       "out/iso/INT.VIS"
        "out/iso/MIS.VIS"
        "out/iso/FIC.VIS"
        "out/iso/ROL.VIS"
@@ -289,7 +291,7 @@
        "out/iso/LAV.VIS"
        "out/iso/CIT.VIS"
        "out/iso/FIN.VIS"
-
+       ;; streamed anims
        "out/iso/FUCVICTO.STR"
        "out/iso/FUCV2.STR"
        "out/iso/FUCV3.STR"
@@ -544,6 +546,31 @@
   "plat-flip-ag"
   "plat-jungleb-ag"
   "jungleb-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; intro only
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "INT.DGO" "int.gd")
+
+(copy-vis-files "INT")
+
+(goal-src-sequence
+ "levels/intro/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "evilbro.gc"
+ )
+
+(copy-textures 1455 1457 1456 1454)
+
+(copy-gos
+  "evilbro-ag"
+  "evilsis-ag"
+  "intro-vis"
   )
 
 
