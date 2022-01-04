@@ -6,6 +6,7 @@
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/log/log.h"
 
 /*!
  * The direct renderer will handle rendering GIFtags directly.
@@ -171,13 +172,16 @@ class DirectRenderer : public BucketRenderer {
   int m_current_texture_state = -1;
 
   TextureState* current_texture_state() { return &m_texture_state[m_current_texture_state]; }
-  bool maxed_texture_states() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
+  bool no_state() { return m_current_texture_state == -1; }
+  bool needs_state_flush() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
   void push_texture_state() {
     ++m_current_texture_state;
+    if (m_current_texture_state >= TEXTURE_STATE_COUNT) {
+      lg::error("fatal tex push {}!!!!", m_current_texture_state);
+    }
     if (m_current_texture_state > 0) {
       m_texture_state[m_current_texture_state] = m_texture_state[m_current_texture_state - 1];
     }
-    m_global_texture_state.needs_gl_update = true;
   }
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
@@ -204,6 +208,7 @@ class DirectRenderer : public BucketRenderer {
     math::Vector<u8, 30> pad;
   };
   static_assert(sizeof(Vertex) == 64);
+  static_assert(offsetof(Vertex, tex) == 32);
 
   struct PrimitiveBuffer {
     PrimitiveBuffer(int max_triangles);
@@ -216,8 +221,8 @@ class DirectRenderer : public BucketRenderer {
     void push(const math::Vector<u8, 4>& rgba,
               const math::Vector<u32, 3>& vert,
               const math::Vector<float, 3>& stq,
-              const int unit,
-              const bool tcc);
+              int unit,
+              bool tcc);
   } m_prim_buffer;
 
   struct {
