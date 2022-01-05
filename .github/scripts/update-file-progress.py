@@ -1,7 +1,6 @@
 import glob
 
 src_files = glob.glob("./goal_src/**/*.g[cs]", recursive=True)
-data_files = glob.glob("./goal_src/**/*.gd", recursive=True)
 
 # Find how many of each have been started
 
@@ -20,12 +19,6 @@ for f in src_files:
       else:
         src_files_started = src_files_started + 1
 
-for f in data_files:
-  with open(f, "r") as temp_file:
-    line_count = len(temp_file.readlines())
-    if line_count > 7:
-      data_files_started = data_files_started + 1
-
 import json
 with open('./docs/gh-pages-proj/src/config/progress.json', 'r+', encoding='utf-8') as f:
   data = {
@@ -33,9 +26,7 @@ with open('./docs/gh-pages-proj/src/config/progress.json', 'r+', encoding='utf-8
       'fileProgress': {
         'src_files_total': len(src_files),
         'src_files_finished': src_files_finished,
-        'src_files_started': src_files_started,
-        'data_files_total': len(data_files),
-        'data_files_started': data_files_started
+        'src_files_started': src_files_started
       }
     }
   }

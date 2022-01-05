@@ -34,7 +34,8 @@ files_with_modifications = [
   "cam-states",
   "plant-boss",
   "helix-water",
-  "lavatube-energy"
+  "lavatube-energy",
+  "sage-finalboss-FIN"
 ]
 
 for file in files:
