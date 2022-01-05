@@ -2,507 +2,318 @@
 (in-package goal)
 
 ;; definition for function collide-planes-intersect
-(defun
-  collide-planes-intersect
-  ((arg0 vector) (arg1 (inline-array bounding-box)) (arg2 vector))
+(defun collide-planes-intersect ((arg0 vector) (arg1 (inline-array bounding-box)) (arg2 vector))
   0.0
-  (let
-   ((f0-2 (+ (-> arg1 0 min w) (vector-dot (the-as vector (-> arg1 0)) arg0))))
-   (if
-    (or
-     (< f0-2 0.0)
-     (< (+ (-> arg1 0 max w) (vector-dot (-> arg1 0 max) arg0)) 0.0)
-     (< 0.0 (+ (-> arg1 1 min w) (vector-dot (the-as vector (-> arg1 1)) arg0)))
-     )
-    (set! f0-2 40960000.0)
+  (let ((f0-2 (+ (-> arg1 0 min w) (vector-dot (the-as vector (-> arg1 0)) arg0))))
+    (if (or
+            (< f0-2 0.0)
+            (< (+ (-> arg1 0 max w) (vector-dot (-> arg1 0 max) arg0)) 0.0)
+            (< 0.0 (+ (-> arg1 1 min w) (vector-dot (the-as vector (-> arg1 1)) arg0)))
+            )
+        (set! f0-2 40960000.0)
+        )
+    f0-2
     )
-   f0-2
-   )
   )
 
 ;; definition for function collide-planes-test0
-(defun
-  collide-planes-test0
-  ((arg0 vector)
-   (arg1 float)
-   (arg2 float)
-   (arg3 vector)
-   (arg4 vector)
-   (arg5 bounding-box)
-   (arg6 vector)
-   )
+(defun collide-planes-test0 ((arg0 vector) (arg1 float) (arg2 float) (arg3 vector) (arg4 vector) (arg5 bounding-box) (arg6 vector))
   (let ((f30-0 40960000.0))
-   (when (or (and (< 0.0 arg1) (>= 0.0 arg2)) (and (>= 0.0 arg1) (< 0.0 arg2)))
-    (vector-! arg0 arg4 arg3)
-    (let ((t9-0 vector+float*!)
-          (a0-2 arg0)
-          (v1-6 arg3)
-          (a2-1 arg0)
-          )
-     (t9-0 a0-2 v1-6 a2-1 (/ arg1 (- arg1 arg2)))
-     (set!
-      f30-0
-      (collide-planes-intersect
-       arg0
-       (the-as (inline-array bounding-box) arg5)
-       a2-1
-       )
+    (when (or (and (< 0.0 arg1) (>= 0.0 arg2)) (and (>= 0.0 arg1) (< 0.0 arg2)))
+      (vector-! arg0 arg4 arg3)
+      (let ((t9-0 vector+float*!)
+            (a0-2 arg0)
+            (v1-6 arg3)
+            (a2-1 arg0)
+            )
+        (t9-0 a0-2 v1-6 a2-1 (/ arg1 (- arg1 arg2)))
+        (set! f30-0 (collide-planes-intersect arg0 (the-as (inline-array bounding-box) arg5) a2-1))
+        )
+      (when *debug-segment*
+        (camera-line arg3 arg4 (new 'static 'vector4w :x #x7f :w #x80))
+        (if (>= f30-0 40960000.0)
+            (camera-cross arg6 (-> arg5 min) arg0 (new 'static 'vector4w :y #x7f :z #x7f :w #x80) (meters 0.1))
+            )
+        )
       )
-     )
-    (when *debug-segment*
-     (camera-line arg3 arg4 (new 'static 'vector4w :x #x7f :w #x80))
-     (if (>= f30-0 40960000.0)
-      (camera-cross
-       arg6
-       (-> arg5 min)
-       arg0
-       (new 'static 'vector4w :y #x7f :z #x7f :w #x80)
-       (meters 0.1)
-       )
-      )
-     )
+    f30-0
     )
-   f30-0
-   )
   )
 
 ;; definition for function collide-planes-test1
 ;; Used lq/sq
-(defun
-  collide-planes-test1
-  ((arg0 vector)
-   (arg1 float)
-   (arg2 vector)
-   (arg3 (inline-array vector))
-   (arg4 vector)
-   )
+(defun collide-planes-test1 ((arg0 vector) (arg1 float) (arg2 vector) (arg3 (inline-array vector)) (arg4 vector))
   (let ((f30-0 (+ (-> arg3 0 w) (vector-dot arg2 (-> arg3 0)))))
-   (cond
-    ((< f30-0 arg1)
-     (if (and *debug-segment* (< arg1 40960000.0))
-      (camera-cross
-       arg4
-       (-> arg3 0)
-       arg2
-       (new 'static 'vector4w :x #x7f :y #x7f :w #x80)
-       (meters 0.1)
+    (cond
+      ((< f30-0 arg1)
+       (if (and *debug-segment* (< arg1 40960000.0))
+           (camera-cross arg4 (-> arg3 0) arg2 (new 'static 'vector4w :x #x7f :y #x7f :w #x80) (meters 0.1))
+           )
+       (set! arg1 f30-0)
+       (set! (-> arg0 quad) (-> arg2 quad))
        )
+      (else
+        (if *debug-segment*
+            (camera-cross arg4 (-> arg3 0) arg2 (new 'static 'vector4w :x #x7f :y #x7f :w #x80) (meters 0.1))
+            )
+        )
       )
-     (set! arg1 f30-0)
-     (set! (-> arg0 quad) (-> arg2 quad))
-     )
-    (else
-     (if *debug-segment*
-      (camera-cross
-       arg4
-       (-> arg3 0)
-       arg2
-       (new 'static 'vector4w :x #x7f :y #x7f :w #x80)
-       (meters 0.1)
-       )
-      )
-     )
     )
-   )
   arg1
   )
 
 ;; definition for function collide-planes
 ;; Used lq/sq
-(defun
-  collide-planes
-  ((arg0 (inline-array vector))
-   (arg1 int)
-   (arg2 vector)
-   (arg3 (inline-array vector))
-   )
+(defun collide-planes ((arg0 (inline-array vector)) (arg1 int) (arg2 vector4w) (arg3 (inline-array vector)))
   (local-vars
-   (sv-1088 vector)
-   (sv-1104 int)
-   (sv-1120 vector)
-   (sv-1136 vector)
-   (sv-1152 vector)
-   (sv-1168 vector)
-   (sv-1184 vector)
-   (sv-1200 vector)
-   (sv-1216 vector)
-   (sv-1232 vector)
-   (sv-1248 vector)
-   (sv-1264 vector)
-   (sv-1280 collide-cache-tri)
-   )
+    (sv-1088 vector)
+    (sv-1104 int)
+    (sv-1120 vector)
+    (sv-1136 vector)
+    (sv-1152 vector)
+    (sv-1168 vector)
+    (sv-1184 vector)
+    (sv-1200 vector)
+    (sv-1216 vector)
+    (sv-1232 vector)
+    (sv-1248 vector)
+    (sv-1264 vector)
+    (sv-1280 collide-cache-tri)
+    )
   (let ((gp-0 arg2)
         (s2-0 arg3)
         )
-   (when (< arg1 3)
-    (format *stdcon* "collide planes requires at least 3 points~%")
-    (return #f)
-    )
-   (when (< 20 arg1)
-    (format *stdcon* "max points in collide-planes exceeded ~D/~D~%" arg1 20)
-    (return #f)
-    )
-   (when *debug-segment*
-    (let ((t9-2 camera-line)
-          (a0-3 (-> arg0 (+ arg1 -1)))
-          (a1-3 (-> arg0 (+ arg1 -2)))
+    (when (< arg1 3)
+      (format *stdcon* "collide planes requires at least 3 points~%")
+      (return #f)
+      )
+    (when (< 20 arg1)
+      (format *stdcon* "max points in collide-planes exceeded ~D/~D~%" arg1 20)
+      (return #f)
+      )
+    (when *debug-segment*
+      (let ((t9-2 camera-line)
+            (a0-3 (-> arg0 (+ arg1 -1)))
+            (a1-3 (-> arg0 (+ arg1 -2)))
+            )
+        (set! arg2 (new 'static 'vector4w :z #xff :w #x80))
+        (t9-2 a0-3 a1-3 arg2)
+        )
+      (let ((s5-0 (+ arg1 -3)))
+        (while (>= s5-0 0)
+          (camera-line (-> arg0 s5-0) (-> arg0 (+ s5-0 1)) (new 'static 'vector4w :z #xff :w #x80))
+          (let ((t9-4 camera-line)
+                (a0-5 (-> arg0 s5-0))
+                (a1-5 (-> arg0 (+ s5-0 2)))
+                )
+            (set! arg2 (new 'static 'vector4w :z #xff :w #x80))
+            (t9-4 a0-5 a1-5 arg2)
+            )
+          (+! s5-0 -1)
           )
-     (set! arg2 (the-as vector (new 'static 'vector4w :z #xff :w #x80)))
-     (t9-2 a0-3 a1-3 (the-as vector4w arg2))
-     )
-    (let ((s5-0 (+ arg1 -3)))
-     (while (>= s5-0 0)
-      (camera-line
-       (-> arg0 s5-0)
-       (-> arg0 (+ s5-0 1))
-       (new 'static 'vector4w :z #xff :w #x80)
-       )
-      (let ((t9-4 camera-line)
-            (a0-5 (-> arg0 s5-0))
-            (a1-5 (-> arg0 (+ s5-0 2)))
-            )
-       (set! arg2 (the-as vector (new 'static 'vector4w :z #xff :w #x80)))
-       (t9-4 a0-5 a1-5 (the-as vector4w arg2))
-       )
-      (+! s5-0 -1)
+        )
       )
-     )
-    )
-   (let* ((t9-5 (method-of-type bounding-box new))
-          (a0-6 (new 'stack-no-clear 'bounding-box))
-          (a1-6 bounding-box)
-          (s0-0 (t9-5 (the-as symbol a0-6) a1-6))
-          (s5-1 (new 'stack-no-clear 'inline-array 'vector 18))
-          )
-    (dotimes (v1-20 18)
-     (set! (-> s5-1 v1-20 quad) (the-as uint128 0))
-     )
-    (let ((s4-0 (new 'stack-no-clear 'inline-array 'bounding-box 18)))
-     (dotimes (v1-23 37)
-      (set!
-       (-> (the-as bounding-box (+ (the-as uint s4-0) (* v1-23 16))) min quad)
-       (the-as uint128 0)
-       )
-      )
-     (set! (-> s0-0 min x) (-> arg0 (+ arg1 -1) x))
-     (set! (-> s0-0 min y) (-> arg0 (+ arg1 -1) y))
-     (set! (-> s0-0 min z) (-> arg0 (+ arg1 -1) z))
-     (set! (-> s0-0 max x) (-> arg0 (+ arg1 -1) x))
-     (set! (-> s0-0 max y) (-> arg0 (+ arg1 -1) y))
-     (set! (-> s0-0 max z) (-> arg0 (+ arg1 -1) z))
-     (let ((v1-44 (+ arg1 -2)))
-      (while (>= v1-44 0)
-       (if (< (-> arg0 v1-44 x) (-> s0-0 min x))
-        (set! (-> s0-0 min x) (-> arg0 v1-44 x))
-        )
-       (if (< (-> arg0 v1-44 y) (-> s0-0 min y))
-        (set! (-> s0-0 min y) (-> arg0 v1-44 y))
-        )
-       (if (< (-> arg0 v1-44 z) (-> s0-0 min z))
-        (set! (-> s0-0 min z) (-> arg0 v1-44 z))
-        )
-       (if (< (-> s0-0 max x) (-> arg0 v1-44 x))
-        (set! (-> s0-0 max x) (-> arg0 v1-44 x))
-        )
-       (if (< (-> s0-0 max y) (-> arg0 v1-44 y))
-        (set! (-> s0-0 max y) (-> arg0 v1-44 y))
-        )
-       (if (< (-> s0-0 max z) (-> arg0 v1-44 z))
-        (set! (-> s0-0 max z) (-> arg0 v1-44 z))
-        )
-       (+! v1-44 -1)
-       )
-      )
-     (if *debug-segment*
-      (camera-bounding-box-draw s0-0 (the-as basic a1-6) (the-as rgba arg2))
-      )
-     (set! sv-1200 (new 'stack-no-clear 'vector))
-     (set! (-> sv-1200 quad) (the-as uint128 0))
-     (set! sv-1088 (new 'stack-no-clear 'vector))
-     (set! (-> sv-1088 quad) (the-as uint128 0))
-     (vector-! sv-1088 (-> arg0 (+ arg1 -2)) (-> arg0 (+ arg1 -1)))
-     (set! sv-1104 (+ arg1 -3))
-     (while (>= sv-1104 0)
-      (vector-negate! sv-1200 sv-1088)
-      (vector-! sv-1088 (-> arg0 sv-1104) (-> arg0 (+ sv-1104 1)))
-      (vector-cross! (-> s5-1 sv-1104) sv-1200 sv-1088)
-      (vector-normalize! (-> s5-1 sv-1104) 1.0)
-      (set!
-       (-> s5-1 sv-1104 w)
-       (- (vector-dot (-> s5-1 sv-1104) (-> arg0 sv-1104)))
-       )
-      (when *debug-segment*
-       (set! sv-1120 (new 'stack-no-clear 'vector))
-       (set! (-> sv-1120 quad) (the-as uint128 0))
-       (vector+float*! sv-1120 (-> arg0 (+ sv-1104 1)) (-> s5-1 sv-1104) 1228.8)
-       (let ((t9-10 camera-line)
-             (a0-59 (-> arg0 (+ sv-1104 1)))
-             (a2-4 (new 'static 'vector4w :y #x7f :w #x80))
-             )
-        (t9-10 a0-59 sv-1120 a2-4)
-        )
-       )
-      (vector-cross!
-       (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16)))
-       sv-1088
-       (-> s5-1 sv-1104)
-       )
-      (vector-normalize!
-       (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16)))
-       1.0
-       )
-      (set!
-       (->
-        (the-as bounding-box (+ (* (* sv-1104 2) 16) (the-as int s4-0)))
-        min
-        w
-        )
-       (-
-        (vector-dot
-         (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16)))
-         (-> arg0 sv-1104)
-         )
-        )
-       )
-      (when *debug-segment*
-       (set! sv-1136 (new 'stack-no-clear 'vector))
-       (set! (-> sv-1136 quad) (the-as uint128 0))
-       (set! sv-1152 (new 'stack-no-clear 'vector))
-       (set! (-> sv-1152 quad) (the-as uint128 0))
-       (vector+float*! sv-1136 (-> arg0 (+ sv-1104 1)) sv-1088 0.5)
-       (vector+float*!
-        sv-1152
-        sv-1136
-        (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16)))
-        819.2
-        )
-       (let ((t9-14 camera-line)
-             (a2-7 (new 'static 'vector4w :y #x7f :w #x80))
-             )
-        (t9-14 sv-1136 sv-1152 a2-7)
-        )
-       )
-      (vector-! sv-1200 (-> arg0 (+ sv-1104 2)) (-> arg0 sv-1104))
-      (vector-cross!
-       (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16)))
-       sv-1200
-       (-> s5-1 sv-1104)
-       )
-      (vector-normalize!
-       (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16)))
-       1.0
-       )
-      (set!
-       (->
-        (the-as bounding-box (+ (* (+ (* sv-1104 2) 1) 16) (the-as int s4-0)))
-        min
-        w
-        )
-       (-
-        (vector-dot
-         (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16)))
-         (-> arg0 sv-1104)
-         )
-        )
-       )
-      (when *debug-segment*
-       (set! sv-1168 (new 'stack-no-clear 'vector))
-       (set! (-> sv-1168 quad) (the-as uint128 0))
-       (set! sv-1184 (new 'stack-no-clear 'vector))
-       (set! (-> sv-1184 quad) (the-as uint128 0))
-       (vector+float*! sv-1168 (-> arg0 sv-1104) sv-1200 0.5)
-       (vector+float*!
-        sv-1184
-        sv-1168
-        (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16)))
-        819.2
-        )
-       (let ((t9-18 camera-line)
-             (a2-10 (new 'static 'vector4w :y #x7f :w #x80))
-             )
-        (t9-18 sv-1168 sv-1184 a2-10)
-        )
-       )
-      (set! sv-1104 (+ sv-1104 -1))
-      )
-     (vector-! sv-1200 (-> arg0 (+ arg1 -1)) (-> arg0 (+ arg1 -2)))
-     (vector-cross!
-      (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16)))
-      sv-1200
-      (-> s5-1 (+ arg1 -3))
-      )
-     (vector-normalize!
-      (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16)))
-      1.0
-      )
-     (set!
-      (->
-       (the-as bounding-box (+ (* (* (+ arg1 -2) 2) 16) (the-as int s4-0)))
-       min
-       w
-       )
-      (-
-       (vector-dot
-        (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16)))
-        (-> arg0 (+ arg1 -2))
-        )
-       )
-      )
-     (when *debug-segment*
-      (set! sv-1216 (new 'stack-no-clear 'vector))
-      (set! (-> sv-1216 quad) (the-as uint128 0))
-      (set! sv-1232 (new 'stack-no-clear 'vector))
-      (set! (-> sv-1232 quad) (the-as uint128 0))
-      (let ((t9-20 vector+float*!)
-            (a0-85 sv-1216)
-            (a1-44 (-> arg0 (+ arg1 -2)))
-            (a3-7 0.5)
-            )
-       (t9-20 a0-85 a1-44 sv-1200 a3-7)
-       )
-      (vector+float*!
-       sv-1232
-       sv-1216
-       (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16)))
-       819.2
-       )
-      (let ((t9-22 camera-line)
-            (a2-13 (new 'static 'vector4w :y #x7f :w #x80))
-            )
-       (t9-22 sv-1216 sv-1232 a2-13)
-       )
-      )
-     (dummy-13
-      *collide-cache*
-      s0-0
-      (the-as uint 1)
-      (the-as process-drawable #f)
-      (the-as uint s2-0)
-      )
-     (let ((f30-0 40960000.0))
-      0.0
-      (let ((s3-1 (+ arg1 -3)))
-       (while (>= s3-1 0)
-        (let ((s2-1 (-> s5-1 s3-1))
-              (s1-1 (new-stack-vector0))
-              (s0-1 (+ (-> *collide-cache* num-tris) -1))
-              )
-         (while (>= s0-1 0)
-          (set! sv-1280 (-> *collide-cache* tris s0-1))
-          (set! sv-1248 (-> *collide-cache* tris s0-1 vertex 1))
-          (set! sv-1264 (-> *collide-cache* tris s0-1 vertex 2))
-          (let
-           ((f28-0 (+ (-> s2-1 w) (vector-dot s2-1 (the-as vector sv-1280))))
-            (f26-0 (+ (-> s2-1 w) (vector-dot s2-1 sv-1248)))
-            (f24-0 (+ (-> s2-1 w) (vector-dot s2-1 sv-1264)))
-            )
-           (if
-            (<
-             (collide-planes-test0
-              s1-1
-              f28-0
-              f26-0
-              (the-as vector sv-1280)
-              sv-1248
-              (-> s4-0 s3-1)
-              s2-1
-              )
-             40960000.0
-             )
-            (set!
-             f30-0
-             (collide-planes-test1
-              gp-0
-              f30-0
-              s1-1
-              (the-as (inline-array vector) s4-0)
-              s2-1
-              )
-             )
-            )
-           (let ((t9-26 collide-planes-test0)
-                 (a0-97 s1-1)
-                 (a1-50 f26-0)
-                 (a2-17 f24-0)
-                 (t0-3 sv-1264)
-                 (t1-1 (-> s4-0 s3-1))
-                 (t2-1 s2-1)
-                 )
-            (if (< (t9-26 a0-97 a1-50 a2-17 sv-1248 t0-3 t1-1 t2-1) 40960000.0)
-             (set!
-              f30-0
-              (collide-planes-test1
-               gp-0
-               f30-0
-               s1-1
-               (the-as (inline-array vector) s4-0)
-               s2-1
-               )
-              )
-             )
-            )
-           (let ((t9-28 collide-planes-test0)
-                 (a0-99 s1-1)
-                 (a1-52 f24-0)
-                 (a2-19 f28-0)
-                 (t1-2 (-> s4-0 s3-1))
-                 (t2-2 s2-1)
-                 )
-            (if
-             (<
-              (t9-28
-               a0-99
-               a1-52
-               a2-19
-               sv-1264
-               (the-as vector sv-1280)
-               t1-2
-               t2-2
-               )
-              40960000.0
-              )
-             (set!
-              f30-0
-              (collide-planes-test1
-               gp-0
-               f30-0
-               s1-1
-               (the-as (inline-array vector) s4-0)
-               s2-1
-               )
-              )
-             )
-            )
+    (let* ((t9-5 (method-of-type bounding-box new))
+           (a0-6 (new 'stack-no-clear 'bounding-box))
+           (a1-6 bounding-box)
+           (s0-0 (t9-5 (the-as symbol a0-6) a1-6))
+           (s5-1 (new 'stack-no-clear 'inline-array 'vector 18))
            )
-          (+! s0-1 -1)
+      (dotimes (v1-20 18)
+        (set! (-> s5-1 v1-20 quad) (the-as uint128 0))
+        )
+      (let ((s4-0 (new 'stack-no-clear 'inline-array 'bounding-box 18)))
+        (dotimes (v1-23 37)
+          (set! (-> (the-as bounding-box (+ (the-as uint s4-0) (* v1-23 16))) min quad) (the-as uint128 0))
           )
-         )
-        (+! s3-1 -1)
-        )
-       )
-      (cond
-       ((>= f30-0 40960000.0)
-        #f
-        )
-       (else
+        (set! (-> s0-0 min x) (-> arg0 (+ arg1 -1) x))
+        (set! (-> s0-0 min y) (-> arg0 (+ arg1 -1) y))
+        (set! (-> s0-0 min z) (-> arg0 (+ arg1 -1) z))
+        (set! (-> s0-0 max x) (-> arg0 (+ arg1 -1) x))
+        (set! (-> s0-0 max y) (-> arg0 (+ arg1 -1) y))
+        (set! (-> s0-0 max z) (-> arg0 (+ arg1 -1) z))
+        (let ((v1-44 (+ arg1 -2)))
+          (while (>= v1-44 0)
+            (if (< (-> arg0 v1-44 x) (-> s0-0 min x))
+                (set! (-> s0-0 min x) (-> arg0 v1-44 x))
+                )
+            (if (< (-> arg0 v1-44 y) (-> s0-0 min y))
+                (set! (-> s0-0 min y) (-> arg0 v1-44 y))
+                )
+            (if (< (-> arg0 v1-44 z) (-> s0-0 min z))
+                (set! (-> s0-0 min z) (-> arg0 v1-44 z))
+                )
+            (if (< (-> s0-0 max x) (-> arg0 v1-44 x))
+                (set! (-> s0-0 max x) (-> arg0 v1-44 x))
+                )
+            (if (< (-> s0-0 max y) (-> arg0 v1-44 y))
+                (set! (-> s0-0 max y) (-> arg0 v1-44 y))
+                )
+            (if (< (-> s0-0 max z) (-> arg0 v1-44 z))
+                (set! (-> s0-0 max z) (-> arg0 v1-44 z))
+                )
+            (+! v1-44 -1)
+            )
+          )
         (if *debug-segment*
-         (camera-cross
-          (-> s5-1 0)
-          (the-as vector (-> s4-0 0))
-          gp-0
-          (new 'static 'vector4w :x #x7f :z #x7f :w #x80)
-          (meters 0.1)
+            (camera-bounding-box-draw s0-0 a1-6 arg2)
+            )
+        (set! sv-1200 (new 'stack-no-clear 'vector))
+        (set! (-> sv-1200 quad) (the-as uint128 0))
+        (set! sv-1088 (new 'stack-no-clear 'vector))
+        (set! (-> sv-1088 quad) (the-as uint128 0))
+        (vector-! sv-1088 (-> arg0 (+ arg1 -2)) (-> arg0 (+ arg1 -1)))
+        (set! sv-1104 (+ arg1 -3))
+        (while (>= sv-1104 0)
+          (vector-negate! sv-1200 sv-1088)
+          (vector-! sv-1088 (-> arg0 sv-1104) (-> arg0 (+ sv-1104 1)))
+          (vector-cross! (-> s5-1 sv-1104) sv-1200 sv-1088)
+          (vector-normalize! (-> s5-1 sv-1104) 1.0)
+          (set! (-> s5-1 sv-1104 w) (- (vector-dot (-> s5-1 sv-1104) (-> arg0 sv-1104))))
+          (when *debug-segment*
+            (set! sv-1120 (new 'stack-no-clear 'vector))
+            (set! (-> sv-1120 quad) (the-as uint128 0))
+            (vector+float*! sv-1120 (-> arg0 (+ sv-1104 1)) (-> s5-1 sv-1104) 1228.8)
+            (let ((t9-10 camera-line)
+                  (a0-59 (-> arg0 (+ sv-1104 1)))
+                  (a2-4 (new 'static 'vector4w :y #x7f :w #x80))
+                  )
+              (t9-10 a0-59 sv-1120 a2-4)
+              )
+            )
+          (vector-cross! (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16))) sv-1088 (-> s5-1 sv-1104))
+          (vector-normalize! (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16))) 1.0)
+          (set! (-> (the-as bounding-box (+ (* (* sv-1104 2) 16) (the-as int s4-0))) min w)
+                (- (vector-dot (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16))) (-> arg0 sv-1104)))
+                )
+          (when *debug-segment*
+            (set! sv-1136 (new 'stack-no-clear 'vector))
+            (set! (-> sv-1136 quad) (the-as uint128 0))
+            (set! sv-1152 (new 'stack-no-clear 'vector))
+            (set! (-> sv-1152 quad) (the-as uint128 0))
+            (vector+float*! sv-1136 (-> arg0 (+ sv-1104 1)) sv-1088 0.5)
+            (vector+float*! sv-1152 sv-1136 (the-as vector (+ (the-as uint s4-0) (* (* sv-1104 2) 16))) 819.2)
+            (let ((t9-14 camera-line)
+                  (a2-7 (new 'static 'vector4w :y #x7f :w #x80))
+                  )
+              (t9-14 sv-1136 sv-1152 a2-7)
+              )
+            )
+          (vector-! sv-1200 (-> arg0 (+ sv-1104 2)) (-> arg0 sv-1104))
+          (vector-cross! (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16))) sv-1200 (-> s5-1 sv-1104))
+          (vector-normalize! (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16))) 1.0)
+          (set! (-> (the-as bounding-box (+ (* (+ (* sv-1104 2) 1) 16) (the-as int s4-0))) min w)
+                (- (vector-dot (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16))) (-> arg0 sv-1104)))
+                )
+          (when *debug-segment*
+            (set! sv-1168 (new 'stack-no-clear 'vector))
+            (set! (-> sv-1168 quad) (the-as uint128 0))
+            (set! sv-1184 (new 'stack-no-clear 'vector))
+            (set! (-> sv-1184 quad) (the-as uint128 0))
+            (vector+float*! sv-1168 (-> arg0 sv-1104) sv-1200 0.5)
+            (vector+float*! sv-1184 sv-1168 (the-as vector (+ (the-as uint s4-0) (* (+ (* sv-1104 2) 1) 16))) 819.2)
+            (let ((t9-18 camera-line)
+                  (a2-10 (new 'static 'vector4w :y #x7f :w #x80))
+                  )
+              (t9-18 sv-1168 sv-1184 a2-10)
+              )
+            )
+          (set! sv-1104 (+ sv-1104 -1))
           )
-         )
-        #t
+        (vector-! sv-1200 (-> arg0 (+ arg1 -1)) (-> arg0 (+ arg1 -2)))
+        (vector-cross! (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16))) sv-1200 (-> s5-1 (+ arg1 -3)))
+        (vector-normalize! (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16))) 1.0)
+        (set! (-> (the-as bounding-box (+ (* (* (+ arg1 -2) 2) 16) (the-as int s4-0))) min w)
+              (- (vector-dot (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16))) (-> arg0 (+ arg1 -2))))
+              )
+        (when *debug-segment*
+          (set! sv-1216 (new 'stack-no-clear 'vector))
+          (set! (-> sv-1216 quad) (the-as uint128 0))
+          (set! sv-1232 (new 'stack-no-clear 'vector))
+          (set! (-> sv-1232 quad) (the-as uint128 0))
+          (let ((t9-20 vector+float*!)
+                (a0-85 sv-1216)
+                (a1-44 (-> arg0 (+ arg1 -2)))
+                (a3-7 0.5)
+                )
+            (t9-20 a0-85 a1-44 sv-1200 a3-7)
+            )
+          (vector+float*! sv-1232 sv-1216 (the-as vector (+ (the-as uint s4-0) (* (* (+ arg1 -2) 2) 16))) 819.2)
+          (let ((t9-22 camera-line)
+                (a2-13 (new 'static 'vector4w :y #x7f :w #x80))
+                )
+            (t9-22 sv-1216 sv-1232 a2-13)
+            )
+          )
+        (dummy-13 *collide-cache* s0-0 (the-as uint 1) (the-as process-drawable #f) (the-as uint s2-0))
+        (let ((f30-0 40960000.0))
+          0.0
+          (let ((s3-1 (+ arg1 -3)))
+            (while (>= s3-1 0)
+              (let ((s2-1 (-> s5-1 s3-1))
+                    (s1-1 (new-stack-vector0))
+                    (s0-1 (+ (-> *collide-cache* num-tris) -1))
+                    )
+                (while (>= s0-1 0)
+                  (set! sv-1280 (-> *collide-cache* tris s0-1))
+                  (set! sv-1248 (-> *collide-cache* tris s0-1 vertex 1))
+                  (set! sv-1264 (-> *collide-cache* tris s0-1 vertex 2))
+                  (let ((f28-0 (+ (-> s2-1 w) (vector-dot s2-1 (the-as vector sv-1280))))
+                        (f26-0 (+ (-> s2-1 w) (vector-dot s2-1 sv-1248)))
+                        (f24-0 (+ (-> s2-1 w) (vector-dot s2-1 sv-1264)))
+                        )
+                    (if (< (collide-planes-test0 s1-1 f28-0 f26-0 (the-as vector sv-1280) sv-1248 (-> s4-0 s3-1) s2-1) 40960000.0)
+                        (set! f30-0 (collide-planes-test1 (the-as vector gp-0) f30-0 s1-1 (the-as (inline-array vector) s4-0) s2-1))
+                        )
+                    (let ((t9-26 collide-planes-test0)
+                          (a0-97 s1-1)
+                          (a1-50 f26-0)
+                          (a2-17 f24-0)
+                          (t0-3 sv-1264)
+                          (t1-1 (-> s4-0 s3-1))
+                          (t2-1 s2-1)
+                          )
+                      (if (< (t9-26 a0-97 a1-50 a2-17 sv-1248 t0-3 t1-1 t2-1) 40960000.0)
+                          (set! f30-0 (collide-planes-test1 (the-as vector gp-0) f30-0 s1-1 (the-as (inline-array vector) s4-0) s2-1))
+                          )
+                      )
+                    (let ((t9-28 collide-planes-test0)
+                          (a0-99 s1-1)
+                          (a1-52 f24-0)
+                          (a2-19 f28-0)
+                          (t1-2 (-> s4-0 s3-1))
+                          (t2-2 s2-1)
+                          )
+                      (if (< (t9-28 a0-99 a1-52 a2-19 sv-1264 (the-as vector sv-1280) t1-2 t2-2) 40960000.0)
+                          (set! f30-0 (collide-planes-test1 (the-as vector gp-0) f30-0 s1-1 (the-as (inline-array vector) s4-0) s2-1))
+                          )
+                      )
+                    )
+                  (+! s0-1 -1)
+                  )
+                )
+              (+! s3-1 -1)
+              )
+            )
+          (cond
+            ((>= f30-0 40960000.0)
+             #f
+             )
+            (else
+              (if *debug-segment*
+                  (camera-cross
+                    (-> s5-1 0)
+                    (the-as vector (-> s4-0 0))
+                    (the-as vector gp-0)
+                    (new 'static 'vector4w :x #x7f :z #x7f :w #x80)
+                    (meters 0.1)
+                    )
+                  )
+              #t
+              )
+            )
+          )
         )
-       )
       )
-     )
     )
-   )
   )
-
-
-
-
