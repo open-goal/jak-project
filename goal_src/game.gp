@@ -353,7 +353,7 @@
 (goal-src-sequence
   "levels/"
    :deps ;; no idea what these depend on, make it depend on the whole engine
-   ("out/obj/default-menu.o")
+   ("out/obj/ticky.o")
 
    "village_common/villagep-obs.gc"
    "village_common/oracle.gc"
@@ -1199,7 +1199,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/ticky.o")
+  :deps ("out/obj/battlecontroller.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
@@ -1256,7 +1256,7 @@
 
 (goal-src-sequence
   "levels/finalboss/"
-  :deps ("out/obj/ticky.o")
+  :deps ("out/obj/assistant-citadel.o")
 
   "robotboss-h.gc"
   "robotboss-part.gc"
