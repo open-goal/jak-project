@@ -303,7 +303,7 @@
   ("fuel-cell-ag.go" "fuel-cell")
   ("money-ag.go" "money")
   ("buzzer-ag.go" "buzzer")
-  ("ecovalve-ag-ART-GAME.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("crate-ag.go" "crate")
   ("speaker-ag.go" "speaker")
   ("fuelcell-naked-ag.go" "fuelcell-naked")

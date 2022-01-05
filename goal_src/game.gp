@@ -215,7 +215,7 @@
  "fuel-cell-ag"
  "money-ag"
  "buzzer-ag"
- "ecovalve-ag-ART-GAME"
+ "ecovalve-ag"
  "crate-ag"
  "speaker-ag"
  "fuelcell-naked-ag"
@@ -254,6 +254,8 @@
        "out/iso/VI2.DGO"
        "out/iso/VI3.DGO"
        "out/iso/TRA.DGO"
+       "out/iso/INT.DGO"
+       "out/iso/MIS.DGO"
        "out/iso/FIC.DGO"
        "out/iso/ROL.DGO"
        "out/iso/SUN.DGO"
@@ -273,6 +275,8 @@
        "out/iso/VI2.VIS"
        "out/iso/VI3.VIS"
        "out/iso/TRA.VIS"
+       "out/iso/INT.VIS"
+       "out/iso/MIS.VIS"
        "out/iso/FIC.VIS"
        "out/iso/ROL.VIS"
        "out/iso/SUN.VIS"
@@ -287,7 +291,7 @@
        "out/iso/LAV.VIS"
        "out/iso/CIT.VIS"
        "out/iso/FIN.VIS"
-
+       ;; streamed anims
        "out/iso/FUCVICTO.STR"
        "out/iso/FUCV2.STR"
        "out/iso/FUCV3.STR"
@@ -334,13 +338,20 @@
 ;; as we find objects that exist in multiple levels, put them here
 
 (copy-gos
+ "sharkey-ag"
+ "orb-cache-top-ag"
+ "warp-gate-switch-ag"
  "warpgate-ag"
- "sharkey-ag-BEA-TRA-VI2"
- "eichar-racer+0-ag"
-
  "babak-ag"
+ "oracle-ag"
+ "village-cam-ag"
+
+ "eichar-racer+0-ag"
+ "ef-plane-ag"
+ "racer-ag"
 
  "eichar-flut+0-ag"
+ "flut-saddle-ag"
   )
 
 
@@ -358,8 +369,6 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
-   "common/mistycannon.gc"
-   "common/babak-with-cannon.gc"
    "common/snow-bunny.gc"
    "common/battlecontroller.gc"
 
@@ -374,7 +383,6 @@
    "flut_common/flutflut.gc"
    "flut_common/target-flut.gc"
    )
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -430,19 +438,14 @@
  "medres-village11-ag"
  "medres-village12-ag"
  "medres-village13-ag"
- "oracle-ag-VI1"
- "orb-cache-top-ag-VI1"
  "reflector-middle-ag"
  "revcycle-ag"
  "revcycleprop-ag"
  "ropebridge-32-ag"
  "sage-ag"
  "sagesail-ag"
- "sharkey-ag-VI1"
  "villa-starfish-ag"
- "village-cam-ag-VI1"
  "village1cam-ag"
- "warp-gate-switch-ag-VI1-VI3"
  "water-anim-village1-ag"
  "windmill-sail-ag"
  "windspinner-ag"
@@ -480,35 +483,32 @@
 (copy-textures 385 531 386 388 765)
 
 (copy-gos
-  "eichar-fish+0-ag-JUN"
+  "eichar-fish+0-ag"
   "accordian-ag"
   "bounceytarp-ag"
   "catch-fisha-ag"
   "catch-fishb-ag"
   "catch-fishc-ag"
-  "darkvine-ag-JUN"
-  "ecovalve-ag-JUB-JUN"
+  "darkvine-ag"
   "fish-net-ag"
   "fisher-ag"
   "hopper-ag"
   "junglecam-ag"
   "junglefish-ag"
   "junglesnake-ag"
-  "launcherdoor-ag-JUN"
+  "launcherdoor-ag"
   "logtrap-ag"
   "lurkerm-piston-ag"
   "lurkerm-tall-sail-ag"
   "maindoor-ag"
   "medres-firecanyon-ag"
-  "orb-cache-top-ag-JUN"
   "periscope-ag"
   "plat-button-ag"
-  "plat-eco-ag-JUN"
+  "plat-eco-ag"
   "precurbridge-ag"
   "reflector-mirror-ag"
   "ropebridge-52-ag"
   "ropebridge-70-ag"
-  "sharkey-ag-JUN-MIS"
   "sidedoor-ag"
   "towertop-ag"
   "water-anim-jungle-ag"
@@ -540,13 +540,95 @@
 (copy-gos
   "plant-boss-main+0-ag"
   "aphid-lurker-ag"
-  "darkvine-ag-JUB"
   "eggtop-ag"
-  "jng-iris-door-ag-JUB"
+  "jng-iris-door-ag"
   "plant-boss-ag"
   "plat-flip-ag"
   "plat-jungleb-ag"
   "jungleb-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; intro only
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "INT.DGO" "int.gd")
+
+(copy-vis-files "INT")
+
+(goal-src-sequence
+ "levels/intro/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "evilbro.gc"
+ )
+
+(copy-textures 1455 1457 1456 1454)
+
+(copy-gos
+  "evilbro-ag"
+  "evilsis-ag"
+  "intro-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; misty island
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MIS.DGO" "mis.gd")
+
+(copy-vis-files "MIS")
+
+(goal-src-sequence
+  "levels/misty/"
+  :deps ("out/obj/default-menu.o")
+  "mistycannon.gc"
+  "babak-with-cannon.gc"
+  "misty-obs.gc"
+  "misty-warehouse.gc"
+  "misty-conveyor.gc"
+  "mud.gc"
+  "muse.gc"
+  "bonelurker.gc"
+  "quicksandlurker.gc"
+  "misty-teetertotter.gc"
+  "balloonlurker.gc"
+  "misty-part.gc"
+  "sidekick-human.gc"
+  )
+
+(copy-textures 516 521 518 520)
+
+(copy-gos
+  "mistycannon-ag"
+  "sack-ag"
+  "balloonlurker-ag"
+  "boatpaddle-ag"
+  "bonelurker-ag"
+  "breakaway-left-ag"
+  "breakaway-mid-ag"
+  "breakaway-right-ag"
+  "darkecocan-ag"
+  "keg-ag"
+  "keg-conveyor-ag"
+  "keg-conveyor-paddle-ag"
+  "mis-bone-bridge-ag"
+  "mis-bone-platform-ag"
+  "mistycam-ag"
+  "muse-ag"
+  "quicksandlurker-ag"
+  "ropebridge-36-ag"
+  "rounddoor-ag"
+  "sidekick-human-ag"
+  "silostep-ag"
+  "teetertotter-ag"
+  "water-anim-misty-ag"
+  "wheel-ag"
+  "windturbine-ag"
+  "misty-vis"
   )
 
 
@@ -584,12 +666,11 @@
 (copy-textures 212 214 213 215)
 
 (copy-gos
-  "barrel-ag-BEA"
+  "barrel-ag"
   "beachcam-ag"
   "bird-lady-ag"
   "bird-lady-beach-ag"
   "bladeassm-ag"
-  "ecovalve-ag-BEA"
   "ecoventrock-ag"
   "flutflut-ag"
   "flutflutegg-ag"
@@ -601,10 +682,7 @@
   "lurkerpuppy-ag"
   "lurkerworm-ag"
   "mayor-ag"
-  "mistycannon-ag"
-  "orb-cache-top-ag-BEA"
   "pelican-ag"
-  "sack-ag-BEA"
   "sculptor-ag"
   "sculptor-muse-ag"
   "seagull-ag"
@@ -640,10 +718,7 @@
 (copy-gos
   "assistant-firecanyon-ag"
   "balloon-ag"
-  "crate-darkeco-cluster-ag-FIC"
-  "ecovalve-ag-FIC-OGR"
-  "ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA"
-  "racer-ag-FIC-ROL"
+  "crate-darkeco-cluster-ag"
   "spike-ag"
   "firecanyon-vis")
 
@@ -670,14 +745,9 @@
 (copy-textures 1309 1311 1310 1308 775)
 
 (copy-gos
-  "ecovalve-ag-TRA"
-  "jng-iris-door-ag-TRA"
-  "plat-eco-ag-TRA"
-  "pontoonfive-ag-TRA"
   "scarecrow-a-ag"
   "scarecrow-b-ag"
   "trainingcam-ag"
-  "warp-gate-switch-ag-TRA"
   "water-anim-training-ag"
   "training-vis"
   )
@@ -711,7 +781,6 @@
 (copy-gos
   "allpontoons-ag"
   "assistant-village2-ag"
-  "barrel-ag-VI2"
   "ceilingflag-ag"
   "exit-chamber-dummy-ag"
   "fireboulder-ag"
@@ -723,9 +792,7 @@
   "medres-rolling1-ag"
   "medres-village2-ag"
   "ogreboss-village2-ag"
-  "oracle-ag-VI2"
-  "orb-cache-top-ag-VI2"
-  "pontoonfive-ag-VI2"
+  "pontoonfive-ag"
   "pontoonten-ag"
   "precursor-arm-ag"
   "sage-bluehut-ag"
@@ -734,10 +801,7 @@
   "swamp-rope-ag"
   "swamp-tetherrock-ag"
   "swamp-tetherrock-explode-ag"
-  "swampcam-ag-VI2"
-  "village-cam-ag-VI2"
   "village2cam-ag"
-  "warp-gate-switch-ag-VI2"
   "warrior-ag"
   "water-anim-village2-ag"
   "village2-vis"
@@ -764,7 +828,6 @@
 (copy-textures 923 926 924 925 1353)
 
 (copy-gos
-  "ecovalve-ag-ROL"
   "dark-plant-ag"
   "happy-plant-ag"
   "lightning-mole-ag"
@@ -819,14 +882,12 @@
 (copy-textures 661 663 714 662 766)
 
 (copy-gos
-  "eichar-tube+0-ag-SUN"
+  "eichar-tube+0-ag"
   "bully-ag"
   "double-lurker-ag"
   "double-lurker-top-ag"
   "exit-chamber-ag"
   "generic-button-ag"
-  "launcherdoor-ag-SUN"
-  "orb-cache-top-ag-SUN"
   "orbit-plat-ag"
   "orbit-plat-bottom-ag"
   "plat-sunken-ag"
@@ -834,12 +895,12 @@
   "qbert-plat-ag"
   "qbert-plat-on-ag"
   "seaweed-ag"
-  "shover-ag-SUN"
+  "shover-ag"
   "side-to-side-plat-ag"
   "square-platform-ag"
-  "steam-cap-ag-SUN"
+  "steam-cap-ag"
   "sun-iris-door-ag"
-  "sunkencam-ag-SUN"
+  "sunkencam-ag"
   "sunkenfisha-ag"
   "wall-plat-ag"
   "water-anim-sunken-ag"
@@ -862,16 +923,11 @@
 (copy-textures 163 164 166 162 764)
 
 (copy-gos
-  "ecovalve-ag-SUB"
-  "eichar-tube+0-ag-SUB"
   "blue-eco-charger-ag"
   "blue-eco-charger-orb-ag"
   "floating-launcher-ag"
   "helix-button-ag"
   "helix-slide-door-ag"
-  "shover-ag-SUB"
-  "steam-cap-ag-SUB"
-  "sunkencam-ag-SUB"
   "sunkenb-vis"
   )
 
@@ -899,10 +955,7 @@
 (copy-textures 358 659 629 630)
 
 (copy-gos
-  "ecovalve-ag-SWA"
-  "sharkey-ag-SWA"
-  "eichar-pole+0-ag-SWA"
-  "flut-saddle-ag-SWA"
+  "eichar-pole+0-ag"
   "balance-plat-ag"
   "billy-ag"
   "billy-sidekick-ag"
@@ -913,7 +966,7 @@
   "swamp-rat-nest-ag"
   "swamp-rock-ag"
   "swamp-spike-ag"
-  "swampcam-ag-SWA"
+  "swampcam-ag"
   "tar-plat-ag"
   "swamp-vis"
   )
@@ -939,8 +992,6 @@
 (copy-textures 875 967 884 1117)
 
 (copy-gos
-  "crate-darkeco-cluster-ag-OGR"
-  "racer-ag-OGR"
   "flying-lurker-ag"
   "medres-snow-ag"
   "ogre-bridge-ag"
@@ -996,11 +1047,9 @@
   "minecartsteel-ag"
   "minershort-ag"
   "minertall-ag"
-  "oracle-ag-VI3"
   "pistons-ag"
   "sage-village3-ag"
   "vil3-bridge-36-ag"
-  "village-cam-ag-VI3"
   "water-anim-village3-ag"
   "village3-vis"
   )
@@ -1038,17 +1087,16 @@
 (copy-textures 1313 1315 1314 1312 767)
 
 (copy-gos
-  "baby-spider-ag-MAI"
-  "cavetrapdoor-ag-MAI"
+  "baby-spider-ag"
+  "cavetrapdoor-ag"
   "dark-crystal-ag"
   "driller-lurker-ag"
-  "ecovalve-ag-MAI"
   "gnawer-ag"
   "launcherdoor-maincave-ag"
   "maincavecam-ag"
   "mother-spider-ag"
-  "plat-ag-MAI"
-  "spider-egg-ag-DAR-MAI"
+  "plat-ag"
+  "spider-egg-ag"
   "spiderwebs-ag"
   "water-anim-maincave-ag"
   "water-anim-maincave-water-ag"
@@ -1084,11 +1132,7 @@
 (copy-textures 710 842 711 712)
 
 (copy-gos
-  "ecovalve-ag-SNO"
-  "orb-cache-top-ag-SNO"
-  "eichar-pole+0-ag-SNO"
   "eichar-ice+0-ag"
-  "flut-saddle-ag-SNO"
   "flutflut-plat-large-ag"
   "flutflut-plat-med-ag"
   "flutflut-plat-small-ag"
@@ -1135,8 +1179,6 @@
 (copy-textures 1338 1340 1339 1337)
 
 (copy-gos
-  "ecovalve-ag-LAV"
-  "racer-ag-LAV"
   "assistant-lavatube-start-ag"
   "chainmine-ag"
   "darkecobarrel-ag"
@@ -1180,9 +1222,6 @@
 (copy-textures 1415 1417 1416 1414)
 
 (copy-gos
-  "babak-ag-CIT"
-  "ecovalve-ag-CIT"
-  "orb-cache-top-ag-CIT"
   "assistant-lavatube-end-ag"
   "bluesage-ag"
   "citadelcam-ag"
@@ -1212,7 +1251,6 @@
   "plat-citb-ag"
   "plat-eco-citb-ag"
   "redsage-ag"
-  "warp-gate-switch-ag-CIT"
   "yellowsage-ag"
   "citadel-vis"
   )
@@ -1246,7 +1284,6 @@
 (copy-gos
   "darkecobomb-ag"
   "ecoclaw-ag"
-  "ecovalve-ag-FIN"
   "finalbosscam-ag"
   "green-eco-lurker-ag"
   "greenshot-ag"
