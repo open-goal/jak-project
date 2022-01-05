@@ -23,8 +23,23 @@ class Tie3 : public BucketRenderer {
                    ScopedProfilerNode& prof);
   void setup_for_level(const std::string& str, SharedRenderState* render_state);
 
+  struct WindWork {
+    u32 paused;
+    u32 pad[3];
+    math::Vector4f wind_array[64];
+    math::Vector4f wind_normal;
+    math::Vector4f wind_temp;
+    float wind_force[64];
+    u32 wind_time;
+    u32 pad2[3];
+  } m_wind_data;
+
  private:
   void discard_tree_cache();
+  void render_tree_wind(int idx,
+                        const TfragRenderSettings& settings,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
   struct Tree {
     GLuint vertex_buffer;
     GLuint index_buffer;
@@ -33,15 +48,24 @@ class Tie3 : public BucketRenderer {
     GLuint vao;
     u32 vert_count;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
+    const std::vector<tfrag3::InstancedStripDraw>* wind_draws = nullptr;
+    const std::vector<tfrag3::TieWindInstance>* instance_info = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
     SwizzledTimeOfDay tod_cache;
+
+    std::vector<std::array<math::Vector4f, 4>> wind_matrix_cache;
+
+    bool has_wind = false;
+    GLuint wind_vertex_index_buffer;
+    std::vector<u32> wind_vertex_index_offsets;
 
     struct {
       u32 index_upload = 0;
       u32 verts = 0;
       u32 draws = 0;
       u32 full_draws = 0;  // ones that have all visible
+      u32 wind_draws = 0;
       Filtered<float> cull_time;
       Filtered<float> index_time;
       Filtered<float> tod_time;
@@ -70,7 +94,14 @@ class Tie3 : public BucketRenderer {
   bool m_use_fast_time_of_day = true;
   bool m_debug_wireframe = false;
   bool m_debug_all_visible = false;
+  bool m_hide_wind = false;
   Filtered<float> m_all_tree_time;
 
   TfragPcPortData m_pc_port_data;
+
+  std::vector<float> m_wind_vectors;  // note: I suspect these are shared with shrub.
+
+  float m_wind_multiplier = 1.f;
+
+  static_assert(sizeof(WindWork) == 84 * 16);
 };

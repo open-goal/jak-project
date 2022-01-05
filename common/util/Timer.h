@@ -1,11 +1,8 @@
 #pragma once
 
-#ifndef JAK_V2_TIMER_H
-#define JAK_V2_TIMER_H
-
-#include "common/util/assert.h"
 #include <cstdint>
 #include <ctime>
+#include "common/util/assert.h"
 
 /*!
  * Timer for measuring time elapsed with clock_monotonic
@@ -45,5 +42,3 @@ class Timer {
 
   struct timespec _startTime = {};
 };
-
-#endif  // JAK_V2_TIMER_H

@@ -10,8 +10,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include "common/util/assert.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 class IOP_Kernel;
 namespace iop {

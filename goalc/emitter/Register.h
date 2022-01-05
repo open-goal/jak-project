@@ -5,12 +5,12 @@
  * Representation of an x86-64 Register.
  */
 
-#include "common/util/assert.h"
 #include <array>
 #include <vector>
 #include <string>
 #include "common/common_types.h"
 #include "common/goal_constants.h"
+#include "common/util/assert.h"
 
 namespace emitter {
 

@@ -35,6 +35,7 @@ files_with_modifications = [
   "plant-boss",
   "helix-water",
   "lavatube-energy",
+  "sage-finalboss-FIN",
   "ogreboss"
 ]
 

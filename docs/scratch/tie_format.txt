@@ -39,12 +39,15 @@ vf10+ is origin, vf20+ is the SHRUB MATRIX!!!
 vmulax.xyzw acc, vf20, vf10
 vmadday.xyzw acc, vf21, vf10
 vmaddz.xyzw vf10, vf22, vf10
+
 vmulax.xyzw acc, vf20, vf11
 vmadday.xyzw acc, vf21, vf11
 vmaddz.xyzw vf11, vf22, vf11
+
 vmulax.xyzw acc, vf20, vf12
 vmadday.xyzw acc, vf21, vf12
 vmaddz.xyzw vf12, vf22, vf12
+
 vmulax.xyzw acc, vf20, vf13
 vmadday.xyzw acc, vf21, vf13
 vmaddaz.xyzw acc, vf22, vf13
@@ -61,3 +64,63 @@ For the final instance in the bucket, it will be a ret.
 
 96: color0
 
+
+
+# Wind
+Wind is only applied if "stiffness" is nonzero.
+
+The first wind data is from the prototype wind-vectors:
+s5 = wind_idx * 16 + wind_vectors
+
+The second wind data is 
+s3 = wind_work + ((wind_idx + wind_work.wind_time) & 63) * 16
+   = wind_work.wind_array[(wind_idx + wind_work.wind_time) & 63]
+
+```asm
+ld s1, 8(s5)                    # load wind vector 1
+pextlw s1, r0, s1               # convert to 2x 64 bits, by shifting left
+qmtc2.i vf18, s1                # put in vf
+
+ld s2, 0(s5)                    # load wind vector 0
+pextlw s3, r0, s2               # convert to 2x 64 bits, by shifting left
+qmtc2.i vf17, s3                # put in vf
+
+lqc2 vf16, 12(s3)               # load wind vector
+
+vmula.xyzw acc, vf16, vf1       # acc = vf16
+vmsubax.xyzw acc, vf18, vf19    # acc = vf16 - vf18 * wind_const.x
+vmsuby.xyzw vf16, vf17, vf19
+# vf16 -= (vf18 * wind_const.x) + (vf17 * wind_const.y)
+
+vmulaz.xyzw acc, vf16, vf19     # acc = vf16 * wind_const.z
+vmadd.xyzw vf18, vf1, vf18
+# vf18 += vf16 * wind_const.z
+
+vmulaz.xyzw acc, vf18, vf19    # acc = vf18 * wind_const.z
+vmadd.xyzw vf17, vf17, vf1
+# vf17 += vf18 * wind_const.z
+
+vitof12.xyzw vf11, vf11 # normal convert
+vitof12.xyzw vf12, vf12 # normal convert
+
+vminiw.xyzw vf17, vf17, vf0
+qmfc2.i s3, vf18
+vmaxw.xyzw vf27, vf17, vf19
+ppacw s3, r0, s3
+vmulw.xyzw vf27, vf27, vf15
+vmulax.yw acc, vf0, vf0
+vmulay.xz acc, vf27, vf10
+vmadd.xyzw vf10, vf1, vf10
+qmfc2.i s2, vf27
+vmulax.yw acc, vf0, vf0
+vmulay.xz acc, vf27, vf11
+vmadd.xyzw vf11, vf1, vf11
+ppacw s2, r0, s2
+vmulax.yw acc, vf0, vf0
+vmulay.xz acc, vf27, vf12
+vmadd.xyzw vf12, vf1, vf12
+
+if not paused
+sd s3, 8(s5)
+sd s2, 0(s5)
+```

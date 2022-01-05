@@ -107,7 +107,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     auto string_start = (text_label.offset / 4) - 1;
     // 8 for type tag and length fields, 1 for null char.
     for (int j = 0, m = align16(8 + 1 + (int)text.length()) / 4;
-         j < m && string_start + j < read_words.size(); j++) {
+         j < m && string_start + j < (int)read_words.size(); j++) {
       read_words.at(string_start + j)++;
     }
   }

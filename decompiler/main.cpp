@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
                              db.generate_dgo_listing());
   // write out object file map (used for future decompilations, if desired)
   file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
-                             db.generate_obj_listing());
+                             db.generate_obj_listing(config.merged_objects));
 
   // dump raw objs
   if (config.dump_objs) {

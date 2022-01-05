@@ -7,8 +7,8 @@
 
 #include <string>
 #include <cstring>
-#include "common/util/assert.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 struct DmaStats {
   double sync_time_ms = 0;

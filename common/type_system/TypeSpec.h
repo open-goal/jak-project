@@ -8,8 +8,8 @@
 #include <vector>
 #include <string>
 #include <optional>
-#include "common/util/assert.h"
 #include "common/util/SmallVector.h"
+#include "common/util/assert.h"
 
 /*!
  * A :name value modifier to apply to a type.

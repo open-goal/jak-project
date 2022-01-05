@@ -180,7 +180,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   // update buffers:
   u32 vertex_offset = m_ogl.last_vertex_offset;
   if (vertex_offset + m_prim_buffer.vert_count >= m_ogl.vertex_buffer_max_verts) {
-    lg::warn("Buffer wrapped in {} (upcoming size is {}, {} bytes)\n", m_name,
+    lg::warn("Buffer wrapped in {} ({}/{} (+ {}) verts, {} bytes)", m_name,
+             vertex_offset + m_prim_buffer.vert_count, m_ogl.vertex_buffer_max_verts,
              m_prim_buffer.vert_count, m_prim_buffer.vert_count * sizeof(Vertex));
     vertex_offset = 0;
   }
@@ -1074,9 +1075,9 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<float, 3>& st) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
-  v.xyz[0] = (float)vert[0] / UINT32_MAX;
-  v.xyz[1] = (float)vert[1] / UINT32_MAX;
-  v.xyz[2] = (float)vert[2] / UINT32_MAX;
+  v.xyz[0] = (float)vert[0] / (float)UINT32_MAX;
+  v.xyz[1] = (float)vert[1] / (float)UINT32_MAX;
+  v.xyz[2] = (float)vert[2] / (float)UINT32_MAX;
   v.stq = st;
   vert_count++;
 }
