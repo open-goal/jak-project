@@ -4881,6 +4881,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                             {reg0_matcher, Matcher::integer(m_expected_stride)});
       mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
+      matcher = Matcher::match_or({matcher, Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR,
+                                                              {reg1_matcher, mult_matcher})});
       auto match_result = match(matcher, new_val);
       Form* idx = nullptr;
       Form* base = nullptr;
