@@ -146,14 +146,6 @@
               </v-col>
             </v-row>
             <v-row>
-              <v-col align="center" justify="center">
-                <v-icon class="blue--text">mdi-database</v-icon>
-                Data Files Finished -
-                {{ jak1BlackLabelStatus.dataFilesStarted }} /
-                {{ jak1BlackLabelStatus.dataFilesTotal }}
-              </v-col>
-            </v-row>
-            <v-row>
               <v-col
                 align="center"
                 justify="center"
@@ -258,9 +250,7 @@ export default {
       jak1BlackLabelStatus: {
         srcFilesTotal: projectProgress.jak1.fileProgress.src_files_total,
         srcFilesFinished: projectProgress.jak1.fileProgress.src_files_finished,
-        srcFilesStarted: projectProgress.jak1.fileProgress.src_files_started,
-        dataFilesTotal: projectProgress.jak1.fileProgress.data_files_total,
-        dataFilesStarted: projectProgress.jak1.fileProgress.data_files_started
+        srcFilesStarted: projectProgress.jak1.fileProgress.src_files_started
       }
     };
   },
