@@ -163,16 +163,17 @@ class DirectRenderer : public BucketRenderer {
       bool clamp_s = true;
       bool clamp_t = true;
     } m_clamp_state;
+
+    bool used = false;
   } m_texture_state[TEXTURE_STATE_COUNT];
 
   struct TextureGlobalState {
     bool needs_gl_update = true;
   } m_global_texture_state;
 
-  int m_current_texture_state = -1;
+  int m_current_texture_state = 0;
 
   TextureState* current_texture_state() { return &m_texture_state[m_current_texture_state]; }
-  bool no_state() { return m_current_texture_state == -1; }
   bool needs_state_flush() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
   void push_texture_state() {
     ++m_current_texture_state;
@@ -252,6 +253,7 @@ class DirectRenderer : public BucketRenderer {
     int flush_from_alpha = 0;
     int flush_from_clamp = 0;
     int flush_from_prim = 0;
+    int flush_from_state_exhaust = 0;
   } m_stats;
 
   bool m_prim_gl_state_needs_gl_update = true;
@@ -260,7 +262,6 @@ class DirectRenderer : public BucketRenderer {
 
   struct SpriteMode {
     bool do_first_draw = true;
-    bool do_second_draw = true;
   } m_sprite_mode;
 
   Mode m_mode;

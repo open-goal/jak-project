@@ -102,8 +102,6 @@ void DirectRenderer::draw_debug_window() {
 
   if (m_mode == Mode::SPRITE_CPU) {
     ImGui::Checkbox("draw1", &m_sprite_mode.do_first_draw);
-    ImGui::SameLine();
-    ImGui::Checkbox("draw2", &m_sprite_mode.do_second_draw);
   }
 
   ImGui::Text("Triangles: %d", m_stats.triangles);
@@ -118,10 +116,11 @@ void DirectRenderer::draw_debug_window() {
   ImGui::Text("  alph: %d", m_stats.flush_from_alpha);
   ImGui::Text("  clmp: %d", m_stats.flush_from_clamp);
   ImGui::Text("  prim: %d", m_stats.flush_from_prim);
+  ImGui::Text("  texstate: %d", m_stats.flush_from_state_exhaust);
   ImGui::Text(" Total: %d/%d",
               m_stats.flush_from_prim + m_stats.flush_from_clamp + m_stats.flush_from_alpha +
                   m_stats.flush_from_test + m_stats.flush_from_zbuf + m_stats.flush_from_tex_1 +
-                  m_stats.flush_from_tex_0,
+                  m_stats.flush_from_tex_0 + m_stats.flush_from_state_exhaust,
               m_stats.draw_calls);
 }
 
@@ -214,18 +213,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
 
     if (m_sprite_mode.do_first_draw) {
       glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
-      draw_count++;
-    }
-    if (false && m_sprite_mode.do_second_draw) {
-      render_state->shaders[ShaderId::SPRITE_CPU_AFAIL].activate();
-      glDepthMask(GL_FALSE);
-      glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
-      if (m_test_state.depth_writes) {
-        glDepthMask(GL_TRUE);
-      }
-
-      m_prim_gl_state_needs_gl_update = true;
-      m_blend_state_needs_gl_update = true;
       draw_count++;
     }
   } else {
@@ -667,14 +654,17 @@ void DirectRenderer::handle_tex1_1(u64 val,
   // if that's true, we can ignore LCM, MTBA, L, K
 
   bool want_tex_filt = reg.mmag();
-  if (no_state() || want_tex_filt != current_texture_state()->enable_tex_filt) {
-    if (needs_state_flush()) {
-      flush_pending(render_state, prof);
-      m_texture_state[0] = *current_texture_state();
-      m_current_texture_state = 0;
-      m_stats.flush_from_tex_1++;
-    } else {
-      push_texture_state();
+  if (want_tex_filt != current_texture_state()->enable_tex_filt) {
+    if (current_texture_state()->used) {
+      if (needs_state_flush()) {
+        flush_pending(render_state, prof);
+        m_texture_state[0] = *current_texture_state();
+        m_texture_state[0].used = false;
+        m_current_texture_state = 0;
+        m_stats.flush_from_state_exhaust++;
+      } else {
+        push_texture_state();
+      }
     }
     m_global_texture_state.needs_gl_update = true;
 
@@ -702,14 +692,17 @@ void DirectRenderer::handle_tex0_1(u64 val,
   GsTex0 reg(val);
 
   // update tbp
-  if (no_state() || current_texture_state()->current_register != reg) {
-    if (needs_state_flush()) {
-      flush_pending(render_state, prof);
-      m_texture_state[0] = *current_texture_state();
-      m_current_texture_state = 0;
-      m_stats.flush_from_tex_0++;
-    } else {
-      push_texture_state();
+  if (current_texture_state()->current_register != reg) {
+    if (current_texture_state()->used) {
+      if (needs_state_flush()) {
+        flush_pending(render_state, prof);
+        m_texture_state[0] = *current_texture_state();
+        m_texture_state[0].used = false;
+        m_current_texture_state = 0;
+        m_stats.flush_from_state_exhaust++;
+      } else {
+        push_texture_state();
+      }
     }
     m_global_texture_state.needs_gl_update = true;
 
@@ -835,14 +828,17 @@ void DirectRenderer::handle_clamp1(u64 val,
     assert(false);
   }
 
-  if (no_state() || current_texture_state()->m_clamp_state.current_register != val) {
-    if (needs_state_flush()) {
-      flush_pending(render_state, prof);
-      m_texture_state[0] = *current_texture_state();
-      m_current_texture_state = 0;
-      m_stats.flush_from_clamp++;
-    } else {
-      push_texture_state();
+  if (current_texture_state()->m_clamp_state.current_register != val) {
+    if (current_texture_state()->used) {
+      if (needs_state_flush()) {
+        flush_pending(render_state, prof);
+        m_texture_state[0] = *current_texture_state();
+        m_texture_state[0].used = false;
+        m_current_texture_state = 0;
+        m_stats.flush_from_state_exhaust++;
+      } else {
+        push_texture_state();
+      }
     }
     m_global_texture_state.needs_gl_update = true;
 
@@ -1018,6 +1014,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
       assert(false);
   }
+
+  current_texture_state()->used = true;
 }
 
 void DirectRenderer::handle_xyzf2(u64 val,
