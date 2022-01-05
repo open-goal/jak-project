@@ -1,10 +1,10 @@
 #include "extract_tfrag.h"
 #include "common/dma/dma.h"
-#include "common/util/assert.h"
 #include "decompiler/util/Error.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/util/FileUtil.h"
 #include "common/dma/gs.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 namespace {
@@ -2114,6 +2114,19 @@ void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tfr
   }
 }
 
+void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
+  std::vector<tfrag3::StripDraw::VisGroup> result;
+  result.push_back(grps.at(0));
+  for (size_t i = 1; i < grps.size(); i++) {
+    if (grps[i].vis_idx == result.back().vis_idx) {
+      result.back().num += grps[i].num;
+    } else {
+      result.push_back(grps[i]);
+    }
+  }
+  std::swap(result, grps);
+}
+
 }  // namespace
 
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
@@ -2190,6 +2203,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
         str.vis_idx = it->second;
       }
     }
+    merge_groups(draw.vis_groups);
   }
   out.tfrag_trees.push_back(this_tree);
 }

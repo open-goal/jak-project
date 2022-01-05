@@ -115,6 +115,7 @@ struct Config {
 
   std::unordered_set<std::string> allowed_objects;
   std::unordered_set<std::string> banned_objects;
+  std::unordered_set<std::string> merged_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<RegisterTypeCast>>>
       register_type_casts_by_function_by_atomic_op_idx;
   std::unordered_map<std::string, std::unordered_map<int, StackTypeCast>>

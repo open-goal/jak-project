@@ -7,7 +7,6 @@
 
 #include <string>
 #include <cstring>
-#include "common/util/assert.h"
 #include "kmachine.h"
 #include "kboot.h"
 #include "kprint.h"
@@ -38,6 +37,7 @@
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
 #include "game/sce/libscf.h"
+#include "common/util/assert.h"
 using namespace ee;
 
 /*!

@@ -1,4 +1,3 @@
-#include "common/util/assert.h"
 #include <utility>
 #include <stdexcept>
 #include "common/goal_constants.h"
@@ -8,6 +7,7 @@
 #include "AtomicOp.h"
 #include "OpenGoalMapping.h"
 #include "Form.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /////////////////////////////

@@ -1,9 +1,9 @@
-#include "common/util/assert.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "CfgVtx.h"
 #include "Function.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /////////////////////////////////////////

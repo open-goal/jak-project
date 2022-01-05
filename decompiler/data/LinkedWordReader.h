@@ -1,11 +1,11 @@
 #pragma once
-#include "common/util/assert.h"
 #include <cstring>
 #include <vector>
 #include <string>
 #include <stdexcept>
 #include "common/common_types.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 class LinkedWordReader {

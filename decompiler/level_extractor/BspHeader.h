@@ -352,7 +352,7 @@ struct ProxyPrototypeArrayTie {
   std::string print(const PrintSettings& settings, int indent) const;
 
   PrototypeArrayTie prototype_array_tie;
-  // todo wind vectors.
+  Ref wind_vectors;
 };
 
 struct DrawableTreeInstanceTie : public DrawableTree {

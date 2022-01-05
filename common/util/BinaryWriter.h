@@ -5,11 +5,11 @@
  * Write raw data like a stream.
  */
 
-#include "common/util/assert.h"
 #include <stdexcept>
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include "common/util/assert.h"
 
 struct BinaryWriterRef {
   size_t offset;
