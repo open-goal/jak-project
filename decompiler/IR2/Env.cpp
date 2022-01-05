@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include <unordered_set>
 #include <algorithm>
-#include <decompiler/util/DecompilerTypeSystem.h>
+#include "decompiler/util/DecompilerTypeSystem.h"
 #include "Env.h"
 #include "Form.h"
 #include "decompiler/analysis/atomic_op_builder.h"

@@ -4,7 +4,6 @@
  */
 
 #include <algorithm>
-#include "common/util/assert.h"
 #include <cstring>
 #include <numeric>
 #include "decompiler/IR/IR.h"
@@ -15,6 +14,7 @@
 #include "third-party/json.hpp"
 #include "common/log/log.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!

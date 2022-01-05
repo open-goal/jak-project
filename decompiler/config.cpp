@@ -202,6 +202,12 @@ Config read_config_file(const std::string& path_to_config_file) {
 
   config.bad_format_strings =
       hacks_json.at("bad_format_strings").get<std::unordered_map<std::string, int>>();
+
+  auto merged = hacks_json.at("expected_merged_objs").get<std::vector<std::string>>();
+  for (const auto& x : merged) {
+    config.merged_objects.insert(x);
+  }
+
   config.levels_to_extract = cfg.at("levels_to_extract").get<std::vector<std::string>>();
   return config;
 }

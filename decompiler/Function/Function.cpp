@@ -1,4 +1,3 @@
-#include "common/util/assert.h"
 #include <vector>
 #include "Function.h"
 #include "common/log/log.h"
@@ -9,6 +8,7 @@
 #include "decompiler/IR/IR.h"
 #include "decompiler/IR2/Form.h"
 #include "common/util/BitUtils.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 namespace {

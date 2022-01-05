@@ -7,9 +7,9 @@
 
 #include <cstdint>
 #include <cstring>
-#include "common/util/assert.h"
-#include "common/common_types.h"
 #include <vector>
+#include "common/common_types.h"
+#include "common/util/assert.h"
 
 class BinaryReader {
  public:

@@ -3,8 +3,8 @@
 
 #include "VuDisassembler.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
 #include "common/util/print_float.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 
