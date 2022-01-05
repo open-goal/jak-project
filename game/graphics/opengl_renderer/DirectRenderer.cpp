@@ -949,7 +949,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], m_current_texture_state, current_texture_state()->tcc);
+                               m_prim_building.building_stq[i], m_current_texture_state,
+                               current_texture_state()->tcc);
           }
         }
       }
@@ -961,7 +962,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], m_current_texture_state, current_texture_state()->tcc);
+                             m_prim_building.building_stq[i], m_current_texture_state,
+                             current_texture_state()->tcc);
         }
       }
       break;
@@ -977,7 +979,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], m_current_texture_state, current_texture_state()->tcc);
+                             m_prim_building.building_stq[i], m_current_texture_state,
+                             current_texture_state()->tcc);
         }
       }
     } break;
