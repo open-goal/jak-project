@@ -99,9 +99,9 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
   init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 1024,
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x8000,
                                        DirectRenderer::Mode::NORMAL);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 4096,
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,
                                        DirectRenderer::Mode::NORMAL);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
