@@ -29,6 +29,8 @@ class WithGameTests : public ::testing::Test {
     try {
       shared_compiler->compiler.run_test_no_load(
           "test/goalc/source_templates/with_game/test-build-game.gc");
+      shared_compiler->compiler.run_front_end_on_string(
+          "(asm-data-file game-text \"test/test_data/test_game_text.txt\")");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);
@@ -361,8 +363,6 @@ TEST_F(WithGameTests, DebuggerDisassemble) {
 }
 
 TEST_F(WithGameTests, GameText) {
-  shared_compiler->compiler.run_test_from_string(
-      "(asm-data-file game-text \"test/test_data/test_game_text.txt\")");
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-text.gc",
                                           get_test_pass_string("game-text", 5));
 }
