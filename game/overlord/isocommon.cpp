@@ -3,10 +3,10 @@
  * Common ISO utilities.
  */
 
-#include <assert.h>
 #include "common/common_types.h"
 #include <cstring>
 #include "isocommon.h"
+#include "common/util/assert.h"
 
 /*!
  * Convert file name to "ISO Name"

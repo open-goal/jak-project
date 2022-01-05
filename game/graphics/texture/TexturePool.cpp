@@ -4,11 +4,11 @@
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
-#include "common/util/assert.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/util/assert.h"
 
 ////////////////////////////////
 // Extraction of textures

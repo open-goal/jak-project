@@ -3,8 +3,8 @@
 #ifndef JAK_INSTRUCTION_H
 #define JAK_INSTRUCTION_H
 
-#include "common/util/assert.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 namespace emitter {
 /*!

@@ -11,7 +11,7 @@
 #include "inja.hpp"
 #include "third-party/json.hpp"
 
-#include <test/goalc/framework/test_runner.h>
+#include "test/goalc/framework/test_runner.h"
 
 #include <iostream>
 #include <string>
