@@ -21,8 +21,8 @@
             </v-btn>
           </v-col>
           <v-col cols="auto">
-            <v-btn href="/gallery" rounded color="green darken-1">
-              <v-icon>mdi-calendar-check</v-icon>
+            <v-btn to="/gallery" rounded color="green darken-1">
+              <v-icon>mdi-image</v-icon>
               Gallery
             </v-btn>
           </v-col>
