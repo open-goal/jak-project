@@ -178,7 +178,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
   } else {
     interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
   }
-  glActiveTexture(GL_TEXTURE1);
+  glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());

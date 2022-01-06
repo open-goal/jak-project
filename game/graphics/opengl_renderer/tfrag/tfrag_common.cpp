@@ -132,7 +132,6 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
 void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderState* render_state) {
   render_state->shaders[ShaderId::TFRAG3].activate();
   glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T0"), 0);
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T1"), 1);
   glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "camera"),
                      1, GL_FALSE, settings.math_camera.data());
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "hvdf_offset"),

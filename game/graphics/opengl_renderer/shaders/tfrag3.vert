@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
@@ -7,7 +7,7 @@ layout (location = 2) in int time_of_day_index;
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
 uniform float fog_constant;
-uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
+layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
 
 out vec4 fragment_color;
 out vec3 tex_coord;
