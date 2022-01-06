@@ -70,7 +70,6 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured"};
   at(ShaderId::DEBUG_RED) = {"debug_red"};
   at(ShaderId::SPRITE_CPU) = {"sprite_cpu"};
-  at(ShaderId::SPRITE_CPU_AFAIL) = {"sprite_cpu_afail"};
   at(ShaderId::SKY) = {"sky"};
   at(ShaderId::SKY_BLEND) = {"sky_blend"};
   at(ShaderId::DEBUG_BUFFERED) = {"debug_buffered"};
