@@ -45,8 +45,6 @@ class Tfrag3 {
   };
 
   bool update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                   const std::string& level,
-                   SharedRenderState* render_state,
                    const tfrag3::Level* lev_data);
 
  private:

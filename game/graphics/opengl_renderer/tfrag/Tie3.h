@@ -35,9 +35,7 @@ class Tie3 : public BucketRenderer {
   } m_wind_data;
 
  private:
-  bool update_load(const std::string& level,
-                   SharedRenderState* render_state,
-                   const tfrag3::Level* lev_data);
+  bool update_load(const tfrag3::Level* lev_data);
   void discard_tree_cache();
   void render_tree_wind(int idx,
                         const TfragRenderSettings& settings,
@@ -120,7 +118,7 @@ class Tie3 : public BucketRenderer {
   struct {
     bool loading = false;
     State state;
-    int tex = 0;
+    u32 tex = 0;
     u32 vert = 0;
   } m_load_state;
 };

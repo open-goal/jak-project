@@ -39,8 +39,6 @@ Tfrag3::~Tfrag3() {
 }
 
 bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                         const std::string& level,
-                         SharedRenderState* render_state,
                          const tfrag3::Level* lev_data) {
   switch (m_load_state.state) {
     case State::DISCARD_TREE:
@@ -88,9 +86,6 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
           glEnableVertexAttribArray(0);
           glEnableVertexAttribArray(1);
           glEnableVertexAttribArray(2);
-
-          //          glBufferSubData(GL_ARRAY_BUFFER, 0, verts * sizeof(tfrag3::PreloadedVertex),
-          //                          tree.vertices.data());
 
           glVertexAttribPointer(0,                                // location 0 in the shader
                                 3,                                // 3 values per vert
@@ -218,7 +213,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
       m_load_state.loading = true;
       m_load_state.state = State::FIRST;
     }
-    if (update_load(tree_kinds, level, render_state, lev_data)) {
+    if (update_load(tree_kinds, lev_data)) {
       m_has_level = true;
       m_level_name = level;
       m_load_state.loading = false;

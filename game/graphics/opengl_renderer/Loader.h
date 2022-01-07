@@ -7,13 +7,10 @@
 #include "common/custom_data/Tfrag3Data.h"
 
 class Loader {
-
  public:
-
   Loader();
   ~Loader();
   tfrag3::Level* get_tfrag3_level(const std::string& level_name);
-
 
  private:
   struct Level {

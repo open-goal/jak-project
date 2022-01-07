@@ -13,9 +13,7 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
-bool Tie3::update_load(const std::string& level,
-                       SharedRenderState* render_state,
-                       const tfrag3::Level* lev_data) {
+bool Tie3::update_load(const tfrag3::Level* lev_data) {
   switch (m_load_state.state) {
     case DISCARD_TREE:
       m_wind_vectors.clear();
@@ -147,8 +145,7 @@ bool Tie3::update_load(const std::string& level,
       m_load_state.vert = 0;
       break;
 
-    case State::UPLOAD_VERTS:
-    {
+    case State::UPLOAD_VERTS: {
       constexpr u32 MAX_VERTS = 40000;
       bool remaining = false;
       for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees.size(); tree_idx++) {
@@ -172,8 +169,7 @@ bool Tie3::update_load(const std::string& level,
         m_load_state.state = INIT_TEX;
         m_load_state.tex = 0;
       }
-    }
-    break;
+    } break;
 
     case State::INIT_TEX:
       for (size_t max_tex = std::min((size_t)m_load_state.tex + 3, lev_data->textures.size());
@@ -222,7 +218,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_load_state.loading = true;
       m_load_state.state = State::FIRST;
     }
-    if (update_load(level, render_state, lev_data)) {
+    if (update_load(lev_data)) {
       m_has_level = true;
       m_level_name = level;
       m_load_state.loading = false;
@@ -605,7 +601,7 @@ void Tie3::render_tree(int idx,
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;
-  glActiveTexture(GL_TEXTURE1);
+  glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
