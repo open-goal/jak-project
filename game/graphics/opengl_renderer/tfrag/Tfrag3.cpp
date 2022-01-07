@@ -139,7 +139,7 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
     case State::UPLOAD_VERTS: {
       constexpr u32 MAX_VERTS = 40000;
       bool remaining = false;
-      for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees.size(); tree_idx++) {
+      for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees.size(); tree_idx++) {
         const auto& tree = lev_data->tfrag_trees[tree_idx];
 
         if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
