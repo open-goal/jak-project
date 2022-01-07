@@ -167,7 +167,6 @@ class SpriteRenderer : public BucketRenderer {
   void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_3d_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];
   SpriteFrameData m_frame_data;  // qwa: 980

@@ -50,8 +50,6 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
                                          ScopedProfilerNode& /*prof*/) {
   SkyBlendStats stats;
 
-
-
   Timer sky_timer;
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
