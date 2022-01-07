@@ -6,6 +6,7 @@
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/log/log.h"
 
 /*!
  * The direct renderer will handle rendering GIFtags directly.
@@ -98,7 +99,7 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_prim(SharedRenderState* render_state);
   void update_gl_blend();
   void update_gl_test();
-  void update_gl_texture(SharedRenderState* render_state);
+  void update_gl_texture(SharedRenderState* render_state, int unit);
 
   struct TestState {
     void from_register(GsTest reg);
@@ -131,13 +132,6 @@ class DirectRenderer : public BucketRenderer {
 
   } m_blend_state;
 
-  struct ClampState {
-    void from_register(u64 value);
-    u64 current_register = 0b101;
-    bool clamp_s = true;
-    bool clamp_t = true;
-  } m_clamp_state;
-
   // state set through the prim register that requires changing GL stuff.
   struct PrimGlState {
     void from_register(GsPrim reg);
@@ -153,15 +147,43 @@ class DirectRenderer : public BucketRenderer {
     bool fix = false;     // what does this even do?
   } m_prim_gl_state;
 
+  static constexpr int TEXTURE_STATE_COUNT = 10;
+
   struct TextureState {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;
     bool using_mt4hh = false;
     bool tcc = false;
-    bool needs_gl_update = true;
 
     bool enable_tex_filt = true;
-  } m_texture_state;
+
+    struct ClampState {
+      void from_register(u64 value) { current_register = value; }
+      u64 current_register = 0b101;
+      bool clamp_s = true;
+      bool clamp_t = true;
+    } m_clamp_state;
+
+    bool used = false;
+  } m_texture_state[TEXTURE_STATE_COUNT];
+
+  struct TextureGlobalState {
+    bool needs_gl_update = true;
+  } m_global_texture_state;
+
+  int m_current_texture_state = 0;
+
+  TextureState* current_texture_state() { return &m_texture_state[m_current_texture_state]; }
+  bool needs_state_flush() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
+  void push_texture_state() {
+    ++m_current_texture_state;
+    if (m_current_texture_state >= TEXTURE_STATE_COUNT) {
+      lg::error("fatal tex push {}!!!!", m_current_texture_state);
+    }
+    if (m_current_texture_state > 0) {
+      m_texture_state[m_current_texture_state] = m_texture_state[m_current_texture_state - 1];
+    }
+  }
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
   struct PrimBuildState {
@@ -183,8 +205,11 @@ class DirectRenderer : public BucketRenderer {
     math::Vector<float, 4> xyz;
     math::Vector<float, 3> stq;
     math::Vector<u8, 4> rgba;
+    math::Vector<u8, 2> tex;  // texture unit to use + tcc
+    math::Vector<u8, 30> pad;
   };
-  static_assert(sizeof(Vertex) == 32);
+  static_assert(sizeof(Vertex) == 64);
+  static_assert(offsetof(Vertex, tex) == 32);
 
   struct PrimitiveBuffer {
     PrimitiveBuffer(int max_triangles);
@@ -196,7 +221,9 @@ class DirectRenderer : public BucketRenderer {
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
               const math::Vector<u32, 3>& vert,
-              const math::Vector<float, 3>& stq);
+              const math::Vector<float, 3>& stq,
+              int unit,
+              bool tcc);
   } m_prim_buffer;
 
   struct {
@@ -226,6 +253,7 @@ class DirectRenderer : public BucketRenderer {
     int flush_from_alpha = 0;
     int flush_from_clamp = 0;
     int flush_from_prim = 0;
+    int flush_from_state_exhaust = 0;
   } m_stats;
 
   bool m_prim_gl_state_needs_gl_update = true;
@@ -234,7 +262,6 @@ class DirectRenderer : public BucketRenderer {
 
   struct SpriteMode {
     bool do_first_draw = true;
-    bool do_second_draw = true;
   } m_sprite_mode;
 
   Mode m_mode;

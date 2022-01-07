@@ -242,10 +242,10 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
-    // lg::info("Render: {} start\n", renderer->name_and_id());
     g_current_render = renderer->name_and_id();
+    // lg::info("Render: {} start", g_current_render);
     renderer->render(dma, &m_render_state, bucket_prof);
-    // lg::info("Render: {} end\n", renderer->name_and_id());
+    // lg::info("Render: {} end", g_current_render);
     //  should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;

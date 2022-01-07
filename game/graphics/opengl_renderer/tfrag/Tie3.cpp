@@ -127,7 +127,7 @@ void Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
                      GL_STATIC_DRAW);
       }
 
-      glActiveTexture(GL_TEXTURE1);
+      glActiveTexture(GL_TEXTURE10);
       glGenTextures(1, &m_trees[tree_idx].time_of_day_texture);
       glBindTexture(GL_TEXTURE_1D, m_trees[tree_idx].time_of_day_texture);
       // just fill with zeros. this lets use use the faster texsubimage later
@@ -539,7 +539,7 @@ void Tie3::render_tree(int idx,
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;
-  glActiveTexture(GL_TEXTURE1);
+  glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
