@@ -30,6 +30,7 @@
   ("dma-buffer.o" "dma-buffer")
   ("dma-bucket.o" "dma-bucket")
   ("dma-disasm.o" "dma-disasm")
+  ("pckernel-h.o" "pckernel-h") ;; added
   ("pad.o" "pad")
   ("gs.o" "gs")
   ("display-h.o" "display-h")
@@ -248,6 +249,7 @@
   ("prototype.o" "prototype")
   ("main-collide.o" "main-collide")
   ("video.o" "video")
+  ("pckernel.o" "pckernel") ;; added
   ("main.o" "main")
   ("collide-cache.o" "collide-cache")
   ("relocate.o" "relocate")
@@ -301,7 +303,7 @@
   ("fuel-cell-ag.go" "fuel-cell")
   ("money-ag.go" "money")
   ("buzzer-ag.go" "buzzer")
-  ("ecovalve-ag-ART-GAME.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("crate-ag.go" "crate")
   ("speaker-ag.go" "speaker")
   ("fuelcell-naked-ag.go" "fuelcell-naked")

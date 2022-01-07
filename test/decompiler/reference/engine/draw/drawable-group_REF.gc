@@ -1,0 +1,116 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 0 of type drawable-group
+(defmethod new drawable-group ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 4))))))
+    (set! (-> v0-0 length) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 3 of type drawable-group
+(defmethod inspect drawable-group ((obj drawable-group))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tid: ~D~%" (-> obj id))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 2 of type drawable-group
+(defmethod print drawable-group ((obj drawable-group))
+  (format #t "#<~A @ #x~X [~D]" (-> obj type) obj (-> obj length))
+  (dotimes (s5-0 (-> obj length))
+    (format #t " ~A" (-> obj data s5-0))
+    )
+  (format #t ">")
+  obj
+  )
+
+;; definition for method 4 of type drawable-group
+(defmethod length drawable-group ((obj drawable-group))
+  (-> obj length)
+  )
+
+;; definition for method 5 of type drawable-group
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of drawable-group ((obj drawable-group))
+  (the-as int (+ (-> drawable-group size) (* (+ (-> obj length) -1) 4)))
+  )
+
+;; definition for method 8 of type drawable-group
+(defmethod mem-usage drawable-group ((obj drawable-group) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 1 (-> arg0 length)))
+  (set! (-> arg0 data 0 name) "drawable-group")
+  (+! (-> arg0 data 0 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 0 used) v1-6)
+    (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15)))
+    )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
+
+;; definition for method 9 of type drawable-group
+(defmethod login drawable-group ((obj drawable-group))
+  (dotimes (s5-0 (-> obj length))
+    (login (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 10 of type drawable-group
+;; INFO: Return type mismatch int vs none.
+(defmethod draw drawable-group ((obj drawable-group) (arg0 drawable-group) (arg1 display-frame))
+  (when (vis-cull (-> obj id))
+    (when (sphere-cull (-> obj bsphere))
+      (dotimes (s3-0 (-> obj length))
+        (draw (-> obj data s3-0) (-> arg0 data s3-0) arg1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type drawable-group
+;; INFO: Return type mismatch int vs none.
+(defmethod collect-stats drawable-group ((obj drawable-group))
+  (when (vis-cull (-> obj id))
+    (when (sphere-cull (-> obj bsphere))
+      (dotimes (s5-0 (-> obj length))
+        (collect-stats (-> obj data s5-0))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type drawable-group
+;; INFO: Return type mismatch int vs none.
+(defmethod debug-draw drawable-group ((obj drawable-group) (arg0 drawable) (arg1 display-frame))
+  (when (vis-cull (-> obj id))
+    (when (sphere-cull (-> obj bsphere))
+      (dotimes (s3-0 (-> obj length))
+        (debug-draw (-> obj data s3-0) (-> (the-as drawable-group arg0) data s3-0) arg1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type drawable-group
+(defmethod unpack-vis drawable-group ((obj drawable-group) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  (dotimes (s4-0 (-> obj length))
+    (set! arg1 (unpack-vis (-> obj data s4-0) arg0 arg1))
+    )
+  arg1
+  )

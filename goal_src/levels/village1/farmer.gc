@@ -5,8 +5,6 @@
 ;; name in dgo: farmer
 ;; dgos: L1, VI1
 
-(define-extern *farmer-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype farmer (process-taskable)
@@ -18,24 +16,13 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "farmer"
-     :bounds (new 'static 'vector :w 16384.0)
-     :max-lod 1
-     :version #x6
-     :shadow 3
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 4)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 4095996000.0)
-  (set! *farmer-sg* v1-1)
+(defskelgroup *farmer-sg* farmer
+  0
+  4
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
+  :shadow 3
   )
 
 (defmethod play-anim! farmer ((obj farmer) (arg0 symbol))
@@ -165,33 +152,33 @@
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set! (-> s4-0 prim-core offense) 4)
     (set-vector! (-> s4-0 local-sphere) 4096.0 8192.0 -4096.0 12288.0)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-0 collide-with) (the-as uint 16))
      (set! (-> s3-0 prim-core action) (the-as uint 1))
      (set! (-> s3-0 prim-core offense) 4)
      (set-vector! (-> s3-0 local-sphere) 4096.0 6144.0 -4096.0 8192.0)
+     (append-prim s4-0 s3-0)
      )
-    (dummy-28 s4-0)
     (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-1 collide-with) (the-as uint 16))
      (set! (-> s3-1 prim-core action) (the-as uint 1))
      (set! (-> s3-1 prim-core offense) 4)
      (set-vector! (-> s3-1 local-sphere) 4096.0 10240.0 -4096.0 8192.0)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
   (none)
   )
 
-(defmethod copy-defaults! farmer ((obj farmer) (arg0 res-lump))
+(defmethod init-from-entity! farmer ((obj farmer) (arg0 entity-actor))
   (dummy-40 obj arg0 *farmer-sg* 3 25 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj root-override nav-radius) 40960.0)
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))

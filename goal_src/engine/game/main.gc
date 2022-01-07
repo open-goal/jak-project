@@ -322,16 +322,17 @@
 ;; Cheat Codes
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(define *cheat-temp* (the-as (pointer int32) (malloc 'global 16)))
+(define *cheat-temp* (the-as (pointer int32) (malloc 'global 20))) ;; 16 -> 20 (PAL)
 (define *master-exit* #f)
 (define *progress-cheat* #f)
+(define *first-boot* #t) ;; PAL
 
 (defmacro cheats-sound-play (cheat?)
   "play the appropriate sound for inputting a cheat code"
 
   `(if ,cheat?
-      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
+      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
+      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
       )
   )
 
@@ -393,6 +394,29 @@
                                          'pal
                                          ))
             (cheats-sound-play *progress-cheat*)
+          )
+
+      ;; added in PAL
+      (check-cheat-code (-> *cheat-temp* 4) 0 ;; they erroneously used (-> *cheat-temp* 5) here!
+          (triangle x circle square triangle x circle square)
+            (cpad-clear-buttons! 0 r1)
+            (set! *cheat-mode* (if (= *cheat-mode* 'camera)
+                                        #f
+                                        'camera
+                                        ))
+            (cond
+             (*cheat-mode*
+              (if (not *external-cam-mode*)
+               (external-cam-reset!)
+               )
+              (set! *external-cam-mode* 'pad-1)
+              (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
+              )
+             (else
+              (set! *external-cam-mode* #f)
+              (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+              )
+             )
           )
       )
     )
@@ -506,6 +530,10 @@
   (stack-size-set! (-> self main-thread) 512)
 
   (let ((disp *display*))
+    (#when PC_PORT
+      (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)
+      )
+
     ;; todo spad terrain context
     (set! *teleport* #t)
     (update-per-frame-settings! *setting-control*)
@@ -520,17 +548,22 @@
       ;; blerc
       ;; texscroll
       ;; ripple
-      ;; music pick
-      ;; sound/flava
+      (set! *weather-off* #f)
+      ;; music
+      (set! (-> *setting-control* default sound-flava) (the-as uint 49))
+      (set! (-> *setting-control* default sound-flava-priority) 0.0)
       ;; do ambients
 
-      ;; math engine.
-
+      (add-ee-profile-frame 'draw :r #x40 :b #x40)
+      (execute-math-engine)
       ;; DEBUG PROF
+      (add-ee-profile-frame 'draw :r #x80)
       (add-ee-profile-frame 'draw :r #x40 :b #x40)
       ;; debug hook
       (main-cheats)
-      ;; update-camera
+      (add-ee-profile-frame 'draw :r #x20 :g #x20)
+      (update-camera)
+      (add-ee-profile-frame 'draw :r #x40 :b #x40)
       (*draw-hook*)
       (add-ee-profile-frame 'draw :g #x80)
 
@@ -630,8 +663,40 @@
               )
 
             ;; added
-            (format *stdcon* "~3Lglobal heap at ~,,2fK remaining~0L~%"
-                              (* (1/ 1024) (&- (-> global top) (-> global current))))
+            (#when PC_PORT
+              (when (-> *pc-settings* debug?)
+                (draw *pc-settings* debug-buf)
+                )
+              (when (-> *pc-settings* display-actor-bank)
+                (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) debug-buf 512 232 (font-color default) (font-flags shadow kerning right))
+                )
+              )
+            (let (
+                  (remain (&- (-> global top) (-> global current)))
+                  (total (&- (-> global top) (-> global base)))
+                  )
+                (format *stdcon* "~3Lglobal heap ~,,2fK/~,,2fK (~,,2f%) remain~0L~%"
+                                  (* (1/ 1024) remain) (* (1/ 1024) total)
+                                  (* 100.0 (/ (the float remain) (the float total)))
+                                  )
+                )
+            (format *stdcon* "~3Lfree DMA global: ~d debug: ~d~0L~%"
+                    (dma-buffer-free (-> disp frames (-> disp on-screen) frame global-buf))
+                    (dma-buffer-free (-> disp frames (-> disp on-screen) frame debug-buf))
+                    )
+            #|
+            ;; added, prints some level status.
+            (dotimes (i 2)
+              (let ((level-heap (-> *level* level i heap)))
+                (format *stdcon* "~17Llevel ~d: ~A ~A ~,,2fK remaining~0L~%"
+                        i
+                        (-> *level* level i name)
+                        (-> *level* level i status)
+                        (* (1/ 1024) (&- (-> level-heap top) (-> level-heap current)))
+                        )
+                )
+              )
+              |#
 
             (display-file-info)
             ) ;; end dma let
@@ -643,7 +708,7 @@
                                                (-> disp frames (-> disp on-screen) frame global-buf)
                                                ))
                                      (bucket-id debug-draw0))
-          (if (= *master-mode* 'pause)
+          (if (and (= *master-mode* 'pause) (!= *cheat-mode* 'camera))
               (draw-string-xy (lookup-text! *common-text* (game-text-id pause) #f)
                s3-1 256 160 (font-color orange-red) (font-flags shadow kerning middle large))
               )
@@ -688,10 +753,10 @@
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       (swap-display disp)
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      
+
       ;; teleport stuff
       ;; perf stats
-      
+
       (process-particles)
 
 
@@ -701,8 +766,12 @@
       (level-update *level*) ;; also updates settings.
       (mc-run)
       ;; auto save check
-      ;; suspend
 
+      (#when PC_PORT
+        (update *pc-settings*)
+        )
+
+      ;; suspend
       (suspend)
       )
     )

@@ -180,9 +180,10 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
     } break;
     case SimpleAtom::Kind::INTEGER_CONSTANT: {
       std::optional<TypeSpec> cast_for_set, cast_for_define;
-      bool sym_int_or_uint = env.dts->ts.tc(TypeSpec("integer"), expected_type);
-      bool sym_uint = env.dts->ts.tc(TypeSpec("uinteger"), expected_type);
-      bool sym_int = sym_int_or_uint && !sym_uint;
+      const auto& type_name = expected_type.base_type();
+      bool sym_int = (type_name == "int8") || (type_name == "int16") || (type_name == "int32") ||
+                     (type_name == "int64") || (type_name == "int") || (type_name == "integer") ||
+                     (type_name == "seconds");
 
       if (sym_int) {
         // do nothing for set.
@@ -499,7 +500,7 @@ FormElement* make_label_load(int label_idx,
       load_size == 4 && hint.result_type == TypeSpec("float")) {
     assert((label.offset % 4) == 0);
     auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    assert(word.kind == LinkedWord::PLAIN_DATA);
+    assert(word.kind() == LinkedWord::PLAIN_DATA);
     float value;
     memcpy(&value, &word.data, 4);
     return pool.alloc_element<ConstantFloatElement>(value);
@@ -508,8 +509,8 @@ FormElement* make_label_load(int label_idx,
     assert((label.offset % 8) == 0);
     auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-    assert(word0.kind == LinkedWord::PLAIN_DATA);
-    assert(word1.kind == LinkedWord::PLAIN_DATA);
+    assert(word0.kind() == LinkedWord::PLAIN_DATA);
+    assert(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;
     memcpy(&value, &word0.data, 4);
     memcpy(((u8*)&value) + 4, &word1.data, 4);
@@ -526,8 +527,8 @@ FormElement* make_label_load(int label_idx,
     assert((label.offset % 8) == 0);
     auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-    assert(word0.kind == LinkedWord::PLAIN_DATA);
-    assert(word1.kind == LinkedWord::PLAIN_DATA);
+    assert(word0.kind() == LinkedWord::PLAIN_DATA);
+    assert(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;
     memcpy(&value, &word0.data, 4);
     memcpy(((u8*)&value) + 4, &word1.data, 4);

@@ -5,8 +5,6 @@
 ;; name in dgo: hopper
 ;; dgos: JUN, JUNGLE, L1
 
-(define-extern *hopper-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype hopper (nav-enemy)
@@ -20,27 +18,13 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "hopper"
-     :bounds (new 'static 'vector :w 12288.0)
-     :max-lod 2
-     :longest-edge (meters 1.0)
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 5)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *hopper-sg* v1-1)
+(defskelgroup *hopper-sg* hopper
+  0
+  5
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :longest-edge (meters 1)
+  :shadow 4
   )
 
 nav-enemy-default-event-handler
@@ -663,32 +647,38 @@ nav-enemy-default-event-handler
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
     (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s4-0 collide-with) (the-as uint 16))
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 10240.0)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-0 collide-with) (the-as uint 16))
      (set! (-> s3-0 prim-core action) (the-as uint 1))
      (set! (-> s3-0 prim-core offense) 1)
      (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 4096.0)
+     (append-prim s4-0 s3-0)
      )
-    (dummy-28 s4-0)
     (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
      (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-1 collide-with) (the-as uint 16))
      (set! (-> s3-1 prim-core action) (the-as uint 1))
      (set! (-> s3-1 prim-core offense) 1)
      (set-vector! (-> s3-1 local-sphere) 0.0 6963.2 0.0 4096.0)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) 6144.0)
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
    (set! (-> obj collide-info) s5-0)
    )
@@ -697,7 +687,7 @@ nav-enemy-default-event-handler
   )
 
 (defmethod TODO-RENAME-48 hopper ((obj hopper))
-  (dummy-14 obj *hopper-sg* '())
+  (initialize-skeleton obj *hopper-sg* '())
   (TODO-RENAME-45 obj *hopper-nav-enemy-info*)
   (set!
    (-> obj shadow-min-y)

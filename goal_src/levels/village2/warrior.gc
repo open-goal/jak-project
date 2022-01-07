@@ -5,8 +5,6 @@
 ;; name in dgo: warrior
 ;; dgos: L1, VI2
 
-(define-extern *warrior-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype warrior (process-taskable)
@@ -18,26 +16,13 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "warrior"
-     :bounds (new 'static 'vector :w 16384.0)
-     :max-lod 2
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 5)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *warrior-sg* v1-1)
+(defskelgroup *warrior-sg* warrior
+  0
+  5
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
+  :shadow 4
   )
 
 (defmethod dummy-52 warrior ((obj warrior))
@@ -265,33 +250,33 @@
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set! (-> s4-0 prim-core offense) 4)
     (set-vector! (-> s4-0 local-sphere) -3072.0 8192.0 0.0 11264.0)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-0 collide-with) (the-as uint 16))
      (set! (-> s3-0 prim-core action) (the-as uint 1))
      (set! (-> s3-0 prim-core offense) 4)
      (set-vector! (-> s3-0 local-sphere) -2048.0 9216.0 0.0 8192.0)
+     (append-prim s4-0 s3-0)
      )
-    (dummy-28 s4-0)
     (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-1 collide-with) (the-as uint 16))
      (set! (-> s3-1 prim-core action) (the-as uint 1))
      (set! (-> s3-1 prim-core offense) 4)
      (set-vector! (-> s3-1 local-sphere) 0.0 2048.0 0.0 4096.0)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
   (none)
   )
 
-(defmethod copy-defaults! warrior ((obj warrior) (arg0 res-lump))
+(defmethod init-from-entity! warrior ((obj warrior) (arg0 entity-actor))
   (dummy-40
    obj
    arg0

@@ -1,6 +1,5 @@
 #include <cstring>
 #include <cstdio>
-#include "common/util/assert.h"
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
@@ -8,6 +7,7 @@
 #include "common/versions.h"
 #include "sbank.h"
 #include "iso_api.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 
@@ -71,6 +71,9 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             }
           }
         } break;
+        case SoundCommand::UNLOAD_BANK:
+          printf("ignoring unload bank command!\n");
+          break;
         case SoundCommand::GET_IRX_VERSION: {
           cmd->irx_version.major = IRX_VERSION_MAJOR;
           cmd->irx_version.minor = IRX_VERSION_MINOR;

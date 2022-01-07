@@ -146,7 +146,7 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
       return empty_pair;
     }
     case goos::ObjectType::PAIR:
-      return compile_static_pair(thing, env);
+      return compile_static_pair(thing, env, env->function_env()->segment_for_static_data());
     default:
       throw_compiler_error(form, "Quote is not yet implemented for {}.", thing.print());
   }

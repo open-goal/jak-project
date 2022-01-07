@@ -7,6 +7,7 @@ add_library(
         analysis/expression_build.cpp
         analysis/final_output.cpp
         analysis/find_defstates.cpp
+        analysis/find_skelgroups.cpp
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/label_types.cpp
@@ -23,6 +24,7 @@ add_library(
         data/game_text.cpp
         data/streamed_audio.cpp
         data/StrFileReader.cpp
+        data/TextureDB.cpp
         data/tpage.cpp
 
         Disasm/Instruction.cpp
@@ -53,6 +55,11 @@ add_library(
         IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
+        level_extractor/extract_level.cpp
+        level_extractor/extract_tfrag.cpp
+        level_extractor/extract_tie.cpp
+        level_extractor/BspHeader.cpp
+
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/ObjectFileDB.cpp
@@ -62,6 +69,7 @@ add_library(
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
+        util/goal_data_reader.cpp
         util/sparticle_decompile.cpp
         util/TP_Type.cpp
 
@@ -90,5 +98,3 @@ target_link_libraries(decompiler
         common
         lzokay
         fmt)
-
-install(TARGETS decompiler)

@@ -12,9 +12,9 @@
 ;; definition for function matrix-local->world
 (defun matrix-local->world ((arg0 symbol) (arg1 symbol))
   (if arg0
-   (-> *math-camera* inv-camera-rot-smooth)
-   (-> *math-camera* inv-camera-rot)
-   )
+      (-> *math-camera* inv-camera-rot-smooth)
+      (-> *math-camera* inv-camera-rot)
+      )
   )
 
 ;; definition for function matrix-world->local
@@ -28,16 +28,16 @@
 ;; definition for function camera-pos
 (defun camera-pos ()
   (cond
-   (*camera-combiner*
-    (-> *camera-combiner* trans)
+    (*camera-combiner*
+      (-> *camera-combiner* trans)
+      )
+    (*math-camera*
+      (-> *math-camera* trans)
+      )
+    (else
+      *camera-dummy-vector*
+      )
     )
-   (*math-camera*
-    (-> *math-camera* trans)
-    )
-   (else
-    *camera-dummy-vector*
-    )
-   )
   )
 
 ;; definition for function math-camera-pos
@@ -50,8 +50,8 @@
   (let ((f0-0 (-> *math-camera* camera-rot vector 0 x))
         (f1-0 (-> *math-camera* camera-rot vector 0 z))
         )
-   (atan f1-0 f0-0)
-   )
+    (atan f1-0 f0-0)
+    )
   )
 
 ;; definition for function camera-teleport-to-entity
@@ -59,14 +59,11 @@
 ;; Used lq/sq
 (defbehavior camera-teleport-to-entity process ((arg0 entity-actor))
   (let ((gp-0 (new 'stack 'transformq)))
-   (set!
-    (-> gp-0 trans quad)
-    (-> (the-as transform (-> arg0 extra)) scale quad)
+    (set! (-> gp-0 trans quad) (-> (the-as transform (-> arg0 extra)) scale quad))
+    (quaternion-copy! (-> gp-0 quat) (-> arg0 quat))
+    (vector-identity! (-> gp-0 scale))
+    (send-event *camera* 'teleport-to-transformq gp-0)
     )
-   (quaternion-copy! (-> gp-0 quat) (-> arg0 quat))
-   (vector-identity! (-> gp-0 scale))
-   (send-event *camera* 'teleport-to-transformq gp-0)
-   )
   0
   (none)
   )

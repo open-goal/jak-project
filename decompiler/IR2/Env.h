@@ -2,14 +2,14 @@
 
 #include <string>
 #include <vector>
-#include "common/util/assert.h"
-#include <common/goos/Object.h>
+#include "common/goos/Object.h"
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/util/StackSpillMap.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/config.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 class LinkedObjectFile;

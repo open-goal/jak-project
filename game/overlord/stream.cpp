@@ -4,7 +4,6 @@
  * Supports loading a file directly to the EE, or loading chunks of a chunked file.
  */
 
-#include "common/util/assert.h"
 #include <cstring>
 #include "stream.h"
 #include "game/sce/iop.h"
@@ -12,11 +11,12 @@
 #include "game/common/play_rpc_types.h"
 #include "game/overlord/isocommon.h"
 #include "game/overlord/iso_api.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 
-static RPC_Str_Cmd sRPCBuf;
-static RPC_Str_Cmd sRPCBuf2;  // todo type
+static RPC_Str_Cmd sSTRBuf;
+static RPC_Play_Cmd sPLAYBuf;  // todo type
 void* RPC_STR(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
 
@@ -38,8 +38,8 @@ constexpr int STR_INDEX_CACHE_SIZE = 4;
 CacheEntry sCache[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
-  memset(&sRPCBuf, 0, sizeof(RPC_Str_Cmd));
-  memset(&sRPCBuf2, 0, sizeof(RPC_Str_Cmd));
+  memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd));
+  memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd));
 }
 
 /*!
@@ -52,7 +52,7 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, STR_RPC_ID, RPC_STR, &sRPCBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, STR_RPC_ID, RPC_STR, &sSTRBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -65,7 +65,7 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, &sRPCBuf2, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, &sPLAYBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -156,6 +156,6 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y) {
   (void)fno;
   (void)y;
-  printf("[RPC_PLAY] ignoring...\n");
+  // printf("[RPC_PLAY] ignoring...\n");
   return _cmd;
 }

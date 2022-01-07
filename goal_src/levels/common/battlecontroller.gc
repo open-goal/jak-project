@@ -268,11 +268,11 @@ battlecontroller-default-event-handler
         (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info pickup-spawn-amount)
         0.0
         )
-       (logior! (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info options) 512)
-       (set!
-        (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info fade-time)
-        (the-as uint 1200)
+       (logior!
+        (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info options)
+        (fact-options fade)
         )
+       (set! (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info fade-time) 1200)
        )
       )
      )
@@ -645,8 +645,8 @@ battlecontroller-default-event-handler
     1024
     -2286
     0
-    (the-as uint 1)
-    (the-as vector #f)
+    1
+    #f
     )
    (battlecontroller-battle-end)
    (battlecontroller-camera-off)
@@ -691,11 +691,11 @@ battlecontroller-default-event-handler
     (label cfg-15)
     (birth-pickup-at-point
      (-> self final-pickup-spawn-point)
-     (the-as int (-> self final-pickup-type))
+     (-> self final-pickup-type)
      (the float (-> self entity extra perm task))
      #f
      self
-     #f
+     (the-as fact-info #f)
      )
     (when (not (-> self child))
      (suspend)
@@ -741,22 +741,15 @@ battlecontroller-default-event-handler
 
 (defmethod deactivate battlecontroller ((obj battlecontroller))
   (with-pp
-   (let ((gp-0 pp))
-    (let ((s6-1 obj))
-     )
-    (battlecontroller-off)
-    (let ((s6-2 gp-0))
-     )
+    (let ((gp-0 pp))
+      (set! pp obj)
+      (battlecontroller-off)
+      (set! pp gp-0)
+      )
+    ((the-as (function process-drawable none) (find-parent-method battlecontroller 10)) obj)
+    0
+    (none)
     )
-   ((the-as
-     (function process-drawable none)
-     (find-parent-method battlecontroller 10)
-     )
-    obj
-    )
-   0
-   (none)
-   )
   )
 
 (defmethod TODO-RENAME-27 battlecontroller ((obj battlecontroller))
@@ -961,9 +954,9 @@ battlecontroller-default-event-handler
   )
 
 (defmethod
-  copy-defaults!
+  init-from-entity!
   battlecontroller
-  ((obj battlecontroller) (arg0 res-lump))
+  ((obj battlecontroller) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)

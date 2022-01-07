@@ -176,7 +176,6 @@
 (define-extern reset-path (function none))
 (define-extern reset-graph (function int int int int none))
 
-;; dma-sync
 (define-extern dma-sync (function pointer int int int))
 ;; gs-put-imr
 ;; gs-get-imr
@@ -187,10 +186,13 @@
 (define-extern cpad-get-data (function cpad-info cpad-info))
 (define-extern install-handler (function int function int)) ;; check return val
 ;; install-debug-handler
+(defconstant SCE_SEEK_SET 0)
+(defconstant SCE_SEEK_CUR 1)
+(defconstant SCE_SEEK_END 2)
 (define-extern file-stream-open (function file-stream basic basic file-stream))
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern file-stream-length (function file-stream int))
-;; file-stream-seek
+(define-extern file-stream-seek (function file-stream int int int))
 (define-extern file-stream-read (function file-stream pointer int int))
 (define-extern file-stream-write (function file-stream pointer uint uint))
 
@@ -208,7 +210,7 @@
 (define-extern scf-get-inactive-timeout (function int))
 ;; dma-to-iop
 (define-extern kernel-shutdown (function none))
-(define-extern aybabtu (function int int))
+(define-extern aybabtu (function int int)) ;; this is just sceCdMmode
 ;; *stack-top*
 ;; *stack-base*
 ;; *stack-size*
@@ -263,7 +265,7 @@
     )
 
 (declare-type process basic)
-(declare-type res-lump basic)
+(declare-type entity-actor basic)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
@@ -278,7 +280,7 @@
    (new (symbol type basic) _type_ 0)
    (activate (_type_ process-tree basic pointer) process-tree 9)
    (deactivate  (_type_) none 10)
-   (copy-defaults! (_type_ res-lump) none 11)
+    (init-from-entity! (_type_ entity-actor) none 11)
    (run-logic? (_type_) symbol 12)
    (dummy-method () none 13)
    )  
@@ -290,7 +292,7 @@
 
 
 (deftype stack-frame (basic)
-  ((name basic :offset 4)
+  ((name symbol :offset 4)
    (next stack-frame :offset 8) ;; which way does this point?
    )
   
@@ -310,11 +312,18 @@
 (define-extern __pc-texture-relocate (function object object object none))
 (define-extern __pc-get-mips2c (function string function))
 (define-extern pc-pad-input-mode-set (function symbol none))
+(define-extern pc-pad-input-pad-set (function int none))
 (define-extern pc-pad-input-mode-get (function int))
 (define-extern pc-pad-input-key-get (function int))
 (define-extern pc-pad-input-index-get (function int))
 (define-extern pc-pad-input-map-save! (function none))
 (define-extern pc-pad-get-mapped-button (function int int int))
+(define-extern pc-get-os (function symbol))
+(define-extern pc-get-window-size (function (pointer int32) (pointer int32) none))
+(define-extern pc-get-window-scale (function (pointer float) (pointer float) none))
+(define-extern pc-set-window-size (function int int none))
+(define-extern pc-set-letterbox (function int int none))
+(define-extern pc-set-fullscreen (function int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; vm functions

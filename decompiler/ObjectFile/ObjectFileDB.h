@@ -7,14 +7,15 @@
  * (there may be different object files with the same name sometimes)
  */
 
-#include "common/util/assert.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include "LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
+#include "decompiler/data/TextureDB.h"
 #include "decompiler/analysis/symbol_def_map.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!
@@ -53,7 +54,7 @@ class ObjectFileDB {
                const std::vector<std::string>& str_files,
                const Config& config);
   std::string generate_dgo_listing();
-  std::string generate_obj_listing();
+  std::string generate_obj_listing(const std::unordered_set<std::string>& merged_objs);
   void process_link_data(const Config& config);
   void process_labels();
   void find_code(const Config& config);
@@ -80,7 +81,7 @@ class ObjectFileDB {
   void ir2_register_usage_pass(int seg, ObjectFileData& data);
   void ir2_variable_pass(int seg, ObjectFileData& data);
   void ir2_cfg_build_pass(int seg, ObjectFileData& data);
-  void ir2_store_current_forms(int seg);
+  // void ir2_store_current_forms(int seg);
   void ir2_build_expressions(int seg, const Config& config, ObjectFileData& data);
   void ir2_insert_lets(int seg, ObjectFileData& data);
   void ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data);
@@ -96,9 +97,9 @@ class ObjectFileDB {
   std::string ir2_final_out(ObjectFileData& data,
                             const std::unordered_set<std::string>& skip_functions = {});
 
-  std::string process_tpages();
+  std::string process_tpages(TextureDB& tex_db);
   std::string process_game_count_file();
-  std::string process_game_text_files();
+  std::string process_game_text_files(GameTextVersion version);
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;

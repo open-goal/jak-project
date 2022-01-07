@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #elif _WIN32
 #include <io.h>
-#include <third-party/mman/mman.h>
+#include "third-party/mman/mman.h"
 #include <Windows.h>
 #endif
 
@@ -260,7 +260,7 @@ void dmac_runner(SystemThreadInterface& iface) {
     //      }
     //    }
     // avoid running the DMAC on full blast (this does not sync to its clockrate)
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
   }
 
   VM::unsubscribe_component();

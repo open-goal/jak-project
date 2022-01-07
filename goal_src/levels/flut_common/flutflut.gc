@@ -5,8 +5,6 @@
 ;; name in dgo: flutflut
 ;; dgos: L1, SNO, SWA
 
-(define-extern *flutflut-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (if (not (nmember "flutp" *kernel-packages*))
@@ -14,15 +12,16 @@
   )
 
 (deftype flutflut (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (extra-trans   vector               :inline :offset-assert 176)
-   (condition     int32                        :offset-assert 192)
-   (auto-get-off  symbol                       :offset-assert 196)
-   (cell          handle                       :offset-assert 200)
-   (path-data     path-control         2       :offset-assert 208)
-   (path-target   path-control                 :offset        208)
-   (path-flut     path-control                 :offset        212)
-   (touch-time    uint64                       :offset-assert 216)
+  ((parent-override (pointer target)             :offset         12)
+   (root-override   collide-shape-moving         :offset        112)
+   (extra-trans     vector               :inline :offset-assert 176)
+   (condition       int32                        :offset-assert 192)
+   (auto-get-off    symbol                       :offset-assert 196)
+   (cell            handle                       :offset-assert 200)
+   (path-data       path-control         2       :offset-assert 208)
+   (path-target     path-control                 :offset        208)
+   (path-flut       path-control                 :offset        212)
+   (touch-time      uint64                       :offset-assert 216)
    )
   :pack-me
   :heap-base #x70
@@ -62,22 +61,14 @@
    )
   )
 
-(let
-  ((v1-5
-    (new 'static 'skeleton-group
-     :art-group-name "flut-saddle"
-     :bounds (new 'static 'vector :w 14336.0)
-     :version #x6
-     :shadow 2
-     :sort 1
-     )
-    )
-   )
-  (set! (-> v1-5 jgeo) 0)
-  (set! (-> v1-5 janim) -1)
-  (set! (-> v1-5 mgeo 0) (the-as uint 1))
-  (set! (-> v1-5 lod-dist 0) 4095996000.0)
-  (set! *flutflut-sg* v1-5)
+(defskelgroup *flutflut-sg* flut-saddle
+  0
+  -1
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 3.5)
+  :longest-edge (meters 0)
+  :shadow 2
+  :sort 1
   )
 
 (defbehavior flutflut-effect flutflut ()
@@ -208,11 +199,11 @@
              (-> self root-override trans)
              (new 'static 'vector :y 8192.0 :w 1.0)
              )
-            6
+            (pickup-type fuel-cell)
             (the float (-> self entity extra perm task))
             #f
             self
-            (the-as symbol (-> self fact))
+            (-> self fact)
             )
            )
           )
@@ -489,7 +480,7 @@
    )
   )
 
-(defmethod copy-defaults! flutflut ((obj flutflut) (arg0 res-lump))
+(defmethod init-from-entity! flutflut ((obj flutflut) (arg0 entity-actor))
   (let
    ((s4-0
      (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
@@ -497,15 +488,21 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set-vector! (-> s3-0 local-sphere) 0.0 6144.0 0.0 6144.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -513,7 +510,7 @@
    (-> obj root-override)
    (res-lump-float arg0 'rotoffset)
    )
-  (dummy-14 obj *flutflut-sg* '())
+  (initialize-skeleton obj *flutflut-sg* '())
   (logior! (-> obj skel status) 256)
   (set! (-> obj draw shadow-ctrl) *flutflut-shadow-control*)
   (let ((v1-24 (-> obj node-list data)))

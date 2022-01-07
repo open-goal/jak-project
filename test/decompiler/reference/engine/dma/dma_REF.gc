@@ -8,18 +8,18 @@
 ;; INFO: Return type mismatch int vs none.
 (defun dma-sync-crash ((arg0 dma-bank))
   (let ((v1-0 #x4c4b40))
-   (while (nonzero? (-> arg0 chcr str))
-    (cond
-     ((zero? v1-0)
-      (crash!)
-      0
+    (while (nonzero? (-> arg0 chcr str))
+      (cond
+        ((zero? v1-0)
+         (crash!)
+         0
+         )
+        (else
+          (+! v1-0 -1)
+          )
+        )
       )
-     (else
-      (+! v1-0 -1)
-      )
-     )
     )
-   )
   0
   (none)
   )
@@ -33,14 +33,12 @@
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
   (.sync.l)
-  (set!
-   (-> arg0 madr)
-   (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
-                                    (shl #x8000 16)
-                                    0
-                                    )
-    )
-   )
+  (set! (-> arg0 madr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
   (set! (-> arg0 qwc) arg2)
   (.sync.l)
   (set! (-> arg0 chcr) (new 'static 'dma-chcr :str #x1))
@@ -59,19 +57,14 @@
   (flush-cache 0)
   (.sync.l)
   (set! (-> arg0 qwc) (the-as uint 0))
-  (set!
-   (-> arg0 tadr)
-   (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
-                                    (shl #x8000 16)
-                                    0
-                                    )
-    )
-   )
+  (set! (-> arg0 tadr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
   (.sync.l)
-  (set!
-   (-> arg0 chcr)
-   (new 'static 'dma-chcr :dir #x1 :mod #x1 :tte #x1 :str #x1)
-   )
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir #x1 :mod #x1 :tte #x1 :str #x1))
   (.sync.l)
   0
   (none)
@@ -87,14 +80,12 @@
   (flush-cache 0)
   (.sync.l)
   (set! (-> arg0 qwc) (the-as uint 0))
-  (set!
-   (-> arg0 tadr)
-   (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
-                                    (shl #x8000 16)
-                                    0
-                                    )
-    )
-   )
+  (set! (-> arg0 tadr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
   (.sync.l)
   (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir #x1 :mod #x1 :str #x1))
   (.sync.l)
@@ -111,19 +102,14 @@
   (dma-sync (the-as pointer arg0) 0 0)
   (.sync.l)
   (set! (-> arg0 qwc) (the-as uint 0))
-  (set!
-   (-> arg0 tadr)
-   (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
-                                    (shl #x8000 16)
-                                    0
-                                    )
-    )
-   )
+  (set! (-> arg0 tadr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
   (.sync.l)
-  (set!
-   (-> arg0 chcr)
-   (new 'static 'dma-chcr :dir #x1 :mod #x1 :tte #x1 :str #x1)
-   )
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir #x1 :mod #x1 :tte #x1 :str #x1))
   (.sync.l)
   0
   (none)
@@ -136,19 +122,19 @@
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
 (defun dma-send-to-spr ((sadr uint) (madr uint) (qwc uint) (sync symbol))
   (let ((s5-0 (the-as dma-bank-spr #x1000d400)))
-   (dma-sync (the-as pointer s5-0) 0 0)
-   (flush-cache 0)
-   (.sync.l)
-   (set! (-> s5-0 madr) (logand #xfffffff madr))
-   (set! (-> s5-0 sadr) (logand #xfffffff sadr))
-   (set! (-> s5-0 qwc) qwc)
-   (.sync.l)
-   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
-   (.sync.l)
-   (if sync
     (dma-sync (the-as pointer s5-0) 0 0)
+    (flush-cache 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
     )
-   )
   0
   (none)
   )
@@ -158,22 +144,20 @@
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
-(defun
-  dma-send-to-spr-no-flush
-  ((sadr uint) (madr uint) (qwc uint) (sync symbol))
+(defun dma-send-to-spr-no-flush ((sadr uint) (madr uint) (qwc uint) (sync symbol))
   (let ((s5-0 (the-as dma-bank-spr #x1000d400)))
-   (dma-sync (the-as pointer s5-0) 0 0)
-   (.sync.l)
-   (set! (-> s5-0 madr) (logand #xfffffff madr))
-   (set! (-> s5-0 sadr) (logand #xfffffff sadr))
-   (set! (-> s5-0 qwc) qwc)
-   (.sync.l)
-   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
-   (.sync.l)
-   (if sync
     (dma-sync (the-as pointer s5-0) 0 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
     )
-   )
   0
   (none)
   )
@@ -185,19 +169,19 @@
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
 (defun dma-send-from-spr ((madr uint) (sadr uint) (qwc uint) (sync symbol))
   (let ((s5-0 (the-as dma-bank-spr #x1000d000)))
-   (dma-sync (the-as pointer s5-0) 0 0)
-   (flush-cache 0)
-   (.sync.l)
-   (set! (-> s5-0 madr) (logand #xfffffff madr))
-   (set! (-> s5-0 sadr) (logand #xfffffff sadr))
-   (set! (-> s5-0 qwc) qwc)
-   (.sync.l)
-   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
-   (.sync.l)
-   (if sync
     (dma-sync (the-as pointer s5-0) 0 0)
+    (flush-cache 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
     )
-   )
   0
   (none)
   )
@@ -207,22 +191,20 @@
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
 ;; WARN: Unsupported inline assembly instruction kind - [sync.l]
-(defun
-  dma-send-from-spr-no-flush
-  ((madr uint) (sadr uint) (qwc uint) (sync symbol))
+(defun dma-send-from-spr-no-flush ((madr uint) (sadr uint) (qwc uint) (sync symbol))
   (let ((s5-0 (the-as dma-bank-spr #x1000d000)))
-   (dma-sync (the-as pointer s5-0) 0 0)
-   (.sync.l)
-   (set! (-> s5-0 madr) (logand #xfffffff madr))
-   (set! (-> s5-0 sadr) (logand #xfffffff sadr))
-   (set! (-> s5-0 qwc) qwc)
-   (.sync.l)
-   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
-   (.sync.l)
-   (if sync
     (dma-sync (the-as pointer s5-0) 0 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
     )
-   )
   0
   (none)
   )
@@ -240,10 +222,10 @@
 ;; INFO: Return type mismatch int vs none.
 (defun clear-vu0-mem ()
   (let ((v1-0 (the-as (pointer uint32) #x11004000)))
-   (dotimes (a0-0 1024)
-    (set! (-> v1-0 a0-0) (the-as uint #xabadbeef))
+    (dotimes (a0-0 1024)
+      (set! (-> v1-0 a0-0) (the-as uint #xabadbeef))
+      )
     )
-   )
   0
   (none)
   )
@@ -252,10 +234,10 @@
 ;; INFO: Return type mismatch int vs none.
 (defun clear-vu1-mem ()
   (let ((v1-0 (the-as (pointer uint32) #x1100c000)))
-   (dotimes (a0-0 4096)
-    (set! (-> v1-0 a0-0) (the-as uint #xabadbeef))
+    (dotimes (a0-0 4096)
+      (set! (-> v1-0 a0-0) (the-as uint #xabadbeef))
+      )
     )
-   )
   0
   (none)
   )
@@ -264,54 +246,54 @@
 ;; INFO: Return type mismatch symbol vs none.
 (defun dump-vu1-mem ()
   (let ((gp-0 (the-as (pointer uint32) #x1100c000)))
-   (dotimes (s5-0 1024)
-    (format
-     0
-     "~4,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
-     s5-0
-     (-> gp-0 (* s5-0 4))
-     (-> gp-0 (+ (* s5-0 4) 1))
-     (-> gp-0 (+ (* s5-0 4) 2))
-     (-> gp-0 (+ (* s5-0 4) 3))
-     )
-    (format
-     0
-     "      ~F ~F ~F ~F ~%"
-     (-> gp-0 (* s5-0 4))
-     (-> gp-0 (+ (* s5-0 4) 1))
-     (-> gp-0 (+ (* s5-0 4) 2))
-     (-> gp-0 (+ (* s5-0 4) 3))
-     )
+    (dotimes (s5-0 1024)
+      (format
+        0
+        "~4,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
+        s5-0
+        (-> gp-0 (* s5-0 4))
+        (-> gp-0 (+ (* s5-0 4) 1))
+        (-> gp-0 (+ (* s5-0 4) 2))
+        (-> gp-0 (+ (* s5-0 4) 3))
+        )
+      (format
+        0
+        "      ~F ~F ~F ~F ~%"
+        (-> gp-0 (* s5-0 4))
+        (-> gp-0 (+ (* s5-0 4) 1))
+        (-> gp-0 (+ (* s5-0 4) 2))
+        (-> gp-0 (+ (* s5-0 4) 3))
+        )
+      )
     )
-   )
   (none)
   )
 
 ;; definition for function dump-vu1-range
 (defun dump-vu1-range ((start uint) (total-count uint))
   (let ((s4-0 (the-as (pointer uint32) #x1100c000)))
-   (dotimes (s3-0 (the-as int total-count))
-    (let ((s2-0 (+ s3-0 start)))
-     (format
-      0
-      "~4,'0X: ~8x ~8x ~8x ~8x"
-      s2-0
-      (-> s4-0 (* s2-0 4))
-      (-> s4-0 (+ (* s2-0 4) 1))
-      (-> s4-0 (+ (* s2-0 4) 2))
-      (-> s4-0 (+ (* s2-0 4) 3))
+    (dotimes (s3-0 (the-as int total-count))
+      (let ((s2-0 (+ s3-0 start)))
+        (format
+          0
+          "~4,'0X: ~8x ~8x ~8x ~8x"
+          s2-0
+          (-> s4-0 (* s2-0 4))
+          (-> s4-0 (+ (* s2-0 4) 1))
+          (-> s4-0 (+ (* s2-0 4) 2))
+          (-> s4-0 (+ (* s2-0 4) 3))
+          )
+        (format
+          0
+          "      ~F ~F ~F ~F ~%"
+          (-> s4-0 (* s2-0 4))
+          (-> s4-0 (+ (* s2-0 4) 1))
+          (-> s4-0 (+ (* s2-0 4) 2))
+          (-> s4-0 (+ (* s2-0 4) 3))
+          )
+        )
       )
-     (format
-      0
-      "      ~F ~F ~F ~F ~%"
-      (-> s4-0 (* s2-0 4))
-      (-> s4-0 (+ (* s2-0 4) 1))
-      (-> s4-0 (+ (* s2-0 4) 2))
-      (-> s4-0 (+ (* s2-0 4) 3))
-      )
-     )
     )
-   )
   #f
   )
 
@@ -342,35 +324,35 @@
         (spr-from-bank (the-as dma-bank-spr #x1000d000))
         (qwc-remaining (shr size-bytes 4))
         )
-   (flush-cache 0)
-   (dma-sync (the-as pointer spr-to-bank) 0 0)
-   (dma-sync (the-as pointer spr-from-bank) 0 0)
-   (while (> qwc-remaining 0)
-    (let ((qwc-transferred-now (the-as int qwc-remaining)))
-     (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
-      (set! qwc-transferred-now 1024)
+    (flush-cache 0)
+    (dma-sync (the-as pointer spr-to-bank) 0 0)
+    (dma-sync (the-as pointer spr-from-bank) 0 0)
+    (while (> qwc-remaining 0)
+      (let ((qwc-transferred-now (the-as int qwc-remaining)))
+        (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
+            (set! qwc-transferred-now 1024)
+            )
+        (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
+        (.sync.l)
+        (set! (-> spr-to-bank madr) (the-as uint src))
+        (set! (-> spr-to-bank sadr) (the-as uint 0))
+        (set! (-> spr-to-bank qwc) (the-as uint qwc-transferred-now))
+        (.sync.l)
+        (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str #x1))
+        (.sync.l)
+        (dma-sync (the-as pointer spr-to-bank) 0 0)
+        (&+! src (* qwc-transferred-now 16))
+        (set! (-> spr-from-bank madr) (the-as uint dst))
+        (set! (-> spr-from-bank sadr) (the-as uint 0))
+        (set! (-> spr-from-bank qwc) (the-as uint qwc-transferred-now))
+        (.sync.l)
+        (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
+        (.sync.l)
+        (dma-sync (the-as pointer spr-from-bank) 0 0)
+        (&+! dst (* qwc-transferred-now 16))
+        )
       )
-     (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
-     (.sync.l)
-     (set! (-> spr-to-bank madr) (the-as uint src))
-     (set! (-> spr-to-bank sadr) (the-as uint 0))
-     (set! (-> spr-to-bank qwc) (the-as uint qwc-transferred-now))
-     (.sync.l)
-     (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str #x1))
-     (.sync.l)
-     (dma-sync (the-as pointer spr-to-bank) 0 0)
-     (&+! src (* qwc-transferred-now 16))
-     (set! (-> spr-from-bank madr) (the-as uint dst))
-     (set! (-> spr-from-bank sadr) (the-as uint 0))
-     (set! (-> spr-from-bank qwc) (the-as uint qwc-transferred-now))
-     (.sync.l)
-     (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
-     (.sync.l)
-     (dma-sync (the-as pointer spr-from-bank) 0 0)
-     (&+! dst (* qwc-transferred-now 16))
-     )
     )
-   )
   0
   (none)
   )

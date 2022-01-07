@@ -5,8 +5,6 @@
 ;; name in dgo: plat-flip
 ;; dgos: JUB, L1
 
-(define-extern *plat-flip-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype plat-flip (process-drawable)
@@ -28,20 +26,12 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "plat-flip"
-     :bounds (new 'static 'vector :w 32768.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *plat-flip-sg* v1-1)
+(defskelgroup *plat-flip-sg* plat-flip
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 8)
+  :longest-edge (meters 0)
   )
 
 (defstate plat-flip-idle (plat-flip)
@@ -92,8 +82,8 @@
           1024
           0
           0
-          (the-as uint 1)
-          (the-as vector #t)
+          1
+          #t
           )
          )
         (let ((s5-1 (-> self skel root-channel 0)))
@@ -162,8 +152,8 @@
           1024
           0
           0
-          (the-as uint 1)
-          (the-as vector #t)
+          1
+          #t
           )
          )
         (let ((f30-2 (- f30-1 (-> self before-turn-up-time)))
@@ -213,7 +203,7 @@
   (the-as (function none :behavior plat-flip) rider-post)
   )
 
-(defmethod copy-defaults! plat-flip ((obj plat-flip) (arg0 res-lump))
+(defmethod init-from-entity! plat-flip ((obj plat-flip) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (let
@@ -223,7 +213,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -242,15 +238,15 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj base-pos quad) (-> obj root-override trans quad))
-  (dummy-14 obj *plat-flip-sg* '())
+  (initialize-skeleton obj *plat-flip-sg* '())
   (logior! (-> obj skel status) 1)
   (let ((f30-0 300.0))
    (set! sv-16 (new 'static 'res-tag))

@@ -1,9 +1,9 @@
-#include "common/util/assert.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "CfgVtx.h"
 #include "Function.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /////////////////////////////////////////
@@ -2798,11 +2798,11 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     }
 
     if (!changed) {
-      changed = changed || cfg->find_goto_not_end();
+      changed = changed || cfg->find_cond_w_empty_else();
     }
 
     if (!changed) {
-      changed = changed || cfg->find_cond_w_empty_else();
+      changed = changed || cfg->find_goto_not_end();
     }
 
     if (!changed) {

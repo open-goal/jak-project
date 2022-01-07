@@ -94,7 +94,7 @@
 (defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
-  `(let ((the-handle ,handle))
+  `(let ((the-handle (the-as handle ,handle)))
      (if (-> the-handle process)
          (let ((proc (-> (-> the-handle process))))
            (if (= (-> the-handle pid) (-> proc pid))
@@ -111,7 +111,7 @@
   ;; perhaps when deleting a process you could have it set self to #f?
   ;; I don't see this happen anywhere though, so it's not clear.
   `(let ((the-pp ,ppointer))
-     (the process (if the-pp (-> the-pp 0 self)))
+     (the process-tree (if the-pp (-> the-pp 0 self)))
      )
   )
 
@@ -123,7 +123,7 @@
   )
 
 (defmacro ppointer->handle (pproc)
-  `(let ((the-process ,pproc))
+  `(let ((the-process (the-as (pointer process) ,pproc)))
       (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
       )
   )
@@ -257,11 +257,13 @@
 (defmacro set-vector! (v xv yv zv wv)
   "Set all fields in a vector"
   (with-gensyms (vec)
-     `(let ((vec ,v))
-       (set! (-> vec x) ,xv)
-       (set! (-> vec y) ,yv)
-       (set! (-> vec z) ,zv)
-       (set! (-> vec w) ,wv)))
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
      )
 
 ;; cause the current process to change state
@@ -406,17 +408,18 @@
   (set! *defstate-type-stack* '())
   `(none)
   )
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
-                               &key (event #f)
-                               &key (enter #f)
-                               &key (trans #f)
-                               &key (exit #f)
-                               &key (code #f)
-                               &key (post #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
                                )
   "Define a new state!"
-  
+
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
@@ -427,24 +430,32 @@
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when (not (null? default-handlers))
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
               (set! default-handlers (cdr default-handlers))
-              (when (and (not event) (car default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
                   (set! event (car default-handlers)))
+              ;; enter
               (set! default-handlers (cdr default-handlers))
-              (when (and (not enter) (car default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
                   (set! enter (car default-handlers)))
+              ;; trans
               (set! default-handlers (cdr default-handlers))
-              (when (and (not trans) (car default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
                   (set! trans (car default-handlers)))
+              ;; exit
               (set! default-handlers (cdr default-handlers))
-              (when (and (not exit) (car default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
                   (set! exit (car default-handlers)))
+              ;; code
               (set! default-handlers (cdr default-handlers))
-              (when (and (not code) (car default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
                   (set! code (car default-handlers)))
+              ;; post
               (set! default-handlers (cdr default-handlers))
-              (when (and (not post) (car default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
                   (set! post (car default-handlers)))
+
               (set! default-handlers (cdr default-handlers))
               )
           )
@@ -472,7 +483,7 @@
               `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
-         
+
          )
       )
     )
@@ -778,3 +789,74 @@
         )
     )
   )
+
+;; vector-h
+(defmacro static-spherem (x y z r)
+  "actually makes a vector"
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+;; art-h
+(defmacro defskelgroup (name art-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key longest-edge
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version 6) ;; do NOT use this!
+                        )
+
+  "define a new static skeleton group"
+
+  `(let ((skel (new 'static 'skeleton-group
+                        :art-group-name ,(symbol->string art-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :version ,version
+                        :max-lod ,(- (length lods) 1)
+                        :shadow ,shadow
+                        :texture-level ,texture-level
+                        :sort ,sort
+                        )))
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,joint-geom)
+        (set! (-> skel janim) ,joint-anim)
+        
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        )
+  )
+
+;; pad
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(fake-asm .sync.l)
+(fake-asm .sync.p)
+;; Copies the contents of a cop0 (system control) register to a gpr
+(fake-asm .mfc0 dest src)
+;; Copies the contents of a gpr to a cop0 (system control) register
+(fake-asm .mtc0 dest src)
+(fake-asm .mtpc dest src)
+(fake-asm .mfpc dest src)

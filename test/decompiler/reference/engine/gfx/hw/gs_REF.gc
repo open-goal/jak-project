@@ -30,95 +30,85 @@
 ;; definition for function psm-size
 (defun psm-size ((arg0 gs-psm))
   (cond
-   ((= arg0 (gs-psm mt8))
-    64
-    )
-   ((= arg0 (gs-psm mt4))
-    32
-    )
-   ((or
-     (= arg0 (gs-psm ct16))
-     (= arg0 (gs-psm ct16s))
-     (= arg0 (gs-psm mz16))
-     (= arg0 (gs-psm mz16s))
+    ((= arg0 (gs-psm mt8))
+     64
      )
-    128
+    ((= arg0 (gs-psm mt4))
+     32
+     )
+    ((or (= arg0 (gs-psm ct16)) (= arg0 (gs-psm ct16s)) (= arg0 (gs-psm mz16)) (= arg0 (gs-psm mz16s)))
+     128
+     )
+    (else
+      256
+      )
     )
-   (else
-    256
-    )
-   )
   )
 
 ;; definition for function psm-page-height
 (defun psm-page-height ((arg0 gs-psm))
   (cond
-   ((= arg0 (gs-psm mt8))
-    64
-    )
-   ((= arg0 (gs-psm mt4))
-    128
-    )
-   ((or
-     (= arg0 (gs-psm ct16))
-     (= arg0 (gs-psm ct16s))
-     (= arg0 (gs-psm mz16))
-     (= arg0 (gs-psm mz16s))
+    ((= arg0 (gs-psm mt8))
+     64
      )
-    64
+    ((= arg0 (gs-psm mt4))
+     128
+     )
+    ((or (= arg0 (gs-psm ct16)) (= arg0 (gs-psm ct16s)) (= arg0 (gs-psm mz16)) (= arg0 (gs-psm mz16s)))
+     64
+     )
+    (else
+      32
+      )
     )
-   (else
-    32
-    )
-   )
   )
 
 ;; definition for function psm->string
 (defun psm->string ((arg0 gs-psm))
-  (case arg0 
-   (((gs-psm mz16s))
+  (case arg0
+    (((gs-psm mz16s))
      "mz16s"
      )
-   (((gs-psm mz16))
-    "mz16"
+    (((gs-psm mz16))
+     "mz16"
+     )
+    (((gs-psm mz24))
+     "mz24"
+     )
+    (((gs-psm mz32))
+     "mz32"
+     )
+    (((gs-psm mt4hh))
+     "mt4hh"
+     )
+    (((gs-psm mt4hl))
+     "mt4hl"
+     )
+    (((gs-psm mt8h))
+     "mt8h"
+     )
+    (((gs-psm mt4))
+     "mt4"
+     )
+    (((gs-psm mt8))
+     "mt8"
+     )
+    (((gs-psm ct16s))
+     "ct16s"
+     )
+    (((gs-psm ct16))
+     "ct16"
+     )
+    (((gs-psm ct24))
+     "ct24"
+     )
+    (((gs-psm ct32))
+     "ct32"
+     )
+    (else
+      "*unknown*"
+      )
     )
-   (((gs-psm mz24))
-    "mz24"
-    )
-   (((gs-psm mz32))
-    "mz32"
-    )
-   (((gs-psm mt4hh))
-    "mt4hh"
-    )
-   (((gs-psm mt4hl))
-    "mt4hl"
-    )
-   (((gs-psm mt8h))
-    "mt8h"
-    )
-   (((gs-psm mt4))
-    "mt4"
-    )
-   (((gs-psm mt8))
-    "mt8"
-    )
-   (((gs-psm ct16s))
-    "ct16s"
-    )
-   (((gs-psm ct16))
-    "ct16"
-    )
-   (((gs-psm ct24))
-    "ct24"
-    )
-   (((gs-psm ct32))
-    "ct32"
-    )
-   (else
-    "*unknown*"
-    )
-   )
   )
 
 ;; definition of type gs-display-fb
@@ -800,121 +790,78 @@
 ;; INFO: Return type mismatch pointer vs none.
 (defun default-buffer-init ((buff dma-buffer))
   (let ((buff-ptr buff))
-   (set! (-> buff-ptr base) (-> buff-ptr data))
-   (set!
-    (-> buff-ptr end)
-    (&-> buff-ptr data-buffer (-> buff-ptr allocated-length))
+    (set! (-> buff-ptr base) (-> buff-ptr data))
+    (set! (-> buff-ptr end) (&-> buff-ptr data-buffer (-> buff-ptr allocated-length)))
     )
-   )
   (let* ((buff-ptr2 buff)
          (packet (the-as dma-gif-packet (-> buff-ptr2 base)))
          )
-   (set!
-    (-> packet dma-vif dma)
-    (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt))
+    (set! (-> packet dma-vif dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
+    (set! (-> packet dma-vif vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+    (set! (-> packet dma-vif vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> buff-ptr2 base) (&+ (the-as pointer packet) 16))
     )
-   (set!
-    (-> packet dma-vif vif0)
-    (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1)
-    )
-   (set!
-    (-> packet dma-vif vif1)
-    (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1)
-    )
-   (set! (-> buff-ptr2 base) (&+ (the-as pointer packet) 16))
-   )
   (let* ((buff-ptr5 buff)
          (gif-tag (the-as gs-gif-tag (-> buff-ptr5 base)))
          )
-   (set!
-    (-> gif-tag tag)
-    (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9)
+    (set! (-> gif-tag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
+    (set! (-> gif-tag regs)
+          (new 'static 'gif-tag-regs
+            :regs0 (gif-reg-id a+d)
+            :regs1 (gif-reg-id a+d)
+            :regs2 (gif-reg-id a+d)
+            :regs3 (gif-reg-id a+d)
+            :regs4 (gif-reg-id a+d)
+            :regs5 (gif-reg-id a+d)
+            :regs6 (gif-reg-id a+d)
+            :regs7 (gif-reg-id a+d)
+            :regs8 (gif-reg-id a+d)
+            :regs9 (gif-reg-id a+d)
+            :regs10 (gif-reg-id a+d)
+            :regs11 (gif-reg-id a+d)
+            :regs12 (gif-reg-id a+d)
+            :regs13 (gif-reg-id a+d)
+            :regs14 (gif-reg-id a+d)
+            :regs15 (gif-reg-id a+d)
+            )
+          )
+    (set! (-> buff-ptr5 base) (&+ (the-as pointer gif-tag) 16))
     )
-   (set!
-    (-> gif-tag regs)
-    (new 'static 'gif-tag-regs
-     :regs0 (gif-reg-id a+d)
-     :regs1 (gif-reg-id a+d)
-     :regs2 (gif-reg-id a+d)
-     :regs3 (gif-reg-id a+d)
-     :regs4 (gif-reg-id a+d)
-     :regs5 (gif-reg-id a+d)
-     :regs6 (gif-reg-id a+d)
-     :regs7 (gif-reg-id a+d)
-     :regs8 (gif-reg-id a+d)
-     :regs9 (gif-reg-id a+d)
-     :regs10 (gif-reg-id a+d)
-     :regs11 (gif-reg-id a+d)
-     :regs12 (gif-reg-id a+d)
-     :regs13 (gif-reg-id a+d)
-     :regs14 (gif-reg-id a+d)
-     :regs15 (gif-reg-id a+d)
-     )
-    )
-   (set! (-> buff-ptr5 base) (&+ (the-as pointer gif-tag) 16))
-   )
   (let* ((buff-ptr3 buff)
          (data (the-as (pointer uint64) (-> buff-ptr3 base)))
          )
-   (set!
-    (-> (the-as (pointer gs-alpha) data) 0)
-    (new 'static 'gs-alpha :b #x1 :d #x1)
+    (set! (-> (the-as (pointer gs-alpha) data) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
+    (set! (-> (the-as (pointer gs-reg64) data) 1) (gs-reg64 alpha-1))
+    (set! (-> (the-as (pointer gs-zbuf) data) 2) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+    (set! (-> (the-as (pointer gs-reg64) data) 3) (gs-reg64 zbuf-1))
+    (set! (-> (the-as (pointer gs-test) data) 4)
+          (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal))
+          )
+    (set! (-> (the-as (pointer gs-reg64) data) 5) (gs-reg64 test-1))
+    (set! (-> data 6) (the-as uint 0))
+    (set! (-> (the-as (pointer gs-reg64) data) 7) (gs-reg64 pabe))
+    (set! (-> (the-as (pointer gs-clamp) data) 8)
+          (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+          )
+    (set! (-> (the-as (pointer gs-reg64) data) 9) (gs-reg64 clamp-1))
+    (set! (-> (the-as (pointer gs-tex1) data) 10) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+    (set! (-> (the-as (pointer gs-reg64) data) 11) (gs-reg64 tex1-1))
+    (set! (-> (the-as (pointer gs-texa) data) 12) (new 'static 'gs-texa :ta1 #x80))
+    (set! (-> (the-as (pointer gs-reg64) data) 13) (gs-reg64 texa))
+    (set! (-> (the-as (pointer gs-texclut) data) 14) (new 'static 'gs-texclut :cbw #x4))
+    (set! (-> (the-as (pointer gs-reg64) data) 15) (gs-reg64 texclut))
+    (set! (-> (the-as (pointer gs-fogcol) data) 16) (the-as gs-fogcol *fog-color*))
+    (set! (-> (the-as (pointer gs-reg64) data) 17) (gs-reg64 fogcol))
+    (set! (-> buff-ptr3 base) (&+ (the-as pointer data) 144))
     )
-   (set! (-> (the-as (pointer gs-reg64) data) 1) (gs-reg64 alpha-1))
-   (set!
-    (-> (the-as (pointer gs-zbuf) data) 2)
-    (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24))
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 3) (gs-reg64 zbuf-1))
-   (set!
-    (-> (the-as (pointer gs-test) data) 4)
-    (new 'static 'gs-test
-     :atst (gs-atest not-equal)
-     :zte #x1
-     :ztst (gs-ztest greater-equal)
-     )
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 5) (gs-reg64 test-1))
-   (set! (-> data 6) (the-as uint 0))
-   (set! (-> (the-as (pointer gs-reg64) data) 7) (gs-reg64 pabe))
-   (set!
-    (-> (the-as (pointer gs-clamp) data) 8)
-    (new 'static 'gs-clamp
-     :wms (gs-tex-wrap-mode clamp)
-     :wmt (gs-tex-wrap-mode clamp)
-     )
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 9) (gs-reg64 clamp-1))
-   (set!
-    (-> (the-as (pointer gs-tex1) data) 10)
-    (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 11) (gs-reg64 tex1-1))
-   (set!
-    (-> (the-as (pointer gs-texa) data) 12)
-    (new 'static 'gs-texa :ta1 #x80)
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 13) (gs-reg64 texa))
-   (set!
-    (-> (the-as (pointer gs-texclut) data) 14)
-    (new 'static 'gs-texclut :cbw #x4)
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 15) (gs-reg64 texclut))
-   (set!
-    (-> (the-as (pointer gs-fogcol) data) 16)
-    (the-as gs-fogcol *fog-color*)
-    )
-   (set! (-> (the-as (pointer gs-reg64) data) 17) (gs-reg64 fogcol))
-   (set! (-> buff-ptr3 base) (&+ (the-as pointer data) 144))
-   )
   (let* ((buff-ptr4 buff)
          (ret-packet (the-as dma-packet (-> buff-ptr4 base)))
          )
-   (set! (-> ret-packet dma) (new 'static 'dma-tag :id (dma-tag-id ret)))
-   (set! (-> ret-packet vif0) (new 'static 'vif-tag))
-   (set! (-> ret-packet vif1) (new 'static 'vif-tag))
-   (set! (-> buff-ptr4 base) (&+ (the-as pointer ret-packet) 16))
-   )
+    (set! (-> ret-packet dma) (new 'static 'dma-tag :id (dma-tag-id ret)))
+    (set! (-> ret-packet vif0) (new 'static 'vif-tag))
+    (set! (-> ret-packet vif1) (new 'static 'vif-tag))
+    (set! (-> buff-ptr4 base) (&+ (the-as pointer ret-packet) 16))
+    )
   (none)
   )
 
@@ -948,11 +895,7 @@
 
 ;; definition for method 0 of type gif-packet
 (defmethod new gif-packet ((allocation symbol) (type-to-make type) (arg0 int))
-  (object-new
-   allocation
-   type-to-make
-   (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 8)))
-   )
+  (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 8))))
   )
 
 ;; definition for function open-gif-packet
@@ -966,8 +909,8 @@
 ;; INFO: Return type mismatch gif-packet vs none.
 (defun add-reg-gif-packet ((packet gif-packet) (reg-idx int) (reg-val int))
   (let ((tag (-> packet gif-tag)))
-   (logior! (-> tag regs) (ash reg-idx (* (-> packet reg-count) 4)))
-   )
+    (logior! (-> tag regs) (ash reg-idx (* (-> packet reg-count) 4)))
+    )
   (set! (-> (&-> packet args (-> packet reg-count)) 0) (the-as uint reg-val))
   (+! (-> packet reg-count) 1)
   (none)
@@ -975,15 +918,9 @@
 
 ;; definition for function close-gif-packet
 (defun close-gif-packet ((arg0 gif-packet) (arg1 int))
-  (set!
-   (-> arg0 gif-tag tag)
-   (new 'static 'gif-tag64
-    :nloop #x1
-    :flg (gif-flag reg-list)
-    :eop arg1
-    :nreg (-> arg0 reg-count)
-    )
-   )
+  (set! (-> arg0 gif-tag tag)
+        (new 'static 'gif-tag64 :nloop #x1 :flg (gif-flag reg-list) :eop arg1 :nreg (-> arg0 reg-count))
+        )
   arg0
   )
 
@@ -1017,43 +954,28 @@
   )
 
 ;; definition for method 0 of type draw-context
-(defmethod
-  new
-  draw-context
-  ((allocation symbol)
-   (type-to-make type)
-   (org-x int)
-   (org-y int)
-   (width int)
-   (height int)
-   (color-0 rgba)
-   )
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+(defmethod new draw-context ((allocation symbol) (type-to-make type) (org-x int) (org-y int) (width int) (height int) (color-0 rgba))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
+          (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
+          )
+      (set! (-> obj orgx) org-x)
+      (set! (-> obj orgy) v1-3)
+      (set! (-> obj orgz) #xffffff)
+      (set! (-> obj width) width)
+      (set! (-> obj height) a0-2)
+      )
+    (set! (-> obj color 0) color-0)
+    obj
     )
-   (let
-    ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
-     (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
-     )
-    (set! (-> obj orgx) org-x)
-    (set! (-> obj orgy) v1-3)
-    (set! (-> obj orgz) #xffffff)
-    (set! (-> obj width) width)
-    (set! (-> obj height) a0-2)
-    )
-   (set! (-> obj color 0) color-0)
-   obj
-   )
   )
 
 ;; definition for function draw-context-set-xy
 ;; INFO: Return type mismatch int vs none.
 (defun draw-context-set-xy ((ctxt draw-context) (x int) (y int))
   (let ((v0-0 (the int (* (the float y) (-> *video-parms* relative-y-scale)))))
-   (set! (-> ctxt orgx) x)
-   (set! (-> ctxt orgy) v0-0)
-   )
+    (set! (-> ctxt orgx) x)
+    (set! (-> ctxt orgy) v0-0)
+    )
   (none)
   )

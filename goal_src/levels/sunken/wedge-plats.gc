@@ -5,8 +5,6 @@
 ;; name in dgo: wedge-plats
 ;; dgos: L1, SUN, SUNKEN
 
-(define-extern *wedge-plat-sg* skeleton-group)
-
 (declare-type wedge-plat-outer process)
 (declare-type wedge-plat-master process)
 (declare-type wedge-plat process)
@@ -15,7 +13,6 @@
 (define-extern wedge-plat-idle (state wedge-plat)) ;; unknown type
 (define-extern wedge-plat-tip (state wedge-plat)) ;; unknown type
 (define-extern wedge-plat-master-idle (state wedge-plat-master)) ;; unknown type
-(define-extern *wedge-plat-outer-sg* skeleton-group)
 
 ;; DECOMP BEGINS
 
@@ -81,9 +78,9 @@
   )
 
 (defmethod
-  copy-defaults!
+  init-from-entity!
   wedge-plat-master
-  ((obj wedge-plat-master) (arg0 res-lump))
+  ((obj wedge-plat-master) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (set! (-> obj center quad) (-> arg0 extra trans quad))
   (set! (-> obj center y) (+ 819.2 (-> obj center y)))
@@ -110,20 +107,12 @@
   )
 
 
-(let
-  ((v1-3
-    (new 'static 'skeleton-group
-     :art-group-name "wedge-plat"
-     :bounds (new 'static 'vector :w 24576.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-3 jgeo) 0)
-  (set! (-> v1-3 janim) 2)
-  (set! (-> v1-3 mgeo 0) (the-as uint 1))
-  (set! (-> v1-3 lod-dist 0) 4095996000.0)
-  (set! *wedge-plat-sg* v1-3)
+(defskelgroup *wedge-plat-sg* wedge-plat
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 6)
+  :longest-edge (meters 0)
   )
 
 (defmethod dummy-27 wedge-plat ((obj wedge-plat))
@@ -321,7 +310,7 @@
   (the-as (function none :behavior wedge-plat) plat-post)
   )
 
-(defmethod copy-defaults! wedge-plat ((obj wedge-plat) (arg0 res-lump))
+(defmethod init-from-entity! wedge-plat ((obj wedge-plat) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (let
    ((s4-0
@@ -330,7 +319,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -349,14 +344,14 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *wedge-plat-sg* '())
+  (initialize-skeleton obj *wedge-plat-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
@@ -380,20 +375,12 @@
   )
 
 
-(let
-  ((v1-7
-    (new 'static 'skeleton-group
-     :art-group-name "wedge-plat-outer"
-     :bounds (new 'static 'vector :w 32768.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-7 jgeo) 0)
-  (set! (-> v1-7 janim) 2)
-  (set! (-> v1-7 mgeo 0) (the-as uint 1))
-  (set! (-> v1-7 lod-dist 0) 4095996000.0)
-  (set! *wedge-plat-outer-sg* v1-7)
+(defskelgroup *wedge-plat-outer-sg* wedge-plat-outer
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 8)
+  :longest-edge (meters 0)
   )
 
 (defmethod dummy-27 wedge-plat-outer ((obj wedge-plat-outer))
@@ -591,9 +578,9 @@
   )
 
 (defmethod
-  copy-defaults!
+  init-from-entity!
   wedge-plat-outer
-  ((obj wedge-plat-outer) (arg0 res-lump))
+  ((obj wedge-plat-outer) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (let
    ((s4-0
@@ -602,7 +589,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -621,14 +614,14 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 32768.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *wedge-plat-sg* '())
+  (initialize-skeleton obj *wedge-plat-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)

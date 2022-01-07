@@ -119,14 +119,19 @@
 
 (#cond 
   (PC_PORT
+  
+  ;; similar thing for the scratchpad data.
+  (let* ((mem (new 'global 'array 'uint8 (* (+ 16 8) 1024)))
+         (aligned (logand (&+ mem 8192) (lognot 8191)))
+         )
+      (define *fake-scratchpad-data* aligned)
+    )
+  
   ;; We will move stacks on the scratchpad to here.
   ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
   ;; not overlapping. We can spare the 16k of memory.
-  (define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
-  
-  ;; similar thing for the scratchpad data.
-  ;; in 
-  (define *fake-scratchpad-data*  (new 'global 'array 'uint8 (* 16 1024)))
+  (define *fake-scratchpad-stack* *fake-scratchpad-data*)
+  ;;(define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
   
 
   (defmacro scratchpad-start()
@@ -1365,7 +1370,7 @@
         (let ((proc (-> gap next process))
               (size (gap-size obj gap)))
           (unless (zero? size)
-            (format #t "[kernel] Relocating process ~A by ~D.~%" proc (- size))
+            ;;(format #t "[kernel] Relocating process ~A by ~D.~%" proc (- size))
             (when (< size 0)
               ;; bug!
               (break)
@@ -1811,7 +1816,7 @@
       ;; get the return address (the compiler won't touch the stack because we're an asm-func)
       (.pop temp)
       (.push temp)
-      ;; make it a GOAL address so it fits in 32 bitys
+      ;; make it a GOAL address so it fits in 32 bits
       (.sub temp off)
       ;; store it
       (set! (-> obj ra) (the int temp))
@@ -2236,14 +2241,14 @@
                         )))
         ;; the function returned, either through a throw or through actually returning.
         ;; the status will give us a clue of what happened.
-        (cond 
-          ((= (-> pp status) 'initialize)
+        (case (-> pp status)
+          (('initialize)
            ;; we returned and didn't change status.
            (set! (-> pp status) 'initialize-dead)
            ;; this means we died, and we should be deactivated.
            (deactivate pp)
            )
-          ((= (-> pp status) 'initialize-go)
+          (('initialize-go)
            ;; we returned with a (suspend) or (go) ? not sure
            ;; either way, we're ready for next time!
            (set! (-> pp status) 'waiting-to-run)
@@ -2356,7 +2361,7 @@
                                   :enter #f
                                   :event #f)))
 
-(set! (-> dead-state code) nothing)
+(set! (-> dead-state code) (the (function none :behavior process) nothing))
 
 
 ;; this is not yet defined.

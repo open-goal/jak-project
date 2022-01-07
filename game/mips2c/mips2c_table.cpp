@@ -88,6 +88,26 @@ namespace draw_boundary_polygon {
 extern void link();
 }
 
+namespace draw_inline_array_tfrag {
+extern void link();
+}
+
+namespace stats_tfrag_asm {
+extern void link();
+}
+
+namespace time_of_day_interp_colors_scratch {
+extern void link();
+}
+
+namespace collide_do_primitives {
+extern void link();
+}
+
+namespace moving_sphere_triangle_intersect {
+extern void link();
+}
+
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -102,7 +122,10 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       set_sky_vf23_value::link}},
     {"load-boundary",
      {init_boundary_regs::link, render_boundary_quad::link, render_boundary_tri::link,
-      draw_boundary_polygon::link}}};
+      draw_boundary_polygon::link}},
+    {"tfrag", {draw_inline_array_tfrag::link, stats_tfrag_asm::link}},
+    {"time-of-day", {time_of_day_interp_colors_scratch::link}},
+    {"collide-func", {collide_do_primitives::link, moving_sphere_triangle_intersect::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

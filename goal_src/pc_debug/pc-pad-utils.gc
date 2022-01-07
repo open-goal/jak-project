@@ -37,7 +37,7 @@
 (deftype pc-pad-proc (process)
   ((state-time   int64)
    (input-index  uint64)
-   (pad-idx      uint64)
+   (pad-idx      int64)
    )
   :heap-base #x20
   (:states
@@ -123,17 +123,19 @@
   (kill-by-name 'pc-pad-show *active-pool*)
   )
 
-(defun-debug pc-pad-input-start ()
+(defun-debug pc-pad-input-start ((pad-idx int))
   "Start the PC port pad debug key mapping"
   
   (if (not (handle->process (-> *pc-pad-proc-list* input)))
     (let ((procp
       (make-init-process pc-pad-proc :name 'pc-pad-input
-        (lambda :behavior pc-pad-proc ()
-          (set! (-> self pad-idx) 0)
+        (lambda :behavior pc-pad-proc ((pad-idx int))
+          (set! (-> self pad-idx) pad-idx)
           (pc-pad-input-mode-set #t)
+          (pc-pad-input-pad-set (-> self pad-idx))
           (go pc-pi-mapping-button)
           )
+        pad-idx
         )
       ))
       (set! (-> *pc-pad-proc-list* input) (ppointer->handle procp))
@@ -194,6 +196,7 @@
         ;; something's changed, go back to the main state and check everything
         (go pc-pi-mapping-button)
         )
+      (none)
       )
     
     )

@@ -1,8 +1,8 @@
 #include "iso_api.h"
 #include "game/sce/iop.h"
 #include "common/log/log.h"
-#include "common/util/assert.h"
 #include "sbank.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 

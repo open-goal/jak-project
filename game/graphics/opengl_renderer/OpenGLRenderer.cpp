@@ -8,9 +8,15 @@
 #include "third-party/imgui/imgui.h"
 #include "common/util/FileUtil.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
+#include "game/graphics/opengl_renderer/tfrag/TFragment.h"
+#include "game/graphics/opengl_renderer/tfrag/Tie3.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
+namespace {
+std::string g_current_render;
+
+}
 
 /*!
  * OpenGL Error callback. If we do something invalid, this will be called.
@@ -23,14 +29,16 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    // On some drivers this prints on every single texture upload, which is too much spam
-    // lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
-    lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::info("[{}] OpenGL message 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+             message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
-    lg::warn("OpenGL warn 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::warn("[{}] OpenGL warn 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+             message);
   } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
-    lg::error("OpenGL error 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::error("[{}] OpenGL error 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+              message);
   }
 }
 
@@ -38,15 +46,12 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
     : m_render_state(texture_pool) {
   // setup OpenGL errors
 
-  // disable specific errors
-  const GLuint l_gl_error_ignores[1] = {
-      0x64  // [API-PERFORMANCE] glDrawArrays uses non-native input attribute type
-  };
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
-  // filter
-  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
-                        &l_gl_error_ignores[0], GL_FALSE);
+  // disable specific errors
+  // const GLuint gl_error_ignores_api_perf[1] = {};
+  // glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0,
+  // &gl_error_ignores_api_perf[0], GL_FALSE);
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
@@ -58,19 +63,45 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
 void OpenGLRenderer::init_bucket_renderers() {
+  std::vector<tfrag3::TFragmentTreeKind> normal_tfrags = {tfrag3::TFragmentTreeKind::NORMAL,
+                                                          tfrag3::TFragmentTreeKind::LOWRES};
+  std::vector<tfrag3::TFragmentTreeKind> dirt_tfrags = {tfrag3::TFragmentTreeKind::DIRT};
+  std::vector<tfrag3::TFragmentTreeKind> ice_tfrags = {tfrag3::TFragmentTreeKind::ICE};
+
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
   init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
+
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
-  init_bucket_renderer<SkyTextureHandler>("sky-tex-0", BucketId::SKY_LEVEL0);
+  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false);
+  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
+  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false);
+  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);
+  auto sky_gpu_blender = std::make_shared<SkyBlendGPU>();
+  auto sky_cpu_blender = std::make_shared<SkyBlendCPU>();
+  init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
+                                        BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0,
+                                        sky_gpu_blender, sky_cpu_blender);
+  init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false);
+  init_bucket_renderer<TFragment>("tfrag-ice-0", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags, false);
+  init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-1",
+                                        BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1,
+                                        sky_gpu_blender, sky_cpu_blender);
+  init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false);
+  init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
   init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 102,
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x8000,
                                        DirectRenderer::Mode::NORMAL);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 102,
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,
                                        DirectRenderer::Mode::NORMAL);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
@@ -92,7 +123,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
-    setup_frame(settings.window_width_px, settings.window_height_px);
+    setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
+                settings.lbox_height_px);
   }
   {
     auto prof = m_profiler.root()->make_scoped_child("texture-gc");
@@ -121,8 +153,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   }
 
   if (settings.save_screenshot) {
-    finish_screenshot(settings.screenshot_path, settings.window_width_px,
-                      settings.window_height_px);
+    finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
+                      settings.lbox_width_px, settings.lbox_height_px);
   }
 }
 
@@ -138,6 +170,9 @@ void OpenGLRenderer::serialize(Serializer& ser) {
  */
 void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
+
+  ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
+
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
     if (renderer && !renderer->empty()) {
@@ -160,8 +195,11 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 /*!
  * Pre-render frame setup.
  */
-void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
-  glViewport(0, 0, window_width_px, window_height_px);
+void OpenGLRenderer::setup_frame(int window_width_px,
+                                 int window_height_px,
+                                 int offset_x,
+                                 int offset_y) {
+  glViewport(offset_x, offset_y, window_width_px, window_height_px);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
@@ -204,8 +242,11 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
+    g_current_render = renderer->name_and_id();
+    // lg::info("Render: {} start", g_current_render);
     renderer->render(dma, &m_render_state, bucket_prof);
-    // should have ended at the start of the next chain
+    // lg::info("Render: {} end", g_current_render);
+    //  should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
 
@@ -213,6 +254,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
       vif_interrupt_callback();
     }
   }
+  g_current_render = "";
 
   // TODO ending data.
 }
@@ -278,11 +320,15 @@ void OpenGLRenderer::draw_test_triangle() {
 /*!
  * Take a screenshot!
  */
-void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height) {
+void OpenGLRenderer::finish_screenshot(const std::string& output_name,
+                                       int width,
+                                       int height,
+                                       int x,
+                                       int y) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   glReadBuffer(GL_BACK);
-  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+  glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {
@@ -291,8 +337,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width
   }
 
   // set alpha. For some reason, image viewers do weird stuff with alpha.
-  for (auto& x : buffer) {
-    x |= 0xff000000;
+  for (auto& px : buffer) {
+    px |= 0xff000000;
   }
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
 }

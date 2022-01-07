@@ -5,8 +5,6 @@
 ;; name in dgo: plat-button
 ;; dgos: GAME, COMMON, L1
 
-(define-extern *plat-button-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype plat-button (process-drawable)
@@ -43,21 +41,12 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "plat-button"
-     :bounds
-     (new 'static 'vector :y -4096.0 :w 27033.6)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *plat-button-sg* v1-1)
+(defskelgroup *plat-button-sg* plat-button
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -1 0 6.6)
+  :longest-edge (meters 0)
   )
 
 (defmethod should-teleport? plat-button ((obj plat-button))
@@ -361,8 +350,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> gp-1 command) (sound-command set-param))
@@ -473,8 +462,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> gp-1 command) (sound-command set-param))
@@ -523,8 +512,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (while #t
     (if
@@ -554,7 +543,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
     (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
@@ -562,7 +557,7 @@
     (set! (-> s4-0 prim-core action) (the-as uint 3))
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 -4096.0 0.0 27033.6)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let
      ((s3-0
        (new
@@ -580,8 +575,8 @@
      (set! (-> s3-0 prim-core offense) 4)
      (set! (-> s3-0 transform-index) 4)
      (set-vector! (-> s3-0 local-sphere) 0.0 -3072.0 0.0 7372.8)
+     (append-prim s4-0 s3-0)
      )
-    (dummy-28 s4-0)
     (let
      ((s3-1
        (new
@@ -599,11 +594,11 @@
      (set! (-> s3-1 prim-core offense) 4)
      (set! (-> s3-1 transform-index) 3)
      (set-vector! (-> s3-1 local-sphere) 0.0 -4096.0 0.0 27033.6)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    s5-0
    )
@@ -657,7 +652,7 @@
   )
 
 (defmethod TODO-RENAME-31 plat-button ((obj plat-button))
-  (dummy-14 obj *plat-button-sg* '())
+  (initialize-skeleton obj *plat-button-sg* '())
   0
   (none)
   )
@@ -668,7 +663,7 @@
   (none)
   )
 
-(defmethod copy-defaults! plat-button ((obj plat-button) (arg0 res-lump))
+(defmethod init-from-entity! plat-button ((obj plat-button) (arg0 entity-actor))
   (set! (-> obj go-back-if-lost-player?) #f)
   (set! (-> obj grab-player?) #f)
   (set! (-> obj should-grab-player?) #f)
@@ -677,7 +672,7 @@
    (->
     (the-as
      vector
-     (get-property-struct
+     ((method-of-type res-lump get-property-struct)
       arg0
       'trans-offset
       'interp

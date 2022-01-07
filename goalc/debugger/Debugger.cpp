@@ -8,11 +8,11 @@
 #include "common/goal_constants.h"
 #include "common/symbols.h"
 #include "common/util/Timer.h"
-#include "common/util/assert.h"
 #include "goalc/debugger/disassemble.h"
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -55,18 +55,35 @@ bool Debugger::is_attached() const {
  * Will silently do nothing if we aren't attached, so it is safe to just call detach() to try to
  * clean up when exiting.
  */
-void Debugger::detach() {
+bool Debugger::detach() {
+  bool succ = true;
   if (is_valid() && m_attached) {
+#ifdef __linux__
     if (!is_halted()) {
-      do_break();
+      succ = do_break();
     }
     stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
-    m_context_valid = false;
+#elif _WIN32
+    if (is_halted()) {
+      succ = do_continue();
+    }
+    {
+      std::unique_lock<std::mutex> lk(m_watcher_mutex);
+      m_attach_return = false;
+      stop_watcher();
+      m_attach_cv.wait(lk, [&]() { return m_attach_return; });
+    }
+    xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
+#endif
+    // m_context_valid = false;
     m_attached = false;
+  } else {
+    succ = false;
   }
   // todo, should we print something if we can't detach?
+  return succ;
 }
 
 /*!
@@ -97,8 +114,7 @@ bool Debugger::attach_and_break() {
     clear_signal_queue();
 
     // attach and send a break command
-    if (xdbg::attach_and_break(m_debug_context.tid)) {
-      start_watcher();
+    if (try_start_watcher()) {
       // wait for the signal queue to get a stop and pop it.
       auto info = pop_signal();
 
@@ -215,14 +231,18 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
     rsp += 8;
   }
 
+  int fails = 0;
   while (true) {
-    fmt::print("   rsp: 0x{:x} rip: 0x{:x}\n", rsp, rip);
+    fmt::print("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base,
+               rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
+      fails = 0;
+      fmt::print("<====================== CALL STACK ======================>\n");
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
       auto disasm = disassemble_at_rip(frame.rip_info);
@@ -240,16 +260,67 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     } else {
       if (!frame.rip_info.knows_function) {
-        fmt::print("Unknown Function at 0x{:x}\n", rip);
-        break;
-      }
-      if (!frame.rip_info.func_debug) {
+        if (fails == 0) {
+          fmt::print("Unknown Function at rip\n");
+        }
+
+        /*
+        bool found = false;
+        if (s32(rip - m_debug_context.base) > 0 &&
+            m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
+          fmt::print("Attempting to find function at this address.\n");
+          u32 function_sym_val = m_symbol_name_to_value_map.at("function");
+          u32 goal_pc = u32(rip - m_debug_context.base) & -8;
+
+          // go back through memory, but stop before reading the symbol table
+          u32 symtable_end = m_symbol_name_to_value_map.at("#f") + 0xff38;
+          while (goal_pc > symtable_end) {
+            goal_pc -= 8;
+            u32 wordval;
+            if (!read_memory_if_safe<u32>(&wordval, goal_pc)) {
+              goal_pc = symtable_end;
+              break;
+            }
+
+            if (wordval == function_sym_val) {
+              // found a function!
+              fmt::print("Found function after {} bytes!\n",
+                         (rip - m_debug_context.base) - goal_pc);
+              break;
+            }
+          }
+
+          if (goal_pc <= symtable_end) {
+            fmt::print("Could not find function within this address.\n");
+          } else {
+            rip = goal_pc + m_debug_context.base + BASIC_OFFSET;
+            found = true;
+          }
+        } else*/
+        if (fails > 50) {
+          fmt::print(
+              "Backtrace was too long. Exception might have happened outside GOAL code, or the "
+              "stack frame is too long.\n");
+          break;
+        }
+        // attempt to backtrace anyway! if this fails then rip
+        u64 next_rip = 0;
+        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+          fmt::print("Invalid return address encountered!\n");
+          break;
+        }
+
+        rip = next_rip;
+        rsp = rsp + 8;  // 8 for the call itself.
+        ++fails;
+        // break;
+      } else if (!frame.rip_info.func_debug) {
         fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);
         break;
       } else {
         fmt::print("Function {} with no stack frame data.\n", frame.rip_info.function_name);
+        break;
       }
-      break;
     }
 
     bt.push_back(frame);
@@ -520,7 +591,7 @@ void Debugger::read_symbol_table() {
           // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
           str += "-hack-copy";
         } else {
-          fmt::print("Symbol {} appears multiple times!\n", str);
+          fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
           assert(false);
         }
       }
@@ -563,6 +634,39 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
 }
 
 /*!
+ * Get the value of a symbol by name. Returns NULL if symbol does not exist.
+ */
+const char* Debugger::get_symbol_name_from_offset(s32 ofs) const {
+  assert(is_valid());
+  auto kv = m_symbol_offset_to_name_map.find(ofs);
+  if (kv != m_symbol_offset_to_name_map.end()) {
+    return kv->second.c_str();
+  }
+  return NULL;
+}
+
+/*!
+ * Attempt to start the debugger watch thread and evaluate attach success. Stops if unsuccessful.
+ */
+bool Debugger::try_start_watcher() {
+#ifdef __linux
+  m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
+  if (!m_attach_response)
+    return false;
+  start_watcher();
+  return true;
+#elif defined(_WIN32)
+  start_watcher();
+  std::unique_lock<std::mutex> lk(m_watcher_mutex);
+  m_attach_cv.wait(lk, [&]() { return m_attach_return; });
+  if (!m_attach_response) {
+    stop_watcher();
+  }
+  return m_attach_response;
+#endif
+}
+
+/*!
  * Starts the debugger watch thread which watches the target process to see if it stops.
  */
 void Debugger::start_watcher() {
@@ -572,6 +676,10 @@ void Debugger::start_watcher() {
   assert(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
+  {
+    std::unique_lock<std::mutex> lk(m_watcher_mutex);
+    m_attach_return = false;
+  }
   m_watcher_thread = std::thread(&Debugger::watcher, this);
 }
 
@@ -595,6 +703,16 @@ Debugger::~Debugger() {
  * The watcher thread.
  */
 void Debugger::watcher() {
+// watcher will now attach to target.
+// linux doesn't require the attachment and watching to be on the same thread, but windows does.
+#ifdef _WIN32
+  m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
+  m_attach_return = true;
+  m_attach_cv.notify_all();
+  if (!m_attach_response)
+    return;
+#endif
+
   xdbg::SignalInfo signal_info;
   while (!m_watcher_should_stop) {
     // we just sit in a loop, waiting for stops.
@@ -616,6 +734,23 @@ void Debugger::watcher() {
           printf("Target has disappeared. Maybe it quit or was killed.\n");
           handle_disappearance();
           break;
+        case xdbg::SignalInfo::ILLEGAL_INSTR:
+          printf(
+              "Target has crashed due to an illegal instruction. Run (:di) to get more "
+              "information.\n");
+          break;
+        case xdbg::SignalInfo::UNKNOWN:
+          printf("Target has encountered an unknown signal. Run (:di) to get more information.\n");
+          break;
+#ifdef _WIN32
+        case xdbg::SignalInfo::EXCEPTION:
+          printf("Target raised an exception (%s). Run (:di) to get more information.\n",
+                 signal_info.msg.c_str());
+          break;
+        case xdbg::SignalInfo::NOTHING:
+          // printf("Nothing happened.\n");
+          break;
+#endif
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);
@@ -633,6 +768,13 @@ void Debugger::watcher() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+
+// watcher will now detach from target.
+// again, windows needs the debugger thread to remain consistent
+#ifdef _WIN32
+  m_attach_response = xdbg::detach_and_resume(m_debug_context.tid);
+  m_attach_return = true;
+#endif
 }
 
 void Debugger::handle_disappearance() {
@@ -782,4 +924,73 @@ DebugInfo& Debugger::get_debug_info_for_object(const std::string& object_name) {
 
 bool Debugger::knows_object(const std::string& object_name) const {
   return m_debug_info.find(object_name) != m_debug_info.end();
+}
+
+/*!
+ * Do x86 disassembly at the specified address and then do some basic string replacement for
+ * symbols. It will attempt to detect symbol dereferences (e.g. *active-pool*), symbol references
+ * (e.g. 'dead), and a special case to detect #f (outputted as '#f for correctness).
+ */
+std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const {
+  std::vector<u8> mem;
+  mem.resize(len);
+
+  read_memory(mem.data(), len, base_addr);
+
+  auto result = disassemble_x86(mem.data(), mem.size(), get_x86_base_addr() + base_addr);
+
+  // find symbol values!
+  const std::string sym_val_string("[r15+r14*1");
+  size_t pos = 0;
+  while ((pos = result.find(sym_val_string, pos)) != std::string::npos) {
+    size_t read;
+    auto sym_addr = std::stol(result.substr(pos + sym_val_string.length(), 7), &read,
+                              16);  // -0x1234 is 7 characters
+
+    auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
+    if (sym_name) {
+      std::string sym_str(sym_name);
+      result.replace(pos + 1, read + sym_val_string.length() - 1,
+                     sym_str);  // the [ is ignored (result is something like: [identity])
+      pos += sym_str.length() + 1;
+      assert(result.at(pos) == ']');  // maybe?
+    } else {
+      // symbol not found for whatever reason, just use regular disassembly and skip over
+      pos += 1;
+    }
+  }
+
+  // find symbol references!
+  const std::string sym_addr_string("[r14");
+  pos = 0;
+  while ((pos = result.find(sym_addr_string, pos)) != std::string::npos) {
+    size_t read;
+    auto sym_addr = std::stol(result.substr(pos + sym_addr_string.length(), 7), &read,
+                              16);  // -0x1234 is 7 characters
+
+    auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
+    if (sym_name) {
+      std::string sym_str(sym_name);
+      result.replace(pos, read + sym_addr_string.length() + 1, fmt::format("'{}", sym_str));
+      pos += sym_str.length();
+    } else {
+      // symbol not found for whatever reason, just use regular disassembly and skip over
+      pos += 1;
+    }
+  }
+
+  // find #f references!
+  const std::string op_mov_string("] mov ");
+  const std::string sym_false_string(", r14");
+  pos = 0;
+  while ((pos = result.find(op_mov_string, pos)) != std::string::npos) {
+    pos += op_mov_string.length();
+    auto r14_pos = result.find(sym_false_string, pos);
+    if (r14_pos < result.find(op_mov_string, pos)) {
+      result.replace(r14_pos, sym_false_string.length(),
+                     fmt::format(", '{}", get_symbol_name_from_offset(0)));
+    }
+  }
+
+  return result;
 }

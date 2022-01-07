@@ -5,8 +5,6 @@
 ;; name in dgo: swamp-bat
 ;; dgos: L1, SWA
 
-(define-extern *swamp-bat-slave-sg* skeleton-group)
-
 (declare-type swamp-bat-slave process-drawable)
 (define-extern swamp-bat-slave-idle (state swamp-bat-slave)) ;; unknown type
 (define-extern swamp-bat-slave-return (state swamp-bat-slave)) ;; unknown type
@@ -182,25 +180,12 @@ swamp-bat-slave-event-handler
   (swamp-bat-slave-post)
   )
 
-(let
-  ((v1-7
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-bat"
-     :bounds (new 'static 'vector :w 10240.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-7 jgeo) 0)
-  (set! (-> v1-7 janim) 4)
-  (set! (-> v1-7 mgeo 0) (the-as uint 1))
-  (set! (-> v1-7 lod-dist 0) 81920.0)
-  (set! (-> v1-7 mgeo 1) (the-as uint 2))
-  (set! (-> v1-7 lod-dist 1) 163840.0)
-  (set! (-> v1-7 mgeo 2) (the-as uint 3))
-  (set! (-> v1-7 lod-dist 2) 4095996000.0)
-  (set! *swamp-bat-slave-sg* v1-7)
+(defskelgroup *swamp-bat-slave-sg* swamp-bat
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 2.5)
+  :longest-edge (meters 0)
   )
 
 (defbehavior swamp-bat-slave-get-new-path swamp-bat-slave ()
@@ -656,13 +641,19 @@ swamp-bat-slave-event-handler
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 6144.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
@@ -670,11 +661,11 @@ swamp-bat-slave-event-handler
      (set! (-> s2-0 prim-core offense) 4)
      (set! (-> s2-0 transform-index) 3)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4096.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> self root-override) s4-0)
    )
   (set! (-> self root-override trans quad) (-> arg0 root-override trans quad))
@@ -701,7 +692,7 @@ swamp-bat-slave-event-handler
   (swamp-bat-slave-get-new-path)
   (set! (-> self root-override trans quad) (-> self idle-position quad))
   (setup-params! (-> self sync) (the-as uint 1200) 0.0 0.15 0.15)
-  (dummy-14 self *swamp-bat-slave-sg* '())
+  (initialize-skeleton self *swamp-bat-slave-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (go swamp-bat-slave-idle)
   (none)
@@ -837,15 +828,12 @@ swamp-bat-slave-event-handler
       (deactivate self)
       )
      (swamp-bat-update-path)
-     (let ((s5-0 (method-of-object (-> self vol) dummy-10)))
-      (target-pos 5)
-      (if
-       (or
-        (s5-0)
-        (not (swamp-bat-check-slave-paths-match? (-> self path-select)))
-        )
-       (go swamp-bat-launch-slaves)
+     (if
+      (or
+       (dummy-10 (-> self vol) (target-pos 5))
+       (not (swamp-bat-check-slave-paths-match? (-> self path-select)))
        )
+      (go swamp-bat-launch-slaves)
       )
      )
     (let ((gp-1 (new 'static 'matrix)))
@@ -899,22 +887,15 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat) #f)
   )
 
-(defmethod copy-defaults! swamp-bat ((obj swamp-bat) (arg0 res-lump))
+(defmethod init-from-entity! swamp-bat ((obj swamp-bat) (arg0 entity-actor))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-   (set-vector!
-    (->
-     (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
-     local-sphere
-     )
-    0.0
-    0.0
-    0.0
-    0.0
+   (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 0.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

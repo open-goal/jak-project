@@ -109,6 +109,10 @@
   `(#cond ((not ,clause) ,@body))
   )
 
+(defmacro #if (clause true false)
+  `(#cond (,clause ,true) (#t ,false))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TARGET CONTROL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -328,6 +332,28 @@
       ,@body)
   )
 
+(defmacro doarray (bindings &rest body)
+  "iterate over an array. usage: (doarray (<array entry name> <array>) <code>)"
+
+  (with-gensyms (len i)
+  (let ((val (first bindings))
+        (arr (second bindings)))
+
+        `(let* ((,len (-> ,arr length))
+                (,i 0)
+                (,val (-> ,arr ,i)))
+             (while (< ,i ,len)
+                ,@body
+                (1+! ,i)
+                (set! ,val (-> ,arr ,i))
+                )
+               )
+
+        )
+
+    )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 ;; NOTE : GOAL protected defs in a FIFO manner (this is FILO/LIFO), this should be fixed at some point
@@ -397,7 +423,7 @@
   `(none)
   )
 
-(defmacro case (switch &rest cases)
+(defmacro case (switch &key (comp =) &rest cases)
   "A switch-case construct. switch is saved onto a local variable and compared against each case, sequentially.
    else can be used like the 'default' case, but it must be the last one."
 
@@ -418,11 +444,11 @@
                             )
                           ;; if the list is made up of a single condition
                           ( (= (length conditions) 1)
-                            `((= sw ,(first conditions)) ,@body)
+                            `((,comp sw ,(first conditions)) ,@body)
                             )
                           ;; otherwise it is made up of multiple conditions, or them together!
                           (#t
-                            `((or ,@(apply (lambda (c) `(= sw ,c)) conditions)) ,@body)
+                            `((or ,@(apply (lambda (c) `(,comp sw ,c)) conditions)) ,@body)
                             )
                           )
 
@@ -433,6 +459,12 @@
                    )
         )
     )
+  )
+
+(defmacro case-str (switch &rest cases)
+  "Same as case, but for string comparisons instead."
+
+  `(case ,switch ,@cases :comp string=)
   )
 
 ;;;;;;;;;;;;;;;;;;;
@@ -465,6 +497,10 @@
 
 (defmacro *! (place amount)
   `(set! ,place (* ,place ,amount))
+  )
+
+(defmacro /! (place amount)
+  `(set! ,place (/ ,place ,amount))
   )
 
 (defmacro zero? (thing)
@@ -558,6 +594,19 @@
   `(align-n ,val 64)
   )
 
+(defmacro bit-field (type val base size &key (signed #t))
+  "extract bits from an integer value."
+  (when (and (integer? base) (integer? size))
+      (when (> (+ base size) 64)
+          (error "cannot extract fields across 64-bit boundaries"))
+      (when (< base 0)
+          (error "bitfield base cannot be negative"))
+      (when (< size 0)
+          (error "bitfield size cannot be negative"))
+      )
+  `(,(if signed 'sar 'shr) (shl ,val (- 64 (+ ,size ,base))) (- 64 ,size))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TYPE STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -627,6 +676,10 @@
 
 (defmacro cadddr (arg)
   `(car (cdr (cdr (cdr ,arg))))
+  )
+
+(defmacro dcons (a b)
+  `(new 'debug 'pair ,a ,b)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -724,6 +777,16 @@
   "Make ISO"
   `(make-group "iso")
   )
+
+(defmacro mng ()
+  "Make engine"
+  `(make-group "engine")
+  )
+
+(defmacro mh1 ()
+  "Make hub1"
+  `(make-group "hub1")
+  )
 ;;;;;;;;;;;;;;;;;;;
 ;; enum stuff
 ;;;;;;;;;;;;;;;;;;;
@@ -743,14 +806,14 @@
   (with-gensyms (val str)
     `(let ((,val ,input)
            (,str ,stream))
-        
+
         ,@(apply (lambda (x)
                     `(if (logtesta? ,val (,enum ,(car x)))
                         (format ,str ,(fmt #f "{} " (car x)))
                         )
-                    
+
                     ) (reverse (get-enum-vals enum)))
-        
+
         )
     )
   )

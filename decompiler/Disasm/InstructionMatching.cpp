@@ -3,8 +3,8 @@
  * Utilities for checking if an instruction matches some criteria.
  */
 
-#include "common/util/assert.h"
 #include "InstructionMatching.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!

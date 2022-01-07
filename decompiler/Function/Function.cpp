@@ -1,4 +1,3 @@
-#include "common/util/assert.h"
 #include <vector>
 #include "Function.h"
 #include "common/log/log.h"
@@ -9,6 +8,7 @@
 #include "decompiler/IR/IR.h"
 #include "decompiler/IR2/Form.h"
 #include "common/util/BitUtils.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 namespace {
@@ -88,7 +88,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
 
       // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
       // support
-      if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
+      if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7) &&
+          instr.get_src(2).get_reg() == make_gpr(Reg::SP)) {
         lg::warn(
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",

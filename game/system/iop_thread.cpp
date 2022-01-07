@@ -6,26 +6,8 @@
 #include <io.h>
 #endif
 #include "SystemThread.h"
-//#include "shared_config.h"
-//#include "ps2/SCE_IOP.h"
-//#include "overlord/ramdisk.h"
-//#include "ps2/SCE_SIF.h"
-//#include "IOP.h"
-//
-//#include "overlord/dma.h"
-//#include "overlord/fake_iso.h"
-//#include "overlord/iso.h"
-//#include "overlord/iso_api.h"
-//#include "overlord/iso_cd.h"
-//#include "overlord/iso_queue.h"
-//#include "overlord/isocommon.h"
-//#include "overlord/overlord.h"
-//#include "overlord/ramdisk.h"
-//#include "overlord/sbank.h"
-//#include "overlord/soundcommon.h"
-//#include "overlord/srpc.h"
-//#include "overlord/ssound.h"
-//#include "overlord/stream.h"
+
+#include <cstring>
 
 IOP::IOP() {}
 
@@ -68,6 +50,7 @@ void IOP::reset_allocator() {
 
 void* IOP::iop_alloc(int size) {
   void* mem = malloc(size);
+  memset(mem, 0xaa, size);
   allocations.push_back(mem);
   return mem;
 }
@@ -90,7 +73,7 @@ void IOP::kill_from_ee() {
 
 void IOP::signal_run_iop() {
   std::unique_lock<std::mutex> lk(iters_mutex);
-  iop_iters_des += 100;  // todo, tune this
+  iop_iters_des++;  // todo, tune this
   if (iop_iters_des - iop_iters_act > 500) {
     iop_iters_des = iop_iters_act + 500;
   }

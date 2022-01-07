@@ -12,6 +12,7 @@
 #include <map>
 #include "common/link_types.h"
 #include "common/util/dgo_util.h"
+#include "common/util/BitUtils.h"
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
@@ -130,7 +131,11 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
-    get_objs_from_dgo(dgo, config);
+    try {
+      get_objs_from_dgo(dgo, config);
+    } catch (std::runtime_error& e) {
+      lg::warn("Error when reading DGOs: {}", e.what());
+    }
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());
@@ -240,7 +245,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
 
     add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name,
                      config);
-    reader.ffwd(obj_header.object_count);
+    reader.ffwd(align16(obj_header.object_count));
   }
 
   // check we're at the end
@@ -371,7 +376,7 @@ std::string pad_string(const std::string& in, size_t length) {
 }
 }  // namespace
 
-std::string ObjectFileDB::generate_obj_listing() {
+std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::string>& merged_objs) {
   std::string result = "[";
   std::set<std::string> all_unique_names;
   int unique_count = 0;
@@ -380,28 +385,31 @@ std::string ObjectFileDB::generate_obj_listing() {
       std::string dgos = "[";
       for (auto& y : x.dgo_names) {
         assert(y.length() >= 5);
-        dgos += "\"" + y.substr(0, y.length() - 4) + "\", ";
+        std::string new_str = y == "NO-XGO" ? y : y.substr(0, y.length() - 4);
+        dgos += "\"" + new_str + "\", ";
       }
       dgos.pop_back();
       dgos.pop_back();
       dgos += "]";
-      result += "[\"" + pad_string(x.to_unique_name() + "\", ", 50) + "\"" +
+      auto name = x.to_unique_name();
+      result += "[\"" + pad_string(name + "\", ", 50) + "\"" +
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
-      if (all_unique_names.find(x.to_unique_name()) != all_unique_names.end()) {
-        lg::error("Object file {} appears multiple times with the same name.", x.to_unique_name());
+      if (all_unique_names.find(name) != all_unique_names.end() &&
+          merged_objs.find(name) == merged_objs.end()) {
+        lg::error("Object file {} appears multiple times with the same name.", name);
       }
-      all_unique_names.insert(x.to_unique_name());
-    }
-    // this check is extremely important. It makes sure we don't have any repeat names. This could
-    // be caused by two files with the same name, in the same DGOs, but different data.
-    if (int(all_unique_names.size()) != unique_count) {
-      lg::error("Object files are not named properly, data will be lost!");
+      all_unique_names.insert(name);
     }
   }
+  // this check is extremely important. It makes sure we don't have any repeat names. This could
+  // be caused by two files with the same name, in the same DGOs, but different data.
+  if (int(all_unique_names.size()) != unique_count) {
+    lg::error("Object files are not named properly, data will be lost!");
+  }
 
-  if (result.length() >= 2) {
+  if (unique_count > 0) {
     result.pop_back();  // kill last new line
     result.pop_back();  // kill last comma
   }
@@ -423,7 +431,7 @@ void ObjectFileDB::process_link_data(const Config& config) {
   });
 
   lg::info("Processed Link Data");
-  lg::info(" Total {} ms\n", process_link_timer.getMs());
+  lg::info(" Total {:.2f} ms\n", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -438,7 +446,7 @@ void ObjectFileDB::process_labels() {
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {} ms\n", process_label_timer.getMs());
+  lg::info(" Total {:.2f} ms\n", process_label_timer.getMs());
 }
 
 /*!
@@ -574,19 +582,21 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages() {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
   int tpage_dir_count = 0;
+  u64 total_px = 0;
   Timer timer;
 
   std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      auto statistics = process_tpage(data);
+      auto statistics = process_tpage(data, tex_db);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+      total_px += statistics.num_px;
     } else if (data.name_in_dgo == "dir-tpages") {
       result = process_dir_tpages(data).to_source();
       tpage_dir_count++;
@@ -595,17 +605,17 @@ std::string ObjectFileDB::process_tpages() {
 
   assert(tpage_dir_count <= 1);
 
+  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
+           100.f * float(success) / float(total), timer.getMs());
+
   if (tpage_dir_count == 0) {
     lg::warn("Did not find tpage-dir.");
     return {};
   }
-
-  lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
-           100.f * float(success) / float(total), timer.getMs());
   return result;
 }
 
-std::string ObjectFileDB::process_game_text_files() {
+std::string ObjectFileDB::process_game_text_files(GameTextVersion version) {
   lg::info("- Finding game text...");
   std::string text_string = "COMMON";
   Timer timer;
@@ -617,7 +627,7 @@ std::string ObjectFileDB::process_game_text_files() {
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(1) == text_string) {
       file_count++;
-      auto statistics = process_game_text(data);
+      auto statistics = process_game_text(data, version);
       string_count += statistics.total_text;
       char_count += statistics.total_chars;
       if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {

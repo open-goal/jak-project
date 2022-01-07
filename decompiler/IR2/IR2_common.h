@@ -166,6 +166,8 @@ enum class FixedOperatorKind {
   PPOINTER_TO_PROCESS,
   VECTOR_4_DOT,
   SEND_EVENT,
+  CPAD_PRESSED_P,
+  CPAD_HOLD_P,
   INVALID
 };
 

@@ -1,10 +1,10 @@
 #include <cstring>
 #include <cstdio>
-#include "common/util/assert.h"
 #include "common/log/log.h"
 #include "game/sce/iop.h"
 #include "iso_queue.h"
 #include "isocommon.h"
+#include "common/util/assert.h"
 
 using namespace iop;
 

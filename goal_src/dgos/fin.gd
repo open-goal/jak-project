@@ -17,7 +17,7 @@
   ("tpage-545.go" "tpage-545")
   ("darkecobomb-ag.go" "darkecobomb")
   ("ecoclaw-ag.go" "ecoclaw")
-  ("ecovalve-ag-FIN.go" "ecovalve")
+  ("ecovalve-ag.go" "ecovalve")
   ("finalbosscam-ag.go" "finalbosscam")
   ("green-eco-lurker-ag.go" "green-eco-lurker")
   ("green-sagecage-ag.go" "green-sagecage")

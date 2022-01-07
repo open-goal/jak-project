@@ -5,10 +5,6 @@
 ;; name in dgo: plat
 ;; dgos: GAME, COMMON, L1
 
-(define-extern *plat-jungleb-sg* skeleton-group)
-(define-extern *plat-sunken-sg* skeleton-group)
-(define-extern *plat-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (set!
@@ -99,60 +95,28 @@
   )
 
 
-(let
-  ((v1-4
-    (new 'static 'skeleton-group
-     :art-group-name "plat"
-     :bounds
-     (new 'static 'vector :y -2048.0 :w 12288.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-4 jgeo) 0)
-  (set! (-> v1-4 janim) 4)
-  (set! (-> v1-4 mgeo 0) (the-as uint 1))
-  (set! (-> v1-4 lod-dist 0) 81920.0)
-  (set! (-> v1-4 mgeo 1) (the-as uint 2))
-  (set! (-> v1-4 lod-dist 1) 163840.0)
-  (set! (-> v1-4 mgeo 2) (the-as uint 3))
-  (set! (-> v1-4 lod-dist 2) 4095996000.0)
-  (set! *plat-sg* v1-4)
+(defskelgroup *plat-sg* plat
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 -0.5 0 3)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-5
-    (new 'static 'skeleton-group
-     :art-group-name "plat-jungleb"
-     :bounds
-     (new 'static 'vector :y -2048.0 :w 12288.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-5 jgeo) 0)
-  (set! (-> v1-5 janim) 4)
-  (set! (-> v1-5 mgeo 0) (the-as uint 1))
-  (set! (-> v1-5 lod-dist 0) 4095996000.0)
-  (set! *plat-jungleb-sg* v1-5)
+(defskelgroup *plat-jungleb-sg* plat-jungleb
+  0
+  4
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -0.5 0 3)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-6
-    (new 'static 'skeleton-group
-     :art-group-name "plat-sunken"
-     :bounds
-     (new 'static 'vector :y -2048.0 :w 13107.2)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-6 jgeo) 0)
-  (set! (-> v1-6 janim) 4)
-  (set! (-> v1-6 mgeo 0) (the-as uint 1))
-  (set! (-> v1-6 lod-dist 0) 4095996000.0)
-  (set! *plat-sunken-sg* v1-6)
+(defskelgroup *plat-sunken-sg* plat-sunken
+  0
+  4
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -0.5 0 3.2)
+  :longest-edge (meters 0)
   )
 
 (defmethod get-unlit-skel plat ((obj plat))
@@ -200,7 +164,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -219,10 +189,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 13107.2)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -326,10 +296,12 @@
    )
   :trans
   (behavior ()
-   (set! (-> self path-pos) (if (logtest? (-> self fact options) 8)
-                             (get-current-phase (-> self sync))
-                             (get-current-phase-with-mirror (-> self sync))
-                             )
+   (set!
+    (-> self path-pos)
+    (if (logtest? (-> self fact options) (fact-options fop3))
+     (get-current-phase (-> self sync))
+     (get-current-phase-with-mirror (-> self sync))
+     )
     )
    (eval-path-curve!
     (-> self path)
@@ -348,8 +320,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (-> self root-override trans)
+     1
+     (the-as symbol (-> self root-override trans))
      )
     )
    (plat-trans)
@@ -361,11 +333,11 @@
   (the-as (function none :behavior plat) plat-post)
   )
 
-(defmethod copy-defaults! plat ((obj plat) (arg0 res-lump))
+(defmethod init-from-entity! plat ((obj plat) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (dummy-24 obj)
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj (get-unlit-skel obj) '())
+  (initialize-skeleton obj (get-unlit-skel obj) '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
@@ -396,10 +368,12 @@
      )
     )
    ((> (-> obj sync period) 0)
-    (set! (-> obj path-pos) (if (logtest? (-> obj fact options) 8)
-                             (get-current-phase (-> obj sync))
-                             (get-current-phase-with-mirror (-> obj sync))
-                             )
+    (set!
+     (-> obj path-pos)
+     (if (logtest? (-> obj fact options) (fact-options fop3))
+      (get-current-phase (-> obj sync))
+      (get-current-phase-with-mirror (-> obj sync))
+      )
      )
     (eval-path-curve!
      (-> obj path)

@@ -3,7 +3,8 @@
 
 ;; definition of type target
 (deftype target (process-drawable)
-  ((control             control-info                             :offset        112)
+  ((self-override       target                                   :offset         28)
+   (control             control-info                             :offset        112)
    (fact-info-target    fact-info-target                         :offset        144)
    (skel2               basic                                    :offset-assert 176)
    (racer               racer-info                               :offset-assert 180)
@@ -20,12 +21,12 @@
    (alt-cam-pos         vector                           :inline :offset-assert 448)
    (snowball            snowball-info                            :offset-assert 464)
    (tube                tube-info                                :offset-assert 468)
-   (flut                basic                                    :offset-assert 472)
+   (flut                flut-info                                :offset-assert 472)
    (current-level       level                                    :offset-assert 476)
    (saved-pos           transformq                       :inline :offset-assert 480)
    (saved-owner         uint64                                   :offset-assert 528)
    (alt-neck-pos        vector                           :inline :offset-assert 544)
-   (fp-hud              uint64                                   :offset-assert 560)
+   (fp-hud              handle                                   :offset-assert 560)
    (no-load-wait        uint64                                   :offset-assert 568)
    (no-look-around-wait uint64                                   :offset-assert 576)
    )
@@ -34,11 +35,12 @@
   :size-assert         #x248
   :flag-assert         #x1501e00248
   (:methods
-    (dummy-20 (_type_ collide-cache) none 20)
+    (dummy-20 (_type_ collide-cache) object 20)
     )
   (:states
-    target-clone-anim
-    target-death
+    (target-clone-anim handle)
+    (target-death symbol)
+    target-demo
     (target-hit-ground symbol)
     (target-racing-bounce float float symbol)
     (target-racing-clone-anim handle)
@@ -51,14 +53,18 @@
     target-racing-grab
     (target-racing-hit handle attack-info)
     (target-racing-jump float float symbol)
+    target-title
+    target-title-play
+    target-title-wait
+    (target-warp-in vector vector)
     )
   )
 
 ;; definition for method 3 of type target
 (defmethod inspect target ((obj target))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tcontrol: ~A~%" (-> obj control))
   (format #t "~T~Tskel2: ~A~%" (-> obj skel2))
   (format #t "~T~Tracer: ~A~%" (-> obj racer))
@@ -70,11 +76,7 @@
   (format #t "~T~Tsidekick: #x~X~%" (-> obj sidekick))
   (format #t "~T~Tmanipy: #x~X~%" (-> obj manipy))
   (format #t "~T~Tattack-info: #<attack-info @ #x~X>~%" (-> obj attack-info))
-  (format
-   #t
-   "~T~Tattack-info-rec: #<attack-info @ #x~X>~%"
-   (-> obj attack-info-rec)
-   )
+  (format #t "~T~Tattack-info-rec: #<attack-info @ #x~X>~%" (-> obj attack-info-rec))
   (format #t "~T~Tanim-seed: ~D~%" (-> obj anim-seed))
   (format #t "~T~Talt-cam-pos: ~`vector`P~%" (-> obj alt-cam-pos))
   (format #t "~T~Tsnowball: ~A~%" (-> obj snowball))
@@ -95,9 +97,10 @@
 
 ;; definition of type sidekick
 (deftype sidekick (process-drawable)
-  ((control          control-info  :offset        112)
-   (anim-seed        uint64        :offset        192)
-   (shadow-in-movie? symbol        :offset-assert 200)
+  ((parent-override  (pointer target)  :offset         12)
+   (control          control-info      :offset        112)
+   (anim-seed        uint64            :offset        192)
+   (shadow-in-movie? symbol            :offset-assert 200)
    )
   :heap-base #x60
   :method-count-assert 20
@@ -108,8 +111,8 @@
 ;; definition for method 3 of type sidekick
 (defmethod inspect sidekick ((obj sidekick))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
+    (t9-0 obj)
+    )
   (format #t "~T~Tcontrol: ~A~%" (-> obj root))
   (format #t "~T~Tstate-time: ~D~%" (-> obj state-time))
   (format #t "~T~Tstate-flags: ~D~%" (-> obj state-flags))

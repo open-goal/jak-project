@@ -5,8 +5,6 @@
 ;; name in dgo: junglefish
 ;; dgos: JUN, JUNGLE, L1
 
-(define-extern *junglefish-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype junglefish (nav-enemy)
@@ -18,26 +16,12 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "junglefish"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 6144.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 4)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *junglefish-sg* v1-1)
+(defskelgroup *junglefish-sg* junglefish
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 1.5)
+  :longest-edge (meters 0)
   )
 
 nav-enemy-default-event-handler
@@ -605,7 +589,7 @@ nav-enemy-default-event-handler
    )
   )
 
-(defmethod copy-defaults! junglefish ((obj junglefish) (arg0 res-lump))
+(defmethod init-from-entity! junglefish ((obj junglefish) (arg0 entity-actor))
   (let
    ((s4-0
      (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
@@ -613,21 +597,27 @@ nav-enemy-default-event-handler
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set! (-> s3-0 prim-core offense) 1)
     (set-vector! (-> s3-0 local-sphere) 0.0 3276.8 0.0 2457.6)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj collide-info) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *junglefish-sg* '())
+  (initialize-skeleton obj *junglefish-sg* '())
   (TODO-RENAME-45 obj *junglefish-nav-enemy-info*)
   (set! (-> obj water) (new 'process 'water-control obj 7 0.0 8192.0 2048.0))
   (set! (-> obj water flags) (the-as uint 2))

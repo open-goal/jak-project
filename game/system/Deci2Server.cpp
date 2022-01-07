@@ -5,7 +5,6 @@
  */
 
 #include <cstdio>
-#include "common/util/assert.h"
 #include <utility>
 
 // TODO - i think im not including the dependency right..?
@@ -24,6 +23,7 @@
 #include "common/listener_common.h"
 #include "common/versions.h"
 #include "Deci2Server.h"
+#include "common/util/assert.h"
 
 Deci2Server::Deci2Server(std::function<bool()> shutdown_callback) {
   buffer = new char[BUFFER_SIZE];
@@ -221,7 +221,7 @@ void Deci2Server::run() {
 
   auto& driver = d2_drivers[handler];
 
-  int sent_to_program = 0;
+  u32 sent_to_program = 0;
   while (!want_exit() && (hdr->rsvd < hdr->len || sent_to_program < hdr->rsvd)) {
     // send what we have to the program
     if (sent_to_program < hdr->rsvd) {

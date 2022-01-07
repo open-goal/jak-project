@@ -5,9 +5,6 @@
 ;; name in dgo: misty-warehouse
 ;; dgos: L1, MIS
 
-(define-extern *rounddoor-sg* skeleton-group)
-(define-extern *silostep-sg* skeleton-group)
-
 (declare-type silostep process-drawable)
 (define-extern silostep-rise (state symbol silostep))
 (define-extern silostep-idle (state silostep))
@@ -26,21 +23,12 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "silostep"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 32768.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *silostep-sg* v1-1)
+(defskelgroup *silostep-sg* silostep
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 2 0 8)
+  :longest-edge (meters 0)
   )
 
 (defstate silostep-idle (silostep)
@@ -146,8 +134,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (send-to-all-after (-> self link) 'trigger-rise)
    (go silostep-rise #f)
@@ -210,7 +198,7 @@
   (the-as (function none :behavior silostep) #f)
   )
 
-(defmethod copy-defaults! silostep ((obj silostep) (arg0 res-lump))
+(defmethod init-from-entity! silostep ((obj silostep) (arg0 entity-actor))
   (logior! (-> obj mask) (process-mask movie-subject))
   (let
    ((s4-0
@@ -219,7 +207,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -238,14 +232,14 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 4)
     (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 18432.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *silostep-sg* '())
+  (initialize-skeleton obj *silostep-sg* '())
   (set!
    (-> obj anim-limit)
    (*
@@ -271,23 +265,12 @@
   (none)
   )
 
-(let
-  ((v1-6
-    (new 'static 'skeleton-group
-     :art-group-name "rounddoor"
-     :bounds (new 'static 'vector :w 32768.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-6 jgeo) 0)
-  (set! (-> v1-6 janim) 3)
-  (set! (-> v1-6 mgeo 0) (the-as uint 1))
-  (set! (-> v1-6 lod-dist 0) 81920.0)
-  (set! (-> v1-6 mgeo 1) (the-as uint 2))
-  (set! (-> v1-6 lod-dist 1) 4095996000.0)
-  (set! *rounddoor-sg* v1-6)
+(defskelgroup *rounddoor-sg* rounddoor
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 8)
+  :longest-edge (meters 0)
   )
 
 (deftype rounddoor (eco-door)
@@ -319,10 +302,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) -12288.0 0.0 0.0 40960.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -330,7 +313,7 @@
   )
 
 (defmethod TODO-RENAME-25 rounddoor ((obj rounddoor))
-  (dummy-14 obj *rounddoor-sg* '())
+  (initialize-skeleton obj *rounddoor-sg* '())
   (set! (-> obj open-distance) 69632.0)
   (set! (-> obj close-distance) 81920.0)
   (set! (-> obj open-sound) (static-sound-name "arenadoor-open"))

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "common/util/assert.h"
 #include <cstring>
 #include <string>
 #include <vector>
+#include "common/util/assert.h"
 
 /*!
  * The Serializer is a tool to load or save data from a buffer.
@@ -151,7 +151,7 @@ class Serializer {
     } else {
       vec->resize(load<size_t>());
     }
-    from_raw_data(vec->data(), vec->size());
+    from_raw_data(vec->data(), sizeof(T) * vec->size());
   }
 
   /*!

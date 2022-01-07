@@ -37,9 +37,93 @@
    )
   )
 
+(defmethod unpack-vis drawable ((obj drawable) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  arg1
+  )
+
+(defun-debug find-instance-by-name ((arg0 string))
+  (dotimes (s5-0 (-> *level* length))
+    (let ((v1-3 (-> *level* level s5-0)))
+      (when (= (-> v1-3 status) 'active)
+        (let ((s4-0 (-> v1-3 bsp drawable-trees)))
+          (dotimes (s3-0 (-> s4-0 length))
+            (let ((v1-7 (-> s4-0 trees s3-0)))
+              (case (-> v1-7 type)
+                ((drawable-tree-instance-shrub)
+                 (let ((s2-0 (-> (the-as drawable-tree-instance-shrub v1-7) info prototype-inline-array-shrub)))
+                   (dotimes (s1-0 (-> s2-0 length))
+                     (if (string= arg0 (the-as string (-> s2-0 data s1-0 name)))
+                         (return (-> s2-0 data s1-0))
+                         )
+                     )
+                   )
+                 )
+                ((drawable-tree-instance-tie)
+                 (let ((s2-1 (-> (the-as drawable-tree-instance-tie v1-7) prototypes prototype-array-tie)))
+                   (dotimes (s1-1 (-> s2-1 length))
+                     (if (string= arg0 (the-as string (-> s2-1 array-data s1-1 name)))
+                         (return (-> s2-1 array-data s1-1))
+                         )
+                     )
+                   )
+                 )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as prototype-bucket #f)
+  )
+
+(define-extern prototype-bucket-type (function prototype-bucket type)) ;; TODO
+
+(defun-debug prototype-bucket-recalc-fields ((arg0 prototype-bucket))
+  (case (prototype-bucket-type arg0)
+    ((instance-shrubbery)
+     (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists x))))
+     )
+    (else
+      (set! (-> arg0 dists z) (+ (-> arg0 dists x) (* 0.33333334 (- (-> arg0 dists w) (-> arg0 dists x)))))
+      (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists z) (-> arg0 dists x))))
+      )
+    )
+  (set! (-> arg0 rdists z) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists z))))
+  (set! (-> arg0 dists y) (* 0.5 (-> arg0 dists x)))
+  (set! (-> arg0 rdists y) (/ 1.0 (-> arg0 dists y)))
+  arg0
+  )
+
+(defun sphere-cull ((arg0 vector))
+  #t
+  ;; todo
+  )
+
+(defun guard-band-cull ((arg0 vector))
+  #t
+  ;; todo
+  )
+
+(defun vis-cull ((id int))
+  "Is this thing visible? By draw-node id."
+  ;; todo
+  #t
+  
+  #|
+  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
+         (vis-byte (-> addr 0)) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< shifted 0)
+    )
+    |#
+  )
+
 (defun real-main-draw-hook ()
   (when *slow-frame-rate*
-    (dotimes (v1-2 #xc3500)
+    (dotimes (v1-2 #xc35000) ;; changed from ps2 for... obvious reasons.
       (nop!)
       (nop!)
       (nop!)
@@ -51,14 +135,28 @@
   "Function to be executed to set up for engine dma"
   (set! *vu1-enable-user* *vu1-enable-user-menu*)
   (set! *texture-enable-user* *texture-enable-user-menu*)
+
+  (when *debug-segment*
+   (when (or *stats-memory* *stats-memory-short*)
+    (dotimes (gp-0 (-> *level* length))
+     (let ((s5-0 (-> *level* level gp-0)))
+      (if (= (-> s5-0 status) 'active)
+       (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)
+       )
+      )
+     )
+    )
+   (reset! *dma-mem-usage*)
+   )
+
   ;; todo debug memory
   ;; todo shrub matrix
   ;; todo generic init
-  
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; texture uploads
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  
+
   ;; tfrag
 
   (when (logtest? *texture-enable-user* 1)
@@ -70,7 +168,7 @@
      )
     )
    )
-  
+
   ;; pris
 
   (when (logtest? *texture-enable-user* 2)
@@ -82,7 +180,7 @@
      )
     )
    )
-  
+
   ;; shrub
 
   (when (logtest? *texture-enable-user* 4)
@@ -94,7 +192,7 @@
      )
     )
    )
-  
+
   ;; alpha and common.
   (when (logtest? *texture-enable-user* 8)
    (let ((uploaded-common #f))
@@ -115,7 +213,7 @@
      )
     )
    )
-  
+
   ;; water.
   (when (logtest? *texture-enable-user* 16)
    (dotimes (gp-5 (-> *level* length))
@@ -126,7 +224,7 @@
      )
     )
    )
-  
+
   ;; sky
   ;; todo - disabled sky
   (when (zero? (logand *vu1-enable-user* 8))
@@ -136,7 +234,7 @@
                              (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
                              (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                              )
-      (screen-gradient 
+      (screen-gradient
         dma-buf
         (-> *display* bg-clear-color 0)
         (-> *display* bg-clear-color 1)
@@ -155,16 +253,43 @@
         )
       )
     )
-  
+
   ;; tod update
   (update-time-of-day *time-of-day-context*)
   ;; closest
   ;; ocean
   ;; merc
   ;; init bg
+  (init-background)
+
   ;; exec bg
-  ;; finish bg
-  ;; stats
+  (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen) frame))
+
+  ;; finish bg (most of the work is here)
+  (reset! (-> *perf-stats* data 3))
+  (finish-background)
+  (read! (-> *perf-stats* data 3))
+  (update-wait-stats (-> *perf-stats* data 3) (-> *background-work* wait-to-vu0) (the-as uint 0) (the-as uint 0))
+  
+  ;; 
+  (end-perf-stat-collection)
+  (when (not (paused?))
+    (when *stats-poly*
+      (dotimes (gp-8 (-> *level* length))
+        (let ((v1-193 (-> *level* level gp-8)))
+          (if (= (-> v1-193 status) 'active)
+              (collect-stats (-> v1-193 bsp))
+              )
+          )
+        )
+      (print-terrain-stats)
+      )
+    (if *display-perf-stats*
+        (print-perf-stats)
+        )
+    )
+  (start-perf-stat-collection)
+
   ;; fg engine
   ;; bones
   ;; gmerc
@@ -182,8 +307,10 @@
   (render-boundaries)
   ;; boundaries
   ;; touching
-  ;; method15 level
+  (actors-update *level*)
   ;; collide stats
+
+  (none)
   )
 
 (defun main-draw-hook ()
@@ -267,7 +394,7 @@
   "Set up a new frame. Call this before drawing anything.
    new-frame-idx is the display frame that will be set up.
    odd-even is the odd-even of the new frame"
-   
+
 
   ;; due to a HW bug in the PS2, you must set this.
   ;;(set! (-> (the-as vif-bank #x10003c00) err me0) 1)
@@ -696,13 +823,315 @@
   (display-sync disp) ;; also starts next
   )
 
-;; TODO stub
-(defun dma-add-process-drawable-hud ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
-  (set! (-> arg1 status) (logand -9 (-> arg1 status)))
-  (when (zero? (logand (-> arg1 status) 22))
-   (logior! (-> arg1 status) 8)
-   )
+(defun add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+  ((-> arg1 dma-add-func) arg0 arg1 arg2 arg3)
   (none)
   )
 
+(defun dma-add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+  (local-vars (v1-37 float) (sv-16 process-drawable))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf2 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (set! sv-16 arg0)
+    (logclear! (-> arg1 status) (draw-status drwf03))
+    (when (zero? (logand (-> arg1 status) (draw-status drwf01 drwf02 drwf04)))
+      (let ((s4-0 (the-as vector (+ 48 (the-as int (the-as terrain-context #x70000000)))))
+            (s2-0 (the-as vu-lights (+ 64 (the-as int (the-as terrain-context #x70000000)))))
+            (s3-0 *time-of-day-context*)
+            )
+        (.lvf vf16 (&-> arg1 origin quad))
+        (.lvf vf17 (&-> arg1 bounds quad))
+        (.mul.x.vf vf16 vf16 vf0 :mask #b1000)
+        (.add.vf vf16 vf16 vf17)
+        (.svf (&-> s4-0 quad) vf16)
+        (.lvf vf28 (&-> arg1 color-mult quad))
+        (.lvf vf29 (&-> arg1 color-emissive quad))
+        (when (sphere-in-view-frustum? (the-as sphere s4-0))
+          (case (-> arg1 global-effect)
+            (((draw-effect title))
+             (when (not (-> s3-0 title-updated))
+               (set! (-> s3-0 title-updated) #t)
+               (let ((s0-0 (-> *math-camera* inv-camera-rot))
+                     (a1-1 (new 'stack-no-clear 'vector))
+                     (s1-0 (new 'stack-no-clear 'vector))
+                     )
+                 (set-vector! a1-1 0.612 0.5 -0.612 0.0)
+                 (set-vector! s1-0 -0.696 0.174 0.696 0.0)
+                 (vector-matrix*! (the-as vector (-> s3-0 title-light-group)) a1-1 s0-0)
+                 (vector-matrix*! (the-as vector (-> s3-0 title-light-group dir1)) s1-0 s0-0)
+                 )
+               (set-vector! (-> *time-of-day-context* current-shadow) 0.612 -0.5 -0.612 1.0)
+               )
+             (vu-lights<-light-group! s2-0 (-> s3-0 title-light-group))
+             )
+            (else
+              (let ((f28-0 (-> arg1 secondary-interp))
+                    (f30-0 (-> arg1 current-secondary-interp))
+                    (v1-17 (-> arg1 shadow-mask))
+                    (a0-10 (-> arg1 level-index))
+                    (s0-1 (-> s3-0 light-group (-> *target* draw light-index)))
+                    (s1-1 (new 'stack-no-clear 'light-group))
+                    )
+                (cond
+                  ((= (-> arg1 light-index) 255)
+                   )
+                  ((= a0-10 2)
+                   (set! s0-1 (-> s3-0 light-group (-> arg1 light-index)))
+                   )
+                  (else
+                    (set! s0-1 (-> s3-0 moods a0-10 light-group (-> arg1 light-index)))
+                    )
+                  )
+                (when (not (or (= a0-10 2) (zero? v1-17)))
+                  (let* ((a1-22 (-> s3-0 light-masks-0 a0-10))
+                         (a2-14 (-> s3-0 light-masks-1 a0-10))
+                         (f26-0 (-> s3-0 light-interp a0-10))
+                         (a0-13 (logand a1-22 v1-17))
+                         (v1-18 (logand a2-14 v1-17))
+                         )
+                    (cond
+                      ((and (zero? a0-13) (zero? v1-18))
+                       )
+                      (else
+                        (set! f28-0 (cond
+                                      ((and (nonzero? a0-13) (nonzero? v1-18))
+                                       1.0
+                                       )
+                                      ((zero? a0-13)
+                                       (quad-copy! (the-as pointer s1-1) (the-as pointer s0-1) 12)
+                                       (set! s0-1 s1-1)
+                                       (set! (-> s0-1 dir1 levels x) 0.0)
+                                       f26-0
+                                       )
+                                      (else
+                                        (quad-copy! (the-as pointer s1-1) (the-as pointer s0-1) 12)
+                                        (set! s0-1 s1-1)
+                                        (set! (-> s0-1 dir0 levels x) 0.0)
+                                        (- 1.0 f26-0)
+                                        )
+                                      )
+                              )
+                        )
+                      )
+                    )
+                  )
+                (if *teleport*
+                    (set! f30-0 f28-0)
+                    )
+                (when (not (or (paused?) (= f28-0 f30-0)))
+                  (let ((f0-15 (- f30-0 f28-0)))
+                    (set! f30-0 (cond
+                                  ((< (fabs f0-15) 0.2)
+                                   f28-0
+                                   )
+                                  ((< f0-15 0.0)
+                                   (+ 0.2 f30-0)
+                                   )
+                                  (else
+                                    (+ -0.2 f30-0)
+                                    )
+                                  )
+                          )
+                    )
+                  (set! (-> arg1 current-secondary-interp) f30-0)
+                  )
+                (cond
+                  ((= f30-0 0.0)
+                   (vu-lights<-light-group! s2-0 s0-1)
+                   )
+                  (else
+                    (if (!= s0-1 s1-1)
+                        (quad-copy! (the-as pointer s1-1) (the-as pointer s0-1) 12)
+                        )
+                    (let ((f0-20 (- 1.0 f30-0)))
+                      (set! (-> s1-1 dir0 levels x) (* (-> s1-1 dir0 levels x) f0-20))
+                      (set! (-> s1-1 dir0 levels y) (* (-> s1-1 dir0 levels y) f0-20))
+                      (set! (-> s1-1 dir1 levels x) (* (-> s1-1 dir1 levels x) f0-20))
+                      (set! (-> s1-1 dir1 levels y) (* (-> s1-1 dir1 levels y) f0-20))
+                      (set! (-> s1-1 dir2 levels x) (* (-> s1-1 dir2 levels x) f0-20))
+                      (set! (-> s1-1 dir2 levels y) (* (-> s1-1 dir2 levels y) f0-20))
+                      )
+                    (vu-lights<-light-group! s2-0 s1-1)
+                    )
+                  )
+                )
+              (.lvf vf2 (&-> s2-0 color 0 quad))
+              (.lvf vf3 (&-> s2-0 color 1 quad))
+              (.lvf vf4 (&-> s2-0 color 2 quad))
+              (.lvf vf5 (&-> s2-0 ambient quad))
+              (.mul.vf vf5 vf5 vf28)
+              (.mul.vf vf2 vf2 vf28)
+              (.mul.vf vf3 vf3 vf28)
+              (.mul.vf vf4 vf4 vf28)
+              (.add.vf vf5 vf5 vf29)
+              (.svf (&-> s2-0 color 0 quad) vf2)
+              (.svf (&-> s2-0 color 1 quad) vf3)
+              (.svf (&-> s2-0 color 2 quad) vf4)
+              (.svf (&-> s2-0 ambient quad) vf5)
+              (.mov v1-37 vf5)
+              )
+            )
+          (if *display-lights*
+              (add-debug-lights
+                #t
+                (bucket-id debug-draw0)
+                (the-as (inline-array light) (-> s3-0 light-group))
+                (-> arg1 origin)
+                )
+              )
+          (let ((at-0 *math-camera*))
+            (.lvf vf16 (&-> at-0 plane 0 quad))
+            (.lvf vf17 (&-> at-0 plane 1 quad))
+            (.lvf vf18 (&-> at-0 plane 2 quad))
+            (.lvf vf19 (&-> at-0 plane 3 quad))
+            (.lvf vf20 (&-> at-0 guard-plane 0 quad))
+            (.lvf vf21 (&-> at-0 guard-plane 1 quad))
+            (.lvf vf22 (&-> at-0 guard-plane 2 quad))
+            (.lvf vf23 (&-> at-0 guard-plane 3 quad))
+            (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
+            (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
+            (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
+            (.lvf vf27 (&-> at-0 camera-rot vector 3 quad))
+            )
+          (let ((v1-42 (the-as vector (+ 176 (the-as int (the-as terrain-context #x70000000))))))
+            (.lvf vf15 (&-> s4-0 quad))
+            (.mul.w.vf acc vf27 vf0)
+            (.add.mul.x.vf acc vf24 vf15 acc)
+            (.add.mul.y.vf acc vf25 vf15 acc)
+            (.add.mul.z.vf vf15 vf26 vf15 acc :mask #b111)
+            (.mul.vf vf28 vf15 vf15)
+            (.max.w.vf vf29 vf0 vf0)
+            (.add.y.vf acc vf28 vf28)
+            (.add.mul.z.vf vf28 vf29 vf28 acc :mask #b1)
+            (.sqrt.vf Q vf28 :ftf #b0)
+            (.sub.w.vf vf28 vf0 vf15 :mask #b1000)
+            (.wait.vf)
+            (.add.vf vf15 vf28 Q :mask #b1000)
+            (.svf (&-> v1-42 quad) vf15)
+            (when (< 0.0 (+ (-> v1-42 z) (-> arg1 bounds w)))
+              (let ((lod-to-use 0))
+                (let ((cam-dist (-> v1-42 w)))
+                  (when (nonzero? (-> arg1 lod-set max-lod))
+                    (cond
+                      ((>= (-> arg1 force-lod) 0)
+                       (set! lod-to-use (-> arg1 force-lod))
+                       (if (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) cam-dist)
+                           (return #f)
+                           )
+                       )
+                      (else
+                        (while (and (< lod-to-use (-> arg1 lod-set max-lod)) (< (-> arg1 lod-set lod lod-to-use dist) cam-dist))
+                          (+! lod-to-use 1)
+                          )
+                        )
+                      )
+                    )
+                  (if (and (< (-> arg1 lod-set lod lod-to-use dist) cam-dist) (< (-> arg1 force-lod) 0))
+                      (return #f)
+                      )
+                  (let ((v1-64 (-> arg1 sink-group level))
+                        (a0-26 (+ (-> arg1 sink-group merc-sink foreground-texture-page) 6))
+                        )
+                    (when (zero? (logand (-> arg1 status) (draw-status drwf06)))
+                      (if (< cam-dist (-> v1-64 closest-object a0-26))
+                          (set! (-> v1-64 closest-object a0-26) cam-dist)
+                          )
+                      (when (and (!= a0-26 6) (!= (-> arg1 level-index) 2))
+                        (let ((a1-45 (cond
+                                       ((< 102400.0 cam-dist)
+                                        (-> arg1 mgeo header masks 0)
+                                        )
+                                       ((< 81920.0 cam-dist)
+                                        (-> arg1 mgeo header masks 1)
+                                        )
+                                       (else
+                                         (-> arg1 mgeo header masks 2)
+                                         )
+                                       )
+                                     )
+                              )
+                          (logior! (-> v1-64 texture-mask a0-26) a1-45)
+                          )
+                        )
+                      )
+                    )
+                  (if (or (guard-band-cull s4-0) (< cam-dist (* 1.2 (-> *math-camera* d))))
+                      (logior! (-> arg1 status) (draw-status drwf00))
+                      (logclear! (-> arg1 status) (draw-status drwf00))
+                      )
+                  (logior! (-> arg1 status) (draw-status drwf03))
+                  (if (logtest? (-> arg1 status) (draw-status drwf05))
+                      (return #f)
+                      )
+                  (draw-bones arg1 arg3 cam-dist)
+                  )
+                (when (and (< lod-to-use (-> arg1 cur-lod)) (logtest? (-> arg1 status) (draw-status drwf07)))
+                  (let ((v1-82 *matrix-engine*))
+                    (set! (-> v1-82 (-> v1-82 length)) (process->handle sv-16))
+                    (+! (-> v1-82 length) 1)
+                    )
+                  )
+                (lod-set! arg1 lod-to-use)
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
 
+(define *hud-lights* (new 'global 'vu-lights))
+(set-vector! (-> *hud-lights* direction 0) 1.0 0.0 0.0 1.0)
+(set-vector! (-> *hud-lights* direction 1) 0.0 1.0 0.0 1.0)
+(set-vector! (-> *hud-lights* direction 2) 0.0 0.0 1.0 1.0)
+(set-vector! (-> *hud-lights* color 0) 0.0 0.0 0.0 1.0)
+(set-vector! (-> *hud-lights* color 1) 0.0 0.0 0.0 1.0)
+(set-vector! (-> *hud-lights* color 2) 0.5 0.5 0.5 1.0)
+(set-vector! (-> *hud-lights* ambient) 0.5 0.5 0.5 1.0)
+
+(defun dma-add-process-drawable-hud ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+  (logclear! (-> arg1 status) (draw-status drwf03))
+  (when (zero? (logand (-> arg1 status) (draw-status drwf01 drwf02 drwf04)))
+    (let ((v1-6 (the-as vu-lights (+ 64 #x70000000)))
+          (a0-3 *hud-lights*)
+          )
+      (set! (-> v1-6 direction 0 quad) (-> a0-3 direction 0 quad))
+      (set! (-> v1-6 direction 1 quad) (-> a0-3 direction 1 quad))
+      (set! (-> v1-6 direction 2 quad) (-> a0-3 direction 2 quad))
+      (set! (-> v1-6 color 0 quad) (-> a0-3 color 0 quad))
+      (set! (-> v1-6 color 1 quad) (-> a0-3 color 1 quad))
+      (set! (-> v1-6 color 2 quad) (-> a0-3 color 2 quad))
+      (set! (-> v1-6 ambient quad) (-> a0-3 ambient quad))
+      )
+    (lod-set! arg1 0)
+    (logior! (-> arg1 status) (draw-status drwf03))
+    (draw-bones-hud arg1 arg3)
+    )
+  0
+  (none)
+  )

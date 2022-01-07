@@ -11,8 +11,8 @@
 
 using namespace goos;
 
-Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
-    : m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
+Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
+    : m_goos(user_profile), m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -24,6 +24,11 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
+
+  if (user_profile != "#f") {
+    Object user_code = m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
+    compile_object_file(user_profile, user_code, false);
+  }
 
   // add built-in forms to symbol info
   for (auto& builtin : g_goal_forms) {
@@ -39,7 +44,7 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   setup_goos_forms();
 }
 
-ReplStatus Compiler::execute_repl(bool auto_listen) {
+ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   // init repl
   m_repl->print_welcome_message();
   auto examples = m_repl->examples;
@@ -53,24 +58,36 @@ ReplStatus Compiler::execute_repl(bool auto_listen) {
   m_repl->get_repl().set_highlighter_callback(
       std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
 
-  if (auto_listen) {
-    m_listener.connect_to_target();
+  std::string auto_input;
+  if (auto_debug || auto_listen) {
+    auto_input.append("(lt)");
+  }
+  if (auto_debug) {
+    auto_input.append("(dbg) (:cont)");
   }
 
   while (!m_want_exit && !m_want_reload) {
     try {
-      // 1). get a line from the user (READ)
-      std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-      if (m_listener.is_connected()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-      }
-      if (m_debugger.is_halted()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-      } else if (m_debugger.is_attached()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+      std::optional<goos::Object> code;
+
+      if (auto_input.empty()) {
+        // 1). get a line from the user (READ)
+        std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+        if (m_listener.is_connected()) {
+          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+        }
+        if (m_debugger.is_halted()) {
+          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+        } else if (m_debugger.is_attached()) {
+          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+        }
+
+        code = m_goos.reader.read_from_stdin(prompt, *m_repl);
+      } else {
+        code = m_goos.reader.read_from_string(auto_input);
+        auto_input.clear();
       }
 
-      auto code = m_goos.reader.read_from_stdin(prompt, *m_repl);
       if (!code) {
         continue;
       }
