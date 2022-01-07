@@ -159,7 +159,7 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
     // the sizes given aren't the actual sizes in memory, so if you just use that, you get the
     // wrong answer. I solved this in the decompiler by using the size of the actual data, but we
     // don't really have that here.
-    u32 size = ((sizes[0] + sizes[1] + sizes[2] + 255) / 256) * 256;
+    u32 size = ((sizes[0] + sizes[1] + sizes[2] + 2047) / 256) * 256;
 
     m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
                            texture_page.segment[0].dest, size);
