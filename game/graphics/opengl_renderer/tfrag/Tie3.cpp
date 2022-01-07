@@ -121,7 +121,7 @@ bool Tie3::update_load(const std::string& level,
                        GL_STATIC_DRAW);
         }
 
-        glActiveTexture(GL_TEXTURE1);
+        glActiveTexture(GL_TEXTURE10);
         glGenTextures(1, &m_trees[tree_idx].time_of_day_texture);
         glBindTexture(GL_TEXTURE_1D, m_trees[tree_idx].time_of_day_texture);
         // just fill with zeros. this lets use use the faster texsubimage later

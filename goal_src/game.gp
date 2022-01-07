@@ -5,6 +5,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; This file sets up the OpenGOAL build system for Jak 1.
+;; This file is treated as a GOOS program. There is a single special form `defstep` that
+;; allows you to define a build step.
+
+;; Then, you can use the `make` command to build a target. Like real make, it will only rebuild things if
+;; the inputs change.
+
+;; Each defstep takes the following arguments:
+;; in - an input file. The step automatically depends on this.
+;; tool - the tool (goalc, copy, dgo, group, tpage-dir)
+;; out - a list of outputs (unlike make, we support multiple outputs without hacks!)
+;; dep - a list of outputs from other rules that are required for this.
+
+;; Before the build order is determined, the tool gets to look at its input file and tell the build system
+;; about other deps. For example, in a "dgo" rule, you don't have to say that you depend on all of your input
+;; files, the DGO tool provides that information to the build system.
+
+;; It is an error to provide two steps to make the same file, even if they are identical.
+;; It is an error to not provide a step to make a required file.
+;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
@@ -67,12 +86,16 @@
     )
   )
 
-(defmacro cgo (output-name desc-file-name)
+(define *all-cgos* '())
+(defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
-  `(defstep :in ,(string-append "goal_src/dgos/" desc-file-name)
-     :tool 'dgo
-     :out '(,(string-append "out/iso/" output-name))
-     )
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "goal_src/dgos/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
   )
 
 (defun tpage-name (id)
@@ -107,27 +130,31 @@
     )
   )
 
+(define *all-str* '())
 (defmacro copy-strs (&rest strs)
   `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
 
-(defmacro copy-str (name)
+(defun copy-str (name)
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "STR/" name ".STR")))
-    `(defstep :in ,path
-              :tool 'copy
-              :out '(,(string-append "out/iso/" name ".STR")))))
+         (path (string-append "iso_data/" folder "STR/" name ".STR"))
+         (out-file (string-append "out/iso/" name ".STR")))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-file))
+    (set! *all-str* (cons out-file *all-str*))))
 
+(define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
   `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
 
-(defmacro copy-vis-file (name)
+(defun copy-vis-file (name)
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "VIS/" name ".VIS")))
-    `(defstep :in ,path
-              :tool 'copy
-              :out '(,(string-append "out/iso/" name ".VIS")))))
-
-
+         (path (string-append "iso_data/" folder "VIS/" name ".VIS"))
+         (out-name (string-append "out/iso/" name ".VIS")))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-name))
+    (set! *all-vis* (cons out-name *all-vis*))))
 
 
 (defmacro group (name &rest stuff)
@@ -135,6 +162,13 @@
      :tool 'group
      :out '(,(string-append "GROUP:" name))
      :dep '(,@stuff))
+  )
+
+(defun group-list (name stuff)
+  (defstep :in ""
+     :tool 'group
+     :out `(,(string-append "GROUP:" name))
+     :dep stuff)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -184,6 +218,25 @@
   :out '("out/obj/game-cnt.go")
   )
 
+;; the TWEAKVAL file
+(defstep :in "iso_data/MUS/TWEAKVAL.MUS"
+  :tool 'copy
+  :out '("out/iso/TWEAKVAL.MUS"))
+
+;; the VAGDIR file
+(defstep :in "iso_data/VAG/VAGDIR.AYB"
+  :tool 'copy
+  :out '("out/iso/VAGDIR.AYB"))
+
+;; the save icon file
+(defstep :in "iso_data/DRIVERS/SAVEGAME.ICO"
+  :tool 'copy
+  :out '("out/iso/SAVEGAME.ICO"))
+
+;; the loading screen file
+(defstep :in "iso_data/DRIVERS/SCREEN1.USA"
+  :tool 'copy
+  :out '("out/iso/SCREEN1.USA"))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Textures (Common)
@@ -215,7 +268,7 @@
  "fuel-cell-ag"
  "money-ag"
  "buzzer-ag"
- "ecovalve-ag-ART-GAME"
+ "ecovalve-ag"
  "crate-ag"
  "speaker-ag"
  "fuelcell-naked-ag"
@@ -239,64 +292,6 @@
          "out/iso/6COMMON.TXT")
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;
-;; ISO Group
-;;;;;;;;;;;;;;;;;;;;;
-;; the iso group is a group of files required to boot.
-
-(group "iso"
-       "out/iso/0COMMON.TXT"
-       "out/iso/KERNEL.CGO"
-       "out/iso/GAME.CGO"
-       ;; level dgo
-       "out/iso/VI1.DGO"
-       "out/iso/VI2.DGO"
-       "out/iso/VI3.DGO"
-       "out/iso/TRA.DGO"
-       "out/iso/FIC.DGO"
-       "out/iso/ROL.DGO"
-       "out/iso/SUN.DGO"
-       "out/iso/SUB.DGO"
-       "out/iso/SWA.DGO"
-       "out/iso/OGR.DGO"
-       "out/iso/JUN.DGO"
-       "out/iso/JUB.DGO"
-       "out/iso/MAI.DGO"
-       "out/iso/SNO.DGO"
-       "out/iso/BEA.DGO"
-       "out/iso/LAV.DGO"
-       "out/iso/CIT.DGO"
-       "out/iso/FIN.DGO"
-       ;; level vis
-       "out/iso/VI1.VIS"
-       "out/iso/VI2.VIS"
-       "out/iso/VI3.VIS"
-       "out/iso/TRA.VIS"
-       "out/iso/FIC.VIS"
-       "out/iso/ROL.VIS"
-       "out/iso/SUN.VIS"
-       "out/iso/SUB.VIS"
-       "out/iso/SWA.VIS"
-       "out/iso/OGR.VIS"
-       "out/iso/JUN.VIS"
-       "out/iso/JUB.VIS"
-       "out/iso/MAI.VIS"
-       "out/iso/SNO.VIS"
-       "out/iso/BEA.VIS"
-       "out/iso/LAV.VIS"
-       "out/iso/CIT.VIS"
-       "out/iso/FIN.VIS"
-
-       "out/iso/FUCVICTO.STR"
-       "out/iso/FUCV2.STR"
-       "out/iso/FUCV3.STR"
-       "out/iso/FUCV4.STR"
-       "out/iso/FUCV5.STR"
-       "out/iso/FUCV6.STR"
-       "out/iso/FUCV7.STR"
-       "out/iso/FUCV8.STR"
-       )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -334,13 +329,20 @@
 ;; as we find objects that exist in multiple levels, put them here
 
 (copy-gos
+ "sharkey-ag"
+ "orb-cache-top-ag"
+ "warp-gate-switch-ag"
  "warpgate-ag"
- "sharkey-ag-BEA-TRA-VI2"
- "eichar-racer+0-ag"
-
  "babak-ag"
+ "oracle-ag"
+ "village-cam-ag"
+
+ "eichar-racer+0-ag"
+ "ef-plane-ag"
+ "racer-ag"
 
  "eichar-flut+0-ag"
+ "flut-saddle-ag"
   )
 
 
@@ -351,15 +353,13 @@
 (goal-src-sequence
   "levels/"
    :deps ;; no idea what these depend on, make it depend on the whole engine
-   ("out/obj/default-menu.o")
+   ("out/obj/ticky.o")
 
    "village_common/villagep-obs.gc"
    "village_common/oracle.gc"
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
-   "common/mistycannon.gc"
-   "common/babak-with-cannon.gc"
    "common/snow-bunny.gc"
    "common/battlecontroller.gc"
 
@@ -374,7 +374,6 @@
    "flut_common/flutflut.gc"
    "flut_common/target-flut.gc"
    )
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -392,7 +391,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "village1/farmer.gc"
  "village1/explorer.gc"
@@ -430,19 +429,14 @@
  "medres-village11-ag"
  "medres-village12-ag"
  "medres-village13-ag"
- "oracle-ag-VI1"
- "orb-cache-top-ag-VI1"
  "reflector-middle-ag"
  "revcycle-ag"
  "revcycleprop-ag"
  "ropebridge-32-ag"
  "sage-ag"
  "sagesail-ag"
- "sharkey-ag-VI1"
  "villa-starfish-ag"
- "village-cam-ag-VI1"
  "village1cam-ag"
- "warp-gate-switch-ag-VI1-VI3"
  "water-anim-village1-ag"
  "windmill-sail-ag"
  "windspinner-ag"
@@ -463,7 +457,7 @@
 (goal-src-sequence
  "levels/jungle/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "jungle-elevator.gc"
  "bouncer.gc"
@@ -480,35 +474,32 @@
 (copy-textures 385 531 386 388 765)
 
 (copy-gos
-  "eichar-fish+0-ag-JUN"
+  "eichar-fish+0-ag"
   "accordian-ag"
   "bounceytarp-ag"
   "catch-fisha-ag"
   "catch-fishb-ag"
   "catch-fishc-ag"
-  "darkvine-ag-JUN"
-  "ecovalve-ag-JUB-JUN"
+  "darkvine-ag"
   "fish-net-ag"
   "fisher-ag"
   "hopper-ag"
   "junglecam-ag"
   "junglefish-ag"
   "junglesnake-ag"
-  "launcherdoor-ag-JUN"
+  "launcherdoor-ag"
   "logtrap-ag"
   "lurkerm-piston-ag"
   "lurkerm-tall-sail-ag"
   "maindoor-ag"
   "medres-firecanyon-ag"
-  "orb-cache-top-ag-JUN"
   "periscope-ag"
   "plat-button-ag"
-  "plat-eco-ag-JUN"
+  "plat-eco-ag"
   "precurbridge-ag"
   "reflector-mirror-ag"
   "ropebridge-52-ag"
   "ropebridge-70-ag"
-  "sharkey-ag-JUN-MIS"
   "sidedoor-ag"
   "towertop-ag"
   "water-anim-jungle-ag"
@@ -527,7 +518,7 @@
 (goal-src-sequence
  "levels/jungleb/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "jungleb-obs.gc"
  "plat-flip.gc"
@@ -540,13 +531,95 @@
 (copy-gos
   "plant-boss-main+0-ag"
   "aphid-lurker-ag"
-  "darkvine-ag-JUB"
   "eggtop-ag"
-  "jng-iris-door-ag-JUB"
+  "jng-iris-door-ag"
   "plant-boss-ag"
   "plat-flip-ag"
   "plat-jungleb-ag"
   "jungleb-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; intro only
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "INT.DGO" "int.gd")
+
+(copy-vis-files "INT")
+
+(goal-src-sequence
+ "levels/intro/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o")
+
+ "evilbro.gc"
+ )
+
+(copy-textures 1455 1457 1456 1454)
+
+(copy-gos
+  "evilbro-ag"
+  "evilsis-ag"
+  "intro-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; misty island
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MIS.DGO" "mis.gd")
+
+(copy-vis-files "MIS")
+
+(goal-src-sequence
+  "levels/misty/"
+  :deps ("out/obj/evilbro.o")
+  "mistycannon.gc"
+  "babak-with-cannon.gc"
+  "misty-obs.gc"
+  "misty-warehouse.gc"
+  "misty-conveyor.gc"
+  "mud.gc"
+  "muse.gc"
+  "bonelurker.gc"
+  "quicksandlurker.gc"
+  "misty-teetertotter.gc"
+  "balloonlurker.gc"
+  "misty-part.gc"
+  "sidekick-human.gc"
+  )
+
+(copy-textures 516 521 518 520)
+
+(copy-gos
+  "mistycannon-ag"
+  "sack-ag"
+  "balloonlurker-ag"
+  "boatpaddle-ag"
+  "bonelurker-ag"
+  "breakaway-left-ag"
+  "breakaway-mid-ag"
+  "breakaway-right-ag"
+  "darkecocan-ag"
+  "keg-ag"
+  "keg-conveyor-ag"
+  "keg-conveyor-paddle-ag"
+  "mis-bone-bridge-ag"
+  "mis-bone-platform-ag"
+  "mistycam-ag"
+  "muse-ag"
+  "quicksandlurker-ag"
+  "ropebridge-36-ag"
+  "rounddoor-ag"
+  "sidekick-human-ag"
+  "silostep-ag"
+  "teetertotter-ag"
+  "water-anim-misty-ag"
+  "wheel-ag"
+  "windturbine-ag"
+  "misty-vis"
   )
 
 
@@ -562,7 +635,7 @@
 
 (goal-src-sequence
   "levels/beach/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/ticky.o")
   "air-h.gc"
   "air.gc"
   "wobbler.gc"
@@ -584,12 +657,11 @@
 (copy-textures 212 214 213 215)
 
 (copy-gos
-  "barrel-ag-BEA"
+  "barrel-ag"
   "beachcam-ag"
   "bird-lady-ag"
   "bird-lady-beach-ag"
   "bladeassm-ag"
-  "ecovalve-ag-BEA"
   "ecoventrock-ag"
   "flutflut-ag"
   "flutflutegg-ag"
@@ -601,10 +673,7 @@
   "lurkerpuppy-ag"
   "lurkerworm-ag"
   "mayor-ag"
-  "mistycannon-ag"
-  "orb-cache-top-ag-BEA"
   "pelican-ag"
-  "sack-ag-BEA"
   "sculptor-ag"
   "sculptor-muse-ag"
   "seagull-ag"
@@ -627,7 +696,7 @@
 (goal-src-sequence
  "levels/firecanyon/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "firecanyon-part.gc"
  "assistant-firecanyon.gc"
@@ -640,10 +709,7 @@
 (copy-gos
   "assistant-firecanyon-ag"
   "balloon-ag"
-  "crate-darkeco-cluster-ag-FIC"
-  "ecovalve-ag-FIC-OGR"
-  "ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA"
-  "racer-ag-FIC-ROL"
+  "crate-darkeco-cluster-ag"
   "spike-ag"
   "firecanyon-vis")
 
@@ -660,7 +726,7 @@
 ;; The code
 (goal-src-sequence
   "levels/training/"
-  :deps ("out/obj/default-menu.o") ;; makes us depend on the whole engine
+  :deps ("out/obj/ticky.o") ;; makes us depend on the whole engine
 
   "training-obs.gc"
   "training-part.gc"
@@ -670,14 +736,9 @@
 (copy-textures 1309 1311 1310 1308 775)
 
 (copy-gos
-  "ecovalve-ag-TRA"
-  "jng-iris-door-ag-TRA"
-  "plat-eco-ag-TRA"
-  "pontoonfive-ag-TRA"
   "scarecrow-a-ag"
   "scarecrow-b-ag"
   "trainingcam-ag"
-  "warp-gate-switch-ag-TRA"
   "water-anim-training-ag"
   "training-vis"
   )
@@ -692,7 +753,7 @@
 
 (goal-src-sequence
  "levels/village2/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "village2-part.gc"
  "village2-obs.gc"
  "village2-part2.gc"
@@ -711,7 +772,6 @@
 (copy-gos
   "allpontoons-ag"
   "assistant-village2-ag"
-  "barrel-ag-VI2"
   "ceilingflag-ag"
   "exit-chamber-dummy-ag"
   "fireboulder-ag"
@@ -723,9 +783,7 @@
   "medres-rolling1-ag"
   "medres-village2-ag"
   "ogreboss-village2-ag"
-  "oracle-ag-VI2"
-  "orb-cache-top-ag-VI2"
-  "pontoonfive-ag-VI2"
+  "pontoonfive-ag"
   "pontoonten-ag"
   "precursor-arm-ag"
   "sage-bluehut-ag"
@@ -734,10 +792,7 @@
   "swamp-rope-ag"
   "swamp-tetherrock-ag"
   "swamp-tetherrock-explode-ag"
-  "swampcam-ag-VI2"
-  "village-cam-ag-VI2"
   "village2cam-ag"
-  "warp-gate-switch-ag-VI2"
   "warrior-ag"
   "water-anim-village2-ag"
   "village2-vis"
@@ -754,7 +809,7 @@
 
 (goal-src-sequence
  "levels/rolling/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "rolling-obs.gc"
  "rolling-lightning-mole.gc"
  "rolling-robber.gc"
@@ -764,7 +819,6 @@
 (copy-textures 923 926 924 925 1353)
 
 (copy-gos
-  "ecovalve-ag-ROL"
   "dark-plant-ag"
   "happy-plant-ag"
   "lightning-mole-ag"
@@ -788,7 +842,7 @@
 
 (goal-src-sequence
   "levels/sunken/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/ticky.o")
   "sunken-part.gc"
   "sunken-part2.gc"
   "sunken-part3.gc"
@@ -819,14 +873,12 @@
 (copy-textures 661 663 714 662 766)
 
 (copy-gos
-  "eichar-tube+0-ag-SUN"
+  "eichar-tube+0-ag"
   "bully-ag"
   "double-lurker-ag"
   "double-lurker-top-ag"
   "exit-chamber-ag"
   "generic-button-ag"
-  "launcherdoor-ag-SUN"
-  "orb-cache-top-ag-SUN"
   "orbit-plat-ag"
   "orbit-plat-bottom-ag"
   "plat-sunken-ag"
@@ -834,12 +886,12 @@
   "qbert-plat-ag"
   "qbert-plat-on-ag"
   "seaweed-ag"
-  "shover-ag-SUN"
+  "shover-ag"
   "side-to-side-plat-ag"
   "square-platform-ag"
-  "steam-cap-ag-SUN"
+  "steam-cap-ag"
   "sun-iris-door-ag"
-  "sunkencam-ag-SUN"
+  "sunkencam-ag"
   "sunkenfisha-ag"
   "wall-plat-ag"
   "water-anim-sunken-ag"
@@ -862,16 +914,11 @@
 (copy-textures 163 164 166 162 764)
 
 (copy-gos
-  "ecovalve-ag-SUB"
-  "eichar-tube+0-ag-SUB"
   "blue-eco-charger-ag"
   "blue-eco-charger-orb-ag"
   "floating-launcher-ag"
   "helix-button-ag"
   "helix-slide-door-ag"
-  "shover-ag-SUB"
-  "steam-cap-ag-SUB"
-  "sunkencam-ag-SUB"
   "sunkenb-vis"
   )
 
@@ -886,7 +933,7 @@
 
 (goal-src-sequence
  "levels/swamp/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "swamp-obs.gc"
  "swamp-bat.gc"
  "swamp-rat.gc"
@@ -899,10 +946,7 @@
 (copy-textures 358 659 629 630)
 
 (copy-gos
-  "ecovalve-ag-SWA"
-  "sharkey-ag-SWA"
-  "eichar-pole+0-ag-SWA"
-  "flut-saddle-ag-SWA"
+  "eichar-pole+0-ag"
   "balance-plat-ag"
   "billy-ag"
   "billy-sidekick-ag"
@@ -913,7 +957,7 @@
   "swamp-rat-nest-ag"
   "swamp-rock-ag"
   "swamp-spike-ag"
-  "swampcam-ag-SWA"
+  "swampcam-ag"
   "tar-plat-ag"
   "swamp-vis"
   )
@@ -929,7 +973,7 @@
 
 (goal-src-sequence
  "levels/ogre/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "ogre-part.gc"
  "ogreboss.gc"
  "ogre-obs.gc"
@@ -939,8 +983,6 @@
 (copy-textures 875 967 884 1117)
 
 (copy-gos
-  "crate-darkeco-cluster-ag-OGR"
-  "racer-ag-OGR"
   "flying-lurker-ag"
   "medres-snow-ag"
   "ogre-bridge-ag"
@@ -970,7 +1012,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
  "village3/village3-part.gc"
  "village3/village3-obs.gc"
  "village3/minecart.gc"
@@ -996,11 +1038,9 @@
   "minecartsteel-ag"
   "minershort-ag"
   "minertall-ag"
-  "oracle-ag-VI3"
   "pistons-ag"
   "sage-village3-ag"
   "vil3-bridge-36-ag"
-  "village-cam-ag-VI3"
   "water-anim-village3-ag"
   "village3-vis"
   )
@@ -1018,7 +1058,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o"
+ ("out/obj/ticky.o"
   )
  "maincave/cavecrystal-light.gc"
  "darkcave/darkcave-obs.gc"
@@ -1038,17 +1078,16 @@
 (copy-textures 1313 1315 1314 1312 767)
 
 (copy-gos
-  "baby-spider-ag-MAI"
-  "cavetrapdoor-ag-MAI"
+  "baby-spider-ag"
+  "cavetrapdoor-ag"
   "dark-crystal-ag"
   "driller-lurker-ag"
-  "ecovalve-ag-MAI"
   "gnawer-ag"
   "launcherdoor-maincave-ag"
   "maincavecam-ag"
   "mother-spider-ag"
-  "plat-ag-MAI"
-  "spider-egg-ag-DAR-MAI"
+  "plat-ag"
+  "spider-egg-ag"
   "spiderwebs-ag"
   "water-anim-maincave-ag"
   "water-anim-maincave-water-ag"
@@ -1066,7 +1105,7 @@
 
 (goal-src-sequence
  "levels/snow/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "target-snowball.gc"
  "target-ice.gc"
  "ice-cube.gc"
@@ -1084,11 +1123,7 @@
 (copy-textures 710 842 711 712)
 
 (copy-gos
-  "ecovalve-ag-SNO"
-  "orb-cache-top-ag-SNO"
-  "eichar-pole+0-ag-SNO"
   "eichar-ice+0-ag"
-  "flut-saddle-ag-SNO"
   "flutflut-plat-large-ag"
   "flutflut-plat-med-ag"
   "flutflut-plat-small-ag"
@@ -1124,7 +1159,7 @@
 
 (goal-src-sequence
   "levels/lavatube/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/ticky.o")
 
   "lavatube-obs.gc"
   "lavatube-energy.gc"
@@ -1135,8 +1170,6 @@
 (copy-textures 1338 1340 1339 1337)
 
 (copy-gos
-  "ecovalve-ag-LAV"
-  "racer-ag-LAV"
   "assistant-lavatube-start-ag"
   "chainmine-ag"
   "darkecobarrel-ag"
@@ -1166,7 +1199,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/battlecontroller.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
@@ -1180,9 +1213,6 @@
 (copy-textures 1415 1417 1416 1414)
 
 (copy-gos
-  "babak-ag-CIT"
-  "ecovalve-ag-CIT"
-  "orb-cache-top-ag-CIT"
   "assistant-lavatube-end-ag"
   "bluesage-ag"
   "citadelcam-ag"
@@ -1212,7 +1242,6 @@
   "plat-citb-ag"
   "plat-eco-citb-ag"
   "redsage-ag"
-  "warp-gate-switch-ag-CIT"
   "yellowsage-ag"
   "citadel-vis"
   )
@@ -1227,7 +1256,7 @@
 
 (goal-src-sequence
   "levels/finalboss/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/assistant-citadel.o")
 
   "robotboss-h.gc"
   "robotboss-part.gc"
@@ -1246,7 +1275,6 @@
 (copy-gos
   "darkecobomb-ag"
   "ecoclaw-ag"
-  "ecovalve-ag-FIN"
   "finalbosscam-ag"
   "green-eco-lurker-ag"
   "greenshot-ag"
@@ -1605,3 +1633,14 @@
  )
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;; ISO Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the iso group is a group of files built by the "(mi)" command.
+
+(group-list "iso"
+ `("out/iso/0COMMON.TXT"
+   ,@*all-cgos*
+   ,@*all-vis*
+   ,@*all-str*)
+ )
