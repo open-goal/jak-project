@@ -137,6 +137,9 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
   }
 
   // put in pool.
+  if (render_state->dump_playback) {
+    return stats;
+  }
   for (int i = 0; i < 2; i++) {
     // todo - these are hardcoded and rely on the vram layout.
     u32 tbp = i == 0 ? 8064 : 8096;

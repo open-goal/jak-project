@@ -163,7 +163,15 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     // HACK: this renderers 3D sprites with the 2D renderer. amazingly, it almost works.
     // assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
-      do_2d_group0_block_cpu(sprite_count, render_state, prof);
+      if (run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0) {
+        if (m_2d_enable) {
+          do_2d_group0_block_cpu(sprite_count, render_state, prof);
+        }
+      } else {
+        if (m_3d_enable) {
+          do_3d_block_cpu(sprite_count, render_state, prof);
+        }
+      }
     }
   }
 }
@@ -218,7 +226,7 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma,
     assert(run.vifcode0().kind == VifCode::Kind::NOP);
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
-    if (m_enabled) {
+    if (m_enabled && m_2d_enable) {
       do_2d_group1_block_cpu(sprite_count, render_state, prof);
     }
   }
@@ -293,6 +301,11 @@ void SpriteRenderer::draw_debug_window() {
   ImGui::Text("2D Group 1 (HUD) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp1,
               m_debug_stats.count_2d_grp1);
   ImGui::Checkbox("Extra Debug", &m_extra_debug);
+  ImGui::Checkbox("2d", &m_2d_enable);
+  ImGui::SameLine();
+  ImGui::Checkbox("3d", &m_3d_enable);
+  ImGui::SameLine();
+  ImGui::Checkbox("3d-debug", &m_3d_debug);
   if (ImGui::TreeNode("direct")) {
     m_sprite_renderer.draw_debug_window();
     ImGui::TreePop();
@@ -715,6 +728,251 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count,
 
   if (m_extra_debug) {
     ImGui::End();
+  }
+}
+
+std::array<math::Vector3f, 3> sprite_quat_to_rot(float qi, float qj, float qk) {
+  std::array<math::Vector3f, 3> result;
+  float qr = std::sqrt(std::abs(1.f - (qi * qi + qj * qj + qk * qk)));
+  // fmt::print("q: {} {} {} {}\n", qi, qj, qk, qr);
+  result[0][0] = 1.f - 2.f * (qj * qj + qk * qk);
+  result[1][0] = 2.f * (qi * qj - qk * qr);
+  result[2][0] = 2.f * (qi * qk + qj * qr);
+  result[0][1] = 2.f * (qi * qj + qk * qr);
+  result[1][1] = 1.f - 2.f * (qi * qi + qk * qk);
+  result[2][1] = 2.f * (qj * qk - qi * qr);
+  result[0][2] = 2.f * (qi * qk - qj * qr);
+  result[1][2] = 2.f * (qj * qk + qi * qr);
+  result[2][2] = 1.f - 2.f * (qi * qi + qj * qj);
+  return result;
+}
+
+Vector4f sprite_transform2(const Vector4f& root,
+                           const Vector4f& off,
+                           const Matrix4f& cam,
+                           const std::array<math::Vector3f, 3>& sprite_rot,
+                           float sx,
+                           float sy,
+                           const Vector4f& hvdf_off,
+                           float pfog0,
+                           float fog_min,
+                           float fog_max) {
+  Vector4f pos = root;
+  // fmt::print("root   : {}\n", root.to_string_aligned());
+  // fmt::print("off    : {} s {} {}\n", off.to_string_aligned(), sx, sy);
+
+  math::Vector3f offset =
+      sprite_rot[0] * off.x() * sx + sprite_rot[1] * off.y() + sprite_rot[2] * off.z() * sy;
+  // fmt::print("off (r): {}\n", offset.to_string_aligned());
+
+  pos.x() += offset.x();
+  pos.y() += offset.y();
+  pos.z() += offset.z();
+  Vector4f transformed_pos = matrix_transform(cam, pos);
+  float Q = pfog0 / transformed_pos.w();
+  transformed_pos.x() *= Q;
+  transformed_pos.y() *= Q;
+  transformed_pos.z() *= Q;
+  Vector4f offset_pos = transformed_pos + hvdf_off;
+  offset_pos.w() = std::max(offset_pos.w(), fog_max);
+  offset_pos.w() = std::min(offset_pos.w(), fog_min);
+
+  return offset_pos;
+}
+
+void SpriteRenderer::do_3d_block_cpu(u32 count,
+                                     SharedRenderState* render_state,
+                                     ScopedProfilerNode& prof) {
+  Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
+  for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
+    SpriteHud2DPacket packet;
+    memset(&packet, 0, sizeof(packet));
+    //  ilw.y vi08, 1(vi02)        |  nop                          vi08 = matrix
+    u32 offset_selector = m_vec_data_2d[sprite_idx].matrix();
+    // assert(offset_selector == 0 || offset_selector == 1);
+    // moved this out of the loop.
+    //  lq.xyzw vf25, 900(vi00)    |  nop                          vf25 = cam_mat
+    //  lq.xyzw vf26, 901(vi00)    |  nop
+    //  lq.xyzw vf27, 902(vi00)    |  nop
+    //  lq.xyzw vf28, 903(vi00)    |  nop
+    //  lq.xyzw vf30, 904(vi00)    |  nop                          vf30 = hvdf_offset
+    // vf30
+    Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
+
+    //  lqi.xyzw vf01, vi02        |  nop
+    Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
+    //  lqi.xyzw vf05, vi02        |  nop
+    Vector4f flags_vf05 = m_vec_data_2d[sprite_idx].flag_rot_sy;
+    //  lqi.xyzw vf11, vi02        |  nop
+    Vector4f color_vf11 = m_vec_data_2d[sprite_idx].rgba;
+
+    // multiplications from the right column
+    Vector4f transformed_pos_vf02 = matrix_transform(camera_matrix, pos_vf01);
+
+    Vector4f scales_vf01 = pos_vf01;  // now used for something else.
+    //  lq.xyzw vf12, 1020(vi00)   |  mulaw.xyzw ACC, vf28, vf00
+    // vf12 is fog consts
+    Vector4f fog_consts_vf12(m_frame_data.fog_min, m_frame_data.fog_max, m_frame_data.max_scale,
+                             m_frame_data.bonus);
+    //  ilw.y vi08, 1(vi02)        |  maddax.xyzw ACC, vf25, vf01
+    // load offset selector for the next round.
+    //  nop                        |  madday.xyzw ACC, vf26, vf01
+    //  nop                        |  maddz.xyzw vf02, vf27, vf01
+
+    //  move.w vf05, vf00          |  addw.z vf01, vf00, vf05
+    // scales_vf01.z = sy
+    scales_vf01.z() = flags_vf05.w();  // start building the scale vector
+    flags_vf05.w() = 1.f;              // what are we building in flags right now??
+
+    //  nop                        |  nop
+    //  div Q, vf31.x, vf02.w      |  muly.z vf05, vf05, vf31
+    float Q = m_frame_data.pfog0 / transformed_pos_vf02.w();
+    flags_vf05.z() *= m_frame_data.deg_to_rad;
+    //  nop                        |  mul.xyzw vf03, vf02, vf29
+    Vector4f scaled_pos_vf03 = transformed_pos_vf02.elementwise_multiply(m_frame_data.hmge_scale);
+    //  nop                        |  nop
+    //  nop                        |  nop
+    //  nop                        |  mulz.z vf04, vf05, vf05 (ts)
+    // fmt::print("rot is {} degrees\n", flags_vf05.z() * 360.0 / (2.0 * M_PI));
+
+    //  the load is for rotation stuff,
+    //  lq.xyzw vf14, 1001(vi00)   |  clipw.xyz vf03, vf03      (used for fcand)
+    //  iaddi vi06, vi00, 0x1      |  adda.xyzw ACC, vf11, vf11 (used for fmand)
+
+    // upcoming fcand with 0x3f, that checks all of them.
+    bool fcand_result = clip_xyz_plus_minus(scaled_pos_vf03);
+    bool fmand_result = color_vf11.w() == 0;  // (really w+w, but I don't think it matters?)
+
+    //  L8:
+    //  xgkick double buffer setup
+    //  ior vi05, vi15, vi00       |  mul.zw vf01, vf01, Q
+    scales_vf01.z() *= Q;  // sy
+    scales_vf01.w() *= Q;  // sx
+
+    //  lq.xyzw vf06, 998(vi00)    |  mulz.xyzw vf15, vf05, vf04 (ts)
+    auto adgif_vf06 = m_frame_data.adgif_giftag;
+
+    //  lq.xyzw vf14, 1002(vi00) ts|  mula.xyzw ACC, vf05, vf14 (ts)
+
+    //  fmand vi01, vi06           |  mul.xyz vf02, vf02, Q
+    transformed_pos_vf02.x() *= Q;
+    transformed_pos_vf02.y() *= Q;
+    transformed_pos_vf02.z() *= Q;
+
+    //  ibne vi00, vi01, L10       |  addz.x vf01, vf00, vf01
+    scales_vf01.x() = scales_vf01.z();  // = sy
+    if (fmand_result) {
+      continue;  // reject!
+    }
+
+    //  lqi.xyzw vf07, vi03        |  mulz.xyzw vf16, vf15, vf04 (ts)
+    // vf07 is first use adgif
+
+    //  lq.xyzw vf14, 1003(vi00)   |  madda.xyzw ACC, vf15, vf14 (ts both)
+
+    //  lqi.xyzw vf08, vi03        |  add.xyzw vf10, vf02, vf30
+    // vf08 is second user adgif
+    Vector4f offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
+    //    if (m_extra_debug) {
+    //      ImGui::Text("sel %d", offset_selector);
+    //      //ImGui::Text("hvdf off z: %f tf/w z: %f", hvdf_offset.z(), transformed_pos_vf02.z());
+    //      imgui_vec(hvdf_offset, "hvdf");
+    //      imgui_vec(transformed_pos_vf02, "tf'd");
+    //    }
+
+    //  lqi.xyzw vf09, vi03        |  mulw.x vf01, vf01, vf01
+    // vf09 is third user adgif
+    scales_vf01.x() *= scales_vf01.w();  // x = sx * sy
+
+    //  sqi.xyzw vf06, vi05        |  mulz.xyzw vf15, vf16, vf04 (ts)
+    // FIRST ADGIF IS adgif_vf06
+    packet.adgif_giftag = adgif_vf06;
+
+    // just do all 5 now.
+    packet.user_adgif = m_adgif[sprite_idx];
+
+    offset_pos_vf10.w() = std::max(offset_pos_vf10.w(), m_frame_data.fog_max);
+
+    scales_vf01.z() = std::max(scales_vf01.z(), m_frame_data.min_scale);
+    scales_vf01.w() = std::max(scales_vf01.w(), m_frame_data.min_scale);
+
+    scales_vf01.x() *= m_frame_data.inv_area;  // x = sx * sy * inv_area (area ratio)
+
+    offset_pos_vf10.w() = std::min(offset_pos_vf10.w(), m_frame_data.fog_min);
+
+    scales_vf01.z() = std::min(scales_vf01.z(), fog_consts_vf12.z());
+    scales_vf01.w() = std::min(scales_vf01.w(), fog_consts_vf12.z());
+    bool use_first_giftag = offset_selector == 0;
+
+    auto flag_vi07 = m_vec_data_2d[sprite_idx].flag();
+
+    scales_vf01.x() = std::min(scales_vf01.x(), 1.f);
+
+    transformed_pos_vf02.w() = offset_pos_vf10.w() - fog_consts_vf12.y();
+
+    color_vf11.w() *= scales_vf01.x();  // is this right? doesn't this stall??
+
+    //    ibne vi00, vi09, L6        |  nop
+    if (transformed_pos_vf02.w() != 0) {
+      use_first_giftag = false;
+    }
+
+    flag_vi07 = 0;  // todo hack
+    Vector4f* xy_array = m_frame_data.xyz_array + flag_vi07;
+    math::Vector<s32, 4> color_integer_vf11 = color_vf11.cast<s32>();
+
+    packet.color = color_integer_vf11;
+
+    if (fcand_result) {
+      continue;  // reject (could move earlier)
+    }
+
+    Vector4f transformed[4];
+
+    flags_vf05 = m_vec_data_2d[sprite_idx].flag_rot_sy;
+    // do rot
+    auto rot = sprite_quat_to_rot(flags_vf05.x(), flags_vf05.y(), flags_vf05.z());
+    //    fmt::print("root: {}\n", offset_pos_vf10.to_string_aligned());
+
+    // for (int i = 0; i < 3; i++) {
+    //  fmt::print("M{}: {}\n", i, rot[i].to_string_aligned());
+    // }
+    for (int i = 0; i < 4; i++) {
+      transformed[i] =
+          sprite_transform2(m_vec_data_2d[sprite_idx].xyz_sx, xy_array[i], camera_matrix, rot,
+                            m_vec_data_2d[sprite_idx].sx(), m_vec_data_2d[sprite_idx].sy(),
+                            m_3d_matrix_data.hvdf_offset, m_frame_data.pfog0, m_frame_data.fog_min,
+                            m_frame_data.fog_max);
+    }
+    Vector4f xy0_vf19 = transformed[0];
+    Vector4f xy1_vf20 = transformed[1];
+    Vector4f xy2_vf21 = transformed[2];
+    Vector4f xy3_vf22 = transformed[3];
+
+    packet.sprite_giftag =
+        use_first_giftag ? m_frame_data.sprite_2d_giftag : m_frame_data.sprite_2d_giftag2;
+
+    Vector4f st0_vf06 = m_frame_data.st_array[0];
+    Vector4f st1_vf07 = m_frame_data.st_array[1];
+    Vector4f st2_vf08 = m_frame_data.st_array[2];
+    Vector4f st3_vf09 = m_frame_data.st_array[3];
+
+    packet.st0 = st0_vf06;
+    packet.st1 = st1_vf07;
+    packet.st2 = st2_vf08;
+    packet.st3 = st3_vf09;
+
+    auto xy0_vf19_int = (xy0_vf19 * 16.f).cast<s32>();
+    auto xy1_vf20_int = (xy1_vf20 * 16.f).cast<s32>();
+    auto xy2_vf21_int = (xy2_vf21 * 16.f).cast<s32>();
+    auto xy3_vf22_int = (xy3_vf22 * 16.f).cast<s32>();
+
+    packet.xy0 = xy0_vf19_int;
+    packet.xy1 = xy1_vf20_int;
+    packet.xy2 = xy2_vf21_int;
+    packet.xy3 = xy3_vf22_int;
+
+    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
   }
 }
 
