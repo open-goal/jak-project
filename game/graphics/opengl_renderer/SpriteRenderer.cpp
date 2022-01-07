@@ -34,7 +34,7 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
       m_sprite_renderer(fmt::format("{}.sprites", name),
                         my_id,
-                        100,
+                        4000,
                         DirectRenderer::Mode::SPRITE_CPU),
       m_direct_renderer(fmt::format("{}.direct", name), my_id, 100, DirectRenderer::Mode::NORMAL) {}
 
@@ -133,7 +133,6 @@ void SpriteRenderer::render_3d(DmaFollower& dma) {
 void SpriteRenderer::render_2d_group0(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  (void)dma;
   while (looks_like_2d_chunk_start(dma)) {
     m_debug_stats.blocks_2d_grp0++;
     // 4 packets per chunk

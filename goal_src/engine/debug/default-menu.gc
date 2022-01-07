@@ -5,8 +5,6 @@
 ;; name in dgo: default-menu
 ;; dgos: GAME, ENGINE
 
-(declare-file (debug))
-
 ;; Forward declarations for stuff we haven't written yet:
 (define-extern *edit-instance* string)
 
@@ -16,12 +14,13 @@
 ;; DECOMP BEGINS
 
 ;; this file is debug only
+(declare-file (debug))
 (when *debug-segment*
 (define *debug-menu-context* (new 'debug 'debug-menu-context))
 
 (define *dm-cam-mode-interpolation* 0)
 
-(defun-debug dm-cam-mode-func ((arg0 (state camera-slave)) (arg1 debug-menu-msg))
+(defun dm-cam-mode-func ((arg0 (state camera-slave)) (arg1 debug-menu-msg))
   (if (and (= arg1 (debug-menu-msg press)) arg0)
       (send-event *camera* 'change-state arg0 *dm-cam-mode-interpolation*)
       )
@@ -31,7 +30,7 @@
       )
   )
 
-(defun-debug dm-cam-settings-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-cam-settings-func ((arg0 int) (arg1 debug-menu-msg))
   (when (and (= arg1 (debug-menu-msg press)) *camera*)
     (cond
       ((zero? arg0)
@@ -137,7 +136,7 @@
     )
   )
 
-(defun-debug dm-cam-settings-func-int ((arg0 int) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
+(defun dm-cam-settings-func-int ((arg0 int) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
   (when (and (= arg1 (debug-menu-msg press)) *camera*)
     (if (= (/ arg0 8) 5)
         (set! *dm-cam-mode-interpolation* arg2)
@@ -156,7 +155,7 @@
     )
   )
 
-(defun-debug dm-cam-externalize ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-cam-externalize ((arg0 symbol) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (cond
       ((= arg0 'reset)
@@ -184,7 +183,7 @@
       )
   )
 
-(defun-debug dm-cam-render-float ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+(defun dm-cam-render-float ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
   (with-pp
     (when (= arg1 (debug-menu-msg press))
       (cond
@@ -243,7 +242,7 @@
     )
   )
 
-(defun-debug dm-subdiv-float ((arg0 symbol) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+(defun dm-subdiv-float ((arg0 symbol) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
   (when (= arg1 (debug-menu-msg press))
     (case arg0
       (('close)
@@ -277,7 +276,7 @@
     )
   )
 
-(defun-debug dm-subdiv-int ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
+(defun dm-subdiv-int ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
   (when (= arg1 (debug-menu-msg press))
     (case arg0
       (('anim-speed)
@@ -300,35 +299,35 @@
     )
   )
 
-(defun-debug dm-setting-language ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-setting-language ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! (-> *setting-control* default language) (the-as language-enum (/ arg0 8)))
       )
   (= (-> *setting-control* default language) (/ arg0 8))
   )
 
-(defun-debug dm-current-continue ((arg0 string) (arg1 debug-menu-msg))
+(defun dm-current-continue ((arg0 string) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (start 'play (get-continue-by-name *game-info* arg0))
       )
   (string= (-> (get-or-create-continue! *game-info*) name) arg0)
   )
 
-(defun-debug dm-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *subdivide-draw-mode* (/ arg0 8))
       )
   (= (/ arg0 8) *subdivide-draw-mode*)
   )
 
-(defun-debug dm-ocean-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-ocean-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *ocean-subdivide-draw-mode* (/ arg0 8))
       )
   (= (/ arg0 8) *ocean-subdivide-draw-mode*)
   )
 
-(defun-debug dm-time-of-day-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-time-of-day-func ((arg0 int) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (set! *time-of-day-mode* (/ arg0 8))
     (set! (-> *time-of-day-proc* 0 minute) 0)
@@ -376,7 +375,7 @@
   (= (/ arg0 8) *time-of-day-mode*)
   )
 
-(defun-debug dm-time-of-day-func2 ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
+(defun dm-time-of-day-func2 ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (set! (-> arg0 0) (not (-> arg0 0)))
     (when (!= (-> *time-of-day-proc* 0 time-ratio) 0.0)
@@ -389,89 +388,89 @@
   (-> arg0 0)
   )
 
-(defun-debug dm-boolean-toggle-pick-func ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
+(defun dm-boolean-toggle-pick-func ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! (-> arg0 0) (not (-> arg0 0)))
       )
   (-> arg0 0)
   )
 
-(defun-debug dm-time-of-day-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-time-of-day-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
   (time-of-day-setup (= arg1 (debug-menu-msg press)))
   (none)
   )
 
-(defun-debug dm-actor-marks-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-actor-marks-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *display-actor-marks* arg0)
       )
   (= *display-actor-marks* arg0)
   )
 
-(defun-debug dm-compact-actor-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-compact-actor-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *compact-actors* arg0)
       )
   (= *compact-actors* arg0)
   )
 
-(defun-debug dm-actor-vis-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-actor-vis-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *display-actor-vis* arg0)
       )
   (= *display-actor-vis* arg0)
   )
 
-(defun-debug dm-game-mode-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-game-mode-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! (-> *game-info* mode) arg0)
       )
   (= (-> *game-info* mode) arg0)
   )
 
-(defun-debug dm-vu1-user-toggle-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
+(defun dm-vu1-user-toggle-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *vu1-enable-user-menu* (logxor *vu1-enable-user-menu* (the-as uint arg0)))
       )
   (logtest? *vu1-enable-user-menu* arg0)
   )
 
-(defun-debug dm-vu1-user-set-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
+(defun dm-vu1-user-set-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *vu1-enable-user-menu* arg0)
       )
   (= *vu1-enable-user-menu* arg0)
   )
 
-(defun-debug dm-texture-user-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-texture-user-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *texture-enable-user-menu* (logxor *texture-enable-user-menu* arg0))
       )
   (logtest? *texture-enable-user-menu* arg0)
   )
 
-(defun-debug dm-texture-user-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-texture-user-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *texture-enable-user-menu* arg0)
       )
   (= *texture-enable-user-menu* arg0)
   )
 
-(defun-debug dm-strip-lines-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-strip-lines-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *display-strip-lines* (logxor *display-strip-lines* (/ arg0 8)))
       )
   (logtest? *display-strip-lines* (/ arg0 8))
   )
 
-(defun-debug dm-strip-lines-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-strip-lines-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
   (if (= arg1 (debug-menu-msg press))
       (set! *display-strip-lines* (/ arg0 8))
       )
   (= *display-strip-lines* (/ arg0 8))
   )
 
-(defun-debug dm-edit-instance-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-edit-instance-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
   (let ((v1-0 (find-instance-by-name *edit-instance*)))
     (when v1-0
       (if (= arg1 (debug-menu-msg press))
@@ -482,7 +481,7 @@
     )
   )
 
-(defun-debug all-texture-tweak-adjust ((arg0 texture-page-dir) (arg1 float))
+(defun all-texture-tweak-adjust ((arg0 texture-page-dir) (arg1 float))
   ; (dotimes (s4-0 (-> arg0 length))
     ; (let ((s3-0 (-> arg0 entries s4-0 page)))
       ; (dotimes (s2-0 (min (-> s3-0 length) (-> arg0 entries s4-0 length)))
@@ -508,11 +507,11 @@
   (none)
   )
 
-(defun-debug debug-menu-node<? ((arg0 debug-menu-node) (arg1 debug-menu-node))
+(defun debug-menu-node<? ((arg0 debug-menu-node) (arg1 debug-menu-node))
   (string<=? (-> arg0 name) (-> arg1 name))
   )
 
-(defun-debug dm-shader-pick-func ((arg0 texture-id) (arg1 debug-menu-msg))
+(defun dm-shader-pick-func ((arg0 texture-id) (arg1 debug-menu-msg))
   (if (and
           (= arg1 (debug-menu-msg press))
           *texture-page-dir*
@@ -527,7 +526,7 @@
 
 (define *shader-pick-menu* (the-as debug-menu #f))
 
-(defun-debug build-shader-list ()
+(defun build-shader-list ()
   (debug-menu-remove-all-items *shader-pick-menu*)
   (when *texture-page-dir*
     (dotimes (gp-0 (-> *texture-page-dir* length))
@@ -560,7 +559,7 @@
     )
   )
 
-(defun-debug dm-instance-pick-func ((arg0 string) (arg1 debug-menu-msg))
+(defun dm-instance-pick-func ((arg0 string) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (if (find-instance-by-name arg0)
         (set! *edit-instance* arg0)
@@ -570,7 +569,7 @@
   (and *edit-instance* (string= arg0 *edit-instance*))
   )
 
-(defun-debug dm-enable-instance-func ((arg0 string) (arg1 debug-menu-msg))
+(defun dm-enable-instance-func ((arg0 string) (arg1 debug-menu-msg))
   (let ((v1-0 (find-instance-by-name arg0)))
     (cond
       (v1-0
@@ -592,7 +591,7 @@
 
 (define *enable-instance-tie-menu* (the-as debug-menu #f))
 
-(defun-debug build-instance-list ((arg0 object))
+(defun build-instance-list ((arg0 object))
   (debug-menu-remove-all-items *instance-shrub-menu*)
   (debug-menu-remove-all-items *instance-tie-menu*)
   (debug-menu-remove-all-items *enable-instance-tie-menu*)
@@ -689,10 +688,10 @@
   (none)
   )
 
-(defun-debug debug-create-cam-restore ()
+(defun debug-create-cam-restore ()
   (cond
     (*math-camera*
-      (format #t "(defun-debug cam-restore ()~%")
+      (format #t "(defun cam-restore ()~%")
       (format #t " ;;this function is a hack, don't use it as an example~%")
       (format #t " (let ((pos (new 'stack 'vector))~%")
       (format #t "       (rot (new 'stack 'matrix)))~%")
@@ -775,7 +774,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-camera-mode-menu ((arg0 debug-menu) (arg1 debug-menu))
+(defun debug-menu-make-camera-mode-menu ((arg0 debug-menu) (arg1 debug-menu))
   (new 'debug 'debug-menu-item-submenu "Camera" arg0)
   (let ((a1-3 (new 'debug 'debug-menu-item-submenu "Mode" arg1)))
     (debug-menu-append-item arg0 a1-3)
@@ -846,7 +845,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-camera-menu ((arg0 debug-menu-context))
+(defun debug-menu-make-camera-menu ((arg0 debug-menu-context))
   (let* ((gp-0 (new 'debug 'debug-menu arg0 "Camera menu"))
          (s5-0 (new 'debug 'debug-menu-item-submenu "Camera" gp-0))
          )
@@ -1055,7 +1054,7 @@
     )
   )
 
-(defun-debug debug-menu-make-shader-menu ((arg0 debug-menu-context))
+(defun debug-menu-make-shader-menu ((arg0 debug-menu-context))
   (let* ((gp-0 (new 'debug 'debug-menu arg0 "Shader menu"))
          (s5-0 (new 'debug 'debug-menu-item-submenu "Shader" gp-0))
          )
@@ -1966,7 +1965,7 @@
     )
   )
 
-(defun-debug debug-menu-make-instance-menu ((arg0 debug-menu-context))
+(defun debug-menu-make-instance-menu ((arg0 debug-menu-context))
   (let* ((gp-0 (new 'debug 'debug-menu arg0 "Instance menu"))
          (s5-0 (new 'debug 'debug-menu-item-submenu "Instance" gp-0))
          )
@@ -2071,7 +2070,7 @@
     )
   )
 
-(defun-debug dm-task-unknown ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-unknown ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status unknown)))
         (return 'invalid)
@@ -2083,7 +2082,7 @@
     )
   )
 
-(defun-debug dm-task-hint ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-hint ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status need-hint)))
         (return 'invalid)
@@ -2095,7 +2094,7 @@
     )
   )
 
-(defun-debug dm-task-introduction ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-introduction ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status need-introduction)))
         (return 'invalid)
@@ -2107,7 +2106,7 @@
     )
   )
 
-(defun-debug dm-task-reminder-a ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-reminder-a ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status need-reminder-a)))
         (return 'invalid)
@@ -2119,7 +2118,7 @@
     )
   )
 
-(defun-debug dm-task-reminder ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-reminder ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status need-reminder)))
         (return 'invalid)
@@ -2131,7 +2130,7 @@
     )
   )
 
-(defun-debug dm-task-reward-speech ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-reward-speech ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status need-reward-speech)))
         (return 'invalid)
@@ -2143,7 +2142,7 @@
     )
   )
 
-(defun-debug dm-task-resolution ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-resolution ((arg0 int) (arg1 debug-menu-msg))
   (let ((gp-0 (/ arg0 8)))
     (if (not (task-exists? (the-as game-task gp-0) (task-status need-resolution)))
         (return 'invalid)
@@ -2156,7 +2155,7 @@
     )
   )
 
-(defun-debug debug-menu-make-task-unknown-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-unknown-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -2291,7 +2290,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-task-need-hint-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-need-hint-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -2426,7 +2425,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-task-need-introduction-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-need-introduction-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -2561,7 +2560,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-task-need-reminder-a-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-need-reminder-a-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -2696,7 +2695,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-task-need-reminder-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-need-reminder-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -2831,7 +2830,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-task-need-reward-speech-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-need-reward-speech-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -2966,7 +2965,7 @@
   (none)
   )
 
-(defun-debug debug-menu-make-task-need-resolution-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+(defun debug-menu-make-task-need-resolution-menu ((arg0 debug-menu) (arg1 debug-menu-context))
   (debug-menu-append-item
     arg0
     (debug-menu-make-from-template arg1 '(menu
@@ -3101,7 +3100,7 @@
   (none)
   )
 
-(defun-debug dm-task-get-money ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-task-get-money ((arg0 int) (arg1 debug-menu-msg))
   (with-pp
     (if (= arg1 (debug-menu-msg press))
         (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc))
@@ -3117,7 +3116,7 @@
     )
   )
 
-(defun-debug dm-give-all-cells ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-give-all-cells ((arg0 int) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (dotimes (gp-0 100)
       (send-event *target* 'get-pickup 6 (the float (+ gp-0 2)))
@@ -3132,13 +3131,13 @@
   #t
   )
 
-(defun-debug dm-give-cell ((arg0 game-task))
+(defun dm-give-cell ((arg0 game-task))
   (send-event *target* 'get-pickup 6 (the float arg0))
   (close-specific-task! arg0 (task-status need-resolution))
   (none)
   )
 
-(defun-debug dm-levitator-ready ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-levitator-ready ((arg0 int) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (close-specific-task! (game-task village2-levitator) (task-status need-introduction))
     (close-specific-task! (game-task village2-levitator) (task-status need-reminder-a))
@@ -3192,7 +3191,7 @@
   (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech))
   )
 
-(defun-debug dm-lavabike-ready ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-lavabike-ready ((arg0 int) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (dm-give-cell (game-task jungle-eggtop))
     (dm-give-cell (game-task jungle-lurkerm))
@@ -3273,7 +3272,7 @@
   (= (get-task-status (game-task lavatube-start)) (task-status need-reward-speech))
   )
 
-(defun-debug debug-menu-make-task-menu ((arg0 debug-menu-context))
+(defun debug-menu-make-task-menu ((arg0 debug-menu-context))
   (let* ((s5-0 (new 'debug 'debug-menu arg0 "Task menu"))
          (s4-0 (new 'debug 'debug-menu-item-submenu "Task" s5-0))
          )
@@ -3292,7 +3291,7 @@
     )
   )
 
-(defun-debug dm-anim-tester-flag-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-anim-tester-flag-func ((arg0 int) (arg1 debug-menu-msg))
   (when *anim-tester*
     (case arg0
       (('at-apply-align)
@@ -3312,7 +3311,7 @@
   #f
   )
 
-(defun-debug dm-anim-tester-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-anim-tester-func ((arg0 int) (arg1 debug-menu-msg))
   (if (not *anim-tester*)
       (anim-tester-start)
       )
@@ -3345,7 +3344,7 @@
   (none)
   )
 
-(defun-debug build-continue-menu ((arg0 debug-menu) (arg1 game-info))
+(defun build-continue-menu ((arg0 debug-menu) (arg1 game-info))
   (let ((s5-0 *level-load-list*))
     (while (not (null? s5-0))
       (let ((s4-0 (-> (the-as level-load-info (-> (the-as symbol (car s5-0)) value)) continues)))
@@ -3364,7 +3363,7 @@
   (the-as debug-menu-context arg0)
   )
 
-(defun-debug debug-menu-context-make-default-menus ((arg0 debug-menu-context))
+(defun debug-menu-context-make-default-menus ((arg0 debug-menu-context))
   (let ((s5-0 (new 'debug 'debug-menu arg0 "Main menu")))
     (debug-menu-context-set-root-menu arg0 s5-0)
     (debug-menu-append-item
@@ -3894,7 +3893,7 @@
 
 (define *popup-menu-context* (new 'debug 'debug-menu-context))
 
-(defun-debug popup-menu-context-make-default-menus ((arg0 debug-menu-context))
+(defun popup-menu-context-make-default-menus ((arg0 debug-menu-context))
   (debug-menu-make-from-template
     arg0
     '(main-menu
@@ -3951,7 +3950,7 @@
 
 (popup-menu-context-make-default-menus *popup-menu-context*)
 
-(defun-debug menu-respond-to-pause ()
+(defun menu-respond-to-pause ()
   (case *master-mode*
     (('menu)
      (if (cpad-hold? 0 l3)
@@ -3967,12 +3966,12 @@
   #f
   )
 
-(defun-debug *menu-hook* ()
+(defun *menu-hook* ()
   (debug-menus-handler *debug-menu-context*)
   (debug-menus-handler *popup-menu-context*)
   )
 
-(#when (user? dass)
+(#when PC_PORT
 
 (defmacro new-dm-function (text var func)
   `(new 'debug 'debug-menu-item-function ,text ,var (the-as (function int object) ,func))
@@ -3987,7 +3986,7 @@
   `(new 'debug 'debug-menu-item-submenu ,text ,menu)
   )
 
-(defun-debug dm-want-level-toggle-pick-func ((arg0 pair) (arg1 debug-menu-msg))
+(defun dm-want-level-toggle-pick-func ((arg0 pair) (arg1 debug-menu-msg))
   (let* ((levname (the-as symbol (car arg0)))
         (info (the-as level-load-info (-> levname value)))
         (idx (the int (cdr arg0)))
@@ -4006,7 +4005,7 @@
     )
   )
 
-(defun-debug dm-display-level-toggle-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+(defun dm-display-level-toggle-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
   (let ((the-level (level-get *level* arg0)))
     (if (not the-level)
       (return 'invalid)
@@ -4022,7 +4021,7 @@
     )
   )
 
-(defun-debug debug-menu-make-load-want-menu ((ctx debug-menu-context) (lev-idx int))
+(defun debug-menu-make-load-want-menu ((ctx debug-menu-context) (lev-idx int))
 
   (let ((want-menu (new 'debug 'debug-menu ctx "Level want menu")))
 
@@ -4038,7 +4037,7 @@
       )
   )
 
-(defun-debug debug-menu-make-load-display-menu ((ctx debug-menu-context))
+(defun debug-menu-make-load-display-menu ((ctx debug-menu-context))
 
   (let ((display-menu (new 'debug 'debug-menu ctx "Level display menu")))
 
@@ -4054,7 +4053,7 @@
       )
   )
 
-(defun-debug debug-menu-make-load-teleport-menu ((ctx debug-menu-context))
+(defun debug-menu-make-load-teleport-menu ((ctx debug-menu-context))
 
   (let ((teleport-menu (new 'debug 'debug-menu ctx "Camera teleport menu")))
 
@@ -4083,9 +4082,19 @@
       )
   )
 
-(defun-debug debug-menu-make-load-menu ((ctx debug-menu-context))
+(defun debug-menu-make-load-menu ((ctx debug-menu-context))
   (let ((load-menu (new 'debug 'debug-menu ctx "Load menu")))
       (debug-menu-append-item load-menu (new-dm-bool "Level Border" *display-level-border* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item load-menu (debug-menu-make-from-template ctx '(flag
+               "border-mode"
+               #f
+               (lambda ((arg0 int) (arg1 debug-menu-msg))
+                 (if (= arg1 (debug-menu-msg press))
+                     (set! (-> *setting-control* default border-mode) (not (-> *setting-control* default border-mode)))
+                     )
+                 (-> *setting-control* default border-mode)
+                 )
+               )))
 
       (debug-menu-append-item load-menu (debug-menu-make-load-want-menu ctx 0)) ;; Want 0
       (debug-menu-append-item load-menu (debug-menu-make-load-want-menu ctx 1)) ;; Want 1
@@ -4096,14 +4105,167 @@
       )
   )
 
+(defmacro dm-lambda-boolean-flag (val)
+  "helper macro for making boolean buttons that don't just access symbols directly"
+  `(lambda (arg (msg debug-menu-msg))
+                            (if (= msg (debug-menu-msg press))
+                                (not! ,val)
+                                )
+                            ,val)
+  )
+
+(defmacro dm-lambda-int-var (val)
+  "helper macro for making int buttons"
+  `(lambda (arg (msg debug-menu-msg) (newval int))
+    (cond
+      ((= msg (debug-menu-msg press))
+       (set! ,val newval)
+       )
+      (else
+        ,val
+        )
+      ))
+  )
+
+(defmacro dm-lambda-meters-var (val)
+  "helper macro for making meters buttons"
+  `(lambda (arg (msg debug-menu-msg) (newval float))
+    (cond
+      ((= msg (debug-menu-msg press))
+       (set! ,val (meters newval))
+       )
+      (else
+        (* (1/ METER_LENGTH) ,val)
+        )
+      ))
+  )
+
+(defun dm-lod-int ((arg0 int) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
+  (when (= arg1 (debug-menu-msg press))
+    (case (/ arg0 8)
+      ((0) (set! (-> *pc-settings* lod-force-tfrag) arg2))
+      ((1) (set! (-> *pc-settings* lod-force-tie) arg2))
+      ((2) (set! (-> *pc-settings* lod-force-ocean) arg2))
+      ((3) (set! (-> *pc-settings* lod-force-actor) arg2))
+      )
+    )
+  (case (/ arg0 8)
+    ((0) (-> *pc-settings* lod-force-tfrag))
+    ((1) (-> *pc-settings* lod-force-tie))
+    ((2) (-> *pc-settings* lod-force-ocean))
+    ((3) (-> *pc-settings* lod-force-actor))
+    (else arg3)
+    )
+  )
+
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
   ;; Entity menu TODO
   ;; Music menu TODO
   ;; Secrets menu TODO
   ;; Scene menu TODO
-  ;; PC Settings menu TODO
-  ;; Other menu TODO
+  
+  (debug-menu-append-item (-> *debug-menu-context* root-menu)
+    (debug-menu-make-from-template *debug-menu-context*
+      '(menu "PC Settings"
+         (flag "Debug" #f (dm-lambda-boolean-flag (-> *pc-settings* debug?)))
+         (flag "Use native vis" #f (dm-lambda-boolean-flag (-> *pc-settings* use-vis?)))
+         (function "Toggle game aspect" #f (lambda ()
+                                              (cond
+                                                ((= (-> *setting-control* default aspect-ratio) 'aspect4x3)
+                                                 (set-aspect-ratio 'aspect16x9)
+                                                 (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
+                                                 )
+                                                (else
+                                                 (set-aspect-ratio 'aspect4x3)
+                                                 (set! (-> *setting-control* default aspect-ratio) 'aspect4x3)
+                                                 )
+                                                )
+                                              ))
+         (flag "Auto aspect" #f (dm-lambda-boolean-flag (-> *pc-settings* aspect-ratio-auto?)))
+         (menu "Aspect test"
+            (function "4 x 3" #f (lambda () (set-aspect! *pc-settings* 4 3)))
+            (function "16 x 9" #f (lambda () (set-aspect! *pc-settings* 16 9)))
+            (function "64 x 27 (21:9)" #f (lambda () (set-aspect! *pc-settings* 64 27)))
+            (function "16 x 10" #f (lambda () (set-aspect! *pc-settings* 16 10)))
+            (function "2 x 1" #f (lambda () (set-aspect! *pc-settings* 2 1)))
+            (function "37 x 20" #f (lambda () (set-aspect! *pc-settings* 37 20)))
+            (function "21 x 9" #f (lambda () (set-aspect! *pc-settings* 21 9)))
+            (function "64 x 18" #f (lambda () (set-aspect! *pc-settings* 64 18)))
+            (int-var "Custom aspect X" #f (dm-lambda-int-var (-> *pc-settings* aspect-custom-x)) 20 1 #t 1 1000)
+            (int-var "Custom aspect Y" #f (dm-lambda-int-var (-> *pc-settings* aspect-custom-y)) 20 1 #t 1 1000)
+            (function "Custom" #f (lambda () (set-aspect! *pc-settings* (-> *pc-settings* aspect-custom-x) (-> *pc-settings* aspect-custom-y))))
+            )
+         (menu "Fullscreen"
+            (function "Windowed" #f (lambda () (set-fullscreen! *pc-settings* #f)))
+            (function "Fullscreen" #f (lambda () (set-fullscreen! *pc-settings* #t)))
+            (function "Borderless" #f (lambda () (set-fullscreen! *pc-settings* 'borderless)))
+            )
+         (menu "Sizes"
+            (function "640 x 480" #f (lambda () (set-size! *pc-settings* 640 480)))
+            (function "720 x 540" #f (lambda () (set-size! *pc-settings* 720 540)))
+            (function "960 x 540" #f (lambda () (set-size! *pc-settings* 960 540)))
+            (function "800 x 600" #f (lambda () (set-size! *pc-settings* 800 600)))
+            (function "960 x 720" #f (lambda () (set-size! *pc-settings* 960 720)))
+            (function "1280 x 720" #f (lambda () (set-size! *pc-settings* 1280 720)))
+            (function "1024 x 768" #f (lambda () (set-size! *pc-settings* 1024 768)))
+            (function "1366 x 768" #f (lambda () (set-size! *pc-settings* 1366 768)))
+            (function "1280 x 960" #f (lambda () (set-size! *pc-settings* 1280 960)))
+            (function "1440 x 1080" #f (lambda () (set-size! *pc-settings* 1440 1080)))
+            (function "1920 x 1080" #f (lambda () (set-size! *pc-settings* 1920 1080)))
+            (function "1920 x 1440" #f (lambda () (set-size! *pc-settings* 1920 1440)))
+            (function "2560 x 1440" #f (lambda () (set-size! *pc-settings* 2560 1440)))
+            (function "2880 x 2160" #f (lambda () (set-size! *pc-settings* 2880 2160)))
+            (function "3840 x 2160" #f (lambda () (set-size! *pc-settings* 3840 2160)))
+            )
+         (flag "Letterbox" #f (dm-lambda-boolean-flag (-> *pc-settings* letterbox?)))
+         (flag "Skip movies" #f (dm-lambda-boolean-flag (-> *pc-settings* skip-movies?)))
+         (flag "Subtitles" #f (dm-lambda-boolean-flag (-> *pc-settings* subtitles?)))
+         (flag "Hinttitles" #f (dm-lambda-boolean-flag (-> *pc-settings* hinttitles?)))
+         (menu "Game fixes"
+            (flag "sagecage crash" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes crash-sagecage)))
+            (flag "memory crash" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes crash-dma)))
+            (flag "light eco crash" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes crash-light-eco)))
+            (flag "softlock pelican" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pelican)))
+            (flag "softlock pipegame" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pipegame)))
+            (flag "softlock gambler" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-gambler)))
+            (flag "fix movies" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes fix-movies)))
+            (flag "fix credits" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes fix-credits)))
+            )
+         (menu "PS2 settings"
+            (flag "PS2 Load speed" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-read-speed?)))
+            (flag "PS2 Particles" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-parts?)))
+            (flag "PS2 Music" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-music?)))
+            (flag "PS2 Sound effects" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-se?)))
+            (flag "PS2 Hints" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-hints?)))
+            )
+         (menu "Level of detail"
+               (flag "PS2 LOD      " #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-lod-dist?)))
+            (int-var "LOD Tfrag" 0 dm-lod-int 0 1 #t 0 3)
+            (int-var "LOD Tie" 1 dm-lod-int 0 1 #t 0 3)
+            (int-var "LOD Ocean" 2 dm-lod-int 0 1 #t 0 3)
+            (int-var "LOD Actor" 3 dm-lod-int 0 1 #t 0 3)
+            )
+         ;(flag "Alt load boundaries" #f (dm-lambda-boolean-flag (-> *pc-settings* new-lb?)))
+         (flag "Display actor bank" #f (dm-lambda-boolean-flag (-> *pc-settings* display-actor-bank)))
+         (flag "Pad display" #f (dm-lambda-boolean-flag (-> *pc-settings* debug-pad-display)))
+         (function "Reset" #f (lambda () (reset *pc-settings*)))
+         (function "Save" #f (lambda () (write-to-file *pc-settings* PC_SETTINGS_FILE_NAME)))
+         (function "Load" #f (lambda () (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)))
+         )
+      )
+    )
+  (debug-menu-append-item (-> *debug-menu-context* root-menu)
+    (debug-menu-make-from-template *debug-menu-context*
+      '(menu "Other"
+         (flag "DECI Count" *display-deci-count* dm-boolean-toggle-pick-func)
+         (flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
+         (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
+         (float-var "Actor birth dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
+         (float-var "Actor pause dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
+         )
+      )
+    )
   )
 
 )

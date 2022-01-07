@@ -36,9 +36,26 @@
   (set! (-> math-cam x-ratio) (tan (* 0.5 (-> math-cam fov))))
   ;;(format #t "aspect is ~A~%" aspect)
   (if (= aspect 'aspect4x3)
-      (set! (-> math-cam y-ratio) (* 0.75 (-> math-cam x-ratio)))
-      (set! (-> math-cam y-ratio) (* 0.5625 (-> math-cam x-ratio)))
+      (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio)))
+      (set! (-> math-cam y-ratio) (* (1/ ASPECT_16X9) (-> math-cam x-ratio)))
       )
+  (#when PC_PORT
+    (cond
+      ((not *pc-settings*)
+       )
+      ((-> *pc-settings* use-vis?)
+       ;; using game vis, cannot allow seeing more of the view
+       ;; crops excess aspect ratio at the top and bottom
+       (set! (-> math-cam y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
+       )
+      (else
+       ;; not using game vis, allow *extended* aspect ratios
+       ;; there is no vertical cropping, and you can see more of the sides
+       (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio))) ;; same cropping as 4x3
+       (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
+       )
+      )
+    )
 
   ;; compute some culling constants. Not sure what these mean yet
   (let ((x-rat (-> math-cam x-ratio))
@@ -47,22 +64,9 @@
         )
     (let ((unused-x-thing (/ (+ 1.0 (* (* 4.0 x-rat) x-rat)) (+ 1.0 (* x-rat x-rat))))))
     (let ((y-thing (/ (+ 1.0 (* (* 4.0 y-rat) y-rat)) (+ 1.0 (* y-rat y-rat)))))
-      (set! (-> cull-info x-fact)
-            (/ (+ 1.0 (* (* 4.0 x-rat) x-rat))
-               (* x-rat (sqrtf (+ 1.0 (* (* 16.0 x-rat) x-rat))))
-               )
-            )
-      (set! (-> cull-info y-fact)
-            (/ (+ 1.0 (* (* 4.0 y-rat) y-rat))
-               (* y-rat (sqrtf (+ 1.0 (* (* 16.0 y-rat) y-rat))))
-               )
-            )
-      (set! (-> cull-info z-fact)
-            (sqrtf (+ (* (* (* (+ -4.0 y-thing) (+ -4.0 y-thing)) y-rat) y-rat)
-                      (* (+ -1.0 y-thing) (+ -1.0 y-thing))
-                      )
-                   )
-            )
+      (set! (-> cull-info x-fact) (/ (+ 1.0 (* 4.0 x-rat x-rat)) (* x-rat (sqrtf (+ 1.0 (* 16.0 x-rat x-rat))))))
+      (set! (-> cull-info y-fact) (/ (+ 1.0 (* 4.0 y-rat y-rat)) (* y-rat (sqrtf (+ 1.0 (* 16.0 y-rat y-rat))))))
+      (set! (-> cull-info z-fact) (sqrtf (+ (* (+ -4.0 y-thing) (+ -4.0 y-thing) y-rat y-rat) (* (+ -1.0 y-thing) (+ -1.0 y-thing)))))
       )
 
     ;; radius of sphere containing camera origin and intersection of near plane and frustum
@@ -135,26 +139,16 @@
       (let ((corrected-fog (/ fog-factor-2 (* (-> math-cam d) (- (-> math-cam f) (-> math-cam d)))))
             (cam-fov-mult (-> math-cam fov-correction-factor))
             )
-        (set! (-> math-cam perspective data 0)
-              (* cam-fov-mult
-                 (- (/ (-> math-cam x-pix) (* (-> math-cam x-ratio) (-> math-cam d))))
-                 )
+        (set! (-> math-cam perspective vector 0 x)
+              (* cam-fov-mult (- (/ (-> math-cam x-pix) (* (-> math-cam x-ratio) (-> math-cam d)))))
               )
-        (set! (-> math-cam perspective data 5)
-              (* cam-fov-mult
-                 (- (/ (-> math-cam y-pix) (* (-> math-cam y-ratio) (-> math-cam d))))
-                 )
+        (set! (-> math-cam perspective vector 1 y)
+              (* cam-fov-mult (- (/ (-> math-cam y-pix) (* (-> math-cam y-ratio) (-> math-cam d)))))
               )
-        (set! (-> math-cam perspective data 10)
-              (* (* cam-fov-mult (+ (-> math-cam f) (-> math-cam d))) corrected-fog)
-              )
-        (set! (-> math-cam perspective data 11)
-              (* (/ cam-fov-mult (-> math-cam d)) fog-at-near-plane)
-              )
-        (set! (-> math-cam perspective data 14)
-              (* (* (* (* -2.0 corrected-fog) (-> math-cam f)) (-> math-cam d))
-                 cam-fov-mult
-                 )
+        (set! (-> math-cam perspective vector 2 z) (* cam-fov-mult (+ (-> math-cam f) (-> math-cam d)) corrected-fog))
+        (set! (-> math-cam perspective vector 2 w) (* (/ cam-fov-mult (-> math-cam d)) fog-at-near-plane))
+        (set! (-> math-cam perspective vector 3 z)
+              (* -2.0 corrected-fog (-> math-cam f) (-> math-cam d) cam-fov-mult)
               )
         )
 
@@ -190,52 +184,41 @@
           (set! (-> math-cam guard y) (/ (-> math-cam y-clip) (-> math-cam y-pix)))
           (set! (-> math-cam guard z) 1.0)
           (set! (-> math-cam guard w) 1.0)
-          (set! (-> math-cam isometric data 14) (- 16777215.0 hvdf-z))
+          (set! (-> math-cam isometric vector 3 z) (- 16777215.0 hvdf-z))
           ;; PC HACK!
           ;; for whatever reason, the font render ends up computing a depth #x1000000 instead of
           ;; #xffffffff, which overflows the 24-bit z buffer.
           ;; cheating this by 1 bit seems to fix it.
           (#when PC_PORT
                  ;; #x4b002032 -> #x4b002031
-                 (-! (-> math-cam isometric data 14) 1.)
+                 (-! (-> math-cam isometric vector 3 z) 1.)
                  )
           
           )
-        (set! (-> math-cam isometric data 15) fog-at-near-plane)
+        (set! (-> math-cam isometric vector 3 w) fog-at-near-plane)
 
         ;; perspective matrix
-        (let ((persp-xx (-> math-cam perspective data 0))
-              (persp-yy (-> math-cam perspective data 5))
-              (persp-x (* -1.9996 (-> math-cam perspective data 0)))
+        (let ((persp-xx (-> math-cam perspective vector 0 x))
+              (persp-yy (-> math-cam perspective vector 1 y))
+              (persp-x (* -1.9996 (-> math-cam perspective vector 0 x)))
               )
           (let ((sprite-row-0 (-> math-cam sprite-2d)))
-            (set! (-> sprite-row-0 data 0) persp-x)
-            (set! (-> sprite-row-0 data 1) 0.0)
-            (set! (-> sprite-row-0 data 2) 0.0)
-            (set! (-> sprite-row-0 data 3) 0.0)
+            (set! (-> sprite-row-0 vector 0 x) persp-x)
+            (set! (-> sprite-row-0 vector 0 y) 0.0)
+            (set! (-> sprite-row-0 vector 0 z) 0.0)
+            (set! (-> sprite-row-0 vector 0 w) 0.0)
             )
-          (let ((sprite-row-1 (&-> math-cam sprite-2d data 4)))
-            (set! (-> sprite-row-1 0) 0.0)
-            (set! (-> sprite-row-1 1) (- (* (/ persp-yy persp-xx) persp-x)))
-            (set! (-> sprite-row-1 2) 0.0)
-            (set! (-> sprite-row-1 3) 0.0)
-            )
-          (let ((sprite-row-2 (&-> math-cam sprite-2d data 8)))
-            (set! (-> sprite-row-2 0) 0.0)
-            (set! (-> sprite-row-2 1) 0.0)
-            (set! (-> sprite-row-2 2) (- persp-x))
-            (set! (-> sprite-row-2 3) 0.0)
-            )
-          (let ((sprite-row-3 (&-> math-cam sprite-2d data 12)))
-            (set! (-> sprite-row-3 0) 0.0)
-            (set! (-> sprite-row-3 1) 0.0)
-            (set! (-> sprite-row-3 2) (* 500000000.0 persp-x))
-            (set! (-> sprite-row-3 3) (* (* 60.0 persp-x) (-> math-cam pfog0)))
+          (set-vector! (-> math-cam sprite-2d vector 1) 0.0 (- (* (/ persp-yy persp-xx) persp-x)) 0.0 0.0)
+          (set-vector! (-> math-cam sprite-2d vector 2) 0.0 0.0 (- persp-x) 0.0)
+          (set-vector!
+            (-> math-cam sprite-2d vector 3)
+            0.0
+            0.0
+            (* 500000000.0 persp-x)
+            (* 60.0 persp-x (-> math-cam pfog0))
             )
           )
-        (let ((v1-15 (-> math-cam sprite-2d-hvdf)))
-          (set! (-> v1-15 quad) (-> math-cam hvdf-off quad))
-          )
+        (set! (-> math-cam sprite-2d-hvdf quad) (-> math-cam hvdf-off quad))
         (set! (-> math-cam sprite-2d-hvdf x) 2048.0)
         (set! (-> math-cam sprite-2d-hvdf y) 2048.0)
         (set! (-> math-cam sprite-2d-hvdf z) (-> math-cam hvdf-off z))

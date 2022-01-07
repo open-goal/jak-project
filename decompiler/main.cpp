@@ -57,7 +57,9 @@ int main(int argc, char** argv) {
   }
 
   file_util::create_dir_if_needed(out_folder);
-  file_util::create_dir_if_needed(file_util::get_file_path({"debug_out"}));
+  if (config.rip_levels) {
+    file_util::create_dir_if_needed(file_util::get_file_path({"debug_out"}));
+  }
 
   fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
 
@@ -72,7 +74,7 @@ int main(int argc, char** argv) {
                              db.generate_dgo_listing());
   // write out object file map (used for future decompilations, if desired)
   file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
-                             db.generate_obj_listing());
+                             db.generate_obj_listing(config.merged_objects));
 
   // dump raw objs
   if (config.dump_objs) {
@@ -148,7 +150,7 @@ int main(int argc, char** argv) {
   }
 
   for (auto& lev : config.levels_to_extract) {
-    extract_from_level(db, tex_db, lev, config.hacks);
+    extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));

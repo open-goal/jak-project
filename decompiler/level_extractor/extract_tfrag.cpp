@@ -1,10 +1,10 @@
 #include "extract_tfrag.h"
 #include "common/dma/dma.h"
-#include "common/util/assert.h"
 #include "decompiler/util/Error.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/util/FileUtil.h"
 #include "common/dma/gs.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 namespace {
@@ -2049,6 +2049,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
           vtx.q = vert.stq.z();
+          // if this is true, we can remove a divide in the shader
+          assert(vtx.q == 1.f);
           vtx.color_index = vert.rgba / 4;
           // assert((vert.rgba >> 2) < 1024); spider cave has 2048?
           assert((vert.rgba & 3) == 0);
@@ -2073,7 +2075,8 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
                     tfrag3::Level& level_out,
                     tfrag3::TfragTree& tree_out,
                     const TextureDB& tdb,
-                    const std::vector<std::pair<int, int>>& expected_missing_textures) {
+                    const std::vector<std::pair<int, int>>& expected_missing_textures,
+                    bool dump_level) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2094,9 +2097,12 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
 
   make_tfrag3_data(groups, tree_out, level_out.textures, tdb, expected_missing_textures);
 
-  auto debug_out = debug_dump_to_obj(all_draws);
-  file_util::write_text_file(
-      file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}), debug_out);
+  if (dump_level) {
+    auto debug_out = debug_dump_to_obj(all_draws);
+    file_util::write_text_file(
+        file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}),
+        debug_out);
+  }
 }
 
 void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::TfragTree& out) {
@@ -2108,6 +2114,19 @@ void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tfr
   }
 }
 
+void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
+  std::vector<tfrag3::StripDraw::VisGroup> result;
+  result.push_back(grps.at(0));
+  for (size_t i = 1; i < grps.size(); i++) {
+    if (grps[i].vis_idx == result.back().vis_idx) {
+      result.back().num += grps[i].num;
+    } else {
+      result.push_back(grps[i]);
+    }
+  }
+  std::swap(result, grps);
+}
+
 }  // namespace
 
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
@@ -2115,7 +2134,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::vector<level_tools::TextureRemap>& map,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
-                   tfrag3::Level& out) {
+                   tfrag3::Level& out,
+                   bool dump_level) {
   tfrag3::TfragTree this_tree;
   if (tree->my_type() == "drawable-tree-tfrag") {
     this_tree.kind = tfrag3::TFragmentTreeKind::NORMAL;
@@ -2171,7 +2191,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   //  assert(result.vis_nodes.last_child_node + 1 == idx);
 
   emulate_tfrags(as_tfrag_array->tfragments, debug_name, map, out, this_tree, tex_db,
-                 expected_missing_textures);
+                 expected_missing_textures, dump_level);
   extract_time_of_day(tree, this_tree);
 
   for (auto& draw : this_tree.draws) {
@@ -2183,6 +2203,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
         str.vis_idx = it->second;
       }
     }
+    merge_groups(draw.vis_groups);
   }
   out.tfrag_trees.push_back(this_tree);
 }

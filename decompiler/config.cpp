@@ -56,6 +56,7 @@ Config read_config_file(const std::string& path_to_config_file) {
   config.print_cfgs = cfg.at("print_cfgs").get<bool>();
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
   config.is_pal = cfg.at("is_pal").get<bool>();
+  config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
 
   auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {
@@ -201,6 +202,12 @@ Config read_config_file(const std::string& path_to_config_file) {
 
   config.bad_format_strings =
       hacks_json.at("bad_format_strings").get<std::unordered_map<std::string, int>>();
+
+  auto merged = hacks_json.at("expected_merged_objs").get<std::vector<std::string>>();
+  for (const auto& x : merged) {
+    config.merged_objects.insert(x);
+  }
+
   config.levels_to_extract = cfg.at("levels_to_extract").get<std::vector<std::string>>();
   return config;
 }

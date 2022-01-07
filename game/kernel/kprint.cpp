@@ -7,7 +7,6 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#include "common/util/assert.h"
 
 #include "common/goal_constants.h"
 #include "common/common_types.h"
@@ -23,6 +22,7 @@
 #include "klisten.h"
 #include "klink.h"
 #include "common/symbols.h"
+#include "common/util/assert.h"
 
 ///////////
 // SDATA

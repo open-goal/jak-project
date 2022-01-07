@@ -1,9 +1,9 @@
-#version 330 core
+#version 430 core
 
 out vec4 color;
 
 in vec4 fragment_color;
-in vec3 tex_coord;
+noperspective in vec3 tex_coord;
 uniform sampler2D tex_T0;
 
 void main() {

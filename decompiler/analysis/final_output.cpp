@@ -256,6 +256,7 @@ std::string write_from_top_level_form(Form* top_form,
       if (entry.condition->to_string(env) == "*debug-segment*") {
         forms = entry.body->elts();
         result += ";; this file is debug only\n";
+        result += "(declare-file (debug))\n";
         result += "(when *debug-segment*\n";
         in_debug_only_file = true;
       }

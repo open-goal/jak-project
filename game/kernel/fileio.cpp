@@ -4,13 +4,13 @@
  * DONE!
  */
 
-#include "common/util/assert.h"
 #include <cstring>
 #include <cstdio>
 #include "game/sce/sif_ee.h"
 #include "fileio.h"
 #include "kprint.h"
 #include "common/versions.h"
+#include "common/util/assert.h"
 
 namespace {
 // buffer for file paths.  This might be static char buffer[512]. Maybe 633 is the line number?

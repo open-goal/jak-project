@@ -5,8 +5,8 @@
  */
 
 #include "InstructionDecode.h"
-#include "common/util/assert.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 // utility class to extract fields of an opcode.
