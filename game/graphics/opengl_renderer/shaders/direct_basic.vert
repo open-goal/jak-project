@@ -10,5 +10,7 @@ out vec4 fragment_color;
 void main() {
   // Note: position.y is multiplied by 32 instead of 16 to undo the half-height for interlacing stuff.
   gl_Position = vec4((position_in.x - 0.5) * 16., -(position_in.y - 0.5) * 32, position_in.z * 2 - 1., 1.0);
+  // scissoring area adjust
+  gl_Position.y *= 512.0/448.0;
   fragment_color = vec4(rgba_in.x, rgba_in.y, rgba_in.z, rgba_in.w + 0.5);
 }

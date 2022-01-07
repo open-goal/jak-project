@@ -11,9 +11,6 @@ namespace v2 {
 // The previous issues we had with stack overflow only happened when there was a stack frame per
 // element in a list.
 
-// TODO: there's a different style of splitting that we should do for forms like:
-// set!, and, or, <, >, +... where we try leaving operator + one other.
-
 // The main node type.
 // unlike v1, this nests lists.
 // these have pointers to parents, so generally not safe to copy.
@@ -193,7 +190,7 @@ void break_list(Node* node) {
   node->top_line_count = 1;
 
   const std::unordered_set<std::string> sameline_splitters = {
-      "if", "<", ">", "<=", ">=", "set!", "=", "!=", "+", "-", "*", "/", "the", "->"};
+      "if", "<", ">", "<=", ">=", "set!", "=", "!=", "+", "-", "*", "/", "the", "->", "and", "or"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo
@@ -253,9 +250,9 @@ void break_list(Node* node) {
 
 void insert_required_breaks(const std::vector<Node*>& bfs_order) {
   const std::unordered_set<std::string> always_break = {
-      "when", "defun-debug", "countdown", "case", "defun",   "defmethod",
-      "let",  "until",       "while",     "if",   "dotimes", "cond",
-      "else", "defbehavior", "with-pp",   "rlet", "defstate"};
+      "when", "defun-debug", "countdown", "case", "defun",    "defmethod",
+      "let",  "until",       "while",     "if",   "dotimes",  "cond",
+      "else", "defbehavior", "with-pp",   "rlet", "defstate", "behavior"};
   for (auto node : bfs_order) {
     if (!node->break_list && node->kind == Node::Kind::LIST &&
         node->child_nodes.at(0).kind == Node::Kind::ATOM) {
