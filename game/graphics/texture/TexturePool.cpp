@@ -393,13 +393,17 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   GLuint tex_id;
   glGenTextures(1, &tex_id);
   tex->gpu_texture = tex_id;
+  GLint old_tex;
+  glGetIntegerv(GL_ACTIVE_TEXTURE, &old_tex);
+  glActiveTexture(GL_TEXTURE0);
+
   glBindTexture(GL_TEXTURE_2D, tex_id);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                tex->data.data());
   glBindTexture(GL_TEXTURE_2D, 0);
 
   // we have to set these, imgui won't do it automatically
-  glActiveTexture(GL_TEXTURE0);
+
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
   glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -412,6 +416,7 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+  glActiveTexture(old_tex);
   tex->on_gpu = true;
 }
 

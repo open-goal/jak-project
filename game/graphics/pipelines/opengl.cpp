@@ -397,7 +397,8 @@ static void gl_render_display(GfxDisplay* display) {
   int lbox_h = (fbuf_h - height) / 2;
 
   if (g_gfx_data->debug_gui.want_dump_replay()) {
-    render_dump_frame(width, height, lbox_w, lbox_h);
+    // hack: no letterbox for dump frames, for now.
+    render_dump_frame(fbuf_w, fbuf_h, 0, 0);
   } else if (g_gfx_data->debug_gui.should_advance_frame()) {
     render_game_frame(width, height, lbox_w, lbox_h);
   }
