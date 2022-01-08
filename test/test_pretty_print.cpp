@@ -258,10 +258,6 @@ TEST(PrettyPrint2, ParenWayOutToTheRight2) {
                )
              )
         )
-    (when (nonzero? obj)
-      (set! (-> obj length) size)
-      (set! (-> obj allocated-length) size)
-      )
     obj
     )
   ))");
@@ -300,4 +296,24 @@ TEST(PrettyPrint2, BreakIfBug) {
             "         )\n"
             "    (update-mood-prt-color arg0)\n"
             "    )");
+}
+
+TEST(PrettyPrint2, AnotherBug) {
+  std::string code =
+      "          (let ((f0-8 (* (fmin (vector-xz-length arg1) (* (vector-xz-length (-> s5-0 "
+      "trans)) arg4))\n"
+      "                          (-> *display* frames-per-second)\n"
+      "                          )\n"
+      "                       )\n"
+      "                (t9-2 vector-xz-normalize!)\n"
+      "                ))";
+  EXPECT_EQ(
+      pretty_print_v2(code, 100),
+      "(let ((f0-8 (* (fmin (vector-xz-length arg1) (* (vector-xz-length (-> s5-0 trans)) arg4))\n"
+      "               (-> *display* frames-per-second)\n"
+      "               )\n"
+      "            )\n"
+      "      (t9-2 vector-xz-normalize!)\n"
+      "      )\n"
+      "  )");
 }

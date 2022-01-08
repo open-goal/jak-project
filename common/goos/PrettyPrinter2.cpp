@@ -339,9 +339,10 @@ void append_node_to_string(const Node* node,
 
         int listing_indent = next_indent_level + node->quoted + node->sub_elt_indent;
         int extra_indent = 0;
+        int old_indent = listing_indent;
         if (node->top_line_count) {
           listing_indent -= node->sub_elt_indent;
-          listing_indent += 2;
+          listing_indent += node->child_nodes.front().kind == Node::Kind::LIST ? 1 : 2;
         }
         for (; node_idx < node->top_line_count; node_idx++) {
           size_t s0 = str.length();
@@ -356,8 +357,7 @@ void append_node_to_string(const Node* node,
           str.push_back(' ');
         }
         if (node->top_line_count) {
-          listing_indent += node->sub_elt_indent;
-          listing_indent -= 2;
+          listing_indent = old_indent;
         }
         if (node->top_line_count > 0) {
           str.pop_back();
