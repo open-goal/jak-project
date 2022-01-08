@@ -770,15 +770,14 @@
 (defun average-turn-angle ((arg0 target))
   (let ((f30-0 0.0))
     (dotimes (s5-0 8)
-      (+!
-        f30-0
-        (fabs
-          (deg-diff
-            (atan (-> arg0 control unknown-vector-array00 s5-0 x) (-> arg0 control unknown-vector-array00 s5-0 z))
-            0.0
+      (+! f30-0
+          (fabs
+            (deg-diff
+              (atan (-> arg0 control unknown-vector-array00 s5-0 x) (-> arg0 control unknown-vector-array00 s5-0 z))
+              0.0
+              )
             )
           )
-        )
       )
     (* 0.125 f30-0)
     )
@@ -786,40 +785,36 @@
 
 ;; definition for function can-play-stance-amibent?
 (defbehavior can-play-stance-amibent? target ()
-  (and
-    (>= (- (-> *display* base-frame-counter) (-> self state-time)) 9000)
-    (not (-> *setting-control* current talking))
-    (not (-> *setting-control* current spooling))
-    (not (-> *setting-control* current movie))
-    (not (-> *setting-control* current hint))
-    (zero? (logand (-> self control status) 32))
-    (zero? (logand (-> self water flags) 512))
-    )
+  (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 9000)
+       (not (-> *setting-control* current talking))
+       (not (-> *setting-control* current spooling))
+       (not (-> *setting-control* current movie))
+       (not (-> *setting-control* current hint))
+       (zero? (logand (-> self control status) 32))
+       (zero? (logand (-> self water flags) 512))
+       )
   )
 
 ;; definition for function can-jump?
 (defbehavior can-jump? target ((arg0 symbol))
-  (and
-    (or
-      (logtest? (-> self control status) 1)
-      (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-         (the-as int (-> *TARGET-bank* ground-timeout))
-         )
-      (and (logtest? (-> self control status) 1) (< 0.866 (-> self control surface-angle)))
-      )
-    (and
-      (zero? (logand (-> self control unknown-surface01 flags) 64))
-      (zero? (logand (-> self state-flags) 2048))
-      (case arg0
-        (('target-wheel-flip)
-         (>= 0.5 (-> self control unknown-float61))
-         )
-        (else
-          #t
-          )
-        )
-      )
-    )
+  (and (or (logtest? (-> self control status) 1)
+           (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
+              (the-as int (-> *TARGET-bank* ground-timeout))
+              )
+           (and (logtest? (-> self control status) 1) (< 0.866 (-> self control surface-angle)))
+           )
+       (and (zero? (logand (-> self control unknown-surface01 flags) 64))
+            (zero? (logand (-> self state-flags) 2048))
+            (case arg0
+              (('target-wheel-flip)
+               (>= 0.5 (-> self control unknown-float61))
+               )
+              (else
+                #t
+                )
+              )
+            )
+       )
   )
 
 ;; definition for function move-legs?
@@ -835,34 +830,30 @@
 ;; definition for function fall-test
 ;; INFO: Return type mismatch object vs none.
 (defbehavior fall-test target ()
-  (when (and
-          (zero? (logand (-> self control status) 1))
-          (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-              (the-as int (-> *TARGET-bank* ground-timeout))
-              )
-          (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-          (let ((v1-15 (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
-                       )
-                )
-            (or
-              (not (or
-                     (= v1-15 (-> self draw art-group data 59))
-                     (= v1-15 (-> self draw art-group data 60))
-                     (= v1-15 (-> self draw art-group data 61))
-                     )
+  (when (and (zero? (logand (-> self control status) 1))
+             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
+                 (the-as int (-> *TARGET-bank* ground-timeout))
+                 )
+             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+             (let ((v1-15 (if (> (-> self skel active-channels) 0)
+                              (-> self skel root-channel 0 frame-group)
+                              )
+                          )
                    )
-              (< 4096.0 (target-height-above-ground))
-              )
-            )
-          )
-    (when (and
-            (< (- (-> *display* base-frame-counter) (the-as int (-> self control rider-time)))
-               (the-as int (-> *TARGET-bank* ground-timeout))
+               (or (not (or (= v1-15 (-> self draw art-group data 59))
+                            (= v1-15 (-> self draw art-group data 60))
+                            (= v1-15 (-> self draw art-group data 61))
+                            )
+                        )
+                   (< 4096.0 (target-height-above-ground))
+                   )
                )
-            (logtest? (-> self control unknown-surface01 flags) #x4000)
-            )
+             )
+    (when (and (< (- (-> *display* base-frame-counter) (the-as int (-> self control rider-time)))
+                  (the-as int (-> *TARGET-bank* ground-timeout))
+                  )
+               (logtest? (-> self control unknown-surface01 flags) #x4000)
+               )
       (+! (-> self control transv x) (-> self control rider-last-move x))
       (+! (-> self control transv z) (-> self control rider-last-move z))
       )
@@ -874,14 +865,13 @@
 ;; definition for function slide-down-test
 ;; INFO: Return type mismatch object vs none.
 (defbehavior slide-down-test target ()
-  (if (and
-          (zero? (logand (-> self control status) 129))
-          (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-              (the-as int (-> *TARGET-bank* ground-timeout))
-              )
-          (logtest? (-> self control status) 4)
-          (< 0.5 (-> self control surface-angle))
-          )
+  (if (and (zero? (logand (-> self control status) 129))
+           (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
+               (the-as int (-> *TARGET-bank* ground-timeout))
+               )
+           (logtest? (-> self control status) 4)
+           (< 0.5 (-> self control surface-angle))
+           )
       (go target-slide-down)
       )
   (none)
@@ -889,35 +879,31 @@
 
 ;; definition for function smack-surface?
 (defbehavior smack-surface? target ((arg0 symbol))
-  (and (< 0.7 (-> self control touch-angle)) (and
-                                               (< (-> self control surface-angle) 0.3)
-                                               (logtest? (-> self control status) 8)
-                                               (or arg0 (zero? (logand (-> self control status) 32)))
-                                               )
+  (and (< 0.7 (-> self control touch-angle)) (and (< (-> self control surface-angle) 0.3)
+                                                  (logtest? (-> self control status) 8)
+                                                  (or arg0 (zero? (logand (-> self control status) 32)))
+                                                  )
        )
   )
 
 ;; definition for function can-wheel?
 (defbehavior can-wheel? target ()
-  (and
-    (logtest? (-> self control status) 1)
-    (or (zero? (logand (-> self control status) 8)) (>= 0.7 (-> self control touch-angle)))
-    (and (< (-> self control unknown-float61) 0.7) (zero? (logand (-> self state-flags) 8192)))
-    )
+  (and (logtest? (-> self control status) 1)
+       (or (zero? (logand (-> self control status) 8)) (>= 0.7 (-> self control touch-angle)))
+       (and (< (-> self control unknown-float61) 0.7) (zero? (logand (-> self state-flags) 8192)))
+       )
   )
 
 ;; definition for function can-duck?
 (defbehavior can-duck? target ()
-  (and
-    (logtest? (-> self control status) 1)
-    (>= (-> self control unknown-float60) 0.7)
-    (zero? (logand (-> self water flags) 6144))
-    (zero? (logand (-> self state-flags) 8192))
-    (or
-      (zero? (logand (-> self water flags) 1024))
-      (< (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)
-      )
-    )
+  (and (logtest? (-> self control status) 1)
+       (>= (-> self control unknown-float60) 0.7)
+       (zero? (logand (-> self water flags) 6144))
+       (zero? (logand (-> self state-flags) 8192))
+       (or (zero? (logand (-> self water flags) 1024))
+           (< (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)
+           )
+       )
   )
 
 ;; definition for function can-exit-duck?
@@ -951,43 +937,36 @@
 ;; definition for function can-hands?
 (defbehavior can-hands? target ((arg0 symbol))
   (cond
-    ((or
-       (zero? (logand
-                (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                (pad-buttons square)
+    ((or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                        (pad-buttons square)
+                        )
                 )
-              )
-       (or
-         (and
-           (logtest? (-> self state-flags) 4096)
-           (or
-             (zero? (logand (-> self state-flags) #x4000))
-             (not (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0)))
+         (or (and (logtest? (-> self state-flags) 4096)
+                  (or (zero? (logand (-> self state-flags) #x4000))
+                      (not (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0)))
+                      )
+                  )
+             (logtest? (-> self control unknown-surface01 flags) 384)
              )
-           )
-         (logtest? (-> self control unknown-surface01 flags) 384)
          )
-       )
      #f
      )
-    ((and
-       (or (not arg0) (and
-                        (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-                           (the-as int (-> *TARGET-bank* ground-timeout))
-                           )
-                        (< (-> self control unknown-float61) 0.7)
-                        )
-           )
-       (>= (- (-> *display* base-frame-counter)
-                (the-as int (if (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0))
-                                (-> *TARGET-bank* yellow-attack-timeout)
-                                (-> *TARGET-bank* attack-timeout)
-                                )
-                        )
-                )
-           (-> self control unknown-dword31)
-           )
-       )
+    ((and (or (not arg0) (and (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
+                                 (the-as int (-> *TARGET-bank* ground-timeout))
+                                 )
+                              (< (-> self control unknown-float61) 0.7)
+                              )
+              )
+          (>= (- (-> *display* base-frame-counter)
+                 (the-as int (if (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0))
+                                 (-> *TARGET-bank* yellow-attack-timeout)
+                                 (-> *TARGET-bank* attack-timeout)
+                                 )
+                         )
+                 )
+              (-> self control unknown-dword31)
+              )
+          )
      #t
      )
     (else

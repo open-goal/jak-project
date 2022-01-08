@@ -110,12 +110,12 @@
                                       )
             )
       (set! (-> a0-3 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                       (-> self skel root-channel 0 frame-group)
-                                                       )
-                                                 data
-                                                 0
-                                                 length
-                                                 )
+                                                    (-> self skel root-channel 0 frame-group)
+                                                    )
+                                                data
+                                                0
+                                                length
+                                                )
                                             -1
                                             )
                                    )
@@ -151,12 +151,13 @@
 ;; failed to figure out what this is:
 (defstate billy-snack-idle (billy-snack)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('eat)
-                                                                                    (go billy-snack-eat)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('eat)
+       (go billy-snack-eat)
+       )
+      )
+    )
   :code
   (behavior ()
     (while #t
@@ -166,12 +167,12 @@
                                         )
               )
         (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                         (-> self skel root-channel 0 frame-group)
-                                                         )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
+                                                      (-> self skel root-channel 0 frame-group)
+                                                      )
+                                                  data
+                                                  0
+                                                  length
+                                                  )
                                               -1
                                               )
                                      )
@@ -252,7 +253,10 @@
 (defstate nav-enemy-idle (billy-rat)
   :virtual #t
   :enter
-  (behavior () (go-virtual nav-enemy-chase) (none))
+  (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
   :post
   (the-as (function none :behavior billy-rat) nav-enemy-common-post)
   )
@@ -278,7 +282,10 @@
 ;; failed to figure out what this is:
 (defstate billy-rat-eat (billy-rat)
   :trans
-  (behavior () (seek-to-point-toward-point! (-> self collide-info) (-> self destination) 131072.0 3) (none))
+  (behavior ()
+    (seek-to-point-toward-point! (-> self collide-info) (-> self destination) 131072.0 3)
+    (none)
+    )
   :code
   (behavior ()
     (send-event (handle->process (-> self snack)) 'eat)
@@ -293,12 +300,12 @@
                                       )
             )
       (set! (-> a0-9 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                       (-> self skel root-channel 0 frame-group)
-                                                       )
-                                                 data
-                                                 0
-                                                 length
-                                                 )
+                                                    (-> self skel root-channel 0 frame-group)
+                                                    )
+                                                data
+                                                0
+                                                length
+                                                )
                                             -1
                                             )
                                    )
@@ -408,7 +415,10 @@
 (defstate nav-enemy-stare (billy-rat)
   :virtual #t
   :enter
-  (behavior () (go-virtual nav-enemy-chase) (none))
+  (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -417,8 +427,7 @@
   :trans
   (behavior ()
     (set! (-> self speed-scale) (-> self billy 0 rat-speed))
-    (if (or
-            (logtest? (nav-control-flags bit19) (-> self nav flags))
+    (if (or (logtest? (nav-control-flags bit19) (-> self nav flags))
             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self chase-rest-time)))
             )
         (go-virtual nav-enemy-victory)
@@ -426,7 +435,11 @@
     (none)
     )
   :post
-  (behavior () (swamp-rat-update-wiggle-target (-> self destination)) (nav-enemy-travel-post) (none))
+  (behavior ()
+    (swamp-rat-update-wiggle-target (-> self destination))
+    (nav-enemy-travel-post)
+    (none)
+    )
   )
 
 ;; definition for function billy-rat-init-by-other
@@ -776,7 +789,10 @@
   :code
   (the-as (function none :behavior billy) process-taskable-anim-loop)
   :post
-  (behavior () (ja-post) (none))
+  (behavior ()
+    (ja-post)
+    (none)
+    )
   )
 
 ;; definition for function billy-game-update-wave
@@ -958,12 +974,12 @@
       (get-random-point (-> self path-waypts) s5-0)
       (let ((s4-0 (get-process *default-dead-pool* billy-rat #x4000)))
         (if (when s4-0
-                (let ((t9-4 (method-of-type billy-rat activate)))
-                  (t9-4 (the-as billy-rat s4-0) self 'billy-rat (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s4-0 billy-rat-init-by-other self gp-0 s5-0)
-                (-> s4-0 ppointer)
+              (let ((t9-4 (method-of-type billy-rat activate)))
+                (t9-4 (the-as billy-rat s4-0) self 'billy-rat (the-as pointer #x70004000))
                 )
+              (run-now-in-process s4-0 billy-rat-init-by-other self gp-0 s5-0)
+              (-> s4-0 ppointer)
+              )
             (+! (-> self num-rats) 1)
             )
         )
@@ -1119,43 +1135,42 @@
         (eval-path-curve-div! (-> self path-snacks) gp-1 (the float s5-1) 'exact)
         (let ((s4-1 (get-process *default-dead-pool* billy-snack #x4000)))
           (if (when s4-1
-                  (let ((t9-7 (method-of-type billy-snack activate)))
-                    (t9-7 (the-as billy-snack s4-1) self 'billy-snack (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s4-1 billy-snack-init-by-other gp-1)
-                  (-> s4-1 ppointer)
+                (let ((t9-7 (method-of-type billy-snack activate)))
+                  (t9-7 (the-as billy-snack s4-1) self 'billy-snack (the-as pointer #x70004000))
                   )
+                (run-now-in-process s4-1 billy-snack-init-by-other gp-1)
+                (-> s4-1 ppointer)
+                )
               (+! (-> self num-snacks) 1)
               )
           )
         )
       )
     (backup-load-state-and-set-cmds *load-state* '())
-    (let* ((gp-2
-             '((kill "swamp-blimp-3")
-               (kill "swamp-tetherrock-14")
-               (kill "swamp-tetherrock-15")
-               (kill "flutflut-3")
-               (kill "tar-plat-26")
-               (kill "tar-plat-25")
-               (kill "babak-380")
-               (kill "eco-164")
-               (kill "eco-165")
-               (kill "eco-140")
-               (kill "launcher-97")
-               (kill "swamp-rat-nest-5")
-               (kill "swamp-rat-nest-4")
-               (kill "swamp-rat-nest-3")
-               (kill "swamp-rat-nest-2")
-               (kill "sharkey-9")
-               (kill "launcher-46")
-               (kill "launcher-44")
-               (kill "launcher-42")
-               (kill "swamp-spike-43")
-               (kill "swamp-spike-44")
-               (kill "swamp-spike-45")
-               )
-             )
+    (let* ((gp-2 '((kill "swamp-blimp-3")
+                   (kill "swamp-tetherrock-14")
+                   (kill "swamp-tetherrock-15")
+                   (kill "flutflut-3")
+                   (kill "tar-plat-26")
+                   (kill "tar-plat-25")
+                   (kill "babak-380")
+                   (kill "eco-164")
+                   (kill "eco-165")
+                   (kill "eco-140")
+                   (kill "launcher-97")
+                   (kill "swamp-rat-nest-5")
+                   (kill "swamp-rat-nest-4")
+                   (kill "swamp-rat-nest-3")
+                   (kill "swamp-rat-nest-2")
+                   (kill "sharkey-9")
+                   (kill "launcher-46")
+                   (kill "launcher-44")
+                   (kill "launcher-42")
+                   (kill "swamp-spike-43")
+                   (kill "swamp-spike-44")
+                   (kill "swamp-spike-45")
+                   )
+                 )
            (a1-8 (car gp-2))
            )
       (while (not (null? gp-2))
@@ -1184,8 +1199,7 @@
   (behavior ()
     (while #t
       (billy-game-update)
-      (if (or
-              (zero? (-> self num-snacks))
+      (if (or (zero? (-> self num-snacks))
               (and (zero? (-> self num-rats)) (-> self passed-last-stage))
               (and *cheat-mode* (cpad-pressed? 1 x))
               )
@@ -1196,7 +1210,10 @@
     (none)
     )
   :post
-  (behavior () (ja-post) (none))
+  (behavior ()
+    (ja-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1298,7 +1315,11 @@
 (defstate play-anim (billy)
   :virtual #t
   :exit
-  (behavior () (billy-kill-all-but-farthy) ((-> (method-of-type process-taskable play-anim) exit)) (none))
+  (behavior ()
+    (billy-kill-all-but-farthy)
+    ((-> (method-of-type process-taskable play-anim) exit))
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1307,10 +1328,10 @@
   :code
   (behavior ()
     (if (!= (if (> (-> self skel active-channels) 0)
-                    (-> self skel root-channel 0 frame-group)
-                    )
-              (get-art-elem self)
-              )
+                (-> self skel root-channel 0 frame-group)
+                )
+            (get-art-elem self)
+            )
         (ja-channel-push! 1 60)
         )
     (while #t
@@ -1328,12 +1349,12 @@
                                              )
                   )
             (set! (-> a0-10 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                              (-> self skel root-channel 0 frame-group)
-                                                              )
-                                                        data
-                                                        0
-                                                        length
-                                                        )
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       data
+                                                       0
+                                                       length
+                                                       )
                                                    -1
                                                    )
                                           )
@@ -1360,8 +1381,8 @@
           )
         )
       (when (= (if (> (-> self skel active-channels) 0)
-                    (-> self skel root-channel 0 frame-group)
-                    )
+                   (-> self skel root-channel 0 frame-group)
+                   )
                (-> self draw art-group data 3)
                )
         (let ((a0-19 (-> self skel root-channel 0)))

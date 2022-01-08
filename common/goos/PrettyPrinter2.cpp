@@ -68,6 +68,19 @@ struct Node {
     return false;
   }
 
+  std::string debug_to_string() const {
+    switch (kind) {
+      case Kind::ATOM:
+        return fmt::format("[atom {}]", atom_str);
+      case Kind::LIST:
+        return "[list]";
+      case Kind::IMPROPER_LIST:
+        return "[improper list]";
+      default:
+        assert(false);
+    }
+  }
+
   // how wide is this text? not including the indentation of this subtree.
   u32 text_len = 0;
 
@@ -190,7 +203,8 @@ void break_list(Node* node) {
   node->top_line_count = 1;
 
   const std::unordered_set<std::string> sameline_splitters = {
-      "if", "<", ">", "<=", ">=", "set!", "=", "!=", "+", "-", "*", "/", "the", "->", "and", "or"};
+      "if", "<",   ">",  "<=",  ">=", "set!",   "=",      "!=",     "+",  "-",  "*",
+      "/",  "the", "->", "and", "or", "logand", "logior", "logxor", "+!", "*!", "logtest?"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo
@@ -325,17 +339,25 @@ void append_node_to_string(const Node* node,
 
         int listing_indent = next_indent_level + node->quoted + node->sub_elt_indent;
         int extra_indent = 0;
+        int old_indent = listing_indent;
+        if (node->top_line_count) {
+          listing_indent -= node->sub_elt_indent;
+          listing_indent += node->child_nodes.front().kind == Node::Kind::LIST ? 1 : 2;
+        }
         for (; node_idx < node->top_line_count; node_idx++) {
           size_t s0 = str.length();
           if (node->kind == Node::Kind::IMPROPER_LIST &&
               &node->child_nodes.at(node_idx) == &node->child_nodes.back()) {
             str.append(". ");
           }
+          // so, if these need to break, they should have a bigger indent.
           append_node_to_string(&node->child_nodes.at(node_idx), str, 0,
                                 listing_indent + extra_indent);
-          // extra_indent += (str.length() - s0);
           extra_indent = compute_extra_offset(str, s0, extra_indent);
           str.push_back(' ');
+        }
+        if (node->top_line_count) {
+          listing_indent = old_indent;
         }
         if (node->top_line_count > 0) {
           str.pop_back();

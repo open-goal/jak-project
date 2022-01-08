@@ -163,14 +163,12 @@
 ;; definition for function puffer-post
 ;; INFO: Return type mismatch int vs none.
 (defbehavior puffer-post puffer ()
-  (when (and
-          (-> self hit-player?)
-          (or (not *target*) (and
-                               (zero? (logand (-> *target* state-flags) #x80f8))
-                               (>= (- (-> *display* base-frame-counter) (the-as int (-> self hit-player-time))) 15)
-                               )
-              )
-          )
+  (when (and (-> self hit-player?)
+             (or (not *target*) (and (zero? (logand (-> *target* state-flags) #x80f8))
+                                     (>= (- (-> *display* base-frame-counter) (the-as int (-> self hit-player-time))) 15)
+                                     )
+                 )
+             )
     (dummy-54 (-> self root-override) 2 2)
     (set! (-> self hit-player?) #f)
     )
@@ -226,10 +224,9 @@
 
 ;; definition for method 24 of type puffer
 (defmethod dummy-24 puffer ((obj puffer) (arg0 vector))
-  (and
-    (dummy-25 (-> obj nav) arg0 11468.8)
-    (< (-> arg0 y) (+ (-> obj root-override trans y) (-> obj fact-info-override notice-top)))
-    )
+  (and (dummy-25 (-> obj nav) arg0 11468.8)
+       (< (-> arg0 y) (+ (-> obj root-override trans y) (-> obj fact-info-override notice-top)))
+       )
   )
 
 ;; definition for method 22 of type puffer
@@ -240,12 +237,11 @@
                    )
                )
          )
-    (if (and
-            v1-0
-            (>= 25395.2
-                (vector-vector-xz-distance (-> obj root-override trans) (-> (the-as process-drawable v1-0) root trans))
-                )
-            )
+    (if (and v1-0
+             (>= 25395.2
+                 (vector-vector-xz-distance (-> obj root-override trans) (-> (the-as process-drawable v1-0) root trans))
+                 )
+             )
         (return #t)
         )
     )
@@ -256,12 +252,11 @@
 (defmethod dummy-25 puffer ((obj puffer) (arg0 float))
   (when *target*
     (let ((gp-0 (target-pos 0)))
-      (when (and
-              (zero? (logand (-> *target* state-flags) #x80f8))
-              (dummy-24 obj gp-0)
-              (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
-              (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
-              )
+      (when (and (zero? (logand (-> *target* state-flags) #x80f8))
+                 (dummy-24 obj gp-0)
+                 (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
+                 (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
+                 )
         (let ((f30-0 (vector-vector-xz-distance gp-0 (-> obj root-override trans))))
           (when (>= arg0 f30-0)
             (let* ((a0-4 (-> obj buddy))
@@ -558,14 +553,13 @@
   :code
   (behavior ()
     (while #t
-      (if (and
-              (and *target* (>= (-> self fact-info-override idle-distance)
-                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                                )
-                   )
-              (logtest? (-> self draw status) (draw-status drwf03))
-              (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
-              )
+      (if (and (and *target* (>= (-> self fact-info-override idle-distance)
+                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                 )
+                    )
+               (logtest? (-> self draw status) (draw-status drwf03))
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
+               )
           (go puffer-patrol)
           )
       (dummy-26 self)
@@ -596,14 +590,13 @@
     )
   :trans
   (behavior ()
-    (if (and
-            (not (and *target* (>= (-> self fact-info-override idle-distance)
-                                   (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                                   )
-                      )
-                 )
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-            )
+    (if (and (not (and *target* (>= (-> self fact-info-override idle-distance)
+                                    (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                    )
+                       )
+                  )
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+             )
         (go puffer-idle)
         )
     (cond
@@ -622,18 +615,16 @@
         (set! (-> self pick-new-point-delay) (the-as uint (rand-vu-int-range 900 3000)))
         )
       )
-    (if (and
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self reaction-delay)))
-            (dummy-25 self (-> self notice-dist))
-            )
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self reaction-delay)))
+             (dummy-25 self (-> self notice-dist))
+             )
         (go puffer-attack)
         )
-    (when (or
-            (< (vector-vector-xz-distance (-> self root-override trans) (-> self dest-pos)) 8192.0)
-            (>= (- (-> *display* base-frame-counter) (the-as int (-> self picked-point-time)))
-                (the-as int (-> self pick-new-point-delay))
-                )
-            )
+    (when (or (< (vector-vector-xz-distance (-> self root-override trans) (-> self dest-pos)) 8192.0)
+              (>= (- (-> *display* base-frame-counter) (the-as int (-> self picked-point-time)))
+                  (the-as int (-> self pick-new-point-delay))
+                  )
+              )
       (when (dummy-23 self #f)
         (set! (-> self picked-point-time) (the-as uint (-> *display* base-frame-counter)))
         (set! (-> self pick-new-point-delay) (the-as uint (rand-vu-int-range 900 3000)))
@@ -872,8 +863,8 @@
       ((< f30-0 0.5)
        (cond
          ((= (if (> (-> obj skel active-channels) 0)
-                  (-> obj skel root-channel 0 frame-group)
-                  )
+                 (-> obj skel root-channel 0 frame-group)
+                 )
              (-> obj draw art-group data 9)
              )
           (cond
@@ -914,8 +905,8 @@
             )
           )
          ((= (if (> (-> obj skel active-channels) 0)
-                  (-> obj skel root-channel 0 frame-group)
-                  )
+                 (-> obj skel root-channel 0 frame-group)
+                 )
              (-> obj draw art-group data 11)
              )
           (cond
@@ -956,8 +947,8 @@
             )
           )
          ((= (if (> (-> obj skel active-channels) 0)
-                  (-> obj skel root-channel 0 frame-group)
-                  )
+                 (-> obj skel root-channel 0 frame-group)
+                 )
              (-> obj draw art-group data 14)
              )
           (cond
@@ -1019,8 +1010,8 @@
          )
        )
       ((= (if (> (-> obj skel active-channels) 0)
-               (-> obj skel root-channel 0 frame-group)
-               )
+              (-> obj skel root-channel 0 frame-group)
+              )
           (-> obj draw art-group data 10)
           )
        (cond
@@ -1061,8 +1052,8 @@
          )
        )
       ((= (if (> (-> obj skel active-channels) 0)
-               (-> obj skel root-channel 0 frame-group)
-               )
+              (-> obj skel root-channel 0 frame-group)
+              )
           (-> obj draw art-group data 12)
           )
        (cond
@@ -1103,8 +1094,8 @@
          )
        )
       ((= (if (> (-> obj skel active-channels) 0)
-               (-> obj skel root-channel 0 frame-group)
-               )
+              (-> obj skel root-channel 0 frame-group)
+              )
           (-> obj draw art-group data 13)
           )
        (cond

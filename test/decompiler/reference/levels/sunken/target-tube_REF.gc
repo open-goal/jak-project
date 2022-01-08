@@ -494,11 +494,10 @@
   :exit
   (behavior ()
     (when (not
-            (or
-              (= (-> self next-state name) 'target-tube)
-              (= (-> self next-state name) 'target-tube-jump)
-              (= (-> self next-state name) 'target-tube-hit)
-              )
+            (or (= (-> self next-state name) 'target-tube)
+                (= (-> self next-state name) 'target-tube-jump)
+                (= (-> self next-state name) 'target-tube-hit)
+                )
             )
       (let ((v1-7 (-> self manipy)))
         (when v1-7
@@ -584,26 +583,24 @@
     (countdown (s5-0 gp-0)
       (set! (-> self control unknown-int40) s5-0)
       (set! (-> self tube turn-anim-targ) (fmax -20.0 (fmin 20.0 (-> self tube turn-anim-targ))))
-      (or
-        (not (>= (* (-> self tube turn-anim-targ) (-> self tube turn-anim-frame)) 0.0))
-        (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
-        )
-      (+!
-        (-> self tube turn-anim-vel)
-        (* (- (-> self tube turn-anim-targ) (-> self tube turn-anim-frame))
-           (lerp-scale
-             20.0
-             (if (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
-                 30.0
-                 60.0
-                 )
-             (-> self control unknown-float01)
-             0.0
-             36864.0
+      (or (not (>= (* (-> self tube turn-anim-targ) (-> self tube turn-anim-frame)) 0.0))
+          (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
+          )
+      (+! (-> self tube turn-anim-vel)
+          (* (- (-> self tube turn-anim-targ) (-> self tube turn-anim-frame))
+             (lerp-scale
+               20.0
+               (if (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
+                   30.0
+                   60.0
+                   )
+               (-> self control unknown-float01)
+               0.0
+               36864.0
+               )
+             (-> *display* seconds-per-frame)
              )
-           (-> *display* seconds-per-frame)
-           )
-        )
+          )
       (set! (-> self tube turn-anim-vel)
             (fmax
               -100.0
@@ -652,19 +649,15 @@
   (-> target-tube-start exit)
   :trans
   (behavior ()
-    (if (and
-            (logtest?
-              (logior
-                (logior
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
-                  )
-                (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
-                )
-              (pad-buttons x)
-              )
-            (can-jump? #f)
-            )
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? #f)
+             )
         (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
         )
     (none)
@@ -707,7 +700,10 @@
     (none)
     )
   :post
-  (behavior () (target-tube-post) (none))
+  (behavior ()
+    (target-tube-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1073,17 +1069,15 @@
     )
   :trans
   (behavior ()
-    (if (and
-            (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-            (and
-              (< 0.0 (vector-dot
-                       (vector-! (new 'stack-no-clear 'vector) (-> *target* control trans) (-> self trans))
-                       (-> self rot)
-                       )
-                 )
-              (send-event *target* 'change-mode 'tube self)
-              )
-            )
+    (if (and (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+             (and (< 0.0 (vector-dot
+                           (vector-! (new 'stack-no-clear 'vector) (-> *target* control trans) (-> self trans))
+                           (-> self rot)
+                           )
+                     )
+                  (send-event *target* 'change-mode 'tube self)
+                  )
+             )
         (go-virtual slide-control-ride)
         )
     (none)
@@ -1128,12 +1122,6 @@
     (set! (-> self pos) 0.0)
     (set! (-> self target) (process->handle *target*))
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (none)
-    )
-  :exit
-  (behavior ()
-    (set! (-> self target) (the-as handle #f))
-    (process-entity-status! self (entity-perm-status bit-3) #f)
     (none)
     )
   :trans

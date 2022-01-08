@@ -136,12 +136,13 @@
 ;; failed to figure out what this is:
 (defstate drop-plat-spawn (drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('drop)
-                                                                                    (go drop-plat-die)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('drop)
+       (go drop-plat-die)
+       )
+      )
+    )
   :code
   (behavior ()
     (set! (-> self root-override trans y)
@@ -168,12 +169,13 @@
 ;; failed to figure out what this is:
 (defstate drop-plat-rise (drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('drop)
-                                                                                    (go drop-plat-drop)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('drop)
+       (go drop-plat-drop)
+       )
+      )
+    )
   :code
   (behavior ((arg0 draw-control))
     (set! (-> self interp) 1.0)
@@ -243,8 +245,8 @@
       (vector-v++! (-> self root-override transv) (dummy-62 (-> self root-override) (new-stack-vector0) 0.0))
       (vector-v++! (-> self root-override trans) (-> self root-override transv))
       (if (< 204800.0
-               (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
-               )
+             (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+             )
           (go drop-plat-die)
           )
       (+! (-> self spin-angle) (* (-> self spin-speed) (-> *display* seconds-per-frame)))
@@ -267,7 +269,10 @@
 ;; failed to figure out what this is:
 (defstate drop-plat-die (drop-plat)
   :code
-  (behavior () (dummy-18 self) (none))
+  (behavior ()
+    (dummy-18 self)
+    (none)
+    )
   )
 
 ;; definition for method 20 of type drop-plat
@@ -532,12 +537,13 @@
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-idle (citb-drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('trigger)
-                                                                                    (go citb-drop-plat-active)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (go citb-drop-plat-active)
+       )
+      )
+    )
   :code
   (behavior ()
     (citb-drop-plat-drop-all-children)
@@ -572,12 +578,10 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (citb-drop-plat-spawn-children)
     (while #t
-      (if (or
-              (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) 600))
-              (or
-                (not *target*)
-                (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-                )
+      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) 600))
+              (or (not *target*)
+                  (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                  )
               (not (-> self child))
               )
           (go citb-drop-plat-idle)
