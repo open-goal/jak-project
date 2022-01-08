@@ -499,14 +499,12 @@
 ;; definition for function bully-post
 ;; INFO: Return type mismatch int vs none.
 (defbehavior bully-post bully ()
-  (when (and
-          (-> self hit-player?)
-          (or (not *target*) (and
-                               (zero? (logand (-> *target* state-flags) #x80f8))
-                               (>= (- (-> *display* base-frame-counter) (the-as int (-> self hit-player-time))) 15)
-                               )
-              )
-          )
+  (when (and (-> self hit-player?)
+             (or (not *target*) (and (zero? (logand (-> *target* state-flags) #x80f8))
+                                     (>= (- (-> *display* base-frame-counter) (the-as int (-> self hit-player-time))) 15)
+                                     )
+                 )
+             )
     (dummy-54 (-> self root-override) 2 2)
     (set! (-> self hit-player?) #f)
     )
@@ -562,12 +560,11 @@
         (vector-normalize-copy! (-> obj nav travel) (-> obj root-override transv) 2048.0)
         (let ((s5-3 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
           (dummy-24 (-> obj nav) 2048.0 s5-3)
-          (when (and
-                  (-> s5-3 found-boundary)
-                  (>= (* (-> obj travel-speed) (-> *display* seconds-per-frame))
-                      (vector-vector-xz-distance (-> s5-3 intersection) (-> obj root-override trans))
-                      )
-                  )
+          (when (and (-> s5-3 found-boundary)
+                     (>= (* (-> obj travel-speed) (-> *display* seconds-per-frame))
+                         (vector-vector-xz-distance (-> s5-3 intersection) (-> obj root-override trans))
+                         )
+                     )
             (let ((s4-1 (new 'stack-no-clear 'vector)))
               (vector-negate! s4-1 (-> s5-3 boundary-normal))
               (set! (-> s4-1 y) 0.0)
@@ -617,13 +614,12 @@
     )
   :trans
   (behavior ()
-    (when (and
-            (and *target* (>= (-> self fact-override idle-distance)
-                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                              )
-                 )
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self reaction-delay)))
-            )
+    (when (and (and *target* (>= (-> self fact-override idle-distance)
+                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                 )
+                    )
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self reaction-delay)))
+               )
       (start-hint-timer (game-text-id sunken-bully-dive-hint))
       (go bully-notice)
       )
@@ -642,12 +638,12 @@
             )
           (set! (-> gp-1 frame-num)
                 (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                                  (-> self skel root-channel 0 frame-group)
-                                                                  )
-                                                            data
-                                                            0
-                                                            length
-                                                            )
+                                                               (-> self skel root-channel 0 frame-group)
+                                                               )
+                                                           data
+                                                           0
+                                                           length
+                                                           )
                                                        -1
                                                        )
                                               )
@@ -1006,9 +1002,9 @@
         )
       )
     (if (or (not *target*) (< (-> self fact-override idle-distance)
-                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                                )
-              )
+                              (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                              )
+            )
         (go bully-idle #f)
         )
     (go bully-start-spinning)
