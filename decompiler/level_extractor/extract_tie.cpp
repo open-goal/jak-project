@@ -525,11 +525,6 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         }
       }
 
-      // just for debug
-      for (int g = 0; g < 4; g++) {
-        frag_info.point_sizes.push_back(proto.geometry[g].tie_fragments[frag_idx].point_ref.size());
-      }
-
       info.frags.push_back(std::move(frag_info));
     }
   }
