@@ -32,7 +32,7 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0000)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0000)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
 
 (defglobalconstant PC_KERNEL_VERSION_MINOR #x0000)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
@@ -48,6 +48,7 @@
 
 (defconstant ASPECT_4X3 (/ 4.0 3.0))
 (defconstant ASPECT_16X9 (/ 16.0 9.0))
+(defconstant ASPECT_16X9_SCALE (/ ASPECT_16X9 ASPECT_4X3))
 (defconstant PC_BASE_WIDTH 640)
 (defconstant PC_BASE_HEIGHT 480)
 
@@ -181,6 +182,8 @@
    (dpi-y float) ;; DPI height scale
    (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically.
    (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
+   (aspect-ratio-scale float) ;; aspect ratio compared to 4x3
+   (aspect-ratio-reciprocal float) ;; aspect ratio compared to 3x4
    (fullscreen? symbol) ;; fullscreen status. can be #f, #t or borderless
    (letterbox? symbol) ;; letterbox. #f = stretched
    (vsync? symbol) ;; vsync.
@@ -194,6 +197,7 @@
    (aspect-custom-x int)
    (aspect-custom-y int)
    (debug-pad-display symbol)
+   (progress-force? symbol)
 
    (device-audio pc-device-info :inline) ;; used audio device
    (device-screen pc-device-info :inline) ;; used display device
@@ -258,6 +262,7 @@
     (set-fullscreen! (_type_ symbol) int)
     (set-size! (_type_ int int) int)
     (set-aspect! (_type_ int int) int)
+    (set-aspect-ratio! (_type_ float) int)
     (read-from-file (_type_ string) symbol)
     (write-to-file (_type_ string) symbol)
     )
@@ -296,6 +301,7 @@
   (set! (-> obj new-lb?) #f)
   (set! (-> obj display-actor-bank) #f)
   (set! (-> obj debug-pad-display) #f)
+  (set! (-> obj progress-force?) #f)
   (set! (-> obj font-scale) 1.0)
   (set! (-> obj aspect-custom-x) 1)
   (set! (-> obj aspect-custom-y) 1)

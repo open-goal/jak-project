@@ -3973,7 +3973,7 @@
 
 (#when PC_PORT
 
-(defmacro new-dm-function (text var func)
+(defmacro new-dm-func (text var func)
   `(new 'debug 'debug-menu-item-function ,text ,var (the-as (function int object) ,func))
   )
 (defmacro new-dm-flag (text var func)
@@ -4060,7 +4060,7 @@
       (let ((iter *level-load-list*))
           (while (not (or (null? iter) (null? (cdr iter)) (null? (cddr iter))))
             (debug-menu-append-item teleport-menu
-                (new-dm-function (symbol->string (the-as symbol (car iter)))
+                (new-dm-func (symbol->string (the-as symbol (car iter)))
                                  (-> (the-as symbol (car iter)) value)
                                  (lambda ((info level-load-info))
                                   (let ((tf (new 'stack 'transformq)))
@@ -4158,9 +4158,23 @@
     )
   )
 
+(defun dm-display-entities-pick-func ((arg0 symbol))
+  (debug-print-entities *level* arg0 (the-as type #f))
+  )
+
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
-  ;; Entity menu TODO
+  
+  (debug-menu-append-item (-> *debug-menu-context* root-menu)
+    (debug-menu-make-from-template *debug-menu-context*
+      '(menu "Entity"
+         (function "Print entity info" #t dm-display-entities-pick-func)
+         (function "Print entity info (art-group)" art-group dm-display-entities-pick-func)
+         (function "Print entity info (entity-meters)" entity-meters dm-display-entities-pick-func)
+         (function "Print entity info (entity-perm)" entity-perm dm-display-entities-pick-func)
+         )
+      )
+    )
   ;; Music menu TODO
   ;; Secrets menu TODO
   ;; Scene menu TODO
@@ -4217,6 +4231,8 @@
             (function "2560 x 1440" #f (lambda () (set-size! *pc-settings* 2560 1440)))
             (function "2880 x 2160" #f (lambda () (set-size! *pc-settings* 2880 2160)))
             (function "3840 x 2160" #f (lambda () (set-size! *pc-settings* 3840 2160)))
+            (function "512 x 448" #f (lambda () (set-size! *pc-settings* 512 448)))
+            (function "512 x 512" #f (lambda () (set-size! *pc-settings* 512 512)))
             )
          (flag "Letterbox" #f (dm-lambda-boolean-flag (-> *pc-settings* letterbox?)))
          (flag "Skip movies" #f (dm-lambda-boolean-flag (-> *pc-settings* skip-movies?)))
@@ -4255,16 +4271,67 @@
          )
       )
     )
-  (debug-menu-append-item (-> *debug-menu-context* root-menu)
-    (debug-menu-make-from-template *debug-menu-context*
-      '(menu "Other"
-         (flag "DECI Count" *display-deci-count* dm-boolean-toggle-pick-func)
-         (flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
-         (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
-         (float-var "Actor birth dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
-         (float-var "Actor pause dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
+  (let* ((prog-menu (new 'debug 'debug-menu *debug-menu-context* "Progress menu"))
+         (prog-menu-node (new-dm-submenu "Progress" prog-menu))
+         (other-menu-node
+            (debug-menu-make-from-template *debug-menu-context*
+              '(menu "Other"
+                 (flag "DECI Count" *display-deci-count* dm-boolean-toggle-pick-func)
+                 (flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
+                 (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
+                 (float-var "Actor birth dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
+                 (float-var "Actor pause dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
+                 (flag "Force progress" #f (dm-lambda-boolean-flag (-> *pc-settings* progress-force?)))
+                 )
+              ))
+         (other-menu (-> (the-as debug-menu-item-submenu other-menu-node) submenu))
          )
+    (dotimes (i 35)
+      (debug-menu-append-item prog-menu
+          (new-dm-func (new 'debug 'string 0 (enum->string progress-screen i)) i
+                        (lambda ((val progress-screen))
+                          (cond
+                            ((-> *pc-settings* progress-force?)
+                               (cond
+                                ((not *progress-process*)
+                                  (make-levels-with-tasks-available-to-progress)
+                                  (disable-level-text-file-loading)
+                                  (set! (-> *progress-state* starting-state) val)
+                                  (set! *progress-process* (make-init-process progress progress-init-by-other
+                                                                              :to *dproc*
+                                                                              :stack *progress-stack-top*))
+                                  (let ((s5-1 *progress-process*))
+                                   (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
+                                   (set! *master-mode* 'progress)
+                                   (set! (-> s5-1 0 display-level-index) 0) ;; geyser rock
+                                   (set! (-> s5-1 0 next-level-index) (-> s5-1 0 display-level-index))
+                                   (set! (-> s5-1 0 display-state) (progress-screen invalid))
+                                   (set-transition-progress! (-> s5-1 0) 512)
+                                   (set! (-> s5-1 0 task-index) (get-next-task-up -1 (-> s5-1 0 display-level-index)))
+                                   )
+                                 (when *progress-process*
+                                  (enter! (-> *progress-process* 0) val 0)
+                                  (set! (-> *progress-process* 0 card-info) #f)
+                                  )
+                                 )
+                                (else
+                                 (push! (-> *progress-process* 0))
+                                 (set! (-> *progress-process* 0 next-display-state) val)
+                                 (set! (-> *progress-process* 0 card-info) #f)
+                                 )
+                                )
+                              )
+                            (else
+                              (activate-progress *dproc* val)
+                              )
+                            )
+                          (set-master-mode 'progress)
+                          )
+                        ))
       )
+    (debug-menu-append-item other-menu prog-menu-node)
+
+    (debug-menu-append-item (-> *debug-menu-context* root-menu) other-menu-node)
     )
   )
 

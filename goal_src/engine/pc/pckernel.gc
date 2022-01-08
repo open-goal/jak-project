@@ -56,10 +56,17 @@
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
   (let ((aspect (/ (the float aw) (the float ah))))
-    (set! (-> *pc-settings* aspect-ratio) aspect)
-    (set! (-> *pc-settings* aspect-ratio-auto?) #f)
-    (set! (-> *pc-settings* use-vis?) #f)
+    (set-aspect-ratio! obj aspect)
+    (set! (-> obj aspect-ratio-auto?) #f)
+    (set! (-> obj use-vis?) #f)
     )
+  0)
+
+
+(defmethod set-aspect-ratio! pc-settings ((obj pc-settings) (aspect float))
+  (set! (-> obj aspect-ratio) aspect)
+  (set! (-> obj aspect-ratio-scale) (/ aspect ASPECT_4X3))
+  (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   0)
 
 
@@ -73,8 +80,8 @@
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
-        (set! (-> obj aspect-ratio) ASPECT_4X3)
-        (set! (-> obj aspect-ratio) ASPECT_16X9)
+        (set-aspect-ratio! obj ASPECT_4X3)
+        (set-aspect-ratio! obj ASPECT_16X9)
         )
     )
 
@@ -82,7 +89,7 @@
     (cond
       ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
        ;; the window determines the resolution
-       (set! (-> obj aspect-ratio) win-aspect)
+       (set-aspect-ratio! obj win-aspect)
        (set! (-> obj width) (-> obj win-width))
        (set! (-> obj height) (-> obj win-height))
        )
@@ -128,10 +135,25 @@
   (update-from-os obj)
   (update-to-os obj)
 
-  (when #t ;;(not (-> obj use-vis?))
-    (set! (-> *video-parms* relative-x-scale) (/ ASPECT_4X3 (-> obj aspect-ratio)))
-    (set! (-> *video-parms* relative-x-scale-reciprical) (/ (-> obj aspect-ratio) ASPECT_4X3))
+  (when (not (-> obj use-vis?))
+    (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
+    (set! (-> *video-parms* relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
     (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
+    )
+  (when (not (-> obj use-vis?))
+    (when *progress-process*
+      ;; adjust sizes for progress.
+      ;; video.gc sets the sizes in the normal game.
+      (let ((pr (-> *progress-process*))
+            (wide-adjust (* 4.0 (- (/ (-> obj aspect-ratio-scale) ASPECT_16X9_SCALE) (1/ ASPECT_16X9_SCALE))))
+            )
+          (set! (-> pr sides-x-scale) 1.0)
+          (set! (-> pr sides-y-scale) 13.0)
+          ;(set! (-> pr left-x-offset) (+ 59 (the int (* (-> obj aspect-ratio-scale) -59))))
+          ;(set! (-> pr right-x-offset) 26)
+          ;(set! (-> pr button-scale) (+ 1.0 (* wide-adjust 0.1)))
+          )
+      )
     )
   (if (and *debug-segment* (-> obj debug-pad-display))
     (debug-pad-display (-> *cpad-list* cpads 0))
@@ -157,7 +179,7 @@
   (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
   (format *pc-temp-string* "fullscreen: ~A ~A~%" (-> obj fullscreen?) (-> obj vsync?))
 
-  (draw-string-xy *pc-temp-string* buf 0 (- 240 (* 8 4)) (font-color default) (font-flags shadow kerning))
+  (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
 
   (none))
 

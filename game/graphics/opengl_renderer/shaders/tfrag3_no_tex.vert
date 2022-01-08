@@ -44,6 +44,8 @@ void main() {
     transformed.xyz *= transformed.w;
 
     gl_Position = transformed;
+    // scissoring area adjust
+    gl_Position.y *= 512.0/448.0;
 
     // time of day lookup
     fragment_color = rgba_in;
