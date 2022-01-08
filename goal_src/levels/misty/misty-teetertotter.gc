@@ -6,9 +6,6 @@
 ;; dgos: L1, MIS
 
 (declare-type teetertotter process-drawable)
-(define-extern teetertotter-idle (state teetertotter))
-(define-extern teetertotter-launch (state teetertotter))
-(define-extern teetertotter-bend (state teetertotter))
 
 ;; DECOMP BEGINS
 
@@ -21,6 +18,11 @@
   :method-count-assert 20
   :size-assert         #xbc
   :flag-assert         #x14005000bc
+  (:states
+    teetertotter-bend
+    teetertotter-idle
+    teetertotter-launch
+    )
   )
 
 
@@ -33,74 +35,57 @@
   )
 
 (defun target-on-end-of-teetertotter? ((arg0 teetertotter))
-  (let
-   ((gp-1
-     (vector-!
-      (new-stack-vector0)
-      (-> *target* control trans)
-      (-> arg0 root trans)
-      )
-     )
+  (let ((gp-1 (vector-! (new-stack-vector0) (-> *target* control trans) (-> arg0 root trans))))
+    (if (< (vector-dot (vector-x-quaternion! (new-stack-vector0) (-> arg0 root quat)) gp-1) -8192.0)
+        #t
+        )
     )
-   (if
-    (<
-     (vector-dot
-      (vector-x-quaternion! (new-stack-vector0) (-> arg0 root quat))
-      gp-1
-      )
-     -8192.0
-     )
-    #t
-    )
-   )
   )
 
 (defstate teetertotter-idle (teetertotter)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('attack)
-      (case (-> arg3 param 1) 
-       (('flop)
-         (when (target-on-end-of-teetertotter? self)
-          (set! (-> self in-launch-window) #f)
-          (increment-success-for-hint
-           (game-text-id misty-teetertotter-bonk-dax-tutorial)
-           )
-          (go teetertotter-launch)
+    (case arg2
+      (('attack)
+       (case (-> arg3 param 1)
+         (('flop)
+          (when (target-on-end-of-teetertotter? self)
+            (set! (-> self in-launch-window) #f)
+            (increment-success-for-hint (game-text-id misty-teetertotter-bonk-dax-tutorial))
+            (go teetertotter-launch)
+            )
           )
          )
        )
-      )
-    (('bonk)
-     (when (target-on-end-of-teetertotter? self)
-      (level-hint-spawn
-       (game-text-id misty-teetertotter-bonk-dax-tutorial)
-       "sksp0070"
-       (the-as entity #f)
-       *entity-pool*
-       (game-task none)
+      (('bonk)
+       (when (target-on-end-of-teetertotter? self)
+         (level-hint-spawn
+           (game-text-id misty-teetertotter-bonk-dax-tutorial)
+           "sksp0070"
+           (the-as entity #f)
+           *entity-pool*
+           (game-task none)
+           )
+         (go teetertotter-bend)
+         )
        )
-      (go teetertotter-bend)
       )
-     )
     )
-   )
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 4))
-     num-func-identity
-     )
-    (set! (-> gp-0 frame-num) 0.0)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        num-func-identity
+        )
+      (set! (-> gp-0 frame-num) 0.0)
+      )
+    (while #t
+      (suspend)
+      )
+    (none)
     )
-   (while #t
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior teetertotter) transform-post)
   )
@@ -108,117 +93,89 @@
 (defstate teetertotter-launch (teetertotter)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (the-as object (when (= arg2 'touch)
-                   (when
-                    (and
-                     ((method-of-type touching-shapes-entry prims-touching?)
-                      (the-as touching-shapes-entry (-> arg3 param 0))
-                      (the-as collide-shape-moving (-> self root))
-                      (the-as uint 1)
-                      )
-                     (-> self rock-is-dangerous)
-                     )
-                    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-2 from) self)
-                     (set! (-> a1-2 num-params) 2)
-                     (set! (-> a1-2 message) 'attack)
-                     (set! (-> a1-2 param 0) (-> arg3 param 0))
-                     (let ((a0-2 (new 'static 'attack-info :mask #x20)))
-                      (set! (-> a0-2 mode) 'deadly)
-                      (set! (-> a1-2 param 1) (the-as uint a0-2))
-                      )
-                     (send-event-function arg0 a1-2)
-                     )
-                    )
-                   (when
-                    (and
-                     ((method-of-type touching-shapes-entry prims-touching?)
-                      (the-as touching-shapes-entry (-> arg3 param 0))
-                      (the-as collide-shape-moving (-> self root))
-                      (the-as uint 2)
-                      )
-                     (target-on-end-of-teetertotter? self)
-                     (not (-> self launched-player))
-                     (-> self in-launch-window)
-                     )
-                    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-4 from) self)
-                     (set! (-> a1-4 num-params) 2)
-                     (set! (-> a1-4 message) 'shove)
-                     (set! (-> a1-4 param 0) (the-as uint #f))
-                     (let ((v1-16 (new 'static 'attack-info :mask #xcc0)))
-                      (set! (-> v1-16 shove-back) 0.0)
-                      (set! (-> v1-16 shove-up) 53248.0)
-                      (set! (-> v1-16 angle) 'jump)
-                      (set! (-> v1-16 control) 1.0)
-                      (set! (-> a1-4 param 1) (the-as uint v1-16))
-                      )
-                     (when (send-event-function arg0 a1-4)
-                      (let ((v0-0 #t))
-                       (set! (-> self launched-player) v0-0)
-                       v0-0
+    (the-as object (when (= arg2 'touch)
+                     (when (and
+                             ((method-of-type touching-shapes-entry prims-touching?)
+                              (the-as touching-shapes-entry (-> arg3 param 0))
+                              (the-as collide-shape-moving (-> self root))
+                              (the-as uint 1)
+                              )
+                             (-> self rock-is-dangerous)
+                             )
+                       (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                         (set! (-> a1-2 from) self)
+                         (set! (-> a1-2 num-params) 2)
+                         (set! (-> a1-2 message) 'attack)
+                         (set! (-> a1-2 param 0) (-> arg3 param 0))
+                         (let ((a0-2 (new 'static 'attack-info :mask #x20)))
+                           (set! (-> a0-2 mode) 'deadly)
+                           (set! (-> a1-2 param 1) (the-as uint a0-2))
+                           )
+                         (send-event-function arg0 a1-2)
+                         )
                        )
-                      )
+                     (when (and
+                             ((method-of-type touching-shapes-entry prims-touching?)
+                              (the-as touching-shapes-entry (-> arg3 param 0))
+                              (the-as collide-shape-moving (-> self root))
+                              (the-as uint 2)
+                              )
+                             (target-on-end-of-teetertotter? self)
+                             (not (-> self launched-player))
+                             (-> self in-launch-window)
+                             )
+                       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+                         (set! (-> a1-4 from) self)
+                         (set! (-> a1-4 num-params) 2)
+                         (set! (-> a1-4 message) 'shove)
+                         (set! (-> a1-4 param 0) (the-as uint #f))
+                         (let ((v1-16 (new 'static 'attack-info :mask #xcc0)))
+                           (set! (-> v1-16 shove-back) 0.0)
+                           (set! (-> v1-16 shove-up) 53248.0)
+                           (set! (-> v1-16 angle) 'jump)
+                           (set! (-> v1-16 control) 1.0)
+                           (set! (-> a1-4 param 1) (the-as uint v1-16))
+                           )
+                         (when (send-event-function arg0 a1-4)
+                           (let ((v0-0 #t))
+                             (set! (-> self launched-player) v0-0)
+                             v0-0
+                             )
+                           )
+                         )
+                       )
                      )
-                    )
-                   )
+            )
     )
-   )
   :code
   (behavior ()
-   (set! (-> self launched-player) #f)
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 4))
-     )
-    (set!
-     (-> a0-0 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 4))
-        data
-        0
-        length
+    (set! (-> self launched-player) #f)
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+      (set! (-> a0-0 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+            )
+      (set! (-> a0-0 param 1) 1.0)
+      (set! (-> a0-0 frame-num) 0.0)
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (let ((f0-4 (ja-aframe-num 0)))
+        (set! (-> self in-launch-window) (and (>= f0-4 76.0) (>= 82.0 f0-4)))
+        (let ((v1-16 (>= f0-4 12.0)))
+          (set! (-> self rock-is-dangerous) (and v1-16 (>= 76.0 f0-4)))
+          )
         )
-       -1
-       )
+      (suspend)
+      (let ((a0-2 (-> self skel root-channel 0)))
+        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+        (set! (-> a0-2 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
-    (set! (-> a0-0 param 1) 1.0)
-    (set! (-> a0-0 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim (-> self draw art-group data 4))
-     num-func-seek!
-     )
+    (go teetertotter-idle)
+    (none)
     )
-   (until (ja-done? 0)
-    (let ((f0-4 (ja-aframe-num 0)))
-     (set! (-> self in-launch-window) (and (>= f0-4 76.0) (>= 82.0 f0-4)))
-     (let ((v1-16 (>= f0-4 12.0)))
-      (set! (-> self rock-is-dangerous) (and v1-16 (>= 76.0 f0-4)))
-      )
-     )
-    (suspend)
-    (let ((a0-2 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-2 param 0)
-      (the float (+ (-> a0-2 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-2 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-2
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go teetertotter-idle)
-   (none)
-   )
   :post
   (the-as (function none :behavior teetertotter) rider-post)
   )
@@ -226,171 +183,94 @@
 (defstate teetertotter-bend (teetertotter)
   :code
   (behavior ()
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 5))
-     )
-    (set!
-     (-> a0-0 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 5))
-        data
-        0
-        length
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
+      (set! (-> a0-0 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
+            )
+      (set! (-> a0-0 param 1) 1.0)
+      (set! (-> a0-0 frame-num) 0.0)
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-1 (-> self skel root-channel 0)))
+        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
+        (set! (-> a0-1 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> a0-0 param 1) 1.0)
-    (set! (-> a0-0 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim (-> self draw art-group data 5))
-     num-func-seek!
-     )
+    (go teetertotter-idle)
+    (none)
     )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-1 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-1 param 0)
-      (the float (+ (-> a0-1 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-1 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go teetertotter-idle)
-   (none)
-   )
   :post
   (the-as (function none :behavior teetertotter) rider-post)
   )
 
-(defmethod
-  init-from-entity!
-  teetertotter
-  ((obj teetertotter) (arg0 entity-actor))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
+(defmethod init-from-entity! teetertotter ((obj teetertotter) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 36864.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
+        (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-0 collide-with) (the-as uint 16))
+        (set! (-> s2-0 prim-core action) (the-as uint 1))
+        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 transform-index) 5)
+        (set-vector! (-> s2-0 local-sphere) -4096.0 2048.0 0.0 5120.0)
+        (append-prim s3-0 s2-0)
+        )
+      (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 2))))
+        (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-1 collide-with) (the-as uint 16))
+        (set! (-> s2-1 prim-core action) (the-as uint 3))
+        (set! (-> s2-1 prim-core offense) 4)
+        (set! (-> s2-1 transform-index) 7)
+        (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 32768.0)
+        (append-prim s3-0 s2-1)
+        )
+      (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+        (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-2 collide-with) (the-as uint 16))
+        (set! (-> s2-2 prim-core action) (the-as uint 1))
+        (set! (-> s2-2 prim-core offense) 4)
+        (set! (-> s2-2 transform-index) 4)
+        (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 32768.0)
+        (append-prim s3-0 s2-2)
+        )
+      (let ((s2-3 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+        (set! (-> s2-3 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-3 collide-with) (the-as uint 16))
+        (set! (-> s2-3 prim-core action) (the-as uint 1))
+        (set! (-> s2-3 prim-core offense) 4)
+        (set! (-> s2-3 transform-index) 3)
+        (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 32768.0)
+        (append-prim s3-0 s2-3)
+        )
+      (let ((s2-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 2))))
+        (set! (-> s2-4 prim-core collide-as) (the-as uint 2048))
+        (set! (-> s2-4 collide-with) (the-as uint 16))
+        (set! (-> s2-4 prim-core action) (the-as uint 3))
+        (set! (-> s2-4 prim-core offense) 4)
+        (set! (-> s2-4 transform-index) 3)
+        (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 32768.0)
+        (append-prim s3-0 s2-4)
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root) s4-0)
     )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 1))
-    (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 36864.0)
-    (set-root-prim! s4-0 s3-0)
-    (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-0 collide-with) (the-as uint 16))
-     (set! (-> s2-0 prim-core action) (the-as uint 1))
-     (set! (-> s2-0 prim-core offense) 4)
-     (set! (-> s2-0 transform-index) 5)
-     (set-vector! (-> s2-0 local-sphere) -4096.0 2048.0 0.0 5120.0)
-     (append-prim s3-0 s2-0)
-     )
-    (let
-     ((s2-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 2)
-        )
-       )
-      )
-     (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-1 collide-with) (the-as uint 16))
-     (set! (-> s2-1 prim-core action) (the-as uint 3))
-     (set! (-> s2-1 prim-core offense) 4)
-     (set! (-> s2-1 transform-index) 7)
-     (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 32768.0)
-     (append-prim s3-0 s2-1)
-     )
-    (let
-     ((s2-2
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 1)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-2 collide-with) (the-as uint 16))
-     (set! (-> s2-2 prim-core action) (the-as uint 1))
-     (set! (-> s2-2 prim-core offense) 4)
-     (set! (-> s2-2 transform-index) 4)
-     (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 32768.0)
-     (append-prim s3-0 s2-2)
-     )
-    (let
-     ((s2-3
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 2)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s2-3 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-3 collide-with) (the-as uint 16))
-     (set! (-> s2-3 prim-core action) (the-as uint 1))
-     (set! (-> s2-3 prim-core offense) 4)
-     (set! (-> s2-3 transform-index) 3)
-     (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 32768.0)
-     (append-prim s3-0 s2-3)
-     )
-    (let
-     ((s2-4
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 3)
-        (the-as uint 2)
-        )
-       )
-      )
-     (set! (-> s2-4 prim-core collide-as) (the-as uint 2048))
-     (set! (-> s2-4 collide-with) (the-as uint 16))
-     (set! (-> s2-4 prim-core action) (the-as uint 3))
-     (set! (-> s2-4 prim-core offense) 4)
-     (set! (-> s2-4 transform-index) 3)
-     (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 32768.0)
-     (append-prim s3-0 s2-4)
-     )
-    )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *teetertotter-sg* '())
   (set! (-> obj launched-player) #f)

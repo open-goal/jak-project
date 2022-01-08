@@ -9,38 +9,44 @@
 
 (define-extern *part-tester* part-tester)
 
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
 (when *debug-segment*
-;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 105)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #xbb8
-   :linger-duration #x5dc
-   :name "group-part-tester"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 56) (sp-item 57))
-   :bounds (new 'static 'sphere :w 4096.0)
-   )
-  )
+(set! (-> *part-group-id-table* 105)
+      (new 'static 'sparticle-launch-group
+        :length 2
+        :duration #xbb8
+        :linger-duration #x5dc
+        :name "group-part-tester"
+        :launcher
+        (new 'static 'inline-array sparticle-group-item 2 (sp-item 56) (sp-item 57))
+        :bounds (new 'static 'sphere :w 4096.0)
+        )
+      )
 
 (deftype part-tester (process)
   ((root      trsqv                     :offset-assert 112)
    (part      sparticle-launch-control  :offset-assert 116)
-   (old-group sparticle-launch-group                     :offset-assert 120)
+   (old-group sparticle-launch-group    :offset-assert 120)
    )
   :heap-base #x100
   :method-count-assert 14
   :size-assert         #x7c
   :flag-assert         #xe0100007c
+  (:states
+    part-tester-idle
+    )
   )
+
 
 (define *part-tester-name* (the-as string #f))
 
 (defmethod deactivate part-tester ((obj part-tester))
   (if (nonzero? (-> obj part))
-   (kill-and-free-particles (-> obj part))
-   )
+      (kill-and-free-particles (-> obj part))
+      )
   ((method-of-type process deactivate) obj)
   (none)
   )
@@ -52,18 +58,10 @@
       (let ((gp-0 (entity-by-name *part-tester-name*)))
         (when gp-0
           (let ((s5-0 (-> gp-0 extra process)))
-            (if
-              (and
-                s5-0
-                (type-type? (-> s5-0 type) process-drawable)
-                (nonzero? (-> (the-as process-drawable s5-0) root))
+            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> (the-as process-drawable s5-0) root)))
+                (set! (-> self root trans quad) (-> (the-as process-drawable s5-0) root trans quad))
+                (set! (-> self root trans quad) (-> gp-0 extra trans quad))
                 )
-              (set!
-                (-> self root trans quad)
-                (-> (the-as process-drawable s5-0) root trans quad)
-                )
-              (set! (-> self root trans quad) (-> gp-0 extra trans quad))
-              )
             )
           )
         )
@@ -73,18 +71,8 @@
         (-> self root trans)
         (the-as rgba (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
         )
-      
-      ;; change this line to change the particle group to test
-      ;; notes:
-      ;;  - 3d particles won't work
-      ;;  - particles that use aux list won't work
-      ;;  - some particles may have callbacks that won't work yet
-      ;;  - you need to load the level with the particle defs first
-      ;;  - there is an issue with blending. check the "always" box as a temporary workaround
-      ;;  - the visibilty check also doesn't work. comment it out in defmethod spawn.
       (let ((gp-1 (-> *part-group-id-table* 105)))
         (let ((s5-1 (-> self root trans)))
-          
           (when (!= gp-1 (-> self old-group))
             (when (nonzero? (-> self part))
               (kill-and-free-particles (-> self part))
@@ -92,23 +80,18 @@
               )
             (set! (-> self part) (create-launch-control gp-1 self))
             )
-          
-          
-          (when (nonzero? (-> self part))
-            (spawn (-> self part) (cond
-                                    ((logtest?
-                                       (-> gp-1 flags)
-                                       (sp-group-flag screen-space)
+          (if (nonzero? (-> self part))
+              (spawn (-> self part) (cond
+                                      ((logtest? (-> gp-1 flags) (sp-group-flag screen-space))
+                                       *zero-vector*
                                        )
-                                     *zero-vector*
-                                     )
-                                    (else
-                                      (empty)
-                                      s5-1
+                                      (else
+                                        (empty)
+                                        s5-1
+                                        )
                                       )
-                                    )
-                   )
-            )
+                     )
+              )
           )
         (set! (-> self old-group) gp-1)
         )
@@ -126,36 +109,27 @@
   (none)
   )
 
-(define-perm *debug-part-dead-pool* dead-pool
-  (new 'debug 'dead-pool 1 #x10000 '*debug-part-dead-pool*)
-  )
+(define-perm *debug-part-dead-pool* dead-pool (new 'debug 'dead-pool 1 #x10000 '*debug-part-dead-pool*))
 
 (defun start-part ()
   (kill-by-type part-tester *active-pool*)
   (let ((gp-0 (get-process *debug-part-dead-pool* part-tester #x4000)))
-   (when gp-0
-    (let ((t9-2 (method-of-type part-tester activate)))
-     (t9-2
-      (the-as part-tester gp-0)
-      *default-pool*
-      'part-tester
-      (the-as pointer #x70004000)
+    (when gp-0
+      (let ((t9-2 (method-of-type part-tester activate)))
+        (t9-2 (the-as part-tester gp-0) *default-pool* 'part-tester (the-as pointer #x70004000))
+        )
+      (run-now-in-process gp-0 part-tester-init-by-other (if *anim-tester*
+                                                             (-> *anim-tester* 0 root trans)
+                                                             (target-pos 0)
+                                                             )
+                          )
+      (-> gp-0 ppointer)
       )
-     )
-    (run-now-in-process gp-0 part-tester-init-by-other (if *anim-tester*
-                                                        (->
-                                                         *anim-tester*
-                                                         0
-                                                         root
-                                                         trans
-                                                         )
-                                                        (target-pos 0)
-                                                        )
-     )
-    (-> gp-0 ppointer)
     )
-   )
   (none)
   )
 
 )
+
+
+

@@ -52,6 +52,10 @@
   :method-count-assert 20
   :size-assert         #x10b
   :flag-assert         #x1400a0010b
+  (:states
+    swamp-bat-idle
+    swamp-bat-launch-slaves
+    )
   )
 
 ;; definition for method 3 of type swamp-bat
@@ -104,6 +108,14 @@
   :flag-assert         #x1500b00118
   (:methods
     (dummy-20 (_type_) float 20)
+    )
+  (:states
+    (swamp-bat-slave-die handle)
+    swamp-bat-slave-idle
+    swamp-bat-slave-launch
+    swamp-bat-slave-return
+    swamp-bat-slave-strafe
+    swamp-bat-slave-swoop
     )
   )
 
@@ -619,10 +631,9 @@ swamp-bat-slave-event-handler
 (defbehavior swamp-bat-check-slave-paths-match? swamp-bat ((arg0 int))
   (let ((v1-0 (the-as (pointer process-tree) (-> self child-process))))
     (while v1-0
-      (if (and
-              (-> (the-as swamp-bat-slave (-> v1-0 0)) launch-ready)
-              (!= (-> (the-as swamp-bat-slave (-> v1-0 0)) path-select) arg0)
-              )
+      (if (and (-> (the-as swamp-bat-slave (-> v1-0 0)) launch-ready)
+               (!= (-> (the-as swamp-bat-slave (-> v1-0 0)) path-select) arg0)
+               )
           (return #f)
           )
       (set! v1-0 (-> v1-0 0 brother))
@@ -642,13 +653,12 @@ swamp-bat-slave-event-handler
       (deactivate self)
       )
     (while #t
-      (when (and
-              (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
-              *target*
-              (>= (-> self fact-override idle-distance)
-                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                  )
-              )
+      (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
+                 *target*
+                 (>= (-> self fact-override idle-distance)
+                     (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                     )
+                 )
         (when (not (-> self child-process))
           (process-entity-status! self (entity-perm-status dead) #t)
           (deactivate self)

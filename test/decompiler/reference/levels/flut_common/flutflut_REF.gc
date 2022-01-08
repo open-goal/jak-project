@@ -132,14 +132,11 @@
       (let ((v1-0 (-> self condition)))
         (cond
           ((or (zero? v1-0) (= v1-0 1))
-           (if (or
-                   (and
-                     (task-complete? *game-info* (game-task beach-flutflut))
-                     (or
-                       (and (zero? (-> self condition)) (task-closed? (game-task village2-levitator) (task-status need-hint)))
-                       (and (= (-> self condition) 1) (task-closed? (game-task village3-button) (task-status need-hint)))
-                       )
-                     )
+           (if (or (and (task-complete? *game-info* (game-task beach-flutflut))
+                        (or (and (zero? (-> self condition)) (task-closed? (game-task village2-levitator) (task-status need-hint)))
+                            (and (= (-> self condition) 1) (task-closed? (game-task village3-button) (task-status need-hint)))
+                            )
+                        )
                    (and *cheat-mode* (cpad-hold? 0 l3))
                    (and *target* (logtest? (-> *target* control root-prim prim-core action) #x4000))
                    )
@@ -162,11 +159,10 @@
               (if (= (-> self condition) 3)
                   (goto cfg-75)
                   )
-              (if (and
-                      *target*
-                      (logtest? (-> *target* control root-prim prim-core action) #x4000)
-                      (< (- (-> *display* base-frame-counter) (the-as int (-> self touch-time))) 15)
-                      )
+              (if (and *target*
+                       (logtest? (-> *target* control root-prim prim-core action) #x4000)
+                       (< (- (-> *display* base-frame-counter) (the-as int (-> self touch-time))) 15)
+                       )
                   (go-virtual pickup (method-of-object self idle))
                   )
               )
@@ -239,12 +235,11 @@
               )
             )
         )
-      (when (and
-              (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-              (not (movie?))
-              (not (level-hint-displayed?))
-              (!= (-> self condition) 4)
-              )
+      (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+                 (not (movie?))
+                 (not (level-hint-displayed?))
+                 (!= (-> self condition) 4)
+                 )
         (hide-hud)
         (level-hint-surpress!)
         (kill-current-level-hint '() '(sidekick voicebox) 'exit)
@@ -304,14 +299,16 @@
       )
     )
   :enter
-  (behavior ((arg0 (state flutflut))) ((-> arg0 enter)) (none))
+  (behavior ((arg0 (state flutflut)))
+    ((-> arg0 enter))
+    (none)
+    )
   :code
   (behavior ((arg0 (state flutflut)))
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
-      (if (or
-              (not *target*)
+      (if (or (not *target*)
               (< 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
               )
           (go arg0)

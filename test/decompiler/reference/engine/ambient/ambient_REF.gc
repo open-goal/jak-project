@@ -225,15 +225,13 @@
 ;; definition for function can-grab-display?
 (defun can-grab-display? ((arg0 process-taskable))
   (let ((v1-2 (handle->process (-> *game-info* display-text-handle))))
-    (when (and
-            (or (not v1-2) (= v1-2 arg0) (>= (- (-> *display* base-frame-counter) (-> *game-info* display-text-time)) 30))
-            (and
-              *target*
-              (!= (-> *target* next-state name) 'target-look-around)
-              (zero? (logand (-> *target* state-flags) #x8008))
-              (= *master-mode* 'game)
-              )
-            )
+    (when (and (or (not v1-2) (= v1-2 arg0) (>= (- (-> *display* base-frame-counter) (-> *game-info* display-text-time)) 30))
+               (and *target*
+                    (!= (-> *target* next-state name) 'target-look-around)
+                    (zero? (logand (-> *target* state-flags) #x8008))
+                    (= *master-mode* 'game)
+                    )
+               )
       (set! (-> *game-info* display-text-handle) (process->handle arg0))
       (set! (-> *game-info* display-text-time) (-> *display* base-frame-counter))
       #t
@@ -247,10 +245,9 @@
   (let ((a0-0 (ppointer->process *hint-semaphore*)))
     (the-as
       symbol
-      (and (the-as level-hint a0-0) (and
-                                      (= (-> (the-as level-hint a0-0) next-state name) 'level-hint-normal)
-                                      (not (dummy-15 (the-as level-hint a0-0)))
-                                      )
+      (and (the-as level-hint a0-0) (and (= (-> (the-as level-hint a0-0) next-state name) 'level-hint-normal)
+                                         (not (dummy-15 (the-as level-hint a0-0)))
+                                         )
            )
       )
     )
@@ -288,18 +285,17 @@
      (kill-current-level-hint '() '() 'exit)
      )
     )
-  (the-as object (and
-                   (not *hint-semaphore*)
-                   (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
-                     (when s2-0
-                       (let ((t9-2 (method-of-type level-hint activate)))
-                         (t9-2 (the-as level-hint s2-0) arg2 'level-hint (the-as pointer #x70004000))
-                         )
-                       (run-now-in-process s2-0 ambient-hint-init-by-other arg0 arg1 arg3)
-                       (-> s2-0 ppointer)
-                       )
-                     )
-                   )
+  (the-as object (and (not *hint-semaphore*)
+                      (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
+                        (when s2-0
+                          (let ((t9-2 (method-of-type level-hint activate)))
+                            (t9-2 (the-as level-hint s2-0) arg2 'level-hint (the-as pointer #x70004000))
+                            )
+                          (run-now-in-process s2-0 ambient-hint-init-by-other arg0 arg1 arg3)
+                          (-> s2-0 ppointer)
+                          )
+                        )
+                      )
           )
   )
 
@@ -308,10 +304,9 @@
 (defun kill-current-level-hint ((arg0 pair) (arg1 pair) (arg2 symbol))
   (when *hint-semaphore*
     (let ((s4-0 (ppointer->process *hint-semaphore*)))
-      (if (and
-              (or (null? arg0) (member (-> (the-as level-hint s4-0) mode) arg0))
-              (not (member (-> (the-as level-hint s4-0) mode) arg1))
-              )
+      (if (and (or (null? arg0) (member (-> (the-as level-hint s4-0) mode) arg0))
+               (not (member (-> (the-as level-hint s4-0) mode) arg1))
+               )
           (send-event (the-as level-hint s4-0) arg2)
           )
       )
@@ -346,8 +341,7 @@
               )
         )
     (if (and (not s5-1) a0-6)
-        (set! s5-1 (if (or
-                           (and (= (-> a0-6 data 0) 115) (= (-> a0-6 data 1) 97))
+        (set! s5-1 (if (or (and (= (-> a0-6 data 0) 115) (= (-> a0-6 data 1) 97))
                            (and (= (-> a0-6 data 0) 97) (= (-> a0-6 data 1) 115))
                            )
                        'voicebox
@@ -461,14 +455,13 @@
           (hide-bottom-hud)
           (suspend)
           (cond
-            ((and
-               (bottom-hud-hidden?)
-               (not (paused?))
-               (not (movie?))
-               (= *master-mode* 'game)
-               (or (not *target*) (!= (-> *target* cam-user-mode) 'look-around))
-               (not (-> *hud-parts* money-all))
-               )
+            ((and (bottom-hud-hidden?)
+                  (not (paused?))
+                  (not (movie?))
+                  (= *master-mode* 'game)
+                  (or (not *target*) (!= (-> *target* cam-user-mode) 'look-around))
+                  (not (-> *hud-parts* money-all))
+                  )
              (print-text self)
              (+! (-> self total-time) (- (-> *display* base-frame-counter) (-> self last-time)))
              (set! (-> self last-time) (-> *display* base-frame-counter))

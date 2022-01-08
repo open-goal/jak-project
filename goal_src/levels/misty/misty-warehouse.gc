@@ -6,9 +6,6 @@
 ;; dgos: L1, MIS
 
 (declare-type silostep process-drawable)
-(define-extern silostep-rise (state symbol silostep))
-(define-extern silostep-idle (state silostep))
-(define-extern silostep-camera (state silostep))
 
 ;; DECOMP BEGINS
 
@@ -20,6 +17,11 @@
   :method-count-assert 20
   :size-assert         #xc0
   :flag-assert         #x14005000c0
+  (:states
+    silostep-camera
+    silostep-idle
+    (silostep-rise symbol)
+    )
   )
 
 
@@ -33,32 +35,31 @@
 
 (defstate silostep-idle (silostep)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('trigger)
-      (go silostep-camera)
-      )
-    (('trigger-rise)
-     (go silostep-rise #f)
-     )
-    )
-   )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
+                                                                                   (('trigger)
+                                                                                    (go silostep-camera)
+                                                                                    )
+                                                                                   (('trigger-rise)
+                                                                                    (go silostep-rise #f)
+                                                                                    )
+                                                                                   )
+            )
   :code
   (behavior ()
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-identity
-     )
-    (set! (-> gp-0 frame-num) 0.0)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data 2))
+        num-func-identity
+        )
+      (set! (-> gp-0 frame-num) 0.0)
+      )
+    (transform-post)
+    (while #t
+      (suspend)
+      )
+    (none)
     )
-   (transform-post)
-   (while #t
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior silostep) ja-post)
   )
@@ -66,81 +67,60 @@
 (defbehavior misty-camera-view silostep ()
   (let* ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000))
          (v1-1 (when gp-0
-                (let ((t9-1 (method-of-type camera-tracker activate)))
-                 (t9-1
-                  (the-as camera-tracker gp-0)
-                  self
-                  'camera-tracker
-                  (the-as pointer #x70004000)
-                  )
+                 (let ((t9-1 (method-of-type camera-tracker activate)))
+                   (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+                   )
+                 (run-now-in-process
+                   gp-0
+                   camera-tracker-init
+                   (lambda :behavior camera-tracker
+                     ()
+                     (while (not (process-grab? *target*))
+                       (suspend)
+                       )
+                     (camera-change-to "camera-160" 150 #f)
+                     (let ((gp-0 (-> *display* base-frame-counter)))
+                       (until (>= (- (-> *display* base-frame-counter) gp-0) 900)
+                         (suspend)
+                         )
+                       )
+                     (while (not (process-release? (handle->process (-> self grab-target))))
+                       (suspend)
+                       )
+                     (camera-change-to (the-as string 'base) 150 #f)
+                     (none)
+                     )
+                   )
+                 (-> gp-0 ppointer)
                  )
-                (run-now-in-process
-                 gp-0
-                 camera-tracker-init
-                 (lambda :behavior camera-tracker
-                  ()
-                  (while (not (process-grab? *target*))
-                   (suspend)
-                   )
-                  (camera-change-to "camera-160" 150 #f)
-                  (let ((gp-0 (-> *display* base-frame-counter)))
-                   (until (>= (- (-> *display* base-frame-counter) gp-0) 900)
-                    (suspend)
-                    )
-                   )
-                  (while
-                   (not
-                    (process-release? (handle->process (-> self grab-target)))
-                    )
-                   (suspend)
-                   )
-                  (camera-change-to (the-as string 'base) 150 #f)
-                  (none)
-                  )
-                 )
-                (-> gp-0 ppointer)
-                )
-          )
-         (v0-3
-          (logior
-           (new 'static 'handle :pid (-> v1-1 0 pid))
-           (new 'static 'handle :process v1-1)
-           )
-          )
+               )
+         (v0-3 (logior (new 'static 'handle :pid (-> v1-1 0 pid)) (new 'static 'handle :process v1-1)))
          )
-   (set! (-> self cam-tracker) (the-as uint v0-3))
-   (the-as handle v0-3)
-   )
+    (set! (-> self cam-tracker) (the-as uint v0-3))
+    (the-as handle v0-3)
+    )
   )
 
 (defstate silostep-camera (silostep)
   :code
   (behavior ()
-   (misty-camera-view)
-   (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
-          (v1-1 (get-reminder gp-0 0))
-          )
-    (save-reminder gp-0 (logior v1-1 2) 0)
+    (misty-camera-view)
+    (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
+           (v1-1 (get-reminder gp-0 0))
+           )
+      (save-reminder gp-0 (logior v1-1 2) 0)
+      )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (let ((gp-1 (-> *display* base-frame-counter)))
+      (until (>= (- (-> *display* base-frame-counter) gp-1) 300)
+        (suspend)
+        )
+      )
+    (sound-play-by-name (static-sound-name "arena-steps") (new-sound-id) 1024 0 0 1 #t)
+    (send-to-all-after (-> self link) 'trigger-rise)
+    (go silostep-rise #f)
+    (none)
     )
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (let ((gp-1 (-> *display* base-frame-counter)))
-    (until (>= (- (-> *display* base-frame-counter) gp-1) 300)
-     (suspend)
-     )
-    )
-   (sound-play-by-name
-    (static-sound-name "arena-steps")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    #t
-    )
-   (send-to-all-after (-> self link) 'trigger-rise)
-   (go silostep-rise #f)
-   (none)
-   )
   :post
   (the-as (function none :behavior silostep) ja-post)
   )
@@ -148,120 +128,79 @@
 (defstate silostep-rise (silostep)
   :code
   (behavior ((arg0 symbol))
-   (process-entity-status! self (entity-perm-status complete) #t)
-   (when (not arg0)
-    (let ((a0-2 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-2 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 2))
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (when (not arg0)
+      (let ((a0-2 (-> self skel root-channel 0)))
+        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+        (set! (-> a0-2 param 0) (-> self anim-limit))
+        (set! (-> a0-2 param 1) 1.0)
+        (set! (-> a0-2 frame-num) 0.0)
+        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
+        )
+      (until (ja-done? 0)
+        (rider-trans)
+        (rider-post)
+        (suspend)
+        (let ((a0-3 (-> self skel root-channel 0)))
+          (set! (-> a0-3 param 0) (-> self anim-limit))
+          (set! (-> a0-3 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
       )
-     (set! (-> a0-2 param 0) (-> self anim-limit))
-     (set! (-> a0-2 param 1) 1.0)
-     (set! (-> a0-2 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-2
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (rider-trans)
-     (rider-post)
-     (suspend)
-     (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 param 0) (-> self anim-limit))
-      (set! (-> a0-3 param 1) 1.0)
+    (let ((gp-1 (-> self skel root-channel 0)))
       (joint-control-channel-group-eval!
-       a0-3
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
+        gp-1
+        (the-as art-joint-anim (-> self draw art-group data 2))
+        num-func-identity
+        )
+      (set! (-> gp-1 frame-num) (-> self anim-limit))
       )
-     )
+    (rider-post)
+    (while #t
+      (ja-post)
+      (suspend)
+      )
+    (none)
     )
-   (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-1
-     (the-as art-joint-anim (-> self draw art-group data 2))
-     num-func-identity
-     )
-    (set! (-> gp-1 frame-num) (-> self anim-limit))
-    )
-   (rider-post)
-   (while #t
-    (ja-post)
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior silostep) #f)
   )
 
 (defmethod init-from-entity! silostep ((obj silostep) (arg0 entity-actor))
   (logior! (-> obj mask) (process-mask movie-subject))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 4)
+      (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 18432.0)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 1))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 4)
-    (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 18432.0)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *silostep-sg* '())
-  (set!
-   (-> obj anim-limit)
-   (*
-    (res-lump-float arg0 'distance :default 1.0)
-    (the
-     float
-     (+
-      (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length)
-      -1
-      )
-     )
-    )
-   )
+  (set! (-> obj anim-limit)
+        (* (res-lump-float arg0 'distance :default 1.0)
+           (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+           )
+        )
   (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (if
-   (and
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (go silostep-rise #t)
-   (go silostep-idle)
-   )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (go silostep-rise #t)
+      (go silostep-idle)
+      )
   (none)
   )
 
@@ -283,31 +222,20 @@
 
 
 (defmethod TODO-RENAME-24 rounddoor ((obj rounddoor))
-  (let
-   ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
-   (let
-    ((s4-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s5-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 1))
+      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) -12288.0 0.0 0.0 40960.0)
+      (set-root-prim! s5-0 s4-0)
       )
-     )
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 1))
-    (set! (-> s4-0 prim-core offense) 4)
-    (set! (-> s4-0 transform-index) 0)
-    (set-vector! (-> s4-0 local-sphere) -12288.0 0.0 0.0 40960.0)
-    (set-root-prim! s5-0 s4-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
     )
-   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (backup-collide-with-as s5-0)
-   (set! (-> obj root-override) s5-0)
-   )
   0
   (none)
   )
@@ -322,10 +250,7 @@
   (set! (-> obj auto-close) #t)
   (set! (-> obj one-way) #t)
   (vector-x-quaternion! (-> obj out-dir) (-> obj root-override quat))
-  (set!
-   (-> obj out-dir w)
-   (- 8192.0 (vector-dot (-> obj out-dir) (-> obj root-override trans)))
-   )
+  (set! (-> obj out-dir w) (- 8192.0 (vector-dot (-> obj out-dir) (-> obj root-override trans))))
   (dummy-47 (-> obj root-override))
   0
   (none)
