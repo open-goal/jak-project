@@ -105,16 +105,14 @@ nav-enemy-default-event-handler
 
 ;; definition for method 12 of type sharkey
 (defmethod run-logic? sharkey ((obj sharkey))
-  (or
-    (zero? (logand (-> obj mask) (process-mask actor-pause)))
-    (or
-      (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj collide-info pause-adjust-distance))
-          (vector-vector-distance (-> obj collide-info trans) (math-camera-pos))
+  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj collide-info pause-adjust-distance))
+              (vector-vector-distance (-> obj collide-info trans) (math-camera-pos))
+              )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
           )
-      (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
       )
-    )
   )
 
 ;; definition for method 40 of type sharkey
@@ -198,19 +196,18 @@ nav-enemy-default-event-handler
 ;; definition for function sharkey-notice-player?
 (defbehavior sharkey-notice-player? sharkey ()
   (if *target*
-      (and
-        (< (- (-> *target* control trans y) (-> self y-max)) 0.0)
-        (let ((gp-0 'racer)
-              (a1-0 (new 'stack-no-clear 'event-message-block))
-              )
-          (set! (-> a1-0 from) self)
-          (set! (-> a1-0 num-params) 1)
-          (set! (-> a1-0 message) 'query)
-          (set! (-> a1-0 param 0) (the-as uint 'mode))
-          (!= gp-0 (send-event-function *target* a1-0))
-          )
-        (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))
-        )
+      (and (< (- (-> *target* control trans y) (-> self y-max)) 0.0)
+           (let ((gp-0 'racer)
+                 (a1-0 (new 'stack-no-clear 'event-message-block))
+                 )
+             (set! (-> a1-0 from) self)
+             (set! (-> a1-0 num-params) 1)
+             (set! (-> a1-0 message) 'query)
+             (set! (-> a1-0 param 0) (the-as uint 'mode))
+             (!= gp-0 (send-event-function *target* a1-0))
+             )
+           (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))
+           )
       )
   )
 
@@ -284,18 +281,20 @@ nav-enemy-default-event-handler
     (none)
     )
   :exit
-  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
+  (behavior ()
+    (logclear! (-> self draw status) (draw-status drwf01))
+    (none)
+    )
   :trans
   (behavior ()
     (cond
       ((-> self enable-patrol)
-       (if (and
-               (and *target* (>= (-> self enemy-info idle-distance)
-                                 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                                 )
-                    )
-               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
-               )
+       (if (and (and *target* (>= (-> self enemy-info idle-distance)
+                                  (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                  )
+                     )
+                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+                )
            (go-virtual nav-enemy-patrol)
            )
        )
@@ -305,13 +304,11 @@ nav-enemy-default-event-handler
          (set! (-> self notice-time) (-> *display* base-frame-counter))
          )
        (let ((a0-4 (dummy-16 (-> self nav) (-> *target* control trans))))
-         (when (or
-                 (and a0-4 (logtest? (-> a0-4 pat) 2))
-                 (and
-                   (logtest? (-> self draw status) (draw-status drwf01))
-                   (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
+         (when (or (and a0-4 (logtest? (-> a0-4 pat) 2))
+                   (and (logtest? (-> self draw status) (draw-status drwf01))
+                        (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
+                        )
                    )
-                 )
            (sharkey-move-to-attack-position)
            (set! (-> self player-in-water) #t)
            (go-virtual nav-enemy-chase)
@@ -421,7 +418,10 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior () (nav-enemy-travel-post) (none))
+  (behavior ()
+    (nav-enemy-travel-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -433,9 +433,15 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :enter
-  (behavior () (go-virtual nav-enemy-chase) (none))
+  (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
   :code
-  (behavior () (go-virtual nav-enemy-chase) (none))
+  (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
   )
 
 ;; definition for function sharkey-follow-trajectory
@@ -544,7 +550,10 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior () (nav-enemy-simple-post) (none))
+  (behavior ()
+    (nav-enemy-simple-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -556,7 +565,10 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :exit
-  (behavior () (sound-stop (-> self sound-id)) (none))
+  (behavior ()
+    (sound-stop (-> self sound-id))
+    (none)
+    )
   :trans
   (behavior ()
     (if (not *target*)
@@ -587,10 +599,9 @@ nav-enemy-default-event-handler
       (cond
         ((-> self player-in-water)
          (set! (-> self free-time) (-> *display* base-frame-counter))
-         (if (and
-                 (< (fabs (- (-> gp-0 y) (-> self collide-info trans y))) 40960.0)
-                 (< (vector-vector-xz-distance gp-0 (-> self collide-info trans)) 24576.0)
-                 )
+         (if (and (< (fabs (- (-> gp-0 y) (-> self collide-info trans y))) 40960.0)
+                  (< (vector-vector-xz-distance gp-0 (-> self collide-info trans)) 24576.0)
+                  )
              (go-virtual nav-enemy-attack)
              )
          )

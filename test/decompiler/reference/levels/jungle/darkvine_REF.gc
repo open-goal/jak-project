@@ -35,20 +35,17 @@
 
 ;; definition for method 12 of type darkvine
 (defmethod run-logic? darkvine ((obj darkvine))
-  (or
-    (zero? (logand (-> obj mask) (process-mask actor-pause)))
-    (or
-      (and
-        (nonzero? (-> obj draw))
-        (logtest? (-> obj draw status) (draw-status drwf03))
-        (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root-override pause-adjust-distance))
-            (vector-vector-distance (-> obj root-override trans) (math-camera-pos))
-            )
-        )
-      (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
+  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+      (or (and (nonzero? (-> obj draw))
+               (logtest? (-> obj draw status) (draw-status drwf03))
+               (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root-override pause-adjust-distance))
+                   (vector-vector-distance (-> obj root-override trans) (math-camera-pos))
+                   )
+               )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
+          )
       )
-    )
   )
 
 ;; failed to figure out what this is:
@@ -241,10 +238,9 @@
     )
   :post
   (behavior ()
-    (when (and
-            (-> self hit-player)
-            (or (not *target*) (>= (- (-> *display* base-frame-counter) (the-as int (-> self touch-time))) 15))
-            )
+    (when (and (-> self hit-player)
+               (or (not *target*) (>= (- (-> *display* base-frame-counter) (the-as int (-> self touch-time))) 15))
+               )
       (dummy-54 (-> self root-override) 2 4)
       (set! (-> self hit-player) #f)
       )

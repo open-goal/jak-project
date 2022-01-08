@@ -35,13 +35,12 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
-    (if (and
-            (and *target* (>= (-> self enemy-info idle-distance)
-                              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                              )
-                 )
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
-            )
+    (if (and (and *target* (>= (-> self enemy-info idle-distance)
+                               (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                               )
+                  )
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+             )
         (go-virtual nav-enemy-patrol)
         )
     (none)
@@ -94,24 +93,21 @@ nav-enemy-default-event-handler
   (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
       (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
-        (if (and
-                (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-                (or
-                  (or
-                    (not *target*)
-                    (< (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
-                    )
-                  (< f30-0 -40960.0)
-                  )
-                )
+        (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+                 (or (or (not *target*)
+                         (< (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
+                         )
+                     (< f30-0 -40960.0)
+                     )
+                 )
             (go babak-run-to-cannon)
             )
         )
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
         (if (or (not *target*) (< (-> self enemy-info idle-distance)
-                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                                    )
-                  )
+                                  (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                  )
+                )
             (go-virtual nav-enemy-idle)
             )
         )
@@ -174,7 +170,10 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior () (nav-enemy-travel-post) (none))
+  (behavior ()
+    (nav-enemy-travel-post)
+    (none)
+    )
   )
 
 ;; definition for function handle->process-safe
@@ -238,7 +237,10 @@ nav-enemy-default-event-handler
     nav-enemy-jump-event-handler
     )
   :exit
-  (behavior () (logior! (-> self nav-enemy-flags) 24) (none))
+  (behavior ()
+    (logior! (-> self nav-enemy-flags) 24)
+    (none)
+    )
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -326,7 +328,10 @@ nav-enemy-default-event-handler
     nav-enemy-jump-event-handler
     )
   :exit
-  (behavior () (logior! (-> self nav-enemy-flags) 24) (none))
+  (behavior ()
+    (logior! (-> self nav-enemy-flags) 24)
+    (none)
+    )
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -395,16 +400,13 @@ nav-enemy-default-event-handler
   :trans
   (behavior ()
     (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
-      (if (and
-              (< -40960.0 f0-1)
-              (and
-                (and
-                  *target*
-                  (>= (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
-                  )
-                (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-                )
-              )
+      (if (and (< -40960.0 f0-1)
+               (and (and *target*
+                         (>= (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
+                         )
+                    (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+                    )
+               )
           (go babak-with-cannon-jump-off-cannon)
           )
       )
@@ -511,8 +513,7 @@ nav-enemy-default-event-handler
   (set! (-> obj distance) (res-lump-float arg0 'distance :default 163840.0))
   (set! (-> obj cannon-ent) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (logclear! (-> obj mask) (process-mask actor-pause))
-  (if (or
-          (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete))))
+  (if (or (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete))))
           (zero? (logand (-> obj enemy-info options) (fact-options fop1)))
           )
       (go (method-of-object obj nav-enemy-idle))

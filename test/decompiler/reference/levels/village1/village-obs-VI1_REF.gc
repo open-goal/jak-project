@@ -491,20 +491,17 @@
 
 ;; definition for method 12 of type windspinner
 (defmethod run-logic? windspinner ((obj windspinner))
-  (or
-    (zero? (logand (-> obj mask) (process-mask actor-pause)))
-    (or
-      (and
-        (nonzero? (-> obj draw))
-        (logtest? (-> obj draw status) (draw-status drwf03))
-        (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
-            (vector-vector-distance (-> obj root trans) (math-camera-pos))
-            )
-        )
-      (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
+  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+      (or (and (nonzero? (-> obj draw))
+               (logtest? (-> obj draw status) (draw-status drwf03))
+               (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
+                   (vector-vector-distance (-> obj root trans) (math-camera-pos))
+                   )
+               )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
+          )
       )
-    )
   )
 
 ;; failed to figure out what this is:
@@ -526,11 +523,11 @@
            (f0-1
              (* f0-0
                 (+ (* f1-0
-                       (-> *wind-work*
-                           wind-force
-                           (logand (+ (the int (-> a0-0 x)) (the int (-> a0-0 z)) (-> *wind-work* wind-time)) 63)
-                           )
-                       )
+                      (-> *wind-work*
+                          wind-force
+                          (logand (+ (the int (-> a0-0 x)) (the int (-> a0-0 z)) (-> *wind-work* wind-time)) 63)
+                          )
+                      )
                    (-> self angle-vel)
                    )
                 )
@@ -800,7 +797,10 @@
     (none)
     )
   :exit
-  (behavior () (ja-channel-set! 1) (none))
+  (behavior ()
+    (ja-channel-set! 1)
+    (none)
+    )
   :trans
   (behavior ()
     (if (and *target* (>= 163840.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
@@ -830,8 +830,7 @@
   :trans
   (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
-      (if (or
-              (not *target*)
+      (if (or (not *target*)
               (< 204800.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
               )
           (go starfish-idle)
@@ -1011,10 +1010,9 @@
     (while #t
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
         (set! (-> self state-time) (-> *display* base-frame-counter))
-        (if (and
-                (and *target* (>= 204800.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                (< (process-drawable-child-count) (-> self child-count))
-                )
+        (if (and (and *target* (>= 204800.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                 (< (process-drawable-child-count) (-> self child-count))
+                 )
             (starfish-spawn-child)
             )
         )
