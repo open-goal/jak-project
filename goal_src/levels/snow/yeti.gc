@@ -7,12 +7,6 @@
 
 (declare-type yeti process-drawable)
 (declare-type yeti-slave nav-enemy)
-(define-extern yeti-resuming-start (state yeti)) ;; unknown type
-(define-extern yeti-first-time-start (state yeti)) ;; unknown type
-(define-extern yeti-idle (state yeti)) ;; unknown type
-(define-extern yeti-slave-appear-jump-up (state yeti-slave)) ;; unknown type
-(define-extern yeti-slave-appear-land (state yeti-slave)) ;; unknown type
-(define-extern yeti-slave-show-anims (state yeti-slave)) ;; unknown type
 
 ;; DECOMP BEGINS
 
@@ -24,6 +18,11 @@
   :method-count-assert 76
   :size-assert         #x198
   :flag-assert         #x4c01300198
+  (:states
+    yeti-slave-appear-jump-up
+    yeti-slave-appear-land
+    yeti-slave-show-anims
+    )
   )
 
 
@@ -44,6 +43,11 @@
     (TODO-RENAME-20 (_type_ vector vector) symbol 20)
     (aggro? (_type_ vector) symbol 21)
     )
+  (:states
+    yeti-first-time-start
+    yeti-idle
+    yeti-resuming-start
+    )
   )
 
 
@@ -55,202 +59,183 @@
   :longest-edge (meters 1.3)
   )
 
-(define
-  *yeti-nav-enemy-info*
-  (new 'static 'nav-enemy-info
-   :idle-anim 2
-   :walk-anim 3
-   :turn-anim -1
-   :notice-anim 4
-   :run-anim 5
-   :jump-anim 10
-   :jump-land-anim 11
-   :victory-anim 8
-   :taunt-anim 8
-   :die-anim 9
-   :neck-joint 5
-   :player-look-at-joint 5
-   :run-travel-speed (meters 6.0)
-   :run-rotate-speed (degrees 2880.0)
-   :run-acceleration (meters 1.0)
-   :run-turn-time (seconds 0.1)
-   :walk-travel-speed (meters 3.0)
-   :walk-rotate-speed (degrees 720.0)
-   :walk-acceleration (meters 1.0)
-   :walk-turn-time (seconds 0.5)
-   :attack-shove-back (meters 3.0)
-   :attack-shove-up (meters 2.0)
-   :shadow-size (meters 2.0)
-   :notice-nav-radius (meters 2.0)
-   :nav-nearest-y-threshold (meters 10.0)
-   :notice-distance (meters 30.0)
-   :stop-chase-distance (meters 40.0)
-   :frustration-distance (meters 8.0)
-   :frustration-time #x4b0
-   :die-anim-hold-frame 24.0
-   :jump-anim-start-frame 10.0
-   :jump-land-anim-end-frame 10000000000.0
-   :jump-height-min (meters 3.0)
-   :jump-height-factor 0.5
-   :jump-start-anim-speed 1.0
-   :shadow-max-y (meters 1.0)
-   :shadow-min-y (meters -1.0)
-   :shadow-locus-dist (meters 150.0)
-   :use-align #t
-   :draw-shadow #t
-   :move-to-ground #t
-   :hover-if-no-ground #f
-   :use-momentum #f
-   :use-flee #f
-   :use-proximity-notice #f
-   :use-jump-blocked #f
-   :use-jump-patrol #f
-   :gnd-collide-with #x1
-   :debug-draw-neck #f
-   :debug-draw-jump #f
-   )
-  )
+(define *yeti-nav-enemy-info* (new 'static 'nav-enemy-info
+                                :idle-anim 2
+                                :walk-anim 3
+                                :turn-anim -1
+                                :notice-anim 4
+                                :run-anim 5
+                                :jump-anim 10
+                                :jump-land-anim 11
+                                :victory-anim 8
+                                :taunt-anim 8
+                                :die-anim 9
+                                :neck-joint 5
+                                :player-look-at-joint 5
+                                :run-travel-speed (meters 6.0)
+                                :run-rotate-speed (degrees 2880.0)
+                                :run-acceleration (meters 1.0)
+                                :run-turn-time (seconds 0.1)
+                                :walk-travel-speed (meters 3.0)
+                                :walk-rotate-speed (degrees 720.0)
+                                :walk-acceleration (meters 1.0)
+                                :walk-turn-time (seconds 0.5)
+                                :attack-shove-back (meters 3.0)
+                                :attack-shove-up (meters 2.0)
+                                :shadow-size (meters 2.0)
+                                :notice-nav-radius (meters 2.0)
+                                :nav-nearest-y-threshold (meters 10.0)
+                                :notice-distance (meters 30.0)
+                                :stop-chase-distance (meters 40.0)
+                                :frustration-distance (meters 8.0)
+                                :frustration-time #x4b0
+                                :die-anim-hold-frame 24.0
+                                :jump-anim-start-frame 10.0
+                                :jump-land-anim-end-frame 10000000000.0
+                                :jump-height-min (meters 3.0)
+                                :jump-height-factor 0.5
+                                :jump-start-anim-speed 1.0
+                                :shadow-max-y (meters 1.0)
+                                :shadow-min-y (meters -1.0)
+                                :shadow-locus-dist (meters 150.0)
+                                :use-align #t
+                                :draw-shadow #t
+                                :move-to-ground #t
+                                :hover-if-no-ground #f
+                                :use-momentum #f
+                                :use-flee #f
+                                :use-proximity-notice #f
+                                :use-jump-blocked #f
+                                :use-jump-patrol #f
+                                :gnd-collide-with #x1
+                                :debug-draw-neck #f
+                                :debug-draw-jump #f
+                                )
+        )
 
-(set!
-  (-> *part-group-id-table* 538)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #xbb8
-   :linger-duration #x5dc
-   :flags (sp-group-flag use-local-clock)
-   :name "group-yeti-slave-appear1"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 1928 :fade-after (meters 70.0) :falloff-to (meters 70.0))
-    (sp-item 1929 :fade-after (meters 70.0) :falloff-to (meters 70.0))
-    )
-   :bounds (new 'static 'sphere :w 65536.0)
-   )
-  )
+(set! (-> *part-group-id-table* 538) (new 'static 'sparticle-launch-group
+                                       :length 2
+                                       :duration #xbb8
+                                       :linger-duration #x5dc
+                                       :flags (sp-group-flag use-local-clock)
+                                       :name "group-yeti-slave-appear1"
+                                       :launcher
+                                       (new 'static 'inline-array sparticle-group-item 2
+                                         (sp-item 1928 :fade-after (meters 70.0) :falloff-to (meters 70.0))
+                                         (sp-item 1929 :fade-after (meters 70.0) :falloff-to (meters 70.0))
+                                         )
+                                       :bounds (new 'static 'sphere :w 65536.0)
+                                       )
+      )
 
-(set!
-  (-> *part-id-table* 1929)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
-    (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-x (meters -2.0) (meters 4.0) 1.0)
-    (sp-rnd-flt spt-y (meters 0.5) (meters 1.0) 1.0)
-    (sp-rnd-flt spt-z -8192.0 16384.0 1.0)
-    (sp-rnd-flt spt-scale-x (meters 0.24) (meters 0.24) 1.0)
-    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 128.0)
-    (sp-flt spt-g 128.0)
-    (sp-flt spt-b 128.0)
-    (sp-rnd-flt spt-a 96.0 32.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0.033333335) (meters 0.05) 1.0)
-    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 3.4666667) 1.0)
-    (sp-flt spt-accel-y -5.4613333)
-    (sp-flt spt-friction 0.99)
-    (sp-int spt-timer 450)
-    (sp-cpuinfo-flags bit2 bit12)
-    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 40.0) 1.0)
-    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
-    )
-   )
-  )
+(set! (-> *part-id-table* 1929) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 21
+                                    (sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+                                    (sp-flt spt-num 16.0)
+                                    (sp-rnd-flt spt-x (meters -2.0) (meters 4.0) 1.0)
+                                    (sp-rnd-flt spt-y (meters 0.5) (meters 1.0) 1.0)
+                                    (sp-rnd-flt spt-z -8192.0 16384.0 1.0)
+                                    (sp-rnd-flt spt-scale-x (meters 0.24) (meters 0.24) 1.0)
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-copy-from-other spt-scale-y -4)
+                                    (sp-flt spt-r 128.0)
+                                    (sp-flt spt-g 128.0)
+                                    (sp-flt spt-b 128.0)
+                                    (sp-rnd-flt spt-a 96.0 32.0 1.0)
+                                    (sp-rnd-flt spt-vel-y (meters 0.033333335) (meters 0.05) 1.0)
+                                    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 3.4666667) 1.0)
+                                    (sp-flt spt-accel-y -5.4613333)
+                                    (sp-flt spt-friction 0.99)
+                                    (sp-int spt-timer 450)
+                                    (sp-cpuinfo-flags bit2 bit12)
+                                    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 40.0) 1.0)
+                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-end)
+                                    )
+                                  )
+      )
 
-(set!
-  (-> *part-id-table* 1928)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 24
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
-    (sp-flt spt-num 32.0)
-    (sp-rnd-flt spt-x (meters -2.0) (meters 4.0) 1.0)
-    (sp-rnd-flt spt-y (meters 0.5) (meters 1.0) 1.0)
-    (sp-rnd-flt spt-z -8192.0 16384.0 1.0)
-    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 2.5) 1.0)
-    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 128.0)
-    (sp-flt spt-g 128.0)
-    (sp-flt spt-b 128.0)
-    (sp-rnd-flt spt-a 16.0 16.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0.05) (meters 0.016666668) 1.0)
-    (sp-flt spt-scalevel-x (meters 0.006666667))
-    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 1.2) 1.0)
-    (sp-copy-from-other spt-scalevel-y -4)
-    (sp-flt spt-fade-a -0.07111111)
-    (sp-flt spt-accel-y -5.4613333)
-    (sp-flt spt-friction 0.99)
-    (sp-int spt-timer 450)
-    (sp-cpuinfo-flags bit2 bit12)
-    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 40.0) 1.0)
-    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
-    )
-   )
-  )
+(set! (-> *part-id-table* 1928)
+      (new 'static 'sparticle-launcher :init-specs (new 'static 'inline-array sp-field-init-spec 24
+                                                     (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+                                                     (sp-flt spt-num 32.0)
+                                                     (sp-rnd-flt spt-x (meters -2.0) (meters 4.0) 1.0)
+                                                     (sp-rnd-flt spt-y (meters 0.5) (meters 1.0) 1.0)
+                                                     (sp-rnd-flt spt-z -8192.0 16384.0 1.0)
+                                                     (sp-rnd-flt spt-scale-x (meters 2.5) (meters 2.5) 1.0)
+                                                     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                                     (sp-copy-from-other spt-scale-y -4)
+                                                     (sp-flt spt-r 128.0)
+                                                     (sp-flt spt-g 128.0)
+                                                     (sp-flt spt-b 128.0)
+                                                     (sp-rnd-flt spt-a 16.0 16.0 1.0)
+                                                     (sp-rnd-flt spt-vel-y (meters 0.05) (meters 0.016666668) 1.0)
+                                                     (sp-flt spt-scalevel-x (meters 0.006666667))
+                                                     (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 1.2) 1.0)
+                                                     (sp-copy-from-other spt-scalevel-y -4)
+                                                     (sp-flt spt-fade-a -0.07111111)
+                                                     (sp-flt spt-accel-y -5.4613333)
+                                                     (sp-flt spt-friction 0.99)
+                                                     (sp-int spt-timer 450)
+                                                     (sp-cpuinfo-flags bit2 bit12)
+                                                     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 40.0) 1.0)
+                                                     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+                                                     (sp-end)
+                                                     )
+                                       )
+      )
 
-(set!
-  (-> *part-group-id-table* 539)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #xbb8
-   :linger-duration #x5dc
-   :flags (sp-group-flag use-local-clock)
-   :name "group-yeti-slave-appear2"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 1930 :fade-after (meters 70.0) :falloff-to (meters 70.0))
-    )
-   :bounds (new 'static 'sphere :w 65536.0)
-   )
-  )
+(set! (-> *part-group-id-table* 539) (new 'static 'sparticle-launch-group
+                                       :length 1
+                                       :duration #xbb8
+                                       :linger-duration #x5dc
+                                       :flags (sp-group-flag use-local-clock)
+                                       :name "group-yeti-slave-appear2"
+                                       :launcher
+                                       (new 'static 'inline-array sparticle-group-item 1
+                                         (sp-item 1930 :fade-after (meters 70.0) :falloff-to (meters 70.0))
+                                         )
+                                       :bounds (new 'static 'sphere :w 65536.0)
+                                       )
+      )
 
-(set!
-  (-> *part-id-table* 1930)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
-    (sp-rnd-flt spt-num 1.0 2.0 1.0)
-    (sp-rnd-flt spt-x (meters -0.25) (meters 0.5) 1.0)
-    (sp-rnd-flt spt-z -1024.0 2048.0 1.0)
-    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.1) 1.0)
-    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 128.0)
-    (sp-flt spt-g 128.0)
-    (sp-flt spt-b 128.0)
-    (sp-rnd-flt spt-a 64.0 64.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0.0) (meters 0.006666667) 1.0)
-    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 3.4666667) 1.0)
-    (sp-flt spt-accel-y -5.4613333)
-    (sp-int spt-timer 150)
-    (sp-cpuinfo-flags bit2 bit12)
-    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
-    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
-    )
-   )
-  )
+(set! (-> *part-id-table* 1930) (new 'static 'sparticle-launcher
+                                  :init-specs
+                                  (new 'static 'inline-array sp-field-init-spec 19
+                                    (sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+                                    (sp-rnd-flt spt-num 1.0 2.0 1.0)
+                                    (sp-rnd-flt spt-x (meters -0.25) (meters 0.5) 1.0)
+                                    (sp-rnd-flt spt-z -1024.0 2048.0 1.0)
+                                    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.1) 1.0)
+                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-copy-from-other spt-scale-y -4)
+                                    (sp-flt spt-r 128.0)
+                                    (sp-flt spt-g 128.0)
+                                    (sp-flt spt-b 128.0)
+                                    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+                                    (sp-rnd-flt spt-vel-y (meters 0.0) (meters 0.006666667) 1.0)
+                                    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 3.4666667) 1.0)
+                                    (sp-flt spt-accel-y -5.4613333)
+                                    (sp-int spt-timer 150)
+                                    (sp-cpuinfo-flags bit2 bit12)
+                                    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
+                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+                                    (sp-end)
+                                    )
+                                  )
+      )
 
-(defbehavior
-  yeti-slave-default-event-handler yeti-slave
-  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2 
-   (('attack)
+(defbehavior yeti-slave-default-event-handler yeti-slave ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('attack)
      (nav-enemy-set-hit-from-direction arg0)
      (go-virtual nav-enemy-die)
      )
-   (('touch)
-    (nav-enemy-send-attack
-     arg0
-     (the-as touching-shapes-entry (-> arg3 param 0))
-     'generic
+    (('touch)
+     (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 'generic)
      )
     )
-   )
   )
 
 (defstate yeti-slave-appear-jump-up (yeti-slave)
@@ -258,97 +243,61 @@
   yeti-slave-default-event-handler
   :enter
   (behavior ()
-   (nav-enemy-neck-control-inactive)
-   (set! (-> self state-time) (-> *display* base-frame-counter))
-   (if (-> self nav-info move-to-ground)
-    (dummy-60 (-> self collide-info) 40960.0 40960.0 #t (the-as uint 1))
+    (nav-enemy-neck-control-inactive)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (if (-> self nav-info move-to-ground)
+        (dummy-60 (-> self collide-info) 40960.0 40960.0 #t (the-as uint 1))
+        )
+    (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
+    (set! (-> self state-timeout) 300)
+    (set! (-> self ground-y) (-> self collide-info trans y))
+    (spawn (-> self part) (-> self collide-info trans))
+    (set! (-> self collide-info trans y) (+ -12288.0 (-> self collide-info trans y)))
+    (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+    (set! (-> self collide-info transv y) (rand-vu-float-range 102400.0 114688.0))
+    (none)
     )
-   (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
-   (set! (-> self state-timeout) 300)
-   (set! (-> self ground-y) (-> self collide-info trans y))
-   (spawn (-> self part) (-> self collide-info trans))
-   (set!
-    (-> self collide-info trans y)
-    (+ -12288.0 (-> self collide-info trans y))
-    )
-   (set! (-> self collide-info transv quad) (-> *null-vector* quad))
-   (set!
-    (-> self collide-info transv y)
-    (rand-vu-float-range 102400.0 114688.0)
-    )
-   (none)
-   )
   :trans
   (behavior ()
-   (when
-    (and
-     (< (-> self collide-info trans y) (-> self ground-y))
-     (< (-> self collide-info transv y) 0.0)
-     )
-    (set! (-> self collide-info trans y) (-> self ground-y))
-    (set! (-> self collide-info transv quad) (-> *null-vector* quad))
-    (go yeti-slave-appear-land)
+    (when (and (< (-> self collide-info trans y) (-> self ground-y)) (< (-> self collide-info transv y) 0.0))
+      (set! (-> self collide-info trans y) (-> self ground-y))
+      (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+      (go yeti-slave-appear-land)
+      )
+    (let* ((s5-0 (-> self node-list))
+           (a0-2 (-> s5-0 length))
+           (gp-0 (new 'stack-no-clear 'vector))
+           )
+      (vector<-cspace! gp-0 (-> s5-0 data (nav-enemy-rnd-int-count a0-2)))
+      (spawn (-> self part2) gp-0)
+      )
+    (none)
     )
-   (let* ((s5-0 (-> self node-list))
-          (a0-2 (-> s5-0 length))
-          (gp-0 (new 'stack-no-clear 'vector))
-          )
-    (vector<-cspace! gp-0 (-> s5-0 data (nav-enemy-rnd-int-count a0-2)))
-    (spawn (-> self part2) gp-0)
-    )
-   (none)
-   )
   :code
   (behavior ()
-   (ja-channel-push! 1 22)
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 10))
-     )
-    (set!
-     (-> gp-0 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 10))
-        data
-        0
-        length
+    (ja-channel-push! 1 22)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
+      (set! (-> gp-0 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) data 0 length) -1))
+            )
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) (ja-aframe 10.0 0))
+      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
+        (set! (-> a0-3 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> gp-0 param 1) 1.0)
-    (set! (-> gp-0 frame-num) (ja-aframe 10.0 0))
-    (joint-control-channel-group!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 10))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-3 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-3 param 0)
-      (the float (+ (-> a0-3 frame-group data 0 length) -1))
+    (while #t
+      (suspend)
       )
-     (set! (-> a0-3 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-3
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
+    (none)
     )
-   (while #t
-    (suspend)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior yeti-slave) nav-enemy-falling-post)
   )
@@ -358,71 +307,39 @@
   yeti-slave-default-event-handler
   :code
   (behavior ()
-   (ja-channel-push! 1 15)
-   (let ((a0-1 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-1 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 11))
-     )
-    (set!
-     (-> a0-1 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 11))
-        data
-        0
-        length
+    (ja-channel-push! 1 15)
+    (let ((a0-1 (-> self skel root-channel 0)))
+      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
+      (set! (-> a0-1 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) data 0 length) -1))
+            )
+      (set! (-> a0-1 param 1) 0.5)
+      (set! (-> a0-1 frame-num) 0.0)
+      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (suspend)
+      (let ((a0-2 (-> self skel root-channel 0)))
+        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
+        (set! (-> a0-2 param 1) 0.5)
+        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
         )
-       -1
-       )
       )
-     )
-    (set! (-> a0-1 param 1) 0.5)
-    (set! (-> a0-1 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-1
-     (the-as art-joint-anim (-> self draw art-group data 11))
-     num-func-seek!
-     )
+    (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
+        (go-virtual nav-enemy-chase)
+        (go-virtual nav-enemy-idle)
+        )
+    (none)
     )
-   (until (ja-done? 0)
-    (suspend)
-    (let ((a0-2 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-2 param 0)
-      (the float (+ (-> a0-2 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-2 param 1) 0.5)
-     (joint-control-channel-group-eval!
-      a0-2
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
-    (go-virtual nav-enemy-chase)
-    (go-virtual nav-enemy-idle)
-    )
-   (none)
-   )
   :post
   (the-as (function none :behavior yeti-slave) ja-post)
   )
 
 (defstate yeti-slave-show-anims (yeti-slave)
   :trans
-  (behavior ()
-   0
-   (none)
-   )
+  (behavior () 0 (none))
   :code
-  (behavior ()
-   0
-   (none)
-   )
+  (behavior () 0 (none))
   :post
   (the-as (function none :behavior yeti-slave) transform-post)
   )
@@ -431,730 +348,424 @@
   :virtual #t
   :code
   (behavior ()
-   (cond
-    ((= (if (> (-> self skel active-channels) 0)
-         (-> self skel root-channel 0 frame-group)
-         )
-      (-> self draw art-group data 7)
-      )
-     (ja-channel-push! 1 45)
-     (let ((gp-0 (-> self skel root-channel 0)))
-      (set!
-       (-> gp-0 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 3))
-       )
-      (set!
-       (-> gp-0 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          data
-          0
-          length
+    (cond
+      ((= (if (> (-> self skel active-channels) 0)
+               (-> self skel root-channel 0 frame-group)
+               )
+          (-> self draw art-group data 7)
           )
-         -1
+       (ja-channel-push! 1 45)
+       (let ((gp-0 (-> self skel root-channel 0)))
+         (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+         (set! (-> gp-0 param 0)
+               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
+               )
+         (set! (-> gp-0 param 1) 1.0)
+         (set! (-> gp-0 frame-num) (ja-aframe 12.0 0))
+         (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
          )
-        )
-       )
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) (ja-aframe 12.0 0))
-      (joint-control-channel-group!
-       gp-0
-       (the-as art-joint-anim (-> self draw art-group data 3))
-       num-func-seek!
-       )
-      )
-     (until (ja-done? 0)
-      (suspend)
-      (let ((a0-7 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-7 param 0)
-        (the float (+ (-> a0-7 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-7 param 1) 1.0)
-       (joint-control-channel-group-eval!
-        a0-7
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     )
-    (else
-     (ja-channel-push! 1 60)
-     )
-    )
-   (while #t
-    (let ((a0-10 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-10 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      )
-     (set!
-      (-> a0-10 param 0)
-      (the
-       float
-       (+
-        (->
-         (the-as art-joint-anim (-> self draw art-group data 3))
-         data
-         0
-         length
-         )
-        -1
-        )
-       )
-      )
-     (set! (-> a0-10 param 1) 1.0)
-     (set! (-> a0-10 frame-num) 0.0)
-     (joint-control-channel-group!
-      a0-10
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      num-func-seek!
-      )
-     )
-    (until (ja-done? 0)
-     (suspend)
-     (let ((a0-11 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-11 param 0)
-       (the float (+ (-> a0-11 frame-group data 0 length) -1))
-       )
-      (set! (-> a0-11 param 1) 1.0)
-      (joint-control-channel-group-eval!
-       a0-11
-       (the-as art-joint-anim #f)
-       num-func-seek!
-       )
-      )
-     )
-    (when (nav-enemy-rnd-percent? 0.2)
-     (let ((a0-14 (-> self skel root-channel 0)))
-      (set! (-> a0-14 param 0) 1.0)
-      (joint-control-channel-group!
-       a0-14
-       (the-as art-joint-anim #f)
-       num-func-loop!
-       )
-      )
-     (ja-channel-push! 1 180)
-     (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
-     (let ((gp-1 (nav-enemy-rnd-int-range 2 6)))
-      (dotimes (s5-0 gp-1)
-       (let ((a0-18 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-18 frame-group)
-         (the-as art-joint-anim (-> self draw art-group data 2))
-         )
-        (set!
-         (-> a0-18 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as art-joint-anim (-> self draw art-group data 2))
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (set! (-> a0-18 param 1) 1.0)
-        (set! (-> a0-18 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-18
-         (the-as art-joint-anim (-> self draw art-group data 2))
-         num-func-seek!
-         )
-        )
        (until (ja-done? 0)
-        (ja-blend-eval)
+         (suspend)
+         (let ((a0-7 (-> self skel root-channel 0)))
+           (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
+           (set! (-> a0-7 param 1) 1.0)
+           (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+           )
+         )
+       )
+      (else
+        (ja-channel-push! 1 60)
+        )
+      )
+    (while #t
+      (let ((a0-10 (-> self skel root-channel 0)))
+        (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+        (set! (-> a0-10 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
+              )
+        (set! (-> a0-10 param 1) 1.0)
+        (set! (-> a0-10 frame-num) 0.0)
+        (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
+        )
+      (until (ja-done? 0)
         (suspend)
-        (let ((a0-19 (-> self skel root-channel 0)))
-         (set!
-          (-> a0-19 param 0)
-          (the float (+ (-> a0-19 frame-group data 0 length) -1))
+        (let ((a0-11 (-> self skel root-channel 0)))
+          (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
+          (set! (-> a0-11 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
           )
-         (set! (-> a0-19 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-19
-          (the-as art-joint-anim #f)
-          num-func-seek!
+        )
+      (when (nav-enemy-rnd-percent? 0.2)
+        (let ((a0-14 (-> self skel root-channel 0)))
+          (set! (-> a0-14 param 0) 1.0)
+          (joint-control-channel-group! a0-14 (the-as art-joint-anim #f) num-func-loop!)
           )
-         )
-        )
-       )
-      )
-     (logior! (-> self nav-enemy-flags) 8)
-     (let ((a0-21 (-> self skel root-channel 0)))
-      (set! (-> a0-21 param 0) 1.0)
-      (joint-control-channel-group!
-       a0-21
-       (the-as art-joint-anim #f)
-       num-func-loop!
-       )
-      )
-     (ja-channel-push! 1 180)
-     (let ((a0-23 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-23 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 3))
-       )
-      (set!
-       (-> a0-23 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          data
-          0
-          length
+        (ja-channel-push! 1 180)
+        (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+        (let ((gp-1 (nav-enemy-rnd-int-range 2 6)))
+          (dotimes (s5-0 gp-1)
+            (let ((a0-18 (-> self skel root-channel 0)))
+              (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+              (set! (-> a0-18 param 0)
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
+                    )
+              (set! (-> a0-18 param 1) 1.0)
+              (set! (-> a0-18 frame-num) 0.0)
+              (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
+              )
+            (until (ja-done? 0)
+              (ja-blend-eval)
+              (suspend)
+              (let ((a0-19 (-> self skel root-channel 0)))
+                (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
+                (set! (-> a0-19 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            )
           )
-         -1
-         )
+        (logior! (-> self nav-enemy-flags) 8)
+        (let ((a0-21 (-> self skel root-channel 0)))
+          (set! (-> a0-21 param 0) 1.0)
+          (joint-control-channel-group! a0-21 (the-as art-joint-anim #f) num-func-loop!)
+          )
+        (ja-channel-push! 1 180)
+        (let ((a0-23 (-> self skel root-channel 0)))
+          (set! (-> a0-23 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+          (set! (-> a0-23 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
+                )
+          (set! (-> a0-23 param 1) 1.0)
+          (set! (-> a0-23 frame-num) 0.0)
+          (joint-control-channel-group! a0-23 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
+          )
+        (until (ja-done? 0)
+          (ja-blend-eval)
+          (suspend)
+          (let ((a0-24 (-> self skel root-channel 0)))
+            (set! (-> a0-24 param 0) (the float (+ (-> a0-24 frame-group data 0 length) -1)))
+            (set! (-> a0-24 param 1) 1.0)
+            (joint-control-channel-group-eval! a0-24 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
         )
-       )
-      (set! (-> a0-23 param 1) 1.0)
-      (set! (-> a0-23 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-23
-       (the-as art-joint-anim (-> self draw art-group data 3))
-       num-func-seek!
-       )
       )
-     (until (ja-done? 0)
-      (ja-blend-eval)
-      (suspend)
-      (let ((a0-24 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-24 param 0)
-        (the float (+ (-> a0-24 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-24 param 1) 1.0)
-       (joint-control-channel-group-eval!
-        a0-24
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate nav-enemy-chase (yeti-slave)
   :virtual #t
   :code
   (behavior ()
-   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-    (cond
-     ((= (if (> (-> self skel active-channels) 0)
-          (-> self skel root-channel 0 frame-group)
-          )
-       (-> self draw art-group data 11)
-       )
-      (let ((a0-5 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-5 param 0)
-        (the float (+ (-> a0-5 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-5 param 1) 1.0)
-       (joint-control-channel-group!
-        a0-5
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      (ja-channel-push! 1 51)
-      (let ((a0-7 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-7 frame-group)
-        (the-as
-         art-joint-anim
-         (-> self draw art-group data (-> self nav-info run-anim))
-         )
-        )
-       (set!
-        (-> a0-7 param 0)
-        (the
-         float
-         (+
-          (->
-           (the-as
-            art-joint-anim
-            (-> self draw art-group data (-> self nav-info run-anim))
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+      (cond
+        ((= (if (> (-> self skel active-channels) 0)
+                 (-> self skel root-channel 0 frame-group)
+                 )
+            (-> self draw art-group data 11)
             )
-           data
-           0
-           length
+         (let ((a0-5 (-> self skel root-channel 0)))
+           (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group data 0 length) -1)))
+           (set! (-> a0-5 param 1) 1.0)
+           (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-seek!)
            )
-          -1
+         (ja-channel-push! 1 51)
+         (let ((a0-7 (-> self skel root-channel 0)))
+           (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim))))
+           (set! (-> a0-7 param 0)
+                 (the float
+                      (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim))) data 0 length) -1)
+                      )
+                 )
+           (set! (-> a0-7 param 1) f30-0)
+           (set! (-> a0-7 frame-num) 0.0)
+           (joint-control-channel-group!
+             a0-7
+             (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim)))
+             num-func-seek!
+             )
+           )
+         (until (ja-done? 0)
+           (ja-blend-eval)
+           (suspend)
+           (let ((a0-8 (-> self skel root-channel 0)))
+             (set! (-> a0-8 param 0) (the float (+ (-> a0-8 frame-group data 0 length) -1)))
+             (set! (-> a0-8 param 1) f30-0)
+             (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
+             )
+           )
+         )
+        (else
+          (ja-channel-push! 1 60)
+          (let ((v1-42 (-> self skel root-channel 0)))
+            (set! (-> v1-42 frame-group)
+                  (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim)))
+                  )
+            )
+          (let ((v1-45 (-> self skel root-channel 0)))
+            (set! (-> v1-45 num-func) num-func-identity)
+            (set! (-> v1-45 frame-num) 0.0)
+            )
           )
-         )
         )
-       (set! (-> a0-7 param 1) f30-0)
-       (set! (-> a0-7 frame-num) 0.0)
-       (joint-control-channel-group!
-        a0-7
-        (the-as
-         art-joint-anim
-         (-> self draw art-group data (-> self nav-info run-anim))
-         )
-        num-func-seek!
+      (while #t
+        (suspend)
+        (let ((a0-17 (-> self skel root-channel 0)))
+          (set! (-> a0-17 param 0) f30-0)
+          (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-loop!)
+          )
         )
-       )
-      (until (ja-done? 0)
-       (ja-blend-eval)
-       (suspend)
-       (let ((a0-8 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-8 param 0)
-         (the float (+ (-> a0-8 frame-group data 0 length) -1))
-         )
-        (set! (-> a0-8 param 1) f30-0)
-        (joint-control-channel-group-eval!
-         a0-8
-         (the-as art-joint-anim #f)
-         num-func-seek!
-         )
-        )
-       )
       )
-     (else
-      (ja-channel-push! 1 60)
-      (let ((v1-42 (-> self skel root-channel 0)))
-       (set!
-        (-> v1-42 frame-group)
-        (the-as
-         art-joint-anim
-         (-> self draw art-group data (-> self nav-info run-anim))
-         )
-        )
-       )
-      (let ((v1-45 (-> self skel root-channel 0)))
-       (set! (-> v1-45 num-func) num-func-identity)
-       (set! (-> v1-45 frame-num) 0.0)
-       )
-      )
-     )
-    (while #t
-     (suspend)
-     (let ((a0-17 (-> self skel root-channel 0)))
-      (set! (-> a0-17 param 0) f30-0)
-      (joint-control-channel-group-eval!
-       a0-17
-       (the-as art-joint-anim #f)
-       num-func-loop!
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate nav-enemy-stare (yeti-slave)
   :virtual #t
   :code
   (behavior ()
-   (set! (-> self turn-time) 60)
-   (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-    (when
-     (or
-      (logtest? (-> self nav-enemy-flags) 256)
-      (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
-      )
-     (ja-channel-push! 1 30)
-     (let ((gp-0 (-> self skel root-channel 0)))
-      (set!
-       (-> gp-0 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 8))
-       )
-      (set! (-> gp-0 param 0) (ja-aframe 68.0 0))
-      (set! (-> gp-0 param 1) f30-0)
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group!
-       gp-0
-       (the-as art-joint-anim (-> self draw art-group data 8))
-       num-func-seek!
-       )
-      )
-     (until (ja-done? 0)
-      (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-       (set! (-> gp-1 param 0) (ja-aframe 68.0 0))
-       (set! (-> gp-1 param 1) f30-0)
-       (joint-control-channel-group-eval!
-        gp-1
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     )
-    (while #t
-     (when (not (nav-enemy-facing-player? 2730.6667))
-      (logior! (-> self nav-enemy-flags) 16)
-      (let ((a0-9 (-> self skel root-channel 0)))
-       (set! (-> a0-9 param 0) 1.0)
-       (joint-control-channel-group!
-        a0-9
-        (the-as art-joint-anim #f)
-        num-func-loop!
-        )
-       )
-      (ja-channel-push! 1 60)
-      (let ((v1-25 (-> self skel root-channel 0)))
-       (set!
-        (-> v1-25 frame-group)
-        (the-as art-joint-anim (-> self draw art-group data 12))
-        )
-       )
-      (let ((v1-28 (-> self skel root-channel 0)))
-       (set! (-> v1-28 num-func) num-func-identity)
-       (set! (-> v1-28 frame-num) 0.0)
-       )
-      (until (nav-enemy-facing-player? 1820.4445)
-       (ja-blend-eval)
-       (suspend)
-       (let ((a0-15 (-> self skel root-channel 0)))
-        (set! (-> a0-15 param 0) 0.75)
-        (joint-control-channel-group-eval!
-         a0-15
-         (the-as art-joint-anim #f)
-         num-func-loop!
-         )
-        )
-       )
-      (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
-      )
-     (if (not (= (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
-               (-> self draw art-group data 2)
-               )
+    (set! (-> self turn-time) 60)
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+      (when (or
+              (logtest? (-> self nav-enemy-flags) 256)
+              (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
+              )
+        (ja-channel-push! 1 30)
+        (let ((gp-0 (-> self skel root-channel 0)))
+          (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
+          (set! (-> gp-0 param 0) (ja-aframe 68.0 0))
+          (set! (-> gp-0 param 1) f30-0)
+          (set! (-> gp-0 frame-num) 0.0)
+          (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
           )
-      (ja-channel-push! 1 60)
-      )
-     (let ((a0-23 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-23 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 2))
-       )
-      (set!
-       (-> a0-23 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 2))
-          data
-          0
-          length
+        (until (ja-done? 0)
+          (suspend)
+          (let ((gp-1 (-> self skel root-channel 0)))
+            (set! (-> gp-1 param 0) (ja-aframe 68.0 0))
+            (set! (-> gp-1 param 1) f30-0)
+            (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
+            )
           )
-         -1
-         )
         )
-       )
-      (set! (-> a0-23 param 1) f30-0)
-      (set! (-> a0-23 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-23
-       (the-as art-joint-anim (-> self draw art-group data 2))
-       num-func-seek!
-       )
+      (while #t
+        (when (not (nav-enemy-facing-player? 2730.6667))
+          (logior! (-> self nav-enemy-flags) 16)
+          (let ((a0-9 (-> self skel root-channel 0)))
+            (set! (-> a0-9 param 0) 1.0)
+            (joint-control-channel-group! a0-9 (the-as art-joint-anim #f) num-func-loop!)
+            )
+          (ja-channel-push! 1 60)
+          (let ((v1-25 (-> self skel root-channel 0)))
+            (set! (-> v1-25 frame-group) (the-as art-joint-anim (-> self draw art-group data 12)))
+            )
+          (let ((v1-28 (-> self skel root-channel 0)))
+            (set! (-> v1-28 num-func) num-func-identity)
+            (set! (-> v1-28 frame-num) 0.0)
+            )
+          (until (nav-enemy-facing-player? 1820.4445)
+            (ja-blend-eval)
+            (suspend)
+            (let ((a0-15 (-> self skel root-channel 0)))
+              (set! (-> a0-15 param 0) 0.75)
+              (joint-control-channel-group-eval! a0-15 (the-as art-joint-anim #f) num-func-loop!)
+              )
+            )
+          (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+          )
+        (if (not (= (if (> (-> self skel active-channels) 0)
+                           (-> self skel root-channel 0 frame-group)
+                           )
+                      (-> self draw art-group data 2)
+                      )
+                   )
+            (ja-channel-push! 1 60)
+            )
+        (let ((a0-23 (-> self skel root-channel 0)))
+          (set! (-> a0-23 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
+          (set! (-> a0-23 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
+                )
+          (set! (-> a0-23 param 1) f30-0)
+          (set! (-> a0-23 frame-num) 0.0)
+          (joint-control-channel-group! a0-23 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
+          )
+        (until (ja-done? 0)
+          (suspend)
+          (let ((a0-24 (-> self skel root-channel 0)))
+            (set! (-> a0-24 param 0) (the float (+ (-> a0-24 frame-group data 0 length) -1)))
+            (set! (-> a0-24 param 1) f30-0)
+            (joint-control-channel-group-eval! a0-24 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+        (when (nav-enemy-rnd-percent? 0.3)
+          (ja-channel-push! 1 30)
+          (let ((gp-2 (-> self skel root-channel 0)))
+            (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
+            (set! (-> gp-2 param 0) (ja-aframe 68.0 0))
+            (set! (-> gp-2 param 1) f30-0)
+            (set! (-> gp-2 frame-num) 0.0)
+            (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
+            )
+          (until (ja-done? 0)
+            (suspend)
+            (let ((gp-3 (-> self skel root-channel 0)))
+              (set! (-> gp-3 param 0) (ja-aframe 68.0 0))
+              (set! (-> gp-3 param 1) f30-0)
+              (joint-control-channel-group-eval! gp-3 (the-as art-joint-anim #f) num-func-seek!)
+              )
+            )
+          )
+        )
       )
-     (until (ja-done? 0)
-      (suspend)
-      (let ((a0-24 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-24 param 0)
-        (the float (+ (-> a0-24 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-24 param 1) f30-0)
-       (joint-control-channel-group-eval!
-        a0-24
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
-      )
-     (when (nav-enemy-rnd-percent? 0.3)
-      (ja-channel-push! 1 30)
-      (let ((gp-2 (-> self skel root-channel 0)))
-       (set!
-        (-> gp-2 frame-group)
-        (the-as art-joint-anim (-> self draw art-group data 8))
-        )
-       (set! (-> gp-2 param 0) (ja-aframe 68.0 0))
-       (set! (-> gp-2 param 1) f30-0)
-       (set! (-> gp-2 frame-num) 0.0)
-       (joint-control-channel-group!
-        gp-2
-        (the-as art-joint-anim (-> self draw art-group data 8))
-        num-func-seek!
-        )
-       )
-      (until (ja-done? 0)
-       (suspend)
-       (let ((gp-3 (-> self skel root-channel 0)))
-        (set! (-> gp-3 param 0) (ja-aframe 68.0 0))
-        (set! (-> gp-3 param 1) f30-0)
-        (joint-control-channel-group-eval!
-         gp-3
-         (the-as art-joint-anim #f)
-         num-func-seek!
-         )
-        )
-       )
-      )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate nav-enemy-give-up (yeti-slave)
   :virtual #t
   :code
   (behavior ()
-   (set! (-> self rotate-speed) 218453.33)
-   (set! (-> self turn-time) 150)
-   (ja-channel-push! 1 45)
-   (let ((s4-0 (-> self collide-info))
-         (s5-0 (target-pos 0))
-         )
-    (when
-     (<
-      (fabs
-       (deg-diff
-        (y-angle s4-0)
-        (vector-y-angle
-         (vector-! (new 'stack-no-clear 'vector) s5-0 (-> s4-0 trans))
-         )
-        )
-       )
-      12743.111
-      )
-     (let ((a0-6 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-6 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 6))
-       )
-      (set!
-       (-> a0-6 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 6))
-          data
-          0
-          length
+    (set! (-> self rotate-speed) 218453.33)
+    (set! (-> self turn-time) 150)
+    (ja-channel-push! 1 45)
+    (let ((s4-0 (-> self collide-info))
+          (s5-0 (target-pos 0))
           )
-         -1
-         )
+      (when (< (fabs
+                  (deg-diff (y-angle s4-0) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s5-0 (-> s4-0 trans))))
+                  )
+               12743.111
+               )
+        (let ((a0-6 (-> self skel root-channel 0)))
+          (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
+          (set! (-> a0-6 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
+                )
+          (set! (-> a0-6 param 1) 1.0)
+          (set! (-> a0-6 frame-num) 0.0)
+          (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
+          )
+        (until (ja-done? 0)
+          (suspend)
+          (let ((a0-7 (-> self skel root-channel 0)))
+            (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
+            (set! (-> a0-7 param 1) 1.0)
+            (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
         )
-       )
-      (set! (-> a0-6 param 1) 1.0)
-      (set! (-> a0-6 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-6
-       (the-as art-joint-anim (-> self draw art-group data 6))
-       num-func-seek!
-       )
       )
-     (until (ja-done? 0)
+    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (nav-enemy-get-new-patrol-point)
+    (let ((a0-12 (-> self skel root-channel 0)))
+      (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
+      (set! (-> a0-12 param 0)
+            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
+            )
+      (set! (-> a0-12 param 1) 1.0)
+      (set! (-> a0-12 frame-num) 0.0)
+      (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
+      )
+    (until (ja-done? 0)
+      (seek-to-point-toward-point!
+        (-> self collide-info)
+        (-> self nav destination-pos)
+        (-> self rotate-speed)
+        (-> self turn-time)
+        )
       (suspend)
-      (let ((a0-7 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-7 param 0)
-        (the float (+ (-> a0-7 frame-group data 0 length) -1))
+      (let ((a0-14 (-> self skel root-channel 0)))
+        (set! (-> a0-14 param 0) (the float (+ (-> a0-14 frame-group data 0 length) -1)))
+        (set! (-> a0-14 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
         )
-       (set! (-> a0-7 param 1) 1.0)
-       (joint-control-channel-group-eval!
-        a0-7
-        (the-as art-joint-anim #f)
-        num-func-seek!
-        )
-       )
       )
-     )
+    (go-virtual nav-enemy-patrol)
+    (none)
     )
-   (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
-   (nav-enemy-get-new-patrol-point)
-   (let ((a0-12 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-12 frame-group)
-     (the-as art-joint-anim (-> self draw art-group data 7))
-     )
-    (set!
-     (-> a0-12 param 0)
-     (the
-      float
-      (+
-       (->
-        (the-as art-joint-anim (-> self draw art-group data 7))
-        data
-        0
-        length
-        )
-       -1
-       )
-      )
-     )
-    (set! (-> a0-12 param 1) 1.0)
-    (set! (-> a0-12 frame-num) 0.0)
-    (joint-control-channel-group!
-     a0-12
-     (the-as art-joint-anim (-> self draw art-group data 7))
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (seek-to-point-toward-point!
-     (-> self collide-info)
-     (-> self nav destination-pos)
-     (-> self rotate-speed)
-     (-> self turn-time)
-     )
-    (suspend)
-    (let ((a0-14 (-> self skel root-channel 0)))
-     (set!
-      (-> a0-14 param 0)
-      (the float (+ (-> a0-14 frame-group data 0 length) -1))
-      )
-     (set! (-> a0-14 param 1) 1.0)
-     (joint-control-channel-group-eval!
-      a0-14
-      (the-as art-joint-anim #f)
-      num-func-seek!
-      )
-     )
-    )
-   (go-virtual nav-enemy-patrol)
-   (none)
-   )
   )
 
 (defstate nav-enemy-jump-land (yeti-slave)
   :virtual #t
   :code
   (behavior ()
-   (let ((a0-0 (-> self skel root-channel 0)))
-    (set!
-     (-> a0-0 param 0)
-     (the float (+ (-> a0-0 frame-group data 0 length) -1))
-     )
-    (set! (-> a0-0 param 1) 1.0)
-    (joint-control-channel-group!
-     a0-0
-     (the-as art-joint-anim #f)
-     num-func-seek!
-     )
-    )
-   (ja-channel-push! 1 22)
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (set!
-     (-> gp-0 frame-group)
-     (the-as
-      art-joint-anim
-      (-> self draw art-group data (-> self nav-info jump-land-anim))
+    (let ((a0-0 (-> self skel root-channel 0)))
+      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
+      (set! (-> a0-0 param 1) 1.0)
+      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
       )
-     )
-    (set! (-> gp-0 param 0) (ja-aframe 32.0 0))
-    (set! (-> gp-0 param 1) 0.5)
-    (set! (-> gp-0 frame-num) 0.0)
-    (joint-control-channel-group!
-     gp-0
-     (the-as
-      art-joint-anim
-      (-> self draw art-group data (-> self nav-info jump-land-anim))
+    (ja-channel-push! 1 22)
+    (let ((gp-0 (-> self skel root-channel 0)))
+      (set! (-> gp-0 frame-group)
+            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info jump-land-anim)))
+            )
+      (set! (-> gp-0 param 0) (ja-aframe 32.0 0))
+      (set! (-> gp-0 param 1) 0.5)
+      (set! (-> gp-0 frame-num) 0.0)
+      (joint-control-channel-group!
+        gp-0
+        (the-as art-joint-anim (-> self draw art-group data (-> self nav-info jump-land-anim)))
+        num-func-seek!
+        )
       )
-     num-func-seek!
-     )
-    )
-   (until (ja-done? 0)
-    (ja-blend-eval)
-    (suspend)
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (set! (-> gp-1 param 0) (ja-aframe 32.0 0))
-     (set! (-> gp-1 param 1) 0.5)
-     (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim #f)
-      num-func-seek!
+    (until (ja-done? 0)
+      (ja-blend-eval)
+      (suspend)
+      (let ((gp-1 (-> self skel root-channel 0)))
+        (set! (-> gp-1 param 0) (ja-aframe 32.0 0))
+        (set! (-> gp-1 param 1) 0.5)
+        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
+        )
       )
-     )
+    (go-virtual nav-enemy-chase)
+    (none)
     )
-   (go-virtual nav-enemy-chase)
-   (none)
-   )
   )
 
 (defmethod initialize-collision yeti-slave ((obj yeti-slave))
-  (let
-   ((s5-0
-     (new
-      'process
-      'collide-shape-moving
-      obj
-      (collide-list-enum usually-hit-by-player)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
+      (set! (-> s4-0 collide-with) (the-as uint 16))
+      (set! (-> s4-0 prim-core action) (the-as uint 1))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set-root-prim! s5-0 s4-0)
+      (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+        (set! (-> s3-0 collide-with) (the-as uint 16))
+        (set! (-> s3-0 prim-core action) (the-as uint 1))
+        (set! (-> s3-0 prim-core offense) 1)
+        (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 3072.0)
+        (append-prim s4-0 s3-0)
+        )
+      (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
+        (set! (-> s3-1 collide-with) (the-as uint 16))
+        (set! (-> s3-1 prim-core action) (the-as uint 1))
+        (set! (-> s3-1 prim-core offense) 1)
+        (set-vector! (-> s3-1 local-sphere) 0.0 9830.4 0.0 3072.0)
+        (append-prim s4-0 s3-1)
+        )
+      (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+        (set! (-> s3-2 prim-core collide-as) (the-as uint 256))
+        (set! (-> s3-2 collide-with) (the-as uint 16))
+        (set! (-> s3-2 prim-core offense) 2)
+        (set! (-> s3-2 transform-index) 6)
+        (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 2048.0)
+        (append-prim s4-0 s3-2)
+        )
       )
-     )
+    (set! (-> s5-0 nav-radius) 6144.0)
+    (backup-collide-with-as s5-0)
+    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+    (set! (-> obj collide-info) s5-0)
     )
-   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s5-0 reaction) default-collision-reaction)
-   (set!
-    (-> s5-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
-    (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
-    (set! (-> s4-0 collide-with) (the-as uint 16))
-    (set! (-> s4-0 prim-core action) (the-as uint 1))
-    (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
-    (set-root-prim! s5-0 s4-0)
-    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-     (set! (-> s3-0 collide-with) (the-as uint 16))
-     (set! (-> s3-0 prim-core action) (the-as uint 1))
-     (set! (-> s3-0 prim-core offense) 1)
-     (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 3072.0)
-     (append-prim s4-0 s3-0)
-     )
-    (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-     (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
-     (set! (-> s3-1 collide-with) (the-as uint 16))
-     (set! (-> s3-1 prim-core action) (the-as uint 1))
-     (set! (-> s3-1 prim-core offense) 1)
-     (set-vector! (-> s3-1 local-sphere) 0.0 9830.4 0.0 3072.0)
-     (append-prim s4-0 s3-1)
-     )
-    (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
-     (set! (-> s3-2 prim-core collide-as) (the-as uint 256))
-     (set! (-> s3-2 collide-with) (the-as uint 16))
-     (set! (-> s3-2 prim-core offense) 2)
-     (set! (-> s3-2 transform-index) 6)
-     (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 2048.0)
-     (append-prim s4-0 s3-2)
-     )
-    )
-   (set! (-> s5-0 nav-radius) 6144.0)
-   (backup-collide-with-as s5-0)
-   (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-   (set! (-> obj collide-info) s5-0)
-   )
   0
   (none)
   )
@@ -1172,39 +783,22 @@
 
 (defmethod deactivate yeti-slave ((obj yeti-slave))
   (if (nonzero? (-> obj part2))
-   (kill-and-free-particles (-> obj part2))
-   )
+      (kill-and-free-particles (-> obj part2))
+      )
   ((method-of-type process-drawable deactivate) obj)
   (none)
   )
 
 (defmethod relocate yeti-slave ((obj yeti-slave) (arg0 int))
   (if (nonzero? (-> obj part2))
-   (&+! (-> obj part2) arg0)
-   )
-  (the-as
-   yeti-slave
-   ((the-as
-     (function nav-enemy int nav-enemy)
-     (find-parent-method yeti-slave 7)
-     )
-    obj
-    arg0
-    )
-   )
+      (&+! (-> obj part2) arg0)
+      )
+  (the-as yeti-slave ((the-as (function nav-enemy int nav-enemy) (find-parent-method yeti-slave 7)) obj arg0))
   )
 
-(defbehavior
-  yeti-slave-init-by-other yeti-slave
-  ((arg0 entity) (arg1 yeti) (arg2 vector) (arg3 vector) (arg4 symbol))
-  (set!
-   (-> self part)
-   (create-launch-control (-> *part-group-id-table* 538) self)
-   )
-  (set!
-   (-> self part2)
-   (create-launch-control (-> *part-group-id-table* 539) self)
-   )
+(defbehavior yeti-slave-init-by-other yeti-slave ((arg0 entity) (arg1 yeti) (arg2 vector) (arg3 vector) (arg4 symbol))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 538) self))
+  (set! (-> self part2) (create-launch-control (-> *part-group-id-table* 539) self))
   (initialize-collision self)
   (set! (-> self collide-info trans quad) (-> arg2 quad))
   (vector-identity! (-> self collide-info scale))
@@ -1212,208 +806,163 @@
   (set! (-> self entity) (-> arg1 entity))
   (TODO-RENAME-48 self)
   (if arg4
-   (go-virtual nav-enemy-idle)
-   (go yeti-slave-appear-jump-up)
-   )
+      (go-virtual nav-enemy-idle)
+      (go yeti-slave-appear-jump-up)
+      )
   (none)
   )
 
 (defmethod aggro? yeti ((obj yeti) (arg0 vector))
   (let ((s5-0 (the-as (pointer process-tree) (-> obj child-process))))
-   (while s5-0
-    (if
-     (<
-      (vector-vector-xz-distance-squared
-       arg0
-       (-> (the-as (pointer yeti-slave) s5-0) 0 collide-info trans)
-       )
-      603979800.0
+    (while s5-0
+      (if (< (vector-vector-xz-distance-squared arg0 (-> (the-as (pointer yeti-slave) s5-0) 0 collide-info trans))
+               603979800.0
+               )
+          (return #f)
+          )
+      (set! s5-0 (-> s5-0 0 brother))
       )
-     (return #f)
-     )
-    (set! s5-0 (-> s5-0 0 brother))
     )
-   )
   (when *target*
-   (if (< (vector-vector-xz-distance-squared arg0 (target-pos 0)) 603979800.0)
-    (return #f)
+    (if (< (vector-vector-xz-distance-squared arg0 (target-pos 0)) 603979800.0)
+        (return #f)
+        )
     )
-   )
   #t
   )
 
 (defmethod TODO-RENAME-20 yeti ((obj yeti) (arg0 vector) (arg1 vector))
   (let ((s3-0 (-> obj path curve num-cverts)))
-   (if (<= s3-0 0)
-    (return #f)
-    )
-   (let ((s1-0 (rand-vu-int-count s3-0))
-         (s2-0 s3-0)
-         )
-    (while (> s2-0 0)
-     (eval-path-curve-div! (-> obj path) arg0 (the float s1-0) 'interp)
-     (when (aggro? obj arg0)
-      (cond
-       (*target*
-        (vector-! arg1 (target-pos 0) arg0)
-        (set! (-> arg1 y) 0.0)
+    (if (<= s3-0 0)
+        (return #f)
         )
-       (else
-        (set-vector!
-         arg1
-         (rand-vu-float-range -4096.0 4096.0)
-         0.0
-         (rand-vu-float-range -4096.0 4096.0)
-         1.0
-         )
-        (set! (-> arg1 x) (+ 409.6 (-> arg1 x)))
+    (let ((s1-0 (rand-vu-int-count s3-0))
+          (s2-0 s3-0)
+          )
+      (while (> s2-0 0)
+        (eval-path-curve-div! (-> obj path) arg0 (the float s1-0) 'interp)
+        (when (aggro? obj arg0)
+          (cond
+            (*target*
+              (vector-! arg1 (target-pos 0) arg0)
+              (set! (-> arg1 y) 0.0)
+              )
+            (else
+              (set-vector! arg1 (rand-vu-float-range -4096.0 4096.0) 0.0 (rand-vu-float-range -4096.0 4096.0) 1.0)
+              (set! (-> arg1 x) (+ 409.6 (-> arg1 x)))
+              )
+            )
+          (vector-normalize! arg1 1.0)
+          (return #t)
+          )
+        (set! s1-0 (mod (+ s1-0 1) s3-0))
+        (+! s2-0 -1)
         )
-       )
-      (vector-normalize! arg1 1.0)
-      (return #t)
       )
-     (set! s1-0 (mod (+ s1-0 1) s3-0))
-     (+! s2-0 -1)
-     )
     )
-   )
   #f
   )
 
 (defstate yeti-first-time-start (yeti)
   :code
   (behavior ()
-   (while #t
-    (when *target*
-     (when
-      (>=
-       (-> self first-time-spawn-dist)
-       (vector-vector-xz-distance (target-pos 0) (-> self root trans))
-       )
-      (process-entity-status! self (entity-perm-status complete) #t)
-      (go yeti-idle)
+    (while #t
+      (when *target*
+        (when (>= (-> self first-time-spawn-dist) (vector-vector-xz-distance (target-pos 0) (-> self root trans)))
+          (process-entity-status! self (entity-perm-status complete) #t)
+          (go yeti-idle)
+          )
+        )
+      (suspend)
       )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   )
 
 (defstate yeti-resuming-start (yeti)
   :code
   (behavior ()
-   (let ((gp-0 0))
-    (let ((v1-0 (the-as (pointer process-tree) (-> self child-process))))
-     (while v1-0
-      (+! gp-0 1)
-      (set! v1-0 (-> v1-0 0 brother))
-      (nop!)
-      (nop!)
-      )
-     )
-    (while (< gp-0 (-> self desired-num-children))
-     (let ((s5-0 (new 'stack-no-clear 'vector))
-           (s4-0 (new 'stack-no-clear 'vector))
-           )
-      (if (not (TODO-RENAME-20 self s5-0 s4-0))
-       (go yeti-idle)
-       )
-      (let ((s3-0 (get-process *default-dead-pool* yeti-slave #x4000)))
-       (when s3-0
-        (let ((t9-3 (method-of-type yeti-slave activate)))
-         (t9-3
-          (the-as yeti-slave s3-0)
-          self
-          'yeti-slave
-          (the-as pointer #x70004000)
+    (let ((gp-0 0))
+      (let ((v1-0 (the-as (pointer process-tree) (-> self child-process))))
+        (while v1-0
+          (+! gp-0 1)
+          (set! v1-0 (-> v1-0 0 brother))
+          (nop!)
+          (nop!)
           )
-         )
-        (run-now-in-process
-         s3-0
-         yeti-slave-init-by-other
-         (-> self entity)
-         self
-         s5-0
-         s4-0
-         #t
-         )
-        (-> s3-0 ppointer)
         )
-       )
+      (while (< gp-0 (-> self desired-num-children))
+        (let ((s5-0 (new 'stack-no-clear 'vector))
+              (s4-0 (new 'stack-no-clear 'vector))
+              )
+          (if (not (TODO-RENAME-20 self s5-0 s4-0))
+              (go yeti-idle)
+              )
+          (let ((s3-0 (get-process *default-dead-pool* yeti-slave #x4000)))
+            (when s3-0
+              (let ((t9-3 (method-of-type yeti-slave activate)))
+                (t9-3 (the-as yeti-slave s3-0) self 'yeti-slave (the-as pointer #x70004000))
+                )
+              (run-now-in-process s3-0 yeti-slave-init-by-other (-> self entity) self s5-0 s4-0 #t)
+              (-> s3-0 ppointer)
+              )
+            )
+          )
+        (+! gp-0 1)
+        )
       )
-     (+! gp-0 1)
-     )
+    (go yeti-idle)
+    (none)
     )
-   (go yeti-idle)
-   (none)
-   )
   )
 
 (defstate yeti-idle (yeti)
   :code
   (behavior ()
-   (while #t
-    (cond
-     ((zero? (-> self spawn-delay))
-      (let ((v1-1 0))
-       (let ((a0-0 (the-as (pointer process-tree) (-> self child-process))))
-        (while a0-0
-         (+! v1-1 1)
-         (set! a0-0 (-> a0-0 0 brother))
-         (nop!)
-         (nop!)
-         )
-        )
-       (when (< v1-1 (-> self desired-num-children))
-        (set! (-> self spawn-delay) (rand-vu-int-range 150 1200))
-        (set! (-> self state-time) (-> *display* base-frame-counter))
-        )
-       )
-      )
-     (else
-      (when
-       (>=
-        (- (-> *display* base-frame-counter) (-> self state-time))
-        (-> self spawn-delay)
-        )
-       (let ((gp-0 (new 'stack-no-clear 'vector))
-             (s5-0 (new 'stack-no-clear 'vector))
+    (while #t
+      (cond
+        ((zero? (-> self spawn-delay))
+         (let ((v1-1 0))
+           (let ((a0-0 (the-as (pointer process-tree) (-> self child-process))))
+             (while a0-0
+               (+! v1-1 1)
+               (set! a0-0 (-> a0-0 0 brother))
+               (nop!)
+               (nop!)
+               )
              )
-        (when (TODO-RENAME-20 self gp-0 s5-0)
-         (let ((s4-0 (get-process *default-dead-pool* yeti-slave #x4000)))
-          (when s4-0
-           (let ((t9-3 (method-of-type yeti-slave activate)))
-            (t9-3
-             (the-as yeti-slave s4-0)
-             self
-             'yeti-slave
-             (the-as pointer #x70004000)
+           (when (< v1-1 (-> self desired-num-children))
+             (set! (-> self spawn-delay) (rand-vu-int-range 150 1200))
+             (set! (-> self state-time) (-> *display* base-frame-counter))
              )
-            )
-           (run-now-in-process
-            s4-0
-            yeti-slave-init-by-other
-            (-> self entity)
-            self
-            gp-0
-            s5-0
-            #f
-            )
-           (-> s4-0 ppointer)
            )
-          )
-         (set! (-> self spawn-delay) 0)
-         0
          )
+        (else
+          (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self spawn-delay))
+            (let ((gp-0 (new 'stack-no-clear 'vector))
+                  (s5-0 (new 'stack-no-clear 'vector))
+                  )
+              (when (TODO-RENAME-20 self gp-0 s5-0)
+                (let ((s4-0 (get-process *default-dead-pool* yeti-slave #x4000)))
+                  (when s4-0
+                    (let ((t9-3 (method-of-type yeti-slave activate)))
+                      (t9-3 (the-as yeti-slave s4-0) self 'yeti-slave (the-as pointer #x70004000))
+                      )
+                    (run-now-in-process s4-0 yeti-slave-init-by-other (-> self entity) self gp-0 s5-0 #f)
+                    (-> s4-0 ppointer)
+                    )
+                  )
+                (set! (-> self spawn-delay) 0)
+                0
+                )
+              )
+            )
+          )
         )
-       )
+      (suspend)
       )
-     )
-    (suspend)
+    (none)
     )
-   (none)
-   )
   )
 
 (defmethod init-from-entity! yeti ((obj yeti) (arg0 entity-actor))
@@ -1421,28 +970,14 @@
   (set! (-> obj root) (new 'process 'trsqv))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (process-drawable-from-entity! obj arg0)
-  (set!
-   (-> obj desired-num-children)
-   (res-lump-value
-    arg0
-    'num-lurkers
-    int
-    :default
-    (the-as uint128 (-> obj path curve num-cverts))
-    )
-   )
-  (set!
-   (-> obj first-time-spawn-dist)
-   (res-lump-float arg0 'notice-dist :default 204800.0)
-   )
-  (if
-   (and
-    (-> obj entity)
-    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-    )
-   (go yeti-resuming-start)
-   (go yeti-first-time-start)
-   )
+  (set! (-> obj desired-num-children)
+        (res-lump-value arg0 'num-lurkers int :default (the-as uint128 (-> obj path curve num-cverts)))
+        )
+  (set! (-> obj first-time-spawn-dist) (res-lump-float arg0 'notice-dist :default 204800.0))
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (go yeti-resuming-start)
+      (go yeti-first-time-start)
+      )
   (none)
   )
 

@@ -5,101 +5,116 @@
 ;; name in dgo: time-of-day-h
 ;; dgos: GAME, ENGINE
 
+;; TODO for mood
+(declare-type time-of-day-proc process)
+(declare-type time-of-day-palette basic)
+(define-extern *time-of-day-proc* (pointer time-of-day-proc))
+(define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
+(define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
+
+(declare-type sparticle-launch-control basic)
+
+;; DECOMP BEGINS
 
 (deftype palette-fade-control (structure)
-  ((trans      vector :inline :offset-assert 0)
-   (fade       float          :offset-assert 16)
-   (actor-dist float          :offset-assert 20)
+  ((trans      vector :inline :offset-assert   0)
+   (fade       float          :offset-assert  16)
+   (actor-dist float          :offset-assert  20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
 
+
 (deftype palette-fade-controls (basic)
-  ((control palette-fade-control 8 :inline :offset-assert 16)
+  ((control palette-fade-control 8 :inline :offset-assert  16)
    )
   :method-count-assert 11
   :size-assert         #x110
   :flag-assert         #xb00000110
   (:methods
     (reset! (_type_) symbol 9)
-    (set-fade! (_type_ int float float vector) object 10) ; returns float or error string
+    (set-fade! (_type_ int float float vector) object 10)
     )
   )
 
-(define-perm *palette-fade-controls* palette-fade-controls
-  (new 'global 'palette-fade-controls)
-  )
 
-(declare-type sparticle-launch-control basic)
+(define-perm *palette-fade-controls* palette-fade-controls (new 'global 'palette-fade-controls))
+
 (deftype time-of-day-proc (process)
-  ((year            int32  :offset-assert 112)
-   (month           int32  :offset-assert 116)
-   (week            int32  :offset-assert 120)
-   (day             int32  :offset-assert 124)
-   (hour            int32  :offset-assert 128)
-   (minute          int32  :offset-assert 132)
-   (second          int32  :offset-assert 136)
-   (frame           int32  :offset-assert 140)
-   (time-of-day     float  :offset-assert 144)
-   (time-ratio      float  :offset-assert 148)
-   (star-count      int32  :offset-assert 152)
+  ((year            int32                     :offset-assert 112)
+   (month           int32                     :offset-assert 116)
+   (week            int32                     :offset-assert 120)
+   (day             int32                     :offset-assert 124)
+   (hour            int32                     :offset-assert 128)
+   (minute          int32                     :offset-assert 132)
+   (second          int32                     :offset-assert 136)
+   (frame           int32                     :offset-assert 140)
+   (time-of-day     float                     :offset-assert 144)
+   (time-ratio      float                     :offset-assert 148)
+   (star-count      int32                     :offset-assert 152)
    (stars           sparticle-launch-control  :offset-assert 156)
-   (sun-count       int32  :offset-assert 160)
+   (sun-count       int32                     :offset-assert 160)
    (sun             sparticle-launch-control  :offset-assert 164)
-   (green-sun-count int32  :offset-assert 168)
+   (green-sun-count int32                     :offset-assert 168)
    (green-sun       sparticle-launch-control  :offset-assert 172)
-   (moon-count      int32  :offset-assert 176)
+   (moon-count      int32                     :offset-assert 176)
    (moon            sparticle-launch-control  :offset-assert 180)
    )
   :heap-base #x50
   :method-count-assert 14
   :size-assert         #xb8
   :flag-assert         #xe005000b8
+  (:states
+    time-of-day-tick
+    )
   )
 
+
 (deftype time-of-day-palette (basic)
-  ((width  int32   :offset-assert 4)
-   (height int32   :offset-assert 8)
-   (pad    int32   :offset-assert 12)
-   (data   int32 1 :offset-assert 16)
+  ((width  int32   :offset-assert   4)
+   (height int32   :offset-assert   8)
+   (pad    int32   :offset-assert  12)
+   (data   int32 1 :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
 
+
 (deftype time-of-day-context (basic)
-  ((active-count         uint32                :offset-assert 4)
-   (interp               float                 :offset-assert 8)
-   (current-interp       float                 :offset-assert 12)
-   (moods                mood-context 2        :offset-assert 16)
-   (current-fog          mood-fog      :inline :offset-assert 32)
-   (current-sun          mood-sun      :inline :offset-assert 80)
-   (current-prt-color    vector        :inline :offset-assert 112)
-   (current-shadow       vector        :inline :offset-assert 128)
-   (current-shadow-color vector        :inline :offset-assert 144)
-   (light-group          light-group 9 :inline :offset-assert 160)
-   (title-light-group    light-group   :inline :offset-assert 1888)
-   (time                 float                 :offset-assert 2080)
-   (target-interp        float                 :offset-assert 2084)
-   (erase-color          rgba                  :offset-assert 2088)
-   (num-stars            float                 :offset-assert 2092)
-   (light-masks-0        uint8       2         :offset-assert 2096)
-   (light-masks-1        uint8       2         :offset-assert 2098)
-   (light-interp         float       2         :offset-assert 2100)
-   (sky                  symbol                :offset-assert 2108)
-   (sun-fade             float                 :offset-assert 2112)
-   (title-updated        symbol                :offset-assert 2116)
+  ((active-count         uint32                 :offset-assert   4)
+   (interp               float                  :offset-assert   8)
+   (current-interp       float                  :offset-assert  12)
+   (moods                mood-context 2         :offset-assert  16)
+   (current-fog          mood-fog     :inline   :offset-assert  32)
+   (current-sun          mood-sun     :inline   :offset-assert  80)
+   (current-prt-color    vector       :inline   :offset-assert 112)
+   (current-shadow       vector       :inline   :offset-assert 128)
+   (current-shadow-color vector       :inline   :offset-assert 144)
+   (light-group          light-group  9 :inline :offset-assert 160)
+   (title-light-group    light-group  :inline   :offset-assert 1888)
+   (time                 float                  :offset-assert 2080)
+   (target-interp        float                  :offset-assert 2084)
+   (erase-color          rgba                   :offset-assert 2088)
+   (num-stars            float                  :offset-assert 2092)
+   (light-masks-0        uint8        2         :offset-assert 2096)
+   (light-masks-1        uint8        2         :offset-assert 2098)
+   (light-interp         float        2         :offset-assert 2100)
+   (sky                  symbol                 :offset-assert 2108)
+   (sun-fade             float                  :offset-assert 2112)
+   (title-updated        symbol                 :offset-assert 2116)
    )
   :method-count-assert 9
   :size-assert         #x848
   :flag-assert         #x900000848
   )
 
+
 (deftype time-of-day-dma (structure)
-  ((outa  uint32 256 :offset-assert 0)
+  ((outa  uint32 256 :offset-assert   0)
    (outb  uint32 256 :offset-assert 1024)
    (banka uint32 256 :offset-assert 2048)
    (bankb uint32 256 :offset-assert 3072)
@@ -109,10 +124,7 @@
   :flag-assert         #x900001000
   )
 
-(define *time-of-day-mode* 8) ;; flags? enum?
-(define *time-of-day-context* (new 'static 'time-of-day-context))
 
-;; TODO for mood
-(define-extern *time-of-day-proc* (pointer time-of-day-proc))
-(define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
-(define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
+(define *time-of-day-mode* 8)
+
+(define *time-of-day-context* (new 'static 'time-of-day-context))

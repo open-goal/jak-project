@@ -10,10 +10,6 @@
 
 (declare-type dark-crystal process-drawable)
 
-(define-extern dark-crystal-spawn-fuel-cell (state dark-crystal)) ;; unknown type
-(define-extern dark-crystal-idle (state dark-crystal)) ;; unknown type
-(define-extern dark-crystal-explode (state dark-crystal)) ;; unknown type
-(define-extern dark-crystal-activate (state dark-crystal)) ;; unknown type
 
 ;; DECOMP BEGINS
 
@@ -34,6 +30,12 @@
   (:methods
     (dummy-20 (_type_) none 20)
     (dummy-21 (_type_) symbol 21)
+    )
+  (:states
+    dark-crystal-activate
+    dark-crystal-explode
+    dark-crystal-idle
+    dark-crystal-spawn-fuel-cell
     )
   )
 
@@ -581,7 +583,7 @@
       (suspend)
       (ja-channel-set! 0)
       (ja-post)
-      (logior! (-> self draw status) 2)
+      (logior! (-> self draw status) (draw-status drwf01))
       (dummy-20 self)
       (if (-> self underwater?)
           (sound-play-by-name (static-sound-name "water-explosion") (new-sound-id) 1024 0 0 1 #t)
@@ -644,7 +646,7 @@
       )
     (ja-channel-set! 0)
     (ja-post)
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (if (not (task-complete? *game-info* (-> self entity extra perm task)))
         (birth-pickup-at-point
           (-> self root-override trans)

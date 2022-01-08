@@ -510,6 +510,80 @@
     ((-> self cur-trans-hook))
     (none)
     )
+  :code
+  (behavior ()
+    (logclear! (-> self mask) (process-mask heap-shrunk))
+    (while #t
+      ((-> self cur-post-hook))
+      (if (!= (-> self anim-mode) 'clone-anim)
+          (ja-post)
+          )
+      (suspend)
+      (case (-> self anim-mode)
+        (('loop)
+         (let ((a0-4 (-> self skel root-channel 0)))
+           (set! (-> a0-4 param 0) 1.0)
+           (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-loop!)
+           )
+         )
+        (('play)
+         (let ((a0-7 (-> self skel root-channel 0)))
+           (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
+           (set! (-> a0-7 param 1) 1.0)
+           (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+           )
+         )
+        (('copy-parent)
+         (let ((v1-18 (-> self skel root-channel 0)))
+           (set! (-> v1-18 num-func) num-func-identity)
+           (set! (-> v1-18 frame-num)
+                 (-> (the-as process-drawable (ppointer->process (-> self parent))) skel root-channel 0 frame-num)
+                 )
+           )
+         )
+        (('clone-parent)
+         (let ((gp-0 (ppointer->process (-> self parent))))
+           (set! (-> self post-hook) #f)
+           (joint-control-copy! (-> self skel) (-> (the-as process-drawable gp-0) skel))
+           (joint-control-remap!
+             (-> self skel)
+             (-> self draw art-group)
+             (-> (the-as process-drawable gp-0) draw art-group)
+             '()
+             0
+             ""
+             )
+           )
+         (dummy-17 self)
+         )
+        (('clone-anim)
+         (clone-anim-once
+           (the-as handle (if (handle->process (-> self cur-target-handle))
+                              (the-as int (-> self cur-target-handle))
+                              (ppointer->handle (-> self parent))
+                              )
+                   )
+           (the-as int (-> self draw origin-joint-index))
+           (the-as symbol (-> self clone-copy-trans))
+           ""
+           )
+         )
+        (('still)
+         )
+        (('play1)
+         (let ((a0-33 (-> self skel root-channel 0)))
+           (set! (-> a0-33 param 0) (the float (+ (-> a0-33 frame-group data 0 length) -1)))
+           (set! (-> a0-33 param 1) 1.0)
+           (joint-control-channel-group-eval! a0-33 (the-as art-joint-anim #f) num-func-seek!)
+           )
+         (if (ja-done? 0)
+             (deactivate self)
+             )
+         )
+        )
+      )
+    (none)
+    )
   )
 
 ;; definition for function manipy-init
@@ -1274,6 +1348,9 @@
   :method-count-assert 20
   :size-assert         #xbc
   :flag-assert         #x14005000bc
+  (:states
+    med-res-level-idle
+    )
   )
 
 ;; definition for method 3 of type med-res-level
@@ -1545,6 +1622,11 @@
   :method-count-assert 20
   :size-assert         #xe4
   :flag-assert         #x14008000e4
+  (:states
+    launcher-active
+    launcher-deactivated
+    launcher-idle
+    )
   )
 
 ;; definition for method 3 of type launcher
