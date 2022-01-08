@@ -87,7 +87,7 @@ const std::unordered_map<
         // operations, we'll need to implement them separately.
         //
         // ...and they did
-        // {".outer.product.vf", &Compiler::compile_asm_outer_product_vf},
+        {".outer.product.vf", &Compiler::compile_asm_outer_product_vf},
         {".outer.product.a.vf", &Compiler::compile_asm_outer_product_a_vf},
         {".outer.product.b.vf", &Compiler::compile_asm_outer_product_b_vf},
 
