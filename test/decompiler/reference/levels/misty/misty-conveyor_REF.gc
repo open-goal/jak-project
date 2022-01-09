@@ -65,6 +65,9 @@
   :method-count-assert 20
   :size-assert         #xd0
   :flag-assert         #x14006000d0
+  (:states
+    keg-conveyor-idle
+    )
   )
 
 ;; definition for method 3 of type keg-conveyor
@@ -87,6 +90,9 @@
   :method-count-assert 20
   :size-assert         #xbc
   :flag-assert         #x14005000bc
+  (:states
+    keg-conveyor-paddle-idle
+    )
   )
 
 ;; definition for method 3 of type keg-conveyor-paddle
@@ -113,6 +119,13 @@
   :method-count-assert 20
   :size-assert         #x104
   :flag-assert         #x1400a00104
+  (:states
+    keg-die
+    keg-in-chute
+    keg-on-paddle
+    keg-on-path
+    keg-paddle-to-path
+    )
   )
 
 ;; definition for method 3 of type keg
@@ -234,12 +247,13 @@
 ;; failed to figure out what this is:
 (defstate keg-on-paddle (keg)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('detach)
-                                                                                    (go keg-paddle-to-path)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('detach)
+       (go keg-paddle-to-path)
+       )
+      )
+    )
   :code
   (behavior ()
     (set! (-> (the-as keg (-> self parent 0)) sync-offset) (the-as float (process->ppointer self)))
@@ -486,7 +500,11 @@
   :event
   (the-as (function process int symbol event-message-block object :behavior keg) #f)
   :code
-  (behavior () (sound-stop (-> self sound-id)) (dummy-18 self) (none))
+  (behavior ()
+    (sound-stop (-> self sound-id))
+    (dummy-18 self)
+    (none)
+    )
   :post
   (the-as (function none :behavior keg) transform-post)
   )
@@ -606,10 +624,9 @@
           )
       (while #t
         (let ((s4-0 #f))
-          (when (or
-                  (not *target*)
-                  (< 102400.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                  )
+          (when (or (not *target*)
+                    (< 102400.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                    )
             (let ((v1-10 (-> *keg-conveyor-keg-spawn-table* gp-0)))
               (cond
                 ((zero? v1-10)
@@ -637,12 +654,12 @@
                                             )
                   )
             (set! (-> a0-6 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                             (-> self skel root-channel 0 frame-group)
-                                                             )
-                                                       data
-                                                       0
-                                                       length
-                                                       )
+                                                          (-> self skel root-channel 0 frame-group)
+                                                          )
+                                                      data
+                                                      0
+                                                      length
+                                                      )
                                                   -1
                                                   )
                                          )

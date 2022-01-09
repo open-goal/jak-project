@@ -29,6 +29,7 @@
   (:states
     (orb-cache-top-activate symbol)
     (orb-cache-top-complete symbol)
+    (orb-cache-top-idle symbol)
     )
   )
 
@@ -44,93 +45,75 @@
 (defstate orb-cache-top-idle (orb-cache-top)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('eco-blue)
-      (process-entity-status! self (entity-perm-status complete) #t)
-      (dotimes (gp-0 5)
-       (spawn-projectile-blue *target*)
+    (case arg2
+      (('eco-blue)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (dotimes (gp-0 5)
+         (spawn-projectile-blue *target*)
+         )
+       (increment-success-for-hint (game-text-id sidekick-hint-orb-cache-top))
+       (go orb-cache-top-activate #f)
        )
-      (increment-success-for-hint (game-text-id sidekick-hint-orb-cache-top))
-      (go orb-cache-top-activate #f)
+      (else
+        (plat-event arg0 arg1 arg2 arg3)
+        )
       )
-    (else
-     (plat-event arg0 arg1 arg2 arg3)
-     )
     )
-   )
   :trans
   (behavior ()
-   (if
-    (and
-     (and
-      *target*
-      (>=
-       20480.0
-       (vector-vector-distance
-        (-> self root-override trans)
-        (-> *target* control trans)
+    (if (and
+            (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) self)
+              (set! (-> a1-1 num-params) 2)
+              (set! (-> a1-1 message) 'query)
+              (set! (-> a1-1 param 0) (the-as uint 'powerup))
+              (set! (-> a1-1 param 1) (the-as uint 3))
+              (not (send-event-function *target* a1-1))
+              )
+            )
+        (level-hint-spawn
+          (game-text-id sidekick-hint-orb-cache-top)
+          "sksp0009"
+          (the-as entity #f)
+          *entity-pool*
+          (game-task none)
+          )
         )
-       )
-      )
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 2)
-      (set! (-> a1-1 message) 'query)
-      (set! (-> a1-1 param 0) (the-as uint 'powerup))
-      (set! (-> a1-1 param 1) (the-as uint 3))
-      (not (send-event-function *target* a1-1))
-      )
-     )
-    (level-hint-spawn
-     (game-text-id sidekick-hint-orb-cache-top)
-     "sksp0009"
-     (the-as entity #f)
-     *entity-pool*
-     (game-task none)
-     )
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ((arg0 symbol))
-   (if (and (not arg0) (-> self child))
-    (sound-play-by-name
-     (static-sound-name "close-orb-cash")
-     (new-sound-id)
-     1024
-     0
-     0
-     1
-     #t
-     )
-    )
-   (dotimes (gp-1 (-> self money))
-    (let ((a0-4 (handle->process (-> self money-list gp-1))))
-     (if a0-4
-      (deactivate a0-4)
+    (if (and (not arg0) (-> self child))
+        (sound-play-by-name (static-sound-name "close-orb-cash") (new-sound-id) 1024 0 0 1 #t)
+        )
+    (dotimes (gp-1 (-> self money))
+      (let ((a0-4 (handle->process (-> self money-list gp-1))))
+        (if a0-4
+            (deactivate a0-4)
+            )
+        )
       )
-     )
+    (process-entity-status! self (entity-perm-status complete) #f)
+    (let ((gp-2 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-2
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        num-func-identity
+        )
+      (set! (-> gp-2 frame-num) (ja-aframe 0.0 0))
+      )
+    (transform-post)
+    (anim-loop)
+    (none)
     )
-   (process-entity-status! self (entity-perm-status complete) #f)
-   (let ((gp-2 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-2
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-identity
-     )
-    (set! (-> gp-2 frame-num) (ja-aframe 0.0 0))
-    )
-   (transform-post)
-   (anim-loop)
-   (none)
-   )
   )
 
 (defmethod dummy-22 orb-cache-top ((obj orb-cache-top))
   (if (< 4096.0 (- (-> obj basetrans y) (-> obj root-pos)))
-   (activate! (-> obj smush) -1.0 60 150 1.0 1.0)
-   (activate! (-> obj smush) -0.5 60 150 1.0 1.0)
-   )
+      (activate! (-> obj smush) -1.0 60 150 1.0 1.0)
+      (activate! (-> obj smush) -0.5 60 150 1.0 1.0)
+      )
   (set! (-> obj bouncing) #t)
   (logclear! (-> obj mask) (process-mask sleep))
   0
@@ -139,417 +122,287 @@
 
 (defmethod calculate-pos orb-cache-top ((obj orb-cache-top) (arg0 symbol))
   (let ((f0-0 0.0))
-   (when arg0
-    (set! f0-0 (+ 10240.0 (* 6144.0 (the float (+ (-> obj money) -1)))))
-    (if (< f0-0 2048.0)
-     (set! f0-0 2048.0)
-     )
+    (when arg0
+      (set! f0-0 (+ 10240.0 (* 6144.0 (the float (+ (-> obj money) -1)))))
+      (if (< f0-0 2048.0)
+          (set! f0-0 2048.0)
+          )
+      )
+    (set! (-> obj platform-pos) (+ (-> obj root-pos) f0-0))
+    (let ((f0-2 (+ -6144.0 f0-0)))
+      (dotimes (v1-5 (-> obj money))
+        (set! (-> obj money-pos-list v1-5) (+ (-> obj root-pos) f0-2))
+        (set! f0-2 (+ -6144.0 f0-2))
+        )
+      )
     )
-   (set! (-> obj platform-pos) (+ (-> obj root-pos) f0-0))
-   (let ((f0-2 (+ -6144.0 f0-0)))
-    (dotimes (v1-5 (-> obj money))
-     (set! (-> obj money-pos-list v1-5) (+ (-> obj root-pos) f0-2))
-     (set! f0-2 (+ -6144.0 f0-2))
-     )
-    )
-   )
   0
   (none)
   )
 
 (defmethod pos-logic orb-cache-top ((obj orb-cache-top) (arg0 symbol))
   (dotimes (s4-0 (-> obj money))
-   (when (not (handle->process (-> obj money-list s4-0)))
-    (dotimes (v1-6 (-> obj money))
-     (when (< s4-0 v1-6)
-      (set! (-> obj money-list (+ v1-6 -1)) (-> obj money-list v1-6))
-      (set!
-       (-> obj money-pos-actual (+ v1-6 -1))
-       (-> obj money-pos-actual v1-6)
-       )
+    (when (not (handle->process (-> obj money-list s4-0)))
+      (dotimes (v1-6 (-> obj money))
+        (when (< s4-0 v1-6)
+          (set! (-> obj money-list (+ v1-6 -1)) (-> obj money-list v1-6))
+          (set! (-> obj money-pos-actual (+ v1-6 -1)) (-> obj money-pos-actual v1-6))
+          )
+        )
+      (+! (-> obj money) -1)
+      (calculate-pos obj arg0)
+      (+! s4-0 -1)
+      (let ((v1-15 (-> obj entity extra perm)))
+        (logior! (-> v1-15 status) (entity-perm-status user-set-from-cstage))
+        (+! (-> v1-15 user-int16 0) 1)
+        )
       )
-     )
-    (+! (-> obj money) -1)
-    (calculate-pos obj arg0)
-    (+! s4-0 -1)
-    (let ((v1-15 (-> obj entity extra perm)))
-     (logior! (-> v1-15 status) (entity-perm-status user-set-from-cstage))
-     (+! (-> v1-15 user-int16 0) 1)
-     )
     )
-   )
   (let ((s4-1 (new 'stack-no-clear 'vector))
         (s5-1 #t)
         )
-   (let ((s3-0 #f))
-    (let ((f28-0 (- (-> obj basetrans y) (-> obj root-pos)))
-          (f30-0 (- (-> obj platform-pos) (-> obj root-pos)))
+    (let ((s3-0 #f))
+      (let ((f28-0 (- (-> obj basetrans y) (-> obj root-pos)))
+            (f30-0 (- (-> obj platform-pos) (-> obj root-pos)))
+            )
+        (when (zero? (-> obj money))
+          (set! f30-0 2048.0)
+          (set! s3-0 #t)
           )
-     (when (zero? (-> obj money))
-      (set! f30-0 2048.0)
-      (set! s3-0 #t)
-      )
-     (when
-      (and
-       (< f30-0 15155.2)
-       (and
-        *target*
-        (>=
-         16384.0
-         (vector-vector-distance
-          (-> obj root-override trans)
-          (-> *target* control trans)
+        (when (and
+                (< f30-0 15155.2)
+                (and *target* (>= 16384.0 (vector-vector-distance (-> obj root-override trans) (-> *target* control trans))))
+                (< (-> (target-pos 0) y) (-> obj basetrans y))
+                )
+          (set! f30-0 (if (< 14131.2 f28-0)
+                          15155.2
+                          f28-0
+                          )
+                )
+          (set! s3-0 #f)
           )
-         )
+        (set! (-> obj basetrans y)
+              (seek (-> obj basetrans y) (+ (-> obj root-pos) f30-0) (* 40960.0 (-> *display* seconds-per-frame)))
+              )
+        (if (not (= (-> obj basetrans y) (+ (-> obj root-pos) f30-0)))
+            (set! s5-1 #f)
+            )
         )
-       (< (-> (target-pos 0) y) (-> obj basetrans y))
-       )
-      (set! f30-0 (if (< 14131.2 f28-0)
-                   15155.2
-                   f28-0
-                   )
-       )
-      (set! s3-0 #f)
+      (dotimes (s2-0 (-> obj money))
+        (set! (-> s4-1 quad)
+              (-> (the-as process-drawable (handle->process (-> obj money-list s2-0))) root trans quad)
+              )
+        (set! (-> obj money-pos-actual s2-0) (seek
+                                               (-> obj money-pos-actual s2-0)
+                                               (-> obj money-pos-list s2-0)
+                                               (* 40960.0 (-> *display* seconds-per-frame))
+                                               )
+              )
+        (if (not (= (-> obj money-pos-actual s2-0) (-> obj money-pos-list s2-0)))
+            (set! s5-1 #f)
+            )
+        (if (>= (-> obj money-pos-actual s2-0) (+ -8192.0 (-> obj root-pos)))
+            (set! (-> s4-1 y) (-> obj money-pos-actual s2-0))
+            (set! (-> s4-1 y) (+ -8192.0 (-> obj root-pos)))
+            )
+        (send-event (handle->process (-> obj money-list s2-0)) 'trans s4-1)
+        )
+      (set! s3-0 (and s5-1 s3-0))
+      (if s3-0
+          (go orb-cache-top-complete #f)
+          )
       )
-     (set!
-      (-> obj basetrans y)
-      (seek
-       (-> obj basetrans y)
-       (+ (-> obj root-pos) f30-0)
-       (* 40960.0 (-> *display* seconds-per-frame))
-       )
-      )
-     (if (not (= (-> obj basetrans y) (+ (-> obj root-pos) f30-0)))
-      (set! s5-1 #f)
-      )
-     )
-    (dotimes (s2-0 (-> obj money))
-     (set!
-      (-> s4-1 quad)
-      (->
-       (the-as process-drawable (handle->process (-> obj money-list s2-0)))
-       root
-       trans
-       quad
-       )
-      )
-     (set!
-      (-> obj money-pos-actual s2-0)
-      (seek
-       (-> obj money-pos-actual s2-0)
-       (-> obj money-pos-list s2-0)
-       (* 40960.0 (-> *display* seconds-per-frame))
-       )
-      )
-     (if (not (= (-> obj money-pos-actual s2-0) (-> obj money-pos-list s2-0)))
-      (set! s5-1 #f)
-      )
-     (if (>= (-> obj money-pos-actual s2-0) (+ -8192.0 (-> obj root-pos)))
-      (set! (-> s4-1 y) (-> obj money-pos-actual s2-0))
-      (set! (-> s4-1 y) (+ -8192.0 (-> obj root-pos)))
-      )
-     (send-event (handle->process (-> obj money-list s2-0)) 'trans s4-1)
-     )
-    (set! s3-0 (and s5-1 s3-0))
-    (if s3-0
-     (go orb-cache-top-complete #f)
-     )
+    s5-1
     )
-   s5-1
-   )
   )
 
 (defstate orb-cache-top-activate (orb-cache-top)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior orb-cache-top)
-   plat-event
-   )
+  (the-as (function process int symbol event-message-block object :behavior orb-cache-top) plat-event)
   :exit
-  (behavior ()
-   (process-entity-status! self (entity-perm-status bit-3) #f)
-   (none)
-   )
+  (behavior () (process-entity-status! self (entity-perm-status bit-3) #f) (none))
   :trans
   (the-as (function none :behavior orb-cache-top) plat-trans)
   :code
   (behavior ((arg0 symbol))
-   (process-entity-status! self (entity-perm-status bit-3) #t)
-   (calculate-pos self arg0)
-   (if arg0
-    (set! (-> self basetrans y) (-> self platform-pos))
-    (sound-play-by-name
-     (static-sound-name "open-orb-cash")
-     (new-sound-id)
-     1024
-     0
-     0
-     1
-     #t
-     )
-    )
-   (dotimes (s5-1 (-> self money))
-    (let ((s4-1 (new 'stack-no-clear 'vector)))
-     (set! (-> s4-1 quad) (-> self basetrans quad))
-     (set! (-> s4-1 y) (-> self money-pos-list s5-1))
-     (set! (-> self money-pos-actual s5-1) (-> s4-1 y))
-     (let ((s3-0 (get-process *default-dead-pool* money #x4000)))
-      (set! (-> self money-list s5-1) (ppointer->handle (when s3-0
-                                                         (let
-                                                          ((t9-5
-                                                            (method-of-type
-                                                             money
-                                                             activate
-                                                             )
-                                                            )
-                                                           )
-                                                          (t9-5
-                                                           (the-as money s3-0)
-                                                           self
-                                                           'money
-                                                           (the-as
-                                                            pointer
-                                                            #x70004000
-                                                            )
-                                                           )
-                                                          )
-                                                         (run-now-in-process
-                                                          s3-0
-                                                          money-init-by-other-no-bob
-                                                          s4-1
-                                                          *null-vector*
-                                                          5
-                                                          1.0
-                                                          (-> self entity)
-                                                          )
-                                                         (-> s3-0 ppointer)
-                                                         )
-                                       )
-       )
-      )
-     )
-    )
-   (while #t
-    (calculate-pos self #t)
-    (while
-     (not
-      (or
-       (not *target*)
-       (<
-        (-> self inactive-distance)
-        (vector-vector-xz-distance
-         (-> self root-override trans)
-         (-> *target* control trans)
-         )
+    (process-entity-status! self (entity-perm-status bit-3) #t)
+    (calculate-pos self arg0)
+    (if arg0
+        (set! (-> self basetrans y) (-> self platform-pos))
+        (sound-play-by-name (static-sound-name "open-orb-cash") (new-sound-id) 1024 0 0 1 #t)
         )
-       )
-      )
-     (pos-logic self #t)
-     (suspend)
-     )
-    (calculate-pos self #f)
-    (while
-     (and
-      (not
-       (and
-        (and
-         *target*
-         (>=
-          (-> self active-distance)
-          (vector-vector-xz-distance
-           (-> self root-override trans)
-           (-> *target* control trans)
-           )
+    (dotimes (s5-1 (-> self money))
+      (let ((s4-1 (new 'stack-no-clear 'vector)))
+        (set! (-> s4-1 quad) (-> self basetrans quad))
+        (set! (-> s4-1 y) (-> self money-pos-list s5-1))
+        (set! (-> self money-pos-actual s5-1) (-> s4-1 y))
+        (let ((s3-0 (get-process *default-dead-pool* money #x4000)))
+          (set! (-> self money-list s5-1)
+                (ppointer->handle
+                  (when s3-0
+                    (let ((t9-5 (method-of-type money activate)))
+                      (t9-5 (the-as money s3-0) self 'money (the-as pointer #x70004000))
+                      )
+                    (run-now-in-process s3-0 money-init-by-other-no-bob s4-1 *null-vector* 5 1.0 (-> self entity))
+                    (-> s3-0 ppointer)
+                    )
+                  )
+                )
           )
-         )
-        (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-11 from) self)
-         (set! (-> a1-11 num-params) 2)
-         (set! (-> a1-11 message) 'query)
-         (set! (-> a1-11 param 0) (the-as uint 'powerup))
-         (set! (-> a1-11 param 1) (the-as uint 3))
-         (or (send-event-function *target* a1-11) (-> self activated))
-         )
         )
-       )
-      (not (pos-logic self #f))
       )
-     (suspend)
-     )
-    (if
-     (not
-      (and
-       (and
-        *target*
-        (>=
-         (-> self active-distance)
-         (vector-vector-xz-distance
-          (-> self root-override trans)
-          (-> *target* control trans)
+    (while #t
+      (calculate-pos self #t)
+      (while (not
+               (or (not *target*) (< (-> self inactive-distance)
+                                     (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
+                                     )
+                   )
+               )
+        (pos-logic self #t)
+        (suspend)
+        )
+      (calculate-pos self #f)
+      (while (and
+               (not
+                 (and
+                   (and *target* (>= (-> self active-distance)
+                                     (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
+                                     )
+                        )
+                   (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+                     (set! (-> a1-11 from) self)
+                     (set! (-> a1-11 num-params) 2)
+                     (set! (-> a1-11 message) 'query)
+                     (set! (-> a1-11 param 0) (the-as uint 'powerup))
+                     (set! (-> a1-11 param 1) (the-as uint 3))
+                     (or (send-event-function *target* a1-11) (-> self activated))
+                     )
+                   )
+                 )
+               (not (pos-logic self #f))
+               )
+        (suspend)
+        )
+      (if (not
+              (and
+                (and *target* (>= (-> self active-distance)
+                                  (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
+                                  )
+                     )
+                (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> a1-14 from) self)
+                  (set! (-> a1-14 num-params) 2)
+                  (set! (-> a1-14 message) 'query)
+                  (set! (-> a1-14 param 0) (the-as uint 'powerup))
+                  (set! (-> a1-14 param 1) (the-as uint 3))
+                  (or (send-event-function *target* a1-14) (-> self activated))
+                  )
+                )
+              )
+          (go orb-cache-top-idle arg0)
           )
-         )
-        )
-       (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-14 from) self)
-        (set! (-> a1-14 num-params) 2)
-        (set! (-> a1-14 message) 'query)
-        (set! (-> a1-14 param 0) (the-as uint 'powerup))
-        (set! (-> a1-14 param 1) (the-as uint 3))
-        (or (send-event-function *target* a1-14) (-> self activated))
-        )
-       )
       )
-     (go orb-cache-top-idle arg0)
-     )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior orb-cache-top) plat-post)
   )
 
 (defstate orb-cache-top-complete (orb-cache-top)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior orb-cache-top)
-   plat-event
-   )
+  (the-as (function process int symbol event-message-block object :behavior orb-cache-top) plat-event)
   :trans
   (the-as (function none :behavior orb-cache-top) plat-trans)
   :code
   (behavior ((arg0 symbol))
-   (if (not arg0)
-    (sound-play-by-name
-     (static-sound-name "close-orb-cash")
-     (new-sound-id)
-     1024
-     0
-     0
-     1
-     #t
-     )
+    (if (not arg0)
+        (sound-play-by-name (static-sound-name "close-orb-cash") (new-sound-id) 1024 0 0 1 #t)
+        )
+    (let ((gp-1 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+        gp-1
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        num-func-identity
+        )
+      (set! (-> gp-1 frame-num) (ja-aframe 0.0 0))
+      )
+    (new 'stack-no-clear 'vector)
+    (set! (-> self basetrans y) (+ 2048.0 (-> self root-pos)))
+    (anim-loop)
+    (none)
     )
-   (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-1
-     (the-as art-joint-anim (-> self draw art-group data 3))
-     num-func-identity
-     )
-    (set! (-> gp-1 frame-num) (ja-aframe 0.0 0))
-    )
-   (new 'stack-no-clear 'vector)
-   (set! (-> self basetrans y) (+ 2048.0 (-> self root-pos)))
-   (anim-loop)
-   (none)
-   )
   :post
   (the-as (function none :behavior orb-cache-top) plat-post)
   )
 
-(defmethod
-  init-from-entity!
-  orb-cache-top
-  ((obj orb-cache-top) (arg0 entity-actor))
+(defmethod init-from-entity! orb-cache-top ((obj orb-cache-top) (arg0 entity-actor))
   (let ((a0-1 (-> obj entity)))
-   (if (when a0-1
-        (let ((a0-2 (-> a0-1 extra perm task)))
-         (if a0-2
-          (= a0-2 (game-task none))
-          )
-         )
+    (if (when a0-1
+            (let ((a0-2 (-> a0-1 extra perm task)))
+              (if a0-2
+                  (= a0-2 (game-task none))
+                  )
+              )
+            )
+        (set! (-> obj entity extra perm task) (game-task complete))
         )
-    (set! (-> obj entity extra perm task) (game-task complete))
     )
-   )
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (the-as uint #x8800))
+      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core action) (the-as uint 3))
+      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint #x8800))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton obj *orb-cache-top-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
-  (set!
-   (-> obj money)
-   (res-lump-value
-    (-> obj entity)
-    'orb-cache-count
-    int
-    :default
-    (the-as uint128 20)
-    )
-   )
+  (set! (-> obj money) (res-lump-value (-> obj entity) 'orb-cache-count int :default (the-as uint128 20)))
   (set! (-> obj active-distance) 61440.0)
   (set! (-> obj inactive-distance) 245760.0)
   (set! (-> obj root-pos) (-> obj basetrans y))
   (set! (-> obj platform-pos) (-> obj root-pos))
-  (set!
-   (-> obj activated)
-   (the-as
-    symbol
-    (and
-     (-> obj entity)
-     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-     )
-    )
-   )
+  (set! (-> obj activated)
+        (the-as
+          symbol
+          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+          )
+        )
   (let ((v1-39 (-> obj entity extra perm)))
-   (logior! (-> v1-39 status) (entity-perm-status user-set-from-cstage))
-   (set! (-> obj money) (- (-> obj money) (-> v1-39 user-int16 0)))
-   )
+    (logior! (-> v1-39 status) (entity-perm-status user-set-from-cstage))
+    (set! (-> obj money) (- (-> obj money) (-> v1-39 user-int16 0)))
+    )
   (dotimes (v1-42 (-> obj money))
-   (set! (-> obj money-list v1-42) (the-as handle #f))
-   )
+    (set! (-> obj money-list v1-42) (the-as handle #f))
+    )
   (cond
-   ((zero? (-> obj money))
-    (go orb-cache-top-complete #t)
-    )
-   ((and
-     (-> obj entity)
-     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+    ((zero? (-> obj money))
+     (go orb-cache-top-complete #t)
      )
-    (go orb-cache-top-activate #t)
+    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+     (go orb-cache-top-activate #t)
+     )
+    (else
+      (go orb-cache-top-idle #f)
+      )
     )
-   (else
-    (go orb-cache-top-idle #f)
-    )
-   )
   (none)
   )
 

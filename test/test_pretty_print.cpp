@@ -241,6 +241,28 @@ TEST(PrettyPrint2, ParenWayOutToTheRight) {
   ))");
 }
 
+TEST(PrettyPrint2, ParenWayOutToTheRight2) {
+  std::string code =
+      "(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (size int)) (let "
+      "((obj (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (the-as "
+      "uint size) (-> type-to-make heap-base)))) ) ) ) obj ) )";
+
+  // checks that the c0 stuff works right.
+  EXPECT_EQ(
+      pretty_print_v2(code),
+      R"((defmethod new inline-array-class ((allocation symbol) (type-to-make type) (size int))
+  (let ((obj (object-new
+               allocation
+               type-to-make
+               (the-as int (+ (-> type-to-make size) (* (the-as uint size) (-> type-to-make heap-base))))
+               )
+             )
+        )
+    obj
+    )
+  ))");
+}
+
 TEST(PrettyPrint2, ImproperList) {
   std::string code = "( ( a .  b)  ( c .  d ) ( e  f . g) . #f )";
   EXPECT_EQ(pretty_print_v2(code), "((a . b) (c . d) (e f . g) . #f)");
@@ -257,4 +279,41 @@ TEST(PrettyPrint2, ImproperListMultiLine) {
             "  .\n"
             "  #f\n"
             "  )");
+}
+
+TEST(PrettyPrint2, BreakIfBug) {
+  std::string code =
+      "    (if (and (= (-> arg0 current-prt-color x) 0.0)"
+      "               (= (-> arg0 current-prt-color y) 0.0)\n"
+      "               (= (-> arg0 current-prt-color z) 0.0)\n"
+      "               )\n"
+      "        (update-mood-prt-color arg0)\n"
+      "        )";
+  EXPECT_EQ(pretty_print_v2(code, 100),
+            "(if (and (= (-> arg0 current-prt-color x) 0.0)\n"
+            "         (= (-> arg0 current-prt-color y) 0.0)\n"
+            "         (= (-> arg0 current-prt-color z) 0.0)\n"
+            "         )\n"
+            "    (update-mood-prt-color arg0)\n"
+            "    )");
+}
+
+TEST(PrettyPrint2, AnotherBug) {
+  std::string code =
+      "          (let ((f0-8 (* (fmin (vector-xz-length arg1) (* (vector-xz-length (-> s5-0 "
+      "trans)) arg4))\n"
+      "                          (-> *display* frames-per-second)\n"
+      "                          )\n"
+      "                       )\n"
+      "                (t9-2 vector-xz-normalize!)\n"
+      "                ))";
+  EXPECT_EQ(
+      pretty_print_v2(code, 100),
+      "(let ((f0-8 (* (fmin (vector-xz-length arg1) (* (vector-xz-length (-> s5-0 trans)) arg4))\n"
+      "               (-> *display* frames-per-second)\n"
+      "               )\n"
+      "            )\n"
+      "      (t9-2 vector-xz-normalize!)\n"
+      "      )\n"
+      "  )");
 }

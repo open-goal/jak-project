@@ -21,7 +21,7 @@ class Tie3 : public BucketRenderer {
                    const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof);
-  void setup_for_level(const std::string& str, SharedRenderState* render_state);
+  bool setup_for_level(const std::string& str, SharedRenderState* render_state);
 
   struct WindWork {
     u32 paused;
@@ -35,6 +35,7 @@ class Tie3 : public BucketRenderer {
   } m_wind_data;
 
  private:
+  bool update_load(const tfrag3::Level* lev_data);
   void discard_tree_cache();
   void render_tree_wind(int idx,
                         const TfragRenderSettings& settings,
@@ -88,6 +89,7 @@ class Tie3 : public BucketRenderer {
 
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
 
+  bool m_has_level = false;
   char m_user_level[255] = "vi1";
   std::optional<std::string> m_pending_user_level = std::nullopt;
   bool m_override_level = false;
@@ -104,4 +106,19 @@ class Tie3 : public BucketRenderer {
   float m_wind_multiplier = 1.f;
 
   static_assert(sizeof(WindWork) == 84 * 16);
+
+  enum State : u32 {
+    FIRST = 0,
+    DISCARD_TREE = 0,
+    INIT_NEW_TREES = 1,
+    UPLOAD_VERTS = 2,
+    INIT_TEX = 4,
+  };
+
+  struct {
+    bool loading = false;
+    State state;
+    u32 tex = 0;
+    u32 vert = 0;
+  } m_load_state;
 };

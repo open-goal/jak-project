@@ -13,6 +13,9 @@
   :method-count-assert 20
   :size-assert         #xb0
   :flag-assert         #x14004000b0
+  (:states
+    blocking-plane-idle
+    )
   )
 
 
@@ -27,139 +30,107 @@
 (defstate blocking-plane-idle (blocking-plane)
   :code
   (behavior ()
-   (transform-post)
-   (while #t
-    (logior! (-> self mask) (process-mask sleep))
-    (suspend)
+    (transform-post)
+    (while #t
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   )
 
-(defbehavior
-  blocking-plane-init-by-other blocking-plane
-  ((arg0 curve-control) (arg1 int))
+(defbehavior blocking-plane-init-by-other blocking-plane ((arg0 curve-control) (arg1 int))
   (if (or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
-   (deactivate self)
-   )
+      (deactivate self)
+      )
   (let ((s5-0 (new 'static 'vector))
         (gp-0 (new 'static 'vector))
         )
-   0.0
-   (eval-path-curve-div! arg0 s5-0 (the float arg1) 'exact)
-   (eval-path-curve-div! arg0 gp-0 (+ 1.0 (the float arg1)) 'exact)
-   (let ((f30-1 (* 0.5 (vector-vector-distance s5-0 gp-0)))
-         (s4-1
-          (new
-           'process
-           'collide-shape
-           self
-           (collide-list-enum usually-hit-by-player)
-           )
+    0.0
+    (eval-path-curve-div! arg0 s5-0 (the float arg1) 'exact)
+    (eval-path-curve-div! arg0 gp-0 (+ 1.0 (the float arg1)) 'exact)
+    (let ((f30-1 (* 0.5 (vector-vector-distance s5-0 gp-0)))
+          (s4-1 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player)))
           )
-         )
-    (let
-     ((s3-1
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-1
-        (the-as uint 0)
-        (the-as uint 0)
+      (let ((s3-1 (new 'process 'collide-shape-prim-mesh s4-1 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s3-1 prim-core collide-as) (the-as uint 512))
+        (set! (-> s3-1 collide-with) (the-as uint 16))
+        (set! (-> s3-1 prim-core action) (the-as uint 1))
+        (set! (-> s3-1 prim-core offense) 4)
+        (set! (-> s3-1 transform-index) 3)
+        (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 (fmax 122880.0 f30-1))
+        (set-root-prim! s4-1 s3-1)
         )
-       )
+      (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
+      (backup-collide-with-as s4-1)
+      (set! (-> self root) s4-1)
       )
-     (set! (-> s3-1 prim-core collide-as) (the-as uint 512))
-     (set! (-> s3-1 collide-with) (the-as uint 16))
-     (set! (-> s3-1 prim-core action) (the-as uint 1))
-     (set! (-> s3-1 prim-core offense) 4)
-     (set! (-> s3-1 transform-index) 3)
-     (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 (fmax 122880.0 f30-1))
-     (set-root-prim! s4-1 s3-1)
-     )
-    (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
-    (backup-collide-with-as s4-1)
-    (set! (-> self root) s4-1)
-    )
-   (let ((s4-2 (new-stack-matrix0)))
-    (vector+! (-> self root trans) s5-0 gp-0)
-    (vector-float*! (-> self root trans) (-> self root trans) 0.5)
-    (set! (-> self root trans y) (+ 61440.0 (-> self root trans y)))
-    (vector-! (the-as vector (-> s4-2 vector)) gp-0 s5-0)
-    (set!
-     (-> self root scale x)
-     (*
-      0.00024414062
-      (vector-normalize-ret-len! (the-as vector (-> s4-2 vector)) 1.0)
+    (let ((s4-2 (new-stack-matrix0)))
+      (vector+! (-> self root trans) s5-0 gp-0)
+      (vector-float*! (-> self root trans) (-> self root trans) 0.5)
+      (set! (-> self root trans y) (+ 61440.0 (-> self root trans y)))
+      (vector-! (the-as vector (-> s4-2 vector)) gp-0 s5-0)
+      (set! (-> self root scale x)
+            (* 0.00024414062 (vector-normalize-ret-len! (the-as vector (-> s4-2 vector)) 1.0))
+            )
+      (set! (-> self root scale y) 30.0)
+      (set! (-> self root scale z) 0.0)
+      (set! (-> s4-2 vector 1 quad) (-> (new 'static 'vector :y 1.0 :w 1.0) quad))
+      (vector-cross! (-> s4-2 vector 2) (the-as vector (-> s4-2 vector)) (-> s4-2 vector 1))
+      (vector-normalize! (-> s4-2 vector 2) 1.0)
+      (matrix->quaternion (-> self root quat) s4-2)
       )
-     )
-    (set! (-> self root scale y) 30.0)
-    (set! (-> self root scale z) 0.0)
-    (set! (-> s4-2 vector 1 quad) (-> (new 'static 'vector :y 1.0 :w 1.0) quad))
-    (vector-cross!
-     (-> s4-2 vector 2)
-     (the-as vector (-> s4-2 vector))
-     (-> s4-2 vector 1)
-     )
-    (vector-normalize! (-> s4-2 vector 2) 1.0)
-    (matrix->quaternion (-> self root quat) s4-2)
     )
-   )
   (initialize-skeleton self *ef-plane-sg* '())
-  (logior! (-> self draw status) 32)
+  (logior! (-> self draw status) (draw-status drwf05))
   (go blocking-plane-idle)
   (none)
   )
 
 (defun blocking-plane-spawn ((arg0 curve-control))
   (with-pp
-   (cond
-    ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
-     )
-    (else
-     (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
-           (s4-0 0)
-           )
-      (while (< s4-0 s5-0)
-       (let ((s3-0 (get-process *default-dead-pool* blocking-plane #x4000)))
-        (when s3-0
-         (let ((t9-1 (method-of-type blocking-plane activate)))
-          (t9-1
-           (the-as blocking-plane s3-0)
-           pp
-           'blocking-plane
-           (the-as pointer #x70004000)
-           )
-          )
-         (run-now-in-process s3-0 blocking-plane-init-by-other arg0 s4-0)
-         (-> s3-0 ppointer)
-         )
-        )
-       (+! s4-0 2)
+    (cond
+      ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
        )
+      (else
+        (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
+              (s4-0 0)
+              )
+          (while (< s4-0 s5-0)
+            (let ((s3-0 (get-process *default-dead-pool* blocking-plane #x4000)))
+              (when s3-0
+                (let ((t9-1 (method-of-type blocking-plane activate)))
+                  (t9-1 (the-as blocking-plane s3-0) pp 'blocking-plane (the-as pointer #x70004000))
+                  )
+                (run-now-in-process s3-0 blocking-plane-init-by-other arg0 s4-0)
+                (-> s3-0 ppointer)
+                )
+              )
+            (+! s4-0 2)
+            )
+          )
+        )
       )
-     )
+    0
+    (none)
     )
-   0
-   (none)
-   )
   )
 
 (defun blocking-plane-destroy ()
   (with-pp
-   (let ((gp-0 (-> pp child)))
-    (while gp-0
-     (let ((s5-0 (ppointer->process gp-0)))
-      (set! gp-0 (-> gp-0 0 brother))
-      (if (type-type? (-> s5-0 type) blocking-plane)
-       (deactivate s5-0)
-       )
+    (let ((gp-0 (-> pp child)))
+      (while gp-0
+        (let ((s5-0 (ppointer->process gp-0)))
+          (set! gp-0 (-> gp-0 0 brother))
+          (if (type-type? (-> s5-0 type) blocking-plane)
+              (deactivate s5-0)
+              )
+          )
+        )
       )
-     )
+    0
+    (none)
     )
-   0
-   (none)
-   )
   )
 
 

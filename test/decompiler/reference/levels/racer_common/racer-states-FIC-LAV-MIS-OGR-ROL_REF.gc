@@ -90,20 +90,19 @@
   :exit
   (behavior ()
     (when (not
-            (or
-              (= (-> self next-state name) 'target-racing)
-              (= (-> self next-state name) 'target-racing-jump)
-              (= (-> self next-state name) 'target-racing-bounce)
-              (= (-> self next-state name) 'target-racing-hit)
-              (= (-> self next-state name) 'target-racing-death)
-              (= (-> self next-state name) 'target-racing-smack)
-              (= (-> self next-state name) 'target-racing-falling)
-              (= (-> self next-state name) 'target-racing-get-on)
-              (= (-> self next-state name) 'target-racing-get-off)
-              (= (-> self next-state name) 'target-racing-get-off-jump)
-              (= (-> self next-state name) 'target-racing-grab)
-              (= (-> self next-state name) 'target-racing-clone-anim)
-              )
+            (or (= (-> self next-state name) 'target-racing)
+                (= (-> self next-state name) 'target-racing-jump)
+                (= (-> self next-state name) 'target-racing-bounce)
+                (= (-> self next-state name) 'target-racing-hit)
+                (= (-> self next-state name) 'target-racing-death)
+                (= (-> self next-state name) 'target-racing-smack)
+                (= (-> self next-state name) 'target-racing-falling)
+                (= (-> self next-state name) 'target-racing-get-on)
+                (= (-> self next-state name) 'target-racing-get-off)
+                (= (-> self next-state name) 'target-racing-get-off-jump)
+                (= (-> self next-state name) 'target-racing-grab)
+                (= (-> self next-state name) 'target-racing-clone-anim)
+                )
             )
       (let ((v1-25 (-> self manipy)))
         (when v1-25
@@ -324,23 +323,21 @@
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior target-racing-smack-check target ()
-  (if (and
-          (< 20480.0 (-> self control unknown-float01))
-          (and
-            (logtest? (-> self control status) 8)
-            (< (-> self control surface-angle) 0.5)
-            (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector70) (-> self control trans)))
-                  (s5-0 (new 'stack-no-clear 'vector))
+  (if (and (< 20480.0 (-> self control unknown-float01))
+           (and (logtest? (-> self control status) 8)
+                (< (-> self control surface-angle) 0.5)
+                (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector70) (-> self control trans)))
+                      (s5-0 (new 'stack-no-clear 'vector))
+                      )
+                  (set! (-> s5-0 quad) (-> self control unknown-vector10 quad))
+                  (set! (-> gp-1 y) 0.0)
+                  (set! (-> s5-0 y) 0.0)
+                  (vector-xz-normalize! gp-1 1.0)
+                  (vector-xz-normalize! s5-0 1.0)
+                  (< 0.87 (vector-dot gp-1 s5-0))
                   )
-              (set! (-> s5-0 quad) (-> self control unknown-vector10 quad))
-              (set! (-> gp-1 y) 0.0)
-              (set! (-> s5-0 y) 0.0)
-              (vector-xz-normalize! gp-1 1.0)
-              (vector-xz-normalize! s5-0 1.0)
-              (< 0.87 (vector-dot gp-1 s5-0))
-              )
-            )
-          )
+                )
+           )
       (go target-racing-smack (-> self control unknown-float01) #t)
       )
   (none)
@@ -351,32 +348,34 @@
   :event
   (-> target-racing-start event)
   :enter
-  (behavior () (set! (-> self control unknown-surface00) *racer-mods*) (none))
+  (behavior ()
+    (set! (-> self control unknown-surface00) *racer-mods*)
+    (none)
+    )
   :exit
-  (behavior () (target-racing-center-anim) ((-> target-racing-start exit)) (none))
+  (behavior ()
+    (target-racing-center-anim)
+    ((-> target-racing-start exit))
+    (none)
+    )
   :trans
   (behavior ()
-    (if (and
-            (logtest?
-              (logior
-                (logior
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
-                  )
-                (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
-                )
-              (pad-buttons l1 r1)
-              )
-            (or
-              (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 30)
-              (< (vector-dot
-                    (-> self control dynam gravity-normal)
-                    (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               )
+                       (pad-buttons l1 r1)
+                       )
+             (or (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 30)
+                 (< (vector-dot
+                      (-> self control dynam gravity-normal)
+                      (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
+                      )
+                    4096.0
                     )
-                 4096.0
                  )
-              )
-            )
+             )
         (go target-racing-jump 2048.0 5324.8 #t)
         )
     (target-racing-smack-check)
@@ -388,17 +387,15 @@
                     )
                   )
            )
-      (if (and
-              (zero? (logand (-> self control status) 1))
-              (or
-                (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-                    (the-as int (* (-> *TARGET-bank* ground-timeout) 2))
-                    )
-                (< 75 v1-28)
-                )
-              (< 30 v1-28)
-              (< 4096.0 f30-0)
-              )
+      (if (and (zero? (logand (-> self control status) 1))
+               (or (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
+                       (the-as int (* (-> *TARGET-bank* ground-timeout) 2))
+                       )
+                   (< 75 v1-28)
+                   )
+               (< 30 v1-28)
+               (< 4096.0 f30-0)
+               )
           (go target-racing-falling)
           )
       )
@@ -410,8 +407,8 @@
   (behavior ()
     (cond
       ((= (if (> (-> self skel active-channels) 0)
-               (-> self skel root-channel 0 frame-group)
-               )
+              (-> self skel root-channel 0 frame-group)
+              )
           (-> self draw art-group data 138)
           )
        (let ((a0-4 (-> self skel root-channel 0)))
@@ -429,21 +426,18 @@
                         )
                     )
              )
-         (or
-           (or (= v1-16 (-> self draw art-group data 130)) (= v1-16 (-> self draw art-group data 131)))
-           (> (-> self racer bounce) 0)
-           )
+         (or (or (= v1-16 (-> self draw art-group data 130)) (= v1-16 (-> self draw art-group data 131)))
+             (> (-> self racer bounce) 0)
+             )
          )
        (let ((s5-0 #f)
              (gp-0 #f)
              )
-         (when (and
-                 (< (fabs (-> self racer bob-mult-trans)) 0.2)
-                 (and
-                   (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer racing-time))) 45)
-                   (< 16384.0 (-> self control ground-impact-vel))
-                   )
-                 )
+         (when (and (< (fabs (-> self racer bob-mult-trans)) 0.2)
+                    (and (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer racing-time))) 45)
+                         (< 16384.0 (-> self control ground-impact-vel))
+                         )
+                    )
            (when (>= (-> self control unknown-float01) 40960.0)
              (set! (-> *part-id-table* 2225 init-specs 1 initial-valuef) 100.0)
              (sp-launch-particles-var
@@ -509,8 +503,8 @@
     (while #t
       (let ((gp-3 (-> *display* base-frame-counter)))
         (when (not (= (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
+                          (-> self skel root-channel 0 frame-group)
+                          )
                       (-> self draw art-group data 123)
                       )
                    )
@@ -552,15 +546,12 @@
             )
           )
         (while (< (- (-> *display* base-frame-counter) gp-3) 300)
-          (if (or
-                  (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
-                  (or
-                    (logtest?
-                      (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                      (pad-buttons l1 r1 x)
+          (if (or (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+                  (or (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                                (pad-buttons l1 r1 x)
+                                )
+                      (>= (fabs (-> self racer turn-anim-frame)) 1.0)
                       )
-                    (>= (fabs (-> self racer turn-anim-frame)) 1.0)
-                    )
                   )
               (set! gp-3 (-> *display* base-frame-counter))
               )
@@ -569,8 +560,8 @@
           )
         )
       (when (not (= (if (> (-> self skel active-channels) 0)
-                         (-> self skel root-channel 0 frame-group)
-                         )
+                        (-> self skel root-channel 0 frame-group)
+                        )
                     (-> self draw art-group data 133)
                     )
                  )
@@ -584,16 +575,13 @@
           (set! (-> gp-4 frame-num) 0.0)
           )
         )
-      (while (not (or
-                    (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
-                    (or
-                      (logtest?
-                        (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                        (pad-buttons l1 r1 x)
-                        )
-                      (>= (fabs (-> self racer turn-anim-frame)) 1.0)
+      (while (not (or (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+                      (or (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                                    (pad-buttons l1 r1 x)
+                                    )
+                          (>= (fabs (-> self racer turn-anim-frame)) 1.0)
+                          )
                       )
-                    )
                   )
         (suspend)
         (let ((a0-54 (-> self skel root-channel 0)))
@@ -643,10 +631,9 @@
           )
     (if (< (-> self racer slide-mode) 0)
         (set! (-> self racer slide-down-time 0)
-              (the-as uint (if (logtest?
-                                   (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                                   (pad-buttons l1 r1)
-                                   )
+              (the-as uint (if (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                                         (pad-buttons l1 r1)
+                                         )
                                (-> *display* base-frame-counter)
                                0
                                )
@@ -673,10 +660,9 @@
             )
           )
     (cond
-      ((logtest?
-         (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-         (pad-buttons l1 r1)
-         )
+      ((logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                 (pad-buttons l1 r1)
+                 )
        (set! (-> self racer slide-down-time 0) (the-as uint (-> *display* base-frame-counter)))
        )
       ((zero?
@@ -685,16 +671,14 @@
        (set! (-> self racer slide-down-time 0) (the-as uint 0))
        0
        )
-      ((and
-         (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer slide-down-time 0)))
-             (the-as int (-> *RACER-bank* slide-hold-time))
-             )
-         (< (-> self racer slide-mode) 0)
-         (or
-           (< (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) leftx) (the-as uint 64))
-           (< (the-as uint 192) (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) leftx))
-           )
-         )
+      ((and (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer slide-down-time 0)))
+                (the-as int (-> *RACER-bank* slide-hold-time))
+                )
+            (< (-> self racer slide-mode) 0)
+            (or (< (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) leftx) (the-as uint 64))
+                (< (the-as uint 192) (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) leftx))
+                )
+            )
        (set! (-> self racer slide-mode)
              (if (< (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) leftx) (the-as uint 64))
                  0
@@ -720,8 +704,7 @@
     (if (and (logtest? (-> self control status) 1) (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30))
         (go target-racing)
         )
-    (if (or
-            (< (-> self control trans y) (-> self racer hop-start-y))
+    (if (or (< (-> self control trans y) (-> self racer hop-start-y))
             (< 10240.0 (vector-dot
                          (-> self control dynam gravity-normal)
                          (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
@@ -737,10 +720,9 @@
     (mod-var-jump
       #t
       #t
-      (logtest?
-        (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-        (pad-buttons l1 r1)
-        )
+      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                (pad-buttons l1 r1)
+                )
       (-> self control transv)
       )
     (set! (-> self racer shock-offset) (* 0.8 (-> self racer shock-offset)))
@@ -795,27 +777,22 @@
             (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))
             )
           )
-    (if (and
-            (logtest?
-              (logior
-                (logior
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
-                  )
-                (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
-                )
-              (pad-buttons l1 r1)
-              )
-            (or
-              (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 60)
-              (< (vector-dot
-                    (-> self control dynam gravity-normal)
-                    (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               )
+                       (pad-buttons l1 r1)
+                       )
+             (or (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 60)
+                 (< (vector-dot
+                      (-> self control dynam gravity-normal)
+                      (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
+                      )
+                    8192.0
                     )
-                 8192.0
                  )
-              )
-            )
+             )
         (go target-racing-jump 2048.0 5324.8 #t)
         )
     (if (and (logtest? (-> self control status) 1) (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30))
@@ -824,10 +801,9 @@
     (mod-var-jump
       #t
       #t
-      (logtest?
-        (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-        (pad-buttons l1 r1)
-        )
+      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                (pad-buttons l1 r1)
+                )
       (-> self control transv)
       )
     (target-racing-smack-check)
@@ -838,8 +814,8 @@
   (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (target-racing-land-anim arg2)
     (when (not (= (if (> (-> self skel active-channels) 0)
-                       (-> self skel root-channel 0 frame-group)
-                       )
+                      (-> self skel root-channel 0 frame-group)
+                      )
                   (-> self draw art-group data 123)
                   )
                )
@@ -915,9 +891,16 @@
     (none)
     )
   :exit
-  (behavior () (set! (-> self racer heavy) #f) ((-> target-racing-start exit)) (none))
+  (behavior ()
+    (set! (-> self racer heavy) #f)
+    ((-> target-racing-start exit))
+    (none)
+    )
   :trans
-  (behavior () (set! (-> self racer turn-anim-targ) 0.0) (none))
+  (behavior ()
+    (set! (-> self racer turn-anim-targ) 0.0)
+    (none)
+    )
   :code
   (behavior ((arg0 float) (arg1 symbol))
     (sound-play-by-name (static-sound-name "zoomer-crash-2") (new-sound-id) 1024 0 0 1 #t)
@@ -985,7 +968,10 @@
     (none)
     )
   :code
-  (behavior () (target-racing-jump-anim #f 30) (none))
+  (behavior ()
+    (target-racing-jump-anim #f 30)
+    (none)
+    )
   :post
   (-> target-racing post)
   )
@@ -1338,10 +1324,9 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until v1-154
       (suspend)
-      (set! v1-154 (and
-                     (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
-                     (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
-                     )
+      (set! v1-154 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+                        (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
+                        )
             )
       )
     (go target-stance)
@@ -1442,11 +1427,10 @@
     (rot->dir-targ! (-> self control))
     (set! (-> self racer rot y) (y-angle (-> self control)))
     (when *target*
-      (when (or
-              (= (-> *target* current-level name) 'lavatube)
-              (= (-> *target* current-level name) 'firecanyon)
-              (= (-> *target* current-level name) 'citadel)
-              )
+      (when (or (= (-> *target* current-level name) 'lavatube)
+                (= (-> *target* current-level name) 'firecanyon)
+                (= (-> *target* current-level name) 'citadel)
+                )
         (let ((gp-3 (get-process *default-dead-pool* hud-bike-heat #x4000)))
           (set! (-> *hud-parts* bike-heat)
                 (the-as
@@ -1554,8 +1538,8 @@
           )
       )
     (when (not (= (if (> (-> self skel active-channels) 0)
-                       (-> self skel root-channel 0 frame-group)
-                       )
+                      (-> self skel root-channel 0 frame-group)
+                      )
                   (-> self draw art-group data 123)
                   )
                )
@@ -1711,10 +1695,9 @@
                  )
                )
           )
-    (when (and
-            (< (fabs (deg-diff (-> *RACER-bank* default-front-blade) (-> self racer front-rot))) 1820.4445)
-            (= (-> self racer front-rotv) 5461.3335)
-            )
+    (when (and (< (fabs (deg-diff (-> *RACER-bank* default-front-blade) (-> self racer front-rot))) 1820.4445)
+               (= (-> self racer front-rotv) 5461.3335)
+               )
       (set! (-> self racer front-rotv) 0.0)
       (set! (-> self racer front-rot) (-> *RACER-bank* default-front-blade))
       )
@@ -1771,7 +1754,11 @@
   :enter
   (-> target-hit-ground enter)
   :trans
-  (behavior () (logior! (-> self control status) 7) ((-> target-hit-ground trans)) (none))
+  (behavior ()
+    (logior! (-> self control status) 7)
+    ((-> target-hit-ground trans))
+    (none)
+    )
   :code
   (behavior ((arg0 symbol))
     (ja-channel-set! 1)
@@ -1796,7 +1783,11 @@
     (none)
     )
   :post
-  (behavior () (hide-hud) (target-post) (none))
+  (behavior ()
+    (hide-hud)
+    (target-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1841,8 +1832,8 @@
   :code
   (behavior ()
     (when (not (= (if (> (-> self skel active-channels) 0)
-                       (-> self skel root-channel 0 frame-group)
-                       )
+                      (-> self skel root-channel 0 frame-group)
+                      )
                   (-> self draw art-group data 123)
                   )
                )

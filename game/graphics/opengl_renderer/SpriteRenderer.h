@@ -165,6 +165,7 @@ class SpriteRenderer : public BucketRenderer {
                         ScopedProfilerNode& prof);
   void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void do_3d_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];
@@ -183,6 +184,10 @@ class SpriteRenderer : public BucketRenderer {
   } m_debug_stats;
 
   bool m_extra_debug = false;
+  bool m_3d_debug = false;
+
+  bool m_2d_enable = true;
+  bool m_3d_enable = true;
 
   DirectRenderer m_sprite_renderer;
   DirectRenderer m_direct_renderer;

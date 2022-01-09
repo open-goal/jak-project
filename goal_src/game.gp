@@ -5,6 +5,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; This file sets up the OpenGOAL build system for Jak 1.
+;; This file is treated as a GOOS program. There is a single special form `defstep` that
+;; allows you to define a build step.
+
+;; Then, you can use the `make` command to build a target. Like real make, it will only rebuild things if
+;; the inputs change.
+
+;; Each defstep takes the following arguments:
+;; in - an input file. The step automatically depends on this.
+;; tool - the tool (goalc, copy, dgo, group, tpage-dir)
+;; out - a list of outputs (unlike make, we support multiple outputs without hacks!)
+;; dep - a list of outputs from other rules that are required for this.
+
+;; Before the build order is determined, the tool gets to look at its input file and tell the build system
+;; about other deps. For example, in a "dgo" rule, you don't have to say that you depend on all of your input
+;; files, the DGO tool provides that information to the build system.
+
+;; It is an error to provide two steps to make the same file, even if they are identical.
+;; It is an error to not provide a step to make a required file.
+;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
@@ -67,12 +86,16 @@
     )
   )
 
-(defmacro cgo (output-name desc-file-name)
+(define *all-cgos* '())
+(defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
-  `(defstep :in ,(string-append "goal_src/dgos/" desc-file-name)
-     :tool 'dgo
-     :out '(,(string-append "out/iso/" output-name))
-     )
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "goal_src/dgos/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
   )
 
 (defun tpage-name (id)
@@ -107,27 +130,31 @@
     )
   )
 
+(define *all-str* '())
 (defmacro copy-strs (&rest strs)
   `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
 
-(defmacro copy-str (name)
+(defun copy-str (name)
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "STR/" name ".STR")))
-    `(defstep :in ,path
-              :tool 'copy
-              :out '(,(string-append "out/iso/" name ".STR")))))
+         (path (string-append "iso_data/" folder "STR/" name ".STR"))
+         (out-file (string-append "out/iso/" name ".STR")))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-file))
+    (set! *all-str* (cons out-file *all-str*))))
 
+(define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
   `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
 
-(defmacro copy-vis-file (name)
+(defun copy-vis-file (name)
   (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "VIS/" name ".VIS")))
-    `(defstep :in ,path
-              :tool 'copy
-              :out '(,(string-append "out/iso/" name ".VIS")))))
-
-
+         (path (string-append "iso_data/" folder "VIS/" name ".VIS"))
+         (out-name (string-append "out/iso/" name ".VIS")))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-name))
+    (set! *all-vis* (cons out-name *all-vis*))))
 
 
 (defmacro group (name &rest stuff)
@@ -135,6 +162,13 @@
      :tool 'group
      :out '(,(string-append "GROUP:" name))
      :dep '(,@stuff))
+  )
+
+(defun group-list (name stuff)
+  (defstep :in ""
+     :tool 'group
+     :out `(,(string-append "GROUP:" name))
+     :dep stuff)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -184,6 +218,25 @@
   :out '("out/obj/game-cnt.go")
   )
 
+;; the TWEAKVAL file
+(defstep :in "iso_data/MUS/TWEAKVAL.MUS"
+  :tool 'copy
+  :out '("out/iso/TWEAKVAL.MUS"))
+
+;; the VAGDIR file
+(defstep :in "iso_data/VAG/VAGDIR.AYB"
+  :tool 'copy
+  :out '("out/iso/VAGDIR.AYB"))
+
+;; the save icon file
+(defstep :in "iso_data/DRIVERS/SAVEGAME.ICO"
+  :tool 'copy
+  :out '("out/iso/SAVEGAME.ICO"))
+
+;; the loading screen file
+(defstep :in "iso_data/DRIVERS/SCREEN1.USA"
+  :tool 'copy
+  :out '("out/iso/SCREEN1.USA"))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Textures (Common)
@@ -239,68 +292,6 @@
          "out/iso/6COMMON.TXT")
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;
-;; ISO Group
-;;;;;;;;;;;;;;;;;;;;;
-;; the iso group is a group of files required to boot.
-
-(group "iso"
-       "out/iso/0COMMON.TXT"
-       "out/iso/KERNEL.CGO"
-       "out/iso/GAME.CGO"
-       ;; level dgo
-       "out/iso/VI1.DGO"
-       "out/iso/VI2.DGO"
-       "out/iso/VI3.DGO"
-       "out/iso/TRA.DGO"
-       "out/iso/INT.DGO"
-       "out/iso/MIS.DGO"
-       "out/iso/FIC.DGO"
-       "out/iso/ROL.DGO"
-       "out/iso/SUN.DGO"
-       "out/iso/SUB.DGO"
-       "out/iso/SWA.DGO"
-       "out/iso/OGR.DGO"
-       "out/iso/JUN.DGO"
-       "out/iso/JUB.DGO"
-       "out/iso/MAI.DGO"
-       "out/iso/SNO.DGO"
-       "out/iso/BEA.DGO"
-       "out/iso/LAV.DGO"
-       "out/iso/CIT.DGO"
-       "out/iso/FIN.DGO"
-       ;; level vis
-       "out/iso/VI1.VIS"
-       "out/iso/VI2.VIS"
-       "out/iso/VI3.VIS"
-       "out/iso/TRA.VIS"
-       "out/iso/INT.VIS"
-       "out/iso/MIS.VIS"
-       "out/iso/FIC.VIS"
-       "out/iso/ROL.VIS"
-       "out/iso/SUN.VIS"
-       "out/iso/SUB.VIS"
-       "out/iso/SWA.VIS"
-       "out/iso/OGR.VIS"
-       "out/iso/JUN.VIS"
-       "out/iso/JUB.VIS"
-       "out/iso/MAI.VIS"
-       "out/iso/SNO.VIS"
-       "out/iso/BEA.VIS"
-       "out/iso/LAV.VIS"
-       "out/iso/CIT.VIS"
-       "out/iso/FIN.VIS"
-       ;; streamed anims
-       "out/iso/FUCVICTO.STR"
-       "out/iso/FUCV2.STR"
-       "out/iso/FUCV3.STR"
-       "out/iso/FUCV4.STR"
-       "out/iso/FUCV5.STR"
-       "out/iso/FUCV6.STR"
-       "out/iso/FUCV7.STR"
-       "out/iso/FUCV8.STR"
-       )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -362,7 +353,7 @@
 (goal-src-sequence
   "levels/"
    :deps ;; no idea what these depend on, make it depend on the whole engine
-   ("out/obj/default-menu.o")
+   ("out/obj/ticky.o")
 
    "village_common/villagep-obs.gc"
    "village_common/oracle.gc"
@@ -400,7 +391,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "village1/farmer.gc"
  "village1/explorer.gc"
@@ -466,7 +457,7 @@
 (goal-src-sequence
  "levels/jungle/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "jungle-elevator.gc"
  "bouncer.gc"
@@ -527,7 +518,7 @@
 (goal-src-sequence
  "levels/jungleb/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "jungleb-obs.gc"
  "plat-flip.gc"
@@ -560,7 +551,7 @@
 (goal-src-sequence
  "levels/intro/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "evilbro.gc"
  )
@@ -584,7 +575,7 @@
 
 (goal-src-sequence
   "levels/misty/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/evilbro.o")
   "mistycannon.gc"
   "babak-with-cannon.gc"
   "misty-obs.gc"
@@ -644,7 +635,7 @@
 
 (goal-src-sequence
   "levels/beach/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/ticky.o")
   "air-h.gc"
   "air.gc"
   "wobbler.gc"
@@ -705,7 +696,7 @@
 (goal-src-sequence
  "levels/firecanyon/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "firecanyon-part.gc"
  "assistant-firecanyon.gc"
@@ -735,7 +726,7 @@
 ;; The code
 (goal-src-sequence
   "levels/training/"
-  :deps ("out/obj/default-menu.o") ;; makes us depend on the whole engine
+  :deps ("out/obj/ticky.o") ;; makes us depend on the whole engine
 
   "training-obs.gc"
   "training-part.gc"
@@ -762,7 +753,7 @@
 
 (goal-src-sequence
  "levels/village2/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "village2-part.gc"
  "village2-obs.gc"
  "village2-part2.gc"
@@ -818,7 +809,7 @@
 
 (goal-src-sequence
  "levels/rolling/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "rolling-obs.gc"
  "rolling-lightning-mole.gc"
  "rolling-robber.gc"
@@ -851,7 +842,7 @@
 
 (goal-src-sequence
   "levels/sunken/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/ticky.o")
   "sunken-part.gc"
   "sunken-part2.gc"
   "sunken-part3.gc"
@@ -942,7 +933,7 @@
 
 (goal-src-sequence
  "levels/swamp/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "swamp-obs.gc"
  "swamp-bat.gc"
  "swamp-rat.gc"
@@ -982,7 +973,7 @@
 
 (goal-src-sequence
  "levels/ogre/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "ogre-part.gc"
  "ogreboss.gc"
  "ogre-obs.gc"
@@ -1021,7 +1012,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
  "village3/village3-part.gc"
  "village3/village3-obs.gc"
  "village3/minecart.gc"
@@ -1067,7 +1058,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o"
+ ("out/obj/ticky.o"
   )
  "maincave/cavecrystal-light.gc"
  "darkcave/darkcave-obs.gc"
@@ -1114,7 +1105,7 @@
 
 (goal-src-sequence
  "levels/snow/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "target-snowball.gc"
  "target-ice.gc"
  "ice-cube.gc"
@@ -1168,7 +1159,7 @@
 
 (goal-src-sequence
   "levels/lavatube/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/ticky.o")
 
   "lavatube-obs.gc"
   "lavatube-energy.gc"
@@ -1208,7 +1199,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/battlecontroller.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
@@ -1265,7 +1256,7 @@
 
 (goal-src-sequence
   "levels/finalboss/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/assistant-citadel.o")
 
   "robotboss-h.gc"
   "robotboss-part.gc"
@@ -1642,3 +1633,14 @@
  )
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;; ISO Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the iso group is a group of files built by the "(mi)" command.
+
+(group-list "iso"
+ `("out/iso/0COMMON.TXT"
+   ,@*all-cgos*
+   ,@*all-vis*
+   ,@*all-str*)
+ )

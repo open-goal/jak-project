@@ -137,6 +137,9 @@
   :method-count-assert 20
   :size-assert         #xb0
   :flag-assert         #x14004000b0
+  (:states
+    towertop-idle
+    )
   )
 
 ;; definition for method 3 of type towertop
@@ -207,6 +210,9 @@
   :method-count-assert 20
   :size-assert         #xb8
   :flag-assert         #x14005000b8
+  (:states
+    lurkerm-tall-sail-idle
+    )
   )
 
 ;; definition for method 3 of type lurkerm-tall-sail
@@ -332,6 +338,9 @@
   :method-count-assert 20
   :size-assert         #xb8
   :flag-assert         #x14005000b8
+  (:states
+    lurkerm-short-sail-idle
+    )
   )
 
 ;; definition for method 3 of type lurkerm-short-sail
@@ -477,6 +486,9 @@
   :method-count-assert 20
   :size-assert         #xe8
   :flag-assert         #x14008000e8
+  (:states
+    lurkerm-piston-idle
+    )
   )
 
 ;; definition for method 3 of type lurkerm-piston
@@ -625,6 +637,9 @@
   :method-count-assert 20
   :size-assert         #xb8
   :flag-assert         #x14005000b8
+  (:states
+    accordian-idle
+    )
   )
 
 ;; definition for method 3 of type accordian
@@ -830,6 +845,11 @@
   :method-count-assert 20
   :size-assert         #x110
   :flag-assert         #x1400a00110
+  (:states
+    precurbridge-activate
+    (precurbridge-active symbol)
+    precurbridge-idle
+    )
   )
 
 ;; definition for method 3 of type precurbridge
@@ -856,12 +876,13 @@
 ;; failed to figure out what this is:
 (defstate precurbridge-idle (precurbridge)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('go)
-                                                                                    (go precurbridge-activate)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('go)
+       (go precurbridge-activate)
+       )
+      )
+    )
   :code
   (behavior ()
     (let ((gp-0 (-> self skel root-channel 0)))
@@ -874,13 +895,12 @@
       )
     (transform-post)
     (while #t
-      (when (and
-              *target*
-              (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
-              (< (-> self activation-point y) (-> *target* control trans y))
-              (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
-              (not (-> self child))
-              )
+      (when (and *target*
+                 (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
+                 (< (-> self activation-point y) (-> *target* control trans y))
+                 (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
+                 (not (-> self child))
+                 )
         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-2 from) self)
           (set! (-> a1-2 num-params) 2)
@@ -943,7 +963,10 @@
 ;; failed to figure out what this is:
 (defstate precurbridge-activate (precurbridge)
   :exit
-  (behavior () (logior! (-> self mask) (process-mask actor-pause)) (none))
+  (behavior ()
+    (logior! (-> self mask) (process-mask actor-pause))
+    (none)
+    )
   :trans
   (the-as (function none :behavior precurbridge) rider-trans)
   :code
@@ -1031,8 +1054,8 @@
       (cond
         ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
          (when (not (= (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
+                           (-> self skel root-channel 0 frame-group)
+                           )
                        (-> self draw art-group data 5)
                        )
                     )
@@ -1049,8 +1072,8 @@
          )
         (else
           (when (not (= (if (> (-> self skel active-channels) 0)
-                             (-> self skel root-channel 0 frame-group)
-                             )
+                            (-> self skel root-channel 0 frame-group)
+                            )
                         (-> self draw art-group data 4)
                         )
                      )
@@ -1277,6 +1300,10 @@
   :method-count-assert 20
   :size-assert         #xc0
   :flag-assert         #x14005000c0
+  (:states
+    (maindoor-closed symbol)
+    (maindoor-open symbol)
+    )
   )
 
 ;; definition for method 3 of type maindoor
@@ -1312,16 +1339,13 @@
     (suspend)
     (dummy-47 (-> self root-override))
     (while #t
-      (when (or
-              (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-              (and
-                (and
-                  *target*
-                  (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                  )
-                (send-event *target* 'query 'powerup 3)
+      (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                (and (and *target*
+                          (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                          )
+                     (send-event *target* 'query 'powerup 3)
+                     )
                 )
-              )
         (sound-play-by-name
           (static-sound-name "blue-eco-on")
           (new-sound-id)
@@ -1333,10 +1357,9 @@
           )
         (go maindoor-open #f)
         )
-      (if (and
-              *target*
-              (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-              )
+      (if (and *target*
+               (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+               )
           (level-hint-spawn
             (game-text-id jungle-maindoor-hint)
             "sksp0038"
@@ -1418,15 +1441,12 @@
   (initialize-skeleton obj *maindoor-sg* '())
   (dummy-47 (-> obj root-override))
   (set! (-> obj thresh w) 61440.0)
-  (if (or
-          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-          (and
-            (and
-              *target*
-              (>= (-> obj thresh w) (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
-              )
-            (send-event *target* 'query 'powerup 3)
-            )
+  (if (or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+          (and (and *target*
+                    (>= (-> obj thresh w) (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
+                    )
+               (send-event *target* 'query 'powerup 3)
+               )
           )
       (go maindoor-open #t)
       (go maindoor-closed #t)
@@ -1503,6 +1523,9 @@
   :method-count-assert 20
   :size-assert         #xbc
   :flag-assert         #x14005000bc
+  (:states
+    jngpusher-idle
+    )
   )
 
 ;; definition for method 3 of type jngpusher

@@ -4,6 +4,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_tfrag.h"
 #include "decompiler/level_extractor/extract_tie.h"
+#include "common/util/compress.h"
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
@@ -107,8 +108,12 @@ void extract_from_level(ObjectFileDB& db,
 
   Serializer ser;
   tfrag_level.serialize(ser);
+  auto compressed =
+      compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
+  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
+             100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(file_util::get_file_path({fmt::format(
                                    "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
-                               ser.get_save_result().first, ser.get_save_result().second);
+                               compressed.data(), compressed.size());
 }
 }  // namespace decompiler

@@ -10,6 +10,11 @@
   :method-count-assert 20
   :size-assert         #xc0
   :flag-assert         #x14005000c0
+  (:states
+    silostep-camera
+    silostep-idle
+    (silostep-rise symbol)
+    )
   )
 
 ;; definition for method 3 of type silostep
@@ -34,15 +39,16 @@
 ;; failed to figure out what this is:
 (defstate silostep-idle (silostep)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('trigger)
-                                                                                    (go silostep-camera)
-                                                                                    )
-                                                                                   (('trigger-rise)
-                                                                                    (go silostep-rise #f)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (go silostep-camera)
+       )
+      (('trigger-rise)
+       (go silostep-rise #f)
+       )
+      )
+    )
   :code
   (behavior ()
     (let ((gp-0 (-> self skel root-channel 0)))
