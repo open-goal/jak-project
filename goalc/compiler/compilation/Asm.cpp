@@ -1358,3 +1358,94 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
   env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp2, 0b0111);
   return get_none();
 }
+
+Val* Compiler::compile_asm_outer_product_a_vf(const goos::Object& form,
+                                              const goos::Object& rest,
+                                              Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
+  check_vector_float_regs(form, env,
+                          {{"destination", dest}, {"first source", src1}, {"second source", src2}});
+
+  // Given 2 vectors V1 = <1,2,3,4> and V2 = <5,6,7,8> and assume VDEST = <0, 0, 0, 999>
+  // The outer product is computed like so (only x,y,z components are operated on):
+  // x = V1y * V2z => (2 * 7) => 14
+  // y = V1z * V2x => (3 * 5) => 15
+  // z = V1x * V2y => (1 * 6) =>  6
+  // w = N/A, left alone      => 999
+  //
+  // Some temporary regs are required AND its important to not modify dest's `w` or the source
+  // registers at all
+
+  // Init two temp registers
+  auto temp1 = env->make_vfr(dest->type());
+  auto temp2 = env->make_vfr(dest->type());
+
+  // - Swizzle src1 appropriately
+  env->emit_ir<IR_SwizzleVF>(form, color, temp1, src1, 0b00001001);
+  // - Swizzle src2 appropriately
+  env->emit_ir<IR_SwizzleVF>(form, color, temp2, src2, 0b00010010);
+  // - Multiply - Result in `dest`
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp1, temp1, temp2, IR_VFMath3Asm::Kind::MUL);
+  // - Move it into 'dest' safely (avoid mutating `w`)
+  env->emit_ir<IR_BlendVF>(form, color, dest, temp1, temp1, 0b0111);
+
+  return get_none();
+}
+
+Val* Compiler::compile_asm_outer_product_b_vf(const goos::Object& form,
+                                              const goos::Object& rest,
+                                              Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
+  auto acc = compile_error_guard(args.unnamed.at(3), env)->to_reg(form, env);
+  check_vector_float_regs(form, env,
+                          {{"destination", dest},
+                           {"first source", src1},
+                           {"second source", src2},
+                           {"acc source", acc}});
+
+  // Given 2 vectors V1 = <1,2,3,4> and V2 = <5,6,7,8> and assume VDEST = <0, 0, 0, 999>
+  // also assume ACC = <14, 15, 6>
+  // The outer product is computed like so (only x,y,z components are operated on):
+  // x = ACCx - (V1y * V2z) => 14 - (2 * 7) =>   0
+  // y = ACCy - (V1z * V2x) => 15 - (3 * 5) =>   0
+  // z = ACCz - (V1x * V2y) =>  6 - (1 * 6) =>   0
+  // w = N/A, left alone                  => 999
+  //
+  // Some temporary regs are required AND its important to not modify dest's `w` or the source
+  // registers at all
+
+  // Init two temp registers
+  auto temp1 = env->make_vfr(dest->type());
+  auto temp2 = env->make_vfr(dest->type());
+
+  // - Swizzle src1 appropriately
+  env->emit_ir<IR_SwizzleVF>(form, color, temp1, src1, 0b00001001);
+  // - Swizzle src2 appropriately
+  env->emit_ir<IR_SwizzleVF>(form, color, temp2, src2, 0b00010010);
+  // - Multiply - Result in `dest`
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp1, temp1, temp2, IR_VFMath3Asm::Kind::MUL);
+  // - Subtract - (ACC - Result Above)
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp1, acc, temp1, IR_VFMath3Asm::Kind::SUB);
+  // - Move it into 'dest' safely (avoid mutating `w`)
+  env->emit_ir<IR_BlendVF>(form, color, dest, temp1, temp1, 0b0111);
+
+  return get_none();
+}

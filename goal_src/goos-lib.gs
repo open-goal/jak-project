@@ -333,9 +333,7 @@
       (when (> val max-val)
         (set! max-val val))
       )
-
-    max-val
-    )
+    max-val)
   )
 
 

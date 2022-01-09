@@ -486,6 +486,8 @@ class Compiler {
 
   Val* compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_outer_product_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_outer_product_a_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_outer_product_b_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   Val* compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);

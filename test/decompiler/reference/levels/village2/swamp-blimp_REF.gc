@@ -635,6 +635,12 @@
   :method-count-assert 20
   :size-assert         #xf4
   :flag-assert         #x14009000f4
+  (:states
+    swamp-tetherrock-break
+    swamp-tetherrock-die
+    swamp-tetherrock-hide
+    swamp-tetherrock-idle
+    )
   )
 
 ;; definition for method 3 of type swamp-tetherrock
@@ -666,6 +672,11 @@
   :method-count-assert 20
   :size-assert         #x114
   :flag-assert         #x1400b00114
+  (:states
+    precursor-arm-die
+    precursor-arm-idle
+    precursor-arm-sink
+    )
   )
 
 ;; definition for method 3 of type precursor-arm
@@ -707,6 +718,11 @@
   (:methods
     (dummy-20 (_type_) basic 20)
     )
+  (:states
+    swamp-rope-break
+    swamp-rope-idle-arm
+    swamp-rope-idle-rock
+    )
   )
 
 ;; definition for method 3 of type swamp-rope
@@ -731,10 +747,9 @@
 
 ;; definition for method 20 of type swamp-rope
 (defmethod dummy-20 swamp-rope ((obj swamp-rope))
-  (and
-    (-> obj other-entity)
-    (not (task-closed? (-> obj other-entity extra perm task) (task-status need-reminder)))
-    )
+  (and (-> obj other-entity)
+       (not (task-closed? (-> obj other-entity extra perm task) (task-status need-reminder)))
+       )
   )
 
 ;; definition of type swamp-blimp
@@ -761,6 +776,10 @@
   :method-count-assert 20
   :size-assert         #x260
   :flag-assert         #x1401f00260
+  (:states
+    swamp-blimp-bye-bye
+    swamp-blimp-idle
+    )
   )
 
 ;; definition for method 3 of type swamp-blimp
@@ -805,7 +824,13 @@
 ;; failed to figure out what this is:
 (defstate swamp-tetherrock-die (swamp-tetherrock)
   :code
-  (behavior () (dummy-18 self) (deactivate self) (suspend) 0 (none))
+  (behavior ()
+    (dummy-18 self)
+    (deactivate self)
+    (suspend)
+    0
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -984,11 +1009,10 @@
               (run-next-time-in-process
                 gp-3
                 (lambda ((arg0 int))
-                  (while (or
-                           (-> *setting-control* current ambient)
-                           (-> *setting-control* current hint)
-                           (-> *setting-control* current movie)
-                           )
+                  (while (or (-> *setting-control* current ambient)
+                             (-> *setting-control* current hint)
+                             (-> *setting-control* current movie)
+                             )
                     (suspend)
                     )
                   (cond
@@ -1140,10 +1164,10 @@
           )
     (dummy-29 s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 24576.0)
       (set-root-prim! s4-0 s3-0)
@@ -1251,12 +1275,13 @@
 ;; failed to figure out what this is:
 (defstate precursor-arm-idle (precursor-arm)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('arm-sink-evt)
-                                                                                    (go precursor-arm-sink)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('arm-sink-evt)
+       (go precursor-arm-sink)
+       )
+      )
+    )
   :trans
   (behavior ()
     (when (>= (-> self rot-t) 1.0)
@@ -1362,10 +1387,10 @@
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (dummy-29 s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s3-0 local-sphere) 0.0 61440.0 0.0 61440.0)
       (set-root-prim! s4-0 s3-0)
       )
@@ -1469,7 +1494,10 @@
 ;; failed to figure out what this is:
 (defstate swamp-rope-break (swamp-rope)
   :enter
-  (behavior () (set! (-> self scale-base) (-> self root scale y)) (none))
+  (behavior ()
+    (set! (-> self scale-base) (-> self root scale y))
+    (none)
+    )
   :trans
   (behavior ()
     (vector<-cspace! (-> self root trans) (-> self parent-override 0 node-list data (-> self parent-rp)))
@@ -1936,10 +1964,10 @@
           )
     (dummy-29 s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 409600.0)
       (set-root-prim! s4-0 s3-0)

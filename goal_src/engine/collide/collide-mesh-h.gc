@@ -5,6 +5,14 @@
 ;; name in dgo: collide-mesh-h
 ;; dgos: GAME, ENGINE
 
+;; The collide-mesh system is used for _moving_ meshes, like a platform.
+;; It's not used for the full level (that's collide-frag-mesh)
+
+;;;;;;;;;;;;;;;;;;;;
+;; result
+;;;;;;;;;;;;;;;;;;;;
+
+;; The triangle involved in collision
 (deftype collide-tri-result (structure)
   ((vertex    vector 3 :inline :offset-assert 0)
    (intersect vector  :inline  :offset-assert 48)
@@ -16,6 +24,13 @@
   :flag-assert         #x900000054
   )
 
+;;;;;;;;;;;;;;;;;;;;
+;; static mesh data
+;;;;;;;;;;;;;;;;;;;;
+
+;; A triangle, part of the collision mesh.
+;; The vertex indices index into the collide-mesh vertex-data array.
+;; Due to using uint8's you only get 256 vertices.
 (deftype collide-mesh-tri (structure)
   ((vertex-index uint8   3   :offset-assert 0)
    (unused       uint8       :offset-assert 3)
@@ -28,6 +43,8 @@
   )
 
 (declare-type collide-mesh-cache-tri structure)
+
+;; A collision mesh. Note that's it's bound to a specific joint.
 (deftype collide-mesh (basic)
   ((joint-id    int32     :offset-assert 4)
    (num-tris    uint32    :offset-assert 8)
@@ -48,6 +65,13 @@
     (dummy-15 (_type_) none 15)
     )
   )
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; cache
+;;;;;;;;;;;;;;;;;;;;
+
+;; the use of the cache is currently unknown.
 
 (defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
 
@@ -94,6 +118,7 @@
   (= (-> obj id) arg0)
   )
 
+;; possibly this is stored in the data of the collide-mesh-cache
 (deftype collide-mesh-cache-tri (structure)
   ((vertex vector   3     :inline :offset-assert 0)
    (normal vector         :inline :offset-assert 48)

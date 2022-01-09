@@ -39,6 +39,11 @@
   :method-count-assert 35
   :size-assert         #x300
   :flag-assert         #x2302900300
+  (:states
+    qbert-plat-on-die
+    qbert-plat-on-mimic
+    qbert-plat-wait-for-master
+    )
   )
 
 ;; definition for method 3 of type qbert-plat
@@ -111,6 +116,11 @@
   (:methods
     (plat-state-set? (_type_ uint) symbol 20)
     )
+  (:states
+    (qbert-plat-master-do-door symbol)
+    qbert-plat-master-idle
+    qbert-plat-master-wait-for-door
+    )
   )
 
 ;; definition for method 3 of type qbert-plat-master
@@ -135,12 +145,13 @@
 ;; failed to figure out what this is:
 (defstate qbert-plat-on-mimic (qbert-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('die)
-                                                                                    (go qbert-plat-on-die)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('die)
+       (go qbert-plat-on-die)
+       )
+      )
+    )
   :code
   (behavior ()
     (set-vector! (-> self draw color-emissive) 0.0 0.0 1.0 0.0)
@@ -168,7 +179,10 @@
 ;; failed to figure out what this is:
 (defstate qbert-plat-on-die (qbert-plat)
   :code
-  (behavior () '() (none))
+  (behavior ()
+    '()
+    (none)
+    )
   )
 
 ;; definition for function qbert-plat-on-init-by-other
@@ -372,10 +386,10 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 -8192.0 0.0 18432.0)
       (set-root-prim! s5-0 s4-0)
