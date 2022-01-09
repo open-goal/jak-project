@@ -67,38 +67,31 @@
       
       ;; change this line to change the particle group to test
       ;; notes:
-      ;;  - 3d particles won't work
-      ;;  - particles that use aux list won't work
+      ;;  - particles that use aux list won't work (warp parts)
       ;;  - some particles may have callbacks that won't work yet
-      ;;  - you need to load the level with the particle defs first
-      ;;  - there is an issue with blending. check the "always" box as a temporary workaround
-      ;;  - the visibilty check also doesn't work. comment it out in defmethod spawn.
       (let ((gp-1 (-> *part-group-id-table* 105)))
-        ;; NOTE: added zero check here
-        (when (nonzero? gp-1)
-          (let ((s5-1 (-> self root trans)))
-            (when (!= gp-1 (-> self old-group))
-              (when (nonzero? (-> self part))
-                (kill-and-free-particles (-> self part))
-                (set! (-> self heap-cur) (&-> (-> self part) type))
-                )
-              (set! (-> self part) (create-launch-control gp-1 self))
+        (let ((s5-1 (-> self root trans)))
+          (when (!= gp-1 (-> self old-group))
+            (when (nonzero? (-> self part))
+              (kill-and-free-particles (-> self part))
+              (set! (-> self heap-cur) (&-> (-> self part) type))
               )
-            (if (nonzero? (-> self part))
-                (spawn (-> self part) (cond
-                                        ((logtest? (-> gp-1 flags) (sp-group-flag screen-space))
-                                         *zero-vector*
-                                         )
-                                        (else
-                                          (empty)
-                                          s5-1
-                                          )
-                                        )
-                       )
-                )
+            (set! (-> self part) (create-launch-control gp-1 self))
             )
-          (set! (-> self old-group) gp-1)
+          (if (nonzero? (-> self part))
+              (spawn (-> self part) (cond
+                                      ((logtest? (-> gp-1 flags) (sp-group-flag screen-space))
+                                       *zero-vector*
+                                       )
+                                      (else
+                                        (empty)
+                                        s5-1
+                                        )
+                                      )
+                     )
+              )
           )
+        (set! (-> self old-group) gp-1)
         )
       (suspend)
       )
