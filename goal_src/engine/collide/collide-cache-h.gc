@@ -63,7 +63,7 @@
 ;; primitive using y probe
 (deftype collide-puyp-work (structure)
   ((best-u     float                      :offset-assert   0)
-   (ignore-pat uint32                     :offset-assert   4)
+   (ignore-pat pat-surface                :offset-assert   4)
    (tri-out    collide-tri-result         :offset-assert   8)
    (start-pos  vector             :inline :offset-assert  16)
    (move-dist  vector             :inline :offset-assert  32)
@@ -96,7 +96,7 @@
 (deftype collide-cache-prim (structure)
   ((prim-core    collide-prim-core            :inline :offset-assert   0)
    (ccache       collide-cache                        :offset-assert  32)
-   (prim         (pointer collide-shape-prim)         :offset-assert  36) ;; really? maybe just plain prim.
+   (prim         collide-shape-prim         :offset-assert  36) 
    (first-tri    uint16                               :offset-assert  40)
    (num-tris     uint16                               :offset-assert  42)
    (unused       uint8                        4       :offset-assert  44)
@@ -111,44 +111,46 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (dummy-9 (_type_ collide-mesh-cache-tri collide-prim-core vector float collide-action) float 9)
-    (dummy-10 (_type_ collide-mesh-cache-tri collide-prim-core vector float collide-action) float 10)
+    (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float 9)
+    (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float 10)
     )
   )
 
 ;; The actual cache!
 (deftype collide-cache (basic)
-  ((num-tris      int32                          :offset-assert   4)
-   (num-prims     int32                          :offset-assert   8)
-   (ignore-mask   uint32                         :offset-assert  12) ;; pat?
-   (proc          process-drawable               :offset-assert  16)
-   (collide-box   bounding-box       :inline     :offset-assert  32)
-   (collide-box4w bounding-box4w     :inline     :offset-assert  64)
-   (collide-with  collide-kind                   :offset-assert  96)
-   (prims         collide-cache-prim 100 :inline :offset-assert 112)
-   (tris          collide-cache-tri  461 :inline :offset-assert 4912)
+  ((num-tris      int32                  :offset-assert 4)
+   ;;(num-tris-u    uint32                 :offset 4) ;; added
+   (num-prims     int32                  :offset-assert 8)
+   (num-prims-u   uint32                 :offset 8 );; added
+   (ignore-mask   pat-surface            :offset-assert 12)
+   (proc          process-drawable                  :offset-assert 16) ;; types: target
+   (collide-box   bounding-box   :inline :offset-assert 32)
+   (collide-box4w bounding-box4w :inline :offset-assert 64)
+   (collide-with  collide-kind      :offset-assert 96)
+   (prims         collide-cache-prim    100 :inline    :offset-assert 112)
+   (tris          collide-cache-tri  461 :inline    :offset-assert 4912)
    )
   :method-count-assert 33
   :size-assert         #x8670
   :flag-assert         #x2100008670
   (:methods
     (dummy-9 (_type_) none 9)
-    (dummy-10 (_type_ vector vector float int process collide-tri-result int) float 10)
-    (dummy-11 (_type_ collide-using-spheres-params) none 11)
+    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
+    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) none 11)
     (fill-and-probe-using-y-probe (_type_ vector float collide-kind process collide-tri-result uint) float 12)
-    (dummy-13 (_type_ bounding-box collide-kind process-drawable pat-surface) none 13) ;; uint is a pat mask.
-    (dummy-14 (_type_ vector vector float int process int) none 14)
-    (dummy-15 (_type_ collide-using-spheres-params) none 15)
-    (dummy-16 (_type_ vector float uint process-drawable uint) none 16)
+    (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
+    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
+    (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
+    (fill-using-y-probe (_type_ vector float collide-kind process-drawable uint) none 16)
     (initialize (_type_) none 17)
-    (dummy-18 (_type_ vector vector float collide-kind collide-tri-result int) float 18)
+    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
     (probe-using-spheres (_type_) none 19)
-    (dummy-20 (_type_ vector float uint collide-tri-result uint) float 20)
-    (dummy-21 (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
-    (dummy-22 (_type_) none 22)
-    (dummy-23 (_type_) none 23)
-    (dummy-24 (_type_) none 24)
-    (dummy-25 (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
+    (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result uint) float 20)
+    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
+    (fill-from-foreground-using-spheres (_type_) none 22)
+    (fill-from-foreground-using-line-sphere (_type_) none 23)
+    (fill-from-foreground-using-y-probe (_type_) none 24)
+    (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
     (dummy-26 (_type_) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
@@ -161,8 +163,8 @@
 
 
 (deftype collide-list-item (structure)
-  ((mesh basic  :offset-assert   0) ;; maybe collide frag
-   (inst basic  :offset-assert   4) ;; tie collision?
+  ((mesh collide-frag-mesh  :offset-assert 0)
+   (inst basic  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
