@@ -9,7 +9,7 @@
 #include "Ptr.h"
 
 //! Toggle to use more memory. To simulate the original game's memory layout, set this to false.
-// Make sure this matches the const in gkernel-h.gc.
+// Make sure this matches the const in gcommon.gc.
 constexpr bool BIG_MEMORY = true;
 
 //! How much space to leave for the stack when creating the debug heap
