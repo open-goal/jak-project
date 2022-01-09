@@ -26,18 +26,6 @@
 (declare-type exit-chamber-dummy process-drawable)
 (declare-type ogreboss-village2 process-drawable)
 
-(define-extern pontoon-die (state pontoon)) ;; unknown type
-(define-extern pontoon-hidden (state pontoon)) ;; unknown type
-(define-extern allpontoons-idle (state allpontoons)) ;; unknown type
-(define-extern allpontoons-be-clone (state handle allpontoons)) ;; unknown type
-(define-extern ceilingflag-idle (state ceilingflag)) ;; unknown type
-(define-extern fireboulder-idle (state fireboulder)) ;; unknown type
-(define-extern fireboulder-hover (state fireboulder)) ;; unknown type
-(define-extern fireboulder-be-clone (state handle fireboulder)) ;; unknown type
-(define-extern exit-chamber-dummy-wait-to-appear (state exit-chamber-dummy)) ;; unknown type
-(define-extern exit-chamber-dummy-idle (state exit-chamber-dummy)) ;; unknown type
-(define-extern ogreboss-village2-idle (state ogreboss-village2)) ;; unknown type
-(define-extern ogreboss-village2-throw (state ogreboss-village2)) ;; unknown type
 
 ;; DECOMP BEGINS
 
@@ -159,6 +147,10 @@
   :method-count-assert 35
   :size-assert         #x2f2
   :flag-assert         #x23029002f2
+  (:states
+    pontoon-die
+    pontoon-hidden
+    )
   )
 
 
@@ -193,7 +185,11 @@
 
 (defstate pontoon-die (pontoon)
   :code
-  (behavior () (dummy-18 self) (deactivate self) (none))
+  (behavior ()
+    (dummy-18 self)
+    (deactivate self)
+    (none)
+    )
   )
 
 (defstate rigid-body-platform-float (pontoon)
@@ -239,10 +235,9 @@
   (set! (-> obj task) (the-as uint (-> arg0 extra perm task)))
   (set! (-> obj alt-task) (res-lump-value arg0 'alt-task uint))
   (cond
-    ((and
-       (nonzero? (-> obj alt-task))
-       (task-closed? (the-as game-task (-> obj alt-task)) (task-status need-resolution))
-       )
+    ((and (nonzero? (-> obj alt-task))
+          (task-closed? (the-as game-task (-> obj alt-task)) (task-status need-resolution))
+          )
      (go pontoon-die)
      )
     ((zero? (-> obj task))
@@ -361,10 +356,10 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 18432.0)
       (set-root-prim! s5-0 s4-0)
@@ -421,10 +416,10 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 25395.2)
       (set-root-prim! s5-0 s4-0)
@@ -559,6 +554,10 @@
   :method-count-assert 20
   :size-assert         #xb1
   :flag-assert         #x14005000b1
+  (:states
+    (allpontoons-be-clone handle)
+    allpontoons-idle
+    )
   )
 
 
@@ -588,7 +587,10 @@
     (none)
     )
   :exit
-  (behavior () (logior! (-> self mask) (process-mask actor-pause)) (none))
+  (behavior ()
+    (logior! (-> self mask) (process-mask actor-pause))
+    (none)
+    )
   :trans
   (behavior ()
     (when (>= (ja-aframe-num 0) 500.0)
@@ -602,7 +604,12 @@
     (none)
     )
   :code
-  (behavior ((arg0 handle)) (clone-anim arg0 3 #t "") (dummy-18 self) (deactivate self) (none))
+  (behavior ((arg0 handle))
+    (clone-anim arg0 3 #t "")
+    (dummy-18 self)
+    (deactivate self)
+    (none)
+    )
   )
 
 (defstate allpontoons-idle (allpontoons)
@@ -615,7 +622,10 @@
       )
     )
   :enter
-  (behavior () (logior! (-> self draw status) (draw-status drwf01)) (none))
+  (behavior ()
+    (logior! (-> self draw status) (draw-status drwf01))
+    (none)
+    )
   :code
   (behavior ()
     (while #t
@@ -649,6 +659,11 @@
   :method-count-assert 20
   :size-assert         #xb9
   :flag-assert         #x14005000b9
+  (:states
+    (fireboulder-be-clone handle)
+    fireboulder-hover
+    fireboulder-idle
+    )
   )
 
 
@@ -665,8 +680,8 @@
     (dotimes (a0-0 (-> (the-as collide-shape-prim-group v1-1) num-prims))
       (let ((a1-2 (-> (the-as collide-shape-prim-group v1-1) prims a0-0)))
         (when (= (-> a1-2 prim-id) 256)
-          (set! (-> a1-2 prim-core collide-as) (the-as uint 0))
-          (set! (-> a1-2 collide-with) (the-as uint 0))
+          (set! (-> a1-2 prim-core collide-as) (collide-kind))
+          (set! (-> a1-2 collide-with) (collide-kind))
           0
           )
         )
@@ -741,9 +756,16 @@
     (none)
     )
   :exit
-  (behavior () (stop! (-> self sound)) (none))
+  (behavior ()
+    (stop! (-> self sound))
+    (none)
+    )
   :trans
-  (behavior () (fireboulder-hover-stuff) (update! (-> self sound)) (none))
+  (behavior ()
+    (fireboulder-hover-stuff)
+    (update! (-> self sound))
+    (none)
+    )
   :code
   (behavior ()
     (while #t
@@ -753,12 +775,12 @@
                                         )
               )
         (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                         (-> self skel root-channel 0 frame-group)
-                                                         )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
+                                                      (-> self skel root-channel 0 frame-group)
+                                                      )
+                                                  data
+                                                  0
+                                                  length
+                                                  )
                                               -1
                                               )
                                      )
@@ -795,14 +817,18 @@
 
 (defstate fireboulder-be-clone (fireboulder)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('stop-cloning)
-                                                                                    (go fireboulder-hover)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('stop-cloning)
+       (go fireboulder-hover)
+       )
+      )
+    )
   :enter
-  (behavior ((arg0 handle)) (logclear! (-> self mask) (process-mask actor-pause)) (none))
+  (behavior ((arg0 handle))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (none)
+    )
   :exit
   (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
@@ -849,12 +875,12 @@
                                         )
               )
         (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                         (-> self skel root-channel 0 frame-group)
-                                                         )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
+                                                      (-> self skel root-channel 0 frame-group)
+                                                      )
+                                                  data
+                                                  0
+                                                  length
+                                                  )
                                               -1
                                               )
                                      )
@@ -920,26 +946,26 @@
 (defmethod init-from-entity! fireboulder ((obj fireboulder) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s3-0 local-sphere) -24576.0 18432.0 0.0 49152.0)
       (set-root-prim! s4-0 s3-0)
       (let ((s2-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-        (set! (-> s2-0 prim-core collide-as) (the-as uint 512))
-        (set! (-> s2-0 collide-with) (the-as uint 16))
-        (set! (-> s2-0 prim-core action) (the-as uint 1))
-        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 prim-core collide-as) (collide-kind wall-object))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid))
+        (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 4)
         (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 24576.0)
         (append-prim s3-0 s2-0)
         )
       (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 256))))
-        (set! (-> s2-1 prim-core collide-as) (the-as uint 512))
-        (set! (-> s2-1 collide-with) (the-as uint 16))
-        (set! (-> s2-1 prim-core action) (the-as uint 1))
-        (set! (-> s2-1 prim-core offense) 4)
+        (set! (-> s2-1 prim-core collide-as) (collide-kind wall-object))
+        (set! (-> s2-1 collide-with) (collide-kind target))
+        (set! (-> s2-1 prim-core action) (collide-action solid))
+        (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-1 transform-index) 4)
         (set-vector! (-> s2-1 local-sphere) 0.0 0.0 -24576.0 49152.0)
         (append-prim s3-0 s2-1)
@@ -996,6 +1022,9 @@
   :method-count-assert 20
   :size-assert         #xb0
   :flag-assert         #x14004000b0
+  (:states
+    ceilingflag-idle
+    )
   )
 
 
@@ -1017,12 +1046,12 @@
                                         )
               )
         (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                         (-> self skel root-channel 0 frame-group)
-                                                         )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
+                                                      (-> self skel root-channel 0 frame-group)
+                                                      )
+                                                  data
+                                                  0
+                                                  length
+                                                  )
                                               -1
                                               )
                                      )
@@ -1070,6 +1099,10 @@
   :flag-assert         #x15006000c8
   (:methods
     (skip-reminder? (_type_) symbol 20)
+    )
+  (:states
+    exit-chamber-dummy-idle
+    exit-chamber-dummy-wait-to-appear
     )
   )
 
@@ -1185,6 +1218,10 @@
   :method-count-assert 20
   :size-assert         #xb8
   :flag-assert         #x14005000b8
+  (:states
+    ogreboss-village2-idle
+    ogreboss-village2-throw
+    )
   )
 
 
@@ -1858,16 +1895,16 @@
 (defmethod init-from-entity! ogreboss-village2 ((obj ogreboss-village2) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
       (set-vector! (-> s3-0 local-sphere) 0.0 40960.0 0.0 40960.0)
       (set-root-prim! s4-0 s3-0)
       (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
-        (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
-        (set! (-> s2-0 collide-with) (the-as uint 16))
-        (set! (-> s2-0 prim-core action) (the-as uint 1))
-        (set! (-> s2-0 prim-core offense) 1)
+        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid))
+        (set! (-> s2-0 prim-core offense) (collide-offense touch))
         (set-vector! (-> s2-0 local-sphere) 0.0 34816.0 0.0 14336.0)
         (append-prim s3-0 s2-0)
         )

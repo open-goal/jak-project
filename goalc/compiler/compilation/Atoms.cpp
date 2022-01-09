@@ -85,7 +85,11 @@ const std::unordered_map<
         // However, we can be better than that and just provide a single instruction
         // BUT - if things used side effects of the modified ACC or benefited from only doing 1/2
         // operations, we'll need to implement them separately.
+        //
+        // ...and they did
         {".outer.product.vf", &Compiler::compile_asm_outer_product_vf},
+        {".outer.product.a.vf", &Compiler::compile_asm_outer_product_a_vf},
+        {".outer.product.b.vf", &Compiler::compile_asm_outer_product_b_vf},
 
         {".div.vf", &Compiler::compile_asm_div_vf},
         {".sqrt.vf", &Compiler::compile_asm_sqrt_vf},

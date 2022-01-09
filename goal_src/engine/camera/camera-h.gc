@@ -14,18 +14,11 @@
 (declare-type cam-rotation-tracker structure)
 (declare-type camera-combiner process)
 ;; TODO - for cam-master
-(define-extern cam-eye (state camera-slave))
 ;; TODO - for camera
-(define-extern cam-circular (state camera-slave))
-(define-extern cam-standoff-read-entity (state camera-slave))
-(define-extern cam-spline (state camera-slave))
-(define-extern *camera-base-mode* (state camera-slave))
-(define-extern cam-fixed-read-entity (state camera-slave))
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
 ;; TODO - for cam-combiner
-(define-extern cam-combiner-active (state camera-combiner))
 (define-extern paused? (function symbol))
 ;; TODO - for cam-start
 (define-extern cam-master-init (function none :behavior camera-master))
@@ -88,20 +81,18 @@
   )
 
 
-(define
-  *CAMERA-bank*
-  (new 'static 'camera-bank
-   :collide-move-rad 1638.4
-   :min-detectable-velocity 40.96
-   :attack-timeout (seconds 0.25)
-   :default-string-max-y (meters 3.0)
-   :default-string-min-y (meters 1.0)
-   :default-string-max-z (meters 12.5)
-   :default-string-min-z (meters 5.0)
-   :default-string-push-z (meters 10.0)
-   :default-tilt-adjust (degrees -6.5000005)
-   )
-  )
+(define *CAMERA-bank* (new 'static 'camera-bank
+                        :collide-move-rad 1638.4
+                        :min-detectable-velocity 40.96
+                        :attack-timeout (seconds 0.25)
+                        :default-string-max-y (meters 3.0)
+                        :default-string-min-y (meters 1.0)
+                        :default-string-max-z (meters 12.5)
+                        :default-string-min-z (meters 5.0)
+                        :default-string-push-z (meters 10.0)
+                        :default-tilt-adjust (degrees -6.5000005)
+                        )
+        )
 
 (deftype cam-index (structure)
   ((flags cam-index-options           :offset-assert   0)
@@ -200,10 +191,7 @@
   )
 
 
-(defmethod
-  init-cam-float-seeker
-  cam-float-seeker
-  ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init-cam-float-seeker cam-float-seeker ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> obj target) arg0)
   (set! (-> obj value) arg0)
   (set! (-> obj vel) 0.0)
@@ -214,10 +202,7 @@
   (none)
   )
 
-(defmethod
-  copy-cam-float-seeker
-  cam-float-seeker
-  ((obj cam-float-seeker) (arg0 cam-float-seeker))
+(defmethod copy-cam-float-seeker cam-float-seeker ((obj cam-float-seeker) (arg0 cam-float-seeker))
   (set! (-> obj target) (-> arg0 target))
   (set! (-> obj value) (-> arg0 value))
   (set! (-> obj vel) (-> arg0 vel))
@@ -234,21 +219,20 @@
   (let* ((pos-error (- (+ (-> obj target) offset) (-> obj value)))
          (partial-velocity-limit (* (-> obj max-partial) (fabs pos-error)))
          )
-   (let
-    ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
-    (+! (-> obj vel) daccel)
+    (let ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
+      (+! (-> obj vel) daccel)
+      )
+    (let ((abs-vel (fabs (-> obj vel)))
+          (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
+          )
+      (if (< abs-vel-limit abs-vel)
+          (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
+          )
+      )
     )
-   (let ((abs-vel (fabs (-> obj vel)))
-         (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
-         )
-    (if (< abs-vel-limit abs-vel)
-     (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
-     )
-    )
-   )
   (let ((dpos (* (-> obj vel) (-> *display* time-adjust-ratio))))
-   (+! (-> obj value) dpos)
-   )
+    (+! (-> obj value) dpos)
+    )
   0
   (none)
   )
@@ -256,9 +240,9 @@
 (defmethod jump-to-target! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
   (set! (-> obj value) (+ (-> obj target) arg0))
   (let ((f0-2 0.0))
-   (set! (-> obj vel) f0-2)
-   f0-2
-   )
+    (set! (-> obj vel) f0-2)
+    f0-2
+    )
   )
 
 (deftype cam-vector-seeker (structure)
@@ -279,20 +263,17 @@
   )
 
 
-(defmethod
-  init!
-  cam-vector-seeker
-  ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
-   (arg0
-    (set! (-> obj target quad) (-> arg0 quad))
-    (set! (-> obj value quad) (-> arg0 quad))
+    (arg0
+      (set! (-> obj target quad) (-> arg0 quad))
+      (set! (-> obj value quad) (-> arg0 quad))
+      )
+    (else
+      (vector-reset! (-> obj target))
+      (vector-reset! (-> obj value))
+      )
     )
-   (else
-    (vector-reset! (-> obj target))
-    (vector-reset! (-> obj value))
-    )
-   )
   (vector-reset! (-> obj vel))
   (set! (-> obj accel) arg1)
   (set! (-> obj max-vel) arg2)
@@ -303,34 +284,30 @@
 
 (defmethod update! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-   0.0
-   (cond
-    (arg0
-     (vector+! gp-0 (-> obj target) arg0)
-     (vector-! gp-0 gp-0 (-> obj value))
-     )
-    (else
-     (vector-! gp-0 (-> obj target) (-> obj value))
-     )
-    )
-   (let ((f30-1 (* (-> obj max-partial) (vector-length gp-0))))
-    (vector-float*!
-     gp-0
-     gp-0
-     (* (-> obj accel) (-> *display* time-adjust-ratio))
-     )
-    (vector+! (-> obj vel) (-> obj vel) gp-0)
-    (let ((f0-4 (vector-length (-> obj vel)))
-          (f1-2 (fmin f30-1 (-> obj max-vel)))
-          )
-     (if (< f1-2 f0-4)
-      (vector-float*! (-> obj vel) (-> obj vel) (/ f1-2 f0-4))
+    0.0
+    (cond
+      (arg0
+        (vector+! gp-0 (-> obj target) arg0)
+        (vector-! gp-0 gp-0 (-> obj value))
+        )
+      (else
+        (vector-! gp-0 (-> obj target) (-> obj value))
+        )
       )
-     )
+    (let ((f30-1 (* (-> obj max-partial) (vector-length gp-0))))
+      (vector-float*! gp-0 gp-0 (* (-> obj accel) (-> *display* time-adjust-ratio)))
+      (vector+! (-> obj vel) (-> obj vel) gp-0)
+      (let ((f0-4 (vector-length (-> obj vel)))
+            (f1-2 (fmin f30-1 (-> obj max-vel)))
+            )
+        (if (< f1-2 f0-4)
+            (vector-float*! (-> obj vel) (-> obj vel) (/ f1-2 f0-4))
+            )
+        )
+      )
+    (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
+    (vector+! (-> obj value) (-> obj value) gp-0)
     )
-   (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
-   (vector+! (-> obj value) (-> obj value) gp-0)
-   )
   0
   (none)
   )
@@ -371,66 +348,97 @@
   :method-count-assert 14
   :size-assert         #x1e0
   :flag-assert         #xe017001e0
+  (:states
+    cam-combiner-active
+    )
   )
 
 
 (deftype camera-slave (process)
-  ((trans                         vector               :inline :offset-assert 112)
-   (fov                           float                        :offset-assert 128)
-   (fov0                          float                        :offset-assert 132)
-   (fov1                          float                        :offset-assert 136)
-   (fov-index                     cam-index            :inline :offset-assert 144)
-   (tracking                      cam-rotation-tracker :inline :offset-assert 192)
-   (view-off-param                float                        :offset-assert 400)
-   (unknown-symbol                symbol                       :offset        412)
-   (view-off                      vector               :inline :offset-assert 416)
-   (min-z-override                float                        :offset-assert 432)
-   (view-flat                     vector               :inline :offset-assert 448)
-   (string-vel-dir                uint32                       :offset-assert 464)
-   (string-trans                  vector               :inline :offset-assert 480)
-   (position-spline               tracking-spline      :inline :offset-assert 496)
-   (pivot-pt                      vector               :inline :offset-assert 2144)
-   (pivot-rad                     float                        :offset-assert 2160)
-   (circular-follow               vector               :inline :offset-assert 2176)
-   (max-angle-offset              float                        :offset-assert 2192)
-   (max-angle-curr                float                        :offset-assert 2196)
-   (options                       uint32                       :offset-assert 2200)
-   (cam-entity                    entity                       :offset-assert 2204)
-   (velocity                      vector               :inline :offset-assert 2208)
-   (desired-pos                   vector               :inline :offset-assert 2224)
-   (time-dist-too-far             uint32                       :offset-assert 2240)
-   (los-state                     slave-los-state              :offset-assert 2244)
-   (good-point                    vector               :inline :offset-assert 2256)
-   (los-tgt-spline-pt             int32                        :offset-assert 2272)
-   (los-tgt-spline-pt-incarnation int32                        :offset-assert 2276)
-   (los-last-pos                  vector               :inline :offset-assert 2288)
-   (intro-curve                   curve                :inline :offset-assert 2304)
-   (intro-offset                  vector               :inline :offset-assert 2336)
-   (intro-t                       float                        :offset-assert 2352)
-   (intro-t-step                  float                        :offset-assert 2356)
-   (outro-exit-value              float                        :offset-assert 2360)
-   (spline-exists                 basic                        :offset-assert 2364)
-   (spline-curve                  curve                :inline :offset-assert 2368)
-   (spline-offset                 vector               :inline :offset-assert 2400)
-   (index                         cam-index            :inline :offset-assert 2416)
-   (saved-pt                      vector               :inline :offset-assert 2464)
-   (spline-tt                     float                        :offset-assert 2480)
-   (spline-follow-dist            float                        :offset-assert 2484)
-   (change-event-from             (pointer process-drawable)   :offset-assert 2488) ;; mistycannon
-   (enter-has-run                 symbol                       :offset-assert 2492)
-   (blend-from-type               uint64                       :offset-assert 2496)
-   (blend-to-type                 uint64                       :offset-assert 2504)
-   (have-phony-joystick           basic                        :offset-assert 2512)
-   (phony-joystick-x              float                        :offset-assert 2516)
-   (phony-joystick-y              float                        :offset-assert 2520)
-   (string-min-val                vector               :inline :offset-assert 2528)
-   (string-max-val                vector               :inline :offset-assert 2544)
-   (string-val-locked             basic                        :offset-assert 2560)
+  ((trans                         vector                     :inline :offset-assert 112)
+   (fov                           float                              :offset-assert 128)
+   (fov0                          float                              :offset-assert 132)
+   (fov1                          float                              :offset-assert 136)
+   (fov-index                     cam-index                  :inline :offset-assert 144)
+   (tracking                      cam-rotation-tracker       :inline :offset-assert 192)
+   (view-off-param                float                              :offset-assert 400)
+   (unknown-symbol                symbol                             :offset        412)
+   (view-off                      vector                     :inline :offset-assert 416)
+   (min-z-override                float                              :offset-assert 432)
+   (view-flat                     vector                     :inline :offset-assert 448)
+   (string-vel-dir                uint32                             :offset-assert 464)
+   (string-trans                  vector                     :inline :offset-assert 480)
+   (position-spline               tracking-spline            :inline :offset-assert 496)
+   (pivot-pt                      vector                     :inline :offset-assert 2144)
+   (pivot-rad                     float                              :offset-assert 2160)
+   (circular-follow               vector                     :inline :offset-assert 2176)
+   (max-angle-offset              float                              :offset-assert 2192)
+   (max-angle-curr                float                              :offset-assert 2196)
+   (options                       uint32                             :offset-assert 2200)
+   (cam-entity                    entity                             :offset-assert 2204)
+   (velocity                      vector                     :inline :offset-assert 2208)
+   (desired-pos                   vector                     :inline :offset-assert 2224)
+   (time-dist-too-far             uint32                             :offset-assert 2240)
+   (los-state                     slave-los-state                    :offset-assert 2244)
+   (good-point                    vector                     :inline :offset-assert 2256)
+   (los-tgt-spline-pt             int32                              :offset-assert 2272)
+   (los-tgt-spline-pt-incarnation int32                              :offset-assert 2276)
+   (los-last-pos                  vector                     :inline :offset-assert 2288)
+   (intro-curve                   curve                      :inline :offset-assert 2304)
+   (intro-offset                  vector                     :inline :offset-assert 2336)
+   (intro-t                       float                              :offset-assert 2352)
+   (intro-t-step                  float                              :offset-assert 2356)
+   (outro-exit-value              float                              :offset-assert 2360)
+   (spline-exists                 basic                              :offset-assert 2364)
+   (spline-curve                  curve                      :inline :offset-assert 2368)
+   (spline-offset                 vector                     :inline :offset-assert 2400)
+   (index                         cam-index                  :inline :offset-assert 2416)
+   (saved-pt                      vector                     :inline :offset-assert 2464)
+   (spline-tt                     float                              :offset-assert 2480)
+   (spline-follow-dist            float                              :offset-assert 2484)
+   (change-event-from             (pointer process-drawable)         :offset-assert 2488)
+   (enter-has-run                 symbol                             :offset-assert 2492)
+   (blend-from-type               uint64                             :offset-assert 2496)
+   (blend-to-type                 uint64                             :offset-assert 2504)
+   (have-phony-joystick           basic                              :offset-assert 2512)
+   (phony-joystick-x              float                              :offset-assert 2516)
+   (phony-joystick-y              float                              :offset-assert 2520)
+   (string-min-val                vector                     :inline :offset-assert 2528)
+   (string-max-val                vector                     :inline :offset-assert 2544)
+   (string-val-locked             basic                              :offset-assert 2560)
    )
   :heap-base #x9a0
   :method-count-assert 14
   :size-assert         #xa04
   :flag-assert         #xe09a00a04
+  (:states
+    *camera-base-mode*
+    cam-bike
+    cam-billy
+    cam-circular
+    cam-decel
+    cam-endlessfall
+    cam-eye
+    cam-fixed
+    cam-fixed-read-entity
+    cam-free-floating
+    cam-launcher-longfall
+    cam-launcher-shortfall
+    cam-lookat
+    cam-mistycannon
+    cam-orbit
+    cam-periscope
+    cam-point-watch
+    cam-pov
+    cam-pov-track
+    cam-pov180
+    cam-robotboss
+    cam-spline
+    cam-standoff
+    cam-standoff-read-entity
+    cam-stick
+    cam-string
+    )
   )
 
 
@@ -493,6 +501,10 @@
   :method-count-assert 14
   :size-assert         #x964
   :flag-assert         #xe09000964
+  (:states
+    cam-master-active
+    list-keeper-active
+    )
   )
 
 

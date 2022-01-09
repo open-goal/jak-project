@@ -52,6 +52,10 @@
   :method-count-assert 20
   :size-assert         #x10b
   :flag-assert         #x1400a0010b
+  (:states
+    swamp-bat-idle
+    swamp-bat-launch-slaves
+    )
   )
 
 ;; definition for method 3 of type swamp-bat
@@ -104,6 +108,14 @@
   :flag-assert         #x1500b00118
   (:methods
     (dummy-20 (_type_) float 20)
+    )
+  (:states
+    (swamp-bat-slave-die handle)
+    swamp-bat-slave-idle
+    swamp-bat-slave-launch
+    swamp-bat-slave-return
+    swamp-bat-slave-strafe
+    swamp-bat-slave-swoop
     )
   )
 
@@ -512,16 +524,16 @@ swamp-bat-slave-event-handler
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 6144.0)
       (set-root-prim! s4-0 s3-0)
       (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
-        (set! (-> s2-0 collide-with) (the-as uint 16))
-        (set! (-> s2-0 prim-core action) (the-as uint 1))
-        (set! (-> s2-0 prim-core offense) 4)
+        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid))
+        (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 3)
         (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4096.0)
         (append-prim s3-0 s2-0)

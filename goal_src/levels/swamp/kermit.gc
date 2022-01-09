@@ -665,9 +665,15 @@
       )
     )
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
   :exit
-  (behavior () (sound-stop (-> self sound-id)) (none))
+  (behavior ()
+    (sound-stop (-> self sound-id))
+    (none)
+    )
   :code
   (behavior ()
     (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
@@ -685,7 +691,7 @@
         (-> self root-override trans)
         (the-as vector #f)
         8192.0
-        (the-as uint 1)
+        (collide-kind background)
         (the-as process #f)
         0.0
         81920.0
@@ -696,7 +702,10 @@
     (none)
     )
   :post
-  (behavior () (dummy-47 (-> self root-override)) (none))
+  (behavior ()
+    (dummy-47 (-> self root-override))
+    (none)
+    )
   )
 
 (defstate kermit-pulse-impact (kermit-pulse)
@@ -737,10 +746,10 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 1))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 2867.2)
       (set-root-prim! s5-0 s4-0)
       )
@@ -1065,13 +1074,17 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :enter
-  (behavior () (set! (-> self notice-time) 0) 0 (none))
+  (behavior ()
+    (set! (-> self notice-time) 0)
+    0
+    (none)
+    )
   :trans
   (behavior ()
     (if (and *target* (>= (-> self enemy-info idle-distance)
-                            (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                            )
-               )
+                          (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                          )
+             )
         (go kermit-patrol)
         )
     (none)
@@ -1116,13 +1129,12 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
-    (if (and
-            (or (not *target*) (< (-> self enemy-info idle-distance)
-                                  (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                                  )
-                )
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
-            )
+    (if (and (or (not *target*) (< (-> self enemy-info idle-distance)
+                                   (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                   )
+                 )
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+             )
         (go kermit-idle)
         )
     (kermit-set-rotate-dir-to-nav-target)
@@ -1169,9 +1181,15 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :enter
-  (behavior () (set-mode! (-> self neck) (joint-mod-handler-mode look-at)) (none))
+  (behavior ()
+    (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
+    (none)
+    )
   :trans
-  (behavior () (kermit-set-rotate-dir-to-player) (none))
+  (behavior ()
+    (kermit-set-rotate-dir-to-player)
+    (none)
+    )
   :code
   (behavior ()
     (ja-channel-push! 1 30)
@@ -1191,9 +1209,15 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :enter
-  (behavior () (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend)) (none))
+  (behavior ()
+    (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
+    (none)
+    )
   :code
-  (behavior () (go kermit-patrol) (none))
+  (behavior ()
+    (go kermit-patrol)
+    (none)
+    )
   :post
   kermit-simple-post
   )
@@ -1233,12 +1257,10 @@ nav-enemy-default-event-handler
   :trans
   (behavior ()
     (when (not (-> self airborne))
-      (if (or
-              (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-              (and
-                (logtest? (nav-control-flags bit19) (-> self nav flags))
-                (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
-                )
+      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+              (and (logtest? (nav-control-flags bit19) (-> self nav flags))
+                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+                   )
               )
           (go kermit-chase)
           )
@@ -1304,9 +1326,9 @@ nav-enemy-default-event-handler
       )
     (when (not (-> self airborne))
       (if (or (not *target*) (< (-> self enemy-info idle-distance)
-                                  (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                                  )
-                )
+                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                )
+              )
           (go kermit-patrol)
           )
       (let ((gp-1 (kermit-check-to-hit-player? 3640.889))
@@ -1464,8 +1486,7 @@ nav-enemy-default-event-handler
     (let ((s5-0 (kermit-player-target-pos))
           (gp-0 (kermit-tongue-pos self))
           )
-      (if (or
-              (< 73728.0 (vector-vector-distance s5-0 gp-0))
+      (if (or (< 73728.0 (vector-vector-distance s5-0 gp-0))
               (or (not (kermit-check-tongue-is-clear?)) (not (-> self child-override)))
               )
           (go kermit-retract-tongue)
@@ -1475,10 +1496,10 @@ nav-enemy-default-event-handler
             )
       (when (and (-> self child-override) (let ((v1-9 (-> self child-override)))
                                             (= (-> (if v1-9
-                                                          (-> v1-9 0 self-override)
-                                                          )
-                                                    type
-                                                    )
+                                                       (-> v1-9 0 self-override)
+                                                       )
+                                                   type
+                                                   )
                                                kermit-pulse
                                                )
                                             )
@@ -1552,7 +1573,11 @@ nav-enemy-default-event-handler
     (none)
     )
   :exit
-  (behavior () (set! (-> self tongue-control forward-scale-control) 0.0) (kermit-disable-tongue) (none))
+  (behavior ()
+    (set! (-> self tongue-control forward-scale-control) 0.0)
+    (kermit-disable-tongue)
+    (none)
+    )
   :trans
   (behavior ()
     (kermit-set-nav-mesh-target (-> self collide-info trans))
@@ -1682,16 +1707,16 @@ nav-enemy-default-event-handler
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 16384.0)
       (set-root-prim! s4-0 s3-0)
       (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
-        (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
-        (set! (-> s2-0 collide-with) (the-as uint 16))
-        (set! (-> s2-0 prim-core action) (the-as uint 1))
-        (set! (-> s2-0 prim-core offense) 1)
+        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid))
+        (set! (-> s2-0 prim-core offense) (collide-offense touch))
         (set! (-> s2-0 transform-index) 3)
         (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 3072.0)
         (append-prim s3-0 s2-0)

@@ -209,8 +209,8 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
     (when (= (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
+                 (-> self skel root-channel 0 frame-group)
+                 )
              (-> self draw art-group data 4)
              )
       (ja-channel-push! 1 30)
@@ -272,25 +272,26 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
   :trans
   (behavior ()
     (cond
-      ((or
-         (not *target*)
-         (< 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
-         )
+      ((or (not *target*)
+           (< 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
+           )
        (set! (-> self target-speed) 0.0)
        (if (= (-> self momentum-speed) 0.0)
            (go muse-idle)
            )
        )
-      ((or
-         (not *target*)
-         (< (-> self sprint-distance)
-            (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-            )
-         )
+      ((or (not *target*)
+           (< (-> self sprint-distance)
+              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+              )
+           )
        (set! (-> self target-speed) 40960.0)
        )
       (else
@@ -307,8 +308,8 @@ nav-enemy-default-event-handler
   (behavior ()
     (cond
       ((= (if (> (-> self skel active-channels) 0)
-               (-> self skel root-channel 0 frame-group)
-               )
+              (-> self skel root-channel 0 frame-group)
+              )
           (-> self draw art-group data 3)
           )
        (ja-channel-push! 1 30)
@@ -433,7 +434,10 @@ nav-enemy-default-event-handler
   :event
   (the-as (function process int symbol event-message-block object :behavior muse) #f)
   :trans
-  (behavior () (spool-push *art-control* (-> self anim name) 0 self -1.0) (none))
+  (behavior ()
+    (spool-push *art-control* (-> self anim name) 0 self -1.0)
+    (none)
+    )
   :code
   (behavior ()
     (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 0 0 1 #t)
@@ -456,7 +460,7 @@ nav-enemy-default-event-handler
             (else
               (TODO-RENAME-30 (-> self collide-info) (-> *target* control trans))
               (quaternion-copy! (-> self collide-info quat) (-> *target* control quat))
-              (dummy-60 (-> self collide-info) 40960.0 40960.0 #f (the-as uint 1))
+              (dummy-60 (-> self collide-info) 40960.0 40960.0 #f (collide-kind background))
               )
             )
           )
@@ -534,7 +538,13 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior () (dummy-51 self) (level-hint-surpress!) (kill-current-level-hint '() '() 'exit) (ja-post) (none))
+  (behavior ()
+    (dummy-51 self)
+    (level-hint-surpress!)
+    (kill-current-level-hint '() '() 'exit)
+    (ja-post)
+    (none)
+    )
   )
 
 (define *muse-nav-enemy-info* (new 'static 'nav-enemy-info
@@ -601,10 +611,10 @@ nav-enemy-default-event-handler
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s3-0 local-sphere) 0.0 2457.6 0.0 2457.6)
       (set-root-prim! s4-0 s3-0)
       )
