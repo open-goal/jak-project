@@ -114,6 +114,17 @@ struct TfragTree {
   void serialize(Serializer& ser);
 };
 
+// A shrub model
+struct ShrubTree {
+  BVH bvh;
+  std::vector<StripDraw> static_draws;    // the actual topology and settings
+  std::vector<PreloadedVertex> vertices;  // mesh vertices
+  std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
+
+  // TODO - wind stuff
+  void serialize(Serializer& ser);
+};
+
 // A tie model
 struct TieTree {
   BVH bvh;
@@ -131,6 +142,7 @@ struct Level {
   std::string level_name;
   std::vector<Texture> textures;
   std::vector<TfragTree> tfrag_trees;
+  std::vector<ShrubTree> shrub_trees;
   std::vector<TieTree> tie_trees;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
