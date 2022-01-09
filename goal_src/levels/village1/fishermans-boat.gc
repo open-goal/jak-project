@@ -806,16 +806,13 @@
           )
         )
       )
-    (when (and
-            (-> self player-riding)
-            (and
-              (zero? (-> self root-overlay riders num-riders))
-              (or
-                (not *target*)
-                (< 32768.0 (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans)))
-                )
-              )
-            )
+    (when (and (-> self player-riding)
+               (and (zero? (-> self root-overlay riders num-riders))
+                    (or (not *target*)
+                        (< 32768.0 (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans)))
+                        )
+                    )
+               )
       (if (process-release? *target*)
           (set! (-> self kill-player) #t)
           )
@@ -871,13 +868,12 @@
 
 (defbehavior fishermans-boat-leave-dock? fishermans-boat ()
   (let ((gp-0 #f))
-    (when (and
-            (< (vector-vector-distance (target-pos 0) (-> self rbody position)) 6144.0)
-            (or (task-complete? *game-info* (game-task jungle-fishgame)) (and *cheat-mode* (cpad-hold? 0 l3)))
-            (not (level-hint-displayed?))
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
-            (file-status *art-control* (-> self anim name) 0)
-            )
+    (when (and (< (vector-vector-distance (target-pos 0) (-> self rbody position)) 6144.0)
+               (or (task-complete? *game-info* (game-task jungle-fishgame)) (and *cheat-mode* (cpad-hold? 0 l3)))
+               (not (level-hint-displayed?))
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+               (file-status *art-control* (-> self anim name) 0)
+               )
       (hide-hud)
       (level-hint-surpress!)
       (kill-current-level-hint '() '(sidekick voicebox) 'exit)
@@ -916,11 +912,10 @@
         )
     )
   (let ((f0-0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point))))
-    (when (and
-            (= (-> self controller path-dest-index) (-> self dock-point-index))
-            (not (-> self anchored))
-            (< f0-0 81920.0)
-            )
+    (when (and (= (-> self controller path-dest-index) (-> self dock-point-index))
+               (not (-> self anchored))
+               (< f0-0 81920.0)
+               )
       (set! (-> self ignition) #f)
       (set! (-> self anchored) #t)
       )
@@ -935,7 +930,10 @@
     rigid-body-platform-event-handler
     )
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
   :trans
   (behavior ()
     (if (fishermans-boat-leave-dock?)
@@ -1068,7 +1066,10 @@
     rigid-body-platform-event-handler
     )
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
   :trans
   (behavior ()
     (if (fishermans-boat-leave-dock?)
@@ -1227,7 +1228,11 @@
 
 (defstate fishermans-boat-player-control (fishermans-boat)
   :exit
-  (behavior () (send-event *camera* 'change-state *camera-base-mode* 0) (set! (-> self auto-pilot) #t) (none))
+  (behavior ()
+    (send-event *camera* 'change-state *camera-base-mode* 0)
+    (set! (-> self auto-pilot) #t)
+    (none)
+    )
   :trans
   (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1274,7 +1279,10 @@
 
 (defstate fishermans-boat-measurements (fishermans-boat)
   :exit
-  (behavior () (set! (-> self measure-parameters) #f) (none))
+  (behavior ()
+    (set! (-> self measure-parameters) #f)
+    (none)
+    )
   :trans
   (behavior ()
     (if (cpad-pressed? 1 square)
@@ -1348,17 +1356,17 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 61440.0)
       (set-root-prim! s5-0 s4-0)
       (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-        (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-        (set! (-> s3-0 collide-with) (the-as uint 16))
-        (set! (-> s3-0 prim-core action) (the-as uint 3))
-        (set! (-> s3-0 prim-core offense) 4)
+        (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s3-0 collide-with) (collide-kind target))
+        (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-0 transform-index) 3)
         (set-vector! (-> s3-0 local-sphere) 0.0 8192.0 0.0 61440.0)
         (append-prim s4-0 s3-0)
@@ -1469,12 +1477,12 @@
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (let ((a0-29 (-> obj entity)))
     (if (when a0-29
-            (let ((a0-30 (-> a0-29 extra perm task)))
-              (if a0-30
-                  (= a0-30 (game-task none))
-                  )
-              )
+          (let ((a0-30 (-> a0-29 extra perm task)))
+            (if a0-30
+                (= a0-30 (game-task none))
+                )
             )
+          )
         (set! (-> obj entity extra perm task) (game-task complete))
         )
     )
@@ -1585,11 +1593,10 @@
                                              (suspend)
                                              )
                                            )
-                                         (while (or
-                                                  (-> *setting-control* current ambient)
-                                                  (-> *setting-control* current hint)
-                                                  (-> *setting-control* current movie)
-                                                  )
+                                         (while (or (-> *setting-control* current ambient)
+                                                    (-> *setting-control* current hint)
+                                                    (-> *setting-control* current movie)
+                                                    )
                                            (suspend)
                                            )
                                          (suspend)
@@ -1610,7 +1617,12 @@
     (none)
     )
   :post
-  (behavior () (ja-post) (fishermans-boat-spawn-particles 81920.0) (fishermans-boat-play-sounds) (none))
+  (behavior ()
+    (ja-post)
+    (fishermans-boat-spawn-particles 81920.0)
+    (fishermans-boat-play-sounds)
+    (none)
+    )
   )
 
 (defstate fishermans-boat-ride-to-village1 (fishermans-boat)
@@ -1749,7 +1761,12 @@
     (none)
     )
   :post
-  (behavior () (ja-post) (fishermans-boat-spawn-particles 81920.0) (fishermans-boat-play-sounds) (none))
+  (behavior ()
+    (ja-post)
+    (fishermans-boat-spawn-particles 81920.0)
+    (fishermans-boat-play-sounds)
+    (none)
+    )
   )
 
 

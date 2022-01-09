@@ -390,10 +390,9 @@
           (set! (-> s2-0 rmat vector 1 y) (+ (* f3-0 f2-1) (* f1-2 f0-3)))
           )
         (cond
-          ((or
-             (< (-> s1-0 y) (-> obj die-if-below-y))
-             (< (-> obj die-if-beyond-xz-dist-sqrd) (vector-vector-xz-distance s1-0 (-> obj root trans)))
-             )
+          ((or (< (-> s1-0 y) (-> obj die-if-below-y))
+               (< (-> obj die-if-beyond-xz-dist-sqrd) (vector-vector-xz-distance s1-0 (-> obj root trans)))
+               )
            (set! s3-0 (TODO-RENAME-24 obj arg0 s3-0))
            )
           (else
@@ -408,7 +407,13 @@
   )
 
 (defmethod TODO-RENAME-22 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
-  (dummy-13 *collide-cache* (-> arg0 bbox) (the-as uint 1) obj (the-as uint 1))
+  (dummy-13
+    *collide-cache*
+    (-> arg0 bbox)
+    (collide-kind background)
+    obj
+    (new 'static 'pat-surface :skip #x1 :noentity #x1)
+    )
   (let ((gp-1 (-> obj joints))
         (v1-2 (-> arg0 head))
         )
@@ -419,7 +424,7 @@
               (s3-0 (new 'stack-no-clear 'collide-tri-result))
               )
           (vector-! a2-1 s4-0 (-> s5-1 prev-pos))
-          (when (>= (dummy-18 *collide-cache* (-> s5-1 prev-pos) a2-1 40.96 1 s3-0 1) 0.0)
+          (when (>= (dummy-18 *collide-cache* (-> s5-1 prev-pos) a2-1 40.96 (collide-kind background) s3-0 1) 0.0)
             (set! (-> s4-0 quad) (-> s3-0 intersect quad))
             (let ((f28-0 (vector-xz-length (-> s5-1 transv))))
               (vector-reflect! (-> s5-1 transv) (-> s5-1 transv) (-> s3-0 normal))
@@ -443,7 +448,10 @@
 
 (defstate joint-exploder-shatter (joint-exploder)
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
   :trans
   (behavior ()
     (let* ((f1-0 (the float (- (-> *display* base-frame-counter) (-> self state-time))))
@@ -572,10 +580,9 @@
              (-> s3-0 transv)
              (rand-vu-float-range (-> obj tuning fountain-rand-transv-hi x) (-> obj tuning fountain-rand-transv-hi y))
              )
-           (+!
-             (-> s3-0 transv y)
-             (rand-vu-float-range (-> obj tuning fountain-rand-transv-hi z) (-> obj tuning fountain-rand-transv-hi w))
-             )
+           (+! (-> s3-0 transv y)
+               (rand-vu-float-range (-> obj tuning fountain-rand-transv-hi z) (-> obj tuning fountain-rand-transv-hi w))
+               )
            (set! (-> s3-0 transv w) 1.0)
            )
           (else

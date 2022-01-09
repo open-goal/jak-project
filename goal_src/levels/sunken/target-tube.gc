@@ -386,7 +386,7 @@
           )
       (set! (-> self control reaction) target-collision-reaction)
       (dummy-33 (-> self control) (-> self control transv) (-> self control root-prim collide-with))
-      (if (logtest? (-> self control root-prim prim-core action) 64)
+      (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
           (dummy-20 *target* *collide-cache*)
           )
       (if *debug-segment*
@@ -462,22 +462,18 @@
     )
   :exit
   (behavior ()
-    (when (not
-            (or
-              (= (-> self next-state name) 'target-tube)
-              (= (-> self next-state name) 'target-tube-jump)
-              (= (-> self next-state name) 'target-tube-hit)
-              )
-            )
+    (when (not (or (= (-> self next-state name) 'target-tube)
+                   (= (-> self next-state name) 'target-tube-jump)
+                   (= (-> self next-state name) 'target-tube-hit)
+                   )
+               )
       (let ((v1-7 (-> self manipy)))
         (when v1-7
           (deactivate (-> v1-7 0))
           (set! (-> self manipy) (the-as (pointer manipy) #f))
           )
         )
-      (set! (-> self control root-prim prim-core action)
-            (logand -8193 (-> self control root-prim prim-core action))
-            )
+      (logclear! (-> self control root-prim prim-core action) (collide-action ca-13))
       (set! (-> self control unknown-surface00) *walk-mods*)
       (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
       (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
@@ -514,7 +510,7 @@
     (target-collide-set! 'tube 0.0)
     (set! (-> self control transv quad) (the-as uint128 0))
     (set! (-> self control unknown-float01) 0.0)
-    (logior! (-> self control root-prim prim-core action) 8192)
+    (logior! (-> self control root-prim prim-core action) (collide-action ca-13))
     (remove-exit)
     (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-4 from) self)
@@ -551,26 +547,24 @@
     (countdown (s5-0 gp-0)
       (set! (-> self control unknown-int40) s5-0)
       (set! (-> self tube turn-anim-targ) (fmax -20.0 (fmin 20.0 (-> self tube turn-anim-targ))))
-      (or
-        (not (>= (* (-> self tube turn-anim-targ) (-> self tube turn-anim-frame)) 0.0))
-        (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
-        )
-      (+!
-        (-> self tube turn-anim-vel)
-        (* (- (-> self tube turn-anim-targ) (-> self tube turn-anim-frame))
-           (lerp-scale
-             20.0
-             (if (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
-                 30.0
-                 60.0
-                 )
-             (-> self control unknown-float01)
-             0.0
-             36864.0
+      (or (not (>= (* (-> self tube turn-anim-targ) (-> self tube turn-anim-frame)) 0.0))
+          (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
+          )
+      (+! (-> self tube turn-anim-vel)
+          (* (- (-> self tube turn-anim-targ) (-> self tube turn-anim-frame))
+             (lerp-scale
+               20.0
+               (if (< (fabs (-> self tube turn-anim-frame)) (fabs (-> self tube turn-anim-targ)))
+                   30.0
+                   60.0
+                   )
+               (-> self control unknown-float01)
+               0.0
+               36864.0
+               )
+             (-> *display* seconds-per-frame)
              )
-           (-> *display* seconds-per-frame)
-           )
-        )
+          )
       (set! (-> self tube turn-anim-vel)
             (fmax
               -100.0
@@ -618,19 +612,15 @@
   (-> target-tube-start exit)
   :trans
   (behavior ()
-    (if (and
-            (logtest?
-              (logior
-                (logior
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                  (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
-                  )
-                (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
-                )
-              (pad-buttons x)
-              )
-            (can-jump? #f)
-            )
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? #f)
+             )
         (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
         )
     (none)
@@ -673,7 +663,10 @@
     (none)
     )
   :post
-  (behavior () (target-tube-post) (none))
+  (behavior ()
+    (target-tube-post)
+    (none)
+    )
   )
 
 (defstate target-tube-jump (target)
@@ -1019,17 +1012,15 @@
     )
   :trans
   (behavior ()
-    (if (and
-            (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-            (and
-              (< 0.0 (vector-dot
-                       (vector-! (new 'stack-no-clear 'vector) (-> *target* control trans) (-> self trans))
-                       (-> self rot)
-                       )
-                 )
-              (send-event *target* 'change-mode 'tube self)
-              )
-            )
+    (if (and (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+             (and (< 0.0 (vector-dot
+                           (vector-! (new 'stack-no-clear 'vector) (-> *target* control trans) (-> self trans))
+                           (-> self rot)
+                           )
+                     )
+                  (send-event *target* 'change-mode 'tube self)
+                  )
+             )
         (go-virtual slide-control-ride)
         )
     (none)

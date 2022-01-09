@@ -437,7 +437,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         return TP_Type::make_from_ts(TypeSpec("int"));
       }
 
-      if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
+      if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type) &&
+          env.func->name() != "overrides-parent-method?") {
         // dynamic access into the method array with shift, add, offset-load
         // no need to track the type because we don't know the method index anyway.
         return TP_Type::make_partial_dyanmic_vtable_access();

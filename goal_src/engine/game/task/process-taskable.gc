@@ -273,8 +273,8 @@
 
 (defbehavior process-taskable-anim-loop process-taskable ()
   (when (!= (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
+                (-> self skel root-channel 0 frame-group)
+                )
             (get-art-elem self)
             )
     (ja-channel-push! 1 60)
@@ -356,16 +356,17 @@
 (defstate lose (process-taskable)
   :virtual #t
   :enter
-  (behavior () (set! (-> self state-time) (-> *display* base-frame-counter)) (none))
+  (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
   :trans
   (behavior ()
-    (if (and
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1500)
-            (or
-              (not *target*)
-              (< 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-              )
-            )
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1500)
+             (or (not *target*)
+                 (< 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                 )
+             )
         (go-virtual idle)
         )
     ((-> self cur-trans-hook))
@@ -534,12 +535,12 @@
                                          )
               )
         (set! (-> a0-30 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                    data
-                                                    0
-                                                    length
-                                                    )
+                                                       (-> self skel root-channel 0 frame-group)
+                                                       )
+                                                   data
+                                                   0
+                                                   length
+                                                   )
                                                -1
                                                )
                                       )
@@ -580,7 +581,11 @@
   :exit
   process-taskable-play-anim-exit
   :trans
-  (behavior () (process-taskable-play-anim-trans) ((-> self cur-trans-hook)) (none))
+  (behavior ()
+    (process-taskable-play-anim-trans)
+    ((-> self cur-trans-hook))
+    (none)
+    )
   :code
   (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (get-accept-anim self #t))
@@ -601,7 +606,11 @@
   :exit
   process-taskable-play-anim-exit
   :trans
-  (behavior () (process-taskable-play-anim-trans) ((-> self cur-trans-hook)) (none))
+  (behavior ()
+    (process-taskable-play-anim-trans)
+    ((-> self cur-trans-hook))
+    (none)
+    )
   :code
   (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (get-reject-anim self #t))
@@ -795,7 +804,10 @@
   :enter
   (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
   :exit
-  (behavior () (process-taskable-hide-exit (= (-> self next-state name) 'hidden)) (none))
+  (behavior ()
+    (process-taskable-hide-exit (= (-> self next-state name) 'hidden))
+    (none)
+    )
   :trans
   (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
@@ -813,10 +825,9 @@
 ;; WARN: disable def twice: 4. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod TODO-RENAME-50 process-taskable ((obj process-taskable))
   (if *target*
-      (or
-        (not *target*)
-        (< 245760.0 (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
-        )
+      (or (not *target*)
+          (< 245760.0 (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
+          )
       (< 60397978000.0
          (vector-vector-distance-squared (the-as vector (-> obj root-override root-prim prim-core)) (camera-pos))
          )
@@ -833,7 +844,10 @@
   :enter
   (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
   :exit
-  (behavior () (process-taskable-hide-exit (= (-> self next-state name) 'hidden-other)) (none))
+  (behavior ()
+    (process-taskable-hide-exit (= (-> self next-state name) 'hidden-other))
+    (none)
+    )
   :trans
   (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
@@ -918,7 +932,11 @@
     (none)
     )
   :trans
-  (behavior () (draw-npc-shadow self) ((-> self cur-trans-hook)) (none))
+  (behavior ()
+    (draw-npc-shadow self)
+    ((-> self cur-trans-hook))
+    (none)
+    )
   :code
   (behavior ((arg0 handle))
     (clone-anim arg0 (-> self center-joint-index) #t "")
@@ -1020,24 +1038,22 @@
        )
       ((begin
          (dummy-46 self)
-         (and
-           (not
-             (and
-               (logtest? (-> *target* control unknown-surface00 flags) 2048)
-               (zero? (logand (-> *target* control status) 1))
-               )
-             )
-           (< (-> (target-pos 0) y) (+ 8192.0 (-> self root-override root-prim prim-core world-sphere y)))
-           (< (vector-vector-distance (target-pos 0) (the-as vector (-> self root-override root-prim prim-core)))
-              32768.0
+         (and (not
+                (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                     (zero? (logand (-> *target* control status) 1))
+                     )
+                )
+              (< (-> (target-pos 0) y) (+ 8192.0 (-> self root-override root-prim prim-core world-sphere y)))
+              (< (vector-vector-distance (target-pos 0) (the-as vector (-> self root-override root-prim prim-core)))
+                 32768.0
+                 )
+              (= (-> *level* loading-level) (-> *level* level-default))
+              (not (movie?))
+              (not (level-hint-displayed?))
+              (none-reserved? *art-control*)
+              (not *progress-process*)
+              (and (not (handle->process (-> *game-info* other-camera-handle))) (close-anim-file! self))
               )
-           (= (-> *level* loading-level) (-> *level* level-default))
-           (not (movie?))
-           (not (level-hint-displayed?))
-           (none-reserved? *art-control*)
-           (not *progress-process*)
-           (and (not (handle->process (-> *game-info* other-camera-handle))) (close-anim-file! self))
-           )
          )
        (first-any (-> self tasks) #t)
        (when (target-above-threshold? self)
@@ -1084,11 +1100,10 @@
         (dummy-33 self)
         )
     (draw-npc-shadow self)
-    (when (and (-> self been-kicked) (and
-                                       (not *progress-process*)
-                                       (process-grab? *target*)
-                                       (not (handle->process (-> *game-info* other-camera-handle)))
-                                       )
+    (when (and (-> self been-kicked) (and (not *progress-process*)
+                                          (process-grab? *target*)
+                                          (not (handle->process (-> *game-info* other-camera-handle)))
+                                          )
                )
       (set! (-> self been-kicked) #f)
       (send-event *target* 'trans 'save (-> self old-target-pos))
@@ -1119,10 +1134,10 @@
 (defmethod initialize-collision process-taskable ((obj process-taskable) (arg0 int) (arg1 vector))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 1))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) arg0)
       (set-vector! (-> s4-0 local-sphere) (-> arg1 x) (-> arg1 y) (-> arg1 z) (-> arg1 w))
       (set-root-prim! s5-0 s4-0)
@@ -1228,12 +1243,11 @@
   )
 
 (defmethod play-ambient ambient-control ((obj ambient-control) (arg0 string) (arg1 symbol) (arg2 vector))
-  (when (and
-          (not (string= arg0 (-> obj last-ambient)))
-          (or arg1 (can-hint-be-played? (game-text-id one) (the-as entity #f) (the-as string #f)))
-          (= (-> *level* loading-level) (-> *level* level-default))
-          (ambient-hint-spawn arg0 arg2 *entity-pool* 'ambient)
-          )
+  (when (and (not (string= arg0 (-> obj last-ambient)))
+             (or arg1 (can-hint-be-played? (game-text-id one) (the-as entity #f) (the-as string #f)))
+             (= (-> *level* loading-level) (-> *level* level-default))
+             (ambient-hint-spawn arg0 arg2 *entity-pool* 'ambient)
+             )
     (set! (-> obj last-ambient-time) (-> *display* game-frame-counter))
     (set! (-> obj last-ambient) arg0)
     (return #t)
@@ -1272,13 +1286,12 @@
              )
          (cond
            ((t9-0 (rtype-of v1-1) string)
-            (let ((v1-8
-                    (dummy-10
-                      (-> (the-as process-taskable (-> self hand process 0)) draw jgeo)
-                      (the-as string (-> arg3 param 0))
-                      (the-as type #f)
-                      )
-                    )
+            (let ((v1-8 (dummy-10
+                          (-> (the-as process-taskable (-> self hand process 0)) draw jgeo)
+                          (the-as string (-> arg3 param 0))
+                          (the-as type #f)
+                          )
+                        )
                   )
               (when v1-8
                 (set! v0-0 (+ (-> v1-8 number) 1))
@@ -1383,13 +1396,11 @@
       (let ((a0-25 (-> self hand process 0)))
         (when (or (-> self die?) (and (not (-> self survive-anim-end?)) (ja-anim-done? a0-25)))
           (let ((gp-1 (-> *display* base-frame-counter)))
-            (while (and
-                     (< (- (-> *display* base-frame-counter) gp-1) #x4650)
-                     (or
-                       (and (-> self entity) (not (is-object-visible? (-> self entity extra level) (-> self entity extra vis-id))))
-                       (< 81920.0 (vector-vector-distance (camera-pos) (-> *math-camera* trans)))
-                       )
-                     )
+            (while (and (< (- (-> *display* base-frame-counter) gp-1) #x4650)
+                        (or (and (-> self entity) (not (is-object-visible? (-> self entity extra level) (-> self entity extra vis-id))))
+                            (< 81920.0 (vector-vector-distance (camera-pos) (-> *math-camera* trans)))
+                            )
+                        )
               (suspend)
               )
             )

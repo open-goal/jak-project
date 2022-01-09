@@ -303,10 +303,9 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
-       (if (and
-               (= (-> arg0 type) square-platform-master)
-               (= (-> (the-as square-platform-master arg0) plat-id) (-> self plat-id))
-               )
+       (if (and (= (-> arg0 type) square-platform-master)
+                (= (-> (the-as square-platform-master arg0) plat-id) (-> self plat-id))
+                )
            (go square-platform-rising)
            )
        )
@@ -339,7 +338,12 @@
       )
     )
   :enter
-  (behavior () (set! (-> self start-splash-time) (the-as uint 0)) (set! (-> self splash-counter) 0) 0 (none))
+  (behavior ()
+    (set! (-> self start-splash-time) (the-as uint 0))
+    (set! (-> self splash-counter) 0)
+    0
+    (none)
+    )
   :trans
   (behavior ()
     (set! (-> self pos-u)
@@ -416,7 +420,12 @@
       )
     )
   :enter
-  (behavior () (set! (-> self start-splash-time) (the-as uint 0)) (set! (-> self splash-counter) 0) 0 (none))
+  (behavior ()
+    (set! (-> self start-splash-time) (the-as uint 0))
+    (set! (-> self splash-counter) 0)
+    0
+    (none)
+    )
   :trans
   (behavior ()
     (set! (-> self pos-u)
@@ -484,10 +493,10 @@
           )
     (dummy-29 s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 3))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 -24576.0 0.0 32768.0)
       (set-root-prim! s4-0 s3-0)
@@ -559,7 +568,12 @@
       )
     )
   :code
-  (behavior () (logior! (-> self mask) (process-mask sleep-code)) (suspend) 0 (none))
+  (behavior ()
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    0
+    (none)
+    )
   )
 
 (defstate square-platform-master-activate (square-platform-master)
@@ -576,48 +590,46 @@
         (cond
           ((zero? v1-7)
            (let* ((s5-0 (get-process *default-dead-pool* sunkencam #x4000))
-                  (a0-4
-                    (when s5-0
-                      (let ((t9-3 (method-of-type sunkencam activate)))
-                        (t9-3 (the-as sunkencam s5-0) self 'sunkencam (the-as pointer #x70004000))
+                  (a0-4 (when s5-0
+                          (let ((t9-3 (method-of-type sunkencam activate)))
+                            (t9-3 (the-as sunkencam s5-0) self 'sunkencam (the-as pointer #x70004000))
+                            )
+                          (run-now-in-process
+                            s5-0
+                            pov-camera-init-by-other
+                            (-> self root trans)
+                            *sunkencam-sg*
+                            "qbert-show-door-open"
+                            0
+                            #f
+                            '()
+                            )
+                          (-> s5-0 ppointer)
+                          )
                         )
-                      (run-now-in-process
-                        s5-0
-                        pov-camera-init-by-other
-                        (-> self root trans)
-                        *sunkencam-sg*
-                        "qbert-show-door-open"
-                        0
-                        #f
-                        '()
-                        )
-                      (-> s5-0 ppointer)
-                      )
-                    )
                   )
              (set! (-> (the-as sunkencam (-> a0-4 0)) seq) (the-as uint 3))
              )
            )
           ((= v1-7 1)
            (let* ((gp-1 (get-process *default-dead-pool* sunkencam #x4000))
-                  (v1-13
-                    (when gp-1
-                      (let ((t9-6 (method-of-type sunkencam activate)))
-                        (t9-6 (the-as sunkencam gp-1) self 'sunkencam (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process
-                        gp-1
-                        pov-camera-init-by-other
-                        (-> self root trans)
-                        *sunkencam-sg*
-                        "qbert-show-door-open"
-                        0
-                        #f
-                        '()
-                        )
-                      (-> gp-1 ppointer)
-                      )
-                    )
+                  (v1-13 (when gp-1
+                           (let ((t9-6 (method-of-type sunkencam activate)))
+                             (t9-6 (the-as sunkencam gp-1) self 'sunkencam (the-as pointer #x70004000))
+                             )
+                           (run-now-in-process
+                             gp-1
+                             pov-camera-init-by-other
+                             (-> self root trans)
+                             *sunkencam-sg*
+                             "qbert-show-door-open"
+                             0
+                             #f
+                             '()
+                             )
+                           (-> gp-1 ppointer)
+                           )
+                         )
                   )
              (set! (-> (the-as sunkencam (-> v1-13 0)) seq) (the-as uint 4))
              )
@@ -625,48 +637,46 @@
            )
           ((= v1-7 2)
            (let* ((s5-1 (get-process *default-dead-pool* sunkencam #x4000))
-                  (a0-17
-                    (when s5-1
-                      (let ((t9-9 (method-of-type sunkencam activate)))
-                        (t9-9 (the-as sunkencam s5-1) self 'sunkencam (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process
-                        s5-1
-                        pov-camera-init-by-other
-                        (-> self root trans)
-                        *sunkencam-sg*
-                        "qbert-show-door-open"
-                        0
-                        #f
-                        '()
-                        )
-                      (-> s5-1 ppointer)
-                      )
-                    )
+                  (a0-17 (when s5-1
+                           (let ((t9-9 (method-of-type sunkencam activate)))
+                             (t9-9 (the-as sunkencam s5-1) self 'sunkencam (the-as pointer #x70004000))
+                             )
+                           (run-now-in-process
+                             s5-1
+                             pov-camera-init-by-other
+                             (-> self root trans)
+                             *sunkencam-sg*
+                             "qbert-show-door-open"
+                             0
+                             #f
+                             '()
+                             )
+                           (-> s5-1 ppointer)
+                           )
+                         )
                   )
              (set! (-> (the-as sunkencam (-> a0-17 0)) seq) (the-as uint 5))
              )
            )
           ((= v1-7 3)
            (let* ((gp-2 (get-process *default-dead-pool* sunkencam #x4000))
-                  (v1-24
-                    (when gp-2
-                      (let ((t9-12 (method-of-type sunkencam activate)))
-                        (t9-12 (the-as sunkencam gp-2) self 'sunkencam (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process
-                        gp-2
-                        pov-camera-init-by-other
-                        (-> self root trans)
-                        *sunkencam-sg*
-                        "qbert-show-door-open"
-                        0
-                        #f
-                        '()
-                        )
-                      (-> gp-2 ppointer)
-                      )
-                    )
+                  (v1-24 (when gp-2
+                           (let ((t9-12 (method-of-type sunkencam activate)))
+                             (t9-12 (the-as sunkencam gp-2) self 'sunkencam (the-as pointer #x70004000))
+                             )
+                           (run-now-in-process
+                             gp-2
+                             pov-camera-init-by-other
+                             (-> self root trans)
+                             *sunkencam-sg*
+                             "qbert-show-door-open"
+                             0
+                             #f
+                             '()
+                             )
+                           (-> gp-2 ppointer)
+                           )
+                         )
                   )
              (set! (-> (the-as sunkencam (-> v1-24 0)) seq) (the-as uint 6))
              )
@@ -730,7 +740,12 @@
     (none)
     )
   :code
-  (behavior () (logior! (-> self mask) (process-mask sleep-code)) (suspend) 0 (none))
+  (behavior ()
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    0
+    (none)
+    )
   )
 
 (defmethod init-from-entity! square-platform-master ((obj square-platform-master) (arg0 entity-actor))

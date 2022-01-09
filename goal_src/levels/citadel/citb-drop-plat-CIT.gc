@@ -128,12 +128,13 @@
 
 (defstate drop-plat-spawn (drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('drop)
-                                                                                    (go drop-plat-die)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('drop)
+       (go drop-plat-die)
+       )
+      )
+    )
   :code
   (behavior ()
     (set! (-> self root-override trans y)
@@ -159,12 +160,13 @@
 
 (defstate drop-plat-rise (drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('drop)
-                                                                                    (go drop-plat-drop)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('drop)
+       (go drop-plat-drop)
+       )
+      )
+    )
   :code
   (behavior ((arg0 draw-control))
     (set! (-> self interp) 1.0)
@@ -233,8 +235,8 @@
       (vector-v++! (-> self root-override transv) (dummy-62 (-> self root-override) (new-stack-vector0) 0.0))
       (vector-v++! (-> self root-override trans) (-> self root-override transv))
       (if (< 204800.0
-               (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
-               )
+             (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
+             )
           (go drop-plat-die)
           )
       (+! (-> self spin-angle) (* (-> self spin-speed) (-> *display* seconds-per-frame)))
@@ -256,7 +258,10 @@
 
 (defstate drop-plat-die (drop-plat)
   :code
-  (behavior () (dummy-18 self) (none))
+  (behavior ()
+    (dummy-18 self)
+    (none)
+    )
   )
 
 (defmethod TODO-RENAME-20 drop-plat ((obj drop-plat))
@@ -268,10 +273,10 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
       (set-root-prim! s5-0 s4-0)
@@ -478,12 +483,13 @@
 
 (defstate citb-drop-plat-idle (citb-drop-plat)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('trigger)
-                                                                                    (go citb-drop-plat-active)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (go citb-drop-plat-active)
+       )
+      )
+    )
   :code
   (behavior ()
     (citb-drop-plat-drop-all-children)
@@ -517,12 +523,10 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (citb-drop-plat-spawn-children)
     (while #t
-      (if (or
-              (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) 600))
-              (or
-                (not *target*)
-                (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-                )
+      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) 600))
+              (or (not *target*)
+                  (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                  )
               (not (-> self child))
               )
           (go citb-drop-plat-idle)

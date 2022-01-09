@@ -8,6 +8,9 @@
 (define-extern *seaweed-sg* skeleton-group)
 (define-extern *side-to-side-plat-sg* skeleton-group)
 (define-extern *sunkencam-sg* skeleton-group)
+ 
+(declare-type seaweed basic)
+(define-extern *seaweed* seaweed)
 
 ;; DECOMP BEGINS
 
@@ -115,10 +118,10 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
-      (set! (-> s4-0 prim-core offense) 4)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 57344.0)
       (set-root-prim! s5-0 s4-0)
@@ -179,7 +182,10 @@
 (defstate pov-camera-playing (sunkencam)
   :virtual #t
   :exit
-  (behavior () (set! (-> *screen-filter* draw?) #f) (none))
+  (behavior ()
+    (set! (-> *screen-filter* draw?) #f)
+    (none)
+    )
   :code
   (behavior ()
     (let ((v1-0 (-> self seq)))
@@ -441,8 +447,6 @@
     )
   )
 
-;; NOTE - manually added
-(define-extern *seaweed* seaweed)
 
 (defskelgroup *seaweed-sg* seaweed
   0
@@ -502,12 +506,12 @@
       )
     (set! (-> s5-1 frame-num)
           (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> obj skel active-channels) 0)
-                                                            (-> obj skel root-channel 0 frame-group)
-                                                            )
-                                                      data
-                                                      0
-                                                      length
-                                                      )
+                                                         (-> obj skel root-channel 0 frame-group)
+                                                         )
+                                                     data
+                                                     0
+                                                     length
+                                                     )
                                                  -1
                                                  )
                                         )

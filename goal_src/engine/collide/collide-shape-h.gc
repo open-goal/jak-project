@@ -5,11 +5,25 @@
 ;; name in dgo: collide-shape-h
 ;; dgos: GAME, ENGINE
 
-(declare-type touching-list structure)
+;; What is collide-shape?
+;;  A collide shape is a group of collision geometry. Typically, each actor will have a single collide shape.
+;;  Each collide shape may contain a number of collide-shape-prim's.
 
+;; There are many subclasses of collide-shape-prim for different types of collision primitives.
+;; Some subclasses can contain multiple collide-shape-prims.
+
+(declare-type touching-list structure)
 (declare-type collide-shape-prim basic)
-;; Represents a collision between the "rider" (zoomer?) and a primitive shape.
-;; collisions are "sticky", meaning these structures stick around.
+
+;;;;;;;;;;;;;;;;;;;
+;; Sticky Rider
+;;;;;;;;;;;;;;;;;;;
+
+;; Rider: thing which rides on a moving thing. For example, Jak is a rider of the platforms.
+;; Sticky: when you hit the platform, your velocity immediately changes to match the thing.
+;;  like when Jak lands on a platform.
+
+
 (deftype collide-sticky-rider (structure)
   ((rider-handle    handle         :offset-assert 0)
    (sticky-prim     collide-shape-prim  :offset-assert 8)
@@ -20,8 +34,8 @@
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-   (set-rider! (_type_ handle) symbol 9)
-   )
+    (set-rider! (_type_ handle) symbol 9)
+    )
   )
 
 (defmethod set-rider! collide-sticky-rider ((obj collide-sticky-rider) (arg0 handle))
@@ -32,7 +46,7 @@
   )
 
 ;; A collection of collide-sticky-riders
-;; dynamic type. I think there's one collide-sticky-rider per rider?
+;; dynamic type. There's one collide-sticky-rider per rider.
 (deftype collide-sticky-rider-group (basic)
   ((num-riders       int32     :offset-assert 4)
    (allocated-riders int32     :offset-assert 8)
@@ -42,10 +56,10 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-   (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_ 0)
     (add-rider! (_type_ process-drawable) collide-sticky-rider 9)
-   (reset! (_type_) int 10)
-   )
+    (reset! (_type_) int 10)
+    )
   )
 
 (defmethod reset! collide-sticky-rider-group ((obj collide-sticky-rider-group))
@@ -54,9 +68,11 @@
   0
   )
 
+;; The rider will be pulled along by the object.
+;; This includes possibly rotating the rider (if the platform spins, it spins Jak too).
 (deftype pull-rider-info (structure)
   ((rider          collide-sticky-rider         :offset-assert 0)
-   (rider-cshape   collide-shape-prim           :offset-assert 4)
+   (rider-cshape   collide-shape-prim           :offset-assert 4) ;; maybe just collide-shape
    (rider-delta-ry float                        :offset-assert 8)
    (rider-dest     vector               :inline :offset-assert 16)
    )
@@ -65,12 +81,20 @@
   :flag-assert         #x900000020
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Collision Result
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Most general collision result from colliding two collide shapes
+;; this computes a "move-vec" and "u". If you move along "move-vec" by "u", you will move out of collsion.
+;; It also tells you which primitives are colliding.
 (deftype collide-shape-intersect (basic)
   ((move-vec       vector             :inline :offset-assert 16)
    (best-u         float                      :offset-assert 32)
    (best-tri       collide-tri-result :inline :offset-assert 48)
-   (best-from-prim collide-shape-prim                      :offset-assert 132)
-   (best-to-prim   collide-shape-prim                      :offset-assert 136)
+   (best-from-prim collide-shape-prim         :offset-assert 132)
+   (best-to-prim   collide-shape-prim         :offset-assert 136)
    )
   :method-count-assert 10
   :size-assert         #x8c
@@ -80,10 +104,11 @@
     )
   )
 
+;; Collision with just overlap distance, no vector.
 (deftype collide-overlap-result (structure)
   ((best-dist      float                      :offset-assert 0)
-   (best-from-prim collide-shape-prim                      :offset-assert 4)
-   (best-to-prim   collide-shape-prim                      :offset-assert 8)
+   (best-from-prim collide-shape-prim         :offset-assert 4)
+   (best-to-prim   collide-shape-prim         :offset-assert 8)
    (best-from-tri  collide-tri-result :inline :offset-assert 16)
    )
   :method-count-assert 10
@@ -103,6 +128,13 @@
   (none)
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Touching System
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; I believe this overlaps-others-params is used to do checks like "is enemy in range of attack".
+;; but this isn't well understood yet
+
 (deftype overlaps-others-params (structure)
   ((options uint32  :offset-assert 0)
    (tlist   touching-list  :offset-assert   4)
@@ -113,20 +145,94 @@
   )
 
 ;; The engine system is used to link collision checks with processes.
+;; This allows you to have lists of processes where the process will remove itself when it dies.
 (define *collide-hit-by-player-list* (new 'global 'engine 'collide-hit-by-player-list 768))
 (define *collide-usually-hit-by-player-list* (new 'global 'engine 'collide-usually-hit-by-player-list 256))
 (define *collide-hit-by-others-list* (new 'global 'engine 'collide-hit-by-others-list 96))
 (define *collide-player-list* (new 'global 'engine 'collide-player-list 32))
 
-;; some parts of collide-shape-prim are broken out here.
+(defenum collide-list-enum
+  (hit-by-player)
+  (usually-hit-by-player)
+  (hit-by-others)
+  (player)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Collision Primitive Base
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These are the settings that can be set per primtive. 
+
+
+(defenum collide-kind
+  :type uint64
+  :bitfield #t
+  (background 0)
+  (cak-1 1) ;; 
+  (cak-2 2)
+  (cak-3 3)
+  (target 4) ;; target
+  (water 5)
+  (powerup 6)
+  (crate 7)
+  (enemy 8) ;; also used for powerups
+  (wall-object 9) ;; also object. door, pusher (blockers?)
+  (projectile 10)
+  (ground-object 11) ;; object, like darkecobarray, platforms
+  (target-attack 12) ;; all target attacks
+  (mother-spider 13)
+  (cak-14 14) ;; unused
+  (blue-eco-suck 15) ;; manipy, orb-cache-top, 
+  )
+
+(defenum collide-action
+  :type uint32
+  :bitfield #t
+  (solid 0)
+  (ca-1 1) ;; sticky?
+  (ca-2 2) ;; target?
+  (ca-3 3) ;; edge grab related
+  (ca-4 4)
+  (ca-5 5) ;; unused?
+  (ca-6 6) ;; swing pole, manipy
+  (ca-7 7) ;; camera
+  (ca-8 8)  ;; swingpole
+  (ca-9 9) ;; eco vents?
+  (ca-10 10)
+  (ca-11 11)
+  (ca-12 12)
+  (ca-13 13)
+  (ca-14 14)
+  (ca-15 15) ;; manipy
+  (ca-16 16)
+  )
+
+;; this field is a bit confusing. you have to have a higher offense to win against an object.
+;; so a normal crate has an offense of 1, meaning you have to do _more_ than just touch it to go through it.
+;; a scout fly crate has 2, so you have to do _more_ than an normal attack.
+;; This system is _only_ for going through objects - there's more logic for deciding if you can break it.
+(defenum collide-offense
+  :type int8
+  (no-offense 0)
+  (touch 1)           ;; just have to touch
+  (normal-attack 2)   ;; any attack (like a normal crate)
+  (strong-attack 3)   ;; hit with zoomer, slide, ground pound/flop, flut attack
+  (indestructible 4)  ;; can't attack it.
+  )
+
+
+;; Every primitive has a prim-core.
+;; this is a 32-byte chunk of data that can be pulled out an put in collide caches
+;; it stores the transformed world sphere and the collision settings
 (deftype collide-prim-core (structure)
-  ((world-sphere vector  :inline :offset-assert 0)
-   (collide-as   uint64          :offset-assert 16)
-   (action       uint32          :offset-assert 24)
-   (offense      int8            :offset-assert 28)
-   (prim-type    int8            :offset-assert 29)
-   (extra        uint8 2       :offset-assert 30)
-   (quad         uint128 2       :offset 0)
+  ((world-sphere vector  :inline   :offset-assert 0)
+   (collide-as   collide-kind      :offset-assert 16)  ;; what are we (enemy, etc)
+   (action       collide-action    :offset-assert 24)  ;; what happens if we collide (physics)
+   (offense      collide-offense   :offset-assert 28)  ;; how hard to we have to hit it? (touch, attack...)
+   (prim-type    int8              :offset-assert 29)  ;; what type of primtive do we belong to?
+   (extra        uint8 2           :offset-assert 30)
+   (quad         uint128 2         :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -137,16 +243,18 @@
 (declare-type collide-cache-prim structure)
 ;; the base class for collision shapes.
 (deftype collide-shape-prim (basic)
-  ((cshape          collide-shape             :offset-assert 4)
-   (prim-id         uint32                    :offset-assert 8)
-   (transform-index int8                      :offset-assert 12)
-   (prim-core       collide-prim-core :inline :offset-assert 16)
-   (local-sphere    vector            :inline :offset-assert 48)
-   (collide-with    uint64                    :offset-assert 64)
+  ((cshape          collide-shape             :offset-assert 4)   ;; our parent collide-shape
+   (prim-id         uint32                    :offset-assert 8)   ;; ?
+   (transform-index int8                      :offset-assert 12)  ;; ?
+   (prim-core       collide-prim-core :inline :offset-assert 16)  ;; core data
+   (local-sphere    vector            :inline :offset-assert 48)  ;; sphere, pre transform
+   (collide-with    collide-kind              :offset-assert 64)  ;; things we can collide with
+   
+   ;; overlays of core.
    (world-sphere    vector            :inline :offset 16)
-   (collide-as      uint64                    :offset 32)
-   (action          uint32                    :offset 40)
-   (offense         int8                      :offset 44)
+   (collide-as      collide-kind              :offset 32)
+   (action          collide-action            :offset 40)
+   (offense         collide-offense           :offset 44)
    (prim-type       int8                      :offset 45)
    (radius          meters                    :offset 60)
    )
@@ -166,19 +274,28 @@
     (dummy-17 () none 17)
     (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
     (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
-    (dummy-20 (_type_ uint) symbol 20)
+    (dummy-20 (_type_ collide-kind) symbol 20)
     (num-mesh (_type_ collide-shape-prim) int 21)
     (on-platform-test (_type_ _type_ collide-overlap-result float) pat-surface 22)
     (should-push-away-test () none 23)
     (dummy-24 () none 24)
     (dummy-25 (_type_ process-drawable) symbol 25)
-    (set-collide-as! (_type_ handle) none 26)
-    (set-collide-with! (_type_ handle) none 27)
+    (set-collide-as! (_type_ collide-kind) none 26)
+    (set-collide-with! (_type_ collide-kind) none 27)
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Specific Collision Implementation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; generally, these store enough information to tell if you're in collision or not,
+;; and if so, what the "pat" is. The meaning of "pat" is unknown, but it's a 32-bit
+;; packed data that tells you the material/mode.
+
 ;; sphere collision
 ;; the pat is stored directly here.
+;; I believe the "local sphere" is used as the sphere.
 (deftype collide-shape-prim-sphere (collide-shape-prim)
   ((pat             pat-surface                    :offset-assert 72)
    )
@@ -192,6 +309,8 @@
 
 ;; mesh collision
 ;; the pats are stored per tri in the mesh.
+;; These meshes interact with a cache automatically (a specific collide-shape-prim-mesh cache, not the
+;; more general collide-cache)
 (deftype collide-shape-prim-mesh (collide-shape-prim)
   ((mesh            collide-mesh              :offset-assert 72)
    (mesh-id         int32                     :offset-assert 76)
@@ -224,17 +343,21 @@
     )
   )
 
-(defenum collide-list-enum
-  (hit-by-player)
-  (usually-hit-by-player)
-  (hit-by-others)
-  (player)
-  )
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Collide Shape
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; This is sort of the "parent" of all collide prims for a process-drawable.
+;; Each process-drawable (pd) should have one collide-shape, which is often the root.
+;; It represents:
+;; - the location of the thing in hte world
+;; - settings abouts collision/navigation
+;; - riders
 
 (declare-type collide-work structure)
 (declare-type touching-shapes-entry structure)
-;; an actual instance of a collision primitive.
-;; it's based on a transform (q means quaternion, v means with derivatives)
+
+;; we're a child of trsqv, so we store a full transform + derivative.
 (deftype collide-shape (trsqv)
   ((process               process-drawable            :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
@@ -245,8 +368,8 @@
    (event-other           basic              :offset-assert 156)
    (root-prim             collide-shape-prim              :offset-assert 160)
    (riders                collide-sticky-rider-group              :offset-assert 164)
-   (backup-collide-as     uint64             :offset-assert 168)
-   (backup-collide-with   uint64             :offset-assert 176)
+   (backup-collide-as     collide-kind             :offset-assert 168)
+   (backup-collide-with   collide-kind             :offset-assert 176)
    )
   :method-count-assert 56
   :size-assert         #xb8
@@ -257,11 +380,11 @@
     (dummy-29 (_type_ int) none 29)
     (TODO-RENAME-30 (_type_ vector) object 30) ;; ret - symbol | float (CSPG::9)
     (dummy-31 (_type_) none 31)
-    (dummy-32 (_type_ object uint) none 32)
-    (dummy-33 (_type_ vector uint) none 33)
+    (dummy-32 (_type_ object collide-kind) none 32)
+    (dummy-33 (_type_ vector collide-kind) none 33)
     (dummy-34 (_type_ uint) collide-shape-prim  34)
     (dummy-35 (_type_) symbol 35)
-    (dummy-36 (_type_ bounding-box float uint) symbol 36)
+    (dummy-36 (_type_ bounding-box float collide-kind) symbol 36)
     (dummy-37 (_type_ vector) none 37)
     (find-collision-meshes (_type_) symbol 38)
     (dummy-39 (_type_ collide-shape collide-overlap-result) symbol 39)
@@ -276,10 +399,10 @@
     (clear-collide-with-as (_type_) none 48)
     (restore-collide-with-as (_type_) none 49)
     (backup-collide-with-as (_type_) none 50)
-    (set-root-prim-collide-with! (_type_ handle) none 51)
-    (set-root-prim-collide-as! (_type_ handle) none 52)
-    (dummy-53 (_type_ int int int) none 53)
-    (dummy-54 (_type_ int int) none 54)
+    (set-root-prim-collide-with! (_type_ collide-kind) none 51)
+    (set-root-prim-collide-as! (_type_ collide-kind) none 52)
+    (dummy-53 (_type_ int collide-kind collide-kind) none 53)
+    (dummy-54 (_type_ int collide-offense) none 54)
     (dummy-55 (_type_ process touching-shapes-entry float float float) none 55)
     )
   )
@@ -320,13 +443,17 @@
     (dummy-57 (_type_ vector) none 57)
     (dummy-58 (_type_ vector) symbol 58)
     (dummy-59 (_type_ vector uint float symbol symbol symbol) none 59)
-    (dummy-60 (_type_ float float symbol uint) symbol 60)
+    (dummy-60 (_type_ float float symbol collide-kind) symbol 60)
     (TODO-RENAME-61 (_type_ vector vector vector) none 61)
     (dummy-62 (_type_ vector float) vector 62)
     (dummy-63 (_type_ vector vector float) float 63)
     (dummy-64 (_type_ collide-tri-result vector) none 64)
     )
   )
+
+;;;;;;;;;;;;;;;;;;;;
+;; Basic Methods
+;;;;;;;;;;;;;;;;;;;;
 
 (defmethod new collide-shape-prim ((allocation symbol) (type-to-make type) (cshape collide-shape) (prim-id uint) (size-bytes int))
   "Allocate a new collide-shape-prim. It is expected that children of collide-shape-prim override this.
@@ -336,11 +463,11 @@
     (set! (-> obj cshape) (the-as collide-shape cshape))
     ;; sphere/mesh?
     (set! (-> obj prim-id) prim-id)
-    (set! (-> obj prim-core action) 0)
-    (set! (-> obj prim-core collide-as) 0)
-    (set! (-> obj collide-with) 0)
+    (set! (-> obj prim-core action) (collide-action))
+    (set! (-> obj prim-core collide-as) (collide-kind))
+    (set! (-> obj collide-with) (collide-kind))
     (set! (-> obj transform-index) -2)
-    (set! (-> obj prim-core offense) 0)
+    (set! (-> obj prim-core offense) (collide-offense no-offense))
     (set! (-> obj prim-core prim-type) -2)
     obj
     )
@@ -408,21 +535,14 @@
     (set! (-> obj root-prim) #f)
 
     ;; add a special ignore mask for the camera vs other things.
-   (case (-> proc type symbol) 
-    (('camera)
-      (set!
-       (-> obj pat-ignore-mask)
-       (new 'static 'pat-surface :skip #x2 :nocamera #x1)
+    (case (-> proc type symbol)
+      (('camera)
+       (set! (-> obj pat-ignore-mask) (new 'static 'pat-surface :skip #x2 :nocamera #x1))
        )
+      (else
+        (set! (-> obj pat-ignore-mask) (new 'static 'pat-surface :skip #x1 :noentity #x1))
+        )
       )
-    (else
-     (set!
-      (-> obj pat-ignore-mask)
-      (new 'static 'pat-surface :skip #x1 :noentity #x1)
-      )
-     )
-    )
-
     ;; reset transformation to the origin.
     (set! (-> obj trans w) 1.0)
     (quaternion-identity! (-> obj quat))
@@ -467,32 +587,42 @@
   (the-as int (+ (-> obj type size) (* (+ (-> obj allocated-riders) -1) 32)))
   )
 
-(define *collide-shape-prim-backgnd*
-  (new 'static 'collide-shape-prim-mesh
-        :cshape #f
-        :prim-core (new 'static 'collide-prim-core
-                        :world-sphere (new 'static 'vector :w 204800000.0)
-                        :collide-as #x1
-                        :action #x1
-                        :offense 4
-                        :prim-type 2
-                        )
-        :local-sphere (new 'static 'vector :w 204800000.0)
-        :mesh #f
-        )
-  )
+;;;;;;;;;;;;;;;;;;;;
+;; Fake Meshes
+;;;;;;;;;;;;;;;;;;;;
 
-(define *collide-shape-prim-water*
-  (new 'static 'collide-shape-prim-mesh
-        :cshape #f
-        :prim-core (new 'static 'collide-prim-core
-                        :world-sphere (new 'static 'vector :w 204800000.0)
-                        :collide-as #x20
-                        :action #x1
-                        :offense 4
-                        :prim-type 2
-                        )
-        :local-sphere (new 'static 'vector :w 204800000.0)
-        :mesh #f
+;; These aren't real meshes, but are returned when you collide with the background or water.
+;; Background and water collision work differently, but this allows these systems to pretend to be
+;; part of the foreground collision system.
+
+(define *collide-shape-prim-backgnd* 
+        (new 'static 'collide-shape-prim-mesh
+             :cshape #f
+             :prim-core
+             (new 'static 'collide-prim-core
+                  :world-sphere (new 'static 'vector :w 204800000.0)
+                  :collide-as (collide-kind background)
+                  :action (collide-action solid)
+                  :offense (collide-offense indestructible)
+                  :prim-type 2
+                  )
+             :local-sphere (new 'static 'vector :w 204800000.0)
+             :mesh #f
+             )
         )
-  )
+
+(define *collide-shape-prim-water* 
+        (new 'static 'collide-shape-prim-mesh
+             :cshape #f
+             :prim-core
+             (new 'static 'collide-prim-core
+                  :world-sphere (new 'static 'vector :w 204800000.0)
+                  :collide-as (collide-kind water)
+                  :action (collide-action solid)
+                  :offense (collide-offense indestructible)
+                  :prim-type 2
+                  )
+             :local-sphere (new 'static 'vector :w 204800000.0)
+             :mesh #f
+             )
+        )

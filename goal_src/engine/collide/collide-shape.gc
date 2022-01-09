@@ -56,7 +56,7 @@
   )
 
 (defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
-  (local-vars (v1-4 int) (a3-2 uint))
+  (local-vars (v1-4 collide-offense) (a3-2 uint))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -70,7 +70,7 @@
                    (-> obj prim-core)
                    (-> arg0 move-vec)
                    (-> arg0 best-u)
-                   (the-as int (-> obj prim-core action))
+                   (-> obj prim-core action)
                    )
                  )
            )
@@ -85,13 +85,13 @@
                   (a1-3 (logand a1-2 a2-2))
                   (a2-3 (-> arg1 prim))
                   )
-              (let ((a3-1 (logand a1-3 1))
+              (let ((a3-1 (logand a1-3 (collide-action solid)))
                     (a1-4 (-> obj prim-core offense))
                     )
                 (b! (zero? a3-1) cfg-5 :delay (set! a3-2 (-> s5-0 bbox4w max data 0)))
                 (b! (= a0-2 v1-3) cfg-5 :delay (set! v1-4 (- a1-4 a0-2)))
                 )
-              (b! (> v1-4 0) cfg-5 :delay (.lvf vf1 (&-> s5-0 normal quad)))
+              (b! (> (the-as int v1-4) 0) cfg-5 :delay (.lvf vf1 (&-> s5-0 normal quad)))
               (.lvf vf2 (&-> s5-0 bbox4w min quad))
               (.lvf vf3 (&-> s5-0 vertex 0 quad))
               (.lvf vf4 (&-> s5-0 vertex 1 quad))
@@ -154,7 +154,7 @@
         )
       (set! (-> a1-1 min y) (+ -40960.0 (-> s2-0 y)))
       (set! (-> a1-1 max y) (+ 20480.0 (-> s2-0 y)))
-      (dummy-13 *collide-cache* a1-1 (-> arg0 root-prim collide-with) (-> arg0 process) (the-as uint 1))
+      (dummy-13 *collide-cache* a1-1 (-> arg0 root-prim collide-with) (-> arg0 process) (new 'static 'pat-surface :skip #x1 :noentity #x1))
       )
     (set! sv-176 0)
     (while (< sv-176 8)
@@ -170,16 +170,16 @@
           (set-vector! s1-0 0.0 0.0 arg3 1.0)
           (vector-rotate-y! s1-0 s1-0 f28-0)
           (if (>= (dummy-18
-                        *collide-cache*
-                        (vector+! (new 'stack-no-clear 'vector) s2-0 (new 'static 'vector :y 20480.0 :w 1.0))
-                        s1-0
-                        2048.0
-                        (the-as int (-> arg0 root-prim collide-with))
-                        s0-0
-                        1
-                        )
-                    0.0
+                    *collide-cache*
+                    (vector+! (new 'stack-no-clear 'vector) s2-0 (new 'static 'vector :y 20480.0 :w 1.0))
+                    s1-0
+                    2048.0
+                    (-> arg0 root-prim collide-with)
+                    s0-0
+                    1
                     )
+                  0.0
+                  )
               (set! f26-0 (+ -6144.0 (vector-vector-xz-distance s2-0 (-> s0-0 intersect))))
               )
           (let ((f24-0 arg2))
@@ -189,22 +189,21 @@
               (vector+! s1-0 s2-0 s1-0)
               (set! (-> s1-0 y) (+ 20480.0 (-> s2-0 y)))
               (when (>= (dummy-18
-                            *collide-cache*
-                            s1-0
-                            (new 'static 'vector :y -251658240.0 :w 1.0)
-                            10240.0
-                            (the-as int (-> arg0 root-prim collide-with))
-                            s0-0
-                            1
-                            )
+                          *collide-cache*
+                          s1-0
+                          (new 'static 'vector :y -251658240.0 :w 1.0)
+                          10240.0
+                          (-> arg0 root-prim collide-with)
+                          s0-0
+                          1
+                          )
                         0.0
                         )
                 (cond
-                  ((and
-                     (= (-> s0-0 pat mode) (pat-mode ground))
-                     (= (-> s0-0 pat event) (pat-event none))
-                     (< 0.7 (-> s0-0 normal y))
-                     )
+                  ((and (= (-> s0-0 pat mode) (pat-mode ground))
+                        (= (-> s0-0 pat event) (pat-event none))
+                        (< 0.7 (-> s0-0 normal y))
+                        )
                    (set! (-> arg1 quad) (-> s0-0 intersect quad))
                    (set! sv-192 (+ sv-192 1))
                    (if (>= sv-192 2)
@@ -911,7 +910,7 @@
   (none)
   )
 
-(defmethod dummy-60 collide-shape-moving ((obj collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 uint))
+(defmethod dummy-60 collide-shape-moving ((obj collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-kind))
   (if *debug-segment*
       (add-frame
         (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
@@ -975,7 +974,7 @@
   arg0
   )
 
-(defmethod dummy-33 collide-shape ((obj collide-shape) (arg0 vector) (arg1 uint))
+(defmethod dummy-33 collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-kind))
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -1008,11 +1007,11 @@
     )
   )
 
-(defmethod dummy-32 collide-shape ((obj collide-shape) (arg0 object) (arg1 uint))
+(defmethod dummy-32 collide-shape ((obj collide-shape) (arg0 object) (arg1 collide-kind))
   (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
     (cond
       ((dummy-36 obj s5-0 (the-as float arg0) arg1)
-       (dummy-13 *collide-cache* s5-0 arg1 (-> obj process) (the-as uint (-> obj pat-ignore-mask)))
+       (dummy-13 *collide-cache* s5-0 arg1 (-> obj process) (-> obj pat-ignore-mask))
        (if (and *display-collide-cache* (= (-> obj process type) target))
            (dummy-9 *collide-cache*)
            )
@@ -1025,7 +1024,7 @@
   (none)
   )
 
-(defmethod dummy-36 collide-shape ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 uint))
+(defmethod dummy-36 collide-shape ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 collide-kind))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf29 :class vf)
@@ -1065,7 +1064,7 @@
   )
 
 ;; WARN: Bad vector register dependency: vf31
-(defmethod dummy-20 collide-shape-prim ((obj collide-shape-prim) (arg0 uint))
+(defmethod dummy-20 collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf29 :class vf)
@@ -1428,14 +1427,14 @@
   arg0
   )
 
-(defmethod set-collide-with! collide-shape-prim ((obj collide-shape-prim) (arg0 handle))
-  (set! (-> obj collide-with) (the-as uint arg0))
+(defmethod set-collide-with! collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
+  (set! (-> obj collide-with) arg0)
   0
   (none)
   )
 
-(defmethod set-collide-with! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 handle))
-  (set! (-> obj collide-with) (the-as uint arg0))
+(defmethod set-collide-with! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-kind))
+  (set! (-> obj collide-with) arg0)
   (dotimes (s4-0 (-> obj num-prims))
     (set-collide-with! (-> obj prims s4-0) arg0)
     )
@@ -1443,14 +1442,14 @@
   (none)
   )
 
-(defmethod set-collide-as! collide-shape-prim ((obj collide-shape-prim) (arg0 handle))
-  (set! (-> obj prim-core collide-as) (the-as uint arg0))
+(defmethod set-collide-as! collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
+  (set! (-> obj prim-core collide-as) arg0)
   0
   (none)
   )
 
-(defmethod set-collide-as! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 handle))
-  (set! (-> obj prim-core collide-as) (the-as uint arg0))
+(defmethod set-collide-as! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-kind))
+  (set! (-> obj prim-core collide-as) arg0)
   (dotimes (s4-0 (-> obj num-prims))
     (set-collide-as! (-> obj prims s4-0) arg0)
     )
@@ -1458,13 +1457,13 @@
   (none)
   )
 
-(defmethod set-root-prim-collide-with! collide-shape ((obj collide-shape) (arg0 handle))
+(defmethod set-root-prim-collide-with! collide-shape ((obj collide-shape) (arg0 collide-kind))
   (set-collide-with! (-> obj root-prim) arg0)
   0
   (none)
   )
 
-(defmethod set-root-prim-collide-as! collide-shape ((obj collide-shape) (arg0 handle))
+(defmethod set-root-prim-collide-as! collide-shape ((obj collide-shape) (arg0 collide-kind))
   (set-collide-as! (-> obj root-prim) arg0)
   0
   (none)
@@ -2597,8 +2596,8 @@
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 (defmethod clear-collide-with-as collide-shape ((obj collide-shape))
-  (set! (-> obj root-prim collide-with) (the-as uint 0))
-  (set! (-> obj root-prim prim-core collide-as) (the-as uint 0))
+  (set! (-> obj root-prim collide-with) (collide-kind))
+  (set! (-> obj root-prim prim-core collide-as) (collide-kind))
   0
   (none)
   )
@@ -2617,7 +2616,7 @@
   (none)
   )
 
-(defmethod dummy-53 collide-shape ((obj collide-shape) (arg0 int) (arg1 int) (arg2 int))
+(defmethod dummy-53 collide-shape ((obj collide-shape) (arg0 int) (arg1 collide-kind) (arg2 collide-kind))
   (let ((s3-0 (-> obj root-prim)))
     (if (logtest? (-> s3-0 prim-id) arg0)
         (set! (-> s3-0 prim-core collide-as) (logior (logclear (-> s3-0 prim-core collide-as) arg1) arg2))
@@ -2642,7 +2641,7 @@
   (none)
   )
 
-(defmethod dummy-54 collide-shape ((obj collide-shape) (arg0 int) (arg1 int))
+(defmethod dummy-54 collide-shape ((obj collide-shape) (arg0 int) (arg1 collide-offense))
   (let ((s4-0 (-> obj root-prim)))
     (if (logtest? (-> s4-0 prim-id) arg0)
         (set! (-> s4-0 prim-core offense) arg1)
