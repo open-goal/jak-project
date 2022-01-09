@@ -1248,6 +1248,43 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         bds->parent_claim(seq);
 
         return false;
+      } else if (b0_seq && !b1_seq) {
+        replaced = true;
+        m_blocks.at(bds->succ_branch->get_first_block_id())->needs_label = true;
+
+        auto* seq = dynamic_cast<SequenceVtx*>(b0);
+        assert(seq);
+
+        if (b0->succ_branch) {
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        if (bds->succ_branch) {
+          // likely delay slots "branch" in this graph.
+          bds->succ_branch->replace_preds_with_and_check({bds}, nullptr);
+        }
+
+        seq->seq.push_back(bds);
+
+        seq->seq.push_back(b1);
+
+        for (auto* x : b1->succs()) {
+          //        printf("fix preds of %s\n", x->to_string().c_str());
+          x->replace_pred_and_check(b1, seq);
+        }
+        seq->succ_branch = b1->succ_branch;
+        seq->succ_ft = b1->succ_ft;
+        seq->end_branch = b1->end_branch;
+        seq->next = b1->next;
+        if (seq->next) {
+          seq->next->prev = seq;
+        }
+
+        // todo - proper trash?
+        b1->parent_claim(seq);
+        bds->parent_claim(seq);
+
+        return false;
       }
 
       else {

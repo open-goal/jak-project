@@ -56,15 +56,15 @@
   )
 
 (defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
-  (local-vars (v1-4 collide-offense) (a3-2 uint))
+  (local-vars (v1-4 collide-offense) (a3-2 pat-surface))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
          )
-    (let* ((s5-0 (new 'stack-no-clear 'collide-mesh-cache-tri))
-           (f0-1 (dummy-10
+    (let* ((s5-0 (new 'stack-no-clear 'collide-tri-result))
+           (f0-1 (resolve-moving-sphere-sphere
                    arg1
                    s5-0
                    (-> obj prim-core)
@@ -88,25 +88,25 @@
               (let ((a3-1 (logand a1-3 (collide-action solid)))
                     (a1-4 (-> obj prim-core offense))
                     )
-                (b! (zero? a3-1) cfg-5 :delay (set! a3-2 (-> s5-0 bbox4w max data 0)))
+                (b! (zero? a3-1) cfg-5 :delay (set! a3-2 (-> s5-0 pat)))
                 (b! (= a0-2 v1-3) cfg-5 :delay (set! v1-4 (- a1-4 a0-2)))
                 )
-              (b! (> (the-as int v1-4) 0) cfg-5 :delay (.lvf vf1 (&-> s5-0 normal quad)))
-              (.lvf vf2 (&-> s5-0 bbox4w min quad))
+              (b! (> (the-as int v1-4) 0) cfg-5 :delay (.lvf vf1 (&-> s5-0 intersect quad)))
+              (.lvf vf2 (&-> s5-0 normal quad))
               (.lvf vf3 (&-> s5-0 vertex 0 quad))
               (.lvf vf4 (&-> s5-0 vertex 1 quad))
               (.lvf vf5 (&-> s5-0 vertex 2 quad))
               (set! (-> arg0 best-u) f0-1)
-              (set! (-> arg0 best-to-prim) (the-as collide-shape-prim a2-3))
+              (set! (-> arg0 best-to-prim) a2-3)
               (set! (-> arg0 best-from-prim) obj)
-              (set! (-> arg0 best-tri pat) (the-as pat-surface a3-2))
+              (set! (-> arg0 best-tri pat) a3-2)
               (.svf (&-> arg0 best-tri intersect quad) vf1)
               (.svf (&-> arg0 best-tri normal quad) vf2)
               (.svf (&-> arg0 best-tri vertex 0 quad) vf3)
               (.svf (&-> arg0 best-tri vertex 1 quad) vf4)
               (.svf (&-> arg0 best-tri vertex 2 quad) vf5)
               (label cfg-5)
-              (dummy-9 *touching-list* obj (the-as collide-shape-prim a2-3) f0-1 (the-as collide-shape #f) s5-0)
+              (add-touching-prims *touching-list* obj a2-3 f0-1 (the-as collide-tri-result #f) s5-0)
               )
             )
           )
@@ -154,7 +154,13 @@
         )
       (set! (-> a1-1 min y) (+ -40960.0 (-> s2-0 y)))
       (set! (-> a1-1 max y) (+ 20480.0 (-> s2-0 y)))
-      (dummy-13 *collide-cache* a1-1 (-> arg0 root-prim collide-with) (-> arg0 process) (new 'static 'pat-surface :skip #x1 :noentity #x1))
+      (fill-using-bounding-box
+        *collide-cache*
+        a1-1
+        (-> arg0 root-prim collide-with)
+        (-> arg0 process)
+        (new 'static 'pat-surface :skip #x1 :noentity #x1)
+        )
       )
     (set! sv-176 0)
     (while (< sv-176 8)
@@ -169,7 +175,7 @@
         (let ((f26-0 arg3))
           (set-vector! s1-0 0.0 0.0 arg3 1.0)
           (vector-rotate-y! s1-0 s1-0 f28-0)
-          (if (>= (dummy-18
+          (if (>= (probe-using-line-sphere
                     *collide-cache*
                     (vector+! (new 'stack-no-clear 'vector) s2-0 (new 'static 'vector :y 20480.0 :w 1.0))
                     s1-0
@@ -188,7 +194,7 @@
               (vector-rotate-y! s1-0 s1-0 f28-0)
               (vector+! s1-0 s2-0 s1-0)
               (set! (-> s1-0 y) (+ 20480.0 (-> s2-0 y)))
-              (when (>= (dummy-18
+              (when (>= (probe-using-line-sphere
                           *collide-cache*
                           s1-0
                           (new 'static 'vector :y -251658240.0 :w 1.0)
@@ -298,7 +304,7 @@
     )
   )
 
-(defmethod dummy-56 collide-shape-moving ((obj collide-shape-moving) (arg0 pat-surface))
+(defmethod set-and-handle-pat! collide-shape-moving ((obj collide-shape-moving) (arg0 pat-surface))
   (with-pp
     (set! (-> obj cur-pat) arg0)
     (set! (-> obj poly-pat) arg0)
@@ -319,7 +325,7 @@
         (set! (-> obj surf) *standard-ground-surface*)
         )
       )
-    (if (logtest? (-> obj root-prim prim-core action) 512)
+    (if (logtest? (-> obj root-prim prim-core action) (collide-action ca-9))
         (set! (-> obj surf) *race-track-surface*)
         )
     (when (nonzero? (-> arg0 event))
@@ -356,7 +362,9 @@
          (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'deadlyup)
          )
         (((pat-event burnup))
-         (if (zero? (logand (-> (the-as target (-> obj process)) control root-prim prim-core action) 512))
+         (if (zero?
+               (logand (-> (the-as target (-> obj process)) control root-prim prim-core action) (collide-action ca-9))
+               )
              (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'burnup)
              )
          )
@@ -404,7 +412,7 @@
     (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
     (TODO-RENAME-28 arg0 a1-1)
     )
-  (dummy-56 arg0 (-> arg1 best-tri pat))
+  (set-and-handle-pat! arg0 (-> arg1 best-tri pat))
   (vector-! sv-64 (the-as vector (-> arg1 best-from-prim prim-core)) (-> arg1 best-tri intersect))
   (set! (-> sv-64 w) 1.0)
   (vector-normalize! sv-64 1.0)
@@ -856,12 +864,12 @@
         0.0
         (let ((f0-4 (if s1-0
                         (misty-ambush-height-probe s0-0 81920.0)
-                        (dummy-10
+                        (fill-and-probe-using-line-sphere
                           *collide-cache*
                           s0-0
                           (new 'static 'vector :y -81920.0 :w 1.0)
                           40.96
-                          (the-as int arg1)
+                          (the-as collide-kind arg1)
                           (-> obj process)
                           sv-144
                           1
@@ -887,7 +895,7 @@
           )
         )
       )
-    (when (logtest? (-> obj root-prim collide-with) 30)
+    (when (logtest? (-> obj root-prim collide-with) (collide-kind cak-1 cak-2 cak-3 target))
       (let ((a1-7 (new 'stack-no-clear 'touching-shapes-entry)))
         (set! (-> a1-7 cshape1) (the-as collide-shape 1))
         (set! (-> a1-7 cshape2) (the-as collide-shape *touching-list*))
@@ -1011,7 +1019,7 @@
   (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
     (cond
       ((dummy-36 obj s5-0 (the-as float arg0) arg1)
-       (dummy-13 *collide-cache* s5-0 arg1 (-> obj process) (-> obj pat-ignore-mask))
+       (fill-using-bounding-box *collide-cache* s5-0 arg1 (-> obj process) (-> obj pat-ignore-mask))
        (if (and *display-collide-cache* (= (-> obj process type) target))
            (dummy-9 *collide-cache*)
            )
@@ -1198,15 +1206,13 @@
       (let ((gp-1 (-> v1-4 next0)))
         (while (!= v1-4 (-> *collide-player-list* alive-list-end))
           (let ((s5-1 (-> (the-as connection v1-4) param1)))
-            (if (or
-                    (and (not *display-actor-anim*) (not *display-process-anim*))
-                    (or
-                      (= (-> (the-as collide-shape s5-1) process) *target*)
-                      (name= *display-actor-anim* (-> (the-as collide-shape s5-1) process name))
-                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-1) process))
-                      )
+            (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                    (or (= (-> (the-as collide-shape s5-1) process) *target*)
+                        (name= *display-actor-anim* (-> (the-as collide-shape s5-1) process name))
+                        (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-1) process))
+                        )
                     )
-                (dummy-31 (the-as collide-shape s5-1))
+                (debug-draw (the-as collide-shape s5-1))
                 )
             )
           (set! v1-4 gp-1)
@@ -1220,15 +1226,13 @@
       (let ((gp-2 (-> v1-19 next0)))
         (while (!= v1-19 (-> *collide-hit-by-player-list* alive-list-end))
           (let ((s5-2 (-> (the-as connection v1-19) param1)))
-            (if (or
-                    (and (not *display-actor-anim*) (not *display-process-anim*))
-                    (or
-                      (= (-> (the-as collide-shape s5-2) process) *target*)
-                      (name= *display-actor-anim* (-> (the-as collide-shape s5-2) process name))
-                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-2) process))
-                      )
+            (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                    (or (= (-> (the-as collide-shape s5-2) process) *target*)
+                        (name= *display-actor-anim* (-> (the-as collide-shape s5-2) process name))
+                        (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-2) process))
+                        )
                     )
-                (dummy-31 (the-as collide-shape s5-2))
+                (debug-draw (the-as collide-shape s5-2))
                 )
             )
           (set! v1-19 gp-2)
@@ -1242,15 +1246,13 @@
       (let ((gp-3 (-> v1-34 next0)))
         (while (!= v1-34 (-> *collide-usually-hit-by-player-list* alive-list-end))
           (let ((s5-3 (-> (the-as connection v1-34) param1)))
-            (if (or
-                    (and (not *display-actor-anim*) (not *display-process-anim*))
-                    (or
-                      (= (-> (the-as collide-shape s5-3) process) *target*)
-                      (name= *display-actor-anim* (-> (the-as collide-shape s5-3) process name))
-                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-3) process))
-                      )
+            (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                    (or (= (-> (the-as collide-shape s5-3) process) *target*)
+                        (name= *display-actor-anim* (-> (the-as collide-shape s5-3) process name))
+                        (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-3) process))
+                        )
                     )
-                (dummy-31 (the-as collide-shape s5-3))
+                (debug-draw (the-as collide-shape s5-3))
                 )
             )
           (set! v1-34 gp-3)
@@ -1264,15 +1266,13 @@
       (let ((gp-4 (-> v1-49 next0)))
         (while (!= v1-49 (-> *collide-hit-by-others-list* alive-list-end))
           (let ((s5-4 (-> (the-as connection v1-49) param1)))
-            (if (or
-                    (and (not *display-actor-anim*) (not *display-process-anim*))
-                    (or
-                      (= (-> (the-as collide-shape s5-4) process) *target*)
-                      (name= *display-actor-anim* (-> (the-as collide-shape s5-4) process name))
-                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-4) process))
-                      )
+            (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                    (or (= (-> (the-as collide-shape s5-4) process) *target*)
+                        (name= *display-actor-anim* (-> (the-as collide-shape s5-4) process name))
+                        (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape s5-4) process))
+                        )
                     )
-                (dummy-31 (the-as collide-shape s5-4))
+                (debug-draw (the-as collide-shape s5-4))
                 )
             )
           (set! v1-49 gp-4)
@@ -1286,7 +1286,8 @@
   (none)
   )
 
-(defmethod dummy-31 collide-shape ((obj collide-shape))
+
+(defmethod debug-draw collide-shape ((obj collide-shape))
   (if (sphere-in-view-frustum? (the-as sphere (-> obj root-prim prim-core)))
       (debug-draw-world-sphere (-> obj root-prim))
       )

@@ -355,8 +355,9 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   auto dest = compile_error_guard(args.unnamed.at(0), env);
   auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
 
-  if (!src->settable() || src->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(form, "Cannot .svf from this. Got a {}.", dest->print());
+  if (!src->settable() || (src->ireg().reg_class != RegClass::VECTOR_FLOAT &&
+                           src->ireg().reg_class != RegClass::INT_128)) {
+    throw_compiler_error(form, "Cannot .svf from this. Got a {}.", src->print());
   }
 
   auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(dest);

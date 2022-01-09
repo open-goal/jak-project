@@ -61,6 +61,7 @@ set(RUNTIME_SOURCE
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/collide_func.cpp
+        mips2c/functions/collide_mesh.cpp
         mips2c/functions/draw_string.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
