@@ -530,10 +530,6 @@
   (stack-size-set! (-> self main-thread) 512)
 
   (let ((disp *display*))
-    (#when PC_PORT
-      (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)
-      )
-
     ;; todo spad terrain context
     (set! *teleport* #t)
     (update-per-frame-settings! *setting-control*)
@@ -630,6 +626,12 @@
         ;; debug drawing
         (when *debug-segment*
           (debug-draw-buffers) ;; lines/text
+
+          (#when PC_PORT
+            (if (-> *pc-settings* debug-pad-display)
+              (debug-pad-display (-> *cpad-list* cpads 0))
+              )
+            )
 
           ;; debug dma
           (with-dma-buffer-add-bucket ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))

@@ -1548,6 +1548,7 @@
  "nav/navigate-h.gc"
  "load/load-dgo.gc"
  "load/ramdisk.gc"
+ "pc/pckernel.gc" ;; added
  "sound/gsound.gc"
  "math/transformq.gc"
  "collide/collide-func.gc"
@@ -1656,7 +1657,6 @@
  "gfx/tie/prototype.gc"
  "collide/main-collide.gc"
  "game/video.gc"
- "pc/pckernel.gc" ;; added
  "game/main.gc"
  "collide/collide-cache.gc"
  "entity/relocate.gc"
