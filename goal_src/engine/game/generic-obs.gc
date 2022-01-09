@@ -116,12 +116,11 @@
   :code
   (behavior ()
     (while #t
-      (when (and
-              *target*
-              (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
-              (logtest? (-> *target* control root-prim prim-core action) 64)
-              (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range))))
-              )
+      (when (and *target*
+                 (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
+                 (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-6))
+                 (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range))))
+                 )
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
           (set! (-> a1-1 num-params) 1)
@@ -382,12 +381,12 @@
               (case (-> self anim-mode)
                 (('play1 'play)
                  (>= (ja-frame-num 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                               (-> self skel root-channel 0 frame-group)
-                                                               )
-                                                         data
-                                                         0
-                                                         length
-                                                         )
+                                                            (-> self skel root-channel 0 frame-group)
+                                                            )
+                                                        data
+                                                        0
+                                                        length
+                                                        )
                                                     -2
                                                     )
                                            )
@@ -423,14 +422,15 @@
     (if (!= (-> self cur-post-hook) (-> self new-post-hook))
         (set! (-> self cur-post-hook) (-> self new-post-hook))
         )
-    (when (and (-> self new-joint-anim) (nonzero? (-> self skel)) (and
-                                                                    (!= (if (> (-> self skel active-channels) 0)
-                                                                              (-> self skel root-channel 0 frame-group)
-                                                                              )
-                                                                        (-> self new-joint-anim)
-                                                                        )
-                                                                    (!= (-> self anim-mode) 'clone-anim)
-                                                                    )
+    (when (and (-> self new-joint-anim)
+               (nonzero? (-> self skel))
+               (and (!= (if (> (-> self skel active-channels) 0)
+                            (-> self skel root-channel 0 frame-group)
+                            )
+                        (-> self new-joint-anim)
+                        )
+                    (!= (-> self anim-mode) 'clone-anim)
+                    )
                )
       (ja-channel-push! 1 (the-as int (-> self new-joint-anim-blend)))
       (let ((gp-0 (-> self skel root-channel 0)))
@@ -559,8 +559,8 @@
     (arg3
       (let ((s4-2 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
         (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
-          (set! (-> s2-0 prim-core collide-as) (the-as uint #x8040))
-          (set! (-> s2-0 collide-with) (the-as uint 16))
+          (set! (-> s2-0 prim-core collide-as) (collide-kind powerup blue-eco-suck))
+          (set! (-> s2-0 collide-with) (collide-kind target))
           (set-vector! (-> s2-0 local-sphere) (-> arg3 x) (-> arg3 y) (-> arg3 z) (-> arg3 w))
           (set-root-prim! s4-2 s2-0)
           )
@@ -852,17 +852,16 @@
 
 (defbehavior process-release? process ((arg0 process))
   (let ((gp-0 (command-get-process arg0 *target*)))
-    (the-as symbol (if (and
-                           gp-0
-                           (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-1 from) self)
-                             (set! (-> a1-1 num-params) 1)
-                             (set! (-> a1-1 message) 'query)
-                             (set! (-> a1-1 param 0) (the-as uint 'mode))
-                             (send-event-function gp-0 a1-1)
-                             )
-                           'target-grab
-                           )
+    (the-as symbol (if (and gp-0
+                            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                              (set! (-> a1-1 from) self)
+                              (set! (-> a1-1 num-params) 1)
+                              (set! (-> a1-1 message) 'query)
+                              (set! (-> a1-1 param 0) (the-as uint 'mode))
+                              (send-event-function gp-0 a1-1)
+                              )
+                            'target-grab
+                            )
                        (send-event gp-0 'end-mode)
                        #t
                        )
@@ -903,35 +902,30 @@
     )
   )
 
-;; TODO modified!
 (defun ja-anim-done? ((arg0 process))
-   (let ((gp-0 (command-get-process arg0 *target*)))
-    (when gp-0
-      (cond
-       ((type-type? (-> gp-0 type) manipy)
-        (the-as symbol (send-event gp-0 'query 'done))
-        )
-       ((type-type? (-> gp-0 type) process-drawable)
-        (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
-
-          (rlet ((pp :reg r13 :type process))
-              (let* ((old-pp pp)
-                     (ret-val (begin
-                                ;; set the process
-                                (set! pp gp-0)
-                                ;; run!
-                                (ja-done? 0)
-                                )))
-                ;; restore the old pp
-                (set! pp old-pp)
-                ret-val
-                )
+  (with-pp
+    (let ((gp-0 (command-get-process arg0 *target*)))
+      (the-as symbol (when gp-0
+                       (cond
+                         ((type-type? (-> gp-0 type) manipy)
+                          (send-event gp-0 'query 'done)
+                          )
+                         ((type-type? (-> gp-0 type) process-drawable)
+                          (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
+                            (let ((s5-0 pp))
+                              (set! pp gp-0)
+                              (let ((v0-1 (the-as object (ja-done? 0))))
+                                (set! pp s5-0)
+                                v0-1
+                                )
+                              )
+                            )
+                          )
+                         )
+                       )
               )
-          )
-        )
-       )
       )
-     )
+    )
   )
 
 (defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
@@ -2073,17 +2067,16 @@
             )
           )
         )
-      (if (and
-              (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-              (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-5 from) self)
-                (set! (-> a1-5 num-params) 2)
-                (set! (-> a1-5 message) 'query)
-                (set! (-> a1-5 param 0) (the-as uint 'powerup))
-                (set! (-> a1-5 param 1) (the-as uint 3))
-                (not (send-event-function *target* a1-5))
-                )
-              )
+      (if (and (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+               (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-5 from) self)
+                 (set! (-> a1-5 num-params) 2)
+                 (set! (-> a1-5 message) 'query)
+                 (set! (-> a1-5 param 0) (the-as uint 'powerup))
+                 (set! (-> a1-5 param 1) (the-as uint 3))
+                 (not (send-event-function *target* a1-5))
+                 )
+               )
           (level-hint-spawn
             (game-text-id daxter-launcher-no-eco)
             "sksp0035"
@@ -2131,13 +2124,10 @@
     )
   :trans
   (behavior ()
-    (if (or
-            (or
-              (not *target*)
-              (< (-> self active-distance)
-                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                 )
-              )
+    (if (or (or (not *target*) (< (-> self active-distance)
+                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                  )
+                )
             (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
               (set! (-> a1-1 from) self)
               (set! (-> a1-1 num-params) 2)
@@ -2151,15 +2141,12 @@
         )
     (spawn (-> self part) (-> self root-override trans))
     (sound-play-by-name (static-sound-name "launch-idle") (-> self sound-id) 1024 0 0 1 #t)
-    (if (and
-            (and
-              *target*
-              (>= (+ 2867.2 (-> self root-override root-prim prim-core world-sphere w))
-                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+    (if (and (and *target* (>= (+ 2867.2 (-> self root-override root-prim prim-core world-sphere w))
+                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                               )
                   )
-              )
-            (< (- (-> *display* base-frame-counter) (-> self state-time)) 150)
-            )
+             (< (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+             )
         (send-event *target* 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
         )
     (none)
@@ -2181,8 +2168,8 @@
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
       (set-root-prim! s4-0 s3-0)
       )
@@ -2242,8 +2229,8 @@
   (stack-size-set! (-> self main-thread) 128)
   (let ((s2-0 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
     (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
-      (set! (-> s1-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s1-0 collide-with) (the-as uint 16))
+      (set! (-> s1-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s1-0 collide-with) (collide-kind target))
       (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
       (set-root-prim! s2-0 s1-0)
       )
@@ -2456,9 +2443,9 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s2-0 prim-core collide-as) (the-as uint 272))
-      (set! (-> s2-0 collide-with) (the-as uint 3022))
-      (set! (-> s2-0 prim-core offense) 4)
+      (set! (-> s2-0 prim-core collide-as) (collide-kind target enemy))
+      (set! (-> s2-0 collide-with) (collide-kind cak-1 cak-2 cak-3 powerup crate enemy wall-object ground-object))
+      (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 arg1)
       (set-root-prim! s4-0 s2-0)
       )

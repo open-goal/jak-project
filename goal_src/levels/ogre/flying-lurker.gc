@@ -347,17 +347,23 @@
 
 (defstate plunger-lurker-die (plunger-lurker)
   :code
-  (behavior () (dummy-18 self) (deactivate self) (suspend) 0 (none))
+  (behavior ()
+    (dummy-18 self)
+    (deactivate self)
+    (suspend)
+    0
+    (none)
+    )
   )
 
 (defmethod init-from-entity! plunger-lurker ((obj plunger-lurker) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 0)
       (set-vector! (-> s3-0 local-sphere) 0.0 20480.0 -16384.0 40960.0)
       (set-root-prim! s4-0 s3-0)
@@ -432,10 +438,9 @@
           (s4-0 #f)
           )
       (when (-> obj draw shadow)
-        (when (or
-                (logtest? (-> obj draw status) (draw-status drwf03))
-                (< (vector-vector-xz-distance-squared (-> obj root trans) (camera-pos)) 10485760000.0)
-                )
+        (when (or (logtest? (-> obj draw status) (draw-status drwf03))
+                  (< (vector-vector-xz-distance-squared (-> obj root trans) (camera-pos)) 10485760000.0)
+                  )
           (let ((s3-1 (new 'stack-no-clear 'collide-tri-result))
                 (a1-1 (new 'stack-no-clear 'vector))
                 (a2-0 (new 'stack-no-clear 'vector))
@@ -445,10 +450,9 @@
             (set-vector! a2-0 0.0 -81920.0 0.0 1.0)
             (when (>= (dummy-10 *collide-cache* a1-1 a2-0 8192.0 1 pp s3-1 1) 0.0)
               (set! (-> s3-1 intersect w) 8192.0)
-              (when (and
-                      (sphere-in-view-frustum? (the-as sphere (-> s3-1 intersect)))
-                      (< 822083600.0 (vector-vector-distance-squared (-> s3-1 intersect) (camera-pos)))
-                      )
+              (when (and (sphere-in-view-frustum? (the-as sphere (-> s3-1 intersect)))
+                         (< 822083600.0 (vector-vector-distance-squared (-> s3-1 intersect) (camera-pos)))
+                         )
                 (set! s4-0 #t)
                 (let ((v1-17 s5-0))
                   (set! (-> v1-17 settings flags) (logand -33 (-> v1-17 settings flags)))
@@ -518,7 +522,11 @@
 
 (defstate flying-lurker-die (flying-lurker)
   :code
-  (behavior () (dummy-18 self) (deactivate self) (none))
+  (behavior ()
+    (dummy-18 self)
+    (deactivate self)
+    (none)
+    )
   )
 
 (defstate flying-lurker-sleep (flying-lurker)
@@ -557,9 +565,9 @@
           0.0
           (let* ((f1-6 (* -81920.0 (the float (-> self rank))))
                  (f0-10 (+ (if (< f26-0 f0-6)
-                                (fmax (+ -81920.0 f1-6) (- f26-0 f0-6))
-                                (fmin (+ 245760.0 f1-6) (- f26-0 f0-6))
-                                )
+                               (fmax (+ -81920.0 f1-6) (- f26-0 f0-6))
+                               (fmin (+ 245760.0 f1-6) (- f26-0 f0-6))
+                               )
                            f28-0
                            )
                         )
@@ -577,14 +585,13 @@
   )
 
 (defbehavior flying-lurker-move flying-lurker ()
-  (+!
-    (-> self curve-position)
-    (/ (the float
-             (* (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter)) (the int (-> self speed)))
-             )
-       (path-distance (-> self path))
-       )
-    )
+  (+! (-> self curve-position)
+      (/ (the float
+              (* (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter)) (the int (-> self speed)))
+              )
+         (path-distance (-> self path))
+         )
+      )
   (set! (-> self curve-position) (fmin 1.0 (fmax 0.0 (-> self curve-position))))
   (eval-path-curve! (-> self path) (-> self root trans) (-> self curve-position) 'interp)
   (cond
@@ -777,13 +784,11 @@
       (flying-lurker-calc-speed (meters 15.0) (meters 30.0) (meters 0.11666667) (meters 0.083333336))
       (flying-lurker-move)
       (flying-lurker-rotate)
-      (when (and
-              (-> self alt-actor)
-              (or
-                (< (vector-vector-distance-squared (-> self root trans) (-> self alt-actor extra trans)) 6710886400.0)
-                (and *target* (< 4194304000000.0 (vector-vector-distance-squared (-> self root trans) (target-pos 0))))
-                )
-              )
+      (when (and (-> self alt-actor)
+                 (or (< (vector-vector-distance-squared (-> self root trans) (-> self alt-actor extra trans)) 6710886400.0)
+                     (and *target* (< 4194304000000.0 (vector-vector-distance-squared (-> self root trans) (target-pos 0))))
+                     )
+                 )
         (dummy-30 (-> self alt-actor) (entity-perm-status dead) #f)
         (entity-birth-no-kill (-> self alt-actor))
         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
@@ -809,8 +814,8 @@
   (behavior ()
     (while #t
       (when (not (= (if (> (-> self skel active-channels) 0)
-                         (-> self skel root-channel 0 frame-group)
-                         )
+                        (-> self skel root-channel 0 frame-group)
+                        )
                     (-> self draw art-group data 5)
                     )
                  )
@@ -949,23 +954,21 @@
 (defbehavior flying-lurker-play-intro flying-lurker ()
   (logclear! (-> self mask) (process-mask actor-pause))
   (close-specific-task! (game-task plunger-lurker-hit) (task-status unknown))
-  (while (and
-           *target*
-           (logtest? (-> *target* control unknown-surface00 flags) 2048)
-           (zero? (logand (-> *target* control status) 1))
-           )
+  (while (and *target*
+              (logtest? (-> *target* control unknown-surface00 flags) 2048)
+              (zero? (logand (-> *target* control status) 1))
+              )
     (suspend)
     )
   (while (not (process-grab? *target*))
     (suspend)
     )
   (kill-current-level-hint '(notice) '() 'exit)
-  (while (or
-           (-> *setting-control* current talking)
-           (-> *setting-control* current spooling)
-           (-> *setting-control* current hint)
-           (!= (-> *level* loading-level) (-> *level* level-default))
-           )
+  (while (or (-> *setting-control* current talking)
+             (-> *setting-control* current spooling)
+             (-> *setting-control* current hint)
+             (!= (-> *level* loading-level) (-> *level* level-default))
+             )
     (suspend)
     )
   (suspend)
@@ -1065,7 +1068,10 @@
   :event
   flying-lurker-handler
   :exit
-  (behavior () (clear-pending-settings-from-process *setting-control* self 'allow-progress) (none))
+  (behavior ()
+    (clear-pending-settings-from-process *setting-control* self 'allow-progress)
+    (none)
+    )
   :code
   (behavior ()
     (when (play-movie?)
@@ -1197,9 +1203,15 @@
       )
     )
   :exit
-  (behavior () (ja-channel-set! 0) (none))
+  (behavior ()
+    (ja-channel-set! 0)
+    (none)
+    )
   :code
-  (behavior ((arg0 handle) (arg1 string)) (clone-anim arg0 3 #t arg1) (none))
+  (behavior ((arg0 handle) (arg1 string))
+    (clone-anim arg0 3 #t arg1)
+    (none)
+    )
   )
 
 (defstate flying-lurker-idle (flying-lurker)
@@ -1270,7 +1282,10 @@
       )
     )
   :exit
-  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
+  (behavior ()
+    (logclear! (-> self draw status) (draw-status drwf01))
+    (none)
+    )
   :trans
   (behavior ()
     (spool-push *art-control* "flying-lurker-intro" 0 self -99.0)

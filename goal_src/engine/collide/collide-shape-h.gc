@@ -164,19 +164,48 @@
 
 ;; These are the settings that can be set per primtive. 
 
-(defenum collide-as-kind
+
+(defenum collide-kind
   :type uint64
   :bitfield #t
   (background 0)
-  (cak-4 4)
+  (cak-1 1) ;; 
+  (cak-2 2)
+  (cak-3 3)
+  (target 4) ;; target
   (water 5)
-  (enemy 8)
+  (powerup 6)
+  (crate 7)
+  (enemy 8) ;; also used for powerups
+  (wall-object 9) ;; also object. door, pusher (blockers?)
+  (projectile 10)
+  (ground-object 11) ;; object, like darkecobarray, platforms
+  (target-attack 12) ;; all target attacks
+  (mother-spider 13)
+  (cak-14 14) ;; unused
+  (blue-eco-suck 15) ;; manipy, orb-cache-top, 
   )
 
 (defenum collide-action
   :type uint32
   :bitfield #t
   (solid 0)
+  (ca-1 1) ;; sticky?
+  (ca-2 2) ;; target?
+  (ca-3 3) ;; edge grab related
+  (ca-4 4)
+  (ca-5 5) ;; unused?
+  (ca-6 6) ;; swing pole, manipy
+  (ca-7 7) ;; camera
+  (ca-8 8)  ;; swingpole
+  (ca-9 9) ;; eco vents?
+  (ca-10 10)
+  (ca-11 11)
+  (ca-12 12)
+  (ca-13 13)
+  (ca-14 14)
+  (ca-15 15) ;; manipy
+  (ca-16 16)
   )
 
 ;; this field is a bit confusing. you have to have a higher offense to win against an object.
@@ -192,18 +221,13 @@
   (indestructible 4)  ;; can't attack it.
   )
 
-(defenum collide-with-kind
-  :type uint64
-  :bitfield #t
-  (target 4)
-  )
 
 ;; Every primitive has a prim-core.
 ;; this is a 32-byte chunk of data that can be pulled out an put in collide caches
 ;; it stores the transformed world sphere and the collision settings
 (deftype collide-prim-core (structure)
   ((world-sphere vector  :inline   :offset-assert 0)
-   (collide-as   collide-as-kind   :offset-assert 16)  ;; what are we (enemy, etc)
+   (collide-as   collide-kind      :offset-assert 16)  ;; what are we (enemy, etc)
    (action       collide-action    :offset-assert 24)  ;; what happens if we collide (physics)
    (offense      collide-offense   :offset-assert 28)  ;; how hard to we have to hit it? (touch, attack...)
    (prim-type    int8              :offset-assert 29)  ;; what type of primtive do we belong to?
@@ -224,11 +248,11 @@
    (transform-index int8                      :offset-assert 12)  ;; ?
    (prim-core       collide-prim-core :inline :offset-assert 16)  ;; core data
    (local-sphere    vector            :inline :offset-assert 48)  ;; sphere, pre transform
-   (collide-with    collide-with-kind         :offset-assert 64)  ;; things we can collide with
+   (collide-with    collide-kind              :offset-assert 64)  ;; things we can collide with
    
    ;; overlays of core.
    (world-sphere    vector            :inline :offset 16)
-   (collide-as      collide-as-kind           :offset 32)
+   (collide-as      collide-kind              :offset 32)
    (action          collide-action            :offset 40)
    (offense         collide-offense           :offset 44)
    (prim-type       int8                      :offset 45)
@@ -250,14 +274,14 @@
     (dummy-17 () none 17)
     (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
     (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
-    (dummy-20 (_type_ uint) symbol 20)
+    (dummy-20 (_type_ collide-kind) symbol 20)
     (num-mesh (_type_ collide-shape-prim) int 21)
     (on-platform-test (_type_ _type_ collide-overlap-result float) pat-surface 22)
     (should-push-away-test () none 23)
     (dummy-24 () none 24)
     (dummy-25 (_type_ process-drawable) symbol 25)
-    (set-collide-as! (_type_ handle) none 26)
-    (set-collide-with! (_type_ handle) none 27)
+    (set-collide-as! (_type_ collide-kind) none 26)
+    (set-collide-with! (_type_ collide-kind) none 27)
     )
   )
 
@@ -344,8 +368,8 @@
    (event-other           basic              :offset-assert 156)
    (root-prim             collide-shape-prim              :offset-assert 160)
    (riders                collide-sticky-rider-group              :offset-assert 164)
-   (backup-collide-as     uint64             :offset-assert 168)
-   (backup-collide-with   uint64             :offset-assert 176)
+   (backup-collide-as     collide-kind             :offset-assert 168)
+   (backup-collide-with   collide-kind             :offset-assert 176)
    )
   :method-count-assert 56
   :size-assert         #xb8
@@ -356,11 +380,11 @@
     (dummy-29 (_type_ int) none 29)
     (TODO-RENAME-30 (_type_ vector) object 30) ;; ret - symbol | float (CSPG::9)
     (dummy-31 (_type_) none 31)
-    (dummy-32 (_type_ object uint) none 32)
-    (dummy-33 (_type_ vector uint) none 33)
+    (dummy-32 (_type_ object collide-kind) none 32)
+    (dummy-33 (_type_ vector collide-kind) none 33)
     (dummy-34 (_type_ uint) collide-shape-prim  34)
     (dummy-35 (_type_) symbol 35)
-    (dummy-36 (_type_ bounding-box float uint) symbol 36)
+    (dummy-36 (_type_ bounding-box float collide-kind) symbol 36)
     (dummy-37 (_type_ vector) none 37)
     (find-collision-meshes (_type_) symbol 38)
     (dummy-39 (_type_ collide-shape collide-overlap-result) symbol 39)
@@ -375,10 +399,10 @@
     (clear-collide-with-as (_type_) none 48)
     (restore-collide-with-as (_type_) none 49)
     (backup-collide-with-as (_type_) none 50)
-    (set-root-prim-collide-with! (_type_ handle) none 51)
-    (set-root-prim-collide-as! (_type_ handle) none 52)
-    (dummy-53 (_type_ int int int) none 53)
-    (dummy-54 (_type_ int int) none 54)
+    (set-root-prim-collide-with! (_type_ collide-kind) none 51)
+    (set-root-prim-collide-as! (_type_ collide-kind) none 52)
+    (dummy-53 (_type_ int collide-kind collide-kind) none 53)
+    (dummy-54 (_type_ int collide-offense) none 54)
     (dummy-55 (_type_ process touching-shapes-entry float float float) none 55)
     )
   )
@@ -419,7 +443,7 @@
     (dummy-57 (_type_ vector) none 57)
     (dummy-58 (_type_ vector) symbol 58)
     (dummy-59 (_type_ vector uint float symbol symbol symbol) none 59)
-    (dummy-60 (_type_ float float symbol uint) symbol 60)
+    (dummy-60 (_type_ float float symbol collide-kind) symbol 60)
     (TODO-RENAME-61 (_type_ vector vector vector) none 61)
     (dummy-62 (_type_ vector float) vector 62)
     (dummy-63 (_type_ vector vector float) float 63)
@@ -438,13 +462,13 @@
   (let ((obj (object-new allocation type-to-make size-bytes)))
     (set! (-> obj cshape) (the-as collide-shape cshape))
     ;; sphere/mesh?
-    (set! (-> v0-0 prim-id) prim-id)
-    (set! (-> v0-0 prim-core action) (collide-action))
-    (set! (-> v0-0 prim-core collide-as) (collide-as-kind))
-    (set! (-> v0-0 collide-with) (collide-with-kind))
-    (set! (-> v0-0 transform-index) -2)
-    (set! (-> v0-0 prim-core offense) (collide-offense no-offense))
-    (set! (-> v0-0 prim-core prim-type) -2)
+    (set! (-> obj prim-id) prim-id)
+    (set! (-> obj prim-core action) (collide-action))
+    (set! (-> obj prim-core collide-as) (collide-kind))
+    (set! (-> obj collide-with) (collide-kind))
+    (set! (-> obj transform-index) -2)
+    (set! (-> obj prim-core offense) (collide-offense no-offense))
+    (set! (-> obj prim-core prim-type) -2)
     obj
     )
   )
@@ -577,7 +601,7 @@
              :prim-core
              (new 'static 'collide-prim-core
                   :world-sphere (new 'static 'vector :w 204800000.0)
-                  :collide-as (collide-as-kind background)
+                  :collide-as (collide-kind background)
                   :action (collide-action solid)
                   :offense (collide-offense indestructible)
                   :prim-type 2
@@ -593,7 +617,7 @@
              :prim-core
              (new 'static 'collide-prim-core
                   :world-sphere (new 'static 'vector :w 204800000.0)
-                  :collide-as (collide-as-kind water)
+                  :collide-as (collide-kind water)
                   :action (collide-action solid)
                   :offense (collide-offense indestructible)
                   :prim-type 2

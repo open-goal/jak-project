@@ -193,7 +193,7 @@
 
 (defmethod draw-egg-shadow mother-spider-egg ((obj mother-spider-egg) (arg0 vector) (arg1 symbol))
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) 8))
+    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-1 (new 'stack-no-clear 'vector))
            (a2-1 (new 'stack-no-clear 'vector))
@@ -246,7 +246,10 @@
       )
     )
   :enter
-  (behavior () (set! (-> self falling-start-time) (the-as uint (-> *display* base-frame-counter))) (none))
+  (behavior ()
+    (set! (-> self falling-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (none)
+    )
   :trans
   (behavior ()
     (let ((f30-0 (fmin
@@ -401,7 +404,7 @@
 (defstate mother-spider-egg-hatch (mother-spider-egg)
   :trans
   (behavior ()
-    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) 8))
+    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status drwf03)))
       (let ((a1-0 (new 'stack-no-clear 'vector)))
         (set! (-> a1-0 quad) (-> self fall-dest quad))
         (compute-and-draw-shadow
@@ -590,7 +593,7 @@
   :code
   (behavior ()
     (send-event (ppointer->process (-> self parent-override)) 'untrigger)
-    (logior! (-> self draw status) 2)
+    (logior! (-> self draw status) (draw-status drwf01))
     (let ((v1-8 (-> self draw shadow-ctrl)))
       (logior! (-> v1-8 settings flags) 32)
       )
@@ -618,10 +621,10 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 1)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense touch))
       (set-vector! (-> s3-0 local-sphere) 0.0 2048.0 0.0 3686.4)
       (set-root-prim! s4-1 s3-0)
       )

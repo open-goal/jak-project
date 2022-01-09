@@ -70,7 +70,7 @@
   (none)
   )
 
-(defun probe-traverse-draw-node ((arg0 draw-node) (arg1 int))
+(defun-recursive probe-traverse-draw-node none ((arg0 draw-node) (arg1 int))
   "Print out info for a draw node, and recursively its children. They forgot to finish this one."
   (indent-to arg1)
   (format #t "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
@@ -155,6 +155,7 @@
 (define collide-vu0-block (the-as vu-function 0))
 
 ;; TODO: the actual collide-probe-node function.
+(define-extern collide-probe-node (function (inline-array draw-node) int collide-list int))
 
 (defun print-out ((arg0 int))
   (format *stdcon* "~d~%" arg0)
@@ -166,6 +167,7 @@
   )
 
 ;; collide-probe-instance-tie
+(define-extern collide-probe-instance-tie (function object int collide-list int int)) ;; drawable is either an instance-tie or a draw-node inline arrary
 
 
 
@@ -173,7 +175,7 @@
 ;; Collide Probe Setup/Wrappers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun collide-probe-collide-fragment-tree-make-list ((arg0 drawable-tree-collide-fragment) (arg1 int))
+(defun collide-probe-collide-fragment-tree-make-list ((arg0 drawable-tree-collide-fragment) (arg1 collide-list))
   "Given a collide fragment tree, make a list.
    Note: you _must_ have more than 8 collide fragments, so you have more than 1 level in the tree."
   (cond
@@ -190,7 +192,7 @@
   (none)
   )
 
-(defun collide-probe-instance-tie-tree-make-list ((arg0 drawable-tree-instance-tie) (arg1 int))
+(defun collide-probe-instance-tie-tree-make-list ((arg0 drawable-tree-instance-tie) (arg1 collide-list))
   "Given a TIE instance tree, make a list.
    Unlike tfrag, they explicitly support the < 8 node case"
   (cond

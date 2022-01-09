@@ -118,49 +118,49 @@
 (defstate idle (warp-gate)
   :virtual #t
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('hide)
-                                                                                    (go-virtual hidden)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('hide)
+       (go-virtual hidden)
+       )
+      )
+    )
   :code
   (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (while #t
-      (when (and
-              (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-              (and
-                (>= (-> self level-slot) 0)
-                (not (movie?))
-                (not (level-hint-displayed?))
-                (zero? (logand (-> *target* control root-prim prim-core action) #x7380))
-                (let* ((v1-16 (-> self root))
-                       (a1-2 (-> *target* control trans))
-                       (f0-1 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) a1-2 (-> v1-16 trans))))
-                       )
-                  (or (!= (-> self level-slot) 3) (and (< f0-1 -9102.223) (< -32768.0 f0-1)))
-                  )
-                )
-              )
+      (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                 (and (>= (-> self level-slot) 0)
+                      (not (movie?))
+                      (not (level-hint-displayed?))
+                      (zero?
+                        (logand (-> *target* control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
+                        )
+                      (let* ((v1-16 (-> self root))
+                             (a1-2 (-> *target* control trans))
+                             (f0-1 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) a1-2 (-> v1-16 trans))))
+                             )
+                        (or (!= (-> self level-slot) 3) (and (< f0-1 -9102.223) (< -32768.0 f0-1)))
+                        )
+                      )
+                 )
         (hide-hud)
         (level-hint-surpress!)
         (kill-current-level-hint '() '(sidekick voicebox) 'exit)
-        (when (and
-                (hud-hidden?)
-                (can-grab-display? (the-as process-taskable self))
-                (cond
-                  ((or (= (-> *target* next-state name) 'target-warp-in) (= (-> *target* next-state name) 'target-warp-out))
-                   (set! (-> self state-time) (-> *display* base-frame-counter))
-                   #f
+        (when (and (hud-hidden?)
+                   (can-grab-display? (the-as process-taskable self))
+                   (cond
+                     ((or (= (-> *target* next-state name) 'target-warp-in) (= (-> *target* next-state name) 'target-warp-out))
+                      (set! (-> self state-time) (-> *display* base-frame-counter))
+                      #f
+                      )
+                     (else
+                       #t
+                       )
+                     )
+                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
                    )
-                  (else
-                    #t
-                    )
-                  )
-                (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
-                )
           (if (and (cpad-pressed? 0 circle) (process-grab? *target*))
               (go-virtual active)
               )
@@ -255,14 +255,12 @@
     )
   :trans
   (behavior ()
-    (when (or
-            (and
-              (cpad-pressed? 0 triangle)
-              (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
-              (process-release? *target*)
+    (when (or (and (cpad-pressed? 0 triangle)
+                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+                   (process-release? *target*)
+                   )
+              (not *target*)
               )
-            (not *target*)
-            )
       (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
       (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
       (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
@@ -511,16 +509,16 @@
           )
     (dummy-29 s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 2048))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
       (set-root-prim! s5-0 s4-0)
       (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-        (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-        (set! (-> s3-0 collide-with) (the-as uint 16))
-        (set! (-> s3-0 prim-core action) (the-as uint 3))
-        (set! (-> s3-0 prim-core offense) 4)
+        (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s3-0 collide-with) (collide-kind target))
+        (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-0 transform-index) 4)
         (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
         (append-prim s4-0 s3-0)
@@ -536,17 +534,16 @@
 (defmethod pressable? warp-gate-switch ((obj warp-gate-switch))
   (let ((v1-2 (-> obj entity extra perm task)))
     (cond
-      ((logtest? (-> *target* control root-prim prim-core action) #x7380)
+      ((logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
        #f
        )
       ((= v1-2 (game-task training-door))
        (cond
-         ((and
-            (task-complete? *game-info* (game-task training-door))
-            (task-complete? *game-info* (game-task training-gimmie))
-            (task-complete? *game-info* (game-task training-climb))
-            (task-complete? *game-info* (game-task training-buzzer))
-            )
+         ((and (task-complete? *game-info* (game-task training-door))
+               (task-complete? *game-info* (game-task training-gimmie))
+               (task-complete? *game-info* (game-task training-climb))
+               (task-complete? *game-info* (game-task training-buzzer))
+               )
           #t
           )
          (else
@@ -711,12 +708,11 @@
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) #x4650)
       (case (-> self entity extra perm task)
         (((game-task training-door))
-         (when (and
-                 (task-complete? *game-info* (game-task training-door))
-                 (task-complete? *game-info* (game-task training-gimmie))
-                 (task-complete? *game-info* (game-task training-climb))
-                 (task-complete? *game-info* (game-task training-buzzer))
-                 )
+         (when (and (task-complete? *game-info* (game-task training-door))
+                    (task-complete? *game-info* (game-task training-gimmie))
+                    (task-complete? *game-info* (game-task training-climb))
+                    (task-complete? *game-info* (game-task training-buzzer))
+                    )
            (level-hint-spawn
              (game-text-id training-warp-gate-reminder)
              "sagevb39"
@@ -947,35 +943,31 @@
     (local-vars (v1-18 symbol))
     (while #t
       (let ((v1-5
-              (and
-                (and
-                  *target*
-                  (>= (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                  )
-                (and
-                  (-> *setting-control* current play-hints)
-                  (< 0.0 (-> *setting-control* current dialog-volume))
-                  (let ((v1-10 (-> self index)))
-                    (cond
-                      ((zero? v1-10)
-                       (and
-                         (>= (-> *game-info* fuel) 20.0)
-                         (not (task-closed? (game-task firecanyon-assistant) (task-status need-reward-speech)))
-                         )
-                       )
-                      ((= v1-10 2)
-                       (not (task-closed? (game-task village2-levitator) (task-status need-hint)))
-                       )
-                      ((= v1-10 3)
-                       (not (task-closed? (game-task village3-button) (task-status need-hint)))
-                       )
-                      (else
-                        #t
+              (and (and *target*
+                        (>= (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                         )
-                      )
-                    )
-                  )
-                )
+                   (and (-> *setting-control* current play-hints)
+                        (< 0.0 (-> *setting-control* current dialog-volume))
+                        (let ((v1-10 (-> self index)))
+                          (cond
+                            ((zero? v1-10)
+                             (and (>= (-> *game-info* fuel) 20.0)
+                                  (not (task-closed? (game-task firecanyon-assistant) (task-status need-reward-speech)))
+                                  )
+                             )
+                            ((= v1-10 2)
+                             (not (task-closed? (game-task village2-levitator) (task-status need-hint)))
+                             )
+                            ((= v1-10 3)
+                             (not (task-closed? (game-task village3-button) (task-status need-hint)))
+                             )
+                            (else
+                              #t
+                              )
+                            )
+                          )
+                        )
+                   )
               )
             )
         (when v1-5
@@ -984,10 +976,9 @@
              (until v1-18
                (suspend)
                (set! v1-18
-                     (or
-                       (not *target*)
-                       (< (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                       )
+                     (or (not *target*)
+                         (< (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                         )
                      )
                )
              (let* ((v1-23 (-> self index))
@@ -1009,24 +1000,22 @@
                )
              )
             )
-          (while (and
-                   *target*
-                   (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                   (zero? (logand (-> *target* control status) 1))
-                   )
+          (while (and *target*
+                      (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                      (zero? (logand (-> *target* control status) 1))
+                      )
             (suspend)
             )
           (set! (-> self state-time) (the-as uint (-> *display* base-frame-counter)))
           (process-grab? *target*)
           (process-entity-status! self (entity-perm-status bit-3) #t)
           (kill-current-level-hint '(ambient) '() 'exit)
-          (until (not (or (-> *setting-control* current talking) (or
-                                                                   (-> *setting-control* current spooling)
-                                                                   (-> *setting-control* current hint)
-                                                                   (-> *setting-control* current ambient)
-                                                                   (not *target*)
-                                                                   (logtest? (-> *target* state-flags) #x8008)
-                                                                   )
+          (until (not (or (-> *setting-control* current talking) (or (-> *setting-control* current spooling)
+                                                                     (-> *setting-control* current hint)
+                                                                     (-> *setting-control* current ambient)
+                                                                     (not *target*)
+                                                                     (logtest? (-> *target* state-flags) #x8008)
+                                                                     )
                           )
                       )
             (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
@@ -1038,15 +1027,14 @@
               (t9-14 a0-25 self a2-5 (the-as symbol a3-1) 0.0 0)
               )
             (copy-settings-from-target! *setting-control*)
-            (while (or
-                     (-> *setting-control* current talking)
-                     (-> *setting-control* current spooling)
-                     (-> *setting-control* current hint)
-                     (!= (-> *level* loading-level) (-> *level* level-default))
-                     (not *target*)
-                     (logtest? (-> *target* state-flags) #x8008)
-                     *progress-process*
-                     )
+            (while (or (-> *setting-control* current talking)
+                       (-> *setting-control* current spooling)
+                       (-> *setting-control* current hint)
+                       (!= (-> *level* loading-level) (-> *level* level-default))
+                       (not *target*)
+                       (logtest? (-> *target* state-flags) #x8008)
+                       *progress-process*
+                       )
               (suspend)
               )
             (while (< (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) 300)
@@ -1214,12 +1202,12 @@
             )
           (let ((a0-66 (-> self entity)))
             (if (when a0-66
-                    (let ((a0-67 (-> a0-66 extra perm task)))
-                      (if a0-67
-                          (= a0-67 (game-task none))
-                          )
-                      )
+                  (let ((a0-67 (-> a0-66 extra perm task)))
+                    (if a0-67
+                        (= a0-67 (game-task none))
+                        )
                     )
+                  )
                 (set! (-> self entity extra perm task) (game-task complete))
                 )
             )
