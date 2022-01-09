@@ -4103,6 +4103,43 @@
       )
   )
 
+(define *part-pick-menu* (the-as debug-menu #f))
+
+(defun dm-part-pick-func ((id int) (msg debug-menu-msg))
+  (if (zero? (-> *part-group-id-table* id))
+    (return 'invalid))
+  (when (= msg (debug-menu-msg press))
+    (set! (-> *part-group-id-table* 105) (-> *part-group-id-table* id))
+    (start-part)
+    )
+  (= (-> *part-group-id-table* 105) (-> *part-group-id-table* id))
+  )
+
+(defun build-particles-list ()
+  (debug-menu-remove-all-items *part-pick-menu*)
+  (dotimes (i (-> *part-group-id-table* length))
+    (let ((part (-> *part-group-id-table* i)))
+      (when (and (nonzero? part) (!= i 105))
+        (debug-menu-append-item *part-pick-menu* (new-dm-flag (-> part name) i dm-part-pick-func))
+        )
+      )
+    )
+  (set! (-> *part-pick-menu* items) (the-as pair (sort (-> *part-pick-menu* items) debug-menu-node<?)))
+  (none)
+  )
+
+(defun debug-menu-make-part-menu ((ctx debug-menu-context))
+  (let ((part-menu (new 'debug 'debug-menu ctx "Particles menu")))
+      (let ((pick-menu (new 'debug 'debug-menu ctx "Particle group pick menu")))
+        (set! *part-pick-menu* pick-menu)
+        (debug-menu-append-item part-menu (new-dm-submenu "Pick Particle group" pick-menu))
+        )
+      (debug-menu-append-item part-menu (new-dm-func "Refresh" #f build-particles-list))
+
+      (new-dm-submenu "Particles" part-menu)
+      )
+  )
+
 (defmacro dm-lambda-boolean-flag (val)
   "helper macro for making boolean buttons that don't just access symbols directly"
   `(lambda (arg (msg debug-menu-msg))
@@ -4162,6 +4199,7 @@
 
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
+  (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
   
   (debug-menu-append-item (-> *debug-menu-context* root-menu)
     (debug-menu-make-from-template *debug-menu-context*
