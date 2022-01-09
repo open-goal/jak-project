@@ -2260,11 +2260,11 @@ class IGen {
     `dst`'s element (W->X).
     - GROUP OPTIONS
     - 00b - Copy the least-significant element (X)
-    - 01b - Copy the second element (from the right)
-    - 10b - Copy the third element (from the right)
+    - 01b - Copy the second element (from the right) (Y)
+    - 10b - Copy the third element (from the right) (Z)
     - 11b - Copy the most significant element (W)
     Examples
-    ; xmm1 = (1.5, 2.5, 3.5, 4.5)
+    ; xmm1 = (1.5, 2.5, 3.5, 4.5) (W,Z,Y,X in x86 land)
     SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions
     > (1.5, 1.5, 1.5, 1.5)
     SHUFPS xmm1, xmm1, 0x39 ; Rotate right
