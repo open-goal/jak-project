@@ -552,10 +552,8 @@
         )
       )
     )
-  (let ((v0-3 (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
-    (set! (-> *shader-pick-menu* items) (the-as pair v0-3))
-    v0-3
-    )
+  (set! (-> *shader-pick-menu* items) (the-as pair (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
+  (none)
   )
 
 (defun dm-instance-pick-func ((arg0 string) (arg1 debug-menu-msg))
@@ -607,7 +605,7 @@
                    (dotimes (s2-0 (-> s3-0 length))
                      (let ((a1-4
                              (new
-                               'global
+                               'debug ;; was global
                                'debug-menu-item-flag
                                (the-as string (-> s3-0 data s2-0 name))
                                (-> s3-0 data s2-0 name)
@@ -4104,6 +4102,47 @@
       )
   )
 
+(define *part-pick-menu* (the-as debug-menu #f))
+(define *spawn-part-test* #t)
+
+(defun dm-part-pick-func ((id int) (msg debug-menu-msg))
+  (if (zero? (-> *part-group-id-table* id))
+    (return 'invalid))
+  (when (= msg (debug-menu-msg press))
+    (set! *part-tester-id* id)
+    (if *spawn-part-test*
+        (start-part)
+        )
+    )
+  (= *part-tester-id* id)
+  )
+
+(defun build-particles-list ()
+  (debug-menu-remove-all-items *part-pick-menu*)
+  (dotimes (i (-> *part-group-id-table* length))
+    (let ((part (-> *part-group-id-table* i)))
+      (when (and (nonzero? part))
+        (debug-menu-append-item *part-pick-menu* (new-dm-flag (-> part name) i dm-part-pick-func))
+        )
+      )
+    )
+  (set! (-> *part-pick-menu* items) (the-as pair (sort (-> *part-pick-menu* items) debug-menu-node<?)))
+  (none)
+  )
+
+(defun debug-menu-make-part-menu ((ctx debug-menu-context))
+  (let ((part-menu (new 'debug 'debug-menu ctx "Particles menu")))
+      (let ((pick-menu (new 'debug 'debug-menu ctx "Particle group pick menu")))
+        (set! *part-pick-menu* pick-menu)
+        (debug-menu-append-item part-menu (new-dm-submenu "Pick Particle group" pick-menu))
+        )
+      (debug-menu-append-item part-menu (new-dm-func "Refresh" #f build-particles-list))
+      (debug-menu-append-item part-menu (new-dm-bool "Spawn part tester" *spawn-part-test* dm-boolean-toggle-pick-func))
+
+      (new-dm-submenu "Particles" part-menu)
+      )
+  )
+
 (defmacro dm-lambda-boolean-flag (val)
   "helper macro for making boolean buttons that don't just access symbols directly"
   `(lambda (arg (msg debug-menu-msg))
@@ -4163,6 +4202,7 @@
 
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
+  (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
   
   (debug-menu-append-item (-> *debug-menu-context* root-menu)
     (debug-menu-make-from-template *debug-menu-context*

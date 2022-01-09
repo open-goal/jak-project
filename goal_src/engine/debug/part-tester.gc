@@ -5,9 +5,9 @@
 ;; name in dgo: part-tester
 ;; dgos: GAME, ENGINE
 
-(declare-type part-tester basic)
-
-(define-extern *part-tester* part-tester)
+(#when PC_PORT
+    (define *part-tester-id* 105)
+    )
 
 ;; DECOMP BEGINS
 
@@ -35,12 +35,9 @@
   :method-count-assert 14
   :size-assert         #x7c
   :flag-assert         #xe0100007c
-  (:states
-    part-tester-idle
-    )
   )
 
-
+(define-extern *part-tester* part-tester)
 (define *part-tester-name* (the-as string #f))
 
 (defmethod deactivate part-tester ((obj part-tester))
@@ -71,7 +68,17 @@
         (-> self root trans)
         (the-as rgba (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
         )
+      
+      ;; change this line to change the particle group to test
+      ;; notes:
+      ;;  - particles that use aux list won't work (warp parts)
+      ;;  - some particles may have callbacks that won't work yet
       (let ((gp-1 (-> *part-group-id-table* 105)))
+        (#when PC_PORT
+          (if (nonzero? (-> *part-group-id-table* *part-tester-id*))
+              (set! gp-1 (-> *part-group-id-table* *part-tester-id*))
+              )
+          )
         (let ((s5-1 (-> self root trans)))
           (when (!= gp-1 (-> self old-group))
             (when (nonzero? (-> self part))

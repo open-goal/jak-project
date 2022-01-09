@@ -1219,6 +1219,17 @@
   obj
   )
 
+(#cond
+ (PC_PORT
+  (defconstant LEVEL_HEAP_SIZE       (* 10416 1024)) ;; 10.416K
+  (defconstant LEVEL_HEAP_SIZE_DEBUG (* 11000 1024))
+  )
+ (#t
+  (defconstant LEVEL_HEAP_SIZE       (* 10416 1024)) ;; 10.416K
+  (defconstant LEVEL_HEAP_SIZE_DEBUG (* 25600 1024)) ;; 25.600K
+  )
+ )
+
 (defmethod alloc-levels! level-group ((obj level-group) (compact-level-heaps symbol))
   "Allocate the level heaps and load the common packages for levels."
 
@@ -1234,8 +1245,8 @@
       (load-package "common" global) ;; load COMMON unless we're debugging levels
       )
     ;; allocate level heaps. turn on compact-level-heaps for use in 32MB systems
-    (let ((level-heap-size (if compact-level-heaps (* 10416 1024)
-                                                   (* 25600 1024)))
+    (let ((level-heap-size (if compact-level-heaps LEVEL_HEAP_SIZE
+                                                   LEVEL_HEAP_SIZE_DEBUG))
            )
         (dotimes (lev LEVEL_COUNT)
           (let ((level-heap (-> obj level lev heap)))
