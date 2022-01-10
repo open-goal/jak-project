@@ -30,7 +30,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 }
 }  // namespace
 
-constexpr int SPRITE_RENDERER_MAX_SPRITES = 48;
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 1;
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {
@@ -42,10 +42,11 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
   m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(SpriteVertex3D);
   glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr, GL_STREAM_DRAW);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,                            // location 0 in the shader
-                        4,                            // 4 floats per vert (w unused)
-                        GL_FLOAT,                     // floats
-                        GL_TRUE,                      // normalized, ignored,
+  glVertexAttribPointer(
+      0,                                       // location 0 in the shader
+      4,                                       // 4 floats per vert (w unused)
+      GL_FLOAT,                                // floats
+      GL_TRUE,                                 // normalized, ignored,
       sizeof(SpriteVertex3D),                  //
       (void*)offsetof(SpriteVertex3D, xyz_sx)  // offset in array (why is this a pointer...)
   );
@@ -62,38 +63,30 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
 
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(
-      2,                                        // location 0 in the shader
-      4,                                        // 4 color components
-      GL_FLOAT,                                 // floats
-      GL_TRUE,                                  // normalized, ignored,
-      sizeof(SpriteVertex3D),                   //
+      2,                                     // location 0 in the shader
+      4,                                     // 4 color components
+      GL_FLOAT,                              // floats
+      GL_TRUE,                               // normalized, ignored,
+      sizeof(SpriteVertex3D),                //
       (void*)offsetof(SpriteVertex3D, rgba)  // offset in array (why is this a pointer...)
   );
 
   glEnableVertexAttribArray(3);
   glVertexAttribIPointer(
-      3,                                        // location 0 in the shader
-      2,                                        // 4 color components
-      GL_UNSIGNED_SHORT,                                 // floats
-      sizeof(SpriteVertex3D),                   //
+      3,                                             // location 0 in the shader
+      2,                                             // 4 color components
+      GL_UNSIGNED_SHORT,                             // floats
+      sizeof(SpriteVertex3D),                        //
       (void*)offsetof(SpriteVertex3D, flags_matrix)  // offset in array (why is this a pointer...)
   );
 
   glEnableVertexAttribArray(4);
-  glVertexAttribIPointer(4,                            // location 0 in the shader
-                         4,                            // 3 floats per vert
-                         GL_UNSIGNED_BYTE,             // floats
-      sizeof(SpriteVertex3D),               //
-      (void*)offsetof(SpriteVertex3D, vert_id)  // offset in array (why is this a pointer...)
-  );
-
-  glEnableVertexAttribArray(5);
   glVertexAttribIPointer(
-      5,                                        // location 0 in the shader
-      4,                                        // 3 floats per vert
-      GL_UNSIGNED_BYTE,                         // floats
-      sizeof(SpriteVertex3D),                   //
-      (void*)offsetof(SpriteVertex3D, tex_info)  // offset in array (why is this a pointer...)
+      4,                                     // location 0 in the shader
+      4,                                     // 3 floats per vert
+      GL_UNSIGNED_SHORT,                     // floats
+      sizeof(SpriteVertex3D),                //
+      (void*)offsetof(SpriteVertex3D, info)  // offset in array (why is this a pointer...)
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
@@ -1043,7 +1036,7 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 void SpriteRenderer::do_3d_block_cpu(u32 count,
                                      SharedRenderState* render_state,
                                      ScopedProfilerNode& prof) {
-  fmt::print("3d sprite begin\n");
+  // fmt::print("3d sprite begin\n");
 
   Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
   Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
@@ -1095,20 +1088,23 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     // handle_mip(adgif.mip_data, render_state, prof);
     handle_clamp(adgif.clamp_data & 0b111, render_state, prof);
     handle_alpha(adgif.alpha_data, render_state, prof);
-
-    if (!current_adgif_state()->used) {
-      *current_adgif_state() = m_adgif_state;
-      current_adgif_state()->used = true;
-    } else if (m_adgif_state != *current_adgif_state()) {
+    /*
+    if (!m_adgif_state_stack[m_adgif_index].used) {
+      m_adgif_state_stack[m_adgif_index] = m_adgif_state;
+      m_adgif_state_stack[m_adgif_index].used = true;
+    } else if (m_adgif_state != m_adgif_state_stack[m_adgif_index]) {
       if (m_adgif_index + 1 == ADGIF_STATE_COUNT ||
-          !m_adgif_state.nontexture_equal(*current_adgif_state())) {
+          !m_adgif_state.nontexture_equal(m_adgif_state_stack[m_adgif_index])) {
         render_verts(render_state, prof);
       } else {
         m_adgif_index++;
       }
-      *current_adgif_state() = m_adgif_state;
-      current_adgif_state()->used = true;
+      m_adgif_state_stack[m_adgif_index] = m_adgif_state;
+      m_adgif_state_stack[m_adgif_index].used = true;
     }
+    */
+    m_adgif_state_stack[m_adgif_index] = m_adgif_state;
+    m_adgif_state_stack[m_adgif_index].used = true;
 
     int vert_idx = 6 * m_sprite_offset;
 
@@ -1117,9 +1113,9 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
     vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
-    vert1.tex_info[0] = m_adgif_index;
-    vert1.tex_info[1] = current_adgif_state()->tcc;
-    vert1.vert_id = 0;
+    vert1.info[0] = m_adgif_index;
+    vert1.info[1] = m_adgif_state_stack[m_adgif_index].tcc;
+    vert1.info[2] = 0;
 
     m_vertices_3d.at(vert_idx + 1) = vert1;
     m_vertices_3d.at(vert_idx + 2) = vert1;
@@ -1127,11 +1123,11 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     m_vertices_3d.at(vert_idx + 4) = vert1;
     m_vertices_3d.at(vert_idx + 5) = vert1;
 
-    m_vertices_3d.at(vert_idx + 1).vert_id = 1;
-    m_vertices_3d.at(vert_idx + 2).vert_id = 2;
-    m_vertices_3d.at(vert_idx + 3).vert_id = 2;
-    m_vertices_3d.at(vert_idx + 4).vert_id = 3;
-    m_vertices_3d.at(vert_idx + 5).vert_id = 0;
+    m_vertices_3d.at(vert_idx + 1).info[2] = 1;
+    m_vertices_3d.at(vert_idx + 2).info[2] = 2;
+    m_vertices_3d.at(vert_idx + 3).info[2] = 2;
+    m_vertices_3d.at(vert_idx + 4).info[2] = 3;
+    m_vertices_3d.at(vert_idx + 5).info[2] = 0;
 
     ++m_sprite_offset;
 

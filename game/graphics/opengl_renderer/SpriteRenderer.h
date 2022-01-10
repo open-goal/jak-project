@@ -205,8 +205,7 @@ class SpriteRenderer : public BucketRenderer {
     math::Vector4f quat_sy;             // quaternion + y scale
     math::Vector4f rgba;                // color
     math::Vector<u16, 4> flags_matrix;  // flags + matrix... split
-    u32 vert_id;
-    math::Vector<u8, 4> tex_info;
+    math::Vector<u16, 4> info;
   };
   static_assert(sizeof(SpriteVertex3D) == 64);
 
@@ -291,8 +290,6 @@ class SpriteRenderer : public BucketRenderer {
   } m_adgif_state_stack[ADGIF_STATE_COUNT];
 
   AdGifState m_adgif_state;  // temp state
-
-  AdGifState* current_adgif_state() { return &m_adgif_state_stack[m_adgif_index]; }
 
   int m_adgif_index = 0;
 

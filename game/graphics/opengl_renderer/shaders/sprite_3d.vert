@@ -4,8 +4,7 @@ layout (location = 0) in vec4 xyz_sx;
 layout (location = 1) in vec4 quat_sy;
 layout (location = 2) in vec4 rgba;
 layout (location = 3) in uvec2 flags_matrix;
-layout (location = 4) in uint vert_id;
-layout (location = 5) in uvec2 tex_info_in;
+layout (location = 4) in uvec4 tex_info_in;
 
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
@@ -73,6 +72,7 @@ void main() {
   float sy = quat_sy.w;
   vec4 quat = vec4(quat_sy.xyz, 1.0);
   fragment_color = rgba;
+  uint vert_id = tex_info_in.z;
 
 
 // STEP 2
@@ -118,5 +118,5 @@ void main() {
   // scissoring area adjust
   gl_Position.y *= 512.0/448.0;
 
-  tex_info = tex_info_in;
+  tex_info = tex_info_in.xy;
 }
