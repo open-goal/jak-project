@@ -205,8 +205,7 @@ class SpriteRenderer : public BucketRenderer {
     math::Vector4f quat_sy;             // quaternion + y scale
     math::Vector4f rgba;                // color
     math::Vector<u16, 4> flags_matrix;  // flags + matrix... split
-    u16 vert_id;
-    math::Vector<u8, 2> pad;
+    u32 vert_id;
     math::Vector<u8, 4> tex_info;
   };
   static_assert(sizeof(SpriteVertex3D) == 64);

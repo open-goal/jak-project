@@ -81,7 +81,7 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
 
   glEnableVertexAttribArray(4);
   glVertexAttribIPointer(4,                            // location 0 in the shader
-                         1,                            // 3 floats per vert
+                         4,                            // 3 floats per vert
                          GL_UNSIGNED_BYTE,             // floats
       sizeof(SpriteVertex3D),               //
       (void*)offsetof(SpriteVertex3D, vert_id)  // offset in array (why is this a pointer...)
@@ -90,7 +90,7 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
   glEnableVertexAttribArray(5);
   glVertexAttribIPointer(
       5,                                        // location 0 in the shader
-      2,                                        // 3 floats per vert
+      4,                                        // 3 floats per vert
       GL_UNSIGNED_BYTE,                         // floats
       sizeof(SpriteVertex3D),                   //
       (void*)offsetof(SpriteVertex3D, tex_info)  // offset in array (why is this a pointer...)
@@ -827,10 +827,10 @@ void SpriteRenderer::render_verts(SharedRenderState* render_state, ScopedProfile
   glBindVertexArray(m_ogl.vao);
 
   // render!
+  // fmt::print("drawing {} sprites\n", m_sprite_offset);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferSubData(GL_ARRAY_BUFFER, 0, m_sprite_offset * sizeof(SpriteVertex3D) * 6,
                   m_vertices_3d.data());
-  glActiveTexture(GL_TEXTURE0);
 
   glDrawArrays(GL_TRIANGLES, 0, m_sprite_offset * 6);
 
@@ -1094,7 +1094,6 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     handle_clamp(adgif.clamp_data & 0b111, render_state, prof);
     handle_alpha(adgif.alpha_data, render_state, prof);
 
-    bool push_state = false;
     if (!current_adgif_state()->used) {
       *current_adgif_state() = m_adgif_state;
       current_adgif_state()->used = true;
@@ -1109,7 +1108,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
       current_adgif_state()->used = true;
     }
 
-    size_t vert_idx = 6 * m_sprite_offset++;
+    int vert_idx = 6 * m_sprite_offset;
 
     auto& vert1 = m_vertices_3d.at(vert_idx + 0);
 
@@ -1118,6 +1117,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
     vert1.tex_info[0] = m_adgif_index;
     vert1.tex_info[1] = current_adgif_state()->tcc;
+    vert1.vert_id = 0;
 
     m_vertices_3d.at(vert_idx + 1) = vert1;
     m_vertices_3d.at(vert_idx + 2) = vert1;
@@ -1125,12 +1125,13 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     m_vertices_3d.at(vert_idx + 4) = vert1;
     m_vertices_3d.at(vert_idx + 5) = vert1;
 
-    m_vertices_3d.at(vert_idx + 0).vert_id = 0;
     m_vertices_3d.at(vert_idx + 1).vert_id = 1;
     m_vertices_3d.at(vert_idx + 2).vert_id = 2;
     m_vertices_3d.at(vert_idx + 3).vert_id = 2;
     m_vertices_3d.at(vert_idx + 4).vert_id = 3;
     m_vertices_3d.at(vert_idx + 5).vert_id = 0;
+
+    ++m_sprite_offset;
 
     /*
 
