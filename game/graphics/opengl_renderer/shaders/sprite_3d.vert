@@ -120,7 +120,9 @@ void main() {
   // scales_vf01.x = scales_vf01.z;  // = sy
   // scales_vf01.x *= scales_vf01.w;  // x = sx * sy
   // scales_vf01.x *= m_frame_data.inv_area;  // x = sx * sy * inv_area (area ratio)
-  float final_area = min((Q * sx) * (Q * sy) * inv_area, 1.0);
+  sx *= Q;
+  sy *= Q;
+  float final_area = min(sx * sy * inv_area, 1.0);
 
 
 // STEP 4
@@ -209,7 +211,7 @@ void main() {
   // flag_vi07 = 0;  // todo hack
   // vec4* xy_array = m_frame_data.xyz_array + flag_vi07;
   // math::Vector<s32, 4> color_integer_vf11 = color_vf11.cast<s32>();
-  // fragment_color /= 255.0;
+  fragment_color /= 255.0;
 
   // packet.color = color_integer_vf11;
 
@@ -222,9 +224,17 @@ void main() {
   // packet.sprite_giftag = use_first_giftag ? m_frame_data.sprite_2d_giftag : m_frame_data.sprite_2d_giftag2;
 
   tex_coord = st_array[vert_id].xyz;
+  
+  // correct xy offset
+  transformed.xy -= (2048.);
 
-  // hack
-  transformed.xyz *= transformed.w;
+  // correct z scale
+  transformed.z /= (8388608);
+  transformed.z -= 1;
+
+  // correct xy scale
+  transformed.x /= (256);
+  transformed.y /= -(128);
 
   gl_Position = transformed;
   // scissoring area adjust

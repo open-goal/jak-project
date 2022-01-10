@@ -903,11 +903,175 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     m_vertices_3d.at(sprite_idx * 6 + 4) = vert1;
     m_vertices_3d.at(sprite_idx * 6 + 5) = vert1;
 
+    m_vertices_3d.at(sprite_idx * 6 + 0).vert_id = 0;
     m_vertices_3d.at(sprite_idx * 6 + 1).vert_id = 1;
     m_vertices_3d.at(sprite_idx * 6 + 2).vert_id = 2;
     m_vertices_3d.at(sprite_idx * 6 + 3).vert_id = 2;
     m_vertices_3d.at(sprite_idx * 6 + 4).vert_id = 3;
     m_vertices_3d.at(sprite_idx * 6 + 5).vert_id = 0;
+
+    
+
+// STEP 1: UNPACK DATA AND CREATE READABLE VARIABLES
+
+    Vector4f position = Vector4f(vert1.xyz_sx.x(), vert1.xyz_sx.y(), vert1.xyz_sx.z(), 1.0f);
+    float sx = vert1.xyz_sx.w();
+    float sy = vert1.quat_sy.y();
+    Vector4f quat = Vector4f(vert1.quat_sy.x(), vert1.quat_sy.y(), vert1.quat_sy.z(), 1.0f);
+    Vector4f fragment_color = vert1.rgba;
+
+    // STEP 2: TRANSFORM TRANS
+
+    //  lqi.xyzw vf01, vi02        |  nop
+    // Vector4f pos_vf01 = xyz_sx;
+    //  lqi.xyzw vf05, vi02        |  nop
+    // Vector4f flags_vf05 = flag_rot_sy;
+    //  lqi.xyzw vf11, vi02        |  nop
+    // Vector4f color_vf11 = rgba;
+
+    // multiplications from the right column
+    position = matrix_transform(camera_matrix, position);
+    float Q = m_frame_data.pfog0 / position.w();
+
+    // STEP 3: SET UP SCALES AND AREA
+    // This is used at the end for alpha mod?
+
+    // Vector4f scales_vf01 = pos_vf01;  // now used for something else.
+    //  lq.xyzw vf12, 1020(vi00)   |  mulaw.xyzw ACC, vf28, vf00
+    // vf12 is fog consts
+    // Vector4f fog_consts_vf12 = Vector4f(fog_min, fog_max, max_scale, bonus);
+    //  ilw.y vi08, 1(vi02)        |  maddax.xyzw ACC, vf25, vf01
+    // load offset selector for the next round.
+    //  nop                        |  madday.xyzw ACC, vf26, vf01
+    //  nop                        |  maddz.xyzw vf02, vf27, vf01
+
+    //  move.w vf05, vf00          |  addw.z vf01, vf00, vf05
+    // scales_vf01.z = sy
+    // scales_vf01.z = rot_sy.y;  // start building the scale vector
+    // rot_sy.y = 1.f;              // what are we building in flags right now??
+
+    // scales_vf01.x = scales_vf01.z;  // = sy
+    // scales_vf01.x *= scales_vf01.w;  // x = sx * sy
+    // scales_vf01.x *= m_frame_data.inv_area;  // x = sx * sy * inv_area (area ratio)
+    sx *= Q;
+    sy *= Q;
+    float final_area = std::min(sx * sy * m_frame_data.inv_area, 1.0f);
+
+    // STEP 4
+
+    //  nop                        |  nop
+    //  div Q, vf31.x, vf02.w      |  muly.z vf05, vf05, vf31
+    // float Q = pfog0 / position.w;
+    quat.z() *= m_frame_data.deg_to_rad;  // ?
+    //  nop                        |  mul.xyzw vf03, vf02, vf29
+    // Vector4f scaled_pos_vf03 = position * hmge_scale;
+    //  nop                        |  nop
+    //  nop                        |  nop
+    //  nop                        |  mulz.z vf04, vf05, vf05 (ts)
+
+    //  the load is for rotation stuff,
+    //  lq.xyzw vf14, 1001(vi00)   |  clipw.xyz vf03, vf03      (used for fcand)
+    //  iaddi vi06, vi00, 0x1      |  adda.xyzw ACC, vf11, vf11 (used for fmand)
+
+    // upcoming fcand with 0x3f, that checks all of them.
+    // int fcand_result = clip_xyz_plus_minus(position * hmge_scale);
+    // bool fmand_result = color_vf11.w == 0;  // (really w+w, but I don't think it matters?)
+
+    //  L8:
+    //  xgkick double buffer setup
+    //  ior vi05, vi15, vi00       |  mul.zw vf01, vf01, Q
+    // scales_vf01.z *= Q;  // sy
+    // scales_vf01.w *= Q;  // sx
+
+    //  lq.xyzw vf14, 1002(vi00) ts|  mula.xyzw ACC, vf05, vf14 (ts)
+
+    //  fmand vi01, vi06           |  mul.xyz vf02, vf02, Q
+    position.xyz() *= Q;
+
+    //  ibne vi00, vi01, L10       |  addz.x vf01, vf00, vf01
+    // scales_vf01.x = scales_vf01.z;  // = sy
+    // if (fmand_result) {
+    //   continue;  // reject!
+    // }
+
+    //  lqi.xyzw vf07, vi03        |  mulz.xyzw vf16, vf15, vf04 (ts)
+    // vf07 is first use adgif
+
+    //  lq.xyzw vf14, 1003(vi00)   |  madda.xyzw ACC, vf15, vf14 (ts both)
+
+    //  lqi.xyzw vf08, vi03        |  add.xyzw vf10, vf02, vf30
+    // vf08 is second user adgif
+    Vector4f offset = position + hvdf_offset;
+
+    //  lqi.xyzw vf09, vi03        |  mulw.x vf01, vf01, vf01
+    // vf09 is third user adgif
+    // scales_vf01.x *= scales_vf01.w;  // x = sx * sy
+
+    //  sqi.xyzw vf06, vi05        |  mulz.xyzw vf15, vf16, vf04 (ts)
+    // FIRST ADGIF IS adgif_vf06
+    // packet.adgif_giftag = adgif_vf06;
+
+    // just do all 5 now.
+    // packet.user_adgif = m_adgif[sprite_idx];
+
+    offset.w() = std::max(offset.w(), m_frame_data.fog_max);
+
+    // scales_vf01.z = max(scales_vf01.z, m_frame_data.min_scale);
+    // scales_vf01.w = max(scales_vf01.w, m_frame_data.min_scale);
+
+    // scales_vf01.x *= m_frame_data.inv_area;  // x = sx * sy * inv_area (area ratio)
+
+    offset.w() = std::min(offset.w(), m_frame_data.fog_min);
+
+    // scales_vf01.z = min(scales_vf01.z, max_scale);
+    // scales_vf01.w = min(scales_vf01.w, max_scale);
+    // bool use_first_giftag = offset_selector == 0;
+
+    // auto flag_vi07 = flags;
+
+    // scales_vf01.x = min(scales_vf01.x, 1.f);
+
+    position.w() = offset.w() - m_frame_data.fog_max;
+
+    fragment_color.w() *= final_area;  // is this right? doesn't this stall??
+
+    //    ibne vi00, vi09, L6        |  nop
+    // if (position.w != 0) {
+    // use_first_giftag = false;
+    // }
+
+    // flag_vi07 = 0;  // todo hack
+    // Vector4f* xy_array = m_frame_data.xyz_array + flag_vi07;
+    // math::Vector<s32, 4> color_integer_vf11 = color_vf11.cast<s32>();
+    fragment_color /= 255.0f;
+
+    // packet.color = color_integer_vf11;
+
+    // if (fcand_result) {
+    // continue;  // reject (could move earlier)
+    // }
+
+    Vector4f transformed = sprite_transform2(position, m_frame_data.xyz_array[0], camera_matrix,
+                          sprite_quat_to_rot(quat.x(), quat.y(), quat.z()),
+        sx, sy,
+        hvdf_offset, m_frame_data.pfog0, m_frame_data.fog_min, m_frame_data.fog_max);
+
+    // packet.sprite_giftag = use_first_giftag ? m_frame_data.sprite_2d_giftag :
+    // m_frame_data.sprite_2d_giftag2;
+
+    auto tex_coord = m_frame_data.st_array[0].xyz();
+
+    // correct xy offset
+    transformed.x() -= (2048.);
+    transformed.y() -= (2048.);
+
+    // correct z scale
+    transformed.z() /= (8388608);
+    transformed.z() -= 1;
+
+    // correct xy scale
+    transformed.x() /= (256);
+    transformed.y() /= -(128);
 
     /*
 
