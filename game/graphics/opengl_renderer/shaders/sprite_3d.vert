@@ -21,7 +21,7 @@ uniform vec4 xyz_array[4];
 uniform vec4 st_array[4];
 
 out vec4 fragment_color;
-// out vec3 tex_coord;
+out vec3 tex_coord;
 
 // putting all texture info stuff here so it's easier to copy-paste
 // layout (location = 3) in uvec2 tex_info_in;
@@ -66,7 +66,7 @@ vec4 sprite_transform2(vec4 root, vec4 off, mat4 cam, mat3 sprite_rot, float sx,
 
   pos.xyz += offset.xyz;
   vec4 transformed_pos = matrix_transform(cam, pos);
-  float Q = pfog0 / transformed_pos.w();
+  float Q = pfog0 / transformed_pos.w;
   transformed_pos.xyz *= Q;
   vec4 offset_pos = transformed_pos + hvdf_off;
   offset_pos.w = max(offset_pos.w, fog_max);
@@ -221,26 +221,14 @@ void main() {
 
   // packet.sprite_giftag = use_first_giftag ? m_frame_data.sprite_2d_giftag : m_frame_data.sprite_2d_giftag2;
 
-  // tex_coord = st_array[vert_id].xyz;
-
-  // correct xy offset
-  transformed.xy -= (2048.);
-
-  // correct z scale
-  transformed.z /= (16777216);
-  transformed.z *= 2;
-  transformed.z -= 1;
-
-  // correct xy scale
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  tex_coord = st_array[vert_id].xyz;
 
   // hack
   transformed.xyz *= transformed.w;
 
   gl_Position = transformed;
   // scissoring area adjust
-  gl_Position.y *= 512.0/448.0;
+  // gl_Position.y *= 512.0/448.0;
   // fragment_color = vec4(rgba_in.x, rgba_in.y, rgba_in.z, rgba_in.w * 2.);
   // tex_coord = tex_coord_in;
   // tex_info = tex_info_in;

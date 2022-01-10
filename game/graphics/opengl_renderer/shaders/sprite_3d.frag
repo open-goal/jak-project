@@ -3,7 +3,7 @@
 out vec4 color;
 
 in vec4 fragment_color;
-// in vec2 tex_coord;
+in vec2 tex_coord;
 
 // in flat uvec2 tex_info;
 
@@ -42,7 +42,7 @@ void main() {
   // vec4 tex_color = fragment_color * T0 * 2.0;
   vec4 tex_color = fragment_color * 1.0;
   if (tex_color.a < 0.016) {
-    discard;
+    // discard;
   }
-  color = tex_color;
+  color = vec4(1.0, 0, 1.0, 1.0);
 }
