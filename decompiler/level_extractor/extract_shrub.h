@@ -64,6 +64,8 @@ struct PrototypeBucketShrub {
   // - rlength-mid
   // - stiffness
 
+  float stiffness; // - 60
+
   u32 next[4];   // 64
   u16 count[4];  // 80 | NOTE - overlayed in places as a 128bit value
 
@@ -113,7 +115,7 @@ struct InstanceShrubbery : public level_tools::Drawable {
   u16 wind_index;                // 62
 
   // --- instance-shrubbery ---
-  u32 color;                        // 8
+  Ref color_indices;  // 8 - can't read this in the first pass because we don't know how long.
   level_tools::Vector flat_normal;  // 64
   level_tools::Vector flat_hwidth;  // 76
 };

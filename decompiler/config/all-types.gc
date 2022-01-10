@@ -9502,9 +9502,14 @@
   )
 
 (deftype prototype-bucket-shrub (prototype-bucket)
-  ((mod-count     uint16  4       :offset-assert 88)
+  (;; Geometry Array
+   ;; - prototype-generic-shrub / shrub-near (drawn with generic)
+   ;; - prototype-shrubbery
+   ;; - prototype-trans-shrubbery
+   ;; - billboard
+   (mod-count     uint16  4       :offset-assert 88)
    (last          dma-packet 4       :offset-assert 96)
-   (count-clear   uint128         :offset 80)
+   (count-clear-qword   uint128         :offset 80)
    (last-clear    uint128         :offset 96)
    )
   :method-count-assert 9
@@ -12525,6 +12530,7 @@
 
 ;; - Types
 
+;; Single rectangle -- only one texture (aka adgif-shader)
 (deftype billboard (drawable)
   ((flat    adgif-shader :inline :offset-assert 32)
    )
@@ -12535,17 +12541,18 @@
 
 (deftype shrub-view-data (structure)
   ((data           shrub-view-data 3       :offset-assert 0)
-   (texture-giftag qword   :inline :offset 0)
+   (texture-giftag gs-gif-tag   :inline :offset 0)
    (consts         vector  :inline :offset 16)
    (fog-clamp      vector  :inline :offset 32)
-   (tex-start-ptr  int32           :offset 16)
-   (gifbufsum      float           :offset 16)
-   (mtx-buf-ptr    int32           :offset 20)
-   (exp23          float           :offset 20)
-   (fog-0          float           :offset 24)
-   (fog-1          float           :offset 28)
-   (fog-min        float           :offset 32)
-   (fog-max        float           :offset 36)
+   (tex-start-ptr  int32          :score 999 :offset 16)
+   (gifbufsum      float          :score 999 :offset 16)
+   ;; suspected to be part of hacks to get around VU's lack of integer operations
+   (mtx-buf-ptr    int32          :score 999 :offset 20)
+   (exp23          float          :score 999 :offset 20)
+   (fog-0          float          :score 999 :offset 24)
+   (fog-1          float          :score 999 :offset 28)
+   (fog-min        float          :score 999 :offset 32)
+   (fog-max        float          :score 999 :offset 36)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -12554,11 +12561,19 @@
 
 (deftype shrubbery (drawable)
   ((textures (inline-array adgif-shader) :offset 4)
+   ;; header breakdown:
+   ;; [0] - number of textures / 2
+   ;; [1] - number of vertices
+   ;; [2] - number of triangle strips
+   ;; [3] - ??
+   ;;
+   ;; Number of Triangles in the Shrub = header[2] - 2 * header[1]
    (header   qword          :offset 8)
    (obj-qwc  uint8          :offset 12)
    (vtx-qwc  uint8          :offset 13)
    (col-qwc  uint8          :offset 14)
    (stq-qwc  uint8          :offset 15)
+   ;; start of static dma-chain
    (obj      uint32         :score 999 :offset 16)
    (vtx      uint32         :score 999 :offset 20)
    (col      uint32         :score 999 :offset 24)
@@ -12570,9 +12585,9 @@
   )
 
 (deftype instance-shrubbery (instance)
-  ((flat-normal  vector   :inline :offset-assert 64)
+  ((color-indices        uint32   :offset 8)
+   (flat-normal  vector   :inline :offset-assert 64)
    (flat-hwidth  float            :offset 76)
-   (color        uint32           :offset 8)
    )
   :method-count-assert 18
   :size-assert         #x50
@@ -12600,6 +12615,8 @@
 (deftype generic-shrub-fragment (drawable)
   ((textures (inline-array adgif-shader)         :score 999 :offset 4)
    (vtx-cnt  uint32         :score 999 :offset 8)
+   ;; the total size of the textures array
+   ;; - each texture is 5 qwords
    (cnt-qwc  uint8          :score 999 :offset 12)
    (vtx-qwc  uint8          :score 999 :offset 13)
    (col-qwc  uint8          :score 999 :offset 14)
@@ -16741,11 +16758,11 @@
 (define-extern upload-generic-shrub (function dma-buffer generic-shrub-fragment int int dma-buffer))
 (define-extern shrub-num-tris (function shrubbery uint))
 (define-extern shrub-init-frame (function dma-buffer gs-test none))
-(define-extern shrub-upload-model (function shrubbery shrub-view-data int symbol)) ;; third arg is `start-bank` from shrub-work
+(define-extern shrub-upload-model (function shrubbery dma-buffer int symbol)) ;; third arg is `start-bank` from shrub-work
 (define-extern shrub-do-init-frame (function dma-buffer symbol))
 (define-extern shrub-upload-view-data (function dma-buffer symbol))
 (define-extern shrub-init-view-data (function shrub-view-data symbol))
-(define-extern mem-usage-shrub-walk (function draw-node drawable-group memory-usage-block int draw-node))
+(define-extern mem-usage-shrub-walk (function draw-node int memory-usage-block int draw-node))
 (define-extern shrub-make-perspective-matrix (function matrix matrix))
 (define-extern shrub-time (function int int int int int int)) ;; unused
 (define-extern draw-inline-array-instance-shrub (function dma-buffer drawable int (inline-array prototype-bucket-shrub) none))

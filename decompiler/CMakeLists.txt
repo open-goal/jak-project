@@ -59,6 +59,7 @@ add_library(
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
         level_extractor/BspHeader.cpp
+        level_extractor/extract_shrub.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
@@ -76,7 +77,7 @@ add_library(
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
 
-        config.cpp "level_extractor/extract_shrub.cpp" "level_extractor/extract_shrub.h" "level_extractor/extract_common.h")
+        config.cpp)
 
 if (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
@@ -91,7 +92,7 @@ target_link_libraries(decomp
         )
 
 add_executable(decompiler
-        main.cpp "level_extractor/extract_shrub.cpp" "level_extractor/extract_shrub.h" "level_extractor/extract_common.h")
+        main.cpp)
 
 target_link_libraries(decompiler
         decomp
