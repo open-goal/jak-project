@@ -135,6 +135,9 @@ void main() {
   transformed.x /= (256);
   transformed.y /= -(128);
 
+  // hack
+  transformed.xyz *= transformed.w;
+
   gl_Position = transformed;
   // scissoring area adjust
   // gl_Position.y *= 512.0/448.0;

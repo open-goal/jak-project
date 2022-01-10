@@ -40,9 +40,9 @@ void main() {
     // T0.w = 1.0;
   // }
   // vec4 tex_color = fragment_color * T0 * 2.0;
-  vec4 tex_color = fragment_color;
+  vec4 tex_color = fragment_color * 2.0;
   if (tex_color.a < 0.016) {
     // discard;
   }
-  color = fragment_color;
+  color = tex_color;
 }
