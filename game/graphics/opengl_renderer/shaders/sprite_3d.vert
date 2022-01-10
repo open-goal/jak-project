@@ -118,5 +118,7 @@ void main() {
   // scissoring area adjust
   gl_Position.y *= 512.0/448.0;
 
+  fragment_color.w *= 2;
+
   tex_info = tex_info_in.xy;
 }

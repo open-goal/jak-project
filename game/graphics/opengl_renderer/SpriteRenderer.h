@@ -248,7 +248,7 @@ class SpriteRenderer : public BucketRenderer {
     bool fix = false;     // what does this even do?
   } m_prim_gl_state;
 
-  static constexpr int ADGIF_STATE_COUNT = 1;
+  static constexpr int ADGIF_STATE_COUNT = 10;
 
   struct AdGifState {
     GsTex0 reg_tex0;

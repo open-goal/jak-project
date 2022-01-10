@@ -30,7 +30,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 }
 }  // namespace
 
-constexpr int SPRITE_RENDERER_MAX_SPRITES = 1;
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 5000;
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {
@@ -811,18 +811,18 @@ std::array<math::Vector3f, 3> sprite_quat_to_rot(float qi, float qj, float qk) {
 }
 
 void SpriteRenderer::render_verts(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-
   for (int i = 0; i <= m_adgif_index; ++i) {
     update_gl_texture(render_state, i);
   }
 
-  update_gl_blend(m_adgif_state);
-  if (m_adgif_state.z_write) {
+  update_gl_blend(m_adgif_state_stack[m_adgif_index]);
+
+  if (m_adgif_state_stack[m_adgif_index].z_write) {
     glDepthMask(GL_TRUE);
   } else {
     glDepthMask(GL_FALSE);
   }
-  
+
   glBindVertexArray(m_ogl.vao);
 
   // render!
@@ -1094,6 +1094,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
   //fmt::print("2d 1:\n{}", m_frame_data.sprite_2d_giftag.print());
   //fmt::print("2d 2:\n{}", m_frame_data.sprite_2d_giftag2.print());
   if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
+    render_verts(render_state, prof);
     m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
   }
 
