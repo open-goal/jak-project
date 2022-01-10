@@ -35,16 +35,6 @@ vec4 matrix_transform(mat4 mtx, vec4 pt) {
       + mtx[2] * pt.z;
 }
 
-int clip_xyz_plus_minus(vec4 pt) {
-  float pw = abs(pt.w);
-  float mw = -pw;
-  if (pt.x > pw || pt.x < mw) return 1;
-  if (pt.y > pw || pt.y < mw) return 1;
-  if (pt.z > pw || pt.z < mw) return 1;
-  if (pt.w > pw || pt.w < mw) return 1;
-  return 0;
-}
-
 mat3 sprite_quat_to_rot(float qi, float qj, float qk) {
   mat3 result;
   float qr = sqrt(abs(1.0 - (qi * qi + qj * qj + qk * qk)));
@@ -82,7 +72,7 @@ void main() {
 
   vec4 position = vec4(xyz_sx.xyz, 1.0);
   float sx = xyz_sx.w;
-  float sy = quat_sy.y;
+  float sy = quat_sy.w;
   vec4 quat = vec4(quat_sy.xyz, 1.0);
   fragment_color = rgba;
 
@@ -97,11 +87,13 @@ void main() {
   scales_vf01.z = sy;  // start building the scale vector
 
   float Q = pfog0 / transformed_pos_vf02.w;
-  quat.z *= deg_to_rad;
+  // quat.z *= deg_to_rad;
   scales_vf01.z *= Q;  // sy
   scales_vf01.w *= Q;  // sx
 
-  transformed_pos_vf02.xyz *= Q;
+  transformed_pos_vf02.x *= Q;
+  transformed_pos_vf02.y *= Q;
+  transformed_pos_vf02.z *= Q;
 
   scales_vf01.x = scales_vf01.z;  // = sy
 
