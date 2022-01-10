@@ -3,7 +3,7 @@
 out vec4 color;
 
 in vec4 fragment_color;
-in vec3 tex_coord;
+noperspective in vec3 tex_coord;
 in flat uvec2 tex_info;
 
 layout (binding = 20) uniform sampler2D tex_T0;
@@ -25,13 +25,13 @@ vec4 sample_tex(vec2 coord, uint unit) {
 }
 
 void main() {
-  vec4 T0 = sample_tex(tex_coord.xy / tex_coord.z, tex_info.x);
+  vec4 T0 = sample_tex(tex_coord.xy, tex_info.x);
   if (tex_info.y == 0) {
-    // T0.w = 1.0;
+    T0.w = 1.0;
   }
   vec4 tex_color = fragment_color * T0 * 2.0;
   if (tex_color.a < 0.016) {
-    // discard;
+    discard;
   }
   color = tex_color;
 }

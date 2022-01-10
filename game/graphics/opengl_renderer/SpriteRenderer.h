@@ -171,6 +171,7 @@ class SpriteRenderer : public BucketRenderer {
   void handle_tex0(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_tex1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   // void handle_mip(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_zbuf(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_clamp(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_alpha(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
@@ -277,11 +278,12 @@ class SpriteRenderer : public BucketRenderer {
 
       assert(fix == 0);
     }
+    bool z_write = false;
 
     bool used = false;
 
     bool nontexture_equal(const AdGifState& other) const {
-      return reg_alpha == other.reg_alpha;
+      return reg_alpha == other.reg_alpha && z_write == other.z_write;
     }
 
     bool operator==(const AdGifState& other) const {

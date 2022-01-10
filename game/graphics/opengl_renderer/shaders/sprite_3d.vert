@@ -22,7 +22,7 @@ uniform vec4 xyz_array[4];
 uniform vec4 st_array[4];
 
 out vec4 fragment_color;
-out vec3 tex_coord;
+noperspective out vec3 tex_coord;
 out flat uvec2 tex_info;
 
 vec4 matrix_transform(mat4 mtx, vec4 pt) {

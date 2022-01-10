@@ -817,6 +817,11 @@ void SpriteRenderer::render_verts(SharedRenderState* render_state, ScopedProfile
   }
 
   update_gl_blend(m_adgif_state);
+  if (m_adgif_state.z_write) {
+    glDepthMask(GL_TRUE);
+  } else {
+    glDepthMask(GL_FALSE);
+  }
   
   glBindVertexArray(m_ogl.vao);
 
@@ -909,6 +914,18 @@ void SpriteRenderer::handle_tex1(u64 val,
   //  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
   //                                                //    lg::error("unsupported mmin");
   //  }
+}
+
+void SpriteRenderer::handle_zbuf(u64 val,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
+  // note: we can basically ignore this. There's a single z buffer that's always configured the same
+  // way - 24-bit, at offset 448.
+  GsZbuf x(val);
+  assert(x.psm() == TextureFormat::PSMZ24);
+  assert(x.zbp() == 448);
+
+  m_adgif_state.z_write = !x.zmsk();
 }
 
 void SpriteRenderer::handle_clamp(u64 val,
@@ -1070,9 +1087,12 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "st_array"),
                4, m_frame_data.st_array[0].data());
 
-  // fmt::print("3d:\n{}", m_frame_data.sprite_3d_giftag.print());
-  // fmt::print("adgif:\n{}", m_frame_data.adgif_giftag.print());
-  // fmt::print("clipped:\n{}", m_frame_data.clipped_giftag.print());
+  //fmt::print("3d:\n{}", m_frame_data.sprite_3d_giftag.print());
+  //fmt::print("adgif:\n{}", m_frame_data.adgif_giftag.print());
+  //fmt::print("clipped:\n{}", m_frame_data.clipped_giftag.print());
+  //fmt::print("warp:\n{}", m_frame_data.warp_giftag.print());
+  //fmt::print("2d 1:\n{}", m_frame_data.sprite_2d_giftag.print());
+  //fmt::print("2d 2:\n{}", m_frame_data.sprite_2d_giftag2.print());
   if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
     m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
   }
@@ -1084,12 +1104,17 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 
     auto& adgif = m_adgif[sprite_idx];
     // fmt::print("adgif: {:X} {:X} {:X} {:X}\n", adgif.tex0_data, adgif.tex1_data, adgif.clamp_data, adgif.alpha_data);
+    // fmt::print("adgif regs: {} {} {} {} {}\n", register_address_name(adgif.tex0_addr), register_address_name(adgif.tex1_addr), register_address_name(adgif.mip_addr), register_address_name(adgif.clamp_addr), register_address_name(adgif.alpha_addr));
     handle_tex0(adgif.tex0_data, render_state, prof);
     handle_tex1(adgif.tex1_data, render_state, prof);
     // handle_mip(adgif.mip_data, render_state, prof);
-    handle_clamp(adgif.clamp_data & 0b111, render_state, prof);
+    if (GsRegisterAddress(adgif.clamp_addr) == GsRegisterAddress::ZBUF_1) {
+      handle_zbuf(adgif.clamp_data, render_state, prof);
+    } else {
+      handle_clamp(adgif.clamp_data, render_state, prof);
+    }
     handle_alpha(adgif.alpha_data, render_state, prof);
-    /*
+
     if (!m_adgif_state_stack[m_adgif_index].used) {
       m_adgif_state_stack[m_adgif_index] = m_adgif_state;
       m_adgif_state_stack[m_adgif_index].used = true;
@@ -1103,9 +1128,6 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
       m_adgif_state_stack[m_adgif_index] = m_adgif_state;
       m_adgif_state_stack[m_adgif_index].used = true;
     }
-    */
-    m_adgif_state_stack[m_adgif_index] = m_adgif_state;
-    m_adgif_state_stack[m_adgif_index].used = true;
 
     int vert_idx = 6 * m_sprite_offset;
 
