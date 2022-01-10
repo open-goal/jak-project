@@ -912,7 +912,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     m_vertices_3d.at(sprite_idx * 6 + 4).vert_id = 3;
     m_vertices_3d.at(sprite_idx * 6 + 5).vert_id = 0;
 
-    
+    /*
 
 // STEP 1: UNPACK DATA AND CREATE READABLE VARIABLES
 
@@ -1177,9 +1177,11 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 
     // m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
 
+    */
   }
 
-  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_GEQUAL);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
