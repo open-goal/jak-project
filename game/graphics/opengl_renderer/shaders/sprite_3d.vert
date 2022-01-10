@@ -5,6 +5,7 @@ layout (location = 1) in vec4 quat_sy;
 layout (location = 2) in vec4 rgba;
 layout (location = 3) in uvec2 flags_matrix;
 layout (location = 4) in uint vert_id;
+layout (location = 5) in uvec2 tex_info_in;
 
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
@@ -23,10 +24,7 @@ uniform vec4 st_array[4];
 
 out vec4 fragment_color;
 out vec3 tex_coord;
-
-// putting all texture info stuff here so it's easier to copy-paste
-// layout (location = 3) in uvec2 tex_info_in;
-// out flat uvec2 tex_info;
+out flat uvec2 tex_info;
 
 vec4 matrix_transform(mat4 mtx, vec4 pt) {
   return mtx[3]
@@ -119,7 +117,6 @@ void main() {
   gl_Position = transformed;
   // scissoring area adjust
   gl_Position.y *= 512.0/448.0;
-  // fragment_color = vec4(rgba_in.x, rgba_in.y, rgba_in.z, rgba_in.w * 2.);
-  // tex_coord = tex_coord_in;
-  // tex_info = tex_info_in;
+
+  tex_info = tex_info_in;
 }

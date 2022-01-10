@@ -30,13 +30,15 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 }
 }  // namespace
 
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 48;
+
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  m_ogl.vertex_buffer_max_verts = 48 * 3 * 2; // 48 sprites
+  m_ogl.vertex_buffer_max_verts = SPRITE_RENDERER_MAX_SPRITES * 3 * 2;
   m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(SpriteVertex3D);
   glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr, GL_STREAM_DRAW);
   glEnableVertexAttribArray(0);
@@ -83,6 +85,15 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
                          GL_UNSIGNED_BYTE,             // floats
       sizeof(SpriteVertex3D),               //
       (void*)offsetof(SpriteVertex3D, vert_id)  // offset in array (why is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(5);
+  glVertexAttribIPointer(
+      5,                                        // location 0 in the shader
+      2,                                        // 3 floats per vert
+      GL_UNSIGNED_BYTE,                         // floats
+      sizeof(SpriteVertex3D),                   //
+      (void*)offsetof(SpriteVertex3D, tex_info)  // offset in array (why is this a pointer...)
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
@@ -806,6 +817,32 @@ std::array<math::Vector3f, 3> sprite_quat_to_rot(float qi, float qj, float qk) {
   return result;
 }
 
+void SpriteRenderer::render_verts(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  update_gl_blend(m_adgif_state);
+
+  for (int i = 0; i <= m_adgif_index; ++i) {
+    update_gl_texture(render_state, i);
+  }
+
+  glBindVertexArray(m_ogl.vao);
+
+  // render!
+  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, m_sprite_offset * sizeof(SpriteVertex3D) * 6,
+                  m_vertices_3d.data());
+  glActiveTexture(GL_TEXTURE0);
+
+  glDrawArrays(GL_TRIANGLES, 0, m_sprite_offset * 6);
+
+  glBindVertexArray(0);
+  int n_tris = m_sprite_offset * 6 / 3;
+  prof.add_tri(n_tris);
+  prof.add_draw_call(1);
+
+  m_sprite_offset = 0;
+  m_adgif_index = 0;
+}
+
 Vector4f sprite_transform2(const Vector4f& root,
                            const Vector4f& off,
                            const Matrix4f& cam,
@@ -827,17 +864,180 @@ Vector4f sprite_transform2(const Vector4f& root,
   pos.x() += offset.x();
   pos.y() += offset.y();
   pos.z() += offset.z();
-  // Vector4f transformed_pos = matrix_transform(cam, pos);
-  // float Q = pfog0 / transformed_pos.w();
-  // transformed_pos.x() *= Q;
-  // transformed_pos.y() *= Q;
-  // transformed_pos.z() *= Q;
-  // Vector4f offset_pos = transformed_pos + hvdf_off;
-  // offset_pos.w() = std::max(offset_pos.w(), fog_max);
-  // offset_pos.w() = std::min(offset_pos.w(), fog_min);
+  Vector4f transformed_pos = matrix_transform(cam, pos);
+  float Q = pfog0 / transformed_pos.w();
+  transformed_pos.x() *= Q;
+  transformed_pos.y() *= Q;
+  transformed_pos.z() *= Q;
+  Vector4f offset_pos = transformed_pos + hvdf_off;
+  offset_pos.w() = std::max(offset_pos.w(), fog_max);
+  offset_pos.w() = std::min(offset_pos.w(), fog_min);
 
-  // return offset_pos;
-  return pos;
+  return offset_pos;
+}
+
+void SpriteRenderer::handle_tex0(u64 val,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof) {
+  GsTex0 reg(val);
+
+  // update tbp
+
+  m_adgif_state.reg_tex0 = reg;
+  m_adgif_state.texture_base_ptr = reg.tbp0();
+  m_adgif_state.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
+  m_adgif_state.tcc = reg.tcc();
+
+  // tbw: assume they got it right
+  // psm: assume they got it right
+  // tw: assume they got it right
+  // th: assume they got it right
+
+  assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+
+  // cbp: assume they got it right
+  // cpsm: assume they got it right
+  // csm: assume they got it right
+}
+
+void SpriteRenderer::handle_tex1(u64 val,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
+  GsTex1 reg(val);
+  // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
+  //   assert(reg.mxl() == 0);
+  // if that's true, we can ignore LCM, MTBA, L, K
+
+  m_adgif_state.enable_tex_filt = reg.mmag();
+
+  // MMAG/MMIN specify texture filtering. For now, assume always linear
+  //  assert(reg.mmag() == true);
+  //  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
+  //                                                //    lg::error("unsupported mmin");
+  //  }
+}
+
+void SpriteRenderer::handle_clamp(u64 val,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode& prof) {
+  if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
+    fmt::print("clamp: 0x{:x}\n", val);
+    assert(false);
+  }
+
+  m_adgif_state.reg_clamp = val;
+  m_adgif_state.clamp_s = val & 0b001;
+  m_adgif_state.clamp_t = val & 0b100;
+}
+
+void SpriteRenderer::update_gl_blend(AdGifState& state) {
+  if (!state.alpha_blend_enable) {
+    glDisable(GL_BLEND);
+  } else {
+    if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
+        state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - Cd) * As + Cd
+      // Cs * As  + (1 - As) * Cd
+      glEnable(GL_BLEND);
+      // s, d
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE &&
+               state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - 0) * As + Cd
+      // Cs * As + (1) * CD
+      glEnable(GL_BLEND);
+      // s, d
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    } else {
+      // unsupported blend: a 0 b 2 c 2 d 1
+      lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b,
+                (int)state.c, (int)state.d);
+      assert(false);
+    }
+  }
+}
+
+void SpriteRenderer::handle_alpha(u64 val,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode& prof) {
+  GsAlpha reg(val);
+
+  m_adgif_state.from_register(reg);
+}
+
+void SpriteRenderer::update_gl_prim(SharedRenderState* render_state) {
+  // currently gouraud is handled in setup.
+  const auto& state = m_prim_gl_state;
+  if (state.fogging_enable) {
+    //    assert(false);
+  }
+  if (state.aa_enable) {
+    assert(false);
+  }
+  if (state.use_uv) {
+    assert(false);
+  }
+  if (state.ctxt) {
+    assert(false);
+  }
+  if (state.fix) {
+    assert(false);
+  }
+}
+
+void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
+  TextureRecord* tex = nullptr;
+  auto& state = m_adgif_state_stack[unit];
+  if (!state.used) {
+    // nothing used this state, don't bother binding the texture.
+    return;
+  }
+  if (state.using_mt4hh) {
+    tex = render_state->texture_pool->lookup_mt4hh(state.texture_base_ptr);
+  } else {
+    tex = render_state->texture_pool->lookup(state.texture_base_ptr);
+  }
+
+  if (!tex) {
+    // TODO Add back
+    fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+    tex = render_state->texture_pool->get_random_texture();
+    if (tex) {
+      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+    }
+  }
+  assert(tex);
+
+  // first: do we need to load the texture?
+  if (!tex->on_gpu) {
+    render_state->texture_pool->upload_to_gpu(tex);
+  }
+
+  glActiveTexture(GL_TEXTURE20 + unit);
+  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  // Note: CLAMP and CLAMP_TO_EDGE are different...
+  if (state.clamp_s) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (state.clamp_t) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+
+  if (state.enable_tex_filt) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+
+  state.used = false;
 }
 
 void SpriteRenderer::do_3d_block_cpu(u32 count,
@@ -845,8 +1045,9 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
                                      ScopedProfilerNode& prof) {
   Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
   Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
-  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"),
-              hvdf_offset[0], hvdf_offset[1], hvdf_offset[2], hvdf_offset[3]);
+  glUniform4fv(
+      glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"), 1,
+      m_3d_matrix_data.hvdf_offset.data());
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "pfog0"),
               m_frame_data.pfog0);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_min"),
@@ -867,127 +1068,71 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
               m_frame_data.inv_area);
   glUniformMatrix4fv(
       glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "camera"), 1, GL_FALSE,
-      camera_matrix.data());
+      m_3d_matrix_data.camera.data());
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "xyz_array"),
                4, m_frame_data.xyz_array[0].data());
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "st_array"),
                4, m_frame_data.st_array[0].data());
-  /*
-  auto vecdata_loc =
-      glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "vec_data_2d");
-  for (int i = 0; i < count; ++i) {
-    // upload vec-data
-    glUniform4fv(vecdata_loc + 0 + i * 5, 1, m_vec_data_2d[i].xyz_sx.data());
-    glUniform1i(vecdata_loc + 1 + i * 5, m_vec_data_2d[i].flag());
-    glUniform1i(vecdata_loc + 2 + i * 5, m_vec_data_2d[i].matrix());
-    glUniform2fv(vecdata_loc + 3 + i * 5, 1, &m_vec_data_2d[i].flag_rot_sy.data()[2]);
-    glUniform4fv(vecdata_loc + 4 + i * 5, 1, m_vec_data_2d[i].rgba.data());
-  }
-  */
+
+  // fmt::print("3d:\n{}", m_frame_data.sprite_3d_giftag.print());
+  // fmt::print("adgif:\n{}", m_frame_data.adgif_giftag.print());
+  // fmt::print("clipped:\n{}", m_frame_data.clipped_giftag.print());
+  //if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
+  //  m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
+  //}
 
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
+    if (m_sprite_offset == SPRITE_RENDERER_MAX_SPRITES) {
+      render_verts(render_state, prof);
+    }
 
-    auto& vert1 = m_vertices_3d.at(sprite_idx * 6 + 0);
-    auto& vert2 = m_vertices_3d.at(sprite_idx * 6 + 1);
-    auto& vert3 = m_vertices_3d.at(sprite_idx * 6 + 2);
-    auto& vert4 = m_vertices_3d.at(sprite_idx * 6 + 3);
-    auto& vert5 = m_vertices_3d.at(sprite_idx * 6 + 4);
-    auto& vert6 = m_vertices_3d.at(sprite_idx * 6 + 5);
+    auto& adgif = m_adgif[sprite_idx];
+    // fmt::print("adgif: {:X} {:X} {:X} {:X}\n", adgif.tex0_data, adgif.tex1_data, adgif.clamp_data, adgif.alpha_data);
+    handle_tex0(adgif.tex0_data, render_state, prof);
+    handle_tex1(adgif.tex1_data, render_state, prof);
+    // handle_mip(adgif.mip_data, render_state, prof);
+    handle_clamp(adgif.clamp_data & 0b111, render_state, prof);
+    handle_alpha(adgif.alpha_data, render_state, prof);
+
+    bool push_state = false;
+    if (!current_adgif_state()->used) {
+      *current_adgif_state() = m_adgif_state;
+      current_adgif_state()->used = true;
+    } else if (m_adgif_state != *current_adgif_state()) {
+      if (m_adgif_index + 1 == ADGIF_STATE_COUNT ||
+          !m_adgif_state.nontexture_equal(*current_adgif_state())) {
+        render_verts(render_state, prof);
+      } else {
+        m_adgif_index++;
+      }
+      *current_adgif_state() = m_adgif_state;
+      current_adgif_state()->used = true;
+    }
+
+    size_t vert_idx = 6 * m_sprite_offset++;
+
+    auto& vert1 = m_vertices_3d.at(vert_idx + 0);
 
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
     vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
-    vert1.vert_id = 0;
+    vert1.tex_info[0] = m_adgif_index;
+    vert1.tex_info[1] = current_adgif_state()->tcc;
 
-    m_vertices_3d.at(sprite_idx * 6 + 1) = vert1;
-    m_vertices_3d.at(sprite_idx * 6 + 2) = vert1;
-    m_vertices_3d.at(sprite_idx * 6 + 3) = vert1;
-    m_vertices_3d.at(sprite_idx * 6 + 4) = vert1;
-    m_vertices_3d.at(sprite_idx * 6 + 5) = vert1;
+    m_vertices_3d.at(vert_idx + 1) = vert1;
+    m_vertices_3d.at(vert_idx + 2) = vert1;
+    m_vertices_3d.at(vert_idx + 3) = vert1;
+    m_vertices_3d.at(vert_idx + 4) = vert1;
+    m_vertices_3d.at(vert_idx + 5) = vert1;
 
-    m_vertices_3d.at(sprite_idx * 6 + 0).vert_id = 0;
-    m_vertices_3d.at(sprite_idx * 6 + 1).vert_id = 1;
-    m_vertices_3d.at(sprite_idx * 6 + 2).vert_id = 2;
-    m_vertices_3d.at(sprite_idx * 6 + 3).vert_id = 2;
-    m_vertices_3d.at(sprite_idx * 6 + 4).vert_id = 3;
-    m_vertices_3d.at(sprite_idx * 6 + 5).vert_id = 0;
+    m_vertices_3d.at(vert_idx + 0).vert_id = 0;
+    m_vertices_3d.at(vert_idx + 1).vert_id = 1;
+    m_vertices_3d.at(vert_idx + 2).vert_id = 2;
+    m_vertices_3d.at(vert_idx + 3).vert_id = 2;
+    m_vertices_3d.at(vert_idx + 4).vert_id = 3;
+    m_vertices_3d.at(vert_idx + 5).vert_id = 0;
 
     /*
-
-// STEP 1: UNPACK DATA AND CREATE READABLE VARIABLES
-
-    Vector4f position = Vector4f(vert1.xyz_sx.x(), vert1.xyz_sx.y(), vert1.xyz_sx.z(), 1.0f);
-    float sx = vert1.xyz_sx.w();
-    float sy = vert1.quat_sy.w();
-    Vector4f quat = Vector4f(vert1.quat_sy.x(), vert1.quat_sy.y(), vert1.quat_sy.z(), 1.0f);
-    Vector4f fragment_color = vert1.rgba;
-
-    // STEP 2: TRANSFORM TRANS
-
-  Vector4f transformed_pos_vf02 =
-        matrix_transform(camera_matrix, m_vec_data_2d[sprite_idx] .xyz_sx);
-
-    Vector4f scales_vf01 = m_vec_data_2d[sprite_idx] .xyz_sx;  // now used for something else.
-  Vector4f fog_consts_vf12 = Vector4f(m_frame_data.fog_min, m_frame_data.fog_max,
-                                        m_frame_data.max_scale, m_frame_data.bonus);
-
-    scales_vf01.z() = sy;  // start building the scale vector
-
-    float Q = m_frame_data.pfog0 / transformed_pos_vf02.w();
-    // quat.z() *= m_frame_data.deg_to_rad;
-    scales_vf01.z() *= Q;  // sy
-    scales_vf01.w() *= Q;  // sx
-
-    transformed_pos_vf02.x() *= Q;
-    transformed_pos_vf02.y() *= Q;
-    transformed_pos_vf02.z() *= Q;
-
-    scales_vf01.x() = scales_vf01.z();  // = sy
-
-    Vector4f offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
-
-    scales_vf01.x() *= scales_vf01.w();  // x = sx * sy
-
-    offset_pos_vf10.w() = std::max(offset_pos_vf10.w(), m_frame_data.fog_max);
-
-    scales_vf01.z() = std::max(scales_vf01.z(), m_frame_data.min_scale);
-    scales_vf01.w() = std::max(scales_vf01.w(), m_frame_data.min_scale);
-
-    scales_vf01.x() *= m_frame_data.inv_area;  // x = sx * sy * inv_area (area ratio)
-
-    offset_pos_vf10.w() = std::min(offset_pos_vf10.w(), m_frame_data.fog_min);
-
-    scales_vf01.z() = std::min(scales_vf01.z(), fog_consts_vf12.z());
-    scales_vf01.w() = std::min(scales_vf01.w(), fog_consts_vf12.z());
-
-    scales_vf01.x() = std::min(scales_vf01.x(), 1.0f);
-
-    transformed_pos_vf02.w() = offset_pos_vf10.w() - fog_consts_vf12.y();
-
-    fragment_color.w() *= scales_vf01.x();  // is this right? doesn't this stall??
-
-    std::array<math::Vector3f, 3> rot = sprite_quat_to_rot(quat.x(), quat.y(), quat.z());
-    Vector4f transf = sprite_transform2(position, m_frame_data.xyz_array[0], camera_matrix, rot,
-                                        sx, sy, hvdf_offset,
-                          m_frame_data.pfog0, m_frame_data.fog_min, m_frame_data.fog_max);
-
-    // packet.sprite_giftag = use_first_giftag ? m_frame_data.sprite_2d_giftag :
-    // m_frame_data.sprite_2d_giftag2;
-
-    auto tex_coord = m_frame_data.st_array[0].xyz();
-
-    // correct xy offset
-    transf.x() -= (2048.);
-    transf.y() -= (2048.);
-
-    // correct z scale
-    transf.z() /= (8388608);
-    transf.z() -= 1;
-
-    // correct xy scale
-    transf.x() /= (256);
-    transf.y() /= -(128);
-
 
     SpriteHud2DPacket packet;
     memset(&packet, 0, sizeof(packet));
@@ -1180,24 +1325,9 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     */
   }
 
-  glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_GEQUAL);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  glBindVertexArray(m_ogl.vao);
-
-  // render!
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(SpriteVertex3D) * 6, m_vertices_3d.data());
-  glActiveTexture(GL_TEXTURE0);
-
-  glDrawArrays(GL_TRIANGLES, 0, count * 6);
-
-  glBindVertexArray(0);
-  int n_tris = (count * 6 / 3);
-  prof.add_tri(n_tris);
-  prof.add_draw_call(1);
+  if (m_sprite_offset > 0) {
+    render_verts(render_state, prof);
+  }
 }
 
 void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
