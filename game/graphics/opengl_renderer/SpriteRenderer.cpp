@@ -1043,6 +1043,8 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 void SpriteRenderer::do_3d_block_cpu(u32 count,
                                      SharedRenderState* render_state,
                                      ScopedProfilerNode& prof) {
+  fmt::print("3d sprite begin\n");
+
   Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
   Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
   glUniform4fv(
