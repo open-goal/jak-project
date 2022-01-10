@@ -1073,9 +1073,9 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
   // fmt::print("3d:\n{}", m_frame_data.sprite_3d_giftag.print());
   // fmt::print("adgif:\n{}", m_frame_data.adgif_giftag.print());
   // fmt::print("clipped:\n{}", m_frame_data.clipped_giftag.print());
-  //if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
-  //  m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
-  //}
+  if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
+    m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
+  }
 
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
     if (m_sprite_offset == SPRITE_RENDERER_MAX_SPRITES) {

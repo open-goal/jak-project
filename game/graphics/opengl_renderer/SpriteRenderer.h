@@ -281,7 +281,7 @@ class SpriteRenderer : public BucketRenderer {
     bool used = false;
 
     bool nontexture_equal(const AdGifState& other) const {
-      return reg_alpha == other.reg_alpha && alpha_blend_enable == other.alpha_blend_enable;
+      return reg_alpha == other.reg_alpha;
     }
 
     bool operator==(const AdGifState& other) const {
