@@ -204,8 +204,9 @@ class SpriteRenderer : public BucketRenderer {
     math::Vector4f xyz_sx;              // position + x scale
     math::Vector4f quat_sy;             // quaternion + y scale
     math::Vector4f rgba;                // color
-    math::Vector<u16, 4> flags_matrix;  // flags + matrix... split
+    math::Vector<u16, 2> flags_matrix;  // flags + matrix... split
     math::Vector<u16, 4> info;
+    math::Vector<u8, 4> pad;
   };
   static_assert(sizeof(SpriteVertex3D) == 64);
 
@@ -231,12 +232,14 @@ class SpriteRenderer : public BucketRenderer {
       use_uv = reg.fst();
       ctxt = reg.ctxt();
       fix = reg.fix();
+      alpha_blend_enable = reg.abe();
     }
 
     GsPrim current_register;
     bool gouraud_enable = false;
     bool texture_enable = false;
     bool fogging_enable = false;
+    bool alpha_blend_enable = false;
 
     bool aa_enable = false;
     bool use_uv = false;  // todo: might not require a gl state change
@@ -263,7 +266,6 @@ class SpriteRenderer : public BucketRenderer {
     GsAlpha::BlendMode b = GsAlpha::BlendMode::DEST;
     GsAlpha::BlendMode c = GsAlpha::BlendMode::SOURCE;
     GsAlpha::BlendMode d = GsAlpha::BlendMode::DEST;
-    bool alpha_blend_enable = false;
     u8 fix = 0;
     void from_register(GsAlpha reg) {
       reg_alpha = reg;

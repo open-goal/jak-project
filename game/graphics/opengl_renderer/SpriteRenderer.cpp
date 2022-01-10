@@ -811,12 +811,13 @@ std::array<math::Vector3f, 3> sprite_quat_to_rot(float qi, float qj, float qk) {
 }
 
 void SpriteRenderer::render_verts(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  update_gl_blend(m_adgif_state);
 
   for (int i = 0; i <= m_adgif_index; ++i) {
     update_gl_texture(render_state, i);
   }
 
+  update_gl_blend(m_adgif_state);
+  
   glBindVertexArray(m_ogl.vao);
 
   // render!
@@ -924,7 +925,7 @@ void SpriteRenderer::handle_clamp(u64 val,
 }
 
 void SpriteRenderer::update_gl_blend(AdGifState& state) {
-  if (!state.alpha_blend_enable) {
+  if (!m_prim_gl_state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
