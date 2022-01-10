@@ -10393,7 +10393,7 @@
     manipy-idle)
   )
 
-(declare-type sparticle-launch-group structure)
+(declare-type sparticle-launch-group basic)
 (deftype part-spawner (process-drawable)
   ((mode         (pointer sparticle-launch-group)         :offset-assert 176) ;; takes a part-spawner as it's first arg in method 9
    (enable       symbol         :offset-assert 180)
@@ -11030,7 +11030,7 @@
   (:methods
     (debug-draw-tris (_type_ process-drawable int) none 9)
     (dummy-10 (_type_ object vector) none 10) ;; what is the second arg!?
-    (dummy-11 (_type_) none 11)
+    (dummy-11 (_type_ collide-mesh-cache-tri collide-tri-result vector float) none 11)
     (dummy-12 (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
     (dummy-13 (_type_) none 13)
     (dummy-14 (_type_) none 14)
@@ -11160,14 +11160,76 @@
   :flag-assert         #x900000008
   )
 
+
+(defenum collide-kind
+  :type uint64
+  :bitfield #t
+  (background 0)
+  (cak-1 1) ;; 
+  (cak-2 2)
+  (cak-3 3)
+  (target 4) ;; target
+  (water 5)
+  (powerup 6)
+  (crate 7)
+  (enemy 8) ;; also used for powerups
+  (wall-object 9) ;; also object. door, pusher (blockers?)
+  (projectile 10)
+  (ground-object 11) ;; object, like darkecobarray, platforms
+  (target-attack 12) ;; all target attacks
+  (mother-spider 13)
+  (cak-14 14) ;; unused
+  (blue-eco-suck 15) ;; manipy, orb-cache-top, 
+  )
+
+(defenum collide-action
+  :type uint32
+  :bitfield #t
+  (solid 0)
+  (ca-1 1) ;; sticky?
+  (ca-2 2) ;; target?
+  (ca-3 3) ;; edge grab related
+  (ca-4 4)
+  (ca-5 5) ;; unused?
+  (ca-6 6) ;; swing pole, manipy
+  (ca-7 7) ;; camera
+  (ca-8 8)  ;; swingpole
+  (ca-9 9) ;; eco vents?
+  (ca-10 10)
+  (ca-11 11)
+  (ca-12 12)
+  (ca-13 13)
+  (ca-14 14)
+  (ca-15 15) ;; manipy
+  (ca-16 16)
+  )
+
+(defenum collide-offense
+  :type int8
+  (no-offense 0)
+  (touch 1)           ;; just have to touch
+  (normal-attack 2)   ;; any attack (like a normal crate)
+  (strong-attack 3)   ;; hit with zoomer, slide, ground pound/flop, flut attack
+  (indestructible 4)  ;; can't attack it.
+  )
+
+(defenum collide-prim-type
+  :type int8
+  :bitfield #t
+  (bad -2)
+  (unk0 0)
+  (unk1 1)
+  )
+
+
 (deftype collide-prim-core (structure)
-  ((world-sphere vector  :inline :offset-assert 0)
-   (collide-as   uint64          :offset-assert 16)
-   (action       uint32          :offset-assert 24)
-   (offense      int8            :offset-assert 28)
-   (prim-type    int8            :offset-assert 29)
-   (extra        uint8 2       :offset-assert 30)
-   (quad         uint128 2       :offset 0)
+  ((world-sphere vector  :inline   :offset-assert 0)
+   (collide-as   collide-kind   :offset-assert 16)
+   (action       collide-action    :offset-assert 24)
+   (offense      collide-offense   :offset-assert 28)
+   (prim-type    int8              :offset-assert 29)
+   (extra        uint8 2           :offset-assert 30)
+   (quad         uint128 2         :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -11181,11 +11243,11 @@
    (transform-index int8                      :offset-assert 12)
    (prim-core       collide-prim-core :inline :offset-assert 16)
    (local-sphere    vector            :inline :offset-assert 48)
-   (collide-with    uint64                    :offset-assert 64)
+   (collide-with    collide-kind         :offset-assert 64)
    (world-sphere    vector            :inline :offset 16)
-   (collide-as      uint64                    :offset 32)
-   (action          uint32                    :offset 40)
-   (offense         int8                      :offset 44)
+   (collide-as      collide-kind           :offset 32)
+   (action          collide-action            :offset 40)
+   (offense         collide-offense           :offset 44)
    (prim-type       int8                      :offset 45)
    (radius          meters                    :offset 60)
    )
@@ -11205,14 +11267,14 @@
     (dummy-17 () none 17)
     (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
     (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
-    (dummy-20 (_type_ uint) symbol 20)
+    (dummy-20 (_type_ collide-kind) symbol 20)
     (num-mesh (_type_ collide-shape-prim) int 21)
     (on-platform-test (_type_ _type_ collide-overlap-result float) pat-surface 22)
     (should-push-away-test () none 23)
     (dummy-24 () none 24)
     (dummy-25 (_type_ process-drawable) symbol 25)
-    (set-collide-as! (_type_ handle) none 26)
-    (set-collide-with! (_type_ handle) none 27)
+    (set-collide-as! (_type_ collide-kind) none 26)
+    (set-collide-with! (_type_ collide-kind) none 27)
     )
   )
 
@@ -11271,8 +11333,8 @@
    (event-other           basic              :offset-assert 156)
    (root-prim             collide-shape-prim              :offset-assert 160) ;; i think this can be any subtype of collide-shape-prim as well!
    (riders                collide-sticky-rider-group              :offset-assert 164)
-   (backup-collide-as     uint64             :offset-assert 168)
-   (backup-collide-with   uint64             :offset-assert 176)
+   (backup-collide-as     collide-kind          :offset-assert 168)
+   (backup-collide-with   collide-kind        :offset-assert 176)
    )
   :method-count-assert 56
   :size-assert         #xb8
@@ -11282,12 +11344,12 @@
     (TODO-RENAME-28 (_type_ vector) object 28) ;; ret - symbol | float (CSPG::9)
     (dummy-29 (_type_ int) none 29)
     (TODO-RENAME-30 (_type_ vector) object 30) ;; ret - symbol | float (CSPG::9)
-    (dummy-31 (_type_) none 31)
-    (dummy-32 (_type_ object uint) none 32)
-    (dummy-33 (_type_ vector uint) none 33)
+    (debug-draw (_type_) none 31)
+    (dummy-32 (_type_ object collide-kind) none 32)
+    (dummy-33 (_type_ vector collide-kind) none 33)
     (dummy-34 (_type_ uint) collide-shape-prim  34)
     (dummy-35 (_type_) symbol 35)
-    (dummy-36 (_type_ bounding-box float uint) symbol 36)
+    (dummy-36 (_type_ bounding-box float collide-kind) symbol 36)
     (dummy-37 (_type_ vector) none 37)
     (find-collision-meshes (_type_) symbol 38)
     (dummy-39 (_type_ collide-shape collide-overlap-result) symbol 39)
@@ -11302,10 +11364,10 @@
     (clear-collide-with-as (_type_) none 48)
     (restore-collide-with-as (_type_) none 49)
     (backup-collide-with-as (_type_) none 50)
-    (set-root-prim-collide-with! (_type_ handle) none 51)
-    (set-root-prim-collide-as! (_type_ handle) none 52)
-    (dummy-53 (_type_ int int int) none 53)
-    (dummy-54 (_type_ int int) none 54)
+    (set-root-prim-collide-with! (_type_ collide-kind) none 51)
+    (set-root-prim-collide-as! (_type_ collide-kind) none 52)
+    (dummy-53 (_type_ int collide-kind collide-kind) none 53)
+    (dummy-54 (_type_ int collide-offense) none 54)
     (dummy-55 (_type_ process touching-shapes-entry float float float) none 55)
     )
   )
@@ -11341,11 +11403,11 @@
   :size-assert         #x1bc
   :flag-assert         #x41000001bc
   (:methods
-    (dummy-56 (_type_ pat-surface) none 56)
+    (set-and-handle-pat! (_type_ pat-surface) none 56)
     (dummy-57 (_type_ vector) none 57)
     (dummy-58 (_type_ vector) symbol 58)
     (dummy-59 (_type_ vector uint float symbol symbol symbol) none 59)
-    (dummy-60 (_type_ float float symbol uint) symbol 60)
+    (dummy-60 (_type_ float float symbol collide-kind) symbol 60)
     (TODO-RENAME-61 (_type_ vector vector vector) none 61)
     (dummy-62 (_type_ vector float) vector 62)
     (dummy-63 (_type_ vector vector float) float 63)
@@ -11615,11 +11677,11 @@
     (get-touched-shape (_type_ collide-shape) collide-shape 10)
     (dummy-11 () none 11)
     (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12) ; this one!
-    (prims-touching-action? (_type_ collide-shape uint uint) touching-prims-entry 13)
+    (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry 13)
     (free-list () none 14)
     (free-entry-list (_type_) symbol 15)
     (get-head (_type_) touching-prims-entry 16)
-    (unknown1 (_type_ (pointer uint32)) uint 17)
+    (get-next (_type_ touching-prims-entry) touching-prims-entry 17)
     )
   )
 
@@ -11633,7 +11695,7 @@
   :flag-assert         #xf00000208
   (:methods
     (new (symbol type) _type_ 0)
-    (dummy-9 (_type_ collide-shape-prim collide-shape-prim float collide-shape collide-mesh-cache-tri) none 9)
+    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
     (dummy-10 () none 10)
     (dummy-11 (_type_ float) none 11)
     (dummy-12 (_type_) none 12)
@@ -11890,7 +11952,7 @@
   )
 
 (deftype drawable-tree-collide-fragment (drawable-tree)
-  ()
+  ((data-override drawable-inline-array :offset 32))
   :method-count-assert #x12
   :size-assert #x24
   :flag-assert #x1200000024
@@ -12388,7 +12450,7 @@
 (deftype collide-using-spheres-params (structure)
   ((spheres      (pointer sphere)  :offset-assert 0)
    (num-spheres  uint32  :offset-assert 4)
-   (collide-with uint64  :offset-assert 8)
+   (collide-with collide-kind  :offset-assert 8)
    (proc         process-drawable   :offset-assert 16)
    (ignore-pat   uint32  :offset-assert 20) ;; flags / bitfield i bet
    (solid-only   basic   :offset-assert 24) ;; probably a symbol
@@ -12425,7 +12487,7 @@
 
 (deftype collide-puyp-work (structure)
   ((best-u     float                      :offset-assert 0)
-   (ignore-pat uint32                     :offset-assert 4)
+   (ignore-pat pat-surface                :offset-assert 4)
    (tri-out    collide-tri-result         :offset-assert 8)
    (start-pos  vector             :inline :offset-assert 16)
    (move-dist  vector             :inline :offset-assert 32)
@@ -12438,7 +12500,7 @@
 (deftype collide-cache-tri (structure)
   ((vertex     vector 3 :inline  :offset-assert 0)
    ;(extra-quad UNKNOWN 16 :offset-assert 48)
-   (pat        uint32     :offset-assert 48)
+   (pat        pat-surface     :offset-assert 48)
    (prim-index uint16     :offset-assert 52)
    (user16     uint16     :offset-assert 54)
    (user32     uint32 2  :offset-assert 56)
@@ -12452,33 +12514,35 @@
   ((prim-core    collide-prim-core :inline :offset-assert 0)
    ;;(extra-quad   UNKNOWN           16      :offset-assert 32)
    (ccache       collide-cache             :offset-assert 32)
-   (prim         (pointer collide-shape-prim)        :offset-assert 36)
+   (prim         collide-shape-prim        :offset-assert 36)
    (first-tri    uint16                    :offset-assert 40)
    (num-tris     uint16                    :offset-assert 42)
    (unused       uint8           4       :offset-assert 44)
    (world-sphere vector            :inline :offset 0)
-   (collide-as   uint64                    :offset 16)
-   (action       uint32                    :offset 24)
-   (offense      int8                      :offset 28)
-   (prim-type    int8                      :offset 29)
+   (collide-as   collide-kind   :offset 16)
+   (action       collide-action    :offset 24)
+   (offense      collide-offense   :offset 28)
+   (prim-type    int8              :offset 29)
    )
   :method-count-assert 11
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (dummy-9 (_type_ collide-mesh-cache-tri collide-prim-core vector float int) float 9)
-    (dummy-10 (_type_ collide-mesh-cache-tri collide-prim-core vector float int) float 10)
+    (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float 9)
+    (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float 10)
     )
   )
 
 (deftype collide-cache (basic)
   ((num-tris      int32                  :offset-assert 4)
+   ;;(num-tris-u    uint32                 :offset 4) ;; added
    (num-prims     int32                  :offset-assert 8)
-   (ignore-mask   uint32                 :offset-assert 12)
+   (num-prims-u   uint32                 :offset 8 );; added
+   (ignore-mask   pat-surface            :offset-assert 12)
    (proc          process-drawable                  :offset-assert 16) ;; types: target
    (collide-box   bounding-box   :inline :offset-assert 32)
    (collide-box4w bounding-box4w :inline :offset-assert 64)
-   (collide-with  uint64                 :offset-assert 96)
+   (collide-with  collide-kind      :offset-assert 96)
    (prims         collide-cache-prim    100 :inline    :offset-assert 112)
    (tris          collide-cache-tri  461 :inline    :offset-assert 4912)
    )
@@ -12487,22 +12551,22 @@
   :flag-assert         #x2100008670
   (:methods
     (dummy-9 (_type_) none 9)
-    (dummy-10 (_type_ vector vector float int process collide-tri-result int) float 10)
-    (dummy-11 (_type_ collide-using-spheres-params) none 11)
-    (fill-and-probe-using-y-probe (_type_ vector float uint process collide-tri-result uint) float 12)
-    (dummy-13 (_type_ bounding-box uint process-drawable uint) none 13)
-    (dummy-14 (_type_ vector vector float int process int) none 14)
-    (dummy-15 (_type_ collide-using-spheres-params) none 15)
-    (dummy-16 (_type_ vector float uint process-drawable uint) none 16)
+    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
+    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) none 11)
+    (fill-and-probe-using-y-probe (_type_ vector float collide-kind process collide-tri-result uint) float 12)
+    (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
+    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
+    (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
+    (fill-using-y-probe (_type_ vector float collide-kind process-drawable uint) none 16)
     (initialize (_type_) none 17)
-    (dummy-18 (_type_ vector vector float int collide-tri-result int) float 18)
+    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
     (probe-using-spheres (_type_) none 19)
-    (dummy-20 (_type_ vector float uint collide-tri-result uint) float 20)
-    (dummy-21 (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
-    (dummy-22 (_type_) none 22)
-    (dummy-23 (_type_) none 23)
-    (dummy-24 (_type_) none 24)
-    (dummy-25 (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
+    (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result uint) float 20)
+    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
+    (fill-from-foreground-using-spheres (_type_) none 22)
+    (fill-from-foreground-using-line-sphere (_type_) none 23)
+    (fill-from-foreground-using-y-probe (_type_) none 24)
+    (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
     (dummy-26 (_type_) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
@@ -12514,7 +12578,7 @@
   )
 
 (deftype collide-list-item (structure)
-  ((mesh basic  :offset-assert 0)
+  ((mesh collide-frag-mesh  :offset-assert 0)
    (inst basic  :offset-assert 4)
    )
   :method-count-assert 9
@@ -18408,19 +18472,19 @@
 (define-extern distc (function vector vector float))
 (define-extern interpolate (function float float float float float float))
 (define-extern collide-upload-vu0 (function none))
-(define-extern collide-probe-instance-tie (function drawable int object int int)) ;; drawable is probably an instance-tie?
-(define-extern collide-probe-node (function drawable int int int))
-(define-extern indent-to (function int string))
+(define-extern collide-probe-instance-tie (function object int collide-list int int)) ;; drawable is either an instance-tie or a draw-node inline arrary
+(define-extern collide-probe-node (function (inline-array draw-node) int collide-list int))
+(define-extern indent-to (function int none))
 (define-extern probe-traverse-inline-array-node (function drawable-inline-array-node int none))
 (define-extern probe-traverse-draw-node (function draw-node int none))
 (define-extern creates-new-method? (function type int symbol))
-(define-extern overrides-parent-method? (function type type symbol))
+(define-extern overrides-parent-method? (function type int symbol))
 (define-extern describe-methods (function type symbol))
-(define-extern probe-traverse-collide-fragment (function collide-fragment int none))
+(define-extern probe-traverse-collide-fragment (function drawable-tree-collide-fragment int none))
 (define-extern print-out (function int object))
 (define-extern collide-probe-instance-tie-collide-frags (function none)) ;; does nothing
-(define-extern collide-probe-collide-fragment-tree-make-list (function drawable-tree-collide-fragment int symbol))
-(define-extern collide-probe-instance-tie-tree-make-list (function drawable-tree-instance-tie int int))
+(define-extern collide-probe-collide-fragment-tree-make-list (function drawable-tree-collide-fragment collide-list none))
+(define-extern collide-probe-instance-tie-tree-make-list (function drawable-tree-instance-tie collide-list int))
 (define-extern collide-probe-make-list (function level collide-list none))
 (define-extern misty-ambush-height-probe (function vector float float))
 (define-extern pke-collide-test (function none)) ;; does nothing
@@ -19495,7 +19559,7 @@
 ;; - Functions
 
 (define-extern process-entity-status! (function process entity-perm-status symbol int))
-(define-extern process-grab? (function process symbol :behavior process))
+(define-extern process-grab? (function process symbol :behavior camera-tracker))
 (define-extern process-release? (function process symbol :behavior process))
 (define-extern ja-post (function none :behavior process-drawable))
 (define-extern make-nodes-from-jg (function art-joint-geo pair symbol cspace-array :behavior process-drawable))
@@ -21446,7 +21510,7 @@
 (define-extern projectile-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
 (define-extern projectile-update-velocity-space-wars (function projectile none))
 (define-extern find-nearest-attackable (function vector float uint uint vector float projectile)) ;; Whatever te search returns (match from search-info)
-(define-extern find-ground-and-draw-shadow (function vector vector float uint process float float none))
+(define-extern find-ground-and-draw-shadow (function vector vector float collide-kind process float float none))
 (define-extern spawn-projectile-blue (function target none))
 
 ;; - Unknowns
@@ -21916,10 +21980,10 @@
 
 ;; - Unknowns
 
-(define-extern *anim-tester* (pointer anim-tester)) ;; unknown type
-(define-extern *ANIM_TESTER-bank* anim-tester-bank) ;; unknown type
+(define-extern *anim-tester* (pointer anim-tester))
+(define-extern *ANIM_TESTER-bank* anim-tester-bank)
 (define-extern anim-test-field-highlight-lw (inline-array list-field))
-(define-extern *DISP_LIST-bank* DISP_LIST-bank) ;; unknown type
+(define-extern *DISP_LIST-bank* DISP_LIST-bank)
 (define-extern *debug-menu-context* debug-menu-context)
 
 
@@ -21938,8 +22002,6 @@
   :size-assert         #xb4
   :heap-base           #x50
   :flag-assert         #x14005000b4
-  (:states
-    viewer-process)
   )
 
 ;; - Functions
@@ -21952,11 +22014,12 @@
 
 ;; - Unknowns
 
-(define-extern *viewer* viewer) ;; unknown type
+(define-extern *viewer* viewer)
 (define-extern viewer-ja-name string)
 (define-extern viewer-geo-name string)
 (define-extern *viewer-sg* skeleton-group)
 (define-extern viewer-string string)
+(define-extern viewew-process (state viewer))
 
 
 ;; ----------------------
@@ -21975,8 +22038,6 @@
   :size-assert         #x7c
   :heap-base           #x100
   :flag-assert         #xe0100007c
-  (:states
-    part-tester-idle)
   )
 
 ;; - Functions
@@ -21986,9 +22047,10 @@
 
 ;; - Unknowns
 
-(define-extern *debug-part-dead-pool* dead-pool) ;; unknown type
-(define-extern *part-tester* part-tester) ;; unknown type
-(define-extern *part-tester-name* string) ;; unknown type
+(define-extern *debug-part-dead-pool* dead-pool)
+(define-extern *part-tester* part-tester)
+(define-extern *part-tester-name* string)
+(define-extern part-tester-idle (state part-tester))
 
 
 ;; ----------------------
@@ -22020,7 +22082,7 @@
 (define-extern build-instance-list (function object none)) ;; TODO - drawable types aren't complete
 (define-extern dm-edit-instance-toggle-pick-func (function int debug-menu-msg symbol))
 (define-extern dm-boolean-toggle-pick-func (function (pointer symbol) debug-menu-msg symbol))
-(define-extern build-shader-list (function object))
+(define-extern build-shader-list (function none))
 (define-extern all-texture-tweak-adjust (function texture-page-dir float none)) ;; TODO - texture related types
 (define-extern debug-menu-make-camera-mode-menu (function debug-menu debug-menu none))
 (define-extern dm-cam-externalize (function symbol debug-menu-msg symbol))

@@ -5,3 +5,104 @@
 ;; name in dgo: collide-mesh
 ;; dgos: GAME, ENGINE
 
+(defmethod asize-of collide-mesh ((obj collide-mesh))
+  "Compute the size in memory of a collide-mesh. Somehow this only counts num-tris and not verts."
+  (the-as int (+ (-> collide-mesh size) (* (+ (-> obj num-tris) -1) 8)))
+  )
+
+(defmethod mem-usage collide-mesh ((obj collide-mesh) (arg0 memory-usage-block) (arg1 int))
+  "Compute the memory usage of a collide-mesh."
+  (set! (-> arg0 length) (max 79 (-> arg0 length)))
+  (set! (-> arg0 data 78 name) "collide-mesh")
+  (+! (-> arg0 data 78 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 78 used) v1-6)
+    (+! (-> arg0 data 78 total) (logand -16 (+ v1-6 15)))
+    )
+  (set! (-> arg0 length) (max 79 (-> arg0 length)))
+  (set! (-> arg0 data 78 name) "collide-mesh")
+  (+! (-> arg0 data 78 count) 1)
+  (let ((v1-16 (* (-> obj num-verts) 16)))
+    (+! (-> arg0 data 78 used) v1-16)
+    (+! (-> arg0 data 78 total) (logand -16 (+ v1-16 15)))
+    )
+  (the-as collide-mesh 0)
+  )
+
+(defmethod debug-draw-tris collide-mesh ((obj collide-mesh) (arg0 process-drawable) (arg1 int))
+  "Draw a collide-mesh."
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (the-as object (-> obj tris)))
+          (s4-0 (-> arg0 node-list data arg1 bone transform))
+          )
+      (countdown (s3-0 (-> obj num-tris))
+        (let ((a2-1 (new 'stack-no-clear 'vector))
+              (a3-0 (new 'stack-no-clear 'vector))
+              (t0-0 (new 'stack-no-clear 'vector))
+              )
+          (.lvf vf4 (&-> s4-0 vector 0 quad))
+          (.lvf vf5 (&-> s4-0 vector 1 quad))
+          (.lvf vf6 (&-> s4-0 vector 2 quad))
+          (.lvf vf7 (&-> s4-0 vector 3 quad))
+          (.lvf vf1 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 0)) quad))
+          (.lvf vf2 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 1)) quad))
+          (.lvf vf3 (&-> (-> obj vertex-data (-> (the-as collide-mesh-tri s5-0) vertex-index 2)) quad))
+          (let ((t1-0 (copy-and-set-field (-> *pat-mode-info* (-> (the-as collide-mesh-tri s5-0) pat mode) color) a 16)))
+            (.mul.w.vf acc vf7 vf0)
+            (.add.mul.x.vf acc vf4 vf1 acc)
+            (.add.mul.y.vf acc vf5 vf1 acc)
+            (.add.mul.z.vf vf1 vf6 vf1 acc)
+            (.mul.w.vf acc vf7 vf0)
+            (.add.mul.x.vf acc vf4 vf2 acc)
+            (.add.mul.y.vf acc vf5 vf2 acc)
+            (.add.mul.z.vf vf2 vf6 vf2 acc)
+            (.mul.w.vf acc vf7 vf0)
+            (.add.mul.x.vf acc vf4 vf3 acc)
+            (.add.mul.y.vf acc vf5 vf3 acc)
+            (.add.mul.z.vf vf3 vf6 vf3 acc)
+            (.svf (&-> a2-1 quad) vf1)
+            (.svf (&-> a3-0 quad) vf2)
+            (.svf (&-> t0-0 quad) vf3)
+            (add-debug-flat-triangle #t (bucket-id debug-draw1) a2-1 a3-0 t0-0 t1-0)
+            )
+          )
+        (set! s5-0 (-> (the-as (inline-array collide-mesh-tri) s5-0) 1))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(deftype sopt-work (structure)
+  ((intersect     vector         :inline :offset-assert   0)
+   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(defmethod-mips2c "(method 12 collide-mesh)" 12 collide-mesh)
+
+
+(deftype spat-work (structure)
+  ((intersect     vector         :inline :offset-assert   0)
+   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(defmethod-mips2c "(method 11 collide-mesh)" 11 collide-mesh)

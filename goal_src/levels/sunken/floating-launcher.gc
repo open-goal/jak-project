@@ -33,92 +33,68 @@
 
 (defstate floating-launcher-idle (floating-launcher)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior floating-launcher)
-   plat-event
-   )
+  (the-as (function process int symbol event-message-block object :behavior floating-launcher) plat-event)
   :trans
   (behavior ()
-   (plat-trans)
-   (when
-    (<
-     (vector-xz-length
-      (vector-!
-       (new 'stack-no-clear 'vector)
-       (target-pos 0)
-       (-> self root-override trans)
-       )
+    (plat-trans)
+    (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans)))
+             81920.0
+             )
+      (if (and (>= (-> (target-pos 0) y) (-> self trigger-height)) (logtest? (-> *target* control status) 2))
+          (go floating-launcher-lowering)
+          )
       )
-     81920.0
-     )
-    (if
-     (and
-      (>= (-> (target-pos 0) y) (-> self trigger-height))
-      (logtest? (-> *target* control status) 2)
-      )
-     (go floating-launcher-lowering)
-     )
+    (none)
     )
-   (none)
-   )
   :code
   (behavior ()
-   (transform-post)
-   (suspend)
-   (transform-post)
-   (suspend)
-   (while #t
+    (transform-post)
     (suspend)
+    (transform-post)
+    (suspend)
+    (while #t
+      (suspend)
+      )
+    (none)
     )
-   (none)
-   )
   :post
   (the-as (function none :behavior floating-launcher) plat-post)
   )
 
 (defstate floating-launcher-lowering (floating-launcher)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior floating-launcher)
-   plat-event
-   )
+  (the-as (function process int symbol event-message-block object :behavior floating-launcher) plat-event)
   :trans
   (the-as (function none :behavior floating-launcher) plat-trans)
   :code
   (behavior ()
-   (let ((a0-1 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-    (if a0-1
-     (entity-birth-no-kill a0-1)
-     )
-    )
-   (let ((f30-0 1.0))
-    (while (!= f30-0 0.0)
-     (set! f30-0 (seek f30-0 0.0 (-> *display* seconds-per-frame)))
-     (eval-path-curve-div! (-> self path) (-> self basetrans) f30-0 'interp)
-     (set!
-      (-> self launcher 0 root-override trans quad)
-      (-> self basetrans quad)
+    (let ((a0-1 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+      (if a0-1
+          (entity-birth-no-kill a0-1)
+          )
       )
-     (dummy-47 (-> self launcher 0 root-override))
-     (suspend)
-     )
+    (let ((f30-0 1.0))
+      (while (!= f30-0 0.0)
+        (set! f30-0 (seek f30-0 0.0 (-> *display* seconds-per-frame)))
+        (eval-path-curve-div! (-> self path) (-> self basetrans) f30-0 'interp)
+        (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
+        (dummy-47 (-> self launcher 0 root-override))
+        (suspend)
+        )
+      )
+    (eval-path-curve-div! (-> self path) (-> self basetrans) 0.0 'interp)
+    (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
+    (dummy-47 (-> self launcher 0 root-override))
+    (go floating-launcher-ready)
+    (none)
     )
-   (eval-path-curve-div! (-> self path) (-> self basetrans) 0.0 'interp)
-   (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
-   (dummy-47 (-> self launcher 0 root-override))
-   (go floating-launcher-ready)
-   (none)
-   )
   :post
   (the-as (function none :behavior floating-launcher) plat-post)
   )
 
 (defstate floating-launcher-ready (floating-launcher)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior floating-launcher)
-   plat-event
-   )
+  (the-as (function process int symbol event-message-block object :behavior floating-launcher) plat-event)
   :trans
   (the-as (function none :behavior floating-launcher) plat-trans)
   :code
@@ -127,95 +103,48 @@
   (the-as (function none :behavior floating-launcher) plat-post)
   )
 
-(defmethod
-  init-from-entity!
-  floating-launcher
-  ((obj floating-launcher) (arg0 entity-actor))
+(defmethod init-from-entity! floating-launcher ((obj floating-launcher) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (let
-   ((s4-0
-     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-     )
-    )
-   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s4-0 reaction) default-collision-reaction)
-   (set!
-    (-> s4-0 no-reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     nothing
-     )
-    )
-   (dummy-29 s4-0 1)
-   (let
-    ((s3-0
-      (new
-       'process
-       'collide-shape-prim-mesh
-       s4-0
-       (the-as uint 0)
-       (the-as uint 0)
-       )
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (dummy-29 s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
+      (set-root-prim! s4-0 s3-0)
       )
-     )
-    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
-    (set! (-> s3-0 collide-with) (the-as uint 16))
-    (set! (-> s3-0 prim-core action) (the-as uint 3))
-    (set! (-> s3-0 prim-core offense) 4)
-    (set! (-> s3-0 transform-index) 0)
-    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
-    (set-root-prim! s4-0 s3-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
     )
-   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (backup-collide-with-as s4-0)
-   (set! (-> obj root-override) s4-0)
-   )
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
-  (logior!
-   (-> obj path flags)
-   (path-control-flag display draw-line draw-point draw-text)
-   )
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (eval-path-curve-div! (-> obj path) (-> obj root-override trans) 1.0 'interp)
   (let ((f30-0 (res-lump-float arg0 'spring-height :default 163840.0))
         (s4-1 (get-process *default-dead-pool* launcher #x4000))
         )
-   (set! (-> obj launcher) (the-as (pointer launcher) (when s4-1
-                                                       (let
-                                                        ((t9-11
-                                                          (method-of-type
-                                                           launcher
-                                                           activate
-                                                           )
-                                                          )
-                                                         )
-                                                        (t9-11
-                                                         (the-as launcher s4-1)
-                                                         obj
-                                                         'launcher
-                                                         (the-as
-                                                          pointer
-                                                          #x70004000
-                                                          )
-                                                         )
-                                                        )
-                                                       (run-now-in-process
-                                                        s4-1
-                                                        launcher-init-by-other
-                                                        (->
-                                                         obj
-                                                         root-override
-                                                         trans
-                                                         )
-                                                        f30-0
-                                                        0
-                                                        81920.0
-                                                        )
-                                                       (-> s4-1 ppointer)
-                                                       )
-                            )
+    (set! (-> obj launcher)
+          (the-as
+            (pointer launcher)
+            (when s4-1
+              (let ((t9-11 (method-of-type launcher activate)))
+                (t9-11 (the-as launcher s4-1) obj 'launcher (the-as pointer #x70004000))
+                )
+              (run-now-in-process s4-1 launcher-init-by-other (-> obj root-override trans) f30-0 0 81920.0)
+              (-> s4-1 ppointer)
+              )
+            )
+          )
     )
-   )
   (initialize-skeleton obj *floating-launcher-sg* '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))

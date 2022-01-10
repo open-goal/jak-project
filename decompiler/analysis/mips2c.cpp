@@ -91,6 +91,8 @@ std::string goal_to_c_function_name(const FunctionName& name) {
   switch (name.kind) {
     case FunctionName::FunctionKind::GLOBAL:
       return goal_to_c_name(name.function_name);
+    case FunctionName::FunctionKind::METHOD:
+      return fmt::format("method_{}_{}", name.method_id, goal_to_c_name(name.type_name));
     default:
       assert(false);
   }
@@ -826,6 +828,12 @@ Mips2C_Line handle_clts(const Instruction& i0, const std::string& instr_string) 
           instr_string};
 }
 
+Mips2C_Line handle_cles(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("cop1_bc = c->fprs[{}] <= c->fprs[{}];", reg_to_name(i0.get_src(0)),
+                      reg_to_name(i0.get_src(1))),
+          instr_string};
+}
+
 Mips2C_Line handle_pmfhl_lh(const Instruction& i0, const std::string& instr_string) {
   return {fmt::format("c->pmfhl_lh({});", reg_to_name(i0.get_dst(0))), instr_string};
 }
@@ -1001,6 +1009,9 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::CLTS:
       output.needs_cop1_bc = true;
       return handle_clts(i0, instr_str);
+    case InstructionKind::CLES:
+      output.needs_cop1_bc = true;
+      return handle_cles(i0, instr_str);
     case InstructionKind::VWAITQ:
       return handle_plain_op(i0, instr_str, "vwaitq");
     case InstructionKind::VOPMULA:

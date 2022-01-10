@@ -65,10 +65,9 @@
   (set! (-> self foot-offset) (-> *CAMERA_MASTER-bank* onscreen-foot-height))
   (set! (-> self head-offset) (-> *CAMERA_MASTER-bank* onscreen-head-height))
   (set! (-> self target-height) (-> *CAMERA_MASTER-bank* target-height))
-  (set! (-> self on-ground) (not (and
-                                   (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                   (zero? (logand (-> *target* control status) 1))
-                                   )
+  (set! (-> self on-ground) (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                                      (zero? (logand (-> *target* control status) 1))
+                                      )
                                  )
         )
   (set! (-> self on-pole) #f)
@@ -78,10 +77,10 @@
   (set! (-> self string-push-z) (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z)))
   (cond
     ((>= (- (-> *display* base-frame-counter) (if *target*
-                                                    (-> *target* neck notice-time)
-                                                    0
-                                                    )
-              )
+                                                  (-> *target* neck notice-time)
+                                                  0
+                                                  )
+            )
          (the-as int (-> *CAMERA-bank* attack-timeout))
          )
      (set! (-> self being-attacked) #f)
@@ -89,10 +88,9 @@
     (else
       (set! (-> self attack-start) (the-as uint (-> *display* base-frame-counter)))
       (set! (-> self being-attacked) #t)
-      (when (and
-              (zero? (logand (-> self master-options) 64))
-              (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
-              )
+      (when (and (zero? (logand (-> self master-options) 64))
+                 (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
+                 )
         (set! (-> self string-max target y) (fmax (-> self string-max target y) (-> last-try-to-look-at-data vert)))
         (set! (-> self string-max target z) (fmax (-> self string-max target z) (-> last-try-to-look-at-data horz)))
         (set! (-> self string-push-z) (fmax (-> self string-push-z) (-> self string-max target z)))
@@ -203,11 +201,10 @@
 
 (defbehavior master-track-target camera-master ()
   (cond
-    ((and
-       (logtest? (-> self master-options) 2)
-       (!= (-> self drawable-target) #f)
-       (not (handle->process (-> self drawable-target)))
-       )
+    ((and (logtest? (-> self master-options) 2)
+          (!= (-> self drawable-target) #f)
+          (not (handle->process (-> self drawable-target)))
+          )
      (set! (-> self master-options) (logand -3 (-> self master-options)))
      (set! (-> self drawable-target) (the-as handle #f))
      )
@@ -300,10 +297,10 @@
            )
        (cond
          ((>= (- (-> *display* base-frame-counter) (if *target*
-                                                         (-> *target* neck notice-time)
-                                                         0
-                                                         )
-                   )
+                                                       (-> *target* neck notice-time)
+                                                       0
+                                                       )
+                 )
               (the-as int (-> *CAMERA-bank* attack-timeout))
               )
           (set! (-> self being-attacked) #f)
@@ -313,10 +310,9 @@
                (set! (-> self attack-start) (the-as uint (-> *display* base-frame-counter)))
                )
            (set! (-> self being-attacked) #t)
-           (when (and
-                   (zero? (logand (-> self master-options) 64))
-                   (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
-                   )
+           (when (and (zero? (logand (-> self master-options) 64))
+                      (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
+                      )
              (set! (-> self string-max target y) (fmax (-> self string-max target y) (-> last-try-to-look-at-data vert)))
              (set! (-> self string-max target z) (fmax (-> self string-max target z) (-> last-try-to-look-at-data horz)))
              (set! (-> self string-push-z) (fmax (-> self string-push-z) (-> self string-max target z)))
@@ -363,7 +359,7 @@
            (set! (-> self tpos-curr quad) (-> (target-cam-pos) quad))
            )
          )
-       (when (logtest? (-> *target* control root-prim prim-core action) 128)
+       (when (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7))
          (if *display-cam-los-debug*
              (format *stdcon* "ride edge~%")
              )
@@ -374,29 +370,37 @@
            (vector--float*! s5-2 (-> self tpos-curr) (-> self local-down) (-> self target-height))
            (vector-float*! gp-5 (-> self tgt-rot-mat vector 2) 4915.2)
            (vector-! s5-2 s5-2 gp-5)
-           (let ((f0-20 (dummy-10 *collide-cache* s5-2 gp-5 4300.8 1 (the-as process #f) s4-2 4098)))
+           (let ((f0-20 (fill-and-probe-using-line-sphere
+                          *collide-cache*
+                          s5-2
+                          gp-5
+                          4300.8
+                          (collide-kind background)
+                          (the-as process #f)
+                          s4-2
+                          4098
+                          )
+                        )
+                 )
              (if (and (< 0.0 f0-20) (< f0-20 1.0))
                  (vector+float*! (-> self tpos-curr) (-> self tpos-curr) gp-5 (+ -1.0 f0-20))
                  )
              )
            )
          )
-       (set! (-> self on-ground) (not (and
-                                        (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                        (zero? (logand (-> *target* control status) 1))
-                                        )
+       (set! (-> self on-ground) (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                                           (zero? (logand (-> *target* control status) 1))
+                                           )
                                       )
              )
        (let ((gp-6 (new-stack-vector0)))
          0.0
          (cond
-           ((and
-              (and
-                (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                (zero? (logand (-> *target* control status) 1))
-                )
-              (!= (-> *target* control unknown-surface00 name) 'launch-jump)
-              )
+           ((and (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
+                      (zero? (logand (-> *target* control status) 1))
+                      )
+                 (!= (-> *target* control unknown-surface00 name) 'launch-jump)
+                 )
             (if *display-cam-los-debug*
                 (format *stdcon* "air tracking~%")
                 )
@@ -534,9 +538,9 @@
           (else
             (dotimes (a0-2 (the-as int (-> sv-16 elt-count)))
               (if (< arg2 (- (vector-dot arg0 (-> (the-as (inline-array vector) v1-1) a0-2))
-                               (-> (the-as (inline-array vector) v1-1) a0-2 w)
-                               )
-                       )
+                             (-> (the-as (inline-array vector) v1-1) a0-2 w)
+                             )
+                     )
                   (goto cfg-12)
                   )
               )
@@ -780,43 +784,39 @@
       ((or (not *target*) (logtest? (-> self master-options) 1))
        (master-unset-region)
        )
-      ((and
-         (logtest? (-> self master-options) 4)
-         (not (-> self on-ground))
-         (or (not (-> self cam-entity)) (zero? (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))))
-         )
+      ((and (logtest? (-> self master-options) 4)
+            (not (-> self on-ground))
+            (or (not (-> self cam-entity)) (zero? (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))))
+            )
        #f
        )
-      ((and
-         (-> self cam-entity)
-         (not (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 0.0 'cutoutvol))
-         (or
-           (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
-           (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
-           (and
-             (not ((method-of-type res-lump get-property-data)
-                   (-> self cam-entity)
-                   'pvol
-                   'exact
-                   0.0
-                   (the-as pointer #f)
-                   (the-as (pointer res-tag) #f)
-                   *res-static-buf*
-                   )
-                  )
-             (not ((method-of-type res-lump get-property-data)
-                   (-> self cam-entity)
-                   'vol
-                   'exact
-                   0.0
-                   (the-as pointer #f)
-                   (the-as (pointer res-tag) #f)
-                   *res-static-buf*
-                   )
-                  )
-             )
-           )
-         )
+      ((and (-> self cam-entity)
+            (not (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 0.0 'cutoutvol))
+            (or (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
+                (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
+                (and (not ((method-of-type res-lump get-property-data)
+                           (-> self cam-entity)
+                           'pvol
+                           'exact
+                           0.0
+                           (the-as pointer #f)
+                           (the-as (pointer res-tag) #f)
+                           *res-static-buf*
+                           )
+                          )
+                     (not ((method-of-type res-lump get-property-data)
+                           (-> self cam-entity)
+                           'vol
+                           'exact
+                           0.0
+                           (the-as pointer #f)
+                           (the-as (pointer res-tag) #f)
+                           *res-static-buf*
+                           )
+                          )
+                     )
+                )
+            )
        #f
        )
       (else
@@ -825,10 +825,9 @@
           (let ((gp-5 (-> v1-17 next0)))
             (while (!= v1-17 (-> *camera-engine* alive-list-end))
               (let ((s5-1 (-> (the-as connection v1-17) param1)))
-                (when (and
-                        (not (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 1024.0 'cutoutvol))
-                        (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
-                        )
+                (when (and (not (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 1024.0 'cutoutvol))
+                           (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
+                           )
                   (if (master-switch-to-entity (the-as entity s5-1))
                       (return #t)
                       )
@@ -849,42 +848,42 @@
 (defstate cam-master-active (camera-master)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (local-vars (v0-0 object)) ;; hack
-   (rlet ((vf0 :class vf))
-    (init-vf0-vector)
-    (let ((v1-0 arg2))
-     (cond
-      ((= v1-0 'dist-from-interp-src)
-       (set! v0-0 (the-as object (cond
-                                  ((not *camera-combiner*)
-                                   409600.0
-                                   )
-                                  ((= (-> *camera-combiner* interp-val) 0.0)
-                                   0.0
-                                   )
-                                  (else
-                                   (-> *camera-combiner* dist-from-src)
-                                   )
-                                  )
-                   )
-        )
-       )
-      ((= v1-0 'dist-from-interp-dest)
-       (set! v0-0 (the-as object (cond
-                                  ((not *camera-combiner*)
-                                   0.0
-                                   )
-                                  ((= (-> *camera-combiner* interp-val) 0.0)
-                                   409600.0
-                                   )
-                                  (else
-                                   (-> *camera-combiner* dist-from-dest)
-                                   )
-                                  )
-                   )
-        )
-       )
-      ((= v1-0 'level-deactivate)
+    (local-vars (v0-0 object));; todo
+    (rlet ((vf0 :class vf))
+      (init-vf0-vector)
+      (let ((v1-0 arg2))
+        (cond
+          ((= v1-0 'dist-from-interp-src)
+           (set! v0-0 (the-as object (cond
+                                       ((not *camera-combiner*)
+                                        409600.0
+                                        )
+                                       ((= (-> *camera-combiner* interp-val) 0.0)
+                                        0.0
+                                        )
+                                       (else
+                                         (-> *camera-combiner* dist-from-src)
+                                         )
+                                       )
+                              )
+                 )
+           )
+          ((= v1-0 'dist-from-interp-dest)
+           (set! v0-0 (the-as object (cond
+                                       ((not *camera-combiner*)
+                                        0.0
+                                        )
+                                       ((= (-> *camera-combiner* interp-val) 0.0)
+                                        409600.0
+                                        )
+                                       (else
+                                         (-> *camera-combiner* dist-from-dest)
+                                         )
+                                       )
+                              )
+                 )
+           )
+          ((= v1-0 'level-deactivate)
            (set! v0-0 (the-as
                         object
                         (if (and (-> self cam-entity) (= (-> (get-level (-> self cam-entity)) name) (-> arg3 param 0)))
@@ -1106,10 +1105,9 @@
                      )
                    )
                  )
-               (if (and
-                       (> (-> self num-slaves) 0)
-                       (or (= (-> self slave 0 0 next-state name) 'cam-stick) (= (-> self slave 0 0 next-state name) 'cam-string))
-                       )
+               (if (and (> (-> self num-slaves) 0)
+                        (or (= (-> self slave 0 0 next-state name) 'cam-stick) (= (-> self slave 0 0 next-state name) 'cam-string))
+                        )
                    (set! (-> self view-off-param-save) (-> self slave 0 0 view-off-param))
                    )
                (set! (-> self changer) (the-as uint (process->ppointer arg0)))

@@ -96,9 +96,8 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::VABS, {".abs.vf", {MOD::DEST_MASK}}},
 
     // Outer-product
-    // NOTE - currently it's assumed these groups of instructions will be replaced with 1
-    {InstructionKind::VOPMULA, {"TODO.VOPMULA.vf", {}}},
-    {InstructionKind::VOPMSUB, {".outer.product.vf", {MOD::SWAP_FIRST_TWO_SOURCE_ARGS}}},
+    {InstructionKind::VOPMULA, {".outer.product.a.vf", {}}},
+    {InstructionKind::VOPMSUB, {".outer.product.b.vf", {MOD::ACC_THIRD_SRC_ARG}}},
 
     // Division
     {InstructionKind::VDIV, {".div.vf", {MOD::FTF, MOD::FSF}}},
