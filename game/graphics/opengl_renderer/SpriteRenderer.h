@@ -89,6 +89,7 @@ struct SpriteVecData2d {
   // scale y.
   float sy() const { return flag_rot_sy.w(); }
 };
+static_assert(sizeof(SpriteVecData2d) == 48);
 
 /*!
  * The layout of VU1 data memory, in quadword addresses
@@ -189,6 +190,22 @@ class SpriteRenderer : public BucketRenderer {
   bool m_2d_enable = true;
   bool m_3d_enable = true;
 
-  DirectRenderer m_sprite_renderer;
-  DirectRenderer m_direct_renderer;
+  struct SpriteVertex3D {
+    math::Vector4f xyz_sx;  // position + x scale
+    math::Vector4f quat_sy;  // quaternion + y scale
+    math::Vector4f rgba;         // color
+    math::Vector<u16, 4> flags_matrix;  // flags + matrix... split
+    u8 vert_id;
+    math::Vector<u8, 7> pad;
+  };
+  static_assert(sizeof(SpriteVertex3D) == 64);
+
+  std::vector<SpriteVertex3D> m_vertices_3d;
+
+  struct {
+    GLuint vertex_buffer;
+    GLuint vao;
+    u32 vertex_buffer_bytes = 0;
+    u32 vertex_buffer_max_verts = 0;
+  } m_ogl;
 };

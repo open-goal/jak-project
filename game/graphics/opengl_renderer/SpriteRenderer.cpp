@@ -31,12 +31,64 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 }  // namespace
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id),
-      m_sprite_renderer(fmt::format("{}.sprites", name),
-                        my_id,
-                        16384,
-                        DirectRenderer::Mode::SPRITE_CPU),
-      m_direct_renderer(fmt::format("{}.direct", name), my_id, 100, DirectRenderer::Mode::NORMAL) {}
+    : BucketRenderer(name, my_id) {
+  glGenBuffers(1, &m_ogl.vertex_buffer);
+  glGenVertexArrays(1, &m_ogl.vao);
+  glBindVertexArray(m_ogl.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
+  m_ogl.vertex_buffer_max_verts = 48 * 3 * 2; // 48 sprites
+  m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(SpriteVertex3D);
+  glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr, GL_STREAM_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0,                            // location 0 in the shader
+                        4,                            // 4 floats per vert (w unused)
+                        GL_FLOAT,                     // floats
+                        GL_TRUE,                      // normalized, ignored,
+      sizeof(SpriteVertex3D),                  //
+      (void*)offsetof(SpriteVertex3D, xyz_sx)  // offset in array (why is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(
+      1,                                        // location 0 in the shader
+      4,                                        // 4 color components
+      GL_FLOAT,                                 // floats
+      GL_TRUE,                                  // normalized, ignored,
+      sizeof(SpriteVertex3D),                   //
+      (void*)offsetof(SpriteVertex3D, quat_sy)  // offset in array (why is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(
+      2,                                        // location 0 in the shader
+      4,                                        // 4 color components
+      GL_FLOAT,                                 // floats
+      GL_TRUE,                                  // normalized, ignored,
+      sizeof(SpriteVertex3D),                   //
+      (void*)offsetof(SpriteVertex3D, rgba)  // offset in array (why is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(3);
+  glVertexAttribIPointer(
+      3,                                        // location 0 in the shader
+      2,                                        // 4 color components
+      GL_UNSIGNED_SHORT,                                 // floats
+      sizeof(SpriteVertex3D),                   //
+      (void*)offsetof(SpriteVertex3D, flags_matrix)  // offset in array (why is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(3);
+  glVertexAttribIPointer(4,                            // location 0 in the shader
+                         1,                            // 3 floats per vert
+                         GL_UNSIGNED_BYTE,             // floats
+      sizeof(SpriteVertex3D),               //
+      (void*)offsetof(SpriteVertex3D, vert_id)  // offset in array (why is this a pointer...)
+  );
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  m_vertices_3d.resize(m_ogl.vertex_buffer_max_verts);
+}
 
 /*!
  * Run the sprite distorter.  Currently nothing uses sprite-distorter so this just skips through
@@ -46,13 +98,12 @@ void SpriteRenderer::render_distorter(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
   // Next thing should be the sprite-distorter setup
-  m_direct_renderer.reset_state();
+  // m_direct_renderer.reset_state();
   while (dma.current_tag().qwc != 7) {
     auto direct_data = dma.read_and_advance();
-    m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-                                 direct_data.size_bytes, render_state, prof);
+    // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data, direct_data.size_bytes, render_state, prof);
   }
-  m_direct_renderer.flush_pending(render_state, prof);
+  // m_direct_renderer.flush_pending(render_state, prof);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   assert(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
   assert(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
@@ -165,7 +216,7 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     if (m_enabled) {
       if (run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0) {
         if (m_2d_enable) {
-          do_2d_group0_block_cpu(sprite_count, render_state, prof);
+          // do_2d_group0_block_cpu(sprite_count, render_state, prof);
         }
       } else {
         if (m_3d_enable) {
@@ -227,7 +278,7 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma,
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
     if (m_enabled && m_2d_enable) {
-      do_2d_group1_block_cpu(sprite_count, render_state, prof);
+      // do_2d_group1_block_cpu(sprite_count, render_state, prof);
     }
   }
 }
@@ -251,6 +302,8 @@ void SpriteRenderer::render(DmaFollower& dma,
     return;
   }
 
+  render_state->shaders[ShaderId::SPRITE_CPU].activate();
+
   // First is the distorter
   {
     auto child = prof.make_scoped_child("distorter");
@@ -264,7 +317,7 @@ void SpriteRenderer::render(DmaFollower& dma,
   render_3d(dma);
 
   // 2d draw
-  m_sprite_renderer.reset_state();
+  // m_sprite_renderer.reset_state();
   {
     auto child = prof.make_scoped_child("2d-group0");
     render_2d_group0(dma, render_state, child);
@@ -277,7 +330,7 @@ void SpriteRenderer::render(DmaFollower& dma,
   {
     auto child = prof.make_scoped_child("2d-group1");
     render_2d_group1(dma, render_state, child);
-    m_sprite_renderer.flush_pending(render_state, child);
+    // m_sprite_renderer.flush_pending(render_state, child);
   }
 
   // TODO finish this up.
@@ -307,7 +360,7 @@ void SpriteRenderer::draw_debug_window() {
   ImGui::SameLine();
   ImGui::Checkbox("3d-debug", &m_3d_debug);
   if (ImGui::TreeNode("direct")) {
-    m_sprite_renderer.draw_debug_window();
+    // m_sprite_renderer.draw_debug_window();
     ImGui::TreePop();
   }
 }
@@ -405,6 +458,12 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count,
     // vf30
     Vector4f hvdf_offset = offset_selector == 0 ? m_hud_matrix_data.hvdf_offset
                                                 : m_hud_matrix_data.user_hvdf[offset_selector - 1];
+    glUniform4f(
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"),
+        hvdf_offset[0], hvdf_offset[1], hvdf_offset[2], hvdf_offset[3]);
+    glUniform1f(
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_constant"),
+                m_frame_data.pfog0);
 
     //  lqi.xyzw vf01, vi02        |  nop
     Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
@@ -696,7 +755,7 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count,
     // SIXTEEN is xy3int
     packet.xy3 = xy3_vf22_int;
 
-    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
+    // m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
     if (m_extra_debug) {
       imgui_vec(vf12_rotated, "vf12", 2);
       imgui_vec(vf13_rotated_trans, "vf13", 2);
@@ -768,23 +827,90 @@ Vector4f sprite_transform2(const Vector4f& root,
   pos.x() += offset.x();
   pos.y() += offset.y();
   pos.z() += offset.z();
-  Vector4f transformed_pos = matrix_transform(cam, pos);
-  float Q = pfog0 / transformed_pos.w();
-  transformed_pos.x() *= Q;
-  transformed_pos.y() *= Q;
-  transformed_pos.z() *= Q;
-  Vector4f offset_pos = transformed_pos + hvdf_off;
-  offset_pos.w() = std::max(offset_pos.w(), fog_max);
-  offset_pos.w() = std::min(offset_pos.w(), fog_min);
+  // Vector4f transformed_pos = matrix_transform(cam, pos);
+  // float Q = pfog0 / transformed_pos.w();
+  // transformed_pos.x() *= Q;
+  // transformed_pos.y() *= Q;
+  // transformed_pos.z() *= Q;
+  // Vector4f offset_pos = transformed_pos + hvdf_off;
+  // offset_pos.w() = std::max(offset_pos.w(), fog_max);
+  // offset_pos.w() = std::min(offset_pos.w(), fog_min);
 
-  return offset_pos;
+  // return offset_pos;
+  return pos;
 }
 
 void SpriteRenderer::do_3d_block_cpu(u32 count,
                                      SharedRenderState* render_state,
                                      ScopedProfilerNode& prof) {
   Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
+  Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
+  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"),
+              hvdf_offset[0], hvdf_offset[1], hvdf_offset[2], hvdf_offset[3]);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "pfog0"),
+              m_frame_data.pfog0);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_min"),
+              m_frame_data.fog_min);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_max"),
+              m_frame_data.fog_max);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "max_scale"),
+              m_frame_data.max_scale);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "bonus"),
+              m_frame_data.bonus);
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hmge_scale"),
+               1, m_frame_data.hmge_scale.data());
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "deg_to_rad"),
+              m_frame_data.deg_to_rad);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "inv_area"),
+              m_frame_data.inv_area);
+  glUniformMatrix4fv(
+      glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "camera"), 1, GL_FALSE,
+      camera_matrix.data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "xyz_array"),
+               4, m_frame_data.xyz_array[0].data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "st_array"),
+               4, m_frame_data.st_array[0].data());
+  /*
+  auto vecdata_loc =
+      glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "vec_data_2d");
+  for (int i = 0; i < count; ++i) {
+    // upload vec-data
+    glUniform4fv(vecdata_loc + 0 + i * 5, 1, m_vec_data_2d[i].xyz_sx.data());
+    glUniform1i(vecdata_loc + 1 + i * 5, m_vec_data_2d[i].flag());
+    glUniform1i(vecdata_loc + 2 + i * 5, m_vec_data_2d[i].matrix());
+    glUniform2fv(vecdata_loc + 3 + i * 5, 1, &m_vec_data_2d[i].flag_rot_sy.data()[2]);
+    glUniform4fv(vecdata_loc + 4 + i * 5, 1, m_vec_data_2d[i].rgba.data());
+  }
+  */
+
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
+
+    auto& vert1 = m_vertices_3d.at(sprite_idx * 6 + 0);
+    auto& vert2 = m_vertices_3d.at(sprite_idx * 6 + 1);
+    auto& vert3 = m_vertices_3d.at(sprite_idx * 6 + 2);
+    auto& vert4 = m_vertices_3d.at(sprite_idx * 6 + 3);
+    auto& vert5 = m_vertices_3d.at(sprite_idx * 6 + 4);
+    auto& vert6 = m_vertices_3d.at(sprite_idx * 6 + 5);
+
+    vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
+    vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
+    vert1.rgba = m_vec_data_2d[sprite_idx].rgba;
+    vert1.vert_id = 0;
+
+    m_vertices_3d.at(sprite_idx * 6 + 1) = vert1;
+    m_vertices_3d.at(sprite_idx * 6 + 2) = vert1;
+    m_vertices_3d.at(sprite_idx * 6 + 3) = vert1;
+    m_vertices_3d.at(sprite_idx * 6 + 4) = vert1;
+    m_vertices_3d.at(sprite_idx * 6 + 5) = vert1;
+
+    m_vertices_3d.at(sprite_idx * 6 + 1).vert_id = 1;
+    m_vertices_3d.at(sprite_idx * 6 + 2).vert_id = 2;
+    m_vertices_3d.at(sprite_idx * 6 + 3).vert_id = 2;
+    m_vertices_3d.at(sprite_idx * 6 + 4).vert_id = 3;
+    m_vertices_3d.at(sprite_idx * 6 + 5).vert_id = 0;
+
+    /*
+
     SpriteHud2DPacket packet;
     memset(&packet, 0, sizeof(packet));
     //  ilw.y vi08, 1(vi02)        |  nop                          vi08 = matrix
@@ -797,7 +923,6 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     //  lq.xyzw vf28, 903(vi00)    |  nop
     //  lq.xyzw vf30, 904(vi00)    |  nop                          vf30 = hvdf_offset
     // vf30
-    Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
 
     //  lqi.xyzw vf01, vi02        |  nop
     Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
@@ -962,18 +1087,34 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     packet.st2 = st2_vf08;
     packet.st3 = st3_vf09;
 
-    auto xy0_vf19_int = (xy0_vf19 * 16.f).cast<s32>();
-    auto xy1_vf20_int = (xy1_vf20 * 16.f).cast<s32>();
-    auto xy2_vf21_int = (xy2_vf21 * 16.f).cast<s32>();
-    auto xy3_vf22_int = (xy3_vf22 * 16.f).cast<s32>();
+    auto xy0_vf19_int = (xy0_vf19).cast<s32>();
+    auto xy1_vf20_int = (xy1_vf20).cast<s32>();
+    auto xy2_vf21_int = (xy2_vf21).cast<s32>();
+    auto xy3_vf22_int = (xy3_vf22).cast<s32>();
 
     packet.xy0 = xy0_vf19_int;
     packet.xy1 = xy1_vf20_int;
     packet.xy2 = xy2_vf21_int;
     packet.xy3 = xy3_vf22_int;
 
-    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
+    // m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
+
+    */
   }
+
+  glBindVertexArray(m_ogl.vao);
+
+  // render!
+  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(SpriteVertex3D), m_vertices_3d.data());
+  glActiveTexture(GL_TEXTURE0);
+
+  glDrawArrays(GL_TRIANGLES, 0, count);
+
+  glBindVertexArray(0);
+  int n_tris = (count / 3);
+  prof.add_tri(n_tris);
+  prof.add_draw_call(1);
 }
 
 void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
@@ -1001,6 +1142,12 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     //  lq.xyzw vf30, 904(vi00)    |  nop                          vf30 = hvdf_offset
     // vf30
     Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
+    glUniform4f(
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"),
+        hvdf_offset[0], hvdf_offset[1], hvdf_offset[2], hvdf_offset[3]);
+    glUniform1f(
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_constant"),
+        m_frame_data.pfog0);
 
     //  lqi.xyzw vf01, vi02        |  nop
     Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
@@ -1305,7 +1452,7 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     // SIXTEEN is xy3int
     packet.xy3 = xy3_vf22_int;
 
-    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
+    // m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
     if (m_extra_debug) {
       imgui_vec(vf12_rotated, "vf12", 2);
       imgui_vec(vf13_rotated_trans, "vf13", 2);
