@@ -56,12 +56,12 @@ vec4 sprite_transform2(vec4 root, vec4 off, mat4 cam, mat3 sprite_rot, float sx,
   vec3 offset = sprite_rot[0] * off.x * sx + sprite_rot[1] * off.y + sprite_rot[2] * off.z * sy;
 
   pos.xyz += offset.xyz;
-  vec4 transformed_pos = matrix_transform(cam, pos);
+  vec4 transformed_pos = -matrix_transform(cam, pos);
   float Q = pfog0 / transformed_pos.w;
   transformed_pos.xyz *= Q;
   vec4 offset_pos = transformed_pos + hvdf_off;
-  offset_pos.w = max(offset_pos.w, fog_max);
-  offset_pos.w = min(offset_pos.w, fog_min);
+  // offset_pos.w = max(offset_pos.w, fog_max);
+  // offset_pos.w = min(offset_pos.w, fog_min);
 
   return offset_pos;
 }
@@ -82,41 +82,19 @@ void main() {
   vec4 transformed_pos_vf02 = matrix_transform(camera, xyz_sx);
 
   vec4 scales_vf01 = xyz_sx;  // now used for something else.
-  vec4 fog_consts_vf12 = vec4(fog_min, fog_max, max_scale, bonus);
 
   scales_vf01.z = sy;  // start building the scale vector
 
   float Q = pfog0 / transformed_pos_vf02.w;
   // quat.z *= deg_to_rad;
-  scales_vf01.z *= Q;  // sy
-  scales_vf01.w *= Q;  // sx
+  scales_vf01.zw *= Q;  // sy sx
 
-  transformed_pos_vf02.x *= Q;
-  transformed_pos_vf02.y *= Q;
-  transformed_pos_vf02.z *= Q;
+  transformed_pos_vf02.xyz *= Q;
 
   scales_vf01.x = scales_vf01.z;  // = sy
-
-  vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
-
   scales_vf01.x *= scales_vf01.w;  // x = sx * sy
-
-  offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
-
-  scales_vf01.z = max(scales_vf01.z, min_scale);
-  scales_vf01.w = max(scales_vf01.w, min_scale);
-
   scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
-
-  offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
-
-  scales_vf01.z = min(scales_vf01.z, fog_consts_vf12.z);
-  scales_vf01.w = min(scales_vf01.w, fog_consts_vf12.z);
-
   scales_vf01.x = min(scales_vf01.x, 1.0);
-
-  transformed_pos_vf02.w = offset_pos_vf10.w - fog_consts_vf12.y;
-
   fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
 
   mat3 rot = sprite_quat_to_rot(quat.x, quat.y, quat.z);
