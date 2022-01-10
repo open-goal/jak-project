@@ -853,6 +853,8 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
               m_frame_data.fog_min);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_max"),
               m_frame_data.fog_max);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "min_scale"),
+              m_frame_data.min_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "max_scale"),
               m_frame_data.max_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "bonus"),
