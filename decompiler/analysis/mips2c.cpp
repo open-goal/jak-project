@@ -923,7 +923,9 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PEXTLB:
     case InstructionKind::MOVN:
     case InstructionKind::PEXTUW:
+    case InstructionKind::PEXTLW:
     case InstructionKind::PCPYUD:
+    case InstructionKind::PCPYLD:
     case InstructionKind::PPACH:
     case InstructionKind::PINTEH:
     case InstructionKind::PCGTW:
