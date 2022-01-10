@@ -894,7 +894,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
-    vert1.rgba = m_vec_data_2d[sprite_idx].rgba;
+    vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
     vert1.vert_id = 0;
 
     m_vertices_3d.at(sprite_idx * 6 + 1) = vert1;
@@ -1051,7 +1051,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     // continue;  // reject (could move earlier)
     // }
 
-    Vector4f transformed = sprite_transform2(position, m_frame_data.xyz_array[0], camera_matrix,
+    Vector4f transf = sprite_transform2(position, m_frame_data.xyz_array[0], camera_matrix,
                           sprite_quat_to_rot(quat.x(), quat.y(), quat.z()),
         sx, sy,
         hvdf_offset, m_frame_data.pfog0, m_frame_data.fog_min, m_frame_data.fog_max);
@@ -1062,18 +1062,17 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     auto tex_coord = m_frame_data.st_array[0].xyz();
 
     // correct xy offset
-    transformed.x() -= (2048.);
-    transformed.y() -= (2048.);
+    transf.x() -= (2048.);
+    transf.y() -= (2048.);
 
     // correct z scale
-    transformed.z() /= (8388608);
-    transformed.z() -= 1;
+    transf.z() /= (8388608);
+    transf.z() -= 1;
 
     // correct xy scale
-    transformed.x() /= (256);
-    transformed.y() /= -(128);
+    transf.x() /= (256);
+    transf.y() /= -(128);
 
-    /*
 
     SpriteHud2DPacket packet;
     memset(&packet, 0, sizeof(packet));
@@ -1115,7 +1114,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 
     //  nop                        |  nop
     //  div Q, vf31.x, vf02.w      |  muly.z vf05, vf05, vf31
-    float Q = m_frame_data.pfog0 / transformed_pos_vf02.w();
+    Q = m_frame_data.pfog0 / transformed_pos_vf02.w();
     flags_vf05.z() *= m_frame_data.deg_to_rad;
     //  nop                        |  mul.xyzw vf03, vf02, vf29
     Vector4f scaled_pos_vf03 = transformed_pos_vf02.elementwise_multiply(m_frame_data.hmge_scale);
@@ -1263,7 +1262,6 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 
     // m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
 
-    */
   }
 
   glDisable(GL_DEPTH_TEST);

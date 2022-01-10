@@ -211,7 +211,6 @@ void main() {
   // flag_vi07 = 0;  // todo hack
   // vec4* xy_array = m_frame_data.xyz_array + flag_vi07;
   // math::Vector<s32, 4> color_integer_vf11 = color_vf11.cast<s32>();
-  fragment_color /= 255.0;
 
   // packet.color = color_integer_vf11;
 
