@@ -22,7 +22,8 @@ struct OpenGOALAsm {
     FSF,
     OFFSET,
     SWAP_FIRST_TWO_SOURCE_ARGS,
-    ACC_THIRD_SRC_ARG
+    ACC_THIRD_SRC_ARG,
+    SKIP_IT
   };
 
   struct Function {
@@ -40,6 +41,7 @@ struct OpenGOALAsm {
 
   bool valid = true;
   bool todo = false;
+  bool skip = false;
   Instruction instr;
   std::optional<RegisterAccess> m_dst;
   std::vector<std::optional<RegisterAccess>> m_src;
