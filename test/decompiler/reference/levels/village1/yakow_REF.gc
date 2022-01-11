@@ -215,7 +215,7 @@
                       )
                 )
            (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
-             (dummy-45 (-> self root-override))
+             (respond-to-touch-from-player! (-> self root-override))
              (dummy-55 (-> self root-override) arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 0.7 6144.0 16384.0)
              )
            )
@@ -297,7 +297,7 @@ yakow-default-event-handler
 ;; INFO: Return type mismatch symbol vs none.
 (defbehavior yakow-simple-post yakow ()
   (yakow-common-post)
-  (dummy-47 (-> self root-override))
+  (update-transforms! (-> self root-override))
   (none)
   )
 
@@ -343,10 +343,21 @@ yakow-default-event-handler
     (set! (-> self root-override transv x) (-> v1-24 x))
     (set! (-> self root-override transv z) (-> v1-24 z))
     )
-  (vector-v++! (-> self root-override transv) (dummy-62 (-> self root-override) (new-stack-vector0) 0.0))
+  (vector-v++!
+    (-> self root-override transv)
+    (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
+    )
   (let ((gp-2 (new 'stack-no-clear 'vector)))
     (set! (-> gp-2 quad) (-> self root-override trans quad))
-    (dummy-59 (-> self root-override) (-> self root-override transv) (the-as uint 1) 8192.0 #t #f #f)
+    (integrate-for-enemy-with-move-to-ground!
+      (-> self root-override)
+      (-> self root-override transv)
+      (collide-kind background)
+      8192.0
+      #t
+      #f
+      #f
+      )
     (set! (-> self final-speed)
           (* (vector-vector-xz-distance gp-2 (-> self root-override trans)) (-> *display* frames-per-second))
           )
