@@ -13,7 +13,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s2, 16, sp);                                // sq s2, 16(sp)
@@ -365,7 +364,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -80);                           // daddiu sp, sp, -80
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s3, 16, sp);                                // sq s3, 16(sp)

@@ -86,7 +86,6 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_7:
   c->load_symbol(t9, cache.closest_pt_in_triangle); // lw t9, closest-pt-in-triangle(s7)
   c->daddu(a0, r0, s4);                             // daddu a0, r0, s4
   c->mov64(a1, s5);                                 // or a1, s5, r0
@@ -269,7 +268,6 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_4:
   c->load_symbol(t9, cache.closest_pt_in_triangle); // lw t9, closest-pt-in-triangle(s7)
   c->daddu(a0, r0, s4);                             // daddu a0, r0, s4
   c->mov64(a1, s5);                                 // or a1, s5, r0
