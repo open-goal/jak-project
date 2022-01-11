@@ -160,6 +160,15 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
   }
 }
 
+// Each TIE prototype is broken up into "fragments". These "fragments" have some maximum size based
+// on the VU memory limit, so an instance may have multiple fragments, depending on how many
+// vertices are in the model.
+
+// Each instance has different set of time of day colors per fragment in the prototype.
+// this type contains the indicies of these colors.
+// For the PC port we combine all colors into a single "big palette".
+// this stores the indices as indices into the original game's per fragment palette.
+// and an offset for where this palette is located in the big palette.
 struct TieInstanceFragInfo {
   // the color index table uploaded to VU.
   // this contains indices into the shared palette.
@@ -168,26 +177,11 @@ struct TieInstanceFragInfo {
   // in the PC port format, we upload a single giant time of day color. this points to the offset
   // of the colors from this frag instance.
   u16 color_index_offset_in_big_palette = -1;
-
-  math::Vector<u32, 4> lq_colors_ui(u32 qw) const {
-    // note: this includes the unpack
-    assert(qw >= 204);
-    qw -= 204;
-    qw *= 4;
-    assert(qw + 4 <= color_indices.size());
-    math::Vector<u32, 4> result;
-    for (int i = 0; i < 4; i++) {
-      result[i] = color_indices.at(qw + i);
-    }
-    return result;
-  }
 };
 
+// Each TIE instance has one of these. This is reorganized/unpacked data from the instance-tie type.
 struct TieInstanceInfo {
   // The index of the prototype (the geometry) that is used by this instance
-  // note: we're going to trust that this lines up with bucket.
-  // if this assumption is wrong, we'll be drawing with the wrong model and it will be super
-  // obvious.
   u16 prototype_idx = 0;
 
   // our bsphere's index in the BVH tree
@@ -197,33 +191,44 @@ struct TieInstanceInfo {
   // actually cull using the tree)
   math::Vector4f bsphere;
 
+  // the transformation matrix, unpacked from the weird TIE format.
+  // this can be used to transform points directly to world-space points that work
+  // with the normal math camera stuff.
   std::array<math::Vector4f, 4> mat;
 
+  // this value is stashed inside the above matrix. It tells which "wind" we should use
+  // we just need to pass this along to the C++ rendering code.
   u16 wind_index = 0;
-  float unknown_wind_related_value = 0.f;  // w of the first mat vec.
 
-  std::vector<TieInstanceFragInfo> frags;  // per-instance per-fragment info
+  std::vector<TieInstanceFragInfo> frags;  // per-instance per-fragment info (just colors)
 };
 
+// The 5 qw of adgif data contains draw settings, and they also snuck in some extra data.
 struct AdgifInfo {
-  u32 first_w;
-  u32 second_w;
-  u32 third_w;
-  u32 combo_tex;
-  u64 alpha_val;
-  u64 clamp_val;
+  // secret stuff they snuck in
+  u32 first_w;   // VU memory offset
+  u32 second_w;  // some size
+  u32 third_w;   // unused, at least for not-near TIE
+
+  // the draw settings we care about:
+  u32 combo_tex;  // PC texture ID
+  u64 alpha_val;  // alpha blend settings
+  u64 clamp_val;  // texture clamp settings
 };
 
+// When the prototype is uploaded, it places a bunch of strgif tags in VU memory.
+// we'll need to remember where these are.
 struct StrGifInfo {
-  u16 address;
-  u16 nloop;
-  u16 mode;  // not yet fully understood, but can allow the use of other templates.
-  bool eop;
+  u16 address;  // vu memory address
+  u16 nloop;    // the nloop field of this strgif (how much to send)
+  u16 mode;     // not yet fully understood, but can allow the use of other templates
+  bool eop;     // end of packet flag
 };
 
+// data per vertex in a tie prototype
 struct TieProtoVertex {
-  math::Vector<float, 3> pos;
-  math::Vector<float, 3> tex;
+  math::Vector<float, 3> pos;  // position
+  math::Vector<float, 3> tex;  // texture coordinate
 
   // NOTE: this is a double lookup.
   // first you look up the index in the _instance_ color table
@@ -231,26 +236,34 @@ struct TieProtoVertex {
   u32 color_index_index;
 };
 
+// a tie fragment is made up of strips. Each strip has a single adgif info, and vertices
+// the vertices make up a triangle strip
 struct TieStrip {
   AdgifInfo adgif;
   std::vector<TieProtoVertex> verts;
 };
 
+// the tie fragment
+// this is a per-prototype (all instances share the same TieFrags)
 struct TieFrag {
-  bool has_magic_tex0_bit = false;
-  std::vector<AdgifInfo> adgifs;
+  bool has_magic_tex0_bit = false;  // use decal mode (todo)
+  std::vector<AdgifInfo>
+      adgifs;  // the adgifs that come with this tiefrag (different strips can hve different)
 
-  std::vector<u8> other_gif_data;
-  std::vector<u8> points_data;
-  std::vector<u32> point_sizes;
+  std::vector<u8> other_gif_data;  // data sent from EE asm code, sizes/offsets/metadata
+  std::vector<u8> points_data;     // data sent from EE asm code, actual vertex data
 
+  // number of "dverts" expected from game's metadata. we check our extraction from this.
   u32 expected_dverts = 0;
 
+  // all the strips in this fragment
   std::vector<TieStrip> strips;
 
-  // this contains vertices, key is the start of the actual xyzf/st/rgbaq data for it.
+  // this contains vertices, key is the address of the actual xyzf/st/rgbaq data in VU1 memory
+  // after the prototype program runs
   std::unordered_map<u32, TieProtoVertex> vertex_by_dest_addr;
 
+  // simulate a load in the points data (using vu mem addr)
   math::Vector<float, 4> lq_points(u32 qw) const {
     assert(qw >= 50);
     qw -= 50;
@@ -260,6 +273,8 @@ struct TieFrag {
     return result;
   }
 
+  // simulate a load from points, but don't die if we load past the end
+  // this can happen when pipelining.
   math::Vector<float, 4> lq_points_allow_past_end(u32 qw) const {
     assert(qw >= 50);
     qw -= 50;
@@ -272,6 +287,8 @@ struct TieFrag {
     }
   }
 
+  // store data into points. annoyingly the points have to be unpacked
+  // and they are modified in place.
   void sq_points(u32 qw, const math::Vector4f& data) {
     assert(qw >= 50);
     qw -= 50;
@@ -279,6 +296,7 @@ struct TieFrag {
     memcpy(points_data.data() + (qw * 16), data.data(), 16);
   }
 
+  // do a ilw from the other gif data.
   u16 ilw_other_gif(u32 qw, u32 offset) const {
     // unpacked with v8.
     int qwi = qw;
@@ -287,6 +305,7 @@ struct TieFrag {
     return other_gif_data.at(qwi * 4 + offset);
   }
 
+  // reg values from the prototype program that are used by the instance program.
   struct ProgramInfo {
     std::vector<u16> adgif_offset_in_gif_buf_qw;
     std::vector<StrGifInfo> str_gifs;
@@ -305,16 +324,21 @@ struct TieFrag {
   } prog_info;
 };
 
+// main instance type
+// unlike the GOAL type, we store all instances info in here too.
 struct TieProtoInfo {
   std::string name;
   std::vector<TieInstanceInfo> instances;
   bool uses_generic = false;
-  float stiffness = 0;
+  float stiffness = 0;  // wind
   u32 generic_flag;
-  std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;
-  std::vector<TieFrag> frags;
+  std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
+  std::vector<TieFrag> frags;                              // the fragments of the prototype
 };
 
+/*!
+ * Convert TIE packed matrix to normal one. this was figured out from the EE asm.
+ */
 std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
   std::array<math::Vector4f, 4> result;
   for (int i = 0; i < 4; i++) {
@@ -336,10 +360,13 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
   return result;
 }
 
+// geometry we use (todo, should really look at this)
 constexpr int GEOM_IDX = 1;  // todo 0 or 1??
 
 /*!
  * Confirm that the initial value of all wind vectors is 0.
+ * If this is true, we don't have to actually save them to the fr3 file, we can just create
+ * a bunch of 0 vectors in the TIE setup.
  */
 void check_wind_vectors_zero(const std::vector<TieProtoInfo>& protos, Ref wind_ref) {
   u16 max_wind = 0;
@@ -357,25 +384,28 @@ void check_wind_vectors_zero(const std::vector<TieProtoInfo>& protos, Ref wind_r
   }
 }
 
+// get per-instance info from the level data
 std::vector<TieProtoInfo> collect_instance_info(
     const level_tools::DrawableInlineArrayInstanceTie* instances,
     const std::vector<level_tools::PrototypeBucketTie>* protos) {
   std::vector<TieProtoInfo> result;
+
+  // loop over instances in level
   for (auto& instance : instances->instances) {
+    // copy basic data.
     TieInstanceInfo info;
     info.prototype_idx = instance.bucket_index;
     info.vis_id = instance.id;
     for (int i = 0; i < 4; i++) {
       info.bsphere[i] = instance.bsphere.data[i];
     }
+    // from ee asm
     info.mat = extract_tie_matrix(instance.origin.data);
     info.mat[3][0] += info.bsphere[0];
     info.mat[3][1] += info.bsphere[1];
     info.mat[3][2] += info.bsphere[2];
     info.wind_index = instance.wind_index;
-    // there's a value stashed here that we can get rid of
-    // it is related to wind.
-    info.unknown_wind_related_value = info.mat[0][3];
+
     info.mat[0][3] = 0.f;
 
     // each fragment has its own color data (3 dmatags)
@@ -388,6 +418,7 @@ std::vector<TieProtoInfo> collect_instance_info(
     // and this is only the indices.... there's yet another lookup on the VU
     auto& proto = protos->at(info.prototype_idx);
     u32 offset_bytes = proto.base_qw[GEOM_IDX] * 16;
+    // loop over frags. this is only the per-instance info so not a lot.
     for (int frag_idx = 0; frag_idx < proto.frag_count[GEOM_IDX]; frag_idx++) {
       TieInstanceFragInfo frag_info;
       u32 num_color_qwc = proto.color_index_qwc.at(proto.index_start[GEOM_IDX] + frag_idx);
