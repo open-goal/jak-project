@@ -32,35 +32,35 @@ vec4 matrix_transform(mat4 mtx, vec4 pt) {
       + mtx[2] * pt.z;
 }
 
-mat3 sprite_quat_to_rot(float qi, float qj, float qk) {
+mat3 sprite_quat_to_rot(vec4 quat) {
   mat3 result;
-  float qr = sqrt(abs(1.0 - (qi * qi + qj * qj + qk * qk)));
-  result[0][0] = 1.0 - 2.0 * (qj * qj + qk * qk);
-  result[1][0] = 2.0 * (qi * qj - qk * qr);
-  result[2][0] = 2.0 * (qi * qk + qj * qr);
-  result[0][1] = 2.0 * (qi * qj + qk * qr);
-  result[1][1] = 1.0 - 2.0 * (qi * qi + qk * qk);
-  result[2][1] = 2.0 * (qj * qk - qi * qr);
-  result[0][2] = 2.0 * (qi * qk - qj * qr);
-  result[1][2] = 2.0 * (qj * qk + qi * qr);
-  result[2][2] = 1.0 - 2.0 * (qi * qi + qj * qj);
+  float qr = sqrt(abs(1.0 - (quat.x * quat.x + quat.y * quat.y + quat.z * quat.z)));
+  result[0][0] = 1.0 - 2.0 * (quat.y * quat.y + quat.z * quat.z);
+  result[1][0] = 2.0 * (quat.x * quat.y - quat.z * qr);
+  result[2][0] = 2.0 * (quat.x * quat.z + quat.y * qr);
+  result[0][1] = 2.0 * (quat.x * quat.y + quat.z * qr);
+  result[1][1] = 1.0 - 2.0 * (quat.x * quat.x + quat.z * quat.z);
+  result[2][1] = 2.0 * (quat.y * quat.z - quat.x * qr);
+  result[0][2] = 2.0 * (quat.x * quat.z - quat.y * qr);
+  result[1][2] = 2.0 * (quat.y * quat.z + quat.x * qr);
+  result[2][2] = 1.0 - 2.0 * (quat.x * quat.x + quat.y * quat.y);
   return result;
 }
 
-vec4 sprite_transform2(vec4 root, vec4 off, mat4 cam, mat3 sprite_rot, float sx, float sy, vec4 hvdf_off, float pfog0, float fog_min, float fog_max) {
+vec4 sprite_transform2(vec4 root, vec4 off, mat3 sprite_rot, float sx, float sy) {
   vec4 pos = root;
 
   vec3 offset = sprite_rot[0] * off.x * sx + sprite_rot[1] * off.y + sprite_rot[2] * off.z * sy;
 
   pos.xyz += offset.xyz;
-  vec4 transformed_pos = -matrix_transform(cam, pos);
+  vec4 transformed_pos = -matrix_transform(camera, pos);
   float Q = pfog0 / transformed_pos.w;
   transformed_pos.xyz *= Q;
-  vec4 offset_pos = transformed_pos + hvdf_off;
-  // offset_pos.w = max(offset_pos.w, fog_max);
-  // offset_pos.w = min(offset_pos.w, fog_min);
+  transformed_pos.xyz += hvdf_offset.xyz;
+  // transformed_pos.w = max(offset_pos.w, fog_max);
+  // transformed_pos.w = min(offset_pos.w, fog_min);
 
-  return offset_pos;
+  return transformed_pos;
 }
 
 void main() {
@@ -75,31 +75,35 @@ void main() {
   uint vert_id = tex_info_in.z;
 
 
-// STEP 2
+// STEP 2: perspective transform for distance
 
   vec4 transformed_pos_vf02 = matrix_transform(camera, xyz_sx);
-
-  vec4 scales_vf01 = xyz_sx;  // now used for something else.
-
-  scales_vf01.z = sy;  // start building the scale vector
-
   float Q = pfog0 / transformed_pos_vf02.w;
+
+
+// STEP 3: fade out sprite!
+
   // quat.z *= deg_to_rad;
+  vec4 scales_vf01 = xyz_sx;  // now used for something else.
+  scales_vf01.z = sy;  // start building the scale vector
   scales_vf01.zw *= Q;  // sy sx
-
-  transformed_pos_vf02.xyz *= Q;
-
   scales_vf01.x = scales_vf01.z;  // = sy
   scales_vf01.x *= scales_vf01.w;  // x = sx * sy
   scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
   scales_vf01.x = min(scales_vf01.x, 1.0);
   fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
 
-  mat3 rot = sprite_quat_to_rot(quat.x, quat.y, quat.z);
-  vec4 transformed = sprite_transform2(position, xyz_array[vert_id], camera, rot, sx, sy, hvdf_offset, pfog0, fog_min, fog_max);
+
+// STEP 4: actual vertex transformation
+
+  mat3 rot = sprite_quat_to_rot(quat);
+  vec4 transformed = sprite_transform2(position, xyz_array[vert_id], rot, sx, sy);
 
   tex_coord = st_array[vert_id].xyz;
-  
+
+
+// STEP 5: final adjustments
+
   // correct xy offset
   transformed.xy -= (2048.);
 
