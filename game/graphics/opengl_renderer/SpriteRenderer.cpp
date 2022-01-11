@@ -456,8 +456,8 @@ void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfil
   // render!
   // fmt::print("drawing {} sprites\n", m_sprite_offset);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_sprite_offset * sizeof(SpriteVertex3D) * 6,
-                  m_vertices_3d.data());
+  glBufferData(GL_ARRAY_BUFFER, m_sprite_offset * sizeof(SpriteVertex3D) * 6, m_vertices_3d.data(),
+               GL_STREAM_DRAW);
 
   glDrawArrays(GL_TRIANGLES, 0, m_sprite_offset * 6);
 

@@ -346,9 +346,6 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
-
-  glUniform1i(
-      glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "T0"), 0);
 }
 
 void DirectRenderer::update_gl_blend() {
