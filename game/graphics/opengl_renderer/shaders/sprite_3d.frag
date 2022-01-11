@@ -2,7 +2,7 @@
 
 out vec4 color;
 
-in vec4 fragment_color;
+in flat vec4 fragment_color;
 in vec3 tex_coord;
 in flat uvec2 tex_info;
 

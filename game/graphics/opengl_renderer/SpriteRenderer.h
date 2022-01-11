@@ -164,9 +164,15 @@ class SpriteRenderer : public BucketRenderer {
   void render_2d_group1(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
-  void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void do_3d_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  enum SpriteMode {
+    Mode2D = 1,
+    ModeHUD = 2,
+    Mode3D = 3
+  };
+  void do_block_common(SpriteMode mode,
+                       u32 count,
+                       SharedRenderState* render_state,
+                       ScopedProfilerNode& prof);
 
   void handle_tex0(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_tex1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);

@@ -8,6 +8,9 @@ layout (location = 4) in uvec4 tex_info_in;
 
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
+uniform mat4 hud_matrix;
+uniform vec4 hud_hvdf_offset;
+uniform vec4 hud_hvdf_user[75];
 uniform float pfog0;
 uniform float fog_min;
 uniform float fog_max;
@@ -23,7 +26,7 @@ uniform vec4 xy_array[8];
 uniform vec4 xyz_array[4];
 uniform vec4 st_array[4];
 
-out vec4 fragment_color;
+out flat vec4 fragment_color;
 out vec3 tex_coord;
 out flat uvec2 tex_info;
 
@@ -34,7 +37,7 @@ vec4 matrix_transform(mat4 mtx, vec3 pt) {
       + mtx[2] * pt.z;
 }
 
-mat3 sprite_quat_to_rot(vec4 quat) {
+mat3 sprite_quat_to_rot(vec3 quat) {
   mat3 result;
   float qr = sqrt(abs(1.0 - (quat.x * quat.x + quat.y * quat.y + quat.z * quat.z)));
   result[0][0] = 1.0 - 2.0 * (quat.y * quat.y + quat.z * quat.z);
@@ -59,8 +62,8 @@ vec4 sprite_transform2(vec3 root, vec4 off, mat3 sprite_rot, float sx, float sy)
   float Q = pfog0 / transformed_pos.w;
   transformed_pos.xyz *= Q;
   transformed_pos.xyz += hvdf_offset.xyz;
-  transformed_pos.w = max(transformed_pos.w, fog_max);
-  transformed_pos.w = min(transformed_pos.w, fog_min);
+  // transformed_pos.w = max(transformed_pos.w, fog_max);
+  // transformed_pos.w = min(transformed_pos.w, fog_min);
 
   return transformed_pos;
 }
@@ -75,14 +78,13 @@ void main() {
   fragment_color = rgba;
   uint vert_id = tex_info_in.z;
   uint rendermode = tex_info_in.w; // 2D, HUD, 3D
-  vec4 quat = vec4(quat_sy.xyz, 1.0);
-  uint flags = flags_matrix.x;
+  vec3 quat = quat_sy.xyz;
   uint matrix = flags_matrix.y;
 
   vec4 transformed;
 
 // STEP 2: perspective transform for distance
-  vec4 transformed_pos_vf02 = matrix_transform(camera, position);
+  vec4 transformed_pos_vf02 = matrix_transform(rendermode == 2 ? hud_matrix : camera, position);
   float Q = pfog0 / transformed_pos_vf02.w;
 
 
@@ -102,7 +104,7 @@ void main() {
     mat3 rot = sprite_quat_to_rot(quat);
     transformed = sprite_transform2(position, xyz_array[vert_id], rot, sx, sy);
 
-  } else if (rendermode == 1 || rendermode == 2) { // 2D sprites
+  } else if (rendermode == 1) { // 2D sprites
 
     transformed_pos_vf02.xyz *= Q;
     vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
@@ -121,7 +123,7 @@ void main() {
     float sp_sin = sin(quat.z);
     float sp_cos = cos(quat.z);
 
-    vec4 xy0_vf19 = xy_array[vert_id + flags];
+    vec4 xy0_vf19 = xy_array[vert_id + flags_matrix.x];
     vec4 vf12_rotated = (basis_x * sp_cos) - (basis_y * sp_sin);
     vec4 vf13_rotated_trans = (basis_x * sp_sin) + (basis_y * sp_cos);
 
@@ -129,6 +131,30 @@ void main() {
     vf13_rotated_trans *= scales_vf01.z;
 
     transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
+
+  } else if (rendermode == 2) { // hud sprites
+
+    transformed_pos_vf02.xyz *= Q;
+    vec4 offset_pos_vf10 = transformed_pos_vf02 + matrix == 0 ? hud_hvdf_offset : hud_hvdf_user[matrix - 1];
+    offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
+    offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
+
+    scales_vf01.z = min(max(scales_vf01.z, min_scale), max_scale);
+    scales_vf01.w = min(max(scales_vf01.w, min_scale), max_scale);
+
+    quat.z *= deg_to_rad;
+    float sp_sin = sin(quat.z);
+    float sp_cos = cos(quat.z);
+
+    vec4 xy0_vf19 = xy_array[vert_id];
+    vec4 vf12_rotated = (basis_x * sp_cos) - (basis_y * sp_sin);
+    vec4 vf13_rotated_trans = (basis_x * sp_sin) + (basis_y * sp_cos);
+
+    vf12_rotated *= scales_vf01.w;
+    vf13_rotated_trans *= scales_vf01.z;
+
+    transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
+
   }
 
   tex_coord = st_array[vert_id].xyz;
