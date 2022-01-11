@@ -58,7 +58,7 @@ vec4 sprite_transform2(vec3 root, vec4 off, mat3 sprite_rot, float sx, float sy)
   vec3 offset = sprite_rot[0] * off.x * sx + sprite_rot[1] * off.y + sprite_rot[2] * off.z * sy;
 
   pos += offset;
-  vec4 transformed_pos = matrix_transform(camera, pos);
+  vec4 transformed_pos = -matrix_transform(camera, pos);
   float Q = pfog0 / transformed_pos.w;
   transformed_pos.xyz *= Q;
   transformed_pos.xyz += hvdf_offset.xyz;
