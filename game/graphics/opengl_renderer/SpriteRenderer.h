@@ -164,11 +164,7 @@ class SpriteRenderer : public BucketRenderer {
   void render_2d_group1(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
-  enum SpriteMode {
-    Mode2D = 1,
-    ModeHUD = 2,
-    Mode3D = 3
-  };
+  enum SpriteMode { Mode2D = 1, ModeHUD = 2, Mode3D = 3 };
   void do_block_common(SpriteMode mode,
                        u32 count,
                        SharedRenderState* render_state,

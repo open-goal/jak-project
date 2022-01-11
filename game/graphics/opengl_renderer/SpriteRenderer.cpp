@@ -105,7 +105,8 @@ void SpriteRenderer::render_distorter(DmaFollower& dma,
   // m_direct_renderer.reset_state();
   while (dma.current_tag().qwc != 7) {
     auto direct_data = dma.read_and_advance();
-    // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data, direct_data.size_bytes, render_state, prof);
+    // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
+    // direct_data.size_bytes, render_state, prof);
   }
   // m_direct_renderer.flush_pending(render_state, prof);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
@@ -470,8 +471,8 @@ void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfil
 }
 
 void SpriteRenderer::handle_tex0(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
   GsTex0 reg(val);
 
   // update tbp
