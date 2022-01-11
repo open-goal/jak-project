@@ -54,13 +54,13 @@ vec4 sprite_transform2(vec3 root, vec4 off, mat3 sprite_rot, float sx, float sy)
 
   vec3 offset = sprite_rot[0] * off.x * sx + sprite_rot[1] * off.y + sprite_rot[2] * off.z * sy;
 
-  pos.xyz += offset.xyz;
-  vec4 transformed_pos = -matrix_transform(camera, pos);
+  pos += offset;
+  vec4 transformed_pos = matrix_transform(camera, pos);
   float Q = pfog0 / transformed_pos.w;
   transformed_pos.xyz *= Q;
   transformed_pos.xyz += hvdf_offset.xyz;
-  // transformed_pos.w = max(offset_pos.w, fog_max);
-  // transformed_pos.w = min(offset_pos.w, fog_min);
+  transformed_pos.w = max(transformed_pos.w, fog_max);
+  transformed_pos.w = min(transformed_pos.w, fog_min);
 
   return transformed_pos;
 }
@@ -74,56 +74,37 @@ void main() {
   float sy = quat_sy.w;
   fragment_color = rgba;
   uint vert_id = tex_info_in.z;
-  uint rendermode = tex_info_in.w; // 3D, 2D, HUD
+  uint rendermode = tex_info_in.w; // 2D, HUD, 3D
   vec4 quat = vec4(quat_sy.xyz, 1.0);
   uint flags = flags_matrix.x;
   uint matrix = flags_matrix.y;
 
   vec4 transformed;
 
+// STEP 2: perspective transform for distance
+  vec4 transformed_pos_vf02 = matrix_transform(camera, position);
+  float Q = pfog0 / transformed_pos_vf02.w;
+
+
+// STEP 3: fade out sprite!
+  vec4 scales_vf01 = xyz_sx;  // now used for something else.
+  scales_vf01.z = sy;  // start building the scale vector
+  scales_vf01.zw *= Q;  // sy sx
+  scales_vf01.x = scales_vf01.z;  // = sy
+  scales_vf01.x *= scales_vf01.w;  // x = sx * sy
+  scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
+  fragment_color.w *= min(scales_vf01.x, 1.0);  // is this right? doesn't this stall??
+
+
+  // STEP 4: actual vertex transformation
   if (rendermode == 3) { // 3D sprites
 
-    // STEP 2: perspective transform for distance
-    vec4 transformed_pos_vf02 = matrix_transform(camera, position);
-    float Q = pfog0 / transformed_pos_vf02.w;
-
-
-    // STEP 3: fade out sprite!
-    quat.z *= deg_to_rad;
-    vec4 scales_vf01 = xyz_sx;  // now used for something else.
-    scales_vf01.z = sy;  // start building the scale vector
-    scales_vf01.zw *= Q;  // sy sx
-    scales_vf01.x = scales_vf01.z;  // = sy
-    scales_vf01.x *= scales_vf01.w;  // x = sx * sy
-    scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
-    scales_vf01.x = min(scales_vf01.x, 1.0);
-    fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
-
-
-    // STEP 4: actual vertex transformation
     mat3 rot = sprite_quat_to_rot(quat);
     transformed = sprite_transform2(position, xyz_array[vert_id], rot, sx, sy);
 
   } else if (rendermode == 1 || rendermode == 2) { // 2D sprites
-    
-    // STEP 2: perspective transform for distance
-    vec4 transformed_pos_vf02 = matrix_transform(camera, position);
-    float Q = pfog0 / transformed_pos_vf02.w;
-
-
-    // STEP 3: fade out sprite!
-    quat.z *= deg_to_rad;
-    vec4 scales_vf01 = xyz_sx;  // now used for something else.
-    scales_vf01.z = sy;  // start building the scale vector
-    scales_vf01.zw *= Q;  // sy sx
-    scales_vf01.x = scales_vf01.z;  // = sy
-    scales_vf01.x *= scales_vf01.w;  // x = sx * sy
-    scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
-    scales_vf01.x = min(scales_vf01.x, 1.0);
-    fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
 
     transformed_pos_vf02.xyz *= Q;
-
     vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
     offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
     offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
@@ -133,21 +114,20 @@ void main() {
       fge = false;
     } */
 
-    scales_vf01.z = max(scales_vf01.z, min_scale);
-    scales_vf01.w = max(scales_vf01.w, min_scale);
-    scales_vf01.z = min(scales_vf01.z, max_scale);
-    scales_vf01.w = min(scales_vf01.w, max_scale);
+    scales_vf01.z = min(max(scales_vf01.z, min_scale), max_scale);
+    scales_vf01.w = min(max(scales_vf01.w, min_scale), max_scale);
 
+    quat.z *= deg_to_rad;
     float sp_sin = sin(quat.z);
     float sp_cos = cos(quat.z);
 
     vec4 xy0_vf19 = xy_array[vert_id + flags];
     vec4 vf12_rotated = (basis_x * sp_cos) - (basis_y * sp_sin);
     vec4 vf13_rotated_trans = (basis_x * sp_sin) + (basis_y * sp_cos);
-    
+
     vf12_rotated *= scales_vf01.w;
     vf13_rotated_trans *= scales_vf01.z;
-    
+
     transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
   }
 
