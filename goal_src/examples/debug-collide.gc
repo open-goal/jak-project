@@ -205,17 +205,48 @@
     (format *stdcon* "got ~d in list~%" (-> *collide-list* num-items))
     (format *stdcon* "cam at: ~`vector`P~%" (camera-pos))
     
-    ;; visualize results
-    (dotimes (i (-> *collide-list* num-items))
-      (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
-            (inst (the instance-tie (-> *collide-list* items i inst))))
-        (if inst
-          (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (-> inst bsphere w) (new 'static 'rgba :b #x80 :a #x80))
-          (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 5.0) (new 'static 'rgba :g #x80 :a #x80))
+    (let ((old-count 0))
+      ;; visualize results
+      (dotimes (i (-> *collide-list* num-items))
+        (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
+              (inst (the instance-tie (-> *collide-list* items i inst))))
+          (when inst
+            (+! old-count 1)
+            (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (-> inst bsphere w) (new 'static 'rgba :b #x80 :a #x80))
+            )
+          
+          (when (not inst)
+            (+! old-count 1)
+            ;;(format *stdcon* "NI: ~A~%" mesh)
+            (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 5.0) (new 'static 'rgba :g #x80 :a #x80))
+            )
+          ;
           )
-        ;
+        )
+      
+      ;; now test the other one
+      (set! (-> *collide-list* num-items) 0)
+      (collide-probe-make-list (-> *level* level 0) *collide-list*)
+      
+      ;; these should come out the same, if we did it right.
+      (format *stdcon* "COMPARE: ~d ~d~%" (-> *collide-list* num-items) old-count)
+      
+      (dotimes (i (-> *collide-list* num-items))
+        (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
+              (inst (the instance-tie (-> *collide-list* items i inst))))
+          (when inst
+            (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (* 0.95 (-> inst bsphere w)) (new 'static 'rgba :b #x80 :r #x80 :a #x80))
+            )
+          
+          (when (not inst)
+            ;;(format *stdcon* "NI: ~A~%" mesh)
+            (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 6.0) (new 'static 'rgba :g #x30 :a #x80))
+            )
+          ;
+          )
         )
       )
+    
     #f
     )
   )
