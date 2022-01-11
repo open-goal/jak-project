@@ -247,17 +247,17 @@
     )
   (let ((s3-0 (-> obj mesh)))
     ;; if we don't have a mesh, then abort.
-    (b! (not s3-0) cfg-11 :delay (empty-form))
+    (b! (not s3-0) cfg-11 :delay (nop!)) ;; empty-form
     
     ;; we must put the mesh in the cache before we can collide.
     ;; NOTE: this is not the full collide-cache, but instead a smaller, simpler collide-mesh-cche.
     (let ((s2-0 *collide-mesh-cache*))
       (let ((v1-4 (-> s2-0 id)))
         ;; if we already got it, don't bother populating the cache again.
-        (b! (= (-> obj mesh-cache-id) v1-4) cfg-9 :delay (empty-form))
+        (b! (= (-> obj mesh-cache-id) v1-4) cfg-9 :delay (nop!))
         )
       ;; "allocate" triangles.
-      (let ((v1-8 (allocate! s2-0 (* (the-as uint 96) (-> s3-0 num-tris)))))
+      (let ((v1-8 (allocate! s2-0 (* 96 (-> s3-0 num-tris)))))
         (b! (not v1-8) cfg-7 :delay (nop!))
         ;; remember that we got these triangles
         (set! (-> obj mesh-cache-tris) (the-as (inline-array collide-mesh-cache-tri) v1-8))
@@ -315,7 +315,7 @@
   (none)
   )
 
-defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
+(defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
   "The push away where we manually dispatch on the type of the second."
   (local-vars (v1-3 float))
   (rlet ((acc :class vf)
@@ -395,12 +395,12 @@ defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-pr
     ;; Mesh. this is the same as the above function. start with populating the cache.
     (label cfg-5)
     (let ((s3-1 (-> (the-as collide-shape-prim-mesh arg0) mesh)))
-      (b! (not s3-1) cfg-13 :delay (empty-form))
+      (b! (not s3-1) cfg-13)
       (let ((s2-0 *collide-mesh-cache*))
         (let ((v1-13 (-> s2-0 id)))
-          (b! (= (-> (the-as collide-shape-prim-mesh arg0) mesh-cache-id) v1-13) cfg-11 :delay (empty-form))
+          (b! (= (-> (the-as collide-shape-prim-mesh arg0) mesh-cache-id) v1-13) cfg-11)
           )
-        (let ((v1-17 (allocate! s2-0 (* (the-as uint 96) (-> s3-1 num-tris)))))
+        (let ((v1-17 (allocate! s2-0 (* 96 (-> s3-1 num-tris)))))
           (b! (not v1-17) cfg-9 :delay (nop!))
           (set! (-> (the-as collide-shape-prim-mesh arg0) mesh-cache-tris)
                 (the-as (inline-array collide-mesh-cache-tri) v1-17)
@@ -2039,12 +2039,13 @@ defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-pr
     )
   )
 
-(defmethod dummy-47 collide-shape ((obj collide-shape))
-  (dummy-25 (-> obj root-prim) (-> obj process))
+
+(defmethod update-transforms! collide-shape ((obj collide-shape))
+  (update-transforms! (-> obj root-prim) (-> obj process))
   #f
   )
 
-(defmethod dummy-25 collide-shape-prim ((obj collide-shape-prim) (arg0 process-drawable))
+(defmethod update-transforms! collide-shape-prim ((obj collide-shape-prim) (arg0 process-drawable))
   (local-vars (a0-2 float) (a0-4 float) (a0-6 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -2104,34 +2105,38 @@ defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-pr
       )
     (when (= (-> obj type) collide-shape-prim-group)
       (countdown (s4-0 (-> (the-as collide-shape-prim-group obj) num-prims))
-        (dummy-25 (-> (the-as collide-shape-prim-group obj) prims s4-0) arg0)
+        (update-transforms! (-> (the-as collide-shape-prim-group obj) prims s4-0) arg0)
         )
       #f
       )
     )
   )
 
-(defmethod TODO-RENAME-28 collide-shape ((obj collide-shape) (arg0 vector))
+;; definition for method 28 of type collide-shape
+(defmethod move-by-vector! collide-shape ((obj collide-shape) (arg0 vector))
   (vector+! (-> obj trans) (-> obj trans) arg0)
-  (dummy-9 (-> obj root-prim) arg0)
+  (move-by-vector! (-> obj root-prim) arg0)
+  (none)
   )
 
-(defmethod dummy-9 collide-shape-prim ((obj collide-shape-prim) (arg0 vector))
+;; definition for method 9 of type collide-shape-prim
+;; INFO: Return type mismatch float vs none.
+(defmethod move-by-vector! collide-shape-prim ((obj collide-shape-prim) (arg0 vector))
   (vector+! (the-as vector (-> obj prim-core)) (the-as vector (-> obj prim-core)) arg0)
-  (let ((f0-0 (-> obj local-sphere w)))
-    (set! (-> obj prim-core world-sphere w) f0-0)
-    (the-as object f0-0)
-    )
+  (set! (-> obj prim-core world-sphere w) (-> obj local-sphere w))
+  (none)
   )
 
-(defmethod dummy-9 collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 vector))
+;; definition for method 9 of type collide-shape-prim-group
+;; INFO: Return type mismatch symbol vs none.
+(defmethod move-by-vector! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 vector))
   (vector+! (the-as vector (-> obj prim-core)) (the-as vector (-> obj prim-core)) arg0)
   (set! (-> obj prim-core world-sphere w) (-> obj local-sphere w))
   (countdown (s4-0 (-> obj num-prims))
     (let ((a0-2 (-> obj prims s4-0)))
       (cond
         ((= (-> a0-2 type) collide-shape-prim-group)
-         (dummy-9 a0-2 arg0)
+         (move-by-vector! a0-2 arg0)
          )
         (else
           (vector+! (the-as vector (-> a0-2 prim-core)) (the-as vector (-> a0-2 prim-core)) arg0)
@@ -2140,14 +2145,16 @@ defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-pr
         )
       )
     )
-  (the-as object #f)
+  (none)
   )
 
-(defmethod TODO-RENAME-30 collide-shape ((obj collide-shape) (arg0 vector))
+;; definition for method 30 of type collide-shape
+(defmethod move-to-point! collide-shape ((obj collide-shape) (arg0 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg0 (-> obj trans))
-    (TODO-RENAME-28 obj v1-0)
+    (move-by-vector! obj v1-0)
     )
+  (none)
   )
 
 (defmethod set-root-prim! collide-shape ((obj collide-shape) (arg0 collide-shape-prim))
@@ -2227,7 +2234,7 @@ defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-pr
         (format 0 "ERROR: Failed to find collision meshes for ~D prim(s) in ~A!~%" s5-0 (-> obj process name))
         )
     )
-  (dummy-47 obj)
+  (update-transforms! obj)
   )
 
 (defmethod num-mesh collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-prim))

@@ -84,7 +84,7 @@
     (target-exit)
     (ja-channel-set! 0)
     (quaternion-copy! (-> self control unknown-quaternion00) (-> arg0 quat))
-    (TODO-RENAME-30 (-> self control) (-> arg0 trans))
+    (move-to-point! (-> self control) (-> arg0 trans))
     (rot->dir-targ! (-> self control))
     (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
     (cond
@@ -112,17 +112,15 @@
     (set! (-> *load-state* want 1 force-inside?) #f)
     (when (not (string= (-> arg0 name) "default"))
       (while (not
-               (and
-                 (or (not (-> arg0 lev0)) (not (-> arg0 disp0)) (= (level-status *level* (-> arg0 lev0)) 'active))
-                 (or (not (-> arg0 lev1)) (not (-> arg0 disp1)) (= (level-status *level* (-> arg0 lev1)) 'active))
-                 )
+               (and (or (not (-> arg0 lev0)) (not (-> arg0 disp0)) (= (level-status *level* (-> arg0 lev0)) 'active))
+                    (or (not (-> arg0 lev1)) (not (-> arg0 disp1)) (= (level-status *level* (-> arg0 lev1)) 'active))
+                    )
                )
         (let ((v1-52 (lookup-level-info (-> arg0 level))))
-          (if (and
-                  v1-52
-                  (= (-> *setting-control* current music) (-> v1-52 music-bank))
-                  (zero? (logand (-> arg0 flags) 160))
-                  )
+          (if (and v1-52
+                   (= (-> *setting-control* current music) (-> v1-52 music-bank))
+                   (zero? (logand (-> arg0 flags) 160))
+                   )
               (clear-pending-settings-from-process *setting-control* self 'music-volume)
               )
           )
@@ -219,13 +217,11 @@
            )
          )
        )
-      ((and
-         (logtest? (-> arg0 flags) 2048)
-         (or
-           (= (get-task-status (game-task beach-ecorocks)) (task-status need-hint))
-           (= (get-task-status (game-task beach-ecorocks)) (task-status need-introduction))
-           )
-         )
+      ((and (logtest? (-> arg0 flags) 2048)
+            (or (= (get-task-status (game-task beach-ecorocks)) (task-status need-hint))
+                (= (get-task-status (game-task beach-ecorocks)) (task-status need-introduction))
+                )
+            )
        (let ((s5-4 (entity-by-name "sage-23")))
          (when s5-4
            (set-blackout-frames #x7530)
@@ -653,34 +649,28 @@
 (defbehavior target-hit-push target ((arg0 vector) (arg1 matrix) (arg2 float) (arg3 float) (arg4 attack-info))
   (case (-> arg4 angle)
     (('jump 'up 'up-forward)
-     (when (and
-             (zero? (logand (-> self control root-prim prim-core action) #x4200))
-             (not (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact-info-target health))))
-             )
-       (if (and
-               (logtest?
-                 (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                 (pad-buttons circle)
-                 )
-               (can-feet?)
-               )
+     (when (and (zero? (logand (-> self control root-prim prim-core action) (collide-action ca-9 ca-14)))
+                (not (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact-info-target health))))
+                )
+       (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                          (pad-buttons circle)
+                          )
+                (can-feet?)
+                )
            (go target-attack-air #f)
            )
-       (if (and
-               (logtest?
-                 (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                 (pad-buttons square)
-                 )
-               (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 26624.0)
-               (and
-                 (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                 (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                     (the-as int (-> *TARGET-bank* stuck-timeout))
+       (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                          (pad-buttons square)
+                          )
+                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 26624.0)
+                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                     (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
+                         (the-as int (-> *TARGET-bank* stuck-timeout))
+                         )
+                     (zero? (logand (-> self state-flags) 4096))
+                     (zero? (logand (-> self control unknown-surface01 flags) 384))
                      )
-                 (zero? (logand (-> self state-flags) 4096))
-                 (zero? (logand (-> self control unknown-surface01 flags) 384))
-                 )
-               )
+                )
            (go
              target-flop
              (the-as float 65502.96)
@@ -695,18 +685,15 @@
        )
      )
     )
-  (when (if (and
-                (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
-                (and
-                  (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> *TARGET-bank* stuck-time)))
-                  (not
-                    (and
-                      *cheat-mode*
-                      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
+  (when (if (and (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
+                 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> *TARGET-bank* stuck-time)))
+                      (not
+                        (and *cheat-mode*
+                             (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
+                             )
+                        )
                       )
-                    )
-                  )
-                )
+                 )
             #t
             )
     (logior! (-> self control status) 1)
@@ -732,12 +719,11 @@
 
 (defbehavior target-hit-orient target ((arg0 attack-info) (arg1 vector))
   (let ((s5-0 #f))
-    (if (and
-            (!= (-> arg0 angle) 'front)
-            (!= (-> arg0 angle) 'shove)
-            (logtest? (-> arg0 mask) 2)
-            (!= (-> arg0 shove-back) 0.0)
-            )
+    (if (and (!= (-> arg0 angle) 'front)
+             (!= (-> arg0 angle) 'shove)
+             (logtest? (-> arg0 mask) 2)
+             (!= (-> arg0 shove-back) 0.0)
+             )
         (forward-up-nopitch->quaternion (-> self control dir-targ) arg1 (-> self control dynam gravity-normal))
         )
     (case (-> arg0 angle)
@@ -770,8 +756,8 @@
   (case (-> arg0 angle)
     (('back)
      (when (not (= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
+                       (-> self skel root-channel 0 frame-group)
+                       )
                    (-> self draw art-group data 74)
                    )
                 )
@@ -791,8 +777,8 @@
      )
     (('up 'up-forward)
      (when (not (= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
+                       (-> self skel root-channel 0 frame-group)
+                       )
                    (-> self draw art-group data 75)
                    )
                 )
@@ -842,8 +828,8 @@
      )
     (else
       (when (not (= (if (> (-> self skel active-channels) 0)
-                         (-> self skel root-channel 0 frame-group)
-                         )
+                        (-> self skel root-channel 0 frame-group)
+                        )
                     (-> self draw art-group data 73)
                     )
                  )
@@ -891,15 +877,15 @@
       (set-quaternion! (-> self control) (-> self control dir-targ))
       #t
       (let ((f28-1 (* 1.05 (/ (* -60.0 arg3) (* (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                                          (-> self skel root-channel 0 frame-group)
-                                                                          )
-                                                                    data
-                                                                    0
-                                                                    length
-                                                                    )
-                                                               -1
-                                                               )
-                                                      )
+                                                                      (-> self skel root-channel 0 frame-group)
+                                                                      )
+                                                                  data
+                                                                  0
+                                                                  length
+                                                                  )
+                                                              -1
+                                                              )
+                                                     )
                                                 (ja-step 0)
                                                 )
                               )
@@ -965,10 +951,9 @@
   :trans
   (behavior ()
     (when (= *cheat-mode* 'debug)
-      (when (and
-              (not *pause-lock*)
-              (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-              )
+      (when (and (not *pause-lock*)
+                 (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
+                 )
         (pickup-collectable! (-> self fact-info-target) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
         (go target-stance)
         )
@@ -1029,14 +1014,14 @@
              (cond
                ((= (-> self game mode) 'debug)
                 (let ((s4-1 (new-stack-vector0)))
-                  (set! (-> s4-1 quad) (-> self control unknown-vector54 quad))
+                  (set! (-> s4-1 quad) (-> self control last-known-safe-ground quad))
                   (ja-channel-set! 0)
                   (let ((s3-1 (-> *display* base-frame-counter)))
                     (until (>= (- (-> *display* base-frame-counter) s3-1) 300)
                       (suspend)
                       )
                     )
-                  (TODO-RENAME-30 (-> self control) s4-1)
+                  (move-to-point! (-> self control) s4-1)
                   )
                 (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
                 (send-event *camera* 'teleport)
@@ -1516,8 +1501,8 @@
           )
         (+! (-> *game-info* death-movie-tick) 1)
         (if (= (death-movie-remap (+ (-> *game-info* death-movie-tick) -1) (-> *death-spool-array* length))
-                 (death-movie-remap (-> *game-info* death-movie-tick) (-> *death-spool-array* length))
-                 )
+               (death-movie-remap (-> *game-info* death-movie-tick) (-> *death-spool-array* length))
+               )
             (+! (-> *game-info* death-movie-tick) 1)
             )
         (let ((gp-18
@@ -1526,24 +1511,22 @@
               )
           (set-setting! *setting-control* self 'allow-progress #f (the-as float 0.0) 0)
           (target-death-anim gp-18)
-          (when (and
-                  (< (rand-vu-int-count (-> *game-info* death-movie-tick)) (* (-> *death-spool-array* length) 2))
-                  (zero? (logand (-> self water flags) 512))
-                  (!= (-> self control ground-pat material) 9)
-                  (!= (-> self control ground-pat material) 10)
-                  )
+          (when (and (< (rand-vu-int-count (-> *game-info* death-movie-tick)) (* (-> *death-spool-array* length) 2))
+                     (zero? (logand (-> self water flags) 512))
+                     (!= (-> self control ground-pat material) 9)
+                     (!= (-> self control ground-pat material) 10)
+                     )
             (iterate-process-tree
               *entity-pool*
               (lambda :behavior target
                 ((arg0 process))
-                (if (and
-                        (logtest? (process-mask enemy) (-> arg0 mask))
-                        (type-type? (-> arg0 type) process-drawable)
-                        (nonzero? (-> (the-as process-drawable arg0) root))
-                        (< (vector-vector-distance (-> (the-as process-drawable arg0) root trans) (-> *target* control trans))
-                           61440.0
-                           )
-                        )
+                (if (and (logtest? (process-mask enemy) (-> arg0 mask))
+                         (type-type? (-> arg0 type) process-drawable)
+                         (nonzero? (-> (the-as process-drawable arg0) root))
+                         (< (vector-vector-distance (-> (the-as process-drawable arg0) root trans) (-> *target* control trans))
+                            61440.0
+                            )
+                         )
                     (process-entity-status! arg0 (entity-perm-status bit-9) #t)
                     )
                 )
