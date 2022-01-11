@@ -177,7 +177,7 @@ class SpriteRenderer : public BucketRenderer {
 
   void update_gl_prim(SharedRenderState* render_state);
   void update_gl_texture(SharedRenderState* render_state, int unit);
-  void render_verts(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];

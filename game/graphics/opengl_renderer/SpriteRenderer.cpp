@@ -188,6 +188,8 @@ void SpriteRenderer::render_3d(DmaFollower& dma) {
 void SpriteRenderer::render_2d_group0(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
+  u16 last_prog = -1;
+
   while (looks_like_2d_chunk_start(dma)) {
     m_debug_stats.blocks_2d_grp0++;
     // 4 packets per chunk
@@ -218,16 +220,32 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     // HACK: this renderers 3D sprites with the 2D renderer. amazingly, it almost works.
     // assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
+      if (run.vifcode1().immediate != last_prog && m_sprite_offset > 0) {
+        flush_sprites(render_state, prof);
+      }
       if (run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0) {
         if (m_2d_enable) {
           // do_2d_group0_block_cpu(sprite_count, render_state, prof);
         }
       } else {
         if (m_3d_enable) {
+          // one-time 3D sprite checks
+          if (run.vifcode1().immediate != last_prog) {
+            if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
+              flush_sprites(render_state, prof);
+              m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
+            }
+          }
+
           do_3d_block_cpu(sprite_count, render_state, prof);
         }
       }
+      last_prog = run.vifcode1().immediate;
     }
+  }
+
+  if (m_sprite_offset > 0) {
+    flush_sprites(render_state, prof);
   }
 }
 
@@ -306,7 +324,7 @@ void SpriteRenderer::render(DmaFollower& dma,
     return;
   }
 
-  render_state->shaders[ShaderId::SPRITE_CPU].activate();
+  render_state->shaders[ShaderId::SPRITE].activate();
 
   // First is the distorter
   {
@@ -319,6 +337,34 @@ void SpriteRenderer::render(DmaFollower& dma,
 
   // 3d sprites
   render_3d(dma);
+
+  // opengl sprite frame setup
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "hvdf_offset"), 1,
+               m_3d_matrix_data.hvdf_offset.data());
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "pfog0"),
+              m_frame_data.pfog0);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_min"),
+              m_frame_data.fog_min);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_max"),
+              m_frame_data.fog_max);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "min_scale"),
+              m_frame_data.min_scale);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "max_scale"),
+              m_frame_data.max_scale);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "bonus"),
+              m_frame_data.bonus);
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "hmge_scale"), 1,
+               m_frame_data.hmge_scale.data());
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "deg_to_rad"),
+              m_frame_data.deg_to_rad);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "inv_area"),
+              m_frame_data.inv_area);
+  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "camera"),
+                     1, GL_FALSE, m_3d_matrix_data.camera.data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "xyz_array"), 4,
+               m_frame_data.xyz_array[0].data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "st_array"), 4,
+               m_frame_data.st_array[0].data());
 
   // 2d draw
   // m_sprite_renderer.reset_state();
@@ -463,10 +509,10 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count,
     Vector4f hvdf_offset = offset_selector == 0 ? m_hud_matrix_data.hvdf_offset
                                                 : m_hud_matrix_data.user_hvdf[offset_selector - 1];
     glUniform4f(
-        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"),
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "hvdf_offset"),
         hvdf_offset[0], hvdf_offset[1], hvdf_offset[2], hvdf_offset[3]);
     glUniform1f(
-        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_constant"),
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_constant"),
                 m_frame_data.pfog0);
 
     //  lqi.xyzw vf01, vi02        |  nop
@@ -810,7 +856,7 @@ std::array<math::Vector3f, 3> sprite_quat_to_rot(float qi, float qj, float qk) {
   return result;
 }
 
-void SpriteRenderer::render_verts(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   for (int i = 0; i <= m_adgif_index; ++i) {
     update_gl_texture(render_state, i);
   }
@@ -1054,53 +1100,9 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 void SpriteRenderer::do_3d_block_cpu(u32 count,
                                      SharedRenderState* render_state,
                                      ScopedProfilerNode& prof) {
-  // fmt::print("3d sprite begin\n");
-
-  Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
-  Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
-  glUniform4fv(
-      glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"), 1,
-      m_3d_matrix_data.hvdf_offset.data());
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "pfog0"),
-              m_frame_data.pfog0);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_min"),
-              m_frame_data.fog_min);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_max"),
-              m_frame_data.fog_max);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "min_scale"),
-              m_frame_data.min_scale);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "max_scale"),
-              m_frame_data.max_scale);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "bonus"),
-              m_frame_data.bonus);
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hmge_scale"),
-               1, m_frame_data.hmge_scale.data());
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "deg_to_rad"),
-              m_frame_data.deg_to_rad);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "inv_area"),
-              m_frame_data.inv_area);
-  glUniformMatrix4fv(
-      glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "camera"), 1, GL_FALSE,
-      m_3d_matrix_data.camera.data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "xyz_array"),
-               4, m_frame_data.xyz_array[0].data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "st_array"),
-               4, m_frame_data.st_array[0].data());
-
-  //fmt::print("3d:\n{}", m_frame_data.sprite_3d_giftag.print());
-  //fmt::print("adgif:\n{}", m_frame_data.adgif_giftag.print());
-  //fmt::print("clipped:\n{}", m_frame_data.clipped_giftag.print());
-  //fmt::print("warp:\n{}", m_frame_data.warp_giftag.print());
-  //fmt::print("2d 1:\n{}", m_frame_data.sprite_2d_giftag.print());
-  //fmt::print("2d 2:\n{}", m_frame_data.sprite_2d_giftag2.print());
-  if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
-    render_verts(render_state, prof);
-    m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
-  }
-
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
     if (m_sprite_offset == SPRITE_RENDERER_MAX_SPRITES) {
-      render_verts(render_state, prof);
+      flush_sprites(render_state, prof);
     }
 
     auto& adgif = m_adgif[sprite_idx];
@@ -1122,7 +1124,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     } else if (m_adgif_state != m_adgif_state_stack[m_adgif_index]) {
       if (m_adgif_index + 1 == ADGIF_STATE_COUNT ||
           !m_adgif_state.nontexture_equal(m_adgif_state_stack[m_adgif_index])) {
-        render_verts(render_state, prof);
+        flush_sprites(render_state, prof);
       } else {
         m_adgif_index++;
       }
@@ -1140,6 +1142,7 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     vert1.info[0] = m_adgif_index;
     vert1.info[1] = m_adgif_state_stack[m_adgif_index].tcc;
     vert1.info[2] = 0;
+    vert1.info[3] = 3;  // 3D
 
     m_vertices_3d.at(vert_idx + 1) = vert1;
     m_vertices_3d.at(vert_idx + 2) = vert1;
@@ -1347,10 +1350,6 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 
     */
   }
-
-  if (m_sprite_offset > 0) {
-    render_verts(render_state, prof);
-  }
 }
 
 void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
@@ -1379,10 +1378,10 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     // vf30
     Vector4f hvdf_offset = m_3d_matrix_data.hvdf_offset;
     glUniform4f(
-        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "hvdf_offset"),
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "hvdf_offset"),
         hvdf_offset[0], hvdf_offset[1], hvdf_offset[2], hvdf_offset[3]);
     glUniform1f(
-        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE_CPU].id(), "fog_constant"),
+        glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_constant"),
         m_frame_data.pfog0);
 
     //  lqi.xyzw vf01, vi02        |  nop

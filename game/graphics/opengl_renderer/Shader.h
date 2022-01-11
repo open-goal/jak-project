@@ -36,6 +36,7 @@ enum class ShaderId {
   BUFFERED_TCC1 = 11,
   TFRAG3 = 12,
   TFRAG3_NO_TEX = 13,
+  SPRITE = 14,
   MAX_SHADERS
 };
 

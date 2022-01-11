@@ -298,7 +298,7 @@ void TexturePool::set_texture(u32 location, std::shared_ptr<TextureRecord> recor
     if (m_textures.at(location).normal_texture) {
       if (record->do_gc && m_textures.at(location).normal_texture != record) {
         m_garbage_textures.push_back(std::move(m_textures[location].normal_texture));
-        fmt::print("replace add to garbage list {}\n", m_garbage_textures.back()->name);
+        // fmt::print("replace add to garbage list {}\n", m_garbage_textures.back()->name);
       }
     }
     m_textures[location].normal_texture = std::move(record);
