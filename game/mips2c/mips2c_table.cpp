@@ -116,6 +116,14 @@ namespace method_11_collide_mesh {
 extern void link();
 }
 
+namespace collide_probe_node {
+extern void link();
+}
+
+namespace collide_probe_instance_tie {
+extern void link();
+}
+
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -134,6 +142,7 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
     {"tfrag", {draw_inline_array_tfrag::link, stats_tfrag_asm::link}},
     {"time-of-day", {time_of_day_interp_colors_scratch::link}},
     {"collide-func", {collide_do_primitives::link, moving_sphere_triangle_intersect::link}},
+    {"collide-probe", {collide_probe_node::link, collide_probe_instance_tie::link}},
     {"collide-mesh", {method_12_collide_mesh::link, method_11_collide_mesh::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
