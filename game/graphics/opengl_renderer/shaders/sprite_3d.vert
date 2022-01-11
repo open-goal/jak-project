@@ -16,6 +16,8 @@ uniform float max_scale;
 uniform float bonus;
 uniform float deg_to_rad;
 uniform float inv_area;
+uniform vec4 basis_x;
+uniform vec4 basis_y;
 uniform vec4 hmge_scale;
 uniform vec4 xy_array[8];
 uniform vec4 xyz_array[4];
@@ -25,7 +27,7 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 out flat uvec2 tex_info;
 
-vec4 matrix_transform(mat4 mtx, vec4 pt) {
+vec4 matrix_transform(mat4 mtx, vec3 pt) {
   return mtx[3]
       + mtx[0] * pt.x
       + mtx[1] * pt.y
@@ -47,8 +49,8 @@ mat3 sprite_quat_to_rot(vec4 quat) {
   return result;
 }
 
-vec4 sprite_transform2(vec4 root, vec4 off, mat3 sprite_rot, float sx, float sy) {
-  vec4 pos = root;
+vec4 sprite_transform2(vec3 root, vec4 off, mat3 sprite_rot, float sx, float sy) {
+  vec3 pos = root;
 
   vec3 offset = sprite_rot[0] * off.x * sx + sprite_rot[1] * off.y + sprite_rot[2] * off.z * sy;
 
@@ -67,43 +69,92 @@ void main() {
 
 // STEP 1: UNPACK DATA AND CREATE READABLE VARIABLES
 
-  vec4 position = vec4(xyz_sx.xyz, 1.0);
+  vec3 position = xyz_sx.xyz;
   float sx = xyz_sx.w;
   float sy = quat_sy.w;
-  vec4 quat = vec4(quat_sy.xyz, 1.0);
   fragment_color = rgba;
   uint vert_id = tex_info_in.z;
+  uint rendermode = tex_info_in.w; // 3D, 2D, HUD
+  vec4 quat = vec4(quat_sy.xyz, 1.0);
+  uint flags = flags_matrix.x;
+  uint matrix = flags_matrix.y;
+
+  vec4 transformed;
+
+  if (rendermode == 3) { // 3D sprites
+
+    // STEP 2: perspective transform for distance
+    vec4 transformed_pos_vf02 = matrix_transform(camera, position);
+    float Q = pfog0 / transformed_pos_vf02.w;
 
 
-// STEP 2: perspective transform for distance
-
-  vec4 transformed_pos_vf02 = matrix_transform(camera, xyz_sx);
-  float Q = pfog0 / transformed_pos_vf02.w;
-
-
-// STEP 3: fade out sprite!
-
-  // quat.z *= deg_to_rad;
-  vec4 scales_vf01 = xyz_sx;  // now used for something else.
-  scales_vf01.z = sy;  // start building the scale vector
-  scales_vf01.zw *= Q;  // sy sx
-  scales_vf01.x = scales_vf01.z;  // = sy
-  scales_vf01.x *= scales_vf01.w;  // x = sx * sy
-  scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
-  scales_vf01.x = min(scales_vf01.x, 1.0);
-  fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
+    // STEP 3: fade out sprite!
+    quat.z *= deg_to_rad;
+    vec4 scales_vf01 = xyz_sx;  // now used for something else.
+    scales_vf01.z = sy;  // start building the scale vector
+    scales_vf01.zw *= Q;  // sy sx
+    scales_vf01.x = scales_vf01.z;  // = sy
+    scales_vf01.x *= scales_vf01.w;  // x = sx * sy
+    scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
+    scales_vf01.x = min(scales_vf01.x, 1.0);
+    fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
 
 
-// STEP 4: actual vertex transformation
+    // STEP 4: actual vertex transformation
+    mat3 rot = sprite_quat_to_rot(quat);
+    transformed = sprite_transform2(position, xyz_array[vert_id], rot, sx, sy);
 
-  mat3 rot = sprite_quat_to_rot(quat);
-  vec4 transformed = sprite_transform2(position, xyz_array[vert_id], rot, sx, sy);
+  } else if (rendermode == 1 || rendermode == 2) { // 2D sprites
+    
+    // STEP 2: perspective transform for distance
+    vec4 transformed_pos_vf02 = matrix_transform(camera, position);
+    float Q = pfog0 / transformed_pos_vf02.w;
+
+
+    // STEP 3: fade out sprite!
+    quat.z *= deg_to_rad;
+    vec4 scales_vf01 = xyz_sx;  // now used for something else.
+    scales_vf01.z = sy;  // start building the scale vector
+    scales_vf01.zw *= Q;  // sy sx
+    scales_vf01.x = scales_vf01.z;  // = sy
+    scales_vf01.x *= scales_vf01.w;  // x = sx * sy
+    scales_vf01.x *= inv_area;  // x = sx * sy * inv_area (area ratio)
+    scales_vf01.x = min(scales_vf01.x, 1.0);
+    fragment_color.w *= scales_vf01.x;  // is this right? doesn't this stall??
+
+    transformed_pos_vf02.xyz *= Q;
+
+    vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
+    offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
+    offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
+    /* transformed_pos_vf02.w = offset_pos_vf10.w - fog_max;
+    int fge = matrix == 0;
+    if (transformed_pos_vf02.w != 0) {
+      fge = false;
+    } */
+
+    scales_vf01.z = max(scales_vf01.z, min_scale);
+    scales_vf01.w = max(scales_vf01.w, min_scale);
+    scales_vf01.z = min(scales_vf01.z, max_scale);
+    scales_vf01.w = min(scales_vf01.w, max_scale);
+
+    float sp_sin = sin(quat.z);
+    float sp_cos = cos(quat.z);
+
+    vec4 xy0_vf19 = xy_array[vert_id + flags];
+    vec4 vf12_rotated = (basis_x * sp_cos) - (basis_y * sp_sin);
+    vec4 vf13_rotated_trans = (basis_x * sp_sin) + (basis_y * sp_cos);
+    
+    vf12_rotated *= scales_vf01.w;
+    vf13_rotated_trans *= scales_vf01.z;
+    
+    transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
+  }
 
   tex_coord = st_array[vert_id].xyz;
 
 
 // STEP 5: final adjustments
-
   // correct xy offset
   transformed.xy -= (2048.);
 

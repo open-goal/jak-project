@@ -220,23 +220,24 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     // HACK: this renderers 3D sprites with the 2D renderer. amazingly, it almost works.
     // assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
-      if (run.vifcode1().immediate != last_prog && m_sprite_offset > 0) {
-        flush_sprites(render_state, prof);
+      if (run.vifcode1().immediate != last_prog) {
+        if (run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0 &&
+            m_prim_gl_state.current_register != m_frame_data.sprite_2d_giftag.prim()) {
+          flush_sprites(render_state, prof);
+          m_prim_gl_state.from_register(m_frame_data.sprite_2d_giftag.prim());
+        } else if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
+          flush_sprites(render_state, prof);
+          m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
+        } else if (m_sprite_offset > 0) {
+          flush_sprites(render_state, prof);
+        }
       }
       if (run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0) {
         if (m_2d_enable) {
-          // do_2d_group0_block_cpu(sprite_count, render_state, prof);
+          do_2d_group0_block_cpu(sprite_count, render_state, prof);
         }
       } else {
         if (m_3d_enable) {
-          // one-time 3D sprite checks
-          if (run.vifcode1().immediate != last_prog) {
-            if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
-              flush_sprites(render_state, prof);
-              m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
-            }
-          }
-
           do_3d_block_cpu(sprite_count, render_state, prof);
         }
       }
@@ -361,10 +362,16 @@ void SpriteRenderer::render(DmaFollower& dma,
               m_frame_data.inv_area);
   glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "camera"),
                      1, GL_FALSE, m_3d_matrix_data.camera.data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "xy_array"), 8,
+               m_frame_data.xy_array[0].data());
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "xyz_array"), 4,
                m_frame_data.xyz_array[0].data());
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "st_array"), 4,
                m_frame_data.st_array[0].data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "basis_x"), 1,
+               m_frame_data.basis_x.data());
+  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "basis_y"), 1,
+               m_frame_data.basis_y.data());
 
   // 2d draw
   // m_sprite_renderer.reset_state();
@@ -1139,6 +1146,8 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
     vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
+    vert1.flags_matrix[0] = m_vec_data_2d[sprite_idx].flag();
+    vert1.flags_matrix[1] = m_vec_data_2d[sprite_idx].matrix();
     vert1.info[0] = m_adgif_index;
     vert1.info[1] = m_adgif_state_stack[m_adgif_index].tcc;
     vert1.info[2] = 0;
@@ -1355,12 +1364,71 @@ void SpriteRenderer::do_3d_block_cpu(u32 count,
 void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
                                             SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
-  if (m_extra_debug) {
-    ImGui::Begin("Sprite Extra Debug 2d_0");
-  }
-
-  Matrix4f camera_matrix = m_3d_matrix_data.camera;  // vf25, vf26, vf27, vf28
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
+    if (m_sprite_offset == SPRITE_RENDERER_MAX_SPRITES) {
+      flush_sprites(render_state, prof);
+    }
+
+    auto& adgif = m_adgif[sprite_idx];
+    //fmt::print("adgif: {:X} {:X} {:X} {:X}\n", adgif.tex0_data, adgif.tex1_data, adgif.clamp_data,
+    //           adgif.alpha_data);
+    //fmt::print("adgif regs: {} {} {} {} {}\n", register_address_name(adgif.tex0_addr),
+    //           register_address_name(adgif.tex1_addr), register_address_name(adgif.mip_addr),
+    //           register_address_name(adgif.clamp_addr), register_address_name(adgif.alpha_addr));
+    handle_tex0(adgif.tex0_data, render_state, prof);
+    handle_tex1(adgif.tex1_data, render_state, prof);
+    // handle_mip(adgif.mip_data, render_state, prof);
+    if (GsRegisterAddress(adgif.clamp_addr) == GsRegisterAddress::ZBUF_1) {
+      handle_zbuf(adgif.clamp_data, render_state, prof);
+    } else {
+      handle_clamp(adgif.clamp_data, render_state, prof);
+    }
+    handle_alpha(adgif.alpha_data, render_state, prof);
+
+    if (!m_adgif_state_stack[m_adgif_index].used) {
+      m_adgif_state_stack[m_adgif_index] = m_adgif_state;
+      m_adgif_state_stack[m_adgif_index].used = true;
+    } else if (m_adgif_state != m_adgif_state_stack[m_adgif_index]) {
+      if (m_adgif_index + 1 == ADGIF_STATE_COUNT ||
+          !m_adgif_state.nontexture_equal(m_adgif_state_stack[m_adgif_index])) {
+        flush_sprites(render_state, prof);
+      } else {
+        m_adgif_index++;
+      }
+      m_adgif_state_stack[m_adgif_index] = m_adgif_state;
+      m_adgif_state_stack[m_adgif_index].used = true;
+    }
+
+    int vert_idx = 6 * m_sprite_offset;
+
+    auto& vert1 = m_vertices_3d.at(vert_idx + 0);
+
+    vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
+    vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
+    vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
+    vert1.flags_matrix[0] = m_vec_data_2d[sprite_idx].flag();
+    vert1.flags_matrix[1] = m_vec_data_2d[sprite_idx].matrix();
+    vert1.info[0] = m_adgif_index;
+    vert1.info[1] = m_adgif_state_stack[m_adgif_index].tcc;
+    vert1.info[2] = 0;
+    vert1.info[3] = 1;  // 2D
+
+    m_vertices_3d.at(vert_idx + 1) = vert1;
+    m_vertices_3d.at(vert_idx + 2) = vert1;
+    m_vertices_3d.at(vert_idx + 3) = vert1;
+    m_vertices_3d.at(vert_idx + 4) = vert1;
+    m_vertices_3d.at(vert_idx + 5) = vert1;
+
+    m_vertices_3d.at(vert_idx + 1).info[2] = 1;
+    m_vertices_3d.at(vert_idx + 2).info[2] = 2;
+    m_vertices_3d.at(vert_idx + 3).info[2] = 2;
+    m_vertices_3d.at(vert_idx + 4).info[2] = 3;
+    m_vertices_3d.at(vert_idx + 5).info[2] = 0;
+
+    ++m_sprite_offset;
+
+    /*
+
     if (m_extra_debug) {
       ImGui::Text("Sprite: %d", sprite_idx);
     }
@@ -1715,9 +1783,7 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     //  nop                        |  nop
     //  nop                        |  nop :e
     //  nop                        |  nop
-  }
 
-  if (m_extra_debug) {
-    ImGui::End();
+    */
   }
 }
