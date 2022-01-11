@@ -30,7 +30,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 }
 }  // namespace
 
-constexpr int SPRITE_RENDERER_MAX_SPRITES = 5000;
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {
@@ -38,9 +38,9 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  m_ogl.vertex_buffer_max_verts = SPRITE_RENDERER_MAX_SPRITES * 3 * 2;
-  m_ogl.vertex_buffer_bytes = m_ogl.vertex_buffer_max_verts * sizeof(SpriteVertex3D);
-  glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr, GL_STREAM_DRAW);
+  auto verts = SPRITE_RENDERER_MAX_SPRITES * 3 * 2;
+  auto bytes = verts * sizeof(SpriteVertex3D);
+  glBufferData(GL_ARRAY_BUFFER, bytes, nullptr, GL_STREAM_DRAW);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(
       0,                                       // location 0 in the shader
@@ -91,7 +91,7 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
-  m_vertices_3d.resize(m_ogl.vertex_buffer_max_verts);
+  m_vertices_3d.resize(verts);
 }
 
 /*!
@@ -254,15 +254,12 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     if (m_enabled) {
       if (run.vifcode1().immediate != last_prog) {
         // one-time setups and flushing
+        flush_sprites(render_state, prof);
         if (run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0 &&
             m_prim_gl_state.current_register != m_frame_data.sprite_2d_giftag.prim()) {
-          flush_sprites(render_state, prof);
           m_prim_gl_state.from_register(m_frame_data.sprite_2d_giftag.prim());
         } else if (m_prim_gl_state.current_register != m_frame_data.sprite_3d_giftag.prim()) {
-          flush_sprites(render_state, prof);
           m_prim_gl_state.from_register(m_frame_data.sprite_3d_giftag.prim());
-        } else if (m_sprite_offset > 0) {
-          flush_sprites(render_state, prof);
         }
       }
 
@@ -277,10 +274,6 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
       }
       last_prog = run.vifcode1().immediate;
     }
-  }
-
-  if (m_sprite_offset > 0) {
-    flush_sprites(render_state, prof);
   }
 }
 
@@ -316,7 +309,6 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma,
       glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "hud_matrix"), 1, GL_FALSE,
       m_hud_matrix_data.matrix.data());
 
-  flush_sprites(render_state, prof);
   m_prim_gl_state.from_register(m_frame_data.sprite_2d_giftag2.prim());
 
   // loop through chunks.
@@ -350,10 +342,6 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma,
     if (m_enabled && m_2d_enable) {
       do_block_common(SpriteMode::ModeHUD, sprite_count, render_state, prof);
     }
-  }
-
-  if (m_sprite_offset > 0) {
-    flush_sprites(render_state, prof);
   }
 }
 
@@ -395,6 +383,7 @@ void SpriteRenderer::render(DmaFollower& dma,
   {
     auto child = prof.make_scoped_child("2d-group0");
     render_2d_group0(dma, render_state, child);
+    flush_sprites(render_state, prof);
   }
 
   // shadow draw
@@ -404,7 +393,7 @@ void SpriteRenderer::render(DmaFollower& dma,
   {
     auto child = prof.make_scoped_child("2d-group1");
     render_2d_group1(dma, render_state, child);
-    // m_sprite_renderer.flush_pending(render_state, child);
+    flush_sprites(render_state, prof);
   }
 
   // TODO finish this up.
@@ -445,6 +434,12 @@ void SpriteRenderer::draw_debug_window() {
 void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   for (int i = 0; i <= m_adgif_index; ++i) {
     update_gl_texture(render_state, i);
+  }
+
+  if (m_sprite_offset == 0) {
+    // nothing to render
+    m_adgif_index = 0;
+    return;
   }
 
   update_gl_blend(m_adgif_state_stack[m_adgif_index]);

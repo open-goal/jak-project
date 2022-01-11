@@ -222,8 +222,6 @@ class SpriteRenderer : public BucketRenderer {
   struct {
     GLuint vertex_buffer;
     GLuint vao;
-    u32 vertex_buffer_bytes = 0;
-    u32 vertex_buffer_max_verts = 0;
   } m_ogl;
 
   int m_sprite_offset = 0;
