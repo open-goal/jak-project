@@ -273,7 +273,7 @@
 
 (defmethod dummy-17 process-drawable ((obj process-drawable))
   (cond
-    (#t;;(logtest? (-> obj draw status) (draw-status drwf01 drwf02))
+    (#t;;(logtest? (-> obj draw status) (draw-status drwf01 drwf02)) TODO
      )
     ((zero? (-> obj skel))
      (matrix<-transformq+trans!
@@ -892,7 +892,7 @@
         (when (or (logtest? (-> self skel status) 1) gp-1)
           (dummy-17 self)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
-              (dummy-47 (the-as collide-shape (-> self root)))
+              (update-transforms! (the-as collide-shape (-> self root)))
               )
           (return #f)
           )
@@ -950,21 +950,21 @@
 
 (defbehavior transform-post process-drawable ()
   (ja-post)
-  (dummy-47 (the-as collide-shape (-> self root)))
+  (update-transforms! (the-as collide-shape (-> self root)))
   0
   )
 
 (defbehavior rider-trans process-drawable ()
-  (dummy-35 (the-as collide-shape (-> self root)))
+  (detect-riders! (the-as collide-shape (-> self root)))
   0
   )
 
 (defbehavior rider-post process-drawable ()
   (ja-post)
   (let ((gp-0 (the-as collide-shape (-> self root))))
-    (dummy-47 gp-0)
-    (dummy-44 gp-0)
-    (dummy-45 gp-0)
+    (update-transforms! gp-0)
+    (pull-riders! gp-0)
+    (respond-to-collisions! gp-0)
     )
   0
   )
@@ -972,8 +972,8 @@
 (defbehavior pusher-post process-drawable ()
   (ja-post)
   (let ((gp-0 (the-as collide-shape (-> self root))))
-    (dummy-47 gp-0)
-    (dummy-45 gp-0)
+    (update-transforms! gp-0)
+    (respond-to-collisions! gp-0)
     )
   0
   )

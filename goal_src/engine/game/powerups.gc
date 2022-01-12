@@ -635,25 +635,22 @@
       )
     )
   (cond
-    ((and
-       (= (-> self control ground-pat material) (pat-material ice))
-       (and
-         (>= (-> self control unknown-float01) 204.8)
-         (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 15)
-         )
-       )
+    ((and (= (-> self control ground-pat material) (pat-material ice))
+          (and (>= (-> self control unknown-float01) 204.8)
+               (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 15)
+               )
+          )
      (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 74))))
-       (if (and
-               (< (fabs
+       (if (and (< (fabs
                      (vector-dot
                        (-> self control dynam gravity-normal)
                        (vector-! (new 'stack-no-clear 'vector) gp-0 (-> self control trans))
                        )
                      )
-                  819.2
-                  )
-               (rand-vu-percent? 0.5)
-               )
+                   819.2
+                   )
+                (rand-vu-percent? 0.5)
+                )
            (sp-launch-particles-var
              *sp-particle-system-3d*
              (-> *part-id-table* 2391)
@@ -665,17 +662,16 @@
            )
        )
      (let ((gp-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 70))))
-       (if (and
-               (< (fabs
+       (if (and (< (fabs
                      (vector-dot
                        (-> self control dynam gravity-normal)
                        (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self control trans))
                        )
                      )
-                  819.2
-                  )
-               (rand-vu-percent? 0.5)
-               )
+                   819.2
+                   )
+                (rand-vu-percent? 0.5)
+                )
            (sp-launch-particles-var
              *sp-particle-system-3d*
              (-> *part-id-table* 2391)
@@ -688,11 +684,11 @@
        )
      (let ((f0-8 (lerp-scale 60.0 90.0 (-> self control unknown-float01) 0.0 81920.0)))
        (if (not (= (if (> (-> self skel active-channels) 0)
-                          (-> self skel root-channel 0 frame-group)
-                          )
-                     (-> self draw art-group data 104)
-                     )
-                  )
+                       (-> self skel root-channel 0 frame-group)
+                       )
+                   (-> self draw art-group data 104)
+                   )
+                )
            (set! f0-8 (* 0.75 f0-8))
            )
        (set! (-> self control unknown-float141)
@@ -733,37 +729,35 @@
     (set! (-> a0-33 settings shadow-dir y) (-> v1-67 y))
     (set! (-> a0-33 settings shadow-dir z) (-> v1-67 z))
     )
-  (when (and
-          (!= (-> self fact-info-target eco-level) 0.0)
-          (>= (- (-> *display* game-frame-counter) (the-as int (-> self fact-info-target eco-pickup-time)))
-              (the-as int (-> self fact-info-target eco-timeout))
-              )
-          )
+  (when (and (!= (-> self fact-info-target eco-level) 0.0)
+             (>= (- (-> *display* game-frame-counter) (the-as int (-> self fact-info-target eco-pickup-time)))
+                 (the-as int (-> self fact-info-target eco-timeout))
+                 )
+             )
     (set! (-> self fact-info-target eco-level) 0.0)
     (set! (-> self fact-info-target eco-timeout) 0)
     (set! (-> self state-flags) (logand -65 (-> self state-flags)))
     (send-event self 'reset-collide)
     (stop! (-> self sound))
     )
-  (when (and
-          (< 0.0 (-> self fact-info-target eco-level))
-          (zero? (logand (-> self state-flags) 512))
-          (zero? (logand (-> self draw status) 6))
-          (not (movie?))
-          (rand-vu-percent?
-            (lerp-scale
-              0.0
-              1.0
-              (the float
-                   (- (-> self fact-info-target eco-timeout)
-                      (the-as uint (- (-> *display* game-frame-counter) (the-as int (-> self fact-info-target eco-pickup-time))))
+  (when (and (< 0.0 (-> self fact-info-target eco-level))
+             (zero? (logand (-> self state-flags) 512))
+             (zero? (logand (-> self draw status) (draw-status drwf01 drwf02)))
+             (not (movie?))
+             (rand-vu-percent?
+               (lerp-scale
+                 0.0
+                 1.0
+                 (the float
+                      (- (-> self fact-info-target eco-timeout)
+                         (the-as uint (- (-> *display* game-frame-counter) (the-as int (-> self fact-info-target eco-pickup-time))))
+                         )
                       )
-                   )
-              0.0
-              900.0
-              )
-            )
-          )
+                 0.0
+                 900.0
+                 )
+               )
+             )
     (case (-> self fact-info-target eco-type)
       ((1)
        (change-sound! (-> self sound) (static-sound-name "yel-eco-jak"))
@@ -796,14 +790,14 @@
        )
       ((2)
        (target-danger-set! (-> self control unknown-symbol30) #t)
-       (dummy-47 (-> self control))
+       (update-transforms! (-> self control))
        (let ((a1-23 (new 'stack-no-clear 'touching-shapes-entry)))
          (set! (-> a1-23 cshape1) (the-as collide-shape 0))
          (set! (-> a1-23 cshape2) (the-as collide-shape *touching-list*))
-         (dummy-40 (-> self control) a1-23)
+         (find-overlapping-shapes (-> self control) (the-as overlaps-others-params a1-23))
          )
        (target-danger-set! (-> self control unknown-symbol30) #f)
-       (dummy-47 (-> self control))
+       (update-transforms! (-> self control))
        (change-sound! (-> self sound) (static-sound-name "red-eco-jak"))
        (let ((s4-2 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
          (sp-launch-particles-var

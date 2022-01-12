@@ -703,7 +703,7 @@
     )
   :post
   (behavior ()
-    (dummy-47 (-> self root-override))
+    (update-transforms! (-> self root-override))
     (none)
     )
   )
@@ -1049,17 +1049,29 @@ nav-enemy-default-event-handler
      (set! (-> self collide-info transv x) (-> self nav travel x))
      (set! (-> self collide-info transv y) 0.0)
      (set! (-> self collide-info transv z) (-> self nav travel z))
-     (let ((f0-5 (fmin
-                   (-> self target-speed)
-                   (* (vector-xz-length (-> self collide-info transv)) (-> *display* frames-per-second))
-                   )
-                 )
+     (let ((f0-5
+             (fmin
+               (-> self target-speed)
+               (* (vector-xz-length (-> self collide-info transv)) (-> *display* frames-per-second))
+               )
+             )
            )
        (vector-xz-normalize! (-> self collide-info transv) f0-5)
        )
      (seek-toward-heading-vec! (-> self collide-info) (-> self rotate-dir) (-> self rotate-speed) 15)
-     (vector-v++! (-> self collide-info transv) (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0))
-     (dummy-59 (-> self collide-info) (-> self collide-info transv) (the-as uint 1) 8192.0 #t #f #f)
+     (vector-v++!
+       (-> self collide-info transv)
+       (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+       )
+     (integrate-for-enemy-with-move-to-ground!
+       (-> self collide-info)
+       (-> self collide-info transv)
+       (collide-kind background)
+       8192.0
+       #t
+       #f
+       #f
+       )
      (nav-enemy-common-post)
      )
     (else

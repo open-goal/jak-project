@@ -831,7 +831,7 @@
   (let ((s5-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         )
-    (dummy-62 (-> self control) s5-0 (-> self control unknown-surface01 slip-factor))
+    (compute-acc-due-to-gravity (-> self control) s5-0 (-> self control unknown-surface01 slip-factor))
     (vector-matrix*! gp-0 s5-0 (-> self control unknown-matrix00))
     (vector-v++! (-> self control unknown-vector00) gp-0)
     )
@@ -998,7 +998,7 @@
               (zero? (logand (-> self control status) 1056))
               (logtest? (-> self control status) 2)
               )
-         (set! (-> self control unknown-vector54 quad) (-> self control trans quad))
+         (set! (-> self control last-known-safe-ground quad) (-> self control trans quad))
          )
      ((-> self control unknown-surface01 touch-hook))
      )
@@ -1084,7 +1084,7 @@
             )
           )
         )
-      (TODO-RENAME-30 (-> self control) gp-1)
+      (move-to-point! (-> self control) gp-1)
       )
     (send-event *camera* 'reset-follow)
     (set! (-> self control surf) *standard-ground-surface*)
@@ -1265,7 +1265,7 @@
                 (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword40)) 60)
                 )
            (vector-normalize! s4-1 1228.8)
-           (TODO-RENAME-28 (-> self control) s4-1)
+           (move-by-vector! (-> self control) s4-1)
            (vector-float*! (-> self control rider-last-move) s4-1 (-> *display* frames-per-second))
            (set! (-> self control rider-time) (the-as uint (-> *display* base-frame-counter)))
            (if (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword41)) 150)
@@ -1279,7 +1279,7 @@
               (vector-! a1-6 (-> s5-0 center-hold) (-> self control unknown-vector91))
               (vector-float*! (-> self control rider-last-move) s4-1 (-> *display* frames-per-second))
               (set! (-> self control rider-time) (the-as uint (-> *display* base-frame-counter)))
-              (TODO-RENAME-30 (-> self control) a1-6)
+              (move-to-point! (-> self control) a1-6)
               )
             (set! (-> self control unknown-float110) 0.0)
             (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
@@ -1315,7 +1315,7 @@
     (let ((a1-7 (vector-! (new-stack-vector0) (-> gp-0 center-hold) (-> gp-0 center-hold-old))))
       (vector-float*! (-> self control rider-last-move) a1-7 (-> *display* frames-per-second))
       (set! (-> self control rider-time) (the-as uint (-> *display* base-frame-counter)))
-      (TODO-RENAME-28 (-> self control) a1-7)
+      (move-by-vector! (-> self control) a1-7)
       )
     )
   (set! (-> self control unknown-float110) 0.0)
@@ -1382,11 +1382,11 @@
       (let ((s4-2 (vector-! (new-stack-vector0) s5-0 (-> self control unknown-vector90))))
         (cond
           ((and (< 2457.6 (vector-length s4-2)) (not (-> self control unknown-int21)))
-           (TODO-RENAME-28 (-> self control) (vector-normalize! s4-2 2457.6))
+           (move-by-vector! (-> self control) (vector-normalize! s4-2 2457.6))
            )
           (else
             (set! (-> self control unknown-int21) (the-as int #t))
-            (TODO-RENAME-30
+            (move-to-point!
               (-> self control)
               (vector-! (new 'stack-no-clear 'vector) s5-0 (-> self control unknown-vector91))
               )
@@ -1406,7 +1406,7 @@
     )
   (set-quaternion! (-> self control) (-> self control dir-targ))
   (dummy-17 self)
-  (dummy-47 (-> self control))
+  (update-transforms! (-> self control))
   (none)
   )
 
@@ -1560,12 +1560,13 @@
                             f30-0
                             )
                           )
-                    (a2-1 (vector-float*!
-                            (new 'stack-no-clear 'vector)
-                            (-> self control unknown-vector40)
-                            (-> self control unknown-float50)
-                            )
-                          )
+                    (a2-1
+                      (vector-float*!
+                        (new 'stack-no-clear 'vector)
+                        (-> self control unknown-vector40)
+                        (-> self control unknown-float50)
+                        )
+                      )
                     )
                 (vector-lerp! s4-0 a1-2 a2-1 f0-12)
                 )
@@ -1588,9 +1589,13 @@
             )
           )
       (set! (-> self control reaction) target-collision-reaction)
-      (dummy-33 (-> self control) (-> self control transv) (-> self control root-prim collide-with))
+      (fill-cache-integrate-and-collide!
+        (-> self control)
+        (-> self control transv)
+        (-> self control root-prim collide-with)
+        )
       (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
-          (dummy-20 *target* *collide-cache*)
+          (find-edge-grabs! *target* *collide-cache*)
           )
       (if *debug-segment*
           (add-frame
@@ -1653,9 +1658,13 @@
             (new 'static 'rgba :r #x40 :b #x40 :a #x80)
             )
           )
-      (dummy-33 (-> self control) (-> self control transv) (-> self control root-prim collide-with))
+      (fill-cache-integrate-and-collide!
+        (-> self control)
+        (-> self control transv)
+        (-> self control root-prim collide-with)
+        )
       (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
-          (dummy-20 *target* *collide-cache*)
+          (find-edge-grabs! *target* *collide-cache*)
           )
       (if *debug-segment*
           (add-frame
@@ -1712,9 +1721,13 @@
             (new 'static 'rgba :r #x40 :b #x40 :a #x80)
             )
           )
-      (dummy-33 (-> self control) (-> self control transv) (-> self control root-prim collide-with))
+      (fill-cache-integrate-and-collide!
+        (-> self control)
+        (-> self control transv)
+        (-> self control root-prim collide-with)
+        )
       (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
-          (dummy-20 *target* *collide-cache*)
+          (find-edge-grabs! *target* *collide-cache*)
           )
       (if *debug-segment*
           (add-frame
@@ -1767,7 +1780,7 @@
       (let ((a1-3 (new 'stack-no-clear 'overlaps-others-params)))
         (set! (-> a1-3 options) (the-as uint 1))
         (set! (-> a1-3 tlist) *touching-list*)
-        (dummy-40 (-> self control) a1-3)
+        (find-overlapping-shapes (-> self control) a1-3)
         )
       (post-flag-setup)
       )
@@ -1802,12 +1815,13 @@
       (flag-setup)
       (build-conversions (-> self control transv))
       (do-rotations1)
-      (let ((s4-1 (vector-flatten!
-                    (new-stack-vector0)
-                    (vector-negate! (new-stack-vector0) (-> self control dynam gravity-normal))
-                    (-> self control local-normal)
-                    )
-                  )
+      (let ((s4-1
+              (vector-flatten!
+                (new-stack-vector0)
+                (vector-negate! (new-stack-vector0) (-> self control dynam gravity-normal))
+                (-> self control local-normal)
+                )
+              )
             )
         (let ((s3-1 (new-stack-vector0)))
           (new-stack-matrix0)
@@ -1830,9 +1844,13 @@
             (new 'static 'rgba :r #x40 :b #x40 :a #x80)
             )
           )
-      (dummy-33 (-> self control) (-> self control transv) (-> self control root-prim collide-with))
+      (fill-cache-integrate-and-collide!
+        (-> self control)
+        (-> self control transv)
+        (-> self control root-prim collide-with)
+        )
       (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
-          (dummy-20 *target* *collide-cache*)
+          (find-edge-grabs! *target* *collide-cache*)
           )
       (if *debug-segment*
           (add-frame
@@ -1876,7 +1894,7 @@
   (let ((a1-2 (new 'stack-no-clear 'overlaps-others-params)))
     (set! (-> a1-2 options) (the-as uint 1))
     (set! (-> a1-2 tlist) *touching-list*)
-    (dummy-40 (-> self control) a1-2)
+    (find-overlapping-shapes (-> self control) a1-2)
     )
   (target-calc-camera-pos)
   (do-target-shadow)
@@ -1985,7 +2003,7 @@
   (target-collide-set! 'normal 0.0)
   (backup-collide-with-as (-> self control))
   (set! (-> self game) *game-info*)
-  (TODO-RENAME-30 (-> self control) (-> arg0 trans))
+  (move-to-point! (-> self control) (-> arg0 trans))
   (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> arg0 trans quad))
   (set! (-> self control unknown-cpad-info00) (-> *cpad-list* cpads 0))
   (set! (-> self control unknown-surface01) (new 'process 'surface))
@@ -2059,7 +2077,7 @@
   0
   )
 
-;; HACK for not starting target
+;; hack for not starting target.
 (defun start ((arg0 symbol) (arg1 continue-point))
   (set! *target* #f)
   (return *target*)

@@ -5,6 +5,13 @@
 ;; name in dgo: helix-water
 ;; dgos: L1, SUN, SUNKEN
 
+(declare-type helix-water basic)
+(declare-type helix-slide-door basic)
+(declare-type helix-button basic)
+(define-extern *helix-slide-door* helix-slide-door) 
+(define-extern *helix-water* helix-water)
+(define-extern *helix-button* helix-button)
+
 ;; DECOMP BEGINS
 
 (deftype helix-slide-door (process-drawable)
@@ -21,8 +28,6 @@
     )
   )
 
-;; Manually added!
-(define-extern *helix-slide-door* helix-slide-door)
 
 (defskelgroup *helix-slide-door-sg* helix-slide-door
   0
@@ -53,8 +58,6 @@
     )
   )
 
-;; Manually added!
-(define-extern *helix-button* helix-button)
 
 (defskelgroup *helix-button-sg* helix-button
   0
@@ -95,8 +98,6 @@
     )
   )
 
-;; Manually added!
-(define-extern *helix-water* helix-water)
 
 (defstate water-vol-idle (helix-dark-eco)
   :virtual #t
@@ -151,12 +152,13 @@
 
 (defstate helix-slide-door-idle-open (helix-slide-door)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('trigger)
-                                                                                    (go helix-slide-door-close)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (go helix-slide-door-close)
+       )
+      )
+    )
   :code
   (behavior ()
     (while #t
@@ -233,7 +235,7 @@
     (set! (-> s5-1 frame-num) 0.0)
     )
   (ja-post)
-  (dummy-47 (-> obj root-override))
+  (update-transforms! (-> obj root-override))
   (set! *helix-slide-door* obj)
   (go helix-slide-door-idle-open)
   (none)
@@ -276,10 +278,9 @@
        (when *target*
          (when (logtest? (-> *target* control status) 1)
            (cond
-             ((and
-                (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                (not (handle->process (-> self fcell-handle)))
-                )
+             ((and (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                   (not (handle->process (-> self fcell-handle)))
+                   )
               (go helix-button-quick-activate)
               )
              (else
@@ -361,9 +362,9 @@
         (when (< 12288.0 (vector-xz-length gp-1))
           (set! (-> gp-1 y) 0.0)
           (vector-normalize! gp-1 4096.0)
-          (TODO-RENAME-28 (-> *target* control) gp-1)
-          (dummy-45 (-> self root-override))
-          (dummy-35 (-> self root-override))
+          (move-by-vector! (-> *target* control) gp-1)
+          (respond-to-collisions! (-> self root-override))
+          (detect-riders! (-> self root-override))
           )
         )
       )
@@ -398,7 +399,7 @@
             (set! (-> a1-11 quad) (-> self root-override trans quad))
             (set! (-> a1-11 y) f0-3)
             )
-          (TODO-RENAME-30 (-> self root-override) a1-11)
+          (move-to-point! (-> self root-override) a1-11)
           )
         (suspend)
         )
@@ -537,7 +538,7 @@
             (set! (-> a1-5 quad) (-> self root-override trans quad))
             (set! (-> a1-5 y) f0-1)
             )
-          (TODO-RENAME-30 (-> self root-override) a1-5)
+          (move-to-point! (-> self root-override) a1-5)
           )
         (suspend)
         )
@@ -569,7 +570,7 @@
     (set! (-> s4-0 no-reaction)
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
-    (dummy-29 s4-0 1)
+    (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -602,7 +603,7 @@
         (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
   (ja-post)
-  (dummy-47 (-> obj root-override))
+  (update-transforms! (-> obj root-override))
   (set! *helix-button* obj)
   (go helix-button-startup)
   (none)

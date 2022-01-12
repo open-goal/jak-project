@@ -204,39 +204,44 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 54]
 (defbehavior yakow-default-event-handler yakow ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
-    (the-as
-      object
-      (cond
-        ((= v1-0 'touch)
-         (let* ((s4-0 arg0)
-                (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
-                          s4-0
+    (the-as object (cond
+                     ((= v1-0 'touch)
+                      (let* ((s4-0 arg0)
+                             (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
+                                       s4-0
+                                       )
+                                   )
+                             )
+                        (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
+                          (respond-to-collisions! (-> self root-override))
+                          (send-shove-back
+                            (-> self root-override)
+                            arg0
+                            (the-as touching-shapes-entry (-> arg3 param 0))
+                            0.7
+                            6144.0
+                            16384.0
+                            )
                           )
+                        )
                       )
-                )
-           (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
-             (dummy-45 (-> self root-override))
-             (dummy-55 (-> self root-override) arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 0.7 6144.0 16384.0)
-             )
-           )
-         )
-        ((= v1-0 'attack)
-         (let ((v1-9 (-> arg3 param 2)))
-           (cond
-             ((!= v1-9 (-> self player-attack-id))
-              (set! (-> self player-attack-id) (the-as int v1-9))
-              (if (-> self vulnerable)
-                  (go yakow-kicked)
-                  )
-              )
-             (else
-               'push
-               )
-             )
-           )
-         )
-        )
-      )
+                     ((= v1-0 'attack)
+                      (let ((v1-9 (-> arg3 param 2)))
+                        (cond
+                          ((!= v1-9 (-> self player-attack-id))
+                           (set! (-> self player-attack-id) (the-as int v1-9))
+                           (if (-> self vulnerable)
+                               (go yakow-kicked)
+                               )
+                           )
+                          (else
+                            'push
+                            )
+                          )
+                        )
+                      )
+                     )
+            )
     )
   )
 
@@ -297,7 +302,7 @@ yakow-default-event-handler
 ;; INFO: Return type mismatch symbol vs none.
 (defbehavior yakow-simple-post yakow ()
   (yakow-common-post)
-  (dummy-47 (-> self root-override))
+  (update-transforms! (-> self root-override))
   (none)
   )
 
@@ -343,10 +348,21 @@ yakow-default-event-handler
     (set! (-> self root-override transv x) (-> v1-24 x))
     (set! (-> self root-override transv z) (-> v1-24 z))
     )
-  (vector-v++! (-> self root-override transv) (dummy-62 (-> self root-override) (new-stack-vector0) 0.0))
+  (vector-v++!
+    (-> self root-override transv)
+    (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
+    )
   (let ((gp-2 (new 'stack-no-clear 'vector)))
     (set! (-> gp-2 quad) (-> self root-override trans quad))
-    (dummy-59 (-> self root-override) (-> self root-override transv) (the-as uint 1) 8192.0 #t #f #f)
+    (integrate-for-enemy-with-move-to-ground!
+      (-> self root-override)
+      (-> self root-override transv)
+      (collide-kind background)
+      8192.0
+      #t
+      #f
+      #f
+      )
     (set! (-> self final-speed)
           (* (vector-vector-xz-distance gp-2 (-> self root-override trans)) (-> *display* frames-per-second))
           )

@@ -100,17 +100,25 @@
 ;; definition for method 44 of type lurkercrab
 ;; INFO: Return type mismatch symbol vs object.
 (defmethod dummy-44 lurkercrab ((obj lurkercrab) (arg0 process) (arg1 event-message-block))
-  (if (and (logtest? (-> obj nav-enemy-flags) 64) ((method-of-type touching-shapes-entry prims-touching?)
-                                                   (the-as touching-shapes-entry (-> arg1 param 0))
-                                                   (-> obj collide-info)
-                                                   (the-as uint 1)
-                                                   )
+  (if (and (logtest? (-> obj nav-enemy-flags) 64)
+           ((method-of-type touching-shapes-entry prims-touching?)
+            (the-as touching-shapes-entry (-> arg1 param 0))
+            (-> obj collide-info)
+            (the-as uint 1)
+            )
            )
       (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
       )
-  (dummy-55 (-> obj collide-info) arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 0.7 6144.0 16384.0)
+  (send-shove-back
+    (-> obj collide-info)
+    arg0
+    (the-as touching-shapes-entry (-> arg1 param 0))
+    0.7
+    6144.0
+    16384.0
+    )
   (the-as object (if (zero? (logand (-> obj nav-enemy-flags) 256))
-                     (dummy-45 (-> obj collide-info))
+                     (respond-to-collisions! (-> obj collide-info))
                      )
           )
   )
@@ -205,7 +213,15 @@ nav-enemy-default-event-handler
 ;; definition for method 38 of type lurkercrab
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-38 lurkercrab ((obj lurkercrab))
-  (dummy-59 (-> obj collide-info) (-> obj collide-info transv) (the-as uint 1) 8192.0 #f #f #f)
+  (integrate-for-enemy-with-move-to-ground!
+    (-> obj collide-info)
+    (-> obj collide-info transv)
+    (collide-kind background)
+    8192.0
+    #f
+    #f
+    #f
+    )
   0
   (none)
   )
@@ -289,7 +305,7 @@ nav-enemy-default-event-handler
 ;; definition for function lurkercrab-invulnerable
 (defbehavior lurkercrab-invulnerable lurkercrab ()
   (set! (-> self nav-enemy-flags) (logand -33 (-> self nav-enemy-flags)))
-  (let ((v1-3 (dummy-34 (-> self collide-info) (the-as uint 2))))
+  (let ((v1-3 (find-prim-by-id (-> self collide-info) (the-as uint 2))))
     (when v1-3
       (let ((v0-1 4))
         (set! (-> v1-3 prim-core offense) (the-as collide-offense v0-1))
@@ -302,7 +318,7 @@ nav-enemy-default-event-handler
 ;; definition for function lurkercrab-vulnerable
 (defbehavior lurkercrab-vulnerable lurkercrab ()
   (logior! (-> self nav-enemy-flags) 32)
-  (let ((v1-3 (dummy-34 (-> self collide-info) (the-as uint 2))))
+  (let ((v1-3 (find-prim-by-id (-> self collide-info) (the-as uint 2))))
     (when v1-3
       (let ((v0-1 1))
         (set! (-> v1-3 prim-core offense) (the-as collide-offense v0-1))

@@ -85,7 +85,7 @@
                                      )
                  )
              )
-    (dummy-54 (-> obj collide-info) 2 (collide-offense touch))
+    (set-collide-offense (-> obj collide-info) 2 (collide-offense touch))
     (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
     )
   (dummy-14 (-> obj draw shadow-ctrl))
@@ -176,7 +176,7 @@
       (set! (-> v1-0 param 1) (the-as uint a1-1))
       )
     (the-as object (when (send-event-function arg0 v1-0)
-                     (dummy-54 (-> self collide-info) 2 (collide-offense no-offense))
+                     (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
                      (logior! (-> self nav-enemy-flags) 256)
                      #t
                      )
@@ -275,7 +275,7 @@ nav-enemy-default-event-handler
 (defbehavior nav-enemy-simple-post nav-enemy ()
   (TODO-RENAME-9 (-> self align))
   (nav-enemy-common-post)
-  (dummy-47 (-> self collide-info))
+  (update-transforms! (-> self collide-info))
   0
   (none)
   )
@@ -332,7 +332,10 @@ nav-enemy-default-event-handler
       )
     )
   (if (-> obj nav-info move-to-ground)
-      (vector-v++! (-> obj collide-info transv) (dummy-62 (-> obj collide-info) (new-stack-vector0) 0.0))
+      (vector-v++!
+        (-> obj collide-info transv)
+        (compute-acc-due-to-gravity (-> obj collide-info) (new-stack-vector0) 0.0)
+        )
       )
   0
   (none)
@@ -360,10 +363,10 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-38 nav-enemy ((obj nav-enemy))
   (if (-> obj nav-info move-to-ground)
-      (dummy-59
+      (integrate-for-enemy-with-move-to-ground!
         (-> obj collide-info)
         (-> obj collide-info transv)
-        (-> obj nav-info gnd-collide-with)
+        (the-as collide-kind (-> obj nav-info gnd-collide-with))
         8192.0
         #f
         (-> obj nav-info hover-if-no-ground)
@@ -476,8 +479,15 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defbehavior nav-enemy-falling-post nav-enemy ()
-  (vector-v++! (-> self collide-info transv) (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0))
-  (dummy-33 (-> self collide-info) (-> self collide-info transv) (-> self collide-info root-prim collide-with))
+  (vector-v++!
+    (-> self collide-info transv)
+    (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+    )
+  (fill-cache-integrate-and-collide!
+    (-> self collide-info)
+    (-> self collide-info transv)
+    (-> self collide-info root-prim collide-with)
+    )
   (nav-enemy-common-post)
   0
   (none)
@@ -487,8 +497,11 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defbehavior nav-enemy-death-post nav-enemy ()
-  (vector-v++! (-> self collide-info transv) (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0))
-  (dummy-57 (-> self collide-info) (-> self collide-info transv))
+  (vector-v++!
+    (-> self collide-info transv)
+    (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+    )
+  (integrate-no-collide! (-> self collide-info) (-> self collide-info transv))
   (nav-enemy-common-post)
   0
   (none)
@@ -815,7 +828,13 @@ nav-enemy-default-event-handler
     (nav-enemy-neck-control-inactive)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> self nav-info move-to-ground)
-        (dummy-60 (-> self collide-info) 40960.0 40960.0 #t (the-as collide-kind (-> self nav-info gnd-collide-with)))
+        (move-to-ground
+          (-> self collide-info)
+          40960.0
+          40960.0
+          #t
+          (the-as collide-kind (-> self nav-info gnd-collide-with))
+          )
         )
     (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
     (set! (-> self state-timeout) 300)
@@ -1969,11 +1988,14 @@ nav-enemy-default-event-handler
         (-> self turn-time)
         )
       )
-  (vector-v++! (-> self collide-info transv) (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0))
-  (dummy-59
+  (vector-v++!
+    (-> self collide-info transv)
+    (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+    )
+  (integrate-for-enemy-with-move-to-ground!
     (-> self collide-info)
     (-> self collide-info transv)
-    (-> self nav-info gnd-collide-with)
+    (the-as collide-kind (-> self nav-info gnd-collide-with))
     8192.0
     #f
     (-> self nav-info hover-if-no-ground)

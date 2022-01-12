@@ -51,24 +51,29 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 none))
     (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'touch)
-           (dummy-55 (-> self root-override) arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 0.7 6144.0 16384.0)
-           )
-          ((= v1-0 'can-spawn?)
-           (return (the-as object #t))
-           v0-0
-           )
-          ((= v1-0 'notify-spawned)
-           (go spider-egg-hatch)
-           )
-          ((= v1-0 'attack)
-           (go spider-egg-die)
-           )
-          )
-        )
+      (the-as object (cond
+                       ((= v1-0 'touch)
+                        (send-shove-back
+                          (-> self root-override)
+                          arg0
+                          (the-as touching-shapes-entry (-> arg3 param 0))
+                          0.7
+                          6144.0
+                          16384.0
+                          )
+                        )
+                       ((= v1-0 'can-spawn?)
+                        (return (the-as object #t))
+                        v0-0
+                        )
+                       ((= v1-0 'notify-spawned)
+                        (go spider-egg-hatch)
+                        )
+                       ((= v1-0 'attack)
+                        (go spider-egg-die)
+                        )
+                       )
+              )
       )
     )
   :enter
@@ -334,7 +339,7 @@
   (initialize-skeleton obj *spider-egg-unbroken-sg* '())
   (dummy-9 (-> obj broken-look) *spider-egg-broken-sg* (-> obj draw art-group) (-> obj entity))
   (set-vector! (-> obj root-override scale) 0.4 0.4 0.4 1.0)
-  (if (not (dummy-60 (-> obj root-override) 12288.0 40960.0 #t (collide-kind background)))
+  (if (not (move-to-ground (-> obj root-override) 12288.0 40960.0 #t (collide-kind background)))
       (go process-drawable-art-error "no ground")
       )
   (set! (-> obj root-override trans y) (+ -409.6 (-> obj root-override trans y)))
@@ -351,7 +356,7 @@
       (rand-vu-float-range 0.0 65536.0)
       )
     )
-  (dummy-47 (-> obj root-override))
+  (update-transforms! (-> obj root-override))
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
   (if (> (entity-actor-count arg0 'alt-actor) 0)
       (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))

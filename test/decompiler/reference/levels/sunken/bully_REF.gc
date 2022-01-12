@@ -448,7 +448,7 @@
                       (set! (-> self bounced?) #t)
                       (set! (-> self bounce-volume) 100)
                       (set! (-> self hit-player-time) (the-as uint (-> *display* base-frame-counter)))
-                      (dummy-54 (-> self root-override) 2 (collide-offense no-offense))
+                      (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
                       )
                     )
                   )
@@ -505,7 +505,7 @@
                                      )
                  )
              )
-    (dummy-54 (-> self root-override) 2 (collide-offense normal-attack))
+    (set-collide-offense (-> self root-override) 2 (collide-offense normal-attack))
     (set! (-> self hit-player?) #f)
     )
   (transform-post)
@@ -721,7 +721,15 @@
         (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
         )
       (+! (-> self root-override transv y) (* -545996.8 (-> *display* seconds-per-frame)))
-      (dummy-59 (-> self root-override) (-> self root-override transv) (the-as uint 1) 12288.0 #f #f #f)
+      (integrate-for-enemy-with-move-to-ground!
+        (-> self root-override)
+        (-> self root-override transv)
+        (collide-kind background)
+        12288.0
+        #f
+        #f
+        #f
+        )
       (when *target*
         (let ((gp-3 (new 'stack-no-clear 'vector)))
           (vector-! gp-3 (target-pos 0) (-> self root-override trans))
@@ -807,7 +815,15 @@
     (+! (-> self facing-ry) (* (-> self spin-vel) (-> *display* seconds-per-frame)))
     (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 (-> self facing-ry))
     (dummy-20 self)
-    (dummy-59 (-> self root-override) (-> self root-override transv) (the-as uint 1) 8192.0 #f #f #f)
+    (integrate-for-enemy-with-move-to-ground!
+      (-> self root-override)
+      (-> self root-override transv)
+      (collide-kind background)
+      8192.0
+      #f
+      #f
+      #f
+      )
     (dummy-27 (-> self nav))
     (none)
     )
@@ -1138,7 +1154,7 @@
     (set! (-> v1-49 ignore-angle) 16384.0)
     )
   (transform-post)
-  (if (not (dummy-60 (-> obj root-override) 12288.0 40960.0 #t (collide-kind background)))
+  (if (not (move-to-ground (-> obj root-override) 12288.0 40960.0 #t (collide-kind background)))
       (go process-drawable-art-error "no ground")
       )
   (set! (-> obj facing-ry) (quaternion-y-angle (-> obj root-override quat)))
