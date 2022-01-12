@@ -142,7 +142,10 @@
 (define *debug-counter* 0)
 
 (defun debug-draw-collide-work ()
+  (when (not (paused?))
   (+! *debug-counter* 1)
+    
+    )
   
   ;; create a test input that moves around sandover
   (let ((origin (new 'static 'vector :y (meters 7.0) :x (meters 5.) :z (meters 0.0)))
@@ -158,7 +161,9 @@
       (set! (-> origin z) (* (cos (* 3.0 (degrees dbg2))) (meters 30.)))
       (+! (-> origin x) (meters -50.))
       )
-
+#|
+    ;;; PROBE (at the frag finding level)
+    
     ;; setup the collide work
     (setup-collide-for-line-sphere origin line radius)
     
@@ -245,6 +250,37 @@
           ;
           )
         )
+      )
+|#
+    
+    ;; CCACHE (fill from bounding box)
+    (let ((bbox-fake (new 'stack 'bounding-box))
+          (bbox (new 'stack 'bounding-box)))
+      
+      ;; make box
+      (set! (-> bbox-fake min quad) (-> origin quad))
+      (vector+! (-> bbox-fake max) origin line)
+      
+      (dotimes (i 3)
+        (set! (-> bbox min data i) (fmin (-> bbox-fake min data i) (-> bbox-fake max data i)))
+        (set! (-> bbox max data i) (fmax (-> bbox-fake min data i) (-> bbox-fake max data i)))
+        )
+      (set! (-> bbox min w) 1.0)
+      (set! (-> bbox max w) 1.0)
+      
+      ;; draw box
+      (add-debug-box #t (bucket-id debug-draw0) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x30 :a #x80))
+      
+      ;; now fill!
+      (fill-using-bounding-box *collide-cache*
+                               bbox
+                               (collide-kind background)
+                               (the process-drawable #f)
+                               (the pat-surface 0)
+                               )
+      (debug-draw *collide-cache*)
+      
+      
       )
     
     #f

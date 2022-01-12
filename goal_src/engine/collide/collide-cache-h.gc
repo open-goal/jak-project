@@ -10,11 +10,6 @@
 (define-extern collide-cache-using-box-test (function vector symbol))
 
 
-;; The collide cache system tries to make collision queries faster by caching intermediate results.
-;; Almost all collision operations are done by calling a method of the global *collide-cache*.
-;; In cases where the collide cache does not have the data in its cache, it will fill itself
-;; using the appropriate collision functions.
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Helpers
@@ -81,10 +76,11 @@
 ;; This is a common return type of collision queries.
 (deftype collide-cache-tri (structure)
   ((vertex     vector 3 :inline :offset-assert   0) ;; actual locations
-   (pat        pat-surface      :offset-assert  48) ;; metadata about the surface of this tri
-   (prim-index uint16           :offset-assert  52) ;; in the collide-cache-prim list
-   (user16     uint16           :offset-assert  54)
-   (user32     uint32 2         :offset-assert  56)
+   (extra-quad uint128          :offset 48)
+   (pat        pat-surface      :offset  48) ;; metadata about the surface of this tri
+   (prim-index uint16           :offset  52) ;; in the collide-cache-prim list
+   (user16     uint16           :offset  54)
+   (user32     uint32 2         :offset  56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -146,18 +142,18 @@
     (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
     (probe-using-spheres (_type_) none 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result uint) float 20)
-    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
+    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
     (fill-from-foreground-using-spheres (_type_) none 22)
     (fill-from-foreground-using-line-sphere (_type_) none 23)
     (fill-from-foreground-using-y-probe (_type_) none 24)
     (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
-    (dummy-26 (_type_) none 26)
+    (load-mesh-from-spad-in-box (_type_ collide-frag-mesh) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
     (dummy-29 (_type_ collide-frag-mesh) none 29)
     (dummy-30 (_type_) none 30)
     (dummy-31 (_type_ collide-puyp-work collide-cache-prim) vector 31)
-    (dummy-32 (_type_) none 32)
+    (unpack-background-collide-mesh (_type_ object object object) none 32) ;; helper for fill from background.
     )
   )
 
