@@ -615,6 +615,87 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
   // fmt::print("Result: {}\n\n", result.print());
   return result;
 }
+
+goos::Object decompile_sparticle_userdata_assert(const std::vector<LinkedWord>& words,
+                                          const std::string& field_name,
+                                          const std::string& flag_name) {
+  if (flag_name == "int-with-rand" || flag_name == "float-with-rand") {
+    return decompile_sparticle_float_with_rand_init(words, field_name, flag_name);
+  } else {
+    assert(false);
+  }
+}
+
+goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::PartField& field,
+                                            const TypeSystem& ts) {
+  auto field_id = field.field_id;
+  auto flags = field.flags;
+
+  assert(field_id <= (u32)FieldId::SPT_END);
+  auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
+  const auto& field_info = field_kinds[field_id];
+  if (!field_info.known) {
+    throw std::runtime_error("Unknown sparticle field: " + field_name);
+  }
+
+  auto flag_name = decompile_int_enum_from_int(TypeSpec("sp-flag"), ts, flags);
+  goos::Object result;
+
+  if (flag_name == "copy-from-other-field") {
+    result = decompile_sparticle_from_other(field.data, field_name, flag_name);
+  } else {
+    switch (field_info.kind) {
+      case FieldKind::TEXTURE_ID:
+        result = decompile_sparticle_tex_field_init(field.data, ts, field_name, flag_name);
+        break;
+      case FieldKind::FLOAT_WITH_RAND:
+        result = decompile_sparticle_float_with_rand_init(field.data, field_name, flag_name);
+        break;
+      case FieldKind::METER_WITH_RAND:
+        result = decompile_sparticle_float_meters_with_rand_init(field.data, field_name, flag_name);
+        break;
+      case FieldKind::DEGREES_WITH_RAND:
+        result =
+            decompile_sparticle_float_degrees_with_rand_init(field.data, field_name, flag_name);
+        break;
+        //      case FieldKind::INT_WITH_RAND:
+        //        result = decompile_sparticle_int_with_rand_init(field.data, field_name, flag_name);
+        //        break;
+      case FieldKind::PLAIN_INT_WITH_RANDS:
+        result = decompile_sparticle_int_with_rand_init(field.data, field_name, flag_name);
+        break;
+      case FieldKind::PLAIN_INT:
+        result = decompile_sparticle_int_init(field.data, field_name, flag_name);
+        break;
+      case FieldKind::CPUINFO_FLAGS:
+        result = decompile_sparticle_flags(field.data, ts, field_name, flag_name);
+        break;
+      case FieldKind::END_FLAG:
+        result = decompile_sparticle_end(field.data, field_name, flag_name);
+        break;
+      case FieldKind::LAUNCHER_BY_ID:
+        result = decompile_sparticle_launcher_by_id(field.data, field_name, flag_name);
+        break;
+      case FieldKind::NO_FANCY_DECOMP:
+        assert(false);
+        break;
+      case FieldKind::FUNCTION:
+        result = decompile_sparticle_func(field.data, field_name, flag_name);
+        break;
+      case FieldKind::USERDATA:
+        result = decompile_sparticle_userdata_assert(field.data, field_name, flag_name);
+        break;
+      case FieldKind::ROT_X:
+        result = decompile_sparticle_rot_x(field.data, field_name, flag_name);
+        break;
+      default:
+        assert(false);
+    }
+  }
+
+  // fmt::print("Result: {}\n\n", result.print());
+  return result;
+}
 }  // namespace decompiler
 
 /*
