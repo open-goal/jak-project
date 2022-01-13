@@ -136,6 +136,50 @@ namespace pc_upload_collide_frag {
 extern void link();
 }
 
+namespace method_28_collide_cache {
+extern void link();
+}
+
+namespace method_27_collide_cache {
+extern void link();
+}
+
+namespace method_29_collide_cache {
+extern void link();
+}
+
+namespace method_12_collide_shape_prim_mesh {
+extern void link();
+}
+
+namespace method_14_collide_shape_prim_mesh {
+extern void link();
+}
+
+namespace method_13_collide_shape_prim_mesh {
+extern void link();
+}
+
+namespace method_30_collide_cache {
+extern void link();
+}
+
+namespace method_9_collide_cache_prim {
+extern void link();
+}
+
+namespace method_10_collide_cache_prim {
+extern void link();
+}
+
+namespace method_10_collide_puss_work {
+extern void link();
+}
+
+namespace method_9_collide_puss_work {
+extern void link();
+}
+
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -157,7 +201,12 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
     {"collide-probe", {collide_probe_node::link, collide_probe_instance_tie::link}},
     {"collide-mesh", {method_12_collide_mesh::link, method_11_collide_mesh::link}},
     {"collide-cache",
-     {method_26_collide_cache::link, method_32_collide_cache::link, pc_upload_collide_frag::link}}};
+     {method_26_collide_cache::link, method_32_collide_cache::link, pc_upload_collide_frag::link,
+      method_28_collide_cache::link, method_27_collide_cache::link, method_29_collide_cache::link,
+      method_12_collide_shape_prim_mesh::link, method_14_collide_shape_prim_mesh::link,
+      method_13_collide_shape_prim_mesh::link, method_30_collide_cache::link,
+      method_9_collide_cache_prim::link, method_10_collide_cache_prim::link,
+      method_10_collide_puss_work::link, method_9_collide_puss_work::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

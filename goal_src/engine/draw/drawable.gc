@@ -297,20 +297,25 @@
   ;; gmerc
   ;; shadow
   ;; eyes
-  (when (logtest? #x10000 *vu1-enable-user*)
+  (when (logtest? (vu1-renderer-mask sprite) *vu1-enable-user*)
     (swap-fake-shadow-buffers)
     (sprite-draw *display*)
     )
   ;; lots more in this function.
   (when *debug-segment*
     (debug-draw-actors *level* *display-actor-marks*)
-    ;; collide-shape-debug
+    (collide-shape-draw-debug-marks)
     )
   (render-boundaries)
-  ;; boundaries
-  ;; touching
+  (send-events-for-touching-shapes *touching-list*)
+  (free-all-prim-nodes *touching-list*)
+  
   (actors-update *level*)
-  ;; collide stats
+  (when (not (paused?))
+    (if *stats-collide*
+        (print-collide-stats)
+        )
+    )
 
   (none)
   )
@@ -1144,6 +1149,11 @@
   )
 
 (defmethod collide-with-box drawable ((obj drawable) (arg0 int) (arg1 collide-list))
+  0
+  (none)
+  )
+
+(defmethod collide-y-probe drawable ((obj drawable) (arg0 int) (arg1 collide-list))
   0
   (none)
   )

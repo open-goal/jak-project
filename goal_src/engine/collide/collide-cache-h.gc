@@ -90,18 +90,18 @@
 ;; The primitives stored in the cache.
 ;; The "core" is extracted from the normal collide-shape-prim and placed inline here.
 (deftype collide-cache-prim (structure)
-  ((prim-core    collide-prim-core            :inline :offset-assert   0)
-   (ccache       collide-cache                        :offset-assert  32)
-   (prim         collide-shape-prim         :offset-assert  36) 
-   (first-tri    uint16                               :offset-assert  40)
-   (num-tris     uint16                               :offset-assert  42)
-   (unused       uint8                        4       :offset-assert  44)
-   (world-sphere vector                       :inline :offset          0)
-   ;; overlays of the core
-   (collide-as   collide-kind      :offset 16)
+  ((prim-core    collide-prim-core :inline :offset-assert 0)
+   (extra-quad   uint128                   :offset-assert 32)
+   (ccache       collide-cache             :offset 32)
+   (prim         collide-shape-prim        :offset 36)
+   (first-tri    uint16                    :offset 40)
+   (num-tris     uint16                    :offset 42)
+   (unused       uint8           4       :offset 44)
+   (world-sphere vector            :inline :offset 0)
+   (collide-as   collide-kind   :offset 16)
    (action       collide-action    :offset 24)
    (offense      collide-offense   :offset 28)
-   (prim-type    int8                                 :offset         29)
+   (prim-type    int8              :offset 29)
    )
   :method-count-assert 11
   :size-assert         #x30
@@ -140,10 +140,10 @@
     (fill-using-y-probe (_type_ vector float collide-kind process-drawable uint) none 16)
     (initialize (_type_) none 17)
     (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
-    (probe-using-spheres (_type_) none 19)
+    (probe-using-spheres (_type_ collide-using-spheres-params) object 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result uint) float 20)
     (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
-    (fill-from-foreground-using-spheres (_type_) none 22)
+    (fill-from-foreground-using-box (_type_) none 22)
     (fill-from-foreground-using-line-sphere (_type_) none 23)
     (fill-from-foreground-using-y-probe (_type_) none 24)
     (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
@@ -151,8 +151,8 @@
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
     (dummy-29 (_type_ collide-frag-mesh) none 29)
-    (dummy-30 (_type_) none 30)
-    (dummy-31 (_type_ collide-puyp-work collide-cache-prim) vector 31)
+    (puyp-mesh (_type_ collide-puyp-work collide-cache-prim) none 30)
+    (puyp-sphere (_type_ collide-puyp-work collide-cache-prim) vector 31)
     (unpack-background-collide-mesh (_type_ object object object) none 32) ;; helper for fill from background.
     )
   )
