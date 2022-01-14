@@ -251,7 +251,7 @@ const std::unordered_map<
         {"&+", &Compiler::compile_pointer_add},
         {"fmax", &Compiler::compile_fmax},
         {"fmin", &Compiler::compile_fmin},
-        {"sqrtf", &Compiler::compile_sqrtf},
+        {"sqrtf-no-fabs", &Compiler::compile_sqrtf},
 
         // BUILDER (build-dgo/build-cgo?)
         {"build-dgos", &Compiler::compile_build_dgo},

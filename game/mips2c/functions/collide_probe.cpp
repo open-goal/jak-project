@@ -833,7 +833,7 @@ u64 execute(void* ctxt) {
 
   block_40:
   // Unknown instr: vcallms 54
-  fmt::print("vcallms54\n");
+  // fmt::print("vcallms54\n");
   //  nop                        |  maddx.xyz vf19, vf04, vf00
   c->vmadd_bc(DEST::xyz, BC::w, vf19, vf4, vf0);
   //  nop                        |  mulaw.xyzw ACC, vf20, vf00

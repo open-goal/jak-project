@@ -2404,12 +2404,12 @@
 (defmethod fill-and-probe-using-spheres collide-cache ((obj collide-cache) (arg0 collide-using-spheres-params))
   (fill-using-spheres obj arg0)
   (probe-using-spheres obj arg0)
-  (none)
   )
 
 (defmethod fill-using-spheres collide-cache ((obj collide-cache) (arg0 collide-using-spheres-params))
   (let ((s4-0 (new 'stack-no-clear 'bounding-box)))
     (set-from-spheres! s4-0 (-> arg0 spheres) (the-as int (-> arg0 num-spheres)))
+    ;; this box looks correct
     (fill-using-bounding-box
       obj
       s4-0
@@ -2422,7 +2422,7 @@
   )
 
 (defmethod probe-using-spheres collide-cache ((obj collide-cache) (arg0 collide-using-spheres-params))
-  (local-vars (v1-12 none))
+  (local-vars (v1-12 symbol))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -2499,11 +2499,13 @@
         (when (logtest? s3-0 (-> s4-0 prim-core collide-as))
           (when (or (not (-> arg0 solid-only)) (logtest? (-> s4-0 prim-core action) (collide-action solid)))
             (if (>= (-> s4-0 prim-core prim-type) 0)
-                (set! v1-12 ((method-of-type collide-puss-work dummy-9)))
-                (set! v1-12 ((method-of-type collide-puss-work dummy-10)))
+                (set! v1-12 (dummy-9 s5-0 s4-0 arg0))
+                (set! v1-12 (dummy-10 s5-0 s4-0 arg0))
                 )
-            (if v1-12
-                (return (the-as object #t))
+            (when v1-12
+              ;; uncomment to view the point that blocks you from exiting duck.
+                ;;(add-debug-point #t (bucket-id debug-draw1) (-> s5-0 closest-pt))
+                (return #t)
                 )
             )
           )
