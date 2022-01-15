@@ -3055,7 +3055,7 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     forms.push_back(pretty_print::to_symbol(result));
   }
   forms.push_back(pretty_print::to_symbol(fmt::format(
-      ":bounds (static-spherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
+      ":bounds (static-bspherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
       meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
       meters_to_string(m_static_info.bounds.w()))));
 
