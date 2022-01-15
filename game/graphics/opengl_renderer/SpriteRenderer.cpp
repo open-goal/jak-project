@@ -2,6 +2,7 @@
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
+#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
 
 namespace {
 
@@ -194,10 +195,6 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
                m_3d_matrix_data.hvdf_offset.data());
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "pfog0"),
               m_frame_data.pfog0);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_min"),
-              m_frame_data.fog_min);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_max"),
-              m_frame_data.fog_max);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "min_scale"),
               m_frame_data.min_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "max_scale"),
@@ -417,16 +414,10 @@ void SpriteRenderer::draw_debug_window() {
               m_debug_stats.count_2d_grp0);
   ImGui::Text("2D Group 1 (HUD) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp1,
               m_debug_stats.count_2d_grp1);
-  ImGui::Checkbox("Extra Debug", &m_extra_debug);
+  ImGui::Checkbox("Culling", &m_enable_culling);
   ImGui::Checkbox("2d", &m_2d_enable);
   ImGui::SameLine();
   ImGui::Checkbox("3d", &m_3d_enable);
-  ImGui::SameLine();
-  ImGui::Checkbox("3d-debug", &m_3d_debug);
-  if (ImGui::TreeNode("direct")) {
-    // m_sprite_renderer.draw_debug_window();
-    ImGui::TreePop();
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -653,6 +644,16 @@ void SpriteRenderer::do_block_common(SpriteMode mode,
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
     if (m_sprite_offset == SPRITE_RENDERER_MAX_SPRITES) {
       flush_sprites(render_state, prof);
+    }
+
+    if (mode == Mode2D && render_state->has_camera_planes && m_enable_culling) {
+      // we can skip sprites that are out of view
+      // it's probably possible to do this for 3D as well.
+      auto bsphere = m_vec_data_2d[sprite_idx].xyz_sx;
+      bsphere.w() = std::max(bsphere.w(), m_vec_data_2d[sprite_idx].sy());
+      if (bsphere.w() == 0 || !sphere_in_view_ref(bsphere, render_state->camera_planes)) {
+        continue;
+      }
     }
 
     auto& adgif = m_adgif[sprite_idx];
