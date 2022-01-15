@@ -30,7 +30,7 @@ u64 execute(void* ctxt) {
   // #x40404040 = 1's on all w's
   // #x1000404  = STCYCL cl: 4 wl: 4
 
-  int qw_in_source = c->sgpr64(a1);
+  // int qw_in_source = c->sgpr64(a1);
   int qw_to_write = c->sgpr64(a2);
   const u16* data_in = (const u16*)(g_ee_main_mem + c->sgpr64(a0));
   // I don't quite get why this is wrong sometimes.
@@ -74,7 +74,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
   c->mov64(fp, t9);                                 // or fp, t9, r0
@@ -645,7 +645,7 @@ u64 execute(void* ctxt) {
     goto block_12;
   }
 
-  block_11:
+  // block_11:
   c->mov128_gpr_gpr(t8, t9);                        // por t8, t9, r0
   c->mov64(t6, t7);                                 // or t6, t7, r0
   c->dsubu(s5, r0, s5);                             // dsubu s5, r0, s5
@@ -928,7 +928,7 @@ u64 execute(void* ctxt) {
     goto block_12;
   }
 
-  block_11:
+  // block_11:
   c->mov128_gpr_gpr(t8, t9);                        // por t8, t9, r0
   c->mov64(t6, t7);                                 // or t6, t7, r0
   c->dsubu(s5, r0, s5);                             // dsubu s5, r0, s5
@@ -1222,7 +1222,7 @@ u64 execute(void* ctxt) {
     goto block_12;
   }
 
-  block_11:
+  // block_11:
   c->mov128_gpr_gpr(t7, t8);                        // por t7, t8, r0
   c->mov64(t5, t6);                                 // or t5, t6, r0
   c->dsubu(s5, r0, s5);                             // dsubu s5, r0, s5
@@ -1380,7 +1380,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->load_symbol(a0, cache.collide_work);           // lw a0, *collide-work*(s7)
@@ -2306,7 +2306,7 @@ namespace method_30_collide_cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
   c->daddiu(a0, a0, 4908);                          // daddiu a0, a0, 4908
@@ -2581,7 +2581,7 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_6:
+  // block_6:
   cop1_bc = c->fprs[f1] <= c->fprs[f2];             // c.le.s f1, f2
   c->lqc2(vf3, 64, s3);                             // lqc2 vf3, 64(s3)
   if (cop1_bc) {                                    // bc1tl L38
@@ -2589,7 +2589,7 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_8:
+  // block_8:
   c->vmul(DEST::xyzw, vf5, vf1, vf2);               // vmul.xyzw vf5, vf1, vf2
   c->lqc2(vf4, 0, s5);                              // lqc2 vf4, 0(s5)
   // nop                                            // sll r0, r0, 0
@@ -2617,7 +2617,7 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_11:
+  // block_11:
   c->vadd_bc(DEST::x, BC::z, vf6, vf6, vf6);        // vaddz.x vf6, vf6, vf6
   // nop                                            // sll r0, r0, 0
   c->mov128_gpr_vf(v1, vf6);                        // qmfc2.i v1, vf6
@@ -2657,7 +2657,7 @@ u64 execute(void* ctxt) {
     goto block_17;
   }
 
-  block_16:
+  // block_16:
   c->lw_float_constant(v0, 0xccbebc20);             // lw v0, L313(fp) -100000000.0
 
   block_17:
@@ -2823,7 +2823,7 @@ u64 execute(void* ctxt) {
     goto block_10;
   }
 
-  block_9:
+  // block_9:
   c->vsub_bc(DEST::x, BC::y, vf2, vf0, vf1);        // vsuby.x vf2, vf0, vf1
   // nop                                            // sll r0, r0, 0
   c->vrsqrt(vf0, BC::w, vf14, BC::x);               // vrsqrt Q, vf0.w, vf14.x
@@ -2908,7 +2908,7 @@ namespace method_10_collide_puss_work {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 4, a2);                                // lwu v1, 4(a2)
@@ -3164,7 +3164,7 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_4:
+  // block_4:
   c->vwaitq();                                      // vwaitq
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf8, vf8);                    // vmulq.xyz vf8, vf8, Q
@@ -3180,7 +3180,7 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_7:
+  // block_7:
   c->daddiu(s0, s0, 1);                             // daddiu s0, s0, 1
   c->lq(a1, 16, s2);                                // lq a1, 16(s2)
   // nop                                            // sll r0, r0, 0
@@ -3204,7 +3204,7 @@ u64 execute(void* ctxt) {
     goto block_5;
   }
 
-  block_9:
+  // block_9:
   c->load_symbol(t9, cache.closest_pt_in_triangle); // lw t9, closest-pt-in-triangle(s7)
   c->daddu(a0, r0, gp);                             // daddu a0, r0, gp
   c->daddu(a1, r0, s2);                             // daddu a1, r0, s2
@@ -3230,7 +3230,7 @@ u64 execute(void* ctxt) {
     goto block_5;
   }
 
-  block_11:
+  // block_11:
   c->daddiu(v1, s7, 8);                             // daddiu v1, s7, #t
   c->mov64(v0, v1);                                 // or v0, v1, r0
   //beq r0, r0, L16                                 // beq r0, r0, L16

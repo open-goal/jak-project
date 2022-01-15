@@ -99,12 +99,12 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
  * the table upload stuff that runs every frame, even if there are no sprites.
  */
 void SpriteRenderer::render_distorter(DmaFollower& dma,
-                                      SharedRenderState* render_state,
-                                      ScopedProfilerNode& prof) {
+                                      SharedRenderState* /*render_state*/,
+                                      ScopedProfilerNode& /*prof*/) {
   // Next thing should be the sprite-distorter setup
   // m_direct_renderer.reset_state();
   while (dma.current_tag().qwc != 7) {
-    auto direct_data = dma.read_and_advance();
+    dma.read_and_advance();
     // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
     // direct_data.size_bytes, render_state, prof);
   }
@@ -471,8 +471,8 @@ void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfil
 }
 
 void SpriteRenderer::handle_tex0(u64 val,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+                                 SharedRenderState* /*render_state*/,
+                                 ScopedProfilerNode& /*prof*/) {
   GsTex0 reg(val);
 
   // update tbp
@@ -495,8 +495,8 @@ void SpriteRenderer::handle_tex0(u64 val,
 }
 
 void SpriteRenderer::handle_tex1(u64 val,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+                                 SharedRenderState* /*render_state*/,
+                                 ScopedProfilerNode& /*prof*/) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
   //   assert(reg.mxl() == 0);
@@ -512,8 +512,8 @@ void SpriteRenderer::handle_tex1(u64 val,
 }
 
 void SpriteRenderer::handle_zbuf(u64 val,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+                                 SharedRenderState* /*render_state*/,
+                                 ScopedProfilerNode& /*prof*/) {
   // note: we can basically ignore this. There's a single z buffer that's always configured the same
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
@@ -524,8 +524,8 @@ void SpriteRenderer::handle_zbuf(u64 val,
 }
 
 void SpriteRenderer::handle_clamp(u64 val,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof) {
+                                  SharedRenderState* /*render_state*/,
+                                  ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     fmt::print("clamp: 0x{:x}\n", val);
     assert(false);
@@ -559,20 +559,20 @@ void SpriteRenderer::update_gl_blend(AdGifState& state) {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b,
                 (int)state.c, (int)state.d);
-      assert(false);
+      // assert(false);
     }
   }
 }
 
 void SpriteRenderer::handle_alpha(u64 val,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof) {
+                                  SharedRenderState* /*render_state*/,
+                                  ScopedProfilerNode& /*prof*/) {
   GsAlpha reg(val);
 
   m_adgif_state.from_register(reg);
 }
 
-void SpriteRenderer::update_gl_prim(SharedRenderState* render_state) {
+void SpriteRenderer::update_gl_prim(SharedRenderState* /*render_state*/) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.fogging_enable) {

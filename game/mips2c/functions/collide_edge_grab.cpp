@@ -96,7 +96,7 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_8:
+  // block_8:
   c->vmula_bc(DEST::w, BC::x, vf0, vf9);            // vmulax.w acc, vf0, vf9
   // nop                                            // sll r0, r0, 0
   c->vmadda_bc(DEST::w, BC::y, vf0, vf9);           // vmadday.w acc, vf0, vf9
@@ -126,13 +126,13 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_10:
+  // block_10:
   if (((s64)c->sgpr64(t5)) == ((s64)c->sgpr64(t6))) {// beql t5, t6, L28
     c->daddiu(t3, t3, 64);                          // daddiu t3, t3, 64
     goto block_1;
   }
 
-  block_12:
+  // block_12:
   bc = c->sgpr64(t1) == c->sgpr64(t7);              // beq t1, t7, L31
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_15;}                          // branch non-likely
