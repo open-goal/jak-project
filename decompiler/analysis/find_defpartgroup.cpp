@@ -99,7 +99,6 @@ L82:
 void read_static_part_data(DecompiledDataElement* src,
                            const Env& env,
                            DefpartElement::StaticInfo& part) {
-
   auto lab = src->label();
   // looks like:
   /*
