@@ -298,8 +298,8 @@ class Compiler {
                            IntegerMathKind kind);
   Val* compile_floating_point_division(const goos::Object& form,
                                        const TypeSpec& result_type,
-                                        RegVal* a,
-                                        RegVal* b,
+                                       RegVal* a,
+                                       RegVal* b,
                                        Env* env);
 
   Val* compile_format_string(const goos::Object& form,

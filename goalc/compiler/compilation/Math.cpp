@@ -386,7 +386,6 @@ Val* Compiler::compile_floating_point_division(const goos::Object& form,
     end_label->func = fenv;
     end_label->idx = -10;  // placeholder
 
-
     auto zero = compile_float(0.0, env, fenv->segment_for_static_data())->to_fpr(form, env);
     Condition zero_check;
     zero_check.kind = ConditionKind::EQUAL;

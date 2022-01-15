@@ -997,7 +997,7 @@ struct ExecutionContext {
   void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
   void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
   void divs(int dst, int src0, int src1) {
-    //assert(fprs[src1] != 0);
+    // assert(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];
   }
   void negs(int dst, int src) {
