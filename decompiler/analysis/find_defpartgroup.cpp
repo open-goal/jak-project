@@ -3,10 +3,19 @@
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 
 namespace {
+
+const goos::Object& car(const goos::Object* x) {
+  return x->as_pair()->car;
+}
+
+const goos::Object* cdr(const goos::Object* x) {
+  return &x->as_pair()->cdr;
+}
 
 void read_static_group_data(DecompiledDataElement* src,
                             const Env& env,
@@ -88,8 +97,9 @@ L82:
 }
 
 void read_static_part_data(DecompiledDataElement* src,
-                            const Env& env,
-                            DefpartElement::StaticInfo& part) {
+                           const Env& env,
+                           DefpartElement::StaticInfo& part) {
+
   auto lab = src->label();
   // looks like:
   /*
@@ -115,25 +125,28 @@ L80:
   auto& first_word = words.at(start_word_idx);
   if (first_word.kind() != LinkedWord::TYPE_PTR ||
       first_word.symbol_name() != "sparticle-launcher") {
-    env.func->warnings.warn_and_throw(
-        "Reference to sparticle-launcher bad: invalid type pointer");
+    env.func->warnings.warn_and_throw("Reference to sparticle-launcher bad: invalid type pointer");
   }
 
   auto& empty1 = words.at(start_word_idx + 1);
   auto& empty2 = words.at(start_word_idx + 2);
-  if (empty1.kind() != LinkedWord::PLAIN_DATA || empty1.data != 0 || empty2.kind() != LinkedWord::PLAIN_DATA || empty2.data != 0) {
+  if (empty1.kind() != LinkedWord::PLAIN_DATA || empty1.data != 0 ||
+      empty2.kind() != LinkedWord::PLAIN_DATA || empty2.data != 0) {
     env.func->warnings.warn_and_throw("Reference to sparticle-launcher bad: accums not empty");
   }
 
   auto& array_word = words.at(start_word_idx + 3);
   if (array_word.kind() != LinkedWord::PTR) {
-    env.func->warnings.warn_and_throw(
-        "Reference to sparticle-launcher bad: invalid array label");
+    env.func->warnings.warn_and_throw("Reference to sparticle-launcher bad: invalid array label");
   }
   auto& array_lab = env.file->get_label_by_name(env.file->get_label_name(array_word.label_id()));
   auto& array_words = env.file->words_by_seg.at(array_lab.target_segment);
   int array_start_word_idx = array_lab.offset / 4;
   part.fields.clear();
+  src->do_decomp(env, env.file);
+  auto obj = src->to_form(env);
+  obj = car(cdr(cdr(&obj)));
+  auto cur_field = cdr(&obj);
   for (int i = 0; true; ++i) {
     int field_idx = i * 4 + array_start_word_idx;
     auto& item = part.fields.emplace_back();
@@ -143,10 +156,15 @@ L80:
     item.data.push_back(array_words.at(field_idx + 1));
     item.data.push_back(array_words.at(field_idx + 2));
     item.data.push_back(array_words.at(field_idx + 3));
+    if (item.field_id == 7) {
+      auto& fld = car(cur_field);
+      item.sound_spec = cdr(cdr(cdr(cdr(&fld))))->as_pair()->car;
+    }
     if (item.field_id == 67) {
       // sp-end
       break;
     }
+    cur_field = cdr(cur_field);
   }
 }
 

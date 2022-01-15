@@ -1724,6 +1724,7 @@ class DefpartElement : public FormElement {
       u16 field_id;
       u16 flags;
       std::vector<LinkedWord> data;
+      goos::Object sound_spec;
     };
     std::vector<PartField> fields;
   };

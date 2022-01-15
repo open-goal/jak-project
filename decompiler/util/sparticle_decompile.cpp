@@ -104,6 +104,7 @@ enum class FieldKind {
   FUNCTION,
   USERDATA,
   ROT_X,
+  SOUND_SPEC,
   INVALID
 };
 
@@ -120,12 +121,12 @@ const SparticleFieldDecomp field_kinds[68] = {
     {true, FieldKind::FUNCTION},              // SPT_BIRTH_FUNC = 4
     {false},                                  // SPT_JOINT/REFPOINT = 5
     {true, FieldKind::FLOAT_WITH_RAND},       // SPT_NUM = 6
-    {true, FieldKind::NO_FANCY_DECOMP},       // SPT_SOUND = 7
+    {true, FieldKind::SOUND_SPEC},            // SPT_SOUND = 7
     {false},                                  // MISC_FIELDS_END = 8
     {false},                                  // SPRITE_FIELDS_START = 9
     {true, FieldKind::METER_WITH_RAND},       // SPT_X = 10
     {true, FieldKind::METER_WITH_RAND},       // SPT_Y = 11
-    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_Z = 12
+    {true, FieldKind::METER_WITH_RAND},       // SPT_Z = 12
     {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_X = 13
     {true, FieldKind::ROT_X},                 // SPT_ROT_X = 14
     {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Y = 15
@@ -434,6 +435,15 @@ goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<
   }
 }
 
+goos::Object decompile_sparticle_sound_spec(const std::vector<LinkedWord>& words,
+                                            const std::string& field_name,
+                                            const std::string& flag_name,
+                                            const goos::Object& original) {
+  assert(field_name == "spt-sound");
+  assert(flag_name == "plain-v2");
+  return pretty_print::build_list("sp-sound", original);
+}
+
 goos::Object decompile_sparticle_group_item(const TypeSpec& type,
                                             const DecompilerLabel& label,
                                             const std::vector<DecompilerLabel>& labels,
@@ -595,6 +605,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
       case FieldKind::LAUNCHER_BY_ID:
         result = decompile_sparticle_launcher_by_id(obj_words, field_name, flag_name);
         break;
+      case FieldKind::SOUND_SPEC:
       case FieldKind::NO_FANCY_DECOMP:
         result = normal;
         break;
@@ -687,6 +698,9 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         break;
       case FieldKind::ROT_X:
         result = decompile_sparticle_rot_x(field.data, field_name, flag_name);
+        break;
+      case FieldKind::SOUND_SPEC:
+        result = decompile_sparticle_sound_spec(field.data, field_name, flag_name, field.sound_spec);
         break;
       default:
         assert(false);
