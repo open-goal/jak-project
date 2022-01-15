@@ -3140,7 +3140,8 @@ void DefpartElement::get_modified_regs(RegSet& regs) const {}
 
 goos::Object DefpartElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
-  forms.push_back(pretty_print::to_symbol(fmt::format("defpart {}", m_id)));
+  forms.push_back(pretty_print::to_symbol("defpart"));
+  forms.push_back(pretty_print::to_symbol(fmt::format("{}", m_id)));
 
   std::vector<goos::Object> item_forms;
   for (const auto& e : m_static_info.fields) {
