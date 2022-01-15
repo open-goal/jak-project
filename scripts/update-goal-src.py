@@ -24,6 +24,7 @@ files_with_modifications = [
   "target-util",
   "ambient",
   "viewer",
+  "sunken-obs",
   "cam-master",
   "target-snowball",
   "logic-target",
@@ -31,6 +32,8 @@ files_with_modifications = [
   "collide-shape",
   "cam-states",
   "plant-boss",
+  "helix-water",
+  "lavatube-energy",
   "sage-finalboss-FIN",
   "progress",
   "entity"
