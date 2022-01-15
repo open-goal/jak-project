@@ -9,8 +9,75 @@
 ;;  A collide shape is a group of collision geometry. Typically, each actor will have a single collide shape.
 ;;  Each collide shape may contain a number of collide-shape-prim's.
 
-;; There are many subclasses of collide-shape-prim for different types of collision primitives.
-;; Some subclasses can contain multiple collide-shape-prims.
+;; There are subclasses of collide-shape-prim for different types of collision primitives.
+;; The types are:
+;;  - mesh. A foreground collision mesh. This has a fixed max size, so something have multiple meshes.
+;;  - group. A list of other prims.
+;;  - sphere. A sphere.
+
+;; The non-sphere classes also store a bsphere that must contain all collision geometry.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; New vs. Old Collide System
+;; There are, effectively, two systems for collision queries.
+
+;; Things that are shared:
+;; Both systems use "collide-shape".
+;; Both systems track foreground collision objects through the lists:
+;;  - collide-player-list
+;;  - collide-hit-by-player-list
+;;  - collide-usually-hit-by-player-list
+
+;; The "old" system:
+;;  - generally uses recursive traversals through the collide shape tree
+;;  - uses "collide-mesh-cache".
+;;  - can't collide with water or the background.
+
+
+;; The "new" system:
+;;  - is the only way to collide with the background/water
+;;  - uses "collide-cache"
+;;  - generally dumps stuff into the collide-cache, then uses collide-cache functions (not decompiled yet)
+;;  - does not support a few of the weirder collision checks
+
+;; There is some duplicate implemenations because both the new and old system collide
+;; foreground meshes.
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Collision queries:
+
+;; Push Away.
+;; Some objects move on fixed paths (like platforms).  When these move forward, they should "push away"
+;; things they hit (generally, Jak).  Push Away only works between foreground objects and uses the old system.
+;; The do-push-aways! function should be called after moving a shape to push away things that you hit.
+;; Internally, this uses things called SPAT/should-push-away-test.
+;; The push-aways use the collide resolve system (described below) to actually push things aways
+;; (you can't push-away something through a wall, for example.)
+
+;; Collide Resolve. (made up name)
+;; Some objects (like Jak) do not move on fixed paths, and will be stopped by walls or other obstacles.
+;; This works on background and foreground objects, and uses the new system.
+;; The fill-cache-integrate-and-collide! function should be called, which will fill the collide cache
+;; and then do an iterative collision algorithm.
+;; This will call the reaction function. The default "default-collision-reaction" function is in collide-shape.gc
+;; will fill the touching list.
+
+
+;; Nav Enemy Collision (made up name)
+;; dummy-58 and integrate-for-enemy-with-move-to-ground are nav-enemy specific.
+;; the details aren't super well understood yet. But they basically try to go forward if they aren't blocked.
+;; Uses find-overlapping-shapes as the detector. (old system)
+
+;; Move To Ground.
+;; move-to-ground. Does what it says. (new system)
+
+;; detect-riders
+;; for platforms, detect if somebody is on the platform. (on-platform-test)
+;; uses old system. Sends event adds to rider list.
+
 
 (declare-type touching-list structure)
 (declare-type collide-shape-prim basic)
@@ -242,6 +309,8 @@
 (declare-type collide-shape basic)
 (declare-type collide-cache-prim structure)
 (declare-type collide-shape-prim-group basic)
+(declare-type collide-cache basic)
+
 ;; the base class for collision shapes.
 (deftype collide-shape-prim (basic)
   ((cshape          collide-shape             :offset-assert 4)   ;; our parent collide-shape
@@ -267,9 +336,9 @@
     (move-by-vector! (_type_ vector) none 9)
     (find-prim-by-id (_type_ uint) collide-shape-prim 10)
     (debug-draw-world-sphere (_type_) symbol 11)
-    (add-fg-prim-using-box (_type_ process-drawable) none 12)
-    (add-fg-prim-using-line-sphere (_type_ process-drawable) none 13)
-    (add-fg-prim-using-y-probe (_type_ process-drawable) none 14)
+    (add-fg-prim-using-box (_type_ collide-cache) none 12)
+    (add-fg-prim-using-line-sphere (_type_ collide-cache) none 13)
+    (add-fg-prim-using-y-probe (_type_ collide-cache) none 14)
     (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol 15)
     (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol 16)
     (dummy-17 () none 17)
@@ -392,10 +461,10 @@
     (on-platform (_type_ collide-shape collide-overlap-result) symbol 39)
     (find-overlapping-shapes (_type_ overlaps-others-params) symbol 40) ;; check if blocked??
     (dummy-41 (_type_ attack-info float) vector 41)
-    (compute-overlap (_type_ collide-shape collide-overlap-result) symbol 42)
+    (should-push-away (_type_ collide-shape collide-overlap-result) symbol 42)
     (pull-rider! (_type_ pull-rider-info) none 43)
     (pull-riders! (_type_) symbol 44)
-    (respond-to-collisions! (_type_) symbol 45)
+    (do-push-aways! (_type_) symbol 45)
     (set-root-prim! (_type_ collide-shape-prim) collide-shape-prim 46)
     (update-transforms! (_type_) symbol 47)
     (clear-collide-with-as (_type_) none 48)

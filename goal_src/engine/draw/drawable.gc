@@ -297,20 +297,25 @@
   ;; gmerc
   ;; shadow
   ;; eyes
-  (when (logtest? #x10000 *vu1-enable-user*)
+  (when (logtest? (vu1-renderer-mask sprite) *vu1-enable-user*)
     (swap-fake-shadow-buffers)
     (sprite-draw *display*)
     )
   ;; lots more in this function.
   (when *debug-segment*
     (debug-draw-actors *level* *display-actor-marks*)
-    ;; collide-shape-debug
+    (collide-shape-draw-debug-marks)
     )
   (render-boundaries)
-  ;; boundaries
-  ;; touching
+  (send-events-for-touching-shapes *touching-list*)
+  (free-all-prim-nodes *touching-list*)
+  
   (actors-update *level*)
-  ;; collide stats
+  (when (not (paused?))
+    (if *stats-collide*
+        (print-collide-stats)
+        )
+    )
 
   (none)
   )
@@ -322,6 +327,17 @@
   )
 
 (define *draw-hook* main-draw-hook)
+
+(defun-debug main-debug-hook ()
+  (when (not (or (= *master-mode* 'menu) (= *master-mode* 'progress)))
+    (execute-connections *debug-engine* #f)
+    ;; (draw-instance-info *stdcon*)
+    )
+  (none)
+  )
+
+;; definition for symbol *debug-hook*, type (function none)
+(define *debug-hook* main-debug-hook)
 
 (defun debug-init-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
   "Initialize a bucket for debug draw with the given zbuf and test settings"
@@ -1139,6 +1155,16 @@
   )
 
 (defmethod collide-ray drawable ((obj drawable) (arg0 int) (arg1 collide-list))
+  0
+  (none)
+  )
+
+(defmethod collide-with-box drawable ((obj drawable) (arg0 int) (arg1 collide-list))
+  0
+  (none)
+  )
+
+(defmethod collide-y-probe drawable ((obj drawable) (arg0 int) (arg1 collide-list))
   0
   (none)
   )

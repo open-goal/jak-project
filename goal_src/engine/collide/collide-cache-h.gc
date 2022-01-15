@@ -10,11 +10,6 @@
 (define-extern collide-cache-using-box-test (function vector symbol))
 
 
-;; The collide cache system tries to make collision queries faster by caching intermediate results.
-;; Almost all collision operations are done by calling a method of the global *collide-cache*.
-;; In cases where the collide cache does not have the data in its cache, it will fill itself
-;; using the appropriate collision functions.
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Helpers
@@ -55,8 +50,8 @@
   :size-assert         #xc60
   :flag-assert         #xb00000c60
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-9 (_type_ object object) symbol 9)
+    (dummy-10 (_type_ object object) symbol 10)
     )
   )
 
@@ -81,10 +76,11 @@
 ;; This is a common return type of collision queries.
 (deftype collide-cache-tri (structure)
   ((vertex     vector 3 :inline :offset-assert   0) ;; actual locations
-   (pat        pat-surface      :offset-assert  48) ;; metadata about the surface of this tri
-   (prim-index uint16           :offset-assert  52) ;; in the collide-cache-prim list
-   (user16     uint16           :offset-assert  54)
-   (user32     uint32 2         :offset-assert  56)
+   (extra-quad uint128          :offset 48)
+   (pat        pat-surface      :offset  48) ;; metadata about the surface of this tri
+   (prim-index uint16           :offset  52) ;; in the collide-cache-prim list
+   (user16     uint16           :offset  54)
+   (user32     uint32 2         :offset  56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -94,18 +90,18 @@
 ;; The primitives stored in the cache.
 ;; The "core" is extracted from the normal collide-shape-prim and placed inline here.
 (deftype collide-cache-prim (structure)
-  ((prim-core    collide-prim-core            :inline :offset-assert   0)
-   (ccache       collide-cache                        :offset-assert  32)
-   (prim         collide-shape-prim         :offset-assert  36) 
-   (first-tri    uint16                               :offset-assert  40)
-   (num-tris     uint16                               :offset-assert  42)
-   (unused       uint8                        4       :offset-assert  44)
-   (world-sphere vector                       :inline :offset          0)
-   ;; overlays of the core
-   (collide-as   collide-kind      :offset 16)
+  ((prim-core    collide-prim-core :inline :offset-assert 0)
+   (extra-quad   uint128                   :offset-assert 32)
+   (ccache       collide-cache             :offset 32)
+   (prim         collide-shape-prim        :offset 36)
+   (first-tri    uint16                    :offset 40)
+   (num-tris     uint16                    :offset 42)
+   (unused       uint8           4       :offset 44)
+   (world-sphere vector            :inline :offset 0)
+   (collide-as   collide-kind   :offset 16)
    (action       collide-action    :offset 24)
    (offense      collide-offense   :offset 28)
-   (prim-type    int8                                 :offset         29)
+   (prim-type    int8              :offset 29)
    )
   :method-count-assert 11
   :size-assert         #x30
@@ -136,7 +132,7 @@
   (:methods
     (debug-draw (_type_) none 9)
     (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
-    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) none 11)
+    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
     (fill-and-probe-using-y-probe (_type_ vector float collide-kind process collide-tri-result uint) float 12)
     (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
     (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
@@ -144,20 +140,20 @@
     (fill-using-y-probe (_type_ vector float collide-kind process-drawable uint) none 16)
     (initialize (_type_) none 17)
     (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
-    (probe-using-spheres (_type_) none 19)
+    (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result uint) float 20)
-    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
-    (fill-from-foreground-using-spheres (_type_) none 22)
+    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
+    (fill-from-foreground-using-box (_type_) none 22)
     (fill-from-foreground-using-line-sphere (_type_) none 23)
     (fill-from-foreground-using-y-probe (_type_) none 24)
     (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
-    (dummy-26 (_type_) none 26)
+    (load-mesh-from-spad-in-box (_type_ collide-frag-mesh) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
     (dummy-29 (_type_ collide-frag-mesh) none 29)
-    (dummy-30 (_type_) none 30)
-    (dummy-31 (_type_ collide-puyp-work collide-cache-prim) vector 31)
-    (dummy-32 (_type_) none 32)
+    (puyp-mesh (_type_ collide-puyp-work collide-cache-prim) none 30)
+    (puyp-sphere (_type_ collide-puyp-work collide-cache-prim) vector 31)
+    (unpack-background-collide-mesh (_type_ object object object) none 32) ;; helper for fill from background.
     )
   )
 

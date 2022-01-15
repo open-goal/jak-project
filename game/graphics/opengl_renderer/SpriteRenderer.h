@@ -197,8 +197,7 @@ class SpriteRenderer : public BucketRenderer {
     int count_2d_grp1 = 0;
   } m_debug_stats;
 
-  bool m_extra_debug = false;
-  bool m_3d_debug = false;
+  bool m_enable_culling = true;
 
   bool m_2d_enable = true;
   bool m_3d_enable = true;

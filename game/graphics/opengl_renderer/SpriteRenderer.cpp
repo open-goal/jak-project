@@ -2,6 +2,7 @@
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
+#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
 
 namespace {
 
@@ -99,12 +100,12 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
  * the table upload stuff that runs every frame, even if there are no sprites.
  */
 void SpriteRenderer::render_distorter(DmaFollower& dma,
-                                      SharedRenderState* render_state,
-                                      ScopedProfilerNode& prof) {
+                                      SharedRenderState* /*render_state*/,
+                                      ScopedProfilerNode& /*prof*/) {
   // Next thing should be the sprite-distorter setup
   // m_direct_renderer.reset_state();
   while (dma.current_tag().qwc != 7) {
-    auto direct_data = dma.read_and_advance();
+    dma.read_and_advance();
     // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
     // direct_data.size_bytes, render_state, prof);
   }
@@ -194,10 +195,6 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
                m_3d_matrix_data.hvdf_offset.data());
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "pfog0"),
               m_frame_data.pfog0);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_min"),
-              m_frame_data.fog_min);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_max"),
-              m_frame_data.fog_max);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "min_scale"),
               m_frame_data.min_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "max_scale"),
@@ -417,16 +414,10 @@ void SpriteRenderer::draw_debug_window() {
               m_debug_stats.count_2d_grp0);
   ImGui::Text("2D Group 1 (HUD) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp1,
               m_debug_stats.count_2d_grp1);
-  ImGui::Checkbox("Extra Debug", &m_extra_debug);
+  ImGui::Checkbox("Culling", &m_enable_culling);
   ImGui::Checkbox("2d", &m_2d_enable);
   ImGui::SameLine();
   ImGui::Checkbox("3d", &m_3d_enable);
-  ImGui::SameLine();
-  ImGui::Checkbox("3d-debug", &m_3d_debug);
-  if (ImGui::TreeNode("direct")) {
-    // m_sprite_renderer.draw_debug_window();
-    ImGui::TreePop();
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -471,8 +462,8 @@ void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfil
 }
 
 void SpriteRenderer::handle_tex0(u64 val,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+                                 SharedRenderState* /*render_state*/,
+                                 ScopedProfilerNode& /*prof*/) {
   GsTex0 reg(val);
 
   // update tbp
@@ -495,8 +486,8 @@ void SpriteRenderer::handle_tex0(u64 val,
 }
 
 void SpriteRenderer::handle_tex1(u64 val,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+                                 SharedRenderState* /*render_state*/,
+                                 ScopedProfilerNode& /*prof*/) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
   //   assert(reg.mxl() == 0);
@@ -512,8 +503,8 @@ void SpriteRenderer::handle_tex1(u64 val,
 }
 
 void SpriteRenderer::handle_zbuf(u64 val,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+                                 SharedRenderState* /*render_state*/,
+                                 ScopedProfilerNode& /*prof*/) {
   // note: we can basically ignore this. There's a single z buffer that's always configured the same
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
@@ -524,8 +515,8 @@ void SpriteRenderer::handle_zbuf(u64 val,
 }
 
 void SpriteRenderer::handle_clamp(u64 val,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof) {
+                                  SharedRenderState* /*render_state*/,
+                                  ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     fmt::print("clamp: 0x{:x}\n", val);
     assert(false);
@@ -559,20 +550,20 @@ void SpriteRenderer::update_gl_blend(AdGifState& state) {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b,
                 (int)state.c, (int)state.d);
-      assert(false);
+      // assert(false);
     }
   }
 }
 
 void SpriteRenderer::handle_alpha(u64 val,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof) {
+                                  SharedRenderState* /*render_state*/,
+                                  ScopedProfilerNode& /*prof*/) {
   GsAlpha reg(val);
 
   m_adgif_state.from_register(reg);
 }
 
-void SpriteRenderer::update_gl_prim(SharedRenderState* render_state) {
+void SpriteRenderer::update_gl_prim(SharedRenderState* /*render_state*/) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.fogging_enable) {
@@ -653,6 +644,16 @@ void SpriteRenderer::do_block_common(SpriteMode mode,
   for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
     if (m_sprite_offset == SPRITE_RENDERER_MAX_SPRITES) {
       flush_sprites(render_state, prof);
+    }
+
+    if (mode == Mode2D && render_state->has_camera_planes && m_enable_culling) {
+      // we can skip sprites that are out of view
+      // it's probably possible to do this for 3D as well.
+      auto bsphere = m_vec_data_2d[sprite_idx].xyz_sx;
+      bsphere.w() = std::max(bsphere.w(), m_vec_data_2d[sprite_idx].sy());
+      if (bsphere.w() == 0 || !sphere_in_view_ref(bsphere, render_state->camera_planes)) {
+        continue;
+      }
     }
 
     auto& adgif = m_adgif[sprite_idx];

@@ -11238,6 +11238,7 @@
 
 (declare-type collide-cache-prim structure)
 (declare-type collide-shape-prim-group basic)
+(declare-type collide-cache basic)
 (deftype collide-shape-prim (basic)
   ((cshape          collide-shape             :offset-assert 4)
    (prim-id         uint32                    :offset-assert 8)
@@ -11260,9 +11261,9 @@
     (move-by-vector! (_type_ vector) none 9)
     (find-prim-by-id (_type_ uint) collide-shape-prim 10)
     (debug-draw-world-sphere (_type_) symbol 11)
-    (add-fg-prim-using-box (_type_ process-drawable) none 12)
-    (add-fg-prim-using-line-sphere (_type_ process-drawable) none 13)
-    (add-fg-prim-using-y-probe (_type_ process-drawable) none 14)
+    (add-fg-prim-using-box (_type_ collide-cache) none 12)
+    (add-fg-prim-using-line-sphere (_type_ collide-cache) none 13)
+    (add-fg-prim-using-y-probe (_type_ collide-cache) none 14)
     (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol 15)
     (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol 16)
     (dummy-17 () none 17)
@@ -11357,10 +11358,10 @@
     (on-platform (_type_ collide-shape collide-overlap-result) symbol 39)
     (find-overlapping-shapes (_type_ overlaps-others-params) symbol 40) ;; check if blocked??
     (dummy-41 (_type_ attack-info float) vector 41)
-    (compute-overlap (_type_ collide-shape collide-overlap-result) symbol 42)
+    (should-push-away (_type_ collide-shape collide-overlap-result) symbol 42)
     (pull-rider! (_type_ pull-rider-info) none 43)
     (pull-riders! (_type_) symbol 44)
-    (respond-to-collisions! (_type_) symbol 45)
+    (do-push-aways! (_type_) symbol 45)
     (set-root-prim! (_type_ collide-shape-prim) collide-shape-prim 46)
     (update-transforms! (_type_) symbol 47)
     (clear-collide-with-as (_type_) none 48)
@@ -11516,6 +11517,15 @@
    (unknown-float64 float :offset 1316) ;; from - logic-target::target-compute-slopes
    (unknown-dword20 int64 :offset 1320) ;; from target-util::turn-around? - TODO
    (unknown-dword21 int64 :offset 1328) ;; from target-util::turn-around? - TODO
+   (unknown-dword-coverage int64 :offset 1336)
+   (unknown-float-coverage-0 float :offset 1344)
+   (unknown-float-coverage-1 float :offset 1348)
+   (unknown-float-coverage-2 float :offset 1352)
+   (unknown-u32-coverage-0 uint32 :offset 1356)
+   (unknown-vector-coverage-0 vector :inline :offset 1376)
+   (unknown-vector-coverage-1 vector :inline :offset 1392)
+   (unknown-vector-coverage-2 vector :inline :offset 1440)
+   (unknown-vector-coverage-3 vector :inline :offset 1472)
    (unknown-vector60 vector :inline :offset 1456) ;; from - logic-target::add-thrust
    (unknown-vector61 vector :inline :offset 1504) ;; from - logic-target::add-thrust
    (unknown-float70 float :offset 1520) ;; from - logic-target::add-thrust
@@ -11601,6 +11611,7 @@
    (unknown-dword82 int64 :offset 18912) ;; from logic-target::reset-target-state
    (unknown-vector120 vector :inline :offset 18928) ;; from target::(code target-running-attack)
    (unknown-float150 float :offset 18944) ;; from target::(code target-wheel-flip)
+   (unknown-vector121 vector :inline :offset 18960) ;; from target collide response
    (unknown-int60 uint32 :offset 18976) ;; from logic-target::print-target-stats
    (unknown-soundid00 sound-id :offset 18980) ;; from powerups::target-powerup-process
    (unknown-float141 float :offset 18984) ;; from powerups::target-powerup-process
@@ -11790,7 +11801,7 @@
   :flag-assert         #xb00000810
   (:methods
     (debug-draw (_type_) object 9)
-    (dummy-10 () none 10)
+    (dummy-10 (_type_ collide-edge-hold-item) none 10)
     )
   )
 
@@ -11832,12 +11843,12 @@
     (debug-draw-edges (_type_) object 10)
     (dummy-11 (_type_) none 11)
     (debug-draw-sphere (_type_) symbol 12)
-    (dummy-13 (_type_) none 13)
+    (dummy-13 (_type_ collide-edge-hold-item vector) none 13)
     (dummy-14 (_type_ vector vector int) float 14)
     (dummy-15 (_type_) none 15)
-    (dummy-16 (_type_) none 16)
+    (find-grabbable-tris! (_type_) none 16)
     (dummy-17 (_type_) none 17)
-    (dummy-18 (_type_) none 18)
+    (dummy-18 (_type_ collide-edge-hold-list edge-grab-info) none 18)
     (dummy-19 (_type_ collide-edge-hold-item edge-grab-info) symbol 19)
     )
   )
@@ -12482,8 +12493,8 @@
   :size-assert         #xc60
   :flag-assert         #xb00000c60
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-9 (_type_ object object) symbol 9)
+    (dummy-10 (_type_ object object) symbol 10)
     )
   )
 
@@ -12502,10 +12513,11 @@
 (deftype collide-cache-tri (structure)
   ((vertex     vector 3 :inline  :offset-assert 0)
    ;(extra-quad UNKNOWN 16 :offset-assert 48)
-   (pat        pat-surface     :offset-assert 48)
-   (prim-index uint16     :offset-assert 52)
-   (user16     uint16     :offset-assert 54)
-   (user32     uint32 2  :offset-assert 56)
+   (extra-quad uint128 :offset 48)
+   (pat        pat-surface     :offset 48)
+   (prim-index uint16     :offset 52)
+   (user16     uint16     :offset 54)
+   (user32     uint32 2  :offset 56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -12514,12 +12526,12 @@
 
 (deftype collide-cache-prim (structure)
   ((prim-core    collide-prim-core :inline :offset-assert 0)
-   ;;(extra-quad   UNKNOWN           16      :offset-assert 32)
-   (ccache       collide-cache             :offset-assert 32)
-   (prim         collide-shape-prim        :offset-assert 36)
-   (first-tri    uint16                    :offset-assert 40)
-   (num-tris     uint16                    :offset-assert 42)
-   (unused       uint8           4       :offset-assert 44)
+   (extra-quad   uint128                   :offset-assert 32)
+   (ccache       collide-cache             :offset 32)
+   (prim         collide-shape-prim        :offset 36)
+   (first-tri    uint16                    :offset 40)
+   (num-tris     uint16                    :offset 42)
+   (unused       uint8           4       :offset 44)
    (world-sphere vector            :inline :offset 0)
    (collide-as   collide-kind   :offset 16)
    (action       collide-action    :offset 24)
@@ -12554,7 +12566,7 @@
   (:methods
     (debug-draw (_type_) none 9)
     (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
-    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) none 11)
+    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
     (fill-and-probe-using-y-probe (_type_ vector float collide-kind process collide-tri-result uint) float 12)
     (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
     (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
@@ -12562,20 +12574,20 @@
     (fill-using-y-probe (_type_ vector float collide-kind process-drawable uint) none 16)
     (initialize (_type_) none 17)
     (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
-    (probe-using-spheres (_type_) none 19)
+    (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result uint) float 20)
-    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
-    (fill-from-foreground-using-spheres (_type_) none 22)
+    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
+    (fill-from-foreground-using-box (_type_) none 22)
     (fill-from-foreground-using-line-sphere (_type_) none 23)
     (fill-from-foreground-using-y-probe (_type_) none 24)
     (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
-    (dummy-26 (_type_) none 26)
+    (load-mesh-from-spad-in-box (_type_ collide-frag-mesh) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
     (dummy-29 (_type_ collide-frag-mesh) none 29)
-    (dummy-30 (_type_) none 30)
-    (dummy-31 (_type_ collide-puyp-work collide-cache-prim) vector 31)
-    (dummy-32 (_type_) none 32)
+    (puyp-mesh (_type_ collide-puyp-work collide-cache-prim) none 30)
+    (puyp-sphere (_type_ collide-puyp-work collide-cache-prim) vector 31)
+    (unpack-background-collide-mesh (_type_ object object object) none 32) ;; helper for fill from background.
     )
   )
 
@@ -14439,7 +14451,7 @@
     (print-nth-point (_type_ int) none 11)
     (TODO-RENAME-12 (_type_) none 12)
     (TODO-RENAME-13 (_type_ int) none 13)
-    (TODO-RENAME-14 (_type_ vector) none 14)
+    (TODO-RENAME-14 (_type_ tracking-spline-sampler) none 14)
     (TODO-RENAME-15 (_type_) none 15)
     (TODO-RENAME-16 (_type_ float) none 16)
     (TODO-RENAME-17 (_type_ vector float float symbol) int 17) ; - return value is actually none but they do a manual `return`
@@ -19940,7 +19952,7 @@
 ;; - Functions
 
 (define-extern collide-shape-moving-angle-set! (function collide-shape-moving vector vector none))
-(define-extern target-collision-low-coverage (function control-info collide-shape-intersect vector (pointer int) (pointer int) (pointer symbol) uint)) ;; i think the pointers are lies - TODO
+(define-extern target-collision-low-coverage (function control-info collide-shape-intersect vector (pointer uint32) (pointer uint64) (pointer symbol) uint)) ;; i think the pointers are lies - TODO
 (define-extern poly-find-nearest-edge (function vector (inline-array vector) vector vector vector))
 (define-extern target-collision-reaction (function control-info collide-shape-intersect vector vector none))
 (define-extern target-collision-no-reaction (function control-info collide-shape-intersect vector vector none))
@@ -20080,7 +20092,7 @@
 (define-extern target-apply-tongue (function vector symbol :behavior target))
 (define-extern get-intersect-point (function vector touching-prims-entry control-info process vector))
 (define-extern target-powerup-effect (function symbol none :behavior target))
-(define-extern target-shoved (function meters meters process (state target) object :behavior target))
+(define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-walk-event-handler (function process int symbol event-message-block object :behavior target))
