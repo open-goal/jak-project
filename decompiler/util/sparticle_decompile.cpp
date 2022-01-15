@@ -387,10 +387,10 @@ goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<L
                                                              const std::string& field_name,
                                                              const std::string& flag_name) {
   if (flag_name == "int-with-rand") {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-rnd-int-flt {} (meters {}) {} {})", field_name,
-                    float_to_string(word_as_float(words.at(1)) / METER_LENGTH),
-                    word_as_s32(words.at(2)), float_to_string(word_as_float(words.at(3)))));
+    return pretty_print::to_symbol(fmt::format("(sp-rnd-int-flt {} (meters {}) {} {})", field_name,
+                                               meters_to_string(word_as_float(words.at(1))),
+                                               word_as_s32(words.at(2)),
+                                               float_to_string(word_as_float(words.at(3)))));
   }
   assert(flag_name == "float-with-rand");
 
@@ -398,15 +398,13 @@ goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<L
   float mult = word_as_float(words.at(3));
 
   if (range == 0.f && mult == 1.f) {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-flt {} (meters {}))", field_name,
-                    float_to_string(word_as_float(words.at(1)) / METER_LENGTH)));
+    return pretty_print::to_symbol(fmt::format("(sp-flt {} (meters {}))", field_name,
+                                               meters_to_string(word_as_float(words.at(1)))));
   } else {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-rnd-flt {} (meters {}) (meters {}) {})", field_name,
-                    float_to_string(word_as_float(words.at(1)) / METER_LENGTH),
-                    float_to_string(word_as_float(words.at(2)) / METER_LENGTH),
-                    float_to_string(word_as_float(words.at(3)))));
+    return pretty_print::to_symbol(fmt::format(
+        "(sp-rnd-flt {} (meters {}) (meters {}) {})", field_name,
+        meters_to_string(word_as_float(words.at(1))), meters_to_string(word_as_float(words.at(2))),
+        float_to_string(word_as_float(words.at(3)))));
   }
 }
 
@@ -476,8 +474,8 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
   // binding
 
   s32 launcher = word_as_s32(obj_words.at(0));
-  float fade_after_meters = word_as_float(obj_words.at(1)) / METER_LENGTH;
-  float falloff_to_meters = word_as_float(obj_words.at(2)) / METER_LENGTH;
+  float fade_after = word_as_float(obj_words.at(1));
+  float falloff_to = word_as_float(obj_words.at(2));
   u32 fp = word_as_s32(obj_words.at(3));
   u16 flags = fp & 0xffff;
   u16 period = fp >> 16;
@@ -490,12 +488,12 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
   std::string result =
       fmt::format("(sp-item {}", launcher);  // use decimal, so it matches array idx
 
-  if (fade_after_meters != 0.0) {
-    result += fmt::format(" :fade-after (meters {})", float_to_string(fade_after_meters));
+  if (fade_after != 0.0) {
+    result += fmt::format(" :fade-after (meters {})", meters_to_string(fade_after));
   }
 
-  if (falloff_to_meters != 0.0) {
-    result += fmt::format(" :falloff-to (meters {})", float_to_string(falloff_to_meters));
+  if (falloff_to != 0.0) {
+    result += fmt::format(" :falloff-to (meters {})", meters_to_string(falloff_to));
   }
 
   if (flags) {
@@ -628,8 +626,8 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
 }
 
 goos::Object decompile_sparticle_userdata_assert(const std::vector<LinkedWord>& words,
-                                          const std::string& field_name,
-                                          const std::string& flag_name) {
+                                                 const std::string& field_name,
+                                                 const std::string& flag_name) {
   if (flag_name == "int-with-rand" || flag_name == "float-with-rand") {
     return decompile_sparticle_float_with_rand_init(words, field_name, flag_name);
   } else {
@@ -670,8 +668,8 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
             decompile_sparticle_float_degrees_with_rand_init(field.data, field_name, flag_name);
         break;
         //      case FieldKind::INT_WITH_RAND:
-        //        result = decompile_sparticle_int_with_rand_init(field.data, field_name, flag_name);
-        //        break;
+        //        result = decompile_sparticle_int_with_rand_init(field.data, field_name,
+        //        flag_name); break;
       case FieldKind::PLAIN_INT_WITH_RANDS:
         result = decompile_sparticle_int_with_rand_init(field.data, field_name, flag_name);
         break;
@@ -700,7 +698,8 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         result = decompile_sparticle_rot_x(field.data, field_name, flag_name);
         break;
       case FieldKind::SOUND_SPEC:
-        result = decompile_sparticle_sound_spec(field.data, field_name, flag_name, field.sound_spec);
+        result =
+            decompile_sparticle_sound_spec(field.data, field_name, flag_name, field.sound_spec);
         break;
       default:
         assert(false);

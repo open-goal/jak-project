@@ -2986,21 +2986,18 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
 
   std::vector<goos::Object> lod_forms;
   for (const auto& e : m_info.lods) {
-    auto f_dist = pretty_print::to_symbol(fmt::format(
-        "(meters {})", float_to_string(e.lod_dist->to_form(env).as_float() / METER_LENGTH, false)));
+    auto f_dist = pretty_print::to_symbol(
+        fmt::format("(meters {})", meters_to_string(e.lod_dist->to_form(env).as_float())));
     lod_forms.push_back(pretty_print::build_list(e.mgeo->to_form(env), f_dist));
   }
   forms.push_back(pretty_print::build_list(lod_forms));
 
+  forms.push_back(pretty_print::to_symbol(fmt::format(
+      ":bounds (static-spherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
+      meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
+      meters_to_string(m_static_info.bounds.w()))));
   forms.push_back(pretty_print::to_symbol(
-      fmt::format(":bounds (static-spherem {} {} {} {})",
-                  float_to_string(m_static_info.bounds.x() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.y() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.z() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.w() / METER_LENGTH, false))));
-  forms.push_back(pretty_print::to_symbol(
-      fmt::format(":longest-edge (meters {})",
-                  float_to_string(m_static_info.longest_edge / METER_LENGTH, false))));
+      fmt::format(":longest-edge (meters {})", meters_to_string(m_static_info.longest_edge))));
 
   if (m_static_info.shadow != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));
@@ -3057,18 +3054,14 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     result += ')';
     forms.push_back(pretty_print::to_symbol(result));
   }
-  forms.push_back(pretty_print::to_symbol(
-      fmt::format(":bounds (static-spherem {} {} {} {})",
-                  float_to_string(m_static_info.bounds.x() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.y() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.z() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.w() / METER_LENGTH, false))));
+  forms.push_back(pretty_print::to_symbol(fmt::format(
+      ":bounds (static-spherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
+      meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
+      meters_to_string(m_static_info.bounds.w()))));
 
   std::vector<goos::Object> item_forms;
   for (const auto& e : m_static_info.elts) {
     s32 launcher = e.part_id;
-    float fade_after_meters = e.fade / METER_LENGTH;
-    float falloff_to_meters = e.falloff / METER_LENGTH;
     u16 flags = e.flags;
     u16 period = e.period;
     u16 length = e.length;
@@ -3079,12 +3072,12 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     std::string result =
         fmt::format("(sp-item {}", launcher);  // use decimal, so it matches array idx
 
-    if (fade_after_meters != 0.0) {
-      result += fmt::format(" :fade-after (meters {})", float_to_string(fade_after_meters));
+    if (e.fade != 0.0) {
+      result += fmt::format(" :fade-after (meters {})", meters_to_string(e.fade));
     }
 
-    if (falloff_to_meters != 0.0) {
-      result += fmt::format(" :falloff-to (meters {})", float_to_string(falloff_to_meters));
+    if (e.falloff != 0.0) {
+      result += fmt::format(" :falloff-to (meters {})", meters_to_string(e.falloff));
     }
 
     if (flags) {
