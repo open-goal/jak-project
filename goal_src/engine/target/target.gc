@@ -15,12 +15,13 @@
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-shoved (function meters meters process (state target) object :behavior target))
+(define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 
 ;; DECOMP BEGINS
 
+;; definition for function target-falling-anim
 (defbehavior target-falling-anim target ((arg0 int) (arg1 int))
   (let ((v1-2 (if (> (-> self skel active-channels) 0)
                   (-> self skel root-channel 0 frame-group)
@@ -129,8 +130,65 @@
   #f
   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; definition for function target-falling-anim-trans
+(defbehavior target-falling-anim-trans target ()
+  (let ((v1-2 (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+              )
+        )
+    (b! (or (= v1-2 (-> self draw art-group data 38)) (= v1-2 (-> self draw art-group data 35)))
+      cfg-7
+      )
+    )
+  (ja-channel-push! 1 99)
+  (let ((v1-8 (-> self skel root-channel 0)))
+    (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 38)))
+    )
+  (b! #t cfg-23 :delay (nop!))
+  (label cfg-7)
+  (cond
+    ((and (logtest? (-> self control status) 1) (not (= (if (> (-> self skel active-channels) 0)
+                                                            (-> self skel root-channel 0 frame-group)
+                                                            )
+                                                        (-> self draw art-group data 35)
+                                                        )
+                                                     )
+          )
+     (ja-channel-push! 1 6)
+     (let ((v1-21 (-> self skel root-channel 0)))
+       (set! (-> v1-21 frame-group) (the-as art-joint-anim (-> self draw art-group data 35)))
+       )
+     )
+    ((= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (-> self draw art-group data 38)
+        )
+     (let ((a0-23 (-> self skel root-channel 0)))
+       (set! (-> a0-23 param 0) (-> (new 'static 'array float 1 1.0) 0))
+       (joint-control-channel-group-eval! a0-23 (the-as art-joint-anim #f) num-func-loop!)
+       )
+     )
+    ((= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (-> self draw art-group data 35)
+        )
+     (let ((a0-28 (-> self skel root-channel 0)))
+       (set! (-> a0-28 param 0) (the float (+ (-> a0-28 frame-group data 0 length) -1)))
+       (set! (-> a0-28 param 1) (-> (new 'static 'array float 1 1.0) 0))
+       (joint-control-channel-group-eval! a0-28 (the-as art-joint-anim #f) num-func-seek!)
+       )
+     )
+    )
+  (label cfg-23)
+  0
+  (none)
+  )
 
+;; definition for function target-falling-trans
+;; INFO: Return type mismatch int vs none.
 (defbehavior target-falling-trans target ((arg0 basic) (arg1 cpad-list))
   (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
                      (pad-buttons circle)
@@ -178,6 +236,7 @@
   (none)
   )
 
+;; definition for function target-hit-ground-anim
 (defbehavior target-hit-ground-anim target ((arg0 symbol))
   (let ((v1-2 (if (> (-> self skel active-channels) 0)
                   (-> self skel root-channel 0 frame-group)
@@ -520,6 +579,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-startup (target)
   :event
   target-standard-event-handler
@@ -534,6 +594,7 @@
   target-no-move-post
   )
 
+;; failed to figure out what this is:
 (defstate target-stance (target)
   :event
   target-standard-event-handler
@@ -983,6 +1044,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-walk (target)
   :event
   target-walk-event-handler
@@ -1572,6 +1634,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-turn-around (target)
   :event
   target-standard-event-handler
@@ -1664,6 +1727,7 @@
   target-no-stick-post
   )
 
+;; failed to figure out what this is:
 (defstate target-slide-down (target)
   :event
   target-walk-event-handler
@@ -1724,6 +1788,8 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; definition for function init-var-jump
+;; Used lq/sq
 (defbehavior init-var-jump target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector) (arg4 vector))
   (set! (-> self control status) (logand -16385 (-> self control status)))
   (delete-back-vel)
@@ -1787,6 +1853,8 @@
     )
   )
 
+;; definition for function mod-var-jump
+;; Used lq/sq
 (defbehavior mod-var-jump target ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 vector))
   (local-vars (v0-2 vector))
   (let ((f30-0 (* 0.033333335 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
@@ -1878,6 +1946,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-duck-stance (target)
   :event
   target-standard-event-handler
@@ -2038,6 +2107,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-duck-walk (target)
   :event
   target-standard-event-handler
@@ -2161,6 +2231,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-jump (target)
   :event
   target-jump-event-handler
@@ -2383,6 +2454,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-jump-forward (target)
   :event
   target-jump-event-handler
@@ -2441,6 +2513,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-double-jump (target)
   :event
   target-jump-event-handler
@@ -2562,6 +2635,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-high-jump (target)
   :event
   target-jump-event-handler
@@ -2667,6 +2741,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-duck-high-jump (target)
   :event
   target-standard-event-handler
@@ -2734,6 +2809,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-duck-high-jump-jump (target)
   :event
   target-jump-event-handler
@@ -2848,6 +2924,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-falling (target)
   :event
   target-jump-event-handler
@@ -2879,6 +2956,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-hit-ground (target)
   :event
   target-walk-event-handler
@@ -2995,6 +3073,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-attack (target)
   :event
   target-dangerous-event-handler
@@ -3065,6 +3144,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-running-attack (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -3198,7 +3278,7 @@
             (-> *TARGET-bank* smack-surface-dist)
             (-> *TARGET-bank* smack-surface-height)
             (the-as process #f)
-            (the-as (state target) target-hit)
+            target-hit
             )
           )
       (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
@@ -3376,6 +3456,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-attack-air (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -3615,6 +3696,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-attack-uppercut (target)
   :event
   target-dangerous-event-handler
@@ -3663,6 +3745,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-attack-uppercut-jump (target)
   :event
   target-dangerous-event-handler
@@ -3789,6 +3872,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-flop (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -4110,6 +4194,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-flop-hit-ground (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -4197,6 +4282,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-wheel (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -4263,7 +4349,7 @@
                   (-> *TARGET-bank* smack-surface-dist)
                   (-> *TARGET-bank* smack-surface-height)
                   (the-as process #f)
-                  (the-as (state target) target-hit)
+                  target-hit
                   )
                 )
             (if (zero? s5-0)
@@ -4345,6 +4431,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-wheel-flip (target)
   :event
   target-standard-event-handler
@@ -4366,7 +4453,7 @@
           (-> *TARGET-bank* smack-surface-dist)
           (-> *TARGET-bank* smack-surface-height)
           (the-as process #f)
-          (the-as (state target) target-hit)
+          target-hit
           )
         )
     (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)

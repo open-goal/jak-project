@@ -759,6 +759,15 @@ struct ExecutionContext {
     }
   }
 
+  void vabs(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = std::abs(s.f[i]);
+      }
+    }
+  }
+
   void vrnext(DEST mask, int dst) {
     gRng.advance();
     float r = gRng.R;
@@ -988,7 +997,7 @@ struct ExecutionContext {
   void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
   void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
   void divs(int dst, int src0, int src1) {
-    assert(fprs[src1] != 0);
+    // assert(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];
   }
   void negs(int dst, int src) {
@@ -997,6 +1006,8 @@ struct ExecutionContext {
     v ^= 0x80000000;
     memcpy(&fprs[dst], &v, 4);
   }
+
+  void movs(int dst, int src) { fprs[dst] = fprs[src]; }
 
   void cvtws(int dst, int src) {
     // float to int

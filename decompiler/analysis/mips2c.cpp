@@ -2,6 +2,7 @@
 
 #include "mips2c.h"
 
+#include "common/symbols.h"
 #include "common/util/print_float.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
@@ -570,8 +571,29 @@ Mips2C_Line handle_generic_op2_u16(const Instruction& i0, const std::string& ins
           instr_str};
 }
 
+Mips2C_Line handle_daddiu(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
+  if (i0.get_src(1).is_label()) {
+    return {instr_str, instr_str};
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym("#t")) {
+    return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_dst(0)),
+                        reg_to_name(i0.get_src(0)), FIX_SYM_TRUE),
+            instr_str};
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym()) {
+    out.require_symbol(i0.get_src(1).get_sym());
+    return {fmt::format("c->load_symbol_addr({}, cache.{});", reg_to_name(i0.get_dst(0)),
+                        goal_to_c_name(i0.get_src(1).get_sym())),
+            instr_str};
+  } else {
+    return handle_generic_op2_u16(i0, instr_str);
+  }
+}
+
 Mips2C_Line handle_sw(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
   if (i0.get_src(1).is_sym() && i0.get_src(2).is_reg(rs7())) {
+    out.require_symbol(i0.get_src(1).get_sym());
+    return {fmt::format("c->store_symbol({}, cache.{});", reg_to_name(i0.get_src(0)),
+                        goal_to_c_name(i0.get_src(1).get_sym())),
+            instr_str};
     return handle_unknown(instr_str);
     //    auto name = i0.get_src(1).get_sym();
     //    // store into symbol table!
@@ -747,12 +769,22 @@ Mips2C_Line handle_likely_branch_bc(const Instruction& i0, const std::string& in
   switch (i0.kind) {
     case InstructionKind::BLTZL:
       return {fmt::format("((s64){}) < 0", reg64_or_zero(i0.get_src(0))), instr_str};
+    case InstructionKind::BGEZL:
+      return {fmt::format("((s64){}) >= 0", reg64_or_zero(i0.get_src(0))), instr_str};
+    case InstructionKind::BGTZL:
+      return {fmt::format("((s64){}) > 0", reg64_or_zero(i0.get_src(0))), instr_str};
     case InstructionKind::BNEL:
       return {fmt::format("((s64){}) != ((s64){})", reg64_or_zero(i0.get_src(0)),
                           reg64_or_zero(i0.get_src(1))),
               instr_str};
+    case InstructionKind::BEQL:
+      return {fmt::format("((s64){}) == ((s64){})", reg64_or_zero(i0.get_src(0)),
+                          reg64_or_zero(i0.get_src(1))),
+              instr_str};
     case InstructionKind::BC1TL:
       return {"cop1_bc", instr_str};
+    case InstructionKind::BC1FL:
+      return {"!cop1_bc", instr_str};
     default:
       return handle_unknown(instr_str);
   }
@@ -834,6 +866,12 @@ Mips2C_Line handle_cles(const Instruction& i0, const std::string& instr_string) 
           instr_string};
 }
 
+Mips2C_Line handle_ceqs(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("cop1_bc = c->fprs[{}] == c->fprs[{}];", reg_to_name(i0.get_src(0)),
+                      reg_to_name(i0.get_src(1))),
+          instr_string};
+}
+
 Mips2C_Line handle_pmfhl_lh(const Instruction& i0, const std::string& instr_string) {
   return {fmt::format("c->pmfhl_lh({});", reg_to_name(i0.get_dst(0))), instr_string};
 }
@@ -892,12 +930,16 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2_mask(i0, instr_str, "vmove");
     case InstructionKind::VITOF0:
       return handle_generic_op2_mask(i0, instr_str, "vitof0");
+    case InstructionKind::VITOF12:
+      return handle_generic_op2_mask(i0, instr_str, "vitof12");
     case InstructionKind::VFTOI0:
       return handle_generic_op2_mask(i0, instr_str, "vftoi0");
     case InstructionKind::VFTOI4:
       return handle_generic_op2_mask(i0, instr_str, "vftoi4");
     case InstructionKind::VFTOI12:
       return handle_generic_op2_mask(i0, instr_str, "vftoi12");
+    case InstructionKind::VABS:
+      return handle_generic_op2_mask(i0, instr_str, "vabs");
     case InstructionKind::VADDQ:
       return handle_generic_op2_mask(i0, instr_str, "vaddq");
     case InstructionKind::ANDI:
@@ -956,6 +998,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::AND:
       return handle_generic_op3(i0, instr_str, "and_");  // and isn't allowed in C++
     case InstructionKind::DADDIU:
+      return handle_daddiu(output, i0, instr_str);
     case InstructionKind::ADDIU:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::QMTC2:
@@ -996,6 +1039,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "mtc1");
     case InstructionKind::NEGS:
       return handle_generic_op2(i0, instr_str, "negs");
+    case InstructionKind::MOVS:
+      return handle_generic_op2(i0, instr_str, "movs");
     case InstructionKind::CVTWS:
       return handle_generic_op2(i0, instr_str, "cvtws");
     case InstructionKind::CVTSW:
@@ -1014,6 +1059,9 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::CLES:
       output.needs_cop1_bc = true;
       return handle_cles(i0, instr_str);
+    case InstructionKind::CEQS:
+      output.needs_cop1_bc = true;
+      return handle_ceqs(i0, instr_str);
     case InstructionKind::VWAITQ:
       return handle_plain_op(i0, instr_str, "vwaitq");
     case InstructionKind::VOPMULA:

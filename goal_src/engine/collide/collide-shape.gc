@@ -8,18 +8,18 @@
 ;; The collide shape system is used to handle collision reactions.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
-;; OVERLAP
+;; Should Push Away
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-;; The overlap algorithm determines if two collide shapes are in contact.
+;; The overlap algorithm determines if the new position of obj should push away arg0.
+
 ;; If shapes are far away, it will abort early and just return #f.
-;; overlap and "should push away" are the same thing.
 ;; both check collision flags and require "solid" flags. So this is only for solid collisions.
 ;; the collision isn't symmetric [collide(a, b) != collide(b, a)] because the with/as flags.
 ;; so there's some weirdness to get all the method dispatch stuff to work around (you can only dispatch on one type)
 
 
-(defmethod compute-overlap collide-shape ((obj collide-shape) (arg0 collide-shape) (arg1 collide-overlap-result))
+(defmethod should-push-away collide-shape ((obj collide-shape) (arg0 collide-shape) (arg1 collide-overlap-result))
   "Find the overlap between two collide shapes.  This is the main entry point for the overlap algorithm.
    The result is returned in arg1. The obj is collided _with_ arg0 (meaning obj uses its collide-with, arg0 uses colide-as).
    The best-dist is only valid if the result is #t (it should be negative then)"
@@ -1744,8 +1744,10 @@
        ;; fill with the gox
        (fill-using-bounding-box *collide-cache* s5-0 arg1 (-> obj process) (-> obj pat-ignore-mask))
        ;; only draw collide cache, if we're the target
-       (if (and *display-collide-cache* (= (-> obj process type) target))
+       (when (and *display-collide-cache* (= (-> obj process type) target))
            (debug-draw *collide-cache*)
+           ;; NOTE: added
+           (add-debug-box #t (bucket-id debug-draw0) (-> s5-0 min) (-> s5-0 max) (new 'static 'rgba :a #x80 :b #x70 :g #x70))
            )
        )
       (else
@@ -1861,7 +1863,6 @@
          (vf31 :class vf)
          (vf4 :class vf)
          )
-        
     (load-bounding-box-work)
     ;; this first loop looks for a non-empty group.
     (let ((s4-0 (-> obj num-prims))
@@ -2493,7 +2494,7 @@
   #f
   )
 
-(defmethod respond-to-collisions! collide-shape ((obj collide-shape))
+(defmethod do-push-aways! collide-shape ((obj collide-shape))
   "This is the main function to call to respond"
   (local-vars
     (at-0 int)
@@ -2541,12 +2542,12 @@
                   (when (!= (-> obj process) (-> s3-0 process)) ;; self check
                     ;; see if we collide!
                     (let ((s2-0 (new 'stack-no-clear 'collide-overlap-result)))
-                      (when (and (compute-overlap obj s3-0 s2-0) (>= -81.92 (-> s2-0 best-dist))) ;; we collide!
+                      (when (and (should-push-away obj s3-0 s2-0) (>= -81.92 (-> s2-0 best-dist))) ;; we collide!
                         ;; fill the collide cache.
                         (fill-cache-for-shape! s3-0 8192.0 (-> s3-0 root-prim collide-with))
                         ;; 3 iterations to solve it.
                         (let ((s5-1 3))
-                          (until (or (<= s5-1 0) (not (compute-overlap obj s3-0 s2-0))) ;; run until we're out.
+                          (until (or (<= s5-1 0) (not (should-push-away obj s3-0 s2-0))) ;; run until we're out.
                             (let ((s1-0 (new 'stack-no-clear 'vector)))
                               (let ((v1-19 (new 'stack-no-clear 'vector)))
                                 (set! (-> v1-19 quad) (-> s3-0 trans quad))
@@ -2627,10 +2628,10 @@
                   (when (logtest? s5-0 (-> s3-1 root-prim prim-core collide-as))
                     (when (!= (-> obj process) (-> s3-1 process))
                       (let ((s2-1 (new 'stack-no-clear 'collide-overlap-result)))
-                        (when (and (compute-overlap obj s3-1 s2-1) (>= -81.92 (-> s2-1 best-dist)))
+                        (when (and (should-push-away obj s3-1 s2-1) (>= -81.92 (-> s2-1 best-dist)))
                           (fill-cache-for-shape! s3-1 8192.0 (-> s3-1 root-prim collide-with))
                           (let ((s5-2 3))
-                            (until (or (<= s5-2 0) (not (compute-overlap obj s3-1 s2-1)))
+                            (until (or (<= s5-2 0) (not (should-push-away obj s3-1 s2-1)))
                               (let ((s1-1 (new 'stack-no-clear 'vector)))
                                 (let ((v1-52 (new 'stack-no-clear 'vector)))
                                   (set! (-> v1-52 quad) (-> s3-1 trans quad))
@@ -2704,10 +2705,10 @@
                   (when (logtest? s5-0 (-> s3-2 root-prim prim-core collide-as))
                     (when (!= (-> obj process) (-> s3-2 process))
                       (let ((s2-2 (new 'stack-no-clear 'collide-overlap-result)))
-                        (when (and (compute-overlap obj s3-2 s2-2) (>= -81.92 (-> s2-2 best-dist)))
+                        (when (and (should-push-away obj s3-2 s2-2) (>= -81.92 (-> s2-2 best-dist)))
                           (fill-cache-for-shape! s3-2 8192.0 (-> s3-2 root-prim collide-with))
                           (let ((s5-3 3))
-                            (until (or (<= s5-3 0) (not (compute-overlap obj s3-2 s2-2)))
+                            (until (or (<= s5-3 0) (not (should-push-away obj s3-2 s2-2)))
                               (let ((s1-2 (new 'stack-no-clear 'vector)))
                                 (let ((v1-84 (new 'stack-no-clear 'vector)))
                                   (set! (-> v1-84 quad) (-> s3-2 trans quad))
@@ -2779,10 +2780,10 @@
                   (when (logtest? s5-0 (-> s3-3 root-prim prim-core collide-as))
                     (when (!= (-> obj process) (-> s3-3 process))
                       (let ((s2-3 (new 'stack-no-clear 'collide-overlap-result)))
-                        (when (and (compute-overlap obj s3-3 s2-3) (>= -81.92 (-> s2-3 best-dist)))
+                        (when (and (should-push-away obj s3-3 s2-3) (>= -81.92 (-> s2-3 best-dist)))
                           (fill-cache-for-shape! s3-3 8192.0 (-> s3-3 root-prim collide-with))
                           (let ((s5-4 3))
-                            (until (or (<= s5-4 0) (not (compute-overlap obj s3-3 s2-3)))
+                            (until (or (<= s5-4 0) (not (should-push-away obj s3-3 s2-3)))
                               (let ((s1-3 (new 'stack-no-clear 'vector)))
                                 (let ((v1-115 (new 'stack-no-clear 'vector)))
                                   (set! (-> v1-115 quad) (-> s3-3 trans quad))

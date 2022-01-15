@@ -120,6 +120,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_render_state.dump_playback = settings.playing_from_dump;
   m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
+  m_render_state.has_camera_planes = false;
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");

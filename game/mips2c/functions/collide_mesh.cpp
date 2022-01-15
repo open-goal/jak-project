@@ -375,3 +375,513 @@ void link() {
 } // namespace method_11_collide_mesh
 } // namespace Mips2C
 
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace method_14_collide_mesh {
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  // u32 call_addr = 0;
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lwu(v1, 12, a0);                               // lwu v1, 12(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lwu(a0, 8, a0);                                // lwu a0, 8(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf1, 0, a1);                              // lqc2 vf1, 0(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf2, 16, a1);                             // lqc2 vf2, 16(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf3, 32, a1);                             // lqc2 vf3, 32(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf4, 48, a1);                             // lqc2 vf4, 48(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf5, 0, v1);                              // lqc2 vf5, 0(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf6, 16, v1);                             // lqc2 vf6, 16(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf7, 32, v1);                             // lqc2 vf7, 32(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf8, 48, v1);                             // lqc2 vf8, 48(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->lqc2(vf9, 64, v1);                             // lqc2 vf9, 64(v1)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf5);        // vmaddax.xyzw acc, vf1, vf5
+  c->lqc2(vf10, 80, v1);                            // lqc2 vf10, 80(v1)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf5);        // vmadday.xyzw acc, vf2, vf5
+  c->lqc2(vf11, 96, v1);                            // lqc2 vf11, 96(v1)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf5, vf3, vf5);    // vmaddz.xyzw vf5, vf3, vf5
+  c->lqc2(vf12, 112, v1);                           // lqc2 vf12, 112(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf6);        // vmaddax.xyzw acc, vf1, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf6);        // vmadday.xyzw acc, vf2, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf6, vf3, vf6);    // vmaddz.xyzw vf6, vf3, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf7);        // vmaddax.xyzw acc, vf1, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf7);        // vmadday.xyzw acc, vf2, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf7, vf3, vf7);    // vmaddz.xyzw vf7, vf3, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf8);        // vmaddax.xyzw acc, vf1, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf8);        // vmadday.xyzw acc, vf2, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf8, vf3, vf8);    // vmaddz.xyzw vf8, vf3, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf13, vf5);                 // vftoi0.xyzw vf13, vf5
+  c->sqc2(vf5, 0, a2);                              // sqc2 vf5, 0(a2)
+  c->vftoi0(DEST::xyzw, vf14, vf6);                 // vftoi0.xyzw vf14, vf6
+  c->sqc2(vf6, 32, a2);                             // sqc2 vf6, 32(a2)
+  c->vftoi0(DEST::xyzw, vf15, vf7);                 // vftoi0.xyzw vf15, vf7
+  c->sqc2(vf7, 64, a2);                             // sqc2 vf7, 64(a2)
+  c->vftoi0(DEST::xyzw, vf16, vf8);                 // vftoi0.xyzw vf16, vf8
+  c->sqc2(vf8, 96, a2);                             // sqc2 vf8, 96(a2)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf13, 16, a2);                            // sqc2 vf13, 16(a2)
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->sqc2(vf14, 48, a2);                            // sqc2 vf14, 48(a2)
+  c->daddiu(v1, v1, 128);                           // daddiu v1, v1, 128
+  c->sqc2(vf15, 80, a2);                            // sqc2 vf15, 80(a2)
+  bc = ((s64)c->sgpr64(a0)) <= 0;                   // blez a0, L20
+  c->sqc2(vf16, 112, a2);                           // sqc2 vf16, 112(a2)
+  if (bc) {goto block_3;}                           // branch non-likely
+
+
+  block_1:
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->lqc2(vf5, 0, v1);                              // lqc2 vf5, 0(v1)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf9);        // vmaddax.xyzw acc, vf1, vf9
+  c->lqc2(vf6, 16, v1);                             // lqc2 vf6, 16(v1)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf9);        // vmadday.xyzw acc, vf2, vf9
+  c->lqc2(vf7, 32, v1);                             // lqc2 vf7, 32(v1)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf9, vf3, vf9);    // vmaddz.xyzw vf9, vf3, vf9
+  c->lqc2(vf8, 48, v1);                             // lqc2 vf8, 48(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf10);       // vmaddax.xyzw acc, vf1, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf10);       // vmadday.xyzw acc, vf2, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf10, vf3, vf10);  // vmaddz.xyzw vf10, vf3, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf11);       // vmaddax.xyzw acc, vf1, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf11);       // vmadday.xyzw acc, vf2, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf11, vf3, vf11);  // vmaddz.xyzw vf11, vf3, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf12);       // vmaddax.xyzw acc, vf1, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf12);       // vmadday.xyzw acc, vf2, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf12, vf3, vf12);  // vmaddz.xyzw vf12, vf3, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf17, vf9);                 // vftoi0.xyzw vf17, vf9
+  c->sqc2(vf9, 128, a2);                            // sqc2 vf9, 128(a2)
+  c->vftoi0(DEST::xyzw, vf18, vf10);                // vftoi0.xyzw vf18, vf10
+  c->sqc2(vf10, 160, a2);                           // sqc2 vf10, 160(a2)
+  c->vftoi0(DEST::xyzw, vf19, vf11);                // vftoi0.xyzw vf19, vf11
+  c->sqc2(vf11, 192, a2);                           // sqc2 vf11, 192(a2)
+  c->vftoi0(DEST::xyzw, vf20, vf12);                // vftoi0.xyzw vf20, vf12
+  c->sqc2(vf12, 224, a2);                           // sqc2 vf12, 224(a2)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf17, 144, a2);                           // sqc2 vf17, 144(a2)
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->sqc2(vf18, 176, a2);                           // sqc2 vf18, 176(a2)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf19, 208, a2);                           // sqc2 vf19, 208(a2)
+  bc = ((s64)c->sgpr64(a0)) <= 0;                   // blez a0, L20
+  c->sqc2(vf20, 240, a2);                           // sqc2 vf20, 240(a2)
+  if (bc) {goto block_3;}                           // branch non-likely
+
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->lqc2(vf9, 64, v1);                             // lqc2 vf9, 64(v1)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf5);        // vmaddax.xyzw acc, vf1, vf5
+  c->lqc2(vf10, 80, v1);                            // lqc2 vf10, 80(v1)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf5);        // vmadday.xyzw acc, vf2, vf5
+  c->lqc2(vf11, 96, v1);                            // lqc2 vf11, 96(v1)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf5, vf3, vf5);    // vmaddz.xyzw vf5, vf3, vf5
+  c->lqc2(vf12, 112, v1);                           // lqc2 vf12, 112(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->daddiu(a2, a2, 256);                           // daddiu a2, a2, 256
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf6);        // vmaddax.xyzw acc, vf1, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf6);        // vmadday.xyzw acc, vf2, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf6, vf3, vf6);    // vmaddz.xyzw vf6, vf3, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf7);        // vmaddax.xyzw acc, vf1, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf7);        // vmadday.xyzw acc, vf2, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf7, vf3, vf7);    // vmaddz.xyzw vf7, vf3, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf8);        // vmaddax.xyzw acc, vf1, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf8);        // vmadday.xyzw acc, vf2, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf8, vf3, vf8);    // vmaddz.xyzw vf8, vf3, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf13, vf5);                 // vftoi0.xyzw vf13, vf5
+  c->sqc2(vf5, 0, a2);                              // sqc2 vf5, 0(a2)
+  c->vftoi0(DEST::xyzw, vf14, vf6);                 // vftoi0.xyzw vf14, vf6
+  c->sqc2(vf6, 32, a2);                             // sqc2 vf6, 32(a2)
+  c->vftoi0(DEST::xyzw, vf15, vf7);                 // vftoi0.xyzw vf15, vf7
+  c->sqc2(vf7, 64, a2);                             // sqc2 vf7, 64(a2)
+  c->vftoi0(DEST::xyzw, vf16, vf8);                 // vftoi0.xyzw vf16, vf8
+  c->sqc2(vf8, 96, a2);                             // sqc2 vf8, 96(a2)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf13, 16, a2);                            // sqc2 vf13, 16(a2)
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->sqc2(vf14, 48, a2);                            // sqc2 vf14, 48(a2)
+  c->daddiu(v1, v1, 128);                           // daddiu v1, v1, 128
+  c->sqc2(vf15, 80, a2);                            // sqc2 vf15, 80(a2)
+  bc = ((s64)c->sgpr64(a0)) > 0;                    // bgtz a0, L19
+  c->sqc2(vf16, 112, a2);                           // sqc2 vf16, 112(a2)
+  if (bc) {goto block_1;}                           // branch non-likely
+
+
+  block_3:
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  //jr ra                                           // jr ra
+  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  gLinkedFunctionTable.reg("(method 14 collide-mesh)", execute, 128);
+}
+
+} // namespace method_14_collide_mesh
+} // namespace Mips2C
+
+
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace method_15_collide_mesh {
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  // u32 call_addr = 0;
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lwu(v1, 12, a0);                               // lwu v1, 12(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lwu(a0, 8, a0);                                // lwu a0, 8(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf1, 0, a1);                              // lqc2 vf1, 0(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf2, 16, a1);                             // lqc2 vf2, 16(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf3, 32, a1);                             // lqc2 vf3, 32(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf4, 48, a1);                             // lqc2 vf4, 48(a1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf13, 0, a2);                             // lqc2 vf13, 0(a2)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf14, 16, a2);                            // lqc2 vf14, 16(a2)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf15, 32, a2);                            // lqc2 vf15, 32(a2)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf16, 48, a2);                            // lqc2 vf16, 48(a2)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf5, 0, v1);                              // lqc2 vf5, 0(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf6, 16, v1);                             // lqc2 vf6, 16(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf7, 32, v1);                             // lqc2 vf7, 32(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf8, 48, v1);                             // lqc2 vf8, 48(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->lqc2(vf9, 64, v1);                             // lqc2 vf9, 64(v1)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf5);        // vmaddax.xyzw acc, vf1, vf5
+  c->lqc2(vf10, 80, v1);                            // lqc2 vf10, 80(v1)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf5);        // vmadday.xyzw acc, vf2, vf5
+  c->lqc2(vf11, 96, v1);                            // lqc2 vf11, 96(v1)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf5, vf3, vf5);    // vmaddz.xyzw vf5, vf3, vf5
+  c->lqc2(vf12, 112, v1);                           // lqc2 vf12, 112(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf6);        // vmaddax.xyzw acc, vf1, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf6);        // vmadday.xyzw acc, vf2, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf6, vf3, vf6);    // vmaddz.xyzw vf6, vf3, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf7);        // vmaddax.xyzw acc, vf1, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf7);        // vmadday.xyzw acc, vf2, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf7, vf3, vf7);    // vmaddz.xyzw vf7, vf3, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf8);        // vmaddax.xyzw acc, vf1, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf8);        // vmadday.xyzw acc, vf2, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf8, vf3, vf8);    // vmaddz.xyzw vf8, vf3, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  c->sqc2(vf5, 0, a3);                              // sqc2 vf5, 0(a3)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf5);       // vmaddax.xyzw acc, vf13, vf5
+  c->sqc2(vf6, 32, a3);                             // sqc2 vf6, 32(a3)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf5);       // vmadday.xyzw acc, vf14, vf5
+  c->sqc2(vf7, 64, a3);                             // sqc2 vf7, 64(a3)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf5, vf15, vf5);   // vmaddz.xyzw vf5, vf15, vf5
+  c->sqc2(vf8, 96, a3);                             // sqc2 vf8, 96(a3)
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf6);       // vmaddax.xyzw acc, vf13, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf6);       // vmadday.xyzw acc, vf14, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf6, vf15, vf6);   // vmaddz.xyzw vf6, vf15, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf7);       // vmaddax.xyzw acc, vf13, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf7);       // vmadday.xyzw acc, vf14, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf7, vf15, vf7);   // vmaddz.xyzw vf7, vf15, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf8);       // vmaddax.xyzw acc, vf13, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf8);       // vmadday.xyzw acc, vf14, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf8, vf15, vf8);   // vmaddz.xyzw vf8, vf15, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf5, vf5);                  // vftoi0.xyzw vf5, vf5
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf6, vf6);                  // vftoi0.xyzw vf6, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf7, vf7);                  // vftoi0.xyzw vf7, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf8, vf8);                  // vftoi0.xyzw vf8, vf8
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf5, 16, a3);                             // sqc2 vf5, 16(a3)
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->sqc2(vf6, 48, a3);                             // sqc2 vf6, 48(a3)
+  c->daddiu(v1, v1, 128);                           // daddiu v1, v1, 128
+  c->sqc2(vf7, 80, a3);                             // sqc2 vf7, 80(a3)
+  bc = ((s64)c->sgpr64(a0)) <= 0;                   // blez a0, L17
+  c->sqc2(vf8, 112, a3);                            // sqc2 vf8, 112(a3)
+  if (bc) {goto block_3;}                           // branch non-likely
+
+
+  block_1:
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->lqc2(vf5, 0, v1);                              // lqc2 vf5, 0(v1)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf9);        // vmaddax.xyzw acc, vf1, vf9
+  c->lqc2(vf6, 16, v1);                             // lqc2 vf6, 16(v1)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf9);        // vmadday.xyzw acc, vf2, vf9
+  c->lqc2(vf7, 32, v1);                             // lqc2 vf7, 32(v1)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf9, vf3, vf9);    // vmaddz.xyzw vf9, vf3, vf9
+  c->lqc2(vf8, 48, v1);                             // lqc2 vf8, 48(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf10);       // vmaddax.xyzw acc, vf1, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf10);       // vmadday.xyzw acc, vf2, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf10, vf3, vf10);  // vmaddz.xyzw vf10, vf3, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf11);       // vmaddax.xyzw acc, vf1, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf11);       // vmadday.xyzw acc, vf2, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf11, vf3, vf11);  // vmaddz.xyzw vf11, vf3, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf12);       // vmaddax.xyzw acc, vf1, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf12);       // vmadday.xyzw acc, vf2, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf12, vf3, vf12);  // vmaddz.xyzw vf12, vf3, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  c->sqc2(vf9, 128, a3);                            // sqc2 vf9, 128(a3)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf9);       // vmaddax.xyzw acc, vf13, vf9
+  c->sqc2(vf10, 160, a3);                           // sqc2 vf10, 160(a3)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf9);       // vmadday.xyzw acc, vf14, vf9
+  c->sqc2(vf11, 192, a3);                           // sqc2 vf11, 192(a3)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf9, vf15, vf9);   // vmaddz.xyzw vf9, vf15, vf9
+  c->sqc2(vf12, 224, a3);                           // sqc2 vf12, 224(a3)
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf10);      // vmaddax.xyzw acc, vf13, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf10);      // vmadday.xyzw acc, vf14, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf10, vf15, vf10); // vmaddz.xyzw vf10, vf15, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf11);      // vmaddax.xyzw acc, vf13, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf11);      // vmadday.xyzw acc, vf14, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf11, vf15, vf11); // vmaddz.xyzw vf11, vf15, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf12);      // vmaddax.xyzw acc, vf13, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf12);      // vmadday.xyzw acc, vf14, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf12, vf15, vf12); // vmaddz.xyzw vf12, vf15, vf12
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf9, vf9);                  // vftoi0.xyzw vf9, vf9
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf10, vf10);                // vftoi0.xyzw vf10, vf10
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf11, vf11);                // vftoi0.xyzw vf11, vf11
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf12, vf12);                // vftoi0.xyzw vf12, vf12
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf9, 144, a3);                            // sqc2 vf9, 144(a3)
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->sqc2(vf10, 176, a3);                           // sqc2 vf10, 176(a3)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf11, 208, a3);                           // sqc2 vf11, 208(a3)
+  bc = ((s64)c->sgpr64(a0)) <= 0;                   // blez a0, L17
+  c->sqc2(vf12, 240, a3);                           // sqc2 vf12, 240(a3)
+  if (bc) {goto block_3;}                           // branch non-likely
+
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->lqc2(vf9, 64, v1);                             // lqc2 vf9, 64(v1)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf5);        // vmaddax.xyzw acc, vf1, vf5
+  c->lqc2(vf10, 80, v1);                            // lqc2 vf10, 80(v1)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf5);        // vmadday.xyzw acc, vf2, vf5
+  c->lqc2(vf11, 96, v1);                            // lqc2 vf11, 96(v1)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf5, vf3, vf5);    // vmaddz.xyzw vf5, vf3, vf5
+  c->lqc2(vf12, 112, v1);                           // lqc2 vf12, 112(v1)
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  c->daddiu(a3, a3, 256);                           // daddiu a3, a3, 256
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf6);        // vmaddax.xyzw acc, vf1, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf6);        // vmadday.xyzw acc, vf2, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf6, vf3, vf6);    // vmaddz.xyzw vf6, vf3, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf7);        // vmaddax.xyzw acc, vf1, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf7);        // vmadday.xyzw acc, vf2, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf7, vf3, vf7);    // vmaddz.xyzw vf7, vf3, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf8);        // vmaddax.xyzw acc, vf1, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf2, vf8);        // vmadday.xyzw acc, vf2, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf8, vf3, vf8);    // vmaddz.xyzw vf8, vf3, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  c->sqc2(vf5, 0, a3);                              // sqc2 vf5, 0(a3)
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf5);       // vmaddax.xyzw acc, vf13, vf5
+  c->sqc2(vf6, 32, a3);                             // sqc2 vf6, 32(a3)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf5);       // vmadday.xyzw acc, vf14, vf5
+  c->sqc2(vf7, 64, a3);                             // sqc2 vf7, 64(a3)
+  c->vmadd_bc(DEST::xyzw, BC::z, vf5, vf15, vf5);   // vmaddz.xyzw vf5, vf15, vf5
+  c->sqc2(vf8, 96, a3);                             // sqc2 vf8, 96(a3)
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf6);       // vmaddax.xyzw acc, vf13, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf6);       // vmadday.xyzw acc, vf14, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf6, vf15, vf6);   // vmaddz.xyzw vf6, vf15, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf7);       // vmaddax.xyzw acc, vf13, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf7);       // vmadday.xyzw acc, vf14, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf7, vf15, vf7);   // vmaddz.xyzw vf7, vf15, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vmula_bc(DEST::xyzw, BC::w, vf16, vf0);        // vmulaw.xyzw acc, vf16, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::x, vf13, vf8);       // vmaddax.xyzw acc, vf13, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadda_bc(DEST::xyzw, BC::y, vf14, vf8);       // vmadday.xyzw acc, vf14, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vmadd_bc(DEST::xyzw, BC::z, vf8, vf15, vf8);   // vmaddz.xyzw vf8, vf15, vf8
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf5, vf5);                  // vftoi0.xyzw vf5, vf5
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf6, vf6);                  // vftoi0.xyzw vf6, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf7, vf7);                  // vftoi0.xyzw vf7, vf7
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf8, vf8);                  // vftoi0.xyzw vf8, vf8
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf5, 16, a3);                             // sqc2 vf5, 16(a3)
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->sqc2(vf6, 48, a3);                             // sqc2 vf6, 48(a3)
+  c->daddiu(v1, v1, 128);                           // daddiu v1, v1, 128
+  c->sqc2(vf7, 80, a3);                             // sqc2 vf7, 80(a3)
+  bc = ((s64)c->sgpr64(a0)) > 0;                    // bgtz a0, L16
+  c->sqc2(vf8, 112, a3);                            // sqc2 vf8, 112(a3)
+  if (bc) {goto block_1;}                           // branch non-likely
+
+
+  block_3:
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  //jr ra                                           // jr ra
+  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  gLinkedFunctionTable.reg("(method 15 collide-mesh)", execute, 128);
+}
+
+} // namespace method_15_collide_mesh
+} // namespace Mips2C

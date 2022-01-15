@@ -889,8 +889,23 @@
       (logclear! (-> self draw status) (draw-status drwf02 drwf04))
       (when (nonzero? (-> self skel))
         ;(dummy-19 self) TODO
+        
+        (#when TARGET_STARTUP_HACKS
+          (when (eq? (-> self type) target)
+            (format *stdcon* "no bones for you~%")
+            (dotimes (i (length (-> self node-list)))
+              (matrix-identity! (-> self node-list data i bone transform))
+              (set! (-> self node-list data i bone position quad)
+                    (-> (the-as target self) control trans quad)
+                    )
+              (set! (-> self node-list data i bone position w) 1.0)
+              (+! (-> self node-list data i bone position y) (meters 0.0))
+              )
+            )
+          )
+        
         (when (or (logtest? (-> self skel status) 1) gp-1)
-          (dummy-17 self)
+          ;; (dummy-17 self) TODO
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
               (update-transforms! (the-as collide-shape (-> self root)))
               )
@@ -964,7 +979,7 @@
   (let ((gp-0 (the-as collide-shape (-> self root))))
     (update-transforms! gp-0)
     (pull-riders! gp-0)
-    (respond-to-collisions! gp-0)
+    (do-push-aways! gp-0)
     )
   0
   )
@@ -973,7 +988,7 @@
   (ja-post)
   (let ((gp-0 (the-as collide-shape (-> self root))))
     (update-transforms! gp-0)
-    (respond-to-collisions! gp-0)
+    (do-push-aways! gp-0)
     )
   0
   )

@@ -141,52 +141,34 @@
 ;; incrementing counter to make the test input move around.
 (define *debug-counter* 0)
 
-(defun debug-draw-collide-work ()
+(defun debug-draw-collide-work ((my-off float))
+  (when (not (paused?))
   (+! *debug-counter* 1)
+    
+    )
   
   ;; create a test input that moves around sandover
   (let ((origin (new 'static 'vector :y (meters 7.0) :x (meters 5.) :z (meters 0.0)))
         (line (new 'static 'vector :y (meters 5.0) :x (meters -5.0)))
-        (radius (meters 0.5))
+        (radius (meters 2.0))
+        (val (+ my-off (* 0.003 (the float *debug-counter*))))
         )
     
-    (set! (-> line z) (* (sin (degrees (the float *debug-counter*))) (meters 15.0)))
-    (set! (-> line x) (* (cos (degrees (the float *debug-counter*))) (meters 15.0)))
+    (set! (-> line z) (* (sin (degrees val)) (meters 35.0)))
+    (set! (-> line x) (* (cos (degrees val)) (meters 35.0)))
     
-    (let ((dbg2 (/ (the float *debug-counter*) 2)))
-      (set! (-> origin x) (* (sin (degrees dbg2)) (meters 30.)))
-      (set! (-> origin z) (* (cos (* 3.0 (degrees dbg2))) (meters 30.)))
+    (let ((dbg2 (/ val 2)))
+      (set! (-> origin x) (* (sin (degrees dbg2)) (meters 100.)))
+      (set! (-> origin z) (* (cos (* 3.0 (degrees dbg2))) (meters 100.)))
       (+! (-> origin x) (meters -50.))
       )
-
+#|
+    ;;; PROBE (at the frag finding level)
+    
     ;; setup the collide work
     (setup-collide-for-line-sphere origin line radius)
     
-    ;; draw the line we're going to check
-    (add-debug-line 
-      #t 
-      (bucket-id debug-draw0)
-      origin
-      (vector+! (new 'stack-no-clear 'vector) origin line)
-      (new 'static 'rgba :r #x80)
-      #f
-      (the rgba -1)
-      )
-    
-    ;; debug draw spheres along the line
-    (dotimes (i 10)
-      (add-debug-sphere
-        #t
-        (bucket-id debug-draw0)
-        (vector-lerp! (new 'stack-no-clear 'vector)
-                      origin
-                      (vector+! (new 'stack-no-clear 'vector) origin line)
-                      (/ (the float i) 9.0)
-                      )
-        radius
-        (new 'static 'rgba :g #x80 :r #x80 :b #x80 :a #x80)
-        )
-      )
+
     
     ;; clear collide list
     (set! (-> *collide-list* num-items) 0)
@@ -246,23 +228,150 @@
           )
         )
       )
+|#
+    
+    ;; CCACHE (fill from bounding box)
+    (let ((bbox-fake (new 'stack 'bounding-box))
+          (bbox (new 'stack 'bounding-box)))
+      
+      ;; make box
+      (set! (-> bbox-fake min quad) (-> origin quad))
+      (vector+! (-> bbox-fake max) origin line)
+      
+      (dotimes (i 3)
+        (set! (-> bbox min data i) (fmin (-> bbox-fake min data i) (-> bbox-fake max data i)))
+        (set! (-> bbox max data i) (fmax (-> bbox-fake min data i) (-> bbox-fake max data i)))
+        )
+      (set! (-> bbox min w) 1.0)
+      (set! (-> bbox max w) 1.0)
+      
+      ;; BBOX
+      ;; draw box
+      ;(add-debug-box #t (bucket-id debug-draw0) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x30 :a #x80))
+      ;; now fill!
+      ; (fill-using-bounding-box *collide-cache*
+      ;                          bbox
+      ;                          (collide-kind background)
+      ;                          (the process-drawable #f)
+      ;                          (the pat-surface 0)
+      ;                          )
+      
+      
+
+      ;; Y PROBE
+      ; (+! (-> bbox min y) (meters 8.0))
+      ; (let ((vec (new 'stack-no-clear 'vector)))
+      ;   (set! (-> vec quad) (-> bbox min quad))
+      ;   (-! (-> vec y) (meters 20.0))
+      ;   (add-debug-line 
+      ;     #t 
+      ;     (bucket-id debug-draw0)
+      ;     (-> bbox min)
+      ;     vec
+      ;     (new 'static 'rgba :r #x80 :a #x80)
+      ;     #f
+      ;     (the rgba -1)
+      ;     )
+      ;   )
+      ; (fill-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) (the uint 0))
+      
+      ;; LINE SPHERE
+      ; (fill-using-line-sphere *collide-cache* origin line radius (collide-kind background) (the process-drawable #f) 0)
+      ; ;; draw the line we're going to check
+      ; (add-debug-line 
+      ;   #t 
+      ;   (bucket-id debug-draw0)
+      ;   origin
+      ;   (vector+! (new 'stack-no-clear 'vector) origin line)
+      ;   (new 'static 'rgba :r #x80)
+      ;   #f
+      ;   (the rgba -1)
+      ;   )
+      
+      ; ;; debug draw spheres along the line
+      ; (dotimes (i 10)
+      ;   (add-debug-sphere
+      ;     #t
+      ;     (bucket-id debug-draw0)
+      ;     (vector-lerp! (new 'stack-no-clear 'vector)
+      ;                   origin
+      ;                   (vector+! (new 'stack-no-clear 'vector) origin line)
+      ;                   (/ (the float i) 9.0)
+      ;                   )
+      ;     radius
+      ;     (new 'static 'rgba :g #x80 :r #x80 :b #x80 :a #x80)
+      ;     )
+      ;   )
+      
+      ;; Y probe (actual probe)
+      (+! (-> bbox min y) (meters 8.0))
+      (let ((vec (new 'stack-no-clear 'vector)))
+        (set! (-> vec quad) (-> bbox min quad))
+        (-! (-> vec y) (meters 20.0))
+        ; (add-debug-line 
+        ;   #t 
+        ;   (bucket-id debug-draw0)
+        ;   (-> bbox min)
+        ;   vec
+        ;   (new 'static 'rgba :r #x80 :a #x80)
+        ;   #f
+        ;   (the rgba -1)
+        ;   )
+        )
+      
+      (let ((result (new 'stack-no-clear 'collide-tri-result)))
+        
+        (let ((u (fill-and-probe-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) result (the uint 0))))
+          (-! (-> bbox min y) (* u (meters 20.0)))
+          ;; (format *stdcon* "u = ~f : ~`vector`P ~%" u (-> result vertex 0))
+          (add-debug-sphere
+            #t
+            (bucket-id debug-draw0)
+            (-> bbox min)
+            (meters 2.0)
+            (new 'static 'rgba :r #x80 :a #x80)
+            )
+          )
+         ;(add-debug-outline-triangle #t (bucket-id debug-draw1) (-> result vertex 0) (-> result vertex 1) (-> result vertex 2) (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+        
+        
+        
+        
+        )
+      
+      
+      
+      ;(debug-draw *collide-cache*)
+      
+      
+      )
     
     #f
     )
   )
 
 (defun start-debug-drawer ()
-  (kill-by-name 'debug-drawer *active-pool*)
+  ;;(kill-by-name 'debug-drawer *active-pool*)
   (let ((proc (get-process *nk-dead-pool* process 1024)))
     (activate proc *active-pool* 'debug-drawer *kernel-dram-stack*)
     (run-next-time-in-process 
       proc
       (lambda ()
-        (while #t
-          (debug-draw-collide-work)
-          (suspend)
+        (let ((my-off (rand-vu-float-range 0.0 1000.0)))
+          (while #t
+            (debug-draw-collide-work my-off)
+            (suspend)
+            )
+          
+          
           )
         )
       )                      
+    )
+  )
+
+(defun start-100-debug-drawer ()
+  (dotimes (i 100)
+    (start-debug-drawer)
     )
   )
