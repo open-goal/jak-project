@@ -639,7 +639,8 @@ void Tie3::render_tree(int idx,
   }
 
   Timer draw_timer;
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32), tree.index_list.data());
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_ptr * sizeof(u32), tree.index_list.data(),
+               GL_STREAM_DRAW);
 
   for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
     const auto& draw = tree.draws->operator[](draw_idx);
