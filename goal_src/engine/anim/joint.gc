@@ -5,7 +5,14 @@
 ;; name in dgo: joint
 ;; dgos: GAME, ENGINE
 
+;; a joint is just used to store the tree structure of a skeleton + bind pose.
+;; it's mostly used as a more user-friendly interface
+
 ;; DECOMP BEGINS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Basic Methods for joint/joint-control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod print joint ((obj joint))
   (format #t "#<~A ~S ~D @ #x~X>" (-> obj type) (-> obj name) (-> obj number) obj)
@@ -32,6 +39,13 @@
   (-> obj length)
   )
 
+(defmethod inspect joint-anim-matrix ((obj joint-anim-matrix))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tnumber: ~D~%" (-> obj number))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  obj
+  )
 
 (defmethod asize-of joint-anim-matrix ((obj joint-anim-matrix))
   (the-as int (+ (-> joint-anim-matrix size) (* (-> obj length) 64)))
@@ -66,6 +80,7 @@
   )
 
 (defun joint-anim-inspect-elt ((arg0 joint-anim) (arg1 float))
+  "Inspect a single element in a joint anim. The float is rounded to an int."
   (case (-> arg0 type)
     ((joint-anim-matrix)
      ((method-of-type matrix inspect)
@@ -121,14 +136,12 @@
   )
 
 (defmethod print joint-control-channel ((obj joint-control-channel))
-  (format
-    #t
-    "#<joint-control-channel ~A ~A ~F @ #x~X>"
-    (-> obj command)
-    (-> obj frame-group)
-    (-> obj frame-num)
-    obj
-    )
+  (format #t "#<joint-control-channel ~A ~A ~F @ #x~X>"
+          (-> obj command)
+          (-> obj frame-group)
+          (-> obj frame-num)
+          obj
+          )
   obj
   )
 
@@ -137,6 +150,7 @@
   )
 
 (defmethod new joint-control ((allocation symbol) (type-to-make type) (arg0 int))
+  "Create a new joint-control with enough room for the given number of channels"
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 arg0))))))
     (set! (-> v0-0 allocated-length) arg0)
     (set! (-> v0-0 active-channels) 0)
@@ -153,7 +167,9 @@
     )
   )
 
-(defmethod dummy-9 joint-control-channel ((obj joint-control-channel))
+(defmethod debug-print-frames joint-control-channel ((obj joint-control-channel))
+  "Print the current frame of each joint on this channel.
+   Note: this only appears to work for uncompressed joint animations."
   (let ((s5-0 (-> obj frame-group))
         (f30-0 (-> obj frame-num))
         )
@@ -165,54 +181,39 @@
   obj
   )
 
-(defmethod dummy-10 joint-control ((obj joint-control) (arg0 symbol))
+(defmethod debug-print-channels joint-control ((obj joint-control) (arg0 symbol))
+  "Print each active channel to the given stream."
   (dotimes (s4-0 (-> obj active-channels))
     (let* ((v1-6 (if (and (-> obj channel s4-0 frame-group) (nonzero? (-> obj channel s4-0 frame-group)))
                      (-> obj channel s4-0 frame-group)
                      )
                  )
-           (t9-0 format)
-           (a0-5 arg0)
-           (a1-1 "ch:~2d ~C ~-35S f: ~6,,2f  ~4,,2f ~4,,2f%~%")
-           (a2-0 s4-0)
-           (a3-3 (-> obj channel s4-0 command))
-           (a3-4 (cond
-                   ((= a3-3 'push)
-                    80
-                    )
-                   ((= a3-3 'push1)
-                    112
-                    )
-                   ((= a3-3 'blend)
-                    66
-                    )
-                   ((= a3-3 'stack)
-                    83
-                    )
-                   ((= a3-3 'stack1)
-                    115
-                    )
-                   )
-                 )
+           
            )
-      (t9-0
-        a0-5
-        a1-1
-        a2-0
-        a3-4
-        (if v1-6
-            (-> v1-6 name)
-            "(none)"
-            )
-        (+ (* (-> obj channel s4-0 frame-num) (if v1-6
-                                                   (-> v1-6 artist-step)
-                                                   1.0
-                                                   )
+      (format
+        arg0
+        "ch:~2d ~C ~-35S f: ~6,,2f  ~4,,2f ~4,,2f%~%"
+        s4-0 ;; channel index
+        (case (-> obj channel s4-0 command) ;; how we got added.
+              (('push)
+               80
                )
-           (if v1-6
-               (-> v1-6 artist-base)
-               0.0
+              (('push1)
+               112
                )
+              (('blend)
+               66
+               )
+              (('stack)
+               83
+               )
+              (('stack1)
+               115
+               )
+              )
+        (if v1-6 (-> v1-6 name) "(none)") ;; name of anim (can be "none" in the real game)
+        (+ (* (-> obj channel s4-0 frame-num) (if v1-6 (-> v1-6 artist-step) 1.0)) ;; frame number
+           (if v1-6 (-> v1-6 artist-base) 0.0)
            )
         (-> obj channel s4-0 frame-interp)
         (-> obj channel s4-0 inspector-amount)
@@ -222,15 +223,30 @@
   0
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Art
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The "art" class is a super-general parent class for all art.
+;; There's an "art-group" class, which typically contains all the animations
+;; geometry, and shadow info for a character.
+
+;; The most general art class shouldn't really be used for anything.
+
+;; art-mesh-anim: not used
+;; art-joint-anim: used for animations. Provides joint-anim-compressed and eye-anim.
+
 (defmethod needs-link? art ((obj art))
   #f
   )
 
 (defmethod dummy-10 art ((obj art) (arg0 string) (arg1 type))
+  "Look-up an art with the given name and type."
   (the-as joint #f)
   )
 
 (defmethod dummy-11 art ((obj art) (arg0 string) (arg1 type))
+  "Look up the index of an art with the given name and type."
   (the-as int #f)
   )
 
@@ -244,6 +260,8 @@
   )
 
 (defmethod login art ((obj art))
+  ;; not sure why we have to do this, but if the res-lump isn't properly set up to point to the tags
+  ;; do it manually.
   (if (and (-> obj extra) (zero? (-> obj extra tag)))
       (set! (-> obj extra tag) (&+ (the-as (pointer res-tag) (-> obj extra)) 28))
       )
@@ -307,6 +325,7 @@
 
 ;; definition for method 3 of type art-group
 (defmethod inspect art-group ((obj art-group))
+  "Print the arts in an art-group"
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tinfo: ~A~%" (-> obj info))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -315,13 +334,7 @@
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
   (dotimes (s5-0 (-> obj length))
    (if (-> obj data s5-0)
-    (format
-     #t
-     "~T  [~D] ~A  (~D bytes)~%"
-     s5-0
-     (-> obj data s5-0)
-     (mem-size (-> obj data s5-0) #f 0)
-     )
+    (format #t "~T  [~D] ~A  (~D bytes)~%"s5-0 (-> obj data s5-0) (mem-size (-> obj data s5-0) #f 0))
     (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> obj data s5-0) 0)
     )
    )
@@ -329,26 +342,29 @@
   )
 
 (defmethod needs-link? art-group ((obj art-group))
-  (the-as symbol (and
-                   (-> obj length)
-                   (type-type? (-> obj data 0 type) art-joint-anim)
-                   (!= (-> obj name) (-> (the-as art-joint-anim (-> obj data 0)) master-art-group-name))
-                   )
+  "Does this art-group need to be added to the level's art group?
+   Some animations are streamed in, and need to be linked/unlinked to the level's list of art groups."
+  (the-as symbol (and (-> obj length)
+                      (type-type? (-> obj data 0 type) art-joint-anim)
+                      (!= (-> obj name) (-> (the-as art-joint-anim (-> obj data 0)) master-art-group-name))
+                      )
           )
   )
 
 (defmethod dummy-10 art-group ((obj art-group) (arg0 string) (arg1 type))
+  "Get the art with the given name and type. Set type to false if you don't care."
   (the-as
     joint
     (cond
       (arg1
         (let ((s3-0 (+ (length (-> obj name)) 1)))
           (dotimes (s2-0 (-> obj length))
-            (if (and
-                    (-> obj data s2-0)
-                    (= (-> obj data s2-0 type) arg1)
-                    (or (name= arg0 (-> obj data s2-0 name)) (string-charp= arg0 (&-> (-> obj data s2-0 name) data s3-0)))
-                    )
+            (if (and (-> obj data s2-0) ;; entry is populated
+                     (= (-> obj data s2-0 type) arg1) ;; type is right
+                     (or (name= arg0 (-> obj data s2-0 name)) ;; name is right.
+                         (string-charp= arg0 (&-> (-> obj data s2-0 name) data s3-0)) ;; also seek past ag name, and try again.
+                         )
+                     )
                 (return (the-as joint (-> obj data s2-0)))
                 )
             )
@@ -356,6 +372,7 @@
         (the-as art-element #f)
         )
       (else
+        ;; no type (also no weird after ag name check)
         (dotimes (s4-1 (-> obj length))
           (if (and (-> obj data s4-1) (name= arg0 (-> obj data s4-1 name)))
               (return (the-as joint (-> obj data s4-1)))
@@ -368,6 +385,8 @@
   )
 
 (defmethod dummy-11 art-group ((obj art-group) (arg0 string) (arg1 type))
+  "Get the index of the art with the given name and type. Set type to false if you don't care.
+   Will return #f if the art is not found."
   (cond
     (arg1
       (let ((s3-0 (+ (length (-> obj name)) 1)))
@@ -395,6 +414,7 @@
   )
 
 (defmethod login art-group ((obj art-group))
+  "Log in all the arts in a group."
   (dotimes (s5-0 (-> obj length))
     (if (-> obj data s5-0)
         (set! (-> obj data s5-0) (login (-> obj data s5-0)))
@@ -423,6 +443,7 @@
   )
 
 (defmethod relocate art-group ((obj art-group) (arg0 kheap) (arg1 (pointer uint8)))
+  "Handle a loaded art-group."
   (let ((s4-0 (clear *temp-string*)))
     (string<-charp s4-0 arg1)
     (set! obj (cond
@@ -440,10 +461,10 @@
                 (else
                   (let ((s5-1 (-> *level* loading-level)))
                     (if (or (not s5-1) (= (-> s5-1 name) 'default))
-                        (login obj)
+                        (login obj) ;; not part of level load, just normal login.
                         )
                     (if s5-1
-                        (set-loaded-art (-> s5-1 art-group) obj)
+                        (set-loaded-art (-> s5-1 art-group) obj) ;; part of level load, add to level's ag, but don't log in yet.
                         )
                     )
                   obj
@@ -545,7 +566,12 @@
   obj
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Joint Control!
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun joint-control-channel-eval ((arg0 joint-control-channel))
+  "Run the joint control num-func callback, remember the current time"
   (let ((f0-2 ((-> arg0 num-func) arg0 (-> arg0 param 0) (-> arg0 param 1))))
     (set! (-> arg0 eval-time) (the-as uint (-> *display* base-frame-counter)))
     f0-2
@@ -553,6 +579,7 @@
   )
 
 (defun joint-control-channel-eval! ((arg0 joint-control-channel) (arg1 (function joint-control-channel float float float)))
+  "Set the joint control num-func, and evaluate it."
   (set! (-> arg0 num-func) arg1)
   (let ((f0-2 (arg1 arg0 (-> arg0 param 0) (-> arg0 param 1))))
     (set! (-> arg0 eval-time) (the-as uint (-> *display* base-frame-counter)))
@@ -561,6 +588,7 @@
   )
 
 (defun joint-control-channel-group-eval! ((arg0 joint-control-channel) (arg1 art-joint-anim) (arg2 (function joint-control-channel float float float)))
+  "Set the joint control num-func, maybe update the anim, and maybe evaluate it."
   (set! (-> arg0 num-func) arg2)
   (cond
     ((= (-> arg0 command) 'stack)
@@ -577,6 +605,7 @@
   )
 
 (defun joint-control-channel-group! ((arg0 joint-control-channel) (arg1 art-joint-anim) (arg2 (function joint-control-channel float float float)))
+  "Set the joint control num-func and maybe update the anim."
   (set! (-> arg0 num-func) arg2)
   (cond
     ((= (-> arg0 command) 'stack)
@@ -589,22 +618,28 @@
   )
 
 (defun joint-control-copy! ((arg0 joint-control) (arg1 joint-control))
+  "Copy one joint control to another."
+  
+  ;; set fields
   (set! (-> arg0 blend-index) (-> arg1 blend-index))
   (set! (-> arg0 active-channels) (-> arg1 active-channels))
+  ;; figure out which slot the source is, and remember that we're a copy.
   (set! (-> arg0 root-channel)
-        (the-as
-          (inline-array joint-control-channel)
-          (-> arg0
-              channel
-              (/ (&- (the-as pointer (-> arg1 root-channel)) (the-as uint (the-as pointer (-> arg1 channel)))) 48)
-              )
-          )
+        (the-as (inline-array joint-control-channel)
+                (-> arg0
+                    channel
+                    (/ (&- (the-as pointer (-> arg1 root-channel)) (the-as uint (the-as pointer (-> arg1 channel)))) 48)
+                    )
+                )
         )
+  ;; copy channels
   (mem-copy!
     (the-as pointer (-> arg0 channel))
     (the-as pointer (-> arg1 channel))
     (* 48 (-> arg0 allocated-length))
     )
+  
+  ;; set parents of channels to point to the dest.
   (dotimes (v1-7 (-> arg0 allocated-length))
     (set! (-> arg0 channel v1-7 parent) arg0)
     )
@@ -669,6 +704,8 @@
   )
 
 (defun flatten-joint-control-to-spr ((arg0 joint-control))
+  "Take the current state of the given joint-control and upload it to the scratchpad
+   in the format that will be understood by the joint animation decompressor."
   (rlet ((vf1 :class vf)
          (vf10 :class vf)
          (vf11 :class vf)
@@ -685,14 +722,19 @@
          (vf9 :class vf)
          )
     (let ((nb-channels (-> arg0 active-channels)))
-      (let ((f0-0 1.0)
-            (v1-0 0)
-            (a1-0 (-> (scratchpad-object terrain-context) work foreground joint-work flattened))
+      (let ((f0-0 1.0)  ;; one
+            (v1-0 0)    ;; offset in spad
+            (a1-0 (-> (scratchpad-object terrain-context) work foreground joint-work flattened)) ;; start of data.
             )
+        
+        ;; loop over active channels.
+        ;; 
         (dotimes (a0-1 nb-channels)
           (let ((a2-3 (-> arg0 channel a0-1)))
             (case (-> a2-3 command)
               (('push)
+               ;; this adds a weight of 1 for this channel always.
+               ;; note that the quads store 1 - weight, so we store 0's here.
                (let ((a2-4 (&+ (the-as pointer a1-0) v1-0)))
                  (set! (-> a1-0 0 quad) (the-as uint128 0))
                  (set! (-> a1-0 1 quad) (the-as uint128 0))
@@ -700,8 +742,10 @@
                  (set! (-> a1-0 3 quad) (the-as uint128 0))
                  (set! (-> a1-0 4 quad) (the-as uint128 0))
                  (set! (-> a1-0 5 quad) (the-as uint128 0))
+                 ;; and this thing stores the normal weight.
                  (set! (-> (the-as (pointer float) a2-4)) f0-0)
                  )
+               ;; advance.
                (set! a1-0 (the-as (inline-array vector) (-> a1-0 6)))
                )
               (('blend 'push1)
