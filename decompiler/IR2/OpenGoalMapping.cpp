@@ -18,7 +18,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::PAND, {".pand", {}}},
 
     // Parallel Pack
-    {InstructionKind::PPACH, {".ppach", {}}},
+    {InstructionKind::PPACH, {".ppach", {MOD::QWORD_CAST}}},
 
     // Parallel Compares
     {InstructionKind::PCEQB, {".pceqb", {}}},
@@ -225,9 +225,15 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
       }
     } else {
       // if it's r0, replace it with a `0`
+      // unless it is pextuw or pcpyud
       if (atom.is_reg() && atom.get_reg().get_kind() == decompiler::Reg::RegisterKind::GPR &&
-          atom.get_reg().reg_id() == decompiler::Reg::R0) {
-        args.push_back(pretty_print::to_symbol("0"));
+          atom.get_reg().reg_id() == decompiler::Reg::R0 &&
+          m_instr.kind != InstructionKind::PEXTUW && m_instr.kind != InstructionKind::PCPYUD) {
+        if (func.allows_modifier(MOD::QWORD_CAST)) {
+          args.push_back(pretty_print::to_symbol("(the-as uint128 0)"));
+        } else {  
+           args.push_back(pretty_print::to_symbol("0"));
+        }
       } else {
         args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
       }

@@ -22,7 +22,8 @@ struct OpenGOALAsm {
     FSF,
     OFFSET,
     SWAP_FIRST_TWO_SOURCE_ARGS,
-    ACC_THIRD_SRC_ARG
+    ACC_THIRD_SRC_ARG,
+    QWORD_CAST
   };
 
   struct Function {
