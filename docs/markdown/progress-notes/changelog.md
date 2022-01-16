@@ -210,3 +210,5 @@
 - Added a `(declare-file (debug))` to put things in the debug segment by default. This only changes _static_ objects. Dynamic allocation with forms like `cons` will continue to use the main segment like before.
 - It is now an error to use a `none`-typed variable in a condition
 - Debugger will now correctly track when object files are loaded over previous files
+- Asm ops requiring 128-bit inputs will now try harder to convert their inputs when it is appropriate.
+- 0's that are constant propagated to the input of a 128-bit instruction will use `vpxor` instruction to generate the value, instead of `xor` and a `mov`.
