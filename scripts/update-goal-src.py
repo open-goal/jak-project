@@ -97,15 +97,19 @@ for file in files:
     return False
   with open(disasm_path) as f:
     lines = f.readlines()
-    in_inspect_method = False
+    skip_form = False
     for i, line in enumerate(lines):
       # strip inspect methods
       if line.startswith("(defmethod inspect") or (line.startswith("(defmethod") and (i + 1 < len(lines) and "inspect" in lines[i+1])):
-        in_inspect_method = True
+        skip_form = True
         continue
-      if in_inspect_method and line == "\n":
-        in_inspect_method = False
-      elif in_inspect_method:
+      # skip failing methods
+      if line.startswith(";; WARN: Type Propagation failed: Type analysis failed"):
+        skip_form = True
+        continue
+      if skip_form and line == "\n":
+        skip_form = False
+      elif skip_form:
         continue
       # strip comments we dont care about
       if skippable_line(line):
