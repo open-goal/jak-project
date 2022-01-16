@@ -362,9 +362,12 @@
     (.sub.vf vf10 vf2 vf12)
     (.sub.vf vf6 vf1 vf3)
     (.sub.vf vf11 vf3 vf12)
-    (.outer.product.vf vf13 vf9 vf4)
-    (.outer.product.vf vf14 vf10 vf5)
-    (.outer.product.vf vf15 vf11 vf6)
+    (.outer.product.a.vf acc vf9 vf4)
+    (.outer.product.b.vf vf13 vf4 vf9 acc)
+    (.outer.product.a.vf acc vf10 vf5)
+    (.outer.product.b.vf vf14 vf5 vf10 acc)
+    (.outer.product.a.vf acc vf11 vf6)
+    (.outer.product.b.vf vf15 vf6 vf11 acc)
     (.mov v1-0 vf13)
     (.mov a1-1 vf14)
     (.mov a0-1 vf15)
@@ -427,14 +430,13 @@
 
 ;; definition for function point-inside-rect?
 (defun point-inside-rect? ((arg0 nav-node) (arg1 vector) (arg2 float))
-  (and
-    (>= (-> arg1 x) (- (-> arg0 center-x) (-> arg0 radius-x)))
-    (>= (+ (-> arg0 center-x) (-> arg0 radius-x)) (-> arg1 x))
-    (>= (-> arg1 z) (- (-> arg0 center-z) (-> arg0 radius-z)))
-    (>= (+ (-> arg0 center-z) (-> arg0 radius-z)) (-> arg1 z))
-    (>= (+ (-> arg1 y) arg2) (- (-> arg0 center-y) (-> arg0 radius-y)))
-    (>= (+ (-> arg0 center-y) (-> arg0 radius-y)) (- (-> arg1 y) arg2))
-    )
+  (and (>= (-> arg1 x) (- (-> arg0 center-x) (-> arg0 radius-x)))
+       (>= (+ (-> arg0 center-x) (-> arg0 radius-x)) (-> arg1 x))
+       (>= (-> arg1 z) (- (-> arg0 center-z) (-> arg0 radius-z)))
+       (>= (+ (-> arg0 center-z) (-> arg0 radius-z)) (-> arg1 z))
+       (>= (+ (-> arg1 y) arg2) (- (-> arg0 center-y) (-> arg0 radius-y)))
+       (>= (+ (-> arg0 center-y) (-> arg0 radius-y)) (- (-> arg1 y) arg2))
+       )
   )
 
 ;; definition for function point-inside-poly?
@@ -477,9 +479,12 @@
               (.sub.vf vf10 vf2 vf12)
               (.sub.vf vf6 vf1 vf3)
               (.sub.vf vf11 vf3 vf12)
-              (.outer.product.vf vf13 vf9 vf4)
-              (.outer.product.vf vf14 vf10 vf5)
-              (.outer.product.vf vf15 vf11 vf6)
+              (.outer.product.a.vf acc vf9 vf4)
+              (.outer.product.b.vf vf13 vf4 vf9 acc)
+              (.outer.product.a.vf acc vf10 vf5)
+              (.outer.product.b.vf vf14 vf5 vf10 acc)
+              (.outer.product.a.vf acc vf11 vf6)
+              (.outer.product.b.vf vf15 vf6 vf11 acc)
               (.mov v1-6 vf13)
               (.mov a1-6 vf14)
               (.mov a0-3 vf15)
@@ -830,92 +835,91 @@
       (while (nonzero? s1-0)
         (when (zero? (logand (-> a0-3 pat) 1))
           (when (begin
-                  (and
-                    (begin
-                      (nop!)
-                      (set! v1-8 (-> obj vertex))
-                      (nop!)
-                      (set! a2-1 (-> a0-3 vertex 0))
-                      (nop!)
-                      (set! a1-1 (-> a0-3 vertex 1))
-                      (set! a2-2 (* a2-1 16))
-                      (set! a3-1 (-> a0-3 vertex 2))
-                      (set! a1-2 (* a1-1 16))
-                      (set! a0-4 (+ a2-2 v1-8))
-                      (set! a2-3 (sll a3-1 4))
-                      (set! a1-3 (+ a1-2 v1-8))
-                      (set! v1-9 (+ a2-3 v1-8))
-                      (.lvf vf3 (&-> a0-4 quad))
-                      (set! a0-5 (fpr->gpr f30-1))
-                      (.mov vf7 a0-5)
-                      (.lvf vf4 (&-> a1-3 quad))
-                      (.lvf vf5 (&-> v1-9 quad))
-                      (.min.vf vf1 vf3 vf4 :mask #b111)
-                      (.lvf vf6 (&-> arg0 quad))
-                      (.add.y.vf vf7 vf3 vf4 :mask #b10)
-                      (.svf (&-> s2-0 intersect quad) vf3)
-                      (.max.vf vf2 vf3 vf4 :mask #b111)
-                      (.svf (&-> s2-0 trans quad) vf4)
-                      (.min.vf vf1 vf1 vf5 :mask #b111)
-                      (.svf (&-> s2-0 transv quad) vf5)
-                      (.max.vf vf2 vf2 vf5 :mask #b111)
-                      (.mul.x.vf vf7 vf7 vf7 :mask #b10)
-                      (.svf (&-> s2-0 transv-out quad) vf1)
-                      (.svf (&-> s2-0 local-normal quad) vf2)
-                      (.sub.y.vf vf7 vf6 vf7 :mask #b10)
-                      (.mov v1-10 vf7)
-                      (set! v1-11 (sra v1-10 32))
-                      (set! f0-4 (gpr->fpr arg2))
-                      (set! f1-1 (the-as float (gpr->fpr v1-11)))
-                      (set! f1-2 (abs.s f1-1))
-                      (set! v1-12 (>=.s f0-4 f1-2))
-                      v1-12
-                      )
-                    (begin
-                      (set! f0-5 (-> arg0 x))
-                      (set! f1-3 (gpr->fpr arg1))
-                      (set! f0-6 (+.s f0-5 f1-3))
-                      (set! f1-4 (-> s2-0 transv-out x))
-                      (set! v1-14 (>=.s f0-6 f1-4))
-                      v1-14
-                      )
-                    (begin
-                      (set! f0-7 (-> s2-0 local-normal x))
-                      (set! f1-5 (-> arg0 x))
-                      (set! f2-0 (gpr->fpr arg1))
-                      (set! f1-6 (-.s f1-5 f2-0))
-                      (set! v1-15 (>=.s f0-7 f1-6))
-                      v1-15
-                      )
-                    (begin
-                      (set! f0-8 (-> arg0 z))
-                      (set! f1-7 (gpr->fpr arg1))
-                      (set! f0-9 (+.s f0-8 f1-7))
-                      (set! f1-8 (-> s2-0 transv-out z))
-                      (set! v1-16 (>=.s f0-9 f1-8))
-                      v1-16
-                      )
-                    (begin
-                      (set! f0-10 (-> s2-0 local-normal z))
-                      (set! f1-9 (-> arg0 z))
-                      (set! f2-1 (gpr->fpr arg1))
-                      (set! f1-10 (-.s f1-9 f2-1))
-                      (set! v1-13 (>=.s f0-10 f1-10))
-                      )
-                    )
+                  (and (begin
+                         (nop!)
+                         (set! v1-8 (-> obj vertex))
+                         (nop!)
+                         (set! a2-1 (-> a0-3 vertex 0))
+                         (nop!)
+                         (set! a1-1 (-> a0-3 vertex 1))
+                         (set! a2-2 (* a2-1 16))
+                         (set! a3-1 (-> a0-3 vertex 2))
+                         (set! a1-2 (* a1-1 16))
+                         (set! a0-4 (+ a2-2 v1-8))
+                         (set! a2-3 (sll a3-1 4))
+                         (set! a1-3 (+ a1-2 v1-8))
+                         (set! v1-9 (+ a2-3 v1-8))
+                         (.lvf vf3 (&-> a0-4 quad))
+                         (set! a0-5 (fpr->gpr f30-1))
+                         (.mov vf7 a0-5)
+                         (.lvf vf4 (&-> a1-3 quad))
+                         (.lvf vf5 (&-> v1-9 quad))
+                         (.min.vf vf1 vf3 vf4 :mask #b111)
+                         (.lvf vf6 (&-> arg0 quad))
+                         (.add.y.vf vf7 vf3 vf4 :mask #b10)
+                         (.svf (&-> s2-0 intersect quad) vf3)
+                         (.max.vf vf2 vf3 vf4 :mask #b111)
+                         (.svf (&-> s2-0 trans quad) vf4)
+                         (.min.vf vf1 vf1 vf5 :mask #b111)
+                         (.svf (&-> s2-0 transv quad) vf5)
+                         (.max.vf vf2 vf2 vf5 :mask #b111)
+                         (.mul.x.vf vf7 vf7 vf7 :mask #b10)
+                         (.svf (&-> s2-0 transv-out quad) vf1)
+                         (.svf (&-> s2-0 local-normal quad) vf2)
+                         (.sub.y.vf vf7 vf6 vf7 :mask #b10)
+                         (.mov v1-10 vf7)
+                         (set! v1-11 (sra v1-10 32))
+                         (set! f0-4 (gpr->fpr arg2))
+                         (set! f1-1 (the-as float (gpr->fpr v1-11)))
+                         (set! f1-2 (abs.s f1-1))
+                         (set! v1-12 (>=.s f0-4 f1-2))
+                         v1-12
+                         )
+                       (begin
+                         (set! f0-5 (-> arg0 x))
+                         (set! f1-3 (gpr->fpr arg1))
+                         (set! f0-6 (+.s f0-5 f1-3))
+                         (set! f1-4 (-> s2-0 transv-out x))
+                         (set! v1-14 (>=.s f0-6 f1-4))
+                         v1-14
+                         )
+                       (begin
+                         (set! f0-7 (-> s2-0 local-normal x))
+                         (set! f1-5 (-> arg0 x))
+                         (set! f2-0 (gpr->fpr arg1))
+                         (set! f1-6 (-.s f1-5 f2-0))
+                         (set! v1-15 (>=.s f0-7 f1-6))
+                         v1-15
+                         )
+                       (begin
+                         (set! f0-8 (-> arg0 z))
+                         (set! f1-7 (gpr->fpr arg1))
+                         (set! f0-9 (+.s f0-8 f1-7))
+                         (set! f1-8 (-> s2-0 transv-out z))
+                         (set! v1-16 (>=.s f0-9 f1-8))
+                         v1-16
+                         )
+                       (begin
+                         (set! f0-10 (-> s2-0 local-normal z))
+                         (set! f1-9 (-> arg0 z))
+                         (set! f2-1 (gpr->fpr arg1))
+                         (set! f1-10 (-.s f1-9 f2-1))
+                         (set! v1-13 (>=.s f0-10 f1-10))
+                         )
+                       )
                   v1-13
                   )
             (if (begin
-                    (set! v1-18 *debug-tests*)
-                    (set! v1-19 (+ v1-18 1))
-                    (set! *debug-tests* v1-19)
-                    (set! t9-1 circle-triangle-intersection?)
-                    (set! a0-6 arg0)
-                    (set! a1-4 arg1)
-                    (set! a2-4 s2-0)
-                    (set! v0-1 (call! a0-6 a1-4 a2-4))
-                    v0-1
-                    )
+                  (set! v1-18 *debug-tests*)
+                  (set! v1-19 (+ v1-18 1))
+                  (set! *debug-tests* v1-19)
+                  (set! t9-1 circle-triangle-intersection?)
+                  (set! a0-6 arg0)
+                  (set! a1-4 arg1)
+                  (set! a2-4 s2-0)
+                  (set! v0-1 (call! a0-6 a1-4 a2-4))
+                  v0-1
+                  )
                 (return (begin (set! v1-21 #t) (set! v0-2 v1-21)))
                 )
             )
@@ -1209,25 +1213,24 @@
     (set! sv-32 v1-5)
     (while (begin (set! v1-32 (the-as int sv-32)) (<.si v1-32 3))
       (when (begin
-              (and
-                (begin
-                  (set! v1-6 (the-as int sv-32))
-                  (set! v1-7 (+ v1-6 s1-1))
-                  (set! v1-8 (dynamic-array-field-access v1-7 adj-poly PLACEHOLDER))
-                  (set! sv-48 v1-8)
-                  (set! v1-9 (the-as uint sv-48))
-                  (set! v1-10 (+ v1-9 -255))
-                  (set! a0-5 (nonzero? v1-10))
-                  a0-5
-                  )
-                (begin
-                  (set! v1-12 1)
-                  (set! a0-6 (the-as uint sv-48))
-                  (set! a0-7 (+ t0-0 a0-6))
-                  (set! a0-8 (the-as none (l.bu a0-7)))
-                  (set! v1-11 (the-as none (!= v1-12 a0-8)))
-                  )
-                )
+              (and (begin
+                     (set! v1-6 (the-as int sv-32))
+                     (set! v1-7 (+ v1-6 s1-1))
+                     (set! v1-8 (dynamic-array-field-access v1-7 adj-poly PLACEHOLDER))
+                     (set! sv-48 v1-8)
+                     (set! v1-9 (the-as uint sv-48))
+                     (set! v1-10 (+ v1-9 -255))
+                     (set! a0-5 (nonzero? v1-10))
+                     a0-5
+                     )
+                   (begin
+                     (set! v1-12 1)
+                     (set! a0-6 (the-as uint sv-48))
+                     (set! a0-7 (+ t0-0 a0-6))
+                     (set! a0-8 (the-as none (l.bu a0-7)))
+                     (set! v1-11 (the-as none (!= v1-12 a0-8)))
+                     )
+                   )
               v1-11
               )
         (when (begin
@@ -1574,7 +1577,6 @@
   )
 
 ;; definition for method 12 of type nav-mesh
-;; INFO: Return type mismatch object vs none.
 (defmethod dummy-12 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 nav-route-portal))
   (local-vars (t0-6 int) (t1-1 int))
   (set! (-> arg2 next-poly) #f)
@@ -1582,10 +1584,9 @@
     ((and arg0 arg1)
      (let* ((v1-3 (* (+ (-> arg1 id) (* (the-as int (-> arg0 id)) (-> obj poly-count))) 2))
             (v1-8
-              (logand
-                (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
-                3
-                )
+              (logand (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
+                      3
+                      )
               )
             )
        (set! (-> arg2 edge-index) -1)
@@ -1614,7 +1615,6 @@
       0
       )
     )
-  (none)
   )
 
 ;; definition for method 11 of type nav-mesh
@@ -1624,10 +1624,9 @@
     ((and arg0 arg1)
      (let* ((v1-3 (* (+ (-> arg1 id) (* (the-as int (-> arg0 id)) (-> obj poly-count))) 2))
             (a2-6
-              (logand
-                (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
-                3
-                )
+              (logand (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
+                      3
+                      )
               )
             )
        (if arg2
@@ -2395,10 +2394,9 @@
   (let ((s4-0 (-> obj mesh user-list))
         (s3-0 (new 'stack-no-clear 'vector))
         )
-    (when (and
-            *target*
-            (or (logtest? (-> obj flags) (nav-control-flags bit11)) (logtest? (-> *target* state-flags) #x80f8))
-            )
+    (when (and *target*
+               (or (logtest? (-> obj flags) (nav-control-flags bit11)) (logtest? (-> *target* state-flags) #x80f8))
+               )
       (let ((s2-0 obj)
             (s1-0 (-> *target* control))
             )
@@ -2470,7 +2468,10 @@
            )
       (while (!= v1-71 (-> s4-0 alive-list-end))
         (let ((s0-3 (the-as collide-shape (-> (the-as connection v1-71) param3))))
-          (when (not (or (= s0-3 (-> obj shape)) (zero? (logand arg0 (-> s0-3 root-prim prim-core collide-as)))))
+          (when (not (or (= s0-3 (-> obj shape))
+                         (zero? (logand (the-as collide-kind arg0) (-> s0-3 root-prim prim-core collide-as)))
+                         )
+                     )
             (let ((s1-3 obj))
               (set! sv-112 s3-0)
               (when (logtest? (-> s0-3 nav-flags) 1)
@@ -2527,6 +2528,7 @@
   )
 
 ;; definition for method 35 of type nav-control
+;; INFO: Return type mismatch symbol vs none.
 (defmethod dummy-35 nav-control ((obj nav-control)
                                (arg0 vector)
                                (arg1 vector)
@@ -2847,11 +2849,10 @@
             (logclear! (-> obj flags) (nav-control-flags bit21))
             (vector+! arg0 (-> arg1 trans) s2-1)
             )
-          (when (or
-                  (not (dummy-16 obj arg0))
-                  (logtest? (nav-control-flags bit17) (-> obj flags))
-                  (zero? (logand (-> obj flags) (nav-control-flags bit10)))
-                  )
+          (when (or (not (dummy-16 obj arg0))
+                    (logtest? (nav-control-flags bit17) (-> obj flags))
+                    (zero? (logand (-> obj flags) (nav-control-flags bit10)))
+                    )
             (set! (-> obj flags) (logior (nav-control-flags bit21) (-> obj flags)))
             (vector-! (-> obj travel) arg2 (-> arg1 trans))
             (set! (-> arg0 quad) (-> arg2 quad))
@@ -2885,14 +2886,13 @@
 
 ;; definition for method 22 of type nav-control
 (defmethod TODO-RENAME-22 nav-control ((obj nav-control) (arg0 vector) (arg1 float))
-  (and
-    (dummy-27
-      (-> obj mesh)
-      (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
-      (-> obj nearest-y-threshold)
-      )
-    (< (-> arg0 y) (+ (-> obj mesh origin y) arg1))
-    )
+  (and (dummy-27
+         (-> obj mesh)
+         (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
+         (-> obj nearest-y-threshold)
+         )
+       (< (-> arg0 y) (+ (-> obj mesh origin y) arg1))
+       )
   )
 
 ;; definition for function debug-nav-validate-current-poly
@@ -3223,11 +3223,10 @@
       (set! (-> obj portal 0) (the-as nav-route-portal (-> sv-96 vertex 0)))
       (set! (-> obj portal 1) (the-as nav-route-portal (-> sv-96 vertex 1)))
       (set! sv-100 #t)
-      (while (and
-               sv-100
-               (-> sv-96 next-poly)
-               (test-xz-point-on-line-segment? sv-80 (-> sv-96 vertex 0) (-> sv-96 vertex 1) 409.59998)
-               )
+      (while (and sv-100
+                  (-> sv-96 next-poly)
+                  (test-xz-point-on-line-segment? sv-80 (-> sv-96 vertex 0) (-> sv-96 vertex 1) 409.59998)
+                  )
         (when #t
           #t
           (vector-segment-distance-point! sv-80 (-> sv-96 vertex 0) (-> sv-96 vertex 1) sv-84)

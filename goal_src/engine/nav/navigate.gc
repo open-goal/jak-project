@@ -303,9 +303,12 @@
     (.sub.vf vf10 vf2 vf12)
     (.sub.vf vf6 vf1 vf3)
     (.sub.vf vf11 vf3 vf12)
-    (.outer.product.vf vf13 vf9 vf4)
-    (.outer.product.vf vf14 vf10 vf5)
-    (.outer.product.vf vf15 vf11 vf6)
+    (.outer.product.a.vf acc vf9 vf4)
+    (.outer.product.b.vf vf13 vf4 vf9 acc)
+    (.outer.product.a.vf acc vf10 vf5)
+    (.outer.product.b.vf vf14 vf5 vf10 acc)
+    (.outer.product.a.vf acc vf11 vf6)
+    (.outer.product.b.vf vf15 vf6 vf11 acc)
     (.mov v1-0 vf13)
     (.mov a1-1 vf14)
     (.mov a0-1 vf15)
@@ -362,14 +365,13 @@
   )
 
 (defun point-inside-rect? ((arg0 nav-node) (arg1 vector) (arg2 float))
-  (and
-    (>= (-> arg1 x) (- (-> arg0 center-x) (-> arg0 radius-x)))
-    (>= (+ (-> arg0 center-x) (-> arg0 radius-x)) (-> arg1 x))
-    (>= (-> arg1 z) (- (-> arg0 center-z) (-> arg0 radius-z)))
-    (>= (+ (-> arg0 center-z) (-> arg0 radius-z)) (-> arg1 z))
-    (>= (+ (-> arg1 y) arg2) (- (-> arg0 center-y) (-> arg0 radius-y)))
-    (>= (+ (-> arg0 center-y) (-> arg0 radius-y)) (- (-> arg1 y) arg2))
-    )
+  (and (>= (-> arg1 x) (- (-> arg0 center-x) (-> arg0 radius-x)))
+       (>= (+ (-> arg0 center-x) (-> arg0 radius-x)) (-> arg1 x))
+       (>= (-> arg1 z) (- (-> arg0 center-z) (-> arg0 radius-z)))
+       (>= (+ (-> arg0 center-z) (-> arg0 radius-z)) (-> arg1 z))
+       (>= (+ (-> arg1 y) arg2) (- (-> arg0 center-y) (-> arg0 radius-y)))
+       (>= (+ (-> arg0 center-y) (-> arg0 radius-y)) (- (-> arg1 y) arg2))
+       )
   )
 
 (defun point-inside-poly? ((arg0 nav-mesh) (arg1 uint) (arg2 vector) (arg3 float))
@@ -411,9 +413,12 @@
               (.sub.vf vf10 vf2 vf12)
               (.sub.vf vf6 vf1 vf3)
               (.sub.vf vf11 vf3 vf12)
-              (.outer.product.vf vf13 vf9 vf4)
-              (.outer.product.vf vf14 vf10 vf5)
-              (.outer.product.vf vf15 vf11 vf6)
+              (.outer.product.a.vf acc vf9 vf4)
+              (.outer.product.b.vf vf13 vf4 vf9 acc)
+              (.outer.product.a.vf acc vf10 vf5)
+              (.outer.product.b.vf vf14 vf5 vf10 acc)
+              (.outer.product.a.vf acc vf11 vf6)
+              (.outer.product.b.vf vf15 vf6 vf11 acc)
               (.mov v1-6 vf13)
               (.mov a1-6 vf14)
               (.mov a0-3 vf15)
@@ -1486,10 +1491,9 @@
     ((and arg0 arg1)
      (let* ((v1-3 (* (+ (-> arg1 id) (* (the-as int (-> arg0 id)) (-> obj poly-count))) 2))
             (v1-8
-              (logand
-                (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
-                3
-                )
+              (logand (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
+                      3
+                      )
               )
             )
        (set! (-> arg2 edge-index) -1)
@@ -1518,7 +1522,6 @@
       0
       )
     )
-  (none)
   )
 
 (defmethod dummy-11 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 nav-poly) (arg2 symbol))
@@ -1527,10 +1530,9 @@
     ((and arg0 arg1)
      (let* ((v1-3 (* (+ (-> arg1 id) (* (the-as int (-> arg0 id)) (-> obj poly-count))) 2))
             (a2-6
-              (logand
-                (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
-                3
-                )
+              (logand (ash (-> (the-as (pointer uint8) (-> obj route)) (/ (the-as int v1-3) 8)) (- (the-as int (logand v1-3 7))))
+                      3
+                      )
               )
             )
        (if arg2
@@ -2262,10 +2264,9 @@
   (let ((s4-0 (-> obj mesh user-list))
         (s3-0 (new 'stack-no-clear 'vector))
         )
-    (when (and
-            *target*
-            (or (logtest? (-> obj flags) (nav-control-flags bit11)) (logtest? (-> *target* state-flags) #x80f8))
-            )
+    (when (and *target*
+               (or (logtest? (-> obj flags) (nav-control-flags bit11)) (logtest? (-> *target* state-flags) #x80f8))
+               )
       (let ((s2-0 obj)
             (s1-0 (-> *target* control))
             )
@@ -2337,7 +2338,10 @@
            )
       (while (!= v1-71 (-> s4-0 alive-list-end))
         (let ((s0-3 (the-as collide-shape (-> (the-as connection v1-71) param3))))
-          (when (not (or (= s0-3 (-> obj shape)) (zero? (logand arg0 (-> s0-3 root-prim prim-core collide-as)))))
+          (when (not (or (= s0-3 (-> obj shape))
+                         (zero? (logand (the-as collide-kind arg0) (-> s0-3 root-prim prim-core collide-as)))
+                         )
+                     )
             (let ((s1-3 obj))
               (set! sv-112 s3-0)
               (when (logtest? (-> s0-3 nav-flags) 1)
@@ -2643,11 +2647,10 @@
             (logclear! (-> obj flags) (nav-control-flags bit21))
             (vector+! arg0 (-> arg1 trans) s2-1)
             )
-          (when (or
-                  (not (dummy-16 obj arg0))
-                  (logtest? (nav-control-flags bit17) (-> obj flags))
-                  (zero? (logand (-> obj flags) (nav-control-flags bit10)))
-                  )
+          (when (or (not (dummy-16 obj arg0))
+                    (logtest? (nav-control-flags bit17) (-> obj flags))
+                    (zero? (logand (-> obj flags) (nav-control-flags bit10)))
+                    )
             (set! (-> obj flags) (logior (nav-control-flags bit21) (-> obj flags)))
             (vector-! (-> obj travel) arg2 (-> arg1 trans))
             (set! (-> arg0 quad) (-> arg2 quad))
@@ -2677,14 +2680,13 @@
   )
 
 (defmethod TODO-RENAME-22 nav-control ((obj nav-control) (arg0 vector) (arg1 float))
-  (and
-    (dummy-27
-      (-> obj mesh)
-      (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
-      (-> obj nearest-y-threshold)
-      )
-    (< (-> arg0 y) (+ (-> obj mesh origin y) arg1))
-    )
+  (and (dummy-27
+         (-> obj mesh)
+         (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
+         (-> obj nearest-y-threshold)
+         )
+       (< (-> arg0 y) (+ (-> obj mesh origin y) arg1))
+       )
   )
 
 (defun debug-nav-validate-current-poly ((arg0 nav-mesh) (arg1 nav-poly) (arg2 vector))
@@ -3000,11 +3002,10 @@
       (set! (-> obj portal 0) (the-as nav-route-portal (-> sv-96 vertex 0)))
       (set! (-> obj portal 1) (the-as nav-route-portal (-> sv-96 vertex 1)))
       (set! sv-100 #t)
-      (while (and
-               sv-100
-               (-> sv-96 next-poly)
-               (test-xz-point-on-line-segment? sv-80 (-> sv-96 vertex 0) (-> sv-96 vertex 1) 409.59998)
-               )
+      (while (and sv-100
+                  (-> sv-96 next-poly)
+                  (test-xz-point-on-line-segment? sv-80 (-> sv-96 vertex 0) (-> sv-96 vertex 1) 409.59998)
+                  )
         (when #t
           #t
           (vector-segment-distance-point! sv-80 (-> sv-96 vertex 0) (-> sv-96 vertex 1) sv-84)

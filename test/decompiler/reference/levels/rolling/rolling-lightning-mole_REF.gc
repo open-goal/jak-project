@@ -143,7 +143,8 @@
    (max-stop-chase-dist     float  :offset-assert  64)
    (max-flee-rotation       float  :offset-assert  68)
    )
-  :allow-misaligned  :method-count-assert 9
+  :allow-misaligned
+  :method-count-assert 9
   :size-assert         #x48
   :flag-assert         #x900000048
   )
@@ -451,7 +452,10 @@
   :enter
   (-> (method-of-type nav-enemy nav-enemy-notice) enter)
   :trans
-  (behavior () (fleeing-nav-enemy-adjust-nav-info) (none))
+  (behavior ()
+    (fleeing-nav-enemy-adjust-nav-info)
+    (none)
+    )
   :code
   (behavior ()
     (ja-channel-push! 1 22)
@@ -481,9 +485,9 @@
           (-> self turn-time)
           )
         (if (and *target* (>= (-> self flee-info abort-notice-distance)
-                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                                )
-                   )
+                              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                              )
+                 )
             (go-virtual nav-enemy-chase)
             )
         (suspend)
@@ -511,7 +515,10 @@
     (none)
     )
   :exit
-  (behavior () (logclear! (-> self nav flags) (nav-control-flags bit12)) (none))
+  (behavior ()
+    (logclear! (-> self nav flags) (nav-control-flags bit12))
+    (none)
+    )
   :trans
   (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
@@ -654,11 +661,10 @@
               )
             (run-next-time-in-process gp-0 (lambda :behavior lightning-mole
                                              ()
-                                             (while (or
-                                                      (-> *setting-control* current ambient)
-                                                      (-> *setting-control* current movie)
-                                                      (-> *setting-control* current hint)
-                                                      )
+                                             (while (or (-> *setting-control* current ambient)
+                                                        (-> *setting-control* current movie)
+                                                        (-> *setting-control* current hint)
+                                                        )
                                                (suspend)
                                                )
                                              (level-hint-spawn
@@ -696,8 +702,8 @@
 ;; definition for function lightning-mole-run-code
 (defbehavior lightning-mole-run-code lightning-mole ()
   (when (!= (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
+                (-> self skel root-channel 0 frame-group)
+                )
             (-> self draw art-group data 7)
             )
     (ja-channel-push! 1 60)
@@ -777,8 +783,8 @@
       (set! (-> self target-speed) (-> self nav-info run-travel-speed))
       (format *stdcon* "tgt-speed ~M defmd ~M~%" (-> self target-speed) (-> self flee-info deflection-max-dist))
       (if (>= (- (-> *display* base-frame-counter) (the-as int (-> self last-reflection-time)))
-                (-> self flee-info reflection-time)
-                )
+              (-> self flee-info reflection-time)
+              )
           (vector-normalize-copy! (-> self desired-travel) gp-0 (-> self flee-info deflection-max-dist))
           )
       )
@@ -822,7 +828,11 @@
 ;; failed to figure out what this is:
 (defstate lightning-mole-hiding (lightning-mole)
   :enter
-  (behavior () (ja-channel-set! 0) (clear-collide-with-as (-> self collide-info)) (none))
+  (behavior ()
+    (ja-channel-set! 0)
+    (clear-collide-with-as (-> self collide-info))
+    (none)
+    )
   :trans
   (behavior ()
     (when (task-closed? (-> self entity extra perm task) (task-status need-introduction))
@@ -920,7 +930,10 @@
 ;; failed to figure out what this is:
 (defstate lightning-mole-head-for-hole (lightning-mole)
   :enter
-  (behavior () (clear-collide-with-as (-> self collide-info)) (none))
+  (behavior ()
+    (clear-collide-with-as (-> self collide-info))
+    (none)
+    )
   :trans
   (behavior ()
     (when (< (vector-vector-xz-distance *lightning-mole-hole* (-> self collide-info trans)) 61440.0)
@@ -960,7 +973,10 @@
     (none)
     )
   :exit
-  (behavior () (restore-collide-with-as (-> self collide-info)) (none))
+  (behavior ()
+    (restore-collide-with-as (-> self collide-info))
+    (none)
+    )
   :trans
   (-> (method-of-type fleeing-nav-enemy nav-enemy-chase) trans)
   :code
@@ -1052,14 +1068,13 @@
                     )
                   )
                 )
-              (if (and
-                      (< 40960.0 f26-0)
-                      (< f26-0 81920.0)
-                      (< f30-0 204800.0)
-                      (< (+ 20480.0 f26-0) f28-0)
-                      (< (cos 7281.778) (vector-dot s5-1 gp-0))
-                      (< (cos 7281.778) f24-0)
-                      )
+              (if (and (< 40960.0 f26-0)
+                       (< f26-0 81920.0)
+                       (< f30-0 204800.0)
+                       (< (+ 20480.0 f26-0) f28-0)
+                       (< (cos 7281.778) (vector-dot s5-1 gp-0))
+                       (< (cos 7281.778) f24-0)
+                       )
                   (go lightning-mole-head-for-hole)
                   )
               )
@@ -1161,10 +1176,10 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 3073))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-10 ca-11))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s3-0 local-sphere) 0.0 10240.0 0.0 10240.0)
       (set-root-prim! s4-0 s3-0)
       )
@@ -1215,165 +1230,143 @@
   )
 
 ;; failed to figure out what this is:
-(set! (-> *part-group-id-table* 456) (new 'static 'sparticle-launch-group
-                                       :length 3
-                                       :duration #x5
-                                       :linger-duration #x5dc
-                                       :name "group-peeper"
-                                       :launcher
-                                       (new 'static 'inline-array sparticle-group-item 3
-                                         (sp-item 1768)
-                                         (sp-item 1769 :period 120 :length 30)
-                                         (sp-item 1770 :period 120 :length 60)
-                                         )
-                                       :bounds (new 'static 'sphere :w 61440.0)
-                                       )
-      )
+(defpartgroup group-peeper
+  :id 456
+  :duration 5
+  :bounds (static-bspherem 0 0 0 15)
+  :parts
+  ((sp-item 1768) (sp-item 1769 :period 120 :length 30) (sp-item 1770 :period 120 :length 60))
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 1768) (new 'static 'sparticle-launcher
-                                  :init-specs
-                                  (new 'static 'inline-array sp-field-init-spec 22
-                                    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
-                                    (sp-flt spt-num 0.25)
-                                    (sp-rnd-flt spt-x (meters -2.0) (meters 4.0) 1.0)
-                                    (sp-flt spt-y (meters -2.0))
-                                    (sp-rnd-flt spt-z -8192.0 16384.0 1.0)
-                                    (sp-rnd-flt spt-scale-x (meters 4.0) (meters 2.0) 1.0)
-                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-copy-from-other spt-scale-y -4)
-                                    (sp-rnd-flt spt-r 128.0 64.0 1.0)
-                                    (sp-rnd-flt spt-g 96.0 32.0 1.0)
-                                    (sp-rnd-flt spt-b 64.0 16.0 1.0)
-                                    (sp-rnd-flt spt-a 32.0 32.0 1.0)
-                                    (sp-rnd-flt spt-vel-x (meters -0.006666667) (meters 0.013333334) 1.0)
-                                    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.026666667) 1.0)
-                                    (sp-rnd-flt spt-vel-z (meters -0.006666667) (meters 0.013333334) 1.0)
-                                    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
-                                    (sp-flt spt-fade-a -0.21333334)
-                                    (sp-flt spt-accel-y -2.7306666)
-                                    (sp-flt spt-friction 0.97)
-                                    (sp-int spt-timer 450)
-                                    (sp-cpuinfo-flags bit2 bit12)
-                                    (sp-end)
-                                    )
-                                  )
-      )
+(defpart 1768
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 0.25)
+    (sp-rnd-flt spt-x (meters -2) (meters 4) 1.0)
+    (sp-flt spt-y (meters -2))
+    (sp-rnd-flt spt-z (meters -2) (meters 4) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 4) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.006666667) (meters 0.013333334) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.026666667) 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.006666667) (meters 0.013333334) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -2.7306666)
+    (sp-flt spt-friction 0.97)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2 bit12)
+    )
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 1769) (new 'static 'sparticle-launcher
-                                  :init-specs
-                                  (new 'static 'inline-array sp-field-init-spec 21
-                                    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
-                                    (sp-flt spt-num 0.5)
-                                    (sp-rnd-flt spt-x (meters -2.0) (meters 4.0) 1.0)
-                                    (sp-flt spt-y (meters -2.0))
-                                    (sp-rnd-flt spt-z -8192.0 16384.0 1.0)
-                                    (sp-rnd-flt spt-scale-x (meters 4.0) (meters 2.0) 1.0)
-                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-copy-from-other spt-scale-y -4)
-                                    (sp-rnd-flt spt-r 128.0 64.0 1.0)
-                                    (sp-rnd-flt spt-g 96.0 32.0 1.0)
-                                    (sp-rnd-flt spt-b 64.0 16.0 1.0)
-                                    (sp-rnd-flt spt-a 32.0 32.0 1.0)
-                                    (sp-rnd-flt spt-vel-x (meters -0.006666667) (meters 0.013333334) 1.0)
-                                    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.026666667) 1.0)
-                                    (sp-rnd-flt spt-vel-z (meters -0.006666667) (meters 0.013333334) 1.0)
-                                    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
-                                    (sp-flt spt-fade-a -0.21333334)
-                                    (sp-flt spt-friction 0.98)
-                                    (sp-int spt-timer 450)
-                                    (sp-cpuinfo-flags bit2 bit12)
-                                    (sp-end)
-                                    )
-                                  )
-      )
+(defpart 1769
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 0.5)
+    (sp-rnd-flt spt-x (meters -2) (meters 4) 1.0)
+    (sp-flt spt-y (meters -2))
+    (sp-rnd-flt spt-z (meters -2) (meters 4) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 4) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.006666667) (meters 0.013333334) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.026666667) 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.006666667) (meters 0.013333334) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2 bit12)
+    )
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 1770) (new 'static 'sparticle-launcher
-                                  :init-specs
-                                  (new 'static 'inline-array sp-field-init-spec 23
-                                    (sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
-                                    (sp-flt spt-num 5.0)
-                                    (sp-rnd-flt spt-x (meters -1.0) (meters 2.0) 1.0)
-                                    (sp-flt spt-y (meters 0.0))
-                                    (sp-rnd-flt spt-z -4096.0 8192.0 1.0)
-                                    (sp-rnd-flt spt-scale-x (meters 0.25) (meters 0.1) 1.0)
-                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-copy-from-other spt-scale-y -4)
-                                    (sp-rnd-flt spt-r 128.0 64.0 1.0)
-                                    (sp-rnd-flt spt-g 96.0 32.0 1.0)
-                                    (sp-rnd-flt spt-b 64.0 16.0 1.0)
-                                    (sp-flt spt-a 128.0)
-                                    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.053333335) 1.0)
-                                    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
-                                    (sp-flt spt-accel-y -10.922667)
-                                    (sp-int spt-timer 450)
-                                    (sp-cpuinfo-flags bit2 bit12)
-                                    (sp-flt spt-userdata 106496.0)
-                                    (sp-func spt-func 'check-drop-level-rolling-dirt)
-                                    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 20.0) 1.0)
-                                    (sp-rnd-flt spt-conerot-y (degrees 180.0) (degrees 180.0) 1.0)
-                                    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 2.0) 1.0)
-                                    (sp-end)
-                                    )
-                                  )
-      )
+(defpart 1770
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-flt spt-num 5.0)
+    (sp-rnd-flt spt-x (meters -1) (meters 2) 1.0)
+    (sp-flt spt-y (meters 0))
+    (sp-rnd-flt spt-z (meters -1) (meters 2) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.25) (meters 0.1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.053333335) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-accel-y -10.922667)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-flt spt-userdata 106496.0)
+    (sp-func spt-func 'check-drop-level-rolling-dirt)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 180.0) (degrees 180.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 2) 1.0)
+    )
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 1771) (new 'static 'sparticle-launcher
-                                  :init-specs
-                                  (new 'static 'inline-array sp-field-init-spec 21
-                                    (sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
-                                    (sp-rnd-flt spt-num 1.0 1.0 1.0)
-                                    (sp-flt spt-y (meters 0.0))
-                                    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.05) 1.0)
-                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-copy-from-other spt-scale-y -4)
-                                    (sp-rnd-flt spt-r 128.0 64.0 1.0)
-                                    (sp-rnd-flt spt-g 96.0 32.0 1.0)
-                                    (sp-rnd-flt spt-b 64.0 16.0 1.0)
-                                    (sp-flt spt-a 128.0)
-                                    (sp-rnd-flt spt-vel-y (meters 0.033333335) (meters 0.016666668) 1.0)
-                                    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
-                                    (sp-flt spt-accel-y -10.922667)
-                                    (sp-int spt-timer 300)
-                                    (sp-cpuinfo-flags bit2 bit12)
-                                    (sp-flt spt-userdata 106496.0)
-                                    (sp-func spt-func 'check-drop-level-rolling-dirt-finish)
-                                    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
-                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-flt spt-conerot-radius (meters 0.0))
-                                    (sp-end)
-                                    )
-                                  )
-      )
+(defpart 1771
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-rnd-flt spt-num 1.0 1.0 1.0)
+    (sp-flt spt-y (meters 0))
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.05) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.033333335) (meters 0.016666668) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-accel-y -10.922667)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-flt spt-userdata 106496.0)
+    (sp-func spt-func 'check-drop-level-rolling-dirt-finish)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0))
+    )
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 1772) (new 'static 'sparticle-launcher
-                                  :init-specs
-                                  (new 'static 'inline-array sp-field-init-spec 18
-                                    (sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
-                                    (sp-flt spt-num 1.0)
-                                    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.05) 1.0)
-                                    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-copy-from-other spt-scale-y -4)
-                                    (sp-rnd-flt spt-r 128.0 64.0 1.0)
-                                    (sp-rnd-flt spt-g 96.0 32.0 1.0)
-                                    (sp-rnd-flt spt-b 64.0 16.0 1.0)
-                                    (sp-rnd-flt spt-a 64.0 64.0 1.0)
-                                    (sp-rnd-flt spt-vel-y (meters 0.0) (meters 0.013333334) 1.0)
-                                    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
-                                    (sp-flt spt-fade-a -0.14222223)
-                                    (sp-flt spt-friction 0.9)
-                                    (sp-int spt-timer 900)
-                                    (sp-cpuinfo-flags bit2 bit12)
-                                    (sp-flt spt-conerot-x (degrees 90.0))
-                                    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-                                    (sp-end)
-                                    )
-                                  )
-      )
+(defpart 1772
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.05) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0) (meters 0.013333334) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-fade-a -0.14222223)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
 ;; definition for function check-drop-level-rolling-dirt
 (defun check-drop-level-rolling-dirt ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
@@ -1467,10 +1460,9 @@
     )
   :trans
   (behavior ()
-    (if (and
-            (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
-            (not (and *target* (>= 81920.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))))
-            )
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+             (not (and *target* (>= 81920.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))))
+             )
         (go peeper-up)
         )
     (none)
@@ -1514,12 +1506,13 @@
 ;; failed to figure out what this is:
 (defstate peeper-down (peeper)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('hide)
-                                                                                    (go peeper-wait)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('hide)
+       (go peeper-wait)
+       )
+      )
+    )
   :trans
   (behavior ()
     (if (and *target* (>= 61440.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
@@ -1566,12 +1559,13 @@
 ;; failed to figure out what this is:
 (defstate peeper-up (peeper)
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('hide)
-                                                                                    (go peeper-hide)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('hide)
+       (go peeper-hide)
+       )
+      )
+    )
   :enter
   (behavior ()
     (if (nonzero? (-> self sound))
