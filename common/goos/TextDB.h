@@ -65,9 +65,14 @@ class ReplText : public SourceText {
  */
 class ProgramString : public SourceText {
  public:
-  explicit ProgramString(const std::string& text_) : SourceText(text_) {}
-  std::string get_description() override { return "Program string"; }
+  explicit ProgramString(const std::string& text_,
+                         const std::string& string_name = "Program string")
+      : SourceText(text_), m_string_name(string_name) {}
+  std::string get_description() override { return m_string_name; }
   ~ProgramString() = default;
+
+ private:
+  std::string m_string_name;
 };
 
 /*!
