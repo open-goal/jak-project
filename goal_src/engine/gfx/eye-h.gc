@@ -5,67 +5,73 @@
 ;; name in dgo: eye-h
 ;; dgos: GAME, ENGINE
 
-;; definition of type eye
+(define-extern get-eye-block (function int int int))
+(define-extern merc-eye-anim (function manipy none))
+
+;; DECOMP BEGINS
+
 (deftype eye (structure)
-  ((data        uint128 2           :offset-assert 0)
-   (x           float   :offset   0)
-   (y           float   :offset   4)
-   (lid         float   :offset   8)
-   (iris-scale  float   :offset  16)
-   (pupil-scale float   :offset  20)
-   (lid-scale   float   :offset  24)
+  ((data        uint128 2 :offset-assert   0)
+   (x           float     :offset          0)
+   (y           float     :offset          4)
+   (lid         float     :offset          8)
+   (iris-scale  float     :offset         16)
+   (pupil-scale float     :offset         20)
+   (lid-scale   float     :offset         24)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
 
-;; definition of type eye-control
+
 (deftype eye-control (structure)
-  ((process     uint64         :offset-assert 0)
-   (random-time uint16         :offset-assert 8)
-   (level       uint16         :offset-assert 10)
-   (blink       float          :offset-assert 12)
-   (shaders     uint32         :offset-assert 16)
-   (left        eye    :inline :offset-assert 32)
-   (right       eye    :inline :offset-assert 64)
+  ((process     handle                              :offset-assert   0)
+   (random-time uint16                              :offset-assert   8)
+   (level       uint16                              :offset-assert  10)
+   (blink       float                               :offset-assert  12)
+   (shaders     (inline-array adgif-shader)         :offset-assert  16)
+   (left        eye                         :inline :offset-assert  32)
+   (right       eye                         :inline :offset-assert  64)
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
 
-;; definition of type eye-control-array
+
 (deftype eye-control-array (basic)
-  ((data eye-control 11 :inline :offset-assert 16)
+  ((data eye-control 11 :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x430
   :flag-assert         #x900000430
   )
 
-;; definition of type eye-work
+
 (deftype eye-work (structure)
-  ((sprite-tmpl  dma-gif-packet :inline :offset-assert 0)
-   (sprite-tmpl2 dma-gif-packet :inline :offset-assert 32)
-   (adgif-tmpl   dma-gif-packet :inline :offset-assert 64)
-   (blink-table  float          10      :offset-assert 96)
+  ((sprite-tmpl  dma-gif-packet :inline :offset-assert   0)
+   (sprite-tmpl2 dma-gif-packet :inline :offset-assert  32)
+   (adgif-tmpl   dma-gif-packet :inline :offset-assert  64)
+   (blink-table  float          10      :offset-assert  96)
    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
   )
 
-;; definition for symbol *eye-control-array*, type eye-control-array
+
 (define *eye-control-array* (new 'static 'eye-control-array))
 
-;; failed to figure out what this is:
 (dotimes (v1-5 11)
-  (set! (-> *eye-control-array* data v1-5 process) (the-as uint #f))
-  (set! (-> *eye-control-array* data v1-5 shaders) (the-as uint #f))
+  (set! (-> *eye-control-array* data v1-5 process) (the-as handle #f))
+  (set! (-> *eye-control-array* data v1-5 shaders) (the-as (inline-array adgif-shader) #f))
   (set! (-> *eye-control-array* data v1-5 random-time) (the-as uint 60))
   (set! (-> *eye-control-array* data v1-5 blink) 0.0)
   )
 
-(define-extern get-eye-block (function int int int))
-(defun-extern merc-eye-anim process-drawable none)
+0
+
+
+
+
