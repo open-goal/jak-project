@@ -249,6 +249,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (copy-strs
+  ;; power cell animations
   "FUCVICTO"
   "FUCV2"
   "FUCV3"
@@ -257,10 +258,16 @@
   "FUCV6"
   "FUCV7"
   "FUCV8"
+  ;; jak's ambient
   "EIA1"
   "EIA2"
   "EIA3"
   "EIA4"
+  ;; intro camera
+  "NDINTRO"
+  "LOINTRO"
+  "LOLOOP"
+  "LOI2"
   )
 
 

@@ -705,7 +705,7 @@
   :size-assert         #xc0
   :flag-assert         #x14005000c0
   (:states
-    reflector-mirror-broken
+    (reflector-mirror-broken symbol)
     reflector-mirror-idle
     )
   )
@@ -2119,8 +2119,7 @@
     (case arg2
       (('attack)
        (sound-play-by-name (static-sound-name "mirror-smash") (new-sound-id) 1024 0 0 1 #t)
-       enter-state
-       (go reflector-mirror-broken)
+       (go reflector-mirror-broken #f)
        )
       )
     )
@@ -2168,8 +2167,7 @@
 
 (defstate reflector-mirror-broken (reflector-mirror)
   :code
-  (behavior ()
-    (local-vars (a0-0 none))
+  (behavior ((arg0 symbol))
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
     (ja-post)
@@ -2195,7 +2193,7 @@
           )
         )
       )
-    (when (not a0-0)
+    (when (not arg0)
       (ambient-hint-spawn "gamcam21" (the-as vector #f) *entity-pool* 'camera)
       (let* ((gp-1 (get-process *default-dead-pool* manipy #x4000))
              (v1-11 (when gp-1
@@ -2298,16 +2296,10 @@
                          (-> obj beam-end)
                          )
         )
-  (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     enter-state
-     #t
-     (go reflector-mirror-broken)
-     )
-    (else
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (go reflector-mirror-broken #t)
       (go reflector-mirror-idle)
       )
-    )
   (none)
   )
 
