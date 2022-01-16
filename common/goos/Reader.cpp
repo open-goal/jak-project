@@ -217,9 +217,11 @@ std::optional<Object> Reader::read_from_stdin(const std::string& prompt, ReplWra
 /*!
  * Read a string.
  */
-Object Reader::read_from_string(const std::string& str, bool add_top_level) {
+Object Reader::read_from_string(const std::string& str,
+                                bool add_top_level,
+                                const std::optional<std::string>& string_name) {
   // create text fragment and add to the DB
-  auto textFrag = std::make_shared<ProgramString>(str);
+  auto textFrag = std::make_shared<ProgramString>(str, string_name.value_or("Program string"));
   db.insert(textFrag);
 
   // perform read

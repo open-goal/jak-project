@@ -327,7 +327,7 @@ bool compile(Decompiler& dc,
     try {
       const auto& src = data.output_with_skips;
       total_lines += line_count(src);
-      compiler.run_full_compiler_on_string_no_save(src);
+      compiler.run_full_compiler_on_string_no_save(src, file.name_in_dgo);
     } catch (const std::exception& e) {
       fmt::print("Compiler exception: {}\n", e.what());
       return false;

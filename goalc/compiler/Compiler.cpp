@@ -428,8 +428,9 @@ void Compiler::run_front_end_on_file(const std::vector<std::string>& path) {
  * Run the entire compilation process on the input source code. Will generate an object file, but
  * won't save it anywhere.
  */
-void Compiler::run_full_compiler_on_string_no_save(const std::string& src) {
-  auto code = m_goos.reader.read_from_string({src});
+void Compiler::run_full_compiler_on_string_no_save(const std::string& src,
+                                                   const std::optional<std::string>& string_name) {
+  auto code = m_goos.reader.read_from_string(src, true, string_name);
   auto compiled = compile_object_file("run-on-string", code, true);
   color_object_file(compiled);
   codegen_object_file(compiled);
