@@ -2,38 +2,29 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(set! (-> *part-group-id-table* 160)
-      (new 'static 'sparticle-launch-group
-        :length 1
-        :duration #xbb8
-        :linger-duration #x5dc
-        :name "group-seagull-takeoff"
-        :launcher
-        (new 'static 'inline-array sparticle-group-item 1 (sp-item 663 :fade-after (meters 20.0)))
-        :bounds
-        (new 'static 'sphere :y -49152.0 :w 57344.0)
-        )
-      )
+(defpartgroup group-seagull-takeoff
+  :id 160
+  :bounds (static-bspherem 0 -12 0 14)
+  :parts
+  ((sp-item 663 :fade-after (meters 20)))
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 665) (new 'static 'sparticle-launcher
-                                 :init-specs
-                                 (new 'static 'inline-array sp-field-init-spec 12
-                                   (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
-                                   (sp-flt spt-num 1.0)
-                                   (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
-                                   (sp-copy-from-other spt-scale-y -4)
-                                   (sp-flt spt-r 128.0)
-                                   (sp-flt spt-b 128.0)
-                                   (sp-rnd-flt spt-a 64.0 64.0 1.0)
-                                   (sp-flt spt-vel-y (meters 0.4))
-                                   (sp-flt spt-accel-y -819.2)
-                                   (sp-int spt-timer 1500)
-                                   (sp-cpuinfo-flags bit2 bit3)
-                                   (sp-end)
-                                   )
-                                 )
-      )
+(defpart 665
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-vel-y (meters 0.4))
+    (sp-flt spt-accel-y -819.2)
+    (sp-int spt-timer 1500)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
 
 ;; definition for symbol sound-seagull-squall, type sound-spec
 (define
@@ -443,8 +434,8 @@
   :code
   (behavior ()
     (set! (-> self root-override trans y) (+ 20480.0 (-> self root-override trans y)))
-    (dummy-60 (-> self root-override) 40960.0 40960.0 #t (collide-kind background))
-    (dummy-47 (-> self root-override))
+    (move-to-ground (-> self root-override) 40960.0 40960.0 #t (collide-kind background))
+    (update-transforms! (-> self root-override))
     (clear-collide-with-as (-> self root-override))
     (let ((gp-0 (-> self skel root-channel 0)))
       (joint-control-channel-group-eval!
@@ -643,7 +634,7 @@
       )
     (vector-! s5-0 s5-0 (-> obj root-override trans))
     (vector-float*! s5-0 s5-0 0.9)
-    (TODO-RENAME-28 (-> obj root-override) s5-0)
+    (move-by-vector! (-> obj root-override) s5-0)
     )
   (set! (-> obj teleport) #f)
   #f
@@ -708,8 +699,8 @@
         )
       (vector+! a1-1 a0-2 v1-0)
       (if (points-in-air? a0-2 a1-1 *seagull-boxes* 10)
-          (dummy-57 (-> obj root-override) (-> obj root-override transv))
-          (dummy-33 (-> obj root-override) s5-0 (collide-kind background))
+          (integrate-no-collide! (-> obj root-override) (-> obj root-override transv))
+          (fill-cache-integrate-and-collide! (-> obj root-override) s5-0 (collide-kind background))
           )
       )
     (none)
@@ -1182,7 +1173,18 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> self root-override transv y) (* 4096.0 (- arg0)))
         (set! (-> gp-0 quad) (-> self root-override transv quad))
-        (let ((f30-0 (dummy-10 *collide-cache* (-> self root-override trans) gp-0 409.6 1 self s5-0 1)))
+        (let ((f30-0 (fill-and-probe-using-line-sphere
+                       *collide-cache*
+                       (-> self root-override trans)
+                       gp-0
+                       409.6
+                       (collide-kind background)
+                       self
+                       s5-0
+                       1
+                       )
+                     )
+              )
           (when (or (< f30-0 0.0) (or (< 1.0 f30-0) (nonzero? (-> s5-0 pat mode))))
             (suspend)
             (go seagull-soaring)
@@ -1192,7 +1194,11 @@
           (while (< 0.5 f30-0)
             (suspend)
             (set! f30-0 (- f30-0 (-> *display* seconds-per-frame)))
-            (dummy-33 (-> self root-override) (-> self root-override transv) (collide-kind background))
+            (fill-cache-integrate-and-collide!
+              (-> self root-override)
+              (-> self root-override transv)
+              (collide-kind background)
+              )
             (let* ((v1-21 self)
                    (f1-3 (the float (sar (shl (the int (- (-> self heading) (-> v1-21 heading))) 48) 48)))
                    (f0-12 (- (-> v1-21 tilt)))
@@ -1247,7 +1253,11 @@
               (joint-control-channel-group-eval! a0-29 (the-as art-joint-anim #f) num-func-seek!)
               )
             (set! f30-0 (- f30-0 (-> *display* seconds-per-frame)))
-            (dummy-33 (-> self root-override) (-> self root-override transv) (collide-kind background))
+            (fill-cache-integrate-and-collide!
+              (-> self root-override)
+              (-> self root-override transv)
+              (collide-kind background)
+              )
             (let* ((v1-48 self)
                    (f1-13 (the float (sar (shl (the int (- (-> self heading) (-> v1-48 heading))) 48) 48)))
                    (f0-32 (- (-> v1-48 tilt)))
@@ -1336,7 +1346,7 @@
     (let ((a1-1 (new 'stack-no-clear 'vector)))
       (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
       (set! (-> a1-1 y) (-> arg1 move-vec y))
-      (TODO-RENAME-28 arg0 a1-1)
+      (move-by-vector! arg0 a1-1)
       )
     (let ((f0-3 (vector-dot (-> arg0 transv) (-> arg1 best-tri normal)))
           (v1-6 (new 'stack-no-clear 'vector))

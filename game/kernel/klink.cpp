@@ -889,6 +889,7 @@ void ultimate_memcpy(void* dst, void* src, uint32_t size) {
       auto sym = find_symbol_from_c("ultimate-memcpy");
       if (sym->value == 0) {
         memmove(dst, src, size);
+        return;
       }
       gfunc_774.offset = sym->value;
     }

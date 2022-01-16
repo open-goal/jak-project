@@ -150,12 +150,12 @@
   :flag-assert         #x900004000
   )
 
-(define *collide-probe-stack* (the-as pointer (+ 4192 #x70000000)))
+;;(define *collide-probe-stack* (the-as pointer (+ 4192 #x70000000)))
+(define *collide-probe-stack* (scratchpad-object collide-probe-stack :offset 4192))
 
-(define collide-vu0-block (the-as vu-function 0))
+(define collide-vu0-block (new 'static 'vu-function))
 
-;; TODO: the actual collide-probe-node function.
-(define-extern collide-probe-node (function (inline-array draw-node) int collide-list int))
+(def-mips2c collide-probe-node (function (inline-array draw-node) int collide-list int))
 
 (defun print-out ((arg0 int))
   (format *stdcon* "~d~%" arg0)
@@ -167,7 +167,7 @@
   )
 
 ;; collide-probe-instance-tie
-(define-extern collide-probe-instance-tie (function object int collide-list int int)) ;; drawable is either an instance-tie or a draw-node inline arrary
+(def-mips2c collide-probe-instance-tie (function object int collide-list int int))
 
 
 
@@ -223,28 +223,30 @@
 
 (defun collide-upload-vu0 ()
   "Upload the probe program to VU0."
-  (let ((gp-0 *vu0-dma-list*))
-    ;; reset the buffer
-    (let ((v1-0 gp-0))
-      (set! (-> v1-0 base) (-> v1-0 data))
-      (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
-      )
-    ;; upload the function dma
-    (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
-    
-    ;; end dma chain
-    (let* ((v1-1 gp-0)
-           (a0-5 (the-as object (-> v1-1 base)))
+  (#unless PC_PORT
+           (let ((gp-0 *vu0-dma-list*))
+             ;; reset the buffer
+             (let ((v1-0 gp-0))
+               (set! (-> v1-0 base) (-> v1-0 data))
+               (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
+               )
+             ;; upload the function dma
+             (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
+             
+             ;; end dma chain
+             (let* ((v1-1 gp-0)
+                    (a0-5 (the-as object (-> v1-1 base)))
+                    )
+               (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+               (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
+               (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16))
+               )
+             
+             ;; go!
+             (.sync.l)
+             (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
+             )
            )
-      (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
-      (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
-      (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16))
-      )
-    
-    ;; go!
-    (.sync.l)
-    (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
-    )
   0
   (none)
   )

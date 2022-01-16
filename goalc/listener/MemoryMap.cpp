@@ -120,4 +120,15 @@ bool MemoryMap::lookup(const std::string& obj_name, u8 seg_id, MemoryMapEntry* o
   }
   return false;
 }
+
+bool LoadEntry::overlaps_with(const LoadEntry& other) const {
+  for (int seg = 0; seg < 2; seg++) {
+    if (std::max(segments[seg], other.segments[seg]) <
+        std::min(segments[seg] + segment_sizes[seg],
+                 other.segments[seg] + other.segment_sizes[seg])) {
+      return true;
+    }
+  }
+  return false;
+}
 }  // namespace listener

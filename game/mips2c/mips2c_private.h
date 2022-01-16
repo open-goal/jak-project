@@ -353,11 +353,27 @@ struct ExecutionContext {
     gprs[dst].du32[3] = s0.du32[3];
   }
 
+  void pextlw(int dst, int src0, int src1) {
+    auto s0 = gpr_src(src0);
+    auto s1 = gpr_src(src1);
+    gprs[dst].du32[0] = s1.du32[0];
+    gprs[dst].du32[1] = s0.du32[0];
+    gprs[dst].du32[2] = s1.du32[1];
+    gprs[dst].du32[3] = s0.du32[1];
+  }
+
   void pcpyud(int dst, int src0, int src1) {
     auto s0 = gpr_src(src0);
     auto s1 = gpr_src(src1);
     gprs[dst].du64[0] = s0.du64[1];
     gprs[dst].du64[1] = s1.du64[1];
+  }
+
+  void pcpyld(int dst, int src0, int src1) {
+    auto s0 = gpr_src(src0);
+    auto s1 = gpr_src(src1);
+    gprs[dst].du64[0] = s1.du64[0];
+    gprs[dst].du64[1] = s0.du64[0];
   }
 
   void pexew(int dst, int src) {
@@ -530,6 +546,13 @@ struct ExecutionContext {
     auto s = gpr_src(src);
     for (int i = 0; i < 8; i++) {
       gprs[dest].du16[i] = s.du16[i] >> (sa & 0xf);
+    }
+  }
+
+  void psraw(int dest, int src, int sa) {
+    auto s = gpr_src(src);
+    for (int i = 0; i < 4; i++) {
+      gprs[dest].ds32[i] = s.ds32[i] >> (sa & 0x1f);
     }
   }
 
@@ -736,6 +759,15 @@ struct ExecutionContext {
     }
   }
 
+  void vabs(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = std::abs(s.f[i]);
+      }
+    }
+  }
+
   void vrnext(DEST mask, int dst) {
     gRng.advance();
     float r = gRng.R;
@@ -914,6 +946,15 @@ struct ExecutionContext {
     }
   }
 
+  void vitof12(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = ((float)s.ds32[i]) * (1.f / 4096.f);
+      }
+    }
+  }
+
   void vftoi12(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
@@ -956,7 +997,7 @@ struct ExecutionContext {
   void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
   void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
   void divs(int dst, int src0, int src1) {
-    assert(fprs[src1] != 0);
+    // assert(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];
   }
   void negs(int dst, int src) {
@@ -965,6 +1006,8 @@ struct ExecutionContext {
     v ^= 0x80000000;
     memcpy(&fprs[dst], &v, 4);
   }
+
+  void movs(int dst, int src) { fprs[dst] = fprs[src]; }
 
   void cvtws(int dst, int src) {
     // float to int

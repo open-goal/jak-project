@@ -44,6 +44,7 @@ void interp_time_of_day_fast(const float weights[8],
 void cull_check_all_slow(const math::Vector4f* planes,
                          const std::vector<tfrag3::VisNode>& nodes,
                          u8* out);
+bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes);
 
 struct TfragPcPortData {
   math::Vector4f planes[4];

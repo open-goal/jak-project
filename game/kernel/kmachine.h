@@ -8,6 +8,10 @@
 #include "common/common_types.h"
 #include "Ptr.h"
 
+//! Toggle to use more memory. To simulate the original game's memory layout, set this to false.
+// Make sure this matches the const in gcommon.gc.
+constexpr bool BIG_MEMORY = true;
+
 //! How much space to leave for the stack when creating the debug heap
 // In the game, it's 16 kB, but we increase it to 64 kB.
 // ASAN builds + fmt / spdlog stuff uses a _ton_ of stack when no optimizations are on and we
@@ -18,7 +22,7 @@ constexpr u32 DEBUG_HEAP_SPACE_FOR_STACK = 0x10000;
 constexpr u32 HEAP_START = 0x13fd20;
 
 //! Where to end the global heap so it doesn't overlap with the stack.
-constexpr u32 GLOBAL_HEAP_END = 0x1ffc000 + (0x1ffc000 - HEAP_START);  // doubled
+constexpr u32 GLOBAL_HEAP_END = 0x1ffc000 + (BIG_MEMORY ? (0x1ffc000 - HEAP_START) : 0);  // doubled
 
 //! Location of kglobalheap, kdebugheap kheapinfo structures.
 constexpr u32 GLOBAL_HEAP_INFO_ADDR = 0x13AD00;

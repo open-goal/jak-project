@@ -151,7 +151,7 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
 
     // setup draw data
     glBindBuffer(GL_ARRAY_BUFFER, m_gl_vertex_buffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * 6, m_vertex_data);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 6, m_vertex_data, GL_STREAM_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,         // location 0 in the shader
                           3,         // 3 floats per vert
@@ -167,7 +167,6 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::SKY_BLEND].id(), "T0"), 0);
 
     // Draw a sqaure
     glDrawArrays(GL_TRIANGLES, 0, 6);

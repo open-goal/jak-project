@@ -68,10 +68,9 @@
       )
     (vector-lerp! (-> self root trans) gp-0 s5-0 (-> self blend))
     )
-  (+!
-    (-> self root trans y)
-    (* 1638.4 (sin (* 54.613335 (the float (mod (-> *display* base-frame-counter) 1200)))))
-    )
+  (+! (-> self root trans y)
+      (* 1638.4 (sin (* 54.613335 (the float (mod (-> *display* base-frame-counter) 1200)))))
+      )
   (let ((gp-1 (new 'stack-no-clear 'quaternion)))
     (forward-up->quaternion
       gp-1
@@ -120,12 +119,13 @@
 (defstate enter (voicebox)
   :virtual #t
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('die)
-                                                                                    (go-virtual exit)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('die)
+       (go-virtual exit)
+       )
+      )
+    )
   :trans
   (behavior ()
     (voicebox-track)
@@ -137,7 +137,7 @@
   :code
   (behavior ()
     (set-setting! *setting-control* self 'sound-flava #f 20.0 6)
-    (if (and *target* (logtest? (-> *target* control root-prim prim-core action) 512))
+    (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
         (send-event
           (ppointer->process (-> self parent-override))
           'set-dist
@@ -196,11 +196,10 @@
     (clear-pending-settings-from-process *setting-control* self 'sound-flava)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self seeker target) 1.0)
-    (while (and (< (-> self blend) 0.9999) (not (and
-                                                  (not (handle->process (-> self hint)))
-                                                  (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
-                                                  (-> *setting-control* current hint)
-                                                  )
+    (while (and (< (-> self blend) 0.9999) (not (and (not (handle->process (-> self hint)))
+                                                     (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
+                                                     (-> *setting-control* current hint)
+                                                     )
                                                 )
                 )
       (update! (-> self seeker) 0.0)

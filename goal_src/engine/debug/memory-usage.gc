@@ -5,8 +5,10 @@
 ;; name in dgo: memory-usage
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
 
 ;; this file is debug only
+(declare-file (debug))
 (when *debug-segment*
 
 (defmethod inspect memory-usage-block ((obj memory-usage-block))
@@ -39,19 +41,19 @@
 (defmethod mem-usage object ((obj object) (arg0 memory-usage-block) (arg1 int))
   "Most general mem-usage message. Just prints a warning, in case you expect this to do something."
   (if obj
-   (format #t "WARNING: mem-usage called on object, probably not what was wanted for ~A~%" obj)
-   )
+      (format #t "WARNING: mem-usage called on object, probably not what was wanted for ~A~%" obj)
+      )
   obj
   )
 
 (defmethod calculate-total memory-usage-block ((obj memory-usage-block))
   "Compute the total memory usage of everything in the block."
   (let ((v0-0 0))
-   (dotimes (v1-0 (-> obj length))
-    (+! v0-0 (-> obj data v1-0 total))
+    (dotimes (v1-0 (-> obj length))
+      (+! v0-0 (-> obj data v1-0 total))
+      )
+    v0-0
     )
-   v0-0
-   )
   )
 
 (defmethod reset! memory-usage-block ((obj memory-usage-block))
@@ -68,24 +70,24 @@
 (defun mem-size ((arg0 basic) (arg1 symbol) (arg2 int))
   "Compute the size of arg0. If arg1, then print the result. Arg2 is flags"
   (let ((gp-0 (new 'stack 'memory-usage-block)))
-   (mem-usage arg0 gp-0 arg2)
-   (if arg1
-    (inspect gp-0)
+    (mem-usage arg0 gp-0 arg2)
+    (if arg1
+        (inspect gp-0)
+        )
+    (calculate-total gp-0)
     )
-   (calculate-total gp-0)
-   )
   )
 
 (defmethod compute-memory-usage level ((obj level) (arg0 object))
   "Compute the memory usage of a level. Arg0 will force a recalculation."
   (if (zero? (-> obj mem-usage-block))
-   (set! (-> obj mem-usage-block) (new 'debug 'memory-usage-block))
-   )
+      (set! (-> obj mem-usage-block) (new 'debug 'memory-usage-block))
+      )
   (set! arg0 (or (zero? (-> obj mem-usage-block length)) arg0))
   (when arg0
-   (mem-usage obj (reset! (-> obj mem-usage-block)) 0)
-   (set! (-> obj mem-usage) (calculate-total (-> obj mem-usage-block)))
-   )
+    (mem-usage obj (reset! (-> obj mem-usage-block)) 0)
+    (set! (-> obj mem-usage) (calculate-total (-> obj mem-usage-block)))
+    )
   (-> obj mem-usage-block)
   )
 
@@ -114,18 +116,19 @@
       (while (not (null? s4-0))
         (let ((a0-5 (-> (the-as symbol v1-4) value)))
           (set! *global-search-count* s5-0)
-          (iterate-process-tree (the-as process-tree a0-5) 
-                                (lambda ((arg0 basic))
-                                  (let ((gp-0 *temp-mem-usage*)
-                                        (s5-0 *global-search-count*)
-                                        )
-                                    (+! (-> gp-0 data s5-0 used) 1)
-                                    (+! (-> gp-0 data s5-0 total) (logand -16 (+ (asize-of arg0) 15)))
-                                    )
-                                  #t
-                                  )
-                                *null-kernel-context*
-                                )
+          (iterate-process-tree
+            (the-as process-tree a0-5)
+            (lambda ((arg0 basic))
+              (let ((gp-0 *temp-mem-usage*)
+                    (s5-0 *global-search-count*)
+                    )
+                (+! (-> gp-0 data s5-0 used) 1)
+                (+! (-> gp-0 data s5-0 total) (logand -16 (+ (asize-of arg0) 15)))
+                )
+              #t
+              )
+            *null-kernel-context*
+            )
           )
         (+! s5-0 1)
         (set! s4-0 (cdr s4-0))
@@ -133,8 +136,8 @@
         )
       )
     )
-  (iterate-process-tree 
-    obj 
+  (iterate-process-tree
+    obj
     (lambda ((arg0 process))
       (let ((gp-0 *temp-mem-usage*))
         (let ((s4-0 (cond
@@ -252,7 +255,8 @@
             (+! (-> gp-0 data 101 count) 1)
             (let ((v1-141 (asize-of (-> (the-as process-drawable arg0) skel))))
               (+! (-> gp-0 data 101 used) v1-141)
-              (+! (-> gp-0 data 101 total) (logand -16 (+ v1-141 15))))
+              (+! (-> gp-0 data 101 total) (logand -16 (+ v1-141 15)))
+              )
             )
           (when (nonzero? (-> (the-as process-drawable arg0) part))
             (set! (-> gp-0 length) (max 105 (-> gp-0 length)))
@@ -317,7 +321,7 @@
           (s1-0 (* (dma-buffer-length (-> *display* frames (-> *display* last-screen) frame global-buf)) 16))
           )
       (set! *max-dma* (max s1-0 *max-dma*))
-      
+
       ;; turns memory usage red if you're using too much. This uses the sum of memory-usage blocks, which as far
       ;; as I can tell, is not accurate (textures are negative, for example, but don't seem to be double counted (or even counted) elsewhere).
       (if (< s2-0 (-> arg0 mem-usage))
@@ -333,14 +337,14 @@
               (sar (memory-used *nk-dead-pool*) 10)
               (sar (memory-total *nk-dead-pool*) 10)
               )
-      
+
       (format arg1 "~5,'-DK/~5,'-DK--~%" (shr s1-0 10) (sar *max-dma* 10))
       )
     )
-  
-  
+
+
   (when *stats-memory-short*
-    (let ((s2-2 (if (logtest? (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons l3))
+    (let ((s2-2 (if (cpad-hold? 1 l3)
                     #t
                     arg1
                     )
@@ -356,8 +360,8 @@
               )
       )
     )
-  
-  
+
+
   (when (not *stats-memory-short*)
     ;; print the table
     
@@ -382,10 +386,7 @@
                  )
             )
     
-    (format arg1 "  bsp-leaf-vis-adj ~192H~5DK~%"
-            (sar (+ (-> obj data 59 total) (-> obj data 60 total)) 10)
-            )
-    
+    (format arg1 "  bsp-leaf-vis-adj ~192H~5DK~%" (sar (+ (-> obj data 59 total) (-> obj data 60 total)) 10))
     (format arg1 "  level-code ~192H~5DK~%" (sar (-> obj data 63 total) 10))
     
     (format arg1 "  tfrag ~192H~5DK ~280Htfragment~456H~5DK~%"
@@ -530,7 +531,7 @@
                  )
             (sar (-> *dma-mem-usage* data 82 total) 10)
             )
-    
+
     (format arg1 "~1K~0L")
     )
   (none)
@@ -538,7 +539,6 @@
 
 
 )
-
 
 
 
