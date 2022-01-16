@@ -862,6 +862,21 @@
     (set! (-> gp-0 proc) #f)
     (set! (-> gp-0 ignore-pat) (the-as uint 1))
     (set! (-> gp-0 solid-only) #t)
+    
+    ;; NOTE: added this.
+    ;; exit duck has failed for 2 reasons:
+    ;; there seems to be a bogus triangle in the cache sometimes (rare)
+    ;; sometimes it thinks we hit the spheres, but we don't.
+    ; (dotimes (i 2)
+    ;   (add-debug-sphere
+    ;     #t
+    ;     (bucket-id debug-draw0)
+    ;     (-> (the (inline-array sphere) (-> gp-0 spheres)) i)
+    ;     (-> (the (inline-array sphere) (-> gp-0 spheres)) i w)
+    ;     (new 'static 'rgba :r #x80 :a #x80)
+    ;     )
+    ;   )
+    
     (if (fill-and-probe-using-spheres *collide-cache* gp-0)
         #f
         #t
@@ -992,7 +1007,7 @@
   (logior! (-> arg1 state-flags) 32)
   (set! (-> arg1 control unknown-dword80) (-> *display* base-frame-counter))
   (set! (-> arg1 control unknown-dword81) (the-as int arg0))
-  (dummy-53 (-> arg1 control) 2 (collide-kind target-attack) (collide-kind))
+  (set-collide-kinds (-> arg1 control) 2 (collide-kind target-attack) (collide-kind))
   0
   (none)
   )
@@ -1000,7 +1015,7 @@
 (defun target-timed-invulnerable-off ((arg0 target))
   (logclear! (-> arg0 draw status) (draw-status drwf01))
   (set! (-> arg0 state-flags) (logand -33 (-> arg0 state-flags)))
-  (dummy-53 (-> arg0 control) 2 (collide-kind) (collide-kind target-attack))
+  (set-collide-kinds (-> arg0 control) 2 (collide-kind) (collide-kind target-attack))
   0
   (none)
   )

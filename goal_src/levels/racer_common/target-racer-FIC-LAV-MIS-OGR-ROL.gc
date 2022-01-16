@@ -129,15 +129,15 @@
     (cond
       ((zero? v1-1)
        (if (zero?
-               (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-               )
+             (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
+             )
            (set! (-> self racer slide-mode) -1)
            )
        )
       ((= v1-1 1)
        (if (zero?
-               (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-               )
+             (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
+             )
            (set! (-> self racer slide-mode) -1)
            )
        )
@@ -209,11 +209,10 @@
         (meters 0.000061035156)
         (new 'static 'rgba :r #xff :a #x80)
         )
-      (if (and
-              (< 409.6 (vector-xz-length (-> self control unknown-vector00)))
-              s5-1
-              (= (-> self next-state name) 'target-racing)
-              )
+      (if (and (< 409.6 (vector-xz-length (-> self control unknown-vector00)))
+               s5-1
+               (= (-> self next-state name) 'target-racing)
+               )
           (vector-rotate-y!
             (-> self control unknown-vector00)
             (-> self control unknown-vector00)
@@ -264,11 +263,10 @@
 
 (defbehavior racer-thrust target ((arg0 basic) (arg1 float))
   (let ((f0-0
-          (if (and
-                  (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-                  (not (-> self racer stick-lock))
-                  (not (-> self racer stick-off))
-                  )
+          (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+                   (not (-> self racer stick-lock))
+                   (not (-> self racer stick-off))
+                   )
               1.0
               0.0
               )
@@ -308,29 +306,25 @@
          )
     (set! f0-13
           (cond
-            ((and
-               (not (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0)))
-               (logtest?
-                 (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                 (pad-buttons square)
-                 )
-               )
-             (if (and
-                     (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-                     (not (-> self racer stick-lock))
-                     (not (-> self racer stick-off))
-                     )
+            ((and (not (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0)))
+                  (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                            (pad-buttons square)
+                            )
+                  )
+             (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+                      (not (-> self racer stick-lock))
+                      (not (-> self racer stick-off))
+                      )
                  (* 0.9875 f0-13)
                  (* 0.49375 (+ 1.0 f0-13))
                  )
              )
             (else
               (cond
-                ((and
-                   (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-                   (not (-> self racer stick-lock))
-                   (not (-> self racer stick-off))
-                   )
+                ((and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+                      (not (-> self racer stick-lock))
+                      (not (-> self racer stick-off))
+                      )
                  )
                 (else
                   (set! f0-13 (* 0.5 (+ 1.0 f0-13)))
@@ -348,10 +342,9 @@
         (vector-xz-normalize! (-> self control unknown-vector00) f30-0)
         )
     )
-  (+!
-    (-> self racer bottom-rot)
-    (* (+ 364088.88 (* 0.32 (fabs (-> self control unknown-vector00 y)))) (-> *display* seconds-per-frame))
-    )
+  (+! (-> self racer bottom-rot)
+      (* (+ 364088.88 (* 0.32 (fabs (-> self control unknown-vector00 y)))) (-> *display* seconds-per-frame))
+      )
   0
   (none)
   )
@@ -420,25 +413,26 @@
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self control transv quad))
     (let ((f30-0 0.8))
-      (dummy-33 (-> self control) (-> self control transv) (-> self control root-prim collide-with))
-      (+! (-> self racer shock-offsetv) (* (- (-> gp-0 y) (-> self control transv y)) f30-0))
-      (+!
-        (-> self racer shock-offsetv)
-        (+ (* -20.0 (-> *display* seconds-per-frame) (-> self racer shock-offset))
-           (if (racer-on-ground?)
-               (* (-> self control dynam gravity-length) (-> *display* seconds-per-frame) f30-0)
-               0.0
-               )
-           )
+      (fill-cache-integrate-and-collide!
+        (-> self control)
+        (-> self control transv)
+        (-> self control root-prim collide-with)
         )
+      (+! (-> self racer shock-offsetv) (* (- (-> gp-0 y) (-> self control transv y)) f30-0))
+      (+! (-> self racer shock-offsetv)
+          (+ (* -20.0 (-> *display* seconds-per-frame) (-> self racer shock-offset))
+             (if (racer-on-ground?)
+                 (* (-> self control dynam gravity-length) (-> *display* seconds-per-frame) f30-0)
+                 0.0
+                 )
+             )
+          )
       )
-    (if (and
-            (or
-              (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 60)
-              (< (-> self racer shock-offset) 0.0)
-              )
-            (!= (-> self control unknown-surface00 mode) 'air)
-            )
+    (if (and (or (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 60)
+                 (< (-> self racer shock-offset) 0.0)
+                 )
+             (!= (-> self control unknown-surface00 mode) 'air)
+             )
         (+! (-> self racer shock-offset) (* (-> self racer shock-offsetv) (-> *display* seconds-per-frame)))
         )
     (set! (-> self racer shock-offset)
@@ -466,11 +460,10 @@
       )
     (deg-diff (vector-y-angle gp-0) (vector-y-angle (-> self control transv)))
     (let ((f30-2 (vector-xz-length gp-0)))
-      (when (and
-              (logtest? (-> self control status) 8)
-              (< 20480.0 f30-2)
-              (and (< (fabs (-> self racer mod-x)) 0.5) (!= (-> self next-state name) 'target-racing-smack))
-              )
+      (when (and (logtest? (-> self control status) 8)
+                 (< 20480.0 f30-2)
+                 (and (< (fabs (-> self racer mod-x)) 0.5) (!= (-> self next-state name) 'target-racing-smack))
+                 )
         (let ((s5-3 (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control unknown-vector70))))
           (vector-normalize! s5-3 1.0)
           (let ((gp-1 (vector-reflect-flat! (new 'stack-no-clear 'vector) gp-0 s5-3)))
@@ -530,13 +523,11 @@
   (quaternion-copy! (-> self control quat) (-> self control unknown-quaternion00))
   (set-twist! (-> self racer front-blade) (the-as float #f) (- (-> self racer front-rot)) (the-as float #f))
   (set-twist! (-> self racer bottom-blade) (the-as float #f) (the-as float #f) (- (-> self racer bottom-rot)))
-  (if (and
-          (= *cheat-mode* 'debug)
-          (and
-            (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-            (not *pause-lock*)
-            )
-          )
+  (if (and (= *cheat-mode* 'debug)
+           (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
+                (not *pause-lock*)
+                )
+           )
       (vector-reset! (-> self control transv))
       )
   0
@@ -550,8 +541,7 @@
                                               )
         )
   (let ((f0-2
-          (if (or
-                  (and (logtest? (-> self control status) 8) (zero? (logand (-> self control status) 1)))
+          (if (or (and (logtest? (-> self control status) 8) (zero? (logand (-> self control status) 1)))
                   (logtest? (-> self state-flags) #x8000)
                   )
               0.0
@@ -591,11 +581,11 @@
     (let ((f0-6
             (+ (* 2.0 f0-1)
                (if (< 4096.0
-                        (vector-dot
-                          (-> self control dynam gravity-normal)
-                          (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
-                          )
+                      (vector-dot
+                        (-> self control dynam gravity-normal)
+                        (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control shadow-pos))
                         )
+                      )
                    0.7
                    0.0
                    )
@@ -645,10 +635,9 @@
        (send-event-function self a1-6)
        )
      )
-    ((and
-       (>= (- (-> *display* base-frame-counter) (-> self racer unstuck-time)) 900)
-       (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer heat-sound-time))) 300)
-       )
+    ((and (>= (- (-> *display* base-frame-counter) (-> self racer unstuck-time)) 900)
+          (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer heat-sound-time))) 300)
+          )
      (set! (-> self racer heat-sound-time) (the-as uint (-> *display* base-frame-counter)))
      (sound-play-by-name (static-sound-name "warning") (new-sound-id) 1024 0 0 1 #t)
      )
@@ -758,23 +747,21 @@
                ((= v1-61 (pat-material hotcoals))
                 (-> *part-id-table* 2214)
                 )
-               ((or
-                  (= v1-61 (pat-material pcmetal))
-                  (= v1-61 (pat-material metal))
-                  (= v1-61 (pat-material tube))
-                  (= v1-61 (pat-material rotate))
-                  )
+               ((or (= v1-61 (pat-material pcmetal))
+                    (= v1-61 (pat-material metal))
+                    (= v1-61 (pat-material tube))
+                    (= v1-61 (pat-material rotate))
+                    )
                 (-> *part-id-table* 2215)
                 )
                ((= v1-61 (pat-material grass))
                 (-> *part-id-table* 2207)
                 )
-               ((or
-                  (= v1-61 (pat-material dirt))
-                  (= v1-61 (pat-material sand))
-                  (= v1-61 (pat-material straw))
-                  (= v1-61 (pat-material gravel))
-                  )
+               ((or (= v1-61 (pat-material dirt))
+                    (= v1-61 (pat-material sand))
+                    (= v1-61 (pat-material straw))
+                    (= v1-61 (pat-material gravel))
+                    )
                 (-> *part-id-table* 2216)
                 )
                ((or (= v1-61 (pat-material wood)) (= v1-61 (pat-material crwood)))
@@ -842,15 +829,13 @@
           )
       )
     )
-  (when (and
-          (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0))
-          (logtest?
-            (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-            (pad-buttons circle square)
-            )
-          (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) 75)
-          (zero? (logand (-> self state-flags) #x8008))
-          )
+  (when (and (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0))
+             (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
+                       (pad-buttons circle square)
+                       )
+             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) 75)
+             (zero? (logand (-> self state-flags) #x8008))
+             )
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
           (s5-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4)))
           )
@@ -954,13 +939,12 @@
         (set! (-> self racer boost-curve) 0.0)
         )
     )
-  (when (or
-          (zero?
-            (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+  (when (or (zero?
+              (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+              )
+            (< (-> self control unknown-float01) 4096.0)
+            (= (-> self racer boost-level) 0.0)
             )
-          (< (-> self control unknown-float01) 4096.0)
-          (= (-> self racer boost-level) 0.0)
-          )
     (when (nonzero? (-> self racer boost-sound-id))
       (let ((v1-241 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
         (set! (-> v1-241 command) (sound-command set-param))
@@ -1035,15 +1019,13 @@
       #t
       )
     )
-  (when (and
-          (< (-> self racer heat) (-> *RACER-bank* heat-max))
-          (and
-            (< (* 0.8 (-> *RACER-bank* heat-max)) (-> self racer heat))
-            (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer heat-sound-time)))
-                (the int (* 3000.0 (- 1.0 (/ (-> self racer heat) (-> *RACER-bank* heat-max)))))
-                )
-            )
-          )
+  (when (and (< (-> self racer heat) (-> *RACER-bank* heat-max))
+             (and (< (* 0.8 (-> *RACER-bank* heat-max)) (-> self racer heat))
+                  (>= (- (-> *display* base-frame-counter) (the-as int (-> self racer heat-sound-time)))
+                      (the int (* 3000.0 (- 1.0 (/ (-> self racer heat) (-> *RACER-bank* heat-max)))))
+                      )
+                  )
+             )
     (set! (-> self racer heat-sound-time) (the-as uint (-> *display* base-frame-counter)))
     (sound-play-by-name (static-sound-name "warning") (new-sound-id) 1024 0 0 1 #t)
     )
@@ -1083,26 +1065,24 @@
     (countdown (s5-0 gp-0)
       (set! (-> self control unknown-int40) s5-0)
       (set! (-> self racer turn-anim-targ) (fmax -16.0 (fmin 16.0 (-> self racer turn-anim-targ))))
-      (or
-        (not (>= (* (-> self racer turn-anim-targ) (-> self racer turn-anim-frame)) 0.0))
-        (< (fabs (-> self racer turn-anim-frame)) (fabs (-> self racer turn-anim-targ)))
-        )
-      (+!
-        (-> self racer turn-anim-vel)
-        (* (- (-> self racer turn-anim-targ) (-> self racer turn-anim-frame))
-           (lerp-scale
-             20.0
-             (if (< (fabs (-> self racer turn-anim-frame)) (fabs (-> self racer turn-anim-targ)))
-                 30.0
-                 60.0
-                 )
-             (-> self control unknown-float01)
-             0.0
-             (* 0.3 (-> self racer transv-max))
+      (or (not (>= (* (-> self racer turn-anim-targ) (-> self racer turn-anim-frame)) 0.0))
+          (< (fabs (-> self racer turn-anim-frame)) (fabs (-> self racer turn-anim-targ)))
+          )
+      (+! (-> self racer turn-anim-vel)
+          (* (- (-> self racer turn-anim-targ) (-> self racer turn-anim-frame))
+             (lerp-scale
+               20.0
+               (if (< (fabs (-> self racer turn-anim-frame)) (fabs (-> self racer turn-anim-targ)))
+                   30.0
+                   60.0
+                   )
+               (-> self control unknown-float01)
+               0.0
+               (* 0.3 (-> self racer transv-max))
+               )
+             (-> *display* seconds-per-frame)
              )
-           (-> *display* seconds-per-frame)
-           )
-        )
+          )
       (set! (-> self racer turn-anim-vel)
             (fmax
               -100.0
@@ -1124,15 +1104,14 @@
          (set! (-> self racer turn-anim-vel) 0.0)
          )
         )
-      (+!
-        (-> self racer tail-anim-vel)
-        (* -50.0
-           (-> *display* seconds-per-frame)
-           (- (-> self racer tail-anim-frame)
-              (* -0.0091552725 (- (-> self racer change-roty) (-> self racer change-roty-old)))
-              )
-           )
-        )
+      (+! (-> self racer tail-anim-vel)
+          (* -50.0
+             (-> *display* seconds-per-frame)
+             (- (-> self racer tail-anim-frame)
+                (* -0.0091552725 (- (-> self racer change-roty) (-> self racer change-roty-old)))
+                )
+             )
+          )
       (set! (-> self racer tail-anim-vel) (fmax -100.0 (fmin 100.0 (* 0.8 (-> self racer tail-anim-vel)))))
       (+! (-> self racer tail-anim-frame) (* (-> self racer tail-anim-vel) (-> *display* seconds-per-frame)))
       (set! (-> self racer tail-anim-frame) (fmax -20.0 (fmin 20.0 (-> self racer tail-anim-frame))))
@@ -1144,10 +1123,9 @@
          (set! (-> self racer tail-anim-vel) 0.0)
          )
         )
-      (+!
-        (-> self racer rudd-anim-vel)
-        (* 40.0 (-> *display* seconds-per-frame) (- (-> self racer tail-anim-frame) (-> self racer rudd-anim-frame)))
-        )
+      (+! (-> self racer rudd-anim-vel)
+          (* 40.0 (-> *display* seconds-per-frame) (- (-> self racer tail-anim-frame) (-> self racer rudd-anim-frame)))
+          )
       (set! (-> self racer rudd-anim-vel) (fmax -100.0 (fmin 100.0 (* 0.96 (-> self racer rudd-anim-vel)))))
       (+! (-> self racer rudd-anim-frame) (* (-> self racer rudd-anim-vel) (-> *display* seconds-per-frame)))
       (set! (-> self racer rudd-anim-frame) (fmax -20.0 (fmin 20.0 (-> self racer rudd-anim-frame))))
@@ -1388,21 +1366,21 @@
                     (cond
                       ((zero? v1-17)
                        (- (fmax
-                             (analog-input
-                               (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 8))
-                               0.0
-                               32.0
-                               255.0
-                               1.0
-                               )
-                             (analog-input
-                               (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 9))
-                               0.0
-                               32.0
-                               255.0
-                               1.0
-                               )
-                             )
+                            (analog-input
+                              (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 8))
+                              0.0
+                              32.0
+                              255.0
+                              1.0
+                              )
+                            (analog-input
+                              (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 9))
+                              0.0
+                              32.0
+                              255.0
+                              1.0
+                              )
+                            )
                           )
                        )
                       ((= v1-17 1)
@@ -1446,15 +1424,15 @@
                    )
                  (f1-3 (* -0.8 (-> self racer rotv y)))
                  (f0-33 (+ (cond
-                              ((< (* f1-3 f26-3) 0.0)
-                               0.0
-                               )
-                              (else
-                                (let ((f2-3 (+ 910.2222 (fabs f1-3))))
-                                  (fmax (fmin f26-3 f2-3) (- f2-3))
-                                  )
-                                )
+                             ((< (* f1-3 f26-3) 0.0)
+                              0.0
                               )
+                             (else
+                               (let ((f2-3 (+ 910.2222 (fabs f1-3))))
+                                 (fmax (fmin f26-3 f2-3) (- f2-3))
+                                 )
+                               )
+                             )
                            (cond
                              ((< (* f1-3 f0-29) 0.0)
                               0.0
@@ -1557,10 +1535,9 @@
               (cond
                 ((>= f0-77 -32768.0)
                  (cond
-                   ((or
-                      (= (-> self next-state name) 'target-racing-jump)
-                      (and (= (-> self next-state name) 'target-racing-bounce) (= (-> self racer bounce) 1))
-                      )
+                   ((or (= (-> self next-state name) 'target-racing-jump)
+                        (and (= (-> self next-state name) 'target-racing-bounce) (= (-> self racer bounce) 1))
+                        )
                     (set! (-> self racer speed-rotx) 0.5)
                     (when (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 30)
                       (set! (-> self racer hill-rotx)
@@ -1603,29 +1580,25 @@
                     )
                   )
             (cond
-              ((and
-                 (logtest? (-> self control status) 8)
-                 (and
-                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 30)
-                   (or (-> self racer stick-lock) (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) 4096.0))
-                   (not
-                     (and
-                       (= *cheat-mode* 'debug)
-                       (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                       )
-                     )
-                   )
-                 )
-               (cond
-                 ((and
-                    (< 0.0
-                       (vector-dot
-                         (-> self control dynam gravity-normal)
-                         (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control unknown-vector54))
+              ((and (logtest? (-> self control status) 8)
+                    (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 30)
+                         (or (-> self racer stick-lock) (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) 4096.0))
+                         (not
+                           (and (= *cheat-mode* 'debug)
+                                (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
+                                )
+                           )
                          )
-                       )
-                    (logtest? (-> self control root-prim prim-core action) #x8000)
                     )
+               (cond
+                 ((and (< 0.0
+                          (vector-dot
+                            (-> self control dynam gravity-normal)
+                            (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control last-known-safe-ground))
+                            )
+                          )
+                       (logtest? (-> self control root-prim prim-core action) (collide-action ca-15))
+                       )
                   (+! (-> self racer stuck-count) 1)
                   (go target-racing-smack 122880.0 #f)
                   )

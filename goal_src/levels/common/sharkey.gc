@@ -7,35 +7,31 @@
 
 ;; DECOMP BEGINS
 
-(set! (-> *part-group-id-table* 106) (new 'static 'sparticle-launch-group
-                                       :length 16
-                                       :duration #x78
-                                       :linger-duration #x30c
-                                       :flags (sp-group-flag use-local-clock)
-                                       :name "group-sharkey-splash"
-                                       :launcher
-                                       (new 'static 'inline-array sparticle-group-item 16
-                                         (sp-item 124 :flags (is-3d) :period 900 :length 63)
-                                         (sp-item 125 :period 900 :length 15)
-                                         (sp-item 126 :flags (is-3d) :period 900 :length 15)
-                                         (sp-item 127 :flags (is-3d) :period 900 :length 15)
-                                         (sp-item 128 :period 900 :length 10 :binding 129)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         )
-                                       :bounds
-                                       (new 'static 'sphere :y -49152.0 :w 57344.0)
-                                       )
-      )
+(defpartgroup group-sharkey-splash
+  :id 106
+  :duration 120
+  :linger-duration 780
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 -12 0 14)
+  :parts
+  ((sp-item 124 :flags (is-3d) :period 900 :length 63)
+    (sp-item 125 :period 900 :length 15)
+    (sp-item 126 :flags (is-3d) :period 900 :length 15)
+    (sp-item 127 :flags (is-3d) :period 900 :length 15)
+    (sp-item 128 :period 900 :length 10 :binding 129)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    )
+  )
 
 (deftype sharkey (nav-enemy)
   ((dir               vector   :inline :offset-assert 400)
@@ -481,7 +477,15 @@ nav-enemy-default-event-handler
                 )
               (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
               (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
-              (dummy-59 (-> self collide-info) (-> self collide-info transv) (the-as uint 1) 8192.0 #t #f #f)
+              (integrate-for-enemy-with-move-to-ground!
+                (-> self collide-info)
+                (-> self collide-info transv)
+                (collide-kind background)
+                8192.0
+                #t
+                #f
+                #f
+                )
               (set! (-> self collide-info trans y) f26-0)
               (suspend)
               (let ((a0-27 (-> self skel root-channel 0)))

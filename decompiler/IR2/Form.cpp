@@ -7,6 +7,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/data_decompile.h"
+#include "decompiler/util/sparticle_decompile.h"
 #include "common/util/print_float.h"
 
 namespace decompiler {
@@ -2985,21 +2986,18 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
 
   std::vector<goos::Object> lod_forms;
   for (const auto& e : m_info.lods) {
-    auto f_dist = pretty_print::to_symbol(fmt::format(
-        "(meters {})", float_to_string(e.lod_dist->to_form(env).as_float() / METER_LENGTH, false)));
+    auto f_dist = pretty_print::to_symbol(
+        fmt::format("(meters {})", meters_to_string(e.lod_dist->to_form(env).as_float())));
     lod_forms.push_back(pretty_print::build_list(e.mgeo->to_form(env), f_dist));
   }
   forms.push_back(pretty_print::build_list(lod_forms));
 
+  forms.push_back(pretty_print::to_symbol(fmt::format(
+      ":bounds (static-spherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
+      meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
+      meters_to_string(m_static_info.bounds.w()))));
   forms.push_back(pretty_print::to_symbol(
-      fmt::format(":bounds (static-spherem {} {} {} {})",
-                  float_to_string(m_static_info.bounds.x() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.y() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.z() / METER_LENGTH, false),
-                  float_to_string(m_static_info.bounds.w() / METER_LENGTH, false))));
-  forms.push_back(pretty_print::to_symbol(
-      fmt::format(":longest-edge (meters {})",
-                  float_to_string(m_static_info.longest_edge / METER_LENGTH, false))));
+      fmt::format(":longest-edge (meters {})", meters_to_string(m_static_info.longest_edge))));
 
   if (m_static_info.shadow != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));
@@ -3013,6 +3011,149 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   }
   if (m_static_info.version != 6) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
+// DefpartgroupElement
+////////////////////////////////
+
+DefpartgroupElement::DefpartgroupElement(const StaticInfo& data, int group_id)
+    : m_static_info(data), m_group_id(group_id) {}
+
+void DefpartgroupElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void DefpartgroupElement::apply_form(const std::function<void(Form*)>& f) {}
+void DefpartgroupElement::collect_vars(RegAccessSet& vars, bool recursive) const {}
+void DefpartgroupElement::get_modified_regs(RegSet& regs) const {}
+
+goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol(fmt::format("defpartgroup {}", name())));
+  forms.push_back(pretty_print::to_symbol(fmt::format(":id {}", m_group_id)));
+  if (m_static_info.duration != 3000) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":duration {}", m_static_info.duration)));
+  }
+  if (m_static_info.linger != 1500) {
+    forms.push_back(
+        pretty_print::to_symbol(fmt::format(":linger-duration {}", m_static_info.linger)));
+  }
+  if (m_static_info.flags != 0) {
+    auto things = decompile_bitfield_enum_from_int(TypeSpec("sp-group-flag"), env.dts->ts,
+                                                   m_static_info.flags);
+    std::string result = ":flags (";
+    for (auto& thing : things) {
+      result += thing;
+      result += ' ';
+    }
+    result.pop_back();
+    result += ')';
+    forms.push_back(pretty_print::to_symbol(result));
+  }
+  forms.push_back(pretty_print::to_symbol(fmt::format(
+      ":bounds (static-bspherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
+      meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
+      meters_to_string(m_static_info.bounds.w()))));
+
+  std::vector<goos::Object> item_forms;
+  for (const auto& e : m_static_info.elts) {
+    s32 launcher = e.part_id;
+    u16 flags = e.flags;
+    u16 period = e.period;
+    u16 length = e.length;
+    u16 offset = e.offset;
+    u32 hour_mask = e.hour_mask;
+    u32 binding = e.binding;
+
+    std::string result =
+        fmt::format("(sp-item {}", launcher);  // use decimal, so it matches array idx
+
+    if (e.fade != 0.0) {
+      result += fmt::format(" :fade-after (meters {})", meters_to_string(e.fade));
+    }
+
+    if (e.falloff != 0.0) {
+      result += fmt::format(" :falloff-to (meters {})", meters_to_string(e.falloff));
+    }
+
+    if (flags) {
+      auto things =
+          decompile_bitfield_enum_from_int(TypeSpec("sp-group-item-flag"), env.dts->ts, flags);
+      result += " :flags (";
+      for (auto& thing : things) {
+        result += thing;
+        result += ' ';
+      }
+      result.pop_back();
+      result += ')';
+    }
+
+    if (period) {
+      result += fmt::format(" :period {}", period);
+    }
+
+    if (length) {
+      result += fmt::format(" :length {}", length);
+    }
+
+    if (offset) {
+      result += fmt::format(" :offset {}", offset);
+    }
+
+    if (hour_mask) {
+      result += fmt::format(" :hour-mask #b{:b}", hour_mask);
+    }
+
+    if (binding) {
+      result += fmt::format(" :binding {}", binding);
+    }
+
+    result += ')';
+
+    item_forms.push_back(pretty_print::to_symbol(result));
+  }
+  if (!item_forms.empty()) {
+    forms.push_back(pretty_print::to_symbol(":parts"));
+    forms.push_back(pretty_print::build_list(item_forms));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
+// DefpartElement
+////////////////////////////////
+
+DefpartElement::DefpartElement(const StaticInfo& data, int id) : m_static_info(data), m_id(id) {}
+
+void DefpartElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void DefpartElement::apply_form(const std::function<void(Form*)>& f) {}
+void DefpartElement::collect_vars(RegAccessSet& vars, bool recursive) const {}
+void DefpartElement::get_modified_regs(RegSet& regs) const {}
+
+goos::Object DefpartElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("defpart"));
+  forms.push_back(pretty_print::to_symbol(fmt::format("{}", m_id)));
+
+  std::vector<goos::Object> item_forms;
+  for (const auto& e : m_static_info.fields) {
+    if (e.field_id == 67) {
+      // sp-end
+      break;
+    }
+    item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts));
+  }
+  if (!item_forms.empty()) {
+    forms.push_back(pretty_print::to_symbol(":init-specs"));
+    forms.push_back(pretty_print::build_list(item_forms));
   }
 
   return pretty_print::build_list(forms);

@@ -85,6 +85,12 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           printf("IOP language: %s\n", gLanguage);  // added.
           break;
         }
+        case SoundCommand::LOAD_MUSIC:
+          printf("ignoring load music\n");
+          break;
+        case SoundCommand::UNLOAD_MUSIC:
+          printf("ignoring unload music\n");
+          break;
         default:
           printf("Unhandled RPC Loader command %d\n", (int)cmd->command);
           assert(false);

@@ -219,8 +219,10 @@
 	    )
 	)
 
-(defsmacro inc! (x) `(set! ,x (+ ,x 1)))
-(defsmacro dec! (x) `(set! ,x (- ,x 1)))
+(defsmacro 1+ (x) `(+ ,x 1))
+(defsmacro 1- (x) `(- ,x 1))
+(defsmacro inc! (x) `(set! ,x (1+ ,x)))
+(defsmacro dec! (x) `(set! ,x (1- ,x)))
 (defsmacro +! (place arg) `(set! ,place (+ ,place ,arg)))
 (defsmacro -! (place arg) `(set! ,place (- ,place ,arg)))
 

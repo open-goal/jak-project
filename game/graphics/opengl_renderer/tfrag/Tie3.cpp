@@ -429,7 +429,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
+    render_state->camera_planes[i] = m_pc_port_data.planes[i];
   }
+  render_state->has_camera_planes = true;
 
   if (false) {
     //    for (int i = 0; i < 8; i++) {
@@ -639,7 +641,8 @@ void Tie3::render_tree(int idx,
   }
 
   Timer draw_timer;
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, idx_buffer_ptr * sizeof(u32), tree.index_list.data());
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_ptr * sizeof(u32), tree.index_list.data(),
+               GL_STREAM_DRAW);
 
   for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
     const auto& draw = tree.draws->operator[](draw_idx);

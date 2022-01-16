@@ -51,8 +51,7 @@ void main() {
     transformed.xy -= (2048.);
 
     // correct z scale
-    transformed.z /= (16777216);
-    transformed.z *= 2;
+    transformed.z /= (8388608);
     transformed.z -= 1;
 
     // correct xy scale

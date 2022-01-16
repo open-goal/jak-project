@@ -111,7 +111,65 @@
   )
 
 ;; definition for function target-falling-anim-trans
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Return type mismatch int vs none.
+(defbehavior target-falling-anim-trans target ()
+  (let ((v1-2 (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+              )
+        )
+    (b!
+      (or (= v1-2 (-> self draw art-group data 38)) (= v1-2 (-> self draw art-group data 35)))
+      cfg-7
+      :delay
+      (empty-form)
+      )
+    )
+  (ja-channel-push! 1 99)
+  (let ((v1-8 (-> self skel root-channel 0)))
+    (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 38)))
+    )
+  (b! #t cfg-23 :delay (nop!))
+  (label cfg-7)
+  (cond
+    ((and (logtest? (-> self control status) 1) (not (= (if (> (-> self skel active-channels) 0)
+                                                            (-> self skel root-channel 0 frame-group)
+                                                            )
+                                                        (-> self draw art-group data 35)
+                                                        )
+                                                     )
+          )
+     (ja-channel-push! 1 6)
+     (let ((v1-21 (-> self skel root-channel 0)))
+       (set! (-> v1-21 frame-group) (the-as art-joint-anim (-> self draw art-group data 35)))
+       )
+     )
+    ((= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (-> self draw art-group data 38)
+        )
+     (let ((a0-23 (-> self skel root-channel 0)))
+       (set! (-> a0-23 param 0) (-> (new 'static 'array float 1 1.0) 0))
+       (joint-control-channel-group-eval! a0-23 (the-as art-joint-anim #f) num-func-loop!)
+       )
+     )
+    ((= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (-> self draw art-group data 35)
+        )
+     (let ((a0-28 (-> self skel root-channel 0)))
+       (set! (-> a0-28 param 0) (the float (+ (-> a0-28 frame-group data 0 length) -1)))
+       (set! (-> a0-28 param 1) (-> (new 'static 'array float 1 1.0) 0))
+       (joint-control-channel-group-eval! a0-28 (the-as art-joint-anim #f) num-func-seek!)
+       )
+     )
+    )
+  (label cfg-23)
+  0
+  (none)
+  )
 
 ;; definition for function target-falling-trans
 ;; INFO: Return type mismatch int vs none.
@@ -3204,7 +3262,7 @@
             (-> *TARGET-bank* smack-surface-dist)
             (-> *TARGET-bank* smack-surface-height)
             (the-as process #f)
-            (the-as (state target) target-hit)
+            target-hit
             )
           )
       (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
@@ -4275,7 +4333,7 @@
                   (-> *TARGET-bank* smack-surface-dist)
                   (-> *TARGET-bank* smack-surface-height)
                   (the-as process #f)
-                  (the-as (state target) target-hit)
+                  target-hit
                   )
                 )
             (if (zero? s5-0)
@@ -4379,7 +4437,7 @@
           (-> *TARGET-bank* smack-surface-dist)
           (-> *TARGET-bank* smack-surface-height)
           (the-as process #f)
-          (the-as (state target) target-hit)
+          target-hit
           )
         )
     (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)

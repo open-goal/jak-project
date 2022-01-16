@@ -1253,6 +1253,21 @@
 (define-extern collectable type)
 (define-extern ecovalve type)
 (define-extern crate type)
+
+(defmacro heap-size-hack (info entity-type)
+  `(cond
+     ((type-type? ,entity-type collectable)
+      #x1000
+      )
+     (else
+       (if ,info
+           (-> ,info heap-size)
+           #x4000
+           )
+       )
+     )
+  )
+
 (defmethod birth! entity-actor ((obj entity-actor))
   "Create a process for this entity and start it."
   
@@ -1272,10 +1287,7 @@
 
   (let* ((entity-type (-> obj etype))
          (info (entity-info-lookup entity-type))
-         (entity-process (get-process *default-dead-pool* entity-type (if info
-                                                                          (-> info heap-size)
-                                                                          #x4000
-                                                                          )
+         (entity-process (get-process *default-dead-pool* entity-type (heap-size-hack info entity-type) ;; hack, modified this.
                                       )
                          )
          )

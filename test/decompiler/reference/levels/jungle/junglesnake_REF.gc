@@ -11,47 +11,36 @@
   )
 
 ;; failed to figure out what this is:
-(set! (-> *part-group-id-table* 173)
-      (new 'static 'sparticle-launch-group
-        :length 1
-        :duration #xbb8
-        :linger-duration #x5dc
-        :flags (sp-group-flag use-local-clock)
-        :name "group-junglesnake-dropping-down"
-        :launcher
-        (new 'static 'inline-array sparticle-group-item 1 (sp-item 799 :period 300 :length 150))
-        :bounds
-        (new 'static 'sphere :y -49152.0 :w 57344.0)
-        )
-      )
+(defpartgroup group-junglesnake-dropping-down
+  :id 173
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 -12 0 14)
+  :parts
+  ((sp-item 799 :period 300 :length 150))
+  )
 
 ;; failed to figure out what this is:
-(set! (-> *part-id-table* 799) (new 'static 'sparticle-launcher
-                                 :init-specs
-                                 (new 'static 'inline-array sp-field-init-spec 20
-                                   (sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
-                                   (sp-flt spt-num 1.0)
-                                   (sp-rnd-flt spt-x (meters -9.0) (meters 18.0) 1.0)
-                                   (sp-flt spt-y (meters -6.0))
-                                   (sp-rnd-flt spt-z -36864.0 73728.0 1.0)
-                                   (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.5) 1.0)
-                                   (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                   (sp-copy-from-other spt-scale-y -4)
-                                   (sp-rnd-flt spt-r 32.0 40.0 1.0)
-                                   (sp-rnd-flt spt-g 32.0 40.0 1.0)
-                                   (sp-rnd-flt spt-b 32.0 40.0 1.0)
-                                   (sp-flt spt-a 128.0)
-                                   (sp-rnd-flt spt-vel-y (meters 0.0) (meters -0.04) 1.0)
-                                   (sp-rnd-flt spt-rotvel-z (degrees -0.3) (degrees 0.6) 1.0)
-                                   (sp-rnd-flt spt-accel-y -6.826667 -0.68266666 1.0)
-                                   (sp-int spt-timer 390)
-                                   (sp-cpuinfo-flags bit2)
-                                   (sp-flt spt-userdata 0.0)
-                                   (sp-func spt-func 'check-water-level-drop)
-                                   (sp-end)
-                                   )
-                                 )
-      )
+(defpart 799 :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+                           (sp-flt spt-num 1.0)
+                           (sp-rnd-flt spt-x (meters -9) (meters 18) 1.0)
+                           (sp-flt spt-y (meters -6))
+                           (sp-rnd-flt spt-z (meters -9) (meters 18) 1.0)
+                           (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.5) 1.0)
+                           (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+                           (sp-copy-from-other spt-scale-y -4)
+                           (sp-rnd-flt spt-r 32.0 40.0 1.0)
+                           (sp-rnd-flt spt-g 32.0 40.0 1.0)
+                           (sp-rnd-flt spt-b 32.0 40.0 1.0)
+                           (sp-flt spt-a 128.0)
+                           (sp-rnd-flt spt-vel-y (meters 0) (meters -0.04) 1.0)
+                           (sp-rnd-flt spt-rotvel-z (degrees -0.3) (degrees 0.6) 1.0)
+                           (sp-rnd-flt spt-accel-y -6.826667 -0.68266666 1.0)
+                           (sp-int spt-timer 390)
+                           (sp-cpuinfo-flags bit2)
+                           (sp-flt spt-userdata 0.0)
+                           (sp-func spt-func 'check-water-level-drop)
+                           )
+             )
 
 ;; definition of type junglesnake-twist-joint
 (deftype junglesnake-twist-joint (structure)
@@ -178,7 +167,7 @@
             )
           )
          (else
-           (dummy-45 (-> self root-override))
+           (do-push-aways! (-> self root-override))
            (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
              (set! (-> a1-3 from) self)
              (set! (-> a1-3 num-params) 2)
@@ -707,7 +696,7 @@ junglesnake-default-event-handler
                  )
             (set-vector! (-> self root-override scale) 1.0 (- 1.0 f0-7) 1.0 1.0)
             (vector-lerp! s4-0 gp-0 s5-0 f0-7)
-            (TODO-RENAME-30 (-> self root-override) s4-0)
+            (move-to-point! (-> self root-override) s4-0)
             )
           (suspend)
           (let ((a0-10 (-> self skel root-channel 0)))
@@ -717,7 +706,7 @@ junglesnake-default-event-handler
             )
           )
         )
-      (TODO-RENAME-30 (-> self root-override) gp-0)
+      (move-to-point! (-> self root-override) gp-0)
       )
     (set-vector! (-> self root-override scale) 1.0 1.0 1.0 1.0)
     (go junglesnake-sleeping)
@@ -784,7 +773,7 @@ junglesnake-default-event-handler
     (let ((v1-4 (-> (the-as collide-shape-prim-group (-> obj root-override root-prim)) prims 0)))
       (logior! (-> v1-4 prim-core action) (collide-action solid))
       )
-    (dummy-45 (-> obj root-override))
+    (do-push-aways! (-> obj root-override))
     )
   0
   (none)

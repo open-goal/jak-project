@@ -296,6 +296,11 @@ class Compiler {
                            u8 sa,
                            Env* env,
                            IntegerMathKind kind);
+  Val* compile_floating_point_division(const goos::Object& form,
+                                       const TypeSpec& result_type,
+                                       RegVal* a,
+                                       RegVal* b,
+                                       Env* env);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,

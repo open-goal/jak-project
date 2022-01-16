@@ -1962,7 +1962,10 @@
        (when *debug-segment*
          (let ((a1-22 (new 'stack-no-clear 'vector)))
            (vector-! a1-22 (-> self good-point) (-> self string-trans))
-           (cam-collision-record-save (-> self string-trans) a1-22 -3 'jump self)
+           (when (nonzero? cam-collision-record-save)
+             ;; HACK
+             (cam-collision-record-save (-> self string-trans) a1-22 -3 'jump self)
+             )
            )
          )
        (set! (-> self desired-pos quad) (-> self good-point quad))
@@ -2697,7 +2700,9 @@
 
 (defbehavior cam-string-code camera-slave ()
   (if *debug-segment*
-      (cam-debug-reset-coll-tri)
+      (when (nonzero? cam-debug-reset-coll-tri) ;; hack
+        (cam-debug-reset-coll-tri)
+        )
       )
   (cam-string-follow)
   (if (logtest? (-> self options) 512)

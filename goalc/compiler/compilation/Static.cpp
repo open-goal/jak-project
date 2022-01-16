@@ -566,6 +566,24 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                             form.as_pair()->car.as_symbol()->name == "lambda")) {
       return compile_static(form, env);
     }
+    if (form.as_pair()->car.is_symbol() && form.as_pair()->car.as_symbol()->name == "unquote") {
+      // ,(macro-name args...) is actually (unquote (macro-name args...))
+      // decompile the arg as macro if possible.
+      auto& unq_arg_pair = form.as_pair()->cdr;
+      if (unq_arg_pair.is_empty_list()) {
+        throw_compiler_error(form, "Cannot unquote empty list");
+      }
+      auto& unq_arg = unq_arg_pair.as_pair()->car;
+      if (!unq_arg.is_pair() || unq_arg.is_empty_list()) {
+        throw_compiler_error(form, "Cannot unquote non-list");
+      }
+      auto& unq_arg_call = unq_arg.as_pair()->car;
+      goos::Object macro_obj;
+      if (!try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
+        throw_compiler_error(form, "Macro {} not found", unq_arg.as_pair()->car.print());
+      }
+      return compile_static_no_eval_for_pairs(form.as_pair()->cdr.as_pair()->car, env, seg, true);
+    }
     // try as a macro
     if (can_macro && form.as_pair()->car.is_symbol()) {
       goos::Object macro_obj;
@@ -574,8 +592,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                                 false);
       }
     }
-    auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env, seg,
-                                                form.as_pair()->car.is_pair());
+    auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env, seg, can_macro);
     auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env, seg, false);
     auto pair_structure = std::make_unique<StaticPair>(car, cdr, seg);
     auto result =
@@ -665,7 +682,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
           throw_compiler_error(form, "The form {} is an invalid quoted form.", form.print());
         }
         if (second.is_pair() || second.is_empty_list()) {
-          return compile_static_no_eval_for_pairs(second, env, segment, true);
+          return compile_static_no_eval_for_pairs(second, env, segment, false);
         } else {
           throw_compiler_error(form, "Could not evaluate the quoted form {} at compile time.",
                                second.print());
