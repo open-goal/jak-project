@@ -26,7 +26,6 @@ files_with_modifications = [
   "viewer",
   "sunken-obs",
   "cam-master",
-  "generic-obs",
   "target-snowball",
   "logic-target",
   "default-menu",
