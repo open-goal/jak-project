@@ -5,10 +5,19 @@
 ;; name in dgo: collide-frag-h
 ;; dgos: GAME, ENGINE
 
+;;;;;;;;;;;;;;;;;
+;; Collide Frag
+;;;;;;;;;;;;;;;;;
+
+;; A collide fragment stores background collide data.
+;; It's a drawable-tree, and it uses the familiar sphere BVH.
+;; The actual "fragments" are in a weird packed format.
+
+;; This doesn't participate in the foreground collide shape system directly.
+
 ; TODO - defined in drawable, but needed in collide-frag
 (define-extern sphere-cull (function vector symbol))
 
-;; definition of type collide-frag-vertex
 (deftype collide-frag-vertex (vector)
   ()
   :method-count-assert 9
@@ -16,7 +25,6 @@
   :flag-assert         #x900000010
   )
 
-;; definition of type collide-frag-mesh
 (deftype collide-frag-mesh (basic)
   ((packed-data     uint32             :offset-assert 4)
    (pat-array       uint32             :offset-assert 8)
@@ -33,7 +41,6 @@
   :flag-assert         #x900000020
   )
 
-;; definition of type collide-fragment
 (deftype collide-fragment (drawable)
   ((mesh collide-frag-mesh :offset   8)
    )
@@ -42,7 +49,6 @@
   :flag-assert         #x1200000020
   )
 
-;; definition of type drawable-inline-array-collide-fragment
 (deftype drawable-inline-array-collide-fragment (drawable-inline-array)
   ((data collide-fragment 1 :inline :offset-assert 32)
    (pad  uint32                     :offset-assert 64)
@@ -52,10 +58,9 @@
   :flag-assert         #x1200000044
   )
 
-;; definition of type drawable-tree-collide-fragment
 (deftype drawable-tree-collide-fragment (drawable-tree)
-  ()
-  :method-count-assert 18
-  :size-assert         #x24
-  :flag-assert         #x1200000024
+  ((data-override drawable-inline-array :offset 32))
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
   )

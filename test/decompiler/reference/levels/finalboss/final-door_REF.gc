@@ -94,15 +94,22 @@
 (defstate idle (final-door)
   :virtual #t
   :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block)) (case arg2
-                                                                                   (('open)
-                                                                                    enter-state
-                                                                                    (go-virtual open)
-                                                                                    )
-                                                                                   )
-            )
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('open)
+       enter-state
+       (go-virtual open)
+       )
+      )
+    )
   :code
-  (behavior () (transform-post) (logior! (-> self mask) (process-mask sleep)) (suspend) 0 (none))
+  (behavior ()
+    (transform-post)
+    (logior! (-> self mask) (process-mask sleep))
+    (suspend)
+    0
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -190,10 +197,10 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 1))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 45056.0 0.0 49152.0)
       (set-root-prim! s4-0 s3-0)
@@ -249,24 +256,21 @@
   (behavior ()
     (ja-post)
     (while #t
-      (if (and
-              (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-              (and
-                (zero? (logand (-> *target* state-flags) 256))
-                (and
-                  (>= (-> *game-info* fuel) 100.0)
-                  (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-                  (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
-                  (send-event
-                    *target*
-                    'change-mode
-                    'final-door
-                    (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-right)))
-                    (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-left)))
+      (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+               (and (zero? (logand (-> *target* state-flags) 256))
+                    (and (>= (-> *game-info* fuel) 100.0)
+                         (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+                         (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
+                         (send-event
+                           *target*
+                           'change-mode
+                           'final-door
+                           (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-right)))
+                           (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-left)))
+                           )
+                         )
                     )
-                  )
-                )
-              )
+               )
           (process-entity-status! self (entity-perm-status complete) #t)
           )
       (suspend)
@@ -401,8 +405,8 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s3-0 (the-as uint 0))))
-      (set! (-> s2-0 prim-core collide-as) (the-as uint 64))
-      (set! (-> s2-0 collide-with) (the-as uint 16))
+      (set! (-> s2-0 prim-core collide-as) (collide-kind powerup))
+      (set! (-> s2-0 collide-with) (collide-kind target))
       (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4915.2)
       (set-root-prim! s3-0 s2-0)
       )
@@ -446,14 +450,17 @@
     (none)
     )
   :trans
-  (behavior () (set-letterbox-frames 5) (none))
+  (behavior ()
+    (set-letterbox-frames 5)
+    (none)
+    )
   :code
   (behavior ((arg0 basic) (arg1 handle))
     (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
     (let ((a0-2 (get-task-control (game-task finalboss-movies))))
       (save-reminder a0-2 (logior (get-reminder a0-2 0) 2) 0)
       )
-    (TODO-RENAME-30 (-> self control) (new 'static 'vector :x 11368946.0 :y 2215900.2 :z -19405602.0 :w 1.0))
+    (move-to-point! (-> self control) (new 'static 'vector :x 11368946.0 :y 2215900.2 :z -19405602.0 :w 1.0))
     (set-quaternion! (-> self control) (the-as quaternion (new 'static 'vector :y -0.8472 :w 0.5312)))
     (rot->dir-targ! (-> self control))
     (transform-post)

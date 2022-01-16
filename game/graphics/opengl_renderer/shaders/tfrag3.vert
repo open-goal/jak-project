@@ -51,8 +51,7 @@ void main() {
     transformed.xy -= (2048.);
 
     // correct z scale
-    transformed.z /= (16777216);
-    transformed.z *= 2;
+    transformed.z /= (8388608);
     transformed.z -= 1;
 
     // correct xy scale
@@ -63,6 +62,8 @@ void main() {
     transformed.xyz *= transformed.w;
 
     gl_Position = transformed;
+    // scissoring area adjust
+    gl_Position.y *= 512.0/448.0;
 
     // time of day lookup
     fragment_color = texelFetch(tex_T1, time_of_day_index, 0);

@@ -1,5 +1,6 @@
 #include "goalc/compiler/Compiler.h"
 #include "common/util/BitUtils.h"
+#include <cfloat>
 
 MathMode Compiler::get_math_mode(const TypeSpec& ts) {
   if (m_ts.tc(m_ts.make_typespec("binteger"), ts)) {
@@ -371,6 +372,61 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
   return get_none();
 }
 
+Val* Compiler::compile_floating_point_division(const goos::Object& form,
+                                               const TypeSpec& result_type,
+                                               RegVal* a,
+                                               RegVal* b,
+                                               Env* env) {
+  constexpr bool use_accurate = true;
+  auto result = env->make_fpr(result_type);
+
+  if (use_accurate) {
+    auto fenv = env->function_env();
+    auto end_label = fenv->alloc_unnamed_label();
+    end_label->func = fenv;
+    end_label->idx = -10;  // placeholder
+
+    auto zero = compile_float(0.0, env, fenv->segment_for_static_data())->to_fpr(form, env);
+    Condition zero_check;
+    zero_check.kind = ConditionKind::EQUAL;
+    zero_check.a = zero;
+    zero_check.b = b;
+    zero_check.is_float = true;
+
+    // check for divide by zero
+    auto branch_ir = std::make_unique<IR_ConditionalBranch>(zero_check, Label());
+    auto branch_ir_ref = branch_ir.get();
+    env->emit(form, std::move(branch_ir));
+
+    // code for not dividing by zero
+    env->emit_ir<IR_RegSet>(form, result, a);
+    env->emit_ir<IR_FloatMath>(form, FloatMathKind::DIV_SS, result, b);
+
+    env->emit_ir<IR_GotoLabel>(form, end_label);
+
+    branch_ir_ref->mark_as_resolved();
+    branch_ir_ref->label.idx = fenv->code().size();
+
+    auto flt_max = compile_integer(0x7f7fffff, env)->to_gpr(form, env);
+    auto mask = compile_integer(0xf0000000, env)->to_gpr(form, env);
+    auto temp_int = env->make_gpr(result_type);
+    env->emit_ir<IR_RegSet>(form, temp_int, a);
+    env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::AND_64, temp_int, mask);
+    env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::XOR_64, flt_max, temp_int);
+    env->emit_ir<IR_RegSet>(form, temp_int, b);
+    env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::AND_64, temp_int, mask);
+    env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::XOR_64, flt_max, temp_int);
+    env->emit_ir<IR_RegSet>(form, result, flt_max);
+
+    end_label->idx = fenv->code().size();
+
+  } else {
+    env->emit_ir<IR_RegSet>(form, result, a);
+    env->emit_ir<IR_FloatMath>(form, FloatMathKind::DIV_SS, result, b);
+  }
+  return result;
+}
+
 Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.size() != 2) {
@@ -427,13 +483,10 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
     }
 
     case MATH_FLOAT: {
-      auto result = env->make_fpr(first_type);
-      env->emit_ir<IR_RegSet>(form, result, first_val->to_fpr(form, env));
-      env->emit_ir<IR_FloatMath>(
-          form, FloatMathKind::DIV_SS, result,
-          to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
-              ->to_fpr(form, env));
-      return result;
+      auto a = first_val->to_fpr(form, env);
+      auto b = to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
+                   ->to_fpr(form, env);
+      return compile_floating_point_division(form, first_type, a, b, env);
     }
 
     case MATH_INVALID:

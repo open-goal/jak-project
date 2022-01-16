@@ -1,0 +1,377 @@
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Unused version of line sphere, touching list test
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; it looks like there's two ways to collide a ray with the background.
+;; the "old version" is slow, but simpler. So let's start with that.
+
+;; The inputs here are an "origin" point, a "line", and a radius.
+;; From this, we build an axis aligned bounding box, then find the collide-frag-meshes that are inside.
+;; It's about the simplest possible implementation, but it's a nice check to see if we really understand what's going on.
+
+(defmacro pabsw-hack (out in)
+  `(let ((temp (new 'stack-no-clear 'array 'int32 4)))
+     (set! (-> (the (pointer uint128) temp)) ,in)
+     (set! (-> temp 0) (abs (-> temp 0)))
+     (set! (-> temp 1) (abs (-> temp 1)))
+     (set! (-> temp 2) (abs (-> temp 2)))
+     (set! (-> temp 3) (abs (-> temp 3)))
+     (set! ,out (-> (the (pointer uint128) temp)))
+     )
+  )
+
+;; This is mostly stolen from collide-cache.gc. It builds the bounding box we'll use for later tests.
+;; The bounding box is stored in *collide-work*.
+(defun setup-collide-for-line-sphere ((origin vector) (line vector) (radius float))
+  (local-vars (a0-2 uint128) (a0-3 uint128) (a0-7 float) (t0-1 uint128) (t0-2 uint128) (zero uint128))
+  (rlet ((acc :class vf) (Q :class vf) (vf0 :class vf) (vf1 :class vf) (vf10 :class vf) (vf11 :class vf) (vf12 :class vf)
+         (vf13 :class vf) (vf14 :class vf) (vf15 :class vf) (vf16 :class vf) (vf17 :class vf) (vf18 :class vf) (vf19 :class vf)
+         (vf2 :class vf) (vf20 :class vf) (vf21 :class vf) (vf22 :class vf) (vf23 :class vf) (vf3 :class vf) (vf4 :class vf)
+         (vf5 :class vf) (vf6 :class vf) (vf7 :class vf) (vf8 :class vf) (vf9 :class vf))
+    (init-vf0-vector)
+    (set! zero (the uint128 0))
+    (let ((v1-0 (new 'static 'vector4w :x #x1000 :y #x1000 :z #x1000)))
+      (.mov vf9 (the uint128 radius))  ;; vf9.x = radius
+      (.lvf vf3 (&-> line quad))       ;; vf3 = line
+      (let ((a0-1 (-> v1-0 quad)))     ;; a0-1 = 0x1000, 
+        (.ftoi.vf vf21 vf3)            ;; vf21 is the line
+        (.lvf vf1 (&-> origin quad))   ;; vf1 is the origin
+        (.mul.vf vf8 vf3 vf3)          ;; 
+        (let ((v1-1 *collide-work*))
+          (.add.vf vf2 vf1 vf3)        ;; vf2 is the endpoint
+          ;;(set! (-> obj ignore-mask) pat-ignore)
+          (.mov t0-1 vf21)             ;; t0-1 is the line
+          (pabsw-hack t0-2 t0-1)       ;; t0-2 is the line, absolute value
+          (.pcgtw a0-2 t0-2 a0-1)
+          (.ppach a0-3 zero a0-2)
+          (let ((a0-4 (shl (the-as int a0-3) 16)))
+            (b! (nonzero? a0-4) cfg-3)
+            )
+          (format 0 "BAD case in setup-collide-for-line-sphere")
+          (b! #t cfg-13 :delay (nop!))
+          
+          (label cfg-3)
+          (.add.y.vf vf8 vf8 vf8 :mask #b1)
+          ;;(set! (-> obj num-tris) 0)
+          (.min.vf vf4 vf1 vf2)
+          ;;(set! (-> obj num-prims) 0)
+          (.max.vf vf5 vf1 vf2)
+          ;;(set! (-> obj collide-with) collide-with)
+          (.sub.x.vf vf10 vf0 vf9 :mask #b111)
+          ;;(set! (-> obj proc) proc)
+          (.add.z.vf vf8 vf8 vf8 :mask #b1)
+          (.sub.x.vf vf4 vf4 vf9 :mask #b111)
+          (.add.x.vf vf5 vf5 vf9 :mask #b111)
+          (.ftoi.vf vf15 vf10)
+          (.isqrt.vf Q vf0 vf8 :fsf #b11 :ftf #b0)
+          (.add.x.vf vf11 vf0 vf9 :mask #b111)
+          (.svf (&-> v1-1 collide-box4w min quad) vf15)
+          (.ftoi.vf vf6 vf4)
+          ;;(.svf (&-> obj collide-box min quad) vf4)
+          (.ftoi.vf vf7 vf5)
+          ;;(.svf (&-> obj collide-box max quad) vf5)
+          (.mov.vf vf13 vf0)
+          ;;(.svf (&-> obj collide-box4w min quad) vf6)
+          ;;(.svf (&-> obj collide-box4w max quad) vf7)
+          (.wait.vf)
+          (.add.vf vf8 vf0 Q :mask #b1)
+          (.mul.x.vf vf12 vf3 vf8)
+          (.div.vf Q vf0 vf8 :fsf #b11 :ftf #b0)
+          (.mul.vf vf22 vf12 vf12)
+          (.abs.vf vf23 vf12)
+          (.add.y.vf vf22 vf22 vf22 :mask #b1)
+          (.mov a0-7 vf23)
+          (.wait.vf)
+          (.add.vf vf8 vf0 Q :mask #b1)
+          (b! (zero? a0-7) cfg-6 :likely-delay (.add.z.vf vf13 vf0 vf12 :mask #b1))
+          (.sub.y.vf vf13 vf0 vf12 :mask #b1)
+          (.isqrt.vf Q vf0 vf22 :fsf #b11 :ftf #b0)
+          (.add.x.vf vf13 vf0 vf12 :mask #b10)
+          (.wait.vf)
+          (.mul.vf vf13 vf13 Q :mask #b11)
+          (label cfg-6)
+          (.outer.product.a.vf acc vf12 vf13)
+          (.add.x.vf vf11 vf11 vf8 :mask #b1)
+          (.outer.product.b.vf vf14 vf13 vf12 acc)
+          (.ftoi.vf vf16 vf11)
+          (.mov.vf vf17 vf12)
+          (.mov.vf vf18 vf13)
+          (.mov.vf vf19 vf14)
+          (.mov.vf vf17 vf0 :mask #b1110)
+          (.svf (&-> v1-1 collide-box4w max quad) vf16)
+          (.mov.vf vf18 vf0 :mask #b1101)
+          (.mov.vf vf19 vf0 :mask #b1011)
+          (.add.x.vf vf17 vf17 vf13 :mask #b10)
+          (.add.y.vf vf18 vf18 vf12 :mask #b1)
+          (.add.z.vf vf19 vf19 vf12 :mask #b1)
+          (.add.x.vf vf17 vf17 vf14 :mask #b100)
+          (.add.y.vf vf18 vf18 vf14 :mask #b100)
+          (.add.z.vf vf19 vf19 vf13 :mask #b10)
+          (.mul.x.vf acc vf17 vf1)
+          (.add.mul.y.vf acc vf18 vf1 acc)
+          (.svf (&-> v1-1 inv-mat vector 0 quad) vf17)
+          (.add.mul.z.vf vf20 vf19 vf1 acc)
+          (.svf (&-> v1-1 inv-mat vector 1 quad) vf18)
+          (.sub.vf vf20 vf0 vf20)
+          (.svf (&-> v1-1 inv-mat vector 2 quad) vf19)
+          (.svf (&-> v1-1 inv-mat vector 3 quad) vf20)
+          (label cfg-13)
+          )
+        )
+      )
+  )
+  )
+
+;; convert vector of ints to floats.
+(defmacro vector-as-floats (in)
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (rlet ((reg :class vf))
+           (.lvf reg (&-> ,in quad))
+           (.itof.vf reg reg)
+           (.svf (&-> vec quad) reg)
+           )
+     vec
+     )
+  )
+
+;; incrementing counter to make the test input move around.
+(define *debug-counter* 0)
+
+(defun debug-draw-collide-work ((my-off float))
+  (when (not (paused?))
+  (+! *debug-counter* 1)
+    
+    )
+  
+  ;; create a test input that moves around sandover
+  (let ((origin (new 'static 'vector :y (meters 7.0) :x (meters 5.) :z (meters 0.0)))
+        (line (new 'static 'vector :y (meters 5.0) :x (meters -5.0)))
+        (radius (meters 2.0))
+        (val (+ my-off (* 0.003 (the float *debug-counter*))))
+        )
+    
+    (set! (-> line z) (* (sin (degrees val)) (meters 35.0)))
+    (set! (-> line x) (* (cos (degrees val)) (meters 35.0)))
+    
+    (let ((dbg2 (/ val 2)))
+      (set! (-> origin x) (* (sin (degrees dbg2)) (meters 100.)))
+      (set! (-> origin z) (* (cos (* 3.0 (degrees dbg2))) (meters 100.)))
+      (+! (-> origin x) (meters -50.))
+      )
+#|
+    ;;; PROBE (at the frag finding level)
+    
+    ;; setup the collide work
+    (setup-collide-for-line-sphere origin line radius)
+    
+
+    
+    ;; clear collide list
+    (set! (-> *collide-list* num-items) 0)
+    
+    ;; loop over active levels
+    (dotimes (lev-idx (-> *level* length))
+      (let ((lev (-> *level* level lev-idx)))
+        (when (= (-> lev status) 'active)
+          ;; do the collision check!
+          (collide-ray (-> lev bsp) 0 *collide-list*)
+          )
+        )
+      )
+    
+    ;; print results
+    (format *stdcon* "got ~d in list~%" (-> *collide-list* num-items))
+    (format *stdcon* "cam at: ~`vector`P~%" (camera-pos))
+    
+    (let ((old-count 0))
+      ;; visualize results
+      (dotimes (i (-> *collide-list* num-items))
+        (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
+              (inst (the instance-tie (-> *collide-list* items i inst))))
+          (when inst
+            (+! old-count 1)
+            (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (-> inst bsphere w) (new 'static 'rgba :b #x80 :a #x80))
+            )
+          
+          (when (not inst)
+            (+! old-count 1)
+            ;;(format *stdcon* "NI: ~A~%" mesh)
+            (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 5.0) (new 'static 'rgba :g #x80 :a #x80))
+            )
+          ;
+          )
+        )
+      
+      ;; now test the other one
+      (set! (-> *collide-list* num-items) 0)
+      (collide-probe-make-list (-> *level* level 0) *collide-list*)
+      
+      ;; these should come out the same, if we did it right.
+      (format *stdcon* "COMPARE: ~d ~d~%" (-> *collide-list* num-items) old-count)
+      
+      (dotimes (i (-> *collide-list* num-items))
+        (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
+              (inst (the instance-tie (-> *collide-list* items i inst))))
+          (when inst
+            (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (* 0.95 (-> inst bsphere w)) (new 'static 'rgba :b #x80 :r #x80 :a #x80))
+            )
+          
+          (when (not inst)
+            ;;(format *stdcon* "NI: ~A~%" mesh)
+            (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 6.0) (new 'static 'rgba :g #x30 :a #x80))
+            )
+          ;
+          )
+        )
+      )
+|#
+    
+    ;; CCACHE (fill from bounding box)
+    (let ((bbox-fake (new 'stack 'bounding-box))
+          (bbox (new 'stack 'bounding-box)))
+      
+      ;; make box
+      (set! (-> bbox-fake min quad) (-> origin quad))
+      (vector+! (-> bbox-fake max) origin line)
+      
+      (dotimes (i 3)
+        (set! (-> bbox min data i) (fmin (-> bbox-fake min data i) (-> bbox-fake max data i)))
+        (set! (-> bbox max data i) (fmax (-> bbox-fake min data i) (-> bbox-fake max data i)))
+        )
+      (set! (-> bbox min w) 1.0)
+      (set! (-> bbox max w) 1.0)
+      
+      ;; BBOX
+      ;; draw box
+      ;(add-debug-box #t (bucket-id debug-draw0) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x30 :a #x80))
+      ;; now fill!
+      ; (fill-using-bounding-box *collide-cache*
+      ;                          bbox
+      ;                          (collide-kind background)
+      ;                          (the process-drawable #f)
+      ;                          (the pat-surface 0)
+      ;                          )
+      
+      
+
+      ;; Y PROBE
+      ; (+! (-> bbox min y) (meters 8.0))
+      ; (let ((vec (new 'stack-no-clear 'vector)))
+      ;   (set! (-> vec quad) (-> bbox min quad))
+      ;   (-! (-> vec y) (meters 20.0))
+      ;   (add-debug-line 
+      ;     #t 
+      ;     (bucket-id debug-draw0)
+      ;     (-> bbox min)
+      ;     vec
+      ;     (new 'static 'rgba :r #x80 :a #x80)
+      ;     #f
+      ;     (the rgba -1)
+      ;     )
+      ;   )
+      ; (fill-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) (the uint 0))
+      
+      ;; LINE SPHERE
+      ; (fill-using-line-sphere *collide-cache* origin line radius (collide-kind background) (the process-drawable #f) 0)
+      ; ;; draw the line we're going to check
+      ; (add-debug-line 
+      ;   #t 
+      ;   (bucket-id debug-draw0)
+      ;   origin
+      ;   (vector+! (new 'stack-no-clear 'vector) origin line)
+      ;   (new 'static 'rgba :r #x80)
+      ;   #f
+      ;   (the rgba -1)
+      ;   )
+      
+      ; ;; debug draw spheres along the line
+      ; (dotimes (i 10)
+      ;   (add-debug-sphere
+      ;     #t
+      ;     (bucket-id debug-draw0)
+      ;     (vector-lerp! (new 'stack-no-clear 'vector)
+      ;                   origin
+      ;                   (vector+! (new 'stack-no-clear 'vector) origin line)
+      ;                   (/ (the float i) 9.0)
+      ;                   )
+      ;     radius
+      ;     (new 'static 'rgba :g #x80 :r #x80 :b #x80 :a #x80)
+      ;     )
+      ;   )
+      
+      ;; Y probe (actual probe)
+      (+! (-> bbox min y) (meters 8.0))
+      (let ((vec (new 'stack-no-clear 'vector)))
+        (set! (-> vec quad) (-> bbox min quad))
+        (-! (-> vec y) (meters 20.0))
+        ; (add-debug-line 
+        ;   #t 
+        ;   (bucket-id debug-draw0)
+        ;   (-> bbox min)
+        ;   vec
+        ;   (new 'static 'rgba :r #x80 :a #x80)
+        ;   #f
+        ;   (the rgba -1)
+        ;   )
+        )
+      
+      (let ((result (new 'stack-no-clear 'collide-tri-result)))
+        
+        (let ((u (fill-and-probe-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) result (the uint 0))))
+          (-! (-> bbox min y) (* u (meters 20.0)))
+          ;; (format *stdcon* "u = ~f : ~`vector`P ~%" u (-> result vertex 0))
+          (add-debug-sphere
+            #t
+            (bucket-id debug-draw0)
+            (-> bbox min)
+            (meters 2.0)
+            (new 'static 'rgba :r #x80 :a #x80)
+            )
+          )
+         ;(add-debug-outline-triangle #t (bucket-id debug-draw1) (-> result vertex 0) (-> result vertex 1) (-> result vertex 2) (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+        
+        
+        
+        
+        )
+      
+      
+      
+      ;(debug-draw *collide-cache*)
+      
+      
+      )
+    
+    #f
+    )
+  )
+
+(defun start-debug-drawer ()
+  ;;(kill-by-name 'debug-drawer *active-pool*)
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'debug-drawer *kernel-dram-stack*)
+    (run-next-time-in-process 
+      proc
+      (lambda ()
+        (let ((my-off (rand-vu-float-range 0.0 1000.0)))
+          (while #t
+            (debug-draw-collide-work my-off)
+            (suspend)
+            )
+          
+          
+          )
+        )
+      )                      
+    )
+  )
+
+(defun start-100-debug-drawer ()
+  (dotimes (i 100)
+    (start-debug-drawer)
+    )
+  )

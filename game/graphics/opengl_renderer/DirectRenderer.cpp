@@ -298,6 +298,10 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
   TextureRecord* tex = nullptr;
   auto& state = m_texture_state[unit];
+  if (!state.used) {
+    // nothing used this state, don't bother binding the texture.
+    return;
+  }
   if (state.using_mt4hh) {
     tex = render_state->texture_pool->lookup_mt4hh(state.texture_base_ptr);
   } else {
@@ -342,9 +346,6 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
-
-  glUniform1i(
-      glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "T0"), 0);
 }
 
 void DirectRenderer::update_gl_blend() {
@@ -659,8 +660,7 @@ void DirectRenderer::handle_tex1_1(u64 val,
       if (needs_state_flush()) {
         flush_pending(render_state, prof);
         m_texture_state[0] = *current_texture_state();
-        m_texture_state[0].used = false;
-        m_current_texture_state = 0;
+        reset_texture_states();
         m_stats.flush_from_state_exhaust++;
       } else {
         push_texture_state();
@@ -697,8 +697,7 @@ void DirectRenderer::handle_tex0_1(u64 val,
       if (needs_state_flush()) {
         flush_pending(render_state, prof);
         m_texture_state[0] = *current_texture_state();
-        m_texture_state[0].used = false;
-        m_current_texture_state = 0;
+        reset_texture_states();
         m_stats.flush_from_state_exhaust++;
       } else {
         push_texture_state();
@@ -833,8 +832,9 @@ void DirectRenderer::handle_clamp1(u64 val,
       if (needs_state_flush()) {
         flush_pending(render_state, prof);
         m_texture_state[0] = *current_texture_state();
-        m_texture_state[0].used = false;
-        m_current_texture_state = 0;
+        reset_texture_states();
+        //        m_texture_state[0].used = false;
+        //        m_current_texture_state = 0;
         m_stats.flush_from_state_exhaust++;
       } else {
         push_texture_state();
@@ -1046,6 +1046,7 @@ void DirectRenderer::reset_state() {
     m_texture_state[i] = TextureState();
   }
   m_global_texture_state = TextureGlobalState();
+  m_current_texture_state = 0;
 
   m_prim_building = PrimBuildState();
 

@@ -99,6 +99,10 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
           gc.b = second_arg->to_gpr(condition, env);
         }
 
+        if (gc.a->type() == TypeSpec("none") || gc.b->type() == TypeSpec("none")) {
+          throw_compiler_error(condition, "Cannot use none-typed variable in a condition.");
+        }
+
         return gc;
       }
     }
@@ -108,6 +112,9 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
   // todo - it's possible to optimize a false comparison because the false offset is zero
   gc.kind = invert ? ConditionKind::EQUAL : ConditionKind::NOT_EQUAL;
   gc.a = compile_error_guard(condition, env)->to_gpr(condition, env);
+  if (gc.a->type() == TypeSpec("none")) {
+    throw_compiler_error(condition, "Cannot use none-typed variable in a condition.");
+  }
   gc.b = compile_get_sym_obj("#f", env)->to_gpr(condition, env);
 
   return gc;

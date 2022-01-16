@@ -167,6 +167,14 @@ class DirectRenderer : public BucketRenderer {
     bool used = false;
   } m_texture_state[TEXTURE_STATE_COUNT];
 
+  void reset_texture_states() {
+    m_current_texture_state = 0;
+    m_texture_state[0].used = false;
+    for (auto& ts : m_texture_state) {
+      ts.used = false;
+    }
+  }
+
   struct TextureGlobalState {
     bool needs_gl_update = true;
   } m_global_texture_state;

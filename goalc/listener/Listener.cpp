@@ -564,6 +564,14 @@ void Listener::add_load(const std::string& name, const LoadEntry& le) {
     m_load_entries[*m_pending_listener_load_object_name] = le;
     m_pending_listener_load_object_name = {};
   } else {
+    // if we load over an existing thing, kick it out.
+    for (auto it = m_load_entries.begin(); it != m_load_entries.end();) {
+      if (it->second.overlaps_with(le)) {
+        it = m_load_entries.erase(it);
+      } else {
+        it++;
+      }
+    }
     m_load_entries[name] = le;
   }
 }

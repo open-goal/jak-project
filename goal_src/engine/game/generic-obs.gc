@@ -6,8 +6,6 @@
 ;; dgos: GAME, ENGINE
 
 (declare-type swingpole process)
-(define-extern swingpole-stance (state swingpole))
-(define-extern swingpole-active (state swingpole))
 
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 
@@ -22,14 +20,11 @@
 (define-extern line-in-view-frustum? (function vector vector symbol))
 
 (declare-type beach-part part-spawner)
-(define-extern beach-part-grotto-1 (state beach-part))
-
 (declare-type launcher process-drawable)
-(define-extern launcher-active (state launcher))
-(define-extern launcher-idle (state launcher))
-(define-extern launcher-deactivated (state launcher))
 
 (define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
+
+(define-extern beach-part-grotto-1 (state beach-part))
 
 ;; DECOMP BEGINS
 
@@ -57,7 +52,7 @@
                       )
                 )
            (if a0-7
-               (TODO-RENAME-30 a0-7 (-> (the-as process-drawable s5-0) root trans))
+               (move-to-point! a0-7 (-> (the-as process-drawable s5-0) root trans))
                (set! (-> self root trans quad) (-> (the-as process-drawable s5-0) root trans quad))
                )
            )
@@ -121,12 +116,11 @@
   :code
   (behavior ()
     (while #t
-      (when (and
-              *target*
-              (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
-              (logtest? (-> *target* control root-prim prim-core action) 64)
-              (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range))))
-              )
+      (when (and *target*
+                 (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
+                 (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-6))
+                 (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range))))
+                 )
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
           (set! (-> a1-1 num-params) 1)
@@ -321,7 +315,7 @@
           ((= v1-0 'trans)
            (cond
              ((type-type? (-> self root type) collide-shape)
-              (TODO-RENAME-30 (the-as collide-shape (-> self root)) (the-as vector (-> arg3 param 0)))
+              (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> arg3 param 0)))
               )
              (else
                (set! v0-0 (the-as none (-> self root trans)))
@@ -387,12 +381,12 @@
               (case (-> self anim-mode)
                 (('play1 'play)
                  (>= (ja-frame-num 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                               (-> self skel root-channel 0 frame-group)
-                                                               )
-                                                         data
-                                                         0
-                                                         length
-                                                         )
+                                                            (-> self skel root-channel 0 frame-group)
+                                                            )
+                                                        data
+                                                        0
+                                                        length
+                                                        )
                                                     -2
                                                     )
                                            )
@@ -428,14 +422,15 @@
     (if (!= (-> self cur-post-hook) (-> self new-post-hook))
         (set! (-> self cur-post-hook) (-> self new-post-hook))
         )
-    (when (and (-> self new-joint-anim) (nonzero? (-> self skel)) (and
-                                                                    (!= (if (> (-> self skel active-channels) 0)
-                                                                              (-> self skel root-channel 0 frame-group)
-                                                                              )
-                                                                        (-> self new-joint-anim)
-                                                                        )
-                                                                    (!= (-> self anim-mode) 'clone-anim)
-                                                                    )
+    (when (and (-> self new-joint-anim)
+               (nonzero? (-> self skel))
+               (and (!= (if (> (-> self skel active-channels) 0)
+                            (-> self skel root-channel 0 frame-group)
+                            )
+                        (-> self new-joint-anim)
+                        )
+                    (!= (-> self anim-mode) 'clone-anim)
+                    )
                )
       (ja-channel-push! 1 (the-as int (-> self new-joint-anim-blend)))
       (let ((gp-0 (-> self skel root-channel 0)))
@@ -447,7 +442,7 @@
       (when v1-20
         (let ((gp-1 (-> (the-as process-drawable v1-20) root trans)))
           (if (type-type? (-> self root type) collide-shape)
-              (TODO-RENAME-28
+              (move-by-vector!
                 (the-as collide-shape (-> self root))
                 (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
                 )
@@ -564,8 +559,8 @@
     (arg3
       (let ((s4-2 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
         (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
-          (set! (-> s2-0 prim-core collide-as) (the-as uint #x8040))
-          (set! (-> s2-0 collide-with) (the-as uint 16))
+          (set! (-> s2-0 prim-core collide-as) (collide-kind powerup blue-eco-suck))
+          (set! (-> s2-0 collide-with) (collide-kind target))
           (set-vector! (-> s2-0 local-sphere) (-> arg3 x) (-> arg3 y) (-> arg3 z) (-> arg3 w))
           (set-root-prim! s4-2 s2-0)
           )
@@ -581,7 +576,7 @@
   (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self arg2 '())
   (if (type-type? (-> self root type) collide-shape)
-      (dummy-47 (the-as collide-shape (-> self root)))
+      (update-transforms! (the-as collide-shape (-> self root)))
       )
   (set! (-> self shadow-backup) (-> self draw shadow))
   (set! (-> self new-trans-hook) nothing)
@@ -843,11 +838,11 @@
     )
   )
 
-(defbehavior process-grab? process ((arg0 process))
+(defbehavior process-grab? camera-tracker ((arg0 process))
   (let ((gp-0 (command-get-process arg0 *target*)))
     (the-as symbol (when gp-0
                      (if (type-type? (-> self type) camera-tracker)
-                         (set! (-> (the-as camera-tracker self) grab-target) (process->handle gp-0))
+                         (set! (-> self grab-target) (process->handle gp-0))
                          )
                      (send-event gp-0 'change-mode 'grab)
                      )
@@ -857,17 +852,16 @@
 
 (defbehavior process-release? process ((arg0 process))
   (let ((gp-0 (command-get-process arg0 *target*)))
-    (the-as symbol (if (and
-                           gp-0
-                           (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-1 from) self)
-                             (set! (-> a1-1 num-params) 1)
-                             (set! (-> a1-1 message) 'query)
-                             (set! (-> a1-1 param 0) (the-as uint 'mode))
-                             (send-event-function gp-0 a1-1)
-                             )
-                           'target-grab
-                           )
+    (the-as symbol (if (and gp-0
+                            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                              (set! (-> a1-1 from) self)
+                              (set! (-> a1-1 num-params) 1)
+                              (set! (-> a1-1 message) 'query)
+                              (set! (-> a1-1 param 0) (the-as uint 'mode))
+                              (send-event-function gp-0 a1-1)
+                              )
+                            'target-grab
+                            )
                        (send-event gp-0 'end-mode)
                        #t
                        )
@@ -908,35 +902,30 @@
     )
   )
 
-;; TODO modified!
 (defun ja-anim-done? ((arg0 process))
-   (let ((gp-0 (command-get-process arg0 *target*)))
-    (when gp-0
-      (cond
-       ((type-type? (-> gp-0 type) manipy)
-        (the-as symbol (send-event gp-0 'query 'done))
-        )
-       ((type-type? (-> gp-0 type) process-drawable)
-        (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
-
-          (rlet ((pp :reg r13 :type process))
-              (let* ((old-pp pp)
-                     (ret-val (begin
-                                ;; set the process
-                                (set! pp gp-0)
-                                ;; run!
-                                (ja-done? 0)
-                                )))
-                ;; restore the old pp
-                (set! pp old-pp)
-                ret-val
-                )
+  (with-pp
+    (let ((gp-0 (command-get-process arg0 *target*)))
+      (the-as symbol (when gp-0
+                       (cond
+                         ((type-type? (-> gp-0 type) manipy)
+                          (send-event gp-0 'query 'done)
+                          )
+                         ((type-type? (-> gp-0 type) process-drawable)
+                          (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
+                            (let ((s5-0 pp))
+                              (set! pp gp-0)
+                              (let ((v0-1 (the-as object (ja-done? 0))))
+                                (set! pp s5-0)
+                                v0-1
+                                )
+                              )
+                            )
+                          )
+                         )
+                       )
               )
-          )
-        )
-       )
       )
-     )
+    )
   )
 
 (defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
@@ -1280,6 +1269,9 @@
   :method-count-assert 20
   :size-assert         #xbc
   :flag-assert         #x14005000bc
+  (:states
+    med-res-level-idle
+    )
   )
 
 
@@ -1416,7 +1408,6 @@
 (defmethod dummy-20 part-spawner ((obj part-spawner))
   (sphere<-vector+r! (-> obj world-sphere) (-> obj root trans) (-> obj radius))
   (sphere-in-view-frustum? (-> obj world-sphere))
-  (none)
   )
 
 (defstate part-spawner-active (part-spawner)
@@ -1529,311 +1520,265 @@
   :method-count-assert 20
   :size-assert         #xe4
   :flag-assert         #x14008000e4
+  (:states
+    launcher-active
+    launcher-deactivated
+    launcher-idle
+    )
   )
 
 
-(set! (-> *part-group-id-table* 37)
-      (new 'static 'sparticle-launch-group
-        :length 5
-        :duration #xbb8
-        :linger-duration #x5dc
-        :name "group-beach-launcher"
-        :launcher
-        (new 'static 'inline-array sparticle-group-item 5
-          (sp-item 45 :fade-after (meters 100.0) :falloff-to (meters 100.0))
-          (sp-item 46 :fade-after (meters 70.0) :falloff-to (meters 100.0) :flags (is-3d))
-          (sp-item 47 :fade-after (meters 70.0) :falloff-to (meters 100.0) :flags (is-3d))
-          (sp-item 48 :fade-after (meters 50.0) :falloff-to (meters 80.0))
-          (sp-item 49 :fade-after (meters 70.0) :falloff-to (meters 100.0))
-          )
-        :bounds
-        (new 'static 'sphere :y 12288.0 :w 20480.0)
-        )
-      )
+(defpartgroup group-beach-launcher
+  :id 37
+  :bounds (static-bspherem 0 3 0 5)
+  :parts
+  ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 46 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
+    (sp-item 47 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
+    (sp-item 48 :fade-after (meters 50) :falloff-to (meters 80))
+    (sp-item 49 :fade-after (meters 70) :falloff-to (meters 100))
+    )
+  )
 
-(set! (-> *part-id-table* 45)
-      (new 'static 'sparticle-launcher :init-specs (new 'static 'inline-array sp-field-init-spec 14
-                                                     (sp-flt spt-num 1.5)
-                                                     (sp-flt spt-x (meters 1.5))
-                                                     (sp-flt spt-y (meters -0.5))
-                                                     (sp-int spt-rot-x 5)
-                                                     (sp-flt spt-r 4096.0)
-                                                     (sp-flt spt-g 2867.2)
-                                                     (sp-flt spt-b 3276.8)
-                                                     (sp-flt spt-vel-y (meters 0.026666667))
-                                                     (sp-int spt-timer 270)
-                                                     (sp-cpuinfo-flags aux-list)
-                                                     (sp-int spt-next-time 180)
-                                                     (sp-launcher-by-id spt-next-launcher 50)
-                                                     (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                                     (sp-end)
-                                                     )
-                                       )
-      )
+(defpart 45
+  :init-specs
+  ((sp-flt spt-num 1.5)
+    (sp-flt spt-x (meters 1.5))
+    (sp-flt spt-y (meters -0.5))
+    (sp-int spt-rot-x 5)
+    (sp-flt spt-r 4096.0)
+    (sp-flt spt-g 2867.2)
+    (sp-flt spt-b 3276.8)
+    (sp-flt spt-vel-y (meters 0.026666667))
+    (sp-int spt-timer 270)
+    (sp-cpuinfo-flags aux-list)
+    (sp-int spt-next-time 180)
+    (sp-launcher-by-id spt-next-launcher 50)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 50)
-      (new 'static 'sparticle-launcher
-        :init-specs
-        (new 'static 'inline-array sp-field-init-spec 2 (sp-flt spt-fade-b -4.551111) (sp-end))
-        )
-      )
+(defpart 50
+  :init-specs
+  ((sp-flt spt-fade-b -4.551111))
+  )
 
-(set! (-> *part-id-table* 46) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 17
-                                  (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
-                                  (sp-flt spt-num 1.0)
-                                  (sp-rnd-flt spt-x (meters 0.0) (meters 1.8) 1.0)
-                                  (sp-flt spt-scale-x (meters 0.2))
-                                  (sp-flt spt-rot-x 16384.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-rnd-flt spt-scale-y (meters 2.5) (meters 2.5) 1.0)
-                                  (sp-rnd-int spt-r 0 1 128.0)
-                                  (sp-rnd-flt spt-g 64.0 196.0 1.0)
-                                  (sp-rnd-flt spt-b 128.0 128.0 1.0)
-                                  (sp-flt spt-a 128.0)
-                                  (sp-flt spt-scalevel-x (meters -0.0025))
-                                  (sp-rnd-flt spt-scalevel-y (meters 0.24414062) (meters 0.48828125) 1.0)
-                                  (sp-int spt-timer 81)
-                                  (sp-cpuinfo-flags bit3)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 46
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 1.8) 1.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 2.5) (meters 2.5) 1.0)
+    (sp-rnd-int spt-r 0 1 128.0)
+    (sp-rnd-flt spt-g 64.0 196.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters -0.0025))
+    (sp-rnd-flt spt-scalevel-y (meters 0.24414062) (meters 0.48828125) 1.0)
+    (sp-int spt-timer 81)
+    (sp-cpuinfo-flags bit3)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 47) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 17
-                                  (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
-                                  (sp-flt spt-num 2.0)
-                                  (sp-rnd-flt spt-x (meters 1.8) (meters 1.0) 1.0)
-                                  (sp-flt spt-scale-x (meters 0.2))
-                                  (sp-flt spt-rot-x 16384.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-rnd-flt spt-scale-y (meters 0.5) (meters 1.0) 1.0)
-                                  (sp-rnd-int spt-r 0 1 128.0)
-                                  (sp-rnd-flt spt-g 64.0 196.0 1.0)
-                                  (sp-rnd-flt spt-b 128.0 128.0 1.0)
-                                  (sp-flt spt-a 128.0)
-                                  (sp-flt spt-scalevel-x (meters -0.0025))
-                                  (sp-rnd-flt spt-scalevel-y (meters 0.048828125) (meters 0.09765625) 1.0)
-                                  (sp-int spt-timer 81)
-                                  (sp-cpuinfo-flags bit3)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 47
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 2.0)
+    (sp-rnd-flt spt-x (meters 1.8) (meters 1) 1.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.5) (meters 1) 1.0)
+    (sp-rnd-int spt-r 0 1 128.0)
+    (sp-rnd-flt spt-g 64.0 196.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters -0.0025))
+    (sp-rnd-flt spt-scalevel-y (meters 0.048828125) (meters 0.09765625) 1.0)
+    (sp-int spt-timer 81)
+    (sp-cpuinfo-flags bit3)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 48) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 21
-                                  (sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
-                                  (sp-flt spt-num 1.5)
-                                  (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
-                                  (sp-flt spt-y (meters -0.5))
-                                  (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.4) 1.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-rnd-flt spt-scale-y (meters 0.1) (meters 0.1) 1.0)
-                                  (sp-rnd-flt spt-r 10.0 6.0 1.0)
-                                  (sp-rnd-flt spt-g 64.0 128.0 1.0)
-                                  (sp-rnd-flt spt-b 10.0 6.0 1.0)
-                                  (sp-flt spt-a 80.0)
-                                  (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
-                                  (sp-flt spt-vel-y (meters 0.0))
-                                  (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
-                                  (sp-flt spt-fade-a -0.2)
-                                  (sp-flt spt-accel-y 6.826667)
-                                  (sp-flt spt-friction 0.996)
-                                  (sp-int-plain-rnd spt-timer 180 119 1)
-                                  (sp-cpuinfo-flags bit2)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 48
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+    (sp-flt spt-num 1.5)
+    (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
+    (sp-flt spt-y (meters -0.5))
+    (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.1) (meters 0.1) 1.0)
+    (sp-rnd-flt spt-r 10.0 6.0 1.0)
+    (sp-rnd-flt spt-g 64.0 128.0 1.0)
+    (sp-rnd-flt spt-b 10.0 6.0 1.0)
+    (sp-flt spt-a 80.0)
+    (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
+    (sp-flt spt-fade-a -0.2)
+    (sp-flt spt-accel-y 6.826667)
+    (sp-flt spt-friction 0.996)
+    (sp-int-plain-rnd spt-timer 180 119 1)
+    (sp-cpuinfo-flags bit2)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 49) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 23
-                                  (sp-tex spt-texture (new 'static 'texture-id :page #x2))
-                                  (sp-flt spt-num 0.5)
-                                  (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
-                                  (sp-flt spt-y (meters -0.5))
-                                  (sp-rnd-flt spt-scale-x (meters 2.0) (meters 1.0) 1.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-copy-from-other spt-scale-y -4)
-                                  (sp-rnd-flt spt-r 32.0 32.0 1.0)
-                                  (sp-rnd-flt spt-g 32.0 32.0 1.0)
-                                  (sp-rnd-flt spt-b 10.0 5.0 1.0)
-                                  (sp-flt spt-a 0.0)
-                                  (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
-                                  (sp-flt spt-vel-y (meters 0.0))
-                                  (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
-                                  (sp-flt spt-fade-a 0.6)
-                                  (sp-flt spt-accel-y 6.826667)
-                                  (sp-flt spt-friction 0.996)
-                                  (sp-int spt-timer 270)
-                                  (sp-cpuinfo-flags bit2 bit3)
-                                  (sp-int spt-next-time 45)
-                                  (sp-launcher-by-id spt-next-launcher 51)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 49
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 0.5)
+    (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
+    (sp-flt spt-y (meters -0.5))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 32.0 1.0)
+    (sp-rnd-flt spt-g 32.0 32.0 1.0)
+    (sp-rnd-flt spt-b 10.0 5.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
+    (sp-flt spt-fade-a 0.6)
+    (sp-flt spt-accel-y 6.826667)
+    (sp-flt spt-friction 0.996)
+    (sp-int spt-timer 270)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 45)
+    (sp-launcher-by-id spt-next-launcher 51)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 51)
-      (new 'static 'sparticle-launcher
-        :init-specs
-        (new 'static 'inline-array sp-field-init-spec 2 (sp-flt spt-fade-a -0.18) (sp-end))
-        )
-      )
+(defpart 51
+  :init-specs
+  ((sp-flt spt-fade-a -0.18))
+  )
 
-(set! (-> *part-group-id-table* 38)
-      (new 'static 'sparticle-launch-group
-        :length 4
-        :duration #xbb8
-        :linger-duration #x5dc
-        :name "group-jungle-launcher"
-        :launcher
-        (new 'static 'inline-array sparticle-group-item 4
-          (sp-item 45 :fade-after (meters 100.0) :falloff-to (meters 100.0))
-          (sp-item 52 :fade-after (meters 70.0) :falloff-to (meters 100.0) :flags (is-3d))
-          (sp-item 53 :fade-after (meters 70.0) :falloff-to (meters 100.0) :flags (is-3d))
-          (sp-item 54 :fade-after (meters 70.0) :falloff-to (meters 100.0))
-          )
-        :bounds
-        (new 'static 'sphere :y 12288.0 :w 20480.0)
-        )
-      )
+(defpartgroup group-jungle-launcher
+  :id 38
+  :bounds (static-bspherem 0 3 0 5)
+  :parts
+  ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 52 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
+    (sp-item 53 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
+    (sp-item 54 :fade-after (meters 70) :falloff-to (meters 100))
+    )
+  )
 
-(set! (-> *part-id-table* 52) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 17
-                                  (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
-                                  (sp-flt spt-num 1.0)
-                                  (sp-rnd-flt spt-x (meters 0.0) (meters 1.4) 1.0)
-                                  (sp-flt spt-scale-x (meters 0.2))
-                                  (sp-flt spt-rot-x 16384.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-rnd-flt spt-scale-y (meters 2.5) (meters 2.5) 1.0)
-                                  (sp-rnd-int spt-r 0 1 128.0)
-                                  (sp-rnd-flt spt-g 64.0 196.0 1.0)
-                                  (sp-rnd-flt spt-b 128.0 128.0 1.0)
-                                  (sp-flt spt-a 128.0)
-                                  (sp-flt spt-scalevel-x (meters -0.0025))
-                                  (sp-rnd-flt spt-scalevel-y (meters 0.24414062) (meters 0.48828125) 1.0)
-                                  (sp-int spt-timer 81)
-                                  (sp-cpuinfo-flags bit3)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 52
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 1.4) 1.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 2.5) (meters 2.5) 1.0)
+    (sp-rnd-int spt-r 0 1 128.0)
+    (sp-rnd-flt spt-g 64.0 196.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters -0.0025))
+    (sp-rnd-flt spt-scalevel-y (meters 0.24414062) (meters 0.48828125) 1.0)
+    (sp-int spt-timer 81)
+    (sp-cpuinfo-flags bit3)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 53) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 17
-                                  (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
-                                  (sp-flt spt-num 2.0)
-                                  (sp-rnd-flt spt-x (meters 1.4) (meters 0.9) 1.0)
-                                  (sp-flt spt-scale-x (meters 0.2))
-                                  (sp-flt spt-rot-x 16384.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-rnd-flt spt-scale-y (meters 0.5) (meters 1.0) 1.0)
-                                  (sp-rnd-int spt-r 0 1 128.0)
-                                  (sp-rnd-flt spt-g 64.0 196.0 1.0)
-                                  (sp-rnd-flt spt-b 128.0 128.0 1.0)
-                                  (sp-flt spt-a 128.0)
-                                  (sp-flt spt-scalevel-x (meters -0.0025))
-                                  (sp-rnd-flt spt-scalevel-y (meters 0.048828125) (meters 0.09765625) 1.0)
-                                  (sp-int spt-timer 81)
-                                  (sp-cpuinfo-flags bit3)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 53
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 2.0)
+    (sp-rnd-flt spt-x (meters 1.4) (meters 0.9) 1.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.5) (meters 1) 1.0)
+    (sp-rnd-int spt-r 0 1 128.0)
+    (sp-rnd-flt spt-g 64.0 196.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters -0.0025))
+    (sp-rnd-flt spt-scalevel-y (meters 0.048828125) (meters 0.09765625) 1.0)
+    (sp-int spt-timer 81)
+    (sp-cpuinfo-flags bit3)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-id-table* 54) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 23
-                                  (sp-tex spt-texture (new 'static 'texture-id :page #x2))
-                                  (sp-flt spt-num 0.5)
-                                  (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
-                                  (sp-flt spt-y (meters -0.5))
-                                  (sp-rnd-flt spt-scale-x (meters 2.0) (meters 1.0) 1.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-copy-from-other spt-scale-y -4)
-                                  (sp-rnd-flt spt-r 64.0 32.0 1.0)
-                                  (sp-rnd-flt spt-g 32.0 32.0 1.0)
-                                  (sp-rnd-flt spt-b 10.0 5.0 1.0)
-                                  (sp-flt spt-a 0.0)
-                                  (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
-                                  (sp-flt spt-vel-y (meters 0.0))
-                                  (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
-                                  (sp-flt spt-fade-a 0.6)
-                                  (sp-flt spt-accel-y 6.826667)
-                                  (sp-flt spt-friction 0.996)
-                                  (sp-int spt-timer 270)
-                                  (sp-cpuinfo-flags bit2 bit3)
-                                  (sp-int spt-next-time 45)
-                                  (sp-launcher-by-id spt-next-launcher 51)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 54
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 0.5)
+    (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
+    (sp-flt spt-y (meters -0.5))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 32.0 32.0 1.0)
+    (sp-rnd-flt spt-b 10.0 5.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
+    (sp-flt spt-fade-a 0.6)
+    (sp-flt spt-accel-y 6.826667)
+    (sp-flt spt-friction 0.996)
+    (sp-int spt-timer 270)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 45)
+    (sp-launcher-by-id spt-next-launcher 51)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
-(set! (-> *part-group-id-table* 39)
-      (new 'static 'sparticle-launch-group
-        :length 4
-        :duration #xbb8
-        :linger-duration #x5dc
-        :name "group-swamp-launcher"
-        :launcher
-        (new 'static 'inline-array sparticle-group-item 4
-          (sp-item 45 :fade-after (meters 100.0) :falloff-to (meters 100.0))
-          (sp-item 46 :fade-after (meters 70.0) :falloff-to (meters 100.0) :flags (is-3d))
-          (sp-item 47 :fade-after (meters 70.0) :falloff-to (meters 100.0) :flags (is-3d))
-          (sp-item 55 :fade-after (meters 70.0) :falloff-to (meters 100.0))
-          )
-        :bounds
-        (new 'static 'sphere :y 12288.0 :w 20480.0)
-        )
-      )
+(defpartgroup group-swamp-launcher
+  :id 39
+  :bounds (static-bspherem 0 3 0 5)
+  :parts
+  ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 46 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
+    (sp-item 47 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
+    (sp-item 55 :fade-after (meters 70) :falloff-to (meters 100))
+    )
+  )
 
-(set! (-> *part-id-table* 55) (new 'static 'sparticle-launcher
-                                :init-specs
-                                (new 'static 'inline-array sp-field-init-spec 23
-                                  (sp-tex spt-texture (new 'static 'texture-id :page #x2))
-                                  (sp-flt spt-num 0.5)
-                                  (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
-                                  (sp-flt spt-y (meters -0.5))
-                                  (sp-rnd-flt spt-scale-x (meters 2.0) (meters 1.0) 1.0)
-                                  (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-copy-from-other spt-scale-y -4)
-                                  (sp-rnd-flt spt-r 16.0 16.0 1.0)
-                                  (sp-rnd-flt spt-g 16.0 16.0 1.0)
-                                  (sp-rnd-flt spt-b 5.0 2.5 1.0)
-                                  (sp-flt spt-a 0.0)
-                                  (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
-                                  (sp-flt spt-vel-y (meters 0.0))
-                                  (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
-                                  (sp-flt spt-fade-a 0.6)
-                                  (sp-flt spt-accel-y 6.826667)
-                                  (sp-flt spt-friction 0.996)
-                                  (sp-int spt-timer 270)
-                                  (sp-cpuinfo-flags bit2)
-                                  (sp-int spt-next-time 45)
-                                  (sp-launcher-by-id spt-next-launcher 51)
-                                  (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-                                  (sp-end)
-                                  )
-                                )
-      )
+(defpart 55
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 0.5)
+    (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
+    (sp-flt spt-y (meters -0.5))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 16.0 16.0 1.0)
+    (sp-rnd-flt spt-g 16.0 16.0 1.0)
+    (sp-rnd-flt spt-b 5.0 2.5 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-x (meters -0.011666667) (meters -0.0033333334) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
+    (sp-flt spt-fade-a 0.6)
+    (sp-flt spt-accel-y 6.826667)
+    (sp-flt spt-friction 0.996)
+    (sp-int spt-timer 270)
+    (sp-cpuinfo-flags bit2)
+    (sp-int spt-next-time 45)
+    (sp-launcher-by-id spt-next-launcher 51)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
 
 (defbehavior cam-launcher-joystick camera-slave ()
   (when *camera-read-analog*
@@ -2034,8 +1979,8 @@
        (go launcher-deactivated)
        )
       (('trans)
-       (TODO-RENAME-30 (-> self root-override) (the-as vector (-> arg3 param 0)))
-       (dummy-47 (-> self root-override))
+       (move-to-point! (-> self root-override) (the-as vector (-> arg3 param 0)))
+       (update-transforms! (-> self root-override))
        )
       )
     )
@@ -2070,17 +2015,16 @@
             )
           )
         )
-      (if (and
-              (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-              (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-5 from) self)
-                (set! (-> a1-5 num-params) 2)
-                (set! (-> a1-5 message) 'query)
-                (set! (-> a1-5 param 0) (the-as uint 'powerup))
-                (set! (-> a1-5 param 1) (the-as uint 3))
-                (not (send-event-function *target* a1-5))
-                )
-              )
+      (if (and (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+               (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-5 from) self)
+                 (set! (-> a1-5 num-params) 2)
+                 (set! (-> a1-5 message) 'query)
+                 (set! (-> a1-5 param 0) (the-as uint 'powerup))
+                 (set! (-> a1-5 param 1) (the-as uint 3))
+                 (not (send-event-function *target* a1-5))
+                 )
+               )
           (level-hint-spawn
             (game-text-id daxter-launcher-no-eco)
             "sksp0035"
@@ -2108,8 +2052,8 @@
        (go launcher-deactivated)
        )
       ((= arg2 'trans)
-       (TODO-RENAME-30 (-> self root-override) (the-as vector (-> arg3 param 0)))
-       (dummy-47 (-> self root-override))
+       (move-to-point! (-> self root-override) (the-as vector (-> arg3 param 0)))
+       (update-transforms! (-> self root-override))
        )
       )
     )
@@ -2128,13 +2072,10 @@
     )
   :trans
   (behavior ()
-    (if (or
-            (or
-              (not *target*)
-              (< (-> self active-distance)
-                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                 )
-              )
+    (if (or (or (not *target*) (< (-> self active-distance)
+                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                  )
+                )
             (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
               (set! (-> a1-1 from) self)
               (set! (-> a1-1 num-params) 2)
@@ -2148,15 +2089,12 @@
         )
     (spawn (-> self part) (-> self root-override trans))
     (sound-play-by-name (static-sound-name "launch-idle") (-> self sound-id) 1024 0 0 1 #t)
-    (if (and
-            (and
-              *target*
-              (>= (+ 2867.2 (-> self root-override root-prim prim-core world-sphere w))
-                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+    (if (and (and *target* (>= (+ 2867.2 (-> self root-override root-prim prim-core world-sphere w))
+                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                               )
                   )
-              )
-            (< (- (-> *display* base-frame-counter) (-> self state-time)) 150)
-            )
+             (< (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+             )
         (send-event *target* 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
         )
     (none)
@@ -2178,8 +2116,8 @@
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
       (set-root-prim! s4-0 s3-0)
       )
@@ -2188,7 +2126,7 @@
     (set! (-> obj root-override) s4-0)
     )
   (process-drawable-from-entity! obj arg0)
-  (dummy-47 (-> obj root-override))
+  (update-transforms! (-> obj root-override))
   (set! (-> obj active-distance) 409600.0)
   (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 163840.0))
   (let ((s4-1 (res-lump-value arg0 'mode uint128)))
@@ -2239,8 +2177,8 @@
   (stack-size-set! (-> self main-thread) 128)
   (let ((s2-0 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
     (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
-      (set! (-> s1-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s1-0 collide-with) (the-as uint 16))
+      (set! (-> s1-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s1-0 collide-with) (collide-kind target))
       (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
       (set-root-prim! s2-0 s1-0)
       )
@@ -2251,7 +2189,7 @@
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (set-vector! (-> self root-override scale) 1.0 1.0 1.0 1.0)
   (set-vector! (-> self root-override quat) 0.0 0.0 0.0 1.0)
-  (dummy-47 (-> self root-override))
+  (update-transforms! (-> self root-override))
   (set! (-> self spring-height) arg1)
   (set! (-> self active-distance) arg3)
   (let ((v1-23 (-> self entity extra level name)))
@@ -2387,7 +2325,7 @@
                         )
                        ((= v1-0 'exit)
                         (set! v0-0 (the-as none (-> arg3 param 0)))
-                        (set! (-> self run-function) (the-as (function none) v0-0))
+                        (set! (-> self run-function) (the-as (function object) v0-0))
                         v0-0
                         )
                        ((= v1-0 'eval)
@@ -2430,11 +2368,11 @@
       (if (-> self callback)
           ((-> self callback) self)
           )
-      (dummy-47 (-> self root-override))
+      (update-transforms! (-> self root-override))
       (let ((a1-3 (new 'stack-no-clear 'touching-shapes-entry)))
         (set! (-> a1-3 cshape1) (the-as collide-shape 2))
         (set! (-> a1-3 cshape2) (the-as collide-shape *touching-list*))
-        (dummy-40 (-> self root-override) a1-3)
+        (find-overlapping-shapes (-> self root-override) (the-as overlaps-others-params a1-3))
         )
       (suspend)
       )
@@ -2453,9 +2391,9 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s2-0 prim-core collide-as) (the-as uint 272))
-      (set! (-> s2-0 collide-with) (the-as uint 3022))
-      (set! (-> s2-0 prim-core offense) 4)
+      (set! (-> s2-0 prim-core collide-as) (collide-kind target enemy))
+      (set! (-> s2-0 collide-with) (collide-kind cak-1 cak-2 cak-3 powerup crate enemy wall-object ground-object))
+      (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 arg1)
       (set-root-prim! s4-0 s2-0)
       )
@@ -2470,12 +2408,8 @@
   (set! (-> self event) #f)
   (set! (-> self callback) #f)
   (set! (-> self run-function)
-        (the-as
-          (function none)
-          (lambda :behavior touch-tracker
-            ()
-            (< (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self duration)))
-            )
+        (lambda :behavior touch-tracker ()
+          (< (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self duration)))
           )
         )
   (set! (-> self event-hook) (-> touch-tracker-idle event))
@@ -2552,24 +2486,21 @@
     )
   )
 
-(set! (-> *part-id-table* 2528) (new 'static 'sparticle-launcher
-                                  :init-specs
-                                  (new 'static 'inline-array sp-field-init-spec 12
-                                    (sp-tex spt-texture (new 'static 'texture-id :index #xc :page #x2))
-                                    (sp-func spt-birth-func 'birth-func-set-quat)
-                                    (sp-flt spt-num 1.0)
-                                    (sp-rnd-flt spt-scale-x (meters 2.0) (meters 0.5) 1.0)
-                                    (sp-flt spt-scale-y (meters 5.6))
-                                    (sp-rnd-flt spt-r 0.0 44.0 1.0)
-                                    (sp-rnd-flt spt-g 0.0 64.0 1.0)
-                                    (sp-rnd-flt spt-b 128.0 32.0 1.0)
-                                    (sp-flt spt-a 128.0)
-                                    (sp-int spt-timer 5)
-                                    (sp-cpuinfo-flags bit2 bit3 bit14 left-multiply-quat)
-                                    (sp-end)
-                                    )
-                                  )
-      )
+(defpart 2528
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xc :page #x2))
+    (sp-func spt-birth-func 'birth-func-set-quat)
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 0.5) 1.0)
+    (sp-flt spt-scale-y (meters 5.6))
+    (sp-rnd-flt spt-r 0.0 44.0 1.0)
+    (sp-rnd-flt spt-g 0.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 32.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags bit2 bit3 bit14 left-multiply-quat)
+    )
+  )
 
 (defun draw-eco-beam ((arg0 vector) (arg1 vector))
   (when (line-in-view-frustum? arg0 arg1)

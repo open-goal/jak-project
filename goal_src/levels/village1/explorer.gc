@@ -27,167 +27,119 @@
 
 (defmethod dummy-52 explorer ((obj explorer))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
-   (when v1-1
-    (let ((f0-0 (-> obj root-override trans y)))
-     (let ((a0-2 v1-1))
-      (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
+    (when v1-1
+      (let ((f0-0 (-> obj root-override trans y)))
+        (let ((a0-2 v1-1))
+          (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
+          )
+        0
+        (let ((a0-4 v1-1))
+          (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))
+          )
+        )
+      0
+      (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
       )
-     0
-     (let ((a0-4 v1-1))
-      (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))
-      )
-     )
-    0
-    (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
     )
-   )
   (none)
   )
 
 (defmethod draw-npc-shadow explorer ((obj explorer))
   (-> obj draw shadow-ctrl)
   (cond
-   ((and
-     (-> obj draw shadow)
-     (zero? (-> obj draw cur-lod))
-     (logtest? (-> obj draw status) 8)
+    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+     (let ((v1-9 (-> obj draw shadow-ctrl)))
+       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       )
+     0
+     (dummy-14 (-> obj draw shadow-ctrl))
      )
-    (let ((v1-9 (-> obj draw shadow-ctrl)))
-     (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
-     )
-    0
-    (dummy-14 (-> obj draw shadow-ctrl))
+    (else
+      (let ((v1-14 (-> obj draw shadow-ctrl)))
+        (logior! (-> v1-14 settings flags) 32)
+        )
+      0
+      )
     )
-   (else
-    (let ((v1-14 (-> obj draw shadow-ctrl)))
-     (logior! (-> v1-14 settings flags) 32)
-     )
-    0
-    )
-   )
   (none)
   )
 
 (defmethod play-anim! explorer ((obj explorer) (arg0 symbol))
   (set! (-> obj talk-message) (the-as uint 260))
-  (case (current-status (-> obj tasks)) 
-   (((task-status need-hint) (task-status need-introduction))
+  (case (current-status (-> obj tasks))
+    (((task-status need-hint) (task-status need-introduction))
      (if arg0
-      (close-status! (-> obj tasks) (task-status need-introduction))
-      )
+         (close-status! (-> obj tasks) (task-status need-introduction))
+         )
      (new 'static 'spool-anim
-      :name "explorer-introduction"
-      :index 9
-      :parts 11
-      :command-list
-      '(
-        ((the binteger 418)
-          joint
-          "cameraB"
-          )
-        ((the binteger 695)
-         shadow
-         self
-         #f
-         )
-        ((the binteger 695)
-         joint
-         "camera"
-         )
-        ((the binteger 838) shadow self #t) ((the binteger 838) joint "cameraB")
-        )
-      )
-     )
-   (((task-status need-reminder))
-    (set! (-> obj skippable) #t)
-    (cond
-     ((zero? (get-reminder (-> obj tasks) 0))
-      (if arg0
-       (save-reminder (-> obj tasks) 1 0)
+       :name "explorer-introduction"
+       :index 9
+       :parts 11
+       :command-list
+       '((418 joint "cameraB") (695 shadow self #f) (695 joint "camera") (838 shadow self #t) (838 joint "cameraB"))
        )
-      (new 'static 'spool-anim
-       :name "explorer-reminder-1"
-       :index 10
+     )
+    (((task-status need-reminder))
+     (set! (-> obj skippable) #t)
+     (cond
+       ((zero? (get-reminder (-> obj tasks) 0))
+        (if arg0
+            (save-reminder (-> obj tasks) 1 0)
+            )
+        (new 'static 'spool-anim
+          :name "explorer-reminder-1"
+          :index 10
+          :parts 5
+          :command-list
+          '((0 send-event target draw #f)
+            (148 send-event target draw #t)
+            (148 joint "cameraB")
+            (390 send-event target draw #f)
+            (390 joint "camera")
+            (505 send-event target draw #t)
+            )
+          )
+        )
+       (else
+         (if arg0
+             (save-reminder (-> obj tasks) 0 0)
+             )
+         (new 'static 'spool-anim :name "explorer-reminder-2" :index 11 :parts 3 :command-list '())
+         )
+       )
+     )
+    (((task-status need-reward-speech))
+     (cond
+       (arg0
+         (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
+         (close-current! (-> obj tasks))
+         (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+         )
+       (else
+         (set! (-> obj will-talk) #t)
+         (set! (-> obj talk-message) (the-as uint 282))
+         )
+       )
+     (new 'static 'spool-anim
+       :name "explorer-resolution"
+       :index 12
        :parts 5
        :command-list
-       '(
-         (0
-           send-event
-           target
-           draw
-           #f
-           )
-         ((the binteger 148)
-          send-event
-          target
-          draw
-          #t
-          )
-         ((the binteger 148)
-          joint
-          "cameraB"
-          )
-         ((the binteger 390)
-          send-event
-          target
-          draw
-          #f
-          )
-         ((the binteger 390)
-          joint
-          "camera"
-          )
-         ((the binteger 505) send-event target draw #t)
-         )
+       '((167 joint "cameraB") (310 joint "camera"))
        )
-      )
-     (else
+     )
+    (else
       (if arg0
-       (save-reminder (-> obj tasks) 0 0)
-       )
-      (new 'static 'spool-anim
-       :name "explorer-reminder-2"
-       :index 11
-       :parts 3
-       :command-list '()
-       )
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
+          )
+      (-> obj draw art-group data 3)
       )
-     )
     )
-   (((task-status need-reward-speech))
-    (cond
-     (arg0
-      (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-      (close-current! (-> obj tasks))
-      (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
-      )
-     (else
-      (set! (-> obj will-talk) #t)
-      (set! (-> obj talk-message) (the-as uint 282))
-      )
-     )
-    (new 'static 'spool-anim
-     :name "explorer-resolution"
-     :index 12
-     :parts 5
-     :command-list
-     '(
-       ((the binteger 167) joint "cameraB") ((the binteger 310) joint "camera")
-       )
-     )
-    )
-   (else
-    (if arg0
-     (format
-      0
-      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-      (-> obj name)
-      (task-status->string (current-status (-> obj tasks)))
-      )
-     )
-    (-> obj draw art-group data 3)
-    )
-   )
   )
 
 (defmethod get-art-elem explorer ((obj explorer))
@@ -195,761 +147,410 @@
   )
 
 (defmethod TODO-RENAME-43 explorer ((obj explorer))
-  (when
-   (TODO-RENAME-10
-    (-> obj ambient)
-    (new 'stack-no-clear 'vector)
-    9000
-    122880.0
-    obj
-    )
-   (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-          (v1-4 (the-as number (logior #x3f800000 v1-3)))
-          (f0-2 (+ -1.0 (the-as float v1-4)))
+  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) 9000 122880.0 obj)
+    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-4 (the-as number (logior #x3f800000 v1-3)))
+           (f0-2 (+ -1.0 (the-as float v1-4)))
+           )
+      (cond
+        ((< 0.85714287 f0-2)
+         (play-ambient (-> obj ambient) "EXP-AM05" #f (-> obj root-override trans))
+         )
+        ((< 0.71428573 f0-2)
+         (if (not (closed? (-> obj tasks) (game-task village1-uncle-money) (task-status need-reminder)))
+             (play-ambient (-> obj ambient) "EXP-LO02" #f (-> obj root-override trans))
+             )
+         )
+        ((< 0.5714286 f0-2)
+         (play-ambient (-> obj ambient) "EXP-AM04" #f (-> obj root-override trans))
+         )
+        ((< 0.42857143 f0-2)
+         (play-ambient (-> obj ambient) "EXP-AM03" #f (-> obj root-override trans))
+         )
+        ((< 0.2857143 f0-2)
+         (play-ambient (-> obj ambient) "EXP-AM02" #f (-> obj root-override trans))
+         )
+        ((< 0.14285715 f0-2)
+         (if (not (closed? (-> obj tasks) (game-task village1-uncle-money) (task-status need-reminder)))
+             (play-ambient (-> obj ambient) "EXP-AM01" #f (-> obj root-override trans))
+             )
+         )
+        (else
+          (play-ambient (-> obj ambient) "EXP-LO1A" #f (-> obj root-override trans))
           )
-    (cond
-     ((< 0.85714287 f0-2)
-      (play-ambient (-> obj ambient) "EXP-AM05" #f (-> obj root-override trans))
-      )
-     ((< 0.71428573 f0-2)
-      (if
-       (not
-        (closed?
-         (-> obj tasks)
-         (game-task village1-uncle-money)
-         (task-status need-reminder)
-         )
         )
-       (play-ambient
-        (-> obj ambient)
-        "EXP-LO02"
-        #f
-        (-> obj root-override trans)
-        )
-       )
       )
-     ((< 0.5714286 f0-2)
-      (play-ambient (-> obj ambient) "EXP-AM04" #f (-> obj root-override trans))
-      )
-     ((< 0.42857143 f0-2)
-      (play-ambient (-> obj ambient) "EXP-AM03" #f (-> obj root-override trans))
-      )
-     ((< 0.2857143 f0-2)
-      (play-ambient (-> obj ambient) "EXP-AM02" #f (-> obj root-override trans))
-      )
-     ((< 0.14285715 f0-2)
-      (if
-       (not
-        (closed?
-         (-> obj tasks)
-         (game-task village1-uncle-money)
-         (task-status need-reminder)
-         )
-        )
-       (play-ambient
-        (-> obj ambient)
-        "EXP-AM01"
-        #f
-        (-> obj root-override trans)
-        )
-       )
-      )
-     (else
-      (play-ambient (-> obj ambient) "EXP-LO1A" #f (-> obj root-override trans))
-      )
-     )
     )
-   )
   )
 
 (defmethod target-above-threshold? explorer ((obj explorer))
-  (the-as
-   symbol
-   (and
-    *target*
-    (< (-> (target-pos 0) x) -202752.0)
-    (< 98304.0 (-> (target-pos 0) z))
-    )
-   )
+  (the-as symbol (and *target* (< (-> (target-pos 0) x) -202752.0) (< 98304.0 (-> (target-pos 0) z))))
   )
 
 (defstate idle (explorer)
   :virtual #t
   :code
   (behavior ()
-   (if (!= (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        (-> self draw art-group data 3)
-        )
-    (ja-channel-push! 1 60)
-    )
-   (while #t
-    (TODO-RENAME-43 self)
-    (let ((v1-9 (-> self skel root-channel 0)))
-     (set!
-      (-> v1-9 frame-group)
-      (the-as art-joint-anim (-> self draw art-group data 3))
-      )
-     )
-    (let* ((f30-0 2.0)
-           (v1-11 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-12 (the-as number (logior #x3f800000 v1-11)))
-           )
-     (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-12)))) 1))
-      (let ((a0-12 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-12 frame-group)
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        )
-       (set!
-        (-> a0-12 param 0)
-        (the
-         float
-         (+
-          (->
-           (the-as art-joint-anim (-> self draw art-group data 3))
-           data
-           0
-           length
-           )
-          -1
-          )
-         )
-        )
-       (set! (-> a0-12 param 1) 1.0)
-       (set! (-> a0-12 frame-num) 0.0)
-       (joint-control-channel-group!
-        a0-12
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        num-func-seek!
-        )
-       )
-      (until (ja-done? 0)
-       (suspend)
-       (let ((a0-13 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-13 param 0)
-         (the float (+ (-> a0-13 frame-group data 0 length) -1))
-         )
-        (set! (-> a0-13 param 1) 1.0)
-        (joint-control-channel-group-eval!
-         a0-13
-         (the-as art-joint-anim #f)
-         num-func-seek!
-         )
-        )
-       )
-      )
-     )
-    (let* ((v1-40 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-41 (the-as number (logior #x3f800000 v1-40)))
-           )
-     (cond
-      ((< (+ -1.0 (the-as float v1-41)) 0.5)
-       (let ((a0-17 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-17 frame-group)
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         )
-        (set!
-         (-> a0-17 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as art-joint-anim (-> self draw art-group data 4))
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (set! (-> a0-17 param 1) 1.0)
-        (set! (-> a0-17 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-17
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         num-func-seek!
-         )
-        )
-       (until (ja-done? 0)
-        (suspend)
-        (let ((a0-18 (-> self skel root-channel 0)))
-         (set!
-          (-> a0-18 param 0)
-          (the float (+ (-> a0-18 frame-group data 0 length) -1))
-          )
-         (set! (-> a0-18 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-18
-          (the-as art-joint-anim #f)
-          num-func-seek!
-          )
-         )
-        )
-       (let ((gp-1 (-> *display* base-frame-counter)))
-        (while (let* ((s5-0 (-> *display* base-frame-counter))
-                      (f30-1 300.0)
-                      (f28-0 0.5)
-                      (f26-0 0.5)
-                      (v1-68
-                       (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
-                       )
-                      (v1-69 (the-as number (logior #x3f800000 v1-68)))
-                      )
-                (<
-                 (-
-                  s5-0
-                  (the
-                   int
-                   (* f30-1 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-69)))))
-                   )
-                  )
-                 gp-1
-                 )
+    (if (!= (if (> (-> self skel active-channels) 0)
+                (-> self skel root-channel 0 frame-group)
                 )
-         (suspend)
-         )
+            (-> self draw art-group data 3)
+            )
+        (ja-channel-push! 1 60)
         )
-       (let* ((v1-75 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-76 (the-as number (logior #x3f800000 v1-75)))
-              )
-        (when (< (+ -1.0 (the-as float v1-76)) 0.75)
-         (let ((a0-24 (-> self skel root-channel 0)))
-          (set!
-           (-> a0-24 frame-group)
-           (the-as art-joint-anim (-> self draw art-group data 5))
-           )
-          (set!
-           (-> a0-24 param 0)
-           (the
-            float
-            (+
-             (->
-              (the-as art-joint-anim (-> self draw art-group data 5))
-              data
-              0
-              length
-              )
-             -1
+    (while #t
+      (TODO-RENAME-43 self)
+      (let ((v1-9 (-> self skel root-channel 0)))
+        (set! (-> v1-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+        )
+      (let* ((f30-0 2.0)
+             (v1-11 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-12 (the-as number (logior #x3f800000 v1-11)))
              )
-            )
-           )
-          (set! (-> a0-24 param 1) 1.0)
-          (set! (-> a0-24 frame-num) 0.0)
-          (joint-control-channel-group!
-           a0-24
-           (the-as art-joint-anim (-> self draw art-group data 5))
-           num-func-seek!
-           )
-          )
-         (until (ja-done? 0)
-          (suspend)
-          (let ((a0-25 (-> self skel root-channel 0)))
-           (set!
-            (-> a0-25 param 0)
-            (the float (+ (-> a0-25 frame-group data 0 length) -1))
-            )
-           (set! (-> a0-25 param 1) 1.0)
-           (joint-control-channel-group-eval!
-            a0-25
-            (the-as art-joint-anim #f)
-            num-func-seek!
-            )
-           )
-          )
-         (let ((gp-2 (-> *display* base-frame-counter)))
-          (while (let* ((s5-1 (-> *display* base-frame-counter))
-                        (f30-2 300.0)
-                        (f28-1 0.5)
-                        (f26-1 0.5)
-                        (v1-104
-                         (/
-                          (the-as int (rand-uint31-gen *random-generator*))
-                          256
-                          )
-                         )
-                        (v1-105 (the-as number (logior #x3f800000 v1-104)))
-                        )
-                  (<
-                   (-
-                    s5-1
-                    (the
-                     int
-                     (*
-                      f30-2
-                      (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-105))))
-                      )
-                     )
-                    )
-                   gp-2
-                   )
+        (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-12)))) 1))
+          (let ((a0-12 (-> self skel root-channel 0)))
+            (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
+            (set! (-> a0-12 param 0)
+                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
                   )
-           (suspend)
-           )
-          )
-         (let ((a0-29 (-> self skel root-channel 0)))
-          (set! (-> a0-29 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (->
-                                         self
-                                         skel
-                                         root-channel
-                                         0
-                                         frame-group
-                                         )
-                                        )
-           )
-          (set! (-> a0-29 param 0) 0.0)
-          (set! (-> a0-29 param 1) 1.0)
-          (set!
-           (-> a0-29 frame-num)
-           (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                              (-> self skel root-channel 0 frame-group)
-                              )
-                          data
-                          0
-                          length
-                          )
-                       -1
-                       )
+            (set! (-> a0-12 param 1) 1.0)
+            (set! (-> a0-12 frame-num) 0.0)
+            (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
             )
-           )
-          (joint-control-channel-group!
-           a0-29
-           (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-           num-func-seek!
-           )
-          )
-         (until (ja-done? 0)
-          (suspend)
-          (let ((a0-30 (-> self skel root-channel 0)))
-           (set! (-> a0-30 param 0) 0.0)
-           (set! (-> a0-30 param 1) 1.0)
-           (joint-control-channel-group-eval!
-            a0-30
-            (the-as art-joint-anim #f)
-            num-func-seek!
-            )
-           )
-          )
-         (let*
-          ((v1-135 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-136 (the-as number (logior #x3f800000 v1-135)))
-           )
-          (when (< (+ -1.0 (the-as float v1-136)) 0.5)
-           (let ((a0-34 (-> self skel root-channel 0)))
-            (set!
-             (-> a0-34 frame-group)
-             (the-as art-joint-anim (-> self draw art-group data 5))
-             )
-            (set!
-             (-> a0-34 param 0)
-             (the
-              float
-              (+
-               (->
-                (the-as art-joint-anim (-> self draw art-group data 5))
-                data
-                0
-                length
-                )
-               -1
-               )
-              )
-             )
-            (set! (-> a0-34 param 1) 1.0)
-            (set! (-> a0-34 frame-num) 0.0)
-            (joint-control-channel-group!
-             a0-34
-             (the-as art-joint-anim (-> self draw art-group data 5))
-             num-func-seek!
-             )
-            )
-           (until (ja-done? 0)
+          (until (ja-done? 0)
             (suspend)
-            (let ((a0-35 (-> self skel root-channel 0)))
-             (set!
-              (-> a0-35 param 0)
-              (the float (+ (-> a0-35 frame-group data 0 length) -1))
+            (let ((a0-13 (-> self skel root-channel 0)))
+              (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
+              (set! (-> a0-13 param 1) 1.0)
+              (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
               )
-             (set! (-> a0-35 param 1) 1.0)
-             (joint-control-channel-group-eval!
-              a0-35
-              (the-as art-joint-anim #f)
-              num-func-seek!
-              )
-             )
             )
-           (let ((gp-3 (-> *display* base-frame-counter)))
-            (while (let* ((s5-2 (-> *display* base-frame-counter))
-                          (f30-3 300.0)
-                          (f28-2 0.5)
-                          (f26-2 0.5)
-                          (v1-164
-                           (/
-                            (the-as int (rand-uint31-gen *random-generator*))
-                            256
-                            )
-                           )
-                          (v1-165 (the-as number (logior #x3f800000 v1-164)))
-                          )
-                    (<
-                     (-
-                      s5-2
-                      (the
-                       int
-                       (*
-                        f30-3
-                        (+ f28-2 (* f26-2 (+ -1.0 (the-as float v1-165))))
-                        )
-                       )
-                      )
-                     gp-3
-                     )
-                    )
+          )
+        )
+      (let* ((v1-40 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-41 (the-as number (logior #x3f800000 v1-40)))
+             )
+        (cond
+          ((< (+ -1.0 (the-as float v1-41)) 0.5)
+           (let ((a0-17 (-> self skel root-channel 0)))
+             (set! (-> a0-17 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+             (set! (-> a0-17 param 0)
+                   (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+                   )
+             (set! (-> a0-17 param 1) 1.0)
+             (set! (-> a0-17 frame-num) 0.0)
+             (joint-control-channel-group! a0-17 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
+             )
+           (until (ja-done? 0)
              (suspend)
+             (let ((a0-18 (-> self skel root-channel 0)))
+               (set! (-> a0-18 param 0) (the float (+ (-> a0-18 frame-group data 0 length) -1)))
+               (set! (-> a0-18 param 1) 1.0)
+               (joint-control-channel-group-eval! a0-18 (the-as art-joint-anim #f) num-func-seek!)
+               )
              )
-            )
-           (let ((a0-39 (-> self skel root-channel 0)))
-            (set!
-             (-> a0-39 frame-group)
-             (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-             )
-            (set! (-> a0-39 param 0) 0.0)
-            (set! (-> a0-39 param 1) 1.0)
-            (set!
-             (-> a0-39 frame-num)
-             (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                (-> self skel root-channel 0 frame-group)
-                                )
-                            data
-                            0
-                            length
-                            )
-                         -1
-                         )
-              )
-             )
-            (joint-control-channel-group!
-             a0-39
-             (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-             num-func-seek!
-             )
-            )
-           (until (ja-done? 0)
-            (suspend)
-            (let ((a0-40 (-> self skel root-channel 0)))
-             (set! (-> a0-40 param 0) 0.0)
-             (set! (-> a0-40 param 1) 1.0)
-             (joint-control-channel-group-eval!
-              a0-40
-              (the-as art-joint-anim #f)
-              num-func-seek!
-              )
-             )
-            )
-           )
-          )
-         )
-        )
-       (let ((a0-42 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-42 frame-group)
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         )
-        (set! (-> a0-42 param 0) 0.0)
-        (set! (-> a0-42 param 1) 1.0)
-        (set!
-         (-> a0-42 frame-num)
-         (the
-          float
-          (+
-           (->
-            (the-as art-joint-anim (-> self draw art-group data 4))
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (joint-control-channel-group!
-         a0-42
-         (the-as art-joint-anim (-> self draw art-group data 4))
-         num-func-seek!
-         )
-        )
-       (until (ja-done? 0)
-        (suspend)
-        (let ((a0-43 (-> self skel root-channel 0)))
-         (set! (-> a0-43 param 0) 0.0)
-         (set! (-> a0-43 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-43
-          (the-as art-joint-anim #f)
-          num-func-seek!
-          )
-         )
-        )
-       )
-      (else
-       (let ((a0-45 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-45 frame-group)
-         (the-as art-joint-anim (-> self draw art-group data 6))
-         )
-        (set!
-         (-> a0-45 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as art-joint-anim (-> self draw art-group data 6))
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (set! (-> a0-45 param 1) 1.0)
-        (set! (-> a0-45 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-45
-         (the-as art-joint-anim (-> self draw art-group data 6))
-         num-func-seek!
-         )
-        )
-       (until (ja-done? 0)
-        (suspend)
-        (let ((a0-46 (-> self skel root-channel 0)))
-         (set!
-          (-> a0-46 param 0)
-          (the float (+ (-> a0-46 frame-group data 0 length) -1))
-          )
-         (set! (-> a0-46 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-46
-          (the-as art-joint-anim #f)
-          num-func-seek!
-          )
-         )
-        )
-       (let ((gp-4 (-> *display* base-frame-counter)))
-        (while (let* ((s5-3 (-> *display* base-frame-counter))
-                      (f30-4 300.0)
-                      (f28-3 0.5)
-                      (f26-3 0.5)
-                      (v1-237
-                       (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
-                       )
-                      (v1-238 (the-as number (logior #x3f800000 v1-237)))
+           (let ((gp-1 (-> *display* base-frame-counter)))
+             (while (let* ((s5-0 (-> *display* base-frame-counter))
+                           (f30-1 300.0)
+                           (f28-0 0.5)
+                           (f26-0 0.5)
+                           (v1-68 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                           (v1-69 (the-as number (logior #x3f800000 v1-68)))
+                           )
+                      (< (- s5-0 (the int (* f30-1 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-69))))))) gp-1)
                       )
-                (<
-                 (-
-                  s5-3
-                  (the
-                   int
-                   (* f30-4 (+ f28-3 (* f26-3 (+ -1.0 (the-as float v1-238)))))
-                   )
+               (suspend)
+               )
+             )
+           (let* ((v1-75 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                  (v1-76 (the-as number (logior #x3f800000 v1-75)))
                   )
-                 gp-4
-                 )
-                )
-         (suspend)
-         )
-        )
-       (let ((a0-50 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-50 frame-group)
-         (the-as art-joint-anim (-> self draw art-group data 7))
-         )
-        (set!
-         (-> a0-50 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as art-joint-anim (-> self draw art-group data 7))
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (set! (-> a0-50 param 1) 1.0)
-        (set! (-> a0-50 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-50
-         (the-as art-joint-anim (-> self draw art-group data 7))
-         num-func-seek!
-         )
-        )
-       (until (ja-done? 0)
-        (suspend)
-        (let ((a0-51 (-> self skel root-channel 0)))
-         (set!
-          (-> a0-51 param 0)
-          (the float (+ (-> a0-51 frame-group data 0 length) -1))
-          )
-         (set! (-> a0-51 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-51
-          (the-as art-joint-anim #f)
-          num-func-seek!
-          )
-         )
-        )
-       (let ((gp-5 (-> *display* base-frame-counter)))
-        (while (let* ((s5-4 (-> *display* base-frame-counter))
-                      (f30-5 300.0)
-                      (f28-4 0.5)
-                      (f26-4 0.5)
-                      (v1-268
-                       (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+             (when (< (+ -1.0 (the-as float v1-76)) 0.75)
+               (let ((a0-24 (-> self skel root-channel 0)))
+                 (set! (-> a0-24 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
+                 (set! (-> a0-24 param 0)
+                       (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
                        )
-                      (v1-269 (the-as number (logior #x3f800000 v1-268)))
-                      )
-                (<
-                 (-
-                  s5-4
-                  (the
-                   int
-                   (* f30-5 (+ f28-4 (* f26-4 (+ -1.0 (the-as float v1-269)))))
-                   )
-                  )
-                 gp-5
+                 (set! (-> a0-24 param 1) 1.0)
+                 (set! (-> a0-24 frame-num) 0.0)
+                 (joint-control-channel-group! a0-24 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
                  )
-                )
-         (suspend)
-         )
-        )
-       (let ((a0-55 (-> self skel root-channel 0)))
-        (set! (-> a0-55 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-         )
-        (set! (-> a0-55 param 0) 0.0)
-        (set! (-> a0-55 param 1) 1.0)
-        (set!
-         (-> a0-55 frame-num)
-         (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
-                        data
-                        0
-                        length
-                        )
-                     -1
+               (until (ja-done? 0)
+                 (suspend)
+                 (let ((a0-25 (-> self skel root-channel 0)))
+                   (set! (-> a0-25 param 0) (the float (+ (-> a0-25 frame-group data 0 length) -1)))
+                   (set! (-> a0-25 param 1) 1.0)
+                   (joint-control-channel-group-eval! a0-25 (the-as art-joint-anim #f) num-func-seek!)
+                   )
+                 )
+               (let ((gp-2 (-> *display* base-frame-counter)))
+                 (while (let* ((s5-1 (-> *display* base-frame-counter))
+                               (f30-2 300.0)
+                               (f28-1 0.5)
+                               (f26-1 0.5)
+                               (v1-104 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                               (v1-105 (the-as number (logior #x3f800000 v1-104)))
+                               )
+                          (< (- s5-1 (the int (* f30-2 (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-105))))))) gp-2)
+                          )
+                   (suspend)
+                   )
+                 )
+               (let ((a0-29 (-> self skel root-channel 0)))
+                 (set! (-> a0-29 frame-group) (if (> (-> self skel active-channels) 0)
+                                                  (-> self skel root-channel 0 frame-group)
+                                                  )
+                       )
+                 (set! (-> a0-29 param 0) 0.0)
+                 (set! (-> a0-29 param 1) 1.0)
+                 (set! (-> a0-29 frame-num) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                                  (-> self skel root-channel 0 frame-group)
+                                                                  )
+                                                              data
+                                                              0
+                                                              length
+                                                              )
+                                                          -1
+                                                          )
+                                                 )
+                       )
+                 (joint-control-channel-group!
+                   a0-29
+                   (if (> (-> self skel active-channels) 0)
+                       (-> self skel root-channel 0 frame-group)
+                       )
+                   num-func-seek!
+                   )
+                 )
+               (until (ja-done? 0)
+                 (suspend)
+                 (let ((a0-30 (-> self skel root-channel 0)))
+                   (set! (-> a0-30 param 0) 0.0)
+                   (set! (-> a0-30 param 1) 1.0)
+                   (joint-control-channel-group-eval! a0-30 (the-as art-joint-anim #f) num-func-seek!)
+                   )
+                 )
+               (let* ((v1-135 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                      (v1-136 (the-as number (logior #x3f800000 v1-135)))
+                      )
+                 (when (< (+ -1.0 (the-as float v1-136)) 0.5)
+                   (let ((a0-34 (-> self skel root-channel 0)))
+                     (set! (-> a0-34 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
+                     (set! (-> a0-34 param 0)
+                           (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
+                           )
+                     (set! (-> a0-34 param 1) 1.0)
+                     (set! (-> a0-34 frame-num) 0.0)
+                     (joint-control-channel-group! a0-34 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
                      )
-          )
-         )
-        (joint-control-channel-group!
-         a0-55
-         (if (> (-> self skel active-channels) 0)
-          (-> self skel root-channel 0 frame-group)
-          )
-         num-func-seek!
-         )
-        )
-       (until (ja-done? 0)
-        (suspend)
-        (let ((a0-56 (-> self skel root-channel 0)))
-         (set! (-> a0-56 param 0) 0.0)
-         (set! (-> a0-56 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-56
-          (the-as art-joint-anim #f)
-          num-func-seek!
-          )
-         )
-        )
-       (let ((gp-6 (-> *display* base-frame-counter)))
-        (while (let* ((s5-5 (-> *display* base-frame-counter))
-                      (f30-6 300.0)
-                      (f28-5 0.5)
-                      (f26-5 0.5)
-                      (v1-301
-                       (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                   (until (ja-done? 0)
+                     (suspend)
+                     (let ((a0-35 (-> self skel root-channel 0)))
+                       (set! (-> a0-35 param 0) (the float (+ (-> a0-35 frame-group data 0 length) -1)))
+                       (set! (-> a0-35 param 1) 1.0)
+                       (joint-control-channel-group-eval! a0-35 (the-as art-joint-anim #f) num-func-seek!)
                        )
-                      (v1-302 (the-as number (logior #x3f800000 v1-301)))
-                      )
-                (<
-                 (-
-                  s5-5
-                  (the
-                   int
-                   (* f30-6 (+ f28-5 (* f26-5 (+ -1.0 (the-as float v1-302)))))
+                     )
+                   (let ((gp-3 (-> *display* base-frame-counter)))
+                     (while (let* ((s5-2 (-> *display* base-frame-counter))
+                                   (f30-3 300.0)
+                                   (f28-2 0.5)
+                                   (f26-2 0.5)
+                                   (v1-164 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                                   (v1-165 (the-as number (logior #x3f800000 v1-164)))
+                                   )
+                              (< (- s5-2 (the int (* f30-3 (+ f28-2 (* f26-2 (+ -1.0 (the-as float v1-165))))))) gp-3)
+                              )
+                       (suspend)
+                       )
+                     )
+                   (let ((a0-39 (-> self skel root-channel 0)))
+                     (set! (-> a0-39 frame-group) (if (> (-> self skel active-channels) 0)
+                                                      (-> self skel root-channel 0 frame-group)
+                                                      )
+                           )
+                     (set! (-> a0-39 param 0) 0.0)
+                     (set! (-> a0-39 param 1) 1.0)
+                     (set! (-> a0-39 frame-num) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                                      (-> self skel root-channel 0 frame-group)
+                                                                      )
+                                                                  data
+                                                                  0
+                                                                  length
+                                                                  )
+                                                              -1
+                                                              )
+                                                     )
+                           )
+                     (joint-control-channel-group!
+                       a0-39
+                       (if (> (-> self skel active-channels) 0)
+                           (-> self skel root-channel 0 frame-group)
+                           )
+                       num-func-seek!
+                       )
+                     )
+                   (until (ja-done? 0)
+                     (suspend)
+                     (let ((a0-40 (-> self skel root-channel 0)))
+                       (set! (-> a0-40 param 0) 0.0)
+                       (set! (-> a0-40 param 1) 1.0)
+                       (joint-control-channel-group-eval! a0-40 (the-as art-joint-anim #f) num-func-seek!)
+                       )
+                     )
                    )
-                  )
-                 gp-6
                  )
-                )
-         (suspend)
-         )
-        )
-       (let ((a0-60 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-60 frame-group)
-         (the-as art-joint-anim (-> self draw art-group data 8))
-         )
-        (set!
-         (-> a0-60 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as art-joint-anim (-> self draw art-group data 8))
-            data
-            0
-            length
-            )
-           -1
+               )
+             )
+           (let ((a0-42 (-> self skel root-channel 0)))
+             (set! (-> a0-42 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
+             (set! (-> a0-42 param 0) 0.0)
+             (set! (-> a0-42 param 1) 1.0)
+             (set! (-> a0-42 frame-num)
+                   (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
+                   )
+             (joint-control-channel-group! a0-42 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
+             )
+           (until (ja-done? 0)
+             (suspend)
+             (let ((a0-43 (-> self skel root-channel 0)))
+               (set! (-> a0-43 param 0) 0.0)
+               (set! (-> a0-43 param 1) 1.0)
+               (joint-control-channel-group-eval! a0-43 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             )
            )
+          (else
+            (let ((a0-45 (-> self skel root-channel 0)))
+              (set! (-> a0-45 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
+              (set! (-> a0-45 param 0)
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
+                    )
+              (set! (-> a0-45 param 1) 1.0)
+              (set! (-> a0-45 frame-num) 0.0)
+              (joint-control-channel-group! a0-45 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
+              )
+            (until (ja-done? 0)
+              (suspend)
+              (let ((a0-46 (-> self skel root-channel 0)))
+                (set! (-> a0-46 param 0) (the float (+ (-> a0-46 frame-group data 0 length) -1)))
+                (set! (-> a0-46 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-46 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            (let ((gp-4 (-> *display* base-frame-counter)))
+              (while (let* ((s5-3 (-> *display* base-frame-counter))
+                            (f30-4 300.0)
+                            (f28-3 0.5)
+                            (f26-3 0.5)
+                            (v1-237 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                            (v1-238 (the-as number (logior #x3f800000 v1-237)))
+                            )
+                       (< (- s5-3 (the int (* f30-4 (+ f28-3 (* f26-3 (+ -1.0 (the-as float v1-238))))))) gp-4)
+                       )
+                (suspend)
+                )
+              )
+            (let ((a0-50 (-> self skel root-channel 0)))
+              (set! (-> a0-50 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
+              (set! (-> a0-50 param 0)
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
+                    )
+              (set! (-> a0-50 param 1) 1.0)
+              (set! (-> a0-50 frame-num) 0.0)
+              (joint-control-channel-group! a0-50 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
+              )
+            (until (ja-done? 0)
+              (suspend)
+              (let ((a0-51 (-> self skel root-channel 0)))
+                (set! (-> a0-51 param 0) (the float (+ (-> a0-51 frame-group data 0 length) -1)))
+                (set! (-> a0-51 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-51 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            (let ((gp-5 (-> *display* base-frame-counter)))
+              (while (let* ((s5-4 (-> *display* base-frame-counter))
+                            (f30-5 300.0)
+                            (f28-4 0.5)
+                            (f26-4 0.5)
+                            (v1-268 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                            (v1-269 (the-as number (logior #x3f800000 v1-268)))
+                            )
+                       (< (- s5-4 (the int (* f30-5 (+ f28-4 (* f26-4 (+ -1.0 (the-as float v1-269))))))) gp-5)
+                       )
+                (suspend)
+                )
+              )
+            (let ((a0-55 (-> self skel root-channel 0)))
+              (set! (-> a0-55 frame-group) (if (> (-> self skel active-channels) 0)
+                                               (-> self skel root-channel 0 frame-group)
+                                               )
+                    )
+              (set! (-> a0-55 param 0) 0.0)
+              (set! (-> a0-55 param 1) 1.0)
+              (set! (-> a0-55 frame-num) (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                                                               (-> self skel root-channel 0 frame-group)
+                                                               )
+                                                           data
+                                                           0
+                                                           length
+                                                           )
+                                                       -1
+                                                       )
+                                              )
+                    )
+              (joint-control-channel-group!
+                a0-55
+                (if (> (-> self skel active-channels) 0)
+                    (-> self skel root-channel 0 frame-group)
+                    )
+                num-func-seek!
+                )
+              )
+            (until (ja-done? 0)
+              (suspend)
+              (let ((a0-56 (-> self skel root-channel 0)))
+                (set! (-> a0-56 param 0) 0.0)
+                (set! (-> a0-56 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-56 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            (let ((gp-6 (-> *display* base-frame-counter)))
+              (while (let* ((s5-5 (-> *display* base-frame-counter))
+                            (f30-6 300.0)
+                            (f28-5 0.5)
+                            (f26-5 0.5)
+                            (v1-301 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                            (v1-302 (the-as number (logior #x3f800000 v1-301)))
+                            )
+                       (< (- s5-5 (the int (* f30-6 (+ f28-5 (* f26-5 (+ -1.0 (the-as float v1-302))))))) gp-6)
+                       )
+                (suspend)
+                )
+              )
+            (let ((a0-60 (-> self skel root-channel 0)))
+              (set! (-> a0-60 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
+              (set! (-> a0-60 param 0)
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
+                    )
+              (set! (-> a0-60 param 1) 1.0)
+              (set! (-> a0-60 frame-num) 0.0)
+              (joint-control-channel-group! a0-60 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
+              )
+            (until (ja-done? 0)
+              (suspend)
+              (let ((a0-61 (-> self skel root-channel 0)))
+                (set! (-> a0-61 param 0) (the float (+ (-> a0-61 frame-group data 0 length) -1)))
+                (set! (-> a0-61 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-61 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            )
           )
-         )
-        (set! (-> a0-60 param 1) 1.0)
-        (set! (-> a0-60 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-60
-         (the-as art-joint-anim (-> self draw art-group data 8))
-         num-func-seek!
-         )
         )
-       (until (ja-done? 0)
-        (suspend)
-        (let ((a0-61 (-> self skel root-channel 0)))
-         (set!
-          (-> a0-61 param 0)
-          (the float (+ (-> a0-61 frame-group data 0 length) -1))
-          )
-         (set! (-> a0-61 param 1) 1.0)
-         (joint-control-channel-group-eval!
-          a0-61
-          (the-as art-joint-anim #f)
-          num-func-seek!
-          )
-         )
-        )
-       )
       )
-     )
+    (none)
     )
-   (none)
-   )
   )
 
 (defmethod init-from-entity! explorer ((obj explorer) (arg0 entity-actor))

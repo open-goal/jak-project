@@ -12,6 +12,7 @@
 #include "common/type_system/state.h"
 #include "decompiler/IR2/LabelDB.h"
 #include "common/math/Vector.h"
+#include "decompiler/ObjectFile/LinkedWord.h"
 
 namespace decompiler {
 class Form;
@@ -1672,6 +1673,77 @@ class DefskelgroupElement : public FormElement {
   std::string m_name;
   StaticInfo m_static_info;
   Info m_info;
+};
+
+class DefpartgroupElement : public FormElement {
+ public:
+  struct StaticInfo {
+    u16 duration;
+    u16 linger;
+    u16 flags;
+    std::string name;
+    math::Vector4f bounds;
+
+    struct PartGroupItem {
+      u32 part_id;
+      float fade;
+      float falloff;
+      u16 flags;
+      u16 period;
+      u16 length;
+      u16 offset;
+      u32 hour_mask;
+      u32 binding;
+    };
+    std::vector<PartGroupItem> elts;
+  };
+  DefpartgroupElement(const StaticInfo& data, int group_id);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+  const std::string& name() const { return m_static_info.name; }
+
+ private:
+  StaticInfo m_static_info;
+  int m_group_id;
+};
+
+class DefpartElement : public FormElement {
+ public:
+  struct StaticInfo {
+    struct PartField {
+      u16 field_id;
+      u16 flags;
+      std::vector<LinkedWord> data;
+      goos::Object sound_spec;
+    };
+    std::vector<PartField> fields;
+  };
+  DefpartElement(const StaticInfo& data, int id);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  StaticInfo m_static_info;
+  int m_id;
 };
 
 class ResLumpMacroElement : public FormElement {
