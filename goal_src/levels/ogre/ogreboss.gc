@@ -5,55 +5,7 @@
 ;; name in dgo: ogreboss
 ;; dgos: L1, OGR
 
-(deftype ogreboss (process-drawable)
-  ((root-override             collide-shape           :offset        112)
-   (old-player-transform      transformq    :inline   :offset-assert 176)
-   (level                     float                   :offset-assert 224)
-   (difficulty                float                   :offset-assert 228)
-   (boulder                   handle                  :offset-assert 232)
-   (column                    handle                  :offset-assert 240)
-   (z-plane                   vector        :inline   :offset-assert 256)
-   (far-pos                   vector        :inline   :offset-assert 272)
-   (near-pos                  vector        :inline   :offset-assert 288)
-   (side-dir                  vector        :inline   :offset-assert 304)
-   (target-offset-array       vector        3 :inline :offset-assert 320)
-   (target-offset-array-2     vector        :inline   :offset        336)
-   (target-offset-array-3     vector        :inline   :offset        352)
-   (target-actor-array        entity-actor  3         :offset-assert 368)
-   (target-blast-radius-array float         3         :offset-assert 380)
-   (shuffle-pos               float                   :offset-assert 392)
-   (target-count              int8                    :offset-assert 396)
-   (hit-count                 int8                    :offset-assert 397)
-   (max-hit-count             int8                    :offset-assert 398)
-   (roll-boulder              int8                    :offset-assert 399)
-   (try-count                 uint8                   :offset-assert 400)
-   (hit-time                  int64                   :offset-assert 408)
-   (grow-time                 float                   :offset-assert 416)
-   (lava                      entity-actor            :offset-assert 420)
-   (vulnerable                symbol                  :offset-assert 424)
-   (bridge-assembled          symbol                  :offset-assert 428)
-   (at-near-spot              symbol                  :offset-assert 432)
-   (submerged                 symbol                  :offset-assert 436)
-   (try-counted               symbol                  :offset-assert 440)
-   )
-  :heap-base #x150
-  :method-count-assert 20
-  :size-assert         #x1bc
-  :flag-assert         #x14015001bc
-  (:states
-    ogreboss-dead
-    ogreboss-die
-    ogreboss-idle
-    ogreboss-intro
-    ogreboss-stage1
-    ogreboss-stage2
-    ogreboss-stage3-hit
-    ogreboss-stage3-shuffle
-    ogreboss-stage3-throw
-    ogreboss-wait-for-player
-    )
-  )
-
+(declare-type ogreboss process-drawable)
 (define-extern *ogreboss* ogreboss)
 
 ;; DECOMP BEGINS
@@ -147,15 +99,15 @@
   )
 
 (deftype ogreboss-missile (process-drawable)
-  ((parent-override (pointer ogreboss)           :offset         12)
-   (root-override   collide-shape-moving         :offset        112)
-   (trajectory      trajectory           :inline :offset-assert 176)
-   (src-pos         vector               :inline :offset-assert 224)
-   (dest-pos        vector               :inline :offset-assert 240)
-   (start-time      int64                        :offset-assert 256)
-   (tumble-quat     quaternion           :inline :offset-assert 272)
-   (blast-radius    float                        :offset-assert 288)
-   (pickup-type     pickup-type                  :offset-assert 292)
+  ((parent-override (pointer process-drawable)         :offset         12)
+   (root-override   collide-shape-moving               :offset        112)
+   (trajectory      trajectory                 :inline :offset-assert 176)
+   (src-pos         vector                     :inline :offset-assert 224)
+   (dest-pos        vector                     :inline :offset-assert 240)
+   (start-time      int64                              :offset-assert 256)
+   (tumble-quat     quaternion                 :inline :offset-assert 272)
+   (blast-radius    float                              :offset-assert 288)
+   (pickup-type     pickup-type                        :offset-assert 292)
    )
   :heap-base #xc0
   :method-count-assert 20
@@ -468,11 +420,11 @@
       (set! (-> v1-10 collide-with) (collide-kind cak-2 cak-3 target crate enemy wall-object ground-object))
       (set! (-> v1-10 prim-core collide-as) (collide-kind enemy))
       )
-    (dummy-47 (-> self root-override))
+    (update-transforms! (-> self root-override))
     (let ((a1-1 (new 'stack-no-clear 'overlaps-others-params)))
       (set! (-> a1-1 options) (the-as uint 0))
       (set! (-> a1-1 tlist) *touching-list*)
-      (dummy-40 (-> self root-override) a1-1)
+      (find-overlapping-shapes (-> self root-override) a1-1)
       )
     (suspend)
     (clear-collide-with-as (-> self root-override))
@@ -524,7 +476,7 @@
   (set! (-> self root-override trans quad) (-> arg0 src quad))
   (set! (-> self src-pos quad) (-> arg0 src quad))
   (set! (-> self dest-pos quad) (-> arg0 dest quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root-override quat vec quad))
+  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root-override scale))
   (initialize-skeleton self *ogreboss-shoot-boulder-sg* '())
   (set! (-> self mask) (logior (process-mask enemy projectile) (-> self mask)))
@@ -571,19 +523,19 @@
   )
 
 (deftype ogreboss-super-boulder (process-drawable)
-  ((parent-override (pointer ogreboss)            :offset         12)
-   (root-override   collide-shape-moving          :offset        112)
-   (orig-pos        vector                :inline :offset-assert 176)
-   (src-pos         vector                :inline :offset-assert 192)
-   (spin-axis       vector                :inline :offset-assert 208)
-   (joint           joint-mod-blend-local         :offset-assert 224)
-   (speed           float                         :offset-assert 228)
-   (size            float                         :offset-assert 232)
-   (grow-rate       float                         :offset-assert 236)
-   (lava            entity-actor                  :offset-assert 240)
-   (sound-id        sound-id                      :offset-assert 244)
-   (hit-boss        symbol                        :offset-assert 248)
-   (tumble-quat     quaternion            :inline :offset-assert 256)
+  ((parent-override (pointer process-drawable)         :offset         12)
+   (root-override   collide-shape-moving               :offset        112)
+   (orig-pos        vector                     :inline :offset-assert 176)
+   (src-pos         vector                     :inline :offset-assert 192)
+   (spin-axis       vector                     :inline :offset-assert 208)
+   (joint           joint-mod-blend-local              :offset-assert 224)
+   (speed           float                              :offset-assert 228)
+   (size            float                              :offset-assert 232)
+   (grow-rate       float                              :offset-assert 236)
+   (lava            entity-actor                       :offset-assert 240)
+   (sound-id        sound-id                           :offset-assert 244)
+   (hit-boss        symbol                             :offset-assert 248)
+   (tumble-quat     quaternion                 :inline :offset-assert 256)
    )
   :heap-base #xa0
   :method-count-assert 20
@@ -1054,8 +1006,8 @@
     (set! (-> self root-override) s4-0)
     )
   (set! (-> self orig-pos quad) (-> arg0 quad))
-  (set! (-> self root-override trans quad) (-> self parent-override 0 root-override trans quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root-override quat vec quad))
+  (set! (-> self root-override trans quad) (-> self parent-override 0 root trans quad))
+  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root-override scale))
   (initialize-skeleton self *ogreboss-super-boulder-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -1248,6 +1200,55 @@
     )
   (go ogreboss-bounce-boulder-idle)
   (none)
+  )
+
+(deftype ogreboss (process-drawable)
+  ((root-override             collide-shape           :offset        112)
+   (old-player-transform      transformq    :inline   :offset-assert 176)
+   (level                     float                   :offset-assert 224)
+   (difficulty                float                   :offset-assert 228)
+   (boulder                   handle                  :offset-assert 232)
+   (column                    handle                  :offset-assert 240)
+   (z-plane                   vector        :inline   :offset-assert 256)
+   (far-pos                   vector        :inline   :offset-assert 272)
+   (near-pos                  vector        :inline   :offset-assert 288)
+   (side-dir                  vector        :inline   :offset-assert 304)
+   (target-offset-array       vector        3 :inline :offset-assert 320)
+   (target-offset-array-2     vector        :inline   :offset        336)
+   (target-offset-array-3     vector        :inline   :offset        352)
+   (target-actor-array        entity-actor  3         :offset-assert 368)
+   (target-blast-radius-array float         3         :offset-assert 380)
+   (shuffle-pos               float                   :offset-assert 392)
+   (target-count              int8                    :offset-assert 396)
+   (hit-count                 int8                    :offset-assert 397)
+   (max-hit-count             int8                    :offset-assert 398)
+   (roll-boulder              int8                    :offset-assert 399)
+   (try-count                 uint8                   :offset-assert 400)
+   (hit-time                  int64                   :offset-assert 408)
+   (grow-time                 float                   :offset-assert 416)
+   (lava                      entity-actor            :offset-assert 420)
+   (vulnerable                symbol                  :offset-assert 424)
+   (bridge-assembled          symbol                  :offset-assert 428)
+   (at-near-spot              symbol                  :offset-assert 432)
+   (submerged                 symbol                  :offset-assert 436)
+   (try-counted               symbol                  :offset-assert 440)
+   )
+  :heap-base #x150
+  :method-count-assert 20
+  :size-assert         #x1bc
+  :flag-assert         #x14015001bc
+  (:states
+    ogreboss-dead
+    ogreboss-die
+    ogreboss-idle
+    ogreboss-intro
+    ogreboss-stage1
+    ogreboss-stage2
+    ogreboss-stage3-hit
+    ogreboss-stage3-shuffle
+    ogreboss-stage3-throw
+    ogreboss-wait-for-player
+    )
   )
 
 
