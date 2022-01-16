@@ -63,6 +63,9 @@ struct SharedRenderState {
   bool dump_playback = false;
 
   bool use_sky_cpu = true;
+
+  bool has_camera_planes = false;
+  math::Vector4f camera_planes[4];
 };
 
 /*!

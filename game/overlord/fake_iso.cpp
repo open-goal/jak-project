@@ -10,6 +10,7 @@
  */
 
 #include <cstring>
+#include <filesystem>
 #include "fake_iso.h"
 #include "game/sce/iop.h"
 #include "isocommon.h"
@@ -79,45 +80,16 @@ void fake_iso_init_globals() {
 int FS_Init(u8* buffer) {
   (void)buffer;
 
-  auto config_str = file_util::read_text_file(file_util::get_file_path({"game", "fake_iso.txt"}));
-  const char* ptr = config_str.c_str();
-
-  // loop over lines
-  while (*ptr) {
-    // newlines
-    while (*ptr && *ptr == '\n')
-      ptr++;
-
-    // comment line
-    if (*ptr == ';') {
-      while (*ptr && (*ptr != '\n')) {
-        ptr++;
-      }
-      continue;
+  for (const auto& f : std::filesystem::directory_iterator(file_util::get_file_path({"out/iso"}))) {
+    if (f.is_regular_file()) {
+      assert(fake_iso_entry_count < MAX_ISO_FILES);
+      FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];
+      std::string file_name = f.path().filename().string();
+      assert(file_name.length() < 16);  // should be 8.3.
+      strcpy(e->iso_name, file_name.c_str());
+      strcpy(e->file_path, fmt::format("out/iso/{}", file_name).c_str());
+      fake_iso_entry_count++;
     }
-
-    // entry line
-    assert(fake_iso_entry_count < MAX_ISO_FILES);
-    FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];
-    int i = 0;
-    while (*ptr && (*ptr != ' ') && i < 16) {
-      e->iso_name[i] = *ptr;
-      ptr++;
-      i++;
-    }
-
-    while (*ptr == ' ') {
-      ptr++;
-    }
-
-    i = 0;
-    while (*ptr && (*ptr != '\n') && (*ptr != ' ') && (*ptr != EOF) && i < 128) {
-      e->file_path[i] = *ptr;
-      ptr++;
-      i++;
-    }
-    e->file_path[i] = 0;
-    fake_iso_entry_count++;
   }
 
   for (u32 i = 0; i < fake_iso_entry_count; i++) {
@@ -161,7 +133,6 @@ FileRecord* FS_FindIN(const char* iso_name) {
     count++;
   }
   printf("[FAKEISO] failed to find %s\n", iso_name);
-  assert(false);
   return nullptr;
 }
 

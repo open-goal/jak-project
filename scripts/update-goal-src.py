@@ -26,7 +26,6 @@ files_with_modifications = [
   "viewer",
   "sunken-obs",
   "cam-master",
-  "generic-obs",
   "target-snowball",
   "logic-target",
   "default-menu",
@@ -35,7 +34,9 @@ files_with_modifications = [
   "plant-boss",
   "helix-water",
   "lavatube-energy",
-  "sage-finalboss-FIN"
+  "sage-finalboss-FIN",
+  "progress",
+  "entity"
 ]
 
 for file in files:

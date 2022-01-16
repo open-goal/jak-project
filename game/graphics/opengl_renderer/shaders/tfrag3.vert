@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
@@ -7,7 +7,7 @@ layout (location = 2) in int time_of_day_index;
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
 uniform float fog_constant;
-uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
+layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
 
 out vec4 fragment_color;
 out vec3 tex_coord;
@@ -51,8 +51,7 @@ void main() {
     transformed.xy -= (2048.);
 
     // correct z scale
-    transformed.z /= (16777216);
-    transformed.z *= 2;
+    transformed.z /= (8388608);
     transformed.z -= 1;
 
     // correct xy scale
@@ -63,6 +62,8 @@ void main() {
     transformed.xyz *= transformed.w;
 
     gl_Position = transformed;
+    // scissoring area adjust
+    gl_Position.y *= 512.0/448.0;
 
     // time of day lookup
     fragment_color = texelFetch(tex_T1, time_of_day_index, 0);

@@ -19,6 +19,9 @@
   :method-count-assert 76
   :size-assert         #x1f0
   :flag-assert         #x4c018001f0
+  (:states
+    swamp-rat-spawn
+    )
   )
 
 ;; definition for method 3 of type swamp-rat
@@ -108,12 +111,20 @@ swamp-rat-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod TODO-RENAME-38 swamp-rat ((obj swamp-rat))
-  (dummy-59 (-> obj collide-info) (-> obj collide-info transv) (the-as uint 1) 8192.0 #t #f #f)
+  (integrate-for-enemy-with-move-to-ground!
+    (-> obj collide-info)
+    (-> obj collide-info transv)
+    (collide-kind background)
+    8192.0
+    #t
+    #f
+    #f
+    )
   (when (< (-> obj collide-info trans y) (-> obj min-height))
     (let ((a1-1 (new 'stack-no-clear 'vector)))
       (set! (-> a1-1 quad) (-> obj collide-info trans quad))
       (set! (-> a1-1 y) (-> obj min-height))
-      (TODO-RENAME-61 (-> obj collide-info) a1-1 (-> obj collide-info transv) *y-vector*)
+      (move-to-ground-point! (-> obj collide-info) a1-1 (-> obj collide-info transv) *y-vector*)
       )
     )
   0
@@ -126,7 +137,10 @@ swamp-rat-default-event-handler
   :event
   swamp-rat-default-event-handler
   :post
-  (behavior () (ja-post) (none))
+  (behavior ()
+    (ja-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -286,7 +300,11 @@ swamp-rat-default-event-handler
     (none)
     )
   :post
-  (behavior () (swamp-rat-update-wiggle-target (target-pos 0)) (nav-enemy-travel-post) (none))
+  (behavior ()
+    (swamp-rat-update-wiggle-target (target-pos 0))
+    (nav-enemy-travel-post)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -470,14 +488,20 @@ swamp-rat-default-event-handler
         (while #t
           (set! f30-0 (seek f30-0 1.5 0.1))
           (vector-v++! (-> self collide-info transv) gp-0)
-          (dummy-59 (-> self collide-info) (-> self collide-info transv) (the-as uint 1) 8192.0 #t #f #f)
-          (when (or
-                  (logtest? (-> self collide-info status) 4)
-                  (or
-                    (< (-> self collide-info trans y) (-> self min-height))
-                    (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+          (integrate-for-enemy-with-move-to-ground!
+            (-> self collide-info)
+            (-> self collide-info transv)
+            (collide-kind background)
+            8192.0
+            #t
+            #f
+            #f
+            )
+          (when (or (logtest? (-> self collide-info status) 4)
+                    (or (< (-> self collide-info trans y) (-> self min-height))
+                        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+                        )
                     )
-                  )
             0
             (goto cfg-13)
             )
@@ -587,10 +611,10 @@ swamp-rat-default-event-handler
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-      (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s4-0 collide-with) (the-as uint 16))
-      (set! (-> s4-0 prim-core action) (the-as uint 1))
-      (set! (-> s4-0 prim-core offense) 2)
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense normal-attack))
       (set-vector! (-> s4-0 local-sphere) 0.0 3686.4001 0.0 3686.4001)
       (set-root-prim! s5-0 s4-0)
       )

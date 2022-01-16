@@ -339,7 +339,7 @@ struct AdGifData {
   u64 tex1_addr;
   u64 mip_data;
   u64 mip_addr;
-  u64 clamp_data;
+  u64 clamp_data;  // can also be zbuf!!
   u64 clamp_addr;
   u64 alpha_data;
   u64 alpha_addr;

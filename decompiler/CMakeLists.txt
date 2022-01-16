@@ -6,6 +6,7 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/find_defpartgroup.cpp
         analysis/find_defstates.cpp
         analysis/find_skelgroups.cpp
         analysis/inline_asm_rewrite.cpp

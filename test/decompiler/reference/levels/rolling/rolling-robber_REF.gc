@@ -180,7 +180,17 @@
     (set! (-> gp-0 quad) (-> self root-override trans quad))
     (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
       (set! (-> gp-0 y) (+ 8192.0 (-> gp-0 y)))
-      (let ((f0-2 (dummy-10 *collide-cache* gp-0 (new 'static 'vector :y -81920.0 :w 1.0) 40.96 1 self t2-0 1))
+      (let ((f0-2 (fill-and-probe-using-line-sphere
+                    *collide-cache*
+                    gp-0
+                    (new 'static 'vector :y -81920.0 :w 1.0)
+                    40.96
+                    (collide-kind background)
+                    self
+                    t2-0
+                    1
+                    )
+                  )
             (v1-5 (new 'stack-no-clear 'vector))
             )
         (set! (-> v1-5 quad) (-> self root-override trans quad))
@@ -240,14 +250,13 @@
 
 ;; definition for function robber-move
 (defbehavior robber-move robber ()
-  (+!
-    (-> self curve-position)
-    (/ (the float
-             (* (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter)) (the int (-> self speed)))
-             )
-       (path-distance (-> self path))
-       )
-    )
+  (+! (-> self curve-position)
+      (/ (the float
+              (* (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter)) (the int (-> self speed)))
+              )
+         (path-distance (-> self path))
+         )
+      )
   (cond
     ((< 1.0 (-> self curve-position))
      (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
@@ -330,12 +339,12 @@
                                         )
               )
         (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                         (-> self skel root-channel 0 frame-group)
-                                                         )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
+                                                      (-> self skel root-channel 0 frame-group)
+                                                      )
+                                                  data
+                                                  0
+                                                  length
+                                                  )
                                               -1
                                               )
                                      )
@@ -387,7 +396,11 @@
 ;; failed to figure out what this is:
 (defstate robber-dead (robber)
   :code
-  (behavior () (dummy-18 self) (deactivate self) (none))
+  (behavior ()
+    (dummy-18 self)
+    (deactivate self)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -488,20 +501,17 @@
   robber-event-handler
   :trans
   (behavior ()
-    (if (and
-            (not (and
-                   *target*
-                   (>= 204800.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-                   )
-                 )
-            (robber-find-ground)
-            )
+    (if (and (not (and *target*
+                       (>= 204800.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+                       )
+                  )
+             (robber-find-ground)
+             )
         (go robber-idle)
         )
-    (if (and
-            *target*
-            (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-            )
+    (if (and *target*
+             (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+             )
         (go robber-flee)
         )
     (none)
@@ -509,8 +519,8 @@
   :code
   (behavior ()
     (when (not (= (if (> (-> self skel active-channels) 0)
-                       (-> self skel root-channel 0 frame-group)
-                       )
+                      (-> self skel root-channel 0 frame-group)
+                      )
                   (-> self draw art-group data 7)
                   )
                )
@@ -542,16 +552,21 @@
   :event
   robber-event-handler
   :enter
-  (behavior () (set! (-> self y-offset-desired) -12288.0) (none))
+  (behavior ()
+    (set! (-> self y-offset-desired) -12288.0)
+    (none)
+    )
   :exit
-  (behavior () (set! (-> self y-offset-desired) 0.0) (none))
+  (behavior ()
+    (set! (-> self y-offset-desired) 0.0)
+    (none)
+    )
   :trans
   (behavior ()
-    (if (not (and
-                 *target*
-                 (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-                 )
-               )
+    (if (not (and *target*
+                  (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+                  )
+             )
         (go robber-got-away)
         )
     (none)
@@ -560,8 +575,8 @@
   (behavior ()
     (while #t
       (when (not (= (if (> (-> self skel active-channels) 0)
-                         (-> self skel root-channel 0 frame-group)
-                         )
+                        (-> self skel root-channel 0 frame-group)
+                        )
                     (-> self draw art-group data 7)
                     )
                  )
@@ -634,17 +649,15 @@
     )
   :trans
   (behavior ()
-    (if (not (and
-                 *target*
-                 (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-                 )
-               )
+    (if (not (and *target*
+                  (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+                  )
+             )
         (go robber-got-away)
         )
-    (when (and
-            *target*
-            (>= 102400.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-            )
+    (when (and *target*
+               (>= 102400.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+               )
       (set! (-> self near-timer)
             (- (-> self near-timer) (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter)))
             )
@@ -662,8 +675,8 @@
   (behavior ()
     (while #t
       (when (not (= (if (> (-> self skel active-channels) 0)
-                         (-> self skel root-channel 0 frame-group)
-                         )
+                        (-> self skel root-channel 0 frame-group)
+                        )
                     (-> self draw art-group data 7)
                     )
                  )
@@ -728,13 +741,15 @@
   :event
   robber-event-handler
   :enter
-  (behavior () (set! (-> self speed) 0.0) (none))
+  (behavior ()
+    (set! (-> self speed) 0.0)
+    (none)
+    )
   :trans
   (behavior ()
-    (if (and
-            *target*
-            (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-            )
+    (if (and *target*
+             (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+             )
         (go robber-flee)
         )
     (robber-rotate (the-as target #t) 182.04445)
@@ -776,10 +791,9 @@
   :trans
   (behavior ()
     (when (logtest? (-> self draw status) (draw-status drwf03))
-      (if (and
-              *target*
-              (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-              )
+      (if (and *target*
+               (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+               )
           (level-hint-spawn
             (game-text-id rolling-flying-lurker-intro)
             "sksp0116"
@@ -789,10 +803,9 @@
             )
           )
       )
-    (if (and
-            *target*
-            (>= 32768.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-            )
+    (if (and *target*
+             (>= 32768.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+             )
         (go robber-flee)
         )
     (none)
@@ -843,13 +856,15 @@
   :event
   robber-event-handler
   :enter
-  (behavior () (set! (-> self speed) 0.0) (none))
+  (behavior ()
+    (set! (-> self speed) 0.0)
+    (none)
+    )
   :trans
   (behavior ()
-    (if (and
-            *target*
-            (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-            )
+    (if (and *target*
+             (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+             )
         (go robber-initial-notice)
         )
     (robber-move)
@@ -894,10 +909,10 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core action) (the-as uint 3073))
-      (set! (-> s3-0 prim-core offense) 4)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-10 ca-11))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 10240.0)
       (set-root-prim! s4-0 s3-0)

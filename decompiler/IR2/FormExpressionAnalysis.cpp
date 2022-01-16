@@ -5379,6 +5379,24 @@ void DefskelgroupElement::update_from_stack(const Env&,
   result->push_back(this);
 }
 
+void DefpartgroupElement::update_from_stack(const Env&,
+                                            FormPool&,
+                                            FormStack&,
+                                            std::vector<FormElement*>* result,
+                                            bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void DefpartElement::update_from_stack(const Env&,
+                                       FormPool&,
+                                       FormStack&,
+                                       std::vector<FormElement*>* result,
+                                       bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
 void ResLumpMacroElement::update_from_stack(const Env&,
                                             FormPool&,
                                             FormStack&,

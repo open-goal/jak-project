@@ -296,6 +296,11 @@ class Compiler {
                            u8 sa,
                            Env* env,
                            IntegerMathKind kind);
+  Val* compile_floating_point_division(const goos::Object& form,
+                                       const TypeSpec& result_type,
+                                       RegVal* a,
+                                       RegVal* b,
+                                       Env* env);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
@@ -488,6 +493,8 @@ class Compiler {
 
   Val* compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_outer_product_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_outer_product_a_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_outer_product_b_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   Val* compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);

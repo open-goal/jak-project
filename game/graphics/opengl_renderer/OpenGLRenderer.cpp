@@ -120,6 +120,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_render_state.dump_playback = settings.playing_from_dump;
   m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
+  m_render_state.has_camera_planes = false;
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
@@ -242,10 +243,10 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
-    // lg::info("Render: {} start\n", renderer->name_and_id());
     g_current_render = renderer->name_and_id();
+    // lg::info("Render: {} start", g_current_render);
     renderer->render(dma, &m_render_state, bucket_prof);
-    // lg::info("Render: {} end\n", renderer->name_and_id());
+    // lg::info("Render: {} end", g_current_render);
     //  should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;

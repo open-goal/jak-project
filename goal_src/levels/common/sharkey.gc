@@ -7,35 +7,31 @@
 
 ;; DECOMP BEGINS
 
-(set! (-> *part-group-id-table* 106) (new 'static 'sparticle-launch-group
-                                       :length 16
-                                       :duration #x78
-                                       :linger-duration #x30c
-                                       :flags (sp-group-flag use-local-clock)
-                                       :name "group-sharkey-splash"
-                                       :launcher
-                                       (new 'static 'inline-array sparticle-group-item 16
-                                         (sp-item 124 :flags (is-3d) :period 900 :length 63)
-                                         (sp-item 125 :period 900 :length 15)
-                                         (sp-item 126 :flags (is-3d) :period 900 :length 15)
-                                         (sp-item 127 :flags (is-3d) :period 900 :length 15)
-                                         (sp-item 128 :period 900 :length 10 :binding 129)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         (sp-item 129 :flags (start-dead) :period 900 :length 120)
-                                         )
-                                       :bounds
-                                       (new 'static 'sphere :y -49152.0 :w 57344.0)
-                                       )
-      )
+(defpartgroup group-sharkey-splash
+  :id 106
+  :duration 120
+  :linger-duration 780
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 -12 0 14)
+  :parts
+  ((sp-item 124 :flags (is-3d) :period 900 :length 63)
+    (sp-item 125 :period 900 :length 15)
+    (sp-item 126 :flags (is-3d) :period 900 :length 15)
+    (sp-item 127 :flags (is-3d) :period 900 :length 15)
+    (sp-item 128 :period 900 :length 10 :binding 129)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    (sp-item 129 :flags (start-dead) :period 900 :length 120)
+    )
+  )
 
 (deftype sharkey (nav-enemy)
   ((dir               vector   :inline :offset-assert 400)
@@ -80,16 +76,14 @@
 nav-enemy-default-event-handler
 
 (defmethod run-logic? sharkey ((obj sharkey))
-  (or
-    (zero? (logand (-> obj mask) (process-mask actor-pause)))
-    (or
-      (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj collide-info pause-adjust-distance))
-          (vector-vector-distance (-> obj collide-info trans) (math-camera-pos))
+  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj collide-info pause-adjust-distance))
+              (vector-vector-distance (-> obj collide-info trans) (math-camera-pos))
+              )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
           )
-      (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
       )
-    )
   )
 
 (defmethod dummy-40 sharkey ((obj sharkey))
@@ -163,19 +157,18 @@ nav-enemy-default-event-handler
 
 (defbehavior sharkey-notice-player? sharkey ()
   (if *target*
-      (and
-        (< (- (-> *target* control trans y) (-> self y-max)) 0.0)
-        (let ((gp-0 'racer)
-              (a1-0 (new 'stack-no-clear 'event-message-block))
-              )
-          (set! (-> a1-0 from) self)
-          (set! (-> a1-0 num-params) 1)
-          (set! (-> a1-0 message) 'query)
-          (set! (-> a1-0 param 0) (the-as uint 'mode))
-          (!= gp-0 (send-event-function *target* a1-0))
-          )
-        (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))
-        )
+      (and (< (- (-> *target* control trans y) (-> self y-max)) 0.0)
+           (let ((gp-0 'racer)
+                 (a1-0 (new 'stack-no-clear 'event-message-block))
+                 )
+             (set! (-> a1-0 from) self)
+             (set! (-> a1-0 num-params) 1)
+             (set! (-> a1-0 message) 'query)
+             (set! (-> a1-0 param 0) (the-as uint 'mode))
+             (!= gp-0 (send-event-function *target* a1-0))
+             )
+           (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))
+           )
       )
   )
 
@@ -240,18 +233,20 @@ nav-enemy-default-event-handler
     (none)
     )
   :exit
-  (behavior () (logclear! (-> self draw status) (draw-status drwf01)) (none))
+  (behavior ()
+    (logclear! (-> self draw status) (draw-status drwf01))
+    (none)
+    )
   :trans
   (behavior ()
     (cond
       ((-> self enable-patrol)
-       (if (and
-               (and *target* (>= (-> self enemy-info idle-distance)
-                                 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                                 )
-                    )
-               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
-               )
+       (if (and (and *target* (>= (-> self enemy-info idle-distance)
+                                  (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                  )
+                     )
+                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+                )
            (go-virtual nav-enemy-patrol)
            )
        )
@@ -261,13 +256,11 @@ nav-enemy-default-event-handler
          (set! (-> self notice-time) (-> *display* base-frame-counter))
          )
        (let ((a0-4 (dummy-16 (-> self nav) (-> *target* control trans))))
-         (when (or
-                 (and a0-4 (logtest? (-> a0-4 pat) 2))
-                 (and
-                   (logtest? (-> self draw status) (draw-status drwf01))
-                   (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
+         (when (or (and a0-4 (logtest? (-> a0-4 pat) 2))
+                   (and (logtest? (-> self draw status) (draw-status drwf01))
+                        (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
+                        )
                    )
-                 )
            (sharkey-move-to-attack-position)
            (set! (-> self player-in-water) #t)
            (go-virtual nav-enemy-chase)
@@ -376,7 +369,10 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior () (nav-enemy-travel-post) (none))
+  (behavior ()
+    (nav-enemy-travel-post)
+    (none)
+    )
   )
 
 (defstate nav-enemy-notice (sharkey)
@@ -387,9 +383,15 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :enter
-  (behavior () (go-virtual nav-enemy-chase) (none))
+  (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
   :code
-  (behavior () (go-virtual nav-enemy-chase) (none))
+  (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
   )
 
 (defbehavior sharkey-follow-trajectory sharkey ((arg0 float))
@@ -475,7 +477,15 @@ nav-enemy-default-event-handler
                 )
               (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
               (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
-              (dummy-59 (-> self collide-info) (-> self collide-info transv) (the-as uint 1) 8192.0 #t #f #f)
+              (integrate-for-enemy-with-move-to-ground!
+                (-> self collide-info)
+                (-> self collide-info transv)
+                (collide-kind background)
+                8192.0
+                #t
+                #f
+                #f
+                )
               (set! (-> self collide-info trans y) f26-0)
               (suspend)
               (let ((a0-27 (-> self skel root-channel 0)))
@@ -496,7 +506,10 @@ nav-enemy-default-event-handler
     (none)
     )
   :post
-  (behavior () (nav-enemy-simple-post) (none))
+  (behavior ()
+    (nav-enemy-simple-post)
+    (none)
+    )
   )
 
 (defstate nav-enemy-chase (sharkey)
@@ -507,7 +520,10 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :exit
-  (behavior () (sound-stop (-> self sound-id)) (none))
+  (behavior ()
+    (sound-stop (-> self sound-id))
+    (none)
+    )
   :trans
   (behavior ()
     (if (not *target*)
@@ -538,10 +554,9 @@ nav-enemy-default-event-handler
       (cond
         ((-> self player-in-water)
          (set! (-> self free-time) (-> *display* base-frame-counter))
-         (if (and
-                 (< (fabs (- (-> gp-0 y) (-> self collide-info trans y))) 40960.0)
-                 (< (vector-vector-xz-distance gp-0 (-> self collide-info trans)) 24576.0)
-                 )
+         (if (and (< (fabs (- (-> gp-0 y) (-> self collide-info trans y))) 40960.0)
+                  (< (vector-vector-xz-distance gp-0 (-> self collide-info trans)) 24576.0)
+                  )
              (go-virtual nav-enemy-attack)
              )
          )
@@ -810,9 +825,9 @@ nav-enemy-default-event-handler
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-      (set! (-> s3-0 collide-with) (the-as uint 16))
-      (set! (-> s3-0 prim-core offense) 2)
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core offense) (collide-offense normal-attack))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 (* 6144.0 (-> obj scale)))
       (set-root-prim! s4-0 s3-0)
       )

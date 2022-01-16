@@ -387,7 +387,7 @@ IR2_BranchDelay get_branch_delay(const Instruction& i0, int idx) {
     return IR2_BranchDelay(IR2_BranchDelay::Kind::NOP);
   } else if (is_gpr_3(i0, InstructionKind::OR, {}, rs7(), rr0())) {
     return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_FALSE, make_dst_var(i0, idx));
-  } else if (is_gpr_3(i0, InstructionKind::OR, {}, {}, rr0())) {
+  } else if (is_gpr_3(i0, InstructionKind::OR, {}, {}, rr0()) && !i0.get_src(0).is_reg(rr0())) {
     return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_REG, make_dst_var(i0, idx),
                            make_src_var(i0.get_src(0).get_reg(), idx));
   } else if (i0.kind == InstructionKind::DADDIU && i0.get_src(0).is_reg(rs7()) &&
