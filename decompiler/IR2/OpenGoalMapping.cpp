@@ -231,8 +231,8 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
           m_instr.kind != InstructionKind::PEXTUW && m_instr.kind != InstructionKind::PCPYUD) {
         if (func.allows_modifier(MOD::QWORD_CAST)) {
           args.push_back(pretty_print::to_symbol("(the-as uint128 0)"));
-        } else {  
-           args.push_back(pretty_print::to_symbol("0"));
+        } else {
+          args.push_back(pretty_print::to_symbol("0"));
         }
       } else {
         args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
