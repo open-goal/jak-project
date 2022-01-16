@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: ogreboss.gc
-;; name in dgo: ogreboss
-;; dgos: L1, OGR
-
-(declare-type ogreboss process-drawable)
-(define-extern *ogreboss* ogreboss)
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-sg* ogreboss
   0
   2
@@ -18,6 +10,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-cam-sg* ogreboss
   25
   27
@@ -26,6 +19,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-shoot-boulder-sg* ogreboss
   29
   32
@@ -35,6 +29,7 @@
   :shadow 31
   )
 
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-shoot-boulder-break-sg* ogreboss
   33
   35
@@ -43,6 +38,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-bounce-boulder-sg* ogreboss
   36
   38
@@ -51,6 +47,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-super-boulder-sg* ogreboss
   39
   41
@@ -59,6 +56,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *ogreboss-column-sg* ogreboss
   45
   47
@@ -67,6 +65,7 @@
   :longest-edge (meters 0)
   )
 
+;; definition for symbol *ogreboss-missile-shadow-control*, type shadow-control
 (define
   *ogreboss-missile-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -82,6 +81,7 @@
                                )
   )
 
+;; definition for symbol *ogreboss-shadow-control*, type shadow-control
 (define
   *ogreboss-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -98,16 +98,17 @@
                                )
   )
 
+;; definition of type ogreboss-missile
 (deftype ogreboss-missile (process-drawable)
-  ((parent-override (pointer process-drawable)         :offset         12)
-   (root-override   collide-shape-moving               :offset        112)
-   (trajectory      trajectory                 :inline :offset-assert 176)
-   (src-pos         vector                     :inline :offset-assert 224)
-   (dest-pos        vector                     :inline :offset-assert 240)
-   (start-time      int64                              :offset-assert 256)
-   (tumble-quat     quaternion                 :inline :offset-assert 272)
-   (blast-radius    float                              :offset-assert 288)
-   (pickup-type     pickup-type                        :offset-assert 292)
+  ((parent-override (pointer ogreboss)           :offset         12)
+   (root-override   collide-shape-moving         :offset        112)
+   (trajectory      trajectory           :inline :offset-assert 176)
+   (src-pos         vector               :inline :offset-assert 224)
+   (dest-pos        vector               :inline :offset-assert 240)
+   (start-time      int64                        :offset-assert 256)
+   (tumble-quat     quaternion           :inline :offset-assert 272)
+   (blast-radius    float                        :offset-assert 288)
+   (pickup-type     pickup-type                  :offset-assert 292)
    )
   :heap-base #xc0
   :method-count-assert 20
@@ -120,7 +121,22 @@
     )
   )
 
+;; definition for method 3 of type ogreboss-missile
+(defmethod inspect ogreboss-missile ((obj ogreboss-missile))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Ttrajectory: #<trajectory @ #x~X>~%" (-> obj trajectory))
+  (format #t "~T~Tsrc-pos: #<vector @ #x~X>~%" (-> obj src-pos))
+  (format #t "~T~Tdest-pos: #<vector @ #x~X>~%" (-> obj dest-pos))
+  (format #t "~T~Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~T~Ttumble-quat: #<quaternion @ #x~X>~%" (-> obj tumble-quat))
+  (format #t "~T~Tblast-radius: ~f~%" (-> obj blast-radius))
+  (format #t "~T~Tpickup-type: ~D~%" (-> obj pickup-type))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate ogreboss-missile-idle (ogreboss-missile)
   :enter
   (behavior ()
@@ -173,53 +189,8 @@
   (the-as (function none :behavior ogreboss-missile) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-missile-seek (ogreboss-missile)
-  :code
-  (behavior ()
-    (let ((gp-0 (new 'stack-no-clear 'vector))
-          (s5-0 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'collide-tri-result))
-          )
-      (set! (-> self state-time) (-> *display* base-frame-counter))
-      ;; (b! #t cfg-1) TODO - fix me!
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
-        (empty)
-        )
-      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 1800)
-        (let ((f0-1 (the float (- (-> *display* base-frame-counter) (-> self start-time)))))
-          (eval-position! (-> self trajectory) f0-1 gp-0)
-          )
-        (vector-! s5-0 gp-0 (-> self root-override trans))
-        (let ((f0-2 (fill-and-probe-using-line-sphere
-                      *collide-cache*
-                      (-> self root-override trans)
-                      s5-0
-                      (the-as float 4096.0)
-                      (-> self root-override root-prim collide-with)
-                      (-> self parent-override 0)
-                      s4-0
-                      1
-                      )
-                    )
-              )
-          (cond
-            ((>= f0-2 0.0)
-             (vector+*! (-> self root-override trans) (-> self root-override trans) s5-0 f0-2)
-             (go ogreboss-missile-impact)
-             )
-            (else
-              (set! (-> self root-override trans quad) (-> gp-0 quad))
-              0
-              )
-            )
-          )
-        (spawn (-> self part) (-> self root-override trans))
-        (suspend)
-        )
-      )
-    (dummy-18 self)
-    (none)
-    )
   :post
   (behavior ()
     (quaternion*! (-> self root-override quat) (-> self root-override quat) (-> self tumble-quat))
@@ -228,6 +199,8 @@
     )
   )
 
+;; definition for function ogreboss-rock-explosion-effect
+;; INFO: Return type mismatch int vs handle.
 (defun ogreboss-rock-explosion-effect ((arg0 basic))
   (with-pp
     (sound-play-by-name (static-sound-name "ogre-explode") (new-sound-id) 1024 0 0 1 (the-as symbol arg0))
@@ -271,6 +244,8 @@
     )
   )
 
+;; definition for function ogreboss-missile-scale-explosion
+;; INFO: Return type mismatch int vs none.
 (defun ogreboss-missile-scale-explosion ((arg0 handle))
   (let* ((gp-0 (handle->process arg0))
          (f0-0 (-> (the-as process-drawable gp-0) root scale x))
@@ -288,6 +263,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-missile-impact (ogreboss-missile)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -438,6 +414,7 @@
   (the-as (function none :behavior ogreboss-missile) ja-post)
   )
 
+;; definition of type ogreboss-missile-init-data
 (deftype ogreboss-missile-init-data (structure)
   ((src          vector       :offset-assert   0)
    (dest         vector       :offset-assert   4)
@@ -451,7 +428,21 @@
   :flag-assert         #x90000001c
   )
 
+;; definition for method 3 of type ogreboss-missile-init-data
+(defmethod inspect ogreboss-missile-init-data ((obj ogreboss-missile-init-data))
+  (format #t "[~8x] ~A~%" obj 'ogreboss-missile-init-data)
+  (format #t "~Tsrc: #<vector @ #x~X>~%" (-> obj src))
+  (format #t "~Tdest: #<vector @ #x~X>~%" (-> obj dest))
+  (format #t "~Tduration: ~D~%" (-> obj duration))
+  (format #t "~Txz-speed: ~f~%" (-> obj xz-speed))
+  (format #t "~Tblast-radius: ~f~%" (-> obj blast-radius))
+  (format #t "~Tpickup-type: ~D~%" (-> obj pickup-type))
+  obj
+  )
 
+;; definition for function ogreboss-missile-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior ogreboss-missile-init-by-other ogreboss-missile ((arg0 ogreboss-missile-init-data) (arg1 entity))
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
@@ -476,7 +467,7 @@
   (set! (-> self root-override trans quad) (-> arg0 src quad))
   (set! (-> self src-pos quad) (-> arg0 src quad))
   (set! (-> self dest-pos quad) (-> arg0 dest quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root quat vec quad))
+  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root-override quat vec quad))
   (vector-identity! (-> self root-override scale))
   (initialize-skeleton self *ogreboss-shoot-boulder-sg* '())
   (set! (-> self mask) (logior (process-mask enemy projectile) (-> self mask)))
@@ -522,20 +513,21 @@
   (none)
   )
 
+;; definition of type ogreboss-super-boulder
 (deftype ogreboss-super-boulder (process-drawable)
-  ((parent-override (pointer process-drawable)         :offset         12)
-   (root-override   collide-shape-moving               :offset        112)
-   (orig-pos        vector                     :inline :offset-assert 176)
-   (src-pos         vector                     :inline :offset-assert 192)
-   (spin-axis       vector                     :inline :offset-assert 208)
-   (joint           joint-mod-blend-local              :offset-assert 224)
-   (speed           float                              :offset-assert 228)
-   (size            float                              :offset-assert 232)
-   (grow-rate       float                              :offset-assert 236)
-   (lava            entity-actor                       :offset-assert 240)
-   (sound-id        sound-id                           :offset-assert 244)
-   (hit-boss        symbol                             :offset-assert 248)
-   (tumble-quat     quaternion                 :inline :offset-assert 256)
+  ((parent-override (pointer ogreboss)            :offset         12)
+   (root-override   collide-shape-moving          :offset        112)
+   (orig-pos        vector                :inline :offset-assert 176)
+   (src-pos         vector                :inline :offset-assert 192)
+   (spin-axis       vector                :inline :offset-assert 208)
+   (joint           joint-mod-blend-local         :offset-assert 224)
+   (speed           float                         :offset-assert 228)
+   (size            float                         :offset-assert 232)
+   (grow-rate       float                         :offset-assert 236)
+   (lava            entity-actor                  :offset-assert 240)
+   (sound-id        sound-id                      :offset-assert 244)
+   (hit-boss        symbol                        :offset-assert 248)
+   (tumble-quat     quaternion            :inline :offset-assert 256)
    )
   :heap-base #xa0
   :method-count-assert 20
@@ -552,7 +544,26 @@
     )
   )
 
+;; definition for method 3 of type ogreboss-super-boulder
+(defmethod inspect ogreboss-super-boulder ((obj ogreboss-super-boulder))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Torig-pos: #<vector @ #x~X>~%" (-> obj orig-pos))
+  (format #t "~T~Tsrc-pos: #<vector @ #x~X>~%" (-> obj src-pos))
+  (format #t "~T~Tspin-axis: #<vector @ #x~X>~%" (-> obj spin-axis))
+  (format #t "~T~Tjoint: ~A~%" (-> obj joint))
+  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
+  (format #t "~T~Tsize: ~f~%" (-> obj size))
+  (format #t "~T~Tgrow-rate: ~f~%" (-> obj grow-rate))
+  (format #t "~T~Tlava: ~A~%" (-> obj lava))
+  (format #t "~T~Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~T~Thit-boss: ~A~%" (-> obj hit-boss))
+  (format #t "~T~Ttumble-quat: #<quaternion @ #x~X>~%" (-> obj tumble-quat))
+  obj
+  )
 
+;; definition for function ogreboss-super-boulder-event-handler
 (defbehavior ogreboss-super-boulder-event-handler ogreboss-super-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touch)
@@ -603,6 +614,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-idle (ogreboss-super-boulder)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -687,6 +699,8 @@
   (the-as (function none :behavior ogreboss-super-boulder) transform-post)
   )
 
+;; definition for function ogreboss-super-boulder-impact-effect
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-super-boulder-impact-effect ogreboss-super-boulder ()
   (sound-play-by-name
     (static-sound-name "ogre-boulder")
@@ -718,6 +732,9 @@
   (none)
   )
 
+;; definition for function ogreboss-super-boulder-play-hit-anim
+;; INFO: Return type mismatch int vs object.
+;; Used lq/sq
 (defbehavior ogreboss-super-boulder-play-hit-anim ogreboss-super-boulder ()
   (set! (-> self src-pos quad) (-> self root-override trans quad))
   (let ((a0-3 (-> self skel root-channel 0)))
@@ -751,6 +768,7 @@
   (the-as object 0)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-throw (ogreboss-super-boulder)
   :event
   ogreboss-super-boulder-event-handler
@@ -794,6 +812,7 @@
   (the-as (function none :behavior ogreboss-super-boulder) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-hit (ogreboss-super-boulder)
   :event
   ogreboss-super-boulder-event-handler
@@ -808,6 +827,7 @@
   (the-as (function none :behavior ogreboss-super-boulder) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-die (ogreboss-super-boulder)
   :event
   ogreboss-super-boulder-event-handler
@@ -827,6 +847,7 @@
   (the-as (function none :behavior ogreboss-super-boulder) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-land (ogreboss-super-boulder)
   :event
   ogreboss-super-boulder-event-handler
@@ -867,6 +888,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-roll (ogreboss-super-boulder)
   :event
   ogreboss-super-boulder-event-handler
@@ -959,6 +981,8 @@
     )
   )
 
+;; definition for method 7 of type ogreboss-super-boulder
+;; INFO: Return type mismatch process-drawable vs ogreboss-super-boulder.
 (defmethod relocate ogreboss-super-boulder ((obj ogreboss-super-boulder) (arg0 int))
   (if (nonzero? (-> obj joint))
       (&+! (-> obj joint) arg0)
@@ -972,6 +996,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-killed-player (ogreboss-super-boulder)
   :code
   (behavior ()
@@ -984,6 +1009,9 @@
     )
   )
 
+;; definition for function ogreboss-super-boulder-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior ogreboss-super-boulder-init-by-other ogreboss-super-boulder ((arg0 vector) (arg1 float) (arg2 entity))
   (set! (-> self entity) arg2)
   (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-others))))
@@ -1006,8 +1034,8 @@
     (set! (-> self root-override) s4-0)
     )
   (set! (-> self orig-pos quad) (-> arg0 quad))
-  (set! (-> self root-override trans quad) (-> self parent-override 0 root trans quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root quat vec quad))
+  (set! (-> self root-override trans quad) (-> self parent-override 0 root-override trans quad))
+  (set! (-> self root-override quat vec quad) (-> self parent-override 0 root-override quat vec quad))
   (vector-identity! (-> self root-override scale))
   (initialize-skeleton self *ogreboss-super-boulder-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -1040,6 +1068,7 @@
   (none)
   )
 
+;; definition of type ogreboss-bounce-boulder
 (deftype ogreboss-bounce-boulder (process-drawable)
   ((parent-override (pointer ogreboss-super-boulder)         :offset         12)
    (root-override   collide-shape-moving                     :offset        112)
@@ -1058,7 +1087,20 @@
     )
   )
 
+;; definition for method 3 of type ogreboss-bounce-boulder
+(defmethod inspect ogreboss-bounce-boulder ((obj ogreboss-bounce-boulder))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tsrc-pos: #<vector @ #x~X>~%" (-> obj src-pos))
+  (format #t "~T~Tside-dir: #<vector @ #x~X>~%" (-> obj side-dir))
+  (format #t "~T~Tside-pos: ~f~%" (-> obj side-pos))
+  (format #t "~T~Tdest-pos: ~f~%" (-> obj dest-pos))
+  (format #t "~T~Tboulder-type: ~D~%" (-> obj boulder-type))
+  obj
+  )
 
+;; definition for function ogreboss-bounce-boulder-event-handler
 (defbehavior ogreboss-bounce-boulder-event-handler ogreboss-bounce-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touch)
@@ -1074,6 +1116,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-bounce-boulder-idle (ogreboss-bounce-boulder)
   :event
   ogreboss-bounce-boulder-event-handler
@@ -1144,6 +1187,9 @@
     )
   )
 
+;; definition for function ogreboss-bounce-boulder-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior ogreboss-bounce-boulder-init-by-other ogreboss-bounce-boulder ((arg0 int) (arg1 entity))
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
@@ -1202,6 +1248,7 @@
   (none)
   )
 
+;; definition of type ogreboss
 (deftype ogreboss (process-drawable)
   ((root-override             collide-shape           :offset        112)
    (old-player-transform      transformq    :inline   :offset-assert 176)
@@ -1251,7 +1298,42 @@
     )
   )
 
+;; definition for method 3 of type ogreboss
+(defmethod inspect ogreboss ((obj ogreboss))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Told-player-transform: #<transformq @ #x~X>~%" (-> obj old-player-transform))
+  (format #t "~T~Tlevel: ~f~%" (-> obj level))
+  (format #t "~T~Tdifficulty: ~f~%" (-> obj difficulty))
+  (format #t "~T~Tboulder: ~D~%" (-> obj boulder))
+  (format #t "~T~Tcolumn: ~D~%" (-> obj column))
+  (format #t "~T~Tz-plane: #<vector @ #x~X>~%" (-> obj z-plane))
+  (format #t "~T~Tfar-pos: #<vector @ #x~X>~%" (-> obj far-pos))
+  (format #t "~T~Tnear-pos: #<vector @ #x~X>~%" (-> obj near-pos))
+  (format #t "~T~Tside-dir: #<vector @ #x~X>~%" (-> obj side-dir))
+  (format #t "~T~Ttarget-offset-array[3] @ #x~X~%" (-> obj target-offset-array))
+  (format #t "~T~Ttarget-actor-array[3] @ #x~X~%" (-> obj target-actor-array))
+  (format #t "~T~Ttarget-blast-radius-array[3] @ #x~X~%" (-> obj target-blast-radius-array))
+  (format #t "~T~Tshuffle-pos: ~f~%" (-> obj shuffle-pos))
+  (format #t "~T~Ttarget-count: ~D~%" (-> obj target-count))
+  (format #t "~T~Thit-count: ~D~%" (-> obj hit-count))
+  (format #t "~T~Tmax-hit-count: ~D~%" (-> obj max-hit-count))
+  (format #t "~T~Troll-boulder: ~D~%" (-> obj roll-boulder))
+  (format #t "~T~Ttry-count: ~D~%" (-> obj try-count))
+  (format #t "~T~Thit-time: ~D~%" (-> obj hit-time))
+  (format #t "~T~Tgrow-time: ~f~%" (-> obj grow-time))
+  (format #t "~T~Tlava: ~A~%" (-> obj lava))
+  (format #t "~T~Tvulnerable: ~A~%" (-> obj vulnerable))
+  (format #t "~T~Tbridge-assembled: ~A~%" (-> obj bridge-assembled))
+  (format #t "~T~Tat-near-spot: ~A~%" (-> obj at-near-spot))
+  (format #t "~T~Tsubmerged: ~A~%" (-> obj submerged))
+  (format #t "~T~Ttry-counted: ~A~%" (-> obj try-counted))
+  obj
+  )
 
+;; definition for function ogreboss-inc-try-count
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-inc-try-count ogreboss ()
   (when (not (-> self try-counted))
     (set! (-> self try-counted) #t)
@@ -1265,25 +1347,33 @@
   (none)
   )
 
+;; definition for function ogreboss-player-inside-range?
 (defbehavior ogreboss-player-inside-range? ogreboss ((arg0 float))
   (< (vector-vector-distance (-> self far-pos) (target-pos 0)) arg0)
   )
 
+;; definition for function ogreboss-set-stage1-camera
+;; INFO: Return type mismatch int vs none.
 (defun ogreboss-set-stage1-camera ()
   0
   (none)
   )
 
+;; definition for function ogreboss-set-stage2-camera
+;; INFO: Return type mismatch int vs none.
 (defun ogreboss-set-stage2-camera ()
   0
   (none)
   )
 
+;; definition for function ogreboss-reset-camera
+;; INFO: Return type mismatch int vs none.
 (defun ogreboss-reset-camera ()
   0
   (none)
   )
 
+;; definition for function ogreboss-idle-loop
 (defbehavior ogreboss-idle-loop ogreboss ()
   (while #t
     (ja-channel-push! 1 30)
@@ -1395,6 +1485,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-idle (ogreboss)
   :enter
   (behavior ()
@@ -1443,6 +1534,7 @@
   (the-as (function none :behavior ogreboss) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-intro (ogreboss)
   :code
   (behavior ()
@@ -1499,6 +1591,7 @@
   (the-as (function none :behavior ogreboss) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-wait-for-player (ogreboss)
   :trans
   (behavior ()
@@ -1521,11 +1614,14 @@
   (the-as (function none :behavior ogreboss) ja-post)
   )
 
+;; definition for function ogreboss-debug-adjust-difficulty
+;; INFO: Return type mismatch int vs none.
 (defun ogreboss-debug-adjust-difficulty ()
   0
   (none)
   )
 
+;; definition for function ogreboss-pick-target
 (defbehavior ogreboss-pick-target ogreboss ()
   (local-vars (gp-0 int))
   (cond
@@ -1560,6 +1656,9 @@
   gp-0
   )
 
+;; definition for function ogreboss-shoot-boulder
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior ogreboss-shoot-boulder ogreboss ((arg0 int))
   (let ((gp-0 (new 'stack-no-clear 'ogreboss-missile-init-data)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -1627,6 +1726,8 @@
   (none)
   )
 
+;; definition for function ogreboss-submerge
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-submerge ogreboss ((arg0 int) (arg1 float))
   (when (not (-> self submerged))
     (cond
@@ -1728,6 +1829,8 @@
   (none)
   )
 
+;; definition for function ogreboss-emerge
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-emerge ogreboss ((arg0 float))
   (when (-> self submerged)
     (set! (-> self submerged) #f)
@@ -1790,6 +1893,9 @@
   (none)
   )
 
+;; definition for function ogreboss-move-near
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior ogreboss-move-near ogreboss ((arg0 basic) (arg1 float))
   (when (not (-> self at-near-spot))
     (ogreboss-submerge (the-as int arg0) arg1)
@@ -1801,6 +1907,9 @@
   (none)
   )
 
+;; definition for function ogreboss-move-far
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior ogreboss-move-far ogreboss ((arg0 int) (arg1 float))
   (when (-> self at-near-spot)
     (ogreboss-submerge arg0 arg1)
@@ -1812,6 +1921,8 @@
   (none)
   )
 
+;; definition for function ogreboss-post
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-post ogreboss ()
   (transform-post)
   (send-event *camera* 'point-of-interest (-> self node-list data 5 bone transform vector 3))
@@ -1819,6 +1930,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-stage1 (ogreboss)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -2013,6 +2125,8 @@
   ogreboss-post
   )
 
+;; definition for function ogreboss-roll-boulder
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-roll-boulder ogreboss ()
   (sound-play-by-name
     (static-sound-name "ogre-fires")
@@ -2068,6 +2182,8 @@
   (none)
   )
 
+;; definition for function ogreboss-blend-hit-anim
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-blend-hit-anim ogreboss ()
   (let ((f1-0 0.0)
         (f0-0 0.0)
@@ -2105,6 +2221,9 @@
   (none)
   )
 
+;; definition for function ogreboss-update-super-boulder
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior ogreboss-update-super-boulder ogreboss ()
   (let ((a1-0 (handle->process (-> self boulder))))
     (if a1-0
@@ -2115,6 +2234,8 @@
   (none)
   )
 
+;; definition for function ogreboss-update-shuffling
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-update-shuffling ogreboss ()
   (ogreboss-update-super-boulder)
   (ogreboss-blend-hit-anim)
@@ -2122,6 +2243,8 @@
   (none)
   )
 
+;; definition for function ogreboss-attack-event-handler
+;; INFO: Return type mismatch symbol vs object.
 (defbehavior ogreboss-attack-event-handler ogreboss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
     (the-as object (when (= v1-0 'attack)
@@ -2204,6 +2327,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-stage2 (ogreboss)
   :event
   ogreboss-attack-event-handler
@@ -2298,6 +2422,8 @@
   ogreboss-post
   )
 
+;; definition for function ogreboss-spawn-super-boulder
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-spawn-super-boulder ogreboss ()
   (let ((gp-0 (get-process *default-dead-pool* ogreboss-super-boulder #x4000)))
     (set! (-> self boulder)
@@ -2322,6 +2448,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-stage3-shuffle (ogreboss)
   :event
   ogreboss-attack-event-handler
@@ -2547,6 +2674,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-stage3-throw (ogreboss)
   :code
   (behavior ()
@@ -2599,6 +2727,7 @@
   (the-as (function none :behavior ogreboss) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-stage3-hit (ogreboss)
   :code
   (behavior ()
@@ -2637,6 +2766,7 @@
   (the-as (function none :behavior ogreboss) transform-post)
   )
 
+;; definition for function ogreboss-trigger-steps
 (defbehavior ogreboss-trigger-steps ogreboss ()
   (let ((gp-0 (entity-actor-count (-> self entity) 'trigger-actor)))
     (dotimes (s5-0 gp-0)
@@ -2663,6 +2793,7 @@
   #f
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-die (ogreboss)
   :code
   (behavior ()
@@ -2693,6 +2824,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ogreboss-dead (ogreboss)
   :event
   (the-as
@@ -2754,6 +2886,8 @@
     )
   )
 
+;; definition for function ogreboss-get-targets
+;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-get-targets ogreboss ()
   (let ((gp-1 (min 3 (entity-actor-count (-> self entity) 'target-actor))))
     (dotimes (s5-0 gp-1)
@@ -2771,6 +2905,9 @@
   (none)
   )
 
+;; definition for method 11 of type ogreboss
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defmethod init-from-entity! ogreboss ((obj ogreboss) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -2882,7 +3019,3 @@
       )
   (none)
   )
-
-
-
-
