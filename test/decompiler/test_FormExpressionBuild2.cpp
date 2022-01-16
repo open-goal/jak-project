@@ -1160,18 +1160,11 @@ TEST_F(FormRegressionTest, Method4ResTag) {
       "    daddu sp, sp, r0";
   std::string type = "(function res-tag int)";
   std::string expected =
-      "(the-as int (cond\n"
-      "        ((zero? (-> arg0 inlined?))\n"
-      "         (* (-> arg0 elt-count) 4)\n"
-      "         )\n"
-      "        (else\n"
-      "          (let ((v1-7 (-> arg0 elt-count)))\n"
-      "            (.pextuw a0-1 0 arg0)\n"
-      "            (* v1-7 (-> (the-as type a0-1) size))\n"
+      "(the-as int (if (zero? (-> arg0 inlined?))\n"
+      "                (* (-> arg0 elt-count) 4)\n"
+      "                (* (-> arg0 elt-count) (-> arg0 elt-type size))\n"
       "            )\n"
-      "          )\n"
-      "        )\n"
-      "  )";
+      "   )\n";
   test_with_expr(func, type, expected);
 }
 
