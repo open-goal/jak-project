@@ -36,7 +36,8 @@ files_with_modifications = [
   "lavatube-energy",
   "sage-finalboss-FIN",
   "progress",
-  "entity"
+  "entity",
+  "ogreboss"
 ]
 
 for file in files:
