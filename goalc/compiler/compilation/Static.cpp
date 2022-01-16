@@ -577,7 +577,6 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
       if (!unq_arg.is_pair() || unq_arg.is_empty_list()) {
         throw_compiler_error(form, "Cannot unquote non-list");
       }
-      auto& unq_arg_call = unq_arg.as_pair()->car;
       goos::Object macro_obj;
       if (!try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
         throw_compiler_error(form, "Macro {} not found", unq_arg.as_pair()->car.print());

@@ -550,9 +550,27 @@
   `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
   )
 
+;; set to true to get error prints on suspends out of stack.
+(defglobalconstant DEBUG_PRINT_SUSPEND_FAIL #f)
+
 (defmacro suspend ()
   ;; suspend the current process.
+  
   `(rlet ((pp :reg r13 :reset-here #t))
+         (#when DEBUG_PRINT_SUSPEND_FAIL
+           (rlet ((sp :reg rsp :reset-here #t :type int)
+                  (off :reg r15 :type uint))
+                 (let* ((sp-goal (- sp off))
+                        (stack-top-goal (-> (the process pp) top-thread stack-top))
+                        (stack-used (&- stack-top-goal sp-goal))
+                        (stack-size (-> (the process pp) top-thread stack-size))
+                        )
+                   (when (> stack-used stack-size)
+                     (format 0 "ERROR: suspend called without enough stack in proc:~%~A~%Stack: ~D/~D~%" pp stack-used stack-size)
+                     )
+                   )
+                 )
+           )
          ;; set to the current thread
          (set! pp (-> (the process pp) top-thread))
          ;; call the suspend hook (put nothing as the argument)

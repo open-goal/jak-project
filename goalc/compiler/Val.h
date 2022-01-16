@@ -237,6 +237,7 @@ class AliasVal : public Val {
   AliasVal(TypeSpec ts, Val* _base) : Val(std::move(ts)), base(_base) {}
   std::string print() const override { return "alias-of-" + base->print(); }
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
+  RegVal* to_xmm128(const goos::Object& form, Env* fe) override;
   Val* base = nullptr;
 };
 
@@ -249,6 +250,7 @@ class IntegerConstantVal : public Val {
 
   std::string print() const override { return std::string("integer-constant-") + m_value.print(); }
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
+  RegVal* to_xmm128(const goos::Object& form, Env* fe) override;
   const ConstantValue& value() const { return m_value; }
 
  protected:
