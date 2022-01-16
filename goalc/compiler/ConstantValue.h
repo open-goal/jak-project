@@ -81,6 +81,17 @@ class ConstantValue {
     return false;
   }
 
+  /*!
+   * Is the value 0?
+   */
+  bool is_zero() const {
+    if (m_size) {
+      return value_64() == 0;
+    } else {
+      return (value_128_lo() == 0) && (value_128_hi() == 0);
+    }
+  }
+
  protected:
   u8 m_value[16] = {0};
   int m_size;

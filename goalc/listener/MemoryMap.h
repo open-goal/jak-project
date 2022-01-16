@@ -12,6 +12,8 @@ struct LoadEntry {
   uint32_t segment_sizes[3] = {0, 0, 0};
   std::string load_string;
   std::string print() const;
+
+  bool overlaps_with(const LoadEntry& other) const;
 };
 
 struct MemoryMapEntry {
