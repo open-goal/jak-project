@@ -198,7 +198,7 @@ struct Cache {
 void sub_l20_b26(ExecutionContext* c) {
   bool bc;
   bool cop1_bc;
-  block_26:
+//  block_26:
   c->gprs[t2].du64[0] = 0;                          // or t2, r0, r0
   c->lwu(t1, 8, a0);                                // lwu t1, 8(a0)
   c->daddiu(t0, a0, 640);                           // daddiu t0, a0, 640
@@ -308,7 +308,7 @@ void sub_l20_b26(ExecutionContext* c) {
     goto block_39;
   }
 
-  block_38:
+//  block_38:
   c->daddiu(t1, t1, 1);                             // daddiu t1, t1, 1
   c->sqc2(vf8, 0, t0);                              // sqc2 vf8, 0(t0)
   // nop                                            // sll r0, r0, 0
@@ -324,7 +324,7 @@ void sub_l20_b26(ExecutionContext* c) {
 void sub_l16_b15(ExecutionContext* c) {
   bool bc;
   bool cop1_bc;
-  block_15:
+//  block_15:
   c->mov64(t4, t1);                                 // or t4, t1, r0
   c->lwu(t3, 12, a0);                               // lwu t3, 12(a0)
   c->dsll32(t4, t4, 0);                             // dsll32 t4, t4, 0
@@ -346,7 +346,7 @@ void sub_l16_b15(ExecutionContext* c) {
     goto block_16;
   }
 
-  block_19:
+//  block_19:
   //beq r0, r0, L19                                 // beq r0, r0, L19
   c->sw(r0, 0, t4);                                 // sw r0, 0(t4)
   goto block_25;                                    // branch always
@@ -360,7 +360,7 @@ void sub_l16_b15(ExecutionContext* c) {
     goto block_25;
   }
 
-  block_22:
+//  block_22:
   c->daddiu(t3, t3, 1);                             // daddiu t3, t3, 1
   c->sw(s7, 0, t4);                                 // sw s7, 0(t4)
   // nop                                            // sll r0, r0, 0
@@ -410,7 +410,7 @@ void sub_l16_b15(ExecutionContext* c) {
     goto block_25;
   }
 
-  block_24:
+//  block_24:
   c->vwaitq();                                      // vwaitq
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf13, vf13);                  // vmulq.xyz vf13, vf13, Q
@@ -445,7 +445,7 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   u32 call_addr = 0;
-  bool cop1_bc = false;
+//  bool cop1_bc = false;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
@@ -594,8 +594,8 @@ namespace Mips2C {
 namespace method_10_collide_edge_hold_list {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
+//  bool bc = false;
+//  u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
   c->daddiu(a2, a0, 1552);                          // daddiu a2, a0, 1552
@@ -614,7 +614,7 @@ u64 execute(void* ctxt) {
     goto block_10;
   }
 
-  block_2:
+//  block_2:
   c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
   cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
   if (cop1_bc) {                                    // bc1tl L69
@@ -622,7 +622,7 @@ u64 execute(void* ctxt) {
     goto block_11;
   }
 
-  block_4:
+//  block_4:
   c->mov64(a0, v1);                                 // or a0, v1, r0
 
   block_5:
@@ -632,7 +632,7 @@ u64 execute(void* ctxt) {
     goto block_12;
   }
 
-  block_7:
+//  block_7:
   c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
   cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
   if (!cop1_bc) {                                   // bc1fl L67
@@ -640,7 +640,7 @@ u64 execute(void* ctxt) {
     goto block_5;
   }
 
-  block_9:
+//  block_9:
   c->sw(a1, 0, a0);                                 // sw a1, 0(a0)
   //beq r0, r0, L71                                 // beq r0, r0, L71
   c->sw(v1, 0, a1);                                 // sw v1, 0(a1)
@@ -752,7 +752,7 @@ u64 execute(void* ctxt) {
     goto block_21;
   }
 
-  block_8:
+//  block_8:
   c->dsll(v1, s0, 2);                               // dsll v1, s0, 2
   c->daddiu(a0, gp, 168);                           // daddiu a0, gp, 168
   c->daddu(v1, a0, v1);                             // daddu v1, a0, v1
