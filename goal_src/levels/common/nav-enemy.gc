@@ -83,7 +83,7 @@
     (set-collide-offense (-> obj collide-info) 2 (collide-offense touch))
     (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
     )
-  (dummy-14 (-> obj draw shadow-ctrl))
+  (#unless TARGET_STARTUP_HACKS (dummy-14 (-> obj draw shadow-ctrl)))
   (when *target*
     (if *target*
         (look-at-enemy!
@@ -762,13 +762,14 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
+    ;; (format *stdcon* "~A Should Draw - ~A Draw Status - ~A~%" (-> self name) (nonzero? (-> self draw)) (-> self draw status))
     (if (and (and *target* (>= (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                )
                   )
              (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
              (nonzero? (-> self draw))
-             (logtest? (-> self draw status) (draw-status drwf03))
+            ;;  (logtest? (-> self draw status) (draw-status drwf03))
              )
         (go-virtual nav-enemy-patrol)
         )
@@ -830,9 +831,10 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
+    ;; (format *stdcon* "~A Should Draw - ~A Draw Status - ~A~%" (-> self name) (nonzero? (-> self draw)) (-> self draw status))
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
-        (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-status drwf03)))
+        (if (and (nonzero? (-> self draw)))
             (set! (-> self free-time) (-> *display* base-frame-counter))
             )
         (if (or (or (not *target*) (< (-> self enemy-info idle-distance)
