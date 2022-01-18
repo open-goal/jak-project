@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: progress.gc
-;; name in dgo: progress
-;; dgos: GAME, ENGINE
-
-;; DECOMP BEGINS
-
+;; definition of type progress-global-state
 (deftype progress-global-state (basic)
   ((aspect-ratio-choice symbol           :offset-assert   4)
    (video-mode-choice   symbol           :offset-assert   8)
@@ -27,39 +22,62 @@
   :flag-assert         #x900000048
   )
 
-(define *progress-state*
-  (new 'static 'progress-global-state
-    :yes-no-choice #f
-    :which -1
-    :last-slot-saved -1
-    )
+;; definition for method 3 of type progress-global-state
+(defmethod inspect progress-global-state ((obj progress-global-state))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Taspect-ratio-choice: ~A~%" (-> obj aspect-ratio-choice))
+  (format #t "~Tvideo-mode-choice: ~A~%" (-> obj video-mode-choice))
+  (format #t "~Tyes-no-choice: ~A~%" (-> obj yes-no-choice))
+  (format #t "~Twhich: ~D~%" (-> obj which))
+  (format #t "~Tstarting-state: ~D~%" (-> obj starting-state))
+  (format #t "~Tlast-slot-saved: ~D~%" (-> obj last-slot-saved))
+  (format #t "~Tslider-backup: ~f~%" (-> obj slider-backup))
+  (format #t "~Tlanguage-backup: ~D~%" (-> obj language-backup))
+  (format #t "~Ton-off-backup: ~A~%" (-> obj on-off-backup))
+  (format #t "~Tcenter-x-backup: ~D~%" (-> obj center-x-backup))
+  (format #t "~Tcenter-y-backup: ~D~%" (-> obj center-y-backup))
+  (format #t "~Taspect-ratio-backup: ~A~%" (-> obj aspect-ratio-backup))
+  (format #t "~Tlast-slider-sound: ~D~%" (-> obj last-slider-sound))
+  obj
   )
 
+;; definition for symbol *progress-state*, type progress-global-state
+(define *progress-state* (new 'static 'progress-global-state :yes-no-choice #f :which -1 :last-slot-saved -1))
 
+;; definition for function get-game-count
 (defun get-game-count ((arg0 int))
   (-> *game-counts* data arg0)
   )
 
+;; definition for function progress-allowed?
 (defun progress-allowed? ()
-  (not (or (-> *setting-control* current talking)
-           (-> *setting-control* current movie)
-           (movie?)
-           (handle->process (-> *game-info* pov-camera-handle))
-           (handle->process (-> *game-info* other-camera-handle))
-           (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time))
-           (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
-           (!= (-> *setting-control* current bg-a) 0.0)
-           (!= (-> *setting-control* current bg-a-force) 0.0)
-           (not (-> *setting-control* current allow-progress))
-           (or (and (handle->process (-> *game-info* auto-save-proc))
-                    (not (send-event (handle->process (-> *game-info* auto-save-proc)) 'progress-allowed?))
-                    )
-               (not *target*)
-               )
-           )
-       )
+  (with-pp
+    (not (or (-> *setting-control* current talking)
+             (-> *setting-control* current movie)
+             (movie?)
+             (handle->process (-> *game-info* pov-camera-handle))
+             (handle->process (-> *game-info* other-camera-handle))
+             (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time))
+             (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+             (!= (-> *setting-control* current bg-a) 0.0)
+             (!= (-> *setting-control* current bg-a-force) 0.0)
+             (not (-> *setting-control* current allow-progress))
+             (or (and (handle->process (-> *game-info* auto-save-proc))
+                      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                        (set! (-> a1-3 from) pp)
+                        (set! (-> a1-3 num-params) 0)
+                        (set! (-> a1-3 message) 'progress-allowed?)
+                        (not (send-event-function (handle->process (-> *game-info* auto-save-proc)) a1-3))
+                        )
+                      )
+                 (not *target*)
+                 )
+             )
+         )
+    )
   )
 
+;; definition for function pause-allowed?
 (defun pause-allowed? ()
   (not (or (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
            (!= (-> *setting-control* current bg-a) 0.0)
@@ -71,63 +89,50 @@
        )
   )
 
-(defun init-game-options ((obj progress))
-  "Set the options for all of the menus."
-
-  ;; start off by making them all invalid
-  (dotimes (i 35)
-    (set! (-> *options-remap* i) #f)
+;; definition for function init-game-options
+;; INFO: Return type mismatch (pointer symbol) vs none.
+(defun init-game-options ((arg0 progress))
+  (dotimes (v1-0 35)
+    (set! (-> *options-remap* v1-0) #f)
     )
-
-  ;; main menu
-  (set! (-> *options-remap* 3)
-    (case *kernel-boot-message*
-        (('demo)
-         ;; game demo
-         *main-options-demo*
-         )
-        (('demo-shared)
-         ;; game demo with external launcher
-         *main-options-demo-shared*
-         )
-        (else
-         ;; normal game
-         *main-options*
-         )
-      )
+  (let ((v1-3 *kernel-boot-message*))
+    (set! (-> *options-remap* 3) (cond
+                                   ((= v1-3 'demo)
+                                    *main-options-demo*
+                                    )
+                                   ((= v1-3 'demo-shared)
+                                    *main-options-demo-shared*
+                                    )
+                                   (else
+                                     *main-options*
+                                     )
+                                   )
+          )
     )
   (set! (-> *options-remap* 4)
-    (cond
-      ((!= *kernel-boot-message* 'play)
-       (if (= (scf-get-territory) GAME_TERRITORY_SCEE)
-           *game-options*
-           *game-options-demo*
+        (cond
+          ((!= *kernel-boot-message* 'play)
+           (if (= (scf-get-territory) 1)
+               *game-options*
+               *game-options-demo*
+               )
            )
-       )
-      ((and (= (scf-get-territory) GAME_TERRITORY_SCEI)
-            (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2))))
-        ;; if ntsc-j and we're not using language cheat (needs l2+r2)
-        *game-options-japan*
-        )
-      (else
-        *game-options*
-        )
-      )
-   )
-  (set! (-> *options-remap* 5)
-   (if (and (= (-> *progress-state* starting-state) 27)
-            (or (= (scf-get-territory) GAME_TERRITORY_SCEE)
-                (and (= *progress-cheat* 'pal)
-                     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l2))
-                     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))
-                     )
-                )
+          ((and (= (scf-get-territory) 2) (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2))))
+           *game-options-japan*
+           )
+          (else
+            *game-options*
             )
-      ;; (only if we came from title) if PAL or we're using the PAL cheat (needs l2+r2)
-      *graphic-title-options-pal*
-      *graphic-options*
-      )
-   )
+          )
+        )
+  (set! (-> *options-remap* 5)
+        (if (and (= (-> *progress-state* starting-state) (progress-screen title))
+                 (or (= (scf-get-territory) 1) (and (= *progress-cheat* 'pal) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
+                 )
+            *graphic-title-options-pal*
+            *graphic-options*
+            )
+        )
   (set! (-> *options-remap* 6) *sound-options*)
   (set! (-> *options-remap* 7) *ok-options*)
   (set! (-> *options-remap* 8) *ok-options*)
@@ -173,20 +178,19 @@
   (none)
   )
 
+;; definition for function make-current-level-available-to-progress
+;; INFO: Return type mismatch int vs none.
 (defun make-current-level-available-to-progress ()
-  "exactly what it says on the tin."
-
   (when (and *target* (-> *level* border?))
     (let* ((cur-lev (-> *target* current-level))
            (lev-idx (+ (-> cur-lev info index) -1))
            )
-      (if (and
-              (>= lev-idx 0)
-              (< lev-idx (-> *level-task-data-remap* length))
-              (zero? (-> *game-info* level-opened (-> *level-task-data-remap* lev-idx)))
-              (or (= *kernel-boot-message* 'play) (= (-> cur-lev nickname) 'mis)) ;; only allow misty in demo!
-              )
-          (set! (-> *game-info* level-opened (-> *level-task-data-remap* lev-idx)) 1)
+      (if (and (>= lev-idx 0)
+               (< lev-idx (-> *level-task-data-remap* length))
+               (zero? (-> *game-info* level-opened (-> *level-task-data-remap* lev-idx)))
+               (or (= *kernel-boot-message* 'play) (= (-> cur-lev nickname) 'mis))
+               )
+          (set! (-> *game-info* level-opened (-> *level-task-data-remap* lev-idx)) (the-as uint 1))
           )
       )
     )
@@ -194,15 +198,12 @@
   (none)
   )
 
+;; definition for function make-levels-with-tasks-available-to-progress
+;; INFO: Return type mismatch int vs none.
 (defun make-levels-with-tasks-available-to-progress ()
-  "Open levels that have tasks to do!"
-
-  ;; go through EVERY LEVEL'S TASKS
   (dotimes (i (length *level-task-data*))
-    ;; level tasks
     (let ((tasks (-> *level-task-data* i)))
-      ;; unless there's no tasks or the level is already open...
-      (unless (or (= tasks #f) (= (-> *game-info* level-opened i) 1))
+      (when (not (or (= tasks #f) (= (-> *game-info* level-opened i) 1)))
         (cond
           ((!= *kernel-boot-message* 'play)
            (if (= (-> tasks level-name-id) (game-text-id misty-level-name))
@@ -230,9 +231,8 @@
   (none)
   )
 
+;; definition for function get-next-task-up
 (defun get-next-task-up ((cur-task-idx int) (lev-idx int))
-  "find next available task. skips over unknown tasks and doesn't do anything if none are found"
-
   (let ((gp-0 cur-task-idx))
     (let ((s4-0 (+ cur-task-idx 1))
           (s3-0 (-> *level-task-data* lev-idx))
@@ -248,9 +248,8 @@
     )
   )
 
+;; definition for function get-next-task-down
 (defun get-next-task-down ((cur-task-idx int) (lev-idx int))
-  "find previous available task. skips over unknown tasks and doesn't do anything if none are found"
-
   (let ((gp-0 cur-task-idx))
     (let ((s4-0 (+ cur-task-idx -1))
           (s3-0 (-> *level-task-data* lev-idx))
@@ -266,6 +265,7 @@
     )
   )
 
+;; definition for function get-next-level-up
 (defun get-next-level-up ((lev-idx int))
   (let ((gp-0 lev-idx))
     (let ((s4-0 (+ lev-idx 1)))
@@ -280,6 +280,7 @@
     )
   )
 
+;; definition for function get-next-level-down
 (defun get-next-level-down ((lev-idx int))
   (let ((v0-0 lev-idx))
     (let ((v1-0 (+ lev-idx -1)))
@@ -294,12 +295,8 @@
     )
   )
 
+;; definition for function calculate-completion
 (defun calculate-completion ((the-progress progress))
-  "Updates counters and calculates game completion.
-   Cells are tallied 80%
-   Buzzers are tallied 10%
-   Orbs are tallied 10%"
-
   (local-vars
     (current-cells int)
     (current-buzzers int)
@@ -347,90 +344,270 @@
      )
   )
 
+;; definition for symbol *progress-save-info*, type mc-slot-info
 (define *progress-save-info* (new 'global 'mc-slot-info))
 
-(defmacro progress-make-manipy-icon (obj &key skel
-                                         &key x
-                                         &key y
-                                         &key z
-                                         &key scale-x
-                                         &key scale-y
-                                         )
-  `(when (< (-> ,obj nb-of-icons) 6)
-    (let ((icon-idx (-> ,obj nb-of-icons)))
-     (set! (-> ,obj icons icon-idx) (new 'static 'hud-icon))
-     (let ((new-manipy (make-init-process manipy manipy-init (new 'static 'vector :w 1.0) #f ,skel #f
-                        :to ,obj
-                        :stack *scratch-memory-top*
-                        )))
-      (when new-manipy
-       ;;(set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud) TODO
-       (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
-       (set-vector! (-> (-> new-manipy) root scale) ,scale-x ,scale-y ,scale-x 1.0)
-       (when #f
-         (send-event (ppointer->process new-manipy) 'trans-hook #f)
-         )
-       )
-      (set! (-> ,obj icons icon-idx icon) new-manipy)
-      (when new-manipy
-       (logior! (-> new-manipy 0 mask) (process-mask pause))
-       (logclear! (-> new-manipy 0 mask) (process-mask menu progress))
-       (set! (-> (-> new-manipy) root trans z) ,z)
-       (set! (-> ,obj icons icon-idx icon-x) ,x)
-       (set! (-> ,obj icons icon-idx icon-y) ,y)
-       (set! (-> ,obj icons icon-idx icon-z) 0)
-       (set! (-> ,obj icons icon-idx scale-x) ,scale-x)
-       (set! (-> ,obj icons icon-idx scale-y) ,scale-y)
-       )
-      )
-     )
-    (+! (-> ,obj nb-of-icons) 1)
-    )
-  )
-
+;; definition for method 33 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod initialize-icons progress ((obj progress))
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *money-sg*
-                                 :x -320
-                                 :y 253
-                                 :z (meters 17)
-                                 :scale-x 0.013
-                                 :scale-y -0.015
-                                 )
-  (progress-make-manipy-icon obj :skel *money-sg*
-                                 :x -320
-                                 :y 253
-                                 :z (meters 0.25)
-                                 :scale-x 0.008
-                                 :scale-y -0.009
-                                 )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-0 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-0) (new 'static 'hud-icon))
+      (let* ((s3-0 (get-process *default-dead-pool* manipy #x4000))
+             (s4-0 (when s3-0
+                     (let ((t9-1 (method-of-type manipy activate)))
+                       (t9-1 (the-as manipy s3-0) obj 'manipy (the-as pointer #x70004000))
+                       )
+                     ((the-as (function process function object object object object object) run-function-in-process)
+                      s3-0
+                      manipy-init
+                      (new 'static 'vector :w 1.0)
+                      #f
+                      *fuelcell-naked-sg*
+                      #f
+                      )
+                     (-> s3-0 ppointer)
+                     )
+                   )
+             )
+        (when s4-0
+          (set! (-> (the-as manipy (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as manipy (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as manipy (-> s4-0 0)) root scale) 0.006 0.006 0.006 1.0)
+          (if #f
+              (send-event (ppointer->process s4-0) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-0 icon) (the-as (pointer manipy) s4-0))
+        (when s4-0
+          (logior! (-> s4-0 0 mask) (process-mask pause))
+          (logclear! (-> s4-0 0 mask) (process-mask menu progress))
+          (set! (-> (the-as manipy (-> s4-0 0)) root trans z) 2048.0)
+          (set! (-> obj icons s5-0 icon-x) 256)
+          (set! (-> obj icons s5-0 icon-y) 77)
+          (set! (-> obj icons s5-0 icon-z) 0)
+          (set! (-> obj icons s5-0 scale-x) 0.006)
+          (set! (-> obj icons s5-0 scale-y) 0.006)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-1 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-1) (new 'static 'hud-icon))
+      (let* ((s3-1 (get-process *default-dead-pool* manipy #x4000))
+             (s4-1 (when s3-1
+                     (let ((t9-5 (method-of-type manipy activate)))
+                       (t9-5 (the-as manipy s3-1) obj 'manipy (the-as pointer #x70004000))
+                       )
+                     ((the-as (function process function object object object object object) run-function-in-process)
+                      s3-1
+                      manipy-init
+                      (new 'static 'vector :w 1.0)
+                      #f
+                      *fuelcell-naked-sg*
+                      #f
+                      )
+                     (-> s3-1 ppointer)
+                     )
+                   )
+             )
+        (when s4-1
+          (set! (-> (the-as manipy (-> s4-1 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as manipy (-> s4-1 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as manipy (-> s4-1 0)) root scale) 0.006 0.006 0.006 1.0)
+          (if #f
+              (send-event (ppointer->process s4-1) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-1 icon) (the-as (pointer manipy) s4-1))
+        (when s4-1
+          (logior! (-> s4-1 0 mask) (process-mask pause))
+          (logclear! (-> s4-1 0 mask) (process-mask menu progress))
+          (set! (-> (the-as manipy (-> s4-1 0)) root trans z) 2048.0)
+          (set! (-> obj icons s5-1 icon-x) 256)
+          (set! (-> obj icons s5-1 icon-y) 77)
+          (set! (-> obj icons s5-1 icon-z) 0)
+          (set! (-> obj icons s5-1 scale-x) 0.006)
+          (set! (-> obj icons s5-1 scale-y) 0.006)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-2 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-2) (new 'static 'hud-icon))
+      (let* ((s3-2 (get-process *default-dead-pool* manipy #x4000))
+             (s4-2 (when s3-2
+                     (let ((t9-9 (method-of-type manipy activate)))
+                       (t9-9 (the-as manipy s3-2) obj 'manipy (the-as pointer #x70004000))
+                       )
+                     ((the-as (function process function object object object object object) run-function-in-process)
+                      s3-2
+                      manipy-init
+                      (new 'static 'vector :w 1.0)
+                      #f
+                      *fuelcell-naked-sg*
+                      #f
+                      )
+                     (-> s3-2 ppointer)
+                     )
+                   )
+             )
+        (when s4-2
+          (set! (-> (the-as manipy (-> s4-2 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as manipy (-> s4-2 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as manipy (-> s4-2 0)) root scale) 0.006 0.006 0.006 1.0)
+          (if #f
+              (send-event (ppointer->process s4-2) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-2 icon) (the-as (pointer manipy) s4-2))
+        (when s4-2
+          (logior! (-> s4-2 0 mask) (process-mask pause))
+          (logclear! (-> s4-2 0 mask) (process-mask menu progress))
+          (set! (-> (the-as manipy (-> s4-2 0)) root trans z) 2048.0)
+          (set! (-> obj icons s5-2 icon-x) 256)
+          (set! (-> obj icons s5-2 icon-y) 77)
+          (set! (-> obj icons s5-2 icon-z) 0)
+          (set! (-> obj icons s5-2 scale-x) 0.006)
+          (set! (-> obj icons s5-2 scale-y) 0.006)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-3 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-3) (new 'static 'hud-icon))
+      (let* ((s3-3 (get-process *default-dead-pool* manipy #x4000))
+             (s4-3 (when s3-3
+                     (let ((t9-13 (method-of-type manipy activate)))
+                       (t9-13 (the-as manipy s3-3) obj 'manipy (the-as pointer #x70004000))
+                       )
+                     ((the-as (function process function object object object object object) run-function-in-process)
+                      s3-3
+                      manipy-init
+                      (new 'static 'vector :w 1.0)
+                      #f
+                      *fuelcell-naked-sg*
+                      #f
+                      )
+                     (-> s3-3 ppointer)
+                     )
+                   )
+             )
+        (when s4-3
+          (set! (-> (the-as manipy (-> s4-3 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as manipy (-> s4-3 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as manipy (-> s4-3 0)) root scale) 0.006 0.006 0.006 1.0)
+          (if #f
+              (send-event (ppointer->process s4-3) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-3 icon) (the-as (pointer manipy) s4-3))
+        (when s4-3
+          (logior! (-> s4-3 0 mask) (process-mask pause))
+          (logclear! (-> s4-3 0 mask) (process-mask menu progress))
+          (set! (-> (the-as manipy (-> s4-3 0)) root trans z) 2048.0)
+          (set! (-> obj icons s5-3 icon-x) 256)
+          (set! (-> obj icons s5-3 icon-y) 77)
+          (set! (-> obj icons s5-3 icon-z) 0)
+          (set! (-> obj icons s5-3 scale-x) 0.006)
+          (set! (-> obj icons s5-3 scale-y) 0.006)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-4 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-4) (new 'static 'hud-icon))
+      (let* ((s3-4 (get-process *default-dead-pool* manipy #x4000))
+             (s4-4 (when s3-4
+                     (let ((t9-17 (method-of-type manipy activate)))
+                       (t9-17 (the-as manipy s3-4) obj 'manipy (the-as pointer #x70004000))
+                       )
+                     ((the-as (function process function object object object object object) run-function-in-process)
+                      s3-4
+                      manipy-init
+                      (new 'static 'vector :w 1.0)
+                      #f
+                      *money-sg*
+                      #f
+                      )
+                     (-> s3-4 ppointer)
+                     )
+                   )
+             )
+        (when s4-4
+          (set! (-> (the-as manipy (-> s4-4 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as manipy (-> s4-4 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as manipy (-> s4-4 0)) root scale) 0.013 -0.015 0.013 1.0)
+          (if #f
+              (send-event (ppointer->process s4-4) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-4 icon) (the-as (pointer manipy) s4-4))
+        (when s4-4
+          (logior! (-> s4-4 0 mask) (process-mask pause))
+          (logclear! (-> s4-4 0 mask) (process-mask menu progress))
+          (set! (-> (the-as manipy (-> s4-4 0)) root trans z) 69632.0)
+          (set! (-> obj icons s5-4 icon-x) -320)
+          (set! (-> obj icons s5-4 icon-y) 253)
+          (set! (-> obj icons s5-4 icon-z) 0)
+          (set! (-> obj icons s5-4 scale-x) 0.013)
+          (set! (-> obj icons s5-4 scale-y) -0.015)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-5 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-5) (new 'static 'hud-icon))
+      (let* ((s3-5 (get-process *default-dead-pool* manipy #x4000))
+             (s4-5 (when s3-5
+                     (let ((t9-21 (method-of-type manipy activate)))
+                       (t9-21 (the-as manipy s3-5) obj 'manipy (the-as pointer #x70004000))
+                       )
+                     ((the-as (function process function object object object object object) run-function-in-process)
+                      s3-5
+                      manipy-init
+                      (new 'static 'vector :w 1.0)
+                      #f
+                      *money-sg*
+                      #f
+                      )
+                     (-> s3-5 ppointer)
+                     )
+                   )
+             )
+        (when s4-5
+          (set! (-> (the-as manipy (-> s4-5 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as manipy (-> s4-5 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as manipy (-> s4-5 0)) root scale) 0.008 -0.009 0.008 1.0)
+          (if #f
+              (send-event (ppointer->process s4-5) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-5 icon) (the-as (pointer manipy) s4-5))
+        (when s4-5
+          (logior! (-> s4-5 0 mask) (process-mask pause))
+          (logclear! (-> s4-5 0 mask) (process-mask menu progress))
+          (set! (-> (the-as manipy (-> s4-5 0)) root trans z) 1024.0)
+          (set! (-> obj icons s5-5 icon-x) -320)
+          (set! (-> obj icons s5-5 icon-y) 253)
+          (set! (-> obj icons s5-5 icon-z) 0)
+          (set! (-> obj icons s5-5 scale-x) 0.008)
+          (set! (-> obj icons s5-5 scale-y) -0.009)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
   (send-event (ppointer->process (-> obj icons 1 icon)) 'set-frame-num 2.5)
   (send-event (ppointer->process (-> obj icons 2 icon)) 'set-frame-num 10.0)
   (send-event (ppointer->process (-> obj icons 3 icon)) 'set-frame-num 15.5)
@@ -438,6 +615,8 @@
   (none)
   )
 
+;; definition for method 48 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod enter! progress ((obj progress) (screen progress-screen) (option int))
   (when (!= (-> obj display-state) screen)
     (set! (-> *progress-state* yes-no-choice) #f)
@@ -476,6 +655,8 @@
   (none)
   )
 
+;; definition for method 45 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod push! progress ((obj progress))
   (let ((v1-0 (-> obj display-state-pos)))
     (cond
@@ -493,6 +674,8 @@
   (none)
   )
 
+;; definition for method 46 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod pop! progress ((obj progress))
   (let ((v1-0 (-> obj display-state-pos)))
     (cond
@@ -511,6 +694,8 @@
   (none)
   )
 
+;; definition for method 51 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod set-transition-progress! progress ((obj progress) (arg0 int))
   (set! (-> obj transition-offset) arg0)
   (set! (-> obj transition-offset-invert) (- 512 arg0))
@@ -520,6 +705,8 @@
   (none)
   )
 
+;; definition for method 52 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod set-transition-speed! progress ((obj progress))
   (case (-> obj display-state)
     (((progress-screen fuel-cell)
@@ -539,6 +726,8 @@
   (none)
   )
 
+;; definition for function progress-init-by-other
+;; INFO: Return type mismatch object vs none.
 (defbehavior progress-init-by-other progress ()
   (logclear! (-> self mask) (process-mask menu progress))
   (set! (-> self nb-of-particles) 0)
@@ -601,13 +790,13 @@
   (set! (-> self particle-state 30) 0)
   (set! (-> self particle-state 31) 0)
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-    (quaternion-axis-angle! gp-0 0.0 1.0 0.0 16384.0)
+    (quaternion-axis-angle! gp-0 (the-as float 0.0) (the-as float 1.0) (the-as float 0.0) (the-as float 16384.0))
     (quaternion*! (-> self icons 0 icon 0 root quat) gp-0 (-> self icons 0 icon 0 root quat))
-    (quaternion-axis-angle! gp-0 0.0 1.0 0.0 32768.0)
+    (quaternion-axis-angle! gp-0 (the-as float 0.0) (the-as float 1.0) (the-as float 0.0) (the-as float 32768.0))
     (quaternion*! (-> self icons 1 icon 0 root quat) gp-0 (-> self icons 1 icon 0 root quat))
-    (quaternion-axis-angle! gp-0 0.0 1.0 0.0 49152.0)
+    (quaternion-axis-angle! gp-0 (the-as float 0.0) (the-as float 1.0) (the-as float 0.0) (the-as float 49152.0))
     (quaternion*! (-> self icons 2 icon 0 root quat) gp-0 (-> self icons 2 icon 0 root quat))
-    (quaternion-axis-angle! gp-0 0.0 1.0 0.0 0.0)
+    (quaternion-axis-angle! gp-0 (the-as float 0.0) (the-as float 1.0) (the-as float 0.0) (the-as float 0.0))
     (quaternion*! (-> self icons 3 icon 0 root quat) gp-0 (-> self icons 3 icon 0 root quat))
     )
   (adjust-ratios self (get-aspect-ratio) (get-video-mode))
@@ -617,9 +806,11 @@
   (none)
   )
 
+;; definition for symbol *progress-stack*, type (pointer uint8)
 (define *progress-stack* (the-as (pointer uint8) (malloc 'global #x3800)))
-(defconstant *progress-stack-top* (&-> *progress-stack* #x3800))
 
+;; definition for function activate-progress
+;; INFO: Return type mismatch int vs none.
 (defun activate-progress ((creator process) (screen progress-screen))
   (when *target*
     (cond
@@ -680,6 +871,8 @@
   (none)
   )
 
+;; definition for function deactivate-progress
+;; INFO: Return type mismatch int vs none.
 (defun deactivate-progress ()
   (when (and *progress-process* (= (-> *progress-process* 0 next-state name) 'progress-gone))
     (copy-settings-from-target! *setting-control*)
@@ -696,9 +889,9 @@
   (none)
   )
 
+;; definition for function hide-progress-screen
+;; INFO: Return type mismatch int vs none.
 (defun hide-progress-screen ()
-  "shoo!"
-
   (if *progress-process*
       (send-event (ppointer->process *progress-process*) 'go-away)
       )
@@ -706,6 +899,8 @@
   (none)
   )
 
+;; definition for function hide-progress-icons
+;; INFO: Return type mismatch int vs none.
 (defun hide-progress-icons ()
   (let ((v1-0 6))
     (dotimes (a0-0 8)
@@ -734,11 +929,14 @@
   (none)
   )
 
+;; definition for method 7 of type game-count-info
 (defmethod relocate game-count-info ((obj game-count-info) (arg0 int))
-  "Load in the game-count-info. This is a bit of a hack."
   (set! *game-counts* obj)
+  obj
   )
 
+;; definition for method 7 of type progress
+;; INFO: Return type mismatch process vs progress.
 (defmethod relocate progress ((obj progress) (arg0 int))
   (dotimes (v1-0 (-> obj nb-of-particles))
     (when (-> obj particles v1-0 part)
@@ -752,14 +950,16 @@
   (the-as progress ((method-of-type process relocate) obj arg0))
   )
 
+;; definition for method 21 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod adjust-sprites progress ((obj progress))
-  (let ((f0-1 (* (1/ METER_LENGTH) (the float (-> obj in-out-position)))))
+  (let ((f0-1 (* 0.00024414062 (the float (-> obj in-out-position)))))
     (set! (-> obj particles 2 init-pos x) (the float (+ (-> obj right-x-offset) 409 (the int (* 301.5 f0-1)))))
     (set! (-> obj particles 1 init-pos x) (the float (+ (-> obj left-x-offset) 59)))
-    (set! (-> obj left-side-x-scale) (meters (+ (/ 3.5 (-> obj sides-x-scale)) (* 10.0 f0-1))))
-    (set! (-> obj left-side-y-scale) (meters (+ (-> obj sides-y-scale) (* 10.0 f0-1))))
-    (set! (-> obj right-side-x-scale) (meters (+ (/ 6.0 (-> obj sides-x-scale)) (* 4.0 f0-1))))
-    (set! (-> obj right-side-y-scale) (meters (+ (-> obj sides-y-scale) (* 4.0 f0-1))))
+    (set! (-> obj left-side-x-scale) (* 4096.0 (+ (/ 3.5 (-> obj sides-x-scale)) (* 10.0 f0-1))))
+    (set! (-> obj left-side-y-scale) (* 4096.0 (+ (-> obj sides-y-scale) (* 10.0 f0-1))))
+    (set! (-> obj right-side-x-scale) (* 4096.0 (+ (/ 6.0 (-> obj sides-x-scale)) (* 4.0 f0-1))))
+    (set! (-> obj right-side-y-scale) (* 4096.0 (+ (-> obj sides-y-scale) (* 4.0 f0-1))))
     )
   (dotimes (s5-0 (-> obj nb-of-particles))
     (set! (-> obj particles s5-0 pos x) (+ -256.0 (-> obj particles s5-0 init-pos x)))
@@ -771,7 +971,8 @@
           )
     (set! (-> obj particles s5-0 pos z) (-> obj particles s5-0 init-pos z))
     (if (> (-> obj particles s5-0 part matrix) 0)
-        (set-vector! (sprite-get-user-hvdf (-> obj particles s5-0 part matrix))
+        (set-vector!
+          (sprite-get-user-hvdf (-> obj particles s5-0 part matrix))
           (the float (+ (the int (-> obj particles s5-0 pos x)) 2048))
           (the float (+ (the int (-> obj particles s5-0 pos y)) 2048))
           (- (-> *math-camera* hvdf-off z) (* 1024.0 (-> obj particles s5-0 pos z)))
@@ -784,10 +985,13 @@
   (none)
   )
 
+;; definition for method 22 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod adjust-icons progress ((obj progress))
   (dotimes (v1-0 (-> obj nb-of-icons))
     (when (>= v1-0 4)
-      (set-vector! (-> obj icons v1-0 icon 0 root scale)
+      (set-vector!
+        (-> obj icons v1-0 icon 0 root scale)
         (* (-> obj icons v1-0 scale-x) (-> *video-parms* relative-x-scale))
         (* (-> obj icons v1-0 scale-y) (-> *video-parms* relative-y-scale))
         (* (-> obj icons v1-0 scale-x) (-> *video-parms* relative-x-scale))
@@ -807,6 +1011,8 @@
   (none)
   )
 
+;; definition for method 23 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod adjust-ratios progress ((obj progress) (aspect symbol) (video-mode symbol))
   (case aspect
     (('aspect4x3)
@@ -858,6 +1064,7 @@
   (none)
   )
 
+;; definition for method 32 of type progress
 (defmethod dummy-32 progress ((obj progress))
   (let ((v1-2 (-> *progress-process* 0 display-state))
         (a1-1 (-> *progress-state* starting-state))
@@ -869,10 +1076,10 @@
              (= v1-2 (progress-screen money))
              (= v1-2 (progress-screen buzzer))
              (and (or (= a1-1 (progress-screen fuel-cell))
-                         (= a1-1 (progress-screen money))
-                         (= a1-1 (progress-screen buzzer))
-                         (= a1-1 (progress-screen title))
-                         )
+                      (= a1-1 (progress-screen money))
+                      (= a1-1 (progress-screen buzzer))
+                      (= a1-1 (progress-screen title))
+                      )
                   (or (= v1-2 (progress-screen settings))
                       (= v1-2 (progress-screen game-settings))
                       (= v1-2 (progress-screen graphic-settings))
@@ -886,28 +1093,18 @@
     )
   )
 
+;; definition for method 19 of type progress
+;; INFO: Return type mismatch object vs symbol.
 (defmethod dummy-19 progress ((obj progress))
   (the-as symbol (and *progress-process* (zero? (-> *progress-process* 0 in-out-position))))
   )
 
+;; definition for method 20 of type progress
 (defmethod hidden? progress ((obj progress))
   (or (not *progress-process*) (= (-> *progress-process* 0 in-out-position) 4096))
   )
 
-(defmacro test-make-target ()
-  `(begin
-    (set! *target* (-> (make-function-process target (lambda () (loop (suspend))) :from *target-dead-pool* :to *target-pool*)))
-    (run-now-in-process *target*
-      (lambda :behavior target ()
-          (set! (-> self control) (new 'process 'control-info self (collide-list-enum player)))
-          (set! (-> self fact-info-target) (new 'process 'fact-info-target self (pickup-type eco-pill-random)
-                                                                                (-> *FACT-bank* default-pill-inc)))
-          (set! (-> self current-level) #f)
-          (set! (-> self game) *game-info*)
-          ))
-    )
-  )
-
+;; failed to figure out what this is:
 (defstate progress-waiting (progress)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -919,14 +1116,14 @@
     )
   :code
   (behavior ()
-    (loop
+    (while #t
       (when (hud-hidden?)
         (dotimes (gp-0 (-> self nb-of-particles))
           (if (= (-> self particles gp-0 part matrix) -1)
               (set! (-> self particles gp-0 part matrix) (sprite-allocate-user-hvdf))
               )
           )
-        (set-setting! *setting-control* self 'common-page 'set 0.0 1)
+        (set-setting! *setting-control* self 'common-page 'set (the-as float 0.0) 1)
         (suspend)
         (go progress-coming-in)
         )
@@ -936,6 +1133,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate progress-gone (progress)
   :code
   (behavior ()
@@ -948,6 +1146,7 @@
     )
   )
 
+;; definition for method 53 of type progress
 (defmethod dummy-53 progress ((obj progress) (arg0 progress-screen))
   (let ((s4-0 (-> obj card-info))
         (gp-0 arg0)
@@ -1049,6 +1248,8 @@
     )
   )
 
+;; definition for method 31 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod dummy-31 progress ((obj progress))
   (let ((s5-0 (-> obj card-info)))
     (when (and s5-0 (not (-> obj in-transition)))
@@ -1240,6 +1441,8 @@
   (none)
   )
 
+;; definition for method 29 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod dummy-29 progress ((obj progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (set! (-> obj card-info) *progress-save-info*)
@@ -1330,29 +1533,29 @@
               (let ((s4-5 #f))
                 (case (-> s5-0 (-> obj option-index) option-type)
                   ((2 7)
-                   (when (not (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))))
+                   (when (not (-> (the-as (pointer uint32) (-> s5-0 (-> obj option-index) value-to-modify))))
                      (set! s4-5 #t)
                      (if (= (-> s5-0 (-> obj option-index) value-to-modify) (&-> *setting-control* current vibration))
                          (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 90)
                          )
                      )
-                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) #t)
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) #t)
                    )
                   ((4)
-                   (set! s4-5 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'aspect16x9))
-                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'aspect4x3)
+                   (set! s4-5 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'aspect16x9))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'aspect4x3)
                    )
                   ((5)
-                   (set! s4-5 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'ntsc))
-                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'pal)
+                   (set! s4-5 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'ntsc))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'pal)
                    )
                   ((1)
                    (if (> (the-as int (-> (the-as (pointer uint64) (-> s5-0 (-> obj option-index) value-to-modify)))) 0)
                        (+! (-> (the-as (pointer uint64) (-> s5-0 (-> obj option-index) value-to-modify))) -1)
                        (set! (-> (the-as (pointer int64) (-> s5-0 (-> obj option-index) value-to-modify)))
                              (if (and (zero? (scf-get-territory))
-                                        (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
-                                        )
+                                      (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
+                                      )
                                  4
                                  5
                                  )
@@ -1427,21 +1630,21 @@
               (let ((v1-217 (the-as object #f)))
                 (case (-> s5-0 (-> obj option-index) option-type)
                   ((2 7)
-                   (set! v1-217 (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))))
-                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) #f)
+                   (set! v1-217 (-> (the-as (pointer uint32) (-> s5-0 (-> obj option-index) value-to-modify))))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) #f)
                    )
                   ((4)
-                   (set! v1-217 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'aspect4x3))
-                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'aspect16x9)
+                   (set! v1-217 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'aspect4x3))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'aspect16x9)
                    )
                   ((5)
-                   (set! v1-217 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'pal))
-                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'ntsc)
+                   (set! v1-217 (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'pal))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0) 'ntsc)
                    )
                   ((1)
                    (let ((v1-243 (if (and (zero? (scf-get-territory))
-                                            (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
-                                            )
+                                          (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
+                                          )
                                      4
                                      5
                                      )
@@ -1535,7 +1738,7 @@
                        )
                  )
                 ((= v1-319 2)
-                 (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)))
+                 (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0)
                        (-> *progress-state* on-off-backup)
                        )
                  )
@@ -1544,7 +1747,7 @@
                  (set! (-> *setting-control* default screeny) (-> *progress-state* center-y-backup))
                  )
                 ((or (= v1-319 4) (= v1-319 5))
-                 (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)))
+                 (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify)) 0)
                        (-> *progress-state* aspect-ratio-backup)
                        )
                  )
@@ -1688,6 +1891,8 @@
   (none)
   )
 
+;; definition for method 30 of type progress
+;; INFO: Return type mismatch int vs none.
 (defmethod respond-progress progress ((obj progress))
   (when (not (-> obj in-transition))
     (cond
@@ -1763,6 +1968,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate progress-normal (progress)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1926,7 +2132,7 @@
     )
   :code
   (behavior ()
-    (loop
+    (while #t
       (when (and (cpad-hold? 0 l1) (cpad-hold? 0 r1) *cheat-mode*)
         (when (and (< (-> self task-index) (-> *level-task-data* (-> self display-level-index) nb-of-tasks))
                    (>= (-> self task-index) 0)
@@ -1938,8 +2144,8 @@
           )
         )
       (if (and (= (-> self display-state) (-> self next-display-state))
-                 (= (-> self display-level-index) (-> self next-level-index))
-                 )
+               (= (-> self display-level-index) (-> self next-level-index))
+               )
           (set! (-> self transition-offset)
                 (seekl
                   (-> self transition-offset)
@@ -1970,10 +2176,10 @@
       (when (and (not (handle->process (-> *game-info* auto-save-proc)))
                  (or (-> self force-transition) (-> self in-transition))
                  (>= (-> self transition-offset) (if (and (zero? (-> self level-transition))
-                                                            (nonzero? (-> self next-display-state))
-                                                            (!= (-> self next-display-state) 1)
-                                                            (!= (-> self next-display-state) 2)
-                                                            )
+                                                          (nonzero? (-> self next-display-state))
+                                                          (!= (-> self next-display-state) 1)
+                                                          (!= (-> self next-display-state) 2)
+                                                          )
                                                      512
                                                      256
                                                      )
@@ -2094,7 +2300,7 @@
            )
           (((progress-screen game-settings) (progress-screen settings))
            (hide-progress-icons)
-           (draw-options self 115 30 0.82)
+           (draw-options self 115 30 (the-as float 0.82))
            )
           (((progress-screen graphic-settings)
             (progress-screen sound-settings)
@@ -2102,26 +2308,26 @@
             (progress-screen title)
             )
            (hide-progress-icons)
-           (draw-options self 115 30 0.82)
+           (draw-options self 115 30 (the-as float 0.82))
            )
           (((progress-screen memcard-removed) (progress-screen memcard-auto-save-error))
            (draw-notice-screen self)
-           (draw-options self 192 0 0.82)
+           (draw-options self 192 0 (the-as float 0.82))
            )
           (((progress-screen memcard-no-data))
            (draw-notice-screen self)
-           (draw-options self 165 0 0.82)
+           (draw-options self 165 0 (the-as float 0.82))
            )
           (((progress-screen memcard-format))
            (draw-notice-screen self)
-           (draw-options self 172 0 0.82)
+           (draw-options self 172 0 (the-as float 0.82))
            )
           (((progress-screen memcard-no-space)
             (progress-screen memcard-not-inserted)
             (progress-screen memcard-not-formatted)
             )
            (draw-notice-screen self)
-           (draw-options self 195 0 0.82)
+           (draw-options self 195 0 (the-as float 0.82))
            )
           (((progress-screen memcard-error-loading)
             (progress-screen memcard-error-saving)
@@ -2130,11 +2336,11 @@
             (progress-screen memcard-auto-save-error)
             )
            (draw-notice-screen self)
-           (draw-options self 190 0 0.82)
+           (draw-options self 190 0 (the-as float 0.82))
            )
           (((progress-screen pal-change-to-60hz))
            (draw-notice-screen self)
-           (draw-options self 190 0 0.82)
+           (draw-options self 190 0 (the-as float 0.82))
            )
           (((progress-screen pal-now-60hz))
            (when (< 3000 (- (-> *display* real-frame-counter) (-> self video-mode-timeout)))
@@ -2143,29 +2349,29 @@
              (set! (-> self next-display-state) (progress-screen invalid))
              )
            (draw-notice-screen self)
-           (draw-options self 140 0 0.82)
+           (draw-options self 140 0 (the-as float 0.82))
            )
           (((progress-screen no-disc) (progress-screen bad-disc))
            (draw-notice-screen self)
            (if (is-cd-in?)
-               (draw-options self 170 0 0.82)
+               (draw-options self 170 0 (the-as float 0.82))
                )
            )
           (((progress-screen quit))
            (draw-notice-screen self)
-           (draw-options self 110 0 0.82)
+           (draw-options self 110 0 (the-as float 0.82))
            )
           (((progress-screen auto-save))
            (draw-notice-screen self)
-           (draw-options self 190 0 0.82)
+           (draw-options self 190 0 (the-as float 0.82))
            )
           (((progress-screen memcard-insert))
            (draw-notice-screen self)
-           (draw-options self 165 0 0.82)
+           (draw-options self 165 0 (the-as float 0.82))
            )
           (((progress-screen memcard-data-exists))
            (draw-notice-screen self)
-           (draw-options self 168 0 0.82)
+           (draw-options self 168 0 (the-as float 0.82))
            )
           (((progress-screen memcard-loading)
             (progress-screen memcard-saving)
@@ -2176,11 +2382,11 @@
            )
           (((progress-screen load-game) (progress-screen save-game))
            (draw-notice-screen self)
-           (draw-options self 190 0 0.82)
+           (draw-options self 190 0 (the-as float 0.82))
            )
           (((progress-screen save-game-title))
            (draw-notice-screen self)
-           (draw-options self 169 15 0.6)
+           (draw-options self 169 15 (the-as float 0.6))
            )
           )
         (when s5-0
@@ -2209,7 +2415,7 @@
                      *font-default-matrix*
                      (- 32 (-> self left-x-offset))
                      (the int (* (+ 42.0 (the float (/ v1-98 2))) f30-0))
-                     8325000.0
+                     (the-as float 8325000.0)
                      (font-color lighter-lighter-blue)
                      (font-flags shadow kerning)
                      )
@@ -2243,6 +2449,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate progress-coming-in (progress)
   :event
   (-> progress-waiting event)
@@ -2259,7 +2466,7 @@
     )
   :code
   (behavior ()
-    (loop
+    (while #t
       (set! (-> self in-out-position)
             (seekl (-> self in-out-position) 0 (the int (* 170.0 (-> *display* time-adjust-ratio))))
             )
@@ -2283,6 +2490,7 @@
   (-> progress-normal post)
   )
 
+;; failed to figure out what this is:
 (defstate progress-going-out (progress)
   :enter
   (behavior ()
@@ -2299,7 +2507,7 @@
     )
   :code
   (behavior ()
-    (loop
+    (while #t
       (set! (-> self transition-offset) (seekl
                                           (-> self transition-offset)
                                           512
@@ -2323,6 +2531,7 @@
   (-> progress-normal post)
   )
 
+;; failed to figure out what this is:
 (defstate progress-debug (progress)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -2334,7 +2543,7 @@
     )
   :code
   (behavior ()
-    (loop
+    (while #t
       (cond
         ((cpad-pressed? 0 left)
          (if (> (-> self current-debug-string) 0)
@@ -2513,7 +2722,7 @@
                   *font-default-matrix*
                   32
                   50
-                  0.0
+                  (the-as float 0.0)
                   (font-color default)
                   (font-flags shadow kerning)
                   )
@@ -2532,5 +2741,10 @@
     (none)
     )
   )
+
+;; failed to figure out what this is:
+0
+
+
 
 

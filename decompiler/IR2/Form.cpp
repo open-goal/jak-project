@@ -3027,9 +3027,9 @@ void DefpartgroupElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
 
-void DefpartgroupElement::apply_form(const std::function<void(Form*)>& f) {}
-void DefpartgroupElement::collect_vars(RegAccessSet& vars, bool recursive) const {}
-void DefpartgroupElement::get_modified_regs(RegSet& regs) const {}
+void DefpartgroupElement::apply_form(const std::function<void(Form*)>&) {}
+void DefpartgroupElement::collect_vars(RegAccessSet&, bool) const {}
+void DefpartgroupElement::get_modified_regs(RegSet&) const {}
 
 goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
@@ -3134,9 +3134,9 @@ void DefpartElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
 
-void DefpartElement::apply_form(const std::function<void(Form*)>& f) {}
-void DefpartElement::collect_vars(RegAccessSet& vars, bool recursive) const {}
-void DefpartElement::get_modified_regs(RegSet& regs) const {}
+void DefpartElement::apply_form(const std::function<void(Form*)>&) {}
+void DefpartElement::collect_vars(RegAccessSet&, bool) const {}
+void DefpartElement::get_modified_regs(RegSet&) const {}
 
 goos::Object DefpartElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;

@@ -433,7 +433,7 @@ goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<
   }
 }
 
-goos::Object decompile_sparticle_sound_spec(const std::vector<LinkedWord>& words,
+goos::Object decompile_sparticle_sound_spec(const std::vector<LinkedWord>& /*words*/,
                                             const std::string& field_name,
                                             const std::string& flag_name,
                                             const goos::Object& original) {

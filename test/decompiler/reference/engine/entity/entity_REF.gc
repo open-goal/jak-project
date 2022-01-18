@@ -1,27 +1,18 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: entity.gc
-;; name in dgo: entity
-;; dgos: GAME, ENGINE
-
-;; DECOMP BEGINS
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; global entity settings
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for symbol *spawn-actors*, type symbol
 (define *spawn-actors* #t)
+
+;; definition for symbol *compact-actors*, type symbol
 (define *compact-actors* #t)
+
+;; definition for symbol *vis-actors*, type symbol
 (define *vis-actors* #t)
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; entity basic methods
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for method 8 of type drawable-actor
+;; INFO: Return type mismatch int vs drawable-actor.
 (defmethod mem-usage drawable-actor ((obj drawable-actor) (arg0 memory-usage-block) (arg1 int))
-  "Update memory use for a drawable-actor"
   (set! (-> arg0 length) (max 44 (-> arg0 length)))
   (set! (-> arg0 data 43 name) "entity")
   (+! (-> arg0 data 43 count) 1)
@@ -29,14 +20,13 @@
     (+! (-> arg0 data 43 used) v1-6)
     (+! (-> arg0 data 43 total) (logand -16 (+ v1-6 15)))
     )
-  
-  ;; note: does something with flags here.
   (mem-usage (-> obj actor) arg0 (logior arg1 64))
   (the-as drawable-actor 0)
   )
 
+;; definition for method 8 of type drawable-inline-array-actor
+;; INFO: Return type mismatch int vs drawable-inline-array-actor.
 (defmethod mem-usage drawable-inline-array-actor ((obj drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
-  "update memory use for a group of drawable actors."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -50,54 +40,49 @@
   (the-as drawable-inline-array-actor 0)
   )
 
+;; definition for method 2 of type entity-links
 (defmethod print entity-links ((obj entity-links))
   (format #t "#<entity-links :process ~A @ #x~X>" (-> obj process) obj)
   obj
   )
 
+;; definition for method 2 of type entity-perm
 (defmethod print entity-perm ((obj entity-perm))
-  (format #t "#<entity-perm :aid ~D :task ~D :status #x~X :data #x~X @ #x~X>"
-          (-> obj aid)
-          (-> obj task)
-          (-> obj status)
-          (-> obj user-uint64)
-          obj
-          )
+  (format
+    #t
+    "#<entity-perm :aid ~D :task ~D :status #x~X :data #x~X @ #x~X>"
+    (-> obj aid)
+    (-> obj task)
+    (-> obj status)
+    (-> obj user-uint64)
+    obj
+    )
   obj
   )
 
+;; definition for method 22 of type entity
 (defmethod birth! entity ((obj entity))
-  "children of entity should override this."
   (format #t "birth ~A~%" obj)
   obj
   )
 
+;; definition for method 23 of type entity
 (defmethod kill! entity ((obj entity))
-  "children of entity should override this."
   (format #t "kill ~A~%" obj)
   obj
   )
 
+;; definition for method 2 of type entity
 (defmethod print entity ((obj entity))
-  "print an entity, with its name from the res."
   (format #t "#<~A :name ~S @ #x~X>" (-> obj type) (res-lump-struct obj 'name structure) obj)
   obj
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; entity finding
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for method 26 of type entity
 (defmethod get-level entity ((obj entity))
-  "Get the level that the entity belongs to."
-  
-  ;; loop over levels
   (dotimes (v1-0 (-> *level* length))
     (let ((a1-3 (-> *level* level v1-0)))
-      ;; only if the level is active
       (when (= (-> a1-3 status) 'active)
-        ;; check if we are inside the heap
         (if (and (>= (the-as int obj) (the-as int (-> a1-3 heap base)))
                  (< (the-as int obj) (the-as int (-> a1-3 heap top-base)))
                  )
@@ -109,12 +94,8 @@
   (-> *level* level-default)
   )
 
+;; definition for function entity-by-name
 (defun entity-by-name ((arg0 string))
-  "Get an entity with the given name.  Will search in
-  -actors, for each level
-  -ambients, for each level
-  -cameras, for each level.
-   All the searching is in the bsp."
   (dotimes (s5-0 (-> *level* length))
     (let ((s4-0 (-> *level* level s5-0)))
       (when (= (-> s4-0 status) 'active)
@@ -157,9 +138,8 @@
   (the-as entity #f)
   )
 
+;; definition for function entity-by-type
 (defun entity-by-type ((arg0 type))
-  "Get an entity-actor with the _exactly_ the given type.
-   Searches over all entity-actors in all levels, looking in the bsp"
   (dotimes (s5-0 (-> *level* length))
     (let ((v1-3 (-> *level* level s5-0)))
       (when (= (-> v1-3 status) 'active)
@@ -167,9 +147,7 @@
           (when (nonzero? s4-0)
             (dotimes (s3-0 (-> s4-0 length))
               (let ((s2-0 (-> s4-0 data s3-0 actor)))
-                (if (and (type-type? (-> s2-0 type) entity-actor)
-                         (= (-> s2-0 etype) arg0)
-                         )
+                (if (and (type-type? (-> s2-0 type) entity-actor) (= (-> s2-0 etype) arg0))
                     (return s2-0)
                     )
                 )
@@ -182,9 +160,8 @@
   (the-as entity-actor #f)
   )
 
+;; definition for function entity-by-aid
 (defun entity-by-aid ((arg0 uint))
-  "Get an entity by actor-id.  This looks through the entity-links-array, so it
-   will require that the level is somewhat loaded."
   (dotimes (v1-0 (-> *level* length))
     (let ((a1-3 (-> *level* level v1-0)))
       (when (= (-> a1-3 status) 'active)
@@ -221,8 +198,8 @@
   (the-as entity #f)
   )
 
+;; definition for function entity-by-meters
 (defun entity-by-meters ((arg0 float) (arg1 float) (arg2 float))
-  "Get an entity by position. The coordinate are rounded to the nearest 1/4096th of a meter."
   (dotimes (v1-0 (-> *level* length))
     (let ((a3-3 (-> *level* level v1-0)))
       (when (= (-> a3-3 status) 'active)
@@ -232,11 +209,10 @@
               (let* ((t1-3 (-> a3-5 data t0-4 actor))
                      (t2-1 (-> t1-3 extra trans))
                      )
-                (if (and
-                        (= (the float (the int (-> t2-1 x))) arg0)
-                        (= (the float (the int (-> t2-1 y))) arg1)
-                        (= (the float (the int (-> t2-1 z))) arg2)
-                        )
+                (if (and (= (the float (the int (-> t2-1 x))) arg0)
+                         (= (the float (the int (-> t2-1 y))) arg1)
+                         (= (the float (the int (-> t2-1 z))) arg2)
+                         )
                     (return t1-3)
                     )
                 )
@@ -249,8 +225,8 @@
   (the-as entity-actor #f)
   )
 
+;; definition for function process-by-ename
 (defun process-by-ename ((arg0 string))
-  "Get the process for the entity with the given name. If there is no entity or process, #f."
   (let ((v1-0 (entity-by-name arg0)))
     (if v1-0
         (-> v1-0 extra process)
@@ -258,8 +234,8 @@
     )
   )
 
+;; definition for function entity-process-count
 (defun entity-process-count ((arg0 symbol))
-  "Count the number of entities with a process. If arg0 is 'vis, will count visible entities."
   (let ((gp-0 0))
     (dotimes (s4-0 (-> *level* length))
       (let ((s3-0 (-> *level* level s4-0)))
@@ -289,15 +265,15 @@
     )
   )
 
+;; definition for function entity-count
 (defun entity-count ()
-  "Count the number of entities. Uses the entity-links"
   (let ((v0-0 0))
     (dotimes (v1-0 (-> *level* length))
       (let ((a0-3 (-> *level* level v1-0)))
         (when (= (-> a0-3 status) 'active)
           (let ((a0-6 (-> a0-3 bsp level entity)))
             (dotimes (a1-3 (-> a0-6 length))
-              (-> a0-6 data a1-3 entity) ;; value is unused.
+              (-> a0-6 data a1-3 entity)
               (+! v0-0 1)
               )
             )
@@ -308,11 +284,11 @@
     )
   )
 
+;; definition for function entity-remap-names
+;; INFO: Return type mismatch int vs none.
 (defun entity-remap-names ((arg0 pair))
-  "Rename entities by location. Changes their res."
   (let ((s5-0 (car arg0)))
     (while (not (null? arg0))
-      ;; look up by the given position.
       (let ((a0-2 (entity-by-meters
                     (the float (/ (the-as int (car (cdr s5-0))) 8))
                     (the float (/ (the-as int (car (cdr (cdr s5-0)))) 8))
@@ -321,7 +297,6 @@
                   )
             )
         (if a0-2
-            ;; if we found an entity, modify its res.
             (add-data!
               a0-2
               (new 'static 'res-tag :name 'name :key-frame -1000000000.0 :elt-count #x1 :elt-type string)
@@ -337,89 +312,121 @@
   (none)
   )
 
-;;;;;;;;;;;;;;;;;;;;;;
-;; entity inspection
-;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition (debug) for function process-status-bits
+;; INFO: Return type mismatch int vs none.
 (defun-debug process-status-bits ((arg0 process) (arg1 symbol))
-  "Print to arg1 three characters representing the status of a process
-   The first is an r, if we should run.
-   The second is a d, if we draw (only if we are process-drawable)
-   The third is the LOD of the drawing. (also only for process-drawable)"
   (let* ((s5-0 arg0)
-         (proc-draw (the-as process-drawable
-                            (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
-                                s5-0
-                                )
+         (proc-draw (the-as process-drawable (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
+                                                 (the-as process-drawable s5-0)
+                                                 )
                             )
                     )
          )
     (if (and (the-as process proc-draw) (zero? (-> proc-draw draw)))
         (set! proc-draw (the-as process-drawable #f))
         )
-    
-    ;; first char is r or ' '. r for run.
-    ;; second char is d or ' '. I think d is draw.
-    ;; third char is a number 0-4 or a ' '. This is the lod.
-    (format arg1 "~C~C~C"
-            (if (and arg0 (zero? (logand (-> *kernel-context* prevent-from-run) (-> arg0 mask)))
-                     (run-logic? arg0)
+    (let ((s5-1 format)
+          (s4-0 "~C~C~C")
+          (a2-0 (if (and arg0 (zero? (logand (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
+                    114
+                    32
+                    )
+                )
+          (a3-0 (if (and proc-draw (logtest? (-> proc-draw draw status) (draw-status drwf03)))
+                    100
+                    32
+                    )
+                )
+          (t0-0 (cond
+                  ((and proc-draw (logtest? (-> proc-draw draw status) (draw-status drwf03)))
+                   (let ((v1-15 (-> proc-draw draw cur-lod)))
+                     (cond
+                       ((zero? v1-15)
+                        48
+                        )
+                       ((= v1-15 1)
+                        49
+                        )
+                       ((= v1-15 2)
+                        50
+                        )
+                       ((= v1-15 3)
+                        51
+                        )
+                       ((= v1-15 4)
+                        52
+                        )
+                       )
                      )
-                #\r
-                #\\s ;; space
+                   )
+                  (else
+                    32
+                    )
+                  )
                 )
-            (if (and proc-draw (logtest? (-> proc-draw draw status) 8))
-                #\d
-                #\\s
-                )
-            (cond
-              ((and proc-draw (logtest? (-> proc-draw draw status) 8))
-               (case (-> proc-draw draw cur-lod)
-                     ((0) #\0)
-                     ((1) #\1)
-                     ((2) #\2)
-                     ((3) #\3)
-                     ((4) #\4)
-                     )
-               )
-              (else
-                #\\s
-                )
-              )
-            )
+          )
+      (s5-1 arg1 s4-0 a2-0 a3-0 t0-0)
+      )
     )
   0
   (none)
   )
 
+;; definition for method 2 of type process
+;; INFO: this function exists in multiple non-identical object files
 (defmethod print process ((obj process))
-  "Fancier print for process that can also print status of process drawables."
   (format #t "#<~A ~S ~A :state ~S :flags " (-> obj type) (-> obj name) (-> obj status) (if (-> obj state)
                                                                                             (-> obj state name)
                                                                                             )
           )
   (process-status-bits obj #t)
-  (format #t " :stack ~D/~D :heap ~D/~D @ #x~X>"
-          (&- (-> obj top-thread stack-top) (the-as uint (-> obj top-thread sp)))
-          (-> obj main-thread stack-size)
-          (- (-> obj allocated-length) (&- (-> obj heap-top) (the-as uint (-> obj heap-cur))))
-          (-> obj allocated-length)
-          obj
-          )
+  (format
+    #t
+    " :stack ~D/~D :heap ~D/~D @ #x~X>"
+    (&- (-> obj top-thread stack-top) (the-as uint (-> obj top-thread sp)))
+    (-> obj main-thread stack-size)
+    (- (-> obj allocated-length) (&- (-> obj heap-top) (the-as uint (-> obj heap-cur))))
+    (-> obj allocated-length)
+    obj
+    )
   obj
   )
 
+;; definition for method 3 of type entity
+(defmethod inspect entity ((obj entity))
+  ((the-as (function entity entity) (find-parent-method entity 3)) obj)
+  (format #t "~Ttrans: ~`vector`P~%" (-> obj trans))
+  (format #t "~Taid:   ~A~%" (-> obj aid))
+  obj
+  )
 
+;; definition for method 3 of type entity-actor
+(defmethod inspect entity-actor ((obj entity-actor))
+  ((the-as (function entity-actor entity-actor) (find-parent-method entity-actor 3)) obj)
+  (format #t "~Tnav-mesh: ~A~%" (-> obj nav-mesh))
+  (format #t "~Tetype:    ~A~%" (-> obj etype))
+  (format #t "~Ttask:     ~d~%" (-> obj task))
+  (format #t "~Tvis-id:   ~d~%" (-> obj vis-id-signed))
+  (format #t "~Tquat:     ~`vector`P~%" (-> obj quat))
+  obj
+  )
 
+;; definition for method 29 of type entity-actor
+;; INFO: Return type mismatch entity-actor vs none.
 (defmethod debug-print entity-actor ((obj entity-actor) (mode symbol) (expected-type type))
-  "Debug print info about an entity-actor.  This is designed to generate rows for the table
-   printed by method debug-print-entities of level-group."
   (let ((s4-0 (-> obj etype)))
     (when (or (not expected-type) (and s4-0 (valid? s4-0 type #f #f 0) (type-type? s4-0 expected-type)))
       (format #t "~5D  #x~8X  ~-21S" (-> obj extra vis-id) obj (res-lump-struct obj 'name structure))
-      (let ((t0-3 (-> obj extra level nickname)))
+      (let ((t9-4 format)
+            (a0-5 #t)
+            (a1-5 "~8D ~3D ~-4S #x~4X")
+            (a2-4 (-> obj extra perm aid))
+            (a3-3 (-> obj extra perm task))
+            (t0-3 (-> obj extra level nickname))
+            )
         (set! t0-3 (cond
                      (t0-3
+                       (empty)
                        t0-3
                        )
                      (else
@@ -427,23 +434,21 @@
                        )
                      )
               )
-        (format #t "~8D ~3D ~-4S #x~4X" (-> obj extra perm aid) (-> obj extra perm task) t0-3 (-> obj extra perm status))
+        (t9-4 a0-5 a1-5 a2-4 a3-3 t0-3 (-> obj extra perm status))
         )
-      
-      ;; location
       (if (= mode 'entity-meters)
           (format #t " :trans ~14m ~14m ~14m  " (-> obj extra trans x) (-> obj extra trans y) (-> obj extra trans z))
           (format #t " :trans ~14f ~14f ~14f  " (-> obj extra trans x) (-> obj extra trans y) (-> obj extra trans z))
           )
-      
-      ;; if we have an associated process, print info.
       (let* ((s3-2 (-> obj extra process))
              (s4-2 (if (and (nonzero? s3-2) (type-type? (-> s3-2 type) process-drawable))
                        s3-2
                        )
                    )
              )
-        (format #t ":pr #x~8X ~-12S ~-21S ~-5S/~-5S "
+        (format
+          #t
+          ":pr #x~8X ~-12S ~-21S ~-5S/~-5S "
           (if (-> obj extra process)
               (-> obj extra process)
               0
@@ -458,8 +463,8 @@
               )
           (if (-> obj extra process)
               (* (- (-> obj extra process allocated-length)
-                     (&- (-> obj extra process heap-top) (the-as uint (-> obj extra process heap-cur)))
-                     )
+                    (&- (-> obj extra process heap-top) (the-as uint (-> obj extra process heap-cur)))
+                    )
                  8
                  )
               ""
@@ -480,15 +485,16 @@
   (none)
   )
 
+;; definition for method 13 of type level-group
+;; INFO: Return type mismatch int vs none.
 (defmethod debug-print-entities level-group ((obj level-group) (mode symbol) (expected-type type))
-  "Print a table of entities. If expected-type is #f, print all. Otherwise, print only entities of the given type.
-  Modes:
-  'art-group: print art groups instead.
-  'entity-meters: print entity location in meters.
-  'entity-perm: also print entity-perm values."
-  
-  ;; no way this fit on their screen back in ~2000.
-  (format #t "   id     address  name                      aid tsk lev  status              x              y              z             address    name         state                 heap         flags~%" 0 0 0)
+  (format
+    #t
+    "   id     address  name                      aid tsk lev  status              x              y              z             address    name         state                 heap         flags~%"
+    0
+    0
+    0
+    )
   (dotimes (s3-0 (-> obj length))
     (let ((s2-0 (-> obj level s3-0)))
       (when (= (-> s2-0 status) 'active)
@@ -514,26 +520,17 @@
   (none)
   )
 
-
-
-;;;;;;;;;;;;;;;;;;
-;; entity setup
-;;;;;;;;;;;;;;;;;;
-
+;; definition for method 24 of type entity
+;; INFO: Return type mismatch entity vs none.
+;; Used lq/sq
 (defmethod add-to-level! entity ((obj entity) (lev-group level-group) (lev level) (aid actor-id))
-  "Add us to a level."
-  
-  ;; grab the first free link
   (let ((level-link (-> lev entity data (-> lev entity length))))
     (+! (-> lev entity length) 1)
-    
-    ;; attach the entity to the link
     (set! (-> level-link process) #f)
     (set! (-> level-link entity) obj)
     (set! (-> obj extra) level-link)
     (cond
       ((-> lev-group entity-link)
-       ;; add to linked list of existing
        (let* ((other-prev (-> lev-group entity-link))
               (other-front (-> other-prev next-link))
               )
@@ -544,19 +541,13 @@
          )
        )
       (else
-        ;; we're the first in the level.
         (set! (-> level-link prev-link) level-link)
         (set! (-> level-link next-link) level-link)
         )
       )
-    
-    ;; remember the start of the list
     (set! (-> lev-group entity-link) level-link)
-    ;; update the trans.
     (set! (-> level-link trans quad) (-> obj trans quad))
     )
-  
-  ;; set us up
   (set! (-> obj extra perm aid) aid)
   (set! (-> obj extra level) lev)
   (cond
@@ -573,8 +564,8 @@
   (none)
   )
 
+;; definition for method 25 of type entity
 (defmethod remove-from-level! entity ((obj entity) (arg0 level-group))
-  "Remove us from the level."
   (let ((v1-0 (-> obj extra)))
     (cond
       ((= (-> v1-0 next-link) v1-0)
@@ -592,19 +583,10 @@
   obj
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;; visibility update
-;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; the visibility system is pretty simple and there is a single axis-aligned bounding box.
-;; these methods are debug tools for updating these.
-
+;; definition for function update-actor-vis-box
+;; INFO: Return type mismatch int vs none.
 (defun update-actor-vis-box ((proc process-drawable) (min-pt vector) (max-pt vector))
-  "Update the min-pt and max-pt vector so that the box encloses the bounding box around the bounds sphere
-  in the process-drawable."
   (when (and proc (nonzero? (-> proc draw)))
-    ;; add the draw origin offset.
     (let ((world-bounds-origin (vector+! (new 'stack-no-clear 'vector) (-> proc draw origin) (-> proc draw bounds)))
           (radius (-> proc draw bounds w))
           )
@@ -620,6 +602,9 @@
   (none)
   )
 
+;; definition for method 22 of type level-group
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod update-vis-volumes level-group ((obj level-group))
   (local-vars
     (v1-10 symbol)
@@ -627,8 +612,6 @@
     (sv-32 (function process-drawable vector vector none))
     (sv-48 process-tree)
     )
-  
-  (format 0 "call to update-vis-volumes, which may have a compiler bug.~%")
   (dotimes (s5-0 (-> obj length))
     (let ((v1-3 (-> obj level s5-0)))
       (when (= (-> v1-3 status) 'active)
@@ -640,20 +623,12 @@
                    (s1-0 (-> v0-0 1))
                    )
               (let ((s0-1 (-> s0-0 extra process)))
-                ;; I am pretty sure there is a GOAL compiler bug here.
-                ;; the output makes zero sense, but I don't think it matters:
-                ;; this function doesn't seem like it should ever be run outside of development
-                ;; and the compiler bug has no effect?
-                (set!
-                  v1-10
-                  (when (and (nonzero? s0-1) (type-type? (-> s0-1 type) process-drawable))
-                    ;; i think it spills the wrong variable here
-                    (set! sv-16 (the-as process v1-10))
-                    ;; then immediate spills the right one.
-                    (set! sv-16 s0-1)
-                    v1-10
-                    )
-                  )
+                (set! v1-10 (when (and (nonzero? s0-1) (type-type? (-> s0-1 type) process-drawable))
+                              (set! sv-16 (the-as process v1-10))
+                              (set! sv-16 s0-1)
+                              v1-10
+                              )
+                      )
                 )
               (when sv-16
                 (update-actor-vis-box (the-as process-drawable sv-16) s2-0 s1-0)
@@ -684,48 +659,43 @@
   (none)
   )
 
+;; definition for method 23 of type level-group
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod update-vis-volumes-from-nav-mesh level-group ((obj level-group))
-  "Update the visvol to fit the entire nav-mesh. Does this for all actors in bsps.
-  Probably only used for debugging."
   (local-vars (sv-16 entity) (sv-32 entity))
-  ;; loop over levels
   (dotimes (s5-0 (-> obj length))
     (let ((v1-3 (-> obj level s5-0)))
-      (when (= (-> v1-3 status) 'active) ;; only active levels
-        ;; loop over entities
+      (when (= (-> v1-3 status) 'active)
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
             (set! sv-32 (-> s4-0 data s3-0 entity))
-            ;; look up the bounding box.
             (let* ((v0-0 (res-lump-data sv-32 'visvol (inline-array vector)))
                    (s1-0 (-> v0-0 0))
                    (s2-0 (-> v0-0 1))
                    )
               (let ((s0-0 (-> sv-32 extra trans)))
-                
-                ;; sometimes the nav-mesh may be in a different actor, I guess.
-                ;; so try to look that up.
                 (set! sv-16 sv-32)
-                (let* ((v0-1 (entity-actor-lookup sv-32 'nav-mesh-actor 0)))
+                (let* ((t9-1 entity-actor-lookup)
+                       (a1-2 'nav-mesh-actor)
+                       (a2-1 0)
+                       (v0-1 (t9-1 sv-32 a1-2 a2-1))
+                       )
                   (when v0-1
                     (set! sv-16 v0-1)
+                    (the-as entity-actor sv-16)
                     )
                   )
-                
                 (cond
                   ((and (type-type? (-> sv-16 type) entity-actor) (nonzero? (-> (the-as entity-actor sv-16) nav-mesh)))
-                   ;; we got a nav-mesh! compute the bounding box
                    (compute-bounding-box (-> (the-as entity-actor sv-16) nav-mesh) s1-0 s2-0)
                    )
                   (else
-                    ;; no nav-mesh found, just use the default position
                     (set! (-> s1-0 quad) (-> s0-0 quad))
                     (set! (-> s2-0 quad) (-> s0-0 quad))
                     )
                   )
                 )
-              
-              ;; add some padding to make a 6x6 meter box.
               (let ((f1-0 -12288.0)
                     (f0-0 12288.0)
                     )
@@ -746,16 +716,10 @@
   (none)
   )
 
-(define-extern money type)
-(define-extern crate type)
-(define-extern springbox type)
-(define-extern fuel-cell type)
-
-
-
+;; definition for method 24 of type level-group
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod print-volume-sizes level-group ((obj level-group))
-  "Loop through all entities and print their visibility.
-   Excludes crate, fuel-cell and springbox."
   (local-vars (sv-16 type) (sv-32 (function _varargs_ object)) (sv-48 symbol) (sv-64 string) (sv-80 entity))
   (dotimes (s5-0 (-> obj length))
     (let ((v1-3 (-> obj level s5-0)))
@@ -763,8 +727,7 @@
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
             (set! sv-80 (-> s4-0 data s3-0 entity))
-            ;; lookup volume and dist.
-            (let ((s1-0 (res-lump-data sv-80 'visvol (inline-array vector)))
+            (let ((s1-0 (the-as object (res-lump-data sv-80 'visvol pointer)))
                   (f30-0 (res-lump-float sv-80 'vis-dist :default 409600.0))
                   (s2-0 (-> sv-80 extra trans))
                   )
@@ -772,25 +735,42 @@
                   (set! sv-16 (-> (the-as entity-actor sv-80) etype))
                   (set! sv-16 (the-as type #f))
                   )
-              (let ((s0-0 (-> s1-0 0))
-                    (s1-1 (-> s1-0 1))
+              (let ((s0-0 (-> (the-as (inline-array vector) s1-0) 0))
+                    (s1-1 (-> (the-as (inline-array vector) s1-0) 1))
                     )
-                
-                ;; This technically will work on type objects because it just checks for value equality.
-                ;; the code here is super weird. I have no idea what was going on, or why there are two or's.
-                (when (not (or (name= sv-16 money)
-                               (or (name= sv-16 crate) (name= sv-16 fuel-cell) (name= sv-16 springbox))
+                (when (not (or (name= sv-16 money) (or (name= sv-16 crate) (name= sv-16 fuel-cell) (let ((t9-6 name=)
+                                                                                                         (a1-7 springbox)
+                                                                                                         )
+                                                                                                     (t9-6 sv-16 a1-7)
+                                                                                                     )
+                                                       )
                                )
                            )
-                  (format #t "actor-vis ~S ~6,,1M " (res-lump-struct sv-80 'name basic) f30-0)
-                  (format #t "~6,,1M ~6,,1M ~6,,1M  ~6,,1M ~6,,1M ~6,,1M~%"
-                          (- (-> s0-0 x) (-> s2-0 x))
-                          (- (-> s0-0 y) (-> s2-0 y))
-                          (- (-> s0-0 z) (-> s2-0 z))
-                          (- (-> s1-1 x) (-> s2-0 x))
-                          (- (-> s1-1 y) (-> s2-0 y))
-                          (- (-> s1-1 z) (-> s2-0 z))
-                          )
+                  (set! sv-32 format)
+                  (set! sv-48 #t)
+                  (set! sv-64 "actor-vis ~S ~6,,1M ")
+                  (let* ((t9-7 (method-of-type res-lump get-property-struct))
+                         (a1-8 'name)
+                         (a2-2 'interp)
+                         (a3-2 -1000000000.0)
+                         (t0-2 #f)
+                         (t1-2 #f)
+                         (t2-2 *res-static-buf*)
+                         (a2-3 (t9-7 sv-80 a1-8 a2-2 a3-2 t0-2 (the-as (pointer res-tag) t1-2) t2-2))
+                         (a3-3 f30-0)
+                         )
+                    (sv-32 sv-48 sv-64 a2-3 a3-3)
+                    )
+                  (format
+                    #t
+                    "~6,,1M ~6,,1M ~6,,1M  ~6,,1M ~6,,1M ~6,,1M~%"
+                    (- (-> s0-0 x) (-> s2-0 x))
+                    (- (-> s0-0 y) (-> s2-0 y))
+                    (- (-> s0-0 z) (-> s2-0 z))
+                    (- (-> s1-1 x) (-> s2-0 x))
+                    (- (-> s1-1 y) (-> s2-0 y))
+                    (- (-> s1-1 z) (-> s2-0 z))
+                    )
                   )
                 )
               )
@@ -803,8 +783,9 @@
   (none)
   )
 
+;; definition for function expand-vis-box-with-point
+;; INFO: Return type mismatch int vs none.
 (defun expand-vis-box-with-point ((arg0 entity) (arg1 vector))
-  "Expand the visibility box of the given entity to include the given point."
   (let ((v1-1 (res-lump-data arg0 'visvol (inline-array vector))))
     (when v1-1
       (let ((a0-2 (-> v1-1 0))
@@ -823,11 +804,9 @@
   (none)
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; The Debug Draw Method
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for method 14 of type level-group
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod debug-draw-actors level-group ((obj level-group) (arg0 symbol))
   (local-vars
     (sv-48 (function symbol bucket-id string vector font-color vector2h symbol))
@@ -1051,7 +1030,7 @@
             )
           )
         (if (nonzero? (-> (the-as process-drawable s5-2) skel))
-            (debug-print-channels (-> (the-as process-drawable s5-2) skel) (the-as symbol *stdcon*))
+            (dummy-10 (-> (the-as process-drawable s5-2) skel) (the-as symbol *stdcon*))
             )
         (if (nonzero? (-> (the-as process-drawable s5-2) nav))
             (dummy-9 (-> (the-as process-drawable s5-2) nav))
@@ -1063,12 +1042,11 @@
             (dummy-9 (-> (the-as process-drawable s5-2) vol))
             )
         )
-      (if (and
-              (the-as process-drawable s5-2)
-              (type-type? (-> (the-as process-drawable s5-2) type) process-drawable)
-              (nonzero? (-> (the-as process-drawable s5-2) draw))
-              *display-actor-vis*
-              )
+      (if (and (the-as process-drawable s5-2)
+               (type-type? (-> (the-as process-drawable s5-2) type) process-drawable)
+               (nonzero? (-> (the-as process-drawable s5-2) draw))
+               *display-actor-vis*
+               )
           (add-debug-sphere
             #t
             (bucket-id debug-draw0)
@@ -1106,10 +1084,9 @@
         )
       )
     )
-  (if (and
-          (or *display-nav-marks* *display-path-marks* *display-vol-marks*)
-          (not (or *display-actor-anim* *display-process-anim*))
-          )
+  (if (and (or *display-nav-marks* *display-path-marks* *display-vol-marks*)
+           (not (or *display-actor-anim* *display-process-anim*))
+           )
       (iterate-process-tree
         *active-pool*
         (the-as (function object object) (lambda ((arg0 process-drawable))
@@ -1130,7 +1107,6 @@
         *null-kernel-context*
         )
       )
-  #| This is where the "actor graph" is drawn, but the plot functions don't do anything.
   (when (and *display-actor-graph* (not (or (= *master-mode* 'menu) (= *master-mode* 'progress))))
     (if (not (paused?))
         (float-save-timeplot (if (< (the int (the float (mod (-> *display* base-frame-counter) 600))) 300)
@@ -1139,13 +1115,47 @@
                                  )
                              )
         )
-    (camera-plot-float-func 0.0 399.0 -81920.0 81920.0 float-lookup-redline (new 'static 'vector4w :x #xff :w #x80))
-    (camera-plot-float-func 0.0 399.0 -81920.0 81920.0 float-lookup-blueline (new 'static 'vector4w :z #xff :w #x80))
-    (camera-plot-float-func 0.0 399.0 -81920.0 81920.0 float-lookup-greenline (new 'static 'vector4w :y #xff :w #x80))
-    (camera-plot-float-func 0.0 399.0 0.0 409600.0 float-lookup-yellowline (new 'static 'vector4w :x #xff :y #xff :w #x80))
-    (camera-plot-float-func 0.0 399.0 0.0 1.0 float-lookup-timeplot (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
+    (camera-plot-float-func
+      0.0
+      399.0
+      -81920.0
+      81920.0
+      float-lookup-redline
+      (new 'static 'vector4w :x #xff :w #x80)
+      )
+    (camera-plot-float-func
+      0.0
+      399.0
+      -81920.0
+      81920.0
+      float-lookup-blueline
+      (new 'static 'vector4w :z #xff :w #x80)
+      )
+    (camera-plot-float-func
+      0.0
+      399.0
+      -81920.0
+      81920.0
+      float-lookup-greenline
+      (new 'static 'vector4w :y #xff :w #x80)
+      )
+    (camera-plot-float-func
+      0.0
+      399.0
+      0.0
+      409600.0
+      float-lookup-yellowline
+      (new 'static 'vector4w :x #xff :y #xff :w #x80)
+      )
+    (camera-plot-float-func
+      0.0
+      399.0
+      0.0
+      1.0
+      float-lookup-timeplot
+      (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+      )
     )
-  |#
   (when *display-split-boxes*
     (dotimes (s5-4 (-> obj length))
       (let ((s4-4 (-> obj level s5-4)))
@@ -1171,17 +1181,16 @@
         )
       )
     )
-  (when (or
-          *display-ambient-hint-marks*
-          *display-ambient-sound-marks*
-          *display-ambient-poi-marks*
-          *display-ambient-light-marks*
-          *display-ambient-dark-marks*
-          *display-ambient-weather-off-marks*
-          *display-ambient-ocean-off-marks*
-          *display-ambient-ocean-near-off-marks*
-          *display-ambient-music-marks*
-          )
+  (when (or *display-ambient-hint-marks*
+            *display-ambient-sound-marks*
+            *display-ambient-poi-marks*
+            *display-ambient-light-marks*
+            *display-ambient-dark-marks*
+            *display-ambient-weather-off-marks*
+            *display-ambient-ocean-off-marks*
+            *display-ambient-ocean-near-off-marks*
+            *display-ambient-music-marks*
+            )
     (dotimes (s5-5 (-> obj length))
       (let ((v1-214 (-> obj level s5-5)))
         (when (= (-> v1-214 status) 'active)
@@ -1200,113 +1209,46 @@
   (none)
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Camera Birthing
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for method 22 of type entity-camera
 (defmethod birth! entity-camera ((obj entity-camera))
   (add-connection *camera-engine* *camera* nothing obj #f #f)
   obj
   )
 
+;; definition for method 23 of type entity-camera
 (defmethod kill! entity-camera ((obj entity-camera))
   (remove-by-param1 *camera-engine* obj)
   obj
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Actor Birthing
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defmacro birth-log (str &rest args)
-  "Debug print to stdout of runtime for debugging actor inits."
-  `(format 0 ,(string-append "[BIRTH] " str) ,@args)
-  ;;`(empty)
-  )
-
+;; definition for function init-entity
+;; INFO: Return type mismatch process vs none.
 (defun init-entity ((proc process) (ent entity))
-  "This function starts up an entity!
-  The process should not be activated yet."
-  
-  ;;(birth-log "(init-entity ~A)~%" ent)
-  
-  ;; activate the process. It goes in the entity-pool, which is a child of the main active-pool.
   (activate proc *entity-pool* (res-lump-struct ent 'name basic) (the-as pointer #x70004000))
-  
-  ;; link the entity and the process
   (set! (-> proc entity) ent)
   (set! (-> ent extra process) proc)
-  
-  ;;(birth-log "activated: ~A ~A, now doing init ~A~%" proc ent (method-of-object proc init-from-entity!))
-  
-  ;; run the initializer
-  (run-now-in-process proc (method-of-object proc init-from-entity!) proc ent)
-  
+  ((the-as (function process function process entity none) run-function-in-process)
+   proc
+   (method-of-object proc init-from-entity!)
+   proc
+   ent
+   )
   (none)
   )
 
-
-;; TODO
-(define-extern birth-viewer (function process entity object))
-
-(define-extern collectable type)
-(define-extern ecovalve type)
-(define-extern crate type)
-(define-extern water-vol type)
-(define-extern slide-control type)
-(define-extern racer type)
-(define-extern launcher type)
-(define-extern warp-gate-switch type)
-(define-extern lurkercrab type)
-
-(defmacro heap-size-hack (info entity-type)
-  `(cond
-     ((type-type? ,entity-type collectable)
-      #x1000
-      )
-     (else
-       (if ,info
-           (-> ,info heap-size)
-           #x4000
-           )
-       )
-     )
-  )
-
+;; definition for method 22 of type entity-actor
 (defmethod birth! entity-actor ((obj entity-actor))
-  "Create a process for this entity and start it."
-  
-  ;; temp
-  (unless (or (type-type? (-> obj etype) part-spawner)
-              (type-type? (-> obj etype) collectable)
-              (type-type? (-> obj etype) vent)
-              (type-type? (-> obj etype) ecovalve)
-              (type-type? (-> obj etype) water-vol)
-              (type-type? (-> obj etype) slide-control)
-              (type-type? (-> obj etype) racer)
-              (type-type? (-> obj etype) launcher)
-              (type-type? (-> obj etype) warp-gate-switch)
-              (type-type? (-> obj etype) lurkercrab) ;; crash on death
-              ;(type-type? (-> obj etype) crate)
-              
-              )
-    ;;(birth-log "rejecting ~A birth because yes (was ~A)~%" obj (-> obj etype))
-    (logior! (-> obj extra perm status) (entity-perm-status bit-0))
-    (return obj)
-    )
-  
-  ;;(birth-log "call to birth! on ~A~%" obj)
-
   (let* ((entity-type (-> obj etype))
          (info (entity-info-lookup entity-type))
-         (entity-process (get-process *default-dead-pool* entity-type (heap-size-hack info entity-type) ;; hack, modified this.
+         (entity-process (get-process *default-dead-pool* entity-type (if info
+                                                                          (-> info heap-size)
+                                                                          #x4000
+                                                                          )
                                       )
                          )
          )
     (cond
       ((not entity-process)
-       (birth-log "could not birth because there is no process.~%")
        )
       ((begin
          (set! (-> entity-process type) entity-type)
@@ -1318,7 +1260,6 @@
        (init-entity entity-process obj)
        )
       (else
-        (birth-log "could not birth ~A because there was an issue.~%" obj)
         (when (not (birth-viewer entity-process obj))
           (format 0 "ERROR: no proper process type named ~A exists in the code, could not start ~A~%" entity-type obj)
           (logior! (-> obj extra perm status) (entity-perm-status bit-0))
@@ -1329,9 +1270,9 @@
   obj
   )
 
+;; definition for function entity-deactivate-handler
+;; INFO: Return type mismatch symbol vs none.
 (defun entity-deactivate-handler ((arg0 process) (arg1 entity))
-  "Handle a deactivation in the entity.
-   The entity directly stores a process so it should remove that after deactivating."
   (when (= arg0 (-> arg1 extra process))
     (logclear! (-> arg1 extra perm status) (entity-perm-status bit-1 bit-3))
     (set! (-> arg1 extra process) #f)
@@ -1339,8 +1280,8 @@
   (none)
   )
 
+;; definition for method 23 of type entity-actor
 (defmethod kill! entity-actor ((obj entity-actor))
-  "Kill an actor."
   (let ((a0-1 (-> obj extra process)))
     (if a0-1
         (deactivate a0-1)
@@ -1350,12 +1291,13 @@
   obj
   )
 
+;; definition for method 18 of type bsp-header
+;; INFO: Return type mismatch bsp-header vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 s5, Count]
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defmethod birth bsp-header ((obj bsp-header))
-  "Birth everything in the level."
-  ;; (local-vars (v1-71 int) (s5-0 int))
-  ;; (.mfc0 s5-0 Count)
-  
-  ;; how many actors do we need?
+  (local-vars (v1-71 int) (s5-0 int))
+  (.mfc0 s5-0 Count)
   (let ((actor-count (if (nonzero? (-> obj actors))
                          (-> obj actors length)
                          0
@@ -1364,12 +1306,12 @@
         )
     (cond
       ((not (-> obj level entity))
-       ;; we don't have an array of entity-links. allocate one.
        (set! (-> obj level entity) (new 'loading-level 'entity-links-array actor-count))
        )
       ((< (-> obj level entity allocated-length) actor-count)
-       ;; we do, but it's not big enough. Complain.
-       (format 0 "ERROR: Attempting to rebirth level ~A with incorrect entity table size ~D/~D~%"
+       (format
+         0
+         "ERROR: Attempting to rebirth level ~A with incorrect entity table size ~D/~D~%"
          (-> obj level)
          actor-count
          (-> obj level entity allocated-length)
@@ -1377,24 +1319,17 @@
        )
       )
     )
-  
-  ;; reset our entity links array to 0.
   (set! (-> obj level entity length) 0)
-  
-  ;; NOTE: we don't actually birth the actors. It is too slow.
-  ;; so it gets spread over multiple frames later.
+  0
   (when (nonzero? (-> obj actors))
-    ;;(birth-log "add-to-level! for ~D actors for ~A~%" (-> obj actors length) obj)
     (dotimes (birth-idx (-> obj actors length))
       (let* ((idx-to-birth (-> obj actor-birth-order birth-idx))
              (actor-to-birth (-> obj actors data (logand idx-to-birth #xffff) actor))
              )
-        ;;(birth-log "now adding to level: ~D ~D ~A~%" birth-idx idx-to-birth actor-to-birth)
         (add-to-level! actor-to-birth *level* (-> obj level) (the-as actor-id (-> actor-to-birth aid)))
         )
       )
     )
-  
   (let ((existing-amb-count (if (nonzero? (-> obj ambients))
                                 (-> obj ambients length)
                                 0
@@ -1416,7 +1351,6 @@
        )
       )
     )
-    
   (set! (-> obj level ambient length) 0)
   0
   (let ((amb-array (-> obj level ambient))
@@ -1435,20 +1369,19 @@
   (let ((cams (-> obj cameras)))
     (when (nonzero? cams)
       (dotimes (s3-1 (-> cams length))
-        ;;(birth-log "birth cam: ~A~%" (-> cams s3-1))
         (birth! (-> cams s3-1))
         )
       )
     )
-  
-  ; (.mfc0 v1-71 Count)
-  ; (let ((a3-3 (- v1-71 s5-0)))
-  ;   (format 0 "Done ~S in ~D~%" "birth" a3-3)
-  ;   )
+  (.mfc0 v1-71 Count)
+  (let ((a3-3 (- v1-71 s5-0)))
+    (format 0 "Done ~S in ~D~%" "birth" a3-3)
+    )
   (none)
   )
 
-
+;; definition for method 19 of type bsp-header
+;; INFO: Return type mismatch bsp-header vs none.
 (defmethod deactivate-entities bsp-header ((obj bsp-header))
   (let ((s5-0 (-> obj actors)))
     (when (nonzero? s5-0)
@@ -1483,11 +1416,10 @@
            )
           ((= (-> s2-0 type) part-tracker)
            (let ((v1-28 (the-as part-tracker s2-0)))
-             (if (and
-                     (nonzero? (-> v1-28 part))
-                     (>= (the-as int (-> v1-28 part group)) (the-as int s4-2))
-                     (< (the-as int (-> v1-28 part group)) (the-as int s3-1))
-                     )
+             (if (and (nonzero? (-> v1-28 part))
+                      (>= (the-as int (-> v1-28 part group)) (the-as int s4-2))
+                      (< (the-as int (-> v1-28 part group)) (the-as int s3-1))
+                      )
                  (deactivate s2-0)
                  )
              )
@@ -1501,11 +1433,10 @@
                    )
               (when v1-34
                 (cond
-                  ((and
-                     (nonzero? (-> (the-as process-drawable v1-34) part))
-                     (>= (the-as int (-> (the-as process-drawable v1-34) part group)) (the-as int s4-2))
-                     (< (the-as int (-> (the-as process-drawable v1-34) part group)) (the-as int s3-1))
-                     )
+                  ((and (nonzero? (-> (the-as process-drawable v1-34) part))
+                        (>= (the-as int (-> (the-as process-drawable v1-34) part group)) (the-as int s4-2))
+                        (< (the-as int (-> (the-as process-drawable v1-34) part group)) (the-as int s3-1))
+                        )
                    (format
                      #t
                      "NOTICE: rogue null level entity (using part ~A) ~A~% still alive~%"
@@ -1514,11 +1445,10 @@
                      )
                    (deactivate s2-0)
                    )
-                  ((and
-                     (nonzero? (-> (the-as process-drawable v1-34) draw))
-                     (>= (the-as int (-> (the-as process-drawable v1-34) draw art-group)) (the-as int s4-2))
-                     (< (the-as int (-> (the-as process-drawable v1-34) draw art-group)) (the-as int s3-1))
-                     )
+                  ((and (nonzero? (-> (the-as process-drawable v1-34) draw))
+                        (>= (the-as int (-> (the-as process-drawable v1-34) draw art-group)) (the-as int s4-2))
+                        (< (the-as int (-> (the-as process-drawable v1-34) draw art-group)) (the-as int s3-1))
+                        )
                    (format
                      #t
                      "NOTICE: rogue null level entity (using art ~A) ~A~% still alive~%"
@@ -1538,6 +1468,9 @@
   (none)
   )
 
+;; definition for function process-drawable-from-entity!
+;; INFO: Return type mismatch process-drawable vs none.
+;; Used lq/sq
 (defun process-drawable-from-entity! ((arg0 process-drawable) (arg1 entity-actor))
   (logior! (-> arg0 mask) (process-mask actor-pause))
   (set! (-> arg0 root trans quad) (-> arg1 extra trans quad))
@@ -1546,19 +1479,19 @@
   (none)
   )
 
+;; definition for method 9 of type entity-perm
 (defmethod update-perm! entity-perm ((obj entity-perm) (arg0 symbol) (arg1 entity-perm-status))
   (cond
     ((= arg0 'game)
      (logclear! (-> obj status) arg1)
      )
     ((nonzero? (-> obj task))
-     (logclear! (-> obj status) (logior
-                                  (if (logtest? (-> obj status) (entity-perm-status bit-4))
-                                      524
-                                      0
-                                      )
-                                  515
-                                  )
+     (logclear! (-> obj status) (logior (if (logtest? (-> obj status) (entity-perm-status bit-4))
+                                            524
+                                            0
+                                            )
+                                        515
+                                        )
                 )
      )
     (else
@@ -1577,6 +1510,8 @@
   obj
   )
 
+;; definition for function reset-actors
+;; INFO: Return type mismatch int vs none.
 (defun reset-actors ((arg0 symbol))
   (set! *display-process-anim* (the-as (pointer process) #f))
   (let* ((v1-0 arg0)
@@ -1636,6 +1571,8 @@
   (none)
   )
 
+;; definition for function reset-cameras
+;; INFO: Return type mismatch int vs none.
 (defun reset-cameras ()
   (remove-all *camera-engine*)
   (dotimes (gp-0 (-> *level* length))
@@ -1655,26 +1592,28 @@
   (none)
   )
 
+;; definition for method 12 of type process-drawable
 (defmethod run-logic? process-drawable ((obj process-drawable))
-  (or
-    (zero? (logand (-> obj mask) (process-mask actor-pause)))
-    (or
-      (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
-          (vector-vector-distance (-> obj root trans) (math-camera-pos))
+  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
+              (vector-vector-distance (-> obj root trans) (math-camera-pos))
+              )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
           )
-      (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-      (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
       )
-    )
   )
 
+;; definition for method 9 of type entity-links
 (defmethod birth? entity-links ((obj entity-links) (arg0 vector))
-  (and
-    (zero? (logand (-> obj perm status) (entity-perm-status bit-0 dead)))
-    (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
-    )
+  (and (zero? (logand (-> obj perm status) (entity-perm-status bit-0 dead)))
+       (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
+       )
   )
 
+;; definition for method 15 of type level-group
+;; INFO: Return type mismatch int vs object.
+;; Used lq/sq
 (defmethod actors-update level-group ((obj level-group))
   (local-vars (sv-16 vector) (sv-24 int) (sv-32 entity-links) (sv-48 int) (sv-64 string) (sv-80 int))
   (when *compact-actors*
@@ -1805,10 +1744,9 @@
                (dotimes (s2-3 s3-4)
                  (let ((s1-1 (-> s4-5 data s2-3)))
                    (cond
-                     ((and
-                        (< (vector-vector-distance (-> s1-1 trans) sv-16) (-> *ACTOR-bank* birth-dist))
-                        (zero? (logand (-> s1-1 perm status) (entity-perm-status bit-9 bit-10)))
-                        )
+                     ((and (< (vector-vector-distance (-> s1-1 trans) sv-16) (-> *ACTOR-bank* birth-dist))
+                           (zero? (logand (-> s1-1 perm status) (entity-perm-status bit-9 bit-10)))
+                           )
                       (when (not (or (-> s1-1 process) (logtest? (-> s1-1 perm status) (entity-perm-status bit-0 dead))))
                         (birth! (-> s1-1 entity))
                         (set! sv-24 (+ sv-24 1))
@@ -1836,10 +1774,9 @@
                   (dotimes (s1-2 s2-4)
                     (set! sv-32 (-> s3-5 data s1-2))
                     (cond
-                      ((and
-                         (is-object-visible? s4-2 (-> sv-32 vis-id))
-                         (zero? (logand (-> sv-32 perm status) (entity-perm-status bit-9 bit-10)))
-                         )
+                      ((and (is-object-visible? s4-2 (-> sv-32 vis-id))
+                            (zero? (logand (-> sv-32 perm status) (entity-perm-status bit-9 bit-10)))
+                            )
                        (when (not (or (-> sv-32 process) (logtest? (-> sv-32 perm status) (entity-perm-status bit-0 dead)) s0-1))
                          (birth! (-> sv-32 entity))
                          (set! sv-24 (+ sv-24 1))
@@ -1878,6 +1815,8 @@
   0
   )
 
+;; definition for function entity-birth-no-kill
+;; INFO: Return type mismatch process vs none.
 (defun entity-birth-no-kill ((arg0 entity))
   (let ((gp-0 (-> arg0 extra)))
     (logior! (-> gp-0 perm status) (entity-perm-status bit-3))
@@ -1889,6 +1828,8 @@
   (none)
   )
 
+;; definition for function entity-task-complete-on
+;; INFO: Return type mismatch int vs none.
 (defun entity-task-complete-on ((arg0 entity))
   (let ((v1-0 (-> arg0 extra)))
     (if (nonzero? (-> v1-0 perm task))
@@ -1899,6 +1840,8 @@
   (none)
   )
 
+;; definition for function entity-task-complete-off
+;; INFO: Return type mismatch int vs none.
 (defun entity-task-complete-off ((arg0 entity))
   (let ((v1-0 (-> arg0 extra)))
     (if (!= (-> v1-0 perm task) (game-task complete))
@@ -1909,6 +1852,8 @@
   (none)
   )
 
+;; definition for method 30 of type entity-actor
+;; INFO: Return type mismatch entity-perm-status vs none.
 (defmethod dummy-30 entity-actor ((obj entity-actor) (arg0 entity-perm-status) (arg1 symbol))
   (let ((v1-0 (-> obj extra)))
     (if arg1
@@ -1920,6 +1865,7 @@
   (none)
   )
 
+;; definition for function process-entity-status!
 (defun process-entity-status! ((arg0 process) (arg1 entity-perm-status) (arg2 symbol))
   (cond
     ((and (-> arg0 entity) (= arg0 (-> arg0 entity extra process)))
@@ -1937,3 +1883,30 @@
     )
   )
 
+;; definition (debug) for function entity-speed-test
+;; INFO: Return type mismatch entity vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Count, r0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 s4, Count]
+(defun-debug entity-speed-test ((arg0 string))
+  (local-vars (r0-0 none) (s4-0 int))
+  (let ((gp-0 (entity-by-name arg0)))
+    (when gp-0
+      (set! *spawn-actors* #f)
+      (reset-actors 'debug)
+      0
+      (disable-irq)
+      (.mtc0 Count r0-0)
+      (.sync.p)
+      (birth! gp-0)
+      (.mfc0 s4-0 Count)
+      (enable-irq)
+      (format #t "~D spawn ~A ~A ~%" s4-0 arg0 (-> gp-0 extra process))
+      (kill! gp-0)
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+0
