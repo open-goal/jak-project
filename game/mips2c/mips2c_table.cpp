@@ -191,6 +191,18 @@ namespace method_16_collide_edge_work {
 extern void link();
 }
 
+namespace method_15_collide_edge_work {
+extern void link();
+}
+
+namespace method_10_collide_edge_hold_list {
+extern void link();
+}
+
+namespace method_18_collide_edge_work {
+extern void link();
+}
+
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -220,7 +232,9 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       method_13_collide_shape_prim_mesh::link, method_30_collide_cache::link,
       method_9_collide_cache_prim::link, method_10_collide_cache_prim::link,
       method_10_collide_puss_work::link, method_9_collide_puss_work::link}},
-    {"collide-edge-grab", {method_16_collide_edge_work::link}}};
+    {"collide-edge-grab",
+     {method_16_collide_edge_work::link, method_15_collide_edge_work::link,
+      method_10_collide_edge_hold_list::link, method_18_collide_edge_work::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

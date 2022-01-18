@@ -113,6 +113,21 @@
   `(#cond (,clause ,true) (#t ,false))
   )
 
+(defmacro move-if-not-zero (result value check original)
+  `(if (!= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro set-on-less-than (dest src1 src2)
+  "dest = src1 < src2 ? 1 : 0 -- Compare as Signed Integers"
+  `(if (< (the int ,src1) (the int ,src2))
+       (set! ,dest 1)
+       (set! ,dest 0)
+       )
+   )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TARGET CONTROL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -576,6 +591,10 @@
 
 (defmacro &deref (t addr &rest fields)
   `(&-> (the-as (pointer ,t) ,addr) ,@fields)
+  )
+
+(defmacro shift-arith-right-32 (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -828,7 +828,8 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   }
 
   // sllv out, in, r0
-  if (m_instr.kind == InstructionKind::SLLV && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (m_instr.kind == InstructionKind::SLLV &&
+      instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     if (as_bitfield) {

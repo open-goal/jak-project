@@ -18,7 +18,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::PAND, {".pand", {}}},
 
     // Parallel Pack
-    {InstructionKind::PPACH, {".ppach", {}}},
+    {InstructionKind::PPACH, {".ppach", {MOD::QWORD_CAST}}},
 
     // Parallel Compares
     {InstructionKind::PCEQB, {".pceqb", {}}},
@@ -41,6 +41,11 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     // NOTE - depending on how this is used, this may case issues! Be Warned!
     // lots of implicit logic in OpenGOAL depending on argument types!
     {InstructionKind::MFC1, {".mov", {}}},
+
+    {InstructionKind::MOVN, {"move-if-not-zero", {}}},  // s7 special case is handled elsewhere
+    {InstructionKind::SLT, {"set-on-less-than", {}}},
+    {InstructionKind::SLTI, {"set-on-less-than", {}}},
+    {InstructionKind::SRA, {"shift-arith-right-32", {}}},
 
     // ---- COP2 -----
     // TODO - VMOVE supports dest, but OpenGOAL does NOT yet!
@@ -143,11 +148,11 @@ bool OpenGOALAsm::Function::allows_modifier(InstructionModifiers mod) {
   return std::find(modifiers.begin(), modifiers.end(), mod) != modifiers.end();
 }
 
-OpenGOALAsm::OpenGOALAsm(Instruction _instr) : instr(_instr) {
-  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
+OpenGOALAsm::OpenGOALAsm(Instruction _instr) : m_instr(_instr) {
+  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(m_instr.kind) == 0) {
     valid = false;
   } else {
-    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
+    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(m_instr.kind);
     if (func.funcTemplate.rfind("TODO", 0) == 0) {
       todo = true;
     }
@@ -157,11 +162,11 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) : instr(_instr) {
 OpenGOALAsm::OpenGOALAsm(Instruction _instr,
                          std::optional<RegisterAccess> _dst,
                          const std::vector<std::optional<RegisterAccess>>& _src)
-    : instr(_instr), m_dst(_dst), m_src(_src) {
-  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
+    : m_instr(_instr), m_dst(_dst), m_src(_src) {
+  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(m_instr.kind) == 0) {
     valid = false;
   } else {
-    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
+    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(m_instr.kind);
     if (func.funcTemplate.rfind("TODO", 0) == 0) {
       todo = true;
     }
@@ -172,8 +177,8 @@ std::string OpenGOALAsm::full_function_name() {
   std::string func_name = func.funcTemplate;
   // OpenGOAL uses the function name for broadcast specification
   if (func.allows_modifier(MOD::BROADCAST)) {
-    if (instr.cop2_bc != 0xff) {
-      std::string bc = std::string(1, instr.cop2_bc_to_char());
+    if (m_instr.cop2_bc != 0xff) {
+      std::string bc = std::string(1, m_instr.cop2_bc_to_char());
       func_name = fmt::format(func_name, bc);
     }
   }
@@ -186,9 +191,9 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
   std::vector<goos::Object> named_args;
 
   bool got_fsf = false;
-  for (int i = 0; i < instr.n_src; i++) {
+  for (int i = 0; i < m_instr.n_src; i++) {
     auto v = m_src.at(i);
-    InstructionAtom atom = instr.get_src(i);
+    InstructionAtom atom = m_instr.get_src(i);
 
     if (v.has_value()) {
       // Normal register / constant args
@@ -219,7 +224,19 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
         named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
       }
     } else {
-      args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
+      // if it's r0, replace it with a `0`
+      // unless it is pextuw or pcpyud
+      if (atom.is_reg() && atom.get_reg().get_kind() == decompiler::Reg::RegisterKind::GPR &&
+          atom.get_reg().reg_id() == decompiler::Reg::R0 &&
+          m_instr.kind != InstructionKind::PEXTUW && m_instr.kind != InstructionKind::PCPYUD) {
+        if (func.allows_modifier(MOD::QWORD_CAST)) {
+          args.push_back(pretty_print::to_symbol("(the-as uint128 0)"));
+        } else {
+          args.push_back(pretty_print::to_symbol("0"));
+        }
+      } else {
+        args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
+      }
     }
   }
 
@@ -229,15 +246,21 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
   }
 
   // Handle destination masks
-  if (func.allows_modifier(MOD::DEST_MASK) && instr.cop2_dest != 0xff && instr.cop2_dest != 15) {
+  if (func.allows_modifier(MOD::DEST_MASK) && m_instr.cop2_dest != 0xff &&
+      m_instr.cop2_dest != 15) {
     named_args.push_back(
-        pretty_print::to_symbol(fmt::format(":mask #b{:b}", instr.cop2_dest_mask_intel())));
+        pretty_print::to_symbol(fmt::format(":mask #b{:b}", m_instr.cop2_dest_mask_intel())));
   }
 
   // Some functions are configured, or its easiest to swap the source args
   // NOTE - this currently assumes it is the first two args that must be swapped
   if (func.allows_modifier(MOD::SWAP_FIRST_TWO_SOURCE_ARGS)) {
     std::swap(args.at(0), args.at(1));
+  }
+
+  if (m_instr.kind == InstructionKind::MOVZ || m_instr.kind == InstructionKind::MOVN) {
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    args.push_back(ra.to_form(env));
   }
 
   args.insert(args.end(), named_args.begin(), named_args.end());
