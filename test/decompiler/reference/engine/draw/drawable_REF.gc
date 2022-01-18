@@ -7,7 +7,7 @@
 ;; WARN: Bad vector register dependency: vf18
 ;; WARN: Bad vector register dependency: vf19
 (defun sphere-cull ((arg0 vector))
-  (local-vars (r0-0 uint128) (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf10 :class vf)
@@ -25,8 +25,8 @@
     (.sub.mul.w.vf vf9 vf19 vf0 acc)
     (.add.w.vf vf9 vf9 vf10)
     (.mov v1-0 vf9)
-    (.pcgtw v1-1 r0-0 v1-0)
-    (.ppach v1-2 r0-0 v1-1)
+    (.pcgtw v1-1 0 v1-0)
+    (.ppach v1-2 (the-as uint128 0) v1-1)
     (zero? (the-as int v1-2))
     )
   )
@@ -37,7 +37,7 @@
 ;; WARN: Bad vector register dependency: vf22
 ;; WARN: Bad vector register dependency: vf23
 (defun guard-band-cull ((arg0 vector))
-  (local-vars (r0-0 uint128) (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf10 :class vf)
@@ -55,15 +55,15 @@
     (.sub.mul.w.vf vf9 vf23 vf0 acc)
     (.sub.w.vf vf9 vf9 vf10)
     (.mov v1-0 vf9)
-    (.pcgtw v1-1 r0-0 v1-0)
-    (.ppach v1-2 r0-0 v1-1)
+    (.pcgtw v1-1 0 v1-0)
+    (.ppach v1-2 (the-as uint128 0) v1-1)
     (nonzero? (the-as int v1-2))
     )
   )
 
 ;; definition for function sphere-in-view-frustum?
 (defun sphere-in-view-frustum? ((arg0 sphere))
-  (local-vars (r0-0 uint128) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+  (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -87,23 +87,15 @@
     (.sub.mul.w.vf vf5 vf4 vf0 acc)
     (.add.w.vf vf5 vf5 vf6)
     (.mov v1-1 vf5)
-    (.pcgtw v1-2 r0-0 v1-1)
-    (.ppach v1-3 r0-0 v1-2)
+    (.pcgtw v1-2 0 v1-1)
+    (.ppach v1-3 (the-as uint128 0) v1-2)
     (zero? (the-as int v1-3))
     )
   )
 
 ;; definition for function line-in-view-frustum?
 (defun line-in-view-frustum? ((arg0 vector) (arg1 vector))
-  (local-vars
-    (r0-0 uint128)
-    (v1-1 uint128)
-    (v1-2 uint128)
-    (v1-3 uint128)
-    (a0-1 uint128)
-    (a0-2 uint128)
-    (a0-3 uint128)
-    )
+  (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128) (a0-1 uint128) (a0-2 uint128) (a0-3 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf10 :class vf)
@@ -131,11 +123,11 @@
     (.add.mul.z.vf acc vf18 vf10 acc)
     (.sub.mul.w.vf vf10 vf19 vf0 acc)
     (.mov v1-1 vf9)
-    (.pcgtw v1-2 r0-0 v1-1)
-    (.ppach v1-3 r0-0 v1-2)
+    (.pcgtw v1-2 0 v1-1)
+    (.ppach v1-3 (the-as uint128 0) v1-2)
     (.mov a0-1 vf10)
-    (.pcgtw a0-2 r0-0 a0-1)
-    (.ppach a0-3 r0-0 a0-2)
+    (.pcgtw a0-2 0 a0-1)
+    (.ppach a0-3 (the-as uint128 0) a0-2)
     (zero? (logand (the-as int v1-3) (the-as int a0-3)))
     )
   )
@@ -143,12 +135,11 @@
 ;; definition for function vis-cull
 ;; WARN: Type Propagation failed: Failed type prop at op 3 ((set! v1 (l.b (+ v1 #x38b0)))): Could not get type of load: (set! v1 (l.b (+ v1 #x38b0))). 
 ;; WARN: Type Propagation failed: Type analysis failed
-;; WARN: Unsupported inline assembly instruction kind - [sra a1, a0, 3]
 ;; WARN: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
 (defun vis-cull ((a0-0 int))
   (local-vars (v0-0 none) (v1-0 int) (v1-1 int) (v1-2 none) (v1-3 none) (a0-1 none) (a0-2 none) (a1-0 int))
   (set! v1-0 #x70000000)
-  (.sra a1-0 a0-0 3)
+  (shift-arith-right-32 a1-0 a0-0 3)
   (set! v1-1 (+ a1-0 v1-0))
   (set! v1-2 (the-as none (l.b (+ v1-1 #x38b0))))
   (set! a0-1 (the-as none (logand a0-0 7)))
@@ -1209,7 +1200,7 @@
 ;; WARN: Unsupported inline assembly instruction kind - [mfpc a0, pcr0]
 ;; WARN: Unsupported inline assembly instruction kind - [mfpc a0, pcr1]
 (defun real-main-draw-hook ()
-  (local-vars (r0-0 none) (a0-74 int) (a0-76 int))
+  (local-vars (a0-74 int) (a0-76 int))
   (when *slow-frame-rate*
     (dotimes (v1-2 #xc3500)
       (nop!)
@@ -1478,11 +1469,11 @@
          )
     (+! (-> v1-178 count) 1)
     (b! (zero? a0-72) cfg-77 :delay (nop!))
-    (.mtc0 Perf r0-0)
+    (.mtc0 Perf r0)
     (.sync.l)
     (.sync.p)
-    (.mtpc pcr0 r0-0)
-    (.mtpc pcr1 r0-0)
+    (.mtpc pcr0 r0)
+    (.mtpc pcr1 r0)
     (.sync.l)
     (.sync.p)
     (.mtc0 Perf a0-72)
@@ -1494,7 +1485,7 @@
   (finish-background)
   (let ((v1-181 (-> *perf-stats* data 3)))
     (b! (zero? (-> v1-181 ctrl)) cfg-79 :delay (nop!))
-    (.mtc0 Perf r0-0)
+    (.mtc0 Perf r0)
     (.sync.l)
     (.sync.p)
     (.mfpc a0-74 pcr0)
@@ -2205,7 +2196,3 @@
     (debug-set-camera-pos-rot! a0-0 a1-0)
     )
   )
-
-
-
-

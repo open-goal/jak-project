@@ -1,12 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: rolling-lightning-mole.gc
-;; name in dgo: rolling-lightning-mole
-;; dgos: L1, ROL
-
-;; DECOMP BEGINS
-
+;; definition for function find-adjacent-bounds-one
+;; Used lq/sq
 (defun find-adjacent-bounds-one ((arg0 nav-mesh) (arg1 nav-poly) (arg2 int) (arg3 (array int8)) (arg4 (array int8)) (arg5 vector))
   (local-vars (v0-2 object) (v1-2 int) (v1-30 int) (a0-2 int) (a0-12 int) (sv-16 nav-poly) (sv-32 int))
   (let ((v1-1 (+ arg2 1)))
@@ -78,6 +74,7 @@
   #f
   )
 
+;; definition for function find-adjacent-bounds
 ;; WARN: Expression building failed: Function find-adjacent-bounds has a return type of none, but the expression builder found a return statement.
 (defun find-adjacent-bounds ((arg0 nav-mesh) (arg1 clip-travel-vector-to-mesh-return-info))
   (when (!= (-> arg1 found-boundary) #t)
@@ -125,6 +122,7 @@
   (none)
   )
 
+;; definition of type fleeing-nav-enemy-info
 (deftype fleeing-nav-enemy-info (structure)
   ((min-reflect-angle       float  :offset-assert   0)
    (max-reflect-angle       float  :offset-assert   4)
@@ -151,7 +149,31 @@
   :flag-assert         #x900000048
   )
 
+;; definition for method 3 of type fleeing-nav-enemy-info
+(defmethod inspect fleeing-nav-enemy-info ((obj fleeing-nav-enemy-info))
+  (format #t "[~8x] ~A~%" obj 'fleeing-nav-enemy-info)
+  (format #t "~Tmin-reflect-angle: ~f~%" (-> obj min-reflect-angle))
+  (format #t "~Tmax-reflect-angle: ~f~%" (-> obj max-reflect-angle))
+  (format #t "~Tmax-boundary-deflection: ~f~%" (-> obj max-boundary-deflection))
+  (format #t "~Tdeflection-min-dist: ~f~%" (-> obj deflection-min-dist))
+  (format #t "~Tdeflection-max-dist: ~f~%" (-> obj deflection-max-dist))
+  (format #t "~Treflection-time: ~D~%" (-> obj reflection-time))
+  (format #t "~Ttravel-rotate-speed: ~f~%" (-> obj travel-rotate-speed))
+  (format #t "~Tblend_interp_angle: ~f~%" (-> obj blend_interp_angle))
+  (format #t "~Tmin-speed-adjust: ~f~%" (-> obj min-speed-adjust))
+  (format #t "~Tmax-speed-adjust: ~f~%" (-> obj max-speed-adjust))
+  (format #t "~Tspeed-adjust-center: ~f~%" (-> obj speed-adjust-center))
+  (format #t "~Tspeed-adjust-range: ~f~%" (-> obj speed-adjust-range))
+  (format #t "~Tabort-notice-distance: ~f~%" (-> obj abort-notice-distance))
+  (format #t "~Tmin-notice-dist: ~f~%" (-> obj min-notice-dist))
+  (format #t "~Tmax-notice-dist: ~f~%" (-> obj max-notice-dist))
+  (format #t "~Tmin-stop-chase-dist: ~f~%" (-> obj min-stop-chase-dist))
+  (format #t "~Tmax-stop-chase-dist: ~f~%" (-> obj max-stop-chase-dist))
+  (format #t "~Tmax-flee-rotation: ~f~%" (-> obj max-flee-rotation))
+  obj
+  )
 
+;; definition of type fleeing-nav-enemy
 (deftype fleeing-nav-enemy (nav-enemy)
   ((last-reflection-time uint64                         :offset-assert 400)
    (run-blend-interp     float                          :offset-assert 408)
@@ -169,7 +191,21 @@
     )
   )
 
+;; definition for method 3 of type fleeing-nav-enemy
+(defmethod inspect fleeing-nav-enemy ((obj fleeing-nav-enemy))
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tlast-reflection-time: ~D~%" (-> obj last-reflection-time))
+  (format #t "~T~Trun-blend-interp: ~f~%" (-> obj run-blend-interp))
+  (format #t "~T~Tdesired-travel: #<vector @ #x~X>~%" (-> obj desired-travel))
+  (format #t "~T~Tsaved-travel: #<vector @ #x~X>~%" (-> obj saved-travel))
+  (format #t "~T~Tspeed-adjust: ~f~%" (-> obj speed-adjust))
+  (format #t "~T~Tflee-info: #<fleeing-nav-enemy-info @ #x~X>~%" (-> obj flee-info))
+  obj
+  )
 
+;; definition for function fleeing-nav-enemy-adjust-nav-info
 (defbehavior fleeing-nav-enemy-adjust-nav-info fleeing-nav-enemy ()
   (let ((f30-0 (vector-vector-distance (-> *camera* tpos-curr-adj) (-> *camera* tpos-old-adj))))
     (set! (-> self nav-info notice-distance) (lerp-clamp
@@ -191,6 +227,8 @@
     )
   )
 
+;; definition for function fleeing-nav-enemy-clip-travel
+;; Used lq/sq
 (defun fleeing-nav-enemy-clip-travel ((arg0 fleeing-nav-enemy) (arg1 vector))
   (local-vars (sv-224 vector) (sv-240 vector) (sv-256 vector) (sv-272 vector) (sv-288 vector))
   (let ((s2-0 (new 'stack 'clip-travel-vector-to-mesh-return-info))
@@ -295,6 +333,8 @@
     )
   )
 
+;; definition for function fleeing-nav-enemy-adjust-travel
+;; Used lq/sq
 (defun fleeing-nav-enemy-adjust-travel ((arg0 fleeing-nav-enemy) (arg1 object))
   (let ((s3-0 (new 'stack-no-clear 'matrix))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -315,6 +355,7 @@
   (vector+! (-> arg0 nav target-pos) (-> arg0 collide-info trans) (-> arg0 nav travel))
   )
 
+;; definition for function fleeing-nav-enemy-chase-post-func
 (defbehavior fleeing-nav-enemy-chase-post-func fleeing-nav-enemy ()
   (let ((gp-0 (new 'stack-no-clear 'matrix))
         (s5-0 (new 'stack-no-clear 'matrix))
@@ -334,6 +375,9 @@
     )
   )
 
+;; definition for function fleeing-nav-enemy-chase-post
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior fleeing-nav-enemy-chase-post fleeing-nav-enemy ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector-! gp-0 (-> self collide-info trans) (target-pos 0))
@@ -378,6 +422,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-patrol (fleeing-nav-enemy)
   :virtual #t
   :enter
@@ -396,6 +441,7 @@
   (-> (method-of-type nav-enemy nav-enemy-patrol) post)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-notice (fleeing-nav-enemy)
   :virtual #t
   :enter
@@ -454,6 +500,7 @@
   (-> (method-of-type nav-enemy nav-enemy-notice) post)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-chase (fleeing-nav-enemy)
   :virtual #t
   :enter
@@ -479,6 +526,7 @@
   (-> (method-of-type nav-enemy nav-enemy-chase) post)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (fleeing-nav-enemy)
   :virtual #t
   :enter
@@ -495,6 +543,7 @@
   (-> (method-of-type nav-enemy nav-enemy-stop-chase) post)
   )
 
+;; failed to figure out what this is:
 (defstate fleeing-nav-enemy-debug (fleeing-nav-enemy)
   :enter
   (-> (method-of-type nav-enemy nav-enemy-chase) enter)
@@ -544,8 +593,10 @@
   (the-as (function none :behavior fleeing-nav-enemy) nav-enemy-travel-post)
   )
 
+;; definition for symbol *lightning-mole-hole*, type vector
 (define *lightning-mole-hole* (new 'static 'vector :x -241664.0 :y 106496.0 :z -6393856.0))
 
+;; definition of type lightning-mole
 (deftype lightning-mole (fleeing-nav-enemy)
   ((debug-vector vector       :inline :offset-assert 528)
    (alt-actor    entity-actor         :offset-assert 544)
@@ -565,7 +616,17 @@
     )
   )
 
+;; definition for method 3 of type lightning-mole
+(defmethod inspect lightning-mole ((obj lightning-mole))
+  (let ((t9-0 (method-of-type fleeing-nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tdebug-vector: #<vector @ #x~X>~%" (-> obj debug-vector))
+  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *lightning-mole-sg* lightning-mole
   0
   5
@@ -575,6 +636,7 @@
   :shadow 4
   )
 
+;; definition for function lightning-mole-task-complete?
 (defbehavior lightning-mole-task-complete? lightning-mole ()
   (local-vars (sv-16 symbol))
   (process-entity-status! self (entity-perm-status complete) #t)
@@ -619,6 +681,9 @@
     )
   )
 
+;; definition for function lightning-mole-hole-post
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior lightning-mole-hole-post lightning-mole ()
   (set! (-> self nav target-pos quad) (-> *lightning-mole-hole* quad))
   (nav-enemy-travel-post)
@@ -626,6 +691,7 @@
   (none)
   )
 
+;; definition for function lightning-mole-run-code
 (defbehavior lightning-mole-run-code lightning-mole ()
   (when (!= (if (> (-> self skel active-channels) 0)
                 (-> self skel root-channel 0 frame-group)
@@ -647,6 +713,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-debug-blend (lightning-mole)
   :trans
   (behavior ()
@@ -665,6 +732,7 @@
   (the-as (function none :behavior lightning-mole) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-debug-run (lightning-mole)
   :enter
   (behavior ()
@@ -729,6 +797,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-gone (lightning-mole)
   :code
   (behavior ()
@@ -743,6 +812,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-hiding (lightning-mole)
   :enter
   (behavior ()
@@ -771,6 +841,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-dive (lightning-mole)
   :trans
   (behavior ()
@@ -843,6 +914,7 @@
   lightning-mole-hole-post
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-head-for-hole (lightning-mole)
   :enter
   (behavior ()
@@ -879,6 +951,7 @@
   lightning-mole-hole-post
   )
 
+;; failed to figure out what this is:
 (defstate lightning-mole-yelp (lightning-mole)
   :enter
   (behavior ()
@@ -922,6 +995,7 @@
   (the-as (function none :behavior lightning-mole) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (lightning-mole)
   :virtual #t
   :code
@@ -930,6 +1004,7 @@
   (the-as (function none :behavior lightning-mole) fleeing-nav-enemy-chase-post)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-chase (lightning-mole)
   :virtual #t
   :enter
@@ -1003,6 +1078,8 @@
   (the-as (function none :behavior lightning-mole) fleeing-nav-enemy-chase-post)
   )
 
+;; definition for method 43 of type lightning-mole
+;; INFO: Return type mismatch symbol vs object.
 (defmethod dummy-43 lightning-mole ((obj lightning-mole) (arg0 process) (arg1 event-message-block))
   (send-event arg0 'get-attack-count 1)
   (when (!= (-> obj state) lightning-mole-yelp)
@@ -1012,6 +1089,8 @@
   (the-as object #t)
   )
 
+;; definition for method 44 of type lightning-mole
+;; INFO: Return type mismatch symbol vs object.
 (defmethod dummy-44 lightning-mole ((obj lightning-mole) (arg0 process) (arg1 event-message-block))
   (when (!= (-> obj state) lightning-mole-yelp)
     (send-event arg0 'jump 32768.0 32768.0)
@@ -1020,6 +1099,7 @@
   (the-as object #t)
   )
 
+;; definition for symbol *lightning-mole-nav-enemy-info*, type nav-enemy-info
 (define *lightning-mole-nav-enemy-info* (new 'static 'nav-enemy-info
                                           :idle-anim 5
                                           :walk-anim 7
@@ -1073,6 +1153,8 @@
                                           )
         )
 
+;; definition for method 11 of type lightning-mole
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! lightning-mole ((obj lightning-mole) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -1134,6 +1216,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-peeper
   :id 456
   :duration 5
@@ -1142,6 +1225,7 @@
   ((sp-item 1768) (sp-item 1769 :period 120 :length 30) (sp-item 1770 :period 120 :length 60))
   )
 
+;; failed to figure out what this is:
 (defpart 1768
   :init-specs
   ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
@@ -1168,6 +1252,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1769
   :init-specs
   ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
@@ -1193,6 +1278,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1770
   :init-specs
   ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
@@ -1220,6 +1306,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1771
   :init-specs
   ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
@@ -1245,6 +1332,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1772
   :init-specs
   ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
@@ -1267,6 +1355,7 @@
     )
   )
 
+;; definition for function check-drop-level-rolling-dirt
 (defun check-drop-level-rolling-dirt ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
   (when (< (-> arg2 y) (-> arg1 user-float))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1285,6 +1374,7 @@
   (none)
   )
 
+;; definition for function check-drop-level-rolling-dirt-finish
 (defun check-drop-level-rolling-dirt-finish ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
   (when (< (-> arg2 y) (-> arg1 user-float))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1310,6 +1400,7 @@
   (none)
   )
 
+;; definition of type peeper
 (deftype peeper (process-drawable)
   ()
   :heap-base #x40
@@ -1324,7 +1415,15 @@
     )
   )
 
+;; definition for method 3 of type peeper
+(defmethod inspect peeper ((obj peeper))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate peeper-wait (peeper)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1367,6 +1466,7 @@
   (the-as (function none :behavior peeper) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate peeper-hide (peeper)
   :code
   (behavior ()
@@ -1390,6 +1490,7 @@
   (the-as (function none :behavior peeper) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate peeper-down (peeper)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1442,6 +1543,7 @@
   (the-as (function none :behavior peeper) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate peeper-up (peeper)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1494,6 +1596,8 @@
   (the-as (function none :behavior peeper) ja-post)
   )
 
+;; definition for method 11 of type peeper
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! peeper ((obj peeper) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
@@ -1503,7 +1607,3 @@
   (go peeper-up)
   (none)
   )
-
-
-
-

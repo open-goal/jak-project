@@ -436,6 +436,8 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_movn(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_slt(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Vector Float Operations
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);

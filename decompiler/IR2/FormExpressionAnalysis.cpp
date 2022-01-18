@@ -1065,7 +1065,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), rd_ok.addr_of, tokens));
           return;
         } else {
-          lg::error("Bad is {}\n", args.at(0)->to_string(env));
+          // TODO - output error to IR
+          lg::error("Bad {} at OP: {}\n", args.at(0)->to_string(env), m_my_idx);
           throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
       }
@@ -4022,6 +4023,31 @@ FormElement* ConditionElement::make_geq_zero_signed_check_generic(
   }
 }
 
+FormElement* ConditionElement::make_geq_zero_unsigned_check_generic(
+    const Env& env,
+    FormPool& pool,
+    const std::vector<Form*>& source_forms,
+    const std::vector<TypeSpec>& types) {
+  assert(source_forms.size() == 1);
+  // (>= (shl (the-as int iter) 62) 0) -> (not (pair? iter))
+
+  // match (shl [(the-as int [x]) | [x]] 62)
+  auto shift_match =
+      match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                        {
+                            Matcher::match_or({Matcher::cast("uint", Matcher::any(0)),
+                                               Matcher::any(0)}),  // the val
+                            Matcher::integer(62)  // get the bit in the highest position.
+                        }),
+            source_forms.at(0));
+
+  auto casted = make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env);
+  auto zero =
+      pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_int_constant(0));
+  casted.push_back(zero);
+  return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+                                            casted);
+}
 FormElement* ConditionElement::make_generic(const Env& env,
                                             FormPool& pool,
                                             const std::vector<Form*>& source_forms,
@@ -4090,6 +4116,10 @@ FormElement* ConditionElement::make_generic(const Env& env,
 
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED: {
       return make_geq_zero_signed_check_generic(env, pool, source_forms, types);
+    }
+
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED: {
+      return make_geq_zero_unsigned_check_generic(env, pool, source_forms, types);
     }
 
     case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED: {
@@ -4352,13 +4382,10 @@ void push_asm_sllv_to_stack(const AsmOp* op,
   auto dst = op->dst();
   assert(dst.has_value());
 
-  auto sav = op->src(1);
-  assert(sav.has_value());
-
   auto arg0_type = env.get_variable_type(*var, true);
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (sav->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (op->instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     if (bitfield_info) {
       auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
       auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);

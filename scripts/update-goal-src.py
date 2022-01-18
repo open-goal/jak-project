@@ -37,7 +37,9 @@ files_with_modifications = [
   "sage-finalboss-FIN",
   "progress",
   "entity",
-  "ogreboss"
+  "ogreboss",
+  "navigate",
+  "nav-enemy"
 ]
 
 for file in files:

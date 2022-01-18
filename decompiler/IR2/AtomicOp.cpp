@@ -306,6 +306,9 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vec3dot";
     case SimpleExpression::Kind::VECTOR_4_DOT:
       return "vec4dot";
+    case SimpleExpression::Kind::SET_ON_LESS_THAN:
+    case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
+      return "set-on-less-than";
     default:
       assert(false);
       return {};
@@ -366,6 +369,9 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       return 1;
     case SimpleExpression::Kind::VECTOR_3_DOT:
     case SimpleExpression::Kind::VECTOR_4_DOT:
+      return 2;
+    case SimpleExpression::Kind::SET_ON_LESS_THAN:
+    case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return 2;
     default:
       assert(false);
@@ -512,7 +518,10 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     if (src.is_reg()) {
       auto reg = src.get_reg();
       if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
-        m_src[i] = RegisterAccess(AccessMode::READ, reg, my_idx, true);
+        if (reg != Register(Reg::GPR, Reg::R0) ||
+            (m_instr.kind == InstructionKind::PCPYUD || m_instr.kind == InstructionKind::PEXTUW)) {
+          m_src[i] = RegisterAccess(AccessMode::READ, reg, my_idx, true);
+        }
       }
     }
   }

@@ -42,7 +42,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           /*lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
                    asmOp.instr.kind);*/
           f.warnings.general_warning("Unsupported inline assembly instruction kind - [{}]",
-                                     asmOp.instr.to_string(f.ir2.env.file->labels));
+                                     asmOp.m_instr.to_string(f.ir2.env.file->labels));
           new_entries.push_back(entry);
           continue;
         } else if (asmOp.todo) {
