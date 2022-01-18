@@ -45,7 +45,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::MOVN, {"move-if-not-zero", {}}},  // s7 special case is handled elsewhere
     {InstructionKind::SLT, {"set-on-less-than", {}}},
     {InstructionKind::SLTI, {"set-on-less-than", {}}},
-    {InstructionKind::SRA, {"shift-arith-right", {}}},
+    {InstructionKind::SRA, {"shift-arith-right-32", {}}},
 
     // ---- COP2 -----
     // TODO - VMOVE supports dest, but OpenGOAL does NOT yet!

@@ -38,7 +38,8 @@ files_with_modifications = [
   "progress",
   "entity",
   "ogreboss",
-  "navigate"
+  "navigate",
+  "nav-enemy"
 ]
 
 for file in files:

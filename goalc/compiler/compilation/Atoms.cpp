@@ -24,7 +24,6 @@ const std::unordered_map<
         {".add", &Compiler::compile_asm_add},
         {".load-sym", &Compiler::compile_asm_load_sym},
         {".mov", &Compiler::compile_asm_mov},
-        {".slt", &Compiler::compile_asm_slt},
 
         // INLINE ASM - VECTOR FLOAT OPERATIONS
         {".lvf", &Compiler::compile_asm_lvf},

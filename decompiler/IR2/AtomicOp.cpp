@@ -307,9 +307,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::VECTOR_4_DOT:
       return "vec4dot";
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
-      return "set-on-less-than";
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
-      return "set-on-less-than-imm";
+      return "set-on-less-than";
     default:
       assert(false);
       return {};
@@ -373,7 +372,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       return 2;
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
-      return 3;
+      return 2;
     default:
       assert(false);
       return -1;

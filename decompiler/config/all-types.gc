@@ -11187,6 +11187,54 @@
   (mother-spider 13)
   (cak-14 14) ;; unused
   (blue-eco-suck 15) ;; manipy, orb-cache-top, 
+  (unknown-16 16)
+  (unknown-17 17)
+  (unknown-18 18)
+  (unknown-19 19)
+  (unknown-20 20)
+  (unknown-21 21)
+  (unknown-22 22)
+  (unknown-23 23)
+  (unknown-24 24)
+  (unknown-25 25)
+  (unknown-26 26)
+  (unknown-27 27)
+  (unknown-28 28)
+  (unknown-29 29)
+  (unknown-30 30)
+  (unknown-31 31)
+  (unknown-32 32)
+  (unknown-33 33)
+  (unknown-34 34)
+  (unknown-35 35)
+  (unknown-36 36)
+  (unknown-37 37)
+  (unknown-38 38)
+  (unknown-39 39)
+  (unknown-40 40)
+  (unknown-41 41)
+  (unknown-42 42)
+  (unknown-43 43)
+  (unknown-44 44)
+  (unknown-45 45)
+  (unknown-46 46)
+  (unknown-47 47)
+  (unknown-48 48)
+  (unknown-49 49)
+  (unknown-50 50)
+  (unknown-51 51)
+  (unknown-52 52)
+  (unknown-53 53)
+  (unknown-54 54)
+  (unknown-55 55)
+  (unknown-56 56)
+  (unknown-57 57)
+  (unknown-58 58)
+  (unknown-59 59)
+  (unknown-60 60)
+  (unknown-61 61)
+  (unknown-62 62)
+  (unknown-63 63)
   )
 
 (defenum collide-action
@@ -15391,27 +15439,41 @@
   :size-assert         #xcc
   :flag-assert         #x1e000000cc
   (:methods
-    (dummy-9 (_type_ int rgba) vector 9) ;; TODO - calls method 10, skeptical about rgba now (iirc the debug method signatures might be wrong)
-    (TODO-RENAME-10 (_type_ nav-poly vector) vector 10)
-    (dummy-11 (_type_ nav-poly nav-poly symbol) nav-poly 11)
-    (dummy-12 (_type_ nav-poly nav-poly nav-route-portal) object 12) ;; returns #t or 0, probably just a symbol
-    (TODO-RENAME-13 (_type_) none 13)
-    (TODO-RENAME-14 (_type_ nav-ray) none 14)
-    (TODO-RENAME-15 (_type_ nav-poly vector vector float) meters 15)
+    (tri-centroid-world (_type_ nav-poly vector) vector 9) ;; finds the centroid of the given triangle, in the "world" coordinate system.
+    (tri-centroid-local (_type_ nav-poly vector) vector 10) ;; finds the centroid of the given triangle, in the local nav-mesh coordinate system.
+    (get-adj-poly (_type_ nav-poly nav-poly symbol) nav-poly 11)
+    (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object 12) ;; sets up a portal between two polys.
+    (initialize-mesh! (_type_) none 13)
+    (move-along-nav-ray! (_type_ nav-ray) none 14) ;; think this updates the current position in a nav-ray, and updates which triangle you're in.
+    ;; this takes in a point/direction/distance, and see what would happen if you tried to move this way.
+    ;; it returns the distance you can go before one of these happens:
+    ;; - you reach the destination
+    ;; - you hit a nav mesh boundary/gap
+    ;; - you cross 15 triangles.
+    (try-move-along-ray (_type_ nav-poly vector vector float) meters 15)
     (TODO-RENAME-16 (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none 16)
-    (dummy-17 (_type_) none 17)
-    (dummy-18 (_type_ int vector int (pointer int8) int) none 18)
+    (update-route-table (_type_) none 17) ;; (initialization related)
+    (dummy-18 (_type_ int vector int (pointer int8) int) none 18) ;; something to do with routes.
     (compute-bounding-box (_type_ vector vector) none 19)
-    (TODO-RENAME-20 (_type_ nav-poly rgba) none 20) ;; TODO - is rgba a vector4w?
-    (TODO-RENAME-21 (_type_ nav-poly vector) symbol 21)
-    (TODO-RENAME-22 (_type_ nav-poly nav-poly) uint 22)
+    (debug-draw-poly (_type_ nav-poly rgba) none 20) ;; TODO - is rgba a vector4w?
+    (point-in-poly? (_type_ nav-poly vector) symbol 21) ;; is the point inside of the triangle?
+    (find-opposite-vertices (_type_ nav-poly nav-poly) uint 22) ;; given two triangles that share an edge, get the indices of the two vertices that aren't part of the edge.
     (dummy-23 (_type_ nav-poly vector vector vector nav-route-portal) vector 23)
-    (TODO-RENAME-24 (_type_ nav-poly vector vector) vector 24)
-    (dummy-25 (_type_ nav-poly vector vector) none 25)
-    (TODO-RENAME-26 (_type_ nav-poly vector vector) vector 26)
-    (dummy-27 (_type_ vector meters) nav-poly 27)
-    (dummy-28 (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
-    (TODO-RENAME-29 (_type_ vector float meters) symbol 29)
+    (closest-point-on-boundary (_type_ nav-poly vector vector) vector 24) ;; find the closest point on the perimeter of the triangle.
+    (project-point-into-tri-3d (_type_ nav-poly vector vector) none 25) ;; will move a 3D point in space to the surface of this nav-poly
+    ;; Looking from the top down, is the point inside the nav-poly?
+    ;; - if the point is inside the triangle, returns that point.
+    ;; - if the point is outside the triangle, move it to the closest point (will be on the edge)
+    (project-point-into-tri-2d (_type_ nav-poly vector vector) vector 26)
+    ;; finds which triangle the given point is in.
+    ;; also has some caching stuff so if you look up the same point multiple times, it won't redo the work.
+    ;; I _think_ this is only an approximate check that may return #f even if you are inside.
+    ;; But, if it returns a poly, it will be right.
+    (find-poly-fast (_type_ vector meters) nav-poly 27)
+    (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28) ;; The accurate version of find-poly (tries find-poly-fast first)
+    ;; checks to see if the triangle is in the mesh or not.
+    ;; not sure why it's separate from 27 (and such a different implementation). there might be some details I'm missing here.
+    (is-in-mesh? (_type_ vector float meters) symbol 29)
     )
   )
 
@@ -15467,7 +15529,7 @@
   :flag-assert         #x24000000e0
   (:methods
     (new (symbol type collide-shape int float) _type_)
-    (dummy-9 (_type_) none 9)
+    (debug-draw (_type_) none 9)
     (point-in-bounds? (_type_ vector) symbol 10)
     (dummy-11 (_type_ vector) vector 11)
     (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
@@ -15475,25 +15537,25 @@
     (set-current-poly! (_type_ nav-poly) none 14)
     (set-target-pos! (_type_ vector) none 15)
     (dummy-16 (_type_ vector) nav-poly 16) ; see - nav-enemy-test-point-in-nav-mesh?
-    (dummy-17 (_type_ vector vector) vector 17)
-    (TODO-RENAME-18 (_type_ vector) nav-poly 18)
+    (project-onto-nav-mesh (_type_ vector vector) vector 17) ;; moves point to nav-mesh.
+    (find-poly (_type_ vector) nav-poly 18)
     (dummy-19 (_type_ vector collide-shape-moving vector float) none 19) ;; csm not trsqv? ret not vector?
-    (dummy-20 (_type_ basic vector vector) vector 20)
+    (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
     (TODO-RENAME-21 (_type_ vector) nav-poly 21)
     (TODO-RENAME-22 (_type_ vector float) symbol 22)
     (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23) ;; TODO - unconfirmed maybe (dummy-23 (_type_ vector matrix) float 23)
     (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
-    (dummy-25 (_type_ vector float) symbol 25) ; see - nav-enemy-test-point-near-nav-mesh?
+    (is-in-mesh? (_type_ vector float) symbol 25) ; see - nav-enemy-test-point-near-nav-mesh?
     (TODO-RENAME-26 (_type_) none 26) ;; stub
     (TODO-RENAME-27 (_type_) none 27)
-    (TODO-RENAME-28 (_type_ int) none 28)
+    (TODO-RENAME-28 (_type_ collide-kind) none 28)
     (should-display? (_type_) symbol 29)
     (dummy-30 (_type_ vector vector vector) sphere 30) ;; TODO - last arg? - it has a float as the first arg, vector is a total guess
     (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
     (TODO-ASM-32 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) symbol 32)
     (TODO-RENAME-33 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) symbol 33)
     (dummy-34 () none 34)
-    (dummy-35 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) none 35)
+    (dummy-35 (_type_ vector vector vector vector float) none 35)
     )
   )
 
@@ -20682,8 +20744,8 @@
 (define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol))
 (define-extern pke-nav-hack (function none))
 (define-extern debug-report-nav-stats (function none)) ;; empty stub
-(define-extern inc-mod3 (function int none))
-(define-extern dec-mod3 (function int none))
+(define-extern inc-mod3 (function int int))
+(define-extern dec-mod3 (function int int))
 (define-extern circle-triangle-intersection-proc? (function vector float (inline-array nav-vertex) symbol))
 (define-extern nav-ray-test (function nav-mesh nav-poly vector vector meters))
 (define-extern clip-vector-to-halfspace! (function vector float float float float))
@@ -31889,7 +31951,7 @@
 
 (define-extern lightning-mole-task-complete? (function symbol :behavior lightning-mole))
 (define-extern fleeing-nav-enemy-clip-travel (function fleeing-nav-enemy vector symbol))
-(define-extern fleeing-nav-enemy-adjust-travel (function fleeing-nav-enemy vector))
+(define-extern fleeing-nav-enemy-adjust-travel (function fleeing-nav-enemy object vector)) ;; unused second arg
 (define-extern fleeing-nav-enemy-chase-post-func (function float :behavior fleeing-nav-enemy))
 (define-extern fleeing-nav-enemy-adjust-nav-info (function float :behavior fleeing-nav-enemy))
 (define-extern find-adjacent-bounds-one (function nav-mesh nav-poly int (array int8) (array int8) vector symbol))

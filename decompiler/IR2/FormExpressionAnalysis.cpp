@@ -4041,20 +4041,12 @@ FormElement* ConditionElement::make_geq_zero_unsigned_check_generic(
                         }),
             source_forms.at(0));
 
-  if (shift_match.matched) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
-        pool.alloc_single_element_form<GenericElement>(
-            nullptr, GenericOperator::make_fixed(FixedOperatorKind::PAIRP),
-            shift_match.maps.forms.at(0)));
-  } else {
-    auto casted = make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env);
-    auto zero = pool.alloc_single_element_form<SimpleAtomElement>(nullptr,
-                                                                  SimpleAtom::make_int_constant(0));
-    casted.push_back(zero);
-    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
-                                              casted);
-  }
+  auto casted = make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env);
+  auto zero =
+      pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_int_constant(0));
+  casted.push_back(zero);
+  return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+                                            casted);
 }
 FormElement* ConditionElement::make_generic(const Env& env,
                                             FormPool& pool,
