@@ -44,6 +44,9 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
+We have a Discord server where we discuss development. 
+https://discord.gg/BVEHQmm8
+
 ## Current Status
 So far, we've decompiled around 341,233 lines of GOAL code, out of an estimated 500,000 total lines and we've started work on an OpenGL renderer. Currently, the main display process (`*dproc*`) runs and sends data to our renderer. We can load textures, text files, and level files. Using keyboard controls, we can open the debug menu and turn on some simple debug visualizations.
 
