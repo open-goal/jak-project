@@ -63,47 +63,7 @@
       </v-col>
       <v-container style="margin-top: 2em;">
         <v-row>
-          <v-col cols="8">
-            <v-row>
-              <v-col
-                align="center"
-                justify="center"
-                class="orange--text text--darken-2"
-              >
-                <h3>GitHub Updates</h3>
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col>
-                <v-timeline>
-                  <v-timeline-item v-for="(pr, index) in recentPRs" :key="'pr' + index">
-                    <template v-slot:icon>
-                      <v-avatar>
-                        <img :src="pr.user.avatar_url" />
-                      </v-avatar>
-                    </template>
-                    <template v-slot:opposite>
-                      <span>{{ pr.user.login }}</span>
-                    </template>
-                    <v-card class="elevation-2">
-                      <v-card-title>
-                        <h5>{{ pr.title }}</h5>
-                      </v-card-title>
-                      <v-card-text>
-                        {{ pr.body }}
-                      </v-card-text>
-                      <v-card-actions>
-                        <v-btn text color="accent" :href="pr.html_url" target="_blank">
-                          View Change
-                        </v-btn>
-                      </v-card-actions>
-                    </v-card>
-                  </v-timeline-item>
-                </v-timeline>
-              </v-col>
-            </v-row>
-          </v-col>
-          <v-col cols="4">
+          <v-col cols="12" md="4">
             <v-row>
               <v-col
                 align="center"
@@ -154,15 +114,73 @@
                 <h5>Renderers and Core Pieces</h5>
               </v-col>
             </v-row>
-            <v-row v-for="(milestone, index) in majorMilestones.jak1" :key="'jak1-milestone' + index">
-              <v-col align="center" justify="center">
-                <v-icon v-if="milestone.status === 'Completed'" class="green--text">
+            <v-row>
+              <v-col
+                v-for="(milestone, index) in majorMilestones.jak1"
+                :key="'jak1-milestone' + index"
+                cols="12"
+                md="6"
+                align="center"
+                justify="center"
+              >
+                <v-icon
+                  v-if="milestone.status === 'Completed'"
+                  class="green--text"
+                >
                   mdi-check
                 </v-icon>
                 <v-icon v-else class="yellow--text">
                   mdi-timer-outline
                 </v-icon>
                 {{ milestone.name }}
+              </v-col>
+            </v-row>
+          </v-col>
+          <v-col cols="12" md="8">
+            <v-row>
+              <v-col
+                align="center"
+                justify="center"
+                class="orange--text text--darken-2"
+              >
+                <h3>GitHub Updates</h3>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col>
+                <v-timeline dense>
+                  <v-timeline-item
+                    v-for="(pr, index) in recentPRs"
+                    :key="'pr' + index"
+                  >
+                    <template v-slot:icon>
+                      <v-avatar>
+                        <img :src="pr.user.avatar_url" />
+                      </v-avatar>
+                    </template>
+                    <template v-slot:opposite>
+                      <span>{{ pr.user.login }}</span>
+                    </template>
+                    <v-card class="elevation-2">
+                      <v-card-title>
+                        <h5>{{ pr.title }}</h5>
+                      </v-card-title>
+                      <v-card-text>
+                        {{ pr.body }}
+                      </v-card-text>
+                      <v-card-actions>
+                        <v-btn
+                          text
+                          color="accent"
+                          :href="pr.html_url"
+                          target="_blank"
+                        >
+                          View Change
+                        </v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-timeline-item>
+                </v-timeline>
               </v-col>
             </v-row>
           </v-col>
@@ -186,11 +204,8 @@
   font-family: "Lexend", sans-serif !important;
 }
 .text-stroke {
-  text-shadow:
-   -1px -1px 0 #000,  
-    1px -1px 0 #000,
-    -1px 1px 0 #000,
-     1px 1px 0 #000;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+    1px 1px 0 #000;
 }
 </style>
 
