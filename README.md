@@ -9,6 +9,7 @@
   <a href="https://coveralls.io/github/water111/jak-project?branch=master" rel="nofollow"><img src="https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master" alt="Coverage Status" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://discord.gg/E7yFpd6w9G"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
+  <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
 ## Table of Contents
@@ -43,6 +44,9 @@ Our objectives are:
 - support modifications. It should be possible to make edits to the code without everything else breaking.
 
 We support both Linux and Windows on x86-64.
+
+We have a Discord server where we discuss development. 
+https://discord.gg/BVEHQmm8
 
 ## Current Status
 So far, we've decompiled around 341,233 lines of GOAL code, out of an estimated 500,000 total lines and we've started work on an OpenGL renderer. Currently, the main display process (`*dproc*`) runs and sends data to our renderer. We can load textures, text files, and level files. Using keyboard controls, we can open the debug menu and turn on some simple debug visualizations.
