@@ -9,7 +9,7 @@
 
 class Tie3 : public BucketRenderer {
  public:
-  Tie3(const std::string& name, BucketId my_id);
+  Tie3(const std::string& name, BucketId my_id, int level_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   ~Tie3();
@@ -104,6 +104,8 @@ class Tie3 : public BucketRenderer {
   std::vector<float> m_wind_vectors;  // note: I suspect these are shared with shrub.
 
   float m_wind_multiplier = 1.f;
+
+  int m_level_id;
 
   static_assert(sizeof(WindWork) == 84 * 16);
 

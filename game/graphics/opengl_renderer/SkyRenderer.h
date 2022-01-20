@@ -14,6 +14,7 @@ class SkyBlendHandler : public BucketRenderer {
  public:
   SkyBlendHandler(const std::string& name,
                   BucketId my_id,
+                  int level_id,
                   std::shared_ptr<SkyBlendGPU> shared_gpu_blender,
                   std::shared_ptr<SkyBlendCPU> shared_cpu_blender);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
