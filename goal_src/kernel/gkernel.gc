@@ -1670,6 +1670,12 @@
              (let ((trans (new 'process 'cpu-thread obj 'trans PROCESS_STACK_SAVE_SIZE (-> obj main-thread stack-top))))
                ;; call the function in the thread.
                (reset-and-call trans (-> obj trans-hook))
+               
+               (#when KERNEL_DEBUG
+                 (when (!= (-> trans type) cpu-thread)
+                   (format 0 "corrupted stack after trans for ~A~%" obj)
+                   )
+                 )
                ;; remove the cpu-thread
                (delete trans)
                ;; check for deadness

@@ -445,6 +445,18 @@
   "beach-vis"
   )
 
+(copy-strs
+  "BECANNON" ;; beachcam-cannon
+  "LRFALLIN" ;; lrocklrg-falling
+  "PESEXT"   ;; pelican-spit-ext
+  )
+(copy-strs
+  "FAINTROD" ;; farmer-introduction
+  "SCINTROD" ;; sculptor-introduction
+  "BILINTRO" ;; bird-lady-introduction
+  "MAINTROD" ;; mayor-introduction
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle
@@ -576,6 +588,18 @@
  "village1-vis"
  )
 
+(copy-strs
+  "ASIBESWI"    ;; assistant-introduction-blue-eco-switch
+  "SAISD1"      ;; sage-intro-sequence-d1
+  "SAISD2"      ;; sage-intro-sequence-d2
+  "EXINTROD"    ;; explorer-introduction
+  "FIBRTMIS"    ;; fishermans-boat-ride-to-misty
+  "ASR1BESW"    ;; assistant-reminder-1-blue-eco-switch
+  "ORI1"        ;; oracle-intro-1
+  "ORRE1"       ;; oracle-right-eye-1
+  "ORR1"        ;; oracle-reminder-1
+  "FAR1"        ;; farmer-reminder-1
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle temple
