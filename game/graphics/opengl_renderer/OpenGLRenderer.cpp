@@ -72,11 +72,11 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
 
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
-  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false);
-  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0);
+  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false, 0);
+  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0, 0);
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
-  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false);
-  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1);
+  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false, 1);
+  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1, 1);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
@@ -84,15 +84,17 @@ void OpenGLRenderer::init_bucket_renderers() {
   auto sky_gpu_blender = std::make_shared<SkyBlendGPU>();
   auto sky_cpu_blender = std::make_shared<SkyBlendCPU>();
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
-                                        BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0,
+                                        BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, 0,
                                         sky_gpu_blender, sky_cpu_blender);
-  init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false);
-  init_bucket_renderer<TFragment>("tfrag-ice-0", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags, false);
+  init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false,
+                                  0);
+  init_bucket_renderer<TFragment>("tfrag-ice-0", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags, false, 0);
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-1",
-                                        BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1,
+                                        BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1, 1,
                                         sky_gpu_blender, sky_cpu_blender);
-  init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false);
-  init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false);
+  init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false,
+                                  1);
+  init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false, 1);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
@@ -117,6 +119,7 @@ void OpenGLRenderer::init_bucket_renderers() {
  */
 void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_profiler.clear();
+  m_render_state.reset();
   m_render_state.dump_playback = settings.playing_from_dump;
   m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
@@ -173,6 +176,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
+  ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();

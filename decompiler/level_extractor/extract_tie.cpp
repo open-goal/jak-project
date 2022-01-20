@@ -119,6 +119,7 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
       }
       vis.num_kids = elt.child_count;
       vis.flags = elt.flags;
+      vis.my_id = elt.id;
       assert(vis.flags == expecting_leaves ? 0 : 1);
       assert(vis.num_kids > 0);
       assert(vis.num_kids <= 8);
@@ -2182,8 +2183,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
             // now we have a draw, time to add vertices
             tfrag3::StripDraw::VisGroup vgroup;
-            vgroup.vis_idx = inst.vis_id;         // associate with the instance for culling
-            vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
+            vgroup.vis_idx_in_pc_bvh = inst.vis_id;  // associate with the instance for culling
+            vgroup.num = strip.verts.size() + 1;     // one for the primitive restart!
             draw_to_add_to->num_triangles += strip.verts.size() - 2;
             for (auto& vert : strip.verts) {
               tfrag3::PreloadedVertex vtx;
@@ -2247,7 +2248,7 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
   std::vector<tfrag3::StripDraw::VisGroup> result;
   result.push_back(grps.at(0));
   for (size_t i = 1; i < grps.size(); i++) {
-    if (grps[i].vis_idx == result.back().vis_idx) {
+    if (grps[i].vis_idx_in_pc_bvh == result.back().vis_idx_in_pc_bvh) {
       result.back().num += grps[i].num;
     } else {
       result.push_back(grps[i]);
@@ -2329,11 +2330,11 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   // remap vis indices and merge
   for (auto& draw : this_tree.static_draws) {
     for (auto& str : draw.vis_groups) {
-      auto it = instance_parents.find(str.vis_idx);
+      auto it = instance_parents.find(str.vis_idx_in_pc_bvh);
       if (it == instance_parents.end()) {
-        str.vis_idx = UINT32_MAX;
+        str.vis_idx_in_pc_bvh = UINT32_MAX;
       } else {
-        str.vis_idx = it->second;
+        str.vis_idx_in_pc_bvh = it->second;
       }
     }
     merge_groups(draw.vis_groups);

@@ -11,7 +11,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 8;
+constexpr int TFRAG3_VERSION = 9;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -42,8 +42,8 @@ struct StripDraw {
   // to do culling, the above vertex stream is grouped.
   // by following the visgroups and checking the visibility, you can leave out invisible vertices.
   struct VisGroup {
-    u32 num = 0;      // number of vertex indices in this group
-    u32 vis_idx = 0;  // the visibility group they belong to
+    u32 num = 0;                // number of vertex indices in this group
+    u32 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
   };
   std::vector<VisGroup> vis_groups;
 
@@ -77,8 +77,9 @@ struct InstancedStripDraw {
 struct VisNode {
   math::Vector<float, 4> bsphere;  // the bounding sphere, in meters (4096 = 1 game meter). w = rad
   u16 child_id = 0xffff;           // the ID of our first child.
-  u8 num_kids = 0xff;              // number of children. The children are consecutive in memory
-  u8 flags = 0;                    // flags.  If 1, we have a DrawVisNode child, otherwise a leaf.
+  u16 my_id = 0xffff;
+  u8 num_kids = 0xff;  // number of children. The children are consecutive in memory
+  u8 flags = 0;        // flags.  If 1, we have a DrawVisNode child, otherwise a leaf.
 };
 
 // The leaf nodes don't actually exist in the vector of VisNodes, but instead they are ID's used
