@@ -94,5 +94,5 @@ class OpenGlDebugGui {
   char m_screenshot_save_name[256] = "screenshot.png";
   bool m_vsync = false;
   bool m_nosync = false;
-  float m_target_fps_text = 0;
+  float m_target_fps_text = 60.0;
 };
