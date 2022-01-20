@@ -305,7 +305,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         }
         // attempt to backtrace anyway! if this fails then rip
         u64 next_rip = 0;
-        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base - 8)) {
           fmt::print("Invalid return address encountered!\n");
           break;
         }
@@ -555,7 +555,8 @@ void Debugger::read_symbol_table() {
         sym_type = sym->type;
       } else {
         if (sym_type != sym->type) {
-          fmt::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}\n", sym_type, sym->type);
+          fmt::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}: addr 0x{:x}\n", sym_type,
+                     sym->type, offset + st_base + (uint64_t)m_debug_context.base);
           return;
         }
       }

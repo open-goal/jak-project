@@ -14,6 +14,8 @@
 
 ;; -hardware-
 
+(defglobalconstant KERNEL_DEBUG #t)
+
 ;; the end of the 16 kB fast "scratchpad" memory of the PS2.
 ;; this memory is mapped to 0x70000000 in the PS2.
 (defconstant *scratch-memory-top* (the pointer #x70004000))
@@ -38,13 +40,13 @@
 
 ;; another stack size used as a maximum for temporary threads
 ;; OpenGOAL NOTE: increased to 16kB
-(defconstant PROCESS_STACK_SIZE #x4000)
+(defconstant PROCESS_STACK_SIZE #x6000)
 
 ;; default size of stack to backup for a process
 (defconstant PROCESS_STACK_SAVE_SIZE 256)
 
 ;; the size of the shared heap used by dynamically sized processes
-(defconstant PROCESS_HEAP_SIZE (* 984 1024))
+(defconstant PROCESS_HEAP_SIZE (* 3 984 1024)) ;; increased by factor of 3 for PC
 
 ;; -system-
 
@@ -557,7 +559,7 @@
   ;; suspend the current process.
   
   `(rlet ((pp :reg r13 :reset-here #t))
-         (#when DEBUG_PRINT_SUSPEND_FAIL
+         (#when (or DEBUG_PRINT_SUSPEND_FAIL KERNEL_DEBUG)
            (rlet ((sp :reg rsp :reset-here #t :type int)
                   (off :reg r15 :type uint))
                  (let* ((sp-goal (- sp off))

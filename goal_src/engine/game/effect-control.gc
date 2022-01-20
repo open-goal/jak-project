@@ -231,25 +231,30 @@
   )
 
 (defmethod TODO-RENAME-14 effect-control ((obj effect-control) (arg0 float) (arg1 float) (arg2 float))
-  (let ((s2-0 (-> obj name)))
-    (while (= (-> s2-0 0 name) 'effect-name)
-      (let ((f0-0 (-> s2-0 0 key-frame)))
-        (when (or (and (< f0-0 arg1) (< arg0 f0-0)) (= f0-0 arg2))
-          (let* ((a0-1 obj)
-                 (t9-0 (method-of-object a0-1 dummy-10))
-                 (v1-7 (-> obj res))
-                 (a1-1 (-> s2-0 0))
-                 )
-            (t9-0
-              a0-1
-              (the-as symbol (-> (the-as (pointer uint32) (&+ (-> v1-7 data-base) (-> a1-1 data-offset)))))
-              f0-0
-              -1
+  ;; note: this check was added. I believe in the original game name could be false, and then the
+  ;; effect-name check below would fail. This did not cause a crash on original hardware because
+  ;; misaligned 16-byte loads silently align. This causes a crash in opengoal, so we skip it manually.
+  (when (-> obj name)
+    (let ((s2-0 (-> obj name)))
+      (while (= (-> s2-0 0 name) 'effect-name)
+        (let ((f0-0 (-> s2-0 0 key-frame)))
+          (when (or (and (< f0-0 arg1) (< arg0 f0-0)) (= f0-0 arg2))
+            (let* ((a0-1 obj)
+                   (t9-0 (method-of-object a0-1 dummy-10))
+                   (v1-7 (-> obj res))
+                   (a1-1 (-> s2-0 0))
+                   )
+              (t9-0
+                a0-1
+                (the-as symbol (-> (the-as (pointer uint32) (&+ (-> v1-7 data-base) (-> a1-1 data-offset)))))
+                f0-0
+                -1
+                )
               )
             )
           )
+        (set! s2-0 (&-> s2-0 1))
         )
-      (set! s2-0 (&-> s2-0 1))
       )
     )
   0
