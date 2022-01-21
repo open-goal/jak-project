@@ -106,6 +106,7 @@ class RenderMux : public BucketRenderer {
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   void serialize(Serializer& ser) override;
+
  private:
   std::vector<std::unique_ptr<BucketRenderer>> m_renderers;
   int m_render_idx = 0;

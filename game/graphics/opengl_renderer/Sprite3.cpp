@@ -628,7 +628,6 @@ void Sprite3::handle_alpha(u64 val,
   update_mode_from_alpha1(val, m_current_mode);
 }
 
-
 void Sprite3::do_block_common(SpriteMode mode,
                               u32 count,
                               SharedRenderState* render_state,
