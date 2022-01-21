@@ -27,8 +27,10 @@ class FrameTimeRecorder {
 
  private:
   float m_frame_times[SIZE] = {0};
+  float m_last_frame_time = 0;
   int m_idx = 0;
-  Timer m_timer;
+  Timer m_compute_timer;
+  Timer m_fps_timer;
   bool m_open = true;
 
   bool m_play = true;
@@ -59,6 +61,26 @@ class OpenGlDebugGui {
     return false;
   }
 
+  bool get_nosync_flag() {
+    if (m_nosync) {
+      m_nosync = false;
+      return true;
+    }
+    return false;
+  }
+
+  bool get_vsync_flag() {
+    if (m_vsync) {
+      m_vsync = false;
+      return true;
+    }
+    return false;
+  }
+
+  bool framelimiter = false;
+  float target_fps = 60.f;
+  bool experimental_accurate_lag = false;
+
  private:
   FrameTimeRecorder m_frame_timer;
   bool m_draw_frame_time = false;
@@ -70,4 +92,7 @@ class OpenGlDebugGui {
   bool m_want_screenshot = false;
   char m_dump_save_name[256] = "dump.bin";
   char m_screenshot_save_name[256] = "screenshot.png";
+  bool m_vsync = false;
+  bool m_nosync = false;
+  float m_target_fps_text = 60.0;
 };

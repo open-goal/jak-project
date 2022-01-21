@@ -27,6 +27,7 @@
 #include "game/graphics/opengl_renderer/debug_gui.h"
 #include "common/util/FileUtil.h"
 #include "common/util/compress.h"
+#include "common/util/FrameLimiter.h"
 
 namespace {
 
@@ -52,6 +53,10 @@ struct GraphicsData {
   OpenGlDebugGui debug_gui;
 
   Serializer loaded_dump;
+
+  FrameLimiter frame_limiter;
+  Timer engine_timer;
+  double last_engine_time = 1. / 60.;
 
   void serialize(Serializer& ser) {
     dma_copier.serialize_last_result(ser);
@@ -235,10 +240,9 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
     // note: there's a timeout here. If the engine is messed up and not sending us frames,
     // we still want to run the glfw loop.
-    got_chain = g_gfx_data->dma_cv.wait_for(lock, std::chrono::milliseconds(20),
+    got_chain = g_gfx_data->dma_cv.wait_for(lock, std::chrono::milliseconds(50),
                                             [=] { return g_gfx_data->has_data_to_render; });
   }
-
   // render that chain.
   if (got_chain) {
     // we want to serialize before rendering
@@ -272,6 +276,7 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     // should be fine to remove this mutex if the game actually waits for vsync to call
     // send_chain again. but let's be safe for now.
     std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
+    g_gfx_data->engine_timer.start();
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
@@ -383,6 +388,7 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
+  // window size
   int width = Gfx::g_global_settings.lbox_w;
   int height = Gfx::g_global_settings.lbox_h;
   int fbuf_w, fbuf_h;
@@ -396,6 +402,7 @@ static void gl_render_display(GfxDisplay* display) {
   int lbox_w = (fbuf_w - width) / 2;
   int lbox_h = (fbuf_h - height) / 2;
 
+  // render game!
   if (g_gfx_data->debug_gui.want_dump_replay()) {
     // hack: no letterbox for dump frames, for now.
     render_dump_frame(fbuf_w, fbuf_h, 0, 0);
@@ -412,9 +419,21 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+  // switch vsync modes, if requested
+  if (g_gfx_data->debug_gui.get_nosync_flag()) {
+    glfwSwapInterval(0);
+  } else if (g_gfx_data->debug_gui.get_vsync_flag()) {
+    glfwSwapInterval(1);
+  }
+
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
   glfwSwapBuffers(window);
+  if (g_gfx_data->debug_gui.framelimiter) {
+    g_gfx_data->frame_limiter.run(g_gfx_data->debug_gui.target_fps,
+                                  g_gfx_data->debug_gui.experimental_accurate_lag,
+                                  g_gfx_data->last_engine_time);
+  }
   g_gfx_data->debug_gui.start_frame();
 
   if (display->fullscreen_pending()) {
@@ -425,7 +444,6 @@ static void gl_render_display(GfxDisplay* display) {
   if (!g_gfx_data->debug_gui.want_dump_replay()) {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
-
     g_gfx_data->sync_cv.notify_all();
   }
 
@@ -445,11 +463,9 @@ u32 gl_vsync() {
   if (!g_gfx_data) {
     return 0;
   }
-
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
   auto init_frame = g_gfx_data->frame_idx_of_input_data;
   g_gfx_data->sync_cv.wait(lock, [=] { return MasterExit || g_gfx_data->frame_idx > init_frame; });
-
   return g_gfx_data->frame_idx & 1;
 }
 
@@ -458,6 +474,7 @@ u32 gl_sync_path() {
     return 0;
   }
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
+  g_gfx_data->last_engine_time = g_gfx_data->engine_timer.getSeconds();
   if (!g_gfx_data->has_data_to_render) {
     return 0;
   }

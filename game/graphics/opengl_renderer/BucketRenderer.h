@@ -43,6 +43,11 @@ enum class BucketId {
   MAX_BUCKETS = 69
 };
 
+struct LevelVis {
+  bool valid = false;
+  u8 data[2048];
+};
+
 /*!
  * The main renderer will contain a single SharedRenderState that's passed to all bucket renderers.
  * This allows bucket renders to share textures and shaders.
@@ -63,8 +68,11 @@ struct SharedRenderState {
   bool dump_playback = false;
 
   bool use_sky_cpu = true;
+  bool use_occlusion_culling = true;
 
+  void reset();
   bool has_camera_planes = false;
+  LevelVis occlusion_vis[2];
   math::Vector4f camera_planes[4];
 };
 

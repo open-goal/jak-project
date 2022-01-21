@@ -56,3 +56,10 @@ void SkipRenderer::render(DmaFollower& dma,
     dma.read_and_advance();
   }
 }
+
+void SharedRenderState::reset() {
+  has_camera_planes = false;
+  for (auto& x : occlusion_vis) {
+    x.valid = false;
+  }
+}

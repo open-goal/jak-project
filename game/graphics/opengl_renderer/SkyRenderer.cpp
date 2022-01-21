@@ -21,6 +21,7 @@
 
 SkyBlendHandler::SkyBlendHandler(const std::string& name,
                                  BucketId my_id,
+                                 int level_id,
                                  std::shared_ptr<SkyBlendGPU> shared_blender,
                                  std::shared_ptr<SkyBlendCPU> shared_blender_cpu)
     : BucketRenderer(name, my_id),
@@ -29,7 +30,8 @@ SkyBlendHandler::SkyBlendHandler(const std::string& name,
       m_tfrag_renderer(fmt::format("tfrag-{}", name),
                        my_id,
                        {tfrag3::TFragmentTreeKind::TRANS, tfrag3::TFragmentTreeKind::LOWRES_TRANS},
-                       true) {}
+                       true,
+                       level_id) {}
 
 void SkyBlendHandler::handle_sky_copies(DmaFollower& dma,
                                         SharedRenderState* render_state,

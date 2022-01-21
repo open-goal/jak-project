@@ -10,8 +10,8 @@ struct TfragRenderSettings {
   int tree_idx;
   float time_of_day_weights[8] = {0};
   math::Vector4f planes[4];
-  bool do_culling = false;
   bool debug_culling = false;
+  const u8* occlusion_culling = nullptr;
   // todo occlusion culling string.
 };
 
@@ -43,6 +43,7 @@ void interp_time_of_day_fast(const float weights[8],
 
 void cull_check_all_slow(const math::Vector4f* planes,
                          const std::vector<tfrag3::VisNode>& nodes,
+                         const u8* level_occlusion_string,
                          u8* out);
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes);
 

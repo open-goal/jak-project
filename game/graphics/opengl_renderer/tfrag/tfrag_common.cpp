@@ -300,9 +300,19 @@ bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* plan
 // this isn't super efficient, but we spend so little time here it's not worth it to go faster.
 void cull_check_all_slow(const math::Vector4f* planes,
                          const std::vector<tfrag3::VisNode>& nodes,
+                         const u8* level_occlusion_string,
                          u8* out) {
-  for (size_t i = 0; i < nodes.size(); i++) {
-    out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
+  if (level_occlusion_string) {
+    for (size_t i = 0; i < nodes.size(); i++) {
+      u16 my_id = nodes[i].my_id;
+      bool not_occluded =
+          my_id != 0xffff && level_occlusion_string[my_id / 8] & (1 << (7 - (my_id & 7)));
+      out[i] = not_occluded && sphere_in_view_ref(nodes[i].bsphere, planes);
+    }
+  } else {
+    for (size_t i = 0; i < nodes.size(); i++) {
+      out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
+    }
   }
 }
 
@@ -337,7 +347,7 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
     int run_start_out = 0;
     int run_start_in = 0;
     for (auto& grp : draw.vis_groups) {
-      bool vis = grp.vis_idx == 0xffffffff || vis_data[grp.vis_idx];
+      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
       if (building_run) {
         if (vis) {
           idx_buffer_ptr += grp.num;

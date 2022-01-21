@@ -260,7 +260,8 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
-  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
+  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+                      m_cache.vis_temp.data());
 
   int idx_buffer_ptr = make_index_list_from_vis_string(
       m_cache.draw_idx_temp.data(), tree.index_list.data(), *tree.draws, m_cache.vis_temp);
