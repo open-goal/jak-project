@@ -451,7 +451,6 @@
   "PESEXT"   ;; pelican-spit-ext
   )
 (copy-strs
-  "FAINTROD" ;; farmer-introduction
   "SCINTROD" ;; sculptor-introduction
   "BILINTRO" ;; bird-lady-introduction
   "MAINTROD" ;; mayor-introduction
@@ -518,6 +517,10 @@
   "water-anim-jungle-ag"
   "jungle-vis"
   )
+
+;; fisher
+(copy-strs "FIINTROD" "FIR1" "FIACCEPT" "FIREJECT" "FIRESOLU")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -588,18 +591,18 @@
  "village1-vis"
  )
 
-(copy-strs
-  "ASIBESWI"    ;; assistant-introduction-blue-eco-switch
-  "SAISD1"      ;; sage-intro-sequence-d1
-  "SAISD2"      ;; sage-intro-sequence-d2
-  "EXINTROD"    ;; explorer-introduction
-  "FIBRTMIS"    ;; fishermans-boat-ride-to-misty
-  "ASR1BESW"    ;; assistant-reminder-1-blue-eco-switch
-  "ORI1"        ;; oracle-intro-1
-  "ORRE1"       ;; oracle-right-eye-1
-  "ORR1"        ;; oracle-reminder-1
-  "FAR1"        ;; farmer-reminder-1
-  )
+;; farmer
+(copy-strs "FAINTROD" "FAR1" "FAR2" "FARESOLU")
+;; explorer
+(copy-strs "EXINTROD" "EXR1" "EXR2" "EXRESOLU")
+;; oracle
+(copy-strs "ORI1" "ORLE1" "ORRE1" "ORR1")
+;; assistant
+(copy-strs "ASIBESWI" "ASR1BESW")
+;; sage
+(copy-strs "SAISD1" "SAISD2")
+;; fishermans boat
+(copy-strs "FIBRTMIS")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle temple
