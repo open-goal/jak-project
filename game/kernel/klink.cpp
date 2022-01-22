@@ -770,7 +770,7 @@ uint32_t link_control::work_v2() {
 /*!
  * Complete linking. This will execute the top-level code for v3 object files, if requested.
  */
-void link_control::finish() {
+void link_control::finish(bool jump_from_c_to_goal) {
   CacheFlush(m_code_start.c(), m_code_size);
   auto old_debug_segment = DebugSegment;
   if (m_keep_debug) {
@@ -793,7 +793,12 @@ void link_control::finish() {
 
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {
-      call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
+      if (jump_from_c_to_goal) {
+        u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
+        call_goal_on_stack(m_entry.cast<Function>(), goal_stack, s7.offset, g_ee_main_mem);
+      } else {
+        call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
+      }
     }
 
     // inform compiler that we loaded.
@@ -825,14 +830,15 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            const char* name,
                            int32_t size,
                            Ptr<kheapinfo> heap,
-                           uint32_t flags) {
+                           uint32_t flags,
+                           bool jump_from_c_to_goal) {
   link_control lc;
   lc.begin(data, name, size, heap, flags);
   uint32_t done;
   do {
     done = lc.work();
   } while (!done);
-  lc.finish();
+  lc.finish(jump_from_c_to_goal);
   return lc.m_entry;
 }
 
@@ -842,7 +848,7 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
 u64 link_and_exec_wrapper(u64* args) {
   // data, name, size, heap, flags
   return link_and_exec(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2], Ptr<kheapinfo>(args[3]),
-                       args[4])
+                       args[4], false)
       .offset;
 }
 
@@ -858,7 +864,8 @@ uint64_t link_begin(u64* args) {
   auto work_result = saved_link_control.work();
   // if we managed to finish in one shot, take care of calling finish
   if (work_result) {
-    saved_link_control.finish();
+    // called from goal
+    saved_link_control.finish(false);
   }
 
   return work_result != 0;
@@ -870,7 +877,8 @@ uint64_t link_begin(u64* args) {
 uint64_t link_resume() {
   auto work_result = saved_link_control.work();
   if (work_result) {
-    saved_link_control.finish();
+    // called from goal
+    saved_link_control.finish(false);
   }
   return work_result != 0;
 }
