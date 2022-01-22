@@ -912,6 +912,8 @@
   "spike-ag"
   "firecanyon-vis")
 
+;; assistant firecanyon
+(copy-strs "ASFRESOL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ogre boss
@@ -1004,6 +1006,17 @@
   "village2-vis"
   )
 
+;; assistant village2
+(copy-strs "AS2INTRO")
+;; geologist
+(copy-strs "GEINTROD")
+;; gambler
+(copy-strs "GAI1")
+;; warrior
+(copy-strs "WAINTROD")
+;; oracle
+(copy-strs "ORI2" "ORLE2" "ORRE2" "ORR2")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; rolling hills
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1083,6 +1096,8 @@
   "village3-vis"
   )
 
+;; oracle
+(copy-strs "ORI3" "ORLE3" "ORRE3" "ORR3")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Training

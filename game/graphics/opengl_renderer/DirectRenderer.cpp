@@ -370,8 +370,8 @@ void DirectRenderer::update_gl_blend() {
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
-      lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b,
-                (int)state.c, (int)state.d);
+      lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
+                (int)state.d);
       assert(false);
     }
   }
