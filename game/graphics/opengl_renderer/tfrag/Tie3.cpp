@@ -531,7 +531,7 @@ void Tie3::render_tree_wind(int idx,
       glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
 
     int off = 0;
     for (auto& grp : draw.instance_groups) {
@@ -569,7 +569,7 @@ void Tie3::render_tree_wind(int idx,
               -10.f);
           glUniform1f(
               glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-              double_draw.aref);
+              double_draw.aref_second);
           glDepthMask(GL_FALSE);
           glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
                          (void*)0);
@@ -663,7 +663,7 @@ void Tie3::render_tree(int idx,
       last_texture = draw.tree_tex_id;
     }
 
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
     int draw_size = indices.second - indices.first;
     void* offset = (void*)(indices.first * sizeof(u32));
 
@@ -694,7 +694,7 @@ void Tie3::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
                     -10.f);
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-                    double_draw.aref);
+                    double_draw.aref_second);
         glDepthMask(GL_FALSE);
         glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;

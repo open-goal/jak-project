@@ -263,21 +263,8 @@ RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
   return kv->second;
 }
 
-StackVarAddrVal* FunctionEnv::allocate_stack_variable(const TypeSpec& ts, int size_bytes) {
+FunctionEnv::StackSpace FunctionEnv::allocate_aligned_stack_space(int size_bytes, int align_bytes) {
   require_aligned_stack();
-  int slots_used = (size_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
-  auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
-  m_stack_var_slots_used += slots_used;
-  return result;
-}
-
-StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts,
-                                                              int size_bytes,
-                                                              int align_bytes) {
-  require_aligned_stack();
-  if (align_bytes > 16) {
-    fmt::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
-  }
   assert(align_bytes <= 16);
   int align_slots = (align_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
   while (m_stack_var_slots_used % align_slots) {
@@ -292,14 +279,39 @@ StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts
   }
 
   int slots_used = (size_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
-  auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
+  StackSpace result;
+  result.slot_count = slots_used;
+  result.start_slot = m_stack_var_slots_used;
   m_stack_var_slots_used += slots_used;
   return result;
+}
+
+StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts,
+                                                              int size_bytes,
+                                                              int align_bytes) {
+  if (align_bytes > 16) {
+    fmt::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
+  }
+  auto space = allocate_aligned_stack_space(size_bytes, align_bytes);
+  return alloc_val<StackVarAddrVal>(ts, space.start_slot, space.slot_count);
 }
 
 RegVal* FunctionEnv::push_reg_val(std::unique_ptr<RegVal> in) {
   m_iregs.push_back(std::move(in));
   return m_iregs.back().get();
+}
+
+StackVarAddrVal* FunctionEnv::allocate_stack_singleton(const TypeSpec& ts,
+                                                       int size_bytes,
+                                                       int align_bytes) {
+  const auto& existing = m_stack_singleton_slots.find(ts.print());
+  if (existing == m_stack_singleton_slots.end()) {
+    auto space = allocate_aligned_stack_space(size_bytes, align_bytes);
+    m_stack_singleton_slots[ts.print()] = space;
+    return alloc_val<StackVarAddrVal>(ts, space.start_slot, space.slot_count);
+  } else {
+    return alloc_val<StackVarAddrVal>(ts, existing->second.start_slot, existing->second.slot_count);
+  }
 }
 
 ///////////////////

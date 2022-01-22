@@ -791,70 +791,52 @@
              
              ;; special case for blue eco magnet effect
              (when (= kind (pickup-type eco-blue))
-               (when (= eco-lev 0.0) ;; old level was 0, we just got our first piece of eco
+               (when (= eco-lev 0.0)
                  (let ((s5-1 (-> obj process)))
                    (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
-                          (s4-3 (when s3-5
-                                  ;; interestingly, this uses the activate method of touch-tracker, not process.
-                                  (let ((t9-28 (method-of-type touch-tracker activate)))
-                                    (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
-                                  (-> s3-5 ppointer)
-                                  )
+                          (s4-3
+                            (when s3-5
+                              (let ((t9-28 (method-of-type touch-tracker activate)))
+                                (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
                                 )
+                              (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
+                              (-> s3-5 ppointer)
+                              )
+                            )
                           )
-                     
-                     ;; send the touch tracker the target
                      (send-event (ppointer->process s4-3) 'target s5-1)
-                     ;; tell it we have blue eco.
                      (send-event (ppointer->process s4-3) 'event 'eco-blue)
-                     ;; give it a function to call to see if it's time to exit
-                     (send-event (ppointer->process s4-3) 
-                                 'exit 
-                                 (lambda ()
-                                   (send-event *target* 'query 'powerup 3)
-                                   )
-                                 ;; set up some collision thing.
-                                 (send-event (ppointer->process s4-3)
-                                             'eval
-                                             (lambda :behavior process-drawable
-                                               ()
-                                               (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with)
-                                                     (collide-kind cak-1 cak-2 cak-3 blue-eco-suck)
-                                                     )
-                                               (none)
-                                               )
-                                             )
-                                 )
+                     (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup 3)))
+                     (send-event
+                       (ppointer->process s4-3)
+                       'eval
+                       (lambda :behavior process-drawable
+                         ()
+                         (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with)
+                               (collide-kind cak-1 cak-2 cak-3 blue-eco-suck)
+                               )
+                         (none)
+                         )
+                       )
                      )
-                   
-                   ;; create a process that just keeps sending 'effect 'eco-blue
                    (let ((s4-4 (get-process *4k-dead-pool* process #x4000)))
                      (when s4-4
                        (let ((t9-35 (method-of-type process activate)))
                          (t9-35 s4-4 s5-1 'process (the-as pointer #x70004000))
                          )
-                       (run-next-time-in-process s4-4
-                        (lambda ((arg0 process-drawable))
-                          (with-pp
-                            (let ((start-time (-> *display* base-frame-counter)))
-                              (until (>= (the-as int (- (-> *display* base-frame-counter) start-time)) 180)
-                                (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                                  (set! (-> a1-0 from) pp)
-                                  (set! (-> a1-0 num-params) 1)
-                                  (set! (-> a1-0 message) 'effect)
-                                  (set! (-> a1-0 param 0) (the-as uint 'eco-blue))
-                                  (send-event-function arg0 a1-0)
-                                  )
-                                (suspend)
-                                )
-                              )
-                            (none)
-                            )
-                          )
-                        s5-1
-                        )
+                       (run-next-time-in-process
+                         s4-4
+                         (lambda ((arg0 process-drawable))
+                           (let ((s5-0 (-> *display* base-frame-counter)))
+                             (until (>= (- (-> *display* base-frame-counter) s5-0) 180)
+                               (send-event arg0 'effect 'eco-blue)
+                               (suspend)
+                               )
+                             )
+                           (none)
+                           )
+                         s5-1
+                         )
                        (-> s4-4 ppointer)
                        )
                      )
@@ -865,12 +847,7 @@
            (-> obj eco-level)
            )
           (else
-            ((method-of-type fact-info pickup-collectable!)
-             obj
-             kind
-             amount
-             source-handle
-             )
+            ((method-of-type fact-info pickup-collectable!) obj kind amount source-handle)
             )
           )
     )

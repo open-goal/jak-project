@@ -6,10 +6,8 @@
 
 #include <immintrin.h>
 
-DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
-                              SharedRenderState* render_state,
-                              DrawMode mode) {
-  glActiveTexture(GL_TEXTURE0);
+DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap) {
+  glActiveTexture(tex_unit);
 
   if (mode.get_zt_enable()) {
     glEnable(GL_DEPTH_TEST);
@@ -72,7 +70,8 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
   }
 
   if (mode.get_filt_enable()) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -97,7 +96,7 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
           case GsTest::AlphaFail::FB_ONLY:
             // darn, we need to draw twice
             double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
-            double_draw.aref = alpha_min;
+            double_draw.aref_second = alpha_min;
             break;
           default:
             assert(false);
@@ -120,13 +119,17 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
   } else {
     glDepthMask(GL_FALSE);
   }
+  double_draw.aref_first = alpha_min;
+  return double_draw;
+}
 
+DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode) {
+  auto draw_settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
-              alpha_min);
+              draw_settings.aref_first);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
               10.f);
-
-  return double_draw;
+  return draw_settings;
 }
 
 void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderState* render_state) {

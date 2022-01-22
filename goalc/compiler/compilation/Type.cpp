@@ -1077,12 +1077,24 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                                  const goos::Object& type,
                                  const goos::Object* rest,
                                  Env* env,
-                                 bool call_constructor) {
+                                 bool call_constructor,
+                                 bool use_singleton) {
   auto type_of_object = parse_typespec(unquote(type));
   auto fe = env->function_env();
+  auto st_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type_of_object));
+  if (st_type_info && st_type_info->is_always_stack_singleton()) {
+    use_singleton = true;
+    if (call_constructor) {
+      throw_compiler_error(
+          form, "Stack-singleton types must be created on the stack with stack-no-clear");
+    }
+  }
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
     if (call_constructor) {
       throw_compiler_error(form, "Constructing stack arrays is not yet supported");
+    }
+    if (use_singleton) {
+      throw_compiler_error(form, "Singleton stack arrays are not yet supported");
     }
     bool is_inline = type_of_object == TypeSpec("inline-array");
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
@@ -1144,9 +1156,19 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     }
     std::vector<RegVal*> args;
     // allocation
-    auto mem = fe->allocate_aligned_stack_variable(type_of_object, ti->get_size_in_memory(), 16)
-                   ->to_gpr(form, env);
+    RegVal* mem;
+    if (use_singleton) {
+      mem = fe->allocate_stack_singleton(type_of_object, ti->get_size_in_memory(), 16)
+                ->to_gpr(form, env);
+    } else {
+      mem = fe->allocate_aligned_stack_variable(type_of_object, ti->get_size_in_memory(), 16)
+                ->to_gpr(form, env);
+    }
+
     if (call_constructor) {
+      if (use_singleton) {
+        throw_compiler_error(form, "Constructing stack singletons is not yet supported");
+      }
       // the new method actual takes a "symbol" according the type system. So we have to cheat it.
       mem->set_type(TypeSpec("symbol"));
       args.push_back(mem);
@@ -1189,9 +1211,11 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     // put in code.
     return compile_static_new(form, type, rest, env);
   } else if (allocation == "stack") {
-    return compile_stack_new(form, type, rest, env, true);
+    return compile_stack_new(form, type, rest, env, true, false);
   } else if (allocation == "stack-no-clear") {
-    return compile_stack_new(form, type, rest, env, false);
+    return compile_stack_new(form, type, rest, env, false, false);
+  } else if (allocation == "stack-singleton-no-clear") {
+    return compile_stack_new(form, type, rest, env, false, true);
   }
 
   throw_compiler_error(form, "Unsupported new form");
