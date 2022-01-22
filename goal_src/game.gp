@@ -263,6 +263,26 @@
   "EIA2"
   "EIA3"
   "EIA4"
+  ;; jak death
+  "DE0181"
+  "DE0182"
+  "DE0184"
+  "DE0186"
+  "DE0187"
+  "DE0191"
+  "DE0193"
+  "DE0195"
+  "DE0197"
+  "DE0199"
+  "DE0202"
+  ;; jak other
+  "EIFISH"
+  "EIICE"
+  "EIFLUT"
+  "EIPOLE"
+  "EIRACER"
+  "EITUBE"
+  
   ;; intro camera
   "NDINTRO"
   "LOINTRO"
@@ -734,6 +754,8 @@
   "swamp-vis"
   )
 
+;; billy
+(copy-strs "BIINTROD" "BIR1" "BIACCEPT" "BIREJECT" "BIRESOLU")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LPC
@@ -950,6 +972,9 @@
   "ogre-vis"
   )
 
+;; flying-lurker
+(copy-strs "FLLINTRO")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 2
@@ -1098,6 +1123,8 @@
 
 ;; oracle
 (copy-strs "ORI3" "ORLE3" "ORRE3" "ORR3")
+;; gondola
+(copy-strs "GORUP" "GORDOWN")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Training
@@ -1259,6 +1286,8 @@
   "lavatube-vis"
   )
 
+(copy-strs "ASLERESO")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; citadel
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1316,6 +1345,11 @@
   "citadel-vis"
   )
 
+;; green-sagecage
+(copy-strs "GRSINTRO" "GRSRESOL" "GRSOPREB")
+;; sage-cage
+(copy-strs "YERESOLU" "RERESOLU" "BLRESOLU")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Final Boss
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1364,6 +1398,11 @@
   "water-anim-finalboss-ag"
   "finalboss-vis"
   )
+
+;; finalboss
+(copy-strs "FIWECO")
+;; green-sagecage
+(copy-strs "GRSDSACR" "GRSOBBA" "GRSOBBB" "GRSOBBEC" "GRSOBBNC" "GRSOBFIN")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; intro only
