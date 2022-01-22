@@ -6,10 +6,8 @@
 
 #include <immintrin.h>
 
-DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
-                              SharedRenderState* render_state,
-                              DrawMode mode) {
-  glActiveTexture(GL_TEXTURE0);
+DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap) {
+  glActiveTexture(tex_unit);
 
   if (mode.get_zt_enable()) {
     glEnable(GL_DEPTH_TEST);
@@ -72,7 +70,8 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
   }
 
   if (mode.get_filt_enable()) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -97,7 +96,7 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
           case GsTest::AlphaFail::FB_ONLY:
             // darn, we need to draw twice
             double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
-            double_draw.aref = alpha_min;
+            double_draw.aref_second = alpha_min;
             break;
           default:
             assert(false);
@@ -120,13 +119,17 @@ DoubleDraw setup_tfrag_shader(const TfragRenderSettings& /*settings*/,
   } else {
     glDepthMask(GL_FALSE);
   }
+  double_draw.aref_first = alpha_min;
+  return double_draw;
+}
 
+DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode) {
+  auto draw_settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
-              alpha_min);
+              draw_settings.aref_first);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
               10.f);
-
-  return double_draw;
+  return draw_settings;
 }
 
 void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderState* render_state) {
@@ -300,9 +303,19 @@ bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* plan
 // this isn't super efficient, but we spend so little time here it's not worth it to go faster.
 void cull_check_all_slow(const math::Vector4f* planes,
                          const std::vector<tfrag3::VisNode>& nodes,
+                         const u8* level_occlusion_string,
                          u8* out) {
-  for (size_t i = 0; i < nodes.size(); i++) {
-    out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
+  if (level_occlusion_string) {
+    for (size_t i = 0; i < nodes.size(); i++) {
+      u16 my_id = nodes[i].my_id;
+      bool not_occluded =
+          my_id != 0xffff && level_occlusion_string[my_id / 8] & (1 << (7 - (my_id & 7)));
+      out[i] = not_occluded && sphere_in_view_ref(nodes[i].bsphere, planes);
+    }
+  } else {
+    for (size_t i = 0; i < nodes.size(); i++) {
+      out[i] = sphere_in_view_ref(nodes[i].bsphere, planes);
+    }
   }
 }
 
@@ -337,7 +350,7 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
     int run_start_out = 0;
     int run_start_in = 0;
     for (auto& grp : draw.vis_groups) {
-      bool vis = grp.vis_idx == 0xffffffff || vis_data[grp.vis_idx];
+      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
       if (building_run) {
         if (vis) {
           idx_buffer_ptr += grp.num;

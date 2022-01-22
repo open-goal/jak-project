@@ -275,9 +275,11 @@ class StructureType : public ReferenceType {
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
   void set_pack(bool pack) { m_pack = pack; }
+  void set_always_stack_singleton() { m_always_stack_singleton = true; }
   void set_heap_base(int hb) { m_heap_base = hb; }
   bool is_packed() const { return m_pack; }
   bool is_allowed_misalign() const { return m_allow_misalign; };
+  bool is_always_stack_singleton() const { return m_always_stack_singleton; }
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
   void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
 
@@ -300,6 +302,7 @@ class StructureType : public ReferenceType {
   bool m_pack = false;
   bool m_allow_misalign = false;
   int m_offset = 0;
+  bool m_always_stack_singleton = false;
   size_t m_idx_of_first_unique_field = 0;
 };
 

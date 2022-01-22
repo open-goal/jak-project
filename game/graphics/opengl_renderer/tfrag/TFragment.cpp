@@ -18,12 +18,14 @@ bool looks_like_tfrag_init(const DmaFollower& follow) {
 TFragment::TFragment(const std::string& name,
                      BucketId my_id,
                      const std::vector<tfrag3::TFragmentTreeKind>& trees,
-                     bool child_mode)
+                     bool child_mode,
+                     int level_id)
     : BucketRenderer(name, my_id),
       m_child_mode(child_mode),
       m_direct_renderer(fmt::format("{}.direct", name), my_id, 1024, DirectRenderer::Mode::NORMAL),
       m_buffered_renderer(my_id),
-      m_tree_kinds(trees) {
+      m_tree_kinds(trees),
+      m_level_id(level_id) {
   for (auto& buf : m_buffered_data) {
     for (auto& x : buf.pad) {
       x = 0xff;
@@ -77,6 +79,37 @@ void TFragment::render(DmaFollower& dma,
     return;
   }
 
+  if (m_my_id == BucketId::TFRAG_LEVEL0) {
+    DmaTransfer transfers[2];
+
+    transfers[0] = dma.read_and_advance();
+    auto next0 = dma.read_and_advance();
+    assert(next0.size_bytes == 0);
+    transfers[1] = dma.read_and_advance();
+    auto next1 = dma.read_and_advance();
+    assert(next1.size_bytes == 0);
+
+    for (int i = 0; i < 2; i++) {
+      if (transfers[i].size_bytes == 128 * 16) {
+        if (render_state->use_occlusion_culling) {
+          render_state->occlusion_vis[i].valid = true;
+          memcpy(render_state->occlusion_vis[i].data, transfers[i].data, 128 * 16);
+        }
+      } else {
+        assert(transfers[i].size_bytes == 16);
+      }
+    }
+  }
+
+  if (dma.current_tag().kind == DmaTag::Kind::CALL) {
+    // renderer didn't run, let's just get out of here.
+    for (int i = 0; i < 4; i++) {
+      dma.read_and_advance();
+    }
+    assert(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+
   if (m_extra_debug) {
     ImGui::Begin(fmt::format("{} extra", m_name).c_str());
   }
@@ -108,6 +141,9 @@ void TFragment::render(DmaFollower& dma,
     memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
            64);
     settings.tree_idx = 0;
+    if (render_state->occlusion_vis[m_level_id].valid) {
+      settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
+    }
 
     for (int i = 0; i < 4; i++) {
       settings.planes[i] = m_pc_port_data.planes[i];
@@ -190,7 +226,7 @@ void TFragment::render(DmaFollower& dma,
           m_many_level_render.tfrag_level_renderers[i] = std::make_unique<Tfrag3>();
         }
         if (!m_many_level_render.tie_level_renderers[i]) {
-          m_many_level_render.tie_level_renderers[i] = std::make_unique<Tie3>("tie", m_my_id);
+          m_many_level_render.tie_level_renderers[i] = std::make_unique<Tie3>("tie", m_my_id, 0);
         }
         m_many_level_render.tfrag_level_renderers[i]->setup_for_level(all_kinds, level_names[i],
                                                                       render_state);

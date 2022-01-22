@@ -20,15 +20,6 @@ struct VisNodeTree {
   bool only_children = false;
 };
 
-// The final result
-struct ExtractedTFragmentTree {
-  // TFragmentKind kind = TFragmentKind::INVALID;
-  VisNodeTree vis_nodes;
-
-  u16 num_tfrags = 0;
-  u16 tfrag_base_idx = 0;
-};
-
 // will pool textures with others already in out.
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::string& debug_name,

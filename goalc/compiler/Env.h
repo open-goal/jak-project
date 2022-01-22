@@ -190,10 +190,15 @@ class FunctionEnv : public DeclareEnv {
   }
   const std::string& name() const { return m_name; }
 
-  StackVarAddrVal* allocate_stack_variable(const TypeSpec& ts, int size_bytes);
+  struct StackSpace {
+    int start_slot;
+    int slot_count;
+  };
+  StackSpace allocate_aligned_stack_space(int size_bytes, int align_bytes);
   StackVarAddrVal* allocate_aligned_stack_variable(const TypeSpec& ts,
                                                    int size_bytes,
                                                    int align_bytes);
+  StackVarAddrVal* allocate_stack_singleton(const TypeSpec& ts, int size_bytes, int align_bytes);
   int stack_slots_used_for_stack_vars() const { return m_stack_var_slots_used; }
 
   int segment_for_static_data() {
@@ -250,6 +255,8 @@ class FunctionEnv : public DeclareEnv {
   int m_stack_var_slots_used = 0;
   std::unordered_map<std::string, Label> m_labels;
   std::vector<std::unique_ptr<Label>> m_unnamed_labels;
+  std::unordered_map<std::string, StackSpace> m_stack_singleton_slots;
+
   const goos::Reader* m_reader = nullptr;
 };
 

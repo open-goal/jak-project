@@ -43,6 +43,11 @@ enum class BucketId {
   MAX_BUCKETS = 69
 };
 
+struct LevelVis {
+  bool valid = false;
+  u8 data[2048];
+};
+
 /*!
  * The main renderer will contain a single SharedRenderState that's passed to all bucket renderers.
  * This allows bucket renders to share textures and shaders.
@@ -63,8 +68,11 @@ struct SharedRenderState {
   bool dump_playback = false;
 
   bool use_sky_cpu = true;
+  bool use_occlusion_culling = true;
 
+  void reset();
   bool has_camera_planes = false;
+  LevelVis occlusion_vis[2];
   math::Vector4f camera_planes[4];
 };
 
@@ -88,6 +96,22 @@ class BucketRenderer {
   std::string m_name;
   BucketId m_my_id;
   bool m_enabled = true;
+};
+
+class RenderMux : public BucketRenderer {
+ public:
+  RenderMux(const std::string& name,
+            BucketId my_id,
+            std::vector<std::unique_ptr<BucketRenderer>> renderers);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void draw_debug_window() override;
+  void serialize(Serializer& ser) override;
+
+ private:
+  std::vector<std::unique_ptr<BucketRenderer>> m_renderers;
+  int m_render_idx = 0;
+  std::vector<std::string> m_name_strs;
+  std::vector<const char*> m_name_str_ptrs;
 };
 
 /*!

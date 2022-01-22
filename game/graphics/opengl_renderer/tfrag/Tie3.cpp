@@ -2,7 +2,8 @@
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
+    : BucketRenderer(name, my_id), m_level_id(level_id) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
@@ -427,6 +428,10 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
 
+  if (render_state->occlusion_vis[m_level_id].valid) {
+    settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
+  }
+
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
     render_state->camera_planes[i] = m_pc_port_data.planes[i];
@@ -526,7 +531,7 @@ void Tie3::render_tree_wind(int idx,
       glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
 
     int off = 0;
     for (auto& grp : draw.instance_groups) {
@@ -564,7 +569,7 @@ void Tie3::render_tree_wind(int idx,
               -10.f);
           glUniform1f(
               glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-              double_draw.aref);
+              double_draw.aref_second);
           glDepthMask(GL_FALSE);
           glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
                          (void*)0);
@@ -630,7 +635,8 @@ void Tie3::render_tree(int idx,
     tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
   } else {
     Timer cull_timer;
-    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
+    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+                        m_cache.vis_temp.data());
     tree.perf.cull_time.add(cull_timer.getSeconds());
 
     Timer index_timer;
@@ -657,7 +663,7 @@ void Tie3::render_tree(int idx,
       last_texture = draw.tree_tex_id;
     }
 
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
     int draw_size = indices.second - indices.first;
     void* offset = (void*)(indices.first * sizeof(u32));
 
@@ -688,7 +694,7 @@ void Tie3::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
                     -10.f);
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-                    double_draw.aref);
+                    double_draw.aref_second);
         glDepthMask(GL_FALSE);
         glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;

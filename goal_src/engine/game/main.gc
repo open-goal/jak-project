@@ -530,27 +530,78 @@
   (stack-size-set! (-> self main-thread) 512)
 
   (let ((disp *display*))
-    ;; todo spad terrain context
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Pre loop initialization
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+    ;; the size is 0, so this doesn't actually do anything.
+    ;; (dma-send-to-spr (the-as uint #x70000000) (the-as uint *terrain-context*) (the-as uint 0) #t)
     (set! *teleport* #t)
     (update-per-frame-settings! *setting-control*)
-    ;;(init-time-of-day-context *time-of-day-context*) TODO
+    (init-time-of-day-context *time-of-day-context*)
     (display-sync disp)
     (swap-display disp)
-    ;; touching list
+    (free-all-prim-nodes *touching-list*)
     ;; bler init
     ;; collide dma
     (suspend)
+    
+    
     (while *run*
-      ;; blerc
-      ;; texscroll
-      ;; ripple
+      ;; start immediately after all process updates finish.
+      
+      ;; drawing effects to be used in foreground drawing.
+      ; (blerc-execute)
+      ; (blerc-init)
+      ; (texscroll-execute)
+      ; (ripple-execute)
+      
+      ;;;;;;;;;;;;;;;;;;;;
+      ;; AMBIENT
+      ;;;;;;;;;;;;;;;;;;;;
+      
+      ;; set defaults for weather/music/flava.
       (set! *weather-off* #f)
-      ;; music
+      (let ((v1-13 (-> *game-info* current-continue level)))
+        (dotimes (a0-8 (-> *level* length))
+          (let ((a1-6 (-> *level* level a0-8)))
+            (when (= (-> a1-6 status) 'active)
+              (if (and (= (-> a1-6 name) v1-13) (-> *level* play?))
+                  (set! (-> *setting-control* default music) (-> a1-6 info music-bank))
+                  )
+              )
+            )
+          )
+        )
+      
       (set! (-> *setting-control* default sound-flava) (the-as uint 49))
       (set! (-> *setting-control* default sound-flava-priority) 0.0)
-      ;; do ambients
-
-      (add-ee-profile-frame 'draw :r #x40 :b #x40)
+      
+      ;; find any ambients, and execute them.
+      (when (and *execute-ambients* (not (paused?)))
+        (if *target*
+            (set! (-> *target* draw secondary-interp) 0.0)
+            )
+        (let ((s5-1 (sphere<-vector+r! (new 'stack 'sphere) (ear-trans) 0.0)))
+          (let ((v1-28 (scratchpad-object terrain-context)))
+            (set! (-> v1-28 work ambient ambient-list num-items) 0)
+            )
+          (dotimes (s4-1 (-> *level* length))
+            (let ((v1-32 (-> *level* level s4-1)))
+              (when (= (-> v1-32 status) 'active)
+                  (collect-ambients (-> v1-32 bsp) s5-1 0 (-> (scratchpad-object terrain-context) work ambient ambient-list))
+                  )
+              )
+            )
+          
+          (countdown (s4-2 (-> (scratchpad-object terrain-context)  work ambient ambient-list num-items))
+            (dummy-18 (-> (scratchpad-object terrain-context)  work ambient ambient-list items s4-2) s5-1)
+            )
+          )
+        )
+      (add-ee-profile-frame 'draw :r #x40 :b #x40) ;; actor update
+      
+      ;; do math, before drawing
       (execute-math-engine)
       ;; DEBUG PROF
       (add-ee-profile-frame 'draw :r #x80)
@@ -567,8 +618,9 @@
       (*menu-hook*)
       (add-ee-profile-frame 'draw :g #x40)
 
-      ;; (make-current-level-available-to-progress) TODO target
-      ;; update-task-hints
+      ;; finally, update hints/text
+      (make-current-level-available-to-progress)
+      (update-task-hints)
       (load-level-text-files -1)
 
       (add-ee-profile-frame 'unknown-cpu-time)
@@ -587,26 +639,18 @@
       ;; depth cue
       ;; screen filter
 
-      ;; run letterbox if needed
-      (when (or (movie?)
-                (< (the-as int (current-time))
-                   (the-as int (-> *game-info* letterbox-time))
-                   )
-                )
-        (if (< (the-as int (-> *game-info* letterbox-time))
-               (the-as int (current-time))
-               )
-            (set! (-> *game-info* letterbox-time) (current-time))
+      ;; add letterbox effect
+      (when (or (movie?) (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time)))
+        (if (< (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
+            (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             )
         (if (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
             (letterbox)
             )
         )
 
-      ;; do blackout if needed.
-      (if (< (the-as int (current-time))
-             (the-as int (-> *game-info* blackout-time))
-             )
+      ;; add blackout effect
+      (if (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
           (set! (-> *setting-control* default bg-a-force) 1.0)
           (set! (-> *setting-control* default bg-a-force) 0.0)
           )
@@ -765,8 +809,14 @@
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       (swap-display disp)
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      
+      (set! (-> *time-of-day-context* title-updated) #f)
+      (set! *teleport* #f)
+      (when (nonzero? *teleport-count*)
+        (set! *teleport* #t)
+        (set! *teleport-count* (+ *teleport-count* -1))
+        )
 
-      ;; teleport stuff
       ;; perf stats
 
       (process-particles)
@@ -777,7 +827,7 @@
       ;; str play
       (level-update *level*) ;; also updates settings.
       (mc-run)
-      ;; auto save check
+      (auto-save-check)
 
       (#when PC_PORT
         (update *pc-settings*)
