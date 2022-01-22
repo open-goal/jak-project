@@ -1617,6 +1617,9 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     if (as_structure->is_allowed_misalign()) {
       result.append("  :allow-misaligned\n");
     }
+    if (as_structure->is_always_stack_singleton()) {
+      result.append("  :always-stack-singleton\n");
+    }
   }
 
   if (type->heap_base()) {

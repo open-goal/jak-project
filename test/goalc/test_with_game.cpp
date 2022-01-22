@@ -607,7 +607,7 @@ TEST_F(WithGameTests, VFLoadAndStore) {
 
 TEST_F(WithGameTests, VFSimpleMath) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-basic-vector-math.gc",
-                                          {"54.0000\n0\n"});
+                                          {"55.0000\n0\n"});
 }
 
 TEST_F(WithGameTests, VFLoadStatic) {
@@ -898,6 +898,16 @@ TEST_F(WithGameTests, MethodCallForwardDeclared) {
 TEST_F(WithGameTests, PointerInStatic) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-false-in-static-pointer.gc",
                                           {"#f\n0\n"});
+}
+
+TEST_F(WithGameTests, StackSingleton) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton.gc",
+                                          {"#f #f #f #f #t\n0\n"});
+}
+
+TEST_F(WithGameTests, StackSingletonType) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton-type.gc",
+                                          {"#t\n0\n"});
 }
 
 namespace Mips2C {

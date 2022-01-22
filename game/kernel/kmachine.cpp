@@ -857,7 +857,7 @@ void InitMachineScheme() {
     *EnableMethodSet = (*EnableMethodSet) + 1;
     load_and_link_dgo_from_c("game", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                             0x400000);
+                             0x400000, true);
     *EnableMethodSet = (*EnableMethodSet) - 1;
 
     kernel_packages->value =

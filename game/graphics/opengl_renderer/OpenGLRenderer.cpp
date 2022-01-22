@@ -8,6 +8,7 @@
 #include "third-party/imgui/imgui.h"
 #include "common/util/FileUtil.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
+#include "game/graphics/opengl_renderer/Sprite3.h"
 #include "game/graphics/opengl_renderer/tfrag/TFragment.h"
 #include "game/graphics/opengl_renderer/tfrag/Tie3.h"
 
@@ -100,7 +101,11 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
-  init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
+  std::vector<std::unique_ptr<BucketRenderer>> sprite_renderers;
+  sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
+  sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", BucketId::SPRITE));
+
+  init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x8000,
                                        DirectRenderer::Mode::NORMAL);
   init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,

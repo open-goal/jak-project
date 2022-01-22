@@ -1,4 +1,5 @@
 #include "BucketRenderer.h"
+#include "third-party/imgui/imgui.h"
 
 #include "third-party/fmt/core.h"
 
@@ -62,4 +63,32 @@ void SharedRenderState::reset() {
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }
+}
+
+RenderMux::RenderMux(const std::string& name,
+                     BucketId my_id,
+                     std::vector<std::unique_ptr<BucketRenderer>> renderers)
+    : BucketRenderer(name, my_id), m_renderers(std::move(renderers)) {
+  for (auto& r : m_renderers) {
+    m_name_strs.push_back(r->name_and_id());
+    m_name_str_ptrs.push_back(m_name_strs.back().data());
+  }
+}
+
+void RenderMux::render(DmaFollower& dma,
+                       SharedRenderState* render_state,
+                       ScopedProfilerNode& prof) {
+  m_renderers[m_render_idx]->render(dma, render_state, prof);
+}
+
+void RenderMux::serialize(Serializer& ser) {
+  for (auto& r : m_renderers) {
+    r->serialize(ser);
+  }
+}
+
+void RenderMux::draw_debug_window() {
+  ImGui::ListBox("Pick", &m_render_idx, m_name_str_ptrs.data(), m_renderers.size());
+  ImGui::Separator();
+  m_renderers[m_render_idx]->draw_debug_window();
 }

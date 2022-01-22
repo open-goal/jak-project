@@ -278,7 +278,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
     }
 
     glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
     tree.tris_this_frame += draw.num_triangles;
     tree.draws_this_frame++;
     int draw_size = indices.second - indices.first;
@@ -298,7 +298,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
                     -10.f);
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-                    double_draw.aref);
+                    double_draw.aref_second);
         glDepthMask(GL_FALSE);
         glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;

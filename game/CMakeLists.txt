@@ -101,6 +101,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/SkyBlendCPU.cpp
         graphics/opengl_renderer/SkyBlendGPU.cpp
         graphics/opengl_renderer/SkyRenderer.cpp
+        graphics/opengl_renderer/Sprite3.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/tfrag/BufferedRenderer.cpp

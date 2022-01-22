@@ -98,6 +98,22 @@ class BucketRenderer {
   bool m_enabled = true;
 };
 
+class RenderMux : public BucketRenderer {
+ public:
+  RenderMux(const std::string& name,
+            BucketId my_id,
+            std::vector<std::unique_ptr<BucketRenderer>> renderers);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void draw_debug_window() override;
+  void serialize(Serializer& ser) override;
+
+ private:
+  std::vector<std::unique_ptr<BucketRenderer>> m_renderers;
+  int m_render_idx = 0;
+  std::vector<std::string> m_name_strs;
+  std::vector<const char*> m_name_str_ptrs;
+};
+
 /*!
  * Renderer that makes sure the bucket is empty and ignores it.
  */

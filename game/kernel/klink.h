@@ -52,7 +52,7 @@ struct link_control {
   uint32_t work();
   uint32_t work_v3();
   uint32_t work_v2();
-  void finish();
+  void finish(bool jump_from_c_to_goal);
 
   void reset() {
     m_object_data.offset = 0;
@@ -97,7 +97,8 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            const char* name,
                            int32_t size,
                            Ptr<kheapinfo> heap,
-                           uint32_t flags);
+                           uint32_t flags,
+                           bool jump_from_c_to_goal);
 
 uint64_t link_begin(u64* args);
 

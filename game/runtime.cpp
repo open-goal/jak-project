@@ -289,6 +289,12 @@ u32 exec_runtime(int argc, char** argv) {
     }
   }
 
+  // initialize graphics first - the EE code will upload textures during boot and we
+  // want the graphics system to catch them.
+  if (enable_display) {
+    Gfx::Init();
+  }
+
   // step 1: sce library prep
   iop::LIBRARY_INIT();
   ee::LIBRARY_INIT_sceCd();
@@ -317,7 +323,6 @@ u32 exec_runtime(int argc, char** argv) {
   // TODO relegate this to its own function
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
-    Gfx::Init();
     Gfx::Loop([]() { return !MasterExit; });
     Gfx::Exit();
   }
