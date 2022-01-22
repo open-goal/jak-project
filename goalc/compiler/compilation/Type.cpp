@@ -1081,6 +1081,14 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                                  bool use_singleton) {
   auto type_of_object = parse_typespec(unquote(type));
   auto fe = env->function_env();
+  auto st_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type_of_object));
+  if (st_type_info && st_type_info->is_always_stack_singleton()) {
+    use_singleton = true;
+    if (call_constructor) {
+      throw_compiler_error(
+          form, "Stack-singleton types must be created on the stack with stack-no-clear");
+    }
+  }
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
     if (call_constructor) {
       throw_compiler_error(form, "Constructing stack arrays is not yet supported");

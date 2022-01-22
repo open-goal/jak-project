@@ -905,6 +905,11 @@ TEST_F(WithGameTests, StackSingleton) {
                                           {"#f #f #f #f #t\n0\n"});
 }
 
+TEST_F(WithGameTests, StackSingletonType) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton-type.gc",
+                                          {"#t\n0\n"});
+}
+
 namespace Mips2C {
 namespace test_func {
 extern u64 execute(void*);
