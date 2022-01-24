@@ -258,6 +258,8 @@
   "FUCV6"
   "FUCV7"
   "FUCV8"
+  "FUCRV1"
+  "FUCFV1"
   ;; jak's ambient
   "EIA1"
   "EIA2"
@@ -656,7 +658,6 @@
   "jungleb-vis"
   )
 
-
 ;;;;;;;;;;;;;;;;;;;;;
 ;; misty island
 ;;;;;;;;;;;;;;;;;;;;;
@@ -973,7 +974,7 @@
   )
 
 ;; flying-lurker
-(copy-strs "FLLINTRO")
+(copy-strs "FLLINTRO" "PLLBLOWU")
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1032,13 +1033,15 @@
   )
 
 ;; assistant village2
-(copy-strs "AS2INTRO")
+(copy-strs "AS2INTRO" "AS2IROOM" "AS2R1ROO" "AS2IROBB" "AS2R1ROB" "AS2IFLUT" "AS2R1FLU" "AS2RESOL")
+;; sage bluehut
+(copy-strs "SABICDUS" "SABR1CDU" "SABIPARM" "SABR1PAR")
 ;; geologist
-(copy-strs "GEINTROD")
+(copy-strs "GEINTROD" "GERMOLES" "GERMONEY" "GEZMONEY")
 ;; gambler
-(copy-strs "GAI1")
+(copy-strs "GAI1" "GARRACE" "GARMONEY" "GAZRACE" "GAZMONEY")
 ;; warrior
-(copy-strs "WAINTROD")
+(copy-strs "WAINTROD" "WAR1" "WARESOLU")
 ;; oracle
 (copy-strs "ORI2" "ORLE2" "ORRE2" "ORR2")
 
@@ -1074,6 +1077,10 @@
   "rolling-vis"
   )
 
+;; happy-plant
+(copy-strs "HAPOPEN")
+;; race-ring
+(copy-strs "RARANIM" "RARSANIM")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 3
@@ -1202,6 +1209,7 @@
   "maincave-vis"
   )
 
+(copy-strs "MAGFCELL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; dark cave
@@ -1427,6 +1435,8 @@
   "evilsis-ag"
   "intro-vis"
   )
+
+(copy-strs "SAISA")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; demo
