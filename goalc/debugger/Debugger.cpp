@@ -72,7 +72,10 @@ bool Debugger::detach() {
     {
       std::unique_lock<std::mutex> lk(m_watcher_mutex);
       m_attach_return = false;
-      stop_watcher();
+    }
+    stop_watcher();
+    {
+      std::unique_lock<std::mutex> lk(m_watcher_mutex);
       m_attach_cv.wait(lk, [&]() { return m_attach_return; });
     }
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
