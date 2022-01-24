@@ -108,6 +108,27 @@ RegVal* IntegerConstantVal::to_reg(const goos::Object& form, Env* fe) {
   }
 }
 
+RegVal* IntegerConstantVal::to_xmm128(const goos::Object& form, Env* fe) {
+  if (m_value.is_zero()) {
+    // if we are a constant 0, can use XOR
+    auto rv = fe->make_ireg(m_ts, RegClass::INT_128);
+    fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, rv, IR_Int128Math3Asm::Kind::PXOR);
+    return rv;
+  } else {
+    // not zero. fall back to the normal implementation.
+    auto rv = to_reg(form, fe);
+    if (rv->ireg().reg_class == RegClass::INT_128 ||
+        rv->ireg().reg_class == RegClass::VECTOR_FLOAT) {
+      return rv;
+    } else {
+      // but we got only an integer, need to promote. we're a constant, so this is safe.
+      auto re = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::INT_128);
+      fe->emit(form, std::make_unique<IR_RegSet>(re, rv));
+      return re;
+    }
+  }
+}
+
 RegVal* SymbolVal::to_reg(const goos::Object& form, Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
   fe->emit(form, std::make_unique<IR_LoadSymbolPointer>(re, m_name));
@@ -215,6 +236,13 @@ RegVal* MemoryDerefVal::to_fpr(const goos::Object& form, Env* fe) {
 
 RegVal* AliasVal::to_reg(const goos::Object& form, Env* fe) {
   auto as_old_type = base->to_reg(form, fe);
+  auto result = fe->make_ireg(m_ts, as_old_type->ireg().reg_class);
+  fe->emit(form, std::make_unique<IR_RegSet>(result, as_old_type));
+  return result;
+}
+
+RegVal* AliasVal::to_xmm128(const goos::Object& form, Env* fe) {
+  auto as_old_type = base->to_xmm128(form, fe);
   auto result = fe->make_ireg(m_ts, as_old_type->ireg().reg_class);
   fe->emit(form, std::make_unique<IR_RegSet>(result, as_old_type));
   return result;

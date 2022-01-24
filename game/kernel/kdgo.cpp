@@ -307,14 +307,18 @@ void LoadDGOTest() {
 void load_and_link_dgo(u64 name_gstr, u64 heap_info, u64 flag, u64 buffer_size) {
   auto name = Ptr<char>(name_gstr + 4).c();
   auto heap = Ptr<kheapinfo>(heap_info);
-  load_and_link_dgo_from_c(name, heap, flag, buffer_size);
+  load_and_link_dgo_from_c(name, heap, flag, buffer_size, false);
 }
 
 /*!
  * Load and link a DGO file.
  * This does not use the mutli-threaded linker and will block until the entire file is done.e
  */
-void load_and_link_dgo_from_c(const char* name, Ptr<kheapinfo> heap, u32 linkFlag, s32 bufferSize) {
+void load_and_link_dgo_from_c(const char* name,
+                              Ptr<kheapinfo> heap,
+                              u32 linkFlag,
+                              s32 bufferSize,
+                              bool jump_from_c_to_goal) {
   lg::debug("[Load and Link DGO From C] {}", name);
   u32 oldShowStall = sShowStallMsg;
 
@@ -365,8 +369,8 @@ void load_and_link_dgo_from_c(const char* name, Ptr<kheapinfo> heap, u32 linkFla
     char objName[64];
     strcpy(objName, (dgoObj + 4).cast<char>().c());  // name from dgo object header
     lg::debug("[link and exec] {:18s} {} {:6d} heap-use {:8d} {:8d}", objName, lastObjectLoaded,
-              objSize, kheapused(kglobalheap), kheapused(kdebugheap));
-    link_and_exec(obj, objName, objSize, heap, linkFlag);  // link now!
+              objSize, kheapused(kglobalheap), kdebugheap.offset ? kheapused(kdebugheap) : 0);
+    link_and_exec(obj, objName, objSize, heap, linkFlag, jump_from_c_to_goal);  // link now!
 
     // inform IOP we are done
     if (!lastObjectLoaded) {

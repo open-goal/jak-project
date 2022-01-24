@@ -4,11 +4,11 @@
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
-#include "common/util/assert.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/util/assert.h"
 
 ////////////////////////////////
 // Extraction of textures
@@ -159,7 +159,7 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
     // the sizes given aren't the actual sizes in memory, so if you just use that, you get the
     // wrong answer. I solved this in the decompiler by using the size of the actual data, but we
     // don't really have that here.
-    u32 size = ((sizes[0] + sizes[1] + sizes[2] + 255) / 256) * 256;
+    u32 size = ((sizes[0] + sizes[1] + sizes[2] + 2047) / 256) * 256;
 
     m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
                            texture_page.segment[0].dest, size);
@@ -298,7 +298,7 @@ void TexturePool::set_texture(u32 location, std::shared_ptr<TextureRecord> recor
     if (m_textures.at(location).normal_texture) {
       if (record->do_gc && m_textures.at(location).normal_texture != record) {
         m_garbage_textures.push_back(std::move(m_textures[location].normal_texture));
-        fmt::print("replace add to garbage list {}\n", m_garbage_textures.back()->name);
+        // fmt::print("replace add to garbage list {}\n", m_garbage_textures.back()->name);
       }
     }
     m_textures[location].normal_texture = std::move(record);
@@ -393,13 +393,17 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   GLuint tex_id;
   glGenTextures(1, &tex_id);
   tex->gpu_texture = tex_id;
+  GLint old_tex;
+  glGetIntegerv(GL_ACTIVE_TEXTURE, &old_tex);
+  glActiveTexture(GL_TEXTURE0);
+
   glBindTexture(GL_TEXTURE_2D, tex_id);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                tex->data.data());
   glBindTexture(GL_TEXTURE_2D, 0);
 
   // we have to set these, imgui won't do it automatically
-  glActiveTexture(GL_TEXTURE0);
+
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
   glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -412,6 +416,7 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+  glActiveTexture(old_tex);
   tex->on_gpu = true;
 }
 

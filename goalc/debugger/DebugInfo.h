@@ -5,10 +5,10 @@
 #include <optional>
 #include <memory>
 #include <unordered_map>
-#include "common/util/assert.h"
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
+#include "common/util/assert.h"
 
 class FunctionEnv;
 

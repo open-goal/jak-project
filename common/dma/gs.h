@@ -339,7 +339,7 @@ struct AdGifData {
   u64 tex1_addr;
   u64 mip_data;
   u64 mip_addr;
-  u64 clamp_data;
+  u64 clamp_data;  // can also be zbuf!!
   u64 clamp_addr;
   u64 alpha_data;
   u64 alpha_addr;
@@ -366,6 +366,13 @@ class DrawMode {
   bool get_depth_write_enable() const { return m_val & 0b1; }
   void enable_depth_write() { m_val = m_val | 0b1; }
   void disable_depth_write() { m_val = m_val & ~(0b1); }
+  void set_depth_write_enable(bool x) {
+    if (x) {
+      enable_depth_write();
+    } else {
+      disable_depth_write();
+    }
+  }
 
   GsTest::ZTest get_depth_test() const { return (GsTest::ZTest)((m_val >> 1) & 0b11); }
   void set_depth_test(GsTest::ZTest dt) { m_val = (m_val & ~(0b110)) | ((u32)(dt) << 1); }

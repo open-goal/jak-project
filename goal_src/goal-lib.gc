@@ -113,6 +113,21 @@
   `(#cond (,clause ,true) (#t ,false))
   )
 
+(defmacro move-if-not-zero (result value check original)
+  `(if (!= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro set-on-less-than (dest src1 src2)
+  "dest = src1 < src2 ? 1 : 0 -- Compare as Signed Integers"
+  `(if (< (the int ,src1) (the int ,src2))
+       (set! ,dest 1)
+       (set! ,dest 0)
+       )
+   )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TARGET CONTROL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -423,7 +438,7 @@
   `(none)
   )
 
-(defmacro case (switch &rest cases)
+(defmacro case (switch &key (comp =) &rest cases)
   "A switch-case construct. switch is saved onto a local variable and compared against each case, sequentially.
    else can be used like the 'default' case, but it must be the last one."
 
@@ -444,11 +459,11 @@
                             )
                           ;; if the list is made up of a single condition
                           ( (= (length conditions) 1)
-                            `((= sw ,(first conditions)) ,@body)
+                            `((,comp sw ,(first conditions)) ,@body)
                             )
                           ;; otherwise it is made up of multiple conditions, or them together!
                           (#t
-                            `((or ,@(apply (lambda (c) `(= sw ,c)) conditions)) ,@body)
+                            `((or ,@(apply (lambda (c) `(,comp sw ,c)) conditions)) ,@body)
                             )
                           )
 
@@ -459,6 +474,12 @@
                    )
         )
     )
+  )
+
+(defmacro case-str (switch &rest cases)
+  "Same as case, but for string comparisons instead."
+
+  `(case ,switch ,@cases :comp string=)
   )
 
 ;;;;;;;;;;;;;;;;;;;
@@ -570,6 +591,10 @@
 
 (defmacro &deref (t addr &rest fields)
   `(&-> (the-as (pointer ,t) ,addr) ,@fields)
+  )
+
+(defmacro shift-arith-right-32 (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -812,6 +837,25 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; float macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro fabs (x)
+  "Floating point absolute value"
+  ;; in GOAL this was implemented by the compiler.
+  ;; at some point, this could be more optimized.
+  ;; MIPS has an explicit abs.s instruction, but x86-64 doesn't.
+  ;; modern clang on O3 does a comiss/branch and this is probably pretty close.
+  `(if (< (the float ,x) 0)
+       (- (the float ,x))
+       (the float ,x))
+  )
+
+(defmacro sqrtf (x)
+  `(sqrtf-no-fabs (fabs ,x))
+  )
 
 ;; load the default project
 (load-project "goal_src/game.gp")

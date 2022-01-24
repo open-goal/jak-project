@@ -1,8 +1,8 @@
 #include <cstring>
 #include <algorithm>
-#include "common/util/assert.h"
 #include "DataObjectGenerator.h"
 #include "common/link_types.h"
+#include "common/util/assert.h"
 
 namespace {
 template <typename T>

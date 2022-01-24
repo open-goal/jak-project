@@ -9,7 +9,6 @@
 (define-extern *edit-instance* string)
 
 ;; Necessary forward declarations
-(define-extern cam-robotboss (state camera-slave))
 
 ;; DECOMP BEGINS
 
@@ -553,10 +552,8 @@
         )
       )
     )
-  (let ((v0-3 (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
-    (set! (-> *shader-pick-menu* items) (the-as pair v0-3))
-    v0-3
-    )
+  (set! (-> *shader-pick-menu* items) (the-as pair (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
+  (none)
   )
 
 (defun dm-instance-pick-func ((arg0 string) (arg1 debug-menu-msg))
@@ -608,7 +605,7 @@
                    (dotimes (s2-0 (-> s3-0 length))
                      (let ((a1-4
                              (new
-                               'global
+                               'debug ;; was global
                                'debug-menu-item-flag
                                (the-as string (-> s3-0 data s2-0 name))
                                (-> s3-0 data s2-0 name)
@@ -3973,7 +3970,7 @@
 
 (#when PC_PORT
 
-(defmacro new-dm-function (text var func)
+(defmacro new-dm-func (text var func)
   `(new 'debug 'debug-menu-item-function ,text ,var (the-as (function int object) ,func))
   )
 (defmacro new-dm-flag (text var func)
@@ -4060,7 +4057,7 @@
       (let ((iter *level-load-list*))
           (while (not (or (null? iter) (null? (cdr iter)) (null? (cddr iter))))
             (debug-menu-append-item teleport-menu
-                (new-dm-function (symbol->string (the-as symbol (car iter)))
+                (new-dm-func (symbol->string (the-as symbol (car iter)))
                                  (-> (the-as symbol (car iter)) value)
                                  (lambda ((info level-load-info))
                                   (let ((tf (new 'stack 'transformq)))
@@ -4102,6 +4099,47 @@
       (debug-menu-append-item load-menu (debug-menu-make-load-teleport-menu ctx)) ;; Camera teleport
 
       (new-dm-submenu "Load" load-menu)
+      )
+  )
+
+(define *part-pick-menu* (the-as debug-menu #f))
+(define *spawn-part-test* #t)
+
+(defun dm-part-pick-func ((id int) (msg debug-menu-msg))
+  (if (zero? (-> *part-group-id-table* id))
+    (return 'invalid))
+  (when (= msg (debug-menu-msg press))
+    (set! *part-tester-id* id)
+    (if *spawn-part-test*
+        (start-part)
+        )
+    )
+  (= *part-tester-id* id)
+  )
+
+(defun build-particles-list ()
+  (debug-menu-remove-all-items *part-pick-menu*)
+  (dotimes (i (-> *part-group-id-table* length))
+    (let ((part (-> *part-group-id-table* i)))
+      (when (and (nonzero? part))
+        (debug-menu-append-item *part-pick-menu* (new-dm-flag (-> part name) i dm-part-pick-func))
+        )
+      )
+    )
+  (set! (-> *part-pick-menu* items) (the-as pair (sort (-> *part-pick-menu* items) debug-menu-node<?)))
+  (none)
+  )
+
+(defun debug-menu-make-part-menu ((ctx debug-menu-context))
+  (let ((part-menu (new 'debug 'debug-menu ctx "Particles menu")))
+      (let ((pick-menu (new 'debug 'debug-menu ctx "Particle group pick menu")))
+        (set! *part-pick-menu* pick-menu)
+        (debug-menu-append-item part-menu (new-dm-submenu "Pick Particle group" pick-menu))
+        )
+      (debug-menu-append-item part-menu (new-dm-func "Refresh" #f build-particles-list))
+      (debug-menu-append-item part-menu (new-dm-bool "Spawn part tester" *spawn-part-test* dm-boolean-toggle-pick-func))
+
+      (new-dm-submenu "Particles" part-menu)
       )
   )
 
@@ -4158,9 +4196,24 @@
     )
   )
 
+(defun dm-display-entities-pick-func ((arg0 symbol))
+  (debug-print-entities *level* arg0 (the-as type #f))
+  )
+
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
-  ;; Entity menu TODO
+  (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
+  
+  (debug-menu-append-item (-> *debug-menu-context* root-menu)
+    (debug-menu-make-from-template *debug-menu-context*
+      '(menu "Entity"
+         (function "Print entity info" #t dm-display-entities-pick-func)
+         (function "Print entity info (art-group)" art-group dm-display-entities-pick-func)
+         (function "Print entity info (entity-meters)" entity-meters dm-display-entities-pick-func)
+         (function "Print entity info (entity-perm)" entity-perm dm-display-entities-pick-func)
+         )
+      )
+    )
   ;; Music menu TODO
   ;; Secrets menu TODO
   ;; Scene menu TODO
@@ -4168,8 +4221,8 @@
   (debug-menu-append-item (-> *debug-menu-context* root-menu)
     (debug-menu-make-from-template *debug-menu-context*
       '(menu "PC Settings"
-         (flag "Debug" #f (dm-lambda-boolean-flag (-> *pc-settings* debug?)))
-         (flag "Use native vis" #f (dm-lambda-boolean-flag (-> *pc-settings* use-vis?)))
+         (flag "Debug" #f ,(dm-lambda-boolean-flag (-> *pc-settings* debug?)))
+         (flag "Use native vis" #f ,(dm-lambda-boolean-flag (-> *pc-settings* use-vis?)))
          (function "Toggle game aspect" #f (lambda ()
                                               (cond
                                                 ((= (-> *setting-control* default aspect-ratio) 'aspect4x3)
@@ -4182,7 +4235,7 @@
                                                  )
                                                 )
                                               ))
-         (flag "Auto aspect" #f (dm-lambda-boolean-flag (-> *pc-settings* aspect-ratio-auto?)))
+         (flag "Auto aspect" #f ,(dm-lambda-boolean-flag (-> *pc-settings* aspect-ratio-auto?)))
          (menu "Aspect test"
             (function "4 x 3" #f (lambda () (set-aspect! *pc-settings* 4 3)))
             (function "16 x 9" #f (lambda () (set-aspect! *pc-settings* 16 9)))
@@ -4192,8 +4245,8 @@
             (function "37 x 20" #f (lambda () (set-aspect! *pc-settings* 37 20)))
             (function "21 x 9" #f (lambda () (set-aspect! *pc-settings* 21 9)))
             (function "64 x 18" #f (lambda () (set-aspect! *pc-settings* 64 18)))
-            (int-var "Custom aspect X" #f (dm-lambda-int-var (-> *pc-settings* aspect-custom-x)) 20 1 #t 1 1000)
-            (int-var "Custom aspect Y" #f (dm-lambda-int-var (-> *pc-settings* aspect-custom-y)) 20 1 #t 1 1000)
+            (int-var "Custom aspect X" #f ,(dm-lambda-int-var (-> *pc-settings* aspect-custom-x)) 20 1 #t 1 1000)
+            (int-var "Custom aspect Y" #f ,(dm-lambda-int-var (-> *pc-settings* aspect-custom-y)) 20 1 #t 1 1000)
             (function "Custom" #f (lambda () (set-aspect! *pc-settings* (-> *pc-settings* aspect-custom-x) (-> *pc-settings* aspect-custom-y))))
             )
          (menu "Fullscreen"
@@ -4217,54 +4270,107 @@
             (function "2560 x 1440" #f (lambda () (set-size! *pc-settings* 2560 1440)))
             (function "2880 x 2160" #f (lambda () (set-size! *pc-settings* 2880 2160)))
             (function "3840 x 2160" #f (lambda () (set-size! *pc-settings* 3840 2160)))
+            (function "512 x 448" #f (lambda () (set-size! *pc-settings* 512 448)))
+            (function "512 x 512" #f (lambda () (set-size! *pc-settings* 512 512)))
             )
-         (flag "Letterbox" #f (dm-lambda-boolean-flag (-> *pc-settings* letterbox?)))
-         (flag "Skip movies" #f (dm-lambda-boolean-flag (-> *pc-settings* skip-movies?)))
-         (flag "Subtitles" #f (dm-lambda-boolean-flag (-> *pc-settings* subtitles?)))
-         (flag "Hinttitles" #f (dm-lambda-boolean-flag (-> *pc-settings* hinttitles?)))
+         (flag "Letterbox" #f ,(dm-lambda-boolean-flag (-> *pc-settings* letterbox?)))
+         (flag "Skip movies" #f ,(dm-lambda-boolean-flag (-> *pc-settings* skip-movies?)))
+         (flag "Subtitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* subtitles?)))
+         (flag "Hinttitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* hinttitles?)))
          (menu "Game fixes"
-            (flag "sagecage crash" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes crash-sagecage)))
-            (flag "memory crash" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes crash-dma)))
-            (flag "light eco crash" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes crash-light-eco)))
-            (flag "softlock pelican" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pelican)))
-            (flag "softlock pipegame" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pipegame)))
-            (flag "softlock gambler" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-gambler)))
-            (flag "fix movies" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes fix-movies)))
-            (flag "fix credits" #f (dm-lambda-boolean-flag (-> *pc-settings* fixes fix-credits)))
+            (flag "sagecage crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-sagecage)))
+            (flag "memory crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-dma)))
+            (flag "light eco crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-light-eco)))
+            (flag "softlock pelican" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pelican)))
+            (flag "softlock pipegame" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pipegame)))
+            (flag "softlock gambler" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-gambler)))
+            (flag "fix movies" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes fix-movies)))
+            (flag "fix credits" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes fix-credits)))
             )
          (menu "PS2 settings"
-            (flag "PS2 Load speed" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-read-speed?)))
-            (flag "PS2 Particles" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-parts?)))
-            (flag "PS2 Music" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-music?)))
-            (flag "PS2 Sound effects" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-se?)))
-            (flag "PS2 Hints" #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-hints?)))
+            (flag "PS2 Load speed" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-read-speed?)))
+            (flag "PS2 Particles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-parts?)))
+            (flag "PS2 Music" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-music?)))
+            (flag "PS2 Sound effects" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-se?)))
+            (flag "PS2 Hints" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-hints?)))
             )
          (menu "Level of detail"
-               (flag "PS2 LOD      " #f (dm-lambda-boolean-flag (-> *pc-settings* ps2-lod-dist?)))
+               (flag "PS2 LOD      " #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-lod-dist?)))
             (int-var "LOD Tfrag" 0 dm-lod-int 0 1 #t 0 3)
             (int-var "LOD Tie" 1 dm-lod-int 0 1 #t 0 3)
             (int-var "LOD Ocean" 2 dm-lod-int 0 1 #t 0 3)
             (int-var "LOD Actor" 3 dm-lod-int 0 1 #t 0 3)
             )
-         ;(flag "Alt load boundaries" #f (dm-lambda-boolean-flag (-> *pc-settings* new-lb?)))
-         (flag "Display actor bank" #f (dm-lambda-boolean-flag (-> *pc-settings* display-actor-bank)))
-         (flag "Pad display" #f (dm-lambda-boolean-flag (-> *pc-settings* debug-pad-display)))
+         ;(flag "Alt load boundaries" #f ,(dm-lambda-boolean-flag (-> *pc-settings* new-lb?)))
+         (flag "Display actor bank" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-actor-bank)))
+         (flag "Pad display" #f ,(dm-lambda-boolean-flag (-> *pc-settings* debug-pad-display)))
          (function "Reset" #f (lambda () (reset *pc-settings*)))
          (function "Save" #f (lambda () (write-to-file *pc-settings* PC_SETTINGS_FILE_NAME)))
          (function "Load" #f (lambda () (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)))
          )
       )
     )
-  (debug-menu-append-item (-> *debug-menu-context* root-menu)
-    (debug-menu-make-from-template *debug-menu-context*
-      '(menu "Other"
-         (flag "DECI Count" *display-deci-count* dm-boolean-toggle-pick-func)
-         (flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
-         (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
-         (float-var "Actor birth dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
-         (float-var "Actor pause dist" #f (dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
+  (let* ((prog-menu (new 'debug 'debug-menu *debug-menu-context* "Progress menu"))
+         (prog-menu-node (new-dm-submenu "Progress" prog-menu))
+         (other-menu-node
+            (debug-menu-make-from-template *debug-menu-context*
+              '(menu "Other"
+                 (flag "DECI Count" *display-deci-count* dm-boolean-toggle-pick-func)
+                 (flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
+                 (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
+                 (float-var "Actor birth dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
+                 (float-var "Actor pause dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
+                 (flag "Force progress" #f ,(dm-lambda-boolean-flag (-> *pc-settings* progress-force?)))
+                 )
+              ))
+         (other-menu (-> (the-as debug-menu-item-submenu other-menu-node) submenu))
          )
+    (dotimes (i 35)
+      (debug-menu-append-item prog-menu
+          (new-dm-func (new 'debug 'string 0 (enum->string progress-screen i)) i
+                        (lambda ((val progress-screen))
+                          (cond
+                            ((-> *pc-settings* progress-force?)
+                               (cond
+                                ((not *progress-process*)
+                                  (make-levels-with-tasks-available-to-progress)
+                                  (disable-level-text-file-loading)
+                                  (set! (-> *progress-state* starting-state) val)
+                                  (set! *progress-process* (make-init-process progress progress-init-by-other
+                                                                              :to *dproc*
+                                                                              :stack *progress-stack-top*))
+                                  (let ((s5-1 *progress-process*))
+                                   (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
+                                   (set! *master-mode* 'progress)
+                                   (set! (-> s5-1 0 display-level-index) 0) ;; geyser rock
+                                   (set! (-> s5-1 0 next-level-index) (-> s5-1 0 display-level-index))
+                                   (set! (-> s5-1 0 display-state) (progress-screen invalid))
+                                   (set-transition-progress! (-> s5-1 0) 512)
+                                   (set! (-> s5-1 0 task-index) (get-next-task-up -1 (-> s5-1 0 display-level-index)))
+                                   )
+                                 (when *progress-process*
+                                  (enter! (-> *progress-process* 0) val 0)
+                                  (set! (-> *progress-process* 0 card-info) #f)
+                                  )
+                                 )
+                                (else
+                                 (push! (-> *progress-process* 0))
+                                 (set! (-> *progress-process* 0 next-display-state) val)
+                                 (set! (-> *progress-process* 0 card-info) #f)
+                                 )
+                                )
+                              )
+                            (else
+                              (activate-progress *dproc* val)
+                              )
+                            )
+                          (set-master-mode 'progress)
+                          )
+                        ))
       )
+    (debug-menu-append-item other-menu prog-menu-node)
+
+    (debug-menu-append-item (-> *debug-menu-context* root-menu) other-menu-node)
     )
   )
 

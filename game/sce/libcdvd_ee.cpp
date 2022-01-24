@@ -3,8 +3,8 @@
  * Stub implementation of the EE CD/DVD library
  */
 
-#include "common/util/assert.h"
 #include "libcdvd_ee.h"
+#include "common/util/assert.h"
 
 namespace ee {
 

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <string>
-#include "common/util/assert.h"
 #include "common/common_types.h"
 #include "common/util/BitUtils.h"
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 struct U128 {
   U128() = default;
@@ -79,6 +79,17 @@ class ConstantValue {
       assert(false);
     }
     return false;
+  }
+
+  /*!
+   * Is the value 0?
+   */
+  bool is_zero() const {
+    if (m_size) {
+      return value_64() == 0;
+    } else {
+      return (value_128_lo() == 0) && (value_128_hi() == 0);
+    }
   }
 
  protected:

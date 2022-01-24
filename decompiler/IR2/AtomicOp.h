@@ -2,13 +2,13 @@
 
 #include <string>
 #include <optional>
-#include "common/util/assert.h"
 #include <utility>
 #include "common/goos/Object.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 class FormElement;
@@ -235,7 +235,9 @@ class SimpleExpression {
     VECTOR_CROSS,
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
-    VECTOR_4_DOT
+    VECTOR_4_DOT,
+    SET_ON_LESS_THAN,
+    SET_ON_LESS_THAN_IMM
   };
 
   // how many arguments?

@@ -437,7 +437,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         return TP_Type::make_from_ts(TypeSpec("int"));
       }
 
-      if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
+      if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type) &&
+          env.func->name() != "overrides-parent-method?") {
         // dynamic access into the method array with shift, add, offset-load
         // no need to track the type because we don't know the method index anyway.
         return TP_Type::make_partial_dyanmic_vtable_access();
@@ -621,12 +622,12 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
-  if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&
+  if ((m_kind == Kind::ADD || m_kind == Kind::SUB) && tc(dts, TypeSpec("structure"), arg0_type) &&
       arg1_type.is_integer_constant()) {
     auto type_info = dts.ts.lookup_type(arg0_type.typespec());
 
-    // get next in memory, allow this as &+
-    if ((u64)type_info->get_size_in_memory() == arg1_type.get_integer_constant()) {
+    // get next in memory, allow this as &+/&-
+    if ((s64)type_info->get_size_in_memory() == std::abs((s64)arg1_type.get_integer_constant())) {
       return TP_Type::make_from_ts(arg0_type.typespec());
     }
 
@@ -827,7 +828,8 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   }
 
   // sllv out, in, r0
-  if (m_instr.kind == InstructionKind::SLLV && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+  if (m_instr.kind == InstructionKind::SLLV &&
+      instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
     auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     if (as_bitfield) {

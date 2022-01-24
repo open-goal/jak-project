@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cassert>
 #include <cstdint>
 #include <iterator>
 #include <new>
 #include <type_traits>
 #include <utility>
+#include "assert.h"
 
 namespace cu {
 // This might seem stupid, but compiling an empty file with #include <algorithm> takes 0.5 seconds.

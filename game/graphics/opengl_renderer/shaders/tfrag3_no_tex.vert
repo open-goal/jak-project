@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec4 rgba_in;
@@ -44,6 +44,8 @@ void main() {
     transformed.xyz *= transformed.w;
 
     gl_Position = transformed;
+    // scissoring area adjust
+    gl_Position.y *= 512.0/448.0;
 
     // time of day lookup
     fragment_color = rgba_in;

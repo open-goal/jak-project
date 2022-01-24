@@ -2,7 +2,6 @@
 
 #include <string>
 #include <optional>
-#include "common/util/assert.h"
 #include <utility>
 #include <map>
 #include "common/goos/Object.h"
@@ -11,6 +10,7 @@
 #include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
 #include "AtomicOp.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 
@@ -23,6 +23,7 @@ struct OpenGOALAsm {
     OFFSET,
     SWAP_FIRST_TWO_SOURCE_ARGS,
     ACC_THIRD_SRC_ARG,
+    QWORD_CAST,
     SKIP_IT
   };
 
@@ -42,7 +43,7 @@ struct OpenGOALAsm {
   bool valid = true;
   bool todo = false;
   bool skip = false;
-  Instruction instr;
+  Instruction m_instr;
   std::optional<RegisterAccess> m_dst;
   std::vector<std::optional<RegisterAccess>> m_src;
   OpenGOALAsm::Function func;

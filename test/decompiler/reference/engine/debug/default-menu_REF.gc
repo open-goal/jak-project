@@ -533,13 +533,12 @@
 
 ;; definition for function dm-shader-pick-func
 (defun dm-shader-pick-func ((arg0 texture-id) (arg1 debug-menu-msg))
-  (if (and
-          (= arg1 (debug-menu-msg press))
-          *texture-page-dir*
-          (-> *texture-page-dir* entries (-> arg0 page) page)
-          (-> *texture-page-dir* entries (-> arg0 page) link)
-          (nonzero? (-> *texture-page-dir* entries (-> arg0 page) link next (-> arg0 index)))
-          )
+  (if (and (= arg1 (debug-menu-msg press))
+           *texture-page-dir*
+           (-> *texture-page-dir* entries (-> arg0 page) page)
+           (-> *texture-page-dir* entries (-> arg0 page) link)
+           (nonzero? (-> *texture-page-dir* entries (-> arg0 page) link next (-> arg0 index)))
+           )
       (set! *edit-shader* arg0)
       )
   (and (nonzero? *edit-shader*) (= arg0 *edit-shader*))
@@ -549,6 +548,7 @@
 (define *shader-pick-menu* (the-as debug-menu #f))
 
 ;; definition for function build-shader-list
+;; INFO: Return type mismatch object vs none.
 (defun build-shader-list ()
   (debug-menu-remove-all-items *shader-pick-menu*)
   (when *texture-page-dir*
@@ -576,10 +576,8 @@
         )
       )
     )
-  (let ((v0-3 (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
-    (set! (-> *shader-pick-menu* items) (the-as pair v0-3))
-    v0-3
-    )
+  (set! (-> *shader-pick-menu* items) (the-as pair (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
+  (none)
   )
 
 ;; definition for function dm-instance-pick-func

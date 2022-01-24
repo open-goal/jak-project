@@ -12,7 +12,6 @@
  */
 
 #include <memory>
-#include "common/util/assert.h"
 #include <utility>
 #include <unordered_map>
 #include <optional>
@@ -21,6 +20,8 @@
 #include "common/goos/TextDB.h"
 
 #include "ReplUtils.h"
+
+#include "common/util/assert.h"
 
 namespace goos {
 
@@ -71,7 +72,9 @@ struct Token {
 class Reader {
  public:
   Reader();
-  Object read_from_string(const std::string& str, bool add_top_level = true);
+  Object read_from_string(const std::string& str,
+                          bool add_top_level = true,
+                          const std::optional<std::string>& string_name = {});
   std::optional<Object> read_from_stdin(const std::string& prompt, ReplWrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path, bool check_encoding = false);
   bool check_string_is_valid(const std::string& str) const;

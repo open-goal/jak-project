@@ -3,13 +3,11 @@
 
 ;; definition for method 25 of type pov-camera
 (defmethod TODO-RENAME-25 pov-camera ((obj pov-camera))
-  (when (or
-          (and
-            (>= (- (-> *display* base-frame-counter) (the-as int (-> obj debounce-start-time))) 60)
-            (cpad-pressed? 0 triangle)
+  (when (or (and (>= (- (-> *display* base-frame-counter) (the-as int (-> obj debounce-start-time))) 60)
+                 (cpad-pressed? 0 triangle)
+                 )
+            (logtest? (-> obj flags) 2)
             )
-          (logtest? (-> obj flags) 2)
-          )
     (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
     (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
     (when (logtest? (-> obj flags) 1)
@@ -33,7 +31,10 @@
 (defstate pov-camera-startup (pov-camera)
   :virtual #t
   :code
-  (behavior () (go-virtual pov-camera-start-playing) (none))
+  (behavior ()
+    (go-virtual pov-camera-start-playing)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -82,15 +83,15 @@
       )
     (until (ja-done? 0)
       (let ((v1-4 (and (not s4-0) (< (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                               (-> self skel root-channel 0 frame-group)
-                                                               )
-                                                         data
-                                                         0
-                                                         length
-                                                         )
-                                                    -4
-                                                    )
-                                           )
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       data
+                                                       0
+                                                       length
+                                                       )
+                                                   -4
+                                                   )
+                                          )
                                      (ja-frame-num 0)
                                      )
                        )
@@ -158,12 +159,12 @@
                                          )
                )
          (set! (-> a0-4 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                    data
-                                                    0
-                                                    length
-                                                    )
+                                                       (-> self skel root-channel 0 frame-group)
+                                                       )
+                                                   data
+                                                   0
+                                                   length
+                                                   )
                                                -1
                                                )
                                       )
@@ -214,9 +215,18 @@
 (defstate pov-camera-abort (pov-camera)
   :virtual #t
   :enter
-  (behavior () (logior! (-> self flags) 2) (none))
+  (behavior ()
+    (logior! (-> self flags) 2)
+    (none)
+    )
   :code
-  (behavior () (set-blackout-frames 10) (suspend) (suspend) (go-virtual pov-camera-done-playing) (none))
+  (behavior ()
+    (set-blackout-frames 10)
+    (suspend)
+    (suspend)
+    (go-virtual pov-camera-done-playing)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:

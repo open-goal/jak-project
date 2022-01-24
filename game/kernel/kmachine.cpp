@@ -7,7 +7,6 @@
 
 #include <string>
 #include <cstring>
-#include "common/util/assert.h"
 #include "kmachine.h"
 #include "kboot.h"
 #include "kprint.h"
@@ -38,6 +37,7 @@
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
 #include "game/sce/libscf.h"
+#include "common/util/assert.h"
 using namespace ee;
 
 /*!
@@ -857,7 +857,7 @@ void InitMachineScheme() {
     *EnableMethodSet = (*EnableMethodSet) + 1;
     load_and_link_dgo_from_c("game", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                             0x400000);
+                             0x400000, true);
     *EnableMethodSet = (*EnableMethodSet) - 1;
 
     kernel_packages->value =

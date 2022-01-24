@@ -215,9 +215,9 @@
       )
     (add-connection
       (-> (if (-> self entity)
-                (-> self entity extra level)
-                (-> *level* level-default)
-                )
+              (-> self entity extra level)
+              (-> *level* level-default)
+              )
           foreground-draw-engine
           (-> self draw sink-group merc-sink foreground-texture-page)
           )
@@ -493,9 +493,9 @@
         (set! (-> v1-26 color-mult quad) (-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
         (set! (-> v1-26 color-emissive quad) (-> (new 'static 'vector) quad))
         (set! (-> v1-26 level-index) (the-as uint (-> (if (-> obj entity)
-                                                            (-> obj entity extra level)
-                                                            (-> *level* level-default)
-                                                            )
+                                                          (-> obj entity extra level)
+                                                          (-> *level* level-default)
+                                                          )
                                                       index
                                                       )
                                              )
@@ -574,15 +574,15 @@
            )
           (else
             (set! (-> s3-0 skeleton bones 0 transform vector 3 quad) (-> (the-as vector (get-property-struct
-                                                                                            (-> sv-16 extra)
-                                                                                            'trans-offset
-                                                                                            'interp
-                                                                                            -1000000000.0
-                                                                                            *null-vector*
-                                                                                            (the-as (pointer res-tag) #f)
-                                                                                            *res-static-buf*
-                                                                                            )
-                                                                                   )
+                                                                                          (-> sv-16 extra)
+                                                                                          'trans-offset
+                                                                                          'interp
+                                                                                          -1000000000.0
+                                                                                          *null-vector*
+                                                                                          (the-as (pointer res-tag) #f)
+                                                                                          *res-static-buf*
+                                                                                          )
+                                                                                 )
                                                                          quad
                                                                          )
                   )
@@ -715,10 +715,10 @@
 (defbehavior ja-aframe process-drawable ((arg0 float) (arg1 int))
   (let ((v1-3 (-> self skel root-channel arg1 frame-group)))
     (/ (- arg0 (if (and v1-3 (nonzero? v1-3))
-                    (-> v1-3 artist-base)
-                    0.0
-                    )
-           )
+                   (-> v1-3 artist-base)
+                   0.0
+                   )
+          )
        (if v1-3
            (-> v1-3 artist-step)
            1.0
@@ -763,21 +763,20 @@
 ;; definition for function ja-channel-push!
 (defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 int))
   (cond
-    ((or
-       (zero? (-> self skel active-channels))
-       (zero? arg1)
-       (when (>= (+ (-> self skel active-channels) arg0) (-> self skel allocated-length))
-         (format
-           0
-           "WARNING: ~A could not do (ja-channel-push ~D) because it has ~D/~D channels.~%"
-           self
-           arg0
-           (-> self skel active-channels)
-           (-> self skel allocated-length)
+    ((or (zero? (-> self skel active-channels))
+         (zero? arg1)
+         (when (>= (+ (-> self skel active-channels) arg0) (-> self skel allocated-length))
+           (format
+             0
+             "WARNING: ~A could not do (ja-channel-push ~D) because it has ~D/~D channels.~%"
+             self
+             arg0
+             (-> self skel active-channels)
+             (-> self skel allocated-length)
+             )
+           #t
            )
-         #t
          )
-       )
      (ja-channel-set! arg0)
      )
     (else
@@ -868,8 +867,8 @@
 ;; definition for function ja-group-size
 (defbehavior ja-group-size process-drawable ()
   (if (< (the-as int (-> self skel root-channel))
-           (the-as int (-> self skel channel (-> self skel active-channels)))
-           )
+         (the-as int (-> self skel channel (-> self skel active-channels)))
+         )
       (-> self skel root-channel 0 group-size)
       0
       )
@@ -922,7 +921,73 @@
   )
 
 ;; definition for method 19 of type process-drawable
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
+;; WARN: Unsupported inline assembly instruction kind - [jr ra]
+(defmethod dummy-19 process-drawable ((obj process-drawable))
+  (local-vars (s7-0 none) (ra-0 int))
+  (let ((gp-0 (-> obj skel)))
+    (label cfg-1)
+    (let ((s4-0 (-> gp-0 active-channels)))
+      (b! (logtest? (-> obj draw status) (draw-status drwf01)) cfg-27 :delay (empty-form))
+      (let ((s3-0 0))
+        (b! #t cfg-13 :delay (nop!))
+        (label cfg-3)
+        (let ((s2-0 (-> gp-0 channel s3-0)))
+          (let ((v1-7 (-> s2-0 command)))
+            (b! (!= v1-7 'stack) cfg-6 :delay (nop!))
+            (joint-control-channel-eval s2-0)
+            (b! (!= s4-0 (-> gp-0 active-channels)) cfg-1 :delay (nop!))
+            (b! #t cfg-12 :delay (nop!))
+            (label cfg-6)
+            (b! (!= v1-7 'stack1) cfg-9 :delay (nop!))
+            )
+          (joint-control-channel-eval s2-0)
+          (b! (!= s4-0 (-> gp-0 active-channels)) cfg-1 :delay (nop!))
+          (set! (-> gp-0 channel (+ s3-0 -1) frame-interp) (-> s2-0 frame-interp))
+          (b! #t cfg-12 :delay (nop!))
+          (label cfg-9)
+          (let ((s1-0 (-> s2-0 frame-group)))
+            (let ((v1-16 art-joint-anim))
+              (b! (= (-> s1-0 type) v1-16) cfg-11 :delay (empty-form))
+              )
+            (go process-drawable-art-error "joint-anim")
+            (.lw ra-0 return-from-thread s7-0)
+            (.jr ra-0)
+            (nop!)
+            0
+            (label cfg-11)
+            (set! (-> s2-0 frame-num) (fmax 0.0 (fmin (-> s2-0 frame-num) (the float (+ (-> s1-0 data 0 length) -1)))))
+            )
+          )
+        (label cfg-12)
+        (+! s3-0 1)
+        (label cfg-13)
+        (b! (< s3-0 s4-0) cfg-3)
+        )
+      (dotimes (v1-26 s4-0)
+        (set! (-> gp-0 channel v1-26 frame-interp) (fmax 0.0 (fmin 1.0 (-> gp-0 channel v1-26 frame-interp))))
+        )
+      (if (or (zero? s4-0) (not (-> gp-0 root-channel 0 frame-group)))
+          (logior! (-> obj draw status) (draw-status drwf02))
+          )
+      )
+    (if (logtest? (-> obj skel status) 72)
+        (merc-blend-shape obj)
+        )
+    (if (logtest? (-> obj skel status) 384)
+        (merc-eye-anim obj)
+        )
+    (label cfg-27)
+    (let ((a0-17 (-> gp-0 effect)))
+      (if a0-17
+          (TODO-RENAME-9 a0-17)
+          )
+      )
+    )
+  0
+  (none)
+  )
 
 ;; definition for function ja-post
 ;; INFO: Return type mismatch int vs none.
@@ -936,7 +1001,7 @@
         (when (or (logtest? (-> self skel status) 1) gp-1)
           (dummy-17 self)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
-              (dummy-47 (the-as collide-shape (-> self root)))
+              (update-transforms! (the-as collide-shape (-> self root)))
               )
           (return #f)
           )
@@ -997,13 +1062,13 @@
 ;; definition for function transform-post
 (defbehavior transform-post process-drawable ()
   (ja-post)
-  (dummy-47 (the-as collide-shape (-> self root)))
+  (update-transforms! (the-as collide-shape (-> self root)))
   0
   )
 
 ;; definition for function rider-trans
 (defbehavior rider-trans process-drawable ()
-  (dummy-35 (the-as collide-shape (-> self root)))
+  (detect-riders! (the-as collide-shape (-> self root)))
   0
   )
 
@@ -1011,9 +1076,9 @@
 (defbehavior rider-post process-drawable ()
   (ja-post)
   (let ((gp-0 (the-as collide-shape (-> self root))))
-    (dummy-47 gp-0)
-    (dummy-44 gp-0)
-    (dummy-45 gp-0)
+    (update-transforms! gp-0)
+    (pull-riders! gp-0)
+    (do-push-aways! gp-0)
     )
   0
   )
@@ -1022,29 +1087,27 @@
 (defbehavior pusher-post process-drawable ()
   (ja-post)
   (let ((gp-0 (the-as collide-shape (-> self root))))
-    (dummy-47 gp-0)
-    (dummy-45 gp-0)
+    (update-transforms! gp-0)
+    (do-push-aways! gp-0)
     )
   0
   )
 
 ;; definition for function process-drawable-delay-player
 (defbehavior process-drawable-delay-player process-drawable ((arg0 int))
-  (while (and
-           *target*
-           (logtest? (-> *target* control unknown-surface00 flags) 2048)
-           (zero? (logand (-> *target* control status) 1))
-           )
+  (while (and *target*
+              (logtest? (-> *target* control unknown-surface00 flags) 2048)
+              (zero? (logand (-> *target* control status) 1))
+              )
     (suspend)
     )
   (set! (-> self state-time) (-> *display* base-frame-counter))
   (process-grab? *target*)
-  (while (or
-           (-> *setting-control* current talking)
-           (-> *setting-control* current spooling)
-           (-> *setting-control* current hint)
-           (-> *setting-control* current ambient)
-           )
+  (while (or (-> *setting-control* current talking)
+             (-> *setting-control* current spooling)
+             (-> *setting-control* current hint)
+             (-> *setting-control* current ambient)
+             )
     (suspend)
     )
   (while (< (- (-> *display* base-frame-counter) (-> self state-time)) arg0)
@@ -1153,10 +1216,9 @@
               (set! s5-0 (cond
                            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
                             (when (not
-                                    (and
-                                      (>= (the int (-> s2-0 frame-num)) 0)
-                                      (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
-                                      )
+                                    (and (>= (the int (-> s2-0 frame-num)) 0)
+                                         (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
+                                         )
                                     )
                               (format
                                 *valid-con*

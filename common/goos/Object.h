@@ -41,7 +41,6 @@
  */
 
 #include <string>
-#include "common/util/assert.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,6 +49,7 @@
 #include <stdexcept>
 #include <map>
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 namespace goos {
 

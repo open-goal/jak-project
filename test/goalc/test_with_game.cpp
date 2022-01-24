@@ -10,7 +10,7 @@
 #include "inja.hpp"
 #include "third-party/json.hpp"
 #include "common/util/FileUtil.h"
-#include <test/goalc/framework/test_runner.h>
+#include "test/goalc/framework/test_runner.h"
 #include "third-party/fmt/core.h"
 
 #include <iostream>
@@ -29,6 +29,8 @@ class WithGameTests : public ::testing::Test {
     try {
       shared_compiler->compiler.run_test_no_load(
           "test/goalc/source_templates/with_game/test-build-game.gc");
+      shared_compiler->compiler.run_front_end_on_string(
+          "(asm-data-file game-text \"test/test_data/test_game_text.txt\")");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);
@@ -361,8 +363,6 @@ TEST_F(WithGameTests, DebuggerDisassemble) {
 }
 
 TEST_F(WithGameTests, GameText) {
-  shared_compiler->compiler.run_test_from_string(
-      "(asm-data-file game-text \"test/test_data/test_game_text.txt\")");
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-text.gc",
                                           get_test_pass_string("game-text", 5));
 }
@@ -607,7 +607,7 @@ TEST_F(WithGameTests, VFLoadAndStore) {
 
 TEST_F(WithGameTests, VFSimpleMath) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-basic-vector-math.gc",
-                                          {"54.0000\n0\n"});
+                                          {"55.0000\n0\n"});
 }
 
 TEST_F(WithGameTests, VFLoadStatic) {
@@ -898,6 +898,16 @@ TEST_F(WithGameTests, MethodCallForwardDeclared) {
 TEST_F(WithGameTests, PointerInStatic) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-false-in-static-pointer.gc",
                                           {"#f\n0\n"});
+}
+
+TEST_F(WithGameTests, StackSingleton) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton.gc",
+                                          {"#f #f #f #f #t\n0\n"});
+}
+
+TEST_F(WithGameTests, StackSingletonType) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton-type.gc",
+                                          {"#t\n0\n"});
 }
 
 namespace Mips2C {

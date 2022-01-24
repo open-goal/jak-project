@@ -1,8 +1,8 @@
 #include "Shader.h"
-#include "common/util/assert.h"
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/util/assert.h"
 
 Shader::Shader(const std::string& shader_name) {
   // read the shader source
@@ -67,11 +67,9 @@ void Shader::activate() {
 ShaderLibrary::ShaderLibrary() {
   at(ShaderId::TEST_SHADER) = {"test_shader"};
   at(ShaderId::DIRECT_BASIC) = {"direct_basic"};
-  at(ShaderId::DIRECT_BASIC_TEXTURED_TCC0) = {"direct_basic_textured_tcc0"};
   at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured"};
   at(ShaderId::DEBUG_RED) = {"debug_red"};
-  at(ShaderId::SPRITE_CPU) = {"sprite_cpu"};
-  at(ShaderId::SPRITE_CPU_AFAIL) = {"sprite_cpu_afail"};
+  at(ShaderId::SPRITE) = {"sprite_3d"};
   at(ShaderId::SKY) = {"sky"};
   at(ShaderId::SKY_BLEND) = {"sky_blend"};
   at(ShaderId::DEBUG_BUFFERED) = {"debug_buffered"};
@@ -79,4 +77,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::BUFFERED_TCC1) = {"buffered_tcc1"};
   at(ShaderId::TFRAG3) = {"tfrag3"};
   at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex"};
+  at(ShaderId::SPRITE3) = {"sprite3_3d"};
 }

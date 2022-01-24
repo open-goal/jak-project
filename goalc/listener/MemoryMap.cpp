@@ -1,10 +1,10 @@
-#include "common/util/assert.h"
 #include <algorithm>
 #include <stdexcept>
 #include "MemoryMap.h"
 #include "third-party/fmt/core.h"
 #include "common/link_types.h"
 #include "common/util/BitUtils.h"
+#include "common/util/assert.h"
 
 namespace listener {
 std::string LoadEntry::print() const {
@@ -115,6 +115,17 @@ bool MemoryMap::lookup(const std::string& obj_name, u8 seg_id, MemoryMapEntry* o
   for (auto& entry : m_entries) {
     if (!entry.empty && entry.obj_name == obj_name && entry.seg_id == seg_id) {
       *out = entry;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool LoadEntry::overlaps_with(const LoadEntry& other) const {
+  for (int seg = 0; seg < 2; seg++) {
+    if (std::max(segments[seg], other.segments[seg]) <
+        std::min(segments[seg] + segment_sizes[seg],
+                 other.segments[seg] + other.segment_sizes[seg])) {
       return true;
     }
   }

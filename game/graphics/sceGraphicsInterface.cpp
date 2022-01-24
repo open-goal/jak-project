@@ -1,8 +1,7 @@
 #include "game/graphics/sceGraphicsInterface.h"
-#include "common/util/assert.h"
 #include "game/graphics/gfx.h"
-
 #include <cstdio>
+#include "common/util/assert.h"
 
 /*!
  * Wait for rendering to complete.

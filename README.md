@@ -9,6 +9,7 @@
   <a href="https://coveralls.io/github/water111/jak-project?branch=master" rel="nofollow"><img src="https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master" alt="Coverage Status" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://discord.gg/E7yFpd6w9G"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
+  <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
 ## Table of Contents
@@ -17,15 +18,20 @@
 
 - [Table of Contents](#table-of-contents)
 - [Project Description](#project-description)
+- [Current Status](#current-status)
+- [What's Next](#whats-next)
 - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
 - [Getting Started - Linux (Arch)](#getting-started---linux-arch)
 - [Getting Started - Nixpkgs](#getting-started---nixpkgs)
 - [Getting Started - Windows](#getting-started---windows)
+- [Building and Running the Game](#building-and-running-the-game)
+  - [Extract Assets](#extract-assets)
+  - [Build Game](#build-game)
+  - [Run Game](#run-game)
 - [Project Layout](#project-layout)
 - [Directory Layout](#directory-layout)
-- [More Documentation](#more-documentation)
-- [ASan Build](#asan-build)
-    - [On Windows / Visual Studio](#on-windows--visual-studio)
+  - [On Windows / Visual Studio](#on-windows--visual-studio)
+
 <!-- tocstop -->
 
 ## Project Description
@@ -43,6 +49,8 @@ Our objectives are:
 - support modifications. It should be possible to make edits to the code without everything else breaking.
 
 We support both Linux and Windows on x86-64.
+
+We have a Discord server where we discuss development. https://discord.gg/BVEHQmm8
 
 ## Current Status
 So far, we've decompiled around 341,233 lines of GOAL code, out of an estimated 500,000 total lines and we've started work on an OpenGL renderer. Currently, the main display process (`*dproc*`) runs and sends data to our renderer. We can load textures, text files, and level files. Using keyboard controls, we can open the debug menu and turn on some simple debug visualizations.
@@ -138,14 +146,16 @@ nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 
 ## Getting Started - Windows
 
-Install Visual Studio 2019 and get the C++ and CMake tools via the Visual Studio Installer
+Install Visual Studio 2022 and get the `Desktop development with C++` workload during the installation process.
+
+> if you already have visual studio and don't have this installed - open your `Visual Studio Installer` and modify the installation
 
 On Windows, it's recommended to get Scoop to use as a package manager, making the follow steps _much_ easier. Follow the steps on the bottom of the homepage here https://scoop.sh/
 
 Once Scoop is installed, run the following command:
 
-```ps1
-scoop install llvm nasm
+```sh
+scoop install git llvm nasm
 ```
 
 Initialize the repository's third-party dependencies:
@@ -154,17 +164,13 @@ Initialize the repository's third-party dependencies:
 git submodule update --init --recursive
 ```
 
-Open the project as a CMake project, browse for the root level `CMakeLists.txt`:
+Open the project as a CMake project.
 
-![](./docs/markdown/imgs/open-cmake-vs.png)
+![](./docs/markdown/imgs/windows/open-project.png)
 
-In the toolbar, you should be able to select an individual component to compile, or combine within the root CMakeLists.txt. In the future we will pre-define configurations to make this easier.
+Then build the entire project
 
-![](./docs/markdown/imgs/cmake-build-vs.png)
-
-You may also wish to view the files that pertain to each CMake target, rather than the project as it is normally:
-
-![](./docs/markdown/imgs/cmake-target-view.png)
+![](./docs/markdown/imgs/windows/build-all.png)
 
 ## Building and Running the Game
 
@@ -200,7 +206,7 @@ gc> (test-play)
 (play :use-vis #t :init-game #f) has been called!
 0        #x0              0.0000        0
 
-gc> 
+gc>
 ```
 Then, in the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 

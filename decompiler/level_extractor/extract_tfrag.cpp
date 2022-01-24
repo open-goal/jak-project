@@ -1,10 +1,10 @@
 #include "extract_tfrag.h"
 #include "common/dma/dma.h"
-#include "common/util/assert.h"
 #include "decompiler/util/Error.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/util/FileUtil.h"
 #include "common/dma/gs.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 namespace {
@@ -117,6 +117,7 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
       }
       vis.num_kids = elt.child_count;
       vis.flags = elt.flags;
+      vis.my_id = elt.id;
       assert(vis.flags == expecting_leaves ? 0 : 1);
       assert(vis.num_kids > 0);
       assert(vis.num_kids <= 8);
@@ -2036,8 +2037,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
 
       for (auto& strip : draw.strips) {
         tfrag3::StripDraw::VisGroup vgroup;
-        vgroup.vis_idx = strip.tfrag_id;      // associate with the tfrag for culling
-        vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
+        vgroup.vis_idx_in_pc_bvh = strip.tfrag_id;  // associate with the tfrag for culling
+        vgroup.num = strip.verts.size() + 1;        // one for the primitive restart!
 
         tdraw.num_triangles += strip.verts.size() - 2;
         for (auto& vert : strip.verts) {
@@ -2114,6 +2115,19 @@ void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tfr
   }
 }
 
+void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
+  std::vector<tfrag3::StripDraw::VisGroup> result;
+  result.push_back(grps.at(0));
+  for (size_t i = 1; i < grps.size(); i++) {
+    if (grps[i].vis_idx_in_pc_bvh == result.back().vis_idx_in_pc_bvh) {
+      result.back().num += grps[i].num;
+    } else {
+      result.push_back(grps[i]);
+    }
+  }
+  std::swap(result, grps);
+}
+
 }  // namespace
 
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
@@ -2183,13 +2197,14 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
   for (auto& draw : this_tree.draws) {
     for (auto& str : draw.vis_groups) {
-      auto it = tfrag_parents.find(str.vis_idx);
+      auto it = tfrag_parents.find(str.vis_idx_in_pc_bvh);
       if (it == tfrag_parents.end()) {
-        str.vis_idx = UINT32_MAX;
+        str.vis_idx_in_pc_bvh = UINT32_MAX;
       } else {
-        str.vis_idx = it->second;
+        str.vis_idx_in_pc_bvh = it->second;
       }
     }
+    merge_groups(draw.vis_groups);
   }
   out.tfrag_trees.push_back(this_tree);
 }

@@ -44,7 +44,8 @@ class TFragment : public BucketRenderer {
   TFragment(const std::string& name,
             BucketId my_id,
             const std::vector<tfrag3::TFragmentTreeKind>& trees,
-            bool child_mode);
+            bool child_mode,
+            int level_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
@@ -293,6 +294,7 @@ class TFragment : public BucketRenderer {
   BufferedRenderer::Builder m_buffered_renderer;
   Tfrag3 m_tfrag3;
   std::vector<tfrag3::TFragmentTreeKind> m_tree_kinds;
+  int m_level_id;
 
   struct HackManyLevels {
     static constexpr int NUM_LEVELS = 23;

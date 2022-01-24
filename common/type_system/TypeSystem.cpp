@@ -5,12 +5,12 @@
  * access types, and reverse type lookups.
  */
 
-#include "common/util/assert.h"
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/color.h"
 #include <stdexcept>
-#include <third-party/fmt/core.h>
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
-#include "third-party/fmt/color.h"
+#include "common/util/assert.h"
 
 namespace {
 template <typename... Args>
@@ -1615,7 +1615,10 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       result.append("  :pack-me\n");
     }
     if (as_structure->is_allowed_misalign()) {
-      result.append("  :allow-misaligned");
+      result.append("  :allow-misaligned\n");
+    }
+    if (as_structure->is_always_stack_singleton()) {
+      result.append("  :always-stack-singleton\n");
     }
   }
 
