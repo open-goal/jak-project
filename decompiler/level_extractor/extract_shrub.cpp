@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
+using namespace level_tools;
 
 /// <summary>
 /// Get the index of the first draw node in an array. Works for node or tfrag.
@@ -34,8 +35,8 @@ u16 get_first_idx_shrub(const level_tools::DrawableInlineArray* array) {
 /// <param name="end"></param>
 /// <returns></returns>
 bool verify_node_indices_from_array_shrub(const level_tools::DrawableInlineArray* array,
-                                    u16 start,
-                                    u16* end) {
+                                          u16 start,
+                                          u16* end) {
   auto as_shrub_instances =
       dynamic_cast<const shrub_types::DrawableInlineArrayInstanceShrub*>(array);
   auto as_nodes = dynamic_cast<const level_tools::DrawableInlineArrayNode*>(array);
@@ -447,8 +448,9 @@ void extract_shrub(const shrub_types::DrawableTreeInstanceShrub* tree,
     }
   }
 
-  auto info = collect_instance_info(as_instance_array, &tree->info.prototype_array_shrub.data);
-  update_proto_info(&info, map, tex_db, tree->info.prototype_array_shrub.data);
+  auto info =
+      collect_instance_info(as_instance_array, &tree->info.prototype_inline_array_shrub.data);
+  update_proto_info(&info, map, tex_db, tree->info.prototype_inline_array_shrub.data);
 
   // AHHHH - likely stuck
 
