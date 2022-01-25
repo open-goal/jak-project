@@ -94,7 +94,7 @@
       :tool 'dgo
       :out `(,out-name)
       )
-    (set! *all-cgos* (cons out-name *all-cgos*))
+    (append!! *all-cgos* out-name)
     )
   )
 
@@ -141,7 +141,7 @@
     (defstep :in path
              :tool 'copy
              :out `(,out-file))
-    (set! *all-str* (cons out-file *all-str*))))
+    (append!! *all-str* out-file)))
 
 (define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
@@ -154,7 +154,7 @@
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
-    (set! *all-vis* (cons out-name *all-vis*))))
+    (append!! *all-vis* out-name)))
 
 
 (defmacro group (name &rest stuff)
@@ -622,7 +622,7 @@
 ;; assistant
 (copy-strs "ASIBESWI" "ASR1BESW")
 ;; sage
-(copy-strs "SAISD1" "SAISD2")
+(copy-strs "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE")
 ;; fishermans boat
 (copy-strs "FIBRTMIS")
 
@@ -715,6 +715,8 @@
   "misty-vis"
   )
 
+;; fishermans boat
+(copy-strs "FIBRTVIL" "FIBRT1AL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; swamp
@@ -1833,7 +1835,11 @@
 
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
-   ,@(reverse *all-cgos*)
+   ,@*all-cgos*
    ,@*all-vis*
    ,@*all-str*)
+ )
+
+(group-list "spools"
+ `(,@*all-str*)
  )
