@@ -221,10 +221,10 @@
 
 (defsmacro dolist (bindings &rest body)
   `(let ((,(car bindings) ,(cadr bindings)))
-      (while (not (null? it))
+      (while (not (null? ,(car bindings)))
         ,@body
         
-        (set! it (cdr it))
+        (set! ,(car bindings) (cdr ,(car bindings)))
         )
       )
   )
