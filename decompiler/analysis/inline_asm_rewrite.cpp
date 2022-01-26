@@ -42,14 +42,8 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           /*lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
                    asmOp.instr.kind);*/
           f.warnings.general_warning("Unsupported inline assembly instruction kind - [{}]",
-                                     asmOp.instr.to_string(f.ir2.env.file->labels));
+                                     asmOp.m_instr.to_string(f.ir2.env.file->labels));
           new_entries.push_back(entry);
-          continue;
-        } else if (elem->op()->instruction().kind == InstructionKind::VOPMULA) {
-          // So far, the only instruction we deal with in pairs is the outer-product
-          // This is kinda a hack, internally the src args of VOPMSUB will be swapped which is
-          // correct and the first op we skip.
-          // In the future if this needs to support more, it will be worth cleaning this up
           continue;
         } else if (asmOp.todo) {
           // If its an invalid or unsupported exception, skip it

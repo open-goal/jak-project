@@ -99,6 +99,11 @@
 ;; vector types (integer)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
 ;; the GOAL vector types are structures, storing values in memory.
 
 ;; Vector of 4 unsigned bytes.
@@ -193,7 +198,7 @@
 
 ;; Vector of 4 signed words
 (deftype vector4w (structure)
-  ((data  int32 4 :score -9999 :offset-assert 0)
+  ((data  uint32 4 :score -9999 :offset-assert 0)
    (x     int32     :offset 0)
    (y     int32     :offset 4)
    (z     int32     :offset 8)
@@ -389,9 +394,15 @@
   :flag-assert         #x900000010
   )
 
+(defmacro static-vectorm (x y z w)
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,w))
+  )
 (defmacro static-spherem (x y z r)
-  "actually makes a vector"
+  "actually makes a vector. use bspherem for sphere."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+(defmacro static-bspherem (x y z r)
+  `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 
 (deftype box8s (structure)
@@ -506,8 +517,7 @@
        (set! (-> ,vec z) ,zv)
        (set! (-> ,vec w) ,wv)
        ,vec
-       )
-     )
+       ))
      )
 
 (defun vector-dot ((a vector) (b vector))
@@ -642,11 +652,10 @@
     ;; load vectors
     (.lvf vf2 a)
     (.lvf vf3 b)
-    ;; set vf0 to zero
-    (.xor.vf vf0 vf0 vf0)
+    (init-vf0-vector)
     ;; add
     (.add.vf vf1 vf2 vf3)
-    ;; set w = 0
+    ;; set w = 1
     (.blend.vf vf1 vf1 vf0 :mask #b1000)
     ;; store
     (.svf dst vf1)
@@ -664,11 +673,10 @@
     ;; load vectors
     (.lvf vf2 a)
     (.lvf vf3 b)
-    ;; set vf0 to zero
-    (.xor.vf vf0 vf0 vf0)
+    (init-vf0-vector)
     ;; subtract
     (.sub.vf vf1 vf2 vf3)
-    ;; set w = 0
+    ;; set w = 1
     (.blend.vf vf1 vf1 vf0 :mask #b1000)
     ;; store
     (.svf dst vf1)

@@ -62,6 +62,10 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   return result;
 }
 
+// how many "forms" to look at ahead of / behind rip when stopping
+static constexpr int FORM_DUMP_SIZE_REV = 4;
+static constexpr int FORM_DUMP_SIZE_FWD = 4;
+
 std::string disassemble_x86_function(u8* data,
                                      int len,
                                      const goos::Reader* reader,
@@ -85,10 +89,14 @@ std::string disassemble_x86_function(u8* data,
 
   int current_instruction_idx = -1;
   int current_ir_idx = -1;
+  int current_src_idx = -1;
+  int rip_src_idx = -1;
 
   std::string current_filename;
   int current_file_line = -1;
   int current_offset_in_line = -1;
+
+  std::vector<std::pair<int, std::string>> lines;
 
   assert(highlight_addr >= base_addr);
   int mark_offset = int(highlight_addr - base_addr);
@@ -130,6 +138,8 @@ std::string disassemble_x86_function(u8* data,
         }
       }
 
+      std::string line;
+
       if (current_ir_idx >= 0 && current_ir_idx < int(irs.size())) {
         auto source = reader->db.try_get_short_info(fenv->code_source().at(current_ir_idx));
         if (source) {
@@ -139,21 +149,21 @@ std::string disassemble_x86_function(u8* data,
             current_filename = source->filename;
             current_file_line = source->line_idx_to_display;
             current_offset_in_line = source->pos_in_line;
-            result +=
+            ++current_src_idx;
+            line +=
                 fmt::format(fmt::emphasis::bold, "\n{}:{}\n", current_filename, current_file_line);
-            result += fmt::format(fg(fmt::color::orange), "-> {}\n", source->line_text);
+            line += fmt::format(fg(fmt::color::orange), "-> {}\n", source->line_text);
             std::string pointer(current_offset_in_line + 3, ' ');
             pointer += "^\n";
-            result += fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "{}", pointer);
+            line += fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "{}", pointer);
           }
         }
       }
 
-      std::string line;
-
       if (prefix != ' ') {
         line += fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "{:c} [0x{:X}] ", prefix,
                             base_addr);
+        rip_src_idx = current_src_idx;
       } else {
         line += fmt::format("{:c} [0x{:X}] ", prefix, base_addr);
       }
@@ -173,12 +183,21 @@ std::string disassemble_x86_function(u8* data,
         line += " ;; function's instruction do not align with debug data, something is wrong.";
       }
       line += "\n";
-      result += line;
+      lines.push_back(std::make_pair(current_src_idx, line));
       offset += instr.length;
       base_addr += instr.length;
     } else {
-      result += fmt::format("{:c} [0x{:x}] INVALID (0x{:02x})\n", prefix, base_addr, data[offset]);
+      lines.push_back(std::make_pair(
+          current_src_idx,
+          fmt::format("{:c} [0x{:x}] INVALID (0x{:02x})\n", prefix, base_addr, data[offset])));
       offset++;
+    }
+  }
+
+  for (auto& line : lines) {
+    if (line.first >= rip_src_idx - FORM_DUMP_SIZE_REV &&
+        line.first < rip_src_idx + FORM_DUMP_SIZE_FWD) {
+      result.append(line.second);
     }
   }
 

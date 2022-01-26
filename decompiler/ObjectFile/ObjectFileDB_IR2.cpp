@@ -23,6 +23,7 @@
 #include "decompiler/analysis/static_refs.h"
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/analysis/find_skelgroups.h"
+#include "decompiler/analysis/find_defpartgroup.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/mips2c.h"
@@ -60,14 +61,21 @@ void ObjectFileDB::analyze_functions_ir2(
     ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
     try {
       if (data.linked_data.functions_by_seg.size() == 3) {
-        run_defstate(data.linked_data.functions_by_seg.at(2).front(), skip_states);
+        run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+      }
+    } catch (const std::exception& e) {
+      lg::error("Failed to find defpartgroups: {}", e.what());
+    }
+    try {
+      if (data.linked_data.functions_by_seg.size() == 3) {
+        run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
       }
     } catch (const std::exception& e) {
       lg::error("Failed to find defstates: {}", e.what());
     }
     try {
       if (data.linked_data.functions_by_seg.size() == 3) {
-        run_defskelgroups(data.linked_data.functions_by_seg.at(2).front());
+        run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
       }
     } catch (const std::exception& e) {
       lg::error("Failed to find defskelgroups: {}", e.what());
@@ -628,7 +636,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
       try {
         result += ir2_function_to_string(data, func, seg);
       } catch (std::exception& e) {
-        result += "Failed to write";
+        result += "Failed to write ";
         result += func.name();
         result += ": ";
         result += e.what();
@@ -706,7 +714,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
       auto& word = data.linked_data.words_by_seg[seg][i];
       data.linked_data.append_word_to_string(result, word);
 
-      if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "string") {
+      if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "string") {
         result += "; " + data.linked_data.get_goal_string(seg, i) + "\n";
       }
     }

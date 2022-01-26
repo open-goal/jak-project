@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <optional>
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/data/game_text.h"
 
 namespace decompiler {
 struct RegisterTypeCast {
@@ -76,6 +77,7 @@ struct DecompileHacks {
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
   std::unordered_set<std::string> mips2c_functions_by_name;
+  std::unordered_map<std::string, std::vector<std::pair<int, int>>> missing_textures_by_level;
 };
 
 struct Config {
@@ -96,6 +98,7 @@ struct Config {
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+  bool rip_levels = false;
 
   bool regenerate_all_types = false;
   bool write_hex_near_instructions = false;
@@ -108,8 +111,11 @@ struct Config {
 
   bool is_pal = false;
 
+  GameTextVersion text_version = GameTextVersion::JAK1_V1;
+
   std::unordered_set<std::string> allowed_objects;
   std::unordered_set<std::string> banned_objects;
+  std::unordered_set<std::string> merged_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<RegisterTypeCast>>>
       register_type_casts_by_function_by_atomic_op_idx;
   std::unordered_map<std::string, std::unordered_map<int, StackTypeCast>>
@@ -124,6 +130,8 @@ struct Config {
       stack_structure_hints_by_function;
 
   std::unordered_map<std::string, int> bad_format_strings;
+
+  std::vector<std::string> levels_to_extract;
 
   DecompileHacks hacks;
 };

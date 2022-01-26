@@ -1,7 +1,7 @@
 #include <cmath>
 
 #include "third-party/fmt/core.h"
-#include "common/common_types.h"
+#include "common/goal_constants.h"
 #include "third-party/dragonbox.h"
 #include "print_float.h"
 #include "common/util/assert.h"
@@ -12,14 +12,22 @@
  * and, if you trust the dragonbox library, should be the shortest possible representation
  * that round-trips through a properly implemented string -> float conversion.
  */
-std::string float_to_string(float value) {
+std::string float_to_string(float value, bool append_trailing_decimal) {
   constexpr int buff_size = 128;
   char buff[buff_size];
-  float_to_cstr(value, buff);
+  float_to_cstr(value, buff, append_trailing_decimal);
   return {buff};
 }
 
-int float_to_cstr(float value, char* buffer) {
+/*!
+ * Wrapper around float_to_string, for printing meters. Unlike float_to_string, it does not append
+ * decimals by default.
+ */
+std::string meters_to_string(float value, bool append_trailing_decimal) {
+  return float_to_string(value / METER_LENGTH, append_trailing_decimal);
+}
+
+int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {
   assert(std::isfinite(value));
   // dragonbox gives us:
   //  - an integer, representing the decimal value
@@ -32,8 +40,10 @@ int float_to_cstr(float value, char* buffer) {
   // so just handle that as a special case
   if (value == 0) {
     buffer[i++] = '0';
-    buffer[i++] = '.';
-    buffer[i++] = '0';
+    if (append_trailing_decimal) {
+      buffer[i++] = '.';
+      buffer[i++] = '0';
+    }
     buffer[i++] = '\0';
   }
 
@@ -70,8 +80,10 @@ int float_to_cstr(float value, char* buffer) {
     }
 
     // part 4
-    buffer[i++] = '.';
-    buffer[i++] = '0';
+    if (append_trailing_decimal) {
+      buffer[i++] = '.';
+      buffer[i++] = '0';
+    }
     buffer[i++] = '\0';
   } else {
     // some nonzero digits after decimal.

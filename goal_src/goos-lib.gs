@@ -62,8 +62,14 @@
 (defsmacro cddr (x)
            `(cdr (cdr ,x)))
 
+(defsmacro caddr (x)
+  `(car (cdr (cdr ,x))))
+
 (defsmacro cdddr (x)
            `(cdr (cdr (cdr ,x))))
+
+(defsmacro cadddr (x)
+           `(car (cdr (cdr (cdr ,x)))))
 
 (defsmacro caadr (x)
   `(car (car (cdr ,x))))
@@ -213,8 +219,10 @@
 	    )
 	)
 
-(defsmacro inc! (x) `(set! ,x (+ ,x 1)))
-(defsmacro dec! (x) `(set! ,x (- ,x 1)))
+(defsmacro 1+ (x) `(+ ,x 1))
+(defsmacro 1- (x) `(- ,x 1))
+(defsmacro inc! (x) `(set! ,x (1+ ,x)))
+(defsmacro dec! (x) `(set! ,x (1- ,x)))
 (defsmacro +! (place arg) `(set! ,place (+ ,place ,arg)))
 (defsmacro -! (place arg) `(set! ,place (- ,place ,arg)))
 
@@ -288,7 +296,6 @@
   `(seval (desfun ,name ,args ,@body))
   )
 
-
 ;;;;;;;;;;;;;;;;;;;
 ;; enum stuff
 ;;;;;;;;;;;;;;;;;;;
@@ -328,9 +335,7 @@
       (when (> val max-val)
         (set! max-val val))
       )
-
-    max-val
-    )
+    max-val)
   )
 
 
@@ -341,3 +346,26 @@
 
 ;; this is checked in a test to see if this file is loaded.
 (define __goos-lib-loaded__ #t)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; USER PROFILES      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; *user* is defined when goos starts!
+(when *user*
+  (fmt #t "Loading user scripts for user: {}...\n" *user*)
+  ;; i'm not sure what naming scheme to use here. user/<name>/user.gs?
+  ;; the GOAL one is loaded in Compiler.cpp
+  (load-file (fmt #f "goal_src/user/{}/user.gs" *user*))
+  )
+
+(defsmacro user? (&rest users)
+  (cond
+    ((null? users)            #f)
+    ((eq? *user* (car users)) #t)
+    (#t   `(user? ,@(cdr users)))
+    )
+  )
+
+

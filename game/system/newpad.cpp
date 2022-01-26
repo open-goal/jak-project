@@ -22,10 +22,11 @@ std::unordered_map<int, int> g_key_status;
 std::unordered_map<int, int> g_buffered_key_status;
 
 bool g_gamepad_buttons[(int)Button::Max] = {0};
+float g_gamepad_analogs[(int)Analog::Max] = {127};
 
 // input mode for controller mapping
 InputModeStatus input_mode = InputModeStatus::Disabled;
-u64 input_mode_pad = 0;
+int input_mode_pad = 0;
 u64 input_mode_key = -1;
 u64 input_mode_mod = 0;
 u64 input_mode_index = 0;
@@ -104,7 +105,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
     return 0;
   }
 
-  if (g_gamepad_buttons[(int)button]) {
+  if (pad == 0 && g_gamepad_buttons[(int)button]) {
     return 1;
   }
   auto key = mapping.pad_mapping[pad][(int)button];
@@ -114,6 +115,17 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (keymap.find(key) == keymap.end())
     return 0;
   return keymap.at(key);
+}
+
+// returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
+// if invalid or otherwise -- returns 127 (analog stick neutral position)
+int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
+  if (CheckPadIdx(pad) == -1) {
+    return 127;
+  }
+  // TODO - dead-zone support needed?
+  return int((g_gamepad_analogs[(int)analog] + 1) * 127);
+  // TODO - support keyboard inputs as well
 }
 
 // map a button on a pad to a key
@@ -181,6 +193,10 @@ u64 input_mode_get_index() {
   return input_mode_index;
 }
 
+void input_mode_pad_set(s64 idx) {
+  input_mode_pad = idx;
+}
+
 /*
 ********************************
 * Gamepad Support
@@ -191,27 +207,42 @@ struct GamepadState {
   int gamepad_idx = -1;
 } g_gamepads;
 
-void initialize() {
-  for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-    if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
-      g_gamepads.gamepad_idx = i;
-      lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
-      break;
+void check_gamepad() {
+  if (g_gamepads.gamepad_idx == -1) {
+    for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
+      if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+        g_gamepads.gamepad_idx = i;
+        lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+        break;
+      }
     }
+  } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx)) {
+    lg::info("Gamepad has been disconnected");
+    g_gamepads.gamepad_idx = -1;
   }
+}
+
+void initialize() {
+  check_gamepad();
   if (g_gamepads.gamepad_idx == -1) {
     lg::info("No joysticks found.");
   }
 }
 
-void update_gamepads() {
-  if (g_gamepads.gamepad_idx == -1) {
-    return;
+void clear_gamepads() {
+  for (int i = 0; i < (int)Button::Max; ++i) {
+    g_gamepad_buttons[i] = false;
   }
+  for (int i = 0; i < 4; ++i) {
+    g_gamepad_analogs[i] = 127;
+  }
+}
 
-  if (!glfwJoystickPresent(g_gamepads.gamepad_idx)) {
-    g_gamepads.gamepad_idx = -1;
-    lg::info("Gamepad has been disconnected");
+void update_gamepads() {
+  check_gamepad();
+
+  if (g_gamepads.gamepad_idx == -1) {
+    clear_gamepads();
     return;
   }
 
@@ -234,8 +265,21 @@ void update_gamepads() {
       {Button::X, GLFW_GAMEPAD_BUTTON_CROSS},
       {Button::Square, GLFW_GAMEPAD_BUTTON_SQUARE}};
 
+  constexpr std::pair<Analog, int> gamepad_analog_map[] = {
+      {Analog::Left_X, GLFW_GAMEPAD_AXIS_LEFT_X},
+      {Analog::Left_Y, GLFW_GAMEPAD_AXIS_LEFT_Y},
+      {Analog::Right_X, GLFW_GAMEPAD_AXIS_RIGHT_X},
+      {Analog::Right_Y, GLFW_GAMEPAD_AXIS_RIGHT_Y}};
+
   for (const auto& [button, idx] : gamepad_map) {
     g_gamepad_buttons[(int)button] = state.buttons[idx];
+  }
+
+  g_gamepad_buttons[(int)Button::L2] = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
+  g_gamepad_buttons[(int)Button::R2] = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0;
+
+  for (const auto& [analog_vector, idx] : gamepad_analog_map) {
+    g_gamepad_analogs[(int)analog_vector] = state.axes[idx];
   }
 }
 

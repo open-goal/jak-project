@@ -1,7 +1,7 @@
 #include <stdexcept>
-#include "common/util/assert.h"
 #include "DataParser.h"
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 #ifdef __APPLE__
 #include <unordered_map>
@@ -120,8 +120,7 @@ ParsedData parse_data(const std::string& str) {
     // try as .type
     if (first_thing == ".type") {
       LinkedWord word(0);
-      word.kind = LinkedWord::TYPE_PTR;
-      word.symbol_name = line;
+      word.set_to_symbol(LinkedWord::TYPE_PTR, line);
       result.words.push_back(word);
       byte_offset += 4;
       continue;
@@ -129,8 +128,7 @@ ParsedData parse_data(const std::string& str) {
 
     if (first_thing == ".symbol") {
       LinkedWord word(0);
-      word.kind = LinkedWord::SYM_PTR;
-      word.symbol_name = line;
+      word.set_to_symbol(LinkedWord::SYM_PTR, line);
       result.words.push_back(word);
       byte_offset += 4;
       continue;
@@ -141,7 +139,7 @@ ParsedData parse_data(const std::string& str) {
         throw std::runtime_error("Got something after .empty-list, this is not allowed");
       }
       LinkedWord word(0);
-      word.kind = LinkedWord::EMPTY_PTR;
+      word.set_to_empty_ptr();
       result.words.push_back(word);
       byte_offset += 4;
       continue;
@@ -155,8 +153,7 @@ ParsedData parse_data(const std::string& str) {
           result.labels.emplace_back();
         }
         LinkedWord word(0);
-        word.kind = LinkedWord::PTR;
-        word.label_id = l.idx;
+        word.set_to_pointer(LinkedWord::PTR, l.idx);
         result.words.push_back(word);
         byte_offset += 4;
         continue;
@@ -164,7 +161,7 @@ ParsedData parse_data(const std::string& str) {
         auto val = std::stoull(line, nullptr, 16);
         assert(val <= UINT32_MAX);
         LinkedWord word(val);
-        word.kind = LinkedWord::PLAIN_DATA;
+        word.set_to_plain_data();
         result.words.push_back(word);
         byte_offset += 4;
         continue;
@@ -201,18 +198,18 @@ std::string ParsedData::print() const {
 
     // print word
     auto& word = words.at(idx);
-    switch (word.kind) {
+    switch (word.kind()) {
       case LinkedWord::PLAIN_DATA:
         result += fmt::format("    .word 0x{:x}\n", word.data);
         break;
       case LinkedWord::PTR:
-        result += fmt::format("    .word {}\n", labels.at(word.label_id).name);
+        result += fmt::format("    .word {}\n", labels.at(word.label_id()).name);
         break;
       case LinkedWord::SYM_PTR:
-        result += fmt::format("    .symbol {}\n", word.symbol_name);
+        result += fmt::format("    .symbol {}\n", word.symbol_name());
         break;
       case LinkedWord::TYPE_PTR:
-        result += fmt::format("    .type {}\n", word.symbol_name);
+        result += fmt::format("    .type {}\n", word.symbol_name());
         break;
       case LinkedWord::EMPTY_PTR:
         result += "    .empty-list\n";

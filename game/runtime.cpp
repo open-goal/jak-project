@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #elif _WIN32
 #include <io.h>
-#include <third-party/mman/mman.h>
+#include "third-party/mman/mman.h"
 #include <Windows.h>
 #elif __APPLE__
 #include <unistd.h>
@@ -271,7 +271,7 @@ void dmac_runner(SystemThreadInterface& iface) {
     //      }
     //    }
     // avoid running the DMAC on full blast (this does not sync to its clockrate)
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
   }
 
   VM::unsubscribe_component();
@@ -298,6 +298,12 @@ u32 exec_runtime(int argc, char** argv) {
     } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
       VM::use = false;
     }
+  }
+
+  // initialize graphics first - the EE code will upload textures during boot and we
+  // want the graphics system to catch them.
+  if (enable_display) {
+    Gfx::Init();
   }
 
   // step 1: sce library prep
@@ -328,7 +334,6 @@ u32 exec_runtime(int argc, char** argv) {
   // TODO relegate this to its own function
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
-    Gfx::Init();
     Gfx::Loop([]() { return !MasterExit; });
     Gfx::Exit();
   }

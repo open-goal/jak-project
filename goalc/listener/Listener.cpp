@@ -21,7 +21,6 @@
 #include "common/cross_sockets/xsocket.h"
 
 #include <stdexcept>
-#include "common/util/assert.h"
 #include <cstring>
 #include <chrono>
 #include <thread>
@@ -30,6 +29,7 @@
 #include "common/versions.h"
 
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 using namespace versions;
 constexpr bool debug_listener = false;
@@ -191,8 +191,8 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
 void Listener::receive_func() {
   while (m_connected) {
     // attempt to receive a ListenerMessageHeader
-    int rcvd = 0;
-    int rcvd_desired = sizeof(ListenerMessageHeader);
+    u32 rcvd = 0;
+    u32 rcvd_desired = sizeof(ListenerMessageHeader);
     char buff[sizeof(ListenerMessageHeader)];
     while (rcvd < rcvd_desired) {
       auto got = read_from_socket(listen_socket, buff + rcvd, rcvd_desired - rcvd);
@@ -564,6 +564,14 @@ void Listener::add_load(const std::string& name, const LoadEntry& le) {
     m_load_entries[*m_pending_listener_load_object_name] = le;
     m_pending_listener_load_object_name = {};
   } else {
+    // if we load over an existing thing, kick it out.
+    for (auto it = m_load_entries.begin(); it != m_load_entries.end();) {
+      if (it->second.overlaps_with(le)) {
+        it = m_load_entries.erase(it);
+      } else {
+        it++;
+      }
+    }
     m_load_entries[name] = le;
   }
 }

@@ -4,7 +4,6 @@
  */
 
 #include <cstring>
-#include "common/util/assert.h"
 #include "kscheme.h"
 #include "common/common_types.h"
 #include "common/goal_constants.h"
@@ -24,6 +23,7 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 #include "game/mips2c/mips2c_table.h"
+#include "common/util/assert.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -2013,7 +2013,7 @@ s32 InitHeapAndSymbol() {
     method_set_symbol->value++;
     load_and_link_dgo_from_c("kernel", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                             0x400000);
+                             0x400000, true);
     method_set_symbol->value--;
 
     // check the kernel version!
@@ -2134,7 +2134,7 @@ s64 load_and_link(const char* filename, char* decode_name, kheapinfo* heap, u32 
   s32 sz;
   auto rv = FileLoad(decode_name, make_ptr(heap), Ptr<u8>(0), KMALLOC_ALIGN_64, &sz);
   if (((s32)rv.offset) > -1) {
-    return (s32)link_and_exec(rv, decode_name, sz, make_ptr(heap), flags).offset;
+    return (s32)link_and_exec(rv, decode_name, sz, make_ptr(heap), flags, false).offset;
   }
   return (s32)rv.offset;
 }

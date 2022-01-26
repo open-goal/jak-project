@@ -20,27 +20,26 @@ DirTpageResult process_dir_tpages(ObjectFileData& data) {
 
   int word_idx = 0;
   // first is type
-  assert(words.at(word_idx).kind == LinkedWord::TYPE_PTR);
-  assert(words.at(word_idx).symbol_name == "texture-page-dir");
+  assert(words.at(word_idx).kind() == LinkedWord::TYPE_PTR);
+  assert(words.at(word_idx).symbol_name() == "texture-page-dir");
   word_idx++;
   // next is length
-  assert(words.at(word_idx).kind == LinkedWord::PLAIN_DATA);
+  assert(words.at(word_idx).kind() == LinkedWord::PLAIN_DATA);
   int dir_length = words.at(word_idx).data;
-  fmt::print("length: {}\n", dir_length);
   word_idx++;
 
   for (int i = 0; i < dir_length; i++) {
-    assert(words.at(word_idx).kind == LinkedWord::PLAIN_DATA);
+    assert(words.at(word_idx).kind() == LinkedWord::PLAIN_DATA);
     u32 entry = words.at(word_idx).data;
     assert((entry & 0xffff7000) == 0);  // 7 checks for sign bit.
     word_idx++;
     result.lengths.push_back(entry & 0xffff);
 
-    assert(words.at(word_idx).kind == LinkedWord::SYM_PTR);
-    assert(words.at(word_idx).symbol_name == "#f");
+    assert(words.at(word_idx).kind() == LinkedWord::SYM_PTR);
+    assert(words.at(word_idx).symbol_name() == "#f");
     word_idx++;
-    assert(words.at(word_idx).kind == LinkedWord::SYM_PTR);
-    assert(words.at(word_idx).symbol_name == "#f");
+    assert(words.at(word_idx).kind() == LinkedWord::SYM_PTR);
+    assert(words.at(word_idx).symbol_name() == "#f");
     word_idx++;
   }
 

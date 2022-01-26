@@ -1,8 +1,8 @@
-#include "common/util/assert.h"
 #include <cstring>
 #include "dgo_util.h"
 #include "common/versions.h"
 #include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 /*!
  * Assert false if the char[] has non-null data after the null terminated string.

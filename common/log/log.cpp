@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <cstdlib>
-#include "common/util/assert.h"
 #include <mutex>
 #include "third-party/fmt/color.h"
 #include "log.h"
@@ -11,6 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #endif
+#include "common/util/assert.h"
 
 namespace lg {
 struct Logger {

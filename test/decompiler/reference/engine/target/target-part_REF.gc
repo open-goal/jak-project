@@ -4,28 +4,18 @@
 ;; definition for function birth-func-copy-target-y-rot
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun
-  birth-func-copy-target-y-rot
-  ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+(defun birth-func-copy-target-y-rot ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
   (let ((v1-0 *target*))
-   (when v1-0
-    (let ((s5-0 (new-stack-matrix0)))
-     (let ((f0-1 (+ -16384.0 (y-angle (-> v1-0 control)))))
-      (matrix-rotate-y! s5-0 f0-1)
+    (when v1-0
+      (let ((s5-0 (new-stack-matrix0)))
+        (let ((f0-1 (+ -16384.0 (y-angle (-> v1-0 control)))))
+          (matrix-rotate-y! s5-0 f0-1)
+          )
+        (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
+        (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s5-0)
+        )
       )
-     (vector3s-rotate*!
-      (the-as vector3s (-> arg1 vel-sxvel))
-      (the-as vector3s (-> arg1 vel-sxvel))
-      s5-0
-      )
-     (vector3s-rotate*!
-      (the-as vector3s (-> arg1 acc))
-      (the-as vector3s (-> arg1 acc))
-      s5-0
-      )
-     )
     )
-   )
   0
   (none)
   )
@@ -33,224 +23,189 @@
 ;; definition for function birth-func-ground-orient
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun
-  birth-func-ground-orient
-  ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+(defun birth-func-ground-orient ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
   (local-vars (v1-11 float) (v1-12 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
          )
-   (init-vf0-vector)
-   (let ((a1-1 (new 'stack-no-clear 'vector)))
-    (set! (-> a1-1 quad) (-> arg2 launchrot quad))
-    (let ((s3-0 (new 'stack-no-clear 'collide-tri-result))
-          (s5-0 *target*)
-          )
-     (set! (-> a1-1 y) (+ 4096.0 (-> a1-1 y)))
-     (when
-      (>=
-       (fill-and-probe-using-y-probe
-        *collide-cache*
-        a1-1
-        (the-as float 20480.0)
-        (the-as uint #x2bef)
-        s5-0
-        s3-0
-        (the-as uint 1)
-        )
-       0.0
-       )
-      (let ((s2-0 (new 'stack-no-clear 'vector))
-            (s4-1 (new 'stack-no-clear 'quaternion))
+    (init-vf0-vector)
+    (let ((a1-1 (new 'stack-no-clear 'vector)))
+      (set! (-> a1-1 quad) (-> arg2 launchrot quad))
+      (let ((s3-0 (new 'stack-no-clear 'collide-tri-result))
+            (s5-0 *target*)
             )
-       (set! (-> s2-0 x) (-> s3-0 normal z))
-       (set! (-> s2-0 y) 0.0)
-       (set! (-> s2-0 z) (- (-> s3-0 normal x)))
-       (vector-normalize! s2-0 (the-as float 1.0))
-       (quaternion-vector-angle! s4-1 s2-0 (acos (-> s3-0 normal y)))
-       (let ((s3-1 (new 'stack-no-clear 'quaternion)))
-        (quaternion-vector-angle!
-         s3-1
-         *up-vector*
-         (+ 32768.0 (y-angle (-> s5-0 control)))
-         )
-        (quaternion-normalize! (quaternion*! s4-1 s3-1 s4-1))
+        (set! (-> a1-1 y) (+ 4096.0 (-> a1-1 y)))
+        (when (>= (fill-and-probe-using-y-probe
+                    *collide-cache*
+                    a1-1
+                    (the-as float 20480.0)
+                    (collide-kind background cak-1 cak-2 cak-3 water powerup crate enemy wall-object ground-object mother-spider)
+                    s5-0
+                    s3-0
+                    (the-as uint 1)
+                    )
+                  0.0
+                  )
+          (let ((s2-0 (new 'stack-no-clear 'vector))
+                (s4-1 (new 'stack-no-clear 'quaternion))
+                )
+            (set! (-> s2-0 x) (-> s3-0 normal z))
+            (set! (-> s2-0 y) 0.0)
+            (set! (-> s2-0 z) (- (-> s3-0 normal x)))
+            (vector-normalize! s2-0 (the-as float 1.0))
+            (quaternion-vector-angle! s4-1 s2-0 (acos (-> s3-0 normal y)))
+            (let ((s3-1 (new 'stack-no-clear 'quaternion)))
+              (quaternion-vector-angle! s3-1 *up-vector* (+ 32768.0 (y-angle (-> s5-0 control))))
+              (quaternion-normalize! (quaternion*! s4-1 s3-1 s4-1))
+              )
+            (cond
+              ((< (-> s4-1 w) 0.0)
+               (.lvf vf1 (&-> arg2 conerot quad))
+               (.lvf vf2 (&-> s4-1 vec quad))
+               (.sub.vf vf1 vf0 vf2 :mask #b111)
+               (.svf (&-> arg2 conerot quad) vf1)
+               (.mov v1-11 vf1)
+               )
+              (else
+                (.lvf vf1 (&-> arg2 conerot quad))
+                (.lvf vf2 (&-> s4-1 vec quad))
+                (.add.vf vf1 vf0 vf2 :mask #b111)
+                (.svf (&-> arg2 conerot quad) vf1)
+                (.mov v1-12 vf1)
+                )
+              )
+            )
+          )
         )
-       (cond
-        ((< (-> s4-1 w) 0.0)
-         (.lvf vf1 (&-> arg2 conerot quad))
-         (.lvf vf2 (&-> s4-1 vec quad))
-         (.sub.vf vf1 vf0 vf2 :mask #b111)
-         (.svf (&-> arg2 conerot quad) vf1)
-         (.mov v1-11 vf1)
-         )
-        (else
-         (.lvf vf1 (&-> arg2 conerot quad))
-         (.lvf vf2 (&-> s4-1 vec quad))
-         (.add.vf vf1 vf0 vf2 :mask #b111)
-         (.svf (&-> arg2 conerot quad) vf1)
-         (.mov v1-12 vf1)
-         )
-        )
-       )
       )
-     )
+    0
+    (none)
     )
-   0
-   (none)
-   )
   )
 
 ;; definition for function birth-func-target-orient
 ;; INFO: Return type mismatch int vs none.
-(defun
-  birth-func-target-orient
-  ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+(defun birth-func-target-orient ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
   (local-vars (v1-10 float) (v1-11 float) (sv-16 target))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
          )
-   (init-vf0-vector)
-   (set! sv-16 *target*)
-   (let ((s3-0 (new 'stack-no-clear 'vector)))
-    (new 'stack-no-clear 'vector)
-    (let ((s5-0 (new 'stack-no-clear 'quaternion)))
-     (let ((s2-0 (-> sv-16 control local-normal)))
-      (set! (-> s3-0 x) (-> s2-0 z))
-      (set! (-> s3-0 y) 0.0)
-      (set! (-> s3-0 z) (- (-> s2-0 x)))
-      (vector-normalize! s3-0 (the-as float 1.0))
-      (quaternion-vector-angle! s5-0 s3-0 (acos (-> s2-0 y)))
+    (init-vf0-vector)
+    (set! sv-16 *target*)
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (let ((s5-0 (new 'stack-no-clear 'quaternion)))
+        (let ((s2-0 (-> sv-16 control local-normal)))
+          (set! (-> s3-0 x) (-> s2-0 z))
+          (set! (-> s3-0 y) 0.0)
+          (set! (-> s3-0 z) (- (-> s2-0 x)))
+          (vector-normalize! s3-0 (the-as float 1.0))
+          (quaternion-vector-angle! s5-0 s3-0 (acos (-> s2-0 y)))
+          )
+        (let ((s3-1 (new 'stack-no-clear 'quaternion)))
+          (quaternion-vector-angle! s3-1 *up-vector* (+ 32768.0 (-> arg1 user-float) (y-angle (-> sv-16 control))))
+          (quaternion-normalize! (quaternion*! s5-0 s5-0 s3-1))
+          )
+        (cond
+          ((< (-> s5-0 w) 0.0)
+           (.lvf vf1 (&-> arg2 conerot quad))
+           (.lvf vf2 (&-> s5-0 vec quad))
+           (.sub.vf vf1 vf0 vf2 :mask #b111)
+           (.svf (&-> arg2 conerot quad) vf1)
+           (.mov v1-10 vf1)
+           )
+          (else
+            (.lvf vf1 (&-> arg2 conerot quad))
+            (.lvf vf2 (&-> s5-0 vec quad))
+            (.add.vf vf1 vf0 vf2 :mask #b111)
+            (.svf (&-> arg2 conerot quad) vf1)
+            (.mov v1-11 vf1)
+            )
+          )
+        )
       )
-     (let ((s3-1 (new 'stack-no-clear 'quaternion)))
-      (quaternion-vector-angle!
-       s3-1
-       *up-vector*
-       (+ 32768.0 (-> arg1 user-float) (y-angle (-> sv-16 control)))
-       )
-      (quaternion-normalize! (quaternion*! s5-0 s5-0 s3-1))
-      )
-     (cond
-      ((< (-> s5-0 w) 0.0)
-       (.lvf vf1 (&-> arg2 conerot quad))
-       (.lvf vf2 (&-> s5-0 vec quad))
-       (.sub.vf vf1 vf0 vf2 :mask #b111)
-       (.svf (&-> arg2 conerot quad) vf1)
-       (.mov v1-10 vf1)
-       )
-      (else
-       (.lvf vf1 (&-> arg2 conerot quad))
-       (.lvf vf2 (&-> s5-0 vec quad))
-       (.add.vf vf1 vf0 vf2 :mask #b111)
-       (.svf (&-> arg2 conerot quad) vf1)
-       (.mov v1-11 vf1)
-       )
-      )
-     )
+    0
+    (none)
     )
-   0
-   (none)
-   )
   )
 
 ;; definition for function birth-func-vector-orient
 ;; INFO: Return type mismatch int vs none.
-(defun
-  birth-func-vector-orient
-  ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+(defun birth-func-vector-orient ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
   (local-vars (v1-4 float) (v1-5 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
          )
-   (init-vf0-vector)
-   *target*
-   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (new 'stack-no-clear 'vector)
-    (let ((s5-0 (new 'stack-no-clear 'quaternion))
-          (s3-0 (the-as object (-> arg1 user-float)))
+    (init-vf0-vector)
+    *target*
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (let ((s5-0 (new 'stack-no-clear 'quaternion))
+            (s3-0 (the-as object (-> arg1 user-float)))
+            )
+        (when (nonzero? (the-as float s3-0))
+          (set! (-> s4-0 x) (-> (the-as sprite-vec-data-2d s3-0) z))
+          (set! (-> s4-0 y) 0.0)
+          (set! (-> s4-0 z) (- (-> (the-as sprite-vec-data-2d s3-0) x)))
+          (vector-normalize! s4-0 (the-as float 1.0))
+          (quaternion-vector-angle! s5-0 s4-0 (acos (-> (the-as sprite-vec-data-2d s3-0) y)))
+          (cond
+            ((< (-> s5-0 w) 0.0)
+             (.lvf vf1 (&-> arg2 conerot quad))
+             (.lvf vf2 (&-> s5-0 vec quad))
+             (.sub.vf vf1 vf0 vf2 :mask #b111)
+             (.svf (&-> arg2 conerot quad) vf1)
+             (.mov v1-4 vf1)
+             )
+            (else
+              (.lvf vf1 (&-> arg2 conerot quad))
+              (.lvf vf2 (&-> s5-0 vec quad))
+              (.add.vf vf1 vf0 vf2 :mask #b111)
+              (.svf (&-> arg2 conerot quad) vf1)
+              (.mov v1-5 vf1)
+              )
+            )
           )
-     (when (nonzero? (the-as float s3-0))
-      (set! (-> s4-0 x) (-> (the-as sprite-vec-data-2d s3-0) z))
-      (set! (-> s4-0 y) 0.0)
-      (set! (-> s4-0 z) (- (-> (the-as sprite-vec-data-2d s3-0) x)))
-      (vector-normalize! s4-0 (the-as float 1.0))
-      (quaternion-vector-angle!
-       s5-0
-       s4-0
-       (acos (-> (the-as sprite-vec-data-2d s3-0) y))
-       )
-      (cond
-       ((< (-> s5-0 w) 0.0)
-        (.lvf vf1 (&-> arg2 conerot quad))
-        (.lvf vf2 (&-> s5-0 vec quad))
-        (.sub.vf vf1 vf0 vf2 :mask #b111)
-        (.svf (&-> arg2 conerot quad) vf1)
-        (.mov v1-4 vf1)
         )
-       (else
-        (.lvf vf1 (&-> arg2 conerot quad))
-        (.lvf vf2 (&-> s5-0 vec quad))
-        (.add.vf vf1 vf0 vf2 :mask #b111)
-        (.svf (&-> arg2 conerot quad) vf1)
-        (.mov v1-5 vf1)
-        )
-       )
       )
-     )
+    0
+    (none)
     )
-   0
-   (none)
-   )
   )
 
 ;; definition for function part-tracker-track-target-joint
 ;; INFO: Return type mismatch int vs none.
-(defun
-  part-tracker-track-target-joint
-  ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+(defun part-tracker-track-target-joint ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
   (let* ((v1-0 *target*)
-         (v1-2
-          (vector<-cspace!
-           (new 'stack-no-clear 'vector)
-           (-> v1-0 node-list data (the int (-> arg1 user-float)))
-           )
-          )
+         (v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> v1-0 node-list data (the int (-> arg1 user-float)))))
          )
-   (set! (-> arg2 launchrot x) (-> v1-2 x))
-   (set! (-> arg2 launchrot y) (-> v1-2 y))
-   (set! (-> arg2 launchrot z) (-> v1-2 z))
-   )
+    (set! (-> arg2 launchrot x) (-> v1-2 x))
+    (set! (-> arg2 launchrot y) (-> v1-2 y))
+    (set! (-> arg2 launchrot z) (-> v1-2 z))
+    )
   0
   (none)
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 1)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x5dc
-   :flags (sp-group-flag use-local-clock)
-   :name "group-target-hit"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 56) (sp-item 57))
-   :bounds (new 'static 'sphere :w 49152.0)
-   )
+(defpartgroup group-target-hit
+  :id 1
+  :duration 5
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts
+  ((sp-item 56) (sp-item 57))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 56)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 18
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 56
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-flt spt-num 32.0)
-    (sp-rnd-flt spt-scale-x (meters 3.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 3) (meters 1) 1.0)
     (sp-int spt-rot-x 4)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-scale-y (meters 0.06))
@@ -265,32 +220,21 @@
     (sp-cpuinfo-flags bit2 bit3)
     (sp-int spt-next-time 10)
     (sp-launcher-by-id spt-next-launcher 58)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 58)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 2
-    (sp-flt spt-fade-a -0.64)
-    (sp-end)
-    )
-   )
+(defpart 58
+  :init-specs
+  ((sp-flt spt-fade-a -0.64))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 57)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 14
-    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+(defpart 57
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
-    (sp-flt spt-scale-x (meters 12.0))
+    (sp-flt spt-scale-x (meters 12))
     (sp-flt spt-rot-z (degrees 0.0))
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -301,35 +245,26 @@
     (sp-flt spt-fade-a -1.4222221)
     (sp-int spt-timer 42)
     (sp-cpuinfo-flags bit2 bit3)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 2)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #xa
-   :linger-duration #x1c2
-   :name "group-red-eco-strike-ground"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 59) (sp-item 60))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-red-eco-strike-ground
+  :id 2
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 59) (sp-item 60))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 59)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 25
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 59
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 24.0)
-    (sp-flt spt-y (meters 1.0))
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -350,21 +285,16 @@
     (sp-launcher-by-id spt-next-launcher 61)
     (sp-flt spt-conerot-x (degrees 90.0))
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 60)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+(defpart 60
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 32.0)
-    (sp-flt spt-y (meters 1.0))
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 0.5) 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
     (sp-flt spt-g 128.0)
@@ -381,38 +311,25 @@
     (sp-launcher-by-id spt-next-launcher 61)
     (sp-flt spt-conerot-x (degrees 90.0))
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 3)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #xa
-   :linger-duration #x1c2
-   :name "group-red-eco-spinkick"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 62)
-    (sp-item 63)
-    (sp-item 64)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-red-eco-spinkick
+  :id 3
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 62) (sp-item 63) (sp-item 64))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 62)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 23
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 62
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 1.0)
-    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -431,35 +348,22 @@
     (sp-launcher-by-id spt-next-launcher 61)
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 0.5) 1.0)
-    (sp-end)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 0.5) 1.0)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 61)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 4
-    (sp-flt spt-fade-r -0.7111111)
-    (sp-flt spt-fade-g 0.7111111)
-    (sp-flt spt-fade-b 0.35555556)
-    (sp-end)
-    )
-   )
+(defpart 61
+  :init-specs
+  ((sp-flt spt-fade-r -0.7111111) (sp-flt spt-fade-g 0.7111111) (sp-flt spt-fade-b 0.35555556))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 63)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+(defpart 63
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 0.66)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
     (sp-flt spt-g 128.0)
@@ -474,21 +378,16 @@
     (sp-launcher-by-id spt-next-launcher 61)
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 0.1) 1.0)
-    (sp-end)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 0.1) 1.0)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 64)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 13
-    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+(defpart 64
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
-    (sp-rnd-flt spt-scale-x (meters 4.0) (meters 2.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 4) (meters 2) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -498,49 +397,36 @@
     (sp-flt spt-accel-y 0.34133333)
     (sp-int spt-timer 10)
     (sp-cpuinfo-flags bit2 bit3)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 4)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #xa
-   :linger-duration #x1c2
-   :name "group-spin-hit"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 65) (sp-item 66))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-spin-hit
+  :id 4
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 65) (sp-item 66))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 5)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #xa
-   :linger-duration #x1c2
-   :name "group-punch-hit"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 65) (sp-item 66))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-punch-hit
+  :id 5
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 65) (sp-item 66))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 65)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+(defpart 65
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
     (sp-flt spt-num 4.0)
     (sp-flt spt-y (meters 0.75))
-    (sp-flt spt-scale-x (meters 3.0))
+    (sp-flt spt-scale-x (meters 3))
     (sp-int spt-rot-x 4)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-rnd-flt spt-scale-y (meters 0.15) (meters 0.5) 1.0)
@@ -557,33 +443,22 @@
     (sp-int spt-next-time 15)
     (sp-launcher-by-id spt-next-launcher 67)
     (sp-flt spt-rotate-y (degrees 0.0))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 67)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 2
-    (sp-flt spt-fade-a -2.1333334)
-    (sp-end)
-    )
-   )
+(defpart 67
+  :init-specs
+  ((sp-flt spt-fade-a -2.1333334))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 66)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 13
-    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+(defpart 66
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
-    (sp-flt spt-y (meters 1.0))
-    (sp-flt spt-scale-x (meters 3.0))
+    (sp-flt spt-y (meters 1))
+    (sp-flt spt-scale-x (meters 3))
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 196.0)
@@ -592,22 +467,17 @@
     (sp-flt spt-a 28.0)
     (sp-int spt-timer 10)
     (sp-cpuinfo-flags bit2 bit3)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 6)
-  (new 'static 'sparticle-launch-group
-   :length 23
-   :duration #xa
-   :linger-duration #x1c2
-   :name "group-smack-surface"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 23
-    (sp-item 68)
+(defpartgroup group-smack-surface
+  :id 6
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 68)
     (sp-item 69)
     (sp-item 72 :binding 71)
     (sp-item 71 :flags (start-dead launch-asap))
@@ -631,20 +501,15 @@
     (sp-item 71 :flags (start-dead launch-asap))
     (sp-item 71 :flags (start-dead launch-asap))
     )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 68)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 22
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 68
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-func spt-birth-func 'birth-func-copy-target-y-rot)
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 96.0)
@@ -662,18 +527,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-rotate-y (degrees 0.0))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 69)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 22
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 69
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-func spt-birth-func 'birth-func-copy-target-y-rot)
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
@@ -694,20 +554,15 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-rotate-y (degrees 0.0))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 72)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 11
-    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+(defpart 72
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-rnd-flt spt-num 12.0 8.0 1.0)
-    (sp-flt spt-scale-x (meters 1.0))
+    (sp-flt spt-scale-x (meters 1))
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
     (sp-flt spt-a 0.0)
@@ -715,22 +570,17 @@
     (sp-cpuinfo-flags bit3)
     (sp-flt spt-userdata 8.0)
     (sp-func spt-func 'part-tracker-track-target-joint)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 71)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+(defpart 71
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
-    (sp-flt spt-x (meters 0.0))
+    (sp-flt spt-x (meters 0))
     (sp-rnd-flt spt-y (meters -1.3333334) (meters 2.6666667) 1.0)
-    (sp-rnd-flt spt-z 2048.0 2048.0 1.0)
+    (sp-rnd-flt spt-z (meters 0.5) (meters 0.5) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.05) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 32.0 92.0 1.0)
@@ -739,43 +589,30 @@
     (sp-rnd-flt spt-a 32.0 96.0 1.0)
     (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
     (sp-rnd-int-flt spt-vel-x (meters -0.053333335) 1 436.90668)
-    (sp-flt spt-vel-y (meters 0.0))
+    (sp-flt spt-vel-y (meters 0))
     (sp-flt spt-vel-z (meters 0.0033333334))
     (sp-flt spt-fade-a -0.30476192)
     (sp-int spt-timer 604)
     (sp-cpuinfo-flags bit2 bit3 bit7)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 8)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-sand"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 73)
-    (sp-item 74)
-    (sp-item 75)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-sand
+  :id 8
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 73) (sp-item 74) (sp-item 75))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 73)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 73
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -793,18 +630,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 74)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 74
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -824,22 +656,17 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 75)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 75
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-flt spt-num 32.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -854,38 +681,25 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 575)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-dirt"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 2371)
-    (sp-item 2372)
-    (sp-item 2370)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-dirt
+  :id 575
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2371) (sp-item 2372) (sp-item 2370))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2371)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2371
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -903,18 +717,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2372)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2372
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -934,22 +743,17 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2370)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 2370
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-flt spt-num 32.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -964,38 +768,25 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 9)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-snow"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 76)
-    (sp-item 77)
-    (sp-item 78)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-snow
+  :id 9
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 76) (sp-item 77) (sp-item 78))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 76)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 76
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 196.0 64.0 1.0)
@@ -1013,18 +804,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 77)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 77
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -1044,22 +830,17 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 78)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 78
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-flt spt-num 32.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1128529920 1 64.0)
@@ -1074,56 +855,35 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 580)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-ice"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 76)
-    (sp-item 77)
-    (sp-item 78)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-ice
+  :id 580
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 76) (sp-item 77) (sp-item 78))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 10)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-grass"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 79)
-    (sp-item 80)
-    (sp-item 81)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-grass
+  :id 10
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 79) (sp-item 80) (sp-item 81))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 79)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 79
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 64.0 32.0 1.0)
@@ -1141,18 +901,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 80)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 80
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -1172,22 +927,17 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 81)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+(defpart 81
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
     (sp-flt spt-num 32.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.35) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-scale-y (meters 0.15))
@@ -1203,34 +953,25 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 11)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-wood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 82) (sp-item 83))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-wood
+  :id 11
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 82) (sp-item 83))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 82)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 82
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 96.0 32.0 1.0)
@@ -1248,18 +989,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 83)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 83
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -1279,53 +1015,35 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 12)
-  (new 'static 'sparticle-launch-group
-   :length 4
-   :duration #x5
-   :linger-duration #x2ee
-   :name "group-land-poof-crwood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 4
-    (sp-item 82)
-    (sp-item 83)
-    (sp-item 84)
-    (sp-item 84)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-crwood
+  :id 12
+  :duration 5
+  :linger-duration 750
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 82) (sp-item 83) (sp-item 84) (sp-item 84))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 13)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-stone"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2 (sp-item 85) (sp-item 86))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-stone
+  :id 13
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 85) (sp-item 86))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 85)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 85
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 96.0 32.0 1.0)
@@ -1343,18 +1061,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 86)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 86
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -1374,37 +1087,25 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 581)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-land-poof-pcmetal"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 2373)
-    (sp-item 2374)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-land-poof-pcmetal
+  :id 581
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2373) (sp-item 2374))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2373)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2373
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 128.0 64.0 1.0)
@@ -1420,18 +1121,13 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2374)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2374
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -1451,46 +1147,33 @@
     (sp-cpuinfo-flags bit2 bit12)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 14)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-stone"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 87))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-stone
+  :id 14
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 87))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 15)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-stone"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 87))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-stone
+  :id 15
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 87))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 87)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 87
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -1505,65 +1188,43 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 582)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-snow"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 2375)
-    (sp-item 2376 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-snow
+  :id 582
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2375) (sp-item 2376 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 583)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-snow"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2375))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-snow
+  :id 583
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2375))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 584)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-footprint-snow"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 2376 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-footprint-snow
+  :id 584
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2376 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2376)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 14
-    (sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+(defpart 2376
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
     (sp-func spt-birth-func 'birth-func-target-orient)
     (sp-flt spt-num 1.0)
     (sp-flt spt-x (meters -0.25))
@@ -1576,18 +1237,13 @@
     (sp-flt spt-fade-a -0.07111111)
     (sp-int spt-timer 1050)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2375)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2375
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -1602,87 +1258,62 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 585)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-ice"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2375))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-ice
+  :id 585
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2375))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 586)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-ice"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2375))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-ice
+  :id 586
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2375))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 16)
-  (new 'static 'sparticle-launch-group
-   :length 3
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-crwood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 3
-    (sp-item 89)
-    (sp-item 89)
-    (sp-item 84)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-crwood
+  :id 16
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 89) (sp-item 89) (sp-item 84))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 17)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-crwood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 88))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-crwood
+  :id 17
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 88))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 84)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 22
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 84
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
-    (sp-flt spt-y (meters -1.0))
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 0.5) 1.0)
+    (sp-flt spt-y (meters -1))
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 64.0 32.0 1.0)
     (sp-flt spt-g 64.0)
     (sp-rnd-flt spt-b 0.0 32.0 1.0)
     (sp-flt spt-a 0.0)
-    (sp-rnd-flt spt-vel-y (meters 0.0) (meters -0.0033333334) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0) (meters -0.0033333334) 1.0)
     (sp-flt spt-scalevel-x (meters 0.0016666667))
     (sp-copy-from-other spt-scalevel-y -4)
     (sp-flt spt-fade-a 0.16)
@@ -1693,73 +1324,46 @@
     (sp-launcher-by-id spt-next-launcher 90)
     (sp-flt spt-conerot-x (degrees 90.0))
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 3.0) 1.0)
-    (sp-end)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 3) 1.0)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 90)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 4
-    (sp-flt spt-fade-a 0.0)
-    (sp-int-plain-rnd spt-next-time 150 149 1)
-    (sp-launcher-by-id spt-next-launcher 91)
-    (sp-end)
-    )
-   )
+(defpart 90
+  :init-specs
+  ((sp-flt spt-fade-a 0.0) (sp-int-plain-rnd spt-next-time 150 149 1) (sp-launcher-by-id spt-next-launcher 91))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 91)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 2
-    (sp-flt spt-fade-a -0.08)
-    (sp-end)
-    )
-   )
+(defpart 91
+  :init-specs
+  ((sp-flt spt-fade-a -0.08))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 18)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-wood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 89))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-wood
+  :id 18
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 89))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 19)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-wood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 89))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-wood
+  :id 19
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 89))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 89)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 89
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -1774,46 +1378,33 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 587)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-pcmetal"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2377))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-pcmetal
+  :id 587
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2377))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 588)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-pcmetal"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2377))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-pcmetal
+  :id 588
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2377))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2377)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2377
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -1828,65 +1419,43 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 20)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-grass"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 92)
-    (sp-item 93 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-grass
+  :id 20
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 92) (sp-item 93 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 21)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-grass"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 92))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-grass
+  :id 21
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 92))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 22)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-footprint-grass"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 93 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-footprint-grass
+  :id 22
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 93 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 92)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 92
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -1901,18 +1470,13 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 93)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 14
-    (sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+(defpart 93
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
     (sp-func spt-birth-func 'birth-func-target-orient)
     (sp-flt spt-num 1.0)
     (sp-flt spt-x (meters -0.25))
@@ -1925,65 +1489,43 @@
     (sp-flt spt-fade-a -0.053333335)
     (sp-int spt-timer 1050)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 23)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-sand"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 88)
-    (sp-item 94 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-sand
+  :id 23
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 88) (sp-item 94 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 24)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-sand"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 88))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-sand
+  :id 24
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 88))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 25)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-footprint-sand"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 94 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-footprint-sand
+  :id 25
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 94 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 88)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 88
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -1998,18 +1540,13 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 94)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 14
-    (sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+(defpart 94
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
     (sp-func spt-birth-func 'birth-func-target-orient)
     (sp-flt spt-num 1.0)
     (sp-flt spt-x (meters -0.25))
@@ -2022,62 +1559,43 @@
     (sp-flt spt-fade-a -0.035555556)
     (sp-int spt-timer 1050)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 576)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-run-poof-dirt"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2378))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-run-poof-dirt
+  :id 576
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2378))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 577)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-poof-dirt"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2378))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-poof-dirt
+  :id 577
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2378))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 578)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x258
-   :name "group-just-footprint-dirt"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 2379 :flags (is-3d))
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-just-footprint-dirt
+  :id 578
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2379 :flags (is-3d)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2378)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2378
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -2092,18 +1610,13 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2379)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 14
-    (sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+(defpart 2379
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
     (sp-func spt-birth-func 'birth-func-target-orient)
     (sp-flt spt-num 1.0)
     (sp-flt spt-x (meters -0.25))
@@ -2116,22 +1629,17 @@
     (sp-flt spt-fade-a -0.035555556)
     (sp-int spt-timer 1050)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 95)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 95
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 6.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -2145,22 +1653,17 @@
     (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2253)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 2253
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 6.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -2174,22 +1677,17 @@
     (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 96)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+(defpart 96
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
     (sp-rnd-flt spt-num 0.0 2.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.2) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-scale-y (meters 0.1))
@@ -2204,22 +1702,17 @@
     (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2250)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 19
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 2250
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 6.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1128529920 1 64.0)
@@ -2233,62 +1726,35 @@
     (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 97)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 1 (sp-end))
-   )
+(defpart 97
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 98)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 1 (sp-end))
-   )
+(defpart 98
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 99)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 1 (sp-end))
-   )
+(defpart 99
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 26)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-sand"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 100)
-    (sp-item 101)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-sand
+  :id 26
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 100) (sp-item 101))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 100)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 100
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2308,22 +1774,17 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 101)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 101
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -2338,35 +1799,23 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 579)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-dirt"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 2380)
-    (sp-item 2381)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-dirt
+  :id 579
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2380) (sp-item 2381))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2380)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2380
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2386,22 +1835,17 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2381)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 2381
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -2416,35 +1860,23 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 27)
-  (new 'static 'sparticle-launch-group
-   :length 2
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-grass"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 2
-    (sp-item 102)
-    (sp-item 103)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-grass
+  :id 27
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 102) (sp-item 103))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 102)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 102
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2464,22 +1896,17 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 103)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+(defpart 103
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.35) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-scale-y (meters 0.15))
@@ -2495,32 +1922,23 @@
     (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-conerot-radius (meters 0.5))
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 28)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-stone"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 104))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-stone
+  :id 28
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 104))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 104)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 104
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2540,32 +1958,23 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 589)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-pcmetal"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2382))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-pcmetal
+  :id 589
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2382))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2382)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2382
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2585,32 +1994,23 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 590)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-snow"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2383))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-snow
+  :id 590
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2383))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2383)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2383
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2630,46 +2030,33 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 591)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-ice"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2383))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-ice
+  :id 591
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2383))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 29)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x1c2
-   :name "group-slide-poof-wood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 105))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-wood
+  :id 29
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 105))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 105)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 21
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 105
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 6.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -2689,36 +2076,27 @@
     (sp-cpuinfo-flags bit2 bit12 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 30)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x5
-   :linger-duration #x2ee
-   :name "group-slide-poof-crwood"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 105))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-slide-poof-crwood
+  :id 30
+  :duration 5
+  :linger-duration 750
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 105))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 106)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 106
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -2729,22 +2107,17 @@
     (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2265)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 2265
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1124073472 2 32.0)
@@ -2755,22 +2128,17 @@
     (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2262)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 16
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+(defpart 2262
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-int spt-r 1128529920 1 64.0)
@@ -2781,22 +2149,17 @@
     (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 107)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 17
-    (sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+(defpart 107
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
     (sp-rnd-flt spt-num 0.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
-    (sp-rnd-flt spt-z -1638.4 3276.8 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.35) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-flt spt-scale-y (meters 0.15))
@@ -2808,103 +2171,79 @@
     (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
     (sp-int spt-timer 300)
     (sp-cpuinfo-flags bit2 bit12 bit14)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 31)
-  (new 'static 'sparticle-launch-group
-   :length 36
-   :duration #x258
-   :linger-duration #x5dc
-   :flags (sp-group-flag use-local-clock)
-   :name "group-dark-eco-death"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 36
-    (sp-item 295 :fade-after (meters 100.0) :period 600 :length 5 :binding 296)
+(defpartgroup group-dark-eco-death
+  :id 31
+  :duration 600
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts
+  ((sp-item 295 :fade-after (meters 100) :period 600 :length 5 :binding 296)
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-    (sp-item 297 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
     (sp-item 2095 :period 600 :length 5)
-    (sp-item 2096 :fade-after (meters 80.0) :falloff-to (meters 80.0) :period 600 :length 40)
+    (sp-item 2096 :fade-after (meters 80) :falloff-to (meters 80) :period 600 :length 40)
     (sp-item 2097 :period 600 :length 20)
     )
-   :bounds (new 'static 'sphere :w 49152.0)
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 32)
-  (new 'static 'sparticle-launch-group
-   :length 4
-   :duration #x4b
-   :linger-duration #x258
-   :name "group-lava-death"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 4
-    (sp-item 2003)
-    (sp-item 2004)
-    (sp-item 2005)
-    (sp-item 2006)
-    )
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-lava-death
+  :id 32
+  :duration 75
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2003) (sp-item 2004) (sp-item 2005) (sp-item 2006))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 708)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #x96
-   :linger-duration #x258
-   :name "group-burn-death"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2003))
-   :bounds (new 'static 'sphere :w 8192.0)
-   )
+(defpartgroup group-burn-death
+  :id 708
+  :duration 150
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts
+  ((sp-item 2003))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2006)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 17
-    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+(defpart 2006
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-rnd-flt spt-num 8.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.5) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -2919,23 +2258,18 @@
     (sp-cpuinfo-flags bit0 bit3 bit14)
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 60.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-flt spt-conerot-radius (meters 1.0))
-    (sp-end)
+    (sp-flt spt-conerot-radius (meters 1))
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2003)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 23
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2003
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 5.0)
-    (sp-rnd-flt spt-x (meters 0.0) (meters 0.5) 1.0)
-    (sp-rnd-flt spt-y (meters 0.0) (meters 3.0) 1.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 2.0) 1.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 3) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 2) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
@@ -2953,29 +2287,24 @@
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2004)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 23
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2004
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 32.0)
-    (sp-rnd-flt spt-x (meters 0.5) (meters 2.0) 1.0)
+    (sp-rnd-flt spt-x (meters 0.5) (meters 2) 1.0)
     (sp-rnd-flt spt-y (meters 0.5) (meters 0.5) 1.0)
-    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 2.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 2) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
     (sp-rnd-flt spt-g 0.0 128.0 1.0)
     (sp-flt spt-b 0.0)
     (sp-rnd-flt spt-a 32.0 64.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0.0) (meters 0.0016666667) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0) (meters 0.0016666667) 1.0)
     (sp-flt spt-scalevel-x (meters 0.04444444))
     (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
     (sp-copy-from-other spt-scalevel-y -4)
@@ -2986,23 +2315,18 @@
     (sp-flt spt-conerot-x (degrees 90.0))
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
     (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2005)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 28
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2005
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 8.0)
-    (sp-rnd-flt spt-x (meters -1.0) (meters 2.0) 1.0)
-    (sp-rnd-flt spt-y (meters 0.0) (meters 3.0) 1.0)
-    (sp-rnd-flt spt-z -4096.0 8192.0 1.0)
-    (sp-rnd-flt spt-scale-x (meters 2.0) (meters 3.0) 1.0)
+    (sp-rnd-flt spt-x (meters -1) (meters 2) 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 3) 1.0)
+    (sp-rnd-flt spt-z (meters -1) (meters 2) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 3) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 255.0)
@@ -3024,32 +2348,21 @@
     (sp-launcher-by-id spt-next-launcher 2007)
     (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
     (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2007)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 2
-    (sp-flt spt-fade-a -0.08)
-    (sp-end)
-    )
-   )
+(defpart 2007
+  :init-specs
+  ((sp-flt spt-fade-a -0.08))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2002)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 20
-    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+(defpart 2002
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 1.0)
-    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 2.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 2) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
     (sp-rnd-flt spt-r 32.0 32.0 1.0)
@@ -3066,104 +2379,73 @@
     (sp-cpuinfo-flags bit2 bit14)
     (sp-int-plain-rnd spt-next-time 15 59 1)
     (sp-launcher-by-id spt-next-launcher 2008)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2008)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 2
-    (sp-flt spt-fade-a -0.28444445)
-    (sp-end)
-    )
-   )
+(defpart 2008
+  :init-specs
+  ((sp-flt spt-fade-a -0.28444445))
   )
 
 ;; definition for function process-drawable-burn-effect
 ;; Used lq/sq
 (defbehavior process-drawable-burn-effect target ((arg0 int))
-  (sound-play-by-name
-   (static-sound-name "get-burned")
-   (new-sound-id)
-   1024
-   0
-   0
-   (the-as uint 1)
-   (the-as vector #t)
-   )
+  (sound-play-by-name (static-sound-name "get-burned") (new-sound-id) 1024 0 0 1 #t)
   (let ((s5-1 (new 'stack 'rgbaf))
         (s3-0 (-> *display* base-frame-counter))
         (s4-1 (-> self parent))
         )
-   (set!
-    (-> s5-1 quad)
-    (-> (the-as process-drawable (-> s4-1 0)) draw color-mult quad)
-    )
-   (let
-    ((s2-1
-      (vector-float*!
-       (the-as vector (new 'stack 'rgbaf))
-       (the-as vector s5-1)
-       0.0
-       )
-      )
-     )
-    (while (< (- (-> *display* base-frame-counter) s3-0) arg0)
-     (let ((v1-8 (- (-> *display* base-frame-counter) s3-0)))
-      (if (< v1-8 (/ arg0 2))
-       (vector-lerp!
-        (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
-        s5-1
-        s2-1
-        (/ (the float v1-8) (the float arg0))
+    (set! (-> s5-1 quad) (-> (the-as process-drawable (-> s4-1 0)) draw color-mult quad))
+    (let ((s2-1 (vector-float*! (the-as vector (new 'stack 'rgbaf)) (the-as vector s5-1) 0.0)))
+      (while (< (- (-> *display* base-frame-counter) s3-0) arg0)
+        (let ((v1-8 (- (-> *display* base-frame-counter) s3-0)))
+          (if (< v1-8 (/ arg0 2))
+              (vector-lerp!
+                (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
+                s5-1
+                s2-1
+                (/ (the float v1-8) (the float arg0))
+                )
+              (vector-lerp!
+                (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
+                s5-1
+                s2-1
+                (- 1.0 (/ (the float v1-8) (the float arg0)))
+                )
+              )
+          )
+        (let ((a2-3
+                (process-drawable-random-point!
+                  (the-as process-drawable (ppointer->process s4-1))
+                  (new 'stack-no-clear 'vector)
+                  )
+                )
+              )
+          (sp-launch-particles-var
+            *sp-particle-system-2d*
+            (-> *part-id-table* 2002)
+            a2-3
+            (the-as sparticle-launch-state #f)
+            (the-as sparticle-launch-control #f)
+            (the-as float 1.0)
+            )
+          )
+        (suspend)
+        0
         )
-       (vector-lerp!
-        (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
-        s5-1
-        s2-1
-        (- 1.0 (/ (the float v1-8) (the float arg0)))
-        )
-       )
       )
-     (let
-      ((a2-3
-        (process-drawable-random-point!
-         (the-as process-drawable (ppointer->process s4-1))
-         (new 'stack-no-clear 'vector)
-         )
-        )
-       )
-      (sp-launch-particles-var
-       *sp-particle-system-2d*
-       (-> *part-id-table* 2002)
-       a2-3
-       (the-as sparticle-launch-state #f)
-       (the-as sparticle-launch-control #f)
-       (the-as float 1.0)
-       )
+    (let ((v0-8 (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)))
+      (set! (-> v0-8 quad) (-> s5-1 quad))
+      v0-8
       )
-     (suspend)
-     0
-     )
     )
-   (let ((v0-8 (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)))
-    (set! (-> v0-8 quad) (-> s5-1 quad))
-    v0-8
-    )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2391)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 17
-    (sp-tex spt-texture (new 'static 'texture-id :index #xa :page #x2))
+(defpart 2391
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #xa :page #x2))
     (sp-func spt-birth-func 'birth-func-target-orient)
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters 0.02))
@@ -3179,72 +2461,43 @@
     (sp-int spt-timer 240)
     (sp-cpuinfo-flags bit2 bit3 bit14)
     (sp-flt spt-userdata -8192.0)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 611)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #xbb8
-   :linger-duration #x5dc
-   :flags (sp-group-flag screen-space)
-   :name "group-part-first-person-hud-left"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 2474 :flags (launch-asap))
-    )
-   :bounds (new 'static 'sphere :w 4096.0)
-   )
+(defpartgroup group-part-first-person-hud-left
+  :id 611
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts
+  ((sp-item 2474 :flags (launch-asap)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 612)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #xbb8
-   :linger-duration #x5dc
-   :flags (sp-group-flag screen-space)
-   :name "group-part-first-person-hud-right"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 2475 :flags (launch-asap))
-    )
-   :bounds (new 'static 'sphere :w 4096.0)
-   )
+(defpartgroup group-part-first-person-hud-right
+  :id 612
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts
+  ((sp-item 2475 :flags (launch-asap)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-group-id-table* 613)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #xbb8
-   :linger-duration #x5dc
-   :flags (sp-group-flag screen-space)
-   :name "group-part-first-person-hud-selector"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (sp-item 2476 :flags (launch-asap))
-    )
-   :bounds (new 'static 'sphere :w 4096.0)
-   )
+(defpartgroup group-part-first-person-hud-selector
+  :id 613
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts
+  ((sp-item 2476 :flags (launch-asap)))
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2474)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 12
-    (sp-tex spt-texture (new 'static 'texture-id :page #x408))
+(defpart 2474
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x408))
     (sp-flt spt-num 1.0)
     (sp-flt spt-scale-x (meters 3.5))
-    (sp-flt spt-scale-y (meters 13.0))
+    (sp-flt spt-scale-y (meters 13))
     (sp-flt spt-r 128.0)
     (sp-flt spt-g 128.0)
     (sp-flt spt-b 128.0)
@@ -3252,22 +2505,17 @@
     (sp-int spt-timer -1)
     (sp-cpuinfo-flags bit2 bit9 bit13)
     (sp-func spt-func 'part-first-person-hud-left-func)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2475)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 13
-    (sp-tex spt-texture (new 'static 'texture-id :page #x408))
+(defpart 2475
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :page #x408))
     (sp-flt spt-num 1.0)
     (sp-flt spt-scale-x (meters 3.5))
     (sp-flt spt-rot-z (degrees 180.0))
-    (sp-flt spt-scale-y (meters 13.0))
+    (sp-flt spt-scale-y (meters 13))
     (sp-flt spt-r 128.0)
     (sp-flt spt-g 128.0)
     (sp-flt spt-b 128.0)
@@ -3275,20 +2523,15 @@
     (sp-int spt-timer -1)
     (sp-cpuinfo-flags bit2 bit9 bit13)
     (sp-func spt-func 'part-first-person-hud-right-func)
-    (sp-end)
     )
-   )
   )
 
 ;; failed to figure out what this is:
-(set!
-  (-> *part-id-table* 2476)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 12
-    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x408))
+(defpart 2476
+  :init-specs
+  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x408))
     (sp-flt spt-num 1.0)
-    (sp-flt spt-scale-x (meters 1.0))
+    (sp-flt spt-scale-x (meters 1))
     (sp-copy-from-other spt-scale-y -4)
     (sp-flt spt-r 128.0)
     (sp-flt spt-g 128.0)
@@ -3297,11 +2540,5 @@
     (sp-int spt-timer -1)
     (sp-cpuinfo-flags bit9 bit13)
     (sp-func spt-func 'part-first-person-hud-selector-func)
-    (sp-end)
     )
-   )
   )
-
-
-
-

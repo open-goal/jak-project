@@ -246,6 +246,14 @@
         )
   )
 
+(defmacro sp-sound (sound)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-sound)
+        :sound ,sound
+        :flags (sp-flag plain-v2)
+        )
+  )
+
 (defmacro sp-end ()
   `(new 'static 'sp-field-init-spec
         :field (sp-field-id spt-end)
@@ -404,4 +412,39 @@
 
 
 (set! (-> sparticle-launch-control heap-base) (the-as uint 32))
+
+
+(defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds)
+  "define a new part group. defines a constant with the name of the group with the ID as its value"
+  `(begin
+    (defconstant ,name ,id)
+    (set! (-> *part-group-id-table* ,id)
+      (new 'static 'sparticle-launch-group
+          :duration ,duration
+          :linger-duration ,linger-duration
+          :flags (sp-group-flag ,@flags)
+          :bounds ,bounds
+          :name ,(symbol->string name)
+          :length ,(length parts)
+          :launcher (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)
+          )
+      )
+    )
+  )
+
+(defmacro get-part-group (id)
+  `(-> *part-group-id-table* ,id)
+  )
+
+(defmacro defpart (id &key (init-specs ()))
+  "define a new sparticle-launcher"
+  `(set! (-> *part-id-table* ,id)
+      (new 'static 'sparticle-launcher
+          :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                  ,@init-specs
+                  (sp-end)
+                  )))
+  )
+
+
 

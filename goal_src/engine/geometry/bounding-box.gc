@@ -172,7 +172,7 @@
   0
   )
 
-(defmethod set-from-spheres! bounding-box ((obj bounding-box) (spheres (pointer sphere)) (count int))
+(defmethod set-from-spheres! bounding-box ((obj bounding-box) (spheres-bad (pointer sphere)) (count int))
   "Reset box to hold the given spheres. Note: this implementation could be optimized."
   ;; This is also unrolled, but does 7 at a time.
   (rlet ((vf0 :class vf)
@@ -186,13 +186,15 @@
     ;; init min/max. in the case we don't have any spheres, we should return (0,0,0,1) for min/max.
     (set! current-min vf0)
     (set! current-max vf0)
+    
+    (let ((spheres (the (inline-array sphere) spheres-bad)))
 
     (dotimes (i count)
       (.lvf sph (-> spheres i))
       (.sub.w.vf sph-min sph sph :mask #b111)
       (.add.w.vf sph-max sph sph :mask #b111)
       (cond
-        ((zero? count)
+        ((zero? i)
          (set! current-min sph-min)
          (set! current-max sph-max)
          )
@@ -202,6 +204,7 @@
          )
         )
       )
+    )
     
     (.svf (-> obj min) current-min)
     (.svf (-> obj max) current-max)

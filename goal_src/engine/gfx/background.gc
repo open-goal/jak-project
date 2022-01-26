@@ -86,6 +86,7 @@
           ;;(spad-vis (the-as (pointer uint128) (+ #x38b0 #x70000000)))
           (spad-vis (scratchpad-ptr uint128 :offset VISIBLE_LIST_SCRATCHPAD))
           )
+      
       (b! (not *artist-flip-visible*) cfg-5 :delay (nop!))
       (nop!)
       (nop!)
@@ -129,6 +130,57 @@
   (none)
   )
 
+(defun add-pc-port-background-data ((dma-buf dma-buffer))
+  ;; loop over levels
+  (dotimes (lev-idx 2)
+    (let ((lev (-> *level* level lev-idx))
+          (dma-start (-> dma-buf base)))
+      (cond
+        ((= (-> lev status) 'active)
+         ;; the level is active.
+         (let ((packet (the-as dma-packet (-> dma-buf base))))
+           (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 128))
+           (set! (-> packet vif0) (new 'static 'vif-tag))
+           (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+           (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+           )
+         (quad-copy! (-> dma-buf base) (-> lev vis-bits) 128)
+         (&+! (-> dma-buf base) (* 16 128))
+         )
+        (else
+          (let ((packet (the-as dma-packet (-> dma-buf base))))
+            (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 1))
+            (set! (-> packet vif0) (new 'static 'vif-tag))
+            (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+            (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+            )
+          (set! (-> (the (pointer uint128) (-> dma-buf base))) (the uint128 0))
+          (&+! (-> dma-buf base) (* 16 1))
+          )
+        )
+      
+      
+      (let ((a3-3 (-> dma-buf base)))
+        (let ((v1-38 (the-as object (-> dma-buf base))))
+          (set! (-> (the-as dma-packet v1-38) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet v1-38) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet v1-38) vif1) (new 'static 'vif-tag))
+          (set! (-> dma-buf base) (&+ (the-as pointer v1-38) 16))
+          )
+        (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
+
+                                                     (bucket-id tfrag-0)
+
+                                       
+                               dma-start
+                               (the-as (pointer dma-tag) a3-3)
+                               )
+        )
+      
+      )
+    )
+  )
+
 (defun finish-background ()
   "Complete the background drawing.
   This function should run after the background engine has executed.
@@ -137,9 +189,17 @@
   ;; set up common VU0 stuff for background.
   (background-upload-vu0)
   
+  (#when PC_PORT
+    (add-pc-port-background-data
+      (-> *display* frames (-> *display* on-screen) frame global-buf)
+      )
+    )
+  
   ;;;;;;;;;;;;;;;;
   ;; shrubbery
   ;;;;;;;;;;;;;;;;
+  
+#|
   (set! (-> *instance-shrub-work* paused) (paused?))
   (when (nonzero? (-> *background-work* shrub-tree-count))
     (if *debug-segment*
@@ -177,6 +237,7 @@
           )
         )
     )
+|#
   
   
   (let ((gp-1 (the-as level #f)))
@@ -242,27 +303,20 @@
                   ;; update colors, but only if needed
                   (when (not (or (zero? s0-0) (= s4-1 s0-0)))
                     (flush-cache 0)
-                    (time-of-day-interp-colors-scratch
-                      (the-as (pointer rgba)
-                              (+ 6160 (the-as int (the-as terrain-context #x70000000)))
-                              )
-                      s0-0
-                      (-> s1-0 mood)
-                      )
+                    ;;(time-of-day-interp-colors-scratch (scratchpad-ptr rgba :offset 6160) s0-0 (-> s1-0 mood))
                     ;; remember the previous colors
                     (set! s4-1 s0-0)
                     )
                   )
                 ;; set the level.
-                (set! (-> (the-as terrain-context #x70000000) bsp lev-index)
-                      (-> s1-0 index)
-                      )
-                )
+                (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s1-0 index))
+                
               (set! (-> *tfrag-work* min-dist z) 4095996000.0)
               ;; draw!
-              (draw-drawable-tree-tfrag s2-0)
+              (draw-drawable-tree-tfrag s2-0 s1-0)
+              )
               ;; remember closest.
-              (set! (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 0)
+              (set! (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 0)
                     (-> *tfrag-work* min-dist z)
                     )
               )
@@ -278,26 +332,21 @@
                   (upload-vis-bits s1-1 gp-1 a2-6)
                   (when (not (or (zero? s0-1) (= s4-1 s0-1)))
                     (flush-cache 0)
-                    (time-of-day-interp-colors-scratch
-                      (the-as (pointer rgba) (+ 6160 #x70000000))
-                      s0-1
-                      (-> s1-1 mood)
-                      )
+                    ;;(time-of-day-interp-colors-scratch (scratchpad-ptr rgba :offset 6160) s0-1 (-> s1-1 mood))
                     (set! s4-1 s0-1)
                     )
                   )
-                (set!
-                  (-> (the-as terrain-context #x70000000) bsp lev-index)
-                  (-> s1-1 index)
-                  )
-                )
+                (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s1-1 index))
+                
               (set! (-> *tfrag-work* min-dist z) 4095996000.0)
-              (draw-drawable-tree-trans-tfrag s2-1)
-              (set! (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
+              (draw-drawable-tree-trans-tfrag s2-1 s1-1)
+              )
+              (set! (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
                     (-> *tfrag-work* min-dist z)
                     )
               )
             )
+            
           
           ;;;;;;;;;;;;;; DIRT TFRAG
           (let ((s2-2 (-> *background-work* dirt-tfrag-trees s3-0)))
@@ -309,30 +358,24 @@
                   (upload-vis-bits s1-2 gp-1 a2-8)
                   (when (not (or (zero? s0-2) (= s4-1 s0-2)))
                     (flush-cache 0)
-                    (time-of-day-interp-colors-scratch
-                      (the-as (pointer rgba) (+ 6160 #x70000000))
-                      s0-2
-                      (-> s1-2 mood)
-                      )
+                    ;;(time-of-day-interp-colors-scratch (scratchpad-ptr rgba :offset 6160) s0-2 (-> s1-2 mood))
                     (set! s4-1 s0-2)
                     )
                   )
-                (set!
-                  (-> (the-as terrain-context #x70000000) bsp lev-index)
-                  (-> s1-2 index)
-                  )
-                )
+                (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s1-2 index))
+                
               (set! (-> *tfrag-work* min-dist z) 4095996000.0)
-              (draw-drawable-tree-dirt-tfrag s2-2)
-              (set! (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
-                    (fmin
-                      (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
+              (draw-drawable-tree-dirt-tfrag s2-2 s1-2)
+              )
+              (set! (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
+                    (fmin (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
                       (-> *tfrag-work* min-dist z)
                       )
                     )
               )
             )
-          
+            
+        
           ;;;;;;;;;;;;;; ICE TFRAG
           (let ((s2-3 (-> *background-work* ice-tfrag-trees s3-0)))
             (when s2-3
@@ -343,28 +386,24 @@
                   (upload-vis-bits s1-3 gp-1 a2-10)
                   (when (not (or (zero? s0-3) (= s4-1 s0-3)))
                     (flush-cache 0)
-                    (time-of-day-interp-colors-scratch
-                      (the-as (pointer rgba) (+ 6160 #x70000000))
-                      s0-3
-                      (-> s1-3 mood)
-                      )
+                    ;;(time-of-day-interp-colors-scratch (scratchpad-ptr rgba :offset 6160) s0-3 (-> s1-3 mood))
                     (set! s4-1 s0-3)
                     )
                   )
-                (set! (-> (the-as terrain-context #x70000000) bsp lev-index)
-                  (-> s1-3 index)
-                  )
-                )
+                (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s1-3 index))
+                
               (set! (-> *tfrag-work* min-dist z) 4095996000.0)
-              (draw-drawable-tree-ice-tfrag s2-3)
-              (set! (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
-                (fmin
-                  (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
+              (draw-drawable-tree-ice-tfrag s2-3 s1-3)
+              )
+              (set! (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
+                (fmin (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
                   (-> *tfrag-work* min-dist z)
                   )
                 )
               )
             )
+            
+            
           
           ;;;;;;;;;;;;;; LOWRES TFRAG
           (let ((s2-4 (-> *background-work* lowres-tfrag-trees s3-0)))
@@ -376,20 +415,15 @@
                   (upload-vis-bits s1-4 gp-1 a2-12)
                   (when (not (or (zero? s0-4) (= s4-1 s0-4)))
                     (flush-cache 0)
-                    (time-of-day-interp-colors-scratch
-                      (the-as (pointer rgba) (+ 6160 #x70000000))
-                      s0-4
-                      (-> s1-4 mood)
-                      )
+                    ;;(time-of-day-interp-colors-scratch (scratchpad-ptr rgba :offset 6160) s0-4 (-> s1-4 mood))
                     (set! s4-1 s0-4)
                     )
                   )
-                (set!
-                  (-> (the-as terrain-context #x70000000) bsp lev-index)
-                  (-> s1-4 index)
-                  )
-                )
-              (draw-drawable-tree-tfrag s2-4)
+                (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s1-4 index))
+                
+              ;;(format 0 "draw ~A~%" s2-4)
+              (draw-drawable-tree-tfrag s2-4 s1-4)
+              )
               )
             )
           
@@ -403,24 +437,17 @@
                   (upload-vis-bits s1-5 gp-1 a2-14)
                   (when (not (or (zero? s0-5) (= s4-1 s0-5)))
                     (flush-cache 0)
-                    (time-of-day-interp-colors-scratch
-                      (the-as (pointer rgba) (+ 6160 #x70000000))
-                      s0-5
-                      (-> s1-5 mood)
-                      )
+                    ;;(time-of-day-interp-colors-scratch (scratchpad-ptr rgba :offset 6160) s0-5 (-> s1-5 mood))
                     (set! s4-1 s0-5)
                     )
                   )
-                (set!
-                  (-> (the-as terrain-context #x70000000) bsp lev-index)
-                  (-> s1-5 index)
-                  )
-                )
+                (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s1-5 index))
+                
               (set! (-> *tfrag-work* min-dist z) 4095996000.0)
-              (draw-drawable-tree-trans-tfrag s2-5)
-              (set! (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
-                (fmin
-                  (-> *level* level (-> (the-as terrain-context #x70000000) bsp lev-index) closest-object 3)
+              (draw-drawable-tree-trans-tfrag s2-5 s1-5)
+              )
+              (set! (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
+                (fmin (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
                   (-> *tfrag-work* min-dist z)
                   )
                 )
@@ -439,7 +466,7 @@
     
     
     ;;;;;;;;;; TIE (TFRAG Instance Engine)
-    
+
     ;; common setup
     (set! (-> *instance-tie-work* paused) (paused?))
     (when (nonzero? (-> *background-work* tie-tree-count))
@@ -464,8 +491,8 @@
               (set! gp-1 s4-2)
               )
             )
-          (set! (-> (the-as terrain-context #x70000000) bsp lev-index) (-> s4-2 index))
-          (set! (-> (the-as terrain-context #x70000000) bsp mood) (-> s4-2 mood))
+          (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> s4-2 index))
+          (set! (-> (scratchpad-object terrain-context) bsp mood) (-> s4-2 mood))
           (draw-drawable-tree-instance-tie (-> *background-work* tie-trees s5-3) s4-2)
           )
         ;; todo, type here probably wrong.
@@ -480,7 +507,7 @@
             (new 'static 'rgba :r #x80 :g #x20 :b #x60 :a #x80)
             )
           )
-      
+      #|
       ;; TIE Generic
       (dotimes (gp-2 (-> *background-work* tie-tree-count))
         (when (nonzero? (-> *background-work* tie-generic gp-2))
@@ -506,7 +533,9 @@
             )
           )
         )
+            |#
       )
+    
     )
   0
   (none)

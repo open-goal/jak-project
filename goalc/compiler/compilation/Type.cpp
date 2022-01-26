@@ -407,13 +407,15 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   }
 
   // Auto-generate (inspect) method
-  auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
-  if (as_structure_type) {  // generate the inspect method
-    generate_inspector_for_structure_type(form, env, as_structure_type);
-  } else {
-    auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
-    if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields
-      generate_inspector_for_bitfield_type(form, env, as_bitfield_type);
+  if (result.type_info->gen_inspect()) {
+    auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
+    if (as_structure_type) {  // generate the inspect method
+      generate_inspector_for_structure_type(form, env, as_structure_type);
+    } else {
+      auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
+      if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields
+        generate_inspector_for_bitfield_type(form, env, as_bitfield_type);
+      }
     }
   }
 
@@ -483,7 +485,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   place->func = nullptr;
 
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name, &m_goos.reader);
-  new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
+  new_func_env->set_segment(env->function_env()->segment_for_static_data());
   new_func_env->method_of_type_name = symbol_string(type_name);
 
   // set up arguments
@@ -731,7 +733,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
 
           // special case (-> <state> enter) should return the appropriate function type.
           if (in_type.arg_count() > 0 && in_type.base_type() == "state") {
-            if (field_name == "enter") {
+            if (field_name == "enter" || field_name == "code") {
               result->set_type(state_to_go_function(in_type, TypeSpec("none")));
             }
           }
@@ -757,7 +759,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     if (!has_constant_idx) {
       index_value = compile_error_guard(field_obj, env)->to_gpr(form, env);
       if (!is_integer(index_value->type())) {
-        throw_compiler_error(form, "Cannot use -> with {}.", field_obj.print());
+        throw_compiler_error(form, "Cannot use -> with field {}.", field_obj.print());
       }
     }
 
@@ -1058,7 +1060,8 @@ Val* Compiler::compile_static_new(const goos::Object& form,
   } else {
     auto type_of_object = parse_typespec(unquote(type));
     if (is_structure(type_of_object)) {
-      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env,
+                                                   env->function_env()->segment_for_static_data());
     }
 
     if (is_bitfield(type_of_object)) {
@@ -1074,12 +1077,24 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                                  const goos::Object& type,
                                  const goos::Object* rest,
                                  Env* env,
-                                 bool call_constructor) {
+                                 bool call_constructor,
+                                 bool use_singleton) {
   auto type_of_object = parse_typespec(unquote(type));
   auto fe = env->function_env();
+  auto st_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type_of_object));
+  if (st_type_info && st_type_info->is_always_stack_singleton()) {
+    use_singleton = true;
+    if (call_constructor) {
+      throw_compiler_error(
+          form, "Stack-singleton types must be created on the stack with stack-no-clear");
+    }
+  }
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
     if (call_constructor) {
       throw_compiler_error(form, "Constructing stack arrays is not yet supported");
+    }
+    if (use_singleton) {
+      throw_compiler_error(form, "Singleton stack arrays are not yet supported");
     }
     bool is_inline = type_of_object == TypeSpec("inline-array");
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
@@ -1141,9 +1156,19 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     }
     std::vector<RegVal*> args;
     // allocation
-    auto mem = fe->allocate_aligned_stack_variable(type_of_object, ti->get_size_in_memory(), 16)
-                   ->to_gpr(form, env);
+    RegVal* mem;
+    if (use_singleton) {
+      mem = fe->allocate_stack_singleton(type_of_object, ti->get_size_in_memory(), 16)
+                ->to_gpr(form, env);
+    } else {
+      mem = fe->allocate_aligned_stack_variable(type_of_object, ti->get_size_in_memory(), 16)
+                ->to_gpr(form, env);
+    }
+
     if (call_constructor) {
+      if (use_singleton) {
+        throw_compiler_error(form, "Constructing stack singletons is not yet supported");
+      }
       // the new method actual takes a "symbol" according the type system. So we have to cheat it.
       mem->set_type(TypeSpec("symbol"));
       args.push_back(mem);
@@ -1186,9 +1211,11 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     // put in code.
     return compile_static_new(form, type, rest, env);
   } else if (allocation == "stack") {
-    return compile_stack_new(form, type, rest, env, true);
+    return compile_stack_new(form, type, rest, env, true, false);
   } else if (allocation == "stack-no-clear") {
-    return compile_stack_new(form, type, rest, env, false);
+    return compile_stack_new(form, type, rest, env, false, false);
+  } else if (allocation == "stack-singleton-no-clear") {
+    return compile_stack_new(form, type, rest, env, false, true);
   }
 
   throw_compiler_error(form, "Unsupported new form");

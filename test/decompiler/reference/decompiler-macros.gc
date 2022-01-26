@@ -94,7 +94,7 @@
 (defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
-  `(let ((the-handle ,handle))
+  `(let ((the-handle (the-as handle ,handle)))
      (if (-> the-handle process)
          (let ((proc (-> (-> the-handle process))))
            (if (= (-> the-handle pid) (-> proc pid))
@@ -123,7 +123,7 @@
   )
 
 (defmacro ppointer->handle (pproc)
-  `(let ((the-process ,pproc))
+  `(let ((the-process (the-as (pointer process) ,pproc)))
       (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
       )
   )
@@ -257,11 +257,13 @@
 (defmacro set-vector! (v xv yv zv wv)
   "Set all fields in a vector"
   (with-gensyms (vec)
-     `(let ((vec ,v))
-       (set! (-> vec x) ,xv)
-       (set! (-> vec y) ,yv)
-       (set! (-> vec z) ,zv)
-       (set! (-> vec w) ,wv)))
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
      )
 
 ;; cause the current process to change state
@@ -406,17 +408,18 @@
   (set! *defstate-type-stack* '())
   `(none)
   )
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
-                               &key (event #f)
-                               &key (enter #f)
-                               &key (trans #f)
-                               &key (exit #f)
-                               &key (code #f)
-                               &key (post #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
                                )
   "Define a new state!"
-  
+
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
@@ -427,24 +430,32 @@
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
           (when (not (null? default-handlers))
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
               (set! default-handlers (cdr default-handlers))
-              (when (and (not event) (car default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
                   (set! event (car default-handlers)))
+              ;; enter
               (set! default-handlers (cdr default-handlers))
-              (when (and (not enter) (car default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
                   (set! enter (car default-handlers)))
+              ;; trans
               (set! default-handlers (cdr default-handlers))
-              (when (and (not trans) (car default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
                   (set! trans (car default-handlers)))
+              ;; exit
               (set! default-handlers (cdr default-handlers))
-              (when (and (not exit) (car default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
                   (set! exit (car default-handlers)))
+              ;; code
               (set! default-handlers (cdr default-handlers))
-              (when (and (not code) (car default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
                   (set! code (car default-handlers)))
+              ;; post
               (set! default-handlers (cdr default-handlers))
-              (when (and (not post) (car default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
                   (set! post (car default-handlers)))
+
               (set! default-handlers (cdr default-handlers))
               )
           )
@@ -472,7 +483,7 @@
               `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
-         
+
          )
       )
     )
@@ -741,6 +752,14 @@
         )
   )
 
+(defmacro sp-sound (sound)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-sound)
+        :sound ,sound
+        :flags (sp-flag plain-v2)
+        )
+  )
+
 (defmacro sp-end ()
   `(new 'static 'sp-field-init-spec
         :field (sp-field-id spt-end)
@@ -756,6 +775,38 @@
         )
   )
 
+(defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds)
+  "define a new part group. defines a constant with the name of the group and the value of the group's ID"
+  `(begin
+    (defconstant ,name ,id)
+    (set! (-> *part-group-id-table* ,id)
+      (new 'static 'sparticle-launch-group
+          :duration ,duration
+          :linger-duration ,linger-duration
+          :flags (sp-group-flag ,@flags)
+          :bounds ,bounds
+          :name ,(symbol->string name)
+          :length ,(length parts)
+          :launcher (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)
+          )
+      )
+    )
+  )
+
+(defmacro part-group (id)
+  `(-> *part-group-id-table* ,id)
+  )
+
+(defmacro defpart (id &key (init-specs ()))
+  "define a new sparticle-launcher"
+  `(set! (-> *part-id-table* ,id)
+      (new 'static 'sparticle-launcher
+          :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                  ,@init-specs
+                  (sp-end)
+                  )))
+  )
+
 (defmacro cmove-#f-zero (dest condition src)
   `(if (zero? ,condition)
        (set! ,dest #f)
@@ -763,11 +814,30 @@
        )
    )
 
+(defmacro move-if-not-zero (result value check original)
+  `(if (!= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro shift-arith-right-32 (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
+  )
+
+(defmacro set-on-less-than (dest src1 src2)
+  "dest = src1 < src2 ? 1 : 0 -- Compare as Signed Integers"
+  `(if (< (the int ,src1) (the int ,src2))
+       (set! ,dest 1)
+       (set! ,dest 0)
+       )
+   )
+
 (defmacro send-event (proc msg &rest params)
   "Send an event to a process. This should be used over send-event-function"
 
   `(with-pp
-    (let ((event-data (new 'stack-no-clear 'event-message-block)))
+    (let ((event-data (new 'stack-singleton-no-clear 'event-message-block)))
         (set! (-> event-data from) pp)
         (set! (-> event-data num-params) ,(length params))
         (set! (-> event-data message) ,msg)
@@ -781,8 +851,11 @@
 
 ;; vector-h
 (defmacro static-spherem (x y z r)
-  "actually makes a vector"
+  "actually makes a vector. use bspherem for sphere."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+(defmacro static-bspherem (x y z r)
+  `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 
 ;; art-h
@@ -823,3 +896,29 @@
         (define ,name skel)
         )
   )
+
+;; pad
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(fake-asm .sync.l)
+(fake-asm .sync.p)
+;; Copies the contents of a cop0 (system control) register to a gpr
+(fake-asm .mfc0 dest src)
+;; Copies the contents of a gpr to a cop0 (system control) register
+(fake-asm .mtc0 dest src)
+(fake-asm .mtpc dest src)
+(fake-asm .mfpc dest src)

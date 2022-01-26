@@ -5,6 +5,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; This file sets up the OpenGOAL build system for Jak 1.
+;; This file is treated as a GOOS program. There is a single special form `defstep` that
+;; allows you to define a build step.
+
+;; Then, you can use the `make` command to build a target. Like real make, it will only rebuild things if
+;; the inputs change.
+
+;; Each defstep takes the following arguments:
+;; in - an input file. The step automatically depends on this.
+;; tool - the tool (goalc, copy, dgo, group, tpage-dir)
+;; out - a list of outputs (unlike make, we support multiple outputs without hacks!)
+;; dep - a list of outputs from other rules that are required for this.
+
+;; Before the build order is determined, the tool gets to look at its input file and tell the build system
+;; about other deps. For example, in a "dgo" rule, you don't have to say that you depend on all of your input
+;; files, the DGO tool provides that information to the build system.
+
+;; It is an error to provide two steps to make the same file, even if they are identical.
+;; It is an error to not provide a step to make a required file.
+;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
@@ -42,7 +61,7 @@
   )
 
 (defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
-  "Add a sequence of GOAL files (each depending on the previous) in the given directory, 
+  "Add a sequence of GOAL files (each depending on the previous) in the given directory,
    with all depending on the given deps."
   (let* ((first-thing `(goal-src ,(string-append prefix (first sequence)) ,@deps))
          (result (cons first-thing '()))
@@ -67,24 +86,30 @@
     )
   )
 
-(defmacro cgo (output-name desc-file-name &rest objs)
+(define *all-cgos* '())
+(defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
-  `(defstep :in ,(string-append "goal_src/dgos/" desc-file-name)
-     :tool 'dgo
-     :out '(,(string-append "out/iso/" output-name))
-     )
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "goal_src/dgos/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
   )
 
 (defun tpage-name (id)
+  "Get the name of the tpage obj file with the given id"
   (fmt #f "tpage-{}.go" id)
   )
 
 (defmacro copy-texture (tpage-id)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" (tpage-name tpage-id))
-     :tool 'copy
-     :out '(,(string-append "out/obj/" (tpage-name tpage-id)))
-     )
-  )
+  "Copy a texture from the game, using the given tpage ID"
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
 
 (defmacro copy-textures (&rest ids)
   `(begin
@@ -93,11 +118,11 @@
   )
 
 (defmacro copy-go (name)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" name ".go")
-     :tool 'copy
-     :out '(,(string-append "out/obj/" name ".go"))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" name ".go")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defmacro copy-gos (&rest gos)
   `(begin
@@ -105,11 +130,45 @@
     )
   )
 
+(define *all-str* '())
+(defmacro copy-strs (&rest strs)
+  `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
+
+(defun copy-str (name)
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "iso_data/" folder "STR/" name ".STR"))
+         (out-file (string-append "out/iso/" name ".STR")))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-file))
+    (set! *all-str* (cons out-file *all-str*))))
+
+(define *all-vis* '())
+(defmacro copy-vis-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
+
+(defun copy-vis-file (name)
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "iso_data/" folder "VIS/" name ".VIS"))
+         (out-name (string-append "out/iso/" name ".VIS")))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-name))
+    (set! *all-vis* (cons out-name *all-vis*))))
+
+
 (defmacro group (name &rest stuff)
   `(defstep :in ""
      :tool 'group
      :out '(,(string-append "GROUP:" name))
      :dep '(,@stuff))
+  )
+
+(defun group-list (name stuff)
+  (defstep :in ""
+     :tool 'group
+     :out `(,(string-append "GROUP:" name))
+     :dep stuff)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -159,12 +218,57 @@
   :out '("out/obj/game-cnt.go")
   )
 
+;; the TWEAKVAL file
+(defstep :in "iso_data/MUS/TWEAKVAL.MUS"
+  :tool 'copy
+  :out '("out/iso/TWEAKVAL.MUS"))
+
+;; the VAGDIR file
+(defstep :in "iso_data/VAG/VAGDIR.AYB"
+  :tool 'copy
+  :out '("out/iso/VAGDIR.AYB"))
+
+;; the save icon file
+(defstep :in "iso_data/DRIVERS/SAVEGAME.ICO"
+  :tool 'copy
+  :out '("out/iso/SAVEGAME.ICO"))
+
+;; the loading screen file
+(defstep :in "iso_data/DRIVERS/SCREEN1.USA"
+  :tool 'copy
+  :out '("out/iso/SCREEN1.USA"))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Textures (Common)
 ;;;;;;;;;;;;;;;;;;;;;
-                 
+
 (copy-textures 463 2 880 256 1278 1032 62 1532)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Streaming anim (common)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(copy-strs
+  ;; power cell animations
+  "FUCVICTO"
+  "FUCV2"
+  "FUCV3"
+  "FUCV4"
+  "FUCV5"
+  "FUCV6"
+  "FUCV7"
+  "FUCV8"
+  ;; jak's ambient
+  "EIA1"
+  "EIA2"
+  "EIA3"
+  "EIA4"
+  ;; intro camera
+  "NDINTRO"
+  "LOINTRO"
+  "LOLOOP"
+  "LOI2"
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -175,7 +279,7 @@
  "fuel-cell-ag"
  "money-ag"
  "buzzer-ag"
- "ecovalve-ag-ART-GAME"
+ "ecovalve-ag"
  "crate-ag"
  "speaker-ag"
  "fuelcell-naked-ag"
@@ -200,22 +304,33 @@
   )
 
 
-;;;;;;;;;;;;;;;;;;;;;
-;; ISO Group
-;;;;;;;;;;;;;;;;;;;;;
-;; the iso group is a group of files required to boot.
 
-(group "iso"
+;;;;;;;;;;;;;;;;;;;;;
+;; engine Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the engine group is a group of files required to boot the game engine with no levels
+
+(group "engine"
+       "out/iso/0COMMON.TXT"
+       "out/iso/KERNEL.CGO"
+       "out/iso/GAME.CGO"
+       )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; hub1 Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the hub1 group is a group of files required to play the first hub (village1, jungle, beach, misty, training, firecanyon)
+
+(group "hub1"
        "out/iso/0COMMON.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        "out/iso/VI1.DGO"
-       "out/iso/VI2.DGO"
-       "out/iso/VI3.DGO"
        "out/iso/TRA.DGO"
-       "out/iso/FIN.DGO"
        "out/iso/FIC.DGO"
        "out/iso/JUN.DGO"
+       "out/iso/BEA.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -225,11 +340,20 @@
 ;; as we find objects that exist in multiple levels, put them here
 
 (copy-gos
+ "sharkey-ag"
+ "orb-cache-top-ag"
+ "warp-gate-switch-ag"
  "warpgate-ag"
- "sharkey-ag-BEA-TRA-VI2"
- "eichar-racer+0-ag"
-
  "babak-ag"
+ "oracle-ag"
+ "village-cam-ag"
+
+ "eichar-racer+0-ag"
+ "ef-plane-ag"
+ "racer-ag"
+
+ "eichar-flut+0-ag"
+ "flut-saddle-ag"
   )
 
 
@@ -240,13 +364,15 @@
 (goal-src-sequence
   "levels/"
    :deps ;; no idea what these depend on, make it depend on the whole engine
-   ("out/obj/default-menu.o")
+   ("out/obj/ticky.o")
 
    "village_common/villagep-obs.gc"
    "village_common/oracle.gc"
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
+   "common/snow-bunny.gc"
+   "common/battlecontroller.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
    "racer_common/racer-part.gc"
@@ -255,8 +381,143 @@
    "racer_common/racer-states-FIC-LAV-MIS-OGR-ROL.gc"
    "racer_common/collide-reaction-racer.gc"
 
+   "flut_common/flut-part.gc"
+   "flut_common/flutflut.gc"
+   "flut_common/target-flut.gc"
    )
 
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Beach
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "BEA.DGO"
+  "bea.gd"
+  )
+
+(copy-vis-files "BEA")
+
+(goal-src-sequence
+  "levels/beach/"
+  :deps ("out/obj/ticky.o")
+  "air-h.gc"
+  "air.gc"
+  "wobbler.gc"
+  "twister.gc"
+  "beach-obs.gc"
+  "bird-lady.gc"
+  "bird-lady-beach.gc"
+  "mayor.gc"
+  "sculptor.gc"
+  "pelican.gc"
+  "lurkerworm.gc"
+  "lurkercrab.gc"
+  "lurkerpuppy.gc"
+  "beach-rocks.gc"
+  "seagull.gc"
+  "beach-part.gc"
+  )
+
+(copy-textures 212 214 213 215)
+
+(copy-gos
+  "barrel-ag"
+  "beachcam-ag"
+  "bird-lady-ag"
+  "bird-lady-beach-ag"
+  "bladeassm-ag"
+  "ecoventrock-ag"
+  "flutflut-ag"
+  "flutflutegg-ag"
+  "grottopole-ag"
+  "harvester-ag"
+  "kickrock-ag"
+  "lrocklrg-ag"
+  "lurkercrab-ag"
+  "lurkerpuppy-ag"
+  "lurkerworm-ag"
+  "mayor-ag"
+  "pelican-ag"
+  "sculptor-ag"
+  "sculptor-muse-ag"
+  "seagull-ag"
+  "windmill-one-ag"
+  "beach-vis"
+  )
+
+(copy-strs
+  "BECANNON" ;; beachcam-cannon
+  "LRFALLIN" ;; lrocklrg-falling
+  "PESEXT"   ;; pelican-spit-ext
+  )
+(copy-strs
+  "FAINTROD" ;; farmer-introduction
+  "SCINTROD" ;; sculptor-introduction
+  "BILINTRO" ;; bird-lady-introduction
+  "MAINTROD" ;; mayor-introduction
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Jungle
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "JUN.DGO"
+  "jun.gd")
+
+(copy-vis-files "JUN")
+
+(goal-src-sequence
+ "levels/jungle/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o")
+
+ "jungle-elevator.gc"
+ "bouncer.gc"
+ "hopper.gc"
+ "junglesnake.gc"
+ "darkvine.gc"
+ "jungle-obs.gc"
+ "jungle-mirrors.gc"
+ "junglefish.gc"
+ "fisher-JUN.gc"
+ "jungle-part.gc"
+ )
+
+(copy-textures 385 531 386 388 765)
+
+(copy-gos
+  "eichar-fish+0-ag"
+  "accordian-ag"
+  "bounceytarp-ag"
+  "catch-fisha-ag"
+  "catch-fishb-ag"
+  "catch-fishc-ag"
+  "darkvine-ag"
+  "fish-net-ag"
+  "fisher-ag"
+  "hopper-ag"
+  "junglecam-ag"
+  "junglefish-ag"
+  "junglesnake-ag"
+  "launcherdoor-ag"
+  "logtrap-ag"
+  "lurkerm-piston-ag"
+  "lurkerm-tall-sail-ag"
+  "maindoor-ag"
+  "medres-firecanyon-ag"
+  "periscope-ag"
+  "plat-button-ag"
+  "plat-eco-ag"
+  "precurbridge-ag"
+  "reflector-mirror-ag"
+  "ropebridge-52-ag"
+  "ropebridge-70-ag"
+  "sidedoor-ag"
+  "towertop-ag"
+  "water-anim-jungle-ag"
+  "jungle-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -267,11 +528,14 @@
      "vi1.gd"
      )
 
+;; the VIS file
+(copy-vis-files "VI1")
+
 ;; the code
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "village1/farmer.gc"
  "village1/explorer.gc"
@@ -309,19 +573,14 @@
  "medres-village11-ag"
  "medres-village12-ag"
  "medres-village13-ag"
- "oracle-ag-VI1"
- "orb-cache-top-ag-VI1"
  "reflector-middle-ag"
  "revcycle-ag"
  "revcycleprop-ag"
  "ropebridge-32-ag"
  "sage-ag"
  "sagesail-ag"
- "sharkey-ag-VI1"
  "villa-starfish-ag"
- "village-cam-ag-VI1"
  "village1cam-ag"
- "warp-gate-switch-ag-VI1-VI3"
  "water-anim-village1-ag"
  "windmill-sail-ag"
  "windspinner-ag"
@@ -329,67 +588,293 @@
  "village1-vis"
  )
 
-;;;;;;;;;;;;;;;;;;;;;
-;; Jungle
-;;;;;;;;;;;;;;;;;;;;;
-
-(cgo "JUN.DGO"
-  "jun.gd")
-
-(goal-src-sequence
- "levels/jungle/"
- :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
-
- "jungle-elevator.gc"
- "bouncer.gc"
- "hopper.gc"
- "junglesnake.gc"
- "darkvine.gc"
- "jungle-obs.gc"
- "jungle-mirrors.gc"
- "junglefish.gc"
- "fisher-JUN.gc"
- "jungle-part.gc"
- )
-
-(copy-gos
-  "eichar-fish+0-ag-JUN"
-  "accordian-ag"
-  "bounceytarp-ag"
-  "catch-fisha-ag"
-  "catch-fishb-ag"
-  "catch-fishc-ag"
-  "darkvine-ag-JUN"
-  "ecovalve-ag-JUB-JUN"
-  "fish-net-ag"
-  "fisher-ag"
-  "hopper-ag"
-  "junglecam-ag"
-  "junglefish-ag"
-  "junglesnake-ag"
-  "launcherdoor-ag-JUN"
-  "logtrap-ag"
-  "lurkerm-piston-ag"
-  "lurkerm-tall-sail-ag"
-  "maindoor-ag"
-  "medres-firecanyon-ag"
-  "orb-cache-top-ag-JUN"
-  "periscope-ag"
-  "plat-button-ag"
-  "plat-eco-ag-JUN"
-  "precurbridge-ag"
-  "reflector-mirror-ag"
-  "ropebridge-52-ag"
-  "ropebridge-70-ag"
-  "sharkey-ag-JUN-MIS"
-  "sidedoor-ag"
-  "towertop-ag"
-  "water-anim-jungle-ag"
-  "jungle-vis"
+(copy-strs
+  "ASIBESWI"    ;; assistant-introduction-blue-eco-switch
+  "SAISD1"      ;; sage-intro-sequence-d1
+  "SAISD2"      ;; sage-intro-sequence-d2
+  "EXINTROD"    ;; explorer-introduction
+  "FIBRTMIS"    ;; fishermans-boat-ride-to-misty
+  "ASR1BESW"    ;; assistant-reminder-1-blue-eco-switch
+  "ORI1"        ;; oracle-intro-1
+  "ORRE1"       ;; oracle-right-eye-1
+  "ORR1"        ;; oracle-reminder-1
+  "FAR1"        ;; farmer-reminder-1
   )
 
-(copy-textures 385 531 386 388 765)
+;;;;;;;;;;;;;;;;;;;;;
+;; Jungle temple
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "JUB.DGO" "jub.gd")
+
+(copy-vis-files "JUB")
+
+(goal-src-sequence
+ "levels/jungleb/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o")
+
+ "jungleb-obs.gc"
+ "plat-flip.gc"
+ "aphid.gc"
+ "plant-boss.gc"
+ )
+
+(copy-textures 485 510 507 966)
+
+(copy-gos
+  "plant-boss-main+0-ag"
+  "aphid-lurker-ag"
+  "eggtop-ag"
+  "jng-iris-door-ag"
+  "plant-boss-ag"
+  "plat-flip-ag"
+  "plat-jungleb-ag"
+  "jungleb-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; misty island
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MIS.DGO" "mis.gd")
+
+(copy-vis-files "MIS")
+
+(goal-src-sequence
+  "levels/misty/"
+  :deps ("out/obj/evilbro.o")
+  "mistycannon.gc"
+  "babak-with-cannon.gc"
+  "misty-obs.gc"
+  "misty-warehouse.gc"
+  "misty-conveyor.gc"
+  "mud.gc"
+  "muse.gc"
+  "bonelurker.gc"
+  "quicksandlurker.gc"
+  "misty-teetertotter.gc"
+  "balloonlurker.gc"
+  "misty-part.gc"
+  "sidekick-human.gc"
+  )
+
+(copy-textures 516 521 518 520)
+
+(copy-gos
+  "mistycannon-ag"
+  "sack-ag"
+  "balloonlurker-ag"
+  "boatpaddle-ag"
+  "bonelurker-ag"
+  "breakaway-left-ag"
+  "breakaway-mid-ag"
+  "breakaway-right-ag"
+  "darkecocan-ag"
+  "keg-ag"
+  "keg-conveyor-ag"
+  "keg-conveyor-paddle-ag"
+  "mis-bone-bridge-ag"
+  "mis-bone-platform-ag"
+  "mistycam-ag"
+  "muse-ag"
+  "quicksandlurker-ag"
+  "ropebridge-36-ag"
+  "rounddoor-ag"
+  "sidekick-human-ag"
+  "silostep-ag"
+  "teetertotter-ag"
+  "water-anim-misty-ag"
+  "wheel-ag"
+  "windturbine-ag"
+  "misty-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; swamp
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SWA.DGO" "swa.gd")
+
+(copy-vis-files "SWA")
+
+(goal-src-sequence
+ "levels/swamp/"
+ :deps ("out/obj/ticky.o")
+ "swamp-obs.gc"
+ "swamp-bat.gc"
+ "swamp-rat.gc"
+ "swamp-rat-nest.gc"
+ "kermit.gc"
+ "swamp-part.gc"
+ "billy.gc"
+ )
+
+(copy-textures 358 659 629 630)
+
+(copy-gos
+  "eichar-pole+0-ag"
+  "balance-plat-ag"
+  "billy-ag"
+  "billy-sidekick-ag"
+  "farthy-snack-ag"
+  "kermit-ag"
+  "swamp-bat-ag"
+  "swamp-rat-ag"
+  "swamp-rat-nest-ag"
+  "swamp-rock-ag"
+  "swamp-spike-ag"
+  "swampcam-ag"
+  "tar-plat-ag"
+  "swamp-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; LPC
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SUN.DGO" "sun.gd")
+
+(copy-vis-files "SUN")
+
+(goal-src-sequence
+  "levels/sunken/"
+  :deps ("out/obj/ticky.o")
+  "sunken-part.gc"
+  "sunken-part2.gc"
+  "sunken-part3.gc"
+  "sunken-part4.gc"
+  "sunken-part5.gc"
+  "target-tube.gc"
+  "sunken-obs.gc"
+  "shover.gc"
+  "square-platform.gc"
+  "sun-iris-door.gc"
+  "orbit-plat.gc"
+  "wedge-plats.gc"
+  "wall-plat.gc"
+  "qbert-plat.gc"
+  "steam-cap.gc"
+  "sun-exit-chamber.gc"
+  "floating-launcher.gc"
+  "sunken-water.gc"
+  "whirlpool.gc"
+  "sunken-pipegame.gc"
+  "bully.gc"
+  "double-lurker.gc"
+  "helix-water.gc"
+  "puffer.gc"
+  "sunken-fish.gc"
+  )
+
+(copy-textures 661 663 714 662 766)
+
+(copy-gos
+  "eichar-tube+0-ag"
+  "bully-ag"
+  "double-lurker-ag"
+  "double-lurker-top-ag"
+  "exit-chamber-ag"
+  "generic-button-ag"
+  "orbit-plat-ag"
+  "orbit-plat-bottom-ag"
+  "plat-sunken-ag"
+  "puffer-ag"
+  "qbert-plat-ag"
+  "qbert-plat-on-ag"
+  "seaweed-ag"
+  "shover-ag"
+  "side-to-side-plat-ag"
+  "square-platform-ag"
+  "steam-cap-ag"
+  "sun-iris-door-ag"
+  "sunkencam-ag"
+  "sunkenfisha-ag"
+  "wall-plat-ag"
+  "water-anim-sunken-ag"
+  "water-anim-sunken-dark-eco-ag"
+  "wedge-plat-ag"
+  "wedge-plat-outer-ag"
+  "whirlpool-ag"
+  "sunken-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; sunken city b
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SUB.DGO" "sub.gd")
+
+(copy-vis-files "SUB")
+
+(copy-textures 163 164 166 162 764)
+
+(copy-gos
+  "blue-eco-charger-ag"
+  "blue-eco-charger-orb-ag"
+  "floating-launcher-ag"
+  "helix-button-ag"
+  "helix-slide-door-ag"
+  "sunkenb-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; snow mountain
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "SNO.DGO" "sno.gd")
+
+(copy-vis-files "SNO")
+
+(goal-src-sequence
+ "levels/snow/"
+ :deps ("out/obj/ticky.o")
+ "target-snowball.gc"
+ "target-ice.gc"
+ "ice-cube.gc"
+ "snow-ball.gc"
+ "snow-obs.gc"
+ "snow-flutflut-obs.gc"
+ "snow-bumper.gc"
+ "snow-ram-h.gc"
+ "snow-ram-boss.gc"
+ "snow-ram.gc"
+ "snow-part.gc"
+ "yeti.gc"
+ )
+
+(copy-textures 710 842 711 712)
+
+(copy-gos
+  "eichar-ice+0-ag"
+  "flutflut-plat-large-ag"
+  "flutflut-plat-med-ag"
+  "flutflut-plat-small-ag"
+  "ice-cube-ag"
+  "ice-cube-break-ag"
+  "ram-ag"
+  "ram-boss-ag"
+  "snow-ball-ag"
+  "snow-bridge-36-ag"
+  "snow-bumper-ag"
+  "snow-bunny-ag"
+  "snow-button-ag"
+  "snow-eggtop-ag"
+  "snow-fort-gate-ag"
+  "snow-gears-ag"
+  "snow-log-ag"
+  "snow-spatula-ag"
+  "snow-switch-ag"
+  "snowcam-ag"
+  "snowpusher-ag"
+  "yeti-ag"
+  "snow-vis"
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -400,12 +885,14 @@
      "fic.gd"
      )
 
-(copy-textures 1119) ;; might be common/zoomer hud??
+(copy-vis-files "FIC")
+
+(copy-textures 1119) ;; might be common/zoomer hud?? also in misty, lavatube, ogre and racerpkg
 
 (goal-src-sequence
  "levels/firecanyon/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
 
  "firecanyon-part.gc"
  "assistant-firecanyon.gc"
@@ -418,45 +905,46 @@
 (copy-gos
   "assistant-firecanyon-ag"
   "balloon-ag"
-  "crate-darkeco-cluster-ag-FIC"
-  "ecovalve-ag-FIC-OGR"
-  "ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA"
-  "racer-ag-FIC-ROL"
+  "crate-darkeco-cluster-ag"
   "spike-ag"
   "firecanyon-vis")
 
+
 ;;;;;;;;;;;;;;;;;;;;;
-;; Training
+;; ogre boss
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; the definition of the DGO package for the level
-(cgo "TRA.DGO"
-     "tra.gd")
+(cgo "OGR.DGO" "ogr.gd")
 
-;; The code
+(copy-vis-files "OGR")
+
 (goal-src-sequence
-  "levels/training/"
-  :deps ("out/obj/default-menu.o") ;; makes us depend on the whole engine
+ "levels/ogre/"
+ :deps ("out/obj/ticky.o")
+ "ogre-part.gc"
+ "ogreboss.gc"
+ "ogre-obs.gc"
+ "flying-lurker.gc"
+ )
 
-  "training-obs.gc"
-  "training-part.gc"
-  )
-
-;; the textures
-(copy-textures 1309 1311 1310 1308 775)
+(copy-textures 875 967 884 1117)
 
 (copy-gos
-  "ecovalve-ag-TRA"
-  "jng-iris-door-ag-TRA"
-  "plat-eco-ag-TRA"
-  "pontoonfive-ag-TRA"
-  "scarecrow-a-ag"
-  "scarecrow-b-ag"
-  "trainingcam-ag"
-  "warp-gate-switch-ag-TRA"
-  "water-anim-training-ag"
-  "training-vis"
+  "flying-lurker-ag"
+  "medres-snow-ag"
+  "ogre-bridge-ag"
+  "ogre-bridgeend-ag"
+  "ogre-isle-ag"
+  "ogre-step-ag"
+  "ogreboss-ag"
+  "ogrecam-ag"
+  "plunger-lurker-ag"
+  "shortcut-boulder-ag"
+  "tntbarrel-ag"
+  "water-anim-ogre-ag"
+  "ogre-vis"
   )
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 2
@@ -464,9 +952,11 @@
 
 (cgo "VI2.DGO" "vi2.gd")
 
+(copy-vis-files "VI2")
+
 (goal-src-sequence
  "levels/village2/"
- :deps ("out/obj/default-menu.o")
+ :deps ("out/obj/ticky.o")
  "village2-part.gc"
  "village2-obs.gc"
  "village2-part2.gc"
@@ -485,7 +975,6 @@
 (copy-gos
   "allpontoons-ag"
   "assistant-village2-ag"
-  "barrel-ag-VI2"
   "ceilingflag-ag"
   "exit-chamber-dummy-ag"
   "fireboulder-ag"
@@ -497,9 +986,7 @@
   "medres-rolling1-ag"
   "medres-village2-ag"
   "ogreboss-village2-ag"
-  "oracle-ag-VI2"
-  "orb-cache-top-ag-VI2"
-  "pontoonfive-ag-VI2"
+  "pontoonfive-ag"
   "pontoonten-ag"
   "precursor-arm-ag"
   "sage-bluehut-ag"
@@ -508,15 +995,45 @@
   "swamp-rope-ag"
   "swamp-tetherrock-ag"
   "swamp-tetherrock-explode-ag"
-  "swampcam-ag-VI2"
-  "village-cam-ag-VI2"
   "village2cam-ag"
-  "warp-gate-switch-ag-VI2"
   "warrior-ag"
   "water-anim-village2-ag"
   "village2-vis"
   )
- 
+
+;;;;;;;;;;;;;;;;;;;;;
+;; rolling hills
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "ROL.DGO" "rol.gd")
+
+(copy-vis-files "ROL")
+
+(goal-src-sequence
+ "levels/rolling/"
+ :deps ("out/obj/ticky.o")
+ "rolling-obs.gc"
+ "rolling-lightning-mole.gc"
+ "rolling-robber.gc"
+ "rolling-race-ring.gc"
+ )
+
+(copy-textures 923 926 924 925 1353)
+
+(copy-gos
+  "dark-plant-ag"
+  "happy-plant-ag"
+  "lightning-mole-ag"
+  "pusher-ag"
+  "race-ring-ag"
+  "robber-ag"
+  "rolling-start-ag"
+  "rollingcam-ag"
+  "water-anim-rolling-ag"
+  "rolling-vis"
+  )
+
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 3
 ;;;;;;;;;;;;;;;;;;;;;
@@ -524,11 +1041,13 @@
 ;; the definition for the DGO file.
 (cgo "VI3.DGO" "vi3.gd")
 
+(copy-vis-files "VI3")
+
 ;; the code
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/default-menu.o")
+ ("out/obj/ticky.o")
  "village3/village3-part.gc"
  "village3/village3-obs.gc"
  "village3/minecart.gc"
@@ -554,13 +1073,229 @@
   "minecartsteel-ag"
   "minershort-ag"
   "minertall-ag"
-  "oracle-ag-VI3"
   "pistons-ag"
   "sage-village3-ag"
   "vil3-bridge-36-ag"
-  "village-cam-ag-VI3"
   "water-anim-village3-ag"
   "village3-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Training
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the definition of the DGO package for the level
+(cgo "TRA.DGO"
+     "tra.gd")
+
+(copy-vis-files "TRA")
+
+;; The code
+(goal-src-sequence
+  "levels/training/"
+  :deps ("out/obj/ticky.o") ;; makes us depend on the whole engine
+
+  "training-obs.gc"
+  "training-part.gc"
+  )
+
+;; the textures
+(copy-textures 1309 1311 1310 1308 775)
+
+(copy-gos
+  "scarecrow-a-ag"
+  "scarecrow-b-ag"
+  "trainingcam-ag"
+  "water-anim-training-ag"
+  "training-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Spider Cave
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MAI.DGO" "mai.gd")
+(copy-vis-files "MAI")
+
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o"
+  )
+ "maincave/cavecrystal-light.gc"
+ "darkcave/darkcave-obs.gc"
+ "maincave/maincave-obs.gc"
+ "maincave/maincave-part.gc"
+ "maincave/spiderwebs.gc"
+ "maincave/dark-crystal.gc"
+ "maincave/baby-spider.gc"
+ "maincave/mother-spider-h.gc"
+ "maincave/mother-spider-egg.gc"
+ "maincave/mother-spider-proj.gc"
+ "maincave/mother-spider.gc"
+ "maincave/gnawer.gc"
+ "maincave/driller-lurker.gc"
+ )
+
+(copy-textures 1313 1315 1314 1312 767)
+
+(copy-gos
+  "baby-spider-ag"
+  "cavetrapdoor-ag"
+  "dark-crystal-ag"
+  "driller-lurker-ag"
+  "gnawer-ag"
+  "launcherdoor-maincave-ag"
+  "maincavecam-ag"
+  "mother-spider-ag"
+  "plat-ag"
+  "spider-egg-ag"
+  "spiderwebs-ag"
+  "water-anim-maincave-ag"
+  "water-anim-maincave-water-ag"
+  "maincave-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; dark cave
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "DAR.DGO" "dar.gd")
+(copy-vis-files "DAR")
+
+(copy-textures 1306 1307 1305 1304 1352)
+
+(copy-gos
+  "caveelevator-ag"
+  "cavecrystal-ag"
+  "cavespatula-darkcave-ag"
+  "water-anim-darkcave-ag"
+  "darkcave-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; robo cave
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "ROB.DGO" "rob.gd")
+(copy-vis-files "ROB")
+
+(goal-src-sequence
+ "levels/robocave/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+  ("out/obj/ticky.o")
+ "cave-trap.gc"
+ "spider-egg.gc"
+ "robocave-part.gc"
+ )
+
+(copy-textures 1318 1319 1317 1316)
+
+(copy-gos
+  "cavecrusher-ag"
+  "cavespatulatwo-ag"
+  "water-anim-robocave-ag"
+  "robocave-vis"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; lavatube
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "LAV.DGO" "lav.gd")
+
+(copy-vis-files "LAV")
+
+(goal-src-sequence
+  "levels/lavatube/"
+  :deps ("out/obj/ticky.o")
+
+  "lavatube-obs.gc"
+  "lavatube-energy.gc"
+  "lavatube-part.gc"
+  "assistant-lavatube.gc"
+  )
+
+(copy-textures 1338 1340 1339 1337)
+
+(copy-gos
+  "assistant-lavatube-start-ag"
+  "chainmine-ag"
+  "darkecobarrel-ag"
+  "energyarm-ag"
+  "energyball-ag"
+  "energybase-ag"
+  "energydoor-ag"
+  "energyhub-ag"
+  "lavaballoon-ag"
+  "lavabase-ag"
+  "lavafall-ag"
+  "lavafallsewera-ag"
+  "lavafallsewerb-ag"
+  "lavashortcut-ag"
+  "lavayellowtarp-ag"
+  "water-anim-lavatube-ag"
+  "lavatube-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; citadel
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "CIT.DGO" "cit.gd")
+
+(copy-vis-files "CIT")
+
+(goal-src-sequence
+  "levels/citadel/"
+  :deps ("out/obj/battlecontroller.o")
+
+  "citadel-part.gc"
+  "citadel-obs.gc"
+  "citb-plat.gc"
+  "citadel-sages.gc"
+  "citb-bunny.gc"
+  "citb-drop-plat-CIT.gc"
+  "assistant-citadel.gc"
+  )
+
+(copy-textures 1415 1417 1416 1414)
+
+(copy-gos
+  "assistant-lavatube-end-ag"
+  "bluesage-ag"
+  "citadelcam-ag"
+  "citb-arm-ag"
+  "citb-arm-shoulder-ag"
+  "citb-bunny-ag"
+  "citb-button-ag"
+  "citb-chain-plat-ag"
+  "citb-chains-ag"
+  "citb-coil-ag"
+  "citb-disc-ag"
+  "citb-donut-ag"
+  "citb-drop-plat-ag"
+  "citb-exit-plat-ag"
+  "citb-firehose-ag"
+  "citb-generator-ag"
+  "citb-hose-ag"
+  "citb-iris-door-ag"
+  "citb-launcher-ag"
+  "citb-robotboss-ag"
+  "citb-rotatebox-ag"
+  "citb-sagecage-ag"
+  "citb-stopbox-ag"
+  "evilbro-citadel-ag"
+  "evilsis-citadel-ag"
+  "green-sagecage-ag"
+  "plat-citb-ag"
+  "plat-eco-citb-ag"
+  "redsage-ag"
+  "yellowsage-ag"
+  "citadel-vis"
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -569,9 +1304,11 @@
 
 (cgo "FIN.DGO" "fin.gd")
 
+(copy-vis-files "FIN")
+
 (goal-src-sequence
   "levels/finalboss/"
-  :deps ("out/obj/default-menu.o")
+  :deps ("out/obj/assistant-citadel.o")
 
   "robotboss-h.gc"
   "robotboss-part.gc"
@@ -590,10 +1327,8 @@
 (copy-gos
   "darkecobomb-ag"
   "ecoclaw-ag"
-  "ecovalve-ag-FIN"
   "finalbosscam-ag"
   "green-eco-lurker-ag"
-  "green-sagecage-ag"
   "greenshot-ag"
   "jak-white-ag"
   "light-eco-ag"
@@ -611,6 +1346,80 @@
   "water-anim-finalboss-ag"
   "finalboss-vis"
   )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; intro only
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "INT.DGO" "int.gd")
+
+(copy-vis-files "INT")
+
+(goal-src-sequence
+ "levels/intro/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o")
+
+ "evilbro.gc"
+ )
+
+(copy-textures 1455 1457 1456 1454)
+
+(copy-gos
+  "evilbro-ag"
+  "evilsis-ag"
+  "intro-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; demo
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "DEM.DGO" "dem.gd")
+
+(copy-vis-files "DEM")
+
+(goal-src-sequence
+ "levels/demo/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o")
+
+ "static-screen.gc"
+ "demo-obs.gc"
+ )
+
+(copy-textures 1485 1486 1487 1599 1600 1601 1602 1603 1604 1605 1606 1607 1480 1479)
+
+(copy-gos
+  "demo-vis")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; title
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "TIT.DGO" "tit.gd")
+
+(copy-vis-files "TIT")
+
+(goal-src-sequence
+ "levels/title/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/ticky.o")
+
+ "title-obs.gc"
+ )
+
+(copy-textures 1609 416 415 397 1499)
+
+(copy-gos
+  "logo-ag"
+  "logo-black-ag"
+  "logo-cam-ag"
+  "logo-volumes-ag"
+  "ndi-ag"
+  "ndi-cam-ag"
+  "ndi-volumes-ag"
+  "title-vis")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code
@@ -663,6 +1472,7 @@
  "dma/dma-buffer.gc"
  "dma/dma-bucket.gc"
  "dma/dma-disasm.gc"
+ "pc/pckernel-h.gc" ;; added
  "ps2/pad.gc"
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
@@ -773,6 +1583,7 @@
  "nav/navigate-h.gc"
  "load/load-dgo.gc"
  "load/ramdisk.gc"
+ "pc/pckernel.gc" ;; added
  "sound/gsound.gc"
  "math/transformq.gc"
  "collide/collide-func.gc"
@@ -948,3 +1759,14 @@
  )
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;; ISO Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the iso group is a group of files built by the "(mi)" command.
+
+(group-list "iso"
+ `("out/iso/0COMMON.TXT"
+   ,@(reverse *all-cgos*)
+   ,@*all-vis*
+   ,@*all-str*)
+ )

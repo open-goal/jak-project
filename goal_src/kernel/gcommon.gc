@@ -16,6 +16,10 @@
 ;; disable PS2 only code and enable PC-specific code
 (defglobalconstant PC_PORT #t)
 
+;; whether we're allowed to use more memory than the original game or not
+(defglobalconstant BIG_MEMORY #t)
+(defglobalconstant PC_BIG_MEMORY (and PC_PORT BIG_MEMORY))
+
 ;; redirects access to EE memory mapped registers through get-vm-ptr to valid addresses that
 ;; are monitored in the runtime for debugging.
 (defglobalconstant USE_VM #t)
@@ -614,7 +618,7 @@
   NOTE: if you use an integer, don't accidentally return TRUE."
   ;; the compare function can return a few possible things.
   ;; we assume "unsorted" if compare-result is #f explicitly, or if it positive.
-  ;; HOWEVER, '#t itself is positive. So if we get #t, we assume sorted.
+  ;; HOWEVER, #t itself is positive. So if we get #t, we assume sorted.
   ;; there is possibly an ambiguity, if you happen to return a positive integer that
   ;; happens to be a pointer to #t,
   (let ((unsorted-count -1))
@@ -625,8 +629,8 @@
       (let ((iter lst))
         (while (not (or (null? (cdr iter)) (not (pair? (cdr iter)))))
           (let* ((first-elt (car iter))
-                 (seoncd-elt (car (cdr iter)))
-                 (compare-result (compare-func first-elt seoncd-elt))
+                 (second-elt (car (cdr iter)))
+                 (compare-result (compare-func first-elt second-elt))
                  )
             ;; the compare function can return a few possible things.
             ;; we assume "unsorted" if compare-result is #f explicitly, or if it positive.
@@ -638,7 +642,7 @@
                    (!= compare-result #t)
                    )
               (+! unsorted-count 1)
-              (set! (car iter) seoncd-elt)
+              (set! (car iter) second-elt)
               (set! (car (cdr iter)) first-elt)
               )
             )

@@ -4,14 +4,17 @@
 #include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {
-  m_frame_times[m_idx++] = m_timer.getMs();
+  m_frame_times[m_idx++] = m_compute_timer.getMs();
   if (m_idx == SIZE) {
     m_idx = 0;
   }
 }
 
 void FrameTimeRecorder::start_frame() {
-  m_timer.start();
+  m_compute_timer.start();
+  float frame_time = m_fps_timer.getSeconds();
+  m_last_frame_time = (0.9 * m_last_frame_time) + (0.1 * frame_time);
+  m_fps_timer.start();
 }
 
 void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
@@ -32,7 +35,7 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
   window_pos_pivot.y = 1.0f;
   ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
 
-  ImGui::SetNextWindowBgAlpha(0.35f);  // Transparent background
+  ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
   if (ImGui::Begin("Frame Timing", p_open, window_flags)) {
     ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
                 dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10), dma_stats.num_chunks);
@@ -52,6 +55,8 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
     } else {
       ImGui::Text("worst: %.1f", worst);
     }
+    ImGui::SameLine();
+    ImGui::Text("fps-avg: %.1f", 1.f / m_last_frame_time);
 
     ImGui::Separator();
     ImGui::PlotLines(
@@ -67,6 +72,8 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
     if (ImGui::Button("Single Frame Advance")) {
       m_single_frame = true;
     }
+    ImGui::SameLine();
+    ImGui::Checkbox("GLFinish", &do_gl_finish);
   }
   ImGui::End();
 }
@@ -101,6 +108,20 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::Separator();
 
       ImGui::InputText("Dump", m_dump_save_name, 12);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Frame Rate")) {
+      ImGui::MenuItem("Enable V-Sync", nullptr, &m_vsync);
+      ImGui::MenuItem("Disable V-Sync", nullptr, &m_nosync);
+      ImGui::Separator();
+      ImGui::Checkbox("Framelimiter", &framelimiter);
+      ImGui::InputFloat("Target FPS", &m_target_fps_text);
+      if (ImGui::MenuItem("Apply")) {
+        target_fps = m_target_fps_text;
+      }
+      ImGui::Separator();
+      ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
       ImGui::EndMenu();
     }
   }

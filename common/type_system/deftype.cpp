@@ -277,6 +277,7 @@ struct StructureDefResult {
   bool pack_me = false;
   bool allow_misaligned = false;
   bool final = false;
+  bool always_stack_singleton = false;
 };
 
 StructureDefResult parse_structure_def(StructureType* type,
@@ -335,6 +336,8 @@ StructureDefResult parse_structure_def(StructureType* type,
         rest = cdr(rest);
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
+      } else if (opt_name == ":no-inspect") {
+        type->set_gen_inspect(false);
       } else if (opt_name == ":pack-me") {
         result.pack_me = true;
       } else if (opt_name == ":heap-base") {
@@ -345,6 +348,8 @@ StructureDefResult parse_structure_def(StructureType* type,
         result.allow_misaligned = true;
       } else if (opt_name == ":final") {
         result.final = true;
+      } else if (opt_name == ":always-stack-singleton") {
+        result.always_stack_singleton = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -441,6 +446,8 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
         rest = cdr(rest);
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
+      } else if (opt_name == ":no-inspect") {
+        type->set_gen_inspect(false);
       } else if (opt_name == ":heap-base") {
         u16 hb = get_int(car(rest));
         rest = cdr(rest);
@@ -568,6 +575,13 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
           name);
       throw std::runtime_error("invalid pack option on basic");
     }
+    if (sr.always_stack_singleton) {
+      fmt::print(
+          "[TypeSystem] :always-stack-singleton was set on {}, which is a basic and cannot "
+          "be a stack singleton\n",
+          name);
+      throw std::runtime_error("invalid stack singleton option on basic");
+    }
     new_type->set_heap_base(result.flags.heap_base);
     if (sr.final) {
       new_type->set_final();
@@ -587,6 +601,9 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     }
     if (sr.allow_misaligned) {
       new_type->set_allow_misalign(true);
+    }
+    if (sr.always_stack_singleton) {
+      new_type->set_always_stack_singleton();
     }
     if (sr.final) {
       throw std::runtime_error(

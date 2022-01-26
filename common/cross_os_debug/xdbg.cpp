@@ -341,6 +341,9 @@ bool attach_and_break(const ThreadID& tid) {
     return false;
   }
 
+  // by default, windows debuggers will kill their debuggees on detach
+  DebugSetProcessKillOnExit(FALSE);
+
   return true;
 }
 
@@ -433,8 +436,14 @@ const char* win32_exception_code_to_charp(DWORD exc) {
       return "EXCEPTION_SINGLE_STEP";
     case EXCEPTION_STACK_OVERFLOW:
       return "EXCEPTION_STACK_OVERFLOW";
+    case STATUS_STACK_BUFFER_OVERRUN:
+      return "STATUS_STACK_BUFFER_OVERRUN";
+    case STATUS_HEAP_CORRUPTION:
+      return "STATUS_HEAP_CORRUPTION";
+    case STATUS_GUARD_PAGE_VIOLATION:
+      return "STATUS_GUARD_PAGE_VIOLATION";
     default:
-      return "??????????";
+      return "UNKNOWN (please contact developers)";
   }
 }
 
@@ -488,7 +497,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
               break;
             default:
               out->kind = SignalInfo::EXCEPTION;
-              out->msg = fmt::format("{} [0x{:X}]", exc, win32_exception_code_to_charp(exc));
+              out->msg = fmt::format("{} [0x{:X}]", win32_exception_code_to_charp(exc), exc);
               break;
           }
         }

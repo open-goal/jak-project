@@ -21,8 +21,8 @@
 
 ;; definition of type tfragment-debug-data
 (deftype tfragment-debug-data (structure)
-  ((stats       tfragment-stats :inline :offset-assert   0)
-   (debug-lines basic                   :offset-assert  16)
+  ((stats       tfragment-stats      :inline :offset-assert   0)
+   (debug-lines (array vector-array)         :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -64,7 +64,7 @@
    (dma-level-0       uint32                        :offset         32)
    (dma-base          uint32                        :offset         36)
    (dma-level-1       uint32                        :offset         40)
-   (dma-qwc           uint32                      4 :offset         44)
+   (dma-qwc           uint8                       4 :offset         44)
    (shader            (inline-array adgif-shader)   :offset         48)
    (num-shaders       uint8                         :offset         52)
    (num-base-colors   uint8                         :offset         53)
@@ -75,6 +75,7 @@
    (pad0              uint8                         :offset         58)
    (pad1              uint8                         :offset         59)
    (generic           generic-tfragment             :offset-assert  60)
+   (generic-u32       uint32                        :offset         60)
    )
   :method-count-assert 18
   :size-assert         #x40
@@ -87,11 +88,7 @@
   (format #t "~Tid: ~D~%" (-> obj id))
   (format #t "~Tbsphere: ~`vector`P~%" (-> obj bsphere))
   (format #t "~Tcolor-index: ~D~%" (-> obj color-index))
-  (format
-   #t
-   "~Tdebug-data: #<tfragment-debug-data @ #x~X>~%"
-   (-> obj debug-data)
-   )
+  (format #t "~Tdebug-data: #<tfragment-debug-data @ #x~X>~%" (-> obj debug-data))
   (format #t "~Tcolor-indices: #x~X~%" (-> obj color-indices))
   (format #t "~Tcolors: #x~X~%" (-> obj color-indices))
   (format #t "~Tdma-chain[3] @ #x~X~%" (-> obj dma-chain))
@@ -135,7 +132,8 @@
 
 ;; definition of type drawable-tree-tfrag
 (deftype drawable-tree-tfrag (drawable-tree)
-  ((time-of-day-pal time-of-day-palette  :offset  12)
+  ((time-of-day-pal time-of-day-palette     :offset  12)
+   (arrays          drawable-inline-array 1 :offset  32)
    )
   :method-count-assert 18
   :size-assert         #x24
@@ -184,10 +182,10 @@
 
 ;; definition of type tfrag-dists
 (deftype tfrag-dists (structure)
-  ((data   uint32  16        :offset-assert   0)
-   (vector vector  4 :inline :offset          0)
-   (k0s    uint128 2         :offset          0)
-   (k1s    uint128 2         :offset         32)
+  ((data   uint32 16        :offset-assert   0)
+   (vector vector 4 :inline :offset          0)
+   (k0s    vector 2 :inline :offset          0)
+   (k1s    vector 2 :inline :offset         32)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -197,9 +195,9 @@
 ;; definition for method 3 of type tfrag-dists
 (defmethod inspect tfrag-dists ((obj tfrag-dists))
   (format #t "[~8x] ~A~%" obj 'tfrag-dists)
-  (format #t "~Tdata[16] @ #x~X~%" (-> obj data))
-  (format #t "~Tvector[4] @ #x~X~%" (-> obj data))
-  (format #t "~Tk0s[2] @ #x~X~%" (-> obj data))
+  (format #t "~Tdata[16] @ #x~X~%" (-> obj k0s))
+  (format #t "~Tvector[4] @ #x~X~%" (-> obj k0s))
+  (format #t "~Tk0s[2] @ #x~X~%" (-> obj k0s))
   (format #t "~Tk1s[2] @ #x~X~%" (-> obj k1s))
   obj
   )
@@ -210,9 +208,9 @@
    (vector      vector      14 :inline :offset   0)
    (fog         vector      :inline    :offset   0)
    (val         vector      :inline    :offset  16)
-   (strgif      qword       :inline    :offset  32)
-   (fangif      qword       :inline    :offset  48)
-   (adgif       qword       :inline    :offset  64)
+   (strgif      gs-gif-tag  :inline    :offset  32)
+   (fangif      gs-gif-tag  :inline    :offset  48)
+   (adgif       gs-gif-tag  :inline    :offset  64)
    (hvdf-offset vector      :inline    :offset  80)
    (hmge-scale  vector      :inline    :offset  96)
    (invh-scale  vector      :inline    :offset 112)
@@ -230,9 +228,9 @@
 ;; definition for method 3 of type tfrag-data
 (defmethod inspect tfrag-data ((obj tfrag-data))
   (format #t "[~8x] ~A~%" obj 'tfrag-data)
-  (format #t "~Tdata[56] @ #x~X~%" (-> obj data))
-  (format #t "~Tvector[14] @ #x~X~%" (-> obj data))
-  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj data))
+  (format #t "~Tdata[56] @ #x~X~%" (-> obj fog))
+  (format #t "~Tvector[14] @ #x~X~%" (-> obj fog))
+  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj fog))
   (format #t "~Tval: #<vector @ #x~X>~%" (-> obj val))
   (format #t "~Tstrgif: #<qword @ #x~X>~%" (-> obj strgif))
   (format #t "~Tfangif: #<qword @ #x~X>~%" (-> obj fangif))
@@ -282,45 +280,21 @@
   (format #t "~Tnum-base-points: ~D~%" (-> obj num-base-points))
   (format #t "~Tnum-shared-base-points: ~D~%" (-> obj num-shared-base-points))
   (format #t "~Tnum-level0-points: ~D~%" (-> obj num-level0-points))
-  (format
-   #t
-   "~Tnum-shared-level0-points: ~D~%"
-   (-> obj num-shared-level0-points)
-   )
+  (format #t "~Tnum-shared-level0-points: ~D~%" (-> obj num-shared-level0-points))
   (format #t "~Tnum-level1-points: ~D~%" (-> obj num-level1-points))
-  (format
-   #t
-   "~Tnum-shared-level1-points: ~D~%"
-   (-> obj num-shared-level1-points)
-   )
+  (format #t "~Tnum-shared-level1-points: ~D~%" (-> obj num-shared-level1-points))
   (format #t "~Tptr-vtxdata: ~D~%" (-> obj ptr-vtxdata))
   (format #t "~Tptr-base-points: ~D~%" (-> obj ptr-base-points))
   (format #t "~Tptr-shared-base-points: ~D~%" (-> obj ptr-shared-base-points))
   (format #t "~Tptr-level0-points: ~D~%" (-> obj ptr-level0-points))
-  (format
-   #t
-   "~Tptr-shared-level0-points: ~D~%"
-   (-> obj ptr-shared-level0-points)
-   )
+  (format #t "~Tptr-shared-level0-points: ~D~%" (-> obj ptr-shared-level0-points))
   (format #t "~Tptr-level1-points: ~D~%" (-> obj ptr-level1-points))
-  (format
-   #t
-   "~Tptr-shared-level1-points: ~D~%"
-   (-> obj ptr-shared-level1-points)
-   )
+  (format #t "~Tptr-shared-level1-points: ~D~%" (-> obj ptr-shared-level1-points))
   (format #t "~Tptr-draw-points: ~D~%" (-> obj ptr-draw-points))
   (format #t "~Tptr-interpolated-0: ~D~%" (-> obj ptr-interpolated-0))
-  (format
-   #t
-   "~Tptr-shared-interpolated-0: ~D~%"
-   (-> obj ptr-shared-interpolated-0)
-   )
+  (format #t "~Tptr-shared-interpolated-0: ~D~%" (-> obj ptr-shared-interpolated-0))
   (format #t "~Tptr-interpolated1: ~D~%" (-> obj ptr-interpolated1))
-  (format
-   #t
-   "~Tptr-shared-interpolated1: ~D~%"
-   (-> obj ptr-shared-interpolated1)
-   )
+  (format #t "~Tptr-shared-interpolated1: ~D~%" (-> obj ptr-shared-interpolated1))
   (format #t "~Tptr-strip-data: ~D~%" (-> obj ptr-strip-data))
   (format #t "~Tptr-texture-data: ~D~%" (-> obj ptr-texture-data))
   obj
@@ -432,11 +406,7 @@
   (format #t "~Tmin-dist: #<vector @ #x~X>~%" (-> obj min-dist))
   (format #t "~Tcolor-ptr: #<vector4w @ #x~X>~%" (-> obj color-ptr))
   (format #t "~Ttr-stat-tfrag: #<tr-stat @ #x~X>~%" (-> obj tr-stat-tfrag))
-  (format
-   #t
-   "~Ttr-stat-tfrag-near: #<tr-stat @ #x~X>~%"
-   (-> obj tr-stat-tfrag-near)
-   )
+  (format #t "~Ttr-stat-tfrag-near: #<tr-stat @ #x~X>~%" (-> obj tr-stat-tfrag-near))
   (format #t "~Tvu1-enable-tfrag: ~D~%" (-> obj vu1-enable-tfrag))
   (format #t "~Tvu1-enable-tfrag-near: ~D~%" (-> obj vu1-enable-tfrag-near))
   (format #t "~Tcur-vis-bits: ~D~%" (-> obj cur-vis-bits))

@@ -19,48 +19,6 @@
 ;; you can turn on actor marks (full) or visibilty boxes in the debug menu.
 |#
 
-(defun hack-update-camera ((location vector) (inv-rot matrix))
-  "Debugging function to set the camera's position and orientation"
-  ;; update to compute the perspective matrix.
-  (update-math-camera
-    *math-camera*
-    (-> *setting-control* current video-mode)
-    (-> *setting-control* current aspect-ratio)
-    )
-  
-  ;; copy the input rotation
-  (matrix-copy! (-> *math-camera* inv-camera-rot) inv-rot)
-  ;; inverse of rotation matrix matrix is its transpose
-  (matrix-transpose! (-> *math-camera* camera-rot) (-> *math-camera* inv-camera-rot))
-  
-  ;; fake some value here
-  ;;(set! (-> *math-camera* fov-correction-factor) 1000.0)
-  (set! (-> *math-camera* fov) (degrees 64.0))
-    (let ((f0-28 (fmin 11650.845 (-> *math-camera* fov))))
-     (set! (-> *math-camera* fov-correction-factor) (* 0.00008583069 f0-28))
-     )
-  
-  ;; do the math
-  (set! (-> *math-camera* trans quad) (-> location quad))
-  (let ((cam-temp (-> *math-camera* camera-temp))
-        (cam-rot (-> *math-camera* camera-rot))
-        (inv-cam-rot (-> *math-camera* inv-camera-rot))
-        (cam-trans (-> *math-camera* trans))
-        )
-    (let ((rotated-trans (new-stack-vector0)))
-      (set! (-> rotated-trans x) (- (-> cam-trans x)))
-      (set! (-> rotated-trans y) (- (-> cam-trans y)))
-      (set! (-> rotated-trans z) (- (-> cam-trans z)))
-      (set! (-> rotated-trans w) 1.0)
-      (vector-matrix*! rotated-trans rotated-trans cam-rot)
-      (set! (-> cam-rot vector 3 quad) (-> rotated-trans quad))
-      )
-    (matrix*! cam-temp cam-rot (-> *math-camera* perspective))
-    (set! (-> inv-cam-rot vector 3 quad) (-> cam-trans quad))
-    )
-  
-  (none)
-  )
 
 (defun test-function ((iter int))
   "This function draws the debug stuff. You can edit this, then reload this file to play with it."
@@ -87,7 +45,8 @@
       (set! (-> cam-pos x) (- 0. x))
       (set! (-> cam-pos z) (- 0. z))
       (set! (-> cam-pos y) (meters -2.))
-      (hack-update-camera cam-pos cam-inv-rot)
+      ;;(debug-set-camera-pos-rot! cam-pos cam-inv-rot)
+      ;;(hack-update-camera cam-pos cam-inv-rot)
       
       
       ;; create some test points
@@ -105,30 +64,100 @@
         )
       )
 
+    (update-hack)
     ;; these also work
-    (draw-end-credits (the int frame))
+    ;;(draw-end-credits (the int frame))
     ;; (draw-title-credits val)
 
     )
   (none)
   )
 
+(defun update-hack ()
+  (let ((a2-0 (new 'stack-no-clear 'vector)))
+    (set! (-> a2-0 x) 1.0)
+    (set! (-> a2-0 y) 0.0)
+    (set! (-> a2-0 z) 1.0)
+    (set! (-> a2-0 w) 1.0)
+    (let ((gp-0 (vector+float*! (new 'stack-no-clear 'vector) (new 'static 'vector) a2-0 0.0)))
+      (let* ((s5-0 (matrix-local->world #f #f))
+             (f28-0 (lerp-scale 122.88 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7))
+             (f30-0 (lerp-scale 2048.0 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7))
+             )
+        (let ((f26-0 (lerp-scale 0.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7))
+              (f0-10 (lerp-scale 1.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7))
+              )
+          ; (if (< 0.0 f26-0)
+          ;     (send-event *camera* 'part-water-drip f26-0 f0-10)
+          ;     )
+          )
+        (set! (-> *part-id-table* 37 init-specs 4 initial-valuef) f28-0)
+        (set! (-> *part-id-table* 37 init-specs 4 random-rangef) f28-0)
+        (set! (-> *part-id-table* 38 init-specs 4 initial-valuef) f28-0)
+        (set! (-> *part-id-table* 38 init-specs 4 random-rangef) f28-0)
+        (set! (-> *part-id-table* 37 init-specs 5 initial-valuef) f30-0)
+        (set! (-> *part-id-table* 37 init-specs 5 random-rangef) f30-0)
+        (set! (-> *part-id-table* 38 init-specs 5 initial-valuef) f30-0)
+        (set! (-> *part-id-table* 38 init-specs 5 random-rangef) f30-0)
+        )
+      
+      (dotimes (i 10)
+      (sp-launch-particles-var
+        *sp-particle-system-2d*
+        (-> *part-id-table* 37)
+        gp-0
+        (the-as sparticle-launch-state #f)
+        (the-as sparticle-launch-control #f)
+        1.0
+        )
+      (sp-launch-particles-var
+        *sp-particle-system-2d*
+        (-> *part-id-table* 38)
+        gp-0
+        (the-as sparticle-launch-state #f)
+        (the-as sparticle-launch-control #f)
+        1.0
+        )
+      )
+      )
+    )
+  0
+  (none)
+  )
 
+(defun launch-test-process ()
+  "Call this to launch a process that draws the debug demo"
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'test *kernel-dram-stack*)
+    (run-next-time-in-process proc (lambda ()
+                                     (let ((iter 0))
+                                       (while #t
+                                         (test-function iter)
+                                         (suspend)
+                                         (+! iter 1)
+                                         )
+                                       )
+                                     )
+                              )
+    proc)
+
+  )
+
+#|
 (define *wasd-camera-transform* (new 'global 'transform))
-
-
 (defun wasd-camera-update ()
   (let ((local-trans (new-stack-vector0))
         (trans *wasd-camera-transform*)
+        (fast-mode (cpad-hold? 0 r2))
         (pad-idx 0))
     ;; circle/square move camera relative x (left and right)
     (set! (-> local-trans x)
           (cond
             ((cpad-hold? 0 circle)
-             -80.0
+             -1600.0
              )
             ((cpad-hold? 0 square)
-             80.0
+             1600.0
              )
             (else
               0.0
@@ -155,6 +184,10 @@
           )
     (set! (-> local-trans w) 1.0)
     
+    (when fast-mode
+      (vector-float*! local-trans local-trans 10.)
+      )
+    
     ;; rotate this into world frame
     (let ((inv-cam-rot (new-stack-vector0))
           (cam-rot-mat (new-stack-matrix0)))
@@ -174,25 +207,28 @@
     (set! (-> trans trans w) 1.0)
     
     ;; global translation
-    (if (cpad-hold? 0 l1)
-        (set! (-> trans trans y) (+ 2000.0 (-> trans trans y)))
-        )
-    (if (cpad-hold? 0 r1)
-        (set! (-> trans trans y) (+ -2000.0 (-> trans trans y)))
-        )
+    (let ((diff (if fast-mode 10000.0 2000.0)))
+      (if (cpad-hold? 0 l1)
+          (set! (-> trans trans y) (+ diff (-> trans trans y)))
+          )
+      (if (cpad-hold? 0 r1)
+          (set! (-> trans trans y) (+ (- diff) (-> trans trans y)))
+          )
+      )
+
     
     ;; rotation (don't allow camera roll)
     (if (cpad-hold? 0 x)
-        (set! (-> trans rot x) (+ 54.13336 (-> trans rot x)))
+        (set! (-> trans rot x) (+ 200. (-> trans rot x)))
         )
     (if (cpad-hold? 0 triangle)
-        (set! (-> trans rot x) (+ -54.13336 (-> trans rot x)))
+        (set! (-> trans rot x) (+ -200. (-> trans rot x)))
         )
     (if (cpad-hold? 0 left)
-        (set! (-> trans rot y) (+ 150.13336 (-> trans rot y)))
+        (set! (-> trans rot y) (+ 300. (-> trans rot y)))
         )
     (if (cpad-hold? 0 right)
-        (set! (-> trans rot y) (+ -150.13336 (-> trans rot y)))
+        (set! (-> trans rot y) (+ -300. (-> trans rot y)))
         )
     
     (set! (-> trans scale x) 1.)
@@ -256,17 +292,18 @@
   )
 
 ;; This will spawn a process the first time this file is loaded
-(define-perm *test-process* process (launch-wasd-process))
+;;(define-perm *test-process* process (launch-wasd-process))
 
 (defun kill-test-procs ()
   "Kill all processes started by launch-test-process"
   (kill-by-name "test" *active-pool*)
   )
+|#
 
 (set! *display-profile* #t)
-(set! *display-split-boxes* #t)
-(set! *display-level-border* #t)
-(set! *display-split-box-info* #t)
+; (set! *display-split-boxes* #t)
+; (set! *display-level-border* #t)
+; (set! *display-split-box-info* #t)
 (set! *display-deci-count* #t)
 
 (defun text-randomizer ()
@@ -283,4 +320,52 @@
     )
   )
 
-(test-make-target)
+(defun update-subdivide-settings! ((settings subdivide-settings) (math-cam math-camera) (idx int))
+  "Change the subdivide settings."
+  (set! (-> settings meters 0) (meters 20000.0))
+  (set! (-> settings meters 1) (meters 20.0))
+  (set! (-> settings meters 2) (meters 20.0))
+  (set! (-> settings meters 3) (meters 20.0))
+  (set! (-> settings meters 4) (meters 20.0))
+  
+  ; (set! (-> settings meters 0) (-> settings far idx))
+  ; (set! (-> settings meters 4) (-> settings close idx))
+  ; (let ((f0-3 (* 0.14285715 (- (-> settings meters 0) (-> settings meters 4)))))
+  ;   (set! (-> settings meters 3) (+ (-> settings meters 4) (* 0.5 f0-3)))
+  ;   (set! (-> settings meters 2) (+ (-> settings meters 3) f0-3))
+  ;   (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 f0-3)))
+  ;   )
+  (let ((f0-7 (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
+    (dotimes (v1-5 5)
+      (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))
+      )
+    )
+  (set! (-> *tfrag-work* frag-dists x) (- (-> settings meters 0)))
+  (set! (-> *tfrag-work* frag-dists y) (- (-> settings meters 1)))
+  (set! (-> *tfrag-work* frag-dists z) (- (-> settings meters 2)))
+  (set! (-> *tfrag-work* frag-dists w) (- (-> settings meters 4)))
+  0
+  (none)
+  )
+
+;;(test-make-target)
+
+
+(define *debug-load-level* #f)
+(defun load-slot-1 ((lev symbol))
+  (load-state-want-levels (-> *load-state* want 0 name) lev)
+  (set! *debug-load-level* lev)
+  (make-function-process 
+    process
+    (lambda () 
+      (suspend)
+      (suspend)
+      
+      (while (!= (-> *level* data 1 status) 'loaded)
+        (format 0 "waiting...~%")
+        (suspend)
+        )
+      (load-state-want-display-level *debug-load-level* #t)
+      )
+     )
+  )

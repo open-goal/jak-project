@@ -14,6 +14,8 @@
 
 ;; -hardware-
 
+(defglobalconstant KERNEL_DEBUG #t)
+
 ;; the end of the 16 kB fast "scratchpad" memory of the PS2.
 ;; this memory is mapped to 0x70000000 in the PS2.
 (defconstant *scratch-memory-top* (the pointer #x70004000))
@@ -38,13 +40,13 @@
 
 ;; another stack size used as a maximum for temporary threads
 ;; OpenGOAL NOTE: increased to 16kB
-(defconstant PROCESS_STACK_SIZE #x4000)
+(defconstant PROCESS_STACK_SIZE #x6000)
 
 ;; default size of stack to backup for a process
 (defconstant PROCESS_STACK_SAVE_SIZE 256)
 
 ;; the size of the shared heap used by dynamically sized processes
-(defconstant PROCESS_HEAP_SIZE (* 984 1024))
+(defconstant PROCESS_HEAP_SIZE (* 3 984 1024)) ;; increased by factor of 3 for PC
 
 ;; -system-
 
@@ -200,6 +202,7 @@
 ;; Parent type of all process tree nodes.
 ;; A process-tree is a left-child right-sibling binary tree 
 ;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
+(declare-type entity-actor basic)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
@@ -222,7 +225,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (copy-defaults! (_type_ res-lump) none 11)
+    (init-from-entity! (_type_ entity-actor) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
    )  
@@ -259,6 +262,9 @@
   (:methods
     (new (symbol type basic int) _type_ 0)
    )
+  (:states
+    dead-state
+    empty-state)
   :size-assert #x70
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
@@ -339,7 +345,7 @@
 ;; GOAL can create a series of stack frames for unwinding/cleaning up.
 ;; This is the parent type for any stack frame.
 (deftype stack-frame (basic)
-  ((name basic :offset 4)
+  ((name symbol :offset 4)
    (next stack-frame :offset 8) ;; follow this to get to the root frame, away from top.
    )
   
@@ -412,7 +418,7 @@
 (defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
-  `(let ((the-handle ,handle))
+  `(let ((the-handle (the-as handle ,handle)))
      (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
          (let ((proc (-> (-> the-handle process))))
            (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
@@ -441,7 +447,7 @@
   )
 
 (defmacro ppointer->handle (pproc)
-  `(let ((the-process ,pproc))
+  `(let ((the-process (the-as (pointer process) ,pproc)))
       (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
       )
   )
@@ -480,7 +486,7 @@
    (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
-    (new (symbol type basic function
+    (new (symbol type symbol function
           (function none) 
           function
           (function none)
@@ -504,6 +510,7 @@
   :size-assert #x48
   :method-count-assert 9
   :flag-assert #x900000048
+  :always-stack-singleton
   )
 
 (defmacro process-stack-used (proc)
@@ -546,18 +553,32 @@
   `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
   )
 
+;; set to true to get error prints on suspends out of stack.
+(defglobalconstant DEBUG_PRINT_SUSPEND_FAIL #f)
+
 (defmacro suspend ()
   ;; suspend the current process.
+  
   `(rlet ((pp :reg r13 :reset-here #t))
-         ;; we pass the current thread to the kernel with the pp register.
-         ;; so it should be backed up on the stack here.
-         (.push pp)
+         (#when (or DEBUG_PRINT_SUSPEND_FAIL KERNEL_DEBUG)
+           (rlet ((sp :reg rsp :reset-here #t :type int)
+                  (off :reg r15 :type uint))
+                 (let* ((sp-goal (- sp off))
+                        (stack-top-goal (-> (the process pp) top-thread stack-top))
+                        (stack-used (&- stack-top-goal sp-goal))
+                        (stack-size (-> (the process pp) top-thread stack-size))
+                        )
+                   (when (> stack-used stack-size)
+                     (format 0 "ERROR: suspend called without enough stack in proc:~%~A~%Stack: ~D/~D~%" pp stack-used stack-size)
+                     )
+                   )
+                 )
+           )
          ;; set to the current thread
          (set! pp (-> (the process pp) top-thread))
          ;; call the suspend hook (put nothing as the argument)
          ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
-         ;; now we've been resumed, restore pp.
-         (.pop pp)
+         ;; the kernel will set pp (possibly to a new value) on resume.
          )
   )
 
@@ -620,4 +641,8 @@
      (define-extern ,name ,type)
      (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
      )
+  )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
   )

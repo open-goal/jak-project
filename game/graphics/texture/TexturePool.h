@@ -7,22 +7,55 @@
 #include "game/graphics/texture/TextureConverter.h"
 #include "common/util/Serializer.h"
 
+// Converting textures happens when textures are uploaded by the game.
+// Uploading textures to the gpu and creating samplers is done lazily, as needed.
+
+// Each sampler
+struct TextureSampler {
+  u64 sampler_object = -1;  // the opengl sampler
+  u64 handle = -1;          // the handle used for bindless textures.
+  bool created = false;     // lazily created as needed, by default we don't make them
+};
+
+// Each texture in our pool has a record:
 struct TextureRecord {
-  std::string page_name;
-  std::string name;
-  u8 mip_level;
-  u8 psm = -1;
-  u8 cpsm = -1;
-  u16 w, h;
-  u8 data_segment;
-  bool on_gpu = false;
-  bool do_gc = true;  // if set, will be unloaded from GPU when another is upload on top
+  std::string page_name;  // the page we belong to (from game info)
+  std::string name;       // our name (from game info)
+  u8 mip_level;           // which mip we are
+  u8 psm = -1;            // format in the game
+  u8 cpsm = -1;           // clut format in the game
+  u16 w, h;               // our dimensions
+  u8 data_segment;        // which segment we came from in the texture page
+  bool on_gpu = false;    // if we are uploaded to the GPU
+
+  // garbage collection settings.
+  // by default, do_gc is set, and the pool will take care of freeing textures.
+  // when a texture is uploaded on top of a texture (in PS2 VRAM), the texture will be unloaded from
+  // the GPU. Unless somebody has another instance of the shared_ptr to this texture, this structure
+  // (including converted texture data) will be discarded.
+
+  // In some cases, this is not desirable because the game may toggle between two different textures
+  // in VRAM, and we don't want to reconvert every time. The TextureUploadHandler will implement its
+  // own caching to help with this.  To manage textures yourself, you should:
+  // - keep around a shared_ptr to the TextureRecord (so it doesn't get deleted when it's out of PS2
+  // VRAM).
+  // - set do_gc to false (to keep texture in GPU memory when replaced).
+  // In this case, you must use the discard function to remove the texture from the GPU, if you
+  // really want to get rid of it.
+  bool do_gc = true;
+
+  // The texture data. In some cases, we keep textures only on the GPU (for example, the result of a
+  // render to texture).  In these, data is not populated, but you must set only_on_gpu = true. When
+  // saving graphics state, the texture will be dumped from the GPU and saved to the file so it is
+  // possible to restore.
   bool only_on_gpu = false;
   std::vector<u8> data;
-  u64 gpu_texture = 0;
-  u32 dest = -1;
 
-  u8 min_a_zero, max_a_zero, min_a_nonzero, max_a_nonzero;
+  // if we're on the gpu, our OpenGL texture
+  u64 gpu_texture = 0;
+
+  // our VRAM address.
+  u32 dest = -1;
 
   void unload_from_gpu();
 

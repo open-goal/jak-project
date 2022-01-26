@@ -30,6 +30,11 @@ if(UNIX)
         -Wsign-promo \
         -fdiagnostics-color=always")
 else()
+    if(CMAKE_BUILD_TYPE MATCHES "Debug")
+      # This actually breaks some standard library things for some reason?
+      # message("Setting Flags to Enable Edit and Continue")
+      # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
+    endif()
     set(CMAKE_CXX_FLAGS "/EHsc")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
 endif(UNIX)

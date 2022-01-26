@@ -16,6 +16,10 @@ struct RPC_Str_Cmd {
   char name[64];  // file name
 };
 
+struct RPC_Play_Cmd {
+  u8 pad[1024];  // TODO everything
+};
+
 constexpr int STR_RPC_RESULT_ERROR = 1;
 constexpr int STR_RPC_RESULT_DONE = 0;
 

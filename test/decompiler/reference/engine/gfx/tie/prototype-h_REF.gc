@@ -106,10 +106,7 @@
   )
 
 ;; definition for method 3 of type prototype-inline-array-shrub
-(defmethod
-  inspect
-  prototype-inline-array-shrub
-  ((obj prototype-inline-array-shrub))
+(defmethod inspect prototype-inline-array-shrub ((obj prototype-inline-array-shrub))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tid: ~D~%" (-> obj id))
   (format #t "~Tbsphere: ~`vector`P~%" (-> obj bsphere))
@@ -131,31 +128,28 @@
 ;; definition for method 3 of type prototype-array-shrub-info
 (defmethod inspect prototype-array-shrub-info ((obj prototype-array-shrub-info))
   (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format
-   #t
-   "~Tprototype-inline-array-shrub: ~A~%"
-   (-> obj prototype-inline-array-shrub)
-   )
+  (format #t "~Tprototype-inline-array-shrub: ~A~%" (-> obj prototype-inline-array-shrub))
   (format #t "~Twind-vectors: #x~X~%" (-> obj wind-vectors))
   obj
   )
 
 ;; definition of type prototype-bucket-tie
 (deftype prototype-bucket-tie (prototype-bucket)
-  ((generic-count       uint16       4        :offset-assert  88)
-   (generic-next        uint32       4        :offset-assert  96)
-   (frag-count          uint8        4        :offset-assert 112)
-   (index-start         uint8        4        :offset-assert 116)
-   (base-qw             uint16       4        :offset-assert 120)
-   (envmap-rfade        float                 :offset-assert 128)
-   (envmap-fade-far     float                 :offset-assert 132)
-   (envmap-shader       adgif-shader          :offset-assert 136)
-   (collide-frag        basic                 :offset-assert 140)
-   (tie-colors          basic                 :offset-assert 144)
-   (data                uint32       :dynamic :offset-assert 148)
-   (color-index-qwc     uint32       :dynamic :offset-assert 148)
-   (generic-next-clear  uint128               :offset         96)
-   (generic-count-clear uint128               :offset         80)
+  ((generic-count       uint16                                 4        :offset-assert  88)
+   (generic-next        uint32                                 4        :offset-assert  96)
+   (frag-count          uint8                                  4        :offset-assert 112)
+   (index-start         uint8                                  4        :offset-assert 116)
+   (base-qw             uint16                                 4        :offset-assert 120)
+   (envmap-rfade        float                                           :offset-assert 128)
+   (envmap-fade-far     float                                           :offset-assert 132)
+   (envmap-shader       adgif-shader                                    :offset-assert 136)
+   (collide-frag        drawable-inline-array-collide-fragment          :offset-assert 140)
+   (tie-colors          time-of-day-palette                             :offset-assert 144)
+   (data                uint32                                 :dynamic :offset-assert 148)
+   (color-index-qwc     uint32                                 :dynamic :offset-assert 148)
+   (generic-next-clear  uint128                                         :offset         96)
+   (generic-count-clear uint128                                         :offset         80)
+   (geometry-override   prototype-tie                          4        :offset         16)
    )
   :method-count-assert 9
   :size-assert         #x94
@@ -170,7 +164,7 @@
   (format #t "~Tflags: ~D~%" (-> obj flags))
   (format #t "~Tin-level: ~D~%" (-> obj in-level))
   (format #t "~Tutextures: ~D~%" (-> obj utextures))
-  (format #t "~Tgeometry[4] @ #x~X~%" (-> obj geometry))
+  (format #t "~Tgeometry[4] @ #x~X~%" (-> obj geometry-override))
   (format #t "~Tdists: #<vector @ #x~X>~%" (-> obj dists))
   (format #t "~Trdists: #<vector @ #x~X>~%" (-> obj rdists))
   (format #t "~Tnext[4] @ #x~X~%" (-> obj next))
@@ -210,7 +204,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (TODO-RENAME-9 (_type_) none 9)
+    (login (_type_) none 9)
     )
   )
 
@@ -244,11 +238,11 @@
 
 ;; definition of type instance
 (deftype instance (drawable)
-  ((bucket-index   uint16           :offset          6)
-   (unknown        uint32           :offset          8)
-   (origin         matrix4h :inline :offset-assert  32)
-   (unknown-vector vector   :inline :offset         32)
-   (wind-index     uint16           :offset         62)
+  ((bucket-index   uint16                           :offset          6)
+   (error          (pointer drawable-error)         :offset          8)
+   (origin         matrix4h                 :inline :offset-assert  32)
+   (unknown-vector vector                   :inline :offset         32)
+   (wind-index     uint16                           :offset         62)
    )
   :method-count-assert 18
   :size-assert         #x40

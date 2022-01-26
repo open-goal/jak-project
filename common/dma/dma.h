@@ -7,8 +7,8 @@
 
 #include <string>
 #include <cstring>
-#include "common/util/assert.h"
 #include "common/common_types.h"
+#include "common/util/assert.h"
 
 struct DmaStats {
   double sync_time_ms = 0;
@@ -42,6 +42,12 @@ struct DmaTag {
   u32 addr = 0;
   bool spr = false;
   Kind kind;
+
+  bool operator==(const DmaTag& other) const {
+    return qwc == other.qwc && addr == other.addr && spr == other.spr && kind == other.kind;
+  }
+
+  bool operator!=(const DmaTag& other) const { return !((*this) == other); }
 
   std::string print();
 };

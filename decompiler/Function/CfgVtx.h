@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_DISASSEMBLER_CFGVTX_H
-#define JAK_DISASSEMBLER_CFGVTX_H
-
 #include <string>
 #include <vector>
 #include "common/util/assert.h"
@@ -394,4 +391,3 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
                                             const CondWithElseLengthHack& cond_with_else_hack,
                                             const std::unordered_set<int>& blocks_ending_in_asm_br);
 }  // namespace decompiler
-#endif  // JAK_DISASSEMBLER_CFGVTX_H

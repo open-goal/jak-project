@@ -5,7 +5,6 @@
  */
 
 #include <cstring>
-#include "common/util/assert.h"
 #include <cstdio>
 #include "common/common_types.h"
 #include "game/common/ramdisk_rpc_types.h"
@@ -13,6 +12,7 @@
 #include "iso.h"
 #include "iso_api.h"
 #include "game/sce/iop.h"
+#include "common/util/assert.h"
 
 // Note - the RAMDISK code supports having multiple files, but it appears only one file can ever be
 // used at a time.
@@ -139,6 +139,7 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
       gNumFiles++;
 
       // Load file into IOP at the appropriate spot
+      printf("[OVERLORD RAMDISK] loading file %s with size %d\n", cmd->name, file_length);
       LoadISOFileToIOP(file_record, gMem + gMemUsed, file_length);
       gMemUsed += gFiles[gNumFiles].size;
     } else {
@@ -169,7 +170,7 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
     }
 
     // copy to return buffer.  This way RAMDISK data is valid until another GET_DATA.
-    memcpy(gReturnBuffer, gMem + offset + gFiles[file_idx].additional_offset, size);
+    memcpy(gReturnBuffer, gMem + offset + gFiles[file_idx].additional_offset, cmd->size);
     return gReturnBuffer;
   } else if (fno == RAMDISK_BYPASS_LOAD_FILE) {
     printf("[OVERLORD RAMDISK] got \"%s\"\n", cmd->name);

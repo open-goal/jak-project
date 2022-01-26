@@ -11,101 +11,211 @@
 (defun-extern start symbol continue-point target)
 ;; TODO - for mood
 (define-extern target-joint-pos (function vector)) ;; TODO - unconfirmed
-;; TODO - for target-util
-(define-extern target-falling (state symbol none))
-(define-extern target-slide-down (state none))
 ;; TODO - for logic-target - defined in shadow
 (define-extern do-target-shadow (function none :behavior target))
 ;; TODO - for logic-target - defined in powerups
 (define-extern target-powerup-process (function none :behavior target))
 ;; TODO - for logic-target - defined in target-handler
-(define-extern target-exit (function none))
-(define-extern target-generic-event-handler (function process int symbol event-message-block object))
+(define-extern target-exit (function none :behavior target))
+(define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target))
 ;; TODO - for logic-target - defined in sidekick
-(define-extern init-sidekick (function none)) ;; TODO - not finished
+(declare-type sidekick process-drawable)
+(define-extern init-sidekick (function none :behavior sidekick))
 ;; TODO - for logic-target - defined in target-death
-(define-extern target-continue (state continue-point none))
-(define-extern target-periscope (state target))
 (define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
 (define-extern init-var-jump (function float float vector vector vector vector :behavior target)) ;; 1st and 2nd vectors may be symbols instead?
-(define-extern target-standard-event-handler function)
+;; TODO - for target-util
+;; TODO - for target-tube
+(define-extern target-attacked (function symbol attack-info process process (state handle attack-info target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
+;; TODO - for racer-states
+(define-extern racer-collision-reaction (function control-info collide-shape-intersect vector vector none))
+;; TODO -for target2
+(define-extern target-falling-anim-trans (function none :behavior target)) ;; unconfirmed
 
-(declare-type sidekick basic)
 (declare-type collide-cache basic)
 (declare-type snowball-info basic)
 (declare-type tube-info basic)
 (declare-type racer-info basic)
+(declare-type flut-info basic)
+(declare-type target process-drawable)
+(defun-extern start symbol continue-point target)
 
-;; decomp begins
+;; NOTE - for logic-target - defined in sidekick
+(declare-type sidekick process-drawable)
 
-;; definition of type target
+;; NOTE - for target-death
+(define-extern start-sequence-a (function none)) ;; not confirmed
+
+;; DECOMP BEGINS
+
 (deftype target (process-drawable)
-  ((control             control-info        :score 100 :offset 112)
-   (fact-info-target    fact-info-target    :score 100 :offset 144)
-   (skel2               basic               :offset-assert 176)
-   (racer               racer-info               :offset-assert 180)
-   (game                game-info           :offset-assert 184)
-   (neck                joint-mod           :offset-assert 188)
-   (state-hook-time     uint64              :offset-assert 192)
-   (state-hook          (function none :behavior target)     :offset-assert 200)
-   (cam-user-mode       symbol              :offset-assert 204)
-   (sidekick            (pointer sidekick)              :offset-assert 208)
-   (manipy              (pointer manipy)              :offset-assert 212)
-   (attack-info         attack-info :inline :offset-assert 224)
-   (attack-info-rec     attack-info :inline :offset-assert 336)
-   (anim-seed           uint64              :offset-assert 440)
-   (alt-cam-pos         vector      :inline :offset-assert 448)
-   (snowball            snowball-info               :offset-assert 464)
-   (tube                tube-info               :offset-assert 468)
-   (flut                basic               :offset-assert 472)
-   (current-level       level               :offset-assert 476)
-   (saved-pos           transformq  :inline :offset-assert 480)
-   (saved-owner         uint64              :offset-assert 528)
-   (alt-neck-pos        vector      :inline :offset-assert 544)
-   (fp-hud              uint64              :offset-assert 560)
-   (no-load-wait        uint64              :offset-assert 568)
-   (no-look-around-wait uint64              :offset-assert 576)
+  ((self-override       target                                   :offset         28)
+   (control             control-info                             :offset        112)
+   (fact-info-target    fact-info-target                         :offset        144)
+   (skel2               basic                                    :offset-assert 176)
+   (racer               racer-info                               :offset-assert 180)
+   (game                game-info                                :offset-assert 184)
+   (neck                joint-mod                                :offset-assert 188)
+   (state-hook-time     uint64                                   :offset-assert 192)
+   (state-hook          (function none :behavior target)         :offset-assert 200)
+   (cam-user-mode       symbol                                   :offset-assert 204)
+   (sidekick            (pointer sidekick)                       :offset-assert 208)
+   (manipy              (pointer manipy)                         :offset-assert 212)
+   (attack-info         attack-info                      :inline :offset-assert 224)
+   (attack-info-rec     attack-info                      :inline :offset-assert 336)
+   (anim-seed           uint64                                   :offset-assert 440)
+   (alt-cam-pos         vector                           :inline :offset-assert 448)
+   (snowball            snowball-info                            :offset-assert 464)
+   (tube                tube-info                                :offset-assert 468)
+   (flut                flut-info                                :offset-assert 472)
+   (current-level       level                                    :offset-assert 476)
+   (saved-pos           transformq                       :inline :offset-assert 480)
+   (saved-owner         uint64                                   :offset-assert 528)
+   (alt-neck-pos        vector                           :inline :offset-assert 544)
+   (fp-hud              handle                                   :offset-assert 560)
+   (no-load-wait        uint64                                   :offset-assert 568)
+   (no-look-around-wait uint64                                   :offset-assert 576)
    )
   :heap-base #x1e0
   :method-count-assert 21
   :size-assert         #x248
   :flag-assert         #x1501e00248
   (:methods
-    (dummy-20 (_type_ collide-cache) none 20)
+    (find-edge-grabs! (_type_ collide-cache) object 20)
     )
-  
   (:states
-    (target-racing-get-off handle)
-    (target-racing-jump float float symbol)
-    (target-racing-hit handle attack-info)
-    (target-racing-grab)
-    (target-racing-clone-anim handle)
-    (target-racing-get-on handle)
-    (target-racing-falling)
-    (target-racing-bounce float float symbol)
-    (target-racing-death symbol)
-    (target-racing-get-off-jump handle)
-    (target-racing-get-off-hit-ground symbol)
-  
-    (target-death)
+    target-attack
+    (target-attack-air symbol)
+    (target-attack-uppercut float float)
+    (target-attack-uppercut-jump float float)
+    target-billy-game
+    (target-clone-anim handle)
+    (target-continue continue-point)
+    (target-death symbol)
+    target-demo
+    (target-double-jump float float)
+    (target-duck-high-jump float float symbol)
+    (target-duck-high-jump-jump float float symbol)
+    target-duck-stance
+    target-duck-walk
+    (target-eco-powerup object float)
+    target-edge-grab
+    (target-edge-grab-jump float float)
+    target-edge-grab-off
+    (target-falling symbol)
+    (target-final-door basic handle)
+    (target-fishing handle)
+    (target-flop float float float)
+    (target-flop-hit-ground symbol)
+    (target-flut-air-attack float)
+    target-flut-air-attack-hit-ground
+    (target-flut-clone-anim handle)
+    (target-flut-death symbol)
+    (target-flut-double-jump float float)
+    target-flut-falling
+    (target-flut-get-off handle)
+    (target-flut-get-off-hit-ground symbol)
+    (target-flut-get-off-jump handle)
+    (target-flut-get-on handle)
+    target-flut-grab
+    (target-flut-hit symbol attack-info)
+    target-flut-hit-ground
+    (target-flut-jump float float)
+    target-flut-running-attack
+    target-flut-stance
+    (target-flut-start handle)
+    target-flut-walk
+    target-grab
+    (target-high-jump float float basic)
+    (target-hit symbol attack-info)
     (target-hit-ground symbol)
-    (target-clone-anim)
+    (target-hit-ground-hard float)
+    target-ice-stance
+    target-ice-walk
+    (target-jump float float surface)
+    (target-jump-forward float float)
+    (target-launch float symbol vector int)
+    target-load-wait
+    target-look-around
+    (target-periscope handle)
+    (target-play-anim string handle)
+    (target-pole-cycle handle)
+    (target-pole-flip-forward float float float)
+    (target-pole-flip-forward-jump float float)
+    (target-pole-flip-up object object float)
+    (target-pole-flip-up-jump float float)
+    target-racing
+    (target-racing-bounce float float symbol)
+    (target-racing-clone-anim handle)
+    (target-racing-death symbol)
+    target-racing-falling
+    (target-racing-get-off handle)
+    (target-racing-get-off-hit-ground symbol)
+    (target-racing-get-off-jump handle)
+    (target-racing-get-on handle)
+    target-racing-grab
+    (target-racing-hit handle attack-info)
+    (target-racing-jump float float symbol)
+    (target-racing-smack float symbol)
+    (target-racing-start handle)
+    target-running-attack
+    target-slide-down
+    target-snowball
+    (target-snowball-start handle)
+    target-stance
+    target-stance-ambient
+    target-stance-look-around
+    target-startup
+    target-swim-down
+    (target-swim-jump float float)
+    (target-swim-jump-jump float float surface)
+    target-swim-stance
+    target-swim-up
+    target-swim-walk
+    target-title
+    target-title-play
+    target-title-wait
+    target-tube
+    (target-tube-death symbol)
+    (target-tube-hit handle attack-info)
+    (target-tube-jump float float)
+    (target-tube-start handle)
+    target-turn-around
+    target-wade-stance
+    target-wade-walk
+    target-walk
+    (target-warp-in vector vector)
+    (target-warp-out vector vector)
+    target-wheel
+    (target-wheel-flip float float)
+    target-yellow-blast
+    target-yellow-jump-blast
     )
   )
+
 
 (define-perm *target* target #f)
 
 (deftype sidekick (process-drawable)
-  ((control          control-info   :offset 112)
-   (anim-seed        uint64  :offset 192)
-   (shadow-in-movie? symbol  :offset-assert 200)
+  ((parent-override  (pointer target)  :offset         12)
+   (control          control-info      :offset        112)
+   (anim-seed        uint64            :offset        192)
+   (shadow-in-movie? symbol            :offset-assert 200)
    )
   :heap-base #x60
   :method-count-assert 20
   :size-assert         #xcc
   :flag-assert         #x14006000cc
-  ;; inherited inspect of process-drawable
+  (:states
+    sidekick-clone
+    )
   )
 
+
 (define-perm *sidekick* sidekick #f)
-(define-extern target-attacked (function symbol uint uint process (state target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
+
+0
+
+
+
+

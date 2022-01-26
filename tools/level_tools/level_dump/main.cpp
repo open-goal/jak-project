@@ -4,9 +4,8 @@
 #include "decompiler/ObjectFile/LinkedObjectFileCreation.h"
 #include "common/util/DgoReader.h"
 
-#include "tools/level_tools/goal_data_reader.h"
-#include "tools/level_tools/BspHeader.h"
-
+#include "decompiler/util/goal_data_reader.h"
+#include "decompiler/level_extractor/BspHeader.h"
 
 #include "common/util/assert.h"
 
@@ -39,13 +38,13 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   }
 
   auto& first_word = file.words_by_seg.at(0).at(0);
-  if (first_word.kind != decompiler::LinkedWord::TYPE_PTR) {
+  if (first_word.kind() != decompiler::LinkedWord::TYPE_PTR) {
     fmt::print("Expected the first word to be a type pointer, but it wasn't.\n");
     return false;
   }
 
-  if (first_word.symbol_name != "bsp-header") {
-    fmt::print("Expected to get a bsp-header, but got {} instead.\n", first_word.symbol_name);
+  if (first_word.symbol_name() != "bsp-header") {
+    fmt::print("Expected to get a bsp-header, but got {} instead.\n", first_word.symbol_name());
     return false;
   }
 

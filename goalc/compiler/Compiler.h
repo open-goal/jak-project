@@ -25,7 +25,7 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
 class Compiler {
  public:
-  Compiler(std::unique_ptr<ReplWrapper> repl = nullptr);
+  Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
   ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
@@ -42,9 +42,13 @@ class Compiler {
   void compile_and_send_from_string(const std::string& source_code);
   void run_front_end_on_string(const std::string& src);
   void run_front_end_on_file(const std::vector<std::string>& path);
-  void run_full_compiler_on_string_no_save(const std::string& src);
+  void run_full_compiler_on_string_no_save(const std::string& src,
+                                           const std::optional<std::string>& string_name);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
+  void add_ignored_define_extern_symbol(const std::string& name) {
+    m_allow_inconsistent_definition_symbols.insert(name);
+  }
   Debugger& get_debugger() { return m_debugger; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
@@ -75,6 +79,7 @@ class Compiler {
   std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
+  std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
@@ -121,7 +126,7 @@ class Compiler {
   Val* compile_float(float value, Env* env, int seg);
   Val* compile_symbol(const goos::Object& form, Env* env);
   Val* compile_string(const goos::Object& form, Env* env);
-  Val* compile_string(const std::string& str, Env* env, int seg = MAIN_SEGMENT);
+  Val* compile_string(const std::string& str, Env* env, int seg);
   Val* compile_get_symbol_value(const goos::Object& form, const std::string& name, Env* env);
   Val* compile_function_or_method_call(const goos::Object& form, Env* env);
 
@@ -227,17 +232,23 @@ class Compiler {
                          const goos::Object& type,
                          const goos::Object* rest,
                          Env* env,
-                         bool call_constructor);
+                         bool call_constructor,
+                         bool use_singleton);
 
-  StaticResult fill_static_array(const goos::Object& form, const goos::Object& rest, Env* env);
+  StaticResult fill_static_array(const goos::Object& form,
+                                 const goos::Object& rest,
+                                 Env* env,
+                                 int seg);
 
   StaticResult fill_static_boxed_array(const goos::Object& form,
                                        const goos::Object& rest,
-                                       Env* env);
+                                       Env* env,
+                                       int seg);
 
   StaticResult fill_static_inline_array(const goos::Object& form,
                                         const goos::Object& rest,
-                                        Env* env);
+                                        Env* env,
+                                        int seg);
 
   void fill_static_inline_array_inline(const goos::Object& form,
                                        const TypeSpec& content_type,
@@ -287,6 +298,11 @@ class Compiler {
                            u8 sa,
                            Env* env,
                            IntegerMathKind kind);
+  Val* compile_floating_point_division(const goos::Object& form,
+                                       const TypeSpec& result_type,
+                                       RegVal* a,
+                                       RegVal* b,
+                                       Env* env);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
@@ -326,10 +342,14 @@ class Compiler {
   Val* compile_new_static_structure_or_basic(const goos::Object& form,
                                              const TypeSpec& type,
                                              const goos::Object& field_defs,
-                                             Env* env);
-  Val* compile_static_pair(const goos::Object& form, Env* env);
+                                             Env* env,
+                                             int seg);
+  Val* compile_static_pair(const goos::Object& form, Env* env, int seg);
   StaticResult compile_static(const goos::Object& form, Env* env);
-  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form, Env* env);
+  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form,
+                                                Env* env,
+                                                int seg,
+                                                bool can_macro);
 
   Val* compile_bitfield_definition(const goos::Object& form,
                                    const TypeSpec& type,
@@ -339,7 +359,8 @@ class Compiler {
   StaticResult compile_new_static_structure(const goos::Object& form,
                                             const TypeSpec& type,
                                             const goos::Object& _field_defs,
-                                            Env* env);
+                                            Env* env,
+                                            int seg);
 
   void compile_static_structure_inline(const goos::Object& form,
                                        const TypeSpec& type,
@@ -396,6 +417,15 @@ class Compiler {
     }
   }
 
+  void compile_state_handler_set(StructureType* state_type_info,
+                                 RegVal* state_object,
+                                 const std::string& name,
+                                 goos::Arguments& args,
+                                 const goos::Object& form,
+                                 Env* env,
+                                 Val*& code_val,
+                                 Val*& enter_val);
+
  public:
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -407,6 +437,8 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_movn(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_slt(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Vector Float Operations
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -463,6 +495,8 @@ class Compiler {
 
   Val* compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_outer_product_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_outer_product_a_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_outer_product_b_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   Val* compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -553,6 +587,7 @@ class Compiler {
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_stop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_pm(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_di(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -593,6 +628,7 @@ class Compiler {
   Val* compile_inline(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_declare_file(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Type
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);

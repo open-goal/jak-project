@@ -7,7 +7,6 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#include "common/util/assert.h"
 
 #include "common/goal_constants.h"
 #include "common/common_types.h"
@@ -23,6 +22,7 @@
 #include "klisten.h"
 #include "klink.h"
 #include "common/symbols.h"
+#include "common/util/assert.h"
 
 ///////////
 // SDATA
@@ -119,13 +119,19 @@ void clear_print() {
  */
 void reset_output() {
   if (MasterDebug) {
-    // original GOAL:
-    // sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x\n",
-    // s7.offset);
+// original GOAL:
+// sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x\n",
+// s7.offset);
 
-    // modified for OpenGOAL:
+// modified for OpenGOAL:
+#ifdef _WIN32
+    sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader),
+            "reset #x%x #x%llx %s\n", s7.offset, (unsigned long long)g_ee_main_mem,  // grr
+            xdbg::get_current_thread_id().to_string().c_str());
+#else
     sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x #x%lx %s\n",
             s7.offset, (uintptr_t)g_ee_main_mem, xdbg::get_current_thread_id().to_string().c_str());
+#endif
     OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }

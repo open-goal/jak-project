@@ -85,6 +85,32 @@ void GfxDisplay::render_graphics() {
   m_renderer->render_display(this);
 }
 
+int GfxDisplay::width() {
+  int w;
+  m_renderer->display_size(this, &w, NULL);
+  return w;
+}
+
+int GfxDisplay::height() {
+  int h;
+  m_renderer->display_size(this, NULL, &h);
+  return h;
+}
+
+void GfxDisplay::set_size(int w, int h) {
+  m_renderer->display_set_size(this, w, h);
+}
+
+void GfxDisplay::get_scale(float* x, float* y) {
+  m_renderer->display_scale(this, x, y);
+}
+
+void GfxDisplay::backup_params() {
+  m_renderer->display_size(this, &m_width, &m_height);
+  m_renderer->display_position(this, &m_xpos, &m_ypos);
+  fmt::print("backed up window: {},{} {}x{}\n", m_xpos, m_ypos, m_width, m_height);
+}
+
 /*
 ********************************
 * DISPLAY
@@ -106,8 +132,7 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
     return 1;
   }
 
-  auto display =
-      Gfx::GetRenderer(settings.renderer)->make_main_display(width, height, title, settings);
+  auto display = Gfx::GetCurrentRenderer()->make_main_display(width, height, title, settings);
   if (display == NULL) {
     lg::error("Failed to make main display.");
     return 1;

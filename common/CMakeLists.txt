@@ -5,6 +5,7 @@ add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
+        custom_data/TFrag3Data.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
@@ -12,7 +13,9 @@ add_library(common
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
+        goos/Printer.cpp
         goos/PrettyPrinter.cpp
+        goos/PrettyPrinter2.cpp
         goos/Reader.cpp
         goos/TextDB.cpp
         goos/ReplUtils.cpp
@@ -34,8 +37,10 @@ add_library(common
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp
+        util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
+        util/image_loading.cpp "goos/Printer.cpp" "goos/Printer.h" "goos/PrettyPrinter2.cpp" "goos/PrettyPrinter2.h")
         )
 ELSEIF(WIN32)
  add_library(common
@@ -128,5 +133,3 @@ if(UNIX)
 elseif(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
 endif()
-
-install(TARGETS common)

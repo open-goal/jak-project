@@ -19,7 +19,7 @@ class Vector {
   }
 
   template <typename... Args>
-  Vector(Args... args) : m_data{T(args)...} {}
+  explicit Vector(Args... args) : m_data{T(args)...} {}
 
   T* begin() { return &m_data[0]; }
   T* end() { return &m_data[Size]; }
@@ -68,6 +68,17 @@ class Vector {
     return sum;
   }
 
+  bool operator==(const Vector<T, Size>& other) const {
+    for (int i = 0; i < Size; i++) {
+      if (m_data[i] != other.m_data[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool operator!=(const Vector<T, Size>& other) const { return !((*this) == other); }
+
   const T length() const { return std::sqrt(squared_length()); }
 
   Vector<T, Size> operator+(const Vector<T, Size>& other) const {
@@ -97,6 +108,14 @@ class Vector {
     Vector<T, Size> result;
     for (int i = 0; i < Size; i++) {
       result[i] = m_data[i] - other[i];
+    }
+    return result;
+  }
+
+  Vector<T, Size> operator-(const T& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = m_data[i] - other;
     }
     return result;
   }
@@ -145,8 +164,8 @@ class Vector {
 
   Vector<T, Size> cross(const Vector<T, Size>& other) const {
     static_assert(Size == 3, "Size for cross");
-    Vector<T, Size> result = {y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
-                              x() * other.y() - y() * other.x()};
+    Vector<T, Size> result{y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
+                           x() * other.y() - y() * other.x()};
     return result;
   }
 
@@ -157,7 +176,7 @@ class Vector {
   std::string to_string_aligned() const {
     std::string result = "[";
     for (auto x : m_data) {
-      result.append(fmt::format("{: 6.3f} ", x));
+      result.append(fmt::format("{:6.3f} ", x));
     }
     result.pop_back();
     return result + "]";
@@ -167,13 +186,26 @@ class Vector {
   const T* data() const { return m_data; }
 
   template <typename U>
-  Vector<U, Size> cast() {
+  Vector<U, Size> cast() const {
     Vector<U, Size> result;
     for (int i = 0; i < Size; i++) {
       result[i] = (U)m_data[i];
     }
     return result;
   }
+
+  template <int len>
+  Vector<T, len> head() const {
+    static_assert(len < Size);
+    Vector<T, len> result;
+    for (int i = 0; i < len; i++) {
+      result[i] = m_data[i];
+    }
+    return result;
+  }
+
+  Vector<T, 3> xyz() const { return head<3>(); }
+  Vector<T, 3> xy() const { return head<2>(); }
 
  private:
   T m_data[Size];
@@ -192,14 +224,31 @@ struct Matrix {
     return result;
   }
 
-  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
-  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
+  //  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
+  //  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
 
   Vector<T, Rows> col(int c) const {
     Vector<T, Rows> result;
     for (int i = 0; i < Rows; i++) {
       result[i] = m_data[c * Rows + i];
     }
+    return result;
+  }
+
+  T* data() { return m_data; }
+  const T* data() const { return m_data; }
+
+  std::string to_string_aligned() const {
+    std::string result;
+    for (int row = 0; row < Rows; row++) {
+      result += "[";
+      for (int col = 0; col < Cols; col++) {
+        result.append(fmt::format("{:6.3f} ", m_data[row + col * Rows]));
+      }
+      result.pop_back();
+      result += "]\n";
+    }
+
     return result;
   }
 
