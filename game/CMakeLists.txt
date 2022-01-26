@@ -66,6 +66,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/collide_mesh.cpp
         mips2c/functions/collide_probe.cpp
         mips2c/functions/draw_string.cpp
+        mips2c/functions/joint.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
         mips2c/functions/sparticle_launcher.cpp

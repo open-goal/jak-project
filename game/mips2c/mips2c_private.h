@@ -955,6 +955,15 @@ struct ExecutionContext {
     }
   }
 
+  void vitof15(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = ((float)s.ds32[i]) * (1.f / 32768.f);
+      }
+    }
+  }
+
   void vftoi12(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
@@ -1060,6 +1069,21 @@ inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
   memcpy(&spad_addr_goal, spad_sym_addr, 4);
   sadr -= spad_addr_goal;
+
+  assert((madr & 0xf) == 0);
+  assert((sadr & 0xf) == 0);
+  assert(sadr < 0x4000);
+  assert((sadr + 16 * qwc) <= 0x4000);
+  assert(qwc <= 0x4000);
+
+  void* spad_addr_c = g_ee_main_mem + spad_addr_goal + sadr;
+
+  memcpy(spad_addr_c, g_ee_main_mem + madr, qwc * 16);
+}
+
+inline void spad_to_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
+  u32 spad_addr_goal;
+  memcpy(&spad_addr_goal, spad_sym_addr, 4);
 
   assert((madr & 0xf) == 0);
   assert((sadr & 0xf) == 0);
