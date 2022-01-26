@@ -467,16 +467,18 @@
   "beach-vis"
   )
 
-(copy-strs
-  "BECANNON" ;; beachcam-cannon
-  "LRFALLIN" ;; lrocklrg-falling
-  "PESEXT"   ;; pelican-spit-ext
-  )
-(copy-strs
-  "SCINTROD" ;; sculptor-introduction
-  "BILINTRO" ;; bird-lady-introduction
-  "MAINTROD" ;; mayor-introduction
-  )
+;; pelican
+(copy-strs "PESEXT")
+;; beachcam
+(copy-strs "BECANNON")
+;; sculptor
+(copy-strs "SCINTROD" "SCR1" "SCRESOLU")
+;; lrocklrg
+(copy-strs "LRFALLIN")
+;; mayor
+(copy-strs "MAINTROD" "MARBEAMS" "MARDONAT" "MAZBEAMS" "MAZDONAT")
+;; bird-lady
+(copy-strs "BILINTRO" "BILR1" "BILR2" "BILBRESO")
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -622,8 +624,8 @@
 ;; assistant
 (copy-strs "ASIBESWI" "ASR1BESW")
 ;; sage
-(copy-strs "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE")
-;; fishermans boat
+(copy-strs "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
+;; fishermans-boat
 (copy-strs "FIBRTMIS")
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -715,8 +717,14 @@
   "misty-vis"
   )
 
-;; fishermans boat
+;; fishermans-boat
 (copy-strs "FIBRTVIL" "FIBRT1AL")
+;; muse
+(copy-strs "MUVICTOR")
+;; sidekick-human
+(copy-strs "SIHISA" "SIHISB" "SIHISC")
+;; mistycam
+(copy-strs "MICANNON")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; swamp
@@ -1130,10 +1138,16 @@
   "village3-vis"
   )
 
+;; sage-villagec
+(copy-strs "SA3INTRO" "SA3IDECO" "SA3R1DEC" "SA3IRAMS" "SA3R1RAM")
+;; assistant-villagec
+(copy-strs "AS3REMIN")
 ;; oracle
 (copy-strs "ORI3" "ORLE3" "ORRE3" "ORR3")
 ;; gondola
 (copy-strs "GORUP" "GORDOWN")
+;; minershort
+(copy-strs "MIIORBS" "MIR1ORBS" "MIR2ORBS" "MIZ1ORBS" "MIZ2ORBS" "MIIGNAWE" "MIR1GNAW" "MIISWITC" "MIR1SWIT")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Training
@@ -1296,7 +1310,8 @@
   "lavatube-vis"
   )
 
-(copy-strs "ASLERESO")
+;; assistant-lavatube
+(copy-strs "ASLSRESO" "ASLERESO")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; citadel
@@ -1439,6 +1454,8 @@
   )
 
 (copy-strs "SAISA")
+;; evilbro
+(copy-strs "EVMEND")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; demo
