@@ -41,7 +41,6 @@ add_library(common
         util/print_float.cpp
         util/FontUtils.cpp
         util/image_loading.cpp "goos/Printer.cpp" "goos/Printer.h" "goos/PrettyPrinter2.cpp" "goos/PrettyPrinter2.h")
-        )
 ELSEIF(WIN32)
  add_library(common
         SHARED

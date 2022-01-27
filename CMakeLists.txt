@@ -109,10 +109,10 @@ include_directories(third-party/glfw/include)
 add_subdirectory(third-party/imgui)
 
 # build the game code in C++
-add_subdirectory(game)
+#add_subdirectory(game)
 
 # build the compiler
-add_subdirectory(goalc)
+#add_subdirectory(goalc)
 
 # build standalone tools
 add_subdirectory(tools)
@@ -125,7 +125,7 @@ add_subdirectory(third-party/googletest EXCLUDE_FROM_ALL)
 include(GoogleTest)
 
 # build tests
-include(test/CMakeLists.txt)
+#include(test/CMakeLists.txt)
 
 # build lzokay library
 add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
