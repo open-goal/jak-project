@@ -60,6 +60,7 @@ set(RUNTIME_SOURCE
         kernel/ksocket.cpp
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
+        mips2c/functions/bones.cpp
         mips2c/functions/collide_cache.cpp
         mips2c/functions/collide_edge_grab.cpp
         mips2c/functions/collide_func.cpp

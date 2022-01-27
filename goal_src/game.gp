@@ -599,6 +599,7 @@
   "ORRE1"       ;; oracle-right-eye-1
   "ORR1"        ;; oracle-reminder-1
   "FAR1"        ;; farmer-reminder-1
+  "SAISE"       ;; intro sequence
   )
 
 ;;;;;;;;;;;;;;;;;;;;;

@@ -940,7 +940,9 @@
     (set! sv-48 (the-as int (-> *display* base-frame-counter)))
     
     ;; iterate through parts (this loop suspends, so it lasts the whole animation)
+    (format 0 "top of anim loop: ~d/~d!~%" spool-part (-> arg0 parts))
     (while (< spool-part (-> arg0 parts))
+     (format 0 "anim loop: ~d/~d!~%" spool-part (-> arg0 parts))
       ;; run the loader
      (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
      (update *art-control* #f)
@@ -965,7 +967,8 @@
         )
        )
       (while (!= (file-status *art-control* (-> arg0 name) spool-part) 'active)
-       (if (arg3 self)
+       (when (arg3 self)
+         (format 0 "anim aborT!!~%")
          (goto anim-abort)
          )
        (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
@@ -1001,10 +1004,12 @@
                )
          (set! sv-40 (the-as int (-> *display* base-frame-counter)))
          ;; uhh...
+         (format 0 "uhh...~%" spool-part (-> arg0 parts))
          (until (begin
                  (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
                  (cond
                   ((< (1+ spool-part) (-> arg0 parts))
+                   (format 0 "push next part: ~d~%" (1+ spool-part))
                    (spool-push *art-control* (-> arg0 name) (1+ spool-part) self -10.0)
                    )
                   (else
@@ -1012,8 +1017,11 @@
                    )
                   )
                  
+                 (format 0 "doing commands until ~f (now ~f~%~%" (ja-aframe-num 0) (-> (-> self skel root-channel 0) frame-num))
                  ;; execute sequence commands for loading/spawning/etc.
                  (execute-commands-up-to *load-state* (ja-aframe-num 0))
+                 
+                 (format 0 "done with cmds~%")
                  
                  (cond
                   ((and (< sv-32 sv-72) (= (current-str-id) spool-sound))
@@ -1033,7 +1041,7 @@
                   (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
                   (set! (-> a0-69 param 1) 1.0)
                   (set! (-> a0-69 frame-num) f0-14)
-                  (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-seek!)
+                  (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-+!)
                   )
                  (let ((v0-39 (current-str-pos spool-sound)))
                   (set! sv-72 v0-39)

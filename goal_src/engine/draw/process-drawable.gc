@@ -261,7 +261,7 @@
     (countdown (s5-0 (-> gp-0 length))
       (let ((a0-1 (handle->process (-> gp-0 s5-0))))
         (if a0-1
-            (dummy-17 (the-as process-drawable a0-1))
+            (do-joint-math! (the-as process-drawable a0-1))
             )
         )
       )
@@ -271,7 +271,9 @@
   0
   )
 
-(defmethod dummy-17 process-drawable ((obj process-drawable))
+(define-extern draw-joint-spheres (function process-drawable symbol))
+
+(defmethod do-joint-math! process-drawable ((obj process-drawable))
   (cond
     ((logtest? (-> obj draw status) (draw-status drwf01 drwf02))
      )
@@ -345,6 +347,9 @@
         )
       )
     )
+  (when (= (-> obj type) target)
+  (draw-joint-spheres obj)
+  )
   0
   (none)
   )
@@ -954,22 +959,24 @@
       (when (nonzero? (-> self skel))
         (dummy-19 self)
         
-        (#when TARGET_STARTUP_HACKS
-          (when (eq? (-> self type) target)
-            (format *stdcon* "no bones for you~%")
-            (dotimes (i (length (-> self node-list)))
-              (matrix-identity! (-> self node-list data i bone transform))
-              (set! (-> self node-list data i bone position quad)
-                    (-> (the-as target self) control trans quad)
-                    )
-              (set! (-> self node-list data i bone position w) 1.0)
-              (+! (-> self node-list data i bone position y) (meters 0.0))
-              )
-            )
-          )
+
         
         (when (or (logtest? (-> self skel status) 1) gp-1)
-          ;; (dummy-17 self) TODO
+          (do-joint-math! self)
+        ;;(#when TARGET_STARTUP_HACKS
+          (when (eq? (-> self type) target)
+          ;   (format *stdcon* "no bones for you~%")
+            (dotimes (i (length (-> self node-list)))
+              (add-debug-sphere #t (bucket-id debug-draw0) (-> self node-list data i bone position) (meters 0.3) (new 'static 'rgba :r #x80 :a #x80))
+          ;     (matrix-identity! (-> self node-list data i bone transform))
+          ;     (set! (-> self node-list data i bone position quad)
+          ;           (-> (the-as target self) control trans quad)
+          ;           )
+          ;     (set! (-> self node-list data i bone position w) 1.0)
+          ;     (+! (-> self node-list data i bone position y) (meters 0.0))
+              )
+            )
+          ;;)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
               (update-transforms! (the-as collide-shape (-> self root)))
               )
