@@ -120,13 +120,6 @@ void ee_runner(SystemThreadInterface& iface) {
         (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
                   MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
   }
-
-  #elif __APPLE__
-  {
-        g_ee_main_mem =
-        (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
-                  MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
-  }
   #endif
   
   if (g_ee_main_mem == (u8*)(-1)) {
