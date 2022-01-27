@@ -1047,7 +1047,7 @@
 ;; sage bluehut
 (copy-strs "SABICDUS" "SABR1CDU" "SABIPARM" "SABR1PAR")
 ;; geologist
-(copy-strs "GEINTROD" "GERMOLES" "GEZMONEY" "GERMONEY" "GEZMONEY")
+(copy-strs "GEINTROD" "GERMOLES" "GEZMOLES" "GERMONEY" "GEZMONEY")
 ;; gambler
 (copy-strs "GAI1" "GARRACE" "GARMONEY" "GAZRACE" "GAZMONEY")
 ;; warrior
