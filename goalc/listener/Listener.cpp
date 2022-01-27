@@ -3,11 +3,11 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
-#ifdef __linux__
+#ifdef __linux__ || __APPLE__ //should preemptively solve issues with Deci2Listener I've seen previously while just building the compiler/game
 #include <stdexcept>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <cstdio>
 #elif _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>

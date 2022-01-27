@@ -18,7 +18,7 @@
 #endif
 
 namespace xdbg {
-#if defined(__APPLE__) || defined(__linux_)
+#if defined(__APPLE__) || defined(__linux__)
 
 /*!
  * Identification for a thread.

@@ -3,16 +3,13 @@
  * Setup and launcher for the runtime.
  */
 
-#ifdef __linux__
+#ifdef __linux__ || __APPLE__
 #include <unistd.h>
 #include <sys/mman.h>
 #elif _WIN32
 #include <io.h>
-#include "third-party/mman/mman.h"
+#include <third-party/mman/mman.h>
 #include <Windows.h>
-#elif __APPLE__
-#include <unistd.h>
-#include <sys/mman.h>
 #endif
 
 #include <chrono>
@@ -298,12 +295,6 @@ u32 exec_runtime(int argc, char** argv) {
     } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
       VM::use = false;
     }
-  }
-
-  // initialize graphics first - the EE code will upload textures during boot and we
-  // want the graphics system to catch them.
-  if (enable_display) {
-    Gfx::Init();
   }
 
   // step 1: sce library prep

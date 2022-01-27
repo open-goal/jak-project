@@ -6,10 +6,7 @@
 #include "common/common_types.h"
 #include "decompiler/Disasm/Register.h"
 #include "common/util/assert.h"
-
-#ifdef __APPLE__
 #include <unordered_map>
-#endif
 
 namespace decompiler {
 /*!

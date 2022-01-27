@@ -2,10 +2,7 @@
 #include "DataParser.h"
 #include "third-party/fmt/core.h"
 #include "common/util/assert.h"
-
-#ifdef __APPLE__
 #include <unordered_map>
-#endif
 
 /*
  * Allowable lines:
