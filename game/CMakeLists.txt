@@ -40,6 +40,7 @@ set(RUNTIME_SOURCE
         sce/libdma.cpp
         sce/libpad.cpp
         sce/libgraph.cpp
+        sce/libsd.cpp
         sce/deci2.cpp
         sce/sif_ee.cpp
         sce/sif_ee_memcard.cpp

@@ -115,6 +115,11 @@ struct VagCommand : public IsoMessage {
   u32 field_0x44;
   u32 field_0x48;
   u32 field_0x4c;
+  u32 field_0x50;
+  u32 field_0x54;
+  u32 field_0x58;
+  u32 field_0x5c;
+  u32 field_0x60;
   // 0x6c max
 };
 

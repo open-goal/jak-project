@@ -12,6 +12,7 @@
 #include "iso_queue.h"
 #include "iso_api.h"
 #include "game/sce/iop.h"
+#include "game/sce/libsd.h"
 #include "stream.h"
 #include "dma.h"
 #include "fake_iso.h"
@@ -43,6 +44,20 @@ s32 str_thread;
 s32 play_thread;
 u8 gVagDir[VAGDIR_SIZE];
 u32 gPlayPos;
+u32 gPlaying;
+VagCommand* gVAGCmd;
+u32 gRealVAGClockRunning;
+u32 gFakeVAGClockPaused;
+u32 gFakeVAGClockRunning;
+u32 gRealVAGClock;
+u32 gRealVAGClockS;
+u32 gFakeVAGClock;
+u32 gLastVAGHalf;
+u32 gSampleRate;
+u32 gStreamSRAM;
+u16 gVoice;
+u32 gVAGId;
+u32 gDialogVolume;
 static RPC_Dgo_Cmd sRPCBuff[1];  // todo move...
 DgoCommand scmd;
 
@@ -58,6 +73,20 @@ void iso_init_globals() {
   play_thread = 0;
   memset(gVagDir, 0, sizeof(gVagDir));
   gPlayPos = 0;
+  gPlaying = 0;
+  gVAGCmd = nullptr;
+  gRealVAGClockRunning = 0;
+  gFakeVAGClockPaused = 0;
+  gFakeVAGClockRunning = 0;
+  gRealVAGClock = 0;
+  gRealVAGClockS = 0;
+  gFakeVAGClock = 0;
+  gLastVAGHalf = 0;
+  gSampleRate = 0;
+  gStreamSRAM = 0;
+  gVoice = 0;
+  gVAGId = 0;
+  gDialogVolume = 0;
   memset(sRPCBuff, 0, sizeof(sRPCBuff));
   memset(&scmd, 0, sizeof(DgoCommand));
 }
@@ -762,6 +791,7 @@ void InitVAGCmd(VagCommand* cmd, u32 x) {
   cmd->field_0x40 = 0;
   cmd->field_0x44 = 0;
   cmd->field_0x48 = 0xffffffff;
+  cmd->field_0x4c = 0;
   gPlayPos = 0x30;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
@@ -792,6 +822,120 @@ u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
 // TODO - GetPlayPos
 // TODO - UpdatePlayPos
 // TODO - CheckVAGStreamProgress
+
+u32 GetPlayPos();
+void UpdatePlayPos();
+void StopVAG(VagCommand* cmd);
+void PauseVAG(VagCommand* cmd);
+void UnpauseVAG(VagCommand* cmd);
+void CalculateVAGVolumes(u32 a1, u32 a2, u32 a3, int* a4, int* a5);
+void SetVAGVol();
+
+u32 GetPlayPos() {
+  u32 addr;
+  while (1) {
+    addr = sceSdGetAddr(gVoice | 0x2240);
+    u32 addr1 = sceSdGetAddr(gVoice | 0x2240);
+    u32 addr2 = sceSdGetAddr(gVoice | 0x2240);
+    if (addr == addr1 || addr == addr2)
+      break;
+    if (addr1 == addr2) {
+      addr = addr1;
+      break;
+    }
+  }
+  u32 play_pos = addr - gStreamSRAM;
+  if (play_pos > BUFFER_PAGE_SIZE - 1)
+    return 0xFFFFFFFF;
+  else
+    return play_pos;
+}
+
+void UpdatePlayPos() {
+  u32 play_pos;
+  if (gPlaying) {
+    play_pos = GetPlayPos();
+    if (play_pos == 0xFFFFFFFF) {
+      if (gLastVAGHalf) {
+        play_pos = BUFFER_PAGE_SIZE;
+      } else {
+        play_pos = STR_BUFFER_DATA_SIZE;
+      }
+    } else {
+      gLastVAGHalf = play_pos >= STR_BUFFER_DATA_SIZE;
+    }
+    if (play_pos >= gPlayPos) {
+      gRealVAGClockS += play_pos - gPlayPos;
+    } else {
+      gRealVAGClockS += play_pos + BUFFER_PAGE_SIZE - gPlayPos;
+    }
+    if (!gSampleRate) {
+      lg::error("[OVERLORD] gSampleRate is invalid!");
+    }
+    gRealVAGClock = 4 * (0x1C00 * (gRealVAGClockS >> 4) / gSampleRate);
+    gPlayPos = play_pos;
+  }
+}
+
+// TODO
+void StopVAG(VagCommand* cmd) {
+  gPlaying = 0;
+  PauseVAG(cmd);
+  // snd_KeyOffVoiceRaw(gVoice & 1, gVoice >> 1);
+  gFakeVAGClockRunning = 0;
+  gRealVAGClockRunning = 0;
+  gVAGId = 1;
+}
+
+// TODO
+void PauseVAG(VagCommand* cmd) {
+  gFakeVAGClockPaused = 1;
+  // 0x3c = paused?
+  if (cmd->field_0x3c) {
+    cmd->field_0x3c = 1;
+    if (cmd->field_0x38) {
+      // sceSdProcBatch();
+    }
+  }
+}
+
+// TODO
+void UnpauseVAG(VagCommand* cmd) {
+  gFakeVAGClockPaused = 0;
+}
+
+// TODO - not sure what any of these are yet
+void CalculateVAGVolumes(u32 a1, u32 a2, u32 a3, int* a4, int* a5) {
+  if (a2) {
+    u32 falloff_vol = 0;  // CalculateFalloffVolume(a3, (a1 * gDialogVolume) >> 10, 1, 10, 50);
+    short angle = 0;      // CalculateAngle(a3);
+    *a4 = (angle * falloff_vol) >> 10;
+    *a5 = (angle * falloff_vol) >> 10;
+    if (*a4 >= 0x4000) {
+      *a4 = 0x3FFF;
+    }
+    if (*a5 >= 0x4000) {
+      *a5 = 0x3FFF;
+    }
+  } else {
+    u32 v1 = (a1 * gDialogVolume) >> 6;
+    if (v1 >= 0x4000) {
+      v1 = 0x3FFF;
+    }
+    *a4 = v1;
+    *a5 = v1;
+  }
+}
+
+// TODO
+void SetVAGVol() {
+  int v1 = 0;
+  int v2 = 0;
+  if (gVAGCmd && gVAGCmd->field_0x38 && !gVAGCmd->field_0x3c) {
+    CalculateVAGVolumes(gVAGCmd->field_0x50, gVAGCmd->field_0x5c, gVAGCmd->field_0x60, &v1, &v2);
+    // sceSdProcBatch();
+  }
+}
 
 void* RPC_DGO(unsigned int fno, void* _cmd, int y);
 void LoadDGO(RPC_Dgo_Cmd* cmd);
@@ -947,7 +1091,19 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
   }
 }
 
-// TODO - GetVAGStreamPos
+u32 GetVAGStreamPos();
+
+u32 GetVAGStreamPos() {
+  UpdatePlayPos();
+  if (gFakeVAGClockRunning) {
+    return gFakeVAGClock;
+  }
+  if (gRealVAGClockRunning) {
+    return gRealVAGClock;
+  }
+  return 0xFFFFFFFF;
+}
+
 // TODO - VAG_MarkLoopStart
 // TODO - VAG_MarkLoopEnd
 // TODO - VAG_MarkNonloopStart
