@@ -273,6 +273,20 @@
 
 (define-extern draw-joint-spheres (function process-drawable symbol))
 
+(defun-debug draw-bone-lines ((obj process-drawable))
+  "Added in PC port to debug bones"
+  (dotimes (i (-> obj node-list length))
+    (let ((parent (-> obj node-list data i parent)))
+      (when (and parent (nonzero? parent) (-> parent joint) (-> parent parent))
+        (let ((child (vector<-cspace! (new-stack-vector0) (-> obj node-list data i)))
+              )
+          (add-debug-line #t (bucket-id debug-draw0) child (vector<-cspace! (new-stack-vector0) parent) (new 'static 'rgba :g #xff :a #x40) #f (the rgba -1))
+          )
+        )
+      )
+    )
+  )
+
 (defmethod do-joint-math! process-drawable ((obj process-drawable))
   (cond
     ((logtest? (-> obj draw status) (draw-status drwf01 drwf02))
@@ -347,9 +361,7 @@
         )
       )
     )
-  (when (= (-> obj type) target)
-  (draw-joint-spheres obj)
-  )
+  (draw-bone-lines obj)
   0
   (none)
   )
@@ -963,20 +975,6 @@
         
         (when (or (logtest? (-> self skel status) 1) gp-1)
           (do-joint-math! self)
-        ;;(#when TARGET_STARTUP_HACKS
-          (when (eq? (-> self type) target)
-          ;   (format *stdcon* "no bones for you~%")
-            (dotimes (i (length (-> self node-list)))
-              (add-debug-sphere #t (bucket-id debug-draw0) (-> self node-list data i bone position) (meters 0.3) (new 'static 'rgba :r #x80 :a #x80))
-          ;     (matrix-identity! (-> self node-list data i bone transform))
-          ;     (set! (-> self node-list data i bone position quad)
-          ;           (-> (the-as target self) control trans quad)
-          ;           )
-          ;     (set! (-> self node-list data i bone position w) 1.0)
-          ;     (+! (-> self node-list data i bone position y) (meters 0.0))
-              )
-            )
-          ;;)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
               (update-transforms! (the-as collide-shape (-> self root)))
               )
