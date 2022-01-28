@@ -219,6 +219,53 @@
 	    )
 	)
 
+(defsmacro dolist (bindings &rest body)
+  `(let ((,(car bindings) ,(cadr bindings)))
+      (while (not (null? ,(car bindings)))
+        ,@body
+        
+        (set! ,(car bindings) (cdr ,(car bindings)))
+        )
+      )
+  )
+
+
+(desfun append! (lst obj)
+  "adds obj to the end of lst. only edits inplace if lst is not null."
+  (let ((pended #f))
+    (if (null? lst)
+        (set! lst (cons obj '()))
+        (dolist (it lst)
+            (when (and (not pended) (null? (cdr it)))
+              (set-cdr! it (cons obj '()))
+              (set! pended #t)
+              )
+            )
+        )
+    )
+  lst
+  )
+
+(desfun delete-last! (lst)
+  "removes last item in lst.  only edits inplace if lst is not null."
+  (let ((prev '()))
+    (dolist (it lst)
+        (when (null? (cdr it))
+          (if (null? prev)
+              (set! lst '())
+              (set-cdr! prev '())
+              )
+          )
+        (set! prev it)
+        )
+    )
+  lst
+  )
+
+(defsmacro append!! (lst obj) `(set! ,lst (append! ,lst ,obj)))
+(defsmacro delete-last!! (lst) `(set! ,lst (delete-last! ,lst)))
+
+
 (defsmacro 1+ (x) `(+ ,x 1))
 (defsmacro 1- (x) `(- ,x 1))
 (defsmacro inc! (x) `(set! ,x (1+ ,x)))

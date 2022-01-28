@@ -5,24 +5,13 @@
 ;; name in dgo: generic-obs
 ;; dgos: GAME, ENGINE
 
-(declare-type swingpole process)
-
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 
 ;; TODO - temporary
 
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 
-;; TODO - for citb-plat
-(define-extern *particle-quat* quaternion)
-
-;; TODO - for jungle-mirrors
-(define-extern line-in-view-frustum? (function vector vector symbol))
-
 (declare-type beach-part part-spawner)
-(declare-type launcher process-drawable)
-
-(define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
 
 (define-extern beach-part-grotto-1 (state beach-part))
 
@@ -709,7 +698,6 @@
 (defbehavior command-get-process camera-tracker ((arg0 object) (arg1 process))
   (the-as process (cond
                     ((null? arg0)
-                     (empty)
                      arg1
                      )
                     ((type-type? (rtype-of arg0) process)
@@ -759,14 +747,12 @@
                           (handle->process (-> v1-13 anim-process))
                           )
                          (else
-                           (empty)
                            arg1
                            )
                          )
                        )
                      )
                     (else
-                      (empty)
                       arg1
                       )
                     )
@@ -776,7 +762,6 @@
 (defun command-get-camera ((arg0 object) (arg1 state))
   (cond
     ((null? arg0)
-     (empty)
      arg1
      )
     ((= arg0 'base)
@@ -798,7 +783,6 @@
      (the-as state arg0)
      )
     (else
-      (empty)
       arg1
       )
     )
@@ -807,7 +791,6 @@
 (defun command-get-trans ((arg0 object) (arg1 vector))
   (cond
     ((null? arg0)
-     (empty)
      arg1
      )
     ((= arg0 'null)
@@ -825,14 +808,12 @@
            (-> (the-as target s4-0) node-list data v1-4 bone transform vector 3)
            )
          (else
-           (empty)
            arg1
            )
          )
        )
      )
     (else
-      (empty)
       arg1
       )
     )
@@ -2059,6 +2040,7 @@
     )
   :exit
   (behavior ()
+    (#when PC_DEBUG_SOUND_ENABLE
     (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> v1-0 command) (sound-command set-param))
       (set! (-> v1-0 id) (-> self sound-id))
@@ -2067,6 +2049,7 @@
       (set! (-> v1-0 auto-from) 2)
       (set! (-> v1-0 parms mask) (the-as uint 17))
       (-> v1-0 id)
+      )
       )
     (none)
     )

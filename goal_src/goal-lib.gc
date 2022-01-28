@@ -229,6 +229,17 @@
     )
   )
 
+;; mlet, but recursive, allowing you to define variables in terms of others.
+(defmacro mlet* (bindings &rest body)
+  (if (null? bindings)
+    `(begin ,@body)
+    `((lambda :inline-only #t (,(caar bindings))
+        (mlet* ,(cdr bindings) ,@body))
+      ,(car (cdar bindings))
+      )
+    )
+  )
+
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
   (if (and
@@ -859,3 +870,18 @@
 
 ;; load the default project
 (load-project "goal_src/game.gp")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; user stuf
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro __get-user ()
+  `(quote ,*user*)
+  )
+
+(defconstant *user* (__get-user))
+
+
+
+

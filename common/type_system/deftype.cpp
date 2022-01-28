@@ -327,7 +327,7 @@ StructureDefResult parse_structure_def(StructureType* type,
       } else if (opt_name == ":method-count-assert") {
         method_count_assert = get_int(car(rest));
         if (method_count_assert == -1) {
-          throw std::runtime_error("Cannot use -1 as method_count_assert");
+          throw std::runtime_error("Cannot use -1 as method-count-assert");
         }
         rest = cdr(rest);
       } else if (opt_name == ":flag-assert") {
@@ -342,6 +342,9 @@ StructureDefResult parse_structure_def(StructureType* type,
         result.pack_me = true;
       } else if (opt_name == ":heap-base") {
         u16 hb = get_int(car(rest));
+        if ((hb % 0x10) != 0) {
+          throw std::runtime_error("heap-base is not 16-byte aligned");
+        }
         rest = cdr(rest);
         flags.heap_base = hb;
       } else if (opt_name == ":allow-misaligned") {
@@ -448,10 +451,6 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
         result.generate_runtime_type = false;
       } else if (opt_name == ":no-inspect") {
         type->set_gen_inspect(false);
-      } else if (opt_name == ":heap-base") {
-        u16 hb = get_int(car(rest));
-        rest = cdr(rest);
-        flags.heap_base = hb;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }

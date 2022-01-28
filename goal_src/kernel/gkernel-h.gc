@@ -34,19 +34,22 @@
 
 ;; -memory-
 
-;; the size of the execution stack (~14 kB) shared by all threads
+;; the size of the execution stack (14 kB) shared by all threads
 ;; OpenGOAL NOTE: increased to 32kB
 (defconstant DPROCESS_STACK_SIZE #x8000)
 
 ;; another stack size used as a maximum for temporary threads
-;; OpenGOAL NOTE: increased to 16kB
-(defconstant PROCESS_STACK_SIZE #x6000)
+;; OpenGOAL NOTE: 7kB -> 24kB
+(defconstant PROCESS_STACK_SIZE (#if PC_PORT #x6000 #x1c00))
 
 ;; default size of stack to backup for a process
 (defconstant PROCESS_STACK_SAVE_SIZE 256)
 
 ;; the size of the shared heap used by dynamically sized processes
-(defconstant PROCESS_HEAP_SIZE (* 3 984 1024)) ;; increased by factor of 3 for PC
+(#if PC_BIG_MEMORY
+  (defconstant PROCESS_HEAP_SIZE (* 984 1024 4)) ;; 4x 984kB = 3936kB
+  (defconstant PROCESS_HEAP_SIZE (* 984 1024))
+  )
 
 ;; -system-
 

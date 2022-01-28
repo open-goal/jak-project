@@ -432,7 +432,7 @@
           (when (not (null? default-handlers))
               ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
               ;; event
-              (set! default-handlers (cdr default-handlers))
+              (set! default-handlers (cadr default-handlers))
               (when (and (eq? event '*no-state*) (car default-handlers))
                   (set! event (car default-handlers)))
               ;; enter
@@ -491,7 +491,7 @@
 
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
-  
+
   (let ((behavior-type (first *defstate-type-stack*)))
     (pop! *defstate-type-stack*)
     `(lambda :behavior ,behavior-type ,bindings ,@body)
@@ -507,9 +507,16 @@
                            &key (exit #f)
                            &key (code #f)
                            &key (post #f))
-  (if (null? (assoc proc *default-state-handlers*))
-      (push! *default-state-handlers* (cons proc (list event enter trans exit code post)))
-      (fmt #t "default state handlers for {} already defined, ignoring duplicate.\n" proc (cadr (assoc proc *default-state-handlers*)))
+  (let ((old (assoc proc *default-state-handlers*))
+        (new (list proc (list event enter trans exit code post))))
+      (if (null? old)
+          (append!! *default-state-handlers* new) ;; add new set of default handlers
+          (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
+            (if (eq? (car hnd) old)
+              (set-car! hnd new)
+              )
+            )
+          )
       )
   `(none)
   )
