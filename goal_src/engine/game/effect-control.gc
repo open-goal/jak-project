@@ -11,63 +11,63 @@
 
 (define *debug-effect-control* #f)
 
-(defun sound-name-with-material ((arg0 symbol) (arg1 int) (arg2 string))
+(defun sound-name-with-material ((arg0 symbol) (arg1 pat-surface) (arg2 string))
   (let ((gp-0 format)
         (a0-2 (clear *temp-string*))
         (a1-1 "~S-~S~S")
-        (v1-1 (shr (shl arg1 52) 58))
+        (v1-1 (-> arg1 material))
         )
     (gp-0
       a0-2
       a1-1
       arg0
       (cond
-        ((= v1-1 5)
+        ((= v1-1 (pat-material sand))
          "sand"
          )
-        ((= v1-1 6)
+        ((= v1-1 (pat-material wood))
          "wood"
          )
-        ((= v1-1 13)
+        ((= v1-1 (pat-material crwood))
          "crwood"
          )
-        ((or (= v1-1 18) (= v1-1 8))
+        ((or (= v1-1 (pat-material tube)) (= v1-1 (pat-material pcmetal)))
          "pcmetal"
          )
-        ((or (= v1-1 16) (= v1-1 21))
+        ((or (= v1-1 (pat-material metal)) (= v1-1 (pat-material rotate)))
          "metal"
          )
-        ((= v1-1 9)
+        ((= v1-1 (pat-material snow))
          "snow"
          )
-        ((= v1-1 10)
+        ((= v1-1 (pat-material deepsnow))
          "dpsnow"
          )
-        ((= v1-1 14)
+        ((= v1-1 (pat-material gravel))
          "gravel"
          )
-        ((= v1-1 15)
+        ((= v1-1 (pat-material dirt))
          "dirt"
          )
-        ((zero? v1-1)
+        ((= v1-1 (pat-material stone))
          "stone"
          )
-        ((= v1-1 3)
+        ((= v1-1 (pat-material waterbottom))
          "water"
          )
-        ((= v1-1 4)
+        ((= v1-1 (pat-material tar))
          "tar"
          )
-        ((= v1-1 17)
+        ((= v1-1 (pat-material straw))
          "straw"
          )
-        ((= v1-1 1)
+        ((= v1-1 (pat-material ice))
          "ice"
          )
-        ((= v1-1 19)
+        ((= v1-1 (pat-material swamp))
          "swamp"
          )
-        ((= v1-1 22)
+        ((= v1-1 (pat-material neutral))
          "neutral"
          )
         (else
@@ -284,15 +284,7 @@
     (let ((s3-0 (-> arg0 value))
           (s5-0 (cond
                   ((< arg2 0)
-                   (let ((v0-0 (get-property-value
-                                 (-> obj res)
-                                 'effect-joint
-                                 'exact
-                                 arg1
-                                 (the-as uint128 0)
-                                 (the-as (pointer res-tag) #f)
-                                 *res-static-buf*
-                                 )
+                   (let ((v0-0 (get-property-value (-> obj res) 'effect-joint 'exact arg1 (the-as uint128 0) (the-as (pointer res-tag) #f) *res-static-buf*)
                                )
                          )
                      (if (zero? v0-0)
@@ -342,7 +334,7 @@
                             )
                         )
                   )
-             (dummy-11 obj arg0 (the-as basic arg1) s5-0 (-> obj res) t1-1)
+             (dummy-11 obj arg0 arg1 s5-0 (-> obj res) (the-as pat-surface t1-1))
              )
            )
           ((let ((v1-18 (symbol->string arg0)))
@@ -416,7 +408,7 @@
            (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
            )
           ((zero? s3-0)
-           (dummy-12 obj arg0 (the-as basic arg1) s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
+           (dummy-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
            )
           ((= (-> (the-as basic s3-0) type) sparticle-launcher)
            (if *debug-effect-control*
@@ -541,14 +533,14 @@
                          )
                        )
                      )
-                 (s1-3 s2-5 (the-as symbol s0-3) (the-as basic arg1) s5-0 sv-288 t1-11)
+                 (s1-3 s2-5 (the-as symbol s0-3) arg1 s5-0 sv-288 t1-11)
                  )
                )
              )
            (send-event (-> obj process) 'death-start (the-as death-info s3-0))
            )
           (else
-            (dummy-12 obj arg0 (the-as basic arg1) s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
+            (dummy-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
             )
           )
         )
@@ -557,7 +549,7 @@
     )
   )
 
-(defmethod dummy-11 effect-control ((obj effect-control) (arg0 symbol) (arg1 basic) (arg2 int) (arg3 basic) (arg4 int))
+(defmethod dummy-11 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 pat-surface))
   (local-vars
     (sv-48
       (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none)
@@ -599,64 +591,64 @@
          (when (< (the-as int a0-4) 9000)
            (let* ((a0-13 obj)
                   (t9-8 (method-of-object a0-13 dummy-10))
-                  (v1-15 (shr (shl arg4 52) 58))
+                  (v1-15 (-> arg4 material))
                   )
              (t9-8
                a0-13
                (cond
-                 ((= v1-15 5)
+                 ((= v1-15 (pat-material sand))
                   'group-land-poof-sand
                   )
-                 ((= v1-15 6)
+                 ((= v1-15 (pat-material wood))
                   'group-land-poof-wood
                   )
-                 ((= v1-15 13)
+                 ((= v1-15 (pat-material crwood))
                   'group-land-poof-crwood
                   )
-                 ((or (= v1-15 18) (= v1-15 8))
+                 ((or (= v1-15 (pat-material tube)) (= v1-15 (pat-material pcmetal)))
                   'group-land-poof-pcmetal
                   )
-                 ((or (= v1-15 16) (= v1-15 21))
+                 ((or (= v1-15 (pat-material metal)) (= v1-15 (pat-material rotate)))
                   'group-land-poof-metal
                   )
-                 ((= v1-15 1)
+                 ((= v1-15 (pat-material ice))
                   'group-land-poof-ice
                   )
-                 ((= v1-15 9)
+                 ((= v1-15 (pat-material snow))
                   'group-land-poof-snow
                   )
-                 ((= v1-15 10)
+                 ((= v1-15 (pat-material deepsnow))
                   'group-land-poof-dpsnow
                   )
-                 ((= v1-15 14)
+                 ((= v1-15 (pat-material gravel))
                   'group-land-poof-gravel
                   )
-                 ((= v1-15 15)
+                 ((= v1-15 (pat-material dirt))
                   'group-land-poof-dirt
                   )
-                 ((zero? v1-15)
+                 ((= v1-15 (pat-material stone))
                   'group-land-poof-stone
                   )
-                 ((= v1-15 3)
+                 ((= v1-15 (pat-material waterbottom))
                   'group-land-poof-water
                   )
-                 ((= v1-15 4)
+                 ((= v1-15 (pat-material tar))
                   'group-land-poof-tar
                   )
-                 ((= v1-15 17)
+                 ((= v1-15 (pat-material straw))
                   'group-land-poof-straw
                   )
-                 ((= v1-15 19)
+                 ((= v1-15 (pat-material swamp))
                   'group-land-poof-swamp
                   )
-                 ((= v1-15 22)
+                 ((= v1-15 (pat-material neutral))
                   'group-land-poof-neutral
                   )
                  (else
                    'group-land-poof-grass
                    )
                  )
-               (the-as float arg1)
+               arg1
                -1
                )
              )
@@ -666,64 +658,64 @@
          (when (< (the-as int a0-4) 9000)
            (let* ((a0-14 obj)
                   (t9-9 (method-of-object a0-14 dummy-10))
-                  (v1-20 (shr (shl arg4 52) 58))
+                  (v1-20 (-> arg4 material))
                   )
              (t9-9
                a0-14
                (cond
-                 ((= v1-20 5)
+                 ((= v1-20 (pat-material sand))
                   'group-run-poof-sand
                   )
-                 ((= v1-20 6)
+                 ((= v1-20 (pat-material wood))
                   'group-run-poof-wood
                   )
-                 ((= v1-20 13)
+                 ((= v1-20 (pat-material crwood))
                   'group-run-poof-crwood
                   )
-                 ((or (= v1-20 18) (= v1-20 8))
+                 ((or (= v1-20 (pat-material tube)) (= v1-20 (pat-material pcmetal)))
                   'group-run-poof-pcmetal
                   )
-                 ((or (= v1-20 16) (= v1-20 21))
+                 ((or (= v1-20 (pat-material metal)) (= v1-20 (pat-material rotate)))
                   'group-run-poof-metal
                   )
-                 ((= v1-20 1)
+                 ((= v1-20 (pat-material ice))
                   'group-run-poof-ice
                   )
-                 ((= v1-20 9)
+                 ((= v1-20 (pat-material snow))
                   'group-run-poof-snow
                   )
-                 ((= v1-20 10)
+                 ((= v1-20 (pat-material deepsnow))
                   'group-run-poof-dpsnow
                   )
-                 ((= v1-20 14)
+                 ((= v1-20 (pat-material gravel))
                   'group-run-poof-gravel
                   )
-                 ((= v1-20 15)
+                 ((= v1-20 (pat-material dirt))
                   'group-run-poof-dirt
                   )
-                 ((zero? v1-20)
+                 ((= v1-20 (pat-material stone))
                   'group-run-poof-stone
                   )
-                 ((= v1-20 3)
+                 ((= v1-20 (pat-material waterbottom))
                   'group-run-poof-water
                   )
-                 ((= v1-20 4)
+                 ((= v1-20 (pat-material tar))
                   'group-run-poof-tar
                   )
-                 ((= v1-20 17)
+                 ((= v1-20 (pat-material straw))
                   'group-run-poof-straw
                   )
-                 ((= v1-20 19)
+                 ((= v1-20 (pat-material swamp))
                   'group-run-poof-swamp
                   )
-                 ((= v1-20 22)
+                 ((= v1-20 (pat-material neutral))
                   'group-run-poof-neutral
                   )
                  (else
                    'group-run-poof-grass
                    )
                  )
-               (the-as float arg1)
+               arg1
                -1
                )
              )
@@ -732,64 +724,64 @@
         (('effect-just-footprint)
          (let* ((a0-15 obj)
                 (t9-10 (method-of-object a0-15 dummy-10))
-                (v1-24 (shr (shl arg4 52) 58))
+                (v1-24 (-> arg4 material))
                 )
            (t9-10
              a0-15
              (cond
-               ((= v1-24 5)
+               ((= v1-24 (pat-material sand))
                 'group-just-footprint-sand
                 )
-               ((= v1-24 6)
+               ((= v1-24 (pat-material wood))
                 'group-just-footprint-wood
                 )
-               ((= v1-24 13)
+               ((= v1-24 (pat-material crwood))
                 'group-just-footprint-crwood
                 )
-               ((or (= v1-24 18) (= v1-24 8))
+               ((or (= v1-24 (pat-material tube)) (= v1-24 (pat-material pcmetal)))
                 'group-just-footprint-pcmetal
                 )
-               ((or (= v1-24 16) (= v1-24 21))
+               ((or (= v1-24 (pat-material metal)) (= v1-24 (pat-material rotate)))
                 'group-just-footprint-metal
                 )
-               ((= v1-24 1)
+               ((= v1-24 (pat-material ice))
                 'group-just-footprint-ice
                 )
-               ((= v1-24 9)
+               ((= v1-24 (pat-material snow))
                 'group-just-footprint-snow
                 )
-               ((= v1-24 10)
+               ((= v1-24 (pat-material deepsnow))
                 'group-just-footprint-dpsnow
                 )
-               ((= v1-24 14)
+               ((= v1-24 (pat-material gravel))
                 'group-just-footprint-gravel
                 )
-               ((= v1-24 15)
+               ((= v1-24 (pat-material dirt))
                 'group-just-footprint-dirt
                 )
-               ((zero? v1-24)
+               ((= v1-24 (pat-material stone))
                 'group-just-footprint-stone
                 )
-               ((= v1-24 3)
+               ((= v1-24 (pat-material waterbottom))
                 'group-just-footprint-water
                 )
-               ((= v1-24 4)
+               ((= v1-24 (pat-material tar))
                 'group-just-footprint-tar
                 )
-               ((= v1-24 17)
+               ((= v1-24 (pat-material straw))
                 'group-just-footprint-straw
                 )
-               ((= v1-24 19)
+               ((= v1-24 (pat-material swamp))
                 'group-just-footprint-swamp
                 )
-               ((= v1-24 22)
+               ((= v1-24 (pat-material neutral))
                 'group-just-footprint-neutral
                 )
                (else
                  'group-just-footprint-grass
                  )
                )
-             (the-as float arg1)
+             arg1
              -1
              )
            )
@@ -798,64 +790,64 @@
          (when (< (the-as int a0-4) 9000)
            (let* ((a0-16 obj)
                   (t9-11 (method-of-object a0-16 dummy-10))
-                  (v1-29 (shr (shl arg4 52) 58))
+                  (v1-29 (-> arg4 material))
                   )
              (t9-11
                a0-16
                (cond
-                 ((= v1-29 5)
+                 ((= v1-29 (pat-material sand))
                   'group-just-poof-sand
                   )
-                 ((= v1-29 6)
+                 ((= v1-29 (pat-material wood))
                   'group-just-poof-wood
                   )
-                 ((= v1-29 13)
+                 ((= v1-29 (pat-material crwood))
                   'group-just-poof-crwood
                   )
-                 ((or (= v1-29 18) (= v1-29 8))
+                 ((or (= v1-29 (pat-material tube)) (= v1-29 (pat-material pcmetal)))
                   'group-just-poof-pcmetal
                   )
-                 ((or (= v1-29 16) (= v1-29 21))
+                 ((or (= v1-29 (pat-material metal)) (= v1-29 (pat-material rotate)))
                   'group-just-poof-metal
                   )
-                 ((= v1-29 1)
+                 ((= v1-29 (pat-material ice))
                   'group-just-poof-ice
                   )
-                 ((= v1-29 9)
+                 ((= v1-29 (pat-material snow))
                   'group-just-poof-snow
                   )
-                 ((= v1-29 10)
+                 ((= v1-29 (pat-material deepsnow))
                   'group-just-poof-dpsnow
                   )
-                 ((= v1-29 14)
+                 ((= v1-29 (pat-material gravel))
                   'group-just-poof-gravel
                   )
-                 ((= v1-29 15)
+                 ((= v1-29 (pat-material dirt))
                   'group-just-poof-dirt
                   )
-                 ((zero? v1-29)
+                 ((= v1-29 (pat-material stone))
                   'group-just-poof-stone
                   )
-                 ((= v1-29 3)
+                 ((= v1-29 (pat-material waterbottom))
                   'group-just-poof-water
                   )
-                 ((= v1-29 4)
+                 ((= v1-29 (pat-material tar))
                   'group-just-poof-tar
                   )
-                 ((= v1-29 17)
+                 ((= v1-29 (pat-material straw))
                   'group-just-poof-straw
                   )
-                 ((= v1-29 19)
+                 ((= v1-29 (pat-material swamp))
                   'group-just-poof-swamp
                   )
-                 ((= v1-29 22)
+                 ((= v1-29 (pat-material neutral))
                   'group-just-poof-neutral
                   )
                  (else
                    'group-just-poof-grass
                    )
                  )
-               (the-as float arg1)
+               arg1
                -1
                )
              )
@@ -864,117 +856,117 @@
         (('effect-slide-poof)
          (let* ((a0-19 obj)
                 (t9-12 (method-of-object a0-19 dummy-10))
-                (v1-33 (shr (shl arg4 52) 58))
+                (v1-33 (-> arg4 material))
                 )
            (t9-12
              a0-19
              (cond
-               ((= v1-33 5)
+               ((= v1-33 (pat-material sand))
                 'group-slide-poof-sand
                 )
-               ((= v1-33 6)
+               ((= v1-33 (pat-material wood))
                 'group-slide-poof-wood
                 )
-               ((= v1-33 13)
+               ((= v1-33 (pat-material crwood))
                 'group-slide-poof-crwood
                 )
-               ((or (= v1-33 18) (= v1-33 8))
+               ((or (= v1-33 (pat-material tube)) (= v1-33 (pat-material pcmetal)))
                 'group-slide-poof-pcmetal
                 )
-               ((or (= v1-33 16) (= v1-33 21))
+               ((or (= v1-33 (pat-material metal)) (= v1-33 (pat-material rotate)))
                 'group-slide-poof-metal
                 )
-               ((= v1-33 1)
+               ((= v1-33 (pat-material ice))
                 'group-slide-poof-ice
                 )
-               ((= v1-33 9)
+               ((= v1-33 (pat-material snow))
                 'group-slide-poof-snow
                 )
-               ((= v1-33 10)
+               ((= v1-33 (pat-material deepsnow))
                 'group-slide-poof-dpsnow
                 )
-               ((= v1-33 14)
+               ((= v1-33 (pat-material gravel))
                 'group-slide-poof-gravel
                 )
-               ((= v1-33 15)
+               ((= v1-33 (pat-material dirt))
                 'group-slide-poof-dirt
                 )
-               ((zero? v1-33)
+               ((= v1-33 (pat-material stone))
                 'group-slide-poof-stone
                 )
-               ((= v1-33 3)
+               ((= v1-33 (pat-material waterbottom))
                 'group-slide-poof-water
                 )
-               ((= v1-33 4)
+               ((= v1-33 (pat-material tar))
                 'group-slide-poof-tar
                 )
-               ((= v1-33 17)
+               ((= v1-33 (pat-material straw))
                 'group-slide-poof-straw
                 )
-               ((= v1-33 19)
+               ((= v1-33 (pat-material swamp))
                 'group-slide-poof-swamp
                 )
-               ((= v1-33 22)
+               ((= v1-33 (pat-material neutral))
                 'group-slide-poof-neutral
                 )
                (else
                  'group-slide-poof-grass
                  )
                )
-             (the-as float arg1)
+             arg1
              -1
              )
            )
          )
         (('effect-droppings)
-         (let* ((v1-36 (shr (shl arg4 52) 58))
+         (let* ((v1-36 (-> arg4 material))
                 (s0-0 (cond
-                        ((= v1-36 5)
+                        ((= v1-36 (pat-material sand))
                          (-> *part-id-table* 95)
                          )
-                        ((= v1-36 6)
+                        ((= v1-36 (pat-material wood))
                          (-> *part-id-table* 97)
                          )
-                        ((= v1-36 13)
+                        ((= v1-36 (pat-material crwood))
                          (-> *part-id-table* 99)
                          )
-                        ((or (= v1-36 18) (= v1-36 8))
+                        ((or (= v1-36 (pat-material tube)) (= v1-36 (pat-material pcmetal)))
                          (-> *part-id-table* 2248)
                          )
-                        ((or (= v1-36 16) (= v1-36 21))
+                        ((or (= v1-36 (pat-material metal)) (= v1-36 (pat-material rotate)))
                          (-> *part-id-table* 2334)
                          )
-                        ((= v1-36 1)
+                        ((= v1-36 (pat-material ice))
                          (-> *part-id-table* 2249)
                          )
-                        ((= v1-36 9)
+                        ((= v1-36 (pat-material snow))
                          (-> *part-id-table* 2250)
                          )
-                        ((= v1-36 10)
+                        ((= v1-36 (pat-material deepsnow))
                          (-> *part-id-table* 2251)
                          )
-                        ((= v1-36 14)
+                        ((= v1-36 (pat-material gravel))
                          (-> *part-id-table* 2252)
                          )
-                        ((= v1-36 15)
+                        ((= v1-36 (pat-material dirt))
                          (-> *part-id-table* 2253)
                          )
-                        ((zero? v1-36)
+                        ((= v1-36 (pat-material stone))
                          (-> *part-id-table* 98)
                          )
-                        ((= v1-36 3)
+                        ((= v1-36 (pat-material waterbottom))
                          (-> *part-id-table* 2254)
                          )
-                        ((= v1-36 4)
+                        ((= v1-36 (pat-material tar))
                          (-> *part-id-table* 2255)
                          )
-                        ((= v1-36 17)
+                        ((= v1-36 (pat-material straw))
                          (-> *part-id-table* 2256)
                          )
-                        ((= v1-36 19)
+                        ((= v1-36 (pat-material swamp))
                          (-> *part-id-table* 2257)
                          )
-                        ((= v1-36 22)
+                        ((= v1-36 (pat-material neutral))
                          (-> *part-id-table* 2773)
                          )
                         (else
@@ -997,54 +989,54 @@
            )
          )
         (('effect-jump-droppings)
-         (let* ((v1-61 (shr (shl arg4 52) 58))
+         (let* ((v1-61 (-> arg4 material))
                 (s0-1 (cond
-                        ((= v1-61 5)
+                        ((= v1-61 (pat-material sand))
                          (-> *part-id-table* 106)
                          )
-                        ((= v1-61 6)
+                        ((= v1-61 (pat-material wood))
                          (-> *part-id-table* 2258)
                          )
-                        ((= v1-61 13)
+                        ((= v1-61 (pat-material crwood))
                          (-> *part-id-table* 2259)
                          )
-                        ((or (= v1-61 18) (= v1-61 8))
+                        ((or (= v1-61 (pat-material tube)) (= v1-61 (pat-material pcmetal)))
                          (-> *part-id-table* 2260)
                          )
-                        ((or (= v1-61 16) (= v1-61 21))
+                        ((or (= v1-61 (pat-material metal)) (= v1-61 (pat-material rotate)))
                          (-> *part-id-table* 2335)
                          )
-                        ((= v1-61 1)
+                        ((= v1-61 (pat-material ice))
                          (-> *part-id-table* 2261)
                          )
-                        ((= v1-61 9)
+                        ((= v1-61 (pat-material snow))
                          (-> *part-id-table* 2262)
                          )
-                        ((= v1-61 10)
+                        ((= v1-61 (pat-material deepsnow))
                          (-> *part-id-table* 2263)
                          )
-                        ((= v1-61 14)
+                        ((= v1-61 (pat-material gravel))
                          (-> *part-id-table* 2264)
                          )
-                        ((= v1-61 15)
+                        ((= v1-61 (pat-material dirt))
                          (-> *part-id-table* 2265)
                          )
-                        ((zero? v1-61)
+                        ((= v1-61 (pat-material stone))
                          (-> *part-id-table* 2266)
                          )
-                        ((= v1-61 3)
+                        ((= v1-61 (pat-material waterbottom))
                          (-> *part-id-table* 2267)
                          )
-                        ((= v1-61 4)
+                        ((= v1-61 (pat-material tar))
                          (-> *part-id-table* 2268)
                          )
-                        ((= v1-61 17)
+                        ((= v1-61 (pat-material straw))
                          (-> *part-id-table* 2269)
                          )
-                        ((= v1-61 19)
+                        ((= v1-61 (pat-material swamp))
                          (-> *part-id-table* 2270)
                          )
-                        ((= v1-61 22)
+                        ((= v1-61 (pat-material neutral))
                          (-> *part-id-table* 2774)
                          )
                         (else
@@ -1076,7 +1068,7 @@
   (none)
   )
 
-(defmethod dummy-12 effect-control ((obj effect-control) (arg0 symbol) (arg1 basic) (arg2 int) (arg3 basic) (arg4 sound-name))
+(defmethod dummy-12 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 sound-name))
   (local-vars
     (r0-0 uint128)
     (v1-10 uint128)
@@ -1107,16 +1099,9 @@
            (t0-1 #f)
            (t1-1 (the-as (pointer int) (& sv-112)))
            (t2-0 *res-static-buf*)
-           (a1-7 (t9-3
-                   (the-as res-lump sv-144)
-                   a1-6
-                   a2-1
-                   (the-as float a3-1)
-                   (the-as pointer t0-1)
-                   (the-as (pointer res-tag) t1-1)
-                   t2-0
-                   )
-                 )
+           (a1-7
+             (t9-3 (the-as res-lump sv-144) a1-6 a2-1 a3-1 (the-as pointer t0-1) (the-as (pointer res-tag) t1-1) t2-0)
+             )
            )
       (when a1-7
         (let ((t9-4 effect-param->sound-spec)
@@ -1173,7 +1158,7 @@
      )
     ((logtest? (-> self control root-prim prim-core action) (collide-action ca-9))
      (sound-play-by-name
-       (sound-name-with-material 'zoom-land (the-as int (-> self control ground-pat)) "")
+       (sound-name-with-material 'zoom-land (-> self control ground-pat) "")
        (new-sound-id)
        (the int
             (* 10.24 (* 100.0 (the float (the int (* 10.24 (* 0.000016276043 (-> self control ground-impact-vel)))))))

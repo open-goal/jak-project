@@ -2212,12 +2212,12 @@
   :size-assert         #x20
   :flag-assert         #x1000000020
   (:methods
-    (add-spheres! (_type_ (pointer sphere) int) int 9)
+    (add-spheres! (_type_ (inline-array sphere) int) int 9)
     (add-point! (_type_ vector3s) int 10)
     (set-from-point-offset! (_type_ vector3s vector3s) int 11)
     (set-from-point-offset-pad! (_type_ vector3s vector3s float) int 12)
     (set-from-sphere! (_type_ sphere) int 13)
-    (set-from-spheres! (_type_ (pointer sphere) int) int 14)
+    (set-from-spheres! (_type_ (inline-array sphere) int) int 14)
     (add-box! (_type_ bounding-box) int 15)
     )
   )
@@ -11963,8 +11963,8 @@
     (new (symbol type process-drawable) _type_)
     (TODO-RENAME-9 (_type_) none 9)
     (dummy-10 (_type_ symbol float int) object 10)
-    (dummy-11 (_type_ symbol basic int basic int) none 11)
-    (dummy-12 (_type_ symbol basic int basic sound-name) int 12)
+    (dummy-11 (_type_ symbol float int basic pat-surface) none 11)
+    (dummy-12 (_type_ symbol float int basic sound-name) int 12)
     (set-channel-offset! (_type_ int) none 13)
     (TODO-RENAME-14 (_type_ float float float) none 14)
     )
@@ -12233,7 +12233,7 @@
     target-flut-hit-ground
     target-flut-air-attack-hit-ground
     (target-flut-jump float float)
-    target-flut-falling
+    (target-flut-falling symbol)
     (target-flut-hit symbol attack-info)
     target-flut-walk
     (target-flut-air-attack float)
@@ -12517,7 +12517,7 @@
 ;; - Types
 
 (deftype collide-using-spheres-params (structure)
-  ((spheres      (pointer sphere)  :offset-assert 0)
+  ((spheres      (inline-array sphere)  :offset-assert 0)
    (num-spheres  uint32  :offset-assert 4)
    (collide-with collide-kind  :offset-assert 8)
    (proc         process-drawable   :offset-assert 16)
@@ -17427,8 +17427,9 @@
   :method-count-assert 12
   :size-assert         #x10
   :flag-assert         #xc00000010
+  :pack-me
   (:methods
-    (dummy-9 (_type_ vector int float process-drawable) none 9)
+    (dummy-9 (_type_) none 9)
     (TODO-RENAME-10 (_type_ vector int float process-drawable) vector 10)
     (play-ambient (_type_ string symbol vector) symbol 11)
     )
@@ -19848,7 +19849,7 @@
 (define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
 (define-extern merc-eye-anim (function process-drawable none))
 (define-extern ja-anim-done? (function process symbol))
-(define-extern command-get-camera (function object state object)) ;; ret - (state camera)
+(define-extern command-get-camera (function object state state))
 (define-extern camera-anim (function symbol basic entity (pointer process) :behavior camera-tracker)) ;; unused
 (define-extern camera-tracker-init (function object object :behavior camera-tracker)) ;; TODO - nested SC
 (define-extern cam-launcher-joystick (function vector :behavior camera-slave))
@@ -20487,14 +20488,14 @@
 (define-extern main-debug-hook (function none))
 (define-extern main-draw-hook (function none))
 (define-extern swap-display (function display none))
-(define-extern marks-cam-restore (function symbol))
-(define-extern eddie-cam-restore (function vector))
-(define-extern gregs-jungle-cam-restore (function string))
-(define-extern gregs-village1-cam-restore (function string))
-(define-extern gregs-texture-cam-restore (function string))
-(define-extern gregs-texture2-cam-restore (function string))
-(define-extern cave-cam-restore (function vector))
-(define-extern paals-cam-restore (function vector))
+(define-extern marks-cam-restore (function none))
+(define-extern eddie-cam-restore (function none))
+(define-extern gregs-jungle-cam-restore (function none))
+(define-extern gregs-village1-cam-restore (function none))
+(define-extern gregs-texture-cam-restore (function none))
+(define-extern gregs-texture2-cam-restore (function none))
+(define-extern cave-cam-restore (function none))
+(define-extern paals-cam-restore (function none))
 
 ;; - Symbols
 
@@ -20823,7 +20824,7 @@
 
 ;; - Functions
 
-(define-extern sound-name-with-material (function symbol int string sound-name))
+(define-extern sound-name-with-material (function symbol pat-surface string sound-name))
 
 ;; - Unknowns
 
@@ -21165,7 +21166,7 @@
 
 ;; - Functions
 
-(define-extern othercam-calc (function float float))
+(define-extern othercam-calc (function float none))
 (define-extern vector-for-ambient (function process-drawable vector vector))
 (define-extern hide-hud (function none))
 (define-extern hud-hidden? (function symbol))
@@ -23196,7 +23197,7 @@
     (can-activate? (_type_) symbol 26)
     (TODO-RENAME-27 (_type_) none 27)
     (TODO-RENAME-28 (_type_) collide-shape-moving 28)
-    (can-target-move? (_type_) symbol 29) ;; NOTE - ive seen two different return types, float and symbol...symbol seems more compelling
+    (can-target-move? (_type_) none 29)
     (should-teleport? (_type_) symbol 30)
     (TODO-RENAME-31 (_type_) none 31) ;; TODO - need to know super::14
     (TODO-RENAME-32 (_type_) none 32)
@@ -25305,19 +25306,19 @@
    (des-cam-entity   string                           :offset-assert 392)
    (use-interesting  symbol                           :offset-assert 396)
    (ignore-camera    symbol                           :offset-assert 400)
-   (ambient          ambient-control                  :offset        408)
-   (yellow-gun       joint-mod                        :offset        424)
-   (palette-val      float                            :offset        428)
-   (looping-sound    ambient-sound            4       :offset        432)
-   (dda              robotboss-dda                    :offset        448)
-   (valid-frames     int32                            :offset        452)
-   (skip-cut         symbol                           :offset        456)
-   (keep-charging    symbol                           :offset        460)
+   (ambient          ambient-control          :inline :offset-assert 408)
+   (yellow-gun       joint-mod                        :offset-assert 424)
+   (palette-val      float                            :offset-assert 428)
+   (looping-sound    ambient-sound            4       :offset-assert 432)
+   (dda              robotboss-dda                    :offset-assert 448)
+   (valid-frames     int32                            :offset-assert 452)
+   (skip-cut         symbol                           :offset-assert 456)
+   (keep-charging    symbol                           :offset-assert 460)
    )
-  :heap-base #x16
+  :heap-base #x160
   :method-count-assert 21
   :size-assert         #x1d0
-  :flag-assert         #x15001601d0
+  :flag-assert         #x15016001d0
   (:methods
     (ease-loc-t (_type_) float 20)
     )
@@ -25547,7 +25548,7 @@
 (define-extern arcing-shot-draw (function symbol :behavior arcing-shot))
 (define-extern darkecobomb-handler (function process int symbol event-message-block object :behavior darkecobomb))
 (define-extern darkecobomb-init-by-other (function vector vector float int float none :behavior darkecobomb))
-(define-extern greenshot-init-by-other (function vector vector float uint float none :behavior greenshot))
+(define-extern greenshot-init-by-other (function vector vector float int none :behavior greenshot))
 (define-extern redshot-handler (function process int symbol event-message-block object :behavior redshot))
 (define-extern redshot-init-by-other (function vector vector float uint uint uint none :behavior redshot))
 (define-extern yellowshot-init-by-other (function vector vector float uint none :behavior yellowshot))
@@ -25705,7 +25706,7 @@
 
 ;; - Functions
 
-(define-extern robotboss-always-trans (function state none :behavior robotboss)) ;; CFG problems TODO
+(define-extern robotboss-always-trans (function (state robotboss) none :behavior robotboss)) ;; CFG problems TODO
 (define-extern robotboss-shooting-trans (function int none :behavior robotboss))
 (define-extern robotboss-blue-done (function object :behavior robotboss))
 (define-extern robotboss-blue-beam (function int symbol none :behavior robotboss))
@@ -25716,7 +25717,7 @@
 (define-extern robotboss-setup-for-hits (function int int object :behavior robotboss))
 (define-extern robotboss-yellow-eco-on (function entity-perm-status :behavior robotboss))
 (define-extern robotboss-yellow-eco-off (function entity-perm-status :behavior robotboss))
-(define-extern robotboss-greenshot (function vector basic basic symbol none :behavior robotboss))
+(define-extern robotboss-greenshot (function vector float int symbol none :behavior robotboss))
 (define-extern robotboss-handler (function process int symbol event-message-block object :behavior robotboss))
 (define-extern robotboss-darkecobomb (function vector float (pointer process) :behavior robotboss))
 (define-extern robotboss-is-red-hit (function symbol :behavior robotboss))
@@ -25760,7 +25761,7 @@
   (:methods
     (idle () _type_ :state 20) ;; state
     (dummy-21 (_type_) none 21)
-    (open () _type_ :state 22)
+    (open (symbol) _type_ :state 22)
     )
   )
 
@@ -26589,7 +26590,7 @@
 
 ;; - Functions
 
-(define-extern peri-beamcam-init-by-other (function string (pointer process)))
+(define-extern peri-beamcam-init-by-other (function string (pointer process) :behavior process))
 (define-extern draw-power-beam (function vector vector none))
 (define-extern reflector-origin-update (function entity-actor none :behavior reflector-origin))
 (define-extern reflector-init-by-other (function vector none :behavior reflector))
@@ -27704,7 +27705,7 @@
 (define-extern fishermans-boat-play-sounds (function none :behavior fishermans-boat))
 (define-extern fishermans-boat-reset-physics (function none :behavior fishermans-boat))
 (define-extern fishermans-boat-set-dock-point (function int none :behavior fishermans-boat))
-(define-extern fishermans-boat-set-path-point (function vector none :behavior fishermans-boat))
+(define-extern fishermans-boat-set-path-point (function int none :behavior fishermans-boat))
 (define-extern fishermans-boat-next-path-point (function none :behavior fishermans-boat))
 (define-extern fishermans-boat-set-throttle-by-speed (function float none :behavior fishermans-boat))
 (define-extern fishermans-boat-enter-dock? (function symbol :behavior fishermans-boat))

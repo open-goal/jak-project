@@ -164,7 +164,7 @@ It type checks the arguments for the entry function.
           (when (not (null? default-handlers))
               ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
               ;; event
-              (set! default-handlers (cdr default-handlers))
+              (set! default-handlers (cadr default-handlers))
               (when (and (eq? event '*no-state*) (car default-handlers))
                   (set! event (car default-handlers)))
               ;; enter
@@ -239,9 +239,16 @@ It type checks the arguments for the entry function.
                            &key (exit #f)
                            &key (code #f)
                            &key (post #f))
-  (if (null? (assoc proc *default-state-handlers*))
-      (push! *default-state-handlers* (cons proc (list event enter trans exit code post)))
-      (fmt #t "default state handlers for {} already defined, ignoring duplicate.\n" proc (cadr (assoc proc *default-state-handlers*)))
+  (let ((old (assoc proc *default-state-handlers*))
+        (new (list proc (list event enter trans exit code post))))
+      (if (null? old)
+          (append!! *default-state-handlers* new) ;; add new set of default handlers
+          (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
+            (when (eq? (car hnd) old)
+              (set-car! hnd new)
+              )
+            )
+          )
       )
   `(none)
   )

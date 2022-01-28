@@ -1250,19 +1250,9 @@
 ;; TODO
 (define-extern birth-viewer (function process entity object))
 
-(define-extern collectable type)
-(define-extern ecovalve type)
-(define-extern crate type)
-(define-extern water-vol type)
-(define-extern slide-control type)
-(define-extern racer type)
-(define-extern launcher type)
-(define-extern warp-gate-switch type)
-(define-extern lurkercrab type)
-(define-extern ecoventrock type)
-(define-extern harvester type)
-(define-extern yakow type)
-
+(defmacro obj-etype? (&rest types)
+  `(or ,@(apply (lambda (x) `(begin (define-extern ,x type) (type-type? (-> obj etype) ,x))) types))
+  )
 
 (defmacro heap-size-hack (info entity-type)
   #x8000
@@ -1283,22 +1273,27 @@
   "Create a process for this entity and start it."
   
   ;; temp
-  (unless (or (type-type? (-> obj etype) part-spawner)
-              (type-type? (-> obj etype) collectable)
-              (type-type? (-> obj etype) vent)
-              (type-type? (-> obj etype) ecovalve)
-              (type-type? (-> obj etype) water-vol)
-              (type-type? (-> obj etype) slide-control)
-              (type-type? (-> obj etype) racer)
-              (type-type? (-> obj etype) launcher)
-              (type-type? (-> obj etype) warp-gate-switch)
-              (type-type? (-> obj etype) lurkercrab)
-              (type-type? (-> obj etype) crate)
-              (type-type? (-> obj etype) ecoventrock)
-              (type-type? (-> obj etype) harvester)
-              (type-type? (-> obj etype) yakow)
-              )
-    ;; (birth-log "rejecting ~A birth because yes (was ~A)~%" obj (-> obj etype))
+  (when (or (not (obj-etype? part-spawner process
+                             collectable
+                             vent
+                             ecovalve
+                             water-vol
+                             slide-control
+                             racer
+                             launcher
+                             warp-gate-switch
+                             nav-enemy
+                             orb-cache-top
+                             process-taskable
+                             crate
+                             process-hidden
+                             med-res-level))
+            ;; disallowed types
+            (obj-etype? plat-eco boatpaddle cavecrystal snow-bunny ram citb-battlecontroller)
+            (zero? (-> obj etype)))
+    (when (nonzero? (-> obj etype))
+        (birth-log "rejecting etype ~A birth~%" (-> obj etype))
+        )
     (logior! (-> obj extra perm status) (entity-perm-status bit-0))
     (return obj)
     )

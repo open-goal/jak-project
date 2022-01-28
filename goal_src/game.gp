@@ -94,7 +94,7 @@
       :tool 'dgo
       :out `(,out-name)
       )
-    (set! *all-cgos* (cons out-name *all-cgos*))
+    (append!! *all-cgos* out-name)
     )
   )
 
@@ -141,7 +141,7 @@
     (defstep :in path
              :tool 'copy
              :out `(,out-file))
-    (set! *all-str* (cons out-file *all-str*))))
+    (append!! *all-str* out-file)))
 
 (define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
@@ -154,7 +154,7 @@
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
-    (set! *all-vis* (cons out-name *all-vis*))))
+    (append!! *all-vis* out-name)))
 
 
 (defmacro group (name &rest stuff)
@@ -258,11 +258,33 @@
   "FUCV6"
   "FUCV7"
   "FUCV8"
+  "FUCRV1"
+  "FUCFV1"
   ;; jak's ambient
   "EIA1"
   "EIA2"
   "EIA3"
   "EIA4"
+  ;; jak death
+  "DE0181"
+  "DE0182"
+  "DE0184"
+  "DE0186"
+  "DE0187"
+  "DE0191"
+  "DE0193"
+  "DE0195"
+  "DE0197"
+  "DE0199"
+  "DE0202"
+  ;; jak other
+  "EIFISH"
+  "EIICE"
+  "EIFLUT"
+  "EIPOLE"
+  "EIRACER"
+  "EITUBE"
+  
   ;; intro camera
   "NDINTRO"
   "LOINTRO"
@@ -445,17 +467,18 @@
   "beach-vis"
   )
 
-(copy-strs
-  "BECANNON" ;; beachcam-cannon
-  "LRFALLIN" ;; lrocklrg-falling
-  "PESEXT"   ;; pelican-spit-ext
-  )
-(copy-strs
-  "FAINTROD" ;; farmer-introduction
-  "SCINTROD" ;; sculptor-introduction
-  "BILINTRO" ;; bird-lady-introduction
-  "MAINTROD" ;; mayor-introduction
-  )
+;; pelican
+(copy-strs "PESEXT")
+;; beachcam
+(copy-strs "BECANNON")
+;; sculptor
+(copy-strs "SCINTROD" "SCR1" "SCRESOLU")
+;; lrocklrg
+(copy-strs "LRFALLIN")
+;; mayor
+(copy-strs "MAINTROD" "MARBEAMS" "MARDONAT" "MAZBEAMS" "MAZDONAT")
+;; bird-lady
+(copy-strs "BILINTRO" "BILR1" "BILR2" "BILBRESO")
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -518,6 +541,10 @@
   "water-anim-jungle-ag"
   "jungle-vis"
   )
+
+;; fisher
+(copy-strs "FIINTROD" "FIR1" "FIACCEPT" "FIREJECT" "FIRESOLU")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -588,18 +615,18 @@
  "village1-vis"
  )
 
-(copy-strs
-  "ASIBESWI"    ;; assistant-introduction-blue-eco-switch
-  "SAISD1"      ;; sage-intro-sequence-d1
-  "SAISD2"      ;; sage-intro-sequence-d2
-  "EXINTROD"    ;; explorer-introduction
-  "FIBRTMIS"    ;; fishermans-boat-ride-to-misty
-  "ASR1BESW"    ;; assistant-reminder-1-blue-eco-switch
-  "ORI1"        ;; oracle-intro-1
-  "ORRE1"       ;; oracle-right-eye-1
-  "ORR1"        ;; oracle-reminder-1
-  "FAR1"        ;; farmer-reminder-1
-  )
+;; farmer
+(copy-strs "FAINTROD" "FAR1" "FAR2" "FARESOLU")
+;; explorer
+(copy-strs "EXINTROD" "EXR1" "EXR2" "EXRESOLU")
+;; oracle
+(copy-strs "ORI1" "ORLE1" "ORRE1" "ORR1")
+;; assistant
+(copy-strs "ASIBESWI" "ASR1BESW")
+;; sage
+(copy-strs "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
+;; fishermans-boat
+(copy-strs "FIBRTMIS")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle temple
@@ -632,7 +659,6 @@
   "plat-jungleb-ag"
   "jungleb-vis"
   )
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; misty island
@@ -691,6 +717,14 @@
   "misty-vis"
   )
 
+;; fishermans-boat
+(copy-strs "FIBRTVIL" "FIBRT1AL")
+;; muse
+(copy-strs "MUVICTOR")
+;; sidekick-human
+(copy-strs "SIHISA" "SIHISB" "SIHISC")
+;; mistycam
+(copy-strs "MICANNON")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; swamp
@@ -731,6 +765,8 @@
   "swamp-vis"
   )
 
+;; billy
+(copy-strs "BIINTROD" "BIR1" "BIACCEPT" "BIREJECT" "BIRESOLU")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LPC
@@ -909,6 +945,8 @@
   "spike-ag"
   "firecanyon-vis")
 
+;; assistant firecanyon
+(copy-strs "ASFRESOL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ogre boss
@@ -944,6 +982,9 @@
   "water-anim-ogre-ag"
   "ogre-vis"
   )
+
+;; flying-lurker
+(copy-strs "FLLINTRO" "PLLBLOWU")
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1001,6 +1042,19 @@
   "village2-vis"
   )
 
+;; assistant village2
+(copy-strs "AS2INTRO" "AS2IROOM" "AS2R1ROO" "AS2IROBB" "AS2R1ROB" "AS2IFLUT" "AS2R1FLU" "AS2RESOL")
+;; sage bluehut
+(copy-strs "SABICDUS" "SABR1CDU" "SABIPARM" "SABR1PAR")
+;; geologist
+(copy-strs "GEINTROD" "GERMOLES" "GEZMOLES" "GERMONEY" "GEZMONEY")
+;; gambler
+(copy-strs "GAI1" "GARRACE" "GARMONEY" "GAZRACE" "GAZMONEY")
+;; warrior
+(copy-strs "WAINTROD" "WAR1" "WARESOLU")
+;; oracle
+(copy-strs "ORI2" "ORLE2" "ORRE2" "ORR2")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; rolling hills
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1033,6 +1087,10 @@
   "rolling-vis"
   )
 
+;; happy-plant
+(copy-strs "HAPOPEN")
+;; race-ring
+(copy-strs "RARANIM" "RARSANIM")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 3
@@ -1080,6 +1138,16 @@
   "village3-vis"
   )
 
+;; sage-villagec
+(copy-strs "SA3INTRO" "SA3IDECO" "SA3R1DEC" "SA3IRAMS" "SA3R1RAM")
+;; assistant-villagec
+(copy-strs "AS3REMIN")
+;; oracle
+(copy-strs "ORI3" "ORLE3" "ORRE3" "ORR3")
+;; gondola
+(copy-strs "GORUP" "GORDOWN")
+;; minershort
+(copy-strs "MIIORBS" "MIR1ORBS" "MIR2ORBS" "MIZ1ORBS" "MIZ2ORBS" "MIIGNAWE" "MIR1GNAW" "MIISWITC" "MIR1SWIT")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Training
@@ -1157,6 +1225,7 @@
   "maincave-vis"
   )
 
+(copy-strs "MAGFCELL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; dark cave
@@ -1241,6 +1310,9 @@
   "lavatube-vis"
   )
 
+;; assistant-lavatube
+(copy-strs "ASLSRESO" "ASLERESO")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; citadel
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1298,6 +1370,11 @@
   "citadel-vis"
   )
 
+;; green-sagecage
+(copy-strs "GRSINTRO" "GRSRESOL" "GRSOPREB")
+;; sage-cage
+(copy-strs "YERESOLU" "RERESOLU" "BLRESOLU")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Final Boss
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1347,6 +1424,11 @@
   "finalboss-vis"
   )
 
+;; finalboss
+(copy-strs "FIWECO")
+;; green-sagecage
+(copy-strs "GRSDSACR" "GRSOBBA" "GRSOBBB" "GRSOBBEC" "GRSOBBNC" "GRSOBFIN")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; intro only
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1370,6 +1452,10 @@
   "evilsis-ag"
   "intro-vis"
   )
+
+(copy-strs "SAISA")
+;; evilbro
+(copy-strs "EVMEND")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; demo
@@ -1766,7 +1852,11 @@
 
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
-   ,@(reverse *all-cgos*)
+   ,@*all-cgos*
    ,@*all-vis*
    ,@*all-str*)
+ )
+
+(group-list "spools"
+ `(,@*all-str*)
  )
