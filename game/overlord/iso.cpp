@@ -941,8 +941,14 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
     // this will cause a crash if we cancel because we try to load 2 dgos at the same time.
     // this should succeed if it's an actual cancel because we changed which level we're trying to
     // load.
-    assert(cmd);
-    cmd->result = DGO_RPC_RESULT_ABORTED;
+    // I don't understand how this works in the real game.
+    // maybe the IOP doesn't crash on writing to 0x0?
+    // or, we have some other bug.
+    if (cmd) {
+      printf("null pointer case in CancelDGO hit!\n");
+      cmd->result = DGO_RPC_RESULT_ABORTED;
+    }
+
     scmd.cmd_id = 0;
   }
 }
