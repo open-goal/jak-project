@@ -1256,7 +1256,18 @@
 
 (defun acos ((arg0 float))
   "Inverse cosine. Returns rotation units"
-  (- 16384.000000 (asin arg0))
+  (let ((result (- 16384.000000 (asin arg0))))
+    (#when PC_PORT
+      ;; to avoid punch glitch:
+      ;; (note: it might be a better fix to change the global rounding mode,
+      ;;  but it's not super clear to me that the mode picked by PCSX2 is
+      ;;  more accurate than normal in all cases. So, we'll do this for now.)
+      (when (= result 0.0)
+        (set! result 0.00000000001)
+        )
+      )
+    result
+    )
   )
 
 (defun acos-rad ((arg0 float))

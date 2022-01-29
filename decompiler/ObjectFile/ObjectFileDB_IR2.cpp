@@ -159,6 +159,11 @@ void ObjectFileDB::ir2_run_mips2c(const Config& config, ObjectFileData& data) {
       lg::info("MIPS2C on {}", func.name());
       run_mips2c(&func);
     }
+
+    auto it = config.hacks.mips2c_jump_table_functions.find(func.name());
+    if (it != config.hacks.mips2c_jump_table_functions.end()) {
+      run_mips2c_jump_table(&func, it->second);
+    }
   });
 }
 

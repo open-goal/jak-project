@@ -10261,9 +10261,9 @@
   ;; inherited inspect of process
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
-    (dummy-15 (_type_ string object) _type_ 15)
+    (initialize-skeleton-by-name (_type_ string object) _type_ 15)
     (dummy-16 (_type_ int (inline-array vector) vector) collide-shape 16)
-    (dummy-17 (_type_) none 17)
+    (do-joint-math! (_type_) none 17)
     (dummy-18 (_type_) none 18)
     (dummy-19 (_type_) none 19)
     )
@@ -15863,7 +15863,7 @@
 
 (define-extern flatten-joint-control-to-spr (function joint-control int))
 (define-extern make-joint-jump-tables (function int))
-(define-extern calc-animation-from-spr (function (inline-array vector) int object))
+(define-extern calc-animation-from-spr (function (inline-array vector) int none))
 (define-extern decompress-fixed-data-to-accumulator (function none))
 (define-extern decompress-frame-data-to-accumulator (function none))
 (define-extern decompress-frame-data-pair-to-accumulator (function none))
@@ -16457,7 +16457,7 @@
   :type uint16
   :bitfield #t
   (bncfl00 0)
-  (bncfl01 1)
+  (bncfl01 1)  ;; use identity matrix in bone matrix calc instead of cam rot (effectively screen-space bones?)
   (bncfl02 2)
   (bncfl03 3)
   (bncfl04 4)
@@ -16548,7 +16548,7 @@
 (define-extern bones-reset-sqwc (function none))
 (define-extern bones-init (function dma-buffer dma-foreground-sink-group none))
 (define-extern draw-bones-mtx-calc (function bone-calculation int bone-calc-flags object))
-(define-extern bones-mtx-calc (function int pointer pointer int none))
+(define-extern bones-mtx-calc (function int pointer pointer int object none))
 (define-extern bones-mtx-calc-execute (function none))
 (define-extern bones-wrapup (function none))
 (define-extern dump-qword (function qword none))
@@ -16691,7 +16691,7 @@
 (define-extern mercneric-convert function)
 (define-extern high-speed-reject function)
 (define-extern generic-merc-execute-asm function)
-(define-extern generic-merc-add-to-cue function)
+(define-extern generic-merc-add-to-cue (function uint none))
 (define-extern generic-merc-execute-all (function none))
 
 ;; - Unknowns
@@ -23254,7 +23254,7 @@
 (deftype ropebridge-tuning (structure)
   ((num-springs             int32   :offset-assert 0)
    (num-spring-points       int32   :offset-assert 4)
-   (col-mesh-indexes        pointer :offset-assert 8) ;; pointer to a variable sized thing
+   (col-mesh-indexes        (pointer uint8) :offset-assert 8) ;; pointer to a variable sized thing
    (view-frustum-radius     float   :offset-assert 12)
    (root-prim-radius        float   :offset-assert 16)
    (desired-spring-len      float   :offset-assert 20)
@@ -23289,9 +23289,9 @@
   )
 
 (deftype ropebridge (process-drawable)
-  ((root-override basic :offset 112)
+  ((root-override collide-shape :score 100 :offset 112)
    (subtype                uint64                    :offset-assert 176)
-   (subtype-name           basic                     :offset-assert 184)
+   (subtype-name           string                    :offset-assert 184)
    (agitated-time-stamp    uint64                    :offset-assert 192)
    (bonk-time-stamp        uint64                    :offset-assert 200)
    (attack-flop-time-stamp uint64                    :offset-assert 208)
@@ -23309,14 +23309,14 @@
   :heap-base           #x7d0
   :flag-assert         #x1d07d00840
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
-    (dummy-22 (_type_) none 22)
-    (dummy-23 (_type_) none 23)
-    (dummy-24 (_type_) none 24)
-    (dummy-25 (_type_) none 25)
-    (dummy-26 (_type_) none 26)
-    (dummy-27 (_type_) none 27)
+    (set-vel-from-impact (_type_ uint vector int float) none 20)
+    (set-vel-from-riders (_type_) none 21) ;; physics2
+    (set-vel-from-rider (_type_ uint vector int) none 22)
+    (clear-spring-forces (_type_) none 23) ;; physics1
+    (debug-draw (_type_) none 24)
+    (set-to-rest-state (_type_) none 25)
+    (add-collision-meshes (_type_) none 26)
+    (do-integration (_type_) none 27) ;; physics3
     (dummy-28 (_type_) none 28)
     )
   (:states
@@ -23325,15 +23325,15 @@
 
 ;; - Functions
 
-(define-extern ropebridge-joint-callback function)
+(define-extern ropebridge-joint-callback (function ropebridge none))
 
 ;; - Unknowns
 
 (define-extern *ropebridge-tunings* (inline-array ropebridge-tuning)) ;; unknown type
-(define-extern *ropebridge-70-rest-state* (inline-array ropebridge-spring-point)) ;; can't find ropebridges with these ids in the game??
-(define-extern *ropebridge-52-rest-state* (inline-array ropebridge-spring-point))
-(define-extern *ropebridge-32-rest-state* (inline-array ropebridge-spring-point))
-(define-extern *ropebridge-36-rest-state* (inline-array ropebridge-spring-point))
+(define-extern *ropebridge-70-rest-state* (inline-array vector)) ;; can't find ropebridges with these ids in the game??
+(define-extern *ropebridge-52-rest-state* (inline-array vector))
+(define-extern *ropebridge-32-rest-state* (inline-array vector))
+(define-extern *ropebridge-36-rest-state* (inline-array vector))
 (define-extern *ropebridge-32-sg* skeleton-group)
 (define-extern *snow-bridge-36-sg* skeleton-group)
 (define-extern *ropebridge-52-sg* skeleton-group)

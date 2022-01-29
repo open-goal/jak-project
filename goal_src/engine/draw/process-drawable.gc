@@ -261,7 +261,7 @@
     (countdown (s5-0 (-> gp-0 length))
       (let ((a0-1 (handle->process (-> gp-0 s5-0))))
         (if a0-1
-            (dummy-17 (the-as process-drawable a0-1))
+            (do-joint-math! (the-as process-drawable a0-1))
             )
         )
       )
@@ -271,9 +271,25 @@
   0
   )
 
-(defmethod dummy-17 process-drawable ((obj process-drawable))
+(define-extern draw-joint-spheres (function process-drawable symbol))
+
+(defun-debug draw-bone-lines ((obj process-drawable))
+  "Added in PC port to debug bones"
+  (dotimes (i (-> obj node-list length))
+    (let ((parent (-> obj node-list data i parent)))
+      (when (and parent (nonzero? parent) (-> parent joint) (-> parent parent))
+        (let ((child (vector<-cspace! (new-stack-vector0) (-> obj node-list data i)))
+              )
+          (add-debug-line #t (bucket-id debug-draw0) child (vector<-cspace! (new-stack-vector0) parent) (new 'static 'rgba :g #xff :a #x40) #f (the rgba -1))
+          )
+        )
+      )
+    )
+  )
+
+(defmethod do-joint-math! process-drawable ((obj process-drawable))
   (cond
-    (#t;;(logtest? (-> obj draw status) (draw-status drwf01 drwf02)) TODO
+    ((logtest? (-> obj draw status) (draw-status drwf01 drwf02))
      )
     ((zero? (-> obj skel))
      (matrix<-transformq+trans!
@@ -288,12 +304,12 @@
         (let ((s4-0 (+ s5-0 2)))
           (+ s4-0 1)
           ((-> obj skel generate-frame-function)
-           (the-as (inline-array vector) (+ 2416 (the-as int (the-as terrain-context #x70000000))))
+           (the-as (inline-array vector) (+ 2416 (the-as int (the-as terrain-context (scratchpad-object int)))))
            s4-0
            obj
            )
           (if (-> obj skel prebind-function)
-              ((-> obj skel prebind-function) (the-as pointer (+ 2416 #x70000000)) s4-0 obj)
+              ((-> obj skel prebind-function) (the-as pointer (+ 2416 (scratchpad-object int))) s4-0 obj)
               )
           )
         (dotimes (s4-1 1)
@@ -307,7 +323,7 @@
           )
         (dotimes (s4-2 2)
           (let* ((a0-15 (-> obj node-list data (+ s4-2 1)))
-                 (a1-5 (+ (* s4-2 64) 2416 #x70000000))
+                 (a1-5 (+ (* s4-2 64) 2416 (scratchpad-object int)))
                  (t9-4 (-> a0-15 param0))
                  )
             (if t9-4
@@ -318,7 +334,7 @@
         (let ((s4-3 3))
           (dotimes (s3-0 s5-0)
             (let ((a0-17 (-> obj node-list data (+ s3-0 s4-3)))
-                  (a1-7 (+ (* 48 s3-0) 2544 #x70000000))
+                  (a1-7 (+ (* 48 s3-0) 2544 (scratchpad-object int)))
                   )
               (if (-> a0-17 param0)
                   ((the-as (function cspace matrix none) (-> a0-17 param0)) a0-17 (the-as matrix a1-7))
@@ -345,6 +361,9 @@
         )
       )
     )
+  (draw-bone-lines obj)
+  ;; (draw-joint-spheres obj)
+  
   0
   (none)
   )
@@ -364,6 +383,7 @@
   (dotimes (s5-0 (-> arg0 node-list length))
     (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
       (add-debug-sphere #t (bucket-id debug-draw0) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
+      ;;(add-debug-text-sphere #t (bucket-id debug-draw0) a2-0 819.2 (the string (-> arg0 node-list data s5-0 joint name)) (new 'static 'rgba :g #xff :a #x40))
       )
     )
   #f
@@ -578,7 +598,7 @@
   (none)
   )
 
-(defmethod dummy-15 process-drawable ((obj process-drawable) (arg0 string) (arg1 object))
+(defmethod initialize-skeleton-by-name process-drawable ((obj process-drawable) (arg0 string) (arg1 object))
   (let ((s3-0 string->symbol))
     (format (clear *temp-string*) "*~S-sg*" arg0)
     (let ((s3-1 (-> (s3-0 *temp-string*) value)))
@@ -954,22 +974,10 @@
       (when (nonzero? (-> self skel))
         (dummy-19 self)
         
-        (#when TARGET_STARTUP_HACKS
-          (when (eq? (-> self type) target)
-            (format *stdcon* "no bones for you~%")
-            (dotimes (i (length (-> self node-list)))
-              (matrix-identity! (-> self node-list data i bone transform))
-              (set! (-> self node-list data i bone position quad)
-                    (-> (the-as target self) control trans quad)
-                    )
-              (set! (-> self node-list data i bone position w) 1.0)
-              (+! (-> self node-list data i bone position y) (meters 0.0))
-              )
-            )
-          )
+
         
         (when (or (logtest? (-> self skel status) 1) gp-1)
-          ;; (dummy-17 self) TODO
+          (do-joint-math! self)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
               (update-transforms! (the-as collide-shape (-> self root)))
               )

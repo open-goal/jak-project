@@ -5,5 +5,743 @@
 ;; name in dgo: bones
 ;; dgos: GAME, ENGINE
 
+;; Bones.
+;; There are 4 main functions used by the outside world:
+;;  - bones-init. Call this before doing process-drawable DMA building.
+;;  - draw-bones. Call this once for each process-drawable during DMA building.
+;;  - bones-wrapup. Call this after all calls to draw-bones.
+;; the above 3 functions are done separate for different levels.
+;;  - bones-mtx-calc-execute. Call this after all that.
+
+;; It's more than just bones in here - submitting to merc is done from here.
+
+
+;;;;;;;;;;;;;;;;;;
+;; calc list
+;;;;;;;;;;;;;;;;;;
+
+(defenum bone-calc-flags
+  :type uint16
+  :bitfield #t
+  (bncfl00 0)
+  (bncfl01 1)  ;; use identity matrix in bone matrix calc instead of cam rot (effectively screen-space bones?)
+  (bncfl02 2)
+  (bncfl03 3)
+  (bncfl04 4)
+  (bncfl05 5)
+  (bncfl06 6)
+  (bncfl07 7)
+  (bncfl08 8)
+  (bncfl09 9)
+  (bncfl10 10)
+  (bncfl11 11)
+  (bncfl12 12)
+  (bncfl13 13)
+  (bncfl14 14)
+  (bncfl15 15)
+  )
+
+;; this type represents a "calculation" that will be performed at later time.
+(deftype bone-calculation (structure)
+  ((flags               bone-calc-flags        :offset-assert   0)
+   (num-bones           uint16                 :offset-assert   2)
+   (matrix-area         (inline-array matrix)  :offset-assert   4)
+   (joints              (inline-array joint)   :offset-assert   8)
+   (bones               (inline-array bone)    :offset-assert  12)
+   (ripple-scale        float                  :offset-assert  16)
+   (ripple-y-scale      float                  :offset-assert  20)
+   (ripple-normal-scale float                  :offset-assert  24)
+   (ripple-area         (inline-array vector)  :offset-assert  28)
+   (next                bone-calculation       :offset-assert  32)
+   (dummy-1             uint32                 :offset-assert  36)
+   (dummy-2             uint32                 :offset-assert  40)
+   (dummy-3             uint32                 :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; linked list of bone-calculations.
+;; you have to bring your own bone-calculations
+(deftype bone-calculation-list (structure)
+  ((first bone-calculation  :offset-assert   0)
+   (next  bone-calculation  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; the global calculation list.
+(define *bone-calculation-list* (new 'global 'bone-calculation-list))
+
+(defun bone-list-init ()
+  "Reset the bone list to have nothing."
+  (let ((v1-0 *bone-calculation-list*))
+    (set! (-> v1-0 first) (the-as bone-calculation 0))
+    (set! (-> v1-0 next) (the-as bone-calculation 0))
+    )
+  (none)
+  )
+
+(bone-list-init)
+
+;;;;;;;;;;;;;;;;;;
+;; texscroll
+;;;;;;;;;;;;;;;;;;
+
+;; the "texture scroll" moves the texture. This is done by modifying the merc data.
+
+;; list of all texture scroll effects.
+(deftype texscroll-globals (structure)
+  ((requests int32          :offset-assert   0)
+   (effects  merc-effect 32 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+(define *texscroll-globals* (new 'global 'texscroll-globals))
+
+(defun texscroll-make-request ((arg0 merc-effect))
+  "Request that the given merc-effect have its texture scroll updated.
+   Note: only call this if you actually have a texture scroll effect!"
+  (let* ((v1-1 (-> *texscroll-globals* requests))
+         (a1-0 (-> arg0 extra-info))
+         (a1-1 (the-as mei-texture-scroll (+ (the-as uint a1-0) (* (-> a1-0 texture-scroll-offset) 16))))
+         )
+    (when (< v1-1 32)
+      (let* ((a3-1 (-> *display* integral-frame-counter))
+             (a2-3 (-> a1-1 time-factor))
+             (t0-2 (+ (ash 1 a2-3) -1))
+             )
+        (if (zero? (-> a1-1 scroll-dir))
+            (set! a3-1 (- a3-1))
+            )
+        (let ((a2-5 (ash (ash (logand a3-1 t0-2) (- 12 (the-as int (-> a1-1 st-int-scale)))) (- (the-as int a2-3)))))
+          (when (!= a2-5 (-> a1-1 cached-time))
+            (set! (-> a1-1 time-delta) (the-as uint (- a2-5 (the-as int (-> a1-1 cached-time)))))
+            (set! (-> a1-1 cached-time) (the-as uint a2-5))
+            (set! (-> *texscroll-globals* effects v1-1) arg0)
+            (+! (-> *texscroll-globals* requests) 1)
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defun texscroll-execute ()
+  "Do all requested texture scroll updates."
+  (dotimes (v1-0 (-> *texscroll-globals* requests))
+    (let* ((a2-0 (-> *texscroll-globals* effects v1-0))
+           (a0-2 (-> a2-0 frag-count))
+           (a1-1 (-> a2-0 extra-info))
+           (a1-2 (the-as mei-texture-scroll (+ (the-as uint a1-1) (* (-> a1-1 texture-scroll-offset) 16))))
+           (t1-0 (-> a2-0 frag-geo))
+           (a2-1 (-> a2-0 frag-ctrl))
+           )
+      (dotimes (a3-2 (the-as int a0-2))
+        (let ((t0-4 (&+ (the-as pointer t1-0) (logand (* (+ (-> a2-1 unsigned-four-count) 3) 4) #xfff0))))
+          (let ((t2-2 (+ (-> t1-0 header mat1-cnt) (-> t1-0 header mat2-cnt) (-> t1-0 header mat3-cnt))))
+            (the-as (pointer int8) (-> a1-2 time-delta))
+            (let* ((t1-3 (the-as (pointer int8) (&+ t0-4 9)))
+                   (t2-4 (&+ t1-3 (* (the-as uint 12) t2-2)))
+                   (t3-3 (-> a1-2 time-delta))
+                   )
+              (nop!)
+              (label cfg-3)
+              (let ((t4-0 (-> t1-3 0)))
+                (nop!)
+                (nop!)
+                (nop!)
+                (let ((t4-1 (+ t4-0 t3-3)))
+                  (set! t1-3 (&-> t1-3 12))
+                  (b! (!= t1-3 t2-4) cfg-3 :delay (set! (-> t1-3 -12) t4-1))
+                  )
+                )
+              )
+            )
+          (set! t1-0 (the-as
+                       merc-fragment
+                       (&+ (&+ t0-4 (logand (* (+ (-> a2-1 lump-four-count) 3) 4) #xfff0)) (* (-> a2-1 fp-qwc) 16))
+                       )
+                )
+          )
+        (set! a2-1 (the-as merc-fragment-control (+ (the-as uint a2-1) (* (-> a2-1 mat-xfer-count) 2) 4)))
+        )
+      )
+    )
+  (set! (-> *texscroll-globals* requests) 0)
+  0
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; Merc Submission
+;;;;;;;;;;;;;;;;;;;;
+
+;; when submitting to merc, we must provide some information to pick the appropriate rendering settings.
+;; this information can't be precomputed and is done in bones.
+
+;; per-effect information
+(deftype merc-effect-bucket-info (structure)
+  ((color-fade    rgba   :offset-assert   0)
+   (use-mercneric uint8  :offset-assert   4)
+   (ignore-alpha  uint8  :offset-assert   5)
+   (pad0          uint8  :offset-assert   6)
+   (pad1          uint8  :offset-assert   7)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; information for everything being submitted.
+(deftype merc-bucket-info (structure)
+  ((light                       vu-lights               :inline    :offset-assert   0)
+   (needs-clip                  int32                              :offset-assert 112)
+   (need-mercprime-if-merc      int32                              :offset-assert 116)
+   (must-use-mercneric-for-clip int32                              :offset-assert 120)
+   (effect                      merc-effect-bucket-info 16 :inline :offset-assert 124)
+   )
+  :method-count-assert 9
+  :size-assert         #xfc
+  :flag-assert         #x9000000fc
+  )
+
+(define *merc-bucket-info* (new 'global 'merc-bucket-info))
+
+;; UNUSED.
+(define *use-generic* #f)
+
+;;;;;;;;;;;;;;;;
+;; VU / DMA
+;;;;;;;;;;;;;;;;
+
+(define bones-vu0-block (new 'static 'vu-function #|:length 63 :qlength 32|#))
+
+;; these changes only matter if transferring in _interleave_ mode.
+
+(defun bones-set-sqwc ()
+  ;; transfer 4, skip 1.
+  (#unless PC_PORT
+           (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x4))
+           )
+  (none)
+  )
+
+(defun bones-reset-sqwc ()
+  ;; transfer 1, skip 1
+  ;; note: not sure what uses this mode??
+  (#unless PC_PORT
+           (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1))
+           )
+  (none)
+  )
+
+;; ?? used by generic merc
+(define *merc-global-array* (new 'global 'merc-global-array))
+
+(defun vu-lights<-light-group! ((arg0 vu-lights) (arg1 light-group))
+  "Convert a light-group to the VU format lights used by merc."
+  (local-vars (v1-0 uint128) (v1-1 uint128) (a2-1 uint128) (t0-1 uint128) (t1-1 uint128))
+  (rlet ((vf0 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (nop!)
+    (let ((a3-0 (the-as uint128 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))))
+      (nop!)
+      (let ((a2-0 (-> arg1 dir0 direction quad)))
+        (nop!)
+        (let ((t1-0 (-> arg1 dir1 direction quad)))
+          (nop!)
+          (.lvf vf4 (&-> arg1 dir0 color quad))
+          (.pextlw v1-0 t1-0 a2-0)
+          (let ((t0-0 (-> arg1 dir2 direction quad)))
+            (.pextuw a2-1 t1-0 a2-0)
+            (.lvf vf8 (&-> arg1 dir0 levels quad))
+            (.pextlw t1-1 a3-0 t0-0)
+            (.lvf vf5 (&-> arg1 dir1 color quad))
+            (.pextuw t0-1 a3-0 t0-0)
+            )
+          )
+        )
+      )
+    (.lvf vf9 (&-> arg1 dir1 levels quad))
+    (let ((a3-1 (make-u128 t1-1 v1-0)))
+      (.lvf vf6 (&-> arg1 dir2 color quad))
+      (.pcpyud v1-1 v1-0 t1-1)
+      (.lvf vf10 (&-> arg1 dir2 levels quad))
+      (let ((a2-2 (make-u128 (the-as int t0-1) a2-1)))
+        (.lvf vf7 (&-> arg1 ambi color quad))
+        (.mul.x.vf vf4 vf4 vf8)
+        (.lvf vf11 (&-> arg1 ambi levels quad))
+        (.mul.x.vf vf5 vf5 vf9)
+        (set! (-> arg0 direction 0 quad) (the-as uint128 a3-1))
+        (.mul.x.vf vf6 vf6 vf10)
+        (set! (-> arg0 direction 1 quad) v1-1)
+        (.mul.x.vf vf7 vf7 vf11)
+        (set! (-> arg0 direction 2 quad) (the-as uint128 a2-2))
+        )
+      )
+    (.min.x.vf vf4 vf0 vf0 :mask #b1000)
+    (nop!)
+    (.min.x.vf vf5 vf0 vf0 :mask #b1000)
+    (nop!)
+    (.min.x.vf vf6 vf0 vf0 :mask #b1000)
+    (nop!)
+    (.max.w.vf vf7 vf0 vf0 :mask #b1000)
+    (nop!)
+    (nop!)
+    (.svf (&-> arg0 color 0 quad) vf4)
+    (nop!)
+    (.svf (&-> arg0 color 1 quad) vf5)
+    (nop!)
+    (.svf (&-> arg0 color 2 quad) vf6)
+    (nop!)
+    (.svf (&-> arg0 ambient quad) vf7)
+    0
+    (none)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;
+;; BONE
+;;;;;;;;;;;;;;;;;;;;
+
+(defun bones-init ((arg0 dma-buffer) (arg1 dma-foreground-sink-group))
+  "Initialize the scratchpad and VU0 for bone work."
+  (scratchpad-object int)
+  (let ((a2-1 (the-as bone-memory (+ 16 (scratchpad-object int))))
+        (v1-2 (the-as bone-memory (+ 16 (scratchpad-object int))))
+        )
+    
+    ;; layout joints, bones, and outputs
+    (set! (-> a2-1 work layout joint 0) (the-as joint (+ 256 (scratchpad-object int))))
+    (set! (-> a2-1 work layout joint 1) (the-as joint (+ 4864 (scratchpad-object int))))
+    (set! (-> a2-1 work layout bone 0) (the-as bone (+ 1280 (scratchpad-object int))))
+    (set! (-> a2-1 work layout bone 1) (the-as bone (+ 5888 (scratchpad-object int))))
+    (set! (-> a2-1 work layout output 0) (the-as uint (+ 2816 (scratchpad-object int))))
+    (set! (-> a2-1 work layout output 1) (the-as uint (+ 7424 (scratchpad-object int))))
+    
+    ;; set up work
+    (set! (-> v1-2 work next-tag dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+    (set! (-> v1-2 work next-tag vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> v1-2 work next-tag vif1) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> v1-2 work dma-buf) arg0)
+    (set! (-> v1-2 work sink-group) arg1)
+    (set! (-> v1-2 work next-merc) (the-as dma-packet 0))
+    )
+  
+  ;; reset globals
+  (let ((v1-3 *merc-globals*))
+    (set! (-> v1-3 first) (the-as uint 0))
+    (set! (-> v1-3 next) (the-as uint 0))
+    )
+  
+  ;; upload bones program.
+  (#unless PC_PORT
+           (let ((gp-0 *vu0-dma-list*))
+             (let ((v1-4 gp-0))
+               (set! (-> v1-4 base) (-> v1-4 data))
+               (set! (-> v1-4 end) (&-> v1-4 data-buffer (-> v1-4 allocated-length)))
+               )
+             (dma-buffer-add-vu-function gp-0 bones-vu0-block 0)
+             (let* ((v1-5 gp-0)
+                    (a0-6 (-> v1-5 base))
+                    )
+               (set! (-> (the-as (pointer int64) a0-6)) #x70000000)
+               (set! (-> (the-as (pointer int64) a0-6) 1) 0)
+               (set! (-> v1-5 base) (&+ a0-6 16))
+               )
+             (.sync.l)
+             (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
+             )
+           )
+  
+  ;; we will use "run" in the shadow queue. Reset that (but don't increment yet, just in case we don't draw shadows)
+  (let ((gp-1 *shadow-queue*))
+    (if (>= (-> gp-1 cur-run) (the-as uint 15))
+        (format #t "Too many shadow-queues!!~%")
+        )
+    (let ((v1-13 (-> gp-1 run (-> gp-1 cur-run))))
+      (set! (-> v1-13 first) (the-as uint 0))
+      (set! (-> v1-13 next) (the-as uint 0))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun draw-bones-mtx-calc ((arg0 bone-calculation) (arg1 int) (arg2 bone-calc-flags))
+  "Add the current work to the bone calculation list."
+  (let ((t2-0 (the-as bone-memory (+ 16 (scratchpad-object int))))
+        (v1-1 *bone-calculation-list*)
+        (a3-1 arg0)
+        )
+    ;; grab active buffers
+    (let ((t0-0 (-> t2-0 work regs joint-ptr))
+          (t1-0 (-> t2-0 work regs bone-ptr))
+          (t2-1 (-> t2-0 work regs num-bones))
+          (t3-0 a3-1)
+          )
+      (set! (-> t3-0 flags) arg2)
+      (set! (-> t3-0 num-bones) t2-1)
+      (set! (-> t3-0 matrix-area) (the-as (inline-array matrix) arg1))
+      (set! (-> t3-0 joints) t0-0)
+      (set! (-> t3-0 bones) t1-0)
+      (set! (-> t3-0 next) (the-as bone-calculation 0))
+      )
+    ;; splice into list
+    (if (nonzero? (-> v1-1 next))
+        (set! (-> v1-1 next next) a3-1)
+        )
+    (if (zero? (-> v1-1 first))
+        (set! (-> v1-1 first) a3-1)
+        )
+    (set! (-> v1-1 next) a3-1)
+    )
+  (the-as object (&+ arg0 48))
+  )
+
+(def-mips2c bones-mtx-calc (function int pointer pointer int object none))
+
+(defun bones-mtx-calc-execute ()
+  "Do all pending bone calculations"
+  (local-vars (v1-14 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         )
+    (if *debug-segment*
+        (add-frame
+          (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+          'draw
+          (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+          )
+        )
+    (let ((v1-8 (the-as bone-memory (+ 16 (scratchpad-object int)))))
+      (+ 16 #x70000000)
+      (set! (-> v1-8 work layout joint 0) (the-as joint (+ 256 (scratchpad-object int))))
+      (set! (-> v1-8 work layout joint 1) (the-as joint (+ 4864 (scratchpad-object int))))
+      (set! (-> v1-8 work layout bone 0) (the-as bone (+ 1280 (scratchpad-object int))))
+      (set! (-> v1-8 work layout bone 1) (the-as bone (+ 5888 (scratchpad-object int))))
+      (set! (-> v1-8 work layout output 0) (the-as uint (+ 2816 (scratchpad-object int))))
+      (set! (-> v1-8 work layout output 1) (the-as uint (+ 7424 (scratchpad-object int))))
+      )
+    (#unless PC_PORT (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x4)))
+    (let* ((v1-10 *bone-calculation-list*)
+           (gp-0 *identity-matrix*)
+           (s5-0 (-> *math-camera* camera-rot))
+           (s4-0 (-> v1-10 first))
+           )
+      (while (nonzero? s4-0)
+        (let ((v1-13 (if (logtest? (-> s4-0 flags) (bone-calc-flags bncfl01))
+                         gp-0
+                         s5-0
+                         )
+                     )
+              )
+          (.lvf vf28 (&-> v1-13 vector 0 quad))
+          (.lvf vf29 (&-> v1-13 vector 1 quad))
+          (.lvf vf30 (&-> v1-13 vector 2 quad))
+          (.lvf vf31 (&-> v1-13 vector 3 quad))
+          (.lvf vf25 (&-> v1-13 vector 0 quad))
+          (.lvf vf26 (&-> v1-13 vector 1 quad))
+          (.lvf vf27 (&-> v1-13 vector 2 quad))
+          
+        (.mov v1-14 vf27)
+        (bones-mtx-calc
+          (the-as int (-> s4-0 matrix-area))
+          (the-as pointer (-> s4-0 joints))
+          (the-as pointer (-> s4-0 bones))
+          (the-as int (-> s4-0 num-bones))
+          v1-13 ;; hack, added
+          )
+        )
+        (when (logtest? (-> s4-0 flags) (bone-calc-flags bncfl00))
+          (let ((v1-18 (-> s4-0 matrix-area))
+                (a0-22 (-> s4-0 num-bones))
+                (f1-0 (-> s4-0 ripple-scale))
+                (f2-0 (-> s4-0 ripple-y-scale))
+                (f0-0 (-> s4-0 ripple-normal-scale))
+                (a1-9 (-> s4-0 ripple-area))
+                )
+            (let ((a2-2 f2-0))
+              (.mov vf1 a2-2)
+              )
+            (let ((a2-3 f1-0))
+              (.mov vf2 a2-3)
+              )
+            (let ((a2-4 f0-0))
+              (.mov vf3 a2-4)
+              )
+            (label cfg-8)
+            (.lvf vf5 (&-> v1-18 0 vector 1 quad))
+            (.lvf vf6 (&-> v1-18 0 vector 3 quad))
+            (.lvf vf7 (&-> v1-18 1 vector 0 quad))
+            (.lvf vf8 (&-> v1-18 1 vector 2 quad))
+            (.mul.x.vf vf4 vf5 vf2)
+            (.mul.x.vf vf5 vf5 vf1)
+            (let ((a3-1 (-> v1-18 0 vector 0 quad)))
+              (.mul.x.vf vf7 vf7 vf3)
+              (let ((a2-6 (-> v1-18 0 vector 2 quad)))
+                (.mul.x.vf vf8 vf8 vf3)
+                (set! (-> a1-9 0 quad) a3-1)
+                (let ((a3-2 (-> v1-18 1 vector 1 quad)))
+                  (.sub.vf vf6 vf6 vf4)
+                  (set! (-> a1-9 2 quad) a2-6)
+                  (.svf (&-> a1-9 1 quad) vf5)
+                  (set! (-> a1-9 5 quad) a3-2)
+                  )
+                )
+              )
+            (+! a0-22 -1)
+            (.svf (&-> a1-9 4 quad) vf7)
+            ;(.addiu v1-18 (the-as object v1-18) 128)
+            (&+ v1-18 128)
+            (.svf (&-> a1-9 3 quad) vf6)
+            ;;(.addiu (the-as (inline-array vector) a1-9) a1-9 128)
+            (&+ a1-9 128)
+            (b! (nonzero? a0-22) cfg-8 :delay (.svf (&-> a1-9 -2 quad) vf8))
+            )
+          0
+          )
+        (set! s4-0 (-> s4-0 next))
+        )
+      )
+    (#unless PC_PORT (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1)))
+    (bone-list-init)
+    (if *debug-segment*
+        (add-frame
+          (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+          'draw
+          (new 'static 'rgba :r #x7b :g #x7b :b #x7b :a #x80)
+          )
+        )
+    0
+    (none)
+    )
+  )
+
+(defun bones-wrapup ()
+  (let ((v1-1 (the-as bone-memory (+ 16 (scratchpad-object int)))))
+    (when (nonzero? (-> v1-1 work next-merc))
+      ;; only add if we actually drew with merc.
+      (let* ((a0-2 (-> v1-1 work dma-buf))
+             (a3-0 (-> a0-2 base))
+             )
+        (let ((a1-0 (the-as object (-> a0-2 base))))
+          (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
+          (set! (-> a0-2 base) (&+ (the-as pointer a1-0) 16))
+          )
+        (dma-bucket-insert-tag
+          (-> *display* frames (-> *display* on-screen) frame bucket-group)
+          (-> v1-1 work sink-group merc-sink bucket)
+          (the-as pointer (-> v1-1 work next-merc))
+          (the-as (pointer dma-tag) a3-0)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;;;;;;;;;;;;;;;
+;; bone debug
+;;;;;;;;;;;;;;;
+
+(define *bones-first* #f)
+
+(defun-debug dump-qword ((arg0 qword))
+  (let ((v1-0 arg0))
+    (format
+      0
+      "~8,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X~%"
+      v1-0
+      (-> v1-0 data 0)
+      (-> v1-0 data 1)
+      (-> v1-0 data 2)
+      (-> v1-0 data 3)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug dump-mem ((arg0 pointer) (arg1 int))
+  (dotimes (s4-0 arg1)
+    (format
+      0
+      "~8,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
+      (&+ arg0 (* (* s4-0 4) 4))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (* s4-0 4) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 1) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 2) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 3) 4))))
+      )
+    (format
+      0
+      "      ~F ~F ~F ~F ~%"
+      (-> (the-as (pointer uint32) (&+ arg0 (* (* s4-0 4) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 1) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 2) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 3) 4))))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug bones-debug ()
+  0
+  (none)
+  )
+
+(defun-debug dump-bone-mem ()
+  (format 0 "==  joints 0 ===========~%")
+  (dump-mem (the-as pointer (+ 256 #x70000000)) 64)
+  (format 0 "==  bones 0 ============~%")
+  (dump-mem (the-as pointer (+ 1280 #x70000000)) 96)
+  (format 0 "==  output 0 ===========~%")
+  (dump-mem (the-as pointer (+ 2816 #x70000000)) 128)
+  (format 0 "~%~%~%")
+  (format 0 "==  joints 1 ===========~%")
+  (dump-mem (the-as pointer (+ 4864 #x70000000)) 64)
+  (format 0 "==  bones 1 ============~%")
+  (dump-mem (the-as pointer (+ 5888 #x70000000)) 96)
+  (format 0 "==  output 1 ===========~%")
+  (dump-mem (the-as pointer (+ 7424 #x70000000)) 128)
+  (format 0 "==  dma-list ===========~%")
+  (dump-mem (the-as pointer (+ 256 #x70000000)) 90)
+  (format 0 "========================~%~%")
+  0
+  (none)
+  )
+
 (define-extern draw-bones (function draw-control dma-buffer float none))
+
+;; HACK incomplete:
+(defun draw-bones ((arg0 draw-control) (arg1 dma-buffer) (arg2 float))
+  (local-vars
+    (at-0 object)
+    (a0-16 int)
+    (a0-17 int)
+    (a0-62 int)
+    (a2-10 int)
+    (a2-12 int)
+    (sv-96 int)
+    (sv-112 int)
+    (sv-128 int)
+    (sv-144 ripple-control)
+    )
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (let* ((s1-0 (+ (-> arg0 mgeo num-joints) 3))
+           (a0-1 (* s1-0 128))
+           )
+      ;;(.lui at-0 28672)
+      (let* ((v1-2 (-> arg1 base))
+             (a1-1 (the-as object (&+ v1-2 16)))
+             (s3-0 (the-as object (&+ v1-2 64)))
+             )
+        (let ((a2-1 (logand (the-as int s3-0) 48)))
+          (b! (zero? a2-1) cfg-2 :delay (nop!))
+          (set! s3-0 (&- (&+ (the-as pointer s3-0) 64) (the-as uint a2-1)))
+          )
+        (label cfg-2)
+        ; (let* ((a2-3 (-> *perf-stats* data 13))
+        ;        (a3-1 (-> a2-3 ctrl))
+        ;        )
+        ;   (+! (-> a2-3 count) 1)
+        ;   (b! (zero? a3-1) cfg-4 :delay (nop!))
+        ;   (.mtc0 Perf r0)
+        ;   (.sync.l)
+        ;   (.sync.p)
+        ;   (.mtpc pcr0 r0)
+        ;   (.mtpc pcr1 r0)
+        ;   (.sync.l)
+        ;   (.sync.p)
+        ;   (.mtc0 Perf a3-1)
+        ;   )
+        ; (.sync.l)
+        ; (.sync.p)
+        ; (label cfg-4)
+        0
+        (let ((a2-6 (the-as bone-regs (+ 240 (scratchpad-object int)))))
+          (set! (-> a2-6 joint-ptr) (the-as (inline-array joint) (-> arg0 jgeo data 0)))
+          (set! (-> a2-6 bone-ptr) (-> arg0 skeleton bones))
+          (set! (-> a2-6 num-bones) (the-as uint s1-0))
+          )
+        (let ((t0-2 s3-0)
+              (t1-0 0)
+              (t4-0 (the-as bone-memory (+ 16 (scratchpad-object int))))
+              (a2-8 *bone-calculation-list*)
+              (a3-8 (the-as bone-calculation a1-1))
+              )
+          (let ((t2-0 (-> t4-0 work regs joint-ptr))
+                (t3-0 (-> t4-0 work regs bone-ptr))
+                (t4-1 (-> t4-0 work regs num-bones))
+                (t5-0 a3-8)
+                )
+            (set! (-> t5-0 flags) (the-as bone-calc-flags t1-0))
+            (set! (-> t5-0 num-bones) t4-1)
+            (set! (-> t5-0 matrix-area) (the-as (inline-array matrix) t0-2))
+            (set! (-> t5-0 joints) t2-0)
+            (set! (-> t5-0 bones) t3-0)
+            (set! (-> t5-0 next) (the-as bone-calculation 0))
+            )
+          (if (nonzero? (-> a2-8 next))
+              (set! (-> a2-8 next next) a3-8)
+              )
+          (if (zero? (-> a2-8 first))
+              (set! (-> a2-8 first) a3-8)
+              )
+          (set! (-> a2-8 next) a3-8)
+          ;; total guess
+          (&+! (-> arg1 base) (* 2 (+ 256 a0-1)))
+          )
+        )))
+  (none))
+
+(defun draw-bones-hud ((arg0 draw-control) (arg1 dma-buffer))
+  ;; hack
+  (none)
+  )
 (define-extern draw-bones-hud (function draw-control dma-buffer none))
