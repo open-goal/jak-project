@@ -188,6 +188,7 @@ class TFragment : public BucketRenderer {
                         ScopedProfilerNode& prof);
 
   std::string m_debug_string;
+  bool m_hack_scrambler = false;
   bool m_child_mode = false;
   bool m_extra_debug = false;
   int m_max_draw = -1;
@@ -201,7 +202,7 @@ class TFragment : public BucketRenderer {
   bool m_use_tfrag3 = true;
   bool m_hack_test_many_levels = false;
   bool m_override_time_of_day = false;
-  float m_time_of_days[8] = {0};
+  float m_time_of_days[8] = {1, 0, 0, 0, 0, 0, 0, 0};
   std::string m_frag_debug;
 
   // GS setup data

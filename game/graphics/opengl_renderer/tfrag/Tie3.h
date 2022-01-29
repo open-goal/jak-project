@@ -78,7 +78,8 @@ class Tie3 : public BucketRenderer {
 
   std::vector<Tree> m_trees;
   std::string m_level_name;
-  std::vector<GLuint> m_textures;  // todo, can we share with tfrag in some cases?
+  const std::vector<GLuint>* m_textures;
+  u64 m_load_id = -1;
 
   struct Cache {
     std::vector<u8> vis_temp;
