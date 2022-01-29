@@ -1125,7 +1125,7 @@ inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
     // transfer 4.
     memcpy(spad_addr_c, mem_addr, 4 * 16);
     spad_addr_c += (4 * 16);
-    sadr += 4*16;
+    sadr += 4 * 16;
     // but skip 5
     mem_addr += (5 * 16);
     qwc -= 4;

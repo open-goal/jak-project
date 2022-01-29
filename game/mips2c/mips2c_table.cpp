@@ -209,7 +209,9 @@ extern void link();
 namespace bones_mtx_calc {
 extern void link();
 }
-namespace cspace_parented_transformq_joint { extern void link(); }
+namespace cspace_parented_transformq_joint {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {

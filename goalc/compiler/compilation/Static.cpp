@@ -241,18 +241,27 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                     sr.reference()->get_addr_offset());
     } else if (field_info.type.base_type() == "pointer") {
       auto sr = compile_static(field_value, env);
-      if (!sr.is_symbol() || sr.symbol_name() != "#f") {
-        throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      if (sr.is_symbol() && sr.symbol_name() == "#f") {
+        // allow #f to be used for a pointer.
+        structure->add_symbol_record(sr.symbol_name(), field_offset);
+        auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+        assert(deref_info.mem_deref);
+        assert(deref_info.can_deref);
+        assert(deref_info.load_size == 4);
+        // the linker needs to see a -1 in order to know to insert a symbol pointer
+        // instead of just the symbol table offset.
+        u32 linker_val = 0xffffffff;
+        memcpy(structure->data.data() + field_offset, &linker_val, 4);
+      } else {
+        if (!sr.is_reference()) {
+          throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+        }
+        typecheck(form, field_info.type, sr.typespec());
+        assert(sr.reference()->get_addr_offset() == 0);
+        structure->add_pointer_record(field_offset, sr.reference(),
+                                      sr.reference()->get_addr_offset());
       }
-      structure->add_symbol_record(sr.symbol_name(), field_offset);
-      auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
-      assert(deref_info.mem_deref);
-      assert(deref_info.can_deref);
-      assert(deref_info.load_size == 4);
-      // the linker needs to see a -1 in order to know to insert a symbol pointer
-      // instead of just the symbol table offset.
-      u32 linker_val = 0xffffffff;
-      memcpy(structure->data.data() + field_offset, &linker_val, 4);
+
     }
 
     else {
@@ -859,7 +868,7 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   // get all arguments now
   auto args = get_list_as_vector(rest);
   if (args.size() < 4) {
-    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
+    throw_compiler_error(form, "new static array must have type and min-size arguments");
   }
   auto content_type = parse_typespec(args.at(2));
   s64 min_size;

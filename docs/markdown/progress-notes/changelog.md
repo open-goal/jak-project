@@ -1,3 +1,4 @@
+
 # Language Changes
 
 ## V0.1
@@ -213,3 +214,4 @@
 - Asm ops requiring 128-bit inputs will now try harder to convert their inputs when it is appropriate.
 - 0's that are constant propagated to the input of a 128-bit instruction will use `vpxor` instruction to generate the value, instead of `xor` and a `mov`.
 - Add a `stack-singleton-no-clear` stack construction type. It will create a "singleton" inside this function - all other `(new 'stack-singleton` forms with the same type will return the same stack object.
+- Added support for using `(new 'static 'array ...)` for setting a static field of type `(pointer ...)`

@@ -21,7 +21,6 @@ namespace decompress_frame_data_pair_to_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   u32 next_block = 0;
   while(true) {
     switch(next_block) {
@@ -826,7 +825,6 @@ namespace decompress_frame_data_to_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   u32 next_block = 0;
   while(true) {
     switch(next_block) {
@@ -1427,7 +1425,6 @@ namespace decompress_fixed_data_to_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   u32 next_block = 0;
   while(true) {
     switch(next_block) {
@@ -2044,7 +2041,6 @@ namespace normalize_frame_quaternions {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->daddiu(s2, s2, -2);                            // daddiu s2, s2, -2
   c->sw(a0, 0, sp);                                 // sw a0, 0(sp)
@@ -2099,7 +2095,6 @@ namespace clear_frame_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 0, sp);                                 // sw a0, 0(sp)
@@ -2406,7 +2401,6 @@ namespace cspace_parented_transformq_joint {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   c->lw(a3, 0, a0);                                 // lw a3, 0(a0)
   c->lui(v1, 16256);                                // lui v1, 16256

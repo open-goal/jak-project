@@ -51,7 +51,7 @@
              (logior! (-> self draw status) (draw-status drwf02))
              )
          )
-       (dummy-17 self)
+       (do-joint-math! self)
        (let ((a0-22 (-> self skel effect)))
          (if a0-22
              (TODO-RENAME-9 a0-22)
@@ -554,7 +554,7 @@
              ""
              )
            )
-         (dummy-17 self)
+         (do-joint-math! self)
          )
         (('clone-anim)
          (clone-anim-once
@@ -836,35 +836,37 @@
   )
 
 ;; definition for function command-get-camera
+;; INFO: Return type mismatch object vs state.
 (defun command-get-camera ((arg0 object) (arg1 state))
-  (cond
-    ((null? arg0)
-     (empty)
-     arg1
-     )
-    ((= arg0 'base)
-     *camera-base-mode*
-     )
-    ((= arg0 'string)
-     cam-string
-     )
-    ((= arg0 'fixed)
-     cam-fixed
-     )
-    ((type-type? (rtype-of arg0) symbol)
-     (the-as state (-> (the-as symbol arg0) value))
-     )
-    ((type-type? (rtype-of arg0) string)
-     (the-as state arg0)
-     )
-    ((type-type? (rtype-of arg0) state)
-     (the-as state arg0)
-     )
-    (else
-      (empty)
-      arg1
-      )
-    )
+  (the-as state (cond
+                  ((null? arg0)
+                   (empty)
+                   arg1
+                   )
+                  ((= arg0 'base)
+                   *camera-base-mode*
+                   )
+                  ((= arg0 'string)
+                   cam-string
+                   )
+                  ((= arg0 'fixed)
+                   cam-fixed
+                   )
+                  ((type-type? (rtype-of arg0) symbol)
+                   (the-as state (-> (the-as symbol arg0) value))
+                   )
+                  ((type-type? (rtype-of arg0) string)
+                   (the-as state arg0)
+                   )
+                  ((type-type? (rtype-of arg0) state)
+                   (the-as state arg0)
+                   )
+                  (else
+                    (empty)
+                    arg1
+                    )
+                  )
+          )
   )
 
 ;; definition for function command-get-trans
@@ -938,26 +940,7 @@
   )
 
 ;; definition for function camera-change-to
-(defun camera-change-to ((arg0 string) (arg1 int) (arg2 symbol))
-  (let ((gp-0 (command-get-camera arg0 *camera-base-mode*)))
-    (cond
-      ((not gp-0)
-       #f
-       )
-      ((type-type? (rtype-of gp-0) string)
-       (send-event *camera* 'change-to-entity-by-name gp-0)
-       #t
-       )
-      ((type-type? (rtype-of gp-0) state)
-       (send-event *camera* 'change-state gp-0 arg1)
-       (if arg2
-           (send-event *camera* 'blend-from-as-fixed)
-           )
-       #t
-       )
-      )
-    )
-  )
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for function camera-look-at
 (defbehavior camera-look-at camera-tracker ((arg0 pair) (arg1 uint))
@@ -1489,7 +1472,7 @@
                                                            (* s3-1 8)
                                                            )
               )
-      (dummy-15 obj *lev-string* '())
+      (initialize-skeleton-by-name obj *lev-string* '())
       (logior! (-> obj draw status) (draw-status drwf06))
       (if (nonzero? (-> obj draw))
           (go med-res-level-idle)

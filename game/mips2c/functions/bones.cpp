@@ -148,7 +148,6 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
 //printf("start\n");
   bool bc = false;
-  u32 call_addr = 0;
   u32 madr, sadr, qwc;
   // hack, added this that should be loaded by the caller.
   //  lqc2 vf28, 0(v1)          ;; [ 60] (set! vf28 (l.vf v1-13)) [v1: matrix ] -> []
@@ -233,7 +232,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_5:
   c->addiu(t6, r0, 256);                            // addiu t6, r0, 256
   c->addiu(t7, r0, 264);                            // addiu t7, r0, 264
   // c->sw(t6, 128, v1);                               // sw t6, 128(v1) sadr
@@ -271,7 +269,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_8:
   c->and_(a2, a2, t2);                              // and a2, a2, t2
   c->dsll(t2, t3, 1);                               // dsll t2, t3, 1
   c->dsll(t5, t3, 2);                               // dsll t5, t3, 2
@@ -320,7 +317,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_11:
   c->dsll(t5, t8, 2);                               // dsll t5, t8, 2
   c->daddu(t9, t5, at);                             // daddu t9, t5, at
   // nop                                            // sll r0, r0, 0
@@ -471,7 +467,6 @@ u64 execute(void* ctxt) {
   c->sq(ra, 32, t3);                                // sq ra, 32(t3)
   // nop                                            // sll r0, r0, 0
   c->sq(gp, 48, t3);                                // sq gp, 48(t3)
-//  printf("xyz: %f %f %f\n", c->gprs[gp].f[0], c->gprs[gp].f[1], c->gprs[gp].f[2]);
   // nop                                            // sll r0, r0, 0
   c->sq(s5, 64, t3);                                // sq s5, 64(t3)
   // nop                                            // sll r0, r0, 0
@@ -520,7 +515,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_20:
   c->dsll(t5, t2, 2);                               // dsll t5, t2, 2
   // nop                                            // sll r0, r0, 0
   c->addiu(t4, r0, 1);                              // addiu t4, r0, 1
@@ -576,7 +570,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_24:
   bc = c->sgpr64(t6) == 0;                          // beq t6, r0, L132
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_26;}                          // branch non-likely
@@ -637,7 +630,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_30:
   c->dsll(t6, t2, 2);                               // dsll t6, t2, 2
   // c->lui(t7, 28672);                                // lui t7, 28672
   get_fake_spad_addr(t7, cache.fake_scratchpad_data, 0, c);
