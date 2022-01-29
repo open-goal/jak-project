@@ -34,7 +34,6 @@ class Loader {
   std::unordered_map<std::string, Level> m_loaded_tfrag3_levels;
   std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;
 
-
   std::string m_level_to_load;
 
   std::thread m_loader_thread;
