@@ -106,11 +106,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/Sprite3.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
-        graphics/opengl_renderer/tfrag/BufferedRenderer.cpp
-        graphics/opengl_renderer/tfrag/program6_cpu.cpp
         graphics/opengl_renderer/tfrag/Tfrag3.cpp
         graphics/opengl_renderer/tfrag/tfrag_common.cpp
-        graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
         graphics/opengl_renderer/tfrag/TFragment.cpp
         graphics/opengl_renderer/tfrag/Tie3.cpp
         graphics/texture/TextureConverter.cpp

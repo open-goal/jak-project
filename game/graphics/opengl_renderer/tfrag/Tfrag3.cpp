@@ -160,33 +160,9 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
       }
       m_load_state.vert++;
       if (!remaining) {
-        m_load_state.state = INIT_TEX;
-        m_load_state.tex_id = 0;
+        return true;
       }
     } break;
-
-    case State::INIT_TEX:
-      for (size_t max_tex =
-               std::min((size_t)m_load_state.tex_id + MAX_TEX_PER_FRAME, lev_data->textures.size());
-           m_load_state.tex_id < max_tex; m_load_state.tex_id++) {
-        auto& tex = lev_data->textures[m_load_state.tex_id];
-        GLuint gl_tex;
-        glGenTextures(1, &gl_tex);
-        glBindTexture(GL_TEXTURE_2D, gl_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.w, tex.h, 0, GL_RGBA,
-                     GL_UNSIGNED_INT_8_8_8_8_REV, tex.data.data());
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, gl_tex);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        float aniso = 0.0f;
-        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
-        m_textures.push_back(gl_tex);
-      }
-      return m_load_state.tex_id == lev_data->textures.size();
-      break;
     default:
       assert(false);
   }
@@ -200,12 +176,18 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
   // first, get the level in memory
   Timer tfrag3_setup_timer;
 
-  auto lev_data = render_state->loader.get_tfrag3_level(level);
-  if (!lev_data) {
+  const auto* lev_data = render_state->loader.get_tfrag3_level(level);
+  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
     m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+
+    discard_tree_cache();
     return false;
   }
   int init_load_state = m_load_state.state;
+  m_textures = &lev_data->textures;
+  m_load_id = lev_data->load_id;
 
   if (m_level_name != level) {
     m_has_level = false;
@@ -213,7 +195,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
       m_load_state.loading = true;
       m_load_state.state = State::FIRST;
     }
-    if (update_load(tree_kinds, lev_data)) {
+    if (update_load(tree_kinds, lev_data->level.get())) {
       m_has_level = true;
       m_level_name = level;
       m_load_state.loading = false;
@@ -277,7 +259,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
       continue;
     }
 
-    glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+    glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
     auto double_draw = setup_tfrag_shader(render_state, draw.mode);
     tree.tris_this_frame += draw.num_triangles;
     tree.draws_this_frame++;
@@ -393,12 +375,7 @@ void Tfrag3::draw_debug_window() {
 }
 
 void Tfrag3::discard_tree_cache() {
-  for (auto tex : m_textures) {
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glDeleteTextures(1, &tex);
-  }
-  m_textures.clear();
-
+  m_textures = nullptr;
   for (auto& tree : m_cached_trees) {
     if (tree.kind != tfrag3::TFragmentTreeKind::INVALID) {
       glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
@@ -408,6 +385,7 @@ void Tfrag3::discard_tree_cache() {
       glDeleteVertexArrays(1, &tree.vao);
     }
   }
+  m_cached_trees.clear();
 }
 
 namespace {
