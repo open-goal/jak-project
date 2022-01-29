@@ -1002,6 +1002,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMINH:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:
+    case InstructionKind::MULTU3:
     case InstructionKind::PMINW:
     case InstructionKind::PMAXW:
     case InstructionKind::SUBU:

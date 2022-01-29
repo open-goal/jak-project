@@ -858,6 +858,12 @@ struct ExecutionContext {
   }
 
   void mult3(int dst, int src0, int src1) {
+    u32 result = gpr_src(src0).ds32[0] * gpr_src(src1).ds32[0];
+    s32 sresult = result;
+    gprs[dst].ds64[0] = sresult;
+  }
+
+  void multu3(int dst, int src0, int src1) {
     u32 result = gpr_src(src0).du32[0] * gpr_src(src1).du32[0];
     s32 sresult = result;
     gprs[dst].ds64[0] = sresult;
