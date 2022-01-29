@@ -5697,9 +5697,9 @@
 (declare-type engine basic)
 (deftype connection (connectable)
   ((param0 basic         :offset-assert 16) ;; often (function object object object object object), but can be other things.
-   (param1 basic         :offset-assert 20)
-   (param2 basic         :offset-assert 24)
-   (param3 basic         :offset-assert 28)
+   (param1 int32         :offset-assert 20)
+   (param2 int32         :offset-assert 24)
+   (param3 int32         :offset-assert 28)
    (quad   uint128     2 :offset 0)
    )
   :method-count-assert 14
@@ -10376,6 +10376,7 @@
 ;; - Types
 
 ;; NOTE - root can also be a collide-shape
+(declare-type joint-mod basic)
 (deftype manipy (process-drawable)
   ((new-trans-hook       (function none)        :offset-assert 176) ;; TODO - no idea on these types
    (cur-trans-hook       (function none)        :offset-assert 180) ;; TODO - no idea on these types
@@ -10386,7 +10387,7 @@
    (cur-grab-handle      handle          :offset-assert 208)
    (cur-target-handle    handle          :offset-assert 216)
    (old-grab-pos         vector  :inline :offset-assert 224)
-   (joint                process-drawable 4 :offset-assert 240)
+   (joint                joint-mod 4 :offset-assert 240)
    (new-post-hook        (function none)        :offset-assert 256) ;; TODO - no idea on these types
    (cur-post-hook        (function none)        :offset-assert 260) ;; TODO - no idea on these types
    (clone-copy-trans     basic           :offset-assert 264)
@@ -22579,7 +22580,7 @@
    (frustration-point   vector     :inline :offset-assert 208)
    (jump-dest           vector     :inline :offset-assert 224)
    (jump-trajectory     trajectory :inline :offset-assert 240)
-   (jump-time           uint64             :offset-assert 280)
+   (jump-time           int64              :offset-assert 280)
    (nav-info            nav-enemy-info     :offset-assert 288)
    (target-speed        float              :offset-assert 292)
    (momentum-speed      float              :offset-assert 296)
@@ -22588,7 +22589,7 @@
    (turn-time           int64              :offset-assert 312)
    (frustration-time    int64              :offset-assert 320)
    (speed-scale         float              :offset-assert 328)
-   (neck                joint-mod          :offset-assert 332) ; this is what `neck` is on the pelican
+   (neck                joint-mod          :offset-assert 332)
    (reaction-time       int64              :offset-assert 336)
    (notice-time         int64              :offset-assert 344)
    (state-timeout       int64              :offset-assert 352)
@@ -22635,13 +22636,13 @@
     (TODO-RENAME-48 (_type_) none 48) ;; object past to method 60 -- see citb-bunny
     (TODO-RENAME-49 (_type_ nav-enemy-info) float 49)
     (TODO-RENAME-50 (_type_ vector) symbol 50)
-    (dummy-51 (_type_) object 51) ;; ret - float | symbol
+    (dummy-51 (_type_) none 51) ;; ret - float | symbol
     (dummy-52 (_type_ vector) symbol 52) ;; ret - symbol | vector
     (dummy-53 (_type_) symbol 53) ;; ret - symbol | none
-    (dummy-54 (_type_) none 54)
-    (dummy-55 (_type_) none 55)
+    (dummy-54 (_type_ vector) symbol 54)
+    (dummy-55 (_type_) symbol 55)
     (set-jump-height-factor! (_type_ int) float 56)
-    (dummy-57 (_type_) vector 57)
+    (dummy-57 (_type_) none 57)
     (dummy-58 (_type_) vector 58)
     (TODO-RENAME-59 (_type_) none 59)
     (dummy-60 (_type_ object) symbol 60)
@@ -23235,6 +23236,9 @@
   :size-assert         #x165
   :heap-base           #x100
   :flag-assert         #x2101000165
+  (:methods
+    (notice-blue (handle) _type_ :replace :state 29)
+    )
   )
 
 ;; - Unknowns
@@ -23360,8 +23364,8 @@
   :size-assert         #x20
   :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ uint) none 9)
-    (reached-delay? (_type_ uint) symbol 10)
+    (sleep (_type_ int) none 9)
+    (reached-delay? (_type_ int) symbol 10)
     (completed? (_type_) symbol 11)
     )
   )
@@ -25187,11 +25191,11 @@
    (glow-u                     float          :offset-assert 184)
    (glow-wf-period             int32          :offset-assert 188)
    (glow-wf-offset             int32          :offset-assert 192)
-   (prev-compute-glow-time     uint64         :offset-assert 200)
-   (start-fade-time            uint64         :offset-assert 208)
-   (end-fade-time              uint64         :offset-assert 216)
-   (activated-time             uint64         :offset-assert 224)
-   (last-updated-user-lighting uint64         :offset-assert 232)
+   (prev-compute-glow-time     int64         :offset-assert 200)
+   (start-fade-time            int64         :offset-assert 208)
+   (end-fade-time              int64         :offset-assert 216)
+   (activated-time             int64         :offset-assert 224)
+   (last-updated-user-lighting int64         :offset-assert 232)
    (player-attack-id           uint64         :offset-assert 240)
    (on-color-mult              vector :inline :offset-assert 256)
    (on-color-emissive          vector :inline :offset-assert 272)
@@ -26590,20 +26594,20 @@
 
 ;; - Functions
 
-(define-extern peri-beamcam-init-by-other (function string (pointer process) :behavior process))
+(define-extern peri-beamcam-init-by-other (function string (pointer pov-camera) :behavior process))
 (define-extern draw-power-beam (function vector vector none))
 (define-extern reflector-origin-update (function entity-actor none :behavior reflector-origin))
 (define-extern reflector-init-by-other (function vector none :behavior reflector))
-(define-extern periscope-find-next (function object :behavior periscope))
-(define-extern periscope-find-reflection-angles (function float :behavior periscope))
-(define-extern periscope-update-joints (function float :behavior periscope))
+(define-extern periscope-find-next (function none :behavior periscope))
+(define-extern periscope-find-reflection-angles (function none :behavior periscope))
+(define-extern periscope-update-joints (function none :behavior periscope))
 (define-extern periscope-has-power-input? (function symbol :behavior periscope))
 (define-extern periscope-draw-beam (function none :behavior periscope))
-(define-extern periscope-find-aim-at-angles (function float :behavior periscope))
+(define-extern periscope-find-aim-at-angles (function none :behavior periscope))
 (define-extern periscope-crosshair (function symbol :behavior periscope))
 (define-extern periscope-test-task-complete? (function symbol :behavior periscope))
 (define-extern periscope-draw-beam-impact (function none :behavior periscope))
-(define-extern periscope-set-target-direction (function vector float :behavior periscope))
+(define-extern periscope-set-target-direction (function vector none :behavior periscope))
 (define-extern periscope-post (function none :behavior periscope))
 (define-extern periscope-debug-trans (function none :behavior periscope))
 (define-extern target-close-to-point? (function vector float symbol))
@@ -29742,18 +29746,18 @@
 (deftype cavecrystal-light-control (basic)
   ((active-count          int32               :offset-assert 4)
    (head                  cavecrystal-light   :offset-assert 8)
-   (last-known-valid-time uint64              :offset-assert 16)
+   (last-known-valid-time int64              :offset-assert 16)
    (crystal               cavecrystal-light           7 :inline :offset-assert 32)
    )
   :method-count-assert 15
   :size-assert         #x170
   :flag-assert         #xf00000170
   (:methods
-    (TODO-RENAME-9 (_type_ int float process-drawable) object 9) ;; last arg is a cavecrystal
+    (TODO-RENAME-9 (_type_ int float process-drawable) none 9)
     (TODO-RENAME-10 (_type_ vector) float 10)
-    (inc-intensites! (_type_) int 11)
-    (TODO-RENAME-12 (_type_) symbol 12)
-    (create-connection! (_type_ process-drawable res-lump (function object object object object object) object object) connection 13) ;; TODO - process-drawable is often a cavecrystal
+    (inc-intensities! (_type_) none 11)
+    (TODO-RENAME-12 (_type_) none 12)
+    (create-connection! (_type_ process-drawable res-lump (function object object object object object) int float) connection 13) ;; TODO - process-drawable is often a cavecrystal
     (execute-connections (_type_) int 14)
     )
   )
@@ -30709,9 +30713,9 @@
    (plat-mask                uint32         :offset-assert 184)
    (plat-id-dir              int32          :offset-assert 188)
    (wiggled?                 symbol          :offset-assert 192)
-   (timeout                  uint64         :offset-assert 200)
-   (last-plat-activated-time uint64         :offset-assert 208)
-   (delay-til-wiggle         uint64         :offset-assert 216)
+   (timeout                  int64         :offset-assert 200)
+   (last-plat-activated-time int64         :offset-assert 208)
+   (delay-til-wiggle         int64         :offset-assert 216)
    (ticker                   ticky  :inline :offset-assert 224)
    )
   :method-count-assert 20
@@ -31266,9 +31270,9 @@
   )
 
 (deftype sunken-pipegame-prize (structure)
-  ((puzzle-delay            uint64         :offset-assert 0)
-   (pipe-travel-time-to-far uint64         :offset-assert 8)
-   (pipe-travel-time-to-jar uint64         :offset-assert 16)
+  ((puzzle-delay            int64          :offset-assert 0)
+   (pipe-travel-time-to-far int64          :offset-assert 8)
+   (pipe-travel-time-to-jar int64          :offset-assert 16)
    (actor-handle            handle         :offset-assert 24)
    (jar-pos                 vector :inline :offset-assert 32)
    (far-pos                 vector :inline :offset-assert 48)
@@ -31297,7 +31301,7 @@
   :heap-base           #x230
   :flag-assert         #x17023002a0
   (:methods
-    (dummy-20 (_type_) none 20)
+    (dummy-20 (_type_) uint 20)
     (dummy-21 (_type_ symbol) symbol 21)
     (dummy-22 (_type_ symbol) none 22)
     )
@@ -31413,7 +31417,8 @@
    )
   (:methods
     (initialize-collision (_type_) collide-shape-moving :replace 47)
-    (dummy-53 (_type_ vector) symbol :replace 53))
+    (dummy-53 (_type_ vector) symbol :replace 53)
+    )
   :method-count-assert 76
   :size-assert         #x1a8
   :heap-base           #x140
@@ -32961,7 +32966,7 @@
   :heap-base           #x180
   :flag-assert         #x4c018001f0
   (:methods
-    (dummy-51 (_type_ vector vector) object :replace 51)
+    (dummy-51 (_type_ vector vector) symbol :replace 51)
     (dummy-53 (_type_ vector vector) symbol :replace 53)
     )
   (:states
@@ -33284,8 +33289,8 @@
 (deftype snow-button (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (wiggled?         symbol          :offset-assert 176)
-   (timeout          uint64         :offset-assert 184)
-   (delay-til-wiggle uint64         :offset-assert 192)
+   (timeout          int64         :offset-assert 184)
+   (delay-til-wiggle int64         :offset-assert 192)
    (prev-button      entity-actor          :offset-assert 200)
    (ticker           ticky  :inline :offset-assert 208)
    )
@@ -33448,14 +33453,19 @@
   :size-assert         #x1f4
   :heap-base           #x190
   :flag-assert         #x4c019001f4
+  (:methods
+    (dummy-51 (_type_ vector) symbol :replace 51)
+    (dummy-52 (_type_) symbol :replace 52)
+    (dummy-57 (_type_ float) float :replace 57)
+    )
   (:states
     ram-boss-tracking
     ram-boss-nav-resume
     ram-boss-throw
     ram-boss-nav-start
     ram-boss-jump-down-hit-ground
-    (ram-boss-jump-down basic vector)
-    (ram-boss-already-down basic vector)
+    (ram-boss-jump-down basic)
+    (ram-boss-already-down basic)
     ram-boss-idle
     ram-boss-lose-shield
     ram-boss-up-defend-block

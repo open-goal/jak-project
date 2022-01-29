@@ -912,6 +912,8 @@
   "snow-vis"
   )
 
+;; ram-boss
+(copy-strs "SNRBICFC" "SNRBIPFC" "SNRBSBFC")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Fire Canyon

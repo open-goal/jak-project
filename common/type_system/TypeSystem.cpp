@@ -500,7 +500,8 @@ MethodInfo TypeSystem::declare_method(Type* type,
                                       const std::string& method_name,
                                       bool no_virtual,
                                       const TypeSpec& ts,
-                                      bool override_type) {
+                                      bool override_type,
+                                      int id) {
   if (method_name == "new") {
     if (override_type) {
       throw_typesystem_error("Cannot use :replace option with a new method.");
@@ -514,10 +515,13 @@ MethodInfo TypeSystem::declare_method(Type* type,
 
   if (override_type) {
     if (!got_existing) {
-      throw_typesystem_error(
-          "Cannot use :replace on method {} of {} because this method was not previously declared "
-          "in a parent.",
-          method_name, type->get_name());
+      if (id != -1 && try_lookup_method(type->get_parent(), id, &existing_info)) {
+      } else {
+        throw_typesystem_error(
+            "Cannot use :replace on method {} of {} because this method was not previously "
+            "declared in a parent.",
+            method_name, type->get_name());
+      }
     }
 
     // use the existing ID.

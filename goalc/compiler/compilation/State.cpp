@@ -139,8 +139,10 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   //  state_name
   //  state_parent
   //  state object
+  //  is_override
   //  named args for enter/exit/trans/post/event/code
-  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL, {}},
+  va_check(form, args,
+           {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL, {}, goos::ObjectType::SYMBOL},
            {
                {"enter", {true, {}}},
                {"exit", {true, {}}},
@@ -179,7 +181,8 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
 
   MethodInfo parent_method_info;
   auto parent_of_parent_type = m_ts.lookup_type(state_parent)->get_parent();
-  if (m_ts.try_lookup_method(parent_of_parent_type, state_name, &parent_method_info)) {
+  if (m_ts.try_lookup_method(parent_of_parent_type, state_name, &parent_method_info) &&
+      args.unnamed.at(3).as_symbol()->name == "#f") {
     // need to call inherit state TODO
     auto inherit_state_func =
         compile_get_symbol_value(form, "inherit-state", env)->to_gpr(form, env);

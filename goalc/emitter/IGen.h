@@ -2048,15 +2048,15 @@ class IGen {
   }
 
   /*!
-   * Convert XMM float to GPR int32(single precision) (truncate)
+   * Convert XMM float to GPR int64(single precision) (truncate)
    */
-  static Instruction float_to_int32(Register dst, Register src) {
+  static Instruction float_to_int64(Register dst, Register src) {
     assert(dst.is_gpr());
     assert(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x2c);
-    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     instr.swap_op0_rex();
     return instr;
   }

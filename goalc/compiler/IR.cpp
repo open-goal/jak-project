@@ -1055,7 +1055,7 @@ RegAllocInstr IR_FloatToInt::to_rai() {
 void IR_FloatToInt::do_codegen(emitter::ObjectGenerator* gen,
                                const AllocationResult& allocs,
                                emitter::IR_Record irec) {
-  gen->add_instr(IGen::float_to_int32(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
+  gen->add_instr(IGen::float_to_int64(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
                  irec);
 }
 
