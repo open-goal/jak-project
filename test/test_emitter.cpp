@@ -3726,7 +3726,7 @@ TEST(EmitterXmm32, float_to_int) {
         memcpy(&val, &g, sizeof(float));
         tester.emit(IGen::mov_gpr64_u64(RAX, val));
         tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, RAX));
-        tester.emit(IGen::float_to_int64(j, XMM0 + i));
+        tester.emit(IGen::float_to_int32(j, XMM0 + i));
         tester.emit(IGen::mov_gpr64_gpr64(RAX, j));
         tester.emit_pop_all_gprs(true);
         tester.emit_pop_all_xmms();
