@@ -81,13 +81,15 @@ class Tfrag3 {
 
   std::string m_level_name;
 
-  std::vector<GLuint> m_textures;
+  const std::vector<GLuint>* m_textures = nullptr;
   std::vector<TreeCache> m_cached_trees;
 
   std::vector<math::Vector<u8, 4>> m_color_result;
 
   GLuint m_debug_vao = -1;
   GLuint m_debug_verts = -1;
+
+  u64 m_load_id = -1;
 
   // in theory could be up to 4096, I think, but we don't see that many...
   // should be easy to increase (will require a shader change too for indexing)
@@ -105,13 +107,11 @@ class Tfrag3 {
     FREE_OLD_TREES = 1,
     INIT_NEW_TREES = 2,
     UPLOAD_VERTS = 3,
-    INIT_TEX = 4,
   };
 
   struct {
     bool loading = false;
     State state;
-    u32 tex_id = 0;
     u32 vert = 0;
   } m_load_state;
   static constexpr int MAX_TEX_PER_FRAME = 4;

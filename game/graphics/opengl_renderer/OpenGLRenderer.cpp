@@ -165,6 +165,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
   }
+
+  m_render_state.loader.update();
 }
 
 void OpenGLRenderer::serialize(Serializer& ser) {
