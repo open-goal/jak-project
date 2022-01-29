@@ -391,7 +391,7 @@ file_list = [\
 ["citadel-obs",                           "citadel-obs",                 3, ["CIT", "L1"], "levels/citadel"],
 ["citb-plat",                             "citb-plat",                   3, ["CIT", "L1"], "levels/citadel"],
 ["citadel-sages",                         "citadel-sages",               3, ["CIT", "L1"], "levels/citadel"],
-["snow-bunny",                            "snow-bunny",                  3, ["CIT", "L1", "SNO"], "levels/common"],
+["snow-bunny",                            "snow-bunny",                  3, ["CIT", "L1", "SNO"], "levels/snow"],
 ["citb-bunny",                            "citb-bunny",                  3, ["CIT", "L1"], "levels/citadel"],
 ["citb-drop-plat-CIT",                    "citb-drop-plat",              3, ["CIT"], "levels/citadel"],
 ["citb-drop-plat-L1",                     "citb-drop-plat",              3, ["L1"], "levels/l1_only"],

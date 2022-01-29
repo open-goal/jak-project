@@ -1301,49 +1301,42 @@
   )
 
 (defmethod set-jump-height-factor! ram-boss ((obj ram-boss) (arg0 int))
-  (local-vars (v0-0 object))
-  (the-as
-    float
-    (cond
-      ((zero? (-> obj proj-status))
-       (when (and *target* (>= (- (-> *display* base-frame-counter) (the-as int (-> obj proj-last-thrown-time))) 600))
-         (when arg0
-           (set! (-> obj proj-stoked) #t)
-           (let ((s5-0 (new 'stack-no-clear 'vector)))
-             (set! (-> s5-0 quad) (the-as uint128 0))
-             (let* ((s4-0 (the-as ram-boss-proj (get-process *default-dead-pool* ram-boss-proj #x4000)))
-                    (v1-9 (when s4-0
-                            (let ((t9-1 (method-of-type ram-boss-proj activate)))
-                              (t9-1 s4-0 obj 'ram-boss-proj (the-as pointer #x70004000))
-                              )
-                            (run-now-in-process
-                              s4-0
-                              projectile-init-by-other
-                              (-> obj entity)
-                              (-> obj collide-info trans)
-                              s5-0
-                              0
-                              (process->handle *target*)
-                              )
-                            (-> s4-0 ppointer)
+  (cond
+    ((zero? (-> obj proj-status))
+     (when (and *target* (>= (- (-> *display* base-frame-counter) (the-as int (-> obj proj-last-thrown-time))) 600))
+       (when arg0
+         (set! (-> obj proj-stoked) #t)
+         (let ((s5-0 (new 'stack-no-clear 'vector)))
+           (set! (-> s5-0 quad) (the-as uint128 0))
+           (let* ((s4-0 (the-as ram-boss-proj (get-process *default-dead-pool* ram-boss-proj #x4000)))
+                  (v1-9 (when s4-0
+                          (let ((t9-1 (method-of-type ram-boss-proj activate)))
+                            (t9-1 s4-0 obj 'ram-boss-proj (the-as pointer #x70004000))
                             )
+                          (run-now-in-process
+                            s4-0
+                            projectile-init-by-other
+                            (-> obj entity)
+                            (-> obj collide-info trans)
+                            s5-0
+                            0
+                            (process->handle *target*)
+                            )
+                          (-> s4-0 ppointer)
                           )
-                    )
-               (set! v0-0 (process->handle obj))
-               (set! (-> (the-as (pointer ram-boss-proj) v1-9) 0 notify-handle) (the-as handle v0-0))
-               )
+                        )
+                  )
+             (set! (-> (the-as (pointer ram-boss-proj) v1-9) 0 notify-handle) (process->handle obj))
              )
-           v0-0
            )
          )
        )
-      (else
-        (set! v0-0 #t)
-        (set! (-> obj proj-stoked) (the-as symbol v0-0))
-        v0-0
-        )
+     )
+    (else
+      (set! (-> obj proj-stoked) #t)
       )
     )
+  (none)
   )
 
 (defstate ram-boss-show-anims (ram-boss)

@@ -393,7 +393,6 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
-   "common/snow-bunny.gc"
    "common/battlecontroller.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
@@ -882,6 +881,7 @@
  "snow-ram.gc"
  "snow-part.gc"
  "yeti.gc"
+ "snow-bunny.gc"
  )
 
 (copy-textures 710 842 711 712)
@@ -1325,7 +1325,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/battlecontroller.o")
+  :deps ("out/obj/battlecontroller.o" "out/obj/snow-bunny.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
