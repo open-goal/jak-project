@@ -2,7 +2,6 @@
 ## if the placeholder doesn't exist, error out
 ## the placeholder is `;; DECOMP BEGINS`
 
-from jak1_file_list import file_list
 import os
 
 print("Copying game-text-id enum")
