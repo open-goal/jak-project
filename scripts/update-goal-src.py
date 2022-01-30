@@ -39,7 +39,8 @@ files_with_modifications = [
   "ogreboss",
   "navigate",
   "ice-cube",
-  "snow-bunny"
+  "snow-bunny",
+  "citadel-sages"
 ]
 
 for file in files:

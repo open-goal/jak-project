@@ -5,18 +5,7 @@
 ;; name in dgo: citadel-sages
 ;; dgos: CIT, L1
 
-(define-extern *citb-sagecage-sg* skeleton-group)
-
-(define-extern *green-sagecage-sg* skeleton-group)
-(define-extern *robotboss-sg* skeleton-group)
-(define-extern *evilbro-citadel-sg* skeleton-group)
-(define-extern *evilsis-citadel-sg* skeleton-group)
-(define-extern *yellowsage-sg* skeleton-group)
-(define-extern *bluesage-sg* skeleton-group)
-(define-extern *redsage-sg* skeleton-group)
-
 (declare-type citb-sage process-taskable)
-(declare-type robotboss process-drawable)
 
 ;; DECOMP BEGINS
 
@@ -491,8 +480,15 @@
     )
   :trans
   (behavior ()
-    (if (not (should-display? self))
-        (go-virtual hidden)
+    (#if PC_PORT
+        ;; fix infinite state recursion
+        (if (and (not (and (-> self been-kicked) (-> *pc-settings* fixes crash-sagecage))) (not (should-display? self)))
+            (go-virtual hidden)
+            )
+        ;; no fix
+        (if (not (should-display? self))
+            (go-virtual hidden)
+            )
         )
     ((-> (method-of-type process-taskable idle) trans))
     (none)
@@ -1107,7 +1103,7 @@
              (when s5-1
                (format 0 "robotboss activated ent ~A~%" gp-0)
                (let ((f0-0 327680.0))
-                 (set! (-> (the-as robotboss s5-1) draw bounds w) f0-0)
+                 (set! (-> (the-as process-drawable s5-1) draw bounds w) f0-0)
                  f0-0
                  )
                )
