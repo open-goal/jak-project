@@ -1939,3 +1939,78 @@
     )
   )
 
+(#when PC_PORT
+
+;; custom entity functions for pc port
+(defun-debug entity-inspect-draw ((e entity))
+  "draw text about an entity on screen"
+  
+  ;; draw trans
+  (add-debug-x #t (bucket-id debug-draw1) (-> e trans) (static-rgba 255 255 0 128))
+  (add-debug-text-3d #t (bucket-id debug-draw1) (string-format (res-lump-struct e 'name string)) (-> e trans) (font-color red) (new 'static 'vector2h :y 8))
+
+  ;; start writing text
+  (let ((cur-y 16) (y-adv 8))
+  (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
+                               (bucket-id debug-draw1))
+      ;; basic info, actor id, etc
+      (draw-string-xy
+          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%--------------------" (-> e type) (res-lump-struct e 'name string) (length e) (asize-of e) (-> e aid))
+          debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+      (+! cur-y (* 8 3))
+
+      ;; draw each tag in entity
+      (dotimes (i (length e))
+
+      ;; tag info
+      (format (clear *debug-temp-string*) "~3L~2D)~0L ~20L~A~0L:" i (-> e tag i name) (-> e tag i elt-type))
+      
+      ;; tag data - special cases first
+      (cond
+        ((and (= (-> e tag i name) 'spring-height) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) float))
+          (format *debug-temp-string* " (meters ~m)" (-> (the (pointer float) (get-tag-index-data e i)) 0))
+          )
+        ((and (= (-> e tag i name) 'flava) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
+          (format *debug-temp-string* " (music-flava ~S)" (enum->string music-flava (-> (the (pointer int32) (get-tag-index-data e i)) 0)))
+          )
+        (else
+      (dotimes (ii (-> e tag i elt-count))
+          (format *debug-temp-string* " ")
+          (case (-> e tag i elt-type)
+              ((string symbol)
+                (format *debug-temp-string* "~A" (-> (the (pointer basic) (get-tag-index-data e i)) ii)))
+              ((float) (format *debug-temp-string* "~f" (-> (the (pointer float) (get-tag-index-data e i)) ii)))
+              ((int8) (format *debug-temp-string* "~D" (-> (the (pointer int8) (get-tag-index-data e i)) ii)))
+              ((int32) (format *debug-temp-string* "~D" (-> (the (pointer int32) (get-tag-index-data e i)) ii)))
+              ((uint8) (format *debug-temp-string* "#x~x" (-> (the (pointer uint8) (get-tag-index-data e i)) ii)))
+              ((uint32) (format *debug-temp-string* "#x~x" (-> (the (pointer uint32) (get-tag-index-data e i)) ii)))
+              ((vector)
+                (format *debug-temp-string* "~%(~f ~f ~f ~f)"
+                    (-> (the (inline-array vector) (get-tag-index-data e i)) ii x)
+                    (-> (the (inline-array vector) (get-tag-index-data e i)) ii y)
+                    (-> (the (inline-array vector) (get-tag-index-data e i)) ii z)
+                    (-> (the (inline-array vector) (get-tag-index-data e i)) ii w)
+                    )
+                (+! y-adv 8))
+              (else
+                (format *debug-temp-string* "<unknown type ~A>" (-> e tag i elt-type))
+                (set! ii (the int (-> e tag i elt-count)))
+                )
+              )
+          )
+          )
+        )
+      
+      (draw-string-xy *debug-temp-string* debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+      (+! cur-y y-adv)
+      (set! y-adv 8)
+
+        )
+      
+      )
+  ))
+
+
+)
+
+
