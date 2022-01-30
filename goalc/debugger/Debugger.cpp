@@ -584,12 +584,12 @@ void Debugger::read_symbol_table() {
       assert(sym_offset >= INT16_MIN);
       assert(sym_offset <= INT16_MAX);
 
-      if (strlen(str_buff) >= 50) {
+      std::string str(str_buff);
+      if (str.length() >= 50) {
         fmt::print("Invalid symbol #x{:x}!\n", sym_offset);
         continue;
       }
 
-      std::string str(str_buff);
       // update maps
       if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
         if (str == "asize-of-basic-func") {
