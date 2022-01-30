@@ -12,8 +12,8 @@
   :size-assert         #x20
   :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ uint) none 9)
-    (reached-delay? (_type_ uint) symbol 10)
+    (sleep (_type_ int) none 9)
+    (reached-delay? (_type_ int) symbol 10)
     (completed? (_type_) symbol 11)
     )
   )
@@ -30,10 +30,10 @@
 
 ;; definition for method 9 of type ticky
 ;; INFO: Return type mismatch int vs none.
-(defmethod sleep ticky ((obj ticky) (arg0 uint))
+(defmethod sleep ticky ((obj ticky) (arg0 int))
   (set! (-> obj starting-time) (-> *display* base-frame-counter))
-  (set! (-> obj delay-til-timeout) (the-as int arg0))
-  (set! (-> obj delay-til-ramp) (the-as int (max 0 (the-as int (+ arg0 -1200)))))
+  (set! (-> obj delay-til-timeout) arg0)
+  (set! (-> obj delay-til-ramp) (max 0 (+ arg0 -1200)))
   (set! (-> obj last-tick-time) 0)
   0
   (none)
@@ -68,6 +68,6 @@
   )
 
 ;; definition for method 10 of type ticky
-(defmethod reached-delay? ticky ((obj ticky) (arg0 uint))
-  (>= (- (-> *display* base-frame-counter) (-> obj starting-time)) (the-as int arg0))
+(defmethod reached-delay? ticky ((obj ticky) (arg0 int))
+  (>= (- (-> *display* base-frame-counter) (-> obj starting-time)) arg0)
   )
