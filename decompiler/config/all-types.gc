@@ -19810,7 +19810,7 @@
 (define-extern ambient-hint-init-by-other (function string vector symbol none :behavior level-hint))
 (define-extern level-hint-process-cmd (function (pointer int32) int int int))
 (define-extern task-known? (function game-task symbol))
-(define-extern can-grab-display? (function process-taskable symbol)) ;; unconfirmed, see assistant-firecanyon
+(define-extern can-grab-display? (function process symbol))
 (define-extern level-hint-displayed? (function symbol))
 (define-extern ambient-inspect function)
 
@@ -33068,9 +33068,8 @@
 
 ;; - Types
 
-(declare-type snow-ball-roller process-drawable)
 (deftype snow-ball-shadow (process-drawable)
-  ((parent-override (pointer snow-ball-roller) :score 100         :offset 12))
+  ()
   :method-count-assert 20
   :size-assert         #xb0
   :heap-base           #x40
@@ -33080,8 +33079,8 @@
   )
 
 (deftype snow-ball-junction (structure)
-  ((enter-time uint64  :offset-assert 0)
-   (exit-time  uint64  :offset-assert 8)
+  ((enter-time int64  :offset-assert 0)
+   (exit-time  int64  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -33109,8 +33108,8 @@
    (delay-til-bounce       int32                       :offset-assert 204)
    (rolling-sound-id       sound-id                    :offset-assert 208)
    (rolling-sound-enabled? symbol                       :offset-assert 212)
-   (last-bounce-time       uint64                      :offset-assert 216)
-   (hit-player-time        uint64                      :offset-assert 224)
+   (last-bounce-time       int64                      :offset-assert 216)
+   (hit-player-time        int64                      :offset-assert 224)
    (path-info              snow-ball-path-info :inline :offset-assert 240)
    (junctions              snow-ball-junction             4       :inline :offset-assert 272)
    )
@@ -33119,7 +33118,7 @@
   :heap-base           #xe0
   :flag-assert         #x1700e00150
   (:methods
-    (follow-path (_type_) float 20)
+    (follow-path (_type_) none 20)
     (play-landing-sound (_type_ float) sound-id 21)
     (dummy-22 (_type_ process-drawable) none 22)
     )
@@ -33129,7 +33128,7 @@
 
 (deftype snow-ball (process)
   ((child-override (pointer snow-ball-roller) :score 100         :offset 20)
-   (state-time             uint64    :offset-assert 112)
+   (state-time             int64    :offset-assert 112)
    (last-path-picked       int32     :offset-assert 120)
    (same-path-picked-count int32     :offset-assert 124)
    (delay-til-next         int32     :offset-assert 128)
@@ -33141,7 +33140,7 @@
   :flag-assert         #x100020008c
   (:methods
     (dummy-14 (_type_ (inline-array snow-ball-junction) float int) symbol 14)
-    (dummy-15 (_type_ (inline-array snow-ball-junction) int) none 15) ;; TODO - same type as above
+    (dummy-15 (_type_ (inline-array snow-ball-junction) int) symbol 15)
     )
   (:states
     snow-ball-idle)
@@ -33149,10 +33148,10 @@
 
 ;; - Functions
 
-(define-extern snow-ball-roller-init-by-other (function entity snow-ball float int vector none :behavior snow-ball-roller))
+(define-extern snow-ball-roller-init-by-other (function entity-actor snow-ball float int (inline-array snow-ball-junction) none :behavior snow-ball-roller))
 (define-extern snow-ball-shadow-init-by-other (function none :behavior snow-ball-shadow))
 (define-extern snow-ball-roller-path-update (function none :behavior snow-ball-roller))
-(define-extern snow-ball-roller-path-init (function float :behavior snow-ball-roller))
+(define-extern snow-ball-roller-path-init (function none :behavior snow-ball-roller))
 
 ;; - Unknowns
 
