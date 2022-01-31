@@ -1942,23 +1942,26 @@
 (#when PC_PORT
 
 ;; custom entity functions for pc port
-(defun-debug entity-inspect-draw ((e entity))
+(defun-debug entity-inspect-draw ((inspect-info entity-debug-inspect))
   "draw text about an entity on screen"
   
-  (let ((name (res-lump-struct e 'name string)))
-  (set! *display-actor-anim* name)
+  (update-pad inspect-info 0)
+  (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
+  (set! *display-actor-anim* (the string (and (-> inspect-info show-actor-info) name)))
   ;; draw trans
   (add-debug-x #t (bucket-id debug-draw1) (-> e trans) (static-rgba 255 255 0 128))
+  (if (not (-> inspect-info show-actor-info))
+      (add-debug-text-3d #t (bucket-id debug-draw1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8)))
 
   ;; start writing text
-  (let ((cur-y 16) (y-adv 8))
+  (let ((cur-y (- 16 (* (-> inspect-info scroll-y) 8))) (y-adv 8))
   (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
                                (bucket-id debug-draw1))
       ;; basic info, actor id, etc
       (draw-string-xy
-          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
+          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%r1/l1 scroll l3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
           debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
-      (+! cur-y (* 8 3))
+      (+! cur-y (* 8 4))
 
       ;; draw each tag in entity
       (dotimes (i (length e))
@@ -2008,7 +2011,8 @@
               ((uint8) (format *debug-temp-string* "#x~x" (-> (the (pointer uint8) data) ii)))
               ((uint32)
                 (case (-> e tag i name)
-                  (('nav-mesh-actor 'open-actor 'trigger-actor 'path-actor 'state-actor 'alt-actor 'next-actor 'prev-actor)
+                  (('nav-mesh-actor 'open-actor 'trigger-actor 'path-actor 'state-actor 'alt-actor 'next-actor 'prev-actor
+                    'spawner-blocker-actor 'spawner-trigger-actor)
                     (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
                             (res-lump-struct (entity-by-aid (-> (the (pointer uint32) data) ii)) 'name string))
                     (+! y-adv 8)
