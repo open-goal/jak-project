@@ -623,7 +623,7 @@
 ;; assistant
 (copy-strs "ASIBESWI" "ASR1BESW")
 ;; sage
-(copy-strs "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
+(copy-strs "SAISA" "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
 ;; fishermans-boat
 (copy-strs "FIBRTMIS")
 
@@ -1455,7 +1455,6 @@
   "intro-vis"
   )
 
-(copy-strs "SAISA")
 ;; evilbro
 (copy-strs "EVMEND")
 
