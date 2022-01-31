@@ -948,4 +948,333 @@ void link() {
 } // namespace draw_bones_merc
 } // namespace Mips2C
 
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace draw_bones_check_longest_edge_asm {
+struct Cache {
+  void* math_camera; // *math-camera*
+  void* fake_scratchpad_data;
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  bool cop1_bc = false;
+  float acc;
+  c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
+  c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
+  c->mov64(fp, t9);                                 // or fp, t9, r0
+  // c->lui(at, 28672);                                // lui at, 28672
+  get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);
+  c->mov64(v0, s7);                                 // or v0, s7, r0
+  c->load_symbol(v1, cache.math_camera);            // lw v1, *math-camera*(s7)
+  c->lwc1(f0, 64, a0);                              // lwc1 f0, 64(a0)
+  c->lwc1(f7, 176, at);                             // lwc1 f7, 176(at)
+  c->lwc1(f3, 180, at);                             // lwc1 f3, 180(at)
+  c->lwc1(f6, 184, at);                             // lwc1 f6, 184(at)
+  c->lwc1(f4, 136, a0);                             // lwc1 f4, 136(a0)
+  c->lwc1(f12, 0, v1);                              // lwc1 f12, 0(v1)
+  c->lwc1(f11, 64, v1);                             // lwc1 f11, 64(v1)
+  c->mtc1(f1, a1);                                  // mtc1 f1, a1
+  c->mtc1(f9, r0);                                  // mtc1 f9, r0
+  c->mtc1(f10, r0);                                 // mtc1 f10, r0
+  c->mtc1(f2, r0);                                  // mtc1 f2, r0
+  c->mtc1(f2, r0);                                  // mtc1 f2, r0
+  c->mtc1(f5, r0);                                  // mtc1 f5, r0
+  c->mtc1(f8, r0);                                  // mtc1 f8, r0
+  c->lw_float_constant(a0, 0x3f800000);             // lw a0, L168(fp) 1.0
+  c->mtc1(f5, a0);                                  // mtc1 f5, a0
+  cop1_bc = c->fprs[f1] < c->fprs[f11];             // c.lt.s f1, f11
+  bc = cop1_bc;                                     // bc1t L69
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_37;}                          // branch non-likely
+
+  c->lwc1(f11, 12, v1);                             // lwc1 f11, 12(v1)
+  c->lwc1(f13, 16, v1);                             // lwc1 f13, 16(v1)
+  c->muls(f11, f11, f12);                           // mul.s f11, f11, f12
+  c->muls(f13, f13, f12);                           // mul.s f13, f13, f12
+  c->subs(f14, f6, f4);                             // sub.s f14, f6, f4
+  cop1_bc = c->fprs[f12] < c->fprs[f14];            // c.lt.s f12, f14
+  bc = !cop1_bc;                                    // bc1f L53
+  c->lwc1(f12, 60, v1);                             // lwc1 f12, 60(v1)
+  if (bc) {goto block_3;}                           // branch non-likely
+
+  c->muls(f12, f14, f12);                           // mul.s f12, f14, f12
+  cop1_bc = c->fprs[f0] < c->fprs[f12];             // c.lt.s f0, f12
+  bc = cop1_bc;                                     // bc1t L68
+  // nop                                            // sll r0, r0, 0
+  if (bc) {
+//   fmt::print("pass 1 due to {} {}\n",  c->fprs[f0], c->fprs[f12]);
+goto block_36;}                          // branch non-likely
+
+
+  block_3:
+  c->subs(f14, f3, f4);                             // sub.s f14, f3, f4
+  cop1_bc = c->fprs[f13] < c->fprs[f14];            // c.lt.s f13, f14
+  bc = !cop1_bc;                                    // bc1f L54
+  c->lwc1(f12, 56, v1);                             // lwc1 f12, 56(v1)
+  if (bc) {goto block_5;}                           // branch non-likely
+
+  //beq r0, r0, L55                                 // beq r0, r0, L55
+  c->muls(f10, f14, f12);                           // mul.s f10, f14, f12
+  goto block_7;                                     // branch always
+
+
+  block_5:
+  c->adds(f14, f3, f4);                             // add.s f14, f3, f4
+  c->negs(f13, f13);                                // neg.s f13, f13
+  cop1_bc = c->fprs[f14] < c->fprs[f13];            // c.lt.s f14, f13
+  bc = !cop1_bc;                                    // bc1f L55
+  c->negs(f13, f14);                                // neg.s f13, f14
+  if (bc) {goto block_7;}                           // branch non-likely
+
+  c->muls(f10, f13, f12);                           // mul.s f10, f13, f12
+
+  block_7:
+  cop1_bc = c->fprs[f0] < c->fprs[f10];             // c.lt.s f0, f10
+  bc = cop1_bc;                                     // bc1t L68
+  // nop                                            // sll r0, r0, 0
+  if (bc) {
+//    fmt::print("pass 2 due to {} {}\n",  c->fprs[f0], c->fprs[f10]);
+goto block_36;}                          // branch non-likely
+
+  c->subs(f12, f7, f4);                             // sub.s f12, f7, f4
+  cop1_bc = c->fprs[f11] < c->fprs[f12];            // c.lt.s f11, f12
+  bc = !cop1_bc;                                    // bc1f L56
+  c->lwc1(f10, 52, v1);                             // lwc1 f10, 52(v1)
+  if (bc) {goto block_10;}                          // branch non-likely
+
+  //beq r0, r0, L57                                 // beq r0, r0, L57
+  c->muls(f9, f12, f10);                            // mul.s f9, f12, f10
+  goto block_12;                                    // branch always
+
+
+  block_10:
+  c->adds(f12, f7, f4);                             // add.s f12, f7, f4
+  c->negs(f11, f11);                                // neg.s f11, f11
+  cop1_bc = c->fprs[f12] < c->fprs[f11];            // c.lt.s f12, f11
+  bc = !cop1_bc;                                    // bc1f L57
+  c->negs(f11, f12);                                // neg.s f11, f12
+  if (bc) {goto block_12;}                          // branch non-likely
+
+  c->muls(f9, f11, f10);                            // mul.s f9, f11, f10
+
+  block_12:
+  cop1_bc = c->fprs[f0] < c->fprs[f9];              // c.lt.s f0, f9
+  bc = cop1_bc;                                     // bc1t L68
+  // nop                                            // sll r0, r0, 0
+  if (bc) {
+//    fmt::print("pass 3 due to {} {}\n",  c->fprs[f0], c->fprs[f9]);
+goto block_36;}                          // branch non-likely
+
+
+  c->abss(f14, f7);// Unknown instr: abs.s f14, f7
+  c->movs(f12, f6);                                 // mov.s f12, f6
+  acc = c->fprs[f14] * c->fprs[f14]; // Unknown instr: mula.s f14, f14
+  c->fprs[f15] = acc + c->fprs[f12] * c->fprs[f12]; // Unknown instr: madd.s f15, f12, f12
+  c->lwc1(f9, 76, v1);                              // lwc1 f9, 76(v1)
+  c->lwc1(f13, 80, v1);                             // lwc1 f13, 80(v1)
+  c->lwc1(f10, 84, v1);                             // lwc1 f10, 84(v1)
+  c->lwc1(f11, 88, v1);                             // lwc1 f11, 88(v1)
+  c->fprs[f16] = c->fprs[f5] / (std::sqrt((c->fprs[f15]))); // Unknown instr: rsqrt.s f16, f5, f15
+  c->muls(f15, f14, f16);                           // mul.s f15, f14, f16
+  c->muls(f16, f12, f16);                           // mul.s f16, f12, f16
+  acc = c->fprs[f9] * c->fprs[f16]; // Unknown instr: mula.s f9, f16
+  c->fprs[f12] = acc - c->fprs[f13] * c->fprs[f15]; // Unknown instr: msub.s f12, f13, f15
+  acc = c->fprs[f10] * c->fprs[f16]; // Unknown instr: mula.s f10, f16
+  c->fprs[f14] = acc - c->fprs[f11] * c->fprs[f15];// Unknown instr: msub.s f14, f11, f15
+  acc = c->fprs[f9] * c->fprs[f15];// Unknown instr: mula.s f9, f15
+  c->fprs[f9] = acc + c->fprs[f13] * c->fprs[f16];// Unknown instr: madd.s f9, f13, f16
+  acc = c->fprs[f10] * c->fprs[f15];// Unknown instr: mula.s f10, f15
+  c->fprs[f10] = acc + c->fprs[f11] * c->fprs[f16];// Unknown instr: madd.s f10, f11, f16
+  cop1_bc = c->fprs[f8] < c->fprs[f12];             // c.lt.s f8, f12
+  bc = cop1_bc;                                     // bc1t L58
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_17;}                          // branch non-likely
+
+  cop1_bc = c->fprs[f8] < c->fprs[f14];             // c.lt.s f8, f14
+  bc = cop1_bc;                                     // bc1t L59
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  cop1_bc = c->fprs[f8] < c->fprs[f9];              // c.lt.s f8, f9
+  bc = cop1_bc;                                     // bc1t L60
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_19;}                          // branch non-likely
+
+  //beq r0, r0, L62                                 // beq r0, r0, L62
+  // nop                                            // sll r0, r0, 0
+  goto block_23;                                    // branch always
+
+
+  block_17:
+  //beq r0, r0, L62                                 // beq r0, r0, L62
+  c->divs(f2, f1, f10);                             // div.s f2, f1, f10
+  goto block_23;                                    // branch always
+
+
+  block_18:
+  c->negs(f2, f12);                                 // neg.s f2, f12
+  c->divs(f2, f2, f9);                              // div.s f2, f2, f9
+  c->divs(f7, f14, f10);                            // div.s f7, f14, f10
+  c->adds(f2, f7, f2);                              // add.s f2, f7, f2
+  //beq r0, r0, L62                                 // beq r0, r0, L62
+  c->muls(f2, f2, f1);                              // mul.s f2, f2, f1
+  goto block_23;                                    // branch always
+
+
+  block_19:
+  c->subs(f8, f7, f4);                              // sub.s f8, f7, f4
+  c->adds(f10, f7, f4);                             // add.s f10, f7, f4
+  c->negs(f11, f7);                                 // neg.s f11, f7
+  cop1_bc = c->fprs[f7] < c->fprs[f8];              // c.lt.s f7, f8
+  bc = cop1_bc;                                     // bc1t L61
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_22;}                          // branch non-likely
+
+  cop1_bc = c->fprs[f10] < c->fprs[f11];            // c.lt.s f10, f11
+  bc = cop1_bc;                                     // bc1t L61
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_22;}                          // branch non-likely
+
+  //beq r0, r0, L62                                 // beq r0, r0, L62
+  // nop                                            // sll r0, r0, 0
+  goto block_23;                                    // branch always
+
+
+  block_22:
+  c->negs(f2, f12);                                 // neg.s f2, f12
+  c->muls(f2, f1, f2);                              // mul.s f2, f1, f2
+  c->divs(f2, f2, f9);                              // div.s f2, f2, f9
+
+  block_23:
+  cop1_bc = c->fprs[f0] < c->fprs[f2];              // c.lt.s f0, f2
+  bc = cop1_bc;                                     // bc1t L68
+  // nop                                            // sll r0, r0, 0
+  if (bc) {
+//    fmt::print("pass 4 due to {} {}\n",  c->fprs[f0], c->fprs[f2]);
+goto block_36;}                          // branch non-likely
+
+  c->abss(f10, f3);// Unknown instr: abs.s f10, f3
+  c->movs(f12, f6);                                 // mov.s f12, f6
+  acc = c->fprs[f10] * c->fprs[f10];// Unknown instr: mula.s f10, f10
+  c->fprs[f9] = acc + c->fprs[f12] * c->fprs[12];// Unknown instr: madd.s f9, f12, f12
+  c->lwc1(f7, 96, v1);                              // lwc1 f7, 96(v1)
+  c->lwc1(f8, 100, v1);                             // lwc1 f8, 100(v1)
+  c->lwc1(f6, 104, v1);                             // lwc1 f6, 104(v1)
+  c->fprs[f5] = c->fprs[f5] / std::sqrt((c->fprs[f9])); // Unknown instr: rsqrt.s f5, f5, f9
+  c->lwc1(f11, 108, v1);                            // lwc1 f11, 108(v1)
+  c->mtc1(f9, r0);                                  // mtc1 f9, r0
+  c->muls(f13, f10, f5);                            // mul.s f13, f10, f5
+  c->muls(f14, f12, f5);                            // mul.s f14, f12, f5
+  acc = c->fprs[f7] * c->fprs[f14];// Unknown instr: mula.s f7, f14
+  c->fprs[f10] = acc - c->fprs[f8] * c->fprs[f13];// Unknown instr: msub.s f10, f8, f13
+  acc = c->fprs[f6] * c->fprs[f14];// Unknown instr: mula.s f6, f14
+  c->fprs[f12] = acc - c->fprs[f11] * c->fprs[f13];// Unknown instr: msub.s f12, f11, f13
+  acc = c->fprs[f7] * c->fprs[f13];// Unknown instr: mula.s f7, f13
+  c->fprs[f5] = acc + c->fprs[f8] * c->fprs[f14];// Unknown instr: madd.s f5, f8, f14
+  acc = c->fprs[f6] * c->fprs[f13];// Unknown instr: mula.s f6, f13
+  c->fprs[f6] = acc + c->fprs[f11] * c->fprs[f14];// Unknown instr: madd.s f6, f11, f14
+  cop1_bc = c->fprs[f9] < c->fprs[f10];             // c.lt.s f9, f10
+  bc = cop1_bc;                                     // bc1t L63
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_28;}                          // branch non-likely
+
+  cop1_bc = c->fprs[f9] < c->fprs[f12];             // c.lt.s f9, f12
+  bc = cop1_bc;                                     // bc1t L64
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_29;}                          // branch non-likely
+
+  cop1_bc = c->fprs[f9] < c->fprs[f5];              // c.lt.s f9, f5
+  bc = cop1_bc;                                     // bc1t L65
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_30;}                          // branch non-likely
+
+  //beq r0, r0, L67                                 // beq r0, r0, L67
+  // nop                                            // sll r0, r0, 0
+  goto block_34;                                    // branch always
+
+
+  block_28:
+  //beq r0, r0, L67                                 // beq r0, r0, L67
+  c->divs(f1, f1, f6);                              // div.s f1, f1, f6
+  goto block_34;                                    // branch always
+
+
+  block_29:
+  c->negs(f3, f10);                                 // neg.s f3, f10
+  c->divs(f3, f3, f5);                              // div.s f3, f3, f5
+  c->divs(f4, f12, f6);                             // div.s f4, f12, f6
+  c->adds(f3, f4, f3);                              // add.s f3, f4, f3
+  //beq r0, r0, L67                                 // beq r0, r0, L67
+  c->muls(f1, f3, f1);                              // mul.s f1, f3, f1
+  goto block_34;                                    // branch always
+
+
+  block_30:
+  c->subs(f6, f3, f4);                              // sub.s f6, f3, f4
+  c->adds(f4, f3, f4);                              // add.s f4, f3, f4
+  c->negs(f7, f3);                                  // neg.s f7, f3
+  cop1_bc = c->fprs[f3] < c->fprs[f6];              // c.lt.s f3, f6
+  bc = cop1_bc;                                     // bc1t L66
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_33;}                          // branch non-likely
+
+  cop1_bc = c->fprs[f4] < c->fprs[f7];              // c.lt.s f4, f7
+  bc = cop1_bc;                                     // bc1t L66
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_33;}                          // branch non-likely
+
+  //beq r0, r0, L67                                 // beq r0, r0, L67
+  // nop                                            // sll r0, r0, 0
+  goto block_34;                                    // branch always
+
+
+  block_33:
+  c->negs(f3, f10);                                 // neg.s f3, f10
+  c->muls(f1, f1, f3);                              // mul.s f1, f1, f3
+  c->divs(f1, f1, f5);                              // div.s f1, f1, f5
+
+  block_34:
+//fmt::print("check: {} {}\n", c->fprs[f0], c->fprs[f2]);
+  cop1_bc = c->fprs[f0] < c->fprs[f2];              // c.lt.s f0, f2
+  bc = cop1_bc;                                     // bc1t L68
+  // nop                                            // sll r0, r0, 0
+  if (bc) {
+//    fmt::print("pass 5 due to {} {}\n",  c->fprs[f0], c->fprs[f2]);
+goto block_36;}                          // branch non-likely
+
+  //beq r0, r0, L69                                 // beq r0, r0, L69
+  // nop                                            // sll r0, r0, 0
+  goto block_37;                                    // branch always
+
+
+  block_36:
+//  fmt::print("pass!\n");
+  c->daddiu(v0, s7, 8);                             // daddiu v0, s7, #t
+
+  block_37:
+  c->ld(fp, 8, sp);                                 // ld fp, 8(sp)
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 16);                            // daddiu sp, sp, 16
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.math_camera = intern_from_c("*math-camera*").c();
+  gLinkedFunctionTable.reg("draw-bones-check-longest-edge-asm", execute, 128);
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
+}
+
+} // namespace draw_bones_check_longest_edge_asm
+} // namespace Mips2C
 

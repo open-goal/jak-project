@@ -756,6 +756,7 @@
   (none))
 
 (def-mips2c draw-bones-merc (function draw-control object object int int pointer))
+(def-mips2c draw-bones-check-longest-edge-asm (function draw-control float symbol))
 
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
@@ -763,7 +764,7 @@
   (local-vars  (a0-16 int) (a0-17 int) (a0-62 int) (a2-10 int) (a2-12 int)
     (used-merc int) (used-mercneric int) (effect-idx int) (sv-144 ripple-control))
   (rlet ((vf1 :class vf) (vf2 :class vf) (vf3 :class vf) (vf4 :class vf) (vf5 :class vf) (vf6 :class vf)
-         (vf7 :class vf) (vf8 :class vf) (vf9 :class vf))
+         (vf7 :class vf) (vf8 :class vf) (vf9 :class vf) (acc :class vf))
         
     ;; compute the number of bones. I believe this num-joints doesn't count align/prejoint/main, so each needs a bone
     (let* ((num-bones (+ (-> arg0 mgeo num-joints) 3))
@@ -870,17 +871,28 @@
               (.lvf vf3 (&-> v1-6 direction 2 quad))
               ;;(.vcallms 54)
               ;; TODO!
-              #|
-                mulax.xyzw ACC, vf01, vf04
-                madday.xyzw ACC, vf02, vf04
-                maddz.xyzw vf07, vf03, vf04
-                mulax.xyzw ACC, vf01, vf05
-                madday.xyzw ACC, vf02, vf05
-                maddz.xyzw vf08, vf03, vf05
-                mulax.xyzw ACC, vf01, vf06
-                madday.xyzw ACC, vf02, vf06 :e
-                maddz.xyzw vf09, vf03, vf06
-                |#
+              
+                ;mulax.xyzw ACC, vf01, vf04
+                (.mul.x.vf acc vf1 vf4)
+                ;madday.xyzw ACC, vf02, vf04
+                (.add.mul.y.vf acc vf2 vf4 acc)
+                ;maddz.xyzw vf07, vf03, vf04
+                (.add.mul.z.vf vf7 vf3 vf4 acc)
+                
+                ;mulax.xyzw ACC, vf01, vf05
+                (.mul.x.vf acc vf1 vf5)
+                ;madday.xyzw ACC, vf02, vf05
+                (.add.mul.y.vf acc vf2 vf5 acc)
+                ;maddz.xyzw vf08, vf03, vf05
+                (.add.mul.z.vf vf8 vf3 vf5 acc)
+                
+                ;mulax.xyzw ACC, vf01, vf06
+                (.mul.x.vf acc vf1 vf6)
+                ;madday.xyzw ACC, vf02, vf06 :e
+                (.add.mul.y.vf acc vf2 vf6 acc)
+                ;maddz.xyzw vf09, vf03, vf06
+                (.add.mul.z.vf vf9 vf3 vf6 acc)
+                
               (let ((a1-9 (-> v1-6 color 0 quad)))
                 (let ((a2-14 (-> v1-6 color 1 quad)))
                   (let ((a3-11 (-> v1-6 color 2 quad)))
@@ -920,7 +932,8 @@
               ;; the user must provide a longest edge length, and we must pass an edge check (fails if close to camera)
               (cond
                 ((nonzero? (-> arg0 longest-edge))
-                 (if #f ;; TODO (draw-bones-check-longest-edge-asm arg0 arg2)
+                 ;; TODO this makes close up things bad...
+                 (if (draw-bones-check-longest-edge-asm arg0 arg2)
                      (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)      ;; clip with mercprime!
                      (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1) ;; failed, use generic
                      )
@@ -1067,6 +1080,14 @@
                     used-merc
                     )
                   )
+                
+                ;; HACK just use merc.
+                (unless (logtest? (-> arg0 status) (draw-status needs-clip))
+                  (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                  )
+                (when (and (logtest? (-> arg0 status) (draw-status needs-clip)) (nonzero? (-> arg0 longest-edge)) (draw-bones-check-longest-edge-asm arg0 arg2))
+                 (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                 )
                 (set! effect-idx (+ effect-idx 1))
                 ) ;; end effect loop
               
@@ -1090,6 +1111,8 @@
               ;   )
             
               ;; draw merc!
+              
+              (set! used-merc 1)
               (when (nonzero? used-merc)
                 (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
                   (when (= (-> arg0 cur-lod) (-> arg0 lod-set max-lod))

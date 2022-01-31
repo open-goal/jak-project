@@ -1032,6 +1032,7 @@ struct ExecutionContext {
   }
 
   void movs(int dst, int src) { fprs[dst] = fprs[src]; }
+  void abss(int dst, int src) { fprs[dst] = std::abs(fprs[src]); }
 
   void cvtws(int dst, int src) {
     // float to int

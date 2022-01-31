@@ -150,7 +150,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   // 42
   init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false, 1);
   // 44
-  // 45?
+  init_bucket_renderer<MercRenderer>("merc-after-alpha", BucketId::MERC_AFTER_ALPHA);
   // 46?
   // 47?
 

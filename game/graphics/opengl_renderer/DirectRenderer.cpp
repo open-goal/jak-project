@@ -310,8 +310,13 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 
   if (!tex) {
     // TODO Add back
-    fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-    tex = render_state->texture_pool->get_random_texture();
+    if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8208) {
+      tex = render_state->texture_pool->get_random_texture();
+    } else {
+      fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+      tex = render_state->texture_pool->get_random_texture();
+    }
+
     if (tex) {
       // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
     }
@@ -370,9 +375,12 @@ void DirectRenderer::update_gl_blend() {
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
-      lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
-                (int)state.d);
-      assert(false);
+      // MERC HACK
+//      lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
+//                (int)state.d);
+      glDisable(GL_BLEND);
+      // s, d
+//      assert(false);
     }
   }
 }
@@ -399,7 +407,9 @@ void DirectRenderer::update_gl_test() {
         assert(false);
     }
   } else {
-    assert(false);
+//    glDisable(GL_DEPTH_TEST);
+// MERC HACK
+//     assert(false);
   }
 
   if (state.date) {
@@ -521,7 +531,7 @@ void DirectRenderer::render_gif(const u8* data,
       }
       for (u32 loop = 0; loop < tag.nloop(); loop++) {
         for (u32 reg = 0; reg < nreg; reg++) {
-          // fmt::print("{}\n", reg_descriptor_name(reg_desc[reg]));
+//           fmt::print("{}\n", reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::AD:
               handle_ad(data + offset, render_state, prof);
@@ -554,7 +564,7 @@ void DirectRenderer::render_gif(const u8* data,
         for (u32 reg = 0; reg < nreg; reg++) {
           u64 register_data;
           memcpy(&register_data, data + offset, 8);
-          // fmt::print("loop: {} reg: {} {}\n", loop, reg, reg_descriptor_name(reg_desc[reg]));
+//           fmt::print("loop: {} reg: {} {}\n", loop, reg, reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::PRIM:
               handle_prim(register_data, render_state, prof);
@@ -595,7 +605,7 @@ void DirectRenderer::handle_ad(const u8* data,
   memcpy(&value, data, sizeof(u64));
   memcpy(&addr, data + 8, sizeof(GsRegisterAddress));
 
-  // fmt::print("{}\n", register_address_name(addr));
+//   fmt::print("{}\n", register_address_name(addr));
   switch (addr) {
     case GsRegisterAddress::ZBUF_1:
       handle_zbuf1(value, render_state, prof);
@@ -717,7 +727,7 @@ void DirectRenderer::handle_tex0_1(u64 val,
   // tw: assume they got it right
   // th: assume they got it right
 
-  assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+//  assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
   // cpsm: assume they got it right
@@ -823,8 +833,8 @@ void DirectRenderer::handle_clamp1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    assert(false);
+//    fmt::print("clamp: 0x{:x}\n", val); MERC HACK
+//    assert(false);
   }
 
   if (current_texture_state()->m_clamp_state.current_register != val) {
@@ -1081,7 +1091,7 @@ void DirectRenderer::BlendState::from_register(GsAlpha reg) {
   d = reg.d_mode();
   fix = reg.fix();
 
-  assert(fix == 0);
+  // assert(fix == 0);
 }
 
 void DirectRenderer::PrimGlState::from_register(GsPrim reg) {
