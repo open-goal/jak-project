@@ -882,7 +882,7 @@ TEST_F(WithGameTests, SetU64FromFloat) {
 
 TEST_F(WithGameTests, TrickyFloatBehavior) {
   shared_compiler->runner.run_static_test(env, testCategory, "tricky-floats.gc",
-                                          {"#x80000000 1.0000 #xffffffffbf800000\n0\n"});
+                                          {"#xffffffff80000000 1.0000 #xffffffffbf800000\n0\n"});
 }
 
 TEST_F(WithGameTests, ProcessAllocation) {

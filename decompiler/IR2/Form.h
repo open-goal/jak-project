@@ -1618,7 +1618,8 @@ class DefstateElement : public FormElement {
   DefstateElement(const std::string& process_type,
                   const std::string& state_name,
                   const std::vector<Entry>& entries,
-                  bool is_virtual);
+                  bool is_virtual,
+                  bool is_override);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1637,6 +1638,7 @@ class DefstateElement : public FormElement {
   std::string m_state_name;
   std::vector<Entry> m_entries;
   bool m_is_virtual = false;
+  bool m_is_override = false;
 };
 
 class DefskelgroupElement : public FormElement {

@@ -13,11 +13,11 @@ std::string uppercase_string(const std::string& s) {
 }
 }  // namespace
 
-tfrag3::Level* Loader::get_tfrag3_level(const std::string& level_name) {
+const Loader::LevelData* Loader::get_tfrag3_level(const std::string& level_name) {
   std::unique_lock<std::mutex> lk(m_loader_mutex);
-  const auto& existing = m_tfrag3_levels.find(level_name);
-  if (existing == m_tfrag3_levels.end()) {
-    if (m_level_to_load.empty()) {
+  const auto& existing = m_loaded_tfrag3_levels.find(level_name);
+  if (existing == m_loaded_tfrag3_levels.end()) {
+    if (m_level_to_load.empty() && m_initializing_tfrag3_levels.count(level_name) == 0) {
       fmt::print("[pc loader] starting load for {}\n", level_name);
       m_level_to_load = level_name;
       lk.unlock();
@@ -28,7 +28,7 @@ tfrag3::Level* Loader::get_tfrag3_level(const std::string& level_name) {
     }
   } else {
     existing->second.frames_since_last_used = 0;
-    return existing->second.level.get();
+    return &existing->second.data;
   }
 }
 
@@ -60,13 +60,86 @@ void Loader::loader_thread() {
                disk_load_time, import_time, decomp_time);
 
     lk.lock();
+    m_initializing_tfrag3_levels[lev].data.level = std::move(result);
     m_level_to_load = "";
-    m_tfrag3_levels[lev].level = std::move(result);
   }
 }
 
 Loader::Loader() {
   m_loader_thread = std::thread(&Loader::loader_thread, this);
+}
+
+void Loader::update() {
+  Timer loader_timer;
+
+  // only main thread can touch this.
+  for (auto& lev : m_loaded_tfrag3_levels) {
+    lev.second.frames_since_last_used++;
+  }
+
+  bool did_gpu_stuff = false;
+
+  {
+    // try to move level from initializing to initialized:
+    std::unique_lock<std::mutex> lk(m_loader_mutex);
+    const auto& it = m_initializing_tfrag3_levels.begin();
+    if (it != m_initializing_tfrag3_levels.end()) {
+      did_gpu_stuff = true;
+      constexpr int MAX_TEX_BYTES_PER_FRAME = 1024 * 1024;
+      auto& data = it->second.data;
+
+      int bytes_this_run = 0;
+      while (data.textures.size() < data.level->textures.size()) {
+        auto& tex = data.level->textures[data.textures.size()];
+        GLuint gl_tex;
+        glGenTextures(1, &gl_tex);
+        glBindTexture(GL_TEXTURE_2D, gl_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.w, tex.h, 0, GL_RGBA,
+                     GL_UNSIGNED_INT_8_8_8_8_REV, tex.data.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, gl_tex);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        float aniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+        it->second.data.textures.push_back(gl_tex);
+        bytes_this_run += tex.w * tex.h * 4;
+        if (bytes_this_run > MAX_TEX_BYTES_PER_FRAME) {
+          break;
+        }
+      }
+      if (data.textures.size() == data.level->textures.size()) {
+        fmt::print("Loader texture complete: {}\n", it->first);
+        it->second.data.load_id = m_id++;
+
+        m_loaded_tfrag3_levels[it->first] = std::move(it->second);
+        m_initializing_tfrag3_levels.erase(it);
+      }
+    }
+  }
+
+  if (!did_gpu_stuff) {
+    // try to remove levels.
+    if (m_loaded_tfrag3_levels.size() >= 3) {
+      for (const auto& lev : m_loaded_tfrag3_levels) {
+        if (lev.second.frames_since_last_used > 180) {
+          fmt::print("------------------------- PC unloading {}\n", lev.first);
+          for (auto tex : lev.second.data.textures) {
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glDeleteTextures(1, &tex);
+          }
+          m_loaded_tfrag3_levels.erase(lev.first);
+          break;
+        }
+      }
+    }
+  }
+
+  if (loader_timer.getMs() > 5) {
+    fmt::print("Loader::update slow setup: {:.1f}ms\n", loader_timer.getMs());
+  }
 }
 
 Loader::~Loader() {
@@ -76,4 +149,15 @@ Loader::~Loader() {
     m_loader_cv.notify_all();
   }
   m_loader_thread.join();
+}
+
+void Loader::hack_scramble_textures() {
+  for (auto& it : m_loaded_tfrag3_levels) {
+    int n = it.second.data.textures.size();
+    for (int i = 0; i < n; i++) {
+      int a = rand() % n;
+      int b = rand() % n;
+      std::swap(it.second.data.textures[a], it.second.data.textures[b]);
+    }
+  }
 }

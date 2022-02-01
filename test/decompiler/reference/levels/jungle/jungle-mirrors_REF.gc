@@ -1058,6 +1058,7 @@
   )
 
 ;; definition for function periscope-find-next
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior periscope-find-next periscope ()
   (let ((gp-0 (-> self link next)))
@@ -1070,32 +1071,26 @@
     (cond
       (gp-0
         (set! (-> self next-reflector-trans quad) (-> gp-0 extra trans quad))
-        (let ((f0-3 (+ (-> self next-reflector-trans y) (res-lump-float gp-0 'height-info))))
-          (set! (-> self next-reflector-trans y) f0-3)
-          f0-3
-          )
+        (+! (-> self next-reflector-trans y) (res-lump-float gp-0 'height-info))
         )
       (else
-        (let ((v1-9 (res-lump-struct (-> self entity) 'alt-vector structure))
-              (v0-2 (the-as object (-> self next-reflector-trans)))
-              )
-          (set! (-> (the-as vector v0-2) quad) (-> (the-as vector v1-9) quad))
-          v0-2
+        (let ((v1-9 (res-lump-struct (-> self entity) 'alt-vector structure)))
+          (set! (-> self next-reflector-trans quad) (-> (the-as vector v1-9) quad))
           )
         )
       )
     )
+  (none)
   )
 
 ;; definition for function periscope-set-target-direction
+;; INFO: Return type mismatch float vs none.
 (defbehavior periscope-set-target-direction periscope ((arg0 vector))
   (let ((f30-0 (vector-xz-length arg0)))
     (set! (-> self target-turn) (atan (-> arg0 x) (-> arg0 z)))
-    (let ((f0-5 (atan (- (-> arg0 y)) f30-0)))
-      (set! (-> self target-tilt) f0-5)
-      f0-5
-      )
+    (set! (-> self target-tilt) (atan (- (-> arg0 y)) f30-0))
     )
+  (none)
   )
 
 ;; definition for function periscope-find-aim-at-angles
@@ -1113,6 +1108,7 @@
       (periscope-set-target-direction s5-0)
       )
     )
+  (none)
   )
 
 ;; definition for function periscope-find-reflection-angles
@@ -1139,6 +1135,7 @@
       (periscope-set-target-direction s4-0)
       )
     )
+  (none)
   )
 
 ;; definition for function periscope-has-power-input?
@@ -1181,6 +1178,7 @@
   )
 
 ;; definition for function periscope-update-joints
+;; INFO: Return type mismatch float vs none.
 (defbehavior periscope-update-joints periscope ()
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-0 to) (the-as process 0.0))
@@ -1190,10 +1188,10 @@
     (quaternion-zxy! (-> self root-override quat) (the-as vector a1-0))
     )
   (set! (-> self root-override trans y) (+ -184320.0 (-> self y-offset) (-> self base y)))
-  (let ((f0-10 (+ (- (+ (-> self base y) (-> self y-offset)) (-> self height)) (-> self y-offset-grips))))
-    (set! (-> self grips transform trans y) f0-10)
-    f0-10
-    )
+  (set! (-> self grips transform trans y)
+        (+ (- (+ (-> self base y) (-> self y-offset)) (-> self height)) (-> self y-offset-grips))
+        )
+  (none)
   )
 
 ;; definition for function periscope-post
@@ -1229,11 +1227,11 @@
   )
 
 ;; definition for function peri-beamcam-init-by-other
-;; INFO: Return type mismatch object vs (pointer process).
+;; INFO: Return type mismatch object vs (pointer pov-camera).
 (defbehavior peri-beamcam-init-by-other process ((arg0 string))
   (let ((gp-0 (entity-by-name "junglecam-1")))
     (the-as
-      (pointer process)
+      (pointer pov-camera)
       (cond
         (gp-0
           (cond
@@ -1628,7 +1626,7 @@
               (hide-hud)
               (level-hint-surpress!)
               (kill-current-level-hint '() '(sidekick voicebox) 'exit)
-              (when (and (hud-hidden?) (can-grab-display? (the-as process-taskable self)))
+              (when (and (hud-hidden?) (can-grab-display? self))
                 (let ((s2-2
                         (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))
                         )

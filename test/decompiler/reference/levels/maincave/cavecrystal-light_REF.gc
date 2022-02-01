@@ -36,18 +36,18 @@
 (deftype cavecrystal-light-control (basic)
   ((active-count          int32                       :offset-assert   4)
    (head                  cavecrystal-light           :offset-assert   8)
-   (last-known-valid-time uint64                      :offset-assert  16)
+   (last-known-valid-time int64                       :offset-assert  16)
    (crystal               cavecrystal-light 7 :inline :offset-assert  32)
    )
   :method-count-assert 15
   :size-assert         #x170
   :flag-assert         #xf00000170
   (:methods
-    (TODO-RENAME-9 (_type_ int float process-drawable) object 9)
+    (TODO-RENAME-9 (_type_ int float process-drawable) none 9)
     (TODO-RENAME-10 (_type_ vector) float 10)
-    (inc-intensites! (_type_) int 11)
-    (TODO-RENAME-12 (_type_) symbol 12)
-    (create-connection! (_type_ process-drawable res-lump (function object object object object object) object object) connection 13)
+    (inc-intensities! (_type_) none 11)
+    (TODO-RENAME-12 (_type_) none 12)
+    (create-connection! (_type_ process-drawable res-lump (function object object object object object) int float) connection 13)
     (execute-connections (_type_) int 14)
     )
   )
@@ -92,8 +92,8 @@
                                                        (arg0 process-drawable)
                                                        (arg1 res-lump)
                                                        (arg2 (function object object object object object))
-                                                       (arg3 object)
-                                                       (arg4 object)
+                                                       (arg3 int)
+                                                       (arg4 float)
                                                        )
   (if (nonzero? (res-lump-value arg1 'crystal-light uint128))
       (add-connection *cavecrystal-engine* arg0 arg2 (process->ppointer arg0) arg3 arg4)
@@ -106,12 +106,13 @@
   )
 
 ;; definition for method 12 of type cavecrystal-light-control
+;; INFO: Return type mismatch symbol vs none.
 (defmethod TODO-RENAME-12 cavecrystal-light-control ((obj cavecrystal-light-control))
   (let ((v1-0 (-> obj last-known-valid-time))
         (a1-1 (-> *display* base-frame-counter))
         )
     (when (!= v1-0 a1-1)
-      (set! (-> obj last-known-valid-time) (the-as uint a1-1))
+      (set! (-> obj last-known-valid-time) a1-1)
       (cond
         ((zero? v1-0)
          (set! (-> obj active-count) 0)
@@ -126,7 +127,6 @@
              (set! (-> a1-5 crystal-handle) (the-as handle #f))
              )
            )
-         #f
          )
         (else
           (when (> (-> obj active-count) 0)
@@ -154,16 +154,17 @@
                   )
                 )
               )
-            #f
             )
           )
         )
       )
     )
+  (none)
   )
 
 ;; definition for method 11 of type cavecrystal-light-control
-(defmethod inc-intensites! cavecrystal-light-control ((obj cavecrystal-light-control))
+;; INFO: Return type mismatch int vs none.
+(defmethod inc-intensities! cavecrystal-light-control ((obj cavecrystal-light-control))
   (set! (-> obj head) #f)
   (let ((a1-0 (the-as cavecrystal-light #f))
         (v0-0 0)
@@ -182,11 +183,13 @@
         )
       )
     (set! (-> obj active-count) v0-0)
-    v0-0
     )
+  (none)
   )
 
 ;; definition for method 9 of type cavecrystal-light-control
+;; INFO: Return type mismatch object vs none.
+;; WARN: Expression building failed: Function (method 9 cavecrystal-light-control) has a return type of none, but the expression builder found a return statement.
 ;; Used lq/sq
 (defmethod TODO-RENAME-9 cavecrystal-light-control ((obj cavecrystal-light-control) (arg0 int) (arg1 float) (arg2 process-drawable))
   (TODO-RENAME-12 obj)
@@ -201,12 +204,12 @@
        (set! (-> s3-0 intensity) arg1)
        (set! (-> s3-0 crystal-handle) (process->handle arg2))
        (set! (-> s3-0 trans quad) (-> arg2 root trans quad))
-       (inc-intensites! obj)
+       (inc-intensities! obj)
        )
       ((and (>= 0.0 arg1) (< 0.0 (-> s3-0 intensity)))
        (+! (-> obj active-count) -1)
        (set! (-> s3-0 intensity) 0.0)
-       (inc-intensites! obj)
+       (inc-intensities! obj)
        )
       ((< 0.0 arg1)
        (set! (-> s3-0 intensity) arg1)
@@ -214,6 +217,7 @@
       )
     (set-fade! *palette-fade-controls* (+ arg0 1) arg1 0.0 (-> s3-0 trans))
     )
+  (none)
   )
 
 ;; definition for method 10 of type cavecrystal-light-control

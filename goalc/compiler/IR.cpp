@@ -1057,6 +1057,8 @@ void IR_FloatToInt::do_codegen(emitter::ObjectGenerator* gen,
                                emitter::IR_Record irec) {
   gen->add_instr(IGen::float_to_int32(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
                  irec);
+  gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), get_reg(m_dest, allocs, irec)),
+                 irec);
 }
 
 ///////////////////////

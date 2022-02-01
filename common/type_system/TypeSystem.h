@@ -167,7 +167,8 @@ class TypeSystem {
                             const std::string& method_name,
                             bool no_virtual,
                             const TypeSpec& ts,
-                            bool override_type);
+                            bool override_type,
+                            int id = -1);
   MethodInfo define_method(const std::string& type_name,
                            const std::string& method_name,
                            const TypeSpec& ts);

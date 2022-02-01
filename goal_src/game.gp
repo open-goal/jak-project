@@ -393,7 +393,6 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
-   "common/snow-bunny.gc"
    "common/battlecontroller.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
@@ -624,7 +623,7 @@
 ;; assistant
 (copy-strs "ASIBESWI" "ASR1BESW")
 ;; sage
-(copy-strs "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
+(copy-strs "SAISA" "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
 ;; fishermans-boat
 (copy-strs "FIBRTMIS")
 
@@ -882,6 +881,7 @@
  "snow-ram.gc"
  "snow-part.gc"
  "yeti.gc"
+ "snow-bunny.gc"
  )
 
 (copy-textures 710 842 711 712)
@@ -912,6 +912,8 @@
   "snow-vis"
   )
 
+;; ram-boss
+(copy-strs "SNRBICFC" "SNRBIPFC" "SNRBSBFC")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Fire Canyon
@@ -1323,7 +1325,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/battlecontroller.o")
+  :deps ("out/obj/battlecontroller.o" "out/obj/snow-bunny.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
@@ -1453,7 +1455,6 @@
   "intro-vis"
   )
 
-(copy-strs "SAISA")
 ;; evilbro
 (copy-strs "EVMEND")
 

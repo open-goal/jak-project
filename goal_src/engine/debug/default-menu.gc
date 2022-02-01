@@ -552,7 +552,7 @@
         )
       )
     )
-  (set! (-> *shader-pick-menu* items) (the-as pair (sort (-> *shader-pick-menu* items) debug-menu-node<?)))
+  (set! (-> *shader-pick-menu* items) (sort (-> *shader-pick-menu* items) debug-menu-node<?))
   (none)
   )
 
@@ -657,29 +657,22 @@
       )
     )
   (set! (-> *instance-shrub-menu* items)
-        (the-as
-          pair
-          (sort
-            (-> *instance-shrub-menu* items)
-            (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
-            )
+        (sort
+          (-> *instance-shrub-menu* items)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
           )
         )
   (set! (-> *instance-tie-menu* items)
-        (the-as
-          pair
-          (sort
-            (-> *instance-tie-menu* items)
-            (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
-            )
+        (sort
+          (-> *instance-tie-menu* items)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
           )
         )
   (set! (-> *enable-instance-tie-menu* items)
-        (the-as pair (sort
-                       (-> *enable-instance-tie-menu* items)
-                       (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
-                       )
-                )
+        (sort
+          (-> *enable-instance-tie-menu* items)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
+          )
         )
   0
   (none)
@@ -4126,8 +4119,7 @@
         )
       )
     )
-  (set! (-> *part-pick-menu* items) (the-as pair (sort (-> *part-pick-menu* items) debug-menu-node<?)))
-  (none)
+  (set! (-> *part-pick-menu* items) (sort (-> *part-pick-menu* items) debug-menu-node<?))
   )
 
 (defun debug-menu-make-part-menu ((ctx debug-menu-context))
@@ -4140,6 +4132,90 @@
       (debug-menu-append-item part-menu (new-dm-bool "Spawn part tester" *spawn-part-test* dm-boolean-toggle-pick-func))
 
       (new-dm-submenu "Particles" part-menu)
+      )
+  )
+
+(define *entity-pick-menu* (the-as debug-menu #f))
+
+(defun dm-entity-pick-func ((e entity) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (if (= (-> *entity-debug-inspect* entity) e)
+      (set-entity! *entity-debug-inspect* (the entity #f))
+      (set-entity! *entity-debug-inspect* e))
+    )
+  (= (-> *entity-debug-inspect* entity) e)
+  )
+
+(defun build-entity-list ()
+  "Fill the entity pick menu"
+  ;; clear old list
+  (debug-menu-remove-all-items *entity-pick-menu*)
+  ;; go through active levels
+  (dotimes (s5-0 (-> *level* length))
+    (let ((s4-0 (-> *level* level s5-0)))
+      (when (= (-> s4-0 status) 'active)
+        ;; actor entities
+        (let ((s3-0 (-> s4-0 bsp actors)))
+          (when (nonzero? s3-0)
+            (dotimes (s2-0 (-> s3-0 length))
+              (let ((s1-0 (-> s3-0 data s2-0 actor)))
+                (debug-menu-append-item *entity-pick-menu* (new-dm-flag (res-lump-struct s1-0 'name string) s1-0 dm-entity-pick-func))
+                )
+              )
+            )
+          )
+        ;; ambients entities
+        (let ((s3-1 (-> s4-0 bsp ambients)))
+          (when (nonzero? s3-1)
+            (dotimes (s2-1 (-> s3-1 length))
+              (let ((s1-1 (-> s3-1 data s2-1 ambient)))
+                (debug-menu-append-item *entity-pick-menu* (new-dm-flag (res-lump-struct s1-1 'name string) s1-1 dm-entity-pick-func))
+                )
+              )
+            )
+          )
+        ;; camera entities
+        (let ((s4-1 (-> s4-0 bsp cameras)))
+          (when (nonzero? s4-1)
+            (dotimes (s3-2 (-> s4-1 length))
+              (let ((s2-2 (-> s4-1 s3-2)))
+                (debug-menu-append-item *entity-pick-menu* (new-dm-flag (res-lump-struct s2-2 'name string) s2-2 dm-entity-pick-func))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (set! (-> *entity-pick-menu* items) (sort (-> *entity-pick-menu* items) debug-menu-node<?))
+  )
+
+(defun dm-display-entities-pick-func ((arg0 symbol))
+  (debug-print-entities *level* arg0 (the-as type #f))
+  )
+
+(defun debug-menu-make-entity-menu ((ctx debug-menu-context))
+  (let ((entity-menu (new 'debug 'debug-menu ctx "Entity menu")))
+      (let ((pick-menu (new 'debug 'debug-menu ctx "Pick entity menu")))
+        (set! *entity-pick-menu* pick-menu)
+        (debug-menu-append-item entity-menu (new-dm-submenu "Pick Entity" pick-menu))
+        )
+      (debug-menu-append-item entity-menu (new-dm-func "Refresh" #f build-entity-list))
+      (debug-menu-append-item entity-menu (new-dm-func "Go to entity" #f
+                                              (lambda ()
+                                                (unless (-> *entity-debug-inspect* entity) (return #f))
+                                                (let ((tf (new 'stack 'transformq)))
+                                                  (vector-copy! (-> tf trans) (-> *entity-debug-inspect* entity trans))
+                                                  (quaternion-identity! (-> tf quat))
+                                                  (vector-identity! (-> tf scale))
+                                                  (send-event *camera* 'teleport-to-transformq tf)
+                                                  ))))
+      (debug-menu-append-item entity-menu (new-dm-func "Print entity info" #t dm-display-entities-pick-func))
+      (debug-menu-append-item entity-menu (new-dm-func "Print entity info (ag)" 'art-group dm-display-entities-pick-func))
+      (debug-menu-append-item entity-menu (new-dm-func "Print entity info (meters)" 'entity-meters dm-display-entities-pick-func))
+      (debug-menu-append-item entity-menu (new-dm-func "Print entity info (perm)" 'entity-perm dm-display-entities-pick-func))
+
+      (new-dm-submenu "Entity" entity-menu)
       )
   )
 
@@ -4196,24 +4272,10 @@
     )
   )
 
-(defun dm-display-entities-pick-func ((arg0 symbol))
-  (debug-print-entities *level* arg0 (the-as type #f))
-  )
-
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
-  
-  (debug-menu-append-item (-> *debug-menu-context* root-menu)
-    (debug-menu-make-from-template *debug-menu-context*
-      '(menu "Entity"
-         (function "Print entity info" #t dm-display-entities-pick-func)
-         (function "Print entity info (art-group)" art-group dm-display-entities-pick-func)
-         (function "Print entity info (entity-meters)" entity-meters dm-display-entities-pick-func)
-         (function "Print entity info (entity-perm)" entity-perm dm-display-entities-pick-func)
-         )
-      )
-    )
+  (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-entity-menu *debug-menu-context*))
   ;; Music menu TODO
   ;; Secrets menu TODO
   ;; Scene menu TODO
