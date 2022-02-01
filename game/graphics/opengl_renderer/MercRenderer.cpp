@@ -42,10 +42,12 @@ void MercRenderer::render(DmaFollower& dma,
   // if we reach here, there's stuff to draw
   handle_setup(dma, render_state, prof);
 
+  m_direct.reset_state();
   while (dma.current_tag_offset() != render_state->next_bucket) {
     handle_merc_chain(dma, render_state, prof);
   }
   assert(dma.current_tag_offset() == render_state->next_bucket);
+  m_direct.flush_pending(render_state, prof);
 }
 
 bool tag_is_nothing_next(const DmaFollower& dma) {
@@ -327,6 +329,7 @@ void MercRenderer::handle_setup(DmaFollower& dma,
 
   auto second = dma.read_and_advance();
   assert(second.size_bytes == 32);  // setting up test register.
+  m_direct.render_gif(second.data, 32, render_state, prof);
   auto nothing = dma.read_and_advance();
   assert(nothing.size_bytes == 0);
   assert(nothing.vif0() == 0);
