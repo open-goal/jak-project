@@ -62,14 +62,23 @@ enum Gpr {
 enum VfName {
   vf0 = 0,
   vf1 = 1,
+  vf01 = 1,
   vf2 = 2,
+  vf02 = 2,
   vf3 = 3,
+  vf03 = 3,
   vf4 = 4,
+  vf04 = 4,
   vf5 = 5,
+  vf05 = 5,
   vf6 = 6,
+  vf06 = 6,
   vf7 = 7,
+  vf07 = 7,
   vf8 = 8,
+  vf08 = 8,
   vf9 = 9,
+  vf09 = 9,
   vf10 = 10,
   vf11 = 11,
   vf12 = 12,
@@ -955,6 +964,15 @@ struct ExecutionContext {
     }
   }
 
+  void vitof15(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = ((float)s.ds32[i]) * (1.f / 32768.f);
+      }
+    }
+  }
+
   void vftoi12(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
@@ -1072,10 +1090,66 @@ inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   memcpy(spad_addr_c, g_ee_main_mem + madr, qwc * 16);
 }
 
+inline void spad_to_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
+  u32 spad_addr_goal;
+  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+
+  assert((madr & 0xf) == 0);
+  assert((sadr & 0xf) == 0);
+  assert(sadr < 0x4000);
+  assert((sadr + 16 * qwc) <= 0x4000);
+  assert(qwc <= 0x4000);
+
+  void* spad_addr_c = g_ee_main_mem + spad_addr_goal + sadr;
+
+  memcpy(spad_addr_c, g_ee_main_mem + madr, qwc * 16);
+}
+
+inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
+                                                     u32 madr,
+                                                     u32 sadr,
+                                                     u32 qwc) {
+  u32 spad_addr_goal;
+  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+
+  assert((madr & 0xf) == 0);
+  assert((sadr & 0xf) == 0);
+  assert(sadr < 0x4000);
+  assert((sadr + 16 * qwc) <= 0x4000);
+  assert(qwc <= 0x4000);
+
+  u8* spad_addr_c = g_ee_main_mem + spad_addr_goal + sadr;
+  const u8* mem_addr = g_ee_main_mem + madr;
+  assert((qwc & 3) == 0);
+  while (qwc > 0) {
+    // transfer 4.
+    memcpy(spad_addr_c, mem_addr, 4 * 16);
+    spad_addr_c += (4 * 16);
+    sadr += 4 * 16;
+    // but skip 5
+    mem_addr += (5 * 16);
+    qwc -= 4;
+  }
+}
+
 inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
   memcpy(&spad_addr_goal, spad_sym_addr, 4);
   sadr -= spad_addr_goal;
+  assert((madr & 0xf) == 0);
+  assert((sadr & 0xf) == 0);
+  assert(sadr < 0x4000);
+  assert((sadr + 16 * qwc) <= 0x4000);
+  assert(qwc <= 0x4000);
+
+  void* spad_addr_c = g_ee_main_mem + spad_addr_goal + sadr;
+
+  memcpy(g_ee_main_mem + madr, spad_addr_c, qwc * 16);
+}
+
+inline void spad_from_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
+  u32 spad_addr_goal;
+  memcpy(&spad_addr_goal, spad_sym_addr, 4);
   assert((madr & 0xf) == 0);
   assert((sadr & 0xf) == 0);
   assert(sadr < 0x4000);

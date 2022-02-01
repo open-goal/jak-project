@@ -106,7 +106,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", BucketId::SPRITE));
 
   init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x8000,
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000,
                                        DirectRenderer::Mode::NORMAL);
   init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,
                                        DirectRenderer::Mode::NORMAL);
@@ -165,6 +165,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
   }
+
+  m_render_state.loader.update();
 }
 
 void OpenGLRenderer::serialize(Serializer& ser) {

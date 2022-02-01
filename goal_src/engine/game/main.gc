@@ -522,6 +522,47 @@
   0
   )
 
+(defconstant MEM_BAR_WIDTH 152)
+(defconstant MEM_BAR_HEIGHT 8)
+(defconstant MEM_BAR_NUM 7)
+(defconstant MEM_BAR_BG_COL (static-rgba 64 64 64 64))
+(defconstant MEM_BAR_X (- 480 MEM_BAR_WIDTH))
+(defconstant MEM_BAR_Y (- 224 4 (* MEM_BAR_HEIGHT MEM_BAR_NUM)))
+(defmacro draw-memory-bar-generic (buf &key remain &key total &key name &key idx &key color)
+  `(let* (
+        (total  (the float ,total))
+        (remain (the float ,remain))
+        (used-p (/ (- total remain) total))
+        (used-x (the int (* used-p MEM_BAR_WIDTH)))
+        (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
+        )
+      (draw-sprite2d-xy ,buf    MEM_BAR_X         used-y used-x MEM_BAR_HEIGHT ,color)
+      (draw-sprite2d-xy ,buf (+ MEM_BAR_X used-x) used-y (- MEM_BAR_WIDTH used-x) MEM_BAR_HEIGHT MEM_BAR_BG_COL)
+      (draw-string-xy ,name ,buf MEM_BAR_X used-y (font-color red) (font-flags shadow kerning right))
+      (draw-string-xy (string-format "~,,2f%" (* used-p 100)) ,buf (+ MEM_BAR_X used-x) used-y (font-color red) (font-flags shadow kerning middle))
+      (draw-string-xy (string-format "~,,1fM" (/ total (* 1024 1024))) ,buf (+ MEM_BAR_X MEM_BAR_WIDTH) used-y (font-color red) (font-flags shadow kerning left))
+      )
+  )
+(defmacro draw-memory-bar-kheap (buf heap &key (name #f) &key idx &key color)
+  `(let ((heap ,heap))
+      (draw-memory-bar-generic ,buf
+              :remain (&- (-> heap top) (-> heap current))
+              :total  (&- (-> heap top) (-> heap base))
+              :name ,(if name name (symbol->string heap))
+              :idx ,idx
+              :color ,color)
+      )
+  )
+(defmacro draw-memory-bar-dead-pool-heap (buf heap &key (name #f) &key idx &key color)
+  `(let* ((heap ,heap) (pool-total (memory-total heap)))
+      (draw-memory-bar-generic ,buf
+              :remain (- pool-total (memory-used heap))
+              :total  pool-total
+              :name ,(if name name (symbol->string heap))
+              :idx ,idx
+              :color ,color)
+      )
+  )
 
 (defbehavior display-loop process ()
   "This is in progress..."
@@ -670,13 +711,17 @@
 
         ;; debug drawing
         (when *debug-segment*
-          (debug-draw-buffers) ;; lines/text
-
           (#when PC_PORT
             (if (-> *pc-settings* debug-pad-display)
               (debug-pad-display (-> *cpad-list* cpads 0))
               )
+            (when (and (or (= *master-mode* 'game) (= *master-mode* 'pause)) (-> *entity-debug-inspect* entity))
+              (define-extern entity-inspect-draw (function entity-debug-inspect object))
+              (entity-inspect-draw *entity-debug-inspect*)
+              )
             )
+
+          (debug-draw-buffers) ;; lines/text
 
           ;; debug dma
           (with-dma-buffer-add-bucket ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))
@@ -721,7 +766,7 @@
                 (format *stdcon* "bug-report ~A~%" *user*)
                 (format *stdcon* "nick ~A continue ~S~%" (-> *load-state* vis-nick) (-> *game-info* current-continue name))
                 (dotimes (i LEVEL_COUNT)
-                  (format *stdcon* "level ~D ~8A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
+                  (format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
                   )
                 (format *stdcon* "music ~A (f: ~D) sound ~A ~A~%"
                     (-> *setting-control* current music) (-> *setting-control* current sound-flava)
@@ -738,38 +783,19 @@
                     )
                 )
               (when (-> *pc-settings* display-heap-status)
-                (mlet* ((BAR_WIDTH 160)
-                       (BAR_HEIGHT 8)
-                       (BAR_NUM 2)
-                       (BAR_BG_COL (static-rgba 64 64 64 64))
-                       (BAR_X (- 480 BAR_WIDTH))
-                       (BAR_Y (- 224 4 (* BAR_HEIGHT BAR_NUM)))
-                       )
-                    (let* (
-                          (remain (the float (&- (-> global top) (-> global current))))
-                          (total  (the float (&- (-> global top) (-> global base))))
-                          (used-p (/ (- total remain) total))
-                          (used-x (the int (* used-p BAR_WIDTH)))
-                          (used-y BAR_Y)
-                          )
-                        (draw-sprite2d-xy debug-buf    BAR_X         used-y used-x BAR_HEIGHT (static-rgba 32 32 255 64))
-                        (draw-sprite2d-xy debug-buf (+ BAR_X used-x) used-y (- BAR_WIDTH used-x) BAR_HEIGHT BAR_BG_COL)
-                        (draw-string-xy "global" debug-buf BAR_X used-y (font-color red) (font-flags shadow kerning right))
-                        (draw-string-xy (string-format "~,,2f% (~,,1fM)" (* used-p 100) (/ total (* 1024 1024))) debug-buf (+ BAR_X used-x) used-y (font-color red) (font-flags shadow kerning middle))
-                        )
-                    (let* (
-                          (remain (the float (&- (-> debug top) (-> debug current))))
-                          (total  (the float (&- (-> debug top) (-> debug base))))
-                          (used-p (/ (- total remain) total))
-                          (used-x (the int (* used-p BAR_WIDTH)))
-                          (used-y (+ BAR_Y BAR_HEIGHT))
-                          )
-                        (draw-sprite2d-xy debug-buf    BAR_X         used-y used-x BAR_HEIGHT (static-rgba 255 32 32 64))
-                        (draw-sprite2d-xy debug-buf (+ BAR_X used-x) used-y (- BAR_WIDTH used-x) BAR_HEIGHT BAR_BG_COL)
-                        (draw-string-xy "debug" debug-buf BAR_X used-y (font-color red) (font-flags shadow kerning right))
-                        (draw-string-xy (string-format "~,,2f% (~,,1fM)" (* used-p 100) (/ total (* 1024 1024))) debug-buf (+ BAR_X used-x) used-y (font-color red) (font-flags shadow kerning middle))
-                        )
-                    )
+                (draw-memory-bar-kheap debug-buf global :idx 0 :color (static-rgba 32 32 255 64))
+                (draw-memory-bar-kheap debug-buf debug :idx 1 :color (static-rgba 255 32 32 64))
+                (draw-memory-bar-kheap debug-buf (-> *level* level 0 heap) :name "l0" :idx 2 :color (static-rgba 32 255 255 64))
+                (draw-memory-bar-kheap debug-buf (-> *level* level 1 heap) :name "l1" :idx 3 :color (static-rgba 255 32 255 64))
+                (draw-memory-bar-dead-pool-heap debug-buf *nk-dead-pool* :name "actor" :idx 4 :color (static-rgba 32 255 32 64))
+                (draw-memory-bar-generic debug-buf
+                        :remain (* 16 (dma-buffer-free (-> disp frames (-> disp on-screen) frame global-buf)))
+                        :total  (length (-> disp frames (-> disp on-screen) frame global-buf))
+                        :name "dma-global" :idx 5 :color (static-rgba 32 32 255 64))
+                (draw-memory-bar-generic debug-buf
+                        :remain (* 16 (dma-buffer-free (-> disp frames (-> disp on-screen) frame debug-buf)))
+                        :total  (length (-> disp frames (-> disp on-screen) frame debug-buf))
+                        :name "dma-debug" :idx 6 :color (static-rgba 255 32 32 64))
                 )
               )
 

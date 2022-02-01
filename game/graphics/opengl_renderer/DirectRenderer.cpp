@@ -353,25 +353,34 @@ void DirectRenderer::update_gl_blend() {
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
+    glEnable(GL_BLEND);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
-      glEnable(GL_BLEND);
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - 0) * As + Cd
-      // Cs * As + (1) * CD
-      glEnable(GL_BLEND);
+      // Cs * As + (1) * Cd
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.b == GsAlpha::BlendMode::SOURCE && state.c == GsAlpha::BlendMode::SOURCE &&
+               state.d == GsAlpha::BlendMode::DEST) {
+      // (0 - Cs) * As + Cd
+      // Cd - Cs * As
+      // s, d
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
-      lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
-                (int)state.d);
+      lg::error("unsupported blend: a {} b {} c {} d {} NOTE THIS DOWN IMMEDIATELY!!", (int)state.a,
+                (int)state.b, (int)state.c, (int)state.d);
       assert(false);
     }
   }

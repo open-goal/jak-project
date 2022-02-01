@@ -185,6 +185,9 @@ Config read_config_file(const std::string& path_to_config_file) {
           .get<std::unordered_map<std::string, std::vector<std::vector<int>>>>();
   config.hacks.mips2c_functions_by_name =
       hacks_json.at("mips2c_functions_by_name").get<std::unordered_set<std::string>>();
+  config.hacks.mips2c_jump_table_functions =
+      hacks_json.at("mips2c_jump_table_functions")
+          .get<std::unordered_map<std::string, std::vector<int>>>();
 
   for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
     auto func_name = entry.at(0).get<std::string>();
