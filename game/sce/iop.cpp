@@ -45,6 +45,20 @@ void CpuDisableIntr() {}
  */
 void CpuEnableIntr() {}
 
+/*!
+ * Suspend CPU Interrupts
+ */
+int CpuSuspendIntr(int* state) {
+  return 0;
+}
+
+/*!
+ * Resume CPU Interrupts
+ */
+int CpuResumeIntr(int state) {
+  return 0;
+}
+
 namespace {
 ::IOP* iop;
 }

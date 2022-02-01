@@ -13,6 +13,7 @@
 
 void DMA_Sync();
 void DMA_SendToEE(void* data, u32 size, void* dest);
+int DMA_SendToSPUAndSync(void* data, u32 size, void* dest);
 void dma_init_globals();
 
 #endif  // JAK_V2_DMA_H

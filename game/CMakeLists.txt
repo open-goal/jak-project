@@ -88,6 +88,7 @@ set(RUNTIME_SOURCE
         overlord/srpc.cpp
         overlord/ssound.cpp
         overlord/stream.cpp
+        overlord/989snd.cpp
         graphics/gfx.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp

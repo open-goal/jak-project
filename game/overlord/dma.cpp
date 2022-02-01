@@ -9,6 +9,8 @@
 #include "dma.h"
 #include "common/common_types.h"
 #include "game/sce/iop.h"
+#include "game/overlord/989snd.h"
+#include "game/sce/libsd.h"
 
 using namespace iop;
 
@@ -91,3 +93,18 @@ u32 intr() {
 }
 
 // TODO DMA_SendToSPUAndSync()
+int DMA_SendToSPUAndSync(void* data, u32 size, void* dest) {
+  int spu_dma = snd_GetFreeSPUDMA();
+  if (spu_dma == 0xFFFFFFFF) {
+    return 0;
+  }
+  strobe = 0;
+  // sceSdSetTransIntrHandler(spu_dma, (sceSdTransIntrHandler)intr, 0);
+  u32 size_ = (size + 0x3F) & 0xFFFFFFC0;
+  int voiceTrans = 0;  // sceSdVoiceTrans(spu_dma, 0, (u8*)data, (u32*)dest, size_);
+  do {
+  } while (!strobe);
+  // sceSdSetTransIntrHandler(spu_dma, 0, 0);
+  snd_FreeSPUDMA(spu_dma);
+  return voiceTrans >= size_;
+}

@@ -94,6 +94,8 @@ void* AllocSysMemory(int type, unsigned long size, void* addr);
 int GetThreadId();
 void CpuDisableIntr();
 void CpuEnableIntr();
+int CpuSuspendIntr(int* state);
+int CpuResumeIntr(int state);
 void SleepThread();
 void DelayThread(u32 usec);
 s32 CreateThread(ThreadParam* param);

@@ -54,7 +54,8 @@ u32 gRealVAGClockS;
 u32 gFakeVAGClock;
 u32 gLastVAGHalf;
 u32 gSampleRate;
-u32 gStreamSRAM;
+void* gStreamSRAM;
+void* gTrapSRAM;
 u16 gVoice;
 u32 gVAGId;
 u32 gDialogVolume;
@@ -83,7 +84,8 @@ void iso_init_globals() {
   gFakeVAGClock = 0;
   gLastVAGHalf = 0;
   gSampleRate = 0;
-  gStreamSRAM = 0;
+  gStreamSRAM = nullptr;
+  gTrapSRAM = nullptr;
   gVoice = 0;
   gVAGId = 0;
   gDialogVolume = 0;
@@ -804,14 +806,147 @@ u32 bswap(u32 in) {
   return ((in >> 0x18) & 0xff) | ((in >> 8) & 0xff00) | ((in & 0xff00) << 8) | (in << 0x18);
 }
 
+void UnpauseVAG(VagCommand* cmd);
+void VAG_MarkLoopEnd(void* data, u32 size);
+
 /*!
- * TODO - implement.
+ * TODO - finish decomp
  */
 u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
   (void)_cmd;
   (void)buffer_header;
-  assert(false);
-  return 0;
+  int v1 = 0;
+  if (_cmd[1].callback_buffer == 0) {
+    buffer_header->data_size = 0;
+    return 0xFFFFFFFF;
+  }
+  if (_cmd->cmd_id) {
+    if (_cmd->cmd_id == 1) {
+      if (buffer_header->data_size < _cmd->status) {
+        VAG_MarkLoopEnd(buffer_header->data, buffer_header->data_size);
+        FlushDcache();
+      } else {
+        _cmd->callback_function = (iso_callback_func)(_cmd->status + STR_BUFFER_DATA_SIZE - 16);
+      }
+      if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size,
+                                (u32*)gStreamSRAM + STR_BUFFER_DATA_SIZE)) {
+        return 0xFFFFFFFF;
+      }
+      if (!_cmd->thread_id) {
+        _cmd->thread_id = 1;
+        UnpauseVAG((VagCommand*)_cmd);
+      }
+      _cmd->ready_for_data = 0;
+      _cmd->status -= buffer_header->data_size;
+      buffer_header->data_size = 0;
+      gPlayPos = 48;
+      gPlaying = 1;
+    } else {
+      if ((_cmd->cmd_id & 1)) {
+        if (buffer_header->data_size < _cmd->status) {
+          VAG_MarkLoopEnd(buffer_header->data, buffer_header->data_size);
+          FlushDcache();
+        } else {
+          _cmd->callback_function = (iso_callback_func)(_cmd->status + STR_BUFFER_DATA_SIZE - 16);
+        }
+        if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size,
+                                  (u32*)gStreamSRAM + STR_BUFFER_DATA_SIZE)) {
+          return 0xFFFFFFFF;
+        }
+        int16_t v2 = 3;
+        int16_t v3 = gVoice | 0x2140;
+        int v4 = (int)gStreamSRAM + STR_BUFFER_DATA_SIZE;
+        // sceSdProdBatch();
+      } else {
+        if (buffer_header->data_size < _cmd->status) {
+          VAG_MarkLoopEnd(buffer_header->data, buffer_header->data_size);
+          FlushDcache();
+        } else {
+          _cmd->callback_function = (iso_callback_func)(_cmd->status + STR_BUFFER_DATA_SIZE - 16);
+        }
+        if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size,
+                                  (u32*)gStreamSRAM + STR_BUFFER_DATA_SIZE)) {
+          return 0xFFFFFFFF;
+        }
+        int16_t v5 = 3;
+        int16_t v6 = gVoice | 0x2140;
+        void* v7 = gStreamSRAM;
+        // sceSdProdBatch();
+      }
+      _cmd->ready_for_data = 0;
+      _cmd[1].status -= buffer_header->data_size;
+      buffer_header->data_size = 0;
+    }
+  } else {
+    void* data = buffer_header->data;
+    if (*(int*)data != 0x70474156 && *(int*)data != 0x56414770) {
+      //_cmd->callback_buffer = (IsoCallbackBuffer*)(ftext + 1);
+      buffer_header->data_size = 0;
+      return 0xFFFFFFFF;
+    }
+    _cmd->ready_for_data = *((u32*)data + 4);
+    _cmd->status = *((u32*)data + 3);
+    if (*(u32*)data == 0x70474156) {
+      _cmd->ready_for_data = bswap(_cmd->ready_for_data);
+      _cmd->status = bswap(_cmd->status);
+    }
+    gSampleRate = _cmd->ready_for_data;
+    gLastVAGHalf = 0;
+    _cmd->status += 48;
+    if (buffer_header->data_size >= _cmd->status) {
+      _cmd->callback_function = (iso_callback_func)(_cmd->status - 16);
+    }
+    if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size, gStreamSRAM)) {
+      return 0xFFFFFFFF;
+    }
+    uint16_t v8[36];
+    v8[4 * v1] = 1;
+    v8[4 * v1 + 1] = gVoice;
+    v8[4 * v1 + 2] = 0;
+    v1++;
+    v8[4 * v1] = 1;
+    v8[4 * v1 + 1] = gVoice | 0x100;
+    v8[4 * v1 + 2] = 0;
+    v1++;
+    v8[4 * v1] = 2;
+    v8[4 * v1 + 1] = gVoice & 1 | 0x1800;
+    v8[4 * v1 + 2] = sceSdGetSwitch(gVoice & 1 | 0x1800) | (1 << (gVoice >> 1));
+    v1++;
+    v8[4 * v1] = 2;
+    v8[4 * v1 + 1] = gVoice & 1 | 0x1A00;
+    v8[4 * v1 + 2] = sceSdGetSwitch(gVoice & 1 | 0x1A00) | (1 << (gVoice >> 1));
+    v1++;
+    v8[4 * v1] = 1;
+    v8[4 * v1 + 1] = gVoice | 0x200;
+    v8[4 * v1 + 2] = 0;
+    v1++;
+    v8[4 * v1] = 3;
+    v8[4 * v1 + 1] = gVoice | 0x2040;
+    v8[4 * v1 + 2] = (u32)gStreamSRAM + 48;
+    v1++;
+    v8[4 * v1] = 1;
+    v8[4 * v1 + 1] = gVoice | 0x300;
+    v8[4 * v1 + 2] = 15;
+    v1++;
+    v8[4 * v1] = 1;
+    v8[4 * v1 + 1] = gVoice | 0x400;
+    v8[4 * v1 + 2] = 0x1FC0;
+    v1++;
+    if (_cmd->callback_function == (iso_callback_func)0xFFFFFFFF) {
+      v8[4 * v1] = 3;
+      v8[4 * v1 + 1] = gVoice | 0x2140;
+      v8[4 * v1++ + 2] = (u32)gTrapSRAM;
+    }
+    // snd_KeyOnVoiceRaw(gVoice & 1, gVoice >> 1);
+    _cmd->messagebox_to_reply = 1;
+    _cmd->status -= buffer_header->data_size;
+    buffer_header->data_size = 0;
+  }
+  if (v1) {
+    // sceSdProdBatch();
+  }
+  ++_cmd->cmd_id;
+  return 0xFFFFFFFF;
 }
 
 // TODO - StopVAG
@@ -827,7 +962,6 @@ u32 GetPlayPos();
 void UpdatePlayPos();
 void StopVAG(VagCommand* cmd);
 void PauseVAG(VagCommand* cmd);
-void UnpauseVAG(VagCommand* cmd);
 void CalculateVAGVolumes(u32 a1, u32 a2, u32 a3, int* a4, int* a5);
 void SetVAGVol();
 
@@ -844,7 +978,7 @@ u32 GetPlayPos() {
       break;
     }
   }
-  u32 play_pos = addr - gStreamSRAM;
+  u32 play_pos = addr - *(u32*)gStreamSRAM;
   if (play_pos > BUFFER_PAGE_SIZE - 1)
     return 0xFFFFFFFF;
   else
@@ -870,7 +1004,7 @@ void UpdatePlayPos() {
       gRealVAGClockS += play_pos + BUFFER_PAGE_SIZE - gPlayPos;
     }
     if (!gSampleRate) {
-      lg::error("[OVERLORD] gSampleRate is invalid!");
+      lg::error("[OVERLORD] gSampleRate is invalid!\n");
     }
     gRealVAGClock = 4 * (0x1C00 * (gRealVAGClockS >> 4) / gSampleRate);
     gPlayPos = play_pos;
@@ -1102,6 +1236,24 @@ u32 GetVAGStreamPos() {
     return gRealVAGClock;
   }
   return 0xFFFFFFFF;
+}
+
+void VAG_MarkLoopStart(void* data) {
+  *((u8*)data + 1) = 6;
+  *((u8*)data + 17) = 2;
+}
+
+void VAG_MarkLoopEnd(void* data, u32 size) {
+  *((u8*)data + (size - 15)) = 3;
+}
+
+void VAG_MarkNonloopStart(void* data) {
+  *((u8*)data + 1) = 4;
+}
+
+void VAG_MarkNonloopEnd(void* data, u32 size) {
+  *((u8*)data + (size - 31)) = 1;
+  *((u8*)data + (size - 15)) = 7;
 }
 
 // TODO - VAG_MarkLoopStart
