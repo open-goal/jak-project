@@ -2866,11 +2866,13 @@ void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
 DefstateElement::DefstateElement(const std::string& process_type,
                                  const std::string& state_name,
                                  const std::vector<Entry>& entries,
-                                 bool is_virtual)
+                                 bool is_virtual,
+                                 bool is_override)
     : m_process_type(process_type),
       m_state_name(state_name),
       m_entries(entries),
-      m_is_virtual(is_virtual) {
+      m_is_virtual(is_virtual),
+      m_is_override(is_override) {
   for (auto& e : m_entries) {
     e.val->parent_element = this;
   }
@@ -2910,7 +2912,11 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
   forms.push_back(pretty_print::build_list(m_process_type));
 
   if (m_is_virtual) {
-    forms.push_back(pretty_print::to_symbol(":virtual #t"));
+    if (!m_is_override) {
+      forms.push_back(pretty_print::to_symbol(":virtual #t"));
+    } else {
+      forms.push_back(pretty_print::to_symbol(":virtual override"));
+    }
   }
 
   for (const auto& e : m_entries) {

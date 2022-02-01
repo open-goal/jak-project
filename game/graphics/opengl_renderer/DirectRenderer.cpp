@@ -358,22 +358,31 @@ void DirectRenderer::update_gl_blend() {
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
+    glEnable(GL_BLEND);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
-      glEnable(GL_BLEND);
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - 0) * As + Cd
-      // Cs * As + (1) * CD
+      // Cs * As + (1) * Cd
+      // s, d
       assert(state.fix == 0);
-      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.b == GsAlpha::BlendMode::SOURCE && state.c == GsAlpha::BlendMode::SOURCE &&
+               state.d == GsAlpha::BlendMode::DEST) {
+      // (0 - Cs) * As + Cd
+      // Cd - Cs * As
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
                state.c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.d == GsAlpha::BlendMode::DEST) {
@@ -381,14 +390,12 @@ void DirectRenderer::update_gl_blend() {
       // Cs * fix + (1 - fx) * Cd
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
       glBlendColor(0, 0, 0, state.fix / 127.f);
+      glBlendEquation(GL_FUNC_ADD);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
-      // MERC HACK
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
-      glDisable(GL_BLEND);
-      // s, d
-      //      assert(false);
+      assert(false);
     }
   }
 }
@@ -539,7 +546,7 @@ void DirectRenderer::render_gif(const u8* data,
       }
       for (u32 loop = 0; loop < tag.nloop(); loop++) {
         for (u32 reg = 0; reg < nreg; reg++) {
-          //           fmt::print("{}\n", reg_descriptor_name(reg_desc[reg]));
+          // fmt::print("{}\n", reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::AD:
               handle_ad(data + offset, render_state, prof);
@@ -572,8 +579,7 @@ void DirectRenderer::render_gif(const u8* data,
         for (u32 reg = 0; reg < nreg; reg++) {
           u64 register_data;
           memcpy(&register_data, data + offset, 8);
-          //           fmt::print("loop: {} reg: {} {}\n", loop, reg,
-          //           reg_descriptor_name(reg_desc[reg]));
+          // fmt::print("loop: {} reg: {} {}\n", loop, reg, reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::PRIM:
               handle_prim(register_data, render_state, prof);
@@ -614,7 +620,7 @@ void DirectRenderer::handle_ad(const u8* data,
   memcpy(&value, data, sizeof(u64));
   memcpy(&addr, data + 8, sizeof(GsRegisterAddress));
 
-  //   fmt::print("{}\n", register_address_name(addr));
+  // fmt::print("{}\n", register_address_name(addr));
   switch (addr) {
     case GsRegisterAddress::ZBUF_1:
       handle_zbuf1(value, render_state, prof);

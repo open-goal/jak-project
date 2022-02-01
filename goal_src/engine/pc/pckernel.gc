@@ -591,6 +591,67 @@
 (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; entity debugging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(when *debug-segment*
+
+(deftype entity-debug-inspect (basic)
+  (
+   (scroll-y int32)
+   (entity entity)
+   (show-actor-info symbol)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (set-entity! (_type_ entity) entity)
+    (update-pad (_type_ int) none)
+    )
+  )
+
+(defmethod new entity-debug-inspect ((allocation symbol) (type-to-make type))
+  "make a new entity-debug-inspect object"
+  
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    
+    (set! (-> obj scroll-y) 0)
+    (set! (-> obj entity) (the entity #f))
+    (set! (-> obj show-actor-info) #f)
+    obj
+    )
+  )
+
+(defmethod set-entity! entity-debug-inspect ((obj entity-debug-inspect) (e entity))
+  "set the entity to inspect"
+  
+  (set! (-> obj entity) e)
+  (unless e
+    (set! *display-actor-anim* (the string #f)))
+  (set! (-> obj scroll-y) 0)
+    
+  e
+  )
+
+(defmethod update-pad entity-debug-inspect ((obj entity-debug-inspect) (pad-idx int))
+  "respond to pad inputs"
+  
+  (if (cpad-pressed? pad-idx r1)
+    (1+! (-> obj scroll-y)))
+  (if (cpad-pressed? pad-idx l1)
+    (set! (-> obj scroll-y) (max 0 (1- (-> obj scroll-y)))))
+  (if (cpad-pressed? pad-idx l3)
+    (not! (-> obj show-actor-info)))
+    
+  (none))
+
+
+(define *entity-debug-inspect* (new 'debug 'entity-debug-inspect))
+
+)
+
+
 )
 
 

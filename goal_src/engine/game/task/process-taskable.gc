@@ -186,7 +186,7 @@
           ((< (vector-length s5-3) 102400.0)
            (when (not (-> obj have-music))
              (set! (-> obj have-music) #t)
-             (set-setting! *setting-control* pp 'music (the-as symbol (-> obj music)) 0.0 0)
+             (set-setting! *setting-control* pp 'music (-> obj music) 0.0 0)
              )
            )
           ((-> obj have-music)
@@ -415,7 +415,7 @@
         (deactivate a0-4)
         )
     )
-  (set! (-> self last-talk) (the-as uint (-> *display* game-frame-counter)))
+  (set! (-> self last-talk) (-> *display* game-frame-counter))
   (dummy-52 self)
   (none)
   )
@@ -486,13 +486,13 @@
          (ja-play-spooled-anim
            (the-as spool-anim arg1)
            arg0
-           (the-as art-joint-anim (-> self blend-on-exit))
+           (-> self blend-on-exit)
            (lambda ((arg0 process-taskable)) (= (get-response (-> arg0 query)) 'no))
            )
          (ja-play-spooled-anim
            (the-as spool-anim arg1)
            arg0
-           (the-as art-joint-anim (-> self blend-on-exit))
+           (-> self blend-on-exit)
            (the-as (function process-drawable symbol) false-func)
            )
          )
@@ -1035,7 +1035,7 @@
       ((not *target*)
        )
       ((not (-> self will-talk))
-       (if (>= (- (-> *display* game-frame-counter) (the-as int (-> self last-talk))) 3000)
+       (if (>= (- (-> *display* game-frame-counter) (-> self last-talk)) 3000)
            (set! (-> self will-talk) #t)
            )
        )
@@ -1085,7 +1085,7 @@
                   (set! (-> v1-59 scale) 0.9)
                   )
                 (set! (-> gp-1 flags) (font-flags shadow kerning left large))
-                (print-game-text (lookup-text! *common-text* (the-as game-text-id (-> self talk-message)) #f) gp-1 #f 128 22)
+                (print-game-text (lookup-text! *common-text* (-> self talk-message) #f) gp-1 #f 128 22)
                 )
               (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
                 (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons circle))
@@ -1174,8 +1174,8 @@
   (set! (-> obj cell-for-task) (game-task none))
   (set! (-> obj camera) (the-as handle #f))
   (set! (-> obj will-talk) #t)
-  (set! (-> obj talk-message) (the-as uint 260))
-  (set! (-> obj last-talk) (the-as uint 0))
+  (set! (-> obj talk-message) (game-text-id press-to-talk))
+  (set! (-> obj last-talk) 0)
   (set! (-> obj bounce-away) #t)
   (set! (-> obj been-kicked) #f)
   (set! (-> obj neck-joint-index) arg5)
@@ -1347,7 +1347,6 @@
               (s1-0 (or (!= (-> self spooling?) #t) (logtest? (-> (the-as process-taskable s2-0) skel status) 32)))
               )
           (vector<-cspace! s5-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index)))
-          
           (vector-normalize-copy! gp-0 (-> s4-0 vector 2) -1.0)
           (when s1-0
             (when (not (-> self had-valid-frame))
@@ -1419,22 +1418,20 @@
   )
 
 (defmethod draw-npc-shadow process-taskable ((obj process-taskable))
-  (#unless TARGET_STARTUP_HACKS
-           (let ((gp-0 (-> obj draw shadow-ctrl)))
-             (cond
-               ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
-                (dummy-15 gp-0 (-> obj draw origin) -4096.0 4096.0 32768.0)
-                (dummy-14 gp-0)
-                )
-               (else
-                 (let ((v1-10 gp-0))
-                   (logior! (-> v1-10 settings flags) 32)
-                   )
-                 0
-                 )
-               )
-             )
-           )
+  (let ((gp-0 (-> obj draw shadow-ctrl)))
+    (cond
+      ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+       ;(dummy-15 gp-0 (-> obj draw origin) -4096.0 4096.0 32768.0)
+       (dummy-14 gp-0)
+       )
+      (else
+        (let ((v1-10 gp-0))
+          (logior! (-> v1-10 settings flags) 32)
+          )
+        0
+        )
+      )
+    )
   (none)
   )
 
