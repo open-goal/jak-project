@@ -395,7 +395,7 @@ void DirectRenderer::update_gl_blend() {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
-      assert(false);
+//      assert(false);
     }
   }
 }
