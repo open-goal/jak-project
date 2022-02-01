@@ -5,88 +5,709 @@
 ;; name in dgo: cam-debug
 ;; dgos: GAME, ENGINE
 
+;; this file is debug only
+(declare-file (debug))
 (when *debug-segment*
+(when (or (not *camera-old-cpu*) (zero? *camera-old-cpu*))
+  (set! *camera-old-cpu* 0)
+  0
+  )
 
-(defun external-cam-reset! ()
-  (vector-reset! (-> *math-camera* trans))
-  (matrix-identity! (-> *math-camera* inv-camera-rot))
-  (when *camera-combiner*
-   (let* ((v1-6 (-> *math-camera* inv-camera-rot))
-          (a3-0 (-> *camera-combiner* inv-camera-rot))
-          (a0-2 (-> a3-0 vector 0 quad))
-          (a1-0 (-> a3-0 vector 1 quad))
-          (a2-0 (-> a3-0 vector 2 quad))
-          (a3-1 (-> a3-0 vector 3 quad))
-          )
-    (set! (-> v1-6 vector 0 quad) a0-2)
-    (set! (-> v1-6 vector 1 quad) a1-0)
-    (set! (-> v1-6 vector 2 quad) a2-0)
-    (set! (-> v1-6 vector 3 quad) a3-1)
-    )
-   (set! (-> *math-camera* trans quad) (-> *camera-combiner* trans quad))
+(when (or (not *camera-old-vu*) (zero? *camera-old-vu*))
+  (set! *camera-old-vu* 0)
+  0
+  )
+
+(when (or (not *camera-old-tfrag-bytes*) (zero? *camera-old-tfrag-bytes*))
+  (set! *camera-old-tfrag-bytes* 0)
+  0
+  )
+
+(define-perm *camera-old-level* string (new 'global 'string 128 (the-as string #f)))
+
+(define-perm *camera-old-stat-string-tfrag* string (new 'global 'string 128 (the-as string #f)))
+
+(define-perm *camera-old-stat-string-tfrag-near* string (new 'global 'string 128 (the-as string #f)))
+
+(define-perm *camera-old-stat-string-total* string (new 'global 'string 128 (the-as string #f)))
+
+(deftype cam-dbg-scratch (structure)
+  ((linevec4w      vector4w 2 :inline :offset-assert   0)
+   (color          vector   :inline   :offset-assert  32)
+   (plotvec        vector   2 :inline :offset-assert  48)
+   (linevec        vector   2 :inline :offset-assert  80)
+   (rel-vec        vector   :inline   :offset-assert 112)
+   (sphere-v-start vector   :inline   :offset-assert 128)
+   (sphere-v-end   vector   :inline   :offset-assert 144)
+   (sphere-v-down  vector   :inline   :offset-assert 160)
+   (sphere-vec     vector   :inline   :offset-assert 176)
+   (crossvec       vector   3 :inline :offset-assert 192)
+   (bboxvec        vector   6 :inline :offset-assert 240)
+   (fov-vv         vector   4 :inline :offset-assert 336)
+   (fov-src        vector   :inline   :offset-assert 400)
+   (fov-dest       vector   :inline   :offset-assert 416)
+   (fov-vert       vector   :inline   :offset-assert 432)
+   (fov-horz       vector   :inline   :offset-assert 448)
    )
+  :method-count-assert 9
+  :size-assert         #x1d0
+  :flag-assert         #x9000001d0
+  )
+
+
+(defun cam-slave-options->string ((arg0 cam-slave-options) (arg1 object))
+  (if (= (logand (cam-slave-options AIR_EXIT) arg0) (cam-slave-options AIR_EXIT))
+      (format arg1 "AIR_EXIT ")
+      )
+  (if (= (logand (cam-slave-options STICKY_ANGLE) arg0) (cam-slave-options STICKY_ANGLE))
+      (format arg1 "STICKY_ANGLE ")
+      )
+  (if (= (logand arg0 (cam-slave-options NO_ROTATE)) (cam-slave-options NO_ROTATE))
+      (format arg1 "NO_ROTATE ")
+      )
+  (if (= (logand arg0 (cam-slave-options BIKE_MODE)) (cam-slave-options BIKE_MODE))
+      (format arg1 "BIKE_MODE ")
+      )
+  (if (= (logand arg0 (cam-slave-options BLOCK_SHIFT_BUTTONS)) (cam-slave-options BLOCK_SHIFT_BUTTONS))
+      (format arg1 "BLOCK_SHIFT_BUTTONS ")
+      )
+  (if (= (logand arg0 (cam-slave-options GOTO_GOOD_POINT)) (cam-slave-options GOTO_GOOD_POINT))
+      (format arg1 "GOTO_GOOD_POINT ")
+      )
+  (if (= (logand arg0 (cam-slave-options SHRINK_MAX_ANGLE)) (cam-slave-options SHRINK_MAX_ANGLE))
+      (format arg1 "SHRINK_MAX_ANGLE ")
+      )
+  (if (= (logand arg0 (cam-slave-options MOVEMENT_BLOCKED)) (cam-slave-options MOVEMENT_BLOCKED))
+      (format arg1 "MOVEMENT_BLOCKED ")
+      )
+  (if (= (logand arg0 (cam-slave-options LINE_OF_SIGHT)) (cam-slave-options LINE_OF_SIGHT))
+      (format arg1 "LINE_OF_SIGHT ")
+      )
+  (if (= (logand arg0 (cam-slave-options PLAYER_MOVING_CAMERA)) (cam-slave-options PLAYER_MOVING_CAMERA))
+      (format arg1 "PLAYER_MOVING_CAMERA ")
+      )
+  (if (= (logand arg0 (cam-slave-options DRAG)) (cam-slave-options DRAG))
+      (format arg1 "DRAG ")
+      )
+  (if (= (logand arg0 (cam-slave-options FIND_HIDDEN_TARGET)) (cam-slave-options FIND_HIDDEN_TARGET))
+      (format arg1 "FIND_HIDDEN_TARGET ")
+      )
+  (if (= (logand arg0 (cam-slave-options COLLIDE)) (cam-slave-options COLLIDE))
+      (format arg1 "COLLIDE ")
+      )
+  (if (= (logand arg0 (cam-slave-options JUMP_PITCHES)) (cam-slave-options JUMP_PITCHES))
+      (format arg1 "JUMP_PITCHES ")
+      )
+  (if (= (logand arg0 (cam-slave-options ALLOW_Z_ROT)) (cam-slave-options ALLOW_Z_ROT))
+      (format arg1 "ALLOW_Z_ROT ")
+      )
+  (if (= (logand arg0 (cam-slave-options MOVE_SPHERICAL)) (cam-slave-options MOVE_SPHERICAL))
+      (format arg1 "MOVE_SPHERICAL ")
+      )
+  (if (= (logand arg0 (cam-slave-options SAME_SIDE)) (cam-slave-options SAME_SIDE))
+      (format arg1 "SAME_SIDE ")
+      )
+  (if (= (logand arg0 (cam-slave-options BUTT_CAM)) (cam-slave-options BUTT_CAM))
+      (format arg1 "BUTT_CAM ")
+      )
+  (the-as string arg1)
+  )
+
+(defun cam-index-options->string ((arg0 cam-index-options) (arg1 object))
+  (if (= (logand arg0 (cam-index-options SPHERICAL)) (cam-index-options SPHERICAL))
+      (format arg1 "RADIAL ")
+      )
+  (if (= (logand arg0 (cam-index-options RADIAL)) (cam-index-options RADIAL))
+      (format arg1 "SPHERICAL ")
+      )
+  (the-as string arg1)
+  )
+
+(defun slave-los-state->string ((arg0 slave-los-state))
+  (case arg0
+    (((slave-los-state between))
+     "between"
+     )
+    (((slave-los-state ccw))
+     "ccw"
+     )
+    (((slave-los-state cw))
+     "cw"
+     )
+    (((slave-los-state none))
+     "none"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype cam-debug-tri (structure)
+  ((vertex    vector   3 :inline :offset-assert   0)
+   (intersect vector   :inline   :offset-assert  48)
+   (color     vector4w           :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+
+(define *cam-debug-los-tri-current* 0)
+
+(define *cam-debug-los-tri* (the-as (inline-array cam-debug-tri) (malloc 'debug #x8fc0)))
+
+(define *cam-debug-coll-tri-current* 0)
+
+(define *cam-debug-coll-tri* (the-as (inline-array cam-debug-tri) (malloc 'debug #x8fc0)))
+
+(defun cam-debug-reset-coll-tri ()
+  (set! *cam-debug-los-tri-current* 0)
+  (set! *cam-debug-coll-tri-current* 0)
+  0
+  (none)
+  )
+
+(defun cam-debug-add-los-tri ((arg0 (inline-array collide-cache-tri)) (arg1 vector) (arg2 vector))
+  (cond
+    ((>= *cam-debug-los-tri-current* 460)
+     )
+    (else
+      (let ((v1-3 (-> *cam-debug-los-tri* *cam-debug-los-tri-current*)))
+        (set! (-> v1-3 vertex 0 quad) (-> arg0 0 vertex 0 quad))
+        (set! (-> v1-3 vertex 1 quad) (-> arg0 0 vertex 1 quad))
+        (set! (-> v1-3 vertex 2 quad) (-> arg0 0 vertex 2 quad))
+        (set! (-> v1-3 intersect quad) (-> arg1 quad))
+        (set! (-> v1-3 color) (the-as vector4w arg2))
+        )
+      (set! *cam-debug-los-tri-current* (+ *cam-debug-los-tri-current* 1))
+      (if (= *cam-debug-los-tri-current* 460)
+          (format 0 "ERROR <GMJ>: cam-debug-add-los-tri overflow~%")
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun cam-debug-add-coll-tri ((arg0 cam-debug-tri) (arg1 vector) (arg2 cam-debug-tri))
+  (cond
+    ((>= *cam-debug-coll-tri-current* 460)
+     )
+    (else
+      (let ((v1-3 (-> *cam-debug-coll-tri* *cam-debug-coll-tri-current*)))
+        (set! (-> v1-3 vertex 0 quad) (-> arg0 vertex 0 quad))
+        (set! (-> v1-3 vertex 1 quad) (-> arg0 vertex 1 quad))
+        (set! (-> v1-3 vertex 2 quad) (-> arg0 vertex 2 quad))
+        (set! (-> v1-3 intersect quad) (-> arg1 quad))
+        (set! (-> v1-3 color) (the-as vector4w arg2))
+        )
+      (set! *cam-debug-coll-tri-current* (+ *cam-debug-coll-tri-current* 1))
+      (if (>= *cam-debug-coll-tri-current* 460)
+          (format 0 "ERROR <GMJ>: cam-debug-add-coll-tri overflow~%")
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod print-nth-point tracking-spline ((obj tracking-spline) (arg0 int))
+  (if (= arg0 (-> obj used-point))
+      (format 0 "u")
+      (format 0 " ")
+      )
+  (if (= arg0 (-> obj next-to-last-point))
+      (format 0 "n")
+      (format 0 " ")
+      )
+  (if (= arg0 (-> obj end-point))
+      (format 0 "e")
+      (format 0 " ")
+      )
+  (if (= arg0 -134250495)
+      (format 0 " ~D~%" arg0)
+      (format
+        0
+        " ~D ~M ~M ~M~%"
+        arg0
+        (-> obj point arg0 position x)
+        (-> obj point arg0 position y)
+        (-> obj point arg0 position z)
+        )
+      )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-12 tracking-spline ((obj tracking-spline))
+  (let ((s5-0 (-> obj used-point)))
+    (while (!= s5-0 -134250495)
+      (print-nth-point obj s5-0)
+      (set! s5-0 (-> obj point s5-0 next))
+      )
+    (print-nth-point obj s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-23 tracking-spline ((obj tracking-spline))
+  (let ((s5-0 (-> obj used-point))
+        (s4-0 (-> obj point (-> obj used-point) next))
+        )
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (when (!= s4-0 -134250495)
+        (TODO-RENAME-19 obj 0.0 s3-0 (the-as tracking-spline-sampler #f))
+        (camera-cross
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
+          s3-0
+          (new 'static 'vector4w :x #xff :w #x80)
+          (meters 0.25)
+          )
+        (TODO-RENAME-19 obj (-> obj sample-len) s3-0 (the-as tracking-spline-sampler #f))
+        (camera-cross
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
+          s3-0
+          (new 'static 'vector4w :x #xff :w #x80)
+          (meters 0.25)
+          )
+        )
+      )
+    (while (!= s4-0 -134250495)
+      (camera-line
+        (the-as vector (-> obj point s5-0))
+        (the-as vector (-> obj point s4-0))
+        (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+        )
+      (set! s5-0 s4-0)
+      (set! s4-0 (-> obj point s4-0 next))
+      )
+    )
+  (let ((s5-1 (new 'stack-no-clear 'vector)))
+    (camera-line
+      (-> obj debug-out-position)
+      (-> obj debug-old-position)
+      (new 'static 'vector4w :x #xff :y #xff :w #x80)
+      )
+    (vector-! s5-1 (-> obj debug-out-position) (-> obj debug-old-position))
+    (TODO-RENAME-20 obj s5-1 (-> obj debug-last-point))
+    (camera-line-rel (-> obj debug-old-position) s5-1 (new 'static 'vector4w :x #xff :z #xff :w #x80))
+    )
+  0
+  (none)
+  )
+
+(defun debug-euler ((arg0 cam-dbg-scratch))
+  (let ((s4-0 (new 'stack-no-clear 'euler-angles))
+        (gp-0 (new 'stack-no-clear 'matrix))
+        )
+    (matrix->eul s4-0 (the-as matrix (&-> arg0 sphere-vec w)) 21)
+    (format *stdcon* "euler angles x ~R y ~R z ~R~%" (-> s4-0 x) (-> s4-0 y) (-> s4-0 z))
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> arg0 sphere-vec w)
+      (-> arg0 crossvec 0 x)
+      (-> arg0 crossvec 0 y)
+      (-> arg0 crossvec 0 z)
+      )
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> arg0 crossvec 0 w)
+      (-> arg0 crossvec 1 x)
+      (-> arg0 crossvec 1 y)
+      (-> arg0 crossvec 1 z)
+      )
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> arg0 crossvec 1 w)
+      (-> arg0 crossvec 2 x)
+      (-> arg0 crossvec 2 y)
+      (-> arg0 crossvec 2 z)
+      )
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> arg0 crossvec 2 w)
+      (-> arg0 bboxvec 0 x)
+      (-> arg0 bboxvec 0 y)
+      (-> arg0 bboxvec 0 z)
+      )
+    (eul->matrix gp-0 s4-0)
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> gp-0 vector 0 x)
+      (-> gp-0 vector 0 y)
+      (-> gp-0 vector 0 z)
+      (-> gp-0 vector 0 w)
+      )
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> gp-0 vector 1 x)
+      (-> gp-0 vector 1 y)
+      (-> gp-0 vector 1 z)
+      (-> gp-0 vector 1 w)
+      )
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> gp-0 vector 2 x)
+      (-> gp-0 vector 2 y)
+      (-> gp-0 vector 2 z)
+      (-> gp-0 vector 2 w)
+      )
+    (format
+      *stdcon*
+      "~f ~f ~f ~f~%"
+      (-> gp-0 vector 3 x)
+      (-> gp-0 vector 3 y)
+      (-> gp-0 vector 3 z)
+      (-> gp-0 vector 3 w)
+      )
+    (if (or (< 0.001 (fabs (- (-> arg0 sphere-vec w) (-> gp-0 vector 0 x))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 0 x) (-> gp-0 vector 0 y))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 0 y) (-> gp-0 vector 0 z))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 0 z) (-> gp-0 vector 0 w))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 0 w) (-> gp-0 vector 1 x))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 1 x) (-> gp-0 vector 1 y))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 1 y) (-> gp-0 vector 1 z))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 1 z) (-> gp-0 vector 1 w))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 1 w) (-> gp-0 vector 2 x))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 2 x) (-> gp-0 vector 2 y))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 2 y) (-> gp-0 vector 2 z))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 2 z) (-> gp-0 vector 2 w))))
+            (< 0.001 (fabs (- (-> arg0 crossvec 2 w) (-> gp-0 vector 3 x))))
+            (< 0.001 (fabs (- (-> arg0 bboxvec 0 x) (-> gp-0 vector 3 y))))
+            (< 0.001 (fabs (- (-> arg0 bboxvec 0 y) (-> gp-0 vector 3 z))))
+            (< 0.001 (fabs (- (-> arg0 bboxvec 0 z) (-> gp-0 vector 3 w))))
+            )
+        (format *stdcon* "different~%")
+        (format *stdcon* "same~%")
+        )
+    )
+  )
+
+(defun bike-cam-limit ((arg0 float))
+  (let* ((f0-1 (* 10012.444 arg0))
+         (f30-0 (fmax 0.0 f0-1))
+         )
+    (if (< f30-0 8192.0)
+        (* (/ 1.0 (- 1.0 (cos 21845.334))) (+ (- (cos 21845.334)) (cos (* 2.6666667 (- 8192.0 f30-0)))))
+        1.0
+        )
+    )
+  )
+
+(defun master-draw-coordinates ((arg0 vector))
+  (let ((s5-0 (new-stack-vector0))
+        (gp-0 (new-stack-vector0))
+        )
+    (let ((a0-1 (new-stack-matrix0)))
+      (set-vector! s5-0 0.0 8192.0 0.0 1.0)
+      (matrix-rotate-yxz! a0-1 s5-0)
+      )
+    (vector+!
+      gp-0
+      (-> *camera-combiner* trans)
+      (vector-normalize-copy! gp-0 (-> *camera-combiner* inv-camera-rot vector 2) 24576.0)
+      )
+    (let ((a1-2 s5-0)
+          (v1-4 gp-0)
+          (a0-3 s5-0)
+          )
+      (set! (-> a0-3 x) 4096.0)
+      (set! (-> a0-3 y) 0.0)
+      (set! (-> a0-3 z) 0.0)
+      (set! (-> a0-3 w) 1.0)
+      (vector+! a1-2 v1-4 a0-3)
+      )
+    (add-debug-line #t (bucket-id debug-draw1) gp-0 s5-0 (new 'static 'rgba :r #xff :a #x80) #f (the-as rgba -1))
+    (let ((a1-5 s5-0)
+          (v1-5 gp-0)
+          (a0-5 s5-0)
+          )
+      (set! (-> a0-5 x) 0.0)
+      (set! (-> a0-5 y) 4096.0)
+      (set! (-> a0-5 z) 0.0)
+      (set! (-> a0-5 w) 1.0)
+      (vector+! a1-5 v1-5 a0-5)
+      )
+    (add-debug-line #t (bucket-id debug-draw1) gp-0 s5-0 (new 'static 'rgba :g #xff :a #x80) #f (the-as rgba -1))
+    (let ((a1-8 s5-0)
+          (v1-6 gp-0)
+          (a0-7 s5-0)
+          )
+      (set! (-> a0-7 x) 0.0)
+      (set! (-> a0-7 y) 0.0)
+      (set! (-> a0-7 z) 4096.0)
+      (set! (-> a0-7 w) 1.0)
+      (vector+! a1-8 v1-6 a0-7)
+      )
+    (add-debug-line #t (bucket-id debug-draw1) gp-0 s5-0 (new 'static 'rgba :b #xff :a #x80) #f (the-as rgba -1))
+    (when arg0
+      (set! (-> s5-0 quad) (-> arg0 quad))
+      (vector-normalize! s5-0 4096.0)
+      (vector+! s5-0 gp-0 s5-0)
+      (add-debug-line
+        #t
+        (bucket-id debug-draw1)
+        gp-0
+        s5-0
+        (new 'static 'rgba :r #x7f :g #x7f :a #x80)
+        #f
+        (the-as rgba -1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(deftype cam-collision-record (structure)
+  ((pos            vector :inline :offset-assert   0)
+   (vel            vector :inline :offset-assert  16)
+   (desired-pos    vector :inline :offset-assert  32)
+   (cam-tpos-cur   vector :inline :offset-assert  48)
+   (cam-tpos-old   vector :inline :offset-assert  64)
+   (view-flat      vector :inline :offset-assert  80)
+   (string-min-val vector :inline :offset-assert  96)
+   (string-max-val vector :inline :offset-assert 112)
+   (view-off       vector :inline :offset-assert 128)
+   (min-z-override float          :offset-assert 144)
+   (string-push-z  float          :offset-assert 148)
+   (view-off-param float          :offset-assert 152)
+   (frame          int32          :offset-assert 156)
+   (iteration      int32          :offset-assert 160)
+   (move-type      symbol         :offset-assert 164)
+   )
+  :method-count-assert 9
+  :size-assert         #xa8
+  :flag-assert         #x9000000a8
+  )
+
+
+(deftype cam-collision-record-array (inline-array-class)
+  ((data cam-collision-record :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> cam-collision-record-array heap-base) (the-as uint 176))
+
+(define *cam-collision-record-first* 0)
+
+(define *cam-collision-record-last* 0)
+
+(define *cam-collision-record-show* 0)
+
+(define *cam-collision-record* (new 'debug 'cam-collision-record-array 600))
+
+(defun cam-collision-record-save ((arg0 vector) (arg1 vector) (arg2 int) (arg3 symbol) (arg4 camera-slave))
+  (when *record-cam-collide-history*
+    (let ((v1-5 (the-as
+                  cam-collision-record
+                  (+ (+ (* 176 *cam-collision-record-last*) 12) (the-as int *cam-collision-record*))
+                  )
+                )
+          )
+      (set! (-> v1-5 pos quad) (-> arg0 quad))
+      (set! (-> v1-5 vel quad) (-> arg1 quad))
+      (set! (-> v1-5 view-flat quad) (-> arg4 view-flat quad))
+      (set! (-> v1-5 desired-pos quad) (-> arg4 desired-pos quad))
+      (set! (-> v1-5 cam-tpos-cur quad) (-> *camera* tpos-curr-adj quad))
+      (set! (-> v1-5 cam-tpos-old quad) (-> *camera* tpos-old-adj quad))
+      (set! (-> v1-5 string-min-val quad) (-> arg4 string-min-val quad))
+      (set! (-> v1-5 string-max-val quad) (-> arg4 string-max-val quad))
+      (set! (-> v1-5 view-off quad) (-> arg4 view-off quad))
+      (set! (-> v1-5 frame) (-> *display* base-frame-counter))
+      (set! (-> v1-5 iteration) arg2)
+      (set! (-> v1-5 move-type) arg3)
+      (set! (-> v1-5 min-z-override) (-> arg4 min-z-override))
+      (set! (-> v1-5 string-push-z) (-> *camera* string-push-z))
+      (set! (-> v1-5 view-off-param) (-> arg4 view-off-param))
+      )
+    (set! *cam-collision-record-show* *cam-collision-record-last*)
+    (set! *cam-collision-record-last* (+ *cam-collision-record-last* 1))
+    (set! *cam-collision-record-last* (mod *cam-collision-record-last* 600))
+    (when (= *cam-collision-record-last* *cam-collision-record-first*)
+      (set! *cam-collision-record-first* (+ *cam-collision-record-first* 1))
+      (set! *cam-collision-record-first* (mod *cam-collision-record-first* 600))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun cam-collision-record-step ((arg0 int))
+  (set! *cam-collision-record-show* (+ *cam-collision-record-show* arg0))
+  (while (>= *cam-collision-record-show* 600)
+    (set! *cam-collision-record-show* (+ *cam-collision-record-show* -600))
+    )
+  (while (< *cam-collision-record-show* 0)
+    (set! *cam-collision-record-show* (+ *cam-collision-record-show* 600))
+    )
+  0
+  (none)
+  )
+
+(defun cam-collision-record-draw ()
+  (cond
+    ((cpad-pressed? 0 down)
+     (cam-collision-record-step 1)
+     )
+    ((cpad-hold? 0 right)
+     (cam-collision-record-step 1)
+     )
+    ((cpad-pressed? 0 up)
+     (cam-collision-record-step -1)
+     )
+    ((cpad-hold? 0 left)
+     (cam-collision-record-step -1)
+     )
+    )
+  (let ((s5-0 (the-as
+                cam-collision-record
+                (+ (+ (* 176 *cam-collision-record-show*) 12) (the-as int *cam-collision-record*))
+                )
+              )
+        (s4-0 (new 'stack 'vector4w))
+        (gp-0 (new 'stack 'vector4w))
+        )
+    (format *stdcon* "move-type ~A~%" (-> s5-0 move-type))
+    (cond
+      ((= (-> s5-0 move-type) 'normal)
+       (set! (-> s4-0 x) 255)
+       (set! (-> s4-0 y) 255)
+       )
+      ((= (-> s5-0 move-type) 'jump)
+       (set! (-> s4-0 x) 255)
+       )
+      ((= (-> s5-0 move-type) 'no-hit)
+       (set! (-> s4-0 y) 255)
+       )
+      (else
+        (set! (-> s4-0 z) 255)
+        )
+      )
+    (set! (-> s4-0 w) 128)
+    (set! (-> gp-0 x) 127)
+    (set! (-> gp-0 y) 127)
+    (set! (-> gp-0 z) 127)
+    (set! (-> gp-0 w) 128)
+    (camera-line-rel-len (-> s5-0 pos) (-> s5-0 vel) (fmax 81.92 (vector-length (-> s5-0 vel))) s4-0)
+    (let* ((s3-1 (new 'stack-no-clear 'collide-tri-result))
+           (f30-1
+             (fill-and-probe-using-line-sphere
+               *collide-cache*
+               (-> s5-0 pos)
+               (-> s5-0 vel)
+               (-> *CAMERA-bank* collide-move-rad)
+               (collide-kind background)
+               (the-as process #f)
+               s3-1
+               2
+               )
+             )
+           (s2-1 (new 'stack-no-clear 'vector))
+           )
+      (format *stdcon* "frame ~D iteration ~D travel ~f~%" (-> s5-0 frame) (-> s5-0 iteration) f30-1)
+      (format
+        *stdcon*
+        "mzo ~M psz ~M vop ~f~%"
+        (-> s5-0 min-z-override)
+        (-> s5-0 string-push-z)
+        (-> s5-0 view-off-param)
+        )
+      (format *stdcon* "pos ~M ~M ~M~%" (-> s5-0 pos x) (-> s5-0 pos y) (-> s5-0 pos z))
+      (format *stdcon* "vel ~M ~M ~M~%" (-> s5-0 vel x) (-> s5-0 vel y) (-> s5-0 vel z))
+      (format *stdcon* "des ~M ~M ~M~%" (-> s5-0 desired-pos x) (-> s5-0 desired-pos y) (-> s5-0 desired-pos z))
+      (format *stdcon* "flt ~M ~M ~M~%" (-> s5-0 view-flat x) (-> s5-0 view-flat y) (-> s5-0 view-flat z))
+      (format *stdcon* "cur ~M ~M ~M~%" (-> s5-0 cam-tpos-cur x) (-> s5-0 cam-tpos-cur y) (-> s5-0 cam-tpos-cur z))
+      (format *stdcon* "old ~M ~M ~M~%" (-> s5-0 cam-tpos-old x) (-> s5-0 cam-tpos-old y) (-> s5-0 cam-tpos-old z))
+      (format
+        *stdcon*
+        "smn ~M ~M ~M~%"
+        (-> s5-0 string-min-val x)
+        (-> s5-0 string-min-val y)
+        (-> s5-0 string-min-val z)
+        )
+      (format
+        *stdcon*
+        "smx ~M ~M ~M~%"
+        (-> s5-0 string-max-val x)
+        (-> s5-0 string-max-val y)
+        (-> s5-0 string-max-val z)
+        )
+      (format *stdcon* "vof ~M ~M ~M~%" (-> s5-0 view-off x) (-> s5-0 view-off y) (-> s5-0 view-off z))
+      (when (>= f30-1 0.0)
+        (camera-line (the-as vector (-> s3-1 vertex)) (-> s3-1 vertex 1) s4-0)
+        (camera-line (-> s3-1 vertex 1) (-> s3-1 vertex 2) s4-0)
+        (camera-line (-> s3-1 vertex 2) (the-as vector (-> s3-1 vertex)) s4-0)
+        (vector-! s2-1 (-> s5-0 pos) (-> s3-1 intersect))
+        (vector-normalize! s2-1 1.0)
+        (camera-line-rel-len (-> s3-1 intersect) s2-1 (-> *CAMERA-bank* collide-move-rad) gp-0)
+        (camera-line-rel-len (-> s3-1 intersect) (-> s3-1 normal) (-> *CAMERA-bank* collide-move-rad) gp-0)
+        )
+      )
+    )
   0
   (none)
   )
 
 (defun debug-set-camera-pos-rot! ((arg0 vector) (arg1 matrix))
   (when (and *camera* *camera-combiner*)
-   (send-event *camera* 'change-state cam-free-floating 0)
-   (set! (-> *camera-combiner* trans quad) (-> arg0 quad))
-   (let ((a2-0 (-> *camera-combiner* inv-camera-rot))
-         (v1-10 (-> arg1 vector 0 quad))
-         (a0-4 (-> arg1 vector 1 quad))
-         (a1-2 (-> arg1 vector 2 quad))
-         (a3-0 (-> arg1 vector 3 quad))
-         )
-    (set! (-> a2-0 vector 0 quad) v1-10)
-    (set! (-> a2-0 vector 1 quad) a0-4)
-    (set! (-> a2-0 vector 2 quad) a1-2)
-    (set! (-> a2-0 vector 3 quad) a3-0)
+    (send-event *camera* 'change-state cam-free-floating 0)
+    (set! (-> *camera-combiner* trans quad) (-> arg0 quad))
+    (let ((a2-0 (-> *camera-combiner* inv-camera-rot))
+          (v1-10 (-> arg1 vector 0 quad))
+          (a0-4 (-> arg1 vector 1 quad))
+          (a1-2 (-> arg1 vector 2 quad))
+          (a3-0 (-> arg1 vector 3 quad))
+          )
+      (set! (-> a2-0 vector 0 quad) v1-10)
+      (set! (-> a2-0 vector 1 quad) a0-4)
+      (set! (-> a2-0 vector 2 quad) a1-2)
+      (set! (-> a2-0 vector 3 quad) a3-0)
+      )
+    (send-event *camera* 'change-state cam-fixed 0)
     )
-   (send-event *camera* 'change-state cam-fixed 0)
-   )
   arg0
+  )
+
+(defun external-cam-reset! ()
+  (vector-reset! (-> *math-camera* trans))
+  (matrix-identity! (-> *math-camera* inv-camera-rot))
+  (when *camera-combiner*
+    (let* ((v1-6 (-> *math-camera* inv-camera-rot))
+           (a3-0 (-> *camera-combiner* inv-camera-rot))
+           (a0-2 (-> a3-0 vector 0 quad))
+           (a1-0 (-> a3-0 vector 1 quad))
+           (a2-0 (-> a3-0 vector 2 quad))
+           (a3-1 (-> a3-0 vector 3 quad))
+           )
+      (set! (-> v1-6 vector 0 quad) a0-2)
+      (set! (-> v1-6 vector 1 quad) a1-0)
+      (set! (-> v1-6 vector 2 quad) a2-0)
+      (set! (-> v1-6 vector 3 quad) a3-1)
+      )
+    (set! (-> *math-camera* trans quad) (-> *camera-combiner* trans quad))
+    )
+  0
+  (none)
   )
 
 )
 
 
-(define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
-(defun cam-debug-add-los-tri ((a (inline-array collide-cache-tri)) (b vector) (c vector))
-  (none)
-  )
-(defun cam-collision-record-save ((a vector) (b vector) (c int) (d symbol) (e camera-slave))
-  (none)
-  )
-(define-extern slave-los-state->string (function slave-los-state string))
-(define-extern cam-debug-reset-coll-tri (function none)) ;; not confirmed
 
-(when (or (not *camera-old-cpu*) (zero? *camera-old-cpu*))
-  (set! *camera-old-cpu* 0)
-  0
-  )
-
-;; failed to figure out what this is:
-(when (or (not *camera-old-vu*) (zero? *camera-old-vu*))
-  (set! *camera-old-vu* 0)
-  0
-  )
-
-;; failed to figure out what this is:
-(when (or (not *camera-old-tfrag-bytes*) (zero? *camera-old-tfrag-bytes*))
-  (set! *camera-old-tfrag-bytes* 0)
-  0
-  )
-
-;; definition (perm) for symbol *camera-old-level*, type string
-(define-perm *camera-old-level* string (new 'global 'string 128 (the-as string #f)))
-
-;; definition (perm) for symbol *camera-old-stat-string-tfrag*, type string
-(define-perm *camera-old-stat-string-tfrag* string (new 'global 'string 128 (the-as string #f)))
-
-;; definition (perm) for symbol *camera-old-stat-string-tfrag-near*, type string
-(define-perm *camera-old-stat-string-tfrag-near* string (new 'global 'string 128 (the-as string #f)))
-
-;; definition (perm) for symbol *camera-old-stat-string-total*, type string
-(define-perm *camera-old-stat-string-total* string (new 'global 'string 128 (the-as string #f)))

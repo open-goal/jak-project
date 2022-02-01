@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: snow-ball.gc
-;; name in dgo: snow-ball
-;; dgos: L1, SNO
-
-;; DECOMP BEGINS
-
+;; definition of type snow-ball-shadow
 (deftype snow-ball-shadow (process-drawable)
   ()
   :heap-base #x40
@@ -18,7 +13,15 @@
     )
   )
 
+;; definition for method 3 of type snow-ball-shadow
+(defmethod inspect snow-ball-shadow ((obj snow-ball-shadow))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
 
+;; definition of type snow-ball-junction
 (deftype snow-ball-junction (structure)
   ((enter-time int64  :offset-assert   0)
    (exit-time  int64  :offset-assert   8)
@@ -28,7 +31,15 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type snow-ball-junction
+(defmethod inspect snow-ball-junction ((obj snow-ball-junction))
+  (format #t "[~8x] ~A~%" obj 'snow-ball-junction)
+  (format #t "~Tenter-time: ~D~%" (-> obj enter-time))
+  (format #t "~Texit-time: ~D~%" (-> obj exit-time))
+  obj
+  )
 
+;; definition of type snow-ball-path-info
 (deftype snow-ball-path-info (structure)
   ((hug-path? symbol         :offset-assert   0)
    (path-pos  vector :inline :offset-assert  16)
@@ -38,7 +49,15 @@
   :flag-assert         #x900000020
   )
 
+;; definition for method 3 of type snow-ball-path-info
+(defmethod inspect snow-ball-path-info ((obj snow-ball-path-info))
+  (format #t "[~8x] ~A~%" obj 'snow-ball-path-info)
+  (format #t "~Thug-path?: ~A~%" (-> obj hug-path?))
+  (format #t "~Tpath-pos: #<vector @ #x~X>~%" (-> obj path-pos))
+  obj
+  )
 
+;; definition of type snow-ball-roller
 (deftype snow-ball-roller (process-drawable)
   ((root-override          collide-shape-moving           :offset        112)
    (which-path             int32                          :offset-assert 176)
@@ -70,7 +89,29 @@
     )
   )
 
+;; definition for method 3 of type snow-ball-roller
+(defmethod inspect snow-ball-roller ((obj snow-ball-roller))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Twhich-path: ~D~%" (-> obj which-path))
+  (format #t "~T~Tpath-u: ~f~%" (-> obj path-u))
+  (format #t "~T~Tpath-speed: ~f~%" (-> obj path-speed))
+  (format #t "~T~Tpath-length: ~f~%" (-> obj path-length))
+  (format #t "~T~Tpath-fall-u: ~f~%" (-> obj path-fall-u))
+  (format #t "~T~Tpath-coming-out-u: ~f~%" (-> obj path-coming-out-u))
+  (format #t "~T~Tpath-faded-up-u: ~f~%" (-> obj path-faded-up-u))
+  (format #t "~T~Tdelay-til-bounce: ~D~%" (-> obj delay-til-bounce))
+  (format #t "~T~Trolling-sound-id: ~D~%" (-> obj rolling-sound-id))
+  (format #t "~T~Trolling-sound-enabled?: ~A~%" (-> obj rolling-sound-enabled?))
+  (format #t "~T~Tlast-bounce-time: ~D~%" (-> obj last-bounce-time))
+  (format #t "~T~Thit-player-time: ~D~%" (-> obj hit-player-time))
+  (format #t "~T~Tpath-info: #<snow-ball-path-info @ #x~X>~%" (-> obj path-info))
+  (format #t "~T~Tjunctions[4] @ #x~X~%" (-> obj junctions))
+  obj
+  )
 
+;; definition of type snow-ball
 (deftype snow-ball (process)
   ((child-override         (pointer snow-ball-roller)   :offset         20)
    (state-time             int64                        :offset-assert 112)
@@ -92,7 +133,20 @@
     )
   )
 
+;; definition for method 3 of type snow-ball
+(defmethod inspect snow-ball ((obj snow-ball))
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tstate-time: ~D~%" (-> obj state-time))
+  (format #t "~T~Tlast-path-picked: ~D~%" (-> obj last-path-picked))
+  (format #t "~T~Tsame-path-picked-count: ~D~%" (-> obj same-path-picked-count))
+  (format #t "~T~Tdelay-til-next: ~D~%" (-> obj delay-til-next))
+  (format #t "~T~Tpath[2] @ #x~X~%" (-> obj path))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup *snow-ball-sg* snow-ball
   0
   2
@@ -101,6 +155,7 @@
   :longest-edge (meters 0)
   )
 
+;; failed to figure out what this is:
 (defskelgroup *snow-ball-shadow-sg* snow-ball
   3
   -1
@@ -110,6 +165,7 @@
   :shadow 5
   )
 
+;; definition for symbol *snow-ball-shadow-control*, type shadow-control
 (define
   *snow-ball-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -124,6 +180,7 @@
                                )
   )
 
+;; failed to figure out what this is:
 (defstate snow-ball-shadow-idle (snow-ball-shadow)
   :trans
   (behavior ()
@@ -144,6 +201,9 @@
   (the-as (function none :behavior snow-ball-shadow) ja-post)
   )
 
+;; definition for function snow-ball-shadow-init-by-other
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defbehavior snow-ball-shadow-init-by-other snow-ball-shadow ()
   (stack-size-set! (-> self main-thread) 128)
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
@@ -166,12 +226,17 @@
   (none)
   )
 
+;; definition for function snow-ball-roller-path-init
+;; INFO: Return type mismatch float vs none.
 (defbehavior snow-ball-roller-path-init snow-ball-roller ()
   (set! (-> self path-u) 0.0)
   (set! (-> self path-length) (path-distance (-> self path)))
   (none)
   )
 
+;; definition for method 20 of type snow-ball-roller
+;; INFO: Return type mismatch float vs none.
+;; Used lq/sq
 (defmethod follow-path snow-ball-roller ((obj snow-ball-roller))
   (let ((s5-0 (-> obj path-info)))
     (set! (-> s5-0 hug-path?) #f)
@@ -215,12 +280,16 @@
   (none)
   )
 
+;; definition for method 21 of type snow-ball-roller
 (defmethod play-landing-sound snow-ball-roller ((obj snow-ball-roller) (arg0 float))
   (let ((f30-0 (* 0.0018780049 (fmin 53248.0 (fmax 0.0 (+ -4096.0 (fabs arg0)))))))
     (sound-play-by-name (static-sound-name "snowball-land") (new-sound-id) (the int (* 10.24 f30-0)) 0 0 1 #t)
     )
   )
 
+;; definition for function snow-ball-roller-path-update
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior snow-ball-roller-path-update snow-ball-roller ()
   (local-vars (f0-5 float))
   (let ((f0-0 (-> self root-override trans y)))
@@ -340,6 +409,9 @@
   (none)
   )
 
+;; definition for method 22 of type snow-ball-roller
+;; INFO: Return type mismatch object vs none.
+;; Used lq/sq
 (defmethod dummy-22 snow-ball-roller ((obj snow-ball-roller) (arg0 process-drawable))
   (with-pp
     (cond
@@ -406,6 +478,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate snow-ball-roller-idle (snow-ball-roller)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -455,6 +528,8 @@
   (the-as (function none :behavior snow-ball-roller) transform-post)
   )
 
+;; definition for function snow-ball-roller-init-by-other
+;; INFO: Return type mismatch object vs none.
 (defbehavior snow-ball-roller-init-by-other snow-ball-roller ((arg0 entity-actor) (arg1 snow-ball) (arg2 float) (arg3 int) (arg4 (inline-array snow-ball-junction)))
   (set! (-> self rolling-sound-id) (new 'static 'sound-id))
   (set! (-> self rolling-sound-enabled?) #t)
@@ -517,6 +592,7 @@
   (none)
   )
 
+;; definition for method 14 of type snow-ball
 (defmethod dummy-14 snow-ball ((obj snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 float) (arg2 int))
   (local-vars (v1-0 (pointer float)))
   (if (zero? arg2)
@@ -537,6 +613,7 @@
   #f
   )
 
+;; definition for method 15 of type snow-ball
 (defmethod dummy-15 snow-ball ((obj snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 int))
   (local-vars (v0-0 symbol))
   (let ((v1-0 (-> obj child-override)))
@@ -564,6 +641,7 @@
   v0-0
   )
 
+;; failed to figure out what this is:
 (defstate snow-ball-idle (snow-ball)
   :code
   (behavior ()
@@ -629,6 +707,8 @@
     )
   )
 
+;; definition for method 7 of type snow-ball
+;; INFO: Return type mismatch process-drawable vs snow-ball.
 (defmethod relocate snow-ball ((obj snow-ball) (arg0 int))
   (dotimes (v1-0 2)
     (if (nonzero? (-> obj path v1-0))
@@ -642,6 +722,8 @@
           )
   )
 
+;; definition for method 11 of type snow-ball
+;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! snow-ball ((obj snow-ball) (arg0 entity-actor))
   (set! (-> obj last-path-picked) 1)
   (set! (-> obj same-path-picked-count) 1)
@@ -652,7 +734,3 @@
   (go snow-ball-idle)
   (none)
   )
-
-
-
-

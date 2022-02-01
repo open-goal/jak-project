@@ -81,7 +81,7 @@
 (define-extern append! (function object object object))
 (define-extern delete! (function object object pair))
 (define-extern insert-cons! (function object object pair))
-(define-extern sort (function object (function object object object) object))
+(define-extern sort (function pair (function object object object) pair))
 (define-extern mem-copy! (function pointer pointer int pointer))
 (define-extern qmem-copy<-! (function pointer pointer int pointer))
 (define-extern qmem-copy->! (function pointer pointer int pointer))
@@ -596,6 +596,60 @@
   (set-fps)
   )
 
+;; flavors for music
+(defenum music-flava
+  :type uint8
+  (racer 1)
+  (flutflut 2)
+  (to-maincave 3)
+  (to-snow 4)
+  (sage 5)
+  (assistant 6)
+  (birdlady 7)
+  (mayor 8)
+  (sculptor 9)
+  (explorer 10)
+  (sage-yellow 11)
+  (sage-red 12)
+  (sage-blue 13)
+  (miners 14)
+  (warrior 15)
+  (geologist 16)
+  (gambler 17)
+  (sage-hut 18)
+  (dock 19)
+  (farmer 20)
+  (jungleb-eggtop 21)
+  (misty-boat 22)
+  (misty-battle 23)
+  (beach-sentinel 24)
+  (beach-cannon 25)
+  (beach-grotto 26)
+  (citadel-center 27)
+  (robocave 28)
+  (robocave-top 29)
+  (maincave 30)
+  (darkcave 31)
+  (snow-battle 32)
+  (snow-cave 33)
+  (snow-fort 34)
+  (snow-balls 35)
+  (levitator 36)
+  (swamp-launcher 37)
+  (swamp-battle 38)
+  (jungle-temple-exit 39)
+  (jungle-lurkerm 40)
+  (jungle-temple-top 41)
+  (rolling-gorge 42)
+  (ogre-middle 43)
+  (ogre-end 44)
+  (lavatube-middle 45)
+  (lavatube-end 46)
+  (finalboss-middle 47)
+  (finalboss-end 48)
+  (default 49)
+  )
+
 ;; - Enums
 (defenum joint-mod-handler-mode
   :bitfield #t
@@ -807,6 +861,7 @@
   (zero 0)
   (one 1)
   (confirm #x103)
+  (press-to-talk #x104)
   (press-to-use #x105)
   (confirm-play #x106)
   (play-again? #x107)
@@ -828,8 +883,12 @@
   (spanish #x117)
   (italian #x118)
   (japanese #x119)
+  (press-to-trade-money #x11a)
+  (press-to-trade-money-oracle #x11b)
   (press-to-warp #x11c)
   (press-to-exit #x11d)
+  (press-to-talk-to-sage #x123)
+  (press-to-talk-to-assistant #x124)
   (aspect-ratio #x125)
   (video-mode #x126)
   (game-options #x127)
@@ -5519,6 +5578,7 @@
   (left 3)
   (right 4)
   (large 5)
+  (pc-hack 6)
   )
 
 (deftype font-context (basic)
@@ -5697,9 +5757,9 @@
 (declare-type engine basic)
 (deftype connection (connectable)
   ((param0 basic         :offset-assert 16) ;; often (function object object object object object), but can be other things.
-   (param1 basic         :offset-assert 20)
-   (param2 basic         :offset-assert 24)
-   (param3 basic         :offset-assert 28)
+   (param1 int32         :offset-assert 20)
+   (param2 int32         :offset-assert 24)
+   (param3 int32         :offset-assert 28)
    (quad   uint128     2 :offset 0)
    )
   :method-count-assert 14
@@ -6150,7 +6210,7 @@
 (define-extern *display-path-marks* symbol)
 (define-extern *display-vol-marks* symbol)
 (define-extern *display-water-marks* symbol)
-(define-extern *display-actor-anim* symbol)
+(define-extern *display-actor-anim* string)
 (define-extern *display-process-anim* (pointer process))
 (define-extern *display-actor-vis* symbol)
 (define-extern *display-actor-graph* symbol)
@@ -10376,6 +10436,7 @@
 ;; - Types
 
 ;; NOTE - root can also be a collide-shape
+(declare-type joint-mod basic)
 (deftype manipy (process-drawable)
   ((new-trans-hook       (function none)        :offset-assert 176) ;; TODO - no idea on these types
    (cur-trans-hook       (function none)        :offset-assert 180) ;; TODO - no idea on these types
@@ -10386,7 +10447,7 @@
    (cur-grab-handle      handle          :offset-assert 208)
    (cur-target-handle    handle          :offset-assert 216)
    (old-grab-pos         vector  :inline :offset-assert 224)
-   (joint                process-drawable 4 :offset-assert 240)
+   (joint                joint-mod 4 :offset-assert 240)
    (new-post-hook        (function none)        :offset-assert 256) ;; TODO - no idea on these types
    (cur-post-hook        (function none)        :offset-assert 260) ;; TODO - no idea on these types
    (clone-copy-trans     basic           :offset-assert 264)
@@ -15802,7 +15863,7 @@
 (define-extern show-iop-info (function dma-buffer int))
 (define-extern show-iop-memory (function dma-buffer int))
 (define-extern make-sqrt-table (function int))
-(define-extern flava-lookup (function symbol int int))
+(define-extern flava-lookup (function symbol music-flava int))
 
 ;; - Symbols
 
@@ -17443,21 +17504,21 @@
    (cell-for-task        game-task               :offset-assert 256)
    (cell-x               handle                  :offset-assert 264)
    (cam-joint-index      int32                   :offset-assert 272)
-   (skippable            basic                   :offset-assert 276) ;; probably a symbol
-   (blend-on-exit        basic                   :offset-assert 280) ;; probably a symbol?
+   (skippable            symbol                  :offset-assert 276) ;; probably a symbol
+   (blend-on-exit        art-joint-anim          :offset-assert 280)
    (camera               handle                  :offset-assert 288)
    (will-talk            symbol                   :offset-assert 296)
-   (talk-message         uint32                  :offset-assert 300)
-   (last-talk            uint64                  :offset-assert 304)
+   (talk-message         game-text-id                  :offset-assert 300)
+   (last-talk            int64                  :offset-assert 304)
    (bounce-away          symbol                   :offset-assert 312)
    (ambient              ambient-control :inline :offset-assert 320)
    (center-joint-index   int32                   :offset-assert 336)
    (draw-bounds-y-offset float                   :offset-assert 340)
    (neck-joint-index     int32                   :offset-assert 344)
    (fuel-cell-anim       spool-anim                   :offset-assert 348)
-   (sound-flava          uint8                   :offset-assert 352)
+   (sound-flava          music-flava                   :offset-assert 352)
    (have-flava           symbol                   :offset-assert 356) ;; probably
-   (music                basic                   :offset-assert 360)
+   (music                symbol                   :offset-assert 360)
    (have-music           symbol                   :offset-assert 364) ;; probably
    (been-kicked          symbol                   :offset-assert 368) ;; probably
    (cur-trans-hook       (function none)                   :offset-assert 372)
@@ -18862,7 +18923,7 @@
 (define-extern cam-slave-init-vars (function none :behavior camera-slave))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
-(define-extern camera-slave-debug (function camera-slave object)) ;; passed to engine::method-15
+(define-extern camera-slave-debug (function camera-slave none))
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
 (define-extern cam-slave-get-flags (function entity symbol uint128))
 (define-extern cam-slave-get-vector-with-offset (function entity-actor vector symbol symbol))
@@ -19749,7 +19810,7 @@
 (define-extern ambient-hint-init-by-other (function string vector symbol none :behavior level-hint))
 (define-extern level-hint-process-cmd (function (pointer int32) int int int))
 (define-extern task-known? (function game-task symbol))
-(define-extern can-grab-display? (function process-taskable symbol)) ;; unconfirmed, see assistant-firecanyon
+(define-extern can-grab-display? (function process symbol))
 (define-extern level-hint-displayed? (function symbol))
 (define-extern ambient-inspect function)
 
@@ -22579,7 +22640,7 @@
    (frustration-point   vector     :inline :offset-assert 208)
    (jump-dest           vector     :inline :offset-assert 224)
    (jump-trajectory     trajectory :inline :offset-assert 240)
-   (jump-time           uint64             :offset-assert 280)
+   (jump-time           int64              :offset-assert 280)
    (nav-info            nav-enemy-info     :offset-assert 288)
    (target-speed        float              :offset-assert 292)
    (momentum-speed      float              :offset-assert 296)
@@ -22588,7 +22649,7 @@
    (turn-time           int64              :offset-assert 312)
    (frustration-time    int64              :offset-assert 320)
    (speed-scale         float              :offset-assert 328)
-   (neck                joint-mod          :offset-assert 332) ; this is what `neck` is on the pelican
+   (neck                joint-mod          :offset-assert 332)
    (reaction-time       int64              :offset-assert 336)
    (notice-time         int64              :offset-assert 344)
    (state-timeout       int64              :offset-assert 352)
@@ -22635,31 +22696,31 @@
     (TODO-RENAME-48 (_type_) none 48) ;; object past to method 60 -- see citb-bunny
     (TODO-RENAME-49 (_type_ nav-enemy-info) float 49)
     (TODO-RENAME-50 (_type_ vector) symbol 50)
-    (dummy-51 (_type_) object 51) ;; ret - float | symbol
+    (dummy-51 (_type_) none 51) ;; ret - float | symbol
     (dummy-52 (_type_ vector) symbol 52) ;; ret - symbol | vector
     (dummy-53 (_type_) symbol 53) ;; ret - symbol | none
-    (dummy-54 (_type_) none 54)
-    (dummy-55 (_type_) none 55)
-    (set-jump-height-factor! (_type_ int) float 56)
-    (dummy-57 (_type_) vector 57)
-    (dummy-58 (_type_) vector 58)
+    (dummy-54 (_type_ vector) symbol 54)
+    (dummy-55 (_type_) symbol 55)
+    (set-jump-height-factor! (_type_ int) none 56)
+    (dummy-57 (_type_) none 57)
+    (dummy-58 (_type_) none 58)
     (TODO-RENAME-59 (_type_) none 59)
-    (dummy-60 (_type_ object) symbol 60)
-    (dummy-61 (_type_) none 61)
-    (dummy-62 (_type_) none 62)
-    (dummy-63 (_type_) none 63)
-    (dummy-64 (_type_) none 64)
-    (dummy-65 (_type_) none 65)
-    (dummy-66 (_type_) none 66)
-    (dummy-67 (_type_) symbol 67)
-    (dummy-68 (_type_) none 68)
-    (dummy-69 (_type_) none 69)
-    (dummy-70 (_type_) none 70)
-    (dummy-71 () _type_ :state 71)
+    (dummy-60 (_type_ symbol) symbol 60)
+    (snow-bunny-attack () _type_ :state 61)
+    (snow-bunny-chase-hop () _type_ :state 62)
+    (snow-bunny-defend () _type_ :state 63)
+    (dummy-64 () _type_ :state 64)
+    (snow-bunny-lunge () _type_ :state 65)
+    (snow-bunny-nav-resume () _type_ :state 66)
+    (snow-bunny-patrol-hop () _type_ :state 67)
+    (snow-bunny-patrol-idle () _type_ :state 68)
+    (dummy-69 () _type_ :state 69)
+    (snow-bunny-retreat-hop () _type_ :state 70)
+    (snow-bunny-tune-spheres () _type_ :state 71)
     (nav-enemy-touch-handler (_type_ process event-message-block) object 72)
     (nav-enemy-attack-handler (_type_ process event-message-block) object 73)
     (nav-enemy-jump-blocked ()  _type_ :state 74)
-    (dummy-75 (_type_) none 75)
+    (dummy-75 () _type_ :state 75)
     )
   )
 
@@ -23235,6 +23296,9 @@
   :size-assert         #x165
   :heap-base           #x100
   :flag-assert         #x2101000165
+  (:methods
+    (notice-blue (handle) _type_ :replace :state 29)
+    )
   )
 
 ;; - Unknowns
@@ -23360,8 +23424,8 @@
   :size-assert         #x20
   :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ uint) none 9)
-    (reached-delay? (_type_ uint) symbol 10)
+    (sleep (_type_ int) none 9)
+    (reached-delay? (_type_ int) symbol 10)
     (completed? (_type_) symbol 11)
     )
   )
@@ -24999,11 +25063,11 @@
    (jump-height-factor      float          :offset-assert 424)
    (jump-anim-start-frame   float          :offset-assert 428)
    (defense                 uint64         :offset-assert 432)
-   (retreat-timeout-time    uint64         :offset-assert 440)
-   (last-nondangerous-time  uint64         :offset-assert 448)
+   (retreat-timeout-time    int64         :offset-assert 440)
+   (last-nondangerous-time  int64         :offset-assert 448)
    (patrol-hop-failed?      basic          :offset-assert 456)
    (should-retreat?         basic          :offset-assert 460)
-   (got-jump-event?         basic          :offset-assert 464)
+   (got-jump-event?         symbol         :offset-assert 464)
    (using-jump-event?       basic          :offset-assert 468)
    (jump-anim               int8           :offset-assert 472)
    (notice-land-anim        int8           :offset-assert 473)
@@ -25016,7 +25080,13 @@
   :heap-base           #x190
   :flag-assert         #x4d01900200
   (:methods
-    (dummy-76 () none 76))
+    (dummy-51 (_type_ vector vector) symbol :replace 51)
+    (dummy-52 (_type_) symbol :replace 52)
+    (dummy-54 (_type_) symbol :replace 54)
+    (dummy-57 (_type_) symbol :replace 57)
+    (dummy-60 (_type_) none :replace 60)
+    (dummy-76 (_type_ symbol) none 76)
+    )
   )
 
 (deftype snow-bunny-retreat-work (structure)
@@ -25033,13 +25103,13 @@
 
 ;; - Functions
 
-(define-extern snow-bunny-execute-jump function)
-(define-extern snow-bunny-initialize-jump function)
-(define-extern snow-bunny-default-event-handler function)
+(define-extern snow-bunny-execute-jump (function none :behavior snow-bunny))
+(define-extern snow-bunny-initialize-jump (function vector none :behavior snow-bunny))
+(define-extern snow-bunny-default-event-handler (function process int symbol event-message-block object :behavior snow-bunny))
 
 ;; - Unknowns
 
-(define-extern *snow-bunny* snow-bunny) ;; unknown type
+(define-extern *snow-bunny* (pointer snow-bunny))
 (define-extern *snow-bunny-nav-enemy-info* nav-enemy-info)
 (define-extern *snow-bunny-sg* skeleton-group)
 
@@ -25187,11 +25257,11 @@
    (glow-u                     float          :offset-assert 184)
    (glow-wf-period             int32          :offset-assert 188)
    (glow-wf-offset             int32          :offset-assert 192)
-   (prev-compute-glow-time     uint64         :offset-assert 200)
-   (start-fade-time            uint64         :offset-assert 208)
-   (end-fade-time              uint64         :offset-assert 216)
-   (activated-time             uint64         :offset-assert 224)
-   (last-updated-user-lighting uint64         :offset-assert 232)
+   (prev-compute-glow-time     int64         :offset-assert 200)
+   (start-fade-time            int64         :offset-assert 208)
+   (end-fade-time              int64         :offset-assert 216)
+   (activated-time             int64         :offset-assert 224)
+   (last-updated-user-lighting int64         :offset-assert 232)
    (player-attack-id           uint64         :offset-assert 240)
    (on-color-mult              vector :inline :offset-assert 256)
    (on-color-emissive          vector :inline :offset-assert 272)
@@ -26590,20 +26660,20 @@
 
 ;; - Functions
 
-(define-extern peri-beamcam-init-by-other (function string (pointer process) :behavior process))
+(define-extern peri-beamcam-init-by-other (function string (pointer pov-camera) :behavior process))
 (define-extern draw-power-beam (function vector vector none))
 (define-extern reflector-origin-update (function entity-actor none :behavior reflector-origin))
 (define-extern reflector-init-by-other (function vector none :behavior reflector))
-(define-extern periscope-find-next (function object :behavior periscope))
-(define-extern periscope-find-reflection-angles (function float :behavior periscope))
-(define-extern periscope-update-joints (function float :behavior periscope))
+(define-extern periscope-find-next (function none :behavior periscope))
+(define-extern periscope-find-reflection-angles (function none :behavior periscope))
+(define-extern periscope-update-joints (function none :behavior periscope))
 (define-extern periscope-has-power-input? (function symbol :behavior periscope))
 (define-extern periscope-draw-beam (function none :behavior periscope))
-(define-extern periscope-find-aim-at-angles (function float :behavior periscope))
+(define-extern periscope-find-aim-at-angles (function none :behavior periscope))
 (define-extern periscope-crosshair (function symbol :behavior periscope))
 (define-extern periscope-test-task-complete? (function symbol :behavior periscope))
 (define-extern periscope-draw-beam-impact (function none :behavior periscope))
-(define-extern periscope-set-target-direction (function vector float :behavior periscope))
+(define-extern periscope-set-target-direction (function vector none :behavior periscope))
 (define-extern periscope-post (function none :behavior periscope))
 (define-extern periscope-debug-trans (function none :behavior periscope))
 (define-extern target-close-to-point? (function vector float symbol))
@@ -29742,18 +29812,18 @@
 (deftype cavecrystal-light-control (basic)
   ((active-count          int32               :offset-assert 4)
    (head                  cavecrystal-light   :offset-assert 8)
-   (last-known-valid-time uint64              :offset-assert 16)
+   (last-known-valid-time int64              :offset-assert 16)
    (crystal               cavecrystal-light           7 :inline :offset-assert 32)
    )
   :method-count-assert 15
   :size-assert         #x170
   :flag-assert         #xf00000170
   (:methods
-    (TODO-RENAME-9 (_type_ int float process-drawable) object 9) ;; last arg is a cavecrystal
+    (TODO-RENAME-9 (_type_ int float process-drawable) none 9)
     (TODO-RENAME-10 (_type_ vector) float 10)
-    (inc-intensites! (_type_) int 11)
-    (TODO-RENAME-12 (_type_) symbol 12)
-    (create-connection! (_type_ process-drawable res-lump (function object object object object object) object object) connection 13) ;; TODO - process-drawable is often a cavecrystal
+    (inc-intensities! (_type_) none 11)
+    (TODO-RENAME-12 (_type_) none 12)
+    (create-connection! (_type_ process-drawable res-lump (function object object object object object) int float) connection 13) ;; TODO - process-drawable is often a cavecrystal
     (execute-connections (_type_) int 14)
     )
   )
@@ -30709,9 +30779,9 @@
    (plat-mask                uint32         :offset-assert 184)
    (plat-id-dir              int32          :offset-assert 188)
    (wiggled?                 symbol          :offset-assert 192)
-   (timeout                  uint64         :offset-assert 200)
-   (last-plat-activated-time uint64         :offset-assert 208)
-   (delay-til-wiggle         uint64         :offset-assert 216)
+   (timeout                  int64         :offset-assert 200)
+   (last-plat-activated-time int64         :offset-assert 208)
+   (delay-til-wiggle         int64         :offset-assert 216)
    (ticker                   ticky  :inline :offset-assert 224)
    )
   :method-count-assert 20
@@ -31266,9 +31336,9 @@
   )
 
 (deftype sunken-pipegame-prize (structure)
-  ((puzzle-delay            uint64         :offset-assert 0)
-   (pipe-travel-time-to-far uint64         :offset-assert 8)
-   (pipe-travel-time-to-jar uint64         :offset-assert 16)
+  ((puzzle-delay            int64          :offset-assert 0)
+   (pipe-travel-time-to-far int64          :offset-assert 8)
+   (pipe-travel-time-to-jar int64          :offset-assert 16)
    (actor-handle            handle         :offset-assert 24)
    (jar-pos                 vector :inline :offset-assert 32)
    (far-pos                 vector :inline :offset-assert 48)
@@ -31297,7 +31367,7 @@
   :heap-base           #x230
   :flag-assert         #x17023002a0
   (:methods
-    (dummy-20 (_type_) none 20)
+    (dummy-20 (_type_) uint 20)
     (dummy-21 (_type_ symbol) symbol 21)
     (dummy-22 (_type_ symbol) none 22)
     )
@@ -31413,7 +31483,8 @@
    )
   (:methods
     (initialize-collision (_type_) collide-shape-moving :replace 47)
-    (dummy-53 (_type_ vector) symbol :replace 53))
+    (dummy-53 (_type_ vector) symbol :replace 53)
+    )
   :method-count-assert 76
   :size-assert         #x1a8
   :heap-base           #x140
@@ -32961,7 +33032,7 @@
   :heap-base           #x180
   :flag-assert         #x4c018001f0
   (:methods
-    (dummy-51 (_type_ vector vector) object :replace 51)
+    (dummy-51 (_type_ vector vector) symbol :replace 51)
     (dummy-53 (_type_ vector vector) symbol :replace 53)
     )
   (:states
@@ -32997,9 +33068,8 @@
 
 ;; - Types
 
-(declare-type snow-ball-roller process-drawable)
 (deftype snow-ball-shadow (process-drawable)
-  ((parent-override (pointer snow-ball-roller) :score 100         :offset 12))
+  ()
   :method-count-assert 20
   :size-assert         #xb0
   :heap-base           #x40
@@ -33009,8 +33079,8 @@
   )
 
 (deftype snow-ball-junction (structure)
-  ((enter-time uint64  :offset-assert 0)
-   (exit-time  uint64  :offset-assert 8)
+  ((enter-time int64  :offset-assert 0)
+   (exit-time  int64  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -33038,8 +33108,8 @@
    (delay-til-bounce       int32                       :offset-assert 204)
    (rolling-sound-id       sound-id                    :offset-assert 208)
    (rolling-sound-enabled? symbol                       :offset-assert 212)
-   (last-bounce-time       uint64                      :offset-assert 216)
-   (hit-player-time        uint64                      :offset-assert 224)
+   (last-bounce-time       int64                      :offset-assert 216)
+   (hit-player-time        int64                      :offset-assert 224)
    (path-info              snow-ball-path-info :inline :offset-assert 240)
    (junctions              snow-ball-junction             4       :inline :offset-assert 272)
    )
@@ -33048,7 +33118,7 @@
   :heap-base           #xe0
   :flag-assert         #x1700e00150
   (:methods
-    (follow-path (_type_) float 20)
+    (follow-path (_type_) none 20)
     (play-landing-sound (_type_ float) sound-id 21)
     (dummy-22 (_type_ process-drawable) none 22)
     )
@@ -33058,7 +33128,7 @@
 
 (deftype snow-ball (process)
   ((child-override (pointer snow-ball-roller) :score 100         :offset 20)
-   (state-time             uint64    :offset-assert 112)
+   (state-time             int64    :offset-assert 112)
    (last-path-picked       int32     :offset-assert 120)
    (same-path-picked-count int32     :offset-assert 124)
    (delay-til-next         int32     :offset-assert 128)
@@ -33070,7 +33140,7 @@
   :flag-assert         #x100020008c
   (:methods
     (dummy-14 (_type_ (inline-array snow-ball-junction) float int) symbol 14)
-    (dummy-15 (_type_ (inline-array snow-ball-junction) int) none 15) ;; TODO - same type as above
+    (dummy-15 (_type_ (inline-array snow-ball-junction) int) symbol 15)
     )
   (:states
     snow-ball-idle)
@@ -33078,10 +33148,10 @@
 
 ;; - Functions
 
-(define-extern snow-ball-roller-init-by-other (function entity snow-ball float int vector none :behavior snow-ball-roller))
+(define-extern snow-ball-roller-init-by-other (function entity-actor snow-ball float int (inline-array snow-ball-junction) none :behavior snow-ball-roller))
 (define-extern snow-ball-shadow-init-by-other (function none :behavior snow-ball-shadow))
 (define-extern snow-ball-roller-path-update (function none :behavior snow-ball-roller))
-(define-extern snow-ball-roller-path-init (function float :behavior snow-ball-roller))
+(define-extern snow-ball-roller-path-init (function none :behavior snow-ball-roller))
 
 ;; - Unknowns
 
@@ -33284,8 +33354,8 @@
 (deftype snow-button (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (wiggled?         symbol          :offset-assert 176)
-   (timeout          uint64         :offset-assert 184)
-   (delay-til-wiggle uint64         :offset-assert 192)
+   (timeout          int64         :offset-assert 184)
+   (delay-til-wiggle int64         :offset-assert 192)
    (prev-button      entity-actor          :offset-assert 200)
    (ticker           ticky  :inline :offset-assert 208)
    )
@@ -33448,14 +33518,19 @@
   :size-assert         #x1f4
   :heap-base           #x190
   :flag-assert         #x4c019001f4
+  (:methods
+    (dummy-51 (_type_ vector) symbol :replace 51)
+    (dummy-52 (_type_) symbol :replace 52)
+    (dummy-57 (_type_ float) float :replace 57)
+    )
   (:states
     ram-boss-tracking
     ram-boss-nav-resume
     ram-boss-throw
     ram-boss-nav-start
     ram-boss-jump-down-hit-ground
-    (ram-boss-jump-down basic vector)
-    (ram-boss-already-down basic vector)
+    (ram-boss-jump-down basic)
+    (ram-boss-already-down basic)
     ram-boss-idle
     ram-boss-lose-shield
     ram-boss-up-defend-block
