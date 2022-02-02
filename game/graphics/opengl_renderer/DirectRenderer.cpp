@@ -310,15 +310,11 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 
   if (!tex) {
     // TODO Add back
-    if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8208) {
+    if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
       tex = render_state->texture_pool->get_random_texture();
     } else {
       fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
       tex = render_state->texture_pool->get_random_texture();
-    }
-
-    if (tex) {
-      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
     }
   }
   assert(tex);
@@ -388,14 +384,14 @@ void DirectRenderer::update_gl_blend() {
                state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * fix + Cd
       // Cs * fix + (1 - fx) * Cd
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
       glBlendColor(0, 0, 0, state.fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
-//      assert(false);
+      //      assert(false);
     }
   }
 }
@@ -422,9 +418,8 @@ void DirectRenderer::update_gl_test() {
         assert(false);
     }
   } else {
-    //    glDisable(GL_DEPTH_TEST);
-    // MERC HACK
-    //     assert(false);
+    // you aren't supposed to turn off z test enable, the GS had some bugs
+    assert(false);
   }
 
   if (state.date) {
@@ -715,7 +710,6 @@ void DirectRenderer::handle_tex0_1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   GsTex0 reg(val);
-
   // update tbp
   if (current_texture_state()->current_register != reg) {
     if (current_texture_state()->used) {
@@ -742,7 +736,8 @@ void DirectRenderer::handle_tex0_1(u64 val,
   // tw: assume they got it right
   // th: assume they got it right
 
-  // assert(reg.tfx() == GsTex0::TextureFunction::MODULATE); MERC hack
+  // MERC hack
+  // assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
   // cpsm: assume they got it right

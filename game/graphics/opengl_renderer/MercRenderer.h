@@ -115,9 +115,7 @@ struct Vf {
     data[3] = d;
   }
 
-  std::string str_float() const {
-    return fmt::format("{} {} {} {}", x(), y(), z(), w());
-  }
+  std::string str_float() const { return fmt::format("{} {} {} {}", x(), y(), z(), w()); }
 
   float& operator[](int i) { return data[i]; }
   float operator[](int i) const { return data[i]; }
@@ -249,7 +247,8 @@ struct Vf {
       if ((u64)mask & (1 << i)) {
         s32 val;
         memcpy(&val, &a.data[i], 4);
-        data[i] = ((float)val) * (1.f / 32768.f);;
+        data[i] = ((float)val) * (1.f / 32768.f);
+        ;
       }
     }
   }
@@ -271,7 +270,6 @@ struct Vf {
       }
     }
   }
-
 };
 
 struct Accumulator {
@@ -348,12 +346,8 @@ class MercRenderer : public BucketRenderer {
   void unpack8(const VifCodeUnpack& up, const u8* data, u32 imm);
   void unpack32(const VifCodeUnpack& up, const u8* data, u32 imm);
 
-  void mscal(int enter_address,
-             SharedRenderState* render_state,
-             ScopedProfilerNode& prof);
-  void xgkick(u16 addr,
-              SharedRenderState* render_state,
-              ScopedProfilerNode& prof);
+  void mscal(int enter_address, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   enum MercDataMemory {
     LOW_MEMORY = 0,
@@ -373,12 +367,13 @@ class MercRenderer : public BucketRenderer {
 
   u8 m_buffer_memory[(1024) * 16];
 
-  void sq_buffer( Mask mask, const Vf& data, u32 qw) {
-//    if (data.x_as_u32() == 0x80000000 && data.y_as_u32() == 0x80000000) {
-//      fmt::print("big store line {}: {} : {} {} {} {}\n", line_number, qw, data.x(), data.y(), data.z(), data.w());
-//    }
+  void sq_buffer(Mask mask, const Vf& data, u32 qw) {
+    //    if (data.x_as_u32() == 0x80000000 && data.y_as_u32() == 0x80000000) {
+    //      fmt::print("big store line {}: {} : {} {} {} {}\n", line_number, qw, data.x(), data.y(),
+    //      data.z(), data.w());
+    //    }
     // sketchy...
-//    qw &= 1023;
+    //    qw &= 1023;
     assert(qw * 16 < sizeof(m_buffer_memory));
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
@@ -408,15 +403,22 @@ class MercRenderer : public BucketRenderer {
     int unpack_bytes = 0;
     int mscal_35 = 0;
     int mscal_20 = 0;
+    int mscal_17 = 0;
+    int mscal_32 = 0;
     bool had_data = false;
     std::string str;
   } m_stats;
 
   bool m_dbf = false;
 
+  bool m_enable_prime = true;
+  bool m_force_prime = false;
+
+
   struct Vu {
     Vf vf01, vf02, vf03, vf04, vf05, vf06, vf07, vf08, vf09, vf10, vf11, vf12, vf13, vf14, vf15,
-        vf16, vf17, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30, vf31;
+        vf16, vf17, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30,
+        vf31;
     const Vf vf00;
     u16 vi01, vi02, vi03, vi04, vi05, vi06, vi07, vi09, vi08, vi11, vi12, vi13, vi10, vi14, vi15;
     float I, P, Q;

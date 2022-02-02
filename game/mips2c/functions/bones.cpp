@@ -1079,7 +1079,7 @@ goto block_36;}                          // branch non-likely
   c->lwc1(f13, 80, v1);                             // lwc1 f13, 80(v1)
   c->lwc1(f10, 84, v1);                             // lwc1 f10, 84(v1)
   c->lwc1(f11, 88, v1);                             // lwc1 f11, 88(v1)
-  c->fprs[f16] = c->fprs[f5] / (std::sqrt((c->fprs[f15]))); // Unknown instr: rsqrt.s f16, f5, f15
+  c->fprs[f16] = c->fprs[f5] / (std::sqrt(std::abs(c->fprs[f15]))); // Unknown instr: rsqrt.s f16, f5, f15
   c->muls(f15, f14, f16);                           // mul.s f15, f14, f16
   c->muls(f16, f12, f16);                           // mul.s f16, f12, f16
   acc = c->fprs[f9] * c->fprs[f16]; // Unknown instr: mula.s f9, f16
@@ -1161,11 +1161,11 @@ goto block_36;}                          // branch non-likely
   c->abss(f10, f3);// Unknown instr: abs.s f10, f3
   c->movs(f12, f6);                                 // mov.s f12, f6
   acc = c->fprs[f10] * c->fprs[f10];// Unknown instr: mula.s f10, f10
-  c->fprs[f9] = acc + c->fprs[f12] * c->fprs[12];// Unknown instr: madd.s f9, f12, f12
+  c->fprs[f9] = acc + c->fprs[f12] * c->fprs[f12];// Unknown instr: madd.s f9, f12, f12
   c->lwc1(f7, 96, v1);                              // lwc1 f7, 96(v1)
   c->lwc1(f8, 100, v1);                             // lwc1 f8, 100(v1)
   c->lwc1(f6, 104, v1);                             // lwc1 f6, 104(v1)
-  c->fprs[f5] = c->fprs[f5] / std::sqrt((c->fprs[f9])); // Unknown instr: rsqrt.s f5, f5, f9
+  c->fprs[f5] = c->fprs[f5] / std::sqrt(std::abs(c->fprs[f9])); // Unknown instr: rsqrt.s f5, f5, f9
   c->lwc1(f11, 108, v1);                            // lwc1 f11, 108(v1)
   c->mtc1(f9, r0);                                  // mtc1 f9, r0
   c->muls(f13, f10, f5);                            // mul.s f13, f10, f5
