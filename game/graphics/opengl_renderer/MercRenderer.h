@@ -25,11 +25,28 @@ enum class Mask {
 };
 
 inline float vu_max(float a, float b) {
-  return std::max(a, b);
+  //  return std::max(a, b);
+  s32 ai, bi;
+  memcpy(&ai, &a, 4);
+  memcpy(&bi, &b, 4);
+  bool flip = ai < 0 && bi < 0;
+  if (ai > bi) {
+    return flip ? b : a;
+  } else {
+    return flip ? a : b;
+  }
 }
 
 inline float vu_min(float a, float b) {
-  return std::min(a, b);
+  s32 ai, bi;
+  memcpy(&ai, &a, 4);
+  memcpy(&bi, &b, 4);
+  bool flip = ai < 0 && bi < 0;
+  if (ai > bi) {
+    return flip ? a : b;
+  } else {
+    return flip ? b : a;
+  }
 }
 
 struct Vf {
@@ -399,7 +416,6 @@ class MercRenderer : public BucketRenderer {
 
   bool m_enable_prime_mscals = true;
   bool m_enable_normal_mscals = true;
-
 
   struct Vu {
     Vf vf01, vf02, vf03, vf04, vf05, vf06, vf07, vf08, vf09, vf10, vf11, vf12, vf13, vf14, vf15,
