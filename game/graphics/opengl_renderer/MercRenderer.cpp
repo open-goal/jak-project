@@ -189,24 +189,30 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
 
   m_dbf = !m_dbf;
   switch (mscal_addr) {
-
     case 17:
       m_stats.mscal_17++;
-      mscal(17, render_state, prof);
+      if (m_enable_prime_mscals) {
+        mscal(17, render_state, prof);
+      }
       break;
     case 32:
       m_stats.mscal_32++;
-      mscal(32, render_state, prof);
+      if (m_enable_prime_mscals) {
+        mscal(32, render_state, prof);
+      }
       break;
-
 
     case 20:
       m_stats.mscal_20++;
-      mscal(20, render_state, prof);
+      if (m_enable_normal_mscals) {
+        mscal(20, render_state, prof);
+      }
       break;
     case 35:
       m_stats.mscal_35++;
-      mscal(35, render_state, prof);
+      if (m_enable_normal_mscals) {
+        mscal(35, render_state, prof);
+      }
       break;
     default:
       fmt::print("unknown mscal: {}\n", mscal_addr);
@@ -305,6 +311,8 @@ void MercRenderer::draw_debug_window() {
   ImGui::Text("MSCAL: [17] %d [20] %d [32] %d [35] %d \n", m_stats.mscal_17, m_stats.mscal_20,
               m_stats.mscal_32, m_stats.mscal_35);
   ImGui::Text("Debug:\n%s\n", m_stats.str.c_str());
+  ImGui::Checkbox("Normal MSCAL enable", &m_enable_normal_mscals);
+  ImGui::Checkbox("Prime MSCAL enable", &m_enable_prime_mscals);
 }
 
 void MercRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {

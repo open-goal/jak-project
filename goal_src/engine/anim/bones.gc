@@ -1083,9 +1083,16 @@
                 
                 ;; HACK just use merc.
                 (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-                (unless (logtest? (-> arg0 status) (draw-status needs-clip))
-                  (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
-                  )
+                  (unless (logtest? (-> arg0 status) (draw-status needs-clip))
+                    (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                    )
+                  (when (and (logtest? (-> arg0 status) (draw-status needs-clip)) ;; we need to clip
+                             (nonzero? (-> arg0 longest-edge))                    ;; we known the longest edge
+                             (draw-bones-check-longest-edge-asm arg0 arg2)        ;; it's ok to use percprime.
+                             )
+                      (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                      (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)
+                    )
                 )
                 (set! effect-idx (+ effect-idx 1))
                 ) ;; end effect loop
