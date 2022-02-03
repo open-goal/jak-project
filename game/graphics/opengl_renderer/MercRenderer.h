@@ -25,10 +25,14 @@ enum class Mask {
   xyzw = 15
 };
 
-#define REALLY_INLINE static inline __attribute__((always_inline))
+#ifdef __linux__
+#define REALLY_INLINE __attribute__((always_inline))
+#else
+#define REALLY_INLINE __forceinline
+#endif
 
 // note: must be aligned.
-REALLY_INLINE void copy_vector(void* dest, const void* src) {
+static inline REALLY_INLINE void copy_vector(void* dest, const void* src) {
   __m128 val = _mm_load_ps((const float*)src);
   _mm_store_ps((float*)dest, val);
 }
@@ -59,9 +63,9 @@ inline float vu_min(float a, float b) {
 }
 
 struct alignas(16) Vf {
-  __attribute__((always_inline)) __m128 load() const { return _mm_load_ps(data); }
+  REALLY_INLINE __m128 load() const { return _mm_load_ps(data); }
 
-  __attribute__((always_inline)) void move_xyzw(const Vf& src) { copy_vector(data, src.data); }
+  REALLY_INLINE void move_xyzw(const Vf& src) { copy_vector(data, src.data); }
 
   float data[4];
   float& x() { return data[0]; }
@@ -151,7 +155,7 @@ struct alignas(16) Vf {
     }
   }
 
-  __attribute__((always_inline)) void mr32_z(const Vf& other) { data[2] = other.data[3]; }
+  REALLY_INLINE void mr32_z(const Vf& other) { data[2] = other.data[3]; }
 
   void mfir(Mask mask, s16 in) {
     s32 sext = in;
@@ -186,19 +190,19 @@ struct alignas(16) Vf {
     }
   }
 
-  __attribute__((always_inline)) void max_xyzw(const Vf& a, const Vf& b) {
+  REALLY_INLINE void max_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_max_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
   }
 
-  __attribute__((always_inline)) void max_xyzw(const Vf& a, float b) {
+  REALLY_INLINE void max_xyzw(const Vf& a, float b) {
     _mm_store_ps(data, _mm_max_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
   }
 
-  __attribute__((always_inline)) void mini_xyzw(const Vf& a, const Vf& b) {
+  REALLY_INLINE void mini_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_min_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
   }
 
-  __attribute__((always_inline)) void mini_xyzw(const Vf& a, float b) {
+  REALLY_INLINE void mini_xyzw(const Vf& a, float b) {
     _mm_store_ps(data, _mm_min_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
   }
 
@@ -242,7 +246,7 @@ struct alignas(16) Vf {
     }
   }
 
-  __attribute__((always_inline)) void add_xyzw(const Vf& a, const Vf& b) {
+  REALLY_INLINE void add_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_add_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
   }
 
@@ -254,11 +258,11 @@ struct alignas(16) Vf {
     }
   }
 
-  __attribute__((always_inline)) void mul_xyzw(const Vf& a, const Vf& b) {
+  REALLY_INLINE void mul_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_mul_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
   }
 
-  __attribute__((always_inline)) void mul_xyzw(const Vf& a, float b) {
+  REALLY_INLINE void mul_xyzw(const Vf& a, float b) {
     _mm_store_ps(data, _mm_mul_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
   }
 
@@ -345,14 +349,14 @@ struct alignas(16) Accumulator {
     }
   }
 
-  __attribute__((always_inline)) void madda_xyzw(const Vf& _a, float _b) {
+  REALLY_INLINE void madda_xyzw(const Vf& _a, float _b) {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
     _mm_store_ps(data, _mm_fmadd_ps(a, b, acc));
   }
 
-  __attribute__((always_inline)) void madda_xyzw(const Vf& _a, const Vf& _b) {
+  REALLY_INLINE void madda_xyzw(const Vf& _a, const Vf& _b) {
     auto b = _mm_load_ps(_b.data);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
@@ -367,14 +371,14 @@ struct alignas(16) Accumulator {
     }
   }
 
-  __attribute__((always_inline)) void madd_xyzw(Vf& dest, const Vf& _a, float _b) {
+  REALLY_INLINE void madd_xyzw(Vf& dest, const Vf& _a, float _b) {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
     _mm_store_ps(dest.data, _mm_fmadd_ps(a, b, acc));
   }
 
-  __attribute__((always_inline)) void madd_xyz(Vf& dest, const Vf& _a, float _b) {
+  REALLY_INLINE void madd_xyz(Vf& dest, const Vf& _a, float _b) {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
@@ -407,13 +411,13 @@ struct alignas(16) Accumulator {
     }
   }
 
-  __attribute__((always_inline)) void mula_xyzw(const Vf& _a, float _b) {
+  REALLY_INLINE void mula_xyzw(const Vf& _a, float _b) {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     _mm_store_ps(data, _mm_mul_ps(a, b));
   }
 
-  __attribute__((always_inline)) void mula_xyzw(const Vf& _a, const Vf& _b) {
+  REALLY_INLINE void mula_xyzw(const Vf& _a, const Vf& _b) {
     auto b = _mm_load_ps(_b.data);
     auto a = _mm_load_ps(_a.data);
     _mm_store_ps(data, _mm_mul_ps(a, b));

@@ -8,14 +8,10 @@ void MercRenderer::mscal(int enter_address, SharedRenderState* render_state, Sco
   }
 }
 
-
-
-REALLY_INLINE float erleng(const Vf& in) {
+static inline REALLY_INLINE float erleng(const Vf& in) {
   float len = in.x() * in.x() + in.y() * in.y() + in.z() * in.z();
   return _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(len)));
 }
-
-
 
 u16 MercRenderer::xitop() {
   return m_dbf ? BUFFER_BASE : 0;
