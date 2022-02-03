@@ -486,6 +486,9 @@ class MercRenderer : public BucketRenderer {
   void lq_buffer_xyzw(Vf& dest, u16 addr);
 
   template <bool DEBUG>
+  void lq_buffer_xyz(Vf& dest, u16 addr);
+
+  template <bool DEBUG>
   void sq_buffer_xyzw(const Vf& src, u16 addr);
 
   void isw_buffer(Mask mask, u16 val, u16 addr);

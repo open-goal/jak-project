@@ -31,7 +31,7 @@ void MercRenderer::lq_buffer(Mask mask, Vf& dest, u16 addr) {
 }
 
 template<bool DEBUG>
-__attribute__((always_inline)) void MercRenderer::lq_buffer_xyzw(Vf& dest, u16 addr) {
+REALLY_INLINE void MercRenderer::lq_buffer_xyzw(Vf& dest, u16 addr) {
   if constexpr(DEBUG) {
     assert(addr * 16 < sizeof(m_buffer.data));
   }
@@ -39,7 +39,17 @@ __attribute__((always_inline)) void MercRenderer::lq_buffer_xyzw(Vf& dest, u16 a
 }
 
 template<bool DEBUG>
-__attribute__((always_inline)) void MercRenderer::sq_buffer_xyzw(const Vf& src, u16 addr) {
+REALLY_INLINE void MercRenderer::lq_buffer_xyz(Vf& dest, u16 addr) {
+  if constexpr(DEBUG) {
+    assert(addr * 16 < sizeof(m_buffer.data));
+  }
+  auto reg = _mm_load_ps(dest.data);
+  auto mem = _mm_load_ps((const float*)(m_buffer.data + addr * 16));
+  _mm_store_ps(dest.data, _mm_blend_ps(mem, reg, 0b1000));
+}
+
+template<bool DEBUG>
+REALLY_INLINE void MercRenderer::sq_buffer_xyzw(const Vf& src, u16 addr) {
   if constexpr(DEBUG) {
     assert(addr * 16 < sizeof(m_buffer.data));
   }
@@ -173,11 +183,11 @@ void MercRenderer::mscal_impl(int enter_address,
   // lq.xyzw vf26, 3(vi00)      |  nop
   lq_buffer_xyzw<DEBUG>(vu.vf26, 3);
   // lq.xyz vf01, 132(vi00)     |  nop
-  lq_buffer(Mask::xyz, vu.vf01, 132);
+  lq_buffer_xyz<DEBUG>(vu.vf01, 132);
   // lq.xyz vf02, 133(vi00)     |  nop
-  lq_buffer(Mask::xyz, vu.vf02, 133);
+  lq_buffer_xyz<DEBUG>(vu.vf02, 133);
   // lq.xyz vf03, 134(vi00)     |  addy.xy vf19, vf00, vf25
-  vu.vf19.add(Mask::xy, vu.vf00, vu.vf25.y());   lq_buffer(Mask::xyz, vu.vf03, 134);
+  vu.vf19.add(Mask::xy, vu.vf00, vu.vf25.y());   lq_buffer_xyz<DEBUG>(vu.vf03, 134);
   // lq.xyzw vf04, 135(vi00)    |  mulx.xyzw vf26, vf26, vf25
   vu.vf26.mul_xyzw(vu.vf26, vu.vf25.x());   lq_buffer_xyzw<DEBUG>(vu.vf04, 135);
   // lq.xyzw vf05, 136(vi00)    |  nop
@@ -515,9 +525,9 @@ void MercRenderer::mscal_impl(int enter_address,
   // lqi.xyzw vf14, vi01        |  nop
   lq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi01++);
   // lq.xyz vf29, 4(vi08)       |  nop
-  lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  add.zw vf08, vf08, vf17
-  vu.vf08.add(Mask::zw, vu.vf08, vu.vf17);   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.vf08.add(Mask::zw, vu.vf08, vu.vf17);   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf31, 6(vi08)      |  add.xyzw vf11, vf11, vf18
   vu.vf11.add_xyzw(vu.vf11, vu.vf18);   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // iaddi vi04, vi04, -0x1     |  add.xyzw vf14, vf14, vf19
@@ -573,9 +583,9 @@ void MercRenderer::mscal_impl(int enter_address,
   // iadd vi04, vi04, vi03      |  add.xyzw vf12, vf12, vf18
   vu.vf12.add_xyzw(vu.vf12, vu.vf18);   vu.vi04 = vu.vi04 + vu.vi03;
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19
-  vu.vf15.add_xyzw(vu.vf15, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf15.add_xyzw(vu.vf15, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  nop
-  lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // iadd vi06, vi06, vi04      |  nop
   vu.vi06 = vu.vi06 + vu.vi04;
   // lq.xyzw vf31, 6(vi08)      |  nop
@@ -664,9 +674,9 @@ void MercRenderer::mscal_impl(int enter_address,
   // move.xyzw vf21, vf08       |  add.xyzw vf13, vf13, vf18
   vu.vf13.add_xyzw(vu.vf13, vu.vf18);   vu.vf21.move_xyzw(vu.vf08);
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf16, vf16, vf19
-  vu.vf16.add_xyzw(vu.vf16, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf16.add_xyzw(vu.vf16, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf11
-  vu.acc.mula_xyzw(vu.vf04, vu.vf11.x());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.mula_xyzw(vu.vf04, vu.vf11.x());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
 // BRANCH!
   // ibgtz vi09, L17            |  madday.xyzw ACC, vf05, vf11
   vu.acc.madda_xyzw(vu.vf05, vu.vf11.y());   bc = ((s16)vu.vi09) > 0;
@@ -766,9 +776,9 @@ void MercRenderer::mscal_impl(int enter_address,
   // move.xyzw vf21, vf09       |  add.xyzw vf11, vf11, vf18
   vu.vf11.add_xyzw(vu.vf11, vu.vf18);   vu.vf21.move_xyzw(vu.vf09);
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf14, vf14, vf19
-  vu.vf14.add_xyzw(vu.vf14, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf14.add_xyzw(vu.vf14, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf12
-  vu.acc.mula_xyzw(vu.vf04, vu.vf12.x());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.mula_xyzw(vu.vf04, vu.vf12.x());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
 // BRANCH!
   // ibgtz vi09, L20            |  madday.xyzw ACC, vf05, vf12
   vu.acc.madda_xyzw(vu.vf05, vu.vf12.y());   bc = ((s16)vu.vi09) > 0;
@@ -868,9 +878,9 @@ void MercRenderer::mscal_impl(int enter_address,
   // move.xyzw vf21, vf10       |  add.xyzw vf12, vf12, vf18
   vu.vf12.add_xyzw(vu.vf12, vu.vf18);   vu.vf21.move_xyzw(vu.vf10);
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19
-  vu.vf15.add_xyzw(vu.vf15, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf15.add_xyzw(vu.vf15, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf13
-  vu.acc.mula_xyzw(vu.vf04, vu.vf13.x());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.mula_xyzw(vu.vf04, vu.vf13.x());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
 // BRANCH!
   // ibgtz vi09, L23            |  madday.xyzw ACC, vf05, vf13
   vu.acc.madda_xyzw(vu.vf05, vu.vf13.y());   bc = ((s16)vu.vi09) > 0;
@@ -999,11 +1009,11 @@ void MercRenderer::mscal_impl(int enter_address,
   // lq.xyzw vf20, 4(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 4);
   // lq.xyz vf29, 4(vi13)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi13 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi13 + 4);
   // lq.xyzw vf23, 5(vi10)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi10 + 5);
   // lq.xyz vf30, 5(vi13)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi13 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi13 + 5);
   // lq.xyzw vf20, 6(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddy.xyz vf29, vf29, vf24
@@ -1114,11 +1124,11 @@ void MercRenderer::mscal_impl(int enter_address,
   // lq.xyzw vf20, 4(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 4);
   // lq.xyz vf29, 4(vi14)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi14 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi14 + 4);
   // lq.xyzw vf23, 5(vi11)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi11 + 5);
   // lq.xyz vf30, 5(vi14)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi14 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi14 + 5);
   // lq.xyzw vf20, 6(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddw.xyz vf29, vf29, vf24
@@ -1266,11 +1276,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi12)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 4);
   // lq.xyz vf29, 4(vi15)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi15 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi15 + 4);
   // lq.xyzw vf23, 5(vi12)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi12 + 5);
   // lq.xyz vf30, 5(vi15)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi15 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi15 + 5);
   // lq.xyzw vf20, 6(vi12)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddy.xyz vf29, vf29, vf24
@@ -1412,11 +1422,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 4);
   // lq.xyz vf29, 4(vi13)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi13 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi13 + 4);
   // lq.xyzw vf23, 5(vi10)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi10 + 5);
   // lq.xyz vf30, 5(vi13)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi13 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi13 + 5);
   // lq.xyzw vf20, 6(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddy.xyz vf29, vf29, vf24
@@ -1558,11 +1568,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi11)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 4);
   // lq.xyz vf29, 4(vi14)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi14 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi14 + 4);
   // lq.xyzw vf23, 5(vi11)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi11 + 5);
   // lq.xyz vf30, 5(vi14)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi14 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi14 + 5);
   // lq.xyzw vf20, 6(vi11)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddy.xyz vf29, vf29, vf24
@@ -1703,11 +1713,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi12)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 4);
   // lq.xyz vf29, 4(vi15)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi15 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi15 + 4);
   // lq.xyzw vf23, 5(vi12)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi12 + 5);
   // lq.xyz vf30, 5(vi15)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi15 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi15 + 5);
   // lq.xyzw vf20, 6(vi12)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddw.xyz vf29, vf29, vf24
@@ -1849,11 +1859,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi10)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 4);
   // lq.xyz vf29, 4(vi13)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi13 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi13 + 4);
   // lq.xyzw vf23, 5(vi10)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi10 + 5);
   // lq.xyz vf30, 5(vi13)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi13 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi13 + 5);
   // lq.xyzw vf20, 6(vi10)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddw.xyz vf29, vf29, vf24
@@ -1995,11 +2005,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 4);
   // lq.xyz vf29, 4(vi14)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi14 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi14 + 4);
   // lq.xyzw vf23, 5(vi11)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi11 + 5);
   // lq.xyz vf30, 5(vi14)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi14 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi14 + 5);
   // lq.xyzw vf20, 6(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddw.xyz vf29, vf29, vf24
@@ -2118,13 +2128,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi13)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi13 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi10)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi10 + 5);
   // lq.xyzw vf23, 5(vi13)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi13 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi10)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf22, 6(vi13)      |  mulax.xyzw ACC, vf31, vf24
@@ -2249,13 +2259,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi14)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi14 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi11)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi11 + 5);
   // lq.xyzw vf23, 5(vi14)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi14 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi11)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf22, 6(vi14)      |  mulax.xyzw ACC, vf31, vf24
@@ -2396,13 +2406,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi15)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi15 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi12)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi12 + 5);
   // lq.xyzw vf23, 5(vi15)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi15 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi12)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf22, 6(vi15)      |  mulax.xyzw ACC, vf31, vf24
@@ -2538,13 +2548,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi13)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi13 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi10)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi10 + 5);
   // lq.xyzw vf23, 5(vi13)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi13 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi10)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf22, 6(vi13)      |  mulax.xyzw ACC, vf31, vf24
@@ -2680,13 +2690,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi14)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi14 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi11)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi11 + 5);
   // lq.xyzw vf23, 5(vi14)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi14 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi11)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf22, 6(vi14)      |  mulax.xyzw ACC, vf31, vf24
@@ -2806,9 +2816,9 @@ assert(false);
   // move.xyzw vf21, vf08       |  add.xyzw vf13, vf13, vf18
   vu.vf13.add_xyzw(vu.vf13, vu.vf18);   vu.vf21.move_xyzw(vu.vf08);
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf16, vf16, vf19
-  vu.vf16.add_xyzw(vu.vf16, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf16.add_xyzw(vu.vf16, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf11
-  vu.acc.mula_xyzw(vu.vf04, vu.vf11.x());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.mula_xyzw(vu.vf04, vu.vf11.x());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
 // BRANCH!
   // ibgtz vi09, L85            |  madday.xyzw ACC, vf05, vf11
   vu.acc.madda_xyzw(vu.vf05, vu.vf11.y());   bc = ((s16)vu.vi09) > 0;
@@ -2914,9 +2924,9 @@ assert(false);
   // move.xyzw vf21, vf09       |  add.xyzw vf11, vf11, vf18
   vu.vf11.add_xyzw(vu.vf11, vu.vf18);   vu.vf21.move_xyzw(vu.vf09);
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf14, vf14, vf19
-  vu.vf14.add_xyzw(vu.vf14, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf14.add_xyzw(vu.vf14, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf12
-  vu.acc.mula_xyzw(vu.vf04, vu.vf12.x());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.mula_xyzw(vu.vf04, vu.vf12.x());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
 // BRANCH!
   // ibgtz vi09, L88            |  madday.xyzw ACC, vf05, vf12
   vu.acc.madda_xyzw(vu.vf05, vu.vf12.y());   bc = ((s16)vu.vi09) > 0;
@@ -3022,9 +3032,9 @@ assert(false);
   // move.xyzw vf21, vf10       |  add.xyzw vf12, vf12, vf18
   vu.vf12.add_xyzw(vu.vf12, vu.vf18);   vu.vf21.move_xyzw(vu.vf10);
   // lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19
-  vu.vf15.add_xyzw(vu.vf15, vu.vf19);   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.vf15.add_xyzw(vu.vf15, vu.vf19);   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf13
-  vu.acc.mula_xyzw(vu.vf04, vu.vf13.x());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.mula_xyzw(vu.vf04, vu.vf13.x());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
 // BRANCH!
   // ibgtz vi09, L91            |  madday.xyzw ACC, vf05, vf13
   vu.acc.madda_xyzw(vu.vf05, vu.vf13.y());   bc = ((s16)vu.vi09) > 0;
@@ -3221,11 +3231,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi12)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 4);
   // lq.xyz vf29, 4(vi15)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi15 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi15 + 4);
   // lq.xyzw vf23, 5(vi12)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi12 + 5);
   // lq.xyz vf30, 5(vi15)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi15 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi15 + 5);
   // lq.xyzw vf20, 6(vi12)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddy.xyz vf29, vf29, vf24
@@ -3373,11 +3383,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 4);
   // lq.xyz vf29, 4(vi13)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi13 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi13 + 4);
   // lq.xyzw vf23, 5(vi10)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi10 + 5);
   // lq.xyz vf30, 5(vi13)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi13 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi13 + 5);
   // lq.xyzw vf20, 6(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddy.xyz vf29, vf29, vf24
@@ -3525,11 +3535,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi11)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 4);
   // lq.xyz vf29, 4(vi14)       |  maddy.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi14 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi14 + 4);
   // lq.xyzw vf23, 5(vi11)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi11 + 5);
   // lq.xyz vf30, 5(vi14)       |  maddy.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi14 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi14 + 5);
   // lq.xyzw vf20, 6(vi11)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddy.xyz vf29, vf29, vf24
@@ -3676,11 +3686,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi12)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 4);
   // lq.xyz vf29, 4(vi15)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi15 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi15 + 4);
   // lq.xyzw vf23, 5(vi12)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi12 + 5);
   // lq.xyz vf30, 5(vi15)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi15 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi15 + 5);
   // lq.xyzw vf20, 6(vi12)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddw.xyz vf29, vf29, vf24
@@ -3828,11 +3838,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi10)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 4);
   // lq.xyz vf29, 4(vi13)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi13 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi13 + 4);
   // lq.xyzw vf23, 5(vi10)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi10 + 5);
   // lq.xyz vf30, 5(vi13)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi13 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi13 + 5);
   // lq.xyzw vf20, 6(vi10)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddw.xyz vf29, vf29, vf24
@@ -3980,11 +3990,11 @@ assert(false);
   // lq.xyzw vf20, 4(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 4);
   // lq.xyz vf29, 4(vi14)       |  maddw.xyzw vf27, vf27, vf24
-  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf29, vu.vi14 + 4);
+  vu.acc.madd_xyzw(vu.vf27, vu.vf27, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi14 + 4);
   // lq.xyzw vf23, 5(vi11)      |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi11 + 5);
   // lq.xyz vf30, 5(vi14)       |  maddw.xyzw vf28, vf28, vf24
-  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer(Mask::xyz, vu.vf30, vu.vi14 + 5);
+  vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.w());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi14 + 5);
   // lq.xyzw vf20, 6(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddw.xyz vf29, vf29, vf24
@@ -4167,13 +4177,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi15)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi15 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi12)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi12 + 5);
   // lq.xyzw vf23, 5(vi15)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi15 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi12)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf22, 6(vi15)      |  mulax.xyzw ACC, vf31, vf24
@@ -4315,13 +4325,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi13)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi13 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi10)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi10 + 5);
   // lq.xyzw vf23, 5(vi13)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi13 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi10)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf22, 6(vi13)      |  mulax.xyzw ACC, vf31, vf24
@@ -4463,13 +4473,13 @@ assert(false);
   // lq.xyzw vf20, 4(vi14)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi14 + 4);
   // lq.xyz vf29, 4(vi08)       |  madday.xyzw ACC, vf31, vf24
-  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf29, vu.vi08 + 4);
+  vu.acc.madda_xyzw(vu.vf31, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf29, vu.vi08 + 4);
   // lq.xyzw vf31, 5(vi11)      |  maddz.xyzw vf28, vf28, vf24
   vu.acc.madd_xyzw(vu.vf28, vu.vf28, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi11 + 5);
   // lq.xyzw vf23, 5(vi14)      |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi14 + 5);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
-  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
+  vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer_xyz<DEBUG>(vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi11)      |  maddz.xyz vf29, vf29, vf24
   vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf22, 6(vi14)      |  mulax.xyzw ACC, vf31, vf24
