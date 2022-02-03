@@ -1118,7 +1118,14 @@
 
 ;; definition (debug) for function add-debug-curve
 ;; Used lq/sq
-(defun-debug add-debug-curve ((arg0 symbol) (arg1 bucket-id) (arg2 pointer) (arg3 int) (arg4 (inline-array vector)) (arg5 int) (arg6 rgba))
+(defun-debug add-debug-curve ((arg0 symbol)
+                    (arg1 bucket-id)
+                    (arg2 (inline-array vector))
+                    (arg3 int)
+                    (arg4 (pointer float))
+                    (arg5 int)
+                    (arg6 rgba)
+                    )
   (local-vars (sv-48 vector) (sv-64 int) (sv-80 int))
   (if (not arg0)
       (return #f)
@@ -1127,25 +1134,11 @@
     (set! sv-48 (new 'stack-no-clear 'vector))
     (set! (-> sv-48 quad) (the-as uint128 0))
     (set! sv-64 (* arg3 4))
-    (curve-evaluate!
-      sv-48
-      (-> arg4 0 x)
-      (the-as (inline-array vector) arg2)
-      arg3
-      (the-as (pointer float) arg4)
-      arg5
-      )
+    (curve-evaluate! sv-48 (-> arg4 0) arg2 arg3 arg4 arg5)
     (set! sv-80 0)
     (while (< sv-80 sv-64)
       (set! (-> s0-0 quad) (-> sv-48 quad))
-      (curve-evaluate!
-        sv-48
-        (/ (the float (+ sv-80 1)) (the float sv-64))
-        (the-as (inline-array vector) arg2)
-        arg3
-        (the-as (pointer float) arg4)
-        arg5
-        )
+      (curve-evaluate! sv-48 (/ (the float (+ sv-80 1)) (the float sv-64)) arg2 arg3 arg4 arg5)
       (add-debug-line #t arg1 s0-0 sv-48 arg6 #f (the-as rgba -1))
       (set! sv-80 (+ sv-80 1))
       )
@@ -1156,15 +1149,7 @@
 ;; definition (debug) for function add-debug-curve2
 (defun-debug add-debug-curve2 ((arg0 symbol) (arg1 bucket-id) (arg2 curve) (arg3 rgba) (arg4 symbol))
   (if arg0
-      (add-debug-curve
-        #t
-        arg1
-        (the-as pointer (-> arg2 cverts))
-        (-> arg2 num-cverts)
-        (the-as (inline-array vector) (-> arg2 knots))
-        (-> arg2 num-knots)
-        arg3
-        )
+      (add-debug-curve #t arg1 (-> arg2 cverts) (-> arg2 num-cverts) (-> arg2 knots) (-> arg2 num-knots) arg3)
       )
   #f
   )
