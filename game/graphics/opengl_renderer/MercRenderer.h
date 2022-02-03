@@ -2,8 +2,9 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "common/math/Vector.h"
-
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+
+#include "immintrin.h"
 
 enum class Mask {
   NONE = 0,
@@ -24,17 +25,25 @@ enum class Mask {
   xyzw = 15
 };
 
+#define REALLY_INLINE static inline __attribute__((always_inline))
+
+// note: must be aligned.
+REALLY_INLINE void copy_vector(void* dest, const void* src) {
+  __m128 val = _mm_load_ps((const float*)src);
+  _mm_store_ps((float*)dest, val);
+}
+
 inline float vu_max(float a, float b) {
-  //  return std::max(a, b);
-  s32 ai, bi;
-  memcpy(&ai, &a, 4);
-  memcpy(&bi, &b, 4);
-  bool flip = ai < 0 && bi < 0;
-  if (ai > bi) {
-    return flip ? b : a;
-  } else {
-    return flip ? a : b;
-  }
+  return std::max(b,a);
+//  s32 ai, bi;
+//  memcpy(&ai, &a, 4);
+//  memcpy(&bi, &b, 4);
+//  bool flip = ai < 0 && bi < 0;
+//  if (ai > bi) {
+//    return flip ? b : a;
+//  } else {
+//    return flip ? a : b;
+//  }
 }
 
 inline float vu_min(float a, float b) {
@@ -49,7 +58,11 @@ inline float vu_min(float a, float b) {
   }
 }
 
-struct Vf {
+struct alignas(16) Vf {
+  __attribute__((always_inline)) __m128 load() const { return _mm_load_ps(data); }
+
+  __attribute__((always_inline)) void move_xyzw(const Vf& src) { copy_vector(data, src.data); }
+
   float data[4];
   float& x() { return data[0]; }
   float& y() { return data[1]; }
@@ -171,6 +184,23 @@ struct Vf {
     }
   }
 
+  __attribute__((always_inline)) void max_xyzw(const Vf& a, const Vf& b) {
+    _mm_store_ps(data, _mm_max_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
+  }
+
+  __attribute__((always_inline)) void max_xyzw(const Vf& a, float b) {
+    _mm_store_ps(data, _mm_max_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
+  }
+
+
+  __attribute__((always_inline)) void mini_xyzw(const Vf& a, const Vf& b) {
+    _mm_store_ps(data, _mm_min_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
+  }
+
+  __attribute__((always_inline)) void mini_xyzw(const Vf& a, float b) {
+    _mm_store_ps(data, _mm_min_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
+  }
+
   void minii(Mask mask, const Vf& other, float I) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
@@ -211,12 +241,24 @@ struct Vf {
     }
   }
 
+  __attribute__((always_inline)) void add_xyzw(const Vf& a, const Vf& b) {
+    _mm_store_ps(data, _mm_add_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
+  }
+
   void add(Mask mask, const Vf& a, float b) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         data[i] = a[i] + b;
       }
     }
+  }
+
+  __attribute__((always_inline)) void mul_xyzw(const Vf& a, const Vf& b) {
+    _mm_store_ps(data, _mm_mul_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
+  }
+
+  __attribute__((always_inline)) void mul_xyzw(const Vf& a, float b) {
+    _mm_store_ps(data, _mm_mul_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
   }
 
   void mul(Mask mask, const Vf& a, const Vf& b) {
@@ -275,7 +317,7 @@ struct Vf {
   }
 };
 
-struct Accumulator {
+struct alignas(16) Accumulator {
   float data[4];
 
   void adda(Mask mask, const Vf& a, float b) {
@@ -302,12 +344,33 @@ struct Accumulator {
     }
   }
 
+  __attribute__((always_inline)) void madda_xyzw(const Vf& _a, float _b) {
+    auto b = _mm_set1_ps(_b);
+    auto a = _mm_load_ps(_a.data);
+    auto acc = _mm_load_ps(data);
+    _mm_store_ps(data, _mm_fmadd_ps(a, b, acc));
+  }
+
+  __attribute__((always_inline)) void madda_xyzw(const Vf& _a, const Vf& _b) {
+    auto b = _mm_load_ps(_b.data);
+    auto a = _mm_load_ps(_a.data);
+    auto acc = _mm_load_ps(data);
+    _mm_store_ps(data, _mm_fmadd_ps(a, b, acc));
+  }
+
   void madd(Mask mask, Vf& dest, const Vf& a, const Vf& b) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         dest[i] = data[i] + a[i] * b[i];
       }
     }
+  }
+
+  __attribute__((always_inline)) void madd_xyzw(Vf& dest, const Vf& _a, float _b) {
+    auto b = _mm_set1_ps(_b);
+    auto a = _mm_load_ps(_a.data);
+    auto acc = _mm_load_ps(data);
+    _mm_store_ps(dest.data, _mm_fmadd_ps(a, b, acc));
   }
 
   void madd(Mask mask, Vf& dest, const Vf& a, float b) {
@@ -333,6 +396,18 @@ struct Accumulator {
       }
     }
   }
+
+  __attribute__((always_inline)) void mula_xyzw(const Vf& _a, float _b) {
+    auto b = _mm_set1_ps(_b);
+    auto a = _mm_load_ps(_a.data);
+    _mm_store_ps(data, _mm_mul_ps(a, b));
+  }
+
+  __attribute__((always_inline)) void mula_xyzw(const Vf& _a, const Vf& _b) {
+    auto b = _mm_load_ps(_b.data);
+    auto a = _mm_load_ps(_a.data);
+    _mm_store_ps(data, _mm_mul_ps(a, b));
+  }
 };
 
 class MercRenderer : public BucketRenderer {
@@ -350,6 +425,10 @@ class MercRenderer : public BucketRenderer {
   void unpack32(const VifCodeUnpack& up, const u8* data, u32 imm);
 
   void mscal(int enter_address, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
+  template <bool DEBUG>
+  void mscal_impl(int enter_address, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
   void xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   enum MercDataMemory {
@@ -368,7 +447,9 @@ class MercRenderer : public BucketRenderer {
   } m_low_memory;
   static_assert(sizeof(LowMemory) == 0x80);
 
-  u8 m_buffer_memory[(1024) * 16];
+  struct alignas(16) BufferMemory {
+    u8 data[1024 * 16];
+  } m_buffer;
 
   void sq_buffer(Mask mask, const Vf& data, u32 qw) {
     //    if (data.x_as_u32() == 0x80000000 && data.y_as_u32() == 0x80000000) {
@@ -377,15 +458,21 @@ class MercRenderer : public BucketRenderer {
     //    }
     // sketchy...
     //    qw &= 1023;
-    assert(qw * 16 < sizeof(m_buffer_memory));
+    assert(qw * 16 < sizeof(m_buffer.data));
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
-        memcpy(m_buffer_memory + qw * 16 + i * 4, data.data + i, 4);
+        memcpy(m_buffer.data + qw * 16 + i * 4, data.data + i, 4);
       }
     }
   }
 
   void lq_buffer(Mask mask, Vf& dest, u16 addr);
+
+  template <bool DEBUG>
+  void lq_buffer_xyzw(Vf& dest, u16 addr);
+
+  template <bool DEBUG>
+  void sq_buffer_xyzw(const Vf& src, u16 addr);
 
   void isw_buffer(Mask mask, u16 val, u16 addr);
   void ilw_buffer(Mask mask, u16& dest, u16 addr);
@@ -398,7 +485,6 @@ class MercRenderer : public BucketRenderer {
   struct {
     u32 row[4] = {0, 0, 0, 0};
     bool stmod = false;
-
   } m_vif;
 
   struct Stats {
@@ -416,6 +502,7 @@ class MercRenderer : public BucketRenderer {
 
   bool m_enable_prime_mscals = true;
   bool m_enable_normal_mscals = true;
+  bool m_enable_send_to_direct = true;
 
   struct Vu {
     Vf vf01, vf02, vf03, vf04, vf05, vf06, vf07, vf08, vf09, vf10, vf11, vf12, vf13, vf14, vf15,

@@ -277,6 +277,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
+  ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();

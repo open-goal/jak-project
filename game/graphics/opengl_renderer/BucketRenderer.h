@@ -77,6 +77,7 @@ struct SharedRenderState {
 
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
+  bool render_debug = false;
 
   void reset();
   bool has_camera_planes = false;

@@ -5,7 +5,7 @@
 MercRenderer::MercRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
       m_direct(fmt::format("{}-dir", name), my_id, 0x30000, DirectRenderer::Mode::NORMAL) {
-  memset(m_buffer_memory, 0, sizeof(m_buffer_memory));
+  memset(m_buffer.data, 0, sizeof(m_buffer.data));
 }
 
 void MercRenderer::render(DmaFollower& dma,
@@ -66,9 +66,9 @@ void MercRenderer::unpack32(const VifCodeUnpack& up, const u8* data, u32 imm) {
 
   u32 start_in_buff = (addr)*16;
   u32 end_in_buff = start_in_buff + imm * 16;
-  assert(start_in_buff < sizeof(m_buffer_memory));
-  assert(end_in_buff <= sizeof(m_buffer_memory));
-  memcpy(m_buffer_memory + start_in_buff, data, imm * 16);
+  assert(start_in_buff < sizeof(m_buffer.data));
+  assert(end_in_buff <= sizeof(m_buffer.data));
+  memcpy(m_buffer.data + start_in_buff, data, imm * 16);
 }
 
 void MercRenderer::unpack8(const VifCodeUnpack& up, const u8* data, u32 imm) {
@@ -83,8 +83,30 @@ void MercRenderer::unpack8(const VifCodeUnpack& up, const u8* data, u32 imm) {
 
   u32 start_in_buff = (addr)*16;
   u32 end_in_buff = start_in_buff + imm * 16;
-  assert(start_in_buff < sizeof(m_buffer_memory));
-  assert(end_in_buff <= sizeof(m_buffer_memory));
+  assert(start_in_buff < sizeof(m_buffer.data));
+  assert(end_in_buff <= sizeof(m_buffer.data));
+
+  u8* out_ptr = m_buffer.data + start_in_buff;
+
+  if (m_vif.stmod) {
+    // use row
+    auto row = _mm_loadu_si128((const __m128i*)m_vif.row);
+    for (u32 qw = 0; qw < imm; qw++) {
+      _mm_storeu_si128((__m128i*)out_ptr,
+                       _mm_add_epi32(row, _mm_cvtepu8_epi32(_mm_loadu_si64(data))));
+      data += 4;
+      out_ptr += 16;
+    }
+  } else {
+    // no row
+    for (u32 qw = 0; qw < imm; qw++) {
+      _mm_storeu_si128((__m128i*)out_ptr, _mm_cvtepu8_epi32(_mm_loadu_si64(data)));
+      data += 4;
+      out_ptr += 16;
+    }
+  }
+
+  /*
   u32 row[4];
   if (m_vif.stmod) {
     memcpy(row, m_vif.row, 16);
@@ -97,8 +119,9 @@ void MercRenderer::unpack8(const VifCodeUnpack& up, const u8* data, u32 imm) {
     for (u32 j = 0; j < 4; j++) {
       temp[j] = row[j] + data[4 * i + j];
     }
-    memcpy(m_buffer_memory + start_in_buff + i * 16, temp, 16);
+    memcpy(m_buffer.data + start_in_buff + i * 16, temp, 16);
   }
+   */
 }
 
 void MercRenderer::handle_merc_chain(DmaFollower& dma,
@@ -293,7 +316,7 @@ void MercRenderer::handle_setup(DmaFollower& dma,
   }
 
   // copy low memory into the VU "emulation" RAM.
-  memcpy(m_buffer_memory, &m_low_memory, sizeof(LowMemory));
+  memcpy(m_buffer.data, &m_low_memory, sizeof(LowMemory));
   mscal(0, render_state, prof);
 
   auto second = dma.read_and_advance();
@@ -313,8 +336,11 @@ void MercRenderer::draw_debug_window() {
   ImGui::Text("Debug:\n%s\n", m_stats.str.c_str());
   ImGui::Checkbox("Normal MSCAL enable", &m_enable_normal_mscals);
   ImGui::Checkbox("Prime MSCAL enable", &m_enable_prime_mscals);
+  ImGui::Checkbox("Send to direct", &m_enable_send_to_direct);
 }
 
 void MercRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  m_direct.render_gif(m_buffer_memory + (16 * addr), UINT32_MAX, render_state, prof);
+  if (m_enable_send_to_direct) {
+    m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
+  }
 }
