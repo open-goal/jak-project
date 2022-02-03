@@ -533,7 +533,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // mtir vi10, vf11.x          |  maddaz.xyzw ACC, vf30, vf11
   vu.acc.madda_xyzw(vu.vf30, vu.vf11.z());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  maddz.xyz vf11, vf31, vf14
-  vu.vi13 = vu.vf11.y_as_u16(); vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());
+  vu.vi13 = vu.vf11.y_as_u16(); vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());
   // lq.xyzw vf25, 0(vi08)      |  nop
   lq_buffer_xyzw<DEBUG>(vu.vf25, vu.vi08);
   // lq.xyzw vf26, 1(vi08)      |  itof0.xyzw vf24, vf24
@@ -547,7 +547,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   vu.vi15 = vu.vi07;
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   // lqi.xyzw vf09, vi01        |  nop
   lq_buffer_xyzw<DEBUG>(vu.vf09, vu.vi01++);
   // ilwr.y vi03, vi12          |  nop
@@ -601,7 +601,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // lq.xyzw vf28, 3(vi08)      |  maddaz.xyzw ACC, vf30, vf12
   vu.acc.madda_xyzw(vu.vf30, vu.vf12.z());   lq_buffer_xyzw<DEBUG>(vu.vf28, vu.vi08 + 3);
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // nop                        |  nop
 
   // 1024.0                     |  miniw.w vf08, vf08, vf03 :i
@@ -619,7 +619,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // nop                        |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   // lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   vu.acc.mula_xyzw(vu.vf01, vu.vf11.x());   lq_buffer_xyzw<DEBUG>(vu.vf10, vu.vi01++);
 // BRANCH!
@@ -706,7 +706,7 @@ void MercRenderer::mscal_impl(int enter_address,
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L18:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -721,7 +721,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // ibne vi04, vi03, L19       |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi04 != vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L19; }
 
 
@@ -808,7 +808,7 @@ void MercRenderer::mscal_impl(int enter_address,
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L21:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -823,7 +823,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // ibne vi04, vi03, L22       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi04 != vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L22; }
 
 
@@ -910,7 +910,7 @@ void MercRenderer::mscal_impl(int enter_address,
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L24:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -925,7 +925,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // ibne vi04, vi03, L15       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi04 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L15; }
 
 
@@ -1011,11 +1011,11 @@ void MercRenderer::mscal_impl(int enter_address,
   // lq.xyzw vf20, 6(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
   // mtir vi10, vf11.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi13 = vu.vf11.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi13 = vu.vf11.y_as_u16();
   // nop                        |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());
   // nop                        |  maddy.xyzw vf31, vf31, vf24
@@ -1025,7 +1025,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // nop                        |  maddaz.xyzw ACC, vf30, vf11
   vu.acc.madda_xyzw(vu.vf30, vu.vf11.z());
   // nop                        |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());
   // nop                        |  nop
 
   // nop                        |  nop
@@ -1040,7 +1040,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   vu.vi15 = vu.vi07;
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   // lqi.xyzw vf09, vi01        |  nop
   lq_buffer_xyzw<DEBUG>(vu.vf09, vu.vi01++);
   // ilwr.y vi03, vi12          |  nop
@@ -1126,11 +1126,11 @@ void MercRenderer::mscal_impl(int enter_address,
   // lq.xyzw vf20, 6(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi11, vf12.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi11 = vu.vf12.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi14 = vu.vf12.y_as_u16();
   // iaddiu vi08, vi00, 0x1a1   |  maddw.xyzw vf31, vf31, vf24
@@ -1153,7 +1153,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // nop                        |  maddaz.xyzw ACC, vf30, vf12
   vu.acc.madda_xyzw(vu.vf30, vu.vf12.z());
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // nop                        |  nop
 
   // 1024.0                     |  miniw.w vf08, vf08, vf03 :i
@@ -1172,7 +1172,7 @@ void MercRenderer::mscal_impl(int enter_address,
   // ibeq vi06, vi03, L65       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi06 == vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L65; }
 
 
@@ -1278,11 +1278,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi12)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
   // mtir vi12, vf13.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi12 = vu.vf13.x_as_u16();
   // mtir vi15, vf13.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi15 = vu.vf13.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi15 = vu.vf13.y_as_u16();
 // BRANCH!
   // b L49                      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   bc = true;
@@ -1304,7 +1304,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L34:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -1319,7 +1319,7 @@ assert(false);
   // ibne vi06, vi03, L35       |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L35; }
 
 
@@ -1424,11 +1424,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
   // mtir vi10, vf11.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi13 = vu.vf11.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi13 = vu.vf11.y_as_u16();
 // BRANCH!
   // b L54                      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   bc = true;
@@ -1450,7 +1450,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L39:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -1465,7 +1465,7 @@ assert(false);
   // ibne vi06, vi03, L40       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L40; }
 
 
@@ -1570,11 +1570,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi11)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
   // mtir vi11, vf12.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi14 = vu.vf12.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi14 = vu.vf12.y_as_u16();
 // BRANCH!
   // b L59                      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   bc = true;
@@ -1596,7 +1596,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L44:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -1611,7 +1611,7 @@ assert(false);
   // ibne vi06, vi03, L29       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L29; }
 
 
@@ -1715,11 +1715,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi12)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi12, vf13.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi12 = vu.vf13.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi12 = vu.vf13.x_as_u16();
   // mtir vi15, vf13.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi15 = vu.vf13.y_as_u16();
 // BRANCH!
@@ -1743,7 +1743,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L50:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -1758,7 +1758,7 @@ assert(false);
   // ibne vi06, vi03, L51       |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L51; }
 
 
@@ -1861,11 +1861,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi10)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi10, vf11.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi10 = vu.vf11.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi13 = vu.vf11.y_as_u16();
 // BRANCH!
@@ -1889,7 +1889,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L55:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -1904,7 +1904,7 @@ assert(false);
   // ibne vi06, vi03, L56       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L56; }
 
 
@@ -2007,11 +2007,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi11, vf12.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi11 = vu.vf12.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi14 = vu.vf12.y_as_u16();
 // BRANCH!
@@ -2035,7 +2035,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L60:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -2050,7 +2050,7 @@ assert(false);
   // ibne vi06, vi03, L45       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L45; }
 
 
@@ -2130,13 +2130,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi10)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf22, 6(vi13)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi13 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi10, vf11.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  madday.xyzw ACC, vf22, vf24
@@ -2150,7 +2150,7 @@ assert(false);
   // nop                        |  maddaz.xyzw ACC, vf30, vf11
   vu.acc.madda_xyzw(vu.vf30, vu.vf11.z());
   // nop                        |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());
   // nop                        |  nop
 
   // nop                        |  nop
@@ -2164,7 +2164,7 @@ assert(false);
   // ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   vu.vi15 = vu.vi07;
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   // lqi.xyzw vf09, vi01        |  nop
   lq_buffer_xyzw<DEBUG>(vu.vf09, vu.vi01++);
   // ilwr.y vi03, vi12          |  nop
@@ -2261,13 +2261,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi11)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf22, 6(vi14)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi14 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi11, vf12.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  madday.xyzw ACC, vf22, vf24
@@ -2282,7 +2282,7 @@ assert(false);
   // nop                        |  maddaz.xyzw ACC, vf30, vf12
   vu.acc.madda_xyzw(vu.vf30, vu.vf12.z());
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // nop                        |  nop
 
   // 1024.0                     |  miniw.w vf08, vf08, vf03 :i
@@ -2300,7 +2300,7 @@ assert(false);
   // nop                        |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   L65:
   // lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   vu.acc.mula_xyzw(vu.vf01, vu.vf11.x());   lq_buffer_xyzw<DEBUG>(vu.vf10, vu.vi01++);
@@ -2408,13 +2408,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi12)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf22, 6(vi15)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi15 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi12, vf13.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi12 = vu.vf13.x_as_u16();
   // mtir vi15, vf13.y          |  madday.xyzw ACC, vf22, vf24
@@ -2436,7 +2436,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L71:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -2451,7 +2451,7 @@ assert(false);
   // ibeq vi07, vi03, L143      |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi07 == vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L143; }
 
 
@@ -2550,13 +2550,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi10)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf22, 6(vi13)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi13 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi10, vf11.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  madday.xyzw ACC, vf22, vf24
@@ -2578,7 +2578,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L76:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -2593,7 +2593,7 @@ assert(false);
   // ibeq vi07, vi03, L153      |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi07 == vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L153; }
 
 
@@ -2692,13 +2692,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi11)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf22, 6(vi14)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi14 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi11, vf12.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  madday.xyzw ACC, vf22, vf24
@@ -2720,7 +2720,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L81:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -2735,7 +2735,7 @@ assert(false);
   // ibne vi07, vi03, L66       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi07 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L66; }
 
 
@@ -2757,7 +2757,7 @@ assert(false);
   // nop                        |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   // lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   vu.acc.mula_xyzw(vu.vf01, vu.vf11.x());   lq_buffer_xyzw<DEBUG>(vu.vf10, vu.vi01++);
 // BRANCH!
@@ -2848,7 +2848,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L86:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -2865,7 +2865,7 @@ assert(false);
   // ibne vi04, vi03, L87       |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi04 != vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L87; }
 
 
@@ -2956,7 +2956,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L89:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -2973,7 +2973,7 @@ assert(false);
   // ibne vi04, vi03, L90       |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi04 != vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L90; }
 
 
@@ -3064,7 +3064,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L92:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -3081,7 +3081,7 @@ assert(false);
   // ibne vi04, vi03, L83       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi04 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L83; }
 
 
@@ -3120,7 +3120,7 @@ assert(false);
   // ibeq vi06, vi03, L126      |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi06 == vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L126; }
 
 
@@ -3233,11 +3233,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi12)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
   // mtir vi12, vf13.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi12 = vu.vf13.x_as_u16();
   // mtir vi15, vf13.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi15 = vu.vf13.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi15 = vu.vf13.y_as_u16();
 // BRANCH!
   // b L113                     |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   bc = true;
@@ -3259,7 +3259,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L99:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -3276,7 +3276,7 @@ assert(false);
   // ibne vi06, vi03, L100      |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L100; }
 
 
@@ -3385,11 +3385,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi10)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
   // mtir vi10, vf11.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi13 = vu.vf11.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi13 = vu.vf11.y_as_u16();
 // BRANCH!
   // b L118                     |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   bc = true;
@@ -3411,7 +3411,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L104:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -3428,7 +3428,7 @@ assert(false);
   // ibne vi06, vi03, L105      |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L105; }
 
 
@@ -3537,11 +3537,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi11)      |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddy.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
   // mtir vi11, vf12.x          |  mulax.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.x());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  maddy.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.y());   vu.vi14 = vu.vf12.y_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.y());   vu.vi14 = vu.vf12.y_as_u16();
 // BRANCH!
   // b L123                     |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   bc = true;
@@ -3563,7 +3563,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L109:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -3580,7 +3580,7 @@ assert(false);
   // ibne vi06, vi03, L94       |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L94; }
 
 
@@ -3688,11 +3688,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi12)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf31, 6(vi15)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi15 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi12, vf13.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi12 = vu.vf13.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi12 = vu.vf13.x_as_u16();
   // mtir vi15, vf13.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi15 = vu.vf13.y_as_u16();
 // BRANCH!
@@ -3716,7 +3716,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L114:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -3733,7 +3733,7 @@ assert(false);
   // ibne vi06, vi03, L115      |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L115; }
 
 
@@ -3840,11 +3840,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi10)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf31, 6(vi13)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi13 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi10, vf11.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi10 = vu.vf11.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi13 = vu.vf11.y_as_u16();
 // BRANCH!
@@ -3868,7 +3868,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L119:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -3885,7 +3885,7 @@ assert(false);
   // ibne vi06, vi03, L120      |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L120; }
 
 
@@ -3992,11 +3992,11 @@ assert(false);
   // lq.xyzw vf20, 6(vi11)      |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf31, 6(vi14)      |  maddw.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.w());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi14 + 6);
   // lqi.xyzw vf23, vi02        |  mulaz.xyzw ACC, vf23, vf24
   vu.acc.mula_xyzw(vu.vf23, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi11, vf12.x          |  maddw.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.w());   vu.vi11 = vu.vf12.x_as_u16();
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.w());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  mulaz.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.z());   vu.vi14 = vu.vf12.y_as_u16();
 // BRANCH!
@@ -4020,7 +4020,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L124:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -4037,7 +4037,7 @@ assert(false);
   // ibne vi06, vi03, L110      |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi06 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L110; }
 
 
@@ -4067,7 +4067,7 @@ assert(false);
   // nop                        |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   L126:
   // lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   vu.acc.mula_xyzw(vu.vf01, vu.vf11.x());   lq_buffer_xyzw<DEBUG>(vu.vf10, vu.vi01++);
@@ -4179,13 +4179,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi12)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi12 + 6);
   // lq.xyzw vf22, 6(vi15)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi15 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi12, vf13.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi12 = vu.vf13.x_as_u16();
   // mtir vi15, vf13.y          |  madday.xyzw ACC, vf22, vf24
@@ -4207,7 +4207,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf08);
   L132:
   // mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
-  vu.acc.madd(Mask::xyz, vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf13, vu.vf31, vu.vf16.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   vu.vf11.mini_xyzw(vu.vf11, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf14, vu.vi10);
   // sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
@@ -4224,7 +4224,7 @@ assert(false);
   // ibeq vi07, vi03, L143      |  maddaw.xyzw ACC, vf26, vf13
   vu.acc.madda_xyzw(vu.vf26, vu.vf13.w());   bc = (vu.vi07 == vu.vi03);
   // mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf10, vu.vf27, vu.vf16.w());   vu.vf16.z() = 1.f;
   if (bc) { goto L143; }
 
 
@@ -4327,13 +4327,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi10)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi10 + 6);
   // lq.xyzw vf22, 6(vi13)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi13 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi10, vf11.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi10 = vu.vf11.x_as_u16();
   // mtir vi13, vf11.y          |  madday.xyzw ACC, vf22, vf24
@@ -4355,7 +4355,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf09);
   L137:
   // mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  vu.acc.madd(Mask::xyz, vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf11, vu.vf31, vu.vf14.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
   vu.vf12.mini_xyzw(vu.vf12, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf15, vu.vi11);
   // sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
@@ -4372,7 +4372,7 @@ assert(false);
   // ibeq vi07, vi03, L153      |  maddaw.xyzw ACC, vf26, vf11
   vu.acc.madda_xyzw(vu.vf26, vu.vf11.w());   bc = (vu.vi07 == vu.vi03);
   // mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf08, vu.vf27, vu.vf14.w());   vu.vf14.z() = 1.f;
   if (bc) { goto L153; }
 
 
@@ -4475,13 +4475,13 @@ assert(false);
   // lq.xyz vf30, 5(vi08)       |  madday.xyzw ACC, vf20, vf24
   vu.acc.madda_xyzw(vu.vf20, vu.vf24.y());   lq_buffer(Mask::xyz, vu.vf30, vu.vi08 + 5);
   // lq.xyzw vf20, 6(vi11)      |  maddz.xyz vf29, vf29, vf24
-  vu.acc.madd(Mask::xyz, vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
+  vu.acc.madd_xyz(vu.vf29, vu.vf29, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf20, vu.vi11 + 6);
   // lq.xyzw vf22, 6(vi14)      |  mulax.xyzw ACC, vf31, vf24
   vu.acc.mula_xyzw(vu.vf31, vu.vf24.x());   lq_buffer_xyzw<DEBUG>(vu.vf22, vu.vi14 + 6);
   // lq.xyzw vf31, 6(vi08)      |  madday.xyzw ACC, vf23, vf24
   vu.acc.madda_xyzw(vu.vf23, vu.vf24.y());   lq_buffer_xyzw<DEBUG>(vu.vf31, vu.vi08 + 6);
   // lqi.xyzw vf23, vi02        |  maddz.xyz vf30, vf30, vf24
-  vu.acc.madd(Mask::xyz, vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
+  vu.acc.madd_xyz(vu.vf30, vu.vf30, vu.vf24.z());   lq_buffer_xyzw<DEBUG>(vu.vf23, vu.vi02++);
   // mtir vi11, vf12.x          |  mulax.xyzw ACC, vf20, vf24
   vu.acc.mula_xyzw(vu.vf20, vu.vf24.x());   vu.vi11 = vu.vf12.x_as_u16();
   // mtir vi14, vf12.y          |  madday.xyzw ACC, vf22, vf24
@@ -4503,7 +4503,7 @@ assert(false);
   vu.vf21.ftoi4(Mask::xyzw, vu.vf10);
   L142:
   // mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
-  vu.acc.madd(Mask::xyz, vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
+  vu.acc.madd_xyz(vu.vf12, vu.vf31, vu.vf15.z());   vu.vf20.mfp(Mask::w, vu.P);
   // sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   vu.vf13.mini_xyzw(vu.vf13, vu.vf17.y());   sq_buffer_xyzw<DEBUG>(vu.vf16, vu.vi12);
   // sq.xyzw vf16, 0(vi15)      |  miniw.w vf08, vf08, vf03
@@ -4520,7 +4520,7 @@ assert(false);
   // ibne vi07, vi03, L127      |  maddaw.xyzw ACC, vf26, vf12
   vu.acc.madda_xyzw(vu.vf26, vu.vf12.w());   bc = (vu.vi07 != vu.vi03);
   // mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.mr32(Mask::z, vu.vf00);
+  vu.acc.madd_xyzw(vu.vf09, vu.vf27, vu.vf15.w());   vu.vf15.z() = 1.f;
   if (bc) { goto L127; }
 
 

@@ -34,16 +34,16 @@ REALLY_INLINE void copy_vector(void* dest, const void* src) {
 }
 
 inline float vu_max(float a, float b) {
-  return std::max(b,a);
-//  s32 ai, bi;
-//  memcpy(&ai, &a, 4);
-//  memcpy(&bi, &b, 4);
-//  bool flip = ai < 0 && bi < 0;
-//  if (ai > bi) {
-//    return flip ? b : a;
-//  } else {
-//    return flip ? a : b;
-//  }
+  return std::max(b, a);
+  //  s32 ai, bi;
+  //  memcpy(&ai, &a, 4);
+  //  memcpy(&bi, &b, 4);
+  //  bool flip = ai < 0 && bi < 0;
+  //  if (ai > bi) {
+  //    return flip ? b : a;
+  //  } else {
+  //    return flip ? a : b;
+  //  }
 }
 
 inline float vu_min(float a, float b) {
@@ -151,6 +151,8 @@ struct alignas(16) Vf {
     }
   }
 
+  __attribute__((always_inline)) void mr32_z(const Vf& other) { data[2] = other.data[3]; }
+
   void mfir(Mask mask, s16 in) {
     s32 sext = in;
     for (int i = 0; i < 4; i++) {
@@ -191,7 +193,6 @@ struct alignas(16) Vf {
   __attribute__((always_inline)) void max_xyzw(const Vf& a, float b) {
     _mm_store_ps(data, _mm_max_ps(_mm_load_ps(a.data), _mm_set1_ps(b)));
   }
-
 
   __attribute__((always_inline)) void mini_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_min_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
@@ -371,6 +372,15 @@ struct alignas(16) Accumulator {
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
     _mm_store_ps(dest.data, _mm_fmadd_ps(a, b, acc));
+  }
+
+  __attribute__((always_inline)) void madd_xyz(Vf& dest, const Vf& _a, float _b) {
+    auto b = _mm_set1_ps(_b);
+    auto a = _mm_load_ps(_a.data);
+    auto acc = _mm_load_ps(data);
+    auto prod = _mm_fmadd_ps(a, b, acc);
+    prod = _mm_blend_ps(prod, _mm_load_ps(dest.data), 0b1000);
+    _mm_store_ps(dest.data, prod);
   }
 
   void madd(Mask mask, Vf& dest, const Vf& a, float b) {
