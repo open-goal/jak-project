@@ -111,7 +111,7 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   bool is_pal = false;
-
+  std::string game_name;
   GameTextVersion text_version = GameTextVersion::JAK1_V1;
 
   std::unordered_set<std::string> allowed_objects;
@@ -133,6 +133,7 @@ struct Config {
   std::unordered_map<std::string, int> bad_format_strings;
 
   std::vector<std::string> levels_to_extract;
+  bool levels_extract;
 
   DecompileHacks hacks;
 };
