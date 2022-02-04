@@ -109,10 +109,9 @@ std::string VifCode::print() {
 
     default:
       fmt::print("Unhandled vif code {}\n", (int)kind);
-//      assert(false);
 
       result = "???";
-      // assert(false);
+      assert(false);
       break;
   }
   // TODO: the rest of the VIF code.

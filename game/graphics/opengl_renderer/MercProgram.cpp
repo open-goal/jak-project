@@ -1,6 +1,8 @@
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 
-void MercRenderer::mscal(int enter_address, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void MercRenderer::mscal(int enter_address,
+                         SharedRenderState* render_state,
+                         ScopedProfilerNode& prof) {
   if (render_state->render_debug) {
     mscal_impl<true>(enter_address, render_state, prof);
   } else {
@@ -30,17 +32,17 @@ void MercRenderer::lq_buffer(Mask mask, Vf& dest, u16 addr) {
   }
 }
 
-template<bool DEBUG>
+template <bool DEBUG>
 REALLY_INLINE void MercRenderer::lq_buffer_xyzw(Vf& dest, u16 addr) {
-  if constexpr(DEBUG) {
+  if constexpr (DEBUG) {
     assert(addr * 16 < sizeof(m_buffer.data));
   }
   copy_vector(dest.data, m_buffer.data + addr * 16);
 }
 
-template<bool DEBUG>
+template <bool DEBUG>
 REALLY_INLINE void MercRenderer::lq_buffer_xyz(Vf& dest, u16 addr) {
-  if constexpr(DEBUG) {
+  if constexpr (DEBUG) {
     assert(addr * 16 < sizeof(m_buffer.data));
   }
   auto reg = _mm_load_ps(dest.data);
@@ -48,9 +50,9 @@ REALLY_INLINE void MercRenderer::lq_buffer_xyz(Vf& dest, u16 addr) {
   _mm_store_ps(dest.data, _mm_blend_ps(mem, reg, 0b1000));
 }
 
-template<bool DEBUG>
+template <bool DEBUG>
 REALLY_INLINE void MercRenderer::sq_buffer_xyzw(const Vf& src, u16 addr) {
-  if constexpr(DEBUG) {
+  if constexpr (DEBUG) {
     assert(addr * 16 < sizeof(m_buffer.data));
   }
   copy_vector(m_buffer.data + addr * 16, src.data);
@@ -102,10 +104,7 @@ void MercRenderer::ilw_buffer(Mask mask, u16& dest, u16 addr) {
   memcpy(&dest, m_buffer.data + addr * 16 + offset, 2);
 }
 
-// skipping for now
-// - mr (all)
-
-
+// clang-format off
 template<bool DEBUG>
 void MercRenderer::mscal_impl(int enter_address,
                          SharedRenderState* render_state,

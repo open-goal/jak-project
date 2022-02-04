@@ -1091,7 +1091,6 @@ std::string VuDisassembler::to_string_with_cpp(const VuInstructionPair& pair) co
     result += fmt::format("   {:25s}", to_cpp(pair.upper));
     result += fmt::format("   {:25s}", to_cpp(pair.lower));
   } else {
-
     if (!is_nop(pair.upper)) {
       result += fmt::format("   {:25s}", to_cpp(pair.upper));
     }
@@ -1099,8 +1098,6 @@ std::string VuDisassembler::to_string_with_cpp(const VuInstructionPair& pair) co
     if (!is_nop(pair.lower)) {
       result += fmt::format("   {:25s}", to_cpp(pair.lower));
     }
-
-
   }
 
   return result;
