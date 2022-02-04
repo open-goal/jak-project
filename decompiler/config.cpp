@@ -29,6 +29,7 @@ Config read_config_file(const std::string& path_to_config_file) {
 
   config.game_version = cfg.at("game_version").get<int>();
   config.text_version = cfg.at("text_version").get<GameTextVersion>();
+  config.game_name = cfg.at("game_name").get<std::string>();
 
   auto inputs_json = read_json_file_from_config(cfg, "inputs_file");
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
@@ -211,7 +212,8 @@ Config read_config_file(const std::string& path_to_config_file) {
     config.merged_objects.insert(x);
   }
 
-  config.levels_to_extract = cfg.at("levels_to_extract").get<std::vector<std::string>>();
+  config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
+  config.levels_extract = cfg.at("levels_extract").get<bool>();
   return config;
 }
 

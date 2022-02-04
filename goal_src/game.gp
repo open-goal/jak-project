@@ -103,10 +103,12 @@
   (fmt #f "tpage-{}.go" id)
   )
 
+
+(define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
+
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
+  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" (tpage-name tpage-id))))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
@@ -118,8 +120,7 @@
   )
 
 (defmacro copy-go (name)
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "decompiler_out/" folder "raw_obj/" name ".go")))
+  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" name ".go")))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/obj/" name ".go")))))
@@ -135,8 +136,7 @@
   `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
 
 (defun copy-str (name)
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "STR/" name ".STR"))
+  (let* ((path (string-append "iso_data/" *game-directory* "STR/" name ".STR"))
          (out-file (string-append "out/iso/" name ".STR")))
     (defstep :in path
              :tool 'copy
@@ -148,8 +148,7 @@
   `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
 
 (defun copy-vis-file (name)
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "VIS/" name ".VIS"))
+  (let* ((path (string-append "iso_data/" *game-directory* "VIS/" name ".VIS"))
          (out-name (string-append "out/iso/" name ".VIS")))
     (defstep :in path
              :tool 'copy
@@ -219,22 +218,22 @@
   )
 
 ;; the TWEAKVAL file
-(defstep :in "iso_data/MUS/TWEAKVAL.MUS"
+(defstep :in (string-append "iso_data/" *game-directory* "MUS/TWEAKVAL.MUS")
   :tool 'copy
   :out '("out/iso/TWEAKVAL.MUS"))
 
 ;; the VAGDIR file
-(defstep :in "iso_data/VAG/VAGDIR.AYB"
+(defstep :in (string-append "iso_data/" *game-directory* "VAG/VAGDIR.AYB")
   :tool 'copy
   :out '("out/iso/VAGDIR.AYB"))
 
 ;; the save icon file
-(defstep :in "iso_data/DRIVERS/SAVEGAME.ICO"
+(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SAVEGAME.ICO")
   :tool 'copy
   :out '("out/iso/SAVEGAME.ICO"))
 
 ;; the loading screen file
-(defstep :in "iso_data/DRIVERS/SCREEN1.USA"
+(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SCREEN1.USA")
   :tool 'copy
   :out '("out/iso/SCREEN1.USA"))
 

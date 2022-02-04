@@ -53,16 +53,16 @@ We support both Linux and Windows on x86-64.
 We have a Discord server where we discuss development. https://discord.gg/V82sTJGEAs
 
 ## Current Status
-So far, we've decompiled around 341,233 lines of GOAL code, out of an estimated 500,000 total lines and we've started work on an OpenGL renderer. Currently, the main display process (`*dproc*`) runs and sends data to our renderer. We can load textures, text files, and level files. Using keyboard controls, we can open the debug menu and turn on some simple debug visualizations.
+So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
 
 Here are some screenshots of the renderer:
-![](./docs/markdown/imgs/screenshot_hut.png)
-![](./docs/markdown/imgs/screenshot_vi1.png)
+![](./docs/markdown/imgs/screenshot_hut_new_small.png)
+![](./docs/markdown/imgs/screenshot_jungle1_small.png)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
 
-To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where the original code had type casts until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`. Our decompiler is designed specifically for processing the output of the original GOAL compiler. As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is tested as part of our unit tests, and so far we have around 300,000 lines (380 files) that pass.
+To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where we believe the original code had type casts (or where they feel appropriate) until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`. Our decompiler is designed specifically for processing the output of the original GOAL compiler. As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is tested as part of our unit tests, and so far we have over 300,000 lines (460 files) that pass.
 
 We don't save any assets from the game - you must bring your own copy of the game and use the decompiler to extract assets.
 
@@ -146,9 +146,7 @@ nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 
 ## Getting Started - Windows
 
-Install Visual Studio 2022 and get the `Desktop development with C++` workload during the installation process.
-
-> if you already have visual studio and don't have this installed - open your `Visual Studio Installer` and modify the installation
+If you do not have it already, install Visual Studio 2019 or 2022 and get the `Desktop development with C++` workload during the installation process. If you already have Visual Studio installed and don't have this, open your `Visual Studio Installer` and modify the installation.
 
 On Windows, it's recommended to get Scoop to use as a package manager, making the follow steps _much_ easier. Follow the steps on the bottom of the homepage here https://scoop.sh/
 
@@ -168,8 +166,9 @@ Open the project as a CMake project.
 
 ![](./docs/markdown/imgs/windows/open-project.png)
 
-Then build the entire project
+Then build the entire project as "Release". You can also press Ctrl+Shift+B as a hotkey for Build All.
 
+![](./docs/markdown/imgs/windows/release-build.png)
 ![](./docs/markdown/imgs/windows/build-all.png)
 
 ## Building and Running the Game
@@ -186,13 +185,13 @@ Running the decompiler on the entire game is slow and not needed, so it is recom
   "decompile_code": false, // change this to false, don't decompile code
 ```
 
-Place a copy of the game's files in `iso_data` (on Windows, make a `jak1` subfolder and place the files there), then run the decompiler with the `scripts/shell/decomp.sh` (Linux) or `scripts/batch/decomp-jak1.bat` (Windows) script.
+Place a copy of the game's files in `iso_data/jak1/`, then run the decompiler with the `scripts/shell/decomp.sh` (Linux) or `scripts/batch/decomp-jak1.bat` (Windows) script.
 
 ### Build Game
-Run the OpenGOAL compiler `build/goalc/goalc`, or use one of the `gc` scripts. Enter `(mi)` to build the `"iso"` target, which contains everything we have placed in the build system so far.
+Run the OpenGOAL compiler `out/build/goalc/goalc` (keep in mind that the build directories may vary by system, on Windows the equivalent is similar to `out/build/Release/bin/goalc`), or use one of the `gc` scripts. Enter `(mi)` to build the `"iso"` target, which contains everything we have placed in the build system so far.
 
 ### Run Game
-In a separate terminal, start the runtime with `build/game/gk -fakeiso -debug`. Then, in the OpenGOAL window, run `(mi)` to create the data for the game and give the REPL information for running code, `(lt)` to connect, `(lg)` to load the game engine and `(test-play)` to start the game engine. If it all works right, it will look something like this:
+In a separate terminal, start the runtime with `out/build/game/gk -boot -fakeiso -debug`, or instead run the `gk-display.bat` script (Windows). The game should boot up automatically! If you want to connect the REPL to the live game and use it for inspecting code or changing things around, rhen, in the OpenGOAL compiler window (REPL), run `(mi)` to create the data for the game and give the REPL information for running code and `(lt)` to connect. If you want to start the runtime but not boot up the game, remove the `-boot` argument or run the regular `gk.bat` script, and after connecting to the runtime from the REPL, run `(lg)` to load the game engine and `(test-play)` to start it. Assuming it all works right, it will look something like this:
 ```
 g > (lt)
 [Listener] Socket connected established! (took 0 tries). Waiting for version...
@@ -208,16 +207,20 @@ gc> (test-play)
 
 gc>
 ```
-Then, in the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
+In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 
-Check out the `pc_debug` and `examples` folder under `goal_src` for some examples of GOAL code we wrote. They have instructions for how to run them.
+Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files have instructions for how to run them if they are not loaded automatically by the engine.
 
 ## Project Layout
 There are four main components to the project.
 
 The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of GOAL is called OpenGOAL. All of the compiler source code is in `goalc`. To run the compiler on Linux, there is a script `gc.sh`. On Windows, there is a `gc.bat` scripts and a `gc-no-lt.bat` script, the latter of which will not attempt to automatically attach to a running target. The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
 
-The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD into the `iso_data` folder. Then run `decomp.sh` (Linux) to run the decompiler. For Windows, it is the `decomp-jak1.bat` file, and it wants your game's DVD files in a `jak1` folder inside `iso_data`. The decompile will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
+The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD inside a folder corresponding to the game within `iso_data` folder (`jak1` for Jak 1 Black Label, etc.), as seen in this picture:
+
+![](./docs/markdown/imgs/iso_data-help.png)
+
+Then run `decomp.sh` (Linux) or `decomp-jak1.bat` (Windows) to run the decompiler. The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
 
 The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder. Right now most of this is placeholders or incomplete, but you can take a look at `kernel/gcommon.gc` or `goal-lib.gc` to see some in-progress source code.
 
