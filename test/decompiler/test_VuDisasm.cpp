@@ -158,7 +158,7 @@ TEST(VuDisasm, Merc) {
   auto data = get_test_data("merc");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  EXPECT_EQ(disasm.to_string_with_cpp(prog), get_expected("merc"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("merc"));
 }
 
 TEST(VuDisasm, MercToC) {
