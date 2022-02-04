@@ -976,6 +976,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::DSRL:
     case InstructionKind::SRL:
     case InstructionKind::PSRAW:
+    case InstructionKind::PSRAH:
     case InstructionKind::PSRLH:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
@@ -1002,8 +1003,10 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMINH:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:
+    case InstructionKind::MULTU3:
     case InstructionKind::PMINW:
     case InstructionKind::PMAXW:
+    case InstructionKind::PMAXH:
     case InstructionKind::SUBU:
     case InstructionKind::DSRAV:
       return handle_generic_op3(i0, instr_str, {});
@@ -1073,6 +1076,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "sqrts");
     case InstructionKind::PLZCW:
       return handle_generic_op2(i0, instr_str, "plzcw");
+    case InstructionKind::PCPYH:
+      return handle_generic_op2(i0, instr_str, "pcpyh");
     case InstructionKind::LUI:
       return handle_lui(i0, instr_str);
     case InstructionKind::CLTS:

@@ -244,7 +244,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.texture_enable) {
-    float alpha_reject = 0.;
+    float alpha_reject = 0.0;
     if (m_test_state.alpha_test_enable) {
       switch (m_test_state.alpha_test) {
         case GsTest::AlphaTest::ALWAYS:
@@ -310,10 +310,11 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 
   if (!tex) {
     // TODO Add back
-    fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-    tex = render_state->texture_pool->get_random_texture();
-    if (tex) {
-      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+    if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
+      tex = render_state->texture_pool->get_random_texture();
+    } else {
+      fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+      tex = render_state->texture_pool->get_random_texture();
     }
   }
   assert(tex);
@@ -367,6 +368,7 @@ void DirectRenderer::update_gl_blend() {
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
+      assert(state.fix == 0);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
@@ -377,11 +379,19 @@ void DirectRenderer::update_gl_blend() {
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
+               state.c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - Cd) * fix + Cd
+      // Cs * fix + (1 - fx) * Cd
+      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendColor(0, 0, 0, state.fix / 127.f);
+      glBlendEquation(GL_FUNC_ADD);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
-      lg::error("unsupported blend: a {} b {} c {} d {} NOTE THIS DOWN IMMEDIATELY!!", (int)state.a,
-                (int)state.b, (int)state.c, (int)state.d);
-      assert(false);
+      lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
+                (int)state.d);
+      //      assert(false);
     }
   }
 }
@@ -408,6 +418,7 @@ void DirectRenderer::update_gl_test() {
         assert(false);
     }
   } else {
+    // you aren't supposed to turn off z test enable, the GS had some bugs
     assert(false);
   }
 
@@ -699,7 +710,6 @@ void DirectRenderer::handle_tex0_1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   GsTex0 reg(val);
-
   // update tbp
   if (current_texture_state()->current_register != reg) {
     if (current_texture_state()->used) {
@@ -726,7 +736,8 @@ void DirectRenderer::handle_tex0_1(u64 val,
   // tw: assume they got it right
   // th: assume they got it right
 
-  assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+  // MERC hack
+  // assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
   // cpsm: assume they got it right
@@ -832,8 +843,8 @@ void DirectRenderer::handle_clamp1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    assert(false);
+    //    fmt::print("clamp: 0x{:x}\n", val);
+    //    assert(false);
   }
 
   if (current_texture_state()->m_clamp_state.current_register != val) {
@@ -1089,8 +1100,6 @@ void DirectRenderer::BlendState::from_register(GsAlpha reg) {
   c = reg.c_mode();
   d = reg.d_mode();
   fix = reg.fix();
-
-  assert(fix == 0);
 }
 
 void DirectRenderer::PrimGlState::from_register(GsPrim reg) {
