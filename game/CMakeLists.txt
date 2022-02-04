@@ -68,6 +68,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/collide_probe.cpp
         mips2c/functions/draw_string.cpp
         mips2c/functions/joint.cpp
+        mips2c/functions/merc_blend_shape.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
         mips2c/functions/sparticle_launcher.cpp
@@ -97,6 +98,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
         graphics/opengl_renderer/Loader.cpp
+        graphics/opengl_renderer/MercProgram.cpp
+        graphics/opengl_renderer/MercRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp

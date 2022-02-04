@@ -11,6 +11,7 @@
 #include "game/graphics/opengl_renderer/Sprite3.h"
 #include "game/graphics/opengl_renderer/tfrag/TFragment.h"
 #include "game/graphics/opengl_renderer/tfrag/Tie3.h"
+#include "game/graphics/opengl_renderer/MercRenderer.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -68,44 +69,136 @@ void OpenGLRenderer::init_bucket_renderers() {
                                                           tfrag3::TFragmentTreeKind::LOWRES};
   std::vector<tfrag3::TFragmentTreeKind> dirt_tfrags = {tfrag3::TFragmentTreeKind::DIRT};
   std::vector<tfrag3::TFragmentTreeKind> ice_tfrags = {tfrag3::TFragmentTreeKind::ICE};
-
-  init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
-  init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
-
-  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
-  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false, 0);
-  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0, 0);
-  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
-  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false, 1);
-  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1, 1);
-  init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
-  init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
-  init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
-  init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);
   auto sky_gpu_blender = std::make_shared<SkyBlendGPU>();
   auto sky_cpu_blender = std::make_shared<SkyBlendCPU>();
+
+  //-------------
+  // PRE TEXTURE
+  //-------------
+  // 0
+  // 1
+  // 2
+  init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);  // 3
+  // 4
+
+  //-----------------------
+  // LEVEL 0 tfrag texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);        // 5
+  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false, 0);  // 6
+  // 7
+  // 8
+  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0, 0);                      // 9
+  init_bucket_renderer<MercRenderer>("merc-tf-0", BucketId::MERC_TFRAG_TEX_LEVEL0);  // 10
+  // 11
+
+  //-----------------------
+  // LEVEL 1 tfrag texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);  // 12
+  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false, 1);
+  // 14
+  // 15
+  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1, 1);
+  init_bucket_renderer<MercRenderer>("merc-tf-1", BucketId::MERC_TFRAG_TEX_LEVEL1);  // 17
+  // 18??
+
+  //-----------------------
+  // LEVEL 0 shrub texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);  // 19
+  // 20
+  // 21
+  // 22
+  // 23
+  // 24
+
+  //-----------------------
+  // LEVEL 1 shrub texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);  // 25
+  // 26
+  // 27
+  // 28
+  // 29
+  // 30
+
+  //-----------------------
+  // LEVEL 0 alpha texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);  // 31
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
                                         BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, 0,
-                                        sky_gpu_blender, sky_cpu_blender);
+                                        sky_gpu_blender, sky_cpu_blender);  // 32
+  // 33
   init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false,
-                                  0);
+                                  0);  // 34
+  // 35
   init_bucket_renderer<TFragment>("tfrag-ice-0", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags, false, 0);
+  // 37
+
+  //-----------------------
+  // LEVEL 1 alpha texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);  // 38
   init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-1",
                                         BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1, 1,
-                                        sky_gpu_blender, sky_cpu_blender);
+                                        sky_gpu_blender, sky_cpu_blender);  // 39
+  // 40
   init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false,
-                                  1);
+                                  1);  // 41
+  // 42
   init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false, 1);
-  init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
-  init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);
-  init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
-  init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);
-  init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
+  // 44
+  init_bucket_renderer<MercRenderer>("merc-after-alpha", BucketId::MERC_AFTER_ALPHA);
+  // 46?
+  // 47?
+
+  //-----------------------
+  // LEVEL 0 pris texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);  // 48
+  init_bucket_renderer<MercRenderer>("merc-pris-0", BucketId::MERC_PRIS_LEVEL0);        // 49
+  // 50
+
+  //-----------------------
+  // LEVEL 1 pris texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);  // 51
+  init_bucket_renderer<MercRenderer>("merc-pris-1", BucketId::MERC_PRIS_LEVEL1);        // 52
+  // 53
+
+  // 54?
+  init_bucket_renderer<MercRenderer>("merc-after-pris", BucketId::MERC_AFTER_PRIS);  // 55
+  // 56?
+
+  //-----------------------
+  // LEVEL 0 water texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);  // 57
+  init_bucket_renderer<MercRenderer>("merc-water-0", BucketId::MERC_WATER_LEVEL0);        // 58
+  // 59
+
+  //-----------------------
+  // LEVEL 1 water texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);  // 60
+  init_bucket_renderer<MercRenderer>("merc-water-1", BucketId::MERC_WATER_LEVEL1);        // 61
+  // 62
+
+  // 63?
+  // 64?
+
+  //-----------------------
+  // COMMON texture
+  //-----------------------
+  init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);  // 65
+
   std::vector<std::unique_ptr<BucketRenderer>> sprite_renderers;
   sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
   sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", BucketId::SPRITE));
+  init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));  // 66
 
-  init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000,
                                        DirectRenderer::Mode::NORMAL);
   init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,
@@ -184,6 +277,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
+  ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();

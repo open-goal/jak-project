@@ -114,7 +114,7 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
     }
   }
 
-  if (mode.get_depth_write_enable()) {
+  if (mode.get_depth_write_enable() && !alpha_hack_to_disable_z_write) {
     glDepthMask(GL_TRUE);
   } else {
     glDepthMask(GL_FALSE);

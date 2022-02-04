@@ -11,8 +11,35 @@
   )
 
 (defun guard-band-cull ((arg0 vector))
-  #t
-  ;; todo
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf9 :class vf)
+         )
+        (init-vf0-vector)
+        ;; NOTE: manually added
+        (let ((at-0 *math-camera*))
+          (.lvf vf20 (&-> at-0 guard-plane 0 quad))
+          (.lvf vf21 (&-> at-0 guard-plane 1 quad))
+          (.lvf vf22 (&-> at-0 guard-plane 2 quad))
+          (.lvf vf23 (&-> at-0 guard-plane 3 quad))
+          )
+        (.lvf vf10 (&-> arg0 quad))
+        (.mul.x.vf acc vf20 vf10)
+        (.add.mul.y.vf acc vf21 vf10 acc)
+        (.add.mul.z.vf acc vf22 vf10 acc)
+        (.sub.mul.w.vf vf9 vf23 vf0 acc)
+        (.sub.w.vf vf9 vf9 vf10)
+        (.mov v1-0 vf9)
+        (.pcgtw v1-1 0 v1-0)
+        (.ppach v1-2 (the-as uint128 0) v1-1)
+        (nonzero? (the-as int v1-2))
+        )
   )
 
 (defun sphere-in-view-frustum? ((arg0 sphere))
@@ -714,8 +741,8 @@
                       )
                     )
                   (if (or (guard-band-cull s4-0) (< cam-dist (* 1.2 (-> *math-camera* d))))
-                      (logior! (-> arg1 status) (draw-status drwf00))
-                      (logclear! (-> arg1 status) (draw-status drwf00))
+                      (logior! (-> arg1 status) (draw-status needs-clip))
+                      (logclear! (-> arg1 status) (draw-status needs-clip))
                       )
                   (logior! (-> arg1 status) (draw-status drwf03))
                   (if (logtest? (-> arg1 status) (draw-status drwf05))
@@ -903,7 +930,7 @@
 
   ;; tfrag
   ;; note: PC port uses preconverted tfrag textures.
-  (#unless PC_PORT
+  ; (#unless PC_PORT
            (when (logtest? *texture-enable-user* 1)
              (dotimes (gp-1 (-> *level* length))
                (let ((a1-2 (-> *level* level gp-1)))
@@ -913,7 +940,7 @@
                  )
                )
              )
-           )
+           ; )
 
   ;; pris
 

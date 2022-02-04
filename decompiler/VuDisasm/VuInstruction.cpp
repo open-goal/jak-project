@@ -45,6 +45,10 @@ VuInstructionAtom VuInstructionAtom::make_r() {
   return {Kind::R};
 }
 
+bool VuInstructionAtom::is_int_reg(int idx) const {
+  return m_kind == Kind::VI && m_value == idx;
+}
+
 std::string VuInstructionAtom::to_string(const std::vector<std::string>& labels) const {
   switch (m_kind) {
     case Kind::VF:

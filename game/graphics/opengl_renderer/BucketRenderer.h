@@ -18,9 +18,11 @@ enum class BucketId {
   TFRAG_TEX_LEVEL0 = 5,
   TFRAG_LEVEL0 = 6,
   TIE_LEVEL0 = 9,
+  MERC_TFRAG_TEX_LEVEL0 = 10,
   TFRAG_TEX_LEVEL1 = 12,
   TFRAG_LEVEL1 = 13,
   TIE_LEVEL1 = 16,
+  MERC_TFRAG_TEX_LEVEL1 = 17,
   SHRUB_TEX_LEVEL0 = 19,
   SHRUB_TEX_LEVEL1 = 25,
   ALPHA_TEX_LEVEL0 = 31,
@@ -31,10 +33,16 @@ enum class BucketId {
   TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1 = 39,
   TFRAG_DIRT_LEVEL1 = 41,
   TFRAG_ICE_LEVEL1 = 43,
+  MERC_AFTER_ALPHA = 45,
   PRIS_TEX_LEVEL0 = 48,
+  MERC_PRIS_LEVEL0 = 49,
   PRIS_TEX_LEVEL1 = 51,
+  MERC_PRIS_LEVEL1 = 52,
+  MERC_AFTER_PRIS = 55,
   WATER_TEX_LEVEL0 = 57,
+  MERC_WATER_LEVEL0 = 58,
   WATER_TEX_LEVEL1 = 60,
+  MERC_WATER_LEVEL1 = 61,
   // ...
   PRE_SPRITE_TEX = 65,  // maybe it's just common textures?
   SPRITE = 66,
@@ -69,6 +77,7 @@ struct SharedRenderState {
 
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
+  bool render_debug = false;
 
   void reset();
   bool has_camera_planes = false;

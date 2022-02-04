@@ -53,7 +53,7 @@ std::string VifCode::print() {
       result = "FLUSHA";
       break;
     case Kind::MSCAL:
-      result = "MSCAL";
+      result = fmt::format("MSCAL 0x{:x}", immediate);
       break;
     case Kind::MSCNT:
       result = "MSCNT";
@@ -109,10 +109,9 @@ std::string VifCode::print() {
 
     default:
       fmt::print("Unhandled vif code {}\n", (int)kind);
-      assert(false);
 
       result = "???";
-      // assert(false);
+      assert(false);
       break;
   }
   // TODO: the rest of the VIF code.

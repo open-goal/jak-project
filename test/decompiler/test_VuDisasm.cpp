@@ -160,3 +160,17 @@ TEST(VuDisasm, Merc) {
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
   EXPECT_EQ(disasm.to_string(prog), get_expected("merc"));
 }
+
+TEST(VuDisasm, MercToC) {
+  auto data = get_test_data("merc");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  disasm.add_label_with_name(0x1a1, "JUMP_1A1");
+  disasm.add_label_with_name(0x48e, "JUMP_48E");
+  disasm.add_label_with_name(0x539, "JUMP_539");
+  disasm.add_label_with_name(0x243, "JUMP_243");
+  disasm.add_label_with_name(20, "ENTER_20");
+  disasm.add_label_with_name(35, "ENTER_35");
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  // fmt::print("{}\n", disasm.to_string_with_cpp(prog));
+  // EXPECT_EQ(disasm.to_string_with_cpp(prog), get_expected("merc"));
+}
