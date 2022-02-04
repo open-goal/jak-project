@@ -53,7 +53,7 @@ We support both Linux and Windows on x86-64.
 We have a Discord server where we discuss development. https://discord.gg/V82sTJGEAs
 
 ## Current Status
-So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines we have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
+So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
 
 Here are some screenshots of the renderer:
 ![](./docs/markdown/imgs/screenshot_hut_new_small.png)
@@ -146,7 +146,7 @@ nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 
 ## Getting Started - Windows
 
-Install Visual Studio 2022 (or 2019 if you have it) and get the `Desktop development with C++` workload during the installation process. If you already have Visual Studio installed and don't have this, open your `Visual Studio Installer` and modify the installation.
+If you do not have it already, install Visual Studio 2019 or 2022 and get the `Desktop development with C++` workload during the installation process. If you already have Visual Studio installed and don't have this, open your `Visual Studio Installer` and modify the installation.
 
 On Windows, it's recommended to get Scoop to use as a package manager, making the follow steps _much_ easier. Follow the steps on the bottom of the homepage here https://scoop.sh/
 
@@ -209,7 +209,7 @@ gc>
 ```
 In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 
-Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files have instructions for how to run them as they are not loaded automatically by the engine.
+Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files have instructions for how to run them if they are not loaded automatically by the engine.
 
 ## Project Layout
 There are four main components to the project.
@@ -220,7 +220,7 @@ The second component to the project is the decompiler. You must have a copy of t
 
 ![](./docs/markdown/imgs/iso_data-help.png)
 
-Then run `decomp.sh` (Linux) to run the decompiler. The decompile will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
+Then run `decomp.sh` (Linux) or `decomp-jak1.bat` (Windows) to run the decompiler. The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
 
 The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder. Right now most of this is placeholders or incomplete, but you can take a look at `kernel/gcommon.gc` or `goal-lib.gc` to see some in-progress source code.
 
