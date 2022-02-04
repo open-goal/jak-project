@@ -218,6 +218,12 @@ extern void link();
 namespace draw_bones_check_longest_edge_asm {
 extern void link();
 }
+namespace blerc_execute {
+extern void link();
+}
+namespace setup_blerc_chains_for_one_fragment {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -252,7 +258,8 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       method_10_collide_edge_hold_list::link, method_18_collide_edge_work::link}},
     {"joint", {calc_animation_from_spr::link, cspace_parented_transformq_joint::link}},
     {"bones",
-     {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link}}};
+     {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link}},
+    {"merc-blend-shape", {blerc_execute::link, setup_blerc_chains_for_one_fragment::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
