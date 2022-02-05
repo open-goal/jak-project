@@ -6,10 +6,17 @@
 ;; dgos: GAME, ENGINE
 
 ;; This extremely confusing "connection system" allows the connection between
-;; "engines" and "processes".  Basically, a process may add connections to an engine.
-;; A "connection" is really just a function that gets called when the engine runs.
-;; Another way to use the system is as a queue of messages from processes to the engine,
-;; without using a function.
+;; "engines" and "processes".  Basically, a process can "register" itself with any number of "engines".
+;; The "engines" can then iterate through all the connected processes. If a process is destroyed, it will
+;; be removed from all engines.  It is okay to connect a process to multiple engines, or even to the same engine
+;; multiple times.
+
+;; Some example uses:
+;; - a "foreground-engine" has connections to all foreground objects that need to be drawn on each frame.
+;; - when a process wants to change a game setting, it opens a connection to the settings engine to request a change.
+;;   when the process is killed, the setting change is reverted.
+
+;; A "connection" is really just a function that gets called when the engine runs, or a set of parameters that the engine can iterate through.
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -555,8 +562,6 @@
    )
   0
   )
-
-
 
 (defmethod remove-by-param2 engine ((obj engine) (p2-value int))
   "Remove all connections with param2 matching p2-value"

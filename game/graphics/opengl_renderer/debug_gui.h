@@ -80,6 +80,7 @@ class OpenGlDebugGui {
   bool framelimiter = false;
   float target_fps = 60.f;
   bool experimental_accurate_lag = false;
+  bool sleep_in_frame_limiter = true;
 
  private:
   FrameTimeRecorder m_frame_timer;

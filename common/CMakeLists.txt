@@ -38,7 +38,11 @@ add_library(common
         util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        util/image_loading.cpp "goos/Printer.cpp" "goos/Printer.h" "goos/PrettyPrinter2.cpp" "goos/PrettyPrinter2.h")
+        util/FrameLimiter.cpp
+        util/image_loading.cpp
+        goos/Printer.cpp
+        goos/PrettyPrinter2.cpp
+        )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

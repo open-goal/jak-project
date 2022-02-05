@@ -122,30 +122,45 @@
   ;; reset camera rotation
   (matrix-identity! (-> math-cam camera-rot))
 
-  (let ((fog-constant-1 100.0)
-        (fog-constant-2 16760631.0)
+  ;;;;;;;;;;;;;; Perspective matrix setup
+
+  ;; these min/max depths are the values we'd want to write to the 24-bit integer depth buffer
+  (let ((min-depth 100.0)
+        (max-depth 16760631.0) ;; almost 2^24.
         )
-    (let ((f0-21 16777115.0)))
-    (let ((fog-at-near-plane
+    (let ((f0-21 16777115.0))) ;; unused. this is actually float closest to 2^24
+    
+    ;; next, compute the fog slope d(8bit_integer_fog_value)/d(game_world_distance).
+    ;; the final fog values we want are an 8-bit integer.
+    ;; note that this is the fog at the near plane too.
+    (let ((fog-slope
            (/ (* (-> math-cam d) (- (-> math-cam fog-min) (-> math-cam fog-max)))
               (- (-> *math-camera-fog-correction* fog-end)
                  (-> *math-camera-fog-correction* fog-start)
                  )
               )
             )
-          (fog-factor-2 (* -0.5 (- fog-constant-2 fog-constant-1)))
+          ;; this is half the range of the depth buffer.
+          (depth-buffer-half-range (* -0.5 (- max-depth min-depth)))
           )
-      (let ((corrected-fog (/ fog-factor-2 (* (-> math-cam d) (- (-> math-cam f) (-> math-cam d)))))
+      ;; this is the slope to convert game world depths to depth buffer depths
+      (let ((half-depth-buffer-slope (/ depth-buffer-half-range (* (-> math-cam d) (- (-> math-cam f) (-> math-cam d)))))
             (cam-fov-mult (-> math-cam fov-correction-factor))
             )
+        
+        ;; finally, build the actual matrix.
+        ;; x/y are just the usual scaling
         (set! (-> math-cam perspective vector 0 x) (* cam-fov-mult (- (/ (-> math-cam x-pix) (* (-> math-cam x-ratio) (-> math-cam d))))))
         (set! (-> math-cam perspective vector 1 y) (* cam-fov-mult (- (/ (-> math-cam y-pix) (* (-> math-cam y-ratio) (-> math-cam d))))))
-        (set! (-> math-cam perspective vector 2 z) (* cam-fov-mult (+ (-> math-cam f) (-> math-cam d)) corrected-fog))
-        (set! (-> math-cam perspective vector 2 w) (* (/ cam-fov-mult (-> math-cam d)) fog-at-near-plane))
-        (set! (-> math-cam perspective vector 3 z) (* -2.0 corrected-fog (-> math-cam f) (-> math-cam d) cam-fov-mult))
+        ;; depth scaling
+        (set! (-> math-cam perspective vector 2 z) (* cam-fov-mult (+ (-> math-cam f) (-> math-cam d)) half-depth-buffer-slope))
+        ;; depth to fog
+        (set! (-> math-cam perspective vector 2 w) (* (/ cam-fov-mult (-> math-cam d)) fog-slope))
+        
+        (set! (-> math-cam perspective vector 3 z) (* -2.0 half-depth-buffer-slope (-> math-cam f) (-> math-cam d) cam-fov-mult))
         )
 
-      ;; hvdf/hmge, no idea what these are
+      ;; hvdf = horizontal, vertical, depth, fog offsets to be applied after transform.
       (let ((hvdf-x 2048.0)
             (hvdf-y 2048.0)
             (hvdf-w
@@ -160,15 +175,15 @@
                 )
               )
             )
-        (let ((hvdf-z (* 0.5 (+ fog-constant-2 fog-constant-1))))
+        (let ((hvdf-z (* 0.5 (+ max-depth min-depth))))
           (set! (-> math-cam hmge-scale x) (/ 1.0 (-> math-cam x-clip)))
           (set! (-> math-cam hmge-scale y) (/ 1.0 (-> math-cam y-clip)))
-          (set! (-> math-cam hmge-scale z) (/ 1.0 fog-factor-2))
-          (set! (-> math-cam hmge-scale w) (/ 1.0 fog-at-near-plane))
+          (set! (-> math-cam hmge-scale z) (/ 1.0 depth-buffer-half-range))
+          (set! (-> math-cam hmge-scale w) (/ 1.0 fog-slope))
           (set! (-> math-cam inv-hmge-scale x) (-> math-cam x-clip))
           (set! (-> math-cam inv-hmge-scale y) (-> math-cam y-clip))
-          (set! (-> math-cam inv-hmge-scale z) fog-factor-2)
-          (set! (-> math-cam inv-hmge-scale w) fog-at-near-plane)
+          (set! (-> math-cam inv-hmge-scale z) depth-buffer-half-range)
+          (set! (-> math-cam inv-hmge-scale w) fog-slope)
           (set! (-> math-cam hvdf-off x) hvdf-x)
           (set! (-> math-cam hvdf-off y) hvdf-y)
           (set! (-> math-cam hvdf-off z) hvdf-z)
@@ -188,7 +203,7 @@
                  )
           
           )
-        (set! (-> math-cam isometric vector 3 w) fog-at-near-plane)
+        (set! (-> math-cam isometric vector 3 w) fog-slope)
 
         ;; perspective matrix
         (let ((persp-xx (-> math-cam perspective vector 0 x))
@@ -215,7 +230,7 @@
         (set! (-> math-cam sprite-2d-hvdf x) 2048.0)
         (set! (-> math-cam sprite-2d-hvdf y) 2048.0)
         (set! (-> math-cam sprite-2d-hvdf z) (-> math-cam hvdf-off z))
-        (set! (-> math-cam pfog0) fog-at-near-plane)
+        (set! (-> math-cam pfog0) fog-slope)
         (set! (-> math-cam pfog1) hvdf-w)
         )
       )
@@ -266,6 +281,7 @@
 
 
 (defmethod new math-camera ((allocation symbol) (type-to-make type))
+  "Set up a new math-camera in NTSC mode."
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 d) 1024.0)
     (set! (-> gp-0 f) 40960000.0)
@@ -382,7 +398,9 @@
   )
 
 (defun transform-point-vector! ((arg0 vector) (arg1 vector))
-  "Apply camera transformation to a point."
+  "Apply camera transformation to a point. Return true if it is visible or not.
+   This returns the point in GS coords, but as float instead of int, so it's
+   not really useful.  See transform-point-qword! for more details"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -428,7 +446,8 @@
   )
 
 (defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
-  "Apply camera transformation to point, returning fixed point 28.4 position"
+  "Apply camera transformation to point, returning fixed point 28.4 position
+   that can be given to the GS directly."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -445,37 +464,60 @@
    (init-vf0-vector)
    (let ((v1-0 0))
     )
+   
+   ;; this camera matrix has both the projection and camera translation/rotation
    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
    (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
    (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
+
+   ;; scaling
    (.lvf vf29 (&-> *math-camera* hmge-scale quad))
+
+   ;; offset
    (.lvf vf30 (&-> *math-camera* hvdf-off quad))
+
+   ;; input point
    (.lvf vf28 (&-> arg1 quad))
+   
+   ;; matrix multiply, result in vf28
    (.mul.x.vf acc vf24 vf28)
    (.add.mul.y.vf acc vf25 vf28 acc)
    (.add.mul.z.vf acc vf26 vf28 acc)
-   (.add.mul.w.vf vf28 vf27 vf0 acc) ;; matrix mult.
-   (.add.w.vf vf23 vf0 vf0) ;; clear w.
+   (.add.mul.w.vf vf28 vf27 vf0 acc)
+
+   
+   (.add.w.vf vf23 vf0 vf0) ;; set w = 1.0
+
+   ;; apply hmge scaling. the result of this multiply sets clipping flags appropriately
    (.mul.vf vf31 vf28 vf29) ;; scale.
    ;;(TODO.VCLIP vf31 vf31)
-   (let ((clip (vu-clip vf31 0)))
+   (let ((clip (vu-clip vf31 0))) ;; clip!
+     
+     ;; perspective divide
      (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
      (.wait.vf)
      ;;(.cfc2.i v1-7 Clipping)
+     ;; perspective
      (.mul.vf vf28 vf28 Q :mask #b111)
+     ;; compute scale factor (w was 1.0)
      (.mul.vf vf23 vf23 Q)
+     ;; apply hvdf offsets
      (.add.vf vf28 vf28 vf30)
+     ;; saturate fog
      (.max.x.vf vf28 vf28 vf0 :mask #b1000)
-     ;;(TODO.VFTOI4 vf28 vf28)
+     ;; convert to GS fixed point
      (vftoi4.xyzw vf28 vf28)
+     ;; store result!
      (.svf (&-> arg0 quad) vf28)
+     ;; return result of clipping.
      (zero? (logand clip 63))
      )
    )
   )
 
 (defun transform-point-vector-scale! ((arg0 vector) (arg1 vector))
+  "Similar to transform-point-qword! but returns the scale factor instead."
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -523,7 +565,9 @@
   )
 
 (defun init-for-transform ((arg0 matrix))
-  "Sets up VU0 registers with camera info. Most rendering stuff doesn't use this."
+  "Sets up VU0 registers with camera info.
+   This is probably a very old function and it's only used by jungle mirrors.
+   It stashes some data in vector float registers that must be there before calling transform-float-point."
   (rlet ((vf1 :class vf)
          (vf17 :class vf)
          (vf18 :class vf)
