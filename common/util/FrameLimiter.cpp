@@ -39,7 +39,7 @@ void FrameLimiter::run(double target_fps,
   m_timer.start();
 }
 
-#elif
+#else
 
 #include <Windows.h>
 
