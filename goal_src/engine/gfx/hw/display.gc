@@ -13,12 +13,15 @@
 ;; for some reason, the display also tracks some timing stuff.
 
 (defun get-current-time ()
-  "Possibly the wall-clock time"
+  "Get the in game time.  This advances when the game is unpaused.
+   This increase at the same rate for PAL/NTSC and if the game is lagging."
   (-> *display* base-frame-counter)
   )
 
 (defun get-integral-current-time ()
-  "The integral of game frame time (this slows down as we lag)"
+  "Get the game time as a number of frames. This advances at different rates for PAL/NTSC.
+   This counts the number of actual vsyncs done by the PS2, including ones that are missed due to lag.
+   "
   (-> *display* integral-frame-counter)
   )
 
@@ -250,7 +253,7 @@
   )
 
 (defun set-display2 ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
-  "Set the display and draw envs only. This assumes you have already done a set-display."
+  "Set the display and draw envs only. This assumes you have already done a set-display and you just need to update the video mode."
   (set-display-env (-> disp display-env0) psm w h (-> *video-parms* display-dx) (-> *video-parms* display-dy) 320)
   (set-display-env (-> disp display-env1) psm w h (-> *video-parms* display-dx) (-> *video-parms* display-dy) 384)
   (set-draw-env (-> disp draw0) psm w h ztest zpsm 384)
@@ -262,10 +265,14 @@
 (defun allocate-dma-buffers ((arg0 display))
   "Allocate the main DMA buffers!"
   (when (zero? (-> arg0 frames 0 frame calc-buf))
-    ;; not sure what these "calc-buf"s are. Maybe VU0 DMA or other small stuff that is used in the same frame?
+    ;; allocate a small calc-buf for each frame.
+    ;; these smaller buffers are used by the engine to patch buckets and get sent directly to VU1.
     (set! (-> arg0 frames 0 frame calc-buf) (new 'global 'dma-buffer 10000))
     (set! (-> arg0 frames 1 frame calc-buf) (new 'global 'dma-buffer 10000))
-    ;; the main DMA buffers for each frame's drawing.
+
+    ;; the main DMA buffers for each frame's drawing. The buckets in the calc buf will reference data in here.
+    ;; the individual renderers use these buffers.
+    ;; the reason for separate calc/global buf is unknown.
     (set! (-> arg0 frames 0 frame global-buf) (new 'global 'dma-buffer #x1ac000))
     (set! (-> arg0 frames 1 frame global-buf) (new 'global 'dma-buffer #x1ac000))
 
@@ -279,11 +286,12 @@
   arg0
   )
 
-
+;; set up the main font contexts.
+;; used for debug prints
 (define *font-context* (new 'global 'font-context *font-default-matrix* 0 24 0.0 (font-color default) (font-flags shadow kerning)))
+
+;; not used, but looks like it would work for the "PAUSE" text.
 (define *pause-context* (new 'global 'font-context *font-default-matrix* 256 170 0.0 (font-color orange-red) (font-flags shadow kerning)))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PROFILE BAR

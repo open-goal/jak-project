@@ -140,6 +140,7 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
                                                         int height,
                                                         const char* title,
                                                         GfxSettings& settings) {
+  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
 
   if (!window) {
@@ -430,9 +431,9 @@ static void gl_render_display(GfxDisplay* display) {
   g_gfx_data->debug_gui.finish_frame();
   glfwSwapBuffers(window);
   if (g_gfx_data->debug_gui.framelimiter) {
-    g_gfx_data->frame_limiter.run(g_gfx_data->debug_gui.target_fps,
-                                  g_gfx_data->debug_gui.experimental_accurate_lag,
-                                  g_gfx_data->last_engine_time);
+    g_gfx_data->frame_limiter.run(
+        g_gfx_data->debug_gui.target_fps, g_gfx_data->debug_gui.experimental_accurate_lag,
+        g_gfx_data->debug_gui.sleep_in_frame_limiter, g_gfx_data->last_engine_time);
   }
   g_gfx_data->debug_gui.start_frame();
 

@@ -12,7 +12,6 @@
 
 ;; There are a lot more details, see texture.gc for more info
 
-
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Texture Control
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -156,7 +155,7 @@
   )
 
 (defun texture-mip->segment ((arg0 int) (arg1 int))
-  "Unknown, not used."
+  "Convert a mip level to the segment that it is stored in."
   (if (>= 2 arg1) (+ (- -1 arg0) arg1) (max 0 (- 2 arg0)))
   )
 
@@ -172,6 +171,8 @@
    (size      uint32           :offset-assert 24) ;; VRAM words
    (segment   texture-page-segment 3 :inline :offset-assert 28)
    (pad       uint32 16       :offset-assert 64)
+   
+   ;; array of texture descriptions.
    (data      texture :dynamic :offset-assert 128)
    )
   :method-count-assert 15
@@ -197,7 +198,8 @@
 ;; There is a linked-list of these per texture that uses the shader-ptr type below
 
 ;; A shader-ptr is a reference to an adgif shader.
-;; The trick here is that it can fit into unused space in the GS packet.
+;; The trick here is that it can fit into unused space in the GS packet, allowing each
+;; adgif shader to be part of a linked list of adgif shaders for their texture-page.
 ;; the A+D format only uses bits 0-72, this fits in 72-96. The use of 96-128 is unknown
 ;; the shader value must be multiplied by 16 first.
 (deftype shader-ptr (uint32)

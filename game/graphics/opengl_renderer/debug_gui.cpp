@@ -122,6 +122,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       }
       ImGui::Separator();
       ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
+      ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
       ImGui::EndMenu();
     }
   }

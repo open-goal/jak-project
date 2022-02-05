@@ -6,7 +6,6 @@
 ;; dgos: GAME, ENGINE
 
 ;; Geometry functions are common vector/plane utilities + the "curve" stuff
-;; The curves are likely bezier splines, but not 100% sure yet.
 
 (defun vector-flatten! ((dst vector) (src vector) (plane-normal vector))
   "Get the projection of src onto a plane with the given normal
@@ -143,6 +142,9 @@
   )
 
 (defun vector-segment-distance-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Compute the distance from a point to the closest point on the line segment.
+   arg0 is the point. arg1/arg2 are the endpoints of the line segment.
+   arg3 is an optional output closest point."
   (local-vars (v0-0 float) (v1-0 float) (v1-1 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -212,6 +214,8 @@
   )
 
 (defun vector-line-distance ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Weird function: given a point arg1, and an infinite line connecting arg2 and arg1, compute the distance
+   from arg0 to that line."
   (let* ((a1-3 (vector-normalize! (vector-! (new-stack-vector0) arg2 arg1) 1.0))
          (gp-1 (vector-! (new-stack-vector0) arg0 arg1))
          (f0-1 (vector-dot a1-3 gp-1))
@@ -222,6 +226,7 @@
   )
 
 (defun vector-line-distance-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Same as above function, but returns the point on arg2/arg1 in arg3 (ignored if #f)"
   (let* ((a1-3 (vector-normalize! (vector-! (new-stack-vector0) arg2 arg1) 1.0))
          (s4-1 (vector-! (new-stack-vector0) arg0 arg1))
          (f0-1 (vector-dot a1-3 s4-1))
@@ -235,6 +240,7 @@
   )
 
 (defun vector-orient-by-quat! ((arg0 vector) (arg1 vector) (arg2 quaternion))
+  "Rotate a vector by a quaternion."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -285,6 +291,7 @@
 ;; consistent and provide orthogonal forward/down, they do the same thing.
 
 (defun forward-down->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a matrix representing an inverse transform where arg1 is forward (+z) and arg2 is down (-y). Will have the pitch of forward"
   (vector-normalize-copy! (-> arg0 vector 2) arg1 1.0)
   (vector-cross! (the-as vector (-> arg0 vector)) (-> arg0 vector 2) arg2)
   (vector-normalize! (the-as vector (-> arg0 vector)) 1.0)
@@ -299,6 +306,7 @@
   )
 
 (defun forward-down-nopitch->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a matrix representing an inverse transform where arg1 is forward (+z) and arg2 is down (-y). Will not use the pitch of forward"
   (vector-normalize-copy! (-> arg0 vector 1) arg2 1.0)
   (vector-negate! (-> arg0 vector 1) (-> arg0 vector 1))
   (vector-cross! (the-as vector (-> arg0 vector)) (-> arg0 vector 1) arg1)
@@ -318,14 +326,17 @@
   )
 
 (defun forward-up-nopitch->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a matrix representing an inverse transform where arg1 is forward (+z) and arg2 is up (+y). Will not use the pitch of forward"
   (forward-down-nopitch->inv-matrix arg0 arg1 (vector-negate! (new-stack-vector0) arg2))
   )
 
 (defun forward-up-nopitch->quaternion ((arg0 quaternion) (arg1 vector) (arg2 vector))
+  "Create a quaternion representing a transform where arg1 is forward (+z) and arg2 is up (+y). Will not use the pitch of forward"
   (matrix->quaternion arg0 (forward-up-nopitch->inv-matrix (new-stack-matrix0) arg1 arg2))
   )
 
 (defun forward-up->quaternion ((arg0 quaternion) (arg1 vector) (arg2 vector))
+  "Create a quaternion representing a transform where arg1 is forward (+z) and arg2 is up (+y). Will use the pitch of forward"
   (matrix->quaternion arg0
                       (forward-down->inv-matrix
                        (new-stack-matrix0)
@@ -336,6 +347,7 @@
   )
 
 (defun quaternion-from-two-vectors! ((arg0 quaternion) (arg1 vector) (arg2 vector))
+  "Create a quaternion representing the rotation between two vectors"
   (let* ((s5-0 (vector-cross! (new-stack-vector0) arg1 arg2))
          (f0-0 (vector-length s5-0))
          (f1-1 (vector-dot arg1 arg2))
@@ -351,6 +363,7 @@
   )
 
 (defun quaternion-from-two-vectors-max-angle! ((arg0 quaternion) (arg1 vector) (arg2 vector) (arg3 float))
+  "Create a quaternion representing the rotation between two vectors, allowing at most a rotation of arg3 degrees"
   (let* ((s5-0 (vector-cross! (new-stack-vector0) arg1 arg2))
          (f30-0 (vector-length s5-0))
          (f26-0 (vector-dot arg1 arg2))
@@ -377,6 +390,7 @@
   )
 
 (defun matrix-from-two-vectors! ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Create a rotation matrix representing the rotation between two vectors"
   (let* ((a1-3 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
          (f0-1 (vector-dot arg1 arg2))
          (f1-0 1.0)
@@ -388,6 +402,7 @@
   )
 
 (defun matrix-from-two-vectors-max-angle! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float))
+  "Create a rotation matrix representing the rotation between two vectors, allowing at most a rotation of arg3 degrees"
   (let
       ((s4-1 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
        (f30-0 (vector-dot arg1 arg2))
@@ -412,7 +427,13 @@
     )
   )
 
+
+;;
+;; note: these two interpolation functions may be equivalent to slerp.
+
 (defun matrix-from-two-vectors-max-angle-partial! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float) (arg4 float))
+  "Create a rotation matrix representing the rotation between two vectors, allowing at most a rotation of arg3 degrees,
+   doing arg4 fraction of the rotation."
   (let* ((s4-1 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
          (f28-0 (vector-dot arg1 arg2))
          (f30-0 (cos arg3))
@@ -438,6 +459,7 @@
   )
 
 (defun matrix-from-two-vectors-partial-linear! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float))
+  "Create a rotation matrix representing doing arg3 fraction of the rotation between two vectors"
   (let ((gp-1 (vector-normalize! (vector-cross! (new-stack-vector0) arg2 arg1) 1.0))
         (f0-1 (vector-dot arg1 arg2))
         )
@@ -460,6 +482,7 @@
   )
 
 (defun matrix-remove-z-rot ((arg0 matrix) (arg1 matrix))
+  "Remove the z rotation component of a rotation."
   (let ((s4-0 (new-stack-vector0)))
     0.0
     0.0
@@ -485,6 +508,7 @@
   )
 
 (defun matrix-rot-diff! ((arg0 vector) (arg1 matrix) (arg2 matrix))
+  "Get the difference of rotation between two matrices, expressed as a quaternion."
   (let ((s3-0 (new-stack-quaternion0))
         (s2-0 (new-stack-quaternion0))
         (s5-0 (new-stack-quaternion0))
@@ -511,6 +535,7 @@
 
 
 (defun quaternion-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float) (arg4 float))
+  "Strange quaternion rotate toward function. Arg3 is ignored. Arg4 is the max seek amount."
   (let ((s5-0 (new-stack-matrix0))
         (s4-0 (new-stack-matrix0))
         )
@@ -529,6 +554,7 @@
   )
 
 (defun vector-deg-seek ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  "Make one vector closer to another, doing at most a rotation by arg3 degrees."
   (let ((s4-0 (new-stack-matrix0)))
     (matrix-from-two-vectors-max-angle! s4-0 arg1 arg2 arg3)
     (vector-matrix*! arg0 arg1 s4-0)
@@ -536,6 +562,7 @@
   )
 
 (defun vector-deg-slerp ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  "Slerp for vectors. (imagine that they are the z axis of two frames)"
   (cond
     ((>= 0.0 arg3)
      (set! (-> arg0 quad) (-> arg1 quad))
@@ -560,6 +587,7 @@
   )
 
 (defun vector-vector-deg-slerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float) (arg4 vector))
+  "unused. no clue what this does."
   (local-vars (sv-112 (function float float float float)))
   (cond
     ((>= 0.0 arg3)
@@ -592,6 +620,7 @@
   )
 
 (defun normal-of-plane ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Given three points on a plane, compute the plane's normal"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -624,6 +653,7 @@
   )
 
 (defun vector-3pt-cross! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Cross product of 2 - 1 and 3 - 1. (will give a normal to the plane, but not of magnitude 1)"
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -646,7 +676,7 @@
   )
 
 (defun closest-pt-in-triangle ((arg0 vector) (arg1 vector) (arg2 matrix) (arg3 vector))
-  "arg2 is probably the triangle"
+  "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output."
   ;; (declare (print-asm))
   (local-vars
    (v1-0 uint)
@@ -832,6 +862,7 @@
   )
 
 (defun point-in-triangle-cross ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector))
+  "Check if point is in the triangle using cross product check (so you have to get the order of points right)"
   (local-vars (v1-0 int) (a0-1 int) (a1-1 int))
   (rlet ((acc :class vf)
          (vf1 :class vf)
@@ -881,6 +912,7 @@
   )
 
 (defun point-in-plane-<-point+normal! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "This function looks wrong and is unused."
   (let
    ((f0-3
      (+
@@ -1039,6 +1071,15 @@
   (none)
   )
 
+
+;;;;;;;;;;;;;;;;;;;
+;; curve
+;;;;;;;;;;;;;;;;;;;
+
+;; the curves take a floating point input and produce a floating point output.
+;; the curve is a piecewise polynomial.  The first step of evaluation is to figure out which
+;; knots the input point lies in between. The second step is to evaluate the appropriate polynomial.
+
 (defun find-knot-span ((arg0 int) (arg1 int) (arg2 float) (arg3 (inline-array vector)))
   "Binary serach over knots to find which contains the value float in (arg0 arg1). Unused."
   (local-vars (v0-0 int))
@@ -1092,6 +1133,7 @@
   )
 
 (defun calculate-basis-functions-vector! ((arg0 (pointer float)) (arg1 int) (arg2 float) (arg3 (pointer float)))
+  "Calculate polynomial basis for a given control point."
   (local-vars (v1-0 int) (v1-1 object))
   ;;(.sll v1-0 arg1 2)
   (set! v1-0 (* 4 arg1)) ;; originally used 32-bit asm
@@ -1151,6 +1193,14 @@
   )
 
 (defun curve-evaluate! ((arg0 vector) (arg1 float) (arg2 pointer) (arg3 int) (arg4 (inline-array vector)) (arg5 int))
+  "Evaluate a curve.
+   arg0 is the output
+   arg1 is the input.
+   arg2 is control vertices
+   arg3 is the number of control vertices
+   arg4 is the knot points
+   arg5 is the number of knots
+   "
   (local-vars (v1-7 int) (v1-8 int) (v1-10 float) (s3-0 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1164,6 +1214,7 @@
    (init-vf0-vector)
    (let ((s4-0 (new 'static 'array float 4 0.0 0.0 0.0 0.0)))
     0
+    ;; lookup knot
     (let* ((f0-0 (-> arg4 0 x))
            (f1-0 (-> (&-> arg4 0 data (+ arg5 -1)) 0))
            (a2-1 (fmax (fmin (* arg1 f1-0) f1-0) f0-0))
@@ -1211,6 +1262,7 @@
      (nop!)
      (nop!)
      (label cfg-11)
+     ;; calculate coefficients for this knot's polynomial, store in s4-0
      (calculate-basis-functions-vector!
       s4-0
       s3-0
@@ -1222,6 +1274,7 @@
     (set! v1-7 (- s3-0 3))
     (.lvf vf6 s4-0)
     )
+   ;; evaluate polynomial!
    ;;(.sll v1-8 v1-7 4)
    (set! v1-8 (* v1-7 16))
    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
@@ -1258,6 +1311,7 @@
   )
 
 (defun curve-get-pos! ((arg0 vector) (arg1 float) (arg2 curve))
+  "Get the position on the curve at the given input."
   (curve-evaluate!
    arg0
    arg1
@@ -1269,6 +1323,7 @@
   )
 
 (defun curve-length ((arg0 curve))
+  "Compute the approximate curve length as the sum of distances between knots."
   (let ((s5-0 (new-stack-vector0))
         (s4-0 (new-stack-vector0))
         (s3-0 (* 3 (-> arg0 num-cverts)))
@@ -1299,6 +1354,7 @@
   )
 
 (defun curve-copy! ((arg0 curve) (arg1 curve))
+  "Shallow copy a curve."
   (set! (-> arg0 cverts) (-> arg1 cverts))
   (set! (-> arg0 num-cverts) (-> arg1 num-cverts))
   (set! (-> arg0 knots) (-> arg1 knots))
@@ -1308,6 +1364,7 @@
   )
 
 (defun curve-closest-point ((arg0 curve) (arg1 vector) (arg2 float) (arg3 float) (arg4 int) (arg5 float))
+  "Get the input value for the point on the curve. Approximate! And is O(n_knots)"
   (local-vars (sv-48 float))
   (set! sv-48 arg3)
   (let ((s3-0 arg4)
@@ -1369,6 +1426,7 @@
   )
 
 (defun vector-plane-distance ((arg0 vector) (arg1 plane) (arg2 vector))
+  "Unused."
   (vector-dot
    (vector-! (new 'stack-no-clear 'vector) arg0 (the-as vector (&-> arg1 x)))
    arg2
