@@ -178,8 +178,11 @@ class VuInstructionAtom {
   static VuInstructionAtom make_p();
   static VuInstructionAtom make_r();
 
+  bool is_int_reg(int idx) const;
+
   std::string to_string(const std::vector<std::string>& labels) const;
   Kind kind() const { return m_kind; }
+  s64 value() const { return m_value; }
 
  private:
   VuInstructionAtom(Kind kind, s64 idx = -1) : m_kind(kind), m_value(idx) {}

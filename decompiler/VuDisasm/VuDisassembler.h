@@ -57,8 +57,13 @@ class VuDisassembler {
   VuDisassembler(VuKind kind);
   VuProgram disassemble(void* data, int size_bytes, bool debug_print = false);
   std::string to_string(const VuInstruction& instr) const;
+  std::string to_cpp(const VuInstruction& instr) const;
   std::string to_string(const VuInstructionPair& pair) const;
+  std::string to_string_with_cpp(const VuInstructionPair& pair) const;
   std::string to_string(const VuProgram& prog) const;
+  std::string to_string_with_cpp(const VuProgram& prog) const;
+  int add_label(int instr);
+  void add_label_with_name(int instr, const std::string& name);
 
  private:
   VuKind m_kind;
@@ -66,6 +71,7 @@ class VuDisassembler {
   VuInstrK lower_kind(u32 in);
   VuInstruction decode(VuInstrK kind, u32 data, int instr_idx);
   s32 get_instruction_index_mask();
+  std::unordered_map<int, std::string> m_user_named_instructions;
 
   struct VuUpperOp6 {
     bool goto_11 = false;
@@ -225,7 +231,6 @@ class VuDisassembler {
   std::unordered_map<int, int> m_labels;
   std::vector<std::string> m_label_names;
 
-  int add_label(int instr);
   void name_labels();
 
   OpInfo& add_op(VuInstrK kind, const std::string& name);

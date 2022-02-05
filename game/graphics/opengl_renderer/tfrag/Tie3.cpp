@@ -167,32 +167,10 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       }
       m_load_state.vert++;
       if (!remaining) {
-        m_load_state.state = INIT_TEX;
-        m_load_state.tex = 0;
+        return true;
       }
     } break;
 
-    case State::INIT_TEX:
-      for (size_t max_tex = std::min((size_t)m_load_state.tex + 3, lev_data->textures.size());
-           m_load_state.tex < max_tex; m_load_state.tex++) {
-        auto& tex = lev_data->textures[m_load_state.tex];
-        GLuint gl_tex;
-        glGenTextures(1, &gl_tex);
-        glBindTexture(GL_TEXTURE_2D, gl_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.w, tex.h, 0, GL_RGBA,
-                     GL_UNSIGNED_INT_8_8_8_8_REV, tex.data.data());
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, gl_tex);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        float aniso = 0.0f;
-        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
-        m_textures.push_back(gl_tex);
-      }
-      return m_load_state.tex == lev_data->textures.size();
-      break;
     default:
       assert(false);
   }
@@ -208,9 +186,15 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   // TODO: right now this will wait to load from disk and unpack it.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader.get_tfrag3_level(level);
-  if (!lev_data) {
+  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
+    m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+    discard_tree_cache();
     return false;
   }
+  m_textures = &lev_data->textures;
+  m_load_id = lev_data->load_id;
   int init_load_state = m_load_state.state;
 
   if (m_level_name != level) {
@@ -219,7 +203,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_load_state.loading = true;
       m_load_state.state = State::FIRST;
     }
-    if (update_load(lev_data)) {
+    if (update_load(lev_data->level.get())) {
       m_has_level = true;
       m_level_name = level;
       m_load_state.loading = false;
@@ -346,12 +330,6 @@ void do_wind_math(u16 wind_idx,
 }
 
 void Tie3::discard_tree_cache() {
-  for (auto tex : m_textures) {
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glDeleteTextures(1, &tex);
-  }
-  m_textures.clear();
-
   for (auto& tree : m_trees) {
     glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
     glDeleteTextures(1, &tree.time_of_day_texture);
@@ -528,7 +506,7 @@ void Tie3::render_tree_wind(int idx,
     const auto& draw = tree.wind_draws->operator[](draw_idx);
 
     if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
     auto double_draw = setup_tfrag_shader(render_state, draw.mode);
@@ -659,7 +637,7 @@ void Tie3::render_tree(int idx,
     }
 
     if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
 

@@ -41,7 +41,7 @@ void main() {
     T0.w = 1.0;
   }
   color = fragment_color * T0 * 2.0;
-  if (color.a <= alpha_reject) {
+  if (color.a < alpha_reject) {
     discard;
   }
 }

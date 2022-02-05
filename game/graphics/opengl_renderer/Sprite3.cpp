@@ -417,6 +417,10 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       // fmt::print(" vif: {}\n", VifCode(data.vif1()).print());
     }
   }
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendEquation(GL_FUNC_ADD);
 }
 
 void Sprite3::draw_debug_window() {

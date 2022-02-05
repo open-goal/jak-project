@@ -72,7 +72,10 @@ bool Debugger::detach() {
     {
       std::unique_lock<std::mutex> lk(m_watcher_mutex);
       m_attach_return = false;
-      stop_watcher();
+    }
+    stop_watcher();
+    {
+      std::unique_lock<std::mutex> lk(m_watcher_mutex);
       m_attach_cv.wait(lk, [&]() { return m_attach_return; });
     }
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
@@ -297,7 +300,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
             found = true;
           }
         } else*/
-        if (fails > 50) {
+        if (fails > 70) {
           fmt::print(
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
               "stack frame is too long.\n");
@@ -575,13 +578,17 @@ void Debugger::read_symbol_table() {
       bytes_read += 128;
       // just in case
       str_buff[127] = '\0';
-      assert(strlen(str_buff) < 50);
-      std::string str(str_buff);
 
       // GOAL sym - s7
       auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
       assert(sym_offset >= INT16_MIN);
       assert(sym_offset <= INT16_MAX);
+
+      std::string str(str_buff);
+      if (str.length() >= 50) {
+        fmt::print("Invalid symbol #x{:x}!\n", sym_offset);
+        continue;
+      }
 
       // update maps
       if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
@@ -593,7 +600,8 @@ void Debugger::read_symbol_table() {
           str += "-hack-copy";
         } else {
           fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
-          assert(false);
+          continue;
+          // assert(false);
         }
       }
 

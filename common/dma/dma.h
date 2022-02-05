@@ -52,6 +52,48 @@ struct DmaTag {
   std::string print();
 };
 
+inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 dadr) {
+  const u8* src = (const u8*)source_base;
+  u8* dst = (u8*)dest_base;
+
+  u32 dest_offset = dadr;
+  while (true) {
+    u64 tag_data;
+    memcpy(&tag_data, src + tadr, 8);
+    DmaTag tag(tag_data);
+
+    switch (tag.kind) {
+      case DmaTag::Kind::CNT:
+        memcpy(dst + dest_offset, src + tadr, (1 + tag.qwc) * 16);
+        dest_offset += (1 + tag.qwc) * 16;
+        tadr += 16 + tag.qwc * 16;
+        break;
+      case DmaTag::Kind::REF: {
+        // tte
+        memcpy(dst + dest_offset, src + tadr, 16);
+        dest_offset += 16;
+
+        memcpy(dst + dest_offset, src + tag.addr, tag.qwc * 16);
+        dest_offset += tag.qwc * 16;
+        tadr += 16;
+      } break;
+      case DmaTag::Kind::REFE: {
+        // tte
+        memcpy(dst + dest_offset, src + tadr, 16);
+        dest_offset += 16;
+
+        memcpy(dst + dest_offset, src + tag.addr, tag.qwc * 16);
+        dest_offset += tag.qwc * 16;
+        tadr += 16;
+        return;
+      } break;
+      default:
+        printf("bad tag: %d\n", (int)tag.kind);
+        assert(false);
+    }
+  }
+}
+
 struct VifCode {
   enum class Kind : u8 {
     NOP = 0b0,

@@ -238,6 +238,7 @@
 (defmethod dummy-24 mother-spider-proj ((obj mother-spider-proj))
   (with-pp
     (spawn (-> obj part) (the-as vector (-> obj root-override root-prim prim-core)))
+    (#when PC_DEBUG_SOUND_ENABLE
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (sound-command set-param))
       (set! (-> s5-0 id) (-> obj sound-id))
@@ -254,6 +255,7 @@
         )
       (set! (-> s5-0 parms mask) (the-as uint 32))
       (-> s5-0 id)
+      )
       )
     (let ((f0-5 (* 5120.0 (+ 0.9 (* 0.1 (cos (* 873.81335 (the float (mod (-> *display* base-frame-counter) 75)))))))))
       (find-ground-and-draw-shadow
@@ -282,15 +284,15 @@
           (vector-flatten! s3-1 s3-1 (-> arg0 root-override local-normal))
           )
       (vector-normalize-copy! s4-0 s3-1 1.0)
-      (let ((s3-2 (new 'stack-no-clear 'vector)))
+      (let ((s3-2 (new 'stack-no-clear 'matrix)))
         (matrix-from-two-vectors-max-angle-partial!
-          (the-as matrix s3-2)
+          s3-2
           s5-0
           s4-0
           (* (-> arg0 max-turn) (-> *display* seconds-per-frame))
           (-> arg0 tween)
           )
-        (vector-matrix*! s5-0 s5-0 (the-as matrix s3-2))
+        (vector-matrix*! s5-0 s5-0 s3-2)
         )
       (vector-normalize! s5-0 1.0)
       (vector-float*! (-> arg0 root-override transv) s5-0 (-> arg0 max-speed))

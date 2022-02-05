@@ -322,6 +322,83 @@ int index_of_closest_following_label_in_segment(int start_byte,
 /*!
  * Attempt to decompile a reference to an inline array, without knowing the size.
  */
+goos::Object decomp_ref_to_integer_array_guess_size(
+    const std::vector<LinkedWord>& words,
+    const std::vector<DecompilerLabel>& labels,
+    int my_seg,
+    int field_location,
+    const TypeSystem& ts,
+    const std::vector<std::vector<LinkedWord>>& all_words,
+    const LinkedObjectFile* file,
+    const TypeSpec& array_elt_type,
+    int stride) {
+  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+
+  // verify types
+  auto elt_type_info = ts.lookup_type(array_elt_type);
+  assert(stride == elt_type_info->get_size_in_memory());
+  assert(!elt_type_info->is_reference());
+
+  // the input is the location of the data field.
+  // we expect that to be a label:
+  assert((field_location % 4) == 0);
+  auto pointer_to_data = words.at(field_location / 4);
+  assert(pointer_to_data.kind() == LinkedWord::PTR);
+
+  // the data shouldn't have any labels in the middle of it, so we can find the end of the array
+  // by searching for the label after the start label.
+  const auto& start_label = labels.at(pointer_to_data.label_id());
+  int end_label_idx =
+      index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
+
+  int end_offset = all_words.at(my_seg).size() * 4;
+  if (end_label_idx < 0) {
+    lg::warn(
+        "Failed to find label: likely just an unimplemented case for when the data is the last "
+        "thing in the file.");
+  } else {
+    const auto& end_label = labels.at(end_label_idx);
+    end_offset = end_label.offset;
+  }
+
+  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+
+  // now we can figure out the size
+  int size_bytes = end_offset - start_label.offset;
+  int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
+  int leftover_bytes = size_bytes % stride;
+  // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // size_elts,leftover_bytes);
+
+  // if we have leftover, should verify that its all zeros, or that it's the type pointer
+  // of the next basic in the data section.
+  // ex:
+  // .word <data>
+  // .type <some-other-basic's type tag>
+  // L21: ; label some other basic
+  // <other basic's data>
+  int padding_start = end_offset - leftover_bytes;
+  int padding_end = end_offset;
+  for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
+    auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
+    switch (word.kind()) {
+      case LinkedWord::PLAIN_DATA:
+        assert(word.get_byte(pad_byte_idx) == 0);
+        break;
+      case LinkedWord::TYPE_PTR:
+        break;
+      default:
+        assert(false);
+    }
+  }
+
+  return decompile_value_array(array_elt_type, elt_type_info, size_elts, stride, start_label.offset,
+                               all_words.at(start_label.target_segment), ts);
+}
+
+/*!
+ * Attempt to decompile a reference to an inline array, without knowing the size.
+ */
 goos::Object decomp_ref_to_inline_array_guess_size(
     const std::vector<LinkedWord>& words,
     const std::vector<DecompilerLabel>& labels,
@@ -726,6 +803,11 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(field.name(), sp_launch_grp_launcher_decompile(
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
+        } else if (field.name() == "col-mesh-indexes" && type.print() == "ropebridge-tuning") {
+          field_defs_out.emplace_back(
+              field.name(), decomp_ref_to_integer_array_guess_size(
+                                obj_words, labels, label.target_segment, field_start, ts, words,
+                                file, TypeSpec("uint8"), 1));
         } else {
           if (field.type().base_type() == "pointer") {
             if (obj_words.at(field_start / 4).kind() != LinkedWord::SYM_PTR) {

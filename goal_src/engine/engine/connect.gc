@@ -54,9 +54,9 @@
 (declare-type engine basic)
 (deftype connection (connectable)
   ((param0 basic      :offset-assert 16) ;; often (function object object object object object)
-   (param1 basic      :offset-assert 20)
-   (param2 basic      :offset-assert 24)
-   (param3 basic      :offset-assert 28)
+   (param1 int32      :offset-assert 20)
+   (param2 int32      :offset-assert 24)
+   (param3 int32      :offset-assert 28)
    (quad   uint128  2 :offset 0)
    )
   :method-count-assert 14
@@ -73,6 +73,19 @@
     )
   )
 
+(defmethod inspect connection ((obj connection))
+  (format #t "[~8x] ~A~%" obj 'connection)
+  (format #t "~Tnext0: ~`connectable`P~%" (-> obj next0))
+  (format #t "~Tprev0: ~`connectable`P~%" (-> obj prev0))
+  (format #t "~Tnext1: ~`connectable`P~%" (-> obj next1))
+  (format #t "~Tprev1: ~`connectable`P~%" (-> obj prev1))
+  (format #t "~Tparam0: ~A~%" (-> obj param0))
+  (format #t "~Tparam1: ~A~%" (-> obj param1))
+  (format #t "~Tparam2: ~A~%" (-> obj param2))
+  (format #t "~Tparam3: ~A~%" (-> obj param3))
+  (format #t "~Tquad[2] @ #x~X~%" (&-> obj next0))
+  obj
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; engine
@@ -336,7 +349,7 @@
   (let ((ct (the-as connection (-> obj alive-list-end prev0))))
     (while (!= ct (-> obj alive-list))
       ;; execute!
-      ((the-as (function basic basic basic object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
+      ((the-as (function int int int object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
       ;; advance to previous.
       (set! ct (the-as connection (-> ct prev0)))
       )
@@ -350,7 +363,7 @@
   (let ((ct (the-as connection (-> obj alive-list-end prev0))))
     (while (!= ct (-> obj alive-list))
       ;; execute function
-      (let ((result ((the-as (function basic basic basic object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
+      (let ((result ((the-as (function int int int object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
         ;; set the next one, _before_ removing
         (set! ct (the-as connection (-> ct prev0)))
         ;; remove if desired.
@@ -413,9 +426,9 @@
     (let ((con (the connection con)))
       ;; set the params of the connection
       (set! (-> con param0) (the basic func))
-      (set! (-> con param1) (the basic p1))
-      (set! (-> con param2) (the basic p2))
-      (set! (-> con param3) (the basic p3))
+      (set! (-> con param1) (the int p1))
+      (set! (-> con param2) (the int p2))
+      (set! (-> con param3) (the int p3))
       ;; splice us out of the dead list
       (set! (-> obj dead-list next0) (-> con next0))
       (set! (-> con next0 prev0) (-> obj dead-list))

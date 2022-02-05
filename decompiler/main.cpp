@@ -40,8 +40,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::string in_folder = argv[2];
-  std::string out_folder = argv[3];
+  std::string in_folder = file_util::combine_path(argv[2], config.game_name);
+  std::string out_folder = file_util::combine_path(argv[3], config.game_name);
 
   std::vector<std::string> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
@@ -149,8 +149,10 @@ int main(int argc, char** argv) {
     }
   }
 
-  for (auto& lev : config.levels_to_extract) {
-    extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
+  if (config.levels_extract) {
+    for (auto& lev : config.levels_to_extract) {
+      extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
+    }
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));

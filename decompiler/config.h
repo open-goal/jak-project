@@ -77,6 +77,7 @@ struct DecompileHacks {
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
   std::unordered_set<std::string> mips2c_functions_by_name;
+  std::unordered_map<std::string, std::vector<int>> mips2c_jump_table_functions;
   std::unordered_map<std::string, std::vector<std::pair<int, int>>> missing_textures_by_level;
 };
 
@@ -110,7 +111,7 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   bool is_pal = false;
-
+  std::string game_name;
   GameTextVersion text_version = GameTextVersion::JAK1_V1;
 
   std::unordered_set<std::string> allowed_objects;
@@ -132,6 +133,7 @@ struct Config {
   std::unordered_map<std::string, int> bad_format_strings;
 
   std::vector<std::string> levels_to_extract;
+  bool levels_extract;
 
   DecompileHacks hacks;
 };
