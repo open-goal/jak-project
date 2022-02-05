@@ -447,155 +447,79 @@
   )
 
 (defun matrix->quaternion ((arg0 quaternion) (arg1 matrix))
-  (let ((f0-2 (+ (+ (-> arg1 data 0) (-> arg1 data 5)) (-> arg1 data 10))))
-    (if (< 0.0 f0-2)
-        (let ((f0-4 (sqrtf (+ 1.0 f0-2))))
-          (set! (-> arg0 w) (* 0.5 f0-4))
-          (let ((f0-5 (/ 0.5 f0-4)))
-            (set! (-> arg0 x) (* f0-5 (- (-> arg1 data 6) (-> arg1 data 9))))
-            (set! (-> arg0 y) (* f0-5 (- (-> arg1 data 8) (-> arg1 data 2))))
-            (let ((f0-6 (* f0-5 (- (-> arg1 data 1) (-> arg1 data 4)))))
-              (set! (-> arg0 z) f0-6)
-              (let ((v1-0 f0-6))
-                )
-              )
-            )
-          )
+  "Convert a rotation matrix to a quaternion."
+  (let ((f0-2 (+ (-> arg1 vector 0 x) (-> arg1 vector 1 y) (-> arg1 vector 2 z))))
+    (cond
+      ((< 0.0 f0-2)
+       (let ((f0-4 (sqrtf (+ 1.0 f0-2))))
+         (set! (-> arg0 w) (* 0.5 f0-4))
+         (let ((f0-5 (/ 0.5 f0-4)))
+           (set! (-> arg0 x) (* f0-5 (- (-> arg1 vector 1 z) (-> arg1 vector 2 y))))
+           (set! (-> arg0 y) (* f0-5 (- (-> arg1 vector 2 x) (-> arg1 vector 0 z))))
+           (set! (-> arg0 z) (* f0-5 (- (-> arg1 vector 0 y) (-> arg1 vector 1 x))))
+           )
+         )
+       )
+      (else
         (let ((a2-0 0)
               (a3-0 1)
               (v1-1 2)
               )
-          (when (< (-> arg1 data 0) (-> arg1 data 5))
+          (when (< (-> arg1 vector 0 x) (-> arg1 vector 1 y))
             (set! a2-0 1)
             (set! a3-0 2)
             (set! v1-1 0)
-            (let ((t0-1 v1-1))
-              )
             )
-          (when
-              (<
-               (->
-                (the-as
-                 (pointer float)
-                 (+ (+ (shl a2-0 2) (shl a2-0 4)) (the-as int arg1))
-                 )
-                )
-               (-> arg1 data 10)
-               )
+          (when (< (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* a2-0 16)) (the-as int arg1)))) (-> arg1 vector 2 z))
             (set! a2-0 2)
             (set! a3-0 0)
             (set! v1-1 1)
-            (let ((t0-6 v1-1))
-              )
             )
-          (let
-              ((f0-12
-                (sqrtf
-                 (+
-                  (-
-                   1.0
-                   (+
-                    (->
-                     (the-as
-                      (pointer float)
-                      (+ (+ (shl a3-0 2) (shl a3-0 4)) (the-as int arg1))
-                      )
-                     )
-                    (->
-                     (the-as
-                      (pointer float)
-                      (+ (+ (shl v1-1 2) (shl v1-1 4)) (the-as int arg1))
-                      )
-                     )
+          (let ((f0-12
+                  (sqrtf
+                    (+ (- 1.0
+                          (+ (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* a3-0 16)) (the-as int arg1))))
+                             (-> (the-as (pointer float) (+ (+ (* v1-1 4) (* v1-1 16)) (the-as int arg1))))
+                             )
+                          )
+                       (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* a2-0 16)) (the-as int arg1))))
+                       )
                     )
-                   )
-                  (->
-                   (the-as
-                    (pointer float)
-                    (+ (+ (shl a2-0 2) (shl a2-0 4)) (the-as int arg1))
-                    )
-                   )
                   )
-                 )
-                 )
-               )
+                )
             (set! (-> arg0 data a2-0) (* 0.5 f0-12))
-            (when (!= f0-12 0.0)
-              (set! f0-12 (/ 0.5 f0-12))
-              (let ((t0-19 f0-12))
+            (if (!= f0-12 0.0)
+                (set! f0-12 (/ 0.5 f0-12))
                 )
-              )
-            (set!
-             (-> arg0 w)
-             (*
-              (-
-               (->
-                (the-as
-                 (pointer float)
-                 (+ (+ (shl v1-1 2) (shl a3-0 4)) (the-as int arg1))
-                 )
-                )
-               (->
-                (the-as
-                 (pointer float)
-                 (+ (+ (shl a3-0 2) (shl v1-1 4)) (the-as int arg1))
-                 )
-                )
-               )
-              f0-12
-              )
-             )
-            (set!
-             (-> arg0 data a3-0)
-             (*
-              (+
-               (->
-                (the-as
-                 (pointer float)
-                 (+ (+ (shl a3-0 2) (shl a2-0 4)) (the-as int arg1))
-                 )
-                )
-               (->
-                (the-as
-                 (pointer float)
-                 (+ (+ (shl a2-0 2) (shl a3-0 4)) (the-as int arg1))
-                 )
-                )
-               )
-              f0-12
-              )
-             )
-            (let
-                ((f0-13
-                  (*
-                   (+
-                    (->
-                     (the-as
-                      (pointer float)
-                      (+ (+ (shl v1-1 2) (shl a2-0 4)) (the-as int arg1))
-                      )
+            (set! (-> arg0 w)
+                  (* (- (-> (the-as (pointer float) (+ (+ (* v1-1 4) (* a3-0 16)) (the-as int arg1))))
+                        (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* v1-1 16)) (the-as int arg1))))
+                        )
+                     f0-12
                      )
-                    (->
-                     (the-as
-                      (pointer float)
-                      (+ (+ (shl a2-0 2) (shl v1-1 4)) (the-as int arg1))
-                      )
+                  )
+            (set! (-> arg0 data a3-0)
+                  (* (+ (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* a2-0 16)) (the-as int arg1))))
+                        (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* a3-0 16)) (the-as int arg1))))
+                        )
+                     f0-12
                      )
-                    )
-                   f0-12
-                   )
-                   )
-                 )
-              (set! (-> arg0 data v1-1) f0-13)
-              (let ((v1-4 f0-13))
-                )
-              )
+                  )
+            (set! (-> arg0 data v1-1)
+                  (* (+ (-> (the-as (pointer float) (+ (+ (* v1-1 4) (* a2-0 16)) (the-as int arg1))))
+                        (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* v1-1 16)) (the-as int arg1))))
+                        )
+                     f0-12
+                     )
+                  )
             )
           )
         )
+      )
     )
   arg0
   )
+
 
 (defun matrix-with-scale->quaternion ((arg0 quaternion) (arg1 matrix))
   "Convert a matrix with a rotation and scale into a quaternion (just the rotation)"
@@ -686,6 +610,7 @@
   )
 
 (defun quaternion-exp! ((arg0 quaternion) (arg1 quaternion))
+  "Quaternion exponentiation. Unused"
   (let ((f30-0 (vector-length (the-as vector arg1))))
     (cond
       ((= f30-0 0.0)
@@ -827,6 +752,7 @@
   )
 
 (defun quaternion-zxy! ((arg0 quaternion) (arg1 vector))
+  "Make a quaternion from a sequence of z, x, y axis rotations."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -893,7 +819,7 @@
   )
 
 (defun quaternion-y-angle ((arg0 quaternion))
-  "Not 100% sure, but get the y rotation angle?"
+  "Get the y rotation angle. Not very efficient"
   (let ((v1-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0)))
     (atan (-> v1-1 data 0) (-> v1-1 data 2))
     )
@@ -988,6 +914,7 @@
   )
 
 (defun quaternion-delta-y ((arg0 quaternion) (arg1 quaternion))
+  "Difference in yaw between two quaternions"
   (acos (vector-dot (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0)
                     (vector-z-quaternion! (new 'stack-no-clear 'vector) arg1)
                     )
@@ -995,6 +922,7 @@
   )
 
 (defun quaternion-rotate-y-to-vector! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
+  "Rotate along y so z-axis points to match another. Use arg3 as the max rotation amount."
   (let ((s5-0 (new 'stack-no-clear 'quaternion)))
     (let ((t9-0 vector-xz-normalize!)
           (a0-1 (new 'stack-no-clear 'vector))
@@ -1018,6 +946,7 @@
 
 
 (defun vector-rotate-y! ((arg0 vector) (arg1 vector) (arg2 float))
+  "Rotate vector along y axis. Not very efficient."
   (let ((a1-2 (quaternion-vector-angle!
                (new 'stack-no-clear 'quaternion)
                (new 'static 'vector :y 1.0 :w 1.0)
@@ -1031,15 +960,22 @@
     )
   )
 
+
+;; note that these kind of assume a rotation ordering where you can yaw as much as you want,
+;; but if you pitch 180 degrees everything is bad.
+
 (defun vector-y-angle ((arg0 vector))
+  "Get the yaw angle of a vector."
   (atan (-> arg0 data 0) (-> arg0 data 2))
   )
 
 (defun vector-x-angle ((arg0 vector))
+  "Get the pitch angle of a vector."
   (atan (-> arg0 data 1) (vector-xz-length arg0))
   )
 
 (defun quaterion<-rotate-y-vector ((arg0 quaternion) (arg1 vector))
+  "Create a quaternion representing only the yaw of the given vector"
   (quaternion-vector-angle!
    arg0
    (new 'static 'vector :y 1.0 :w 1.0)
@@ -1048,6 +984,7 @@
   )
 
 (defun quaternion-xz-angle ((arg0 quaternion))
+  "yet another function to compute the yaw of a quaternion. This is a particularly inefficient version."
   (let ((gp-0 (new 'stack-no-clear 'matrix))
         (s5-0 (new 'stack-no-clear 'vector))
         )
@@ -1059,6 +996,7 @@
   )
 
 (defun-debug quaternion-validate ((arg0 quaternion))
+  "Verify that a quaternion is valid, print an error if not."
   (with-pp
     (let ((f0-0 (quaternion-norm arg0)))
       (when (or (< 1.01 f0-0) (< f0-0 0.99))
