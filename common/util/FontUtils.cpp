@@ -364,24 +364,51 @@ static void init_remaps() {
 }
 
 /*!
- * Convert Jak 1 character encoding to something readable.
+ * Finds a remap info that best matches the byte sequence (is the longest match).
  */
-RemapInfo* jak1_bytes_to_utf8(const char* in) {
+RemapInfo* jak1_find_bytes_to_utf8_remap(const char* in) {
   init_remaps();
+  RemapInfo* best_info = nullptr;
   for (auto& info : g_font_large_char_remap) {
     if (info.bytes.size() == 0)
       continue;
+
     bool found = true;
     for (int i = 0; found && i < (int)info.bytes.size(); ++i) {
       if (uint8_t(in[i]) != info.bytes.at(i)) {
         found = false;
       }
     }
-    if (found) {
-      return &info;
+
+    if (found && (!best_info || (best_info && info.chars.length() > best_info->chars.length()))) {
+      best_info = &info;
     }
   }
-  return nullptr;
+  return best_info;
+}
+
+/*!
+ * Finds a remap info that best matches the character sequence (is the longest match).
+ */
+RemapInfo* jak1_find_utf8_to_bytes_remap(const std::string& in, int off = 0) {
+  init_remaps();
+  RemapInfo* best_info = nullptr;
+  for (auto& info : g_font_large_char_remap) {
+    if (info.chars.length() == 0)
+      continue;
+
+    bool found = true;
+    for (int i = 0; found && i < (int)info.chars.length() && i + off < in.size(); ++i) {
+      if (in.at(i + off) != info.chars.at(i)) {
+        found = false;
+      }
+    }
+
+    if (found && (!best_info || (best_info && info.chars.length() > best_info->chars.length()))) {
+      best_info = &info;
+    }
+  }
+  return best_info;
 }
 
 /*!
@@ -413,25 +440,22 @@ std::string& utf8_trans_to_jak1(std::string& str) {
 }
 
 std::string& utf8_bytes_to_jak1(std::string& str) {
-  // find all instances of characters and save them
-  std::map<size_t, const RemapInfo*, std::greater<size_t>> remap_cache;
-  for (auto& info : g_font_large_char_remap) {
-    auto pos = str.find(info.chars);
-    while (pos != std::string::npos) {
-      remap_cache[pos] = &info;
-      pos = str.find(info.chars, pos + info.chars.size());
+  std::string new_str;
+
+  for (int i = 0; i < str.length();) {
+    auto remap = jak1_find_utf8_to_bytes_remap(str, i);
+    if (!remap) {
+      new_str.push_back(str.at(i));
+      i += 1;
+    } else {
+      for (auto b : remap->bytes) {
+        new_str.push_back(b);
+      }
+      i += remap->chars.length();
     }
   }
 
-  // go through the string backwards and replace saved chars
-  for (auto& remap : remap_cache) {
-    std::string temp;
-    for (auto b : remap.second->bytes) {
-      temp.push_back(b);
-    }
-    str.replace(remap.first, remap.second->chars.size(), temp);
-  }
-
+  str = new_str;
   return str;
 }
 
@@ -455,7 +479,7 @@ static const std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+',
 std::string convert_from_jak1_encoding(const char* in) {
   std::string result;
   while (*in) {
-    auto remap = jak1_bytes_to_utf8(in);
+    auto remap = jak1_find_bytes_to_utf8_remap(in);
     if (remap != nullptr) {
       result.append(remap->chars);
       in += remap->bytes.size() - 1;
