@@ -775,6 +775,8 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(state, "On title screen");
       } else if (!strcmp(level, "intro")) {
         strcpy(state, "Intro");
+      } else if (cutscene != offset_of_s7()) {
+        strcpy(state, "Watching a cutscene");
       } else {
         strcpy(state, "Cells: ");
         strcat(state, std::to_string(cells).c_str());
