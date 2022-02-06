@@ -17,7 +17,8 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         "-Xclang -fcxx-exceptions \
         -Xclang -std=c++17 \
         -mfma -mavx2 \
-        -Wno-c++11-narrowing -W3")
+        -Wno-c++11-narrowing -W3 \
+        /arch:AVX")
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -30,7 +31,8 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
 elseif(UNIX)
     message(STATUS "GCC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
-        "-Wall \
+        "${CMAKE_CXX_FLAGS} \
+        -Wall \
         -Winit-self \
         -ggdb \
         -Wextra \
@@ -43,7 +45,8 @@ elseif(UNIX)
         -Wredundant-decls \
         -Wshadow \
         -Wsign-promo \
-        -fdiagnostics-color=always")
+        -fdiagnostics-color=always \
+        -march=haswell")
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -58,7 +61,7 @@ elseif(MSVC)
       # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
     endif()
     # c++ flags for all build types
-    set(CMAKE_CXX_FLAGS "/EHsc /utf-8")
+    set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
     
     # linker flags
     set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
