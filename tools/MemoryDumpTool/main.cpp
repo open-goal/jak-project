@@ -1,6 +1,7 @@
 #include <string>
 #include <fstream>
 #include <iomanip>
+#include <optional>
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
 
