@@ -15,6 +15,7 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     message(STATUS "Clang on MSVC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
         "-Xclang -fcxx-exceptions \
+        -Xclang -fexceptions \
         -Xclang -std=c++17 \
         -mfma -mavx2 \
         -Wno-c++11-narrowing -W3 \
