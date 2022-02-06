@@ -21,7 +21,8 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op, 4,
                                              ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
     result += fmt::format("[0x{:x}] ", base_addr);
-    ZydisFormatterFormatInstruction(&formatter, &instr, op, 4, print_buff, print_buff_size, base_addr);
+    ZydisFormatterFormatInstruction(&formatter, &instr, op, 4, print_buff, print_buff_size,
+                                    base_addr);
     result += print_buff;
     result += "\n";
 
@@ -49,9 +50,11 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';
-    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op, 4, ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op, 4,
+                                            ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
       result += fmt::format("{:c} [0x{:x}] ", prefix, base_addr);
-      ZydisFormatterFormatInstruction(&formatter, &instr, op, 4, print_buff, print_buff_size, base_addr);
+      ZydisFormatterFormatInstruction(&formatter, &instr, op, 4, print_buff, print_buff_size,
+                                      base_addr);
       result += print_buff;
       result += "\n";
       offset += instr.length;
@@ -173,7 +176,8 @@ std::string disassemble_x86_function(u8* data,
         line += fmt::format("{:c} [0x{:X}] ", prefix, base_addr);
       }
 
-      ZydisFormatterFormatInstruction(&formatter, &instr, op, 4, print_buff, print_buff_size, base_addr);
+      ZydisFormatterFormatInstruction(&formatter, &instr, op, 4, print_buff, print_buff_size,
+                                      base_addr);
       line += print_buff;
 
       if (print_ir && current_ir_idx >= 0 && current_ir_idx < int(irs.size())) {
