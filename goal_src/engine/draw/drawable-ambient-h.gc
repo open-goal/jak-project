@@ -10,6 +10,10 @@
 
 (define-extern vector-for-ambient (function process-drawable vector vector))
 
+;; the "ambient" system has a bunch of triggers for background sounds, hints, and similar events.
+
+;; each ambient also has a simple drawable that just contains a reference to the entity.
+;; this is basically only used to collect the currently active ambients.
 (deftype drawable-ambient (drawable)
   ((ambient entity-ambient :offset 8)
    )
@@ -17,10 +21,11 @@
   :size-assert         #x20
   :flag-assert         #x1300000020
   (:methods
-    (dummy-18 (_type_ vector) none 18)
+    (execute-ambient (_type_ vector) none 18)
     )
   )
 
+;; a drawable-tree of all the ambients in a level.
 (deftype drawable-tree-ambient (drawable-tree)
   ()
   :method-count-assert 18
@@ -35,13 +40,20 @@
   )
 
 (defmethod draw drawable-tree-ambient ((obj drawable-tree-ambient) (arg0 drawable-tree-ambient) (arg1 display-frame))
+  "Do nothing - ambients are not drawn."
   (none)
   )
 
 (defmethod unpack-vis drawable-tree-ambient ((obj drawable-tree-ambient) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  "Do nothing - ambients do not use vis."
   arg1
   )
 
+
+;; one of the more common ambients is a "level hint". This can be a few things:
+;; - on screen text (level names)
+;; - daxter audio (sidekick)
+;; - voicebox audio (also called sidekick in some places...)
 (deftype level-hint (process)
   ((text-id-to-display game-text-id  :offset-assert 112)
    (sound-to-play      string        :offset-assert 116)
@@ -59,7 +71,7 @@
   :flag-assert         #x10004000a8
   (:methods
     (print-text (_type_) none 14)
-    (dummy-15 (_type_) symbol 15)
+    (appeared-for-long-enough? (_type_) symbol 15)
     )
   (:states
     (level-hint-ambient-sound string)
@@ -70,6 +82,7 @@
     )
   )
 
+;; a list of ambients that are currently active.
 (deftype ambient-list (structure)
   ((num-items int32                 :offset-assert   0)
    (items     drawable-ambient 2048 :offset-assert   4)
