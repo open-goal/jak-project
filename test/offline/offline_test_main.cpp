@@ -195,7 +195,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   std::vector<std::string> dgo_paths;
   if (args.iso_data_path.empty()) {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(file_util::get_file_path({"iso_data", x}));
+      dgo_paths.push_back(file_util::get_file_path({"iso_data/jak1", x}));
     }
   } else {
     for (auto& x : offline_config.dgos) {

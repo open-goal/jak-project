@@ -5,6 +5,12 @@
 ;; name in dgo: art-h
 ;; dgos: GAME, ENGINE
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; joint animation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; base type for all joint animations
+;; note that this refers to an animation for a single joint.
 (deftype joint-anim (basic)
   ((name   string :offset-assert 4)
    (number int16  :offset-assert 8)
@@ -14,6 +20,8 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
+
+;; unused? joint-anims
 
 (deftype joint-anim-matrix (joint-anim)
   ((data  matrix :inline :dynamic :offset 16)
@@ -39,18 +47,22 @@
   :flag-assert         #x90000000c
   )
 
-(declare-type joint-anim-compressed-hdr structure)
+;; joint-anim-compressed is the only type of joint-anim actually used.
+;; the actual data isn't in here, this is just some metadata
+;; again, this refers to a single joing
 (deftype joint-anim-compressed (joint-anim)
-  ((data  joint-anim-compressed-hdr :dynamic :offset-assert 12) ;; guess
+  ((data  uint32 :dynamic :offset-assert 12) ;; seems to always just be 1 zero.
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
+;; a single "frame" in an animtion, consists of matrices for each joint.
+;; unlike the previous types, this is for all of the joints involved in an animation.
 (deftype joint-anim-frame (structure)
-  ((matrices matrix 2 :inline :offset-assert 0)
-   (data     uint32   :dynamic :offset-assert 128) ;; guess
+  ((matrices matrix 2 :inline :offset-assert 0)              ;; everybody has at least 2 matrices
+   (data     matrix   :inline :dynamic :offset-assert 128)   ;; rest are dynamically sized.
    )
   :method-count-assert 9
   :size-assert         #x80
@@ -61,6 +73,7 @@
   )
 
 (defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (arg0 int))
+  "Create a new joint-anim-frame with enough room for arg0 matrices"
   (let ((v1-1 (max 0 (+ arg0 -2))))
     (the-as joint-anim-frame
             (new-dynamic-structure
@@ -71,9 +84,9 @@
     )
   )
 
+;; compression header - has info used by decompression algorithm
 (deftype joint-anim-compressed-hdr (structure)
   ((control-bits uint32 14  :offset-assert 0)
-   (unknown-half int16     :offset          6)
    (num-joints   uint32     :offset-assert 56)
    (matrix-bits  uint32     :offset-assert 60)
    )
@@ -82,19 +95,23 @@
   :flag-assert         #x900000040
   )
 
+;; this has the data needed to initialize the decompressor - I believe this
+;; contains the starting poisition of the joints.
 (deftype joint-anim-compressed-fixed (structure)
   ((hdr       joint-anim-compressed-hdr :inline :offset-assert 0)
    (offset-64 uint32                            :offset-assert 64)
    (offset-32 uint32                            :offset-assert 68)
    (offset-16 uint32                            :offset-assert 72)
    (reserved  uint32                            :offset-assert 76)
-   (data      vector                133 :inline :offset-assert 80) ;; guess
+   (data      vector                133 :inline :offset-assert 80) ;; length here can be shorter!
    )
   :method-count-assert 9
   :size-assert         #x8a0
   :flag-assert         #x9000008a0
   )
 
+;; these are the actual compressed data frames.
+;; dynamically sized, depends on the number of joints and the decompression.
 (deftype joint-anim-compressed-frame (structure)
   ((offset-64 uint32      :offset-assert 0)
    (offset-32 uint32      :offset-assert 4)
@@ -107,6 +124,7 @@
   :flag-assert         #x900000860
   )
 
+;; table of frames
 (deftype joint-anim-compressed-control (structure)
   ((num-frames uint32                        :offset-assert 0)
    (fixed-qwc  uint32                        :offset-assert 4)
@@ -119,6 +137,12 @@
   :flag-assert         #x900000014
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ART
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; "art" is an overly general parent class of all art data.
+;; it can be either a container of arts (art-group) or a single art (art-element)
 (deftype art (basic)
   ((name   string    :offset 8)
    (length int32     :offset-assert 12)
@@ -129,14 +153,13 @@
   :flag-assert         #xd00000014
   (:methods
     (login (_type_) _type_ 9)
-    (dummy-10 (_type_ string type) joint 10)
-    (dummy-11 (_type_ string type) int 11)
-    ; (lookup-art (_type_ string type) joint 10) ;; can also be art-joint-anim
-    ; (lookup-idx-of-art (_type_ string type) int 11)
+    (lookup-art (_type_ string type) joint 10) ;; art or joint.
+    (lookup-idx-of-art (_type_ string type) int 11)
     (needs-link? (_type_) symbol 12)
     )
   )
 
+;; parent class of all single art things.
 (deftype art-element (art)
   ((pad uint8 12))
   :method-count-assert 13
@@ -144,6 +167,7 @@
   :flag-assert         #xd00000020
   )
 
+;; unused. all animations use joints/skeletons.
 (deftype art-mesh-anim (art-element)
   ((data basic :dynamic :offset-assert  32))
   :method-count-assert 13
@@ -151,6 +175,7 @@
   :flag-assert         #xd00000020
   )
 
+;; joint animation.
 (deftype art-joint-anim (art-element)
   ;; figured out manually from custom inspect.
   ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage
@@ -159,8 +184,14 @@
    (artist-step float            :offset 28)
    (master-art-group-name string :offset 32)
    (master-art-group-index int32 :offset 36)
+   
+   ;; facial animation
    (blerc-data (pointer uint8) :offset 40) ;; todo, this is probably something else
+   
+   ;; compressed animation data
    (frames joint-anim-compressed-control :offset 44)
+   
+   ;; per-joint info for each joint in the animation.
    (data joint-anim-compressed :dynamic)
    )
   :method-count-assert 13
@@ -168,6 +199,8 @@
   :flag-assert         #xd00000030
   )
 
+;; a collection of arts.
+;; this is often stored as a -ag file in static level data.
 (deftype art-group (art)
   ((info  file-info    :offset 4)
    (data  art-element  :dynamic :offset 32)
@@ -176,12 +209,14 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
+    ;; linker will call this one when it's loaded
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
     (link-art! (_type_) art-group 13)
     (unlink-art! (_type_) int 14)
     )
   )
 
+;; unused
 (deftype art-mesh-geo (art-element)
   ((data  basic  :dynamic :offset-assert 32)
    )
@@ -190,6 +225,7 @@
   :flag-assert         #xd00000020
   )
 
+;; unused
 (deftype art-joint-geo (art-element)
   ((data  joint  :dynamic :offset-assert 32)
    )
@@ -198,6 +234,8 @@
   :flag-assert         #xd00000020
   )
 
+;; the "skeleton group" is defined in code and tells the engine
+;; how to actually use the art from the level data for this object.
 (deftype skeleton-group (basic)
   ((art-group-name basic          :offset-assert   4)
    (jgeo           int32          :offset-assert   8)
@@ -219,10 +257,18 @@
   :flag-assert         #x900000048
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Draw Control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the draw-control has settings for drawing a foreground object.
+
 (declare-type merc-ctrl basic)
+
+;; a merc level of detail
 (deftype lod-group (structure)
-  ((geo  merc-ctrl  :offset-assert   0)
-   (dist meters     :offset-assert   4)
+  ((geo  merc-ctrl  :offset-assert   0) ;; the actual geometry to draw
+   (dist meters     :offset-assert   4) ;; the distance from camera for this lod
    )
   :pack-me
   :method-count-assert 9
@@ -230,6 +276,8 @@
   :flag-assert         #x900000008
   )
 
+;; the 4 levels of detail. the max-lod is the index of the highest lod that's actually used.
+;; it is the lowest detail.
 (deftype lod-set (structure)
   ((lod     lod-group 4 :inline :offset-assert 0)
    (max-lod int8        :offset-assert 32)
@@ -239,7 +287,7 @@
   :size-assert         #x21
   :flag-assert         #xa00000021
   (:methods
-    (dummy-9 (_type_ skeleton-group art-group entity) _type_ 9)
+    (setup-lods! (_type_ skeleton-group art-group entity) _type_ 9)
     )
   )
 
@@ -247,12 +295,12 @@
   :type uint8
   :bitfield #t
   (needs-clip 0)
-  (drwf01 1)
-  (drwf02 2)
-  (drwf03 3)
+  (drwf01 1) ;; hide
+  (drwf02 2) ;; no-anim
+  (drwf03 3) ;; draw
   (drwf04 4)
-  (drwf05 5)
-  (drwf06 6)
+  (drwf05 5) ;; no bones
+  (drwf06 6) ;; don't use for closest check
   (drwf07 7)
   )
 

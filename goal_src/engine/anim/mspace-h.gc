@@ -5,22 +5,18 @@
 ;; name in dgo: mspace-h
 ;; dgos: GAME, ENGINE
 
-;; There's three main types:
+;; this file contains types for the skeletal animation system.
+;; the "bones" are the actual things with positions/orientations/scales in the game world.
+;; the "joints" define how the bones are connected.
+;; a "cspace" links together a bone, joint, and a way to control the joint (and bone)
+
+;; There's three main container types:
 ;; - The cspace-array.  This contains references to the bones and the joints. (called node-list)
 ;; - The skeleton: This contains the bones. (called skeleton)
-;; - The joint-control: this has the logic for running joint animations. (called skel)
-
-;; There's three system's involved with animation:
-;; - joint control - this figures out which animations to play.
-;;    the big list of playing animations in *stats-target* are all the joint control channels.
-
-;; - joint decompression. The compressed joint animations store compressed joint data that must
-;;   be streamed and decompressed.
-
-;; - bones. This is figuring out the location of each "bone" in the world.
+;; - The joint-control (not in this file): this has the logic for running joint animations. (called skel)
 
 
-;; First, the joint. This type just describes how the skeleton is connected.
+;; First, the joint. This type just describes how the skeleton is connected and the bind pose.
 (deftype joint (basic)
   ((name      basic          :offset-assert 4)   ;; the joint's name (neckA, neckB, Rtoes, etc)
    (number    int32          :offset-assert 8)   ;; the joint's number in the cspace-array
@@ -85,9 +81,9 @@
    (joint-num int16    :offset-assert 8)   ;; seems to be 0 always??
    (geo       basic    :offset-assert 12)  ;; seems to be #f always
    (bone      bone     :offset-assert 16)  ;; points to our bone.
-   (param0    function :offset-assert 20)  ;; ??
-   (param1    basic    :offset-assert 24)  ;; ??
-   (param2    basic    :offset-assert 28)  ;; ??
+   (param0    function :offset-assert 20)  ;; function to run to update.
+   (param1    basic    :offset-assert 24)  ;; parameter
+   (param2    basic    :offset-assert 28)  ;; parameter
    )
   :method-count-assert 10
   :size-assert         #x20
