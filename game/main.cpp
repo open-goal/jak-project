@@ -8,6 +8,10 @@
 #include "common/versions.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "game/discord.h"
+
+// Discord RPC
+extern int64_t gStartTime;
 
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/game.txt"}));
@@ -31,6 +35,9 @@ int main(int argc, char** argv) {
       break;
     }
   }
+
+  gStartTime = time(0);
+  init_discord_rpc();
 
   setup_logging(verbose);
 
