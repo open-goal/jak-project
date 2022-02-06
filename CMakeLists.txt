@@ -1,20 +1,22 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 17)
 project(jak)
 include(CTest)
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug")
-endif()
 
-set(CMAKE_CXX_STANDARD 17)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
 
 # Set default compile flags
 # optimization level can be set here. You can overwrite these in a per-project basis if you want.
 if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     message(STATUS "Clang on MSVC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
-        "-Xclang -fcxx-exceptions -mfma -mavx2 \
+        "-Xclang -fcxx-exceptions \
+        -Xclang -std=c++17 \
+        -mfma -mavx2 \
         -Wno-c++11-narrowing -W3")
 
     # additional c++ flags for release mode for our projects
