@@ -1,4 +1,4 @@
 @echo off
 cd ..\..
-out\build\Release\bin\goalc-test --gtest_filter="Zydis.Basic"
+out\build\Release\bin\goalc-test --gtest_filter="TypeConsistency.TypeConsistency"
 pause
