@@ -159,11 +159,13 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
 /*!
  * ===========================
  * GAME TEXT FONT BANK - JAK 1
+ * ===========================
+ * This font is used in:
+ * - Jak & Daxter: The Precursor Legacy (Black Label)
  */
 
-static std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')',
-                                                   '!', ':', '?', '=', '%', '*', '/', '#',
-                                                   ';', '<', '>', '@', '[', '_'};
+static std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
+                                             '=', '%', '*', '/', '#', ';', '<', '>', '@', '[', '_'};
 
 static std::vector<EncodeInfo> g_encode_info_jak1 = {
     // random
@@ -498,6 +500,13 @@ GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
                                   &g_encode_info_jak1,
                                   &g_replace_info_jak1,
                                   &passthrus);
+
+/*!
+ * ========================
+ * GAME TEXT FONT BANK LIST
+ * ========================
+ * The list of available font banks and a couple of helper functions.
+ */
 
 std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
     {GameTextVersion::JAK1_V1, &g_font_bank_jak1}};
