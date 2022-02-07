@@ -167,17 +167,19 @@ Reader::Reader() {
   m_valid_source_text_chars[(int)'\r'] = true;
 
   // allow every character that gets transformed to something else
-  for (auto& remap : g_font_large_char_remap) {
-    for (auto rc : remap.chars) {
-      m_valid_source_text_chars[(u8)rc] = true;
+  for (auto& [version, font] : g_font_banks) {
+    for (auto& remap : *font->encode_info()) {
+      for (auto rc : remap.chars) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
     }
-  }
-  for (auto& remap : g_font_large_string_replace) {
-    for (auto rc : remap.to) {
-      m_valid_source_text_chars[(u8)rc] = true;
-    }
-    for (auto rc : remap.from) {
-      m_valid_source_text_chars[(u8)rc] = true;
+    for (auto& remap : *font->replace_info()) {
+      for (auto rc : remap.to) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
+      for (auto rc : remap.from) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
     }
   }
   m_valid_source_text_chars[0] = false;

@@ -7,7 +7,6 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
-#include "common/util/FontUtils.h"
 
 namespace decompiler {
 namespace {
@@ -99,9 +98,11 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     }
 
     // escape characters
-    result.text[text_id] = version == GameTextVersion::JAK1_V1
-                               ? convert_from_jak1_encoding(text.c_str())
-                               : goos::get_readable_string(text.c_str());  // HACK!
+    if (font_bank_exists(version)) {
+      result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+    } else {
+      result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!
+    }
 
     // remember what we read (-1 for the type tag)
     auto string_start = (text_label.offset / 4) - 1;
@@ -144,7 +145,7 @@ std::string write_game_text(
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
   for (auto lang : langauges) {
-    for (auto text : data.at(lang)) {
+    for (auto& text : data.at(lang)) {
       text_by_id[text.first].push_back(text.second);
     }
   }

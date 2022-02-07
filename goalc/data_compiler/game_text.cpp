@@ -127,7 +127,9 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
               throw std::runtime_error("Entry appears more than once");
             }
 
-            map[id] = convert_to_jak1_encoding(entry.as_string()->data);
+            // TODO
+            auto font = get_font_bank(GameTextVersion::JAK1_V1);
+            map[id] = font->convert_utf8_to_game(entry.as_string()->data);
           } else {
             throw std::runtime_error("Each entry must be a string");
           }
