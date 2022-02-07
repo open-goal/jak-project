@@ -140,7 +140,7 @@ struct DiscordInfo {
   u32 buzzer_total;
   u32 status;
   u32 level;
-  u32 cutscene; // check if cutscene is playing
+  u32 cutscene;  // check if cutscene is playing
 };
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");

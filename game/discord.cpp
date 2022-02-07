@@ -1,4 +1,5 @@
 #include <map>
+#include <cstring>
 #include <string>
 
 #include "discord.h"
