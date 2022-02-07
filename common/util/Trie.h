@@ -37,15 +37,9 @@ class Trie {
   ~Trie();
 
  private:
-  static constexpr int CHAR_START = ' ';
-  static constexpr int CHAR_END = '~' + 1;
-  static constexpr int CHAR_SIZE = CHAR_END - CHAR_START;
+  static constexpr int CHAR_SIZE = 256;
 
-  static int idx(char c) {
-    assert(c >= CHAR_START);
-    assert(c < CHAR_END);
-    return c - CHAR_START;
-  }
+  static int idx(char c) { return (u8)c; }
 
   struct Node {
     T* value = nullptr;
