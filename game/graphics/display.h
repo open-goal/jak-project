@@ -25,7 +25,6 @@ class GfxDisplay {
   int m_xpos;
   int m_ypos;
 
-  bool m_update_fullscreen = false;
   int m_fullscreen_mode = 0;
   int m_fullscreen_screen;
   int m_fullscreen_target_mode;
@@ -50,17 +49,15 @@ class GfxDisplay {
   void get_scale(float* w, float* h);
   const char* title() const { return m_title; }
 
-  bool fullscreen_pending() { return m_update_fullscreen; }
+  bool fullscreen_pending() { return m_fullscreen_mode != m_fullscreen_target_mode; }
   void fullscreen_flush() {
     m_renderer->set_fullscreen(this, m_fullscreen_target_mode, m_fullscreen_target_screen);
     m_fullscreen_mode = m_fullscreen_target_mode;
     m_fullscreen_screen = m_fullscreen_target_screen;
-    m_update_fullscreen = false;
   }
   void set_fullscreen(int mode, int screen) {
     m_fullscreen_target_mode = mode;
     m_fullscreen_target_screen = screen;
-    m_update_fullscreen = true;
   }
   int fullscreen_mode() { return m_fullscreen_mode; }
   int fullscreen_screen() { return m_fullscreen_screen; }

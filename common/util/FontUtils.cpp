@@ -7,19 +7,167 @@
  * Always verify the encoding if string detection suddenly goes awry.
  */
 
+#include <algorithm>
 #include "FontUtils.h"
 #include "third-party/fmt/core.h"
 
-#include <algorithm>
-#include <functional>
-#include <map>
-#include <unordered_set>
+GameTextFontBank::GameTextFontBank(GameTextVersion version,
+                                   std::vector<EncodeInfo>* encode_info,
+                                   std::vector<ReplaceInfo>* replace_info,
+                                   std::unordered_set<char>* passthrus)
+    : m_version(version),
+      m_encode_info(encode_info),
+      m_replace_info(replace_info),
+      m_passthrus(passthrus) {
+  std::sort(
+      m_encode_info->begin(), m_encode_info->end(),
+      [](const EncodeInfo& a, const EncodeInfo& b) { return a.bytes.size() > b.bytes.size(); });
+  std::sort(
+      m_replace_info->begin(), m_replace_info->end(),
+      [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
+}
 
 /*!
- * Remaps UTF-8 characters to the appropriate character fit for the game's large font.
- * It is unfortunately quite large.
+ * Finds a remap info that best matches the byte sequence (is the longest match).
  */
-std::vector<RemapInfo> g_font_large_char_remap = {
+const EncodeInfo* GameTextFontBank::find_encode_to_utf8(const char* in) const {
+  const EncodeInfo* best_info = nullptr;
+  for (auto& info : *m_encode_info) {
+    if (info.bytes.size() == 0)
+      continue;
+
+    bool found = true;
+    for (int i = 0; found && i < (int)info.bytes.size(); ++i) {
+      if (uint8_t(in[i]) != info.bytes.at(i)) {
+        found = false;
+      }
+    }
+
+    if (found && (!best_info || info.chars.length() > best_info->chars.length())) {
+      best_info = &info;
+    }
+  }
+  return best_info;
+}
+
+/*!
+ * Finds a remap info that best matches the character sequence (is the longest match).
+ */
+const EncodeInfo* GameTextFontBank::find_encode_to_game(const std::string& in, int off) const {
+  const EncodeInfo* best_info = nullptr;
+  for (auto& info : *m_encode_info) {
+    if (info.chars.length() == 0)
+      continue;
+
+    bool found = true;
+    for (int i = 0; found && i < (int)info.chars.length() && i + off < in.size(); ++i) {
+      if (in.at(i + off) != info.chars.at(i)) {
+        found = false;
+      }
+    }
+
+    if (found && (!best_info || info.chars.length() > best_info->chars.length())) {
+      best_info = &info;
+    }
+  }
+  return best_info;
+}
+
+/*!
+ * Try to replace specific substrings with better variants.
+ * These are for hiding confusing text transforms.
+ */
+std::string GameTextFontBank::replace_to_utf8(std::string& str) const {
+  for (auto& info : *m_replace_info) {
+    auto pos = str.find(info.from);
+    while (pos != std::string::npos) {
+      str.replace(pos, info.from.size(), info.to);
+      pos = str.find(info.from, pos + info.to.size());
+    }
+  }
+  return str;
+}
+std::string GameTextFontBank::replace_to_game(std::string& str) const {
+  for (auto& info : *m_replace_info) {
+    auto pos = str.find(info.to);
+    while (pos != std::string::npos) {
+      str.replace(pos, info.to.size(), info.from);
+      pos = str.find(info.to, pos + info.from.size());
+    }
+  }
+  return str;
+}
+
+std::string GameTextFontBank::encode_utf8_to_game(std::string& str) const {
+  std::string new_str;
+
+  for (int i = 0; i < str.length();) {
+    auto remap = find_encode_to_game(str, i);
+    if (!remap) {
+      new_str.push_back(str.at(i));
+      i += 1;
+    } else {
+      for (auto b : remap->bytes) {
+        new_str.push_back(b);
+      }
+      i += remap->chars.length();
+    }
+  }
+
+  str = new_str;
+  return str;
+}
+
+/*!
+ * Turn a normal readable string into a string readable in the Jak 1 font encoding.
+ */
+std::string GameTextFontBank::convert_utf8_to_game(std::string str) const {
+  replace_to_game(str);
+  encode_utf8_to_game(str);
+  return str;
+}
+
+/*!
+ * Convert a string from the game-text font encoding to something normal.
+ * Unprintable characters become escape sequences, including tab and newline.
+ */
+std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
+  std::string result;
+  while (*in) {
+    auto remap = find_encode_to_utf8(in);
+    if (remap != nullptr) {
+      result.append(remap->chars);
+      in += remap->bytes.size() - 1;
+    } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') ||
+                m_passthrus->find(*in) != m_passthrus->end()) &&
+               *in != '\\') {
+      result.push_back(*in);
+    } else if (*in == '\n') {
+      result += "\\n";
+    } else if (*in == '\t') {
+      result += "\\t";
+    } else if (*in == '\\') {
+      result += "\\\\";
+    } else {
+      result += fmt::format("\\c{:02x}", uint8_t(*in));
+    }
+    in++;
+  }
+  return replace_to_utf8(result);
+}
+
+/*!
+ * ===========================
+ * GAME TEXT FONT BANK - JAK 1
+ * ===========================
+ * This font is used in:
+ * - Jak & Daxter: The Precursor Legacy (Black Label)
+ */
+
+static std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
+                                             '=', '%', '*', '/', '#', ';', '<', '>', '@', '[', '_'};
+
+static std::vector<EncodeInfo> g_encode_info_jak1 = {
     // random
     {"ˇ", {0x10}},      // caron
     {"`", {0x11}},      // grave accent
@@ -236,10 +384,8 @@ std::vector<RemapInfo> g_font_large_char_remap = {
     {"船", {1, 0xb0}},  // fune
     {"™", {1, 0xb1}},   // trademark
 };
-/*!
- * Replaces specific UTF-8 strings with more readable variants.
- */
-std::vector<ReplaceInfo> g_font_large_string_replace = {
+
+static std::vector<ReplaceInfo> g_replace_info_jak1 = {
     // \" -> " (confusing)
     {"\\\"", "\""},
 
@@ -350,129 +496,25 @@ std::vector<ReplaceInfo> g_font_large_string_replace = {
     {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},  // custom
 };
 
-static bool remaps_inited = false;
-static void init_remaps() {
-  if (!remaps_inited) {
-    std::sort(
-        g_font_large_char_remap.begin(), g_font_large_char_remap.end(),
-        [](const RemapInfo& a, const RemapInfo& b) { return a.bytes.size() > b.bytes.size(); });
-    std::sort(
-        g_font_large_string_replace.begin(), g_font_large_string_replace.end(),
-        [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
-    remaps_inited = true;
-  }
-}
+GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
+                                  &g_encode_info_jak1,
+                                  &g_replace_info_jak1,
+                                  &passthrus);
 
 /*!
- * Convert Jak 1 character encoding to something readable.
+ * ========================
+ * GAME TEXT FONT BANK LIST
+ * ========================
+ * The list of available font banks and a couple of helper functions.
  */
-RemapInfo* jak1_bytes_to_utf8(const char* in) {
-  init_remaps();
-  for (auto& info : g_font_large_char_remap) {
-    if (info.bytes.size() == 0)
-      continue;
-    bool found = true;
-    for (int i = 0; found && i < (int)info.bytes.size(); ++i) {
-      if (uint8_t(in[i]) != info.bytes.at(i)) {
-        found = false;
-      }
-    }
-    if (found) {
-      return &info;
-    }
-  }
-  return nullptr;
+
+std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
+    {GameTextVersion::JAK1_V1, &g_font_bank_jak1}};
+
+const GameTextFontBank* get_font_bank(GameTextVersion version) {
+  return g_font_banks.at(version);
 }
 
-/*!
- * Try to replace specific substrings with better variants.
- * These are for hiding confusing text transforms.
- */
-std::string& jak1_trans_to_utf8(std::string& str) {
-  init_remaps();
-  for (auto& info : g_font_large_string_replace) {
-    auto pos = str.find(info.from);
-    while (pos != std::string::npos) {
-      str.replace(pos, info.from.size(), info.to);
-      pos = str.find(info.from, pos + info.to.size());
-    }
-  }
-  return str;
-}
-
-std::string& utf8_trans_to_jak1(std::string& str) {
-  init_remaps();
-  for (auto& info : g_font_large_string_replace) {
-    auto pos = str.find(info.to);
-    while (pos != std::string::npos) {
-      str.replace(pos, info.to.size(), info.from);
-      pos = str.find(info.to, pos + info.from.size());
-    }
-  }
-  return str;
-}
-
-std::string& utf8_bytes_to_jak1(std::string& str) {
-  // find all instances of characters and save them
-  std::map<size_t, const RemapInfo*, std::greater<size_t>> remap_cache;
-  for (auto& info : g_font_large_char_remap) {
-    auto pos = str.find(info.chars);
-    while (pos != std::string::npos) {
-      remap_cache[pos] = &info;
-      pos = str.find(info.chars, pos + info.chars.size());
-    }
-  }
-
-  // go through the string backwards and replace saved chars
-  for (auto& remap : remap_cache) {
-    std::string temp;
-    for (auto b : remap.second->bytes) {
-      temp.push_back(b);
-    }
-    str.replace(remap.first, remap.second->chars.size(), temp);
-  }
-
-  return str;
-}
-
-/*!
- * Turn a normal readable string into a string readable in the Jak 1 font encoding.
- */
-std::string convert_to_jak1_encoding(std::string str) {
-  utf8_trans_to_jak1(str);
-  utf8_bytes_to_jak1(str);
-  return str;
-}
-
-static const std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')',
-                                                   '!', ':', '?', '=', '%', '*', '/', '#',
-                                                   ';', '<', '>', '@', '[', '_'};
-
-/*!
- * Convert a string from the Jak 1 large font encoding to something normal.
- * Unprintable characters become escape sequences, including tab and newline.
- */
-std::string convert_from_jak1_encoding(const char* in) {
-  std::string result;
-  while (*in) {
-    auto remap = jak1_bytes_to_utf8(in);
-    if (remap != nullptr) {
-      result.append(remap->chars);
-      in += remap->bytes.size() - 1;
-    } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') ||
-                passthrus.find(*in) != passthrus.end()) &&
-               *in != '\\') {
-      result.push_back(*in);
-    } else if (*in == '\n') {
-      result += "\\n";
-    } else if (*in == '\t') {
-      result += "\\t";
-    } else if (*in == '\\') {
-      result += "\\\\";
-    } else {
-      result += fmt::format("\\c{:02x}", uint8_t(*in));
-    }
-    in++;
-  }
-  return jak1_trans_to_utf8(result);
+bool font_bank_exists(GameTextVersion version) {
+  return g_font_banks.find(version) != g_font_banks.cend();
 }

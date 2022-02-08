@@ -5,17 +5,23 @@
 ;; name in dgo: sky-h
 ;; dgos: GAME, ENGINE
 
+;; the "sky" system draws the sky and determines colors for lights.
+;; each level has 8 skies that are interpolated between.
+
+;; represents the skies that are used during a single hour.
+;; there can be 1 or 2 skies used.
 (deftype sky-color-hour (structure)
-  ((snapshot1   int32  :offset-assert 0)
-   (snapshot2   int32  :offset-assert 4)
-   (morph-start float  :offset-assert 8)
-   (morph-end   float  :offset-assert 12)
+  ((snapshot1   int32  :offset-assert 0)  ;; the sky index at the start
+   (snapshot2   int32  :offset-assert 4)  ;; the sky index at the end
+   (morph-start float  :offset-assert 8)  ;; blend between the two at the start of the hour
+   (morph-end   float  :offset-assert 12) ;; blend between the two at the end of the hour
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
+;; a sky-color-hour for each hour of the day.
 (deftype sky-color-day (structure)
   ((hour sky-color-hour 24 :inline :offset-assert 0)
    )
@@ -24,7 +30,15 @@
   :flag-assert         #x900000180
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Old Sky Renderer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; there's an old sky renderer that's no longer used.
+;; it seems like it drew the suns and moon.
+;; these types are designed for the old renderer, but partially used by the new one
+
+;; these stores points on a squashed circle (xy only)
 (deftype sky-circle-data (structure)
   ((data vector 17 :inline :offset-assert 0)
    )
@@ -33,6 +47,7 @@
   :flag-assert         #x900000110
   )
 
+;; sun particle tracks this
 (deftype sky-sun-data (structure)
   ((data           uint128 4       :offset-assert 0)
    (pos            vector  :inline :offset 0)
@@ -51,6 +66,7 @@
   :flag-assert         #x900000040
   )
 
+;; moon particle tracks this
 (deftype sky-moon-data (structure)
   ((data  uint128 2       :offset-assert 0)
    (pos   vector  :inline :offset 0)
@@ -61,6 +77,7 @@
   :flag-assert         #x900000020
   )
 
+;; parameters for the sun/moon motion.
 (deftype sky-orbit (structure)
   ((high-noon float  :offset-assert 0)
    (tilt      float  :offset-assert 4)
@@ -75,6 +92,7 @@
   :flag-assert         #x900000018
   )
 
+;; sky data to send to old sky renderer.
 (deftype sky-upload-data (basic)
   ((circle sky-circle-data :inline :offset-assert 16)
    (sun    sky-sun-data 2 :inline       :offset-assert 288)
@@ -86,8 +104,8 @@
   :flag-assert         #x9000001c0
   )
 
+;; all sky data. This has a copy of sky-upload-data that's used by the new sky renderer.
 (deftype sky-parms (basic)
-  ;; check - the alignment on some of these.
   ((orbit             sky-orbit 3     :inline :offset-assert 4)
    (upload-data       sky-upload-data :inline :offset-assert 112)
    (sun-lights        light-group     :inline :offset-assert 560)
@@ -113,9 +131,11 @@
   )
 
 (define *sky-parms* (new 'global 'sky-parms))
+
+;; here's another sky-upload-data. It's just used to hold these cirlces.
 (define *sky-upload-data* (new 'global 'sky-upload-data))
 
-;; generate some sky data.
+;; generate some points on a circle for the sky renderer.
 (dotimes (gp-0 17)
   (let ((f30-0 (+ MINUS_PI (* 0.39269906 (the float (logand gp-0 15))))))
    (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
@@ -124,6 +144,10 @@
   (set! (-> *sky-upload-data* circle data gp-0 z) 0.0)
   (set! (-> *sky-upload-data* circle data gp-0 w) 0.0)
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; new sky renderer (TNG)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sky-tng-data (basic)
   ((giftag-base  gs-gif-tag :inline  :offset-assert 16);; changed
@@ -164,6 +188,9 @@
   :flag-assert         #x900000030
   )
 
+
+;; the sky renderer writes sky and cloud textures to vram - these booleans tell you if
+;; it has done this, and if the sky/cloud textures should be used.
 (define *sky-drawn* #f)
 (define *cloud-drawn* #f)
 

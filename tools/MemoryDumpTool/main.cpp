@@ -1,8 +1,8 @@
 #include <string>
 #include <fstream>
 #include <iomanip>
+#include <optional>
 #include "third-party/fmt/core.h"
-#include "third-party/11zip/include/elzip/elzip.hpp"
 #include "third-party/json.hpp"
 
 #include "common/util/FileUtil.h"
@@ -12,6 +12,8 @@
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/util/assert.h"
+
+namespace fs = std::filesystem;
 
 struct Ram {
   const u8* data = nullptr;
@@ -569,18 +571,9 @@ int main(int argc, char** argv) {
     output_folder = argv[2];
   }
 
-  // If it's a PCSX2 savestate, lets extract the ee memory automatically
   if (ends_with(file_name, "p2s")) {
-    fmt::print("Detected PCSX2 Save-state '{}', extracting memory...\n", file_name);
-    elz::extractZip(file_name, "./savestate-out");
-    // Then, check for and use the eeMemory.bin file
-    if (fs::exists("./savestate-out/eeMemory.bin")) {
-      file_name = "./savestate-out/eeMemory.bin";
-      fmt::print("EE Memory extracted\n");
-    } else {
-      fmt::print("Couldn't locate EE Memory, aborting!\n");
-      return 1;
-    }
+    fmt::print("PS2 savestates are not directly supported. Please extract contents beforehand.\n");
+    return 1;
   }
 
   fmt::print("Loading memory from '{}'\n", file_name);

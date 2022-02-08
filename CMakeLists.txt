@@ -1,18 +1,36 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 17)
 project(jak)
 include(CTest)
+
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug")
+    set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+# Set default compile flags
+# optimization level can be set here. You can overwrite these in a per-project basis if you want.
+if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+    message(STATUS "Clang on MSVC detected! Adding compile flags")
+    set(CMAKE_CXX_FLAGS
+        "-Xclang -fcxx-exceptions \
+        -Xclang -fexceptions \
+        -Xclang -std=c++17 \
+        -mfma -mavx2 \
+        -Wno-c++11-narrowing -W3 \
+        /arch:AVX")
 
-# Set default compile flags for GCC
-# optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-if(UNIX)
-    message(STATUS "GCC detected, adding compile flags")
+    # additional c++ flags for release mode for our projects
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+    endif()
+
+    # linker flags
+    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+
+elseif(UNIX)
+    message(STATUS "GCC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} \
         -Wall \
@@ -28,16 +46,27 @@ if(UNIX)
         -Wredundant-decls \
         -Wshadow \
         -Wsign-promo \
-        -fdiagnostics-color=always")
-else()
+        -fdiagnostics-color=always \
+        -march=haswell")
+
+    # additional c++ flags for release mode for our projects
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+    endif()
+
+elseif(MSVC)
+    message(STATUS "MSVC detected!! Adding compile flags")
     if(CMAKE_BUILD_TYPE MATCHES "Debug")
       # This actually breaks some standard library things for some reason?
       # message("Setting Flags to Enable Edit and Continue")
       # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
     endif()
-    set(CMAKE_CXX_FLAGS "/EHsc")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
-endif(UNIX)
+    # c++ flags for all build types
+    set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
+    
+    # linker flags
+    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+endif()
 
 if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -99,9 +128,6 @@ add_subdirectory(decompiler)
 add_subdirectory(third-party/glfw)
 
 add_subdirectory(third-party/zstd)
-
-# build libzip
-add_subdirectory(third-party/11zip EXCLUDE_FROM_ALL)
 
 # build imgui
 include_directories(third-party/glad/include)

@@ -50,12 +50,6 @@ if (WIN32)
     target_link_libraries(compiler mman)
 endif ()
 
-if (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-elseif (WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
-endif ()
-
 add_executable(goalc main.cpp)
 target_link_libraries(goalc common Zydis compiler)
 

@@ -122,9 +122,8 @@
   
   ;; make sure the scratchpad is 16kb aligned
   (let* ((mem (new 'global 'array 'uint8 (* (+ 16 16) 1024)))
-         (aligned (logand (&+ mem 16384) (lognot 16383)))
          )
-      (define *fake-scratchpad-data* aligned)
+      (define *fake-scratchpad-data* (the pointer (align-n mem (* 16 1024))))
     )
   
   ;; We will move stacks on the scratchpad to here.
@@ -2503,7 +2502,7 @@
     (define *debug-dead-pool* (new 'debug 'dead-pool-heap '*debug-dead-pool* 768 (* 1024 1024)))
     )
 
-(define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* 768 PROCESS_HEAP_SIZE))
+(define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* (* PROCESS_HEAP_MULT 768) PROCESS_HEAP_SIZE))
 (define *default-dead-pool* (the dead-pool *nk-dead-pool*))
 (define *pickup-dead-pool* (the dead-pool *nk-dead-pool*))
 

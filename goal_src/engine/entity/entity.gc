@@ -1702,13 +1702,9 @@
                 )
               )
             )
-        (set! (-> *ACTOR-bank* pause-dist)
-              (seek (-> *ACTOR-bank* pause-dist) f0-5 (* 81920.0 (-> *display* seconds-per-frame)))
-              )
+        (seek! (-> *ACTOR-bank* pause-dist) f0-5 (* 81920.0 (-> *display* seconds-per-frame)))
         )
-      (set! (-> *ACTOR-bank* birth-max)
-            (seekl (-> *ACTOR-bank* birth-max) (the int (lerp-scale 25.0 1.0 (the float s5-1) 2000.0 7000.0)) 10)
-            )
+      (seekl! (-> *ACTOR-bank* birth-max) (the int (lerp-scale 25.0 1.0 (the float s5-1) 2000.0 7000.0)) 10)
       )
     (if (movie?)
         (set! (-> *ACTOR-bank* birth-max) 1000)
@@ -1954,7 +1950,7 @@
       (add-debug-text-3d #t (bucket-id debug-draw1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8)))
 
   ;; start writing text
-  (let ((cur-y (- 16 (* (-> inspect-info scroll-y) 8))) (y-adv 8))
+  (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 8))) (cur-y begin-y) (y-adv 8))
   (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
                                (bucket-id debug-draw1))
       ;; basic info, actor id, etc
@@ -1962,6 +1958,17 @@
           (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%R1/L1 scroll L3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
           debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y (* 8 4))
+      (cond
+        ((type-type? (-> e type) entity-actor)
+          (let ((actor (the entity-actor e)))
+            ;; print info for entity-actors
+            (draw-string-xy
+                (string-format "etype: ~A~%nav: ~A vis: ~D task: ~S" (-> actor etype) (!= #f (-> actor nav-mesh)) (-> actor vis-id) (game-task->string (-> actor task)))
+                debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+            (+! cur-y (* 8 2))
+            )
+          )
+        )
 
       ;; draw each tag in entity
       (dotimes (i (length e))
@@ -1972,6 +1979,7 @@
       
       ;; tag data - special cases first
       (cond
+        ;; some water-height info
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
           (format *debug-temp-string* " ~mm ~mm ~mm ~f"
                 (-> (the (pointer float) data) 0)
@@ -1980,12 +1988,15 @@
                 (-> (the (pointer float) data) 3)
                 )
           )
+        ;; music flava (music ambients)
         ((and (= (-> e tag i name) 'flava) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
           (format *debug-temp-string* " (music-flava ~S)" (enum->string music-flava (-> (the (pointer int32) data) 0)))
           )
+        ;; text id (can be hint ambient)
         ((and (= (-> e tag i name) 'text-id) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
           (format *debug-temp-string* " (game-text-id ~S)" (enum->string game-text-id (-> (the (pointer int32) data) 0)))
           )
+        ;; eco-info, like in vents, crates, or collectibles in general
         ((and (= (-> e tag i name) 'eco-info) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) int32))
           (format *debug-temp-string* " ~S " (pickup-type->string (the-as pickup-type (-> (the (pointer int32) data) 0))))
           (if (= (pickup-type fuel-cell) (-> (the (pointer int32) data) 0))
@@ -1996,11 +2007,13 @@
               (format *debug-temp-string* " ~S" (game-task->string (the-as game-task (logand #xffff (-> (the (pointer int32) data) 1)))))
               )
           )
+        ;; fact options, usually enemies or crates
         ((and (= (-> e tag i name) 'options) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) uint32))
           (format *debug-temp-string* " (fact-options ")
           (bit-enum->string fact-options (-> (the (pointer uint32) data) 0) *debug-temp-string*)
           (format *debug-temp-string* ")")
           )
+        ;; these can be displayed visually with other tools.
         ((and (= (-> e tag i name) 'visvol) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) vector))
           (format *debug-temp-string* " display actor-vis!")
           )
@@ -2011,6 +2024,7 @@
           (format *debug-temp-string* " display vol marks!")
           )
         (else
+        ;; more generic tag info
       (dotimes (ii (-> e tag i elt-count))
           (format *debug-temp-string* " ")
           (case (-> e tag i elt-type)
@@ -2018,10 +2032,12 @@
                 (format *debug-temp-string* "~A" (-> (the (pointer basic) data) ii)))
               ((float)
                 (case (-> e tag i name)
+                  ;; meters are better here
                   (('spring-height 'vis-dist 'height-info 'distance 'cam-notice-dist 'cam-vert 'cam-horz 'idle-distance
                     'nearest-y-threshold 'center-point 'center-radius 'notice-dist 'trigger-height 'notice-top)
                     (format *debug-temp-string* "~mm" (-> (the (pointer float) data) ii))
                     )
+                  ;; degrees are better for these
                   (('rotoffset 'fov 'rotmin 'rotmax 'tiltmin 'tiltmax 'rotspeed)
                     (format *debug-temp-string* "~rdeg" (-> (the (pointer float) data) ii))
                     )
@@ -2047,6 +2063,7 @@
                 )
               ((uint8)
                 (case (-> e tag i name)
+                  ;; not sure
                   (('shadow-mask)
                     (format *debug-temp-string* "#b~b" (-> (the (pointer uint8) data) ii))
                     )
@@ -2058,12 +2075,14 @@
               ((uint16) (format *debug-temp-string* "#x~x" (-> (the (pointer uint16) data) ii)))
               ((uint32)
                 (case (-> e tag i name)
+                  ;; actually actor-id
                   (('nav-mesh-actor 'open-actor 'trigger-actor 'path-actor 'state-actor 'alt-actor 'next-actor 'prev-actor
                     'spawner-blocker-actor 'spawner-trigger-actor 'kill-actor 'fade-actor 'water-actor 'target-actor)
                     (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
                             (res-lump-struct (entity-by-aid (-> (the (pointer uint32) data) ii)) 'name string))
                     (+! y-adv 8)
                     )
+                  ;; used for fuel-cell
                   (('movie-mask)
                     (format *debug-temp-string* "#b~b" (-> (the (pointer uint32) data) ii))
                     )
@@ -2074,6 +2093,7 @@
                 )
               ((vector)
                 (case (-> e tag i name)
+                  ;; guess
                   (('movie-pos)
                     (format *debug-temp-string* "~%(~mm ~mm ~mm ~rdeg)"
                         (-> (the (inline-array vector) data) ii x)
@@ -2082,6 +2102,7 @@
                         (-> (the (inline-array vector) data) ii w)
                         )
                     )
+                  ;; not super useful
                   (('nav-mesh-sphere)
                     (format *debug-temp-string* "~%(~mm ~mm ~mm ~mm)"
                         (-> (the (inline-array vector) data) ii x)
@@ -2100,8 +2121,9 @@
                     )
                   )
                 (+! y-adv 8))
+              ;; no clue! please report this.
               (else
-                (format *debug-temp-string* "<unknown tag type ~A>" (-> e tag i elt-type))
+                (format *debug-temp-string* "<unknown res-tag type ~A>" (-> e tag i elt-type))
                 (set! ii (the int (-> e tag i elt-count)))
                 )
               )
@@ -2109,11 +2131,14 @@
           )
         )
       
+      ;; draw a string for each tag instead of all at once. allows using smaller strings.
       (draw-string-xy *debug-temp-string* debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y y-adv)
       (set! y-adv 8)
 
         ))
+      ;; set max scroll based on how large the whole text was, ignore first 20 lines.
+      (set! (-> inspect-info scroll-y-max) (max 0 (+ -20 (/ (- cur-y begin-y) 8))))
       
       )
   )))
