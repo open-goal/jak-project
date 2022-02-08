@@ -4,7 +4,7 @@
 #include "game/sce/iop.h"
 #include "iso_queue.h"
 #include "isocommon.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 
@@ -212,7 +212,7 @@ void UnqueueMessage(IsoMessage* cmd) {
   lg::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
 
 found:
-  assert(gPriStack[pri].cmds[idx] == cmd);
+  ASSERT(gPriStack[pri].cmds[idx] == cmd);
 
   // pop
   gPriStack[pri].n--;

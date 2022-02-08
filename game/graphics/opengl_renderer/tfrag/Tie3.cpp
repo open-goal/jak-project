@@ -140,7 +140,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       fmt::print("wind: {}\n", max_wind_idx);
       m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
       fmt::print("level max time of day: {}\n", time_of_day_count);
-      assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
+      ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
     }
       m_load_state.state = UPLOAD_VERTS;
       m_load_state.vert = 0;
@@ -172,7 +172,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
     } break;
 
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return false;
@@ -358,41 +358,41 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   }
 
   auto data0 = dma.read_and_advance();
-  assert(data0.vif1() == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.size_bytes == 0);
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     // renderer didn't run, let's just get out of here.
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
   auto gs_test = dma.read_and_advance();
-  assert(gs_test.size_bytes == 32);
+  ASSERT(gs_test.size_bytes == 32);
 
   auto tie_consts = dma.read_and_advance();
-  assert(tie_consts.size_bytes == 9 * 16);
+  ASSERT(tie_consts.size_bytes == 9 * 16);
 
   auto mscalf = dma.read_and_advance();
-  assert(mscalf.size_bytes == 0);
+  ASSERT(mscalf.size_bytes == 0);
 
   auto row = dma.read_and_advance();
-  assert(row.size_bytes == 32);
+  ASSERT(row.size_bytes == 32);
 
   auto next = dma.read_and_advance();
-  assert(next.size_bytes == 0);
+  ASSERT(next.size_bytes == 0);
 
   auto pc_port_data = dma.read_and_advance();
-  assert(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
   auto wind_data = dma.read_and_advance();
-  assert(wind_data.size_bytes == sizeof(WindWork));
+  ASSERT(wind_data.size_bytes == sizeof(WindWork));
   memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -473,7 +473,7 @@ void Tie3::render_tree_wind(int idx,
     // auto& mat = tree.instance_info->operator[](inst_id).matrix;
     auto mat = info.matrix;
 
-    assert(info.wind_idx * 4 <= m_wind_vectors.size());
+    ASSERT(info.wind_idx * 4 <= m_wind_vectors.size());
     do_wind_math(info.wind_idx, m_wind_vectors.data(), m_wind_data,
                  info.stiffness * m_wind_multiplier, mat);
 
@@ -553,7 +553,7 @@ void Tie3::render_tree_wind(int idx,
                          (void*)0);
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
     }
   }
@@ -677,7 +677,7 @@ void Tie3::render_tree(int idx,
         glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     if (m_debug_wireframe) {

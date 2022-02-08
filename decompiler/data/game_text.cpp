@@ -13,14 +13,14 @@ namespace {
 template <typename T>
 T get_word(const LinkedWord& word) {
   T result;
-  assert(word.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
   static_assert(sizeof(T) == 4, "bad get_word size");
   memcpy(&result, &word.data, 4);
   return result;
 }
 
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
-  assert(word.kind() == LinkedWord::PTR);
+  ASSERT(word.kind() == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id());
 }
 
@@ -52,7 +52,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
   // type tag for game-text-info
   if (words.at(offset).kind() != LinkedWord::TYPE_PTR ||
       words.front().symbol_name() != "game-text-info") {
-    assert(false);
+    ASSERT(false);
   }
   read_words.at(offset)++;
   offset++;
@@ -70,7 +70,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
   read_words.at(offset)++;
   auto group_label = get_label(data, words.at(offset++));
   auto group_name = data.linked_data.get_goal_string_by_label(group_label);
-  assert(group_name == "common");
+  ASSERT(group_name == "common");
   // remember that we read these bytes
   auto group_start = (group_label.offset / 4) - 1;
   for (int j = 0; j < align16(8 + 1 + (int)group_name.length()) / 4; j++) {
@@ -94,7 +94,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 
     // no duplicate ids
     if (result.text.find(text_id) != result.text.end()) {
-      assert(false);
+      ASSERT(false);
     }
 
     // escape characters
@@ -126,7 +126,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
       std::string debug;
       data.linked_data.append_word_to_string(debug, words.at(i));
       printf("[%d] %d 0x%s\n", i, int(read_words[i]), debug.c_str());
-      assert(false);
+      ASSERT(false);
     }
   }
 

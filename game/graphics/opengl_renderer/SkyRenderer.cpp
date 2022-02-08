@@ -58,16 +58,16 @@ void SkyBlendHandler::render(DmaFollower& dma,
   m_gpu_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
-  assert(data0.vif1() == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.size_bytes == 0);
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     // sky renderer didn't run, let's just get out of here.
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
@@ -79,32 +79,32 @@ void SkyBlendHandler::render(DmaFollower& dma,
 
   // first is the set-display-gs-state
   auto set_display = dma.read_and_advance();
-  assert(set_display.size_bytes == 8 * 16);
+  ASSERT(set_display.size_bytes == 8 * 16);
 
   handle_sky_copies(dma, render_state, prof);
 
   auto reset_alpha = dma.read_and_advance();
-  assert(reset_alpha.size_bytes == 16 * 2);
+  ASSERT(reset_alpha.size_bytes == 16 * 2);
 
   auto reset_gs = dma.read_and_advance();
-  assert(reset_gs.size_bytes == 16 * 8);
+  ASSERT(reset_gs.size_bytes == 16 * 8);
 
   auto empty = dma.read_and_advance();
-  assert(empty.size_bytes == 0);
-  assert(empty.vif0() == 0);
-  assert(empty.vif1() == 0);
+  ASSERT(empty.size_bytes == 0);
+  ASSERT(empty.vif0() == 0);
+  ASSERT(empty.vif1() == 0);
 
   if (dma.current_tag().kind != DmaTag::Kind::CALL) {
     auto tfrag_prof = prof.make_scoped_child("tfrag-trans");
     m_tfrag_renderer.render(dma, render_state, tfrag_prof);
   } else {
-    assert(dma.current_tag().kind == DmaTag::Kind::CALL);
+    ASSERT(dma.current_tag().kind == DmaTag::Kind::CALL);
     dma.read_and_advance();
     dma.read_and_advance();  // cnt
-    assert(dma.current_tag().kind == DmaTag::Kind::RET);
+    ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
     dma.read_and_advance();  // ret
     dma.read_and_advance();  // ret
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
   }
 }
 
@@ -130,21 +130,21 @@ void SkyRenderer::render(DmaFollower& dma,
   m_frame_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
-  assert(data0.vif1() == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.size_bytes == 0);
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     // sky renderer didn't run, let's just get out of here.
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
   auto setup_packet = dma.read_and_advance();
-  assert(setup_packet.size_bytes == 16 * 4);
+  ASSERT(setup_packet.size_bytes == 16 * 4);
   m_direct_renderer.render_gif(setup_packet.data, setup_packet.size_bytes, render_state, prof);
 
   if (dma.current_tag().qwc == 5) {
@@ -159,9 +159,9 @@ void SkyRenderer::render(DmaFollower& dma,
     while (dma.current_tag().kind == DmaTag::Kind::CNT) {
       m_frame_stats.gif_packets++;
       auto data = dma.read_and_advance();
-      assert(data.vifcode0().kind == VifCode::Kind::NOP);
-      assert(data.vifcode1().kind == VifCode::Kind::DIRECT);
-      assert(data.vifcode1().immediate == data.size_bytes / 16);
+      ASSERT(data.vifcode0().kind == VifCode::Kind::NOP);
+      ASSERT(data.vifcode1().kind == VifCode::Kind::DIRECT);
+      ASSERT(data.vifcode1().immediate == data.size_bytes / 16);
       if (m_enabled) {
         m_direct_renderer.render_gif(data.data, data.size_bytes, render_state, prof);
       }
@@ -169,17 +169,17 @@ void SkyRenderer::render(DmaFollower& dma,
     }
 
     auto empty = dma.read_and_advance();
-    assert(empty.size_bytes == 0);
-    assert(empty.vif0() == 0);
-    assert(empty.vif1() == 0);
+    ASSERT(empty.size_bytes == 0);
+    ASSERT(empty.vif0() == 0);
+    ASSERT(empty.vif1() == 0);
 
-    assert(dma.current_tag().kind == DmaTag::Kind::CALL);
+    ASSERT(dma.current_tag().kind == DmaTag::Kind::CALL);
     dma.read_and_advance();
     dma.read_and_advance();  // cnt
-    assert(dma.current_tag().kind == DmaTag::Kind::RET);
+    ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
     dma.read_and_advance();  // ret
     dma.read_and_advance();  // ret
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
   } else {
     while (dma.current_tag_offset() != render_state->next_bucket) {
       auto data = dma.read_and_advance();
@@ -190,7 +190,7 @@ void SkyRenderer::render(DmaFollower& dma,
 
       if (dma.current_tag_offset() == render_state->default_regs_buffer) {
         dma.read_and_advance();  // cnt
-        assert(dma.current_tag().kind == DmaTag::Kind::RET);
+        ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
         dma.read_and_advance();  // ret
       }
     }

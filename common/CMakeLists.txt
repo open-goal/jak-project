@@ -26,6 +26,7 @@ add_library(common
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
+        util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
         util/dgo_util.cpp

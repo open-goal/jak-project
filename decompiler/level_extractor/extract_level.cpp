@@ -17,7 +17,7 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
   bool found = false;
   for (auto& file : records) {
     if (file.name.length() > 4 && file.name.substr(file.name.length() - 4) == "-vis") {
-      assert(!found);
+      ASSERT(!found);
       found = true;
       result = file;
     }
@@ -68,13 +68,13 @@ void extract_from_level(ObjectFileDB& db,
   fmt::print("Processing level {} ({})\n", dgo_name, level_name);
   auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
-  assert(ok);
+  ASSERT(ok);
 
   level_tools::DrawStats draw_stats;
   // draw_stats.debug_print_dma_data = true;
   level_tools::BspHeader bsp_header;
   bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats);
-  assert((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
+  ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
 
   const std::set<std::string> tfrag_trees = {
       "drawable-tree-tfrag",     "drawable-tree-trans-tfrag",  "drawable-tree-dirt-tfrag",
@@ -86,7 +86,7 @@ void extract_from_level(ObjectFileDB& db,
     if (tfrag_trees.count(draw_tree->my_type())) {
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
       fmt::print("  extracting tree {}\n", draw_tree->my_type());
-      assert(as_tfrag_tree);
+      ASSERT(as_tfrag_tree);
       std::vector<std::pair<int, int>> expected_missing_textures;
       auto it = hacks.missing_textures_by_level.find(level_name);
       if (it != hacks.missing_textures_by_level.end()) {
@@ -98,7 +98,7 @@ void extract_from_level(ObjectFileDB& db,
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       fmt::print("  extracting TIE\n");
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
-      assert(as_tie_tree);
+      ASSERT(as_tie_tree);
       extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
                   bsp_header.texture_remap_table, tex_db, tfrag_level, dump_level);
     } else {

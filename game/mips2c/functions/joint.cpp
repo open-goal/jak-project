@@ -165,7 +165,7 @@ u64 execute(void* ctxt) {
         // nop                                            // sll r0, r0, 0
         // nop                                            // sll r0, r0, 0
         next_block = 0x4d7666d9 ^ c->gprs[t3].du32[0];    // jr t3
-        assert(next_block < 33);
+        ASSERT(next_block < 33);
         break;
         // nop                                            // sll r0, r0, 0
 
@@ -936,7 +936,7 @@ u64 execute(void* ctxt) {
         // nop                                            // sll r0, r0, 0
         // nop                                            // sll r0, r0, 0
         next_block = 0x7b2191d ^ c->gprs[t3].du32[0];     // jr t3
-        assert(next_block < 33);
+        ASSERT(next_block < 33);
         break;
         // nop                                            // sll r0, r0, 0
 
@@ -1552,7 +1552,7 @@ u64 execute(void* ctxt) {
         // nop                                            // sll r0, r0, 0
         // nop                                            // sll r0, r0, 0
         next_block = 0x3ee6b6f0 ^ c->gprs[t3].du32[0];    // jr t3
-        assert(next_block < 33);
+        ASSERT(next_block < 33);
         break;
         // nop                                            // sll r0, r0, 0
 

@@ -15,7 +15,7 @@
  */
 #include <vector>
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 class IRegSet {
  public:
@@ -27,7 +27,7 @@ class IRegSet {
    */
   void insert(int x) {
     resize(x + 1);
-    assert(m_bits > x);
+    ASSERT(m_bits > x);
     auto word = x / 64;
     auto bit = x % 64;
     m_data.at(word) |= (1ll << bit);

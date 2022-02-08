@@ -3,7 +3,7 @@
 
 #include "compress.h"
 #include "third-party/zstd/lib/zstd.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace compression {
 
@@ -18,7 +18,7 @@ std::vector<u8> compress_zstd(const void* data, size_t size) {
       ZSTD_compress(result.data() + sizeof(size_t), max_compressed, data, size, 1);
   if (ZSTD_isError(compressed_size)) {
     printf("ZSTD error: %s\n", ZSTD_getErrorName(compressed_size));
-    assert(false);
+    ASSERT(false);
   }
   result.resize(sizeof(size_t) + compressed_size);
   return result;
@@ -29,7 +29,7 @@ std::vector<u8> compress_zstd(const void* data, size_t size) {
  * decompressed data's size.
  */
 std::vector<u8> decompress_zstd(const void* data, size_t size) {
-  assert(size >= sizeof(size_t));
+  ASSERT(size >= sizeof(size_t));
   size_t decompressed_size;
   memcpy(&decompressed_size, data, sizeof(size_t));
   size_t compressed_size = size - sizeof(size_t);
@@ -39,10 +39,10 @@ std::vector<u8> decompress_zstd(const void* data, size_t size) {
                                      (const u8*)data + sizeof(size_t), compressed_size);
   if (ZSTD_isError(decomp_size)) {
     printf("ZSTD error: %s\n", ZSTD_getErrorName(compressed_size));
-    assert(false);
+    ASSERT(false);
   }
 
-  assert(decomp_size == decompressed_size);
+  ASSERT(decomp_size == decompressed_size);
   return result;
 }
 }  // namespace compression

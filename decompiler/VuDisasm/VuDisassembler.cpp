@@ -4,7 +4,7 @@
 #include "VuDisassembler.h"
 #include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 
@@ -226,7 +226,7 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
  * Add a VU operation to the decode table
  */
 VuDisassembler::OpInfo& VuDisassembler::add_op(VuInstrK kind, const std::string& name) {
-  assert((int)kind < (int)VuInstrK::INVALID);
+  ASSERT((int)kind < (int)VuInstrK::INVALID);
   auto& elt = m_op_info[(int)kind];
   elt.name = name;
   elt.known = true;
@@ -291,14 +291,14 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
         return VuInstrK::ERLENG;
     }
     fmt::print("Unknown lower special: 0b{:b}\n", in);
-    assert(false);
+    ASSERT(false);
   } else {
-    assert((op & 0b1000000) == 0);
-    assert(op < 64);
+    ASSERT((op & 0b1000000) == 0);
+    ASSERT(op < 64);
     auto elt = m_lower_op6_table[(int)op];
     if (!elt.known) {
       fmt::print("Invalid lower op6: 0b{:b} 0b{:b} 0x{:x}\n", op, in, in);
-      assert(false);
+      ASSERT(false);
     }
     return elt.kind;
   }
@@ -354,20 +354,20 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
       case 0b01011'1111'10:
         return VuInstrK::OPMULA;
       case 0b01011'1111'11:
-        assert(upper_dest_mask(in) == 0);
-        assert(upper_fs(in) == 0);
-        assert(upper_ft(in) == 0);
+        ASSERT(upper_dest_mask(in) == 0);
+        ASSERT(upper_fs(in) == 0);
+        ASSERT(upper_ft(in) == 0);
         return VuInstrK::NOP;
         break;
 
       default:
         fmt::print("Invalid op11: 0b{:b}\n", upper_op11(in));
-        assert(false);
+        ASSERT(false);
     }
   }
   if (!upper_info.known) {
     fmt::print("Invalid upper op6: 0b{:b}\n", upper_op6(in));
-    assert(false);
+    ASSERT(false);
   }
   return upper_info.kind;
 }
@@ -382,14 +382,14 @@ s32 VuDisassembler::get_instruction_index_mask() {
     case VU1:
       return (16384 / 8) - 1;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
 VuProgram VuDisassembler::disassemble(void* data, int size_bytes, bool debug_print) {
   auto bytes = (u8*)data;
   // should be 8 byte aligned size.
-  assert((size_bytes & 0x7) == 0);
+  ASSERT((size_bytes & 0x7) == 0);
   VuProgram prog;
   int instruction_count = size_bytes / 8;
   for (int i = 0; i < instruction_count; i++) {
@@ -426,14 +426,14 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
   auto& inst = info(kind);
   if (!inst.known) {
     fmt::print("instr idx {} is unknown\n", (int)kind);
-    assert(false);
+    ASSERT(false);
   }
   for (auto& step : inst.decode) {
     s64 value = -1;
     switch (step.field) {
       case VuDecodeStep::FieldK::IEMDT:
         value = data >> 25;
-        assert((value & 3) == 0);
+        ASSERT((value & 3) == 0);
         break;
       case VuDecodeStep::FieldK::DST_MASK:
         value = upper_dest_mask(data);
@@ -485,7 +485,7 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
         break;
 
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     switch (step.atom) {
@@ -496,22 +496,22 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
         instr.mask = value;
         break;
       case VuDecodeStep::AtomK::DST_VF:
-        assert(!instr.dst);
+        ASSERT(!instr.dst);
         instr.dst = VuInstructionAtom::make_vf(value);
         break;
       case VuDecodeStep::AtomK::DST_VI:
-        assert(!instr.dst);
+        ASSERT(!instr.dst);
         instr.dst = VuInstructionAtom::make_vi(value);
         break;
       case VuDecodeStep::AtomK::SRC_VF:
         instr.src.push_back(VuInstructionAtom::make_vf(value));
         break;
       case VuDecodeStep::AtomK::BC:
-        assert(!instr.bc);
+        ASSERT(!instr.bc);
         instr.bc = value;
         break;
       case VuDecodeStep::AtomK::ASSERT_ZERO:
-        assert(value == 0);
+        ASSERT(value == 0);
         break;
       case VuDecodeStep::AtomK::SRC_VI:
         instr.src.push_back(VuInstructionAtom::make_vi(value));
@@ -526,15 +526,15 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
         instr.src.push_back(VuInstructionAtom::make_imm(value));
         break;
       case VuDecodeStep::AtomK::DST_ACC:
-        assert(!instr.dst);
+        ASSERT(!instr.dst);
         instr.dst = VuInstructionAtom::make_acc();
         break;
       case VuDecodeStep::AtomK::DST_Q:
-        assert(!instr.dst);
+        ASSERT(!instr.dst);
         instr.dst = VuInstructionAtom::make_q();
         break;
       case VuDecodeStep::AtomK::DST_P:
-        assert(!instr.dst);
+        ASSERT(!instr.dst);
         instr.dst = VuInstructionAtom::make_p();
         break;
       case VuDecodeStep::AtomK::SRC_Q:
@@ -553,7 +553,7 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
         instr.first_src_field = value;
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -862,7 +862,7 @@ std::string VuDisassembler::to_string(const VuInstruction& instr) const {
 
   auto& in = info(instr.kind);
   if (!in.known) {
-    assert(false);
+    ASSERT(false);
   }
 
   std::string result;
@@ -934,7 +934,7 @@ std::string VuDisassembler::to_string(const VuInstruction& instr) const {
     idx++;
   }
 
-  assert(!close);
+  ASSERT(!close);
 
   if (comma) {
     result.pop_back();
@@ -1046,7 +1046,7 @@ std::string get_label_name(const VuInstructionPair& pair,
       return arg.to_string(label_names);
     }
   }
-  assert(false);
+  ASSERT(false);
 }
 
 std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog) const {

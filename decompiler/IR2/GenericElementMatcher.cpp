@@ -594,7 +594,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -661,7 +661,7 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
       }
       return false;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -719,7 +719,7 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
       }
       return false;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }

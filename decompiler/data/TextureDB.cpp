@@ -1,7 +1,7 @@
 #include "TextureDB.h"
 
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 
@@ -16,17 +16,17 @@ void TextureDB::add_texture(u32 tpage,
   if (existing_tpage_name == tpage_names.end()) {
     tpage_names[tpage] = tpage_name;
   } else {
-    assert(existing_tpage_name->second == tpage_name);
+    ASSERT(existing_tpage_name->second == tpage_name);
   }
 
   u32 combo_id = (tpage << 16) | texid;
   auto existing_tex = textures.find(combo_id);
   if (existing_tex != textures.end()) {
-    assert(existing_tex->second.name == tex_name);
-    assert(existing_tex->second.w == w);
-    assert(existing_tex->second.h == h);
-    assert(existing_tex->second.rgba_bytes == data);
-    assert(existing_tex->second.page == tpage);
+    ASSERT(existing_tex->second.name == tex_name);
+    ASSERT(existing_tex->second.w == w);
+    ASSERT(existing_tex->second.h == h);
+    ASSERT(existing_tex->second.rgba_bytes == data);
+    ASSERT(existing_tex->second.page == tpage);
   } else {
     auto& new_tex = textures[combo_id];
     new_tex.rgba_bytes = data;

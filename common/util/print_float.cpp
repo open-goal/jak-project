@@ -4,7 +4,7 @@
 #include "common/goal_constants.h"
 #include "third-party/dragonbox.h"
 #include "print_float.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Convert a float to a string. The string is _always_ in this format:
@@ -28,7 +28,7 @@ std::string meters_to_string(float value, bool append_trailing_decimal) {
 }
 
 int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {
-  assert(std::isfinite(value));
+  ASSERT(std::isfinite(value));
   // dragonbox gives us:
   //  - an integer, representing the decimal value
   //  - sign

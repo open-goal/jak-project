@@ -11,7 +11,7 @@
 #include "common/type_system/TypeSystem.h"
 
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace fs = std::filesystem;
 
@@ -23,7 +23,7 @@ struct Ram {
 
   template <typename T>
   T read(u32 addr) const {
-    assert(in_memory<T>(addr));
+    ASSERT(in_memory<T>(addr));
     T result;
     memcpy(&result, data + addr, sizeof(T));
     return result;
@@ -41,7 +41,7 @@ struct Ram {
   std::string string(u32 addr) const {
     std::string result;
     while (true) {
-      assert(in_memory<u8>(addr));
+      ASSERT(in_memory<u8>(addr));
       auto next = read<u8>(addr++);
       if (next) {
         result.push_back(next);
@@ -134,7 +134,7 @@ SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
     if (str) {
       auto name = ram.string(str + 4);
       if (name != "asize-of-basic-func") {
-        assert(map.name_to_addr.find(name) == map.name_to_addr.end());
+        ASSERT(map.name_to_addr.find(name) == map.name_to_addr.end());
         map.name_to_addr[name] = sym;
         map.addr_to_name[sym] = name;
         map.name_to_value[name] = ram.word(sym);
@@ -142,7 +142,7 @@ SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
     }
   }
 
-  assert(map.name_to_addr.size() == map.addr_to_name.size());
+  ASSERT(map.name_to_addr.size() == map.addr_to_name.size());
   fmt::print("found {} symbols.\n", map.name_to_addr.size());
   return map;
 }
@@ -153,7 +153,7 @@ std::unordered_map<u32, std::string> build_type_map(const Ram& ram,
   std::unordered_map<u32, std::string> result;
   fmt::print("finding types...\n");
   u32 type_of_type = ram.word(s7 + FIX_SYM_TYPE_TYPE);
-  assert(type_of_type == ram.word(symbols.name_to_addr.at("type")));
+  ASSERT(type_of_type == ram.word(symbols.name_to_addr.at("type")));
 
   for (const auto& [name, addr] : symbols.name_to_addr) {
     u32 value = ram.word(addr);
@@ -588,7 +588,7 @@ int main(int argc, char** argv) {
   } else if (data.size() == 127 * one_mb) {
     fmt::print("Got a 127MB file. Assuming this is a dump with the first 1 MB missing.\n");
     data.insert(data.begin(), one_mb, 0);
-    assert(data.size() == 128 * one_mb);
+    ASSERT(data.size() == 128 * one_mb);
   } else {
     fmt::print("Invalid size: {} bytes\n", data.size());
   }

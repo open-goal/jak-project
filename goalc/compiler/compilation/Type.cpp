@@ -31,7 +31,7 @@ RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
   auto info = m_ts.lookup_method(compile_time_type.base_type(), method_name);
   info.type = info.type.substitute_for_method_call(compile_time_type.base_type());
   auto offset_of_method = get_offset_of_method(info.id);
-  assert(type->type() == TypeSpec("type"));
+  ASSERT(type->type() == TypeSpec("type"));
 
   auto fe = env->function_env();
 
@@ -42,10 +42,10 @@ RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
   auto loc_type = m_ts.make_pointer_typespec(info.type);
   auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, type, offset_of_method);
   auto di = m_ts.get_deref_info(loc_type);
-  assert(di.can_deref);
-  assert(di.mem_deref);
-  assert(di.sign_extend == false);
-  assert(di.load_size == 4);
+  ASSERT(di.can_deref);
+  ASSERT(di.mem_deref);
+  ASSERT(di.sign_extend == false);
+  ASSERT(di.load_size == 4);
 
   auto deref = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
   return deref->to_reg(form, env);
@@ -111,10 +111,10 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
   auto loc_type = m_ts.make_pointer_typespec(method_info.type);
   auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, runtime_type, offset_of_method);
   auto di = m_ts.get_deref_info(loc_type);
-  assert(di.can_deref);
-  assert(di.mem_deref);
-  assert(di.sign_extend == false);
-  assert(di.load_size == 4);
+  ASSERT(di.can_deref);
+  ASSERT(di.mem_deref);
+  ASSERT(di.sign_extend == false);
+  ASSERT(di.load_size == 4);
 
   auto deref = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
   return deref->to_reg(form, env);
@@ -472,7 +472,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
       lambda.params.push_back(parm);
     }
   });
-  assert(lambda.params.size() == lambda_ts.arg_count());
+  ASSERT(lambda.params.size() == lambda_ts.arg_count());
   // todo, verify argument list types (check that first arg is _type_ for methods that aren't "new")
   lambda.debug_name = fmt::format("(method {} {})", method_name.print(), type_name.print());
 
@@ -602,7 +602,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   new_func_env->finish();
 
   auto obj_env = new_func_env->file_env();
-  assert(obj_env);
+  ASSERT(obj_env);
   if (new_func_env->settings.save_code) {
     obj_env->add_function(std::move(new_func_env));
   }
@@ -634,8 +634,8 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
     auto loc =
         fe->alloc_val<MemoryOffsetConstantVal>(loc_type, object, field.field.offset() + offset);
     auto di = m_ts.get_deref_info(loc_type);
-    assert(di.can_deref);
-    assert(di.mem_deref);
+    ASSERT(di.can_deref);
+    ASSERT(di.mem_deref);
     result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
     result->mark_as_settable();
   } else {
@@ -701,7 +701,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           fe->alloc_val<MemoryDerefVal>(deref_info.result_type, result, MemLoadInfo(deref_info));
       result->mark_as_settable();
     } else {
-      assert(false);
+      ASSERT(false);
     }
     return result;
   }
@@ -770,7 +770,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       }
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
-      assert(di.can_deref);
+      ASSERT(di.can_deref);
       if (has_constant_idx) {
         result = fe->alloc_val<MemoryOffsetConstantVal>(di.result_type, result,
                                                         di.stride * constant_index_value);
@@ -787,8 +787,8 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       }
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
-      assert(di.mem_deref);
-      assert(di.can_deref);
+      ASSERT(di.mem_deref);
+      ASSERT(di.can_deref);
       Val* loc = nullptr;
       if (has_constant_idx) {
         loc = fe->alloc_val<MemoryOffsetConstantVal>(result->type(), result,
@@ -812,9 +812,9 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       auto di = m_ts.get_deref_info(loc_type);
       // and the result
       auto base_type = di.result_type;
-      assert(base_type == result->type().get_single_arg());
-      assert(di.mem_deref);
-      assert(di.can_deref);
+      ASSERT(base_type == result->type().get_single_arg());
+      ASSERT(di.mem_deref);
+      ASSERT(di.can_deref);
       Val* loc = nullptr;
 
       if (has_constant_idx) {
@@ -1135,7 +1135,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
 
     int stride =
         align(type_info->get_size_in_memory(), type_info->get_inline_array_stride_alignment());
-    assert(stride == info.stride);
+    ASSERT(stride == info.stride);
 
     int size_in_bytes = info.stride * constant_count;
     auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, 16);
@@ -1148,7 +1148,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                            type_of_object.print());
     }
     auto ti_as_struct = dynamic_cast<StructureType*>(ti);
-    assert(ti_as_struct);
+    ASSERT(ti_as_struct);
 
     if (ti_as_struct->is_dynamic()) {
       throw_compiler_error(form, "Cannot stack allocate the dynamic type {}.",
@@ -1395,7 +1395,7 @@ Val* Compiler::compile_enum_lookup(const goos::Object& form,
                                    Env* env) {
   bool success;
   u64 value = enum_lookup(form, e, rest, true, &success);
-  assert(success);
+  ASSERT(success);
   auto result = compile_integer(value, env);
   result->set_type(TypeSpec(e->get_name()));
   return result;

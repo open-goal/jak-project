@@ -42,7 +42,7 @@ bool va_check(
     const std::vector<std::optional<goos::ObjectType>>& unnamed,
     const std::unordered_map<std::string, std::pair<bool, std::optional<goos::ObjectType>>>& named,
     std::string* err_string) {
-  assert(args.rest.empty());
+  ASSERT(args.rest.empty());
   if (unnamed.size() != args.unnamed.size()) {
     *err_string = "Got " + std::to_string(args.unnamed.size()) + " arguments, but expected " +
                   std::to_string(unnamed.size());

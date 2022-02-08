@@ -22,7 +22,7 @@ void EmptyBucketRenderer::render(DmaFollower& dma,
   // NEXT
   auto first_tag = dma.current_tag();
   dma.read_and_advance();
-  assert(first_tag.kind == DmaTag::Kind::NEXT && first_tag.qwc == 0);
+  ASSERT(first_tag.kind == DmaTag::Kind::NEXT && first_tag.qwc == 0);
 
   // CALL
   auto call_tag = dma.current_tag();
@@ -30,22 +30,22 @@ void EmptyBucketRenderer::render(DmaFollower& dma,
   if (!(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0)) {
     fmt::print("Bucket renderer {} ({}) was supposed to be empty, but wasn't\n", m_my_id, m_name);
   }
-  assert(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0);
+  ASSERT(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0);
 
   // in the default reg buffer:
-  assert(dma.current_tag_offset() == render_state->default_regs_buffer);
+  ASSERT(dma.current_tag_offset() == render_state->default_regs_buffer);
   dma.read_and_advance();
-  assert(dma.current_tag().kind == DmaTag::Kind::RET);
+  ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
   dma.read_and_advance();
 
   // NEXT to next buffer
   auto to_next_buffer = dma.current_tag();
-  assert(to_next_buffer.kind == DmaTag::Kind::NEXT);
-  assert(to_next_buffer.qwc == 0);
+  ASSERT(to_next_buffer.kind == DmaTag::Kind::NEXT);
+  ASSERT(to_next_buffer.qwc == 0);
   dma.read_and_advance();
 
   // and we should now be in the next bucket!
-  assert(dma.current_tag_offset() == render_state->next_bucket);
+  ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 }
 
 SkipRenderer::SkipRenderer(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {}

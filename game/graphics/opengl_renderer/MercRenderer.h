@@ -472,7 +472,7 @@ class MercRenderer : public BucketRenderer {
     //    }
     // sketchy...
     //    qw &= 1023;
-    assert(qw * 16 < sizeof(m_buffer.data));
+    ASSERT(qw * 16 < sizeof(m_buffer.data));
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         memcpy(m_buffer.data + qw * 16 + i * 4, data.data + i, 4);

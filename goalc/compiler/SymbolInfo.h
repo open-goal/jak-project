@@ -5,7 +5,7 @@
 #include <set>
 #include "common/util/Trie.h"
 #include "common/goos/Object.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Info about a single symbol, representing one of:

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <ctime>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Timer for measuring time elapsed with clock_monotonic

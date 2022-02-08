@@ -216,7 +216,7 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
         named_args.push_back(
             pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_vf_field())));
       } else {
-        assert(false);
+        ASSERT(false);
       }
     } else if (func.allows_modifier(MOD::OFFSET) && atom.kind == InstructionAtom::AtomKind::IMM) {
       // Handle offsetting

@@ -356,7 +356,7 @@ void BitfieldAccessElement::push_pcpyud(const TypeSystem& ts, FormPool& pool, co
   // look for a 64-bit field
   auto type = ts.lookup_type(m_type);
   auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-  assert(as_bitfield);
+  ASSERT(as_bitfield);
   auto field = try_find_field(ts, as_bitfield, 64, 64, true);
   if (field) {
     auto result =
@@ -395,7 +395,7 @@ std::optional<BitField> BitfieldAccessElement::get_set_field_0(const TypeSystem&
   u64 mask = step.amount;
   auto type = ts.lookup_type(m_type);
   auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-  assert(as_bitfield);
+  ASSERT(as_bitfield);
   // use the mask to figure out the field.
   auto field = find_field_from_mask(ts, as_bitfield, ~mask, m_got_pcpyud);
   if (field) {
@@ -429,7 +429,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     int start_bit = pcpyud_offset + shift_size - size;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
     auto result =
         pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
@@ -443,7 +443,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     int start_bit = 0 + pcpyud_offset;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
     auto result =
         pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
@@ -460,7 +460,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     int start_bit = 64;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
     auto result =
         pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
@@ -484,7 +484,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
     auto result =
         pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
@@ -506,7 +506,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     }
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     auto field = find_field_from_mask(ts, as_bitfield, m_steps.at(0).amount, false);  // todo PCPYUP
     if (field) {
       auto get_field = pool.alloc_element<DerefElement>(m_base, false,
@@ -530,10 +530,10 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     }
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     // use the mask to figure out the field.
     auto field = find_field_from_mask(ts, as_bitfield, ~mask, m_got_pcpyud);
-    assert(field);
+    ASSERT(field);
     bool is_signed =
         ts.tc(TypeSpec("int"), field->type()) && !ts.tc(TypeSpec("uint"), field->type());
 
@@ -564,9 +564,9 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     u64 value = step.amount;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     auto field = find_field_from_mask(ts, as_bitfield, value, m_got_pcpyud);
-    assert(field);
+    ASSERT(field);
     bool is_signed =
         ts.tc(TypeSpec("int"), field->type()) && !ts.tc(TypeSpec("uint"), field->type());
 
@@ -593,10 +593,10 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    assert(as_bitfield);
+    ASSERT(as_bitfield);
     // use the mask to figure out the field.
     auto field = find_field_from_mask(ts, as_bitfield, ~mask, m_got_pcpyud);
-    assert(field);
+    ASSERT(field);
 
     auto val = get_bitfield_initial_set(step.value, as_bitfield, ts, pcpyud_offset);
 
@@ -634,7 +634,7 @@ std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
   GenericElement* next = input;
 
   while (next) {
-    assert(next->elts().size() == 2);
+    ASSERT(next->elts().size() == 2);
     result.push_back(next->elts().at(1));
     auto next_next = strip_int_or_uint_cast(next->elts().at(0));
     next = next_next->try_as_element<GenericElement>();
@@ -808,7 +808,7 @@ std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldT
 
       BitField field_info;
       if (!type_info->lookup_field(maybe_field->field_name, &field_info)) {
-        assert(false);
+        ASSERT(false);
       }
       if (field_info.type() == TypeSpec("symbol") || field_info.type() == TypeSpec("type")) {
         maybe_field->value = strip_int_or_uint_cast(maybe_field->value);
@@ -913,7 +913,7 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
                             FormPool& pool,
                             const Env& env,
                             Form* in) {
-  assert(type_info->is_bitfield());
+  ASSERT(type_info->is_bitfield());
   auto integer = get_goal_integer_constant(strip_int_or_uint_cast(in), env);
   if (integer) {
     return cast_to_bitfield_enum(type_info, pool, env, *integer);
@@ -928,7 +928,7 @@ Form* cast_to_int_enum(const EnumType* type_info,
                        FormPool& pool,
                        const Env& env,
                        Form* in) {
-  assert(!type_info->is_bitfield());
+  ASSERT(!type_info->is_bitfield());
   auto integer = get_goal_integer_constant(strip_int_or_uint_cast(in), env);
   if (integer) {
     return cast_to_int_enum(type_info, pool, env, *integer);
@@ -939,7 +939,7 @@ Form* cast_to_int_enum(const EnumType* type_info,
 }
 
 Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
-  assert(!type_info->is_bitfield());
+  ASSERT(!type_info->is_bitfield());
   auto entry = decompile_int_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   auto oper = GenericOperator::make_function(
       pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
@@ -948,7 +948,7 @@ Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env
 }
 
 Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
-  assert(type_info->is_bitfield());
+  ASSERT(type_info->is_bitfield());
   auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   auto oper = GenericOperator::make_function(
       pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));

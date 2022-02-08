@@ -60,7 +60,7 @@ const EncodeInfo* GameTextFontBank::find_encode_to_game(const std::string& in, i
       continue;
 
     bool found = true;
-    for (int i = 0; found && i < (int)info.chars.length() && i + off < in.size(); ++i) {
+    for (int i = 0; found && i < (int)info.chars.length() && i + off < (int)in.size(); ++i) {
       if (in.at(i + off) != info.chars.at(i)) {
         found = false;
       }
@@ -101,7 +101,7 @@ std::string GameTextFontBank::replace_to_game(std::string& str) const {
 std::string GameTextFontBank::encode_utf8_to_game(std::string& str) const {
   std::string new_str;
 
-  for (int i = 0; i < str.length();) {
+  for (int i = 0; i < (int)str.length();) {
     auto remap = find_encode_to_game(str, i);
     if (!remap) {
       new_str.push_back(str.at(i));

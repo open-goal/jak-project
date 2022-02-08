@@ -7,7 +7,7 @@
 
 #include "game/runtime.h"
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * GOAL pointer to a T.  Represented as a 32-bit unsigned offset from g_ee_main_mem.
@@ -36,7 +36,7 @@ struct Ptr {
    * Dereference a pointer. Will error if you do this on a null pointer.
    */
   T* operator->() {
-    assert(offset);
+    ASSERT(offset);
     return (T*)(g_ee_main_mem + offset);
   }
 
@@ -44,7 +44,7 @@ struct Ptr {
    * Dereference a pointer. Will error if you do this on a null pointer.
    */
   T& operator*() {
-    assert(offset);
+    ASSERT(offset);
     return *(T*)(g_ee_main_mem + offset);
   }
 

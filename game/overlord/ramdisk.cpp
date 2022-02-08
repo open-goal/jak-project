@@ -12,7 +12,7 @@
 #include "iso.h"
 #include "iso_api.h"
 #include "game/sce/iop.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 // Note - the RAMDISK code supports having multiple files, but it appears only one file can ever be
 // used at a time.
@@ -130,7 +130,7 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
     if ((file_length + gMemUsed <= gMemSize) && (gNumFiles != RAMDISK_MAX_FILES)) {
       // Create the new file record
       gFiles[gNumFiles].size = (file_length + 0xf) & 0xfffffff0;
-      assert(gFiles[gNumFiles].size + gMemUsed <
+      ASSERT(gFiles[gNumFiles].size + gMemUsed <
              gMemSize);  // ADDED! this checks for a real bug in the code.
       gFiles[gNumFiles].additional_offset = 0;
       gFiles[gNumFiles].file_id = cmd->file_id_or_ee_addr;

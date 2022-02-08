@@ -9,7 +9,7 @@
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/config.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -61,7 +61,7 @@ class Env {
   bool has_type_analysis() const { return m_has_types; }
   bool has_reg_use() const { return m_has_reg_use; }
   const RegUsageInfo& reg_use() const {
-    assert(m_has_reg_use);
+    ASSERT(m_has_reg_use);
     return m_reg_use;
   }
 
@@ -71,7 +71,7 @@ class Env {
   }
 
   RegUsageInfo& reg_use() {
-    assert(m_has_reg_use);
+    ASSERT(m_has_reg_use);
     return m_reg_use;
   }
 
@@ -88,12 +88,12 @@ class Env {
    * Get the types in registers _after_ the given operation has completed.
    */
   const TypeState& get_types_after_op(int atomic_op_id) const {
-    assert(m_has_types);
+    ASSERT(m_has_types);
     return m_op_end_types.at(atomic_op_id);
   }
 
   const TypeState& get_types_before_op(int atomic_op_id) const {
-    assert(m_has_types);
+    ASSERT(m_has_types);
     return *m_op_init_types.at(atomic_op_id);
   }
 
@@ -110,7 +110,7 @@ class Env {
    * have occurred.
    */
   const TypeState& get_types_at_block_entry(int block_id) const {
-    assert(m_has_types);
+    ASSERT(m_has_types);
     return m_block_init_types.at(block_id);
   }
 
@@ -161,7 +161,7 @@ class Env {
   const std::string& remapped_name(const std::string& name) const;
 
   bool op_id_is_eliminated_coloring_move(int op_id) const {
-    assert(has_local_vars());
+    ASSERT(has_local_vars());
     return m_var_names.eliminated_move_op_ids.find(op_id) !=
            m_var_names.eliminated_move_op_ids.end();
   }

@@ -63,7 +63,7 @@ class FormElement {
   FormElement& operator=(const FormElement& other) = delete;
 
   void mark_popped() {
-    assert(!m_popped);
+    ASSERT(!m_popped);
     m_popped = true;
   }
 
@@ -1016,22 +1016,22 @@ class GenericOperator {
   void get_modified_regs(RegSet& regs) const;
   Kind kind() const { return m_kind; }
   FixedOperatorKind fixed_kind() const {
-    assert(m_kind == Kind::FIXED_OPERATOR);
+    ASSERT(m_kind == Kind::FIXED_OPERATOR);
     return m_fixed_kind;
   }
 
   IR2_Condition::Kind condition_kind() const {
-    assert(m_kind == Kind::CONDITION_OPERATOR);
+    ASSERT(m_kind == Kind::CONDITION_OPERATOR);
     return m_condition_kind;
   }
 
   const Form* func() const {
-    assert(m_kind == Kind::FUNCTION_EXPR);
+    ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
   }
 
   Form* func() {
-    assert(m_kind == Kind::FUNCTION_EXPR);
+    ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
   }
 
@@ -1129,14 +1129,14 @@ class DerefToken {
 
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
-    assert(m_kind == Kind::FIELD_NAME);
+    ASSERT(m_kind == Kind::FIELD_NAME);
     return m_name;
   }
 
   s64 int_constant() const { return m_int_constant; }
 
   Form* expr() {
-    assert(m_kind == Kind::INTEGER_EXPRESSION);
+    ASSERT(m_kind == Kind::INTEGER_EXPRESSION);
     return m_expr;
   }
 
@@ -1862,17 +1862,17 @@ class Form {
   const FormElement* operator[](int idx) const { return m_elements.at(idx); }
   int size() const { return int(m_elements.size()); }
   FormElement* back() const {
-    assert(!m_elements.empty());
+    ASSERT(!m_elements.empty());
     return m_elements.back();
   }
 
   FormElement** back_ref() {
-    assert(!m_elements.empty());
+    ASSERT(!m_elements.empty());
     return &m_elements.back();
   }
 
   void pop_back() {
-    assert(!m_elements.empty());
+    ASSERT(!m_elements.empty());
     m_elements.pop_back();
   }
 
@@ -1986,7 +1986,7 @@ class FormPool {
   }
 
   void cache_conversion(const CfgVtx* vtx, Form* form) {
-    assert(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
+    ASSERT(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
     m_vtx_to_form_cache[vtx] = form;
   }
 
