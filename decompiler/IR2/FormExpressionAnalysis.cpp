@@ -578,11 +578,11 @@ std::vector<Form*> make_casts_if_needed(const std::vector<Form*>& in,
     }
   }
   for (size_t i = 0; i < in_types.size(); i++) {
-    auto nice_constant = try_make_constant_for_compare(in.at(i), out_type, pool, env);
+    auto nice_constant = try_make_constant_for_compare(in.at(i), actual_out, pool, env);
     if (nice_constant) {
       out.push_back(nice_constant);
     } else {
-      out.push_back(make_cast_if_needed(in.at(i), in_types.at(i), out_type, pool, env));
+      out.push_back(make_cast_if_needed(in.at(i), in_types.at(i), actual_out, pool, env));
     }
   }
   return out;
