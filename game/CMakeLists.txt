@@ -101,11 +101,9 @@ set(RUNTIME_SOURCE
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui ${DISCORD_LIB})
+target_link_libraries(runtime common fmt glfw imgui discord-rpc)
 if(WIN32)
     target_link_libraries(runtime mman)
-    set(RPC_DLL "../third-party/discord-rpc/bin/discord-rpc.dll")
-    file(COPY ${RPC_DLL} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 else()
     target_link_libraries(runtime pthread dl)
 endif()
