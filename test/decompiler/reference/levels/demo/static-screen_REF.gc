@@ -11,7 +11,7 @@
   :size-assert         #x80
   :flag-assert         #xf00100080
   (:methods
-    (idle (int int symbol) _type_ :state 14)
+    (idle (int time-frame symbol) _type_ :state 14)
     )
   )
 
@@ -119,7 +119,7 @@
 (defstate idle (static-screen)
   :virtual #t
   :enter
-  (behavior ((arg0 int) (arg1 int) (arg2 symbol))
+  (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (set! (-> *setting-control* current bg-a) 1.0)
     (set! (-> *setting-control* default bg-a) 0.0)
     (push-setting! *setting-control* self 'common-page 'set 0.0 (ash 1 (+ arg0 1)))
@@ -133,18 +133,17 @@
     (none)
     )
   :code
-  (behavior ((arg0 int) (arg1 int) (arg2 symbol))
+  (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (local-vars (v1-6 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until v1-6
       (suspend)
-      (set! v1-6
-            (or (and (> arg1 0) (>= (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) arg1))
-                (and arg2
-                     (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
-                     (cpad-pressed? 0 select start triangle circle x square)
+      (set! v1-6 (or (and (> arg1 0) (>= (- (-> *display* base-frame-counter) (-> self state-time)) arg1))
+                     (and arg2
+                          (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+                          (cpad-pressed? 0 select start triangle circle x square)
+                          )
                      )
-                )
             )
       )
     (set! (-> *setting-control* default bg-a) 1.0)
@@ -187,7 +186,3 @@
     (-> sv-16 ppointer)
     )
   )
-
-
-
-
