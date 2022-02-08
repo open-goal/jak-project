@@ -2435,9 +2435,9 @@
 ;; - Types
 
 (deftype curve (structure)
-  ((cverts     pointer  :offset-assert 0)
+  ((cverts     (inline-array vector)  :offset-assert 0)
    (num-cverts int32   :offset-assert 4)
-   (knots      (inline-array vector)  :offset-assert 8)
+   (knots      (pointer float)  :offset-assert 8)
    (num-knots  int32   :offset-assert 12)
    (length     float   :offset-assert 16)
    )
@@ -2756,13 +2756,13 @@
 (define-extern vector-circle-tangent-new (function vector vector vector vector none))
 (define-extern vector-circle-tangent (function vector vector vector vector none))
 (define-extern find-knot-span (function int int float (inline-array vector) int))
-(define-extern calculate-basis-functions-vector! (function (pointer float) int float (pointer float) (pointer float)))
+(define-extern calculate-basis-functions-vector! (function vector int float (pointer float) vector))
 
 (define-extern curve-closest-point (function curve vector float float int float float))
 (define-extern vector-plane-distance (function vector plane vector float))
 
 (define-extern curve-get-pos! (function vector float curve vector))
-(define-extern curve-evaluate! (function vector float pointer int (inline-array vector) int vector))
+(define-extern curve-evaluate! (function vector float (inline-array vector) int (pointer float) int vector))
 (define-extern curve-length (function curve float))
 (define-extern curve-copy! (function curve curve curve))
 
@@ -6115,7 +6115,7 @@
 ;; - Types
 
 (deftype frame-stats (structure)
-  ((field-time uint64 2 :offset-assert 0)
+  ((field-time int64 2 :offset-assert 0)
    (field      int32     :offset-assert 16)
    )
   :method-count-assert 9
@@ -16308,7 +16308,7 @@
 (define-extern add-debug-light (function symbol bucket-id light vector string symbol))
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 (define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
-(define-extern add-debug-curve (function symbol bucket-id pointer int (inline-array vector) int rgba symbol))
+(define-extern add-debug-curve (function symbol bucket-id (inline-array vector) int (pointer float) int rgba symbol))
 (define-extern add-debug-sphere (function symbol bucket-id vector float rgba symbol))
 (define-extern get-debug-text-3d (function debug-text-3d))
 (define-extern internal-draw-debug-text-3d (function bucket-id string vector font-color vector2h pointer))
@@ -17469,9 +17469,9 @@
   (:methods
     (current-task (_type_) game-task 9)
     (current-status (_type_) task-status 10)
-    (close-current! (_type_) none 11)
-    (close-status! (_type_ task-status) int 12)
-    (first-any (_type_ symbol) int 13)
+    (close-current! (_type_) game-task 11)
+    (close-status! (_type_ task-status) game-task 12)
+    (first-any (_type_ symbol) game-task 13)
     (reset! (_type_ symbol symbol) int 14)
     (closed? (_type_ game-task task-status) symbol 15)
     (get-reminder (_type_ int) int 16)
@@ -17578,7 +17578,7 @@
 (define-extern level-hint-spawn (function game-text-id string entity process-tree game-task none))
 (define-extern get-game-count (function int count-info))
 (define-extern activate-orb-all (function int int))
-(define-extern close-specific-task! (function game-task task-status int))
+(define-extern close-specific-task! (function game-task task-status game-task))
 (define-extern reset-all-hint-controls (function none))
 (define-extern reset-actors (function symbol none))
 (define-extern set-blackout-frames (function int int))
@@ -21193,14 +21193,14 @@
 ;; - Functions
 
 (define-extern task-status->string (function task-status string))
-(define-extern open-specific-task! (function game-task task-status int))
+(define-extern open-specific-task! (function game-task task-status game-task))
 (define-extern task-exists? (function game-task task-status symbol))
 (define-extern sages-kidnapped? (function symbol))
 
 ;; - Symbols
 
 (define-extern *null-task-control* task-control)
-(define-extern *task-controls* (array basic))
+(define-extern *task-controls* (array task-control))
 (define-extern *assistant-tasks* task-control)
 (define-extern *assistant-village2-tasks* task-control)
 (define-extern *gambler-tasks* task-control)

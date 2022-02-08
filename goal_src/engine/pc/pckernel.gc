@@ -155,6 +155,11 @@
           )
       )
     )
+  (when (actor-force-visible? obj)
+    (set! (-> *ACTOR-bank* birth-dist) (meters 10000))
+    (set! (-> *ACTOR-bank* pause-dist) (meters 10000))
+    (set! (-> *ACTOR-bank* birth-max) 10000)
+    )
 
   (none))
 
@@ -600,7 +605,8 @@
 
 (deftype entity-debug-inspect (basic)
   (
-   (scroll-y int32)
+   (scroll-y int16)
+   (scroll-y-max int16)
    (entity entity)
    (show-actor-info symbol)
    )
@@ -617,6 +623,7 @@
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     
     (set! (-> obj scroll-y) 0)
+    (set! (-> obj scroll-y-max) 0)
     (set! (-> obj entity) (the entity #f))
     (set! (-> obj show-actor-info) #f)
     obj
@@ -637,10 +644,13 @@
 (defmethod update-pad entity-debug-inspect ((obj entity-debug-inspect) (pad-idx int))
   "respond to pad inputs"
   
-  (if (cpad-pressed? pad-idx r1)
-    (1+! (-> obj scroll-y)))
+  ;; scroll up
   (if (cpad-pressed? pad-idx l1)
     (set! (-> obj scroll-y) (max 0 (1- (-> obj scroll-y)))))
+  ;; scroll down
+  (if (cpad-pressed? pad-idx r1)
+    (set! (-> obj scroll-y) (min (-> obj scroll-y-max) (1+ (-> obj scroll-y)))))
+  ;; toggle actor info
   (if (cpad-pressed? pad-idx l3)
     (not! (-> obj show-actor-info)))
     

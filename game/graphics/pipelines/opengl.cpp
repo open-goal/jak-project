@@ -150,6 +150,10 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
 
   glfwMakeContextCurrent(window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+  if (!gl_inited && !gladLoadGL()) {
+    lg::error("GL init fail");
+    return NULL;
+  }
 
   std::string image_path = fmt::format("{}/docs/favicon-nobg.png", file_util::get_project_path());
 
@@ -158,11 +162,6 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
       stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);  // rgba channels
   glfwSetWindowIcon(window, 1, images);
   stbi_image_free(images[0].pixels);
-
-  if (!gl_inited && !gladLoadGL()) {
-    lg::error("GL init fail");
-    return NULL;
-  }
   g_gfx_data = std::make_unique<GraphicsData>();
   gl_inited = true;
 
@@ -368,7 +367,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
       glfwSetWindowFocusCallback(window, FocusCallback);
 #ifdef _WIN32
-      glfwSetWindowMonitor(window, NULL, x, y - 1, vmode->width, vmode->height + 1, GLFW_DONT_CARE);
+      glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height + 1, GLFW_DONT_CARE);
 #else
       glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
@@ -400,8 +399,16 @@ static void gl_render_display(GfxDisplay* display) {
     fbuf_h--;
   }
 #endif
+  // horizontal letterbox size
   int lbox_w = (fbuf_w - width) / 2;
+  // vertical letterbox size
   int lbox_h = (fbuf_h - height) / 2;
+#ifdef _WIN32
+  if (display->fullscreen_mode() == 2) {
+    // add one pixel of vertical letterbox on borderless to make up for extra line
+    lbox_h++;
+  }
+#endif
 
   // render game!
   if (g_gfx_data->debug_gui.want_dump_replay()) {
