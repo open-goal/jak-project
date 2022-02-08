@@ -55,7 +55,11 @@ const char* jak1_get_full_level_name(char* level_name) {
     level_name = "maincave";
   }
 
-  return jak1_level_names.at(level_name).c_str();
+  const auto& nice_name = jak1_level_names.find(level_name);
+  if (nice_name != jak1_level_names.end()) {
+    return nice_name->second.c_str();
+  }
+  return "Unknown";
 };
 
 void handleDiscordReady(const DiscordUser* user) {
