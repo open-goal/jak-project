@@ -1,0 +1,26 @@
+name: Inform Pages Repo
+
+# This action triggers an action on our other repo, which will:
+# - clone this repo
+# - use the latest files to update our progress
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'goal_src/**'
+
+jobs:
+  inform:
+    name: Inform Pages Repo
+    runs-on: ubuntu-20.04
+    # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
+    timeout-minutes: 10
+    steps:
+      - name: Send Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          repository: 'open-goal/open-goal.github.io'
+          event-type: updateProgress

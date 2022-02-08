@@ -126,6 +126,15 @@
      )
     )
 
+  (cond
+    ((-> obj discord-rpc?)
+     (pc-discord-rpc-set 1)
+     )
+    (else
+     (pc-discord-rpc-set 0) 
+     )
+    )
+
   (none))
 
 (defmethod update pc-settings ((obj pc-settings))
@@ -134,6 +143,20 @@
 
   (update-from-os obj)
   (update-to-os obj)
+
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info fuel) (&-> *game-info* fuel))
+    (set! (-> info money-total) (&-> *game-info* money-total))
+    (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
+    (set! (-> info status) "Playing Jak and Daxter: TPL")
+    (set! (-> info level) (if *target*
+      (symbol->string (-> *target* current-level name)) ;; use target's level if it exists
+      (symbol->string (-> (level-get-target-inside *level*) name)) ;; use camera's level otherwise
+       )
+      )
+    (set! (-> info cutscene?) (movie?))
+    (pc-discord-rpc-update info)
+    )
 
   (when (not (-> obj use-vis?))
     (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
