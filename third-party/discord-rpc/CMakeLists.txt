@@ -1,5 +1,5 @@
 if(WIN32)
-  find_library(DISCORD_LIB NAMES discord-rpc.lib PATHS lib)
+  find_library(DISCORD_LIB NAMES discord-rpc.lib PATHS ./lib)
 else()
-  find_library(DISCORD_LIB NAMES libdiscord-rpc.so PATHS lib)
+  find_library(DISCORD_LIB NAMES libdiscord-rpc.so PATHS ./lib)
 endif()
