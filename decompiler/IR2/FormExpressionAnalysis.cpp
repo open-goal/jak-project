@@ -8,6 +8,7 @@
 #include "decompiler/IR2/bitfields.h"
 #include "common/util/BitUtils.h"
 #include "common/type_system/state.h"
+#include "common/util/print_float.h"
 #include "decompiler/IR2/ExpressionHelpers.h"
 
 /*
@@ -107,9 +108,7 @@ Form* try_cast_simplify(Form* in,
         lg::error("Floating point value {} could not be converted to meters.", *fc);
       }
     }
-  }
-
-  if (new_type == TypeSpec("degrees")) {
+  } else if (new_type == TypeSpec("degrees")) {
     auto fc = get_goal_float_constant(in);
     if (fc) {
       double div = (double)*fc / DEGREES_LENGTH;  // GOOS will use doubles here
@@ -123,20 +122,37 @@ Form* try_cast_simplify(Form* in,
         lg::error("Floating point value {} could not be converted to degrees.", *fc);
       }
     }
-  }
-
-  if (new_type == TypeSpec("handle")) {
+  } else if (new_type == TypeSpec("handle")) {
     auto in_generic = in->try_as_element<GenericElement>();
     if (in_generic && (in_generic->op().is_fixed(FixedOperatorKind::PROCESS_TO_HANDLE) ||
                        in_generic->op().is_fixed(FixedOperatorKind::PPOINTER_TO_HANDLE))) {
       return in;
     }
-  }
-
-  if (new_type == TypeSpec("process")) {
+  } else if (new_type == TypeSpec("process")) {
     auto in_generic = in->try_as_element<GenericElement>();
     if (in_generic && in_generic->op().is_fixed(FixedOperatorKind::PPOINTER_TO_PROCESS)) {
       return in;
+    }
+  } else if (new_type == TypeSpec("time-frame")) {
+    auto ic = get_goal_integer_constant(in, env);
+    if (ic) {
+      s64 value = *ic;
+      if (std::abs(value) < TICKS_PER_SECOND / 100) {
+        return pool.alloc_single_element_form<ConstantTokenElement>(nullptr,
+                                                                    fmt::format("{}", value));
+      }
+
+      // only rewrite if exact.
+      s64 seconds_int = value / (s64)TICKS_PER_SECOND;
+      if (seconds_int * (s64)TICKS_PER_SECOND == value) {
+        return pool.alloc_single_element_form<ConstantTokenElement>(
+            nullptr, fmt::format("(seconds {})", seconds_int));
+      }
+      double seconds = (double)value / TICKS_PER_SECOND;
+      if (seconds * TICKS_PER_SECOND == value) {
+        return pool.alloc_single_element_form<ConstantTokenElement>(
+            nullptr, fmt::format("(seconds {})", float_to_string(seconds, false)));
+      }
     }
   }
 
@@ -510,6 +526,21 @@ void FormElement::update_from_stack(const Env& env,
 }
 
 namespace {
+/*!
+ * Try to make a pretty looking constant out of value for comparing to something of type.
+ * If we can't do anything nice, return nullptr.
+ */
+Form* try_make_constant_for_compare(Form* value,
+                                    const TypeSpec& type,
+                                    FormPool& pool,
+                                    const Env& env) {
+  if (get_goal_integer_constant(value, env) &&
+      (env.dts->ts.try_enum_lookup(type) || type == TypeSpec("time-frame"))) {
+    return cast_form(value, type, pool, env);
+  }
+  return nullptr;
+}
+
 Form* make_cast_if_needed(Form* in,
                           const TypeSpec& in_type,
                           const TypeSpec& out_type,
@@ -531,9 +562,28 @@ std::vector<Form*> make_casts_if_needed(const std::vector<Form*>& in,
                                         FormPool& pool,
                                         const Env& env) {
   std::vector<Form*> out;
+  TypeSpec actual_out = out_type;
   assert(in.size() == in_types.size());
   for (size_t i = 0; i < in_types.size(); i++) {
-    out.push_back(make_cast_if_needed(in.at(i), in_types.at(i), out_type, pool, env));
+    if (!get_goal_integer_constant(in.at(i), env) && out_type == TypeSpec("int")) {
+      if (in_types.at(i) == TypeSpec("time-frame")) {
+        // if we want int, we can output time-frame as well
+        actual_out = TypeSpec("time-frame");
+      }
+    } else if (!get_goal_float_constant(in.at(i)) && out_type == TypeSpec("float")) {
+      if (in_types.at(i) == TypeSpec("meters")) {
+        // if we want float, we can output meters as well
+        // actual_out = TypeSpec("meters");
+      }
+    }
+  }
+  for (size_t i = 0; i < in_types.size(); i++) {
+    auto nice_constant = try_make_constant_for_compare(in.at(i), out_type, pool, env);
+    if (nice_constant) {
+      out.push_back(nice_constant);
+    } else {
+      out.push_back(make_cast_if_needed(in.at(i), in_types.at(i), out_type, pool, env));
+    }
   }
   return out;
 }
@@ -2358,6 +2408,9 @@ Form* make_optional_cast(const std::optional<TypeSpec>& cast_type,
                          FormPool& pool,
                          const Env& env) {
   if (cast_type) {
+    if (cast_type == TypeSpec("time-frame")) {
+      int aaaaa = 1000;
+    }
     return cast_form(in, *cast_type, pool, env);
   } else {
     return in;
@@ -3685,20 +3738,6 @@ Matcher make_int_uint_cast_matcher(const Matcher& thing) {
 ///////////////////
 
 namespace {
-/*!
- * Try to make a pretty looking constant out of value for comparing to something of type.
- * If we can't do anything nice, return nullptr.
- */
-Form* try_make_constant_for_compare(Form* value,
-                                    const TypeSpec& type,
-                                    FormPool& pool,
-                                    const Env& env) {
-  if (get_goal_integer_constant(value, env) && env.dts->ts.try_enum_lookup(type)) {
-    return cast_form(value, type, pool, env);
-  }
-  return nullptr;
-}
-
 Form* try_make_constant_from_int_for_compare(s64 value,
                                              const TypeSpec& type,
                                              FormPool& pool,
@@ -4083,15 +4122,14 @@ FormElement* ConditionElement::make_generic(const Env& env,
           GenericOperator::make_fixed(FixedOperatorKind::LT),
           make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
 
-    case IR2_Condition::Kind::GEQ_UNSIGNED:
-      return pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::GEQ),
-          make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
-
     case IR2_Condition::Kind::GEQ_SIGNED:
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::GEQ),
           make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env));
+    case IR2_Condition::Kind::GEQ_UNSIGNED:
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+          make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
 
     case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED: {
       return make_less_than_zero_signed_check_generic(env, pool, source_forms, types);

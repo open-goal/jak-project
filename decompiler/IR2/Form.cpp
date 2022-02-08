@@ -1953,7 +1953,7 @@ CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
     : m_type(std::move(type)), m_source(source), m_numeric(numeric) {
   m_source->parent_element = this;
 
-  if (this->type() == TypeSpec("time-frame")) {
+  if (this->type() == TypeSpec("int")) {
     int aaa = 100;
   }
 }

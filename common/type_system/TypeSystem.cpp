@@ -1384,11 +1384,11 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
     expected = "float";
   }
 
-  if (expected == "seconds" || expected == "time-frame") {
+  if (expected == "seconds") {
     expected = "int";
   }
 
-  if (actual == "seconds" || actual == "time-frame") {
+  if (actual == "seconds") {
     actual = "int";
   }
 
