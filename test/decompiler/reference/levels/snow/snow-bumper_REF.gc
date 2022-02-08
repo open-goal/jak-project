@@ -7,7 +7,7 @@
    (base-shove-ry           float                     :offset-assert 180)
    (max-shove-diff-ry       float                     :offset-assert 184)
    (part2                   sparticle-launch-control  :offset-assert 188)
-   (last-shoved-player-time uint64                    :offset-assert 192)
+   (last-shoved-player-time time-frame                :offset-assert 192)
    )
   :heap-base #x60
   :method-count-assert 22
@@ -117,7 +117,7 @@
   )
 
 ;; definition for method 21 of type snow-bumper
-;; INFO: Return type mismatch int vs none.
+;; INFO: Return type mismatch time-frame vs none.
 ;; Used lq/sq
 (defmethod shove-player snow-bumper ((obj snow-bumper) (arg0 process-drawable))
   (with-pp
@@ -164,7 +164,7 @@
             (set! (-> a1-12 param 1) (the-as uint v1-16))
             )
           (if (send-event-function *target* a1-12)
-              (set! (-> obj last-shoved-player-time) (the-as uint (-> *display* base-frame-counter)))
+              (set! (-> obj last-shoved-player-time) (-> *display* base-frame-counter))
               )
           )
         )
@@ -229,7 +229,7 @@
           (if (< 368640.0 f30-0)
               (go snow-bumper-active-far-idle)
               )
-          (if (and (>= (- (-> *display* base-frame-counter) (the-as int (-> self last-shoved-player-time))) 150)
+          (if (and (>= (- (-> *display* base-frame-counter) (-> self last-shoved-player-time)) (seconds 0.5))
                    (>= 20480.0 f30-0)
                    (>= f28-0 -4096.0)
                    (>= 11059.2 f28-0)
@@ -294,7 +294,7 @@
       )
     (stop! (-> self sound))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
       (suspend)
       )
     (let ((a0-10 (-> self skel root-channel 0)))
@@ -413,7 +413,7 @@
 ;; Used lq/sq
 (defmethod init-from-entity! snow-bumper ((obj snow-bumper) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
-  (set! (-> obj last-shoved-player-time) (the-as uint 0))
+  (set! (-> obj last-shoved-player-time) 0)
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)

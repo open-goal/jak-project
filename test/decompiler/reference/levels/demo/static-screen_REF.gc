@@ -4,7 +4,7 @@
 ;; definition of type static-screen
 (deftype static-screen (process)
   ((part       sparticle-launch-control 1 :offset-assert 112)
-   (state-time uint64                     :offset-assert 120)
+   (state-time time-frame                 :offset-assert 120)
    )
   :heap-base #x10
   :method-count-assert 15
@@ -135,13 +135,13 @@
   :code
   (behavior ((arg0 int) (arg1 int) (arg2 symbol))
     (local-vars (v1-6 symbol))
-    (set! (-> self state-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (until v1-6
       (suspend)
       (set! v1-6
             (or (and (> arg1 0) (>= (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) arg1))
                 (and arg2
-                     (>= (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) 300)
+                     (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
                      (cpad-pressed? 0 select start triangle circle x square)
                      )
                 )

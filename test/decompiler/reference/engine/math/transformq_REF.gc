@@ -39,20 +39,21 @@
          (saturated-yaw (fmax (fmin yaw-error yaw-limit) (- yaw-limit)))
          )
     (let ((old-diff (-> obj old-y-angle-diff)))
-      (set! saturated-yaw (cond
-                            ((or (= old-diff 0.0)
-                                 (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
-                                 (or (and (< saturated-yaw 0.0) (< old-diff 0.0))
-                                     (>= (- (-> *display* base-frame-counter) (-> obj angle-change-time)) 60)
-                                     )
-                                 )
-                             (set! (-> obj angle-change-time) (-> *display* base-frame-counter))
-                             saturated-yaw
-                             )
-                            (else
-                              (* 0.000000001 saturated-yaw)
-                              )
-                            )
+      (set! saturated-yaw
+            (cond
+              ((or (= old-diff 0.0)
+                   (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
+                   (or (and (< saturated-yaw 0.0) (< old-diff 0.0))
+                       (>= (- (-> *display* base-frame-counter) (-> obj angle-change-time)) (seconds 0.2))
+                       )
+                   )
+               (set! (-> obj angle-change-time) (-> *display* base-frame-counter))
+               saturated-yaw
+               )
+              (else
+                (* 0.000000001 saturated-yaw)
+                )
+              )
             )
       )
     (set! (-> obj old-y-angle-diff) saturated-yaw)
@@ -74,7 +75,7 @@
   )
 
 ;; definition for method 11 of type trsqv
-(defmethod seek-to-point-toward-point! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 int))
+(defmethod seek-to-point-toward-point! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   (seek-toward-heading-vec! obj (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) arg1 arg2)
   )
 
