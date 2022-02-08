@@ -38,6 +38,7 @@
 #include "game/system/newpad.h"
 #include "game/sce/libscf.h"
 #include "common/util/assert.h"
+#include "game/discord.h"
 using namespace ee;
 
 /*!
@@ -754,6 +755,52 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
   Gfx::get_window_scale(x, y);
 }
 
+void update_discord_rpc(u32 discord_info) {
+  if (gDiscordRpcEnabled) {
+    DiscordRichPresence rpc;
+    char state[128];
+    auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
+    if (info) {
+      int cells = (int)*Ptr<float>(info->fuel).c();
+      int orbs = (int)*Ptr<float>(info->money_total).c();
+      int scout_flies = (int)*Ptr<float>(info->buzzer_total).c();
+      auto cutscene = Ptr<Symbol>(info->cutscene)->value;
+      char* status = Ptr<String>(info->status).c()->data();
+      char* level = Ptr<String>(info->level).c()->data();
+      const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      memset(&rpc, 0, sizeof(rpc));
+      if (!strcmp(level, "finalboss")) {
+        strcpy(state, "Fighting Final Boss");
+      } else if (!strcmp(level, "title")) {
+        strcpy(state, "On title screen");
+      } else if (!strcmp(level, "intro")) {
+        strcpy(state, "Intro");
+      } else if (cutscene != offset_of_s7()) {
+        strcpy(state, "Watching a cutscene");
+      } else {
+        strcpy(state, "Cells: ");
+        strcat(state, std::to_string(cells).c_str());
+        strcat(state, " | Orbs: ");
+        strcat(state, std::to_string(orbs).c_str());
+        strcat(state, " | Scout flies: ");
+        strcat(state, std::to_string(scout_flies).c_str());
+      }
+      rpc.state = state;
+      rpc.startTimestamp = gStartTime;
+      rpc.details = status;
+      rpc.largeImageKey = level;
+      rpc.largeImageText = full_level_name;
+      rpc.smallImageKey = 0;
+      rpc.smallImageText = 0;
+      rpc.partySize = 0;
+      rpc.partyMax = 0;
+      Discord_UpdatePresence(&rpc);
+    }
+  } else {
+    Discord_ClearPresence();
+  }
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
@@ -779,6 +826,10 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
+
+  // discord rich presence
+  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
   // init ps2 VM
   if (VM::use) {
