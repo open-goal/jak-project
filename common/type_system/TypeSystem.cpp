@@ -1375,19 +1375,21 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
  * Is actual of type expected? For base types.
  */
 bool TypeSystem::typecheck_base_types(const std::string& input_expected,
-                                      const std::string& actual) const {
+                                      const std::string& input_actual) const {
   std::string expected = input_expected;
+  std::string actual = input_actual;
 
   // the unit types aren't picky.
   if (expected == "meters") {
     expected = "float";
   }
 
-  if (expected == "seconds") {
-    if (actual == "seconds") {
-      return true;
-    }
+  if (expected == "seconds" || expected == "time-frame") {
     expected = "int";
+  }
+
+  if (actual == "seconds" || actual == "time-frame") {
+    actual = "int";
   }
 
   if (expected == "degrees") {

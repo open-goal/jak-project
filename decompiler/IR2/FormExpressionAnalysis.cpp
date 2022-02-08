@@ -434,10 +434,11 @@ bool is_float_type(const Env& env, int my_idx, RegisterAccess var) {
 
 /*!
  * type == int (exactly)?
+ * note: time-frame is special.
  */
 bool is_int_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
-  return type == TypeSpec("int");
+  return type == TypeSpec("int") || type == TypeSpec("time-frame");
 }
 
 bool is_pointer_type(const Env& env, int my_idx, RegisterAccess var) {
@@ -1456,7 +1457,7 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
     }
   }
 
-  if (bitfield_info && m_expr.get_arg(1).is_int()) {
+  if (bitfield_info && arg0_type.base_type() != "time-frame" && m_expr.get_arg(1).is_int()) {
     // andi, ori with bitfield.
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = dynamic_cast<BitfieldAccessElement*>(base->try_as_single_element());
@@ -1718,7 +1719,7 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
 
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (bitfield_info && m_expr.get_arg(1).is_int()) {
+  if (arg0_type.base_type() != "time-frame" && bitfield_info && m_expr.get_arg(1).is_int()) {
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());

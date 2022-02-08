@@ -17,8 +17,8 @@ struct MatchResult {
     std::vector<std::optional<RegisterAccess>> regs;
     std::unordered_map<int, std::string> strings;
     std::unordered_map<int, Form*> forms;
-    std::unordered_map<int, int> label;
-    std::unordered_map<int, int> ints;
+    std::unordered_map<int, s64> label;
+    std::unordered_map<int, s64> ints;
   } maps;
 };
 

@@ -1952,6 +1952,10 @@ void GenericElement::get_modified_regs(RegSet& regs) const {
 CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
     : m_type(std::move(type)), m_source(source), m_numeric(numeric) {
   m_source->parent_element = this;
+
+  if (this->type() == TypeSpec("time-frame")) {
+    int aaa = 100;
+  }
 }
 
 goos::Object CastElement::to_form_internal(const Env& env) const {

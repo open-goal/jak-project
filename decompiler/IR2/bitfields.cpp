@@ -4,6 +4,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/Range.h"
 #include "common/util/BitUtils.h"
+#include "common/util/print_float.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/Function/Function.h"
@@ -156,6 +157,9 @@ void ModifiedCopyBitfieldElement::get_modified_regs(RegSet& regs) const {
 
 BitfieldAccessElement::BitfieldAccessElement(Form* base_value, const TypeSpec& ts)
     : m_base(base_value), m_type(ts) {
+  if (ts.base_type() == "time-frame") {
+    int aaaaaa = 100;
+  }
   m_base->parent_element = this;
 }
 
@@ -655,6 +659,9 @@ std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
   auto as_atom = form_as_atom(in);
   if (as_atom && as_atom->is_int()) {
+    if (as_atom->get_int() == 300000) {
+      int aaaaaaa = 100;
+    }
     return as_atom->get_int();
   }
 
@@ -762,6 +769,29 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
       nullptr, fmt::format("(static-sound-name \"{}\")", name));
 }
 
+//Form* cast_time_frame(FormPool& pool, const Env& env, Form* in) {
+//  auto matcher = Matcher::any_integer(0);
+//  auto mr = match(matcher, in);
+//  if (!mr.matched) {
+//    return nullptr;
+//  }
+//
+//  s64 value = mr.maps.ints.at(0);
+//
+//  // only rewrite if exact.
+//  s64 seconds_int = value / (s64)TICKS_PER_SECOND;
+//  if (seconds_int * (s64)TICKS_PER_SECOND == value) {
+//    return pool.alloc_single_element_form<ConstantTokenElement>(
+//        nullptr, fmt::format("(seconds {})", seconds_int));
+//  }
+//  double seconds = (double)value / TICKS_PER_SECOND;
+//  if (seconds * TICKS_PER_SECOND == value) {
+//    return pool.alloc_single_element_form<ConstantTokenElement>(
+//        nullptr, fmt::format("(seconds {})", float_to_string(seconds, false)));
+//  }
+//  return nullptr;
+//}
+
 std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldType* type_info,
                                                                  Form* in,
                                                                  const TypeSpec& typespec,
@@ -861,6 +891,16 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
     // just do a normal cast if that failed.
     return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
   }
+
+  // special case for time-frame bitfield to int
+  //if (type_info->get_name() == "time-frame") {
+  //  auto as_time_frame = cast_time_frame(pool, env, in);
+  //  if (as_time_frame) {
+  //    return as_time_frame;
+  //  }
+  //  // just do a normal cast if that failed.
+  //  return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+  //}
 
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
