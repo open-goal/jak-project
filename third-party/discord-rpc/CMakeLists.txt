@@ -1,5 +1,6 @@
 if(WIN32)
-  find_library(DISCORD_LIB NAMES discord-rpc.lib PATHS ./lib)
+  find_library(DISCORD_LIB NAMES discord-rpc.lib PATHS ${CMAKE_CURRENT_SOURCE_DIR}/lib REQUIRED)
 else()
-  find_library(DISCORD_LIB NAMES libdiscord-rpc.so PATHS ./lib)
+  find_library(DISCORD_LIB NAMES libdiscord-rpc.so PATHS ${CMAKE_CURRENT_SOURCE_DIR}/lib REQUIRED)
 endif()
+message("FOUND DISCORD-RPC: " ${DISCORD_LIB})
