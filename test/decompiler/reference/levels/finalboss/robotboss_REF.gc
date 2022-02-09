@@ -906,7 +906,9 @@
   :trans
   (behavior ()
     (spool-push *art-control* "green-sagecage-daxter-sacrifice" 0 self (the-as float -1.0))
-    (when (and (< (-> self children-spawned) 1) (>= (- (-> *display* base-frame-counter) (-> self state-time)) 285))
+    (when (and (< (-> self children-spawned) 1)
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.95))
+               )
       (+! (-> self children-spawned) 1)
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> gp-0 quad) (-> self entity extra trans quad))
@@ -2126,9 +2128,9 @@
 
 ;; definition of type redshot-launch-info
 (deftype redshot-launch-info (structure)
-  ((dest        vector :inline :offset-assert   0)
-   (flight-time int64          :offset-assert  16)
-   (stall-time  int64          :offset-assert  24)
+  ((dest        vector     :inline :offset-assert   0)
+   (flight-time time-frame         :offset-assert  16)
+   (stall-time  time-frame         :offset-assert  24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -2231,7 +2233,7 @@
 ;; WARN: Stack slot load at 64 mismatch: defined as size 4, got size 16
 ;; Used lq/sq
 (defbehavior robotboss-redshot robotboss ((arg0 redshot-launch-info) (arg1 symbol))
-  (local-vars (sv-32 redshot-launch-info) (sv-48 vector) (sv-64 float) (sv-80 int) (sv-96 int))
+  (local-vars (sv-32 redshot-launch-info) (sv-48 vector) (sv-64 float) (sv-80 time-frame) (sv-96 time-frame))
   (set! sv-32 arg0)
   (let ((s5-0 arg1))
     (+! (-> self children-spawned) 1)
@@ -3925,7 +3927,7 @@
        )
       )
     (cond
-      ((and (>= (- (-> *display* game-frame-counter) (-> self state-time)) 420)
+      ((and (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 1.4))
             (not (= (if (> (-> self skel active-channels) 0)
                         (-> self skel root-channel 0 frame-group)
                         )

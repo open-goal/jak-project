@@ -29,12 +29,12 @@
 
 ;; definition of type battlecontroller-creature-type
 (deftype battlecontroller-creature-type (structure)
-  ((type2            type   :offset-assert   0)
-   (percent          float  :offset-assert   4)
-   (pickup-percent   float  :offset-assert   8)
-   (pickup-type      int32  :offset-assert  12)
-   (max-pickup-count int8   :offset-assert  16)
-   (pickup-count     int8   :offset-assert  17)
+  ((type2            type         :offset-assert   0)
+   (percent          float        :offset-assert   4)
+   (pickup-percent   float        :offset-assert   8)
+   (pickup-type      pickup-type  :offset-assert  12)
+   (max-pickup-count int8         :offset-assert  16)
+   (pickup-count     int8         :offset-assert  17)
    )
   :allow-misaligned
   :method-count-assert 9
@@ -236,7 +236,7 @@ battlecontroller-default-event-handler
 ;; definition for function battlecontroller-spawn-creature
 ;; INFO: Return type mismatch int vs handle.
 (defbehavior battlecontroller-spawn-creature battlecontroller ((arg0 vector) (arg1 vector))
-  (local-vars (v1-25 int))
+  (local-vars (v1-25 pickup-type))
   (let ((f0-0 (rand-vu))
         (v1-0 0)
         )
@@ -276,14 +276,14 @@ battlecontroller-default-event-handler
            (set! v1-25 (-> s5-0 pickup-type))
            )
           (else
-            (set! v1-25 (the-as int (-> self fact pickup-type)))
+            (set! v1-25 (-> self fact pickup-type))
             )
           )
-        (set! (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info pickup-type) (the-as pickup-type v1-25))
+        (set! (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info pickup-type) v1-25)
         (cond
-          ((= v1-25 7)
+          ((= v1-25 (pickup-type eco-pill))
            )
-          ((zero? v1-25)
+          ((= v1-25 (pickup-type none))
            (set! (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info pickup-amount) 0.0)
            (set! (-> (the-as (pointer nav-enemy) gp-0) 0 enemy-info pickup-spawn-amount) 0.0)
            )

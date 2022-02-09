@@ -2,7 +2,7 @@
 (in-package goal)
 
 ;; definition for function target-falling-anim
-(defbehavior target-falling-anim target ((arg0 int) (arg1 int))
+(defbehavior target-falling-anim target ((arg0 time-frame) (arg1 int))
   (let ((v1-2 (if (> (-> self skel active-channels) 0)
                   (-> self skel root-channel 0 frame-group)
                   )
@@ -173,7 +173,7 @@
 
 ;; definition for function target-falling-trans
 ;; INFO: Return type mismatch int vs none.
-(defbehavior target-falling-trans target ((arg0 basic) (arg1 cpad-list))
+(defbehavior target-falling-trans target ((arg0 basic) (arg1 time-frame))
   (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
                      (pad-buttons circle)
                      )
@@ -2921,10 +2921,10 @@
   (behavior ()
     (target-falling-trans
       (-> self control unknown-spoolanim00)
-      (the-as cpad-list (if (= (-> self control unknown-spoolanim00) #f)
-                            0
-                            (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
-                            )
+      (the-as time-frame (if (= (-> self control unknown-spoolanim00) #f)
+                             0
+                             (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
+                             )
               )
       )
     (none)
@@ -3088,7 +3088,7 @@
       (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 51)) num-func-seek!)
       )
     (until (ja-done? 0)
-      (when (and (= (-> self fact-info-target eco-type) 2)
+      (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                  (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                  )
         (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 74)
@@ -3191,7 +3191,7 @@
     )
   :enter
   (behavior ()
-    (if (or (and (= (-> self fact-info-target eco-type) 1)
+    (if (or (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
                  (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                  )
             (< (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 1.5))
@@ -3293,7 +3293,7 @@
             (-> self control transv)
             )
           )
-      (when (and (= (-> self fact-info-target eco-type) 2)
+      (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                  (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                  )
         (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
@@ -3551,7 +3551,7 @@
       (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
       (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
       )
-    (when (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                )
       (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 70)
@@ -3793,7 +3793,7 @@
       (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
       (-> self control transv)
       )
-    (when (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                )
       (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
@@ -3889,7 +3889,7 @@
     )
   :enter
   (behavior ((arg0 float) (arg1 float) (arg2 float))
-    (if (and (= (-> self fact-info-target eco-type) 1)
+    (if (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
              (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
              )
         (go target-yellow-jump-blast)
@@ -3954,7 +3954,7 @@
         )
       (when gp-1
         (logior! (-> self control status) 1)
-        (when (and (= (-> self fact-info-target eco-type) 2)
+        (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                    (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                    )
           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 150)
@@ -3990,7 +3990,7 @@
         (go target-flop-hit-ground gp-1)
         )
       )
-    (when (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                )
       (dummy-10
@@ -4154,7 +4154,7 @@
               )
             )
           )
-        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> *TARGET-bank* fall-timeout)))
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *TARGET-bank* fall-timeout))
             (go target-falling #f)
             )
         (if (and (= *cheat-mode* 'debug)
@@ -4220,7 +4220,7 @@
           (go target-attack-air 'flop)
           )
       )
-    (when (and (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                     (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                     )
                (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.25))
