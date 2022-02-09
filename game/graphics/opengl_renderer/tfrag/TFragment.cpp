@@ -51,9 +51,9 @@ void TFragment::render(DmaFollower& dma,
   // unless we are a child, in which case our parent took this already.
   if (!m_child_mode) {
     auto data0 = dma.read_and_advance();
-    assert(data0.vif1() == 0);
-    assert(data0.vif0() == 0);
-    assert(data0.size_bytes == 0);
+    ASSERT(data0.vif1() == 0);
+    ASSERT(data0.vif0() == 0);
+    ASSERT(data0.size_bytes == 0);
   }
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -61,7 +61,7 @@ void TFragment::render(DmaFollower& dma,
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
@@ -70,10 +70,10 @@ void TFragment::render(DmaFollower& dma,
 
     transfers[0] = dma.read_and_advance();
     auto next0 = dma.read_and_advance();
-    assert(next0.size_bytes == 0);
+    ASSERT(next0.size_bytes == 0);
     transfers[1] = dma.read_and_advance();
     auto next1 = dma.read_and_advance();
-    assert(next1.size_bytes == 0);
+    ASSERT(next1.size_bytes == 0);
 
     for (int i = 0; i < 2; i++) {
       if (transfers[i].size_bytes == 128 * 16) {
@@ -82,7 +82,7 @@ void TFragment::render(DmaFollower& dma,
           memcpy(render_state->occlusion_vis[i].data, transfers[i].data, 128 * 16);
         }
       } else {
-        assert(transfers[i].size_bytes == 16);
+        ASSERT(transfers[i].size_bytes == 16);
       }
     }
   }
@@ -92,7 +92,7 @@ void TFragment::render(DmaFollower& dma,
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
@@ -102,7 +102,7 @@ void TFragment::render(DmaFollower& dma,
     if (level_name.empty()) {
       level_name = m_pc_port_data.level_name;
     } else if (level_name != m_pc_port_data.level_name) {
-      assert(false);
+      ASSERT(false);
     }
 
     while (looks_like_tfragment_dma(dma)) {
@@ -114,7 +114,7 @@ void TFragment::render(DmaFollower& dma,
     dma.read_and_advance();
   }
 
-  assert(!level_name.empty());
+  ASSERT(!level_name.empty());
   {
     m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;
@@ -225,10 +225,10 @@ void TFragment::draw_debug_window() {
 void TFragment::handle_initialization(DmaFollower& dma) {
   // Set up test (different between different renderers)
   auto setup_test = dma.read_and_advance();
-  assert(setup_test.vif0() == 0);
-  assert(setup_test.vifcode1().kind == VifCode::Kind::DIRECT);
-  assert(setup_test.vifcode1().immediate == 2);
-  assert(setup_test.size_bytes == 32);
+  ASSERT(setup_test.vif0() == 0);
+  ASSERT(setup_test.vifcode1().kind == VifCode::Kind::DIRECT);
+  ASSERT(setup_test.vifcode1().immediate == 2);
+  ASSERT(setup_test.size_bytes == 32);
   memcpy(m_test_setup, setup_test.data, 32);
 
   // matrix 0
@@ -252,7 +252,7 @@ void TFragment::handle_initialization(DmaFollower& dma) {
   verify_mscal(mscal_setup, TFragProgMem::TFragSetup);
 
   auto pc_port_data = dma.read_and_advance();
-  assert(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
@@ -271,10 +271,10 @@ void TFragment::handle_initialization(DmaFollower& dma) {
 
   // setup double buffering.
   auto db_setup = dma.read_and_advance();
-  assert(db_setup.size_bytes == 0);
-  assert(db_setup.vifcode0().kind == VifCode::Kind::BASE &&
+  ASSERT(db_setup.size_bytes == 0);
+  ASSERT(db_setup.vifcode0().kind == VifCode::Kind::BASE &&
          db_setup.vifcode0().immediate == Buffer0_Start);
-  assert(db_setup.vifcode1().kind == VifCode::Kind::OFFSET &&
+  ASSERT(db_setup.vifcode1().kind == VifCode::Kind::OFFSET &&
          db_setup.vifcode1().immediate == (Buffer1_Start - Buffer0_Start));
 }
 

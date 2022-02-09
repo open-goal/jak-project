@@ -154,8 +154,8 @@ class StaticVal : public Val {
 struct MemLoadInfo {
   MemLoadInfo() = default;
   explicit MemLoadInfo(const DerefInfo& di) {
-    assert(di.can_deref);
-    assert(di.mem_deref);
+    ASSERT(di.can_deref);
+    ASSERT(di.mem_deref);
     sign_extend = di.sign_extend;
     size = di.load_size;
     reg = di.reg;
@@ -245,7 +245,7 @@ class IntegerConstantVal : public Val {
  public:
   IntegerConstantVal(TypeSpec ts, const void* data, int size)
       : Val(std::move(ts)), m_value(data, size) {
-    assert(size == 8 || size == 16);
+    ASSERT(size == 8 || size == 16);
   }
 
   std::string print() const override { return std::string("integer-constant-") + m_value.print(); }

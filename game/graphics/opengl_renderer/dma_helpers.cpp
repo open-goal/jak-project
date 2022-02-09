@@ -66,8 +66,8 @@ void unpack_to_stcycl(void* dst,
                       bool flg) {
   bool ok =
       verify_unpack_with_stcycl(transfer, unpack_kind, cl, wl, size_bytes / 16, addr, usn, flg);
-  assert(ok);
-  assert((size_bytes & 0xf) == 0);
+  ASSERT(ok);
+  ASSERT((size_bytes & 0xf) == 0);
   memcpy(dst, transfer.data, size_bytes);
 }
 
@@ -124,14 +124,14 @@ void unpack_to_no_stcycl(void* dst,
                          bool usn,
                          bool flg) {
   bool ok = verify_unpack_no_stcycl(transfer, unpack_kind, size_bytes / 16, addr, usn, flg);
-  assert(ok);
-  assert((size_bytes & 0xf) == 0);
+  ASSERT(ok);
+  ASSERT((size_bytes & 0xf) == 0);
   memcpy(dst, transfer.data, size_bytes);
 }
 
 void verify_mscal(const DmaTransfer& transfer, int address) {
-  assert(transfer.size_bytes == 0);
-  assert(transfer.vif0() == 0);
-  assert(transfer.vifcode1().kind == VifCode::Kind::MSCAL);
-  assert(transfer.vifcode1().immediate == address);
+  ASSERT(transfer.size_bytes == 0);
+  ASSERT(transfer.vif0() == 0);
+  ASSERT(transfer.vifcode1().kind == VifCode::Kind::MSCAL);
+  ASSERT(transfer.vifcode1().immediate == address);
 }

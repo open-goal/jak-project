@@ -219,7 +219,7 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
   }
 
   result.op.pop_back();
-  assert(result.op.size() == ops->ops.size());
+  ASSERT(result.op.size() == ops->ops.size());
   return result;
 }
 }  // namespace decompiler

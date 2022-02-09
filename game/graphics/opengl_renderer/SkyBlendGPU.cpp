@@ -82,12 +82,12 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
 
     // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
-    assert(adgif.is_normal_adgif());
-    assert(adgif.alpha().data == 0x8000000068);  // Cs + Cd
+    ASSERT(adgif.is_normal_adgif());
+    ASSERT(adgif.alpha().data == 0x8000000068);  // Cs + Cd
 
     // next is the actual draw
     auto draw_data = dma.read_and_advance();
-    assert(draw_data.size_bytes == 6 * 16);
+    ASSERT(draw_data.size_bytes == 6 * 16);
 
     GifTag draw_or_blend_tag(draw_data.data);
 
@@ -109,12 +109,12 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
     } else if (coord == 0x400) {
       buffer_idx = 1;
     } else {
-      assert(false);  // bad data
+      ASSERT(false);  // bad data
     }
 
     // look up the source texture
     auto tex = render_state->texture_pool->lookup(adgif.tex0().tbp0());
-    assert(tex);
+    ASSERT(tex);
 
     if (!tex->on_gpu) {
       render_state->texture_pool->upload_to_gpu(tex);
@@ -135,7 +135,7 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
 
     // intensities should be 0-128 (maybe higher is okay, but I don't see how this could be
     // generated with the GOAL code.)
-    assert(intensity <= 128);
+    ASSERT(intensity <= 128);
 
     // todo - could do this on the GPU, but probably not worth it for <20 triangles...
     float intensity_float = intensity / 128.f;

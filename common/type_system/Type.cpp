@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include "third-party/fmt/core.h"
 #include "Type.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace {
 std::string reg_kind_to_string(RegClass kind) {
@@ -326,7 +326,7 @@ bool Type::get_my_method(const std::string& name, MethodInfo* out) const {
  * Get a method that is defined specifically in this type by id. Returns if it was found or not.
  */
 bool Type::get_my_method(int id, MethodInfo* out) const {
-  assert(id > 0);  // 0 is new, should use explicit new method functions instead.
+  ASSERT(id > 0);  // 0 is new, should use explicit new method functions instead.
   for (auto& x : m_methods) {
     if (x.id == id) {
       *out = x;
@@ -369,7 +369,7 @@ bool Type::get_my_new_method(MethodInfo* out) const {
 const MethodInfo& Type::add_method(const MethodInfo& info) {
   for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
     if (!it->overrides_method_type_of_parent) {
-      assert(it->id + 1 == info.id);
+      ASSERT(it->id + 1 == info.id);
       break;
     }
   }
@@ -383,7 +383,7 @@ const MethodInfo& Type::add_method(const MethodInfo& info) {
  * this is specific to the method named NEW.
  */
 const MethodInfo& Type::add_new_method(const MethodInfo& info) {
-  assert(info.name == "new");
+  ASSERT(info.name == "new");
   m_new_method_info_defined = true;
   m_new_method_info = info;
   return m_new_method_info;
@@ -553,7 +553,7 @@ bool ValueType::get_load_signed() const {
 
 void ValueType::set_offset(int offset) {
   if (offset) {
-    assert(m_is_boxed);
+    ASSERT(m_is_boxed);
   }
   m_offset = offset;
 }

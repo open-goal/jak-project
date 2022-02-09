@@ -7,7 +7,7 @@
 #include "common/versions.h"
 #include "sbank.h"
 #include "iso_api.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 
@@ -55,7 +55,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
   if (gSoundEnable) {
     // I don't think it should be possible to have > 1 message here - the buffer isn't big enough.
     if (n_messages > 1) {
-      assert(false);
+      ASSERT(false);
     }
     while (n_messages > 0) {
       switch (cmd->command) {
@@ -93,7 +93,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           break;
         default:
           printf("Unhandled RPC Loader command %d\n", (int)cmd->command);
-          assert(false);
+          ASSERT(false);
       }
       n_messages--;
       cmd++;

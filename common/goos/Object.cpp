@@ -84,7 +84,7 @@ std::string object_type_to_string(ObjectType type) {
 template <>
 std::string fixed_to_string(FloatType x) {
   auto result = float_to_string(x);
-  assert((float)x == (float)std::stod(result));
+  ASSERT((float)x == (float)std::stod(result));
   return result;
 }
 

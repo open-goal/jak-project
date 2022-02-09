@@ -7,6 +7,7 @@ set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMA
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
+        discord.cpp
         system/SystemThread.cpp
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
@@ -100,7 +101,7 @@ set(RUNTIME_SOURCE
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui)
+target_link_libraries(runtime common fmt glfw imgui discord-rpc)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()
@@ -109,4 +110,3 @@ endif()
 
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
-

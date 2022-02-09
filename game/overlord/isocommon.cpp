@@ -6,7 +6,7 @@
 #include "common/common_types.h"
 #include <cstring>
 #include "isocommon.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Convert file name to "ISO Name"

@@ -2,7 +2,7 @@
 #include "game/sce/iop.h"
 #include "common/log/log.h"
 #include "sbank.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 
@@ -74,7 +74,7 @@ s32 LoadISOFileChunkToEE(FileRecord* file, uint32_t dest_addr, uint32_t length, 
  */
 void LoadSoundBank(const char* bank_name, SoundBank* bank) {
   (void)bank;
-  assert(strlen(bank_name) < 16);
+  ASSERT(strlen(bank_name) < 16);
   SoundBankLoadCommand cmd;
   cmd.cmd_id = LOAD_SOUND_BANK;
   cmd.messagebox_to_reply = 0;

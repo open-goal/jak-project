@@ -16,7 +16,7 @@ RegClass get_reg_kind(const Register& r) {
     case Reg::FPR:
       return RegClass::FLOAT;
     default:
-      assert(false);
+      ASSERT(false);
       return RegClass::INVALID;
   }
 }
@@ -197,7 +197,7 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
 
     case SimpleAtom::Kind::SYMBOL_PTR:
     case SimpleAtom::Kind::SYMBOL_VAL: {
-      assert(atom.get_str() == "#f");
+      ASSERT(atom.get_str() == "#f");
 
       if (expected_type != TypeSpec("symbol")) {
         // explicitly cast if we're not using a reference type, including pointers.
@@ -210,14 +210,14 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
     } break;
 
     default:
-      assert(false);
+      ASSERT(false);
   }
   return {};
 }
 }  // namespace
 
 FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const {
-  assert(m_value.is_var() && m_value.var().reg().get_kind() == Reg::VF);
+  ASSERT(m_value.is_var() && m_value.var().reg().get_kind() == Reg::VF);
   if (env.has_type_analysis()) {
     IR2_RegOffset ro;
     if (get_as_reg_offset(m_addr, &ro)) {
@@ -241,7 +241,7 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
         for (auto& x : rd.tokens) {
           tokens.push_back(to_token(x));
         }
-        assert(!rd.addr_of);  // we'll change this to true because .svf uses an address.
+        ASSERT(!rd.addr_of);  // we'll change this to true because .svf uses an address.
         auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source, true, tokens);
         return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false,
                                                                m_my_idx);
@@ -331,7 +331,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
         case SimpleAtom::Kind::SYMBOL_PTR:
         case SimpleAtom::Kind::SYMBOL_VAL: {
-          assert(m_value.get_str() == "#f");
+          ASSERT(m_value.get_str() == "#f");
           std::optional<TypeSpec> cast_for_set, cast_for_define;
           if (symbol_type != TypeSpec("symbol")) {
             cast_for_define = symbol_type;
@@ -347,7 +347,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         } break;
 
         default:
-          assert(false);
+          ASSERT(false);
       }
     }
 
@@ -379,7 +379,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
         if (rd.success) {
           std::vector<DerefToken> tokens;
-          assert(!rd.tokens.empty());
+          ASSERT(!rd.tokens.empty());
           for (auto& token : rd.tokens) {
             tokens.push_back(to_token(token));
           }
@@ -393,7 +393,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           //          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
           //              nullptr, m_value.as_expr(), m_my_idx);
 
-          assert(!rd.addr_of);
+          ASSERT(!rd.addr_of);
           return pool.alloc_element<StoreArrayAccess>(
               source, m_value.as_expr(), m_my_idx, ro.var,
               get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx));
@@ -418,7 +418,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         for (auto& x : rd.tokens) {
           tokens.push_back(to_token(x));
         }
-        assert(!rd.addr_of);
+        ASSERT(!rd.addr_of);
         auto addr = pool.alloc_element<DerefElement>(source, rd.addr_of, tokens);
 
         return pool.alloc_element<StorePlainDeref>(
@@ -448,7 +448,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             cast_type = "int128";
             break;
           default:
-            assert(false);
+            ASSERT(false);
         }
 
         if (m_value.is_var()) {
@@ -498,19 +498,19 @@ FormElement* make_label_load(int label_idx,
 
   if ((load_kind == LoadVarOp::Kind::FLOAT || load_kind == LoadVarOp::Kind::SIGNED) &&
       load_size == 4 && hint.result_type == TypeSpec("float")) {
-    assert((label.offset % 4) == 0);
+    ASSERT((label.offset % 4) == 0);
     auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    assert(word.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
     float value;
     memcpy(&value, &word.data, 4);
     return pool.alloc_element<ConstantFloatElement>(value);
   } else if (hint.result_type == TypeSpec("uint64") && load_kind != LoadVarOp::Kind::FLOAT &&
              load_size == 8) {
-    assert((label.offset % 8) == 0);
+    ASSERT((label.offset % 8) == 0);
     auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-    assert(word0.kind() == LinkedWord::PLAIN_DATA);
-    assert(word1.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word0.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;
     memcpy(&value, &word0.data, 4);
     memcpy(((u8*)&value) + 4, &word1.data, 4);
@@ -524,20 +524,20 @@ FormElement* make_label_load(int label_idx,
   auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(hint.result_type));
   if (as_bitfield && load_kind != LoadVarOp::Kind::FLOAT && load_size == 8) {
     // get the data
-    assert((label.offset % 8) == 0);
+    ASSERT((label.offset % 8) == 0);
     auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-    assert(word0.kind() == LinkedWord::PLAIN_DATA);
-    assert(word1.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word0.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;
     memcpy(&value, &word0.data, 4);
     memcpy(((u8*)&value) + 4, &word1.data, 4);
     // for some reason, GOAL would use a 64-bit constant for all bitfields, even if they are
     // smaller. We should check that the higher bits are all zero.
     int bits = as_bitfield->get_size_in_memory() * 8;
-    assert(bits <= 64);
+    ASSERT(bits <= 64);
     if (bits < 64) {
-      assert((value >> bits) == 0);
+      ASSERT((value >> bits) == 0);
       // technically ub if bits == 64.
     }
     auto defs = decompile_bitfield_from_int(hint.result_type, ts, value);
@@ -546,11 +546,11 @@ FormElement* make_label_load(int label_idx,
 
   /*
   if (load_kind == LoadVarOp::Kind::FLOAT && load_size == 4) {
-    assert((label.offset % 4) == 0);
+    ASSERT((label.offset % 4) == 0);
     const auto& words = env.file->words_by_seg.at(label.target_segment);
     if ((int)words.size() > label.offset / 4) {
       auto word = words.at(label.offset / 4);
-      assert(word.kind == LinkedWord::PLAIN_DATA);
+      ASSERT(word.kind == LinkedWord::PLAIN_DATA);
       float value;
       memcpy(&value, &word.data, 4);
       return pool.alloc_element<ConstantFloatElement>(value);
@@ -559,11 +559,11 @@ FormElement* make_label_load(int label_idx,
 
   if (load_kind != LoadVarOp::Kind::FLOAT && load_size == 8) {
     if ((int)env.file->words_by_seg.at(label.target_segment).size() > (label.offset / 4) + 1) {
-      assert((label.offset % 8) == 0);
+      ASSERT((label.offset % 8) == 0);
       auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
       auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-      assert(word0.kind == LinkedWord::PLAIN_DATA);
-      assert(word1.kind == LinkedWord::PLAIN_DATA);
+      ASSERT(word0.kind == LinkedWord::PLAIN_DATA);
+      ASSERT(word1.kind == LinkedWord::PLAIN_DATA);
       u64 value;
       memcpy(&value, &word0.data, 4);
       memcpy(((u8*)&value) + 4, &word1.data, 4);
@@ -627,7 +627,7 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
 
         if (rd.success) {
           std::vector<DerefToken> tokens;
-          assert(!rd.tokens.empty());
+          ASSERT(!rd.tokens.empty());
           for (auto& token : rd.tokens) {
             tokens.push_back(to_token(token));
           }
@@ -711,7 +711,7 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
             cast_type = "int128";
             break;
           default:
-            assert(false);
+            ASSERT(false);
         }
         if (m_kind == Kind::UNSIGNED) {
           cast_type = "u" + cast_type;
@@ -743,11 +743,11 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
 FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
   auto src = get_load_src(pool, env);
   if (m_kind == Kind::VECTOR_FLOAT) {
-    assert(m_dst.reg().get_kind() == Reg::VF);
+    ASSERT(m_dst.reg().get_kind() == Reg::VF);
 
     auto src_as_deref = dynamic_cast<DerefElement*>(src->try_as_single_element());
     if (src_as_deref) {
-      assert(!src_as_deref->is_addr_of());
+      ASSERT(!src_as_deref->is_addr_of());
       src_as_deref->set_addr_of(true);
       return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(), src, true, m_my_idx);
     }
@@ -761,7 +761,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     throw std::runtime_error("VF unknown load");
 
   } else {
-    assert(m_dst.reg().get_kind() != Reg::VF);
+    ASSERT(m_dst.reg().get_kind() != Reg::VF);
     return pool.alloc_element<SetVarElement>(m_dst, src, true, m_type.value_or(TypeSpec("object")));
   }
 }

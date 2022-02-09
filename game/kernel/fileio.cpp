@@ -10,7 +10,7 @@
 #include "fileio.h"
 #include "kprint.h"
 #include "common/versions.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace {
 // buffer for file paths.  This might be static char buffer[512]. Maybe 633 is the line number?
@@ -66,7 +66,7 @@ u32 ReadHufWord(u8** loc_ptr) {
       break;
 
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   // update location pointer

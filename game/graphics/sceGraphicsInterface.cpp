@@ -1,7 +1,7 @@
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/graphics/gfx.h"
 #include <cstdio>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Wait for rendering to complete.
@@ -19,7 +19,7 @@
  *
  */
 u32 sceGsSyncPath(u32 mode, u32 timeout) {
-  assert(mode == 0 && timeout == 0);
+  ASSERT(mode == 0 && timeout == 0);
   return Gfx::sync_path();
 }
 
@@ -27,6 +27,6 @@ u32 sceGsSyncPath(u32 mode, u32 timeout) {
  * Actual vsync.
  */
 u32 sceGsSyncV(u32 mode) {
-  assert(mode == 0);
+  ASSERT(mode == 0);
   return Gfx::vsync();
 }

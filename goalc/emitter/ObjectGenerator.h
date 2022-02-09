@@ -122,8 +122,8 @@ class ObjectGenerator {
   template <typename T>
   void patch_data(int seg, int offset, const T& x) {
     auto& data = m_data_by_seg.at(seg);
-    assert(offset >= 0);
-    assert(offset + sizeof(T) <= data.size());
+    ASSERT(offset >= 0);
+    ASSERT(offset + sizeof(T) <= data.size());
     memcpy(data.data() + offset, &x, sizeof(T));
   }
 

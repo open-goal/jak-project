@@ -3,7 +3,7 @@
 #include "common/common_types.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/util/data_decompile.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 struct BitfieldManip {
@@ -30,7 +30,7 @@ struct BitfieldManip {
   }
 
   bool right_shift_unsigned() const {
-    assert(is_right_shift());
+    ASSERT(is_right_shift());
     return kind == Kind::RIGHT_SHIFT_LOGICAL || kind == Kind::RIGHT_SHIFT_LOGICAL_32BIT;
   }
 
@@ -79,7 +79,7 @@ struct BitfieldManip {
         return "pextuw";
       case Kind::INVALID:
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -173,7 +173,7 @@ class ModifiedCopyBitfieldElement : public FormElement {
   const std::vector<BitFieldDef> mods() const { return m_field_modifications; }
   bool from_pcpyud() const { return m_from_pcpyud; }
   void clear_pcpyud_flag() {
-    assert(m_from_pcpyud);
+    ASSERT(m_from_pcpyud);
     m_from_pcpyud = false;
   }
 

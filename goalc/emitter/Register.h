@@ -10,7 +10,7 @@
 #include <string>
 #include "common/common_types.h"
 #include "common/goal_constants.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace emitter {
 
@@ -76,7 +76,7 @@ class Register {
     } else if (is_gpr()) {
       return m_id - RAX;
     } else {
-      assert(false);
+      ASSERT(false);
     }
     return 0xff;
   }

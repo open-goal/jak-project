@@ -78,7 +78,7 @@ We don't save any assets from the game - you must bring your own copy of the gam
 Install packages and init repository:
 
 ```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format
+sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 git submodule update --init --recursive
 ```
 

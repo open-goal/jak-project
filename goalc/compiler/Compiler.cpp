@@ -330,7 +330,7 @@ void Compiler::compile_and_send_from_string(const std::string& source_code) {
 
   auto code = m_goos.reader.read_from_string(source_code);
   auto compiled = compile_object_file("test-code", code, true);
-  assert(!compiled->is_empty());
+  ASSERT(!compiled->is_empty());
   color_object_file(compiled);
   auto data = codegen_object_file(compiled);
   m_listener.send_code(data);

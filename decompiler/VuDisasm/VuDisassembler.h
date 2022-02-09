@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include "decompiler/VuDisasm/VuProgram.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 
@@ -220,7 +220,7 @@ class VuDisassembler {
   };
 
   const OpInfo& info(VuInstrK op) const {
-    assert((int)op < (int)VuInstrK::INVALID);
+    ASSERT((int)op < (int)VuInstrK::INVALID);
     return m_op_info[(int)op];
   }
 

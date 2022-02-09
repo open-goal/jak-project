@@ -276,6 +276,6 @@ std::string inspect_ref(const Ref& ref) {
     case decompiler::LinkedWord::TYPE_PTR:
       return fmt::format("[t'{}]", word.symbol_name());
     default:
-      assert(false);
+      ASSERT(false);
   }
 }

@@ -1,7 +1,7 @@
 #include "gs.h"
 
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 std::string reg_descriptor_name(GifTag::RegisterDescriptor reg) {
   switch (reg) {
@@ -37,7 +37,7 @@ std::string reg_descriptor_name(GifTag::RegisterDescriptor reg) {
       return "NOP";
 
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -57,7 +57,7 @@ std::string GifTag::print() const {
       result += "disable ";
       return result;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   result += fmt::format("nloop: {} ", nloop());
@@ -196,7 +196,7 @@ std::string register_address_name(GsRegisterAddress reg) {
     case GsRegisterAddress::LABEL:
       return "LABEL";
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -230,7 +230,7 @@ std::string GsTest::print() const {
         result += "NOTEQUAL ";
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
     result += fmt::format("ref: 0x{:x} alpha-fail: ", aref());
     switch (afail()) {
@@ -247,7 +247,7 @@ std::string GsTest::print() const {
         result += "RGB_ONLY ";
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -271,7 +271,7 @@ std::string GsTest::print() const {
         result += "GREATER";
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
   return result;
@@ -290,7 +290,7 @@ std::string GsAlpha::print() const {
       result += "0 ";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   switch (b_mode()) {
@@ -304,7 +304,7 @@ std::string GsAlpha::print() const {
       result += "- 0) * ";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   switch (c_mode()) {
@@ -320,7 +320,7 @@ std::string GsAlpha::print() const {
       result += fmt::format("{:.4f}", div);
     } break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   switch (d_mode()) {
@@ -333,7 +333,7 @@ std::string GsAlpha::print() const {
     case BlendMode::ZERO_OR_FIXED:
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return result;
@@ -376,7 +376,7 @@ std::string DrawMode::to_string() const {
       result += "greater\n";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   result += fmt::format(" alpha: ");
   switch (get_alpha_blend()) {
@@ -390,7 +390,7 @@ std::string DrawMode::to_string() const {
       result += "disabled\n";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   result += fmt::format(" clamp: s {} t {}\n", get_clamp_s_enable(), get_clamp_t_enable());
   result += fmt::format(" filt: {}\n", get_filt_enable());
@@ -409,7 +409,7 @@ std::string DrawMode::to_string() const {
       result += "never\n";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   result += fmt::format(" zte: {}\n", get_zt_enable());
   result += fmt::format(" abe: {}\n", get_ab_enable());
@@ -428,7 +428,7 @@ std::string DrawMode::to_string() const {
       result += "zb-only\n";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return result;
 }

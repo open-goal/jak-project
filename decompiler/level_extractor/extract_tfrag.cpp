@@ -4,7 +4,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/util/FileUtil.h"
 #include "common/dma/gs.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 namespace {
@@ -19,7 +19,7 @@ u16 get_first_idx(const level_tools::DrawableInlineArray* array) {
   } else if (as_nodes) {
     return as_nodes->draw_nodes.at(0).id;
   } else {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -86,14 +86,14 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
   } else if (tree->arrays.size() == 1) {
     auto array =
         dynamic_cast<const level_tools::DrawableInlineArrayTFrag*>(tree->arrays.at(0).get());
-    assert(array);
+    ASSERT(array);
     result.first_root = array->tfragments.at(0).id;
     result.num_roots = array->tfragments.size();
     result.only_children = true;
   } else {
     auto array =
         dynamic_cast<const level_tools::DrawableInlineArrayNode*>(tree->arrays.at(0).get());
-    assert(array);
+    ASSERT(array);
     result.first_root = array->draw_nodes.at(0).id;
     result.num_roots = array->draw_nodes.size();
     result.only_children = false;
@@ -107,29 +107,29 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
 
     auto array =
         dynamic_cast<const level_tools::DrawableInlineArrayNode*>(tree->arrays.at(i).get());
-    assert(array);
+    ASSERT(array);
     u16 idx = first_child;
     for (auto& elt : array->draw_nodes) {
       auto& vis = result.vis_nodes.at(elt.id - result.first_root);
-      assert(vis.num_kids == 0xff);
+      ASSERT(vis.num_kids == 0xff);
       for (int j = 0; j < 4; j++) {
         vis.bsphere[j] = elt.bsphere.data[j];
       }
       vis.num_kids = elt.child_count;
       vis.flags = elt.flags;
       vis.my_id = elt.id;
-      assert(vis.flags == expecting_leaves ? 0 : 1);
-      assert(vis.num_kids > 0);
-      assert(vis.num_kids <= 8);
-      assert(elt.children.size() == vis.num_kids);
+      ASSERT(vis.flags == expecting_leaves ? 0 : 1);
+      ASSERT(vis.num_kids > 0);
+      ASSERT(vis.num_kids <= 8);
+      ASSERT(elt.children.size() == vis.num_kids);
       if (expecting_leaves) {
         for (int leaf = 0; leaf < (int)vis.num_kids; leaf++) {
           auto l = dynamic_cast<level_tools::TFragment*>(elt.children.at(leaf).get());
-          assert(l);
+          ASSERT(l);
 
-          assert(idx == l->id);
+          ASSERT(idx == l->id);
 
-          assert(l->id >= result.first_child_node);
+          ASSERT(l->id >= result.first_child_node);
           if (leaf == 0) {
             vis.child_id = l->id;
           }
@@ -141,18 +141,18 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
         u16 arr_idx = 0;
         for (int child = 0; child < (int)vis.num_kids; child++) {
           auto l = dynamic_cast<level_tools::DrawNode*>(elt.children.at(child).get());
-          assert(l);
+          ASSERT(l);
           if (child == 0) {
             arr_idx = l->id;
           } else {
-            assert(arr_idx < l->id);
+            ASSERT(arr_idx < l->id);
             arr_idx = l->id;
           }
           if (child == 0) {
             vis.child_id = l->id;
           }
 
-          assert(l->id < result.first_child_node);
+          ASSERT(l->id < result.first_child_node);
         }
       }
     }
@@ -195,20 +195,20 @@ int handle_unpack_v4_8_mode0(const VifCode& code,
                              int wl,
                              u8* out) {
   VifCodeUnpack unpack(code);
-  assert(unpack.use_tops_flag);
+  ASSERT(unpack.use_tops_flag);
   int offset = offset_word * 4;
 
   // CL x (num/WL)+(num%WL)
 
   if (unpack.is_unsigned) {
     // note: formulas below assume this!
-    assert(cl == 2);
-    assert(wl == 1);
-    assert(code.num);
+    ASSERT(cl == 2);
+    ASSERT(wl == 1);
+    ASSERT(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + 2 * i;
-      assert(dest_qw <= 328);
+      ASSERT(dest_qw <= 328);
       u32 qw[4];
       qw[0] = dma[offset++];
       qw[1] = dma[offset++];
@@ -218,13 +218,13 @@ int handle_unpack_v4_8_mode0(const VifCode& code,
     }
   } else {
     // note: formulas below assume this!
-    assert(cl == 4);
-    assert(wl == 4);
-    assert(code.num);
+    ASSERT(cl == 4);
+    ASSERT(wl == 4);
+    ASSERT(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + i;
-      assert(dest_qw <= 328);
+      ASSERT(dest_qw <= 328);
       s32 qw[4];
       qw[0] = (s8)dma[offset++];
       qw[1] = (s8)dma[offset++];
@@ -234,7 +234,7 @@ int handle_unpack_v4_8_mode0(const VifCode& code,
     }
   }
 
-  assert((offset % 4) == 0);
+  ASSERT((offset % 4) == 0);
   return offset / 4;
 }
 
@@ -246,19 +246,19 @@ int handle_unpack_v4_8_mode1(const VifCode& code,
                              const u32 row[4],
                              u8* out) {
   VifCodeUnpack unpack(code);
-  assert(unpack.use_tops_flag);
+  ASSERT(unpack.use_tops_flag);
   int offset = offset_word * 4;
   // CL x (num/WL)+(num%WL)
 
   if (unpack.is_unsigned) {
     // note: formulas below assume this!
-    assert(cl == 4);
-    assert(wl == 4);
-    assert(code.num);
+    ASSERT(cl == 4);
+    ASSERT(wl == 4);
+    ASSERT(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + i;
-      assert(dest_qw <= 328);
+      ASSERT(dest_qw <= 328);
       u32 qw[4];
       qw[0] = row[0] + dma[offset++];
       qw[1] = row[1] + dma[offset++];
@@ -268,13 +268,13 @@ int handle_unpack_v4_8_mode1(const VifCode& code,
     }
   } else {
     // note: formulas below assume this!
-    assert(cl == 4);
-    assert(wl == 4);
-    assert(code.num);
+    ASSERT(cl == 4);
+    ASSERT(wl == 4);
+    ASSERT(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + i;
-      assert(dest_qw <= 328);
+      ASSERT(dest_qw <= 328);
       s32 qw[4];
       qw[0] = row[0] + (s8)dma[offset++];
       qw[1] = row[1] + (s8)dma[offset++];
@@ -284,7 +284,7 @@ int handle_unpack_v4_8_mode1(const VifCode& code,
     }
   }
 
-  assert((offset % 4) == 0);
+  ASSERT((offset % 4) == 0);
   return offset / 4;
 }
 
@@ -302,20 +302,20 @@ int handle_unpack_v4_16_mode0(const VifCode& code,
                               int wl,
                               u8* vu_mem) {
   VifCodeUnpack unpack(code);
-  assert(unpack.use_tops_flag);
-  assert(unpack.is_unsigned);
+  ASSERT(unpack.use_tops_flag);
+  ASSERT(unpack.is_unsigned);
 
   // note: formulas below assume this!
-  assert(cl == 4);
-  assert(wl == 4);
+  ASSERT(cl == 4);
+  ASSERT(wl == 4);
 
   int offset = offset_word * 4;
 
-  assert(code.num);
+  ASSERT(code.num);
   for (int i = 0; i < code.num; i++) {
     // write every other qw
     int dest_qw = unpack.addr_qw + i;
-    assert(dest_qw <= 328);
+    ASSERT(dest_qw <= 328);
     u32 qw[4];
     qw[0] = deref_ptr<u16>(dma + offset);
     offset += 2;
@@ -327,7 +327,7 @@ int handle_unpack_v4_16_mode0(const VifCode& code,
     offset += 2;
     memcpy(vu_mem + (dest_qw * 16), qw, 16);
   }
-  assert((offset % 4) == 0);
+  ASSERT((offset % 4) == 0);
   return offset / 4;
 }
 
@@ -339,19 +339,19 @@ int handle_unpack_v4_16_mode1(const VifCode& code,
                               const u32 row[4],
                               u8* vu_mem) {
   VifCodeUnpack unpack(code);
-  assert(unpack.use_tops_flag);
-  assert(unpack.is_unsigned);
+  ASSERT(unpack.use_tops_flag);
+  ASSERT(unpack.is_unsigned);
 
   // note: formulas below assume this!
-  assert(cl == 4);
-  assert(wl == 4);
+  ASSERT(cl == 4);
+  ASSERT(wl == 4);
 
-  assert(code.num);
+  ASSERT(code.num);
   int offset = offset_word * 4;
   for (int i = 0; i < code.num; i++) {
     // write every other qw
     int dest_qw = unpack.addr_qw + i;
-    assert(dest_qw <= 328);
+    ASSERT(dest_qw <= 328);
     u32 qw[4];
     qw[0] = row[0] + (u32)deref_ptr<u16>(dma + offset);
     offset += 2;
@@ -365,7 +365,7 @@ int handle_unpack_v4_16_mode1(const VifCode& code,
     // fmt::print("  unpack rgba?: {:x} {:x} {:x} {:x}\n", qw[0], qw[1], qw[2], qw[3]);
     memcpy(vu_mem + (dest_qw * 16), qw, 16);
   }
-  assert((offset % 4) == 0);
+  ASSERT((offset % 4) == 0);
   return offset / 4;
 }
 
@@ -376,19 +376,19 @@ int handle_unpack_v3_32(const VifCode& code,
                         int wl,
                         u8* vu_mem) {
   VifCodeUnpack unpack(code);
-  assert(unpack.use_tops_flag);
-  assert(!unpack.is_unsigned);
+  ASSERT(unpack.use_tops_flag);
+  ASSERT(!unpack.is_unsigned);
 
   // note: formulas below assume this!
-  assert(cl == 2);
-  assert(wl == 1);
+  ASSERT(cl == 2);
+  ASSERT(wl == 1);
 
-  assert(code.num);
+  ASSERT(code.num);
   int offset = offset_word * 4;
   for (int i = 0; i < code.num; i++) {
     // write every other qw
     int dest_qw = unpack.addr_qw + i * 2;
-    assert(dest_qw <= 328);
+    ASSERT(dest_qw <= 328);
     u32 qw[4];
     qw[0] = deref_ptr<u32>(dma + offset);
     offset += 4;
@@ -399,7 +399,7 @@ int handle_unpack_v3_32(const VifCode& code,
     qw[3] = 0x80;  // this can be anything...
     memcpy(vu_mem + (dest_qw * 16), qw, 16);
   }
-  assert((offset % 4) == 0);
+  ASSERT((offset % 4) == 0);
   return offset / 4;
 }
 
@@ -410,18 +410,18 @@ int handle_unpack_v4_32(const VifCode& code,
                         int wl,
                         u8* vu_mem) {
   VifCodeUnpack unpack(code);
-  assert(unpack.use_tops_flag);
-  assert(!unpack.is_unsigned);
+  ASSERT(unpack.use_tops_flag);
+  ASSERT(!unpack.is_unsigned);
 
   // note: formulas below assume this!
-  assert(cl == 4);
-  assert(wl == 4);
+  ASSERT(cl == 4);
+  ASSERT(wl == 4);
   int offset = offset_word * 4;
-  assert(code.num);
+  ASSERT(code.num);
   for (int i = 0; i < code.num; i++) {
     // write every other qw
     int dest_qw = unpack.addr_qw + i;
-    assert(dest_qw <= 328);
+    ASSERT(dest_qw <= 328);
     u32 qw[4];
     qw[0] = deref_ptr<u32>(dma + offset);
     offset += 4;
@@ -433,11 +433,11 @@ int handle_unpack_v4_32(const VifCode& code,
     offset += 4;
     memcpy(vu_mem + (dest_qw * 16), qw, 16);
   }
-  assert((offset % 4) == 0);
+  ASSERT((offset % 4) == 0);
   return offset / 4;
 
   //  u8* write_base = get_upload_buffer();
-  //  assert(code.num + unpack.addr_qw <= 328);
+  //  ASSERT(code.num + unpack.addr_qw <= 328);
   //  memcpy(write_base + (unpack.addr_qw * 16), dma.data + offset, code.num * 16);
   //  return offset + code.num * 16;
 }
@@ -459,10 +459,10 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
         break;
       case VifCode::Kind::STMOD:
         if (state.stmod == 0) {
-          assert(code.immediate == 1);
+          ASSERT(code.immediate == 1);
         } else {
-          assert(state.stmod == 1);
-          assert(code.immediate == 0 || code.immediate == 1);  // kinda weird.
+          ASSERT(state.stmod == 1);
+          ASSERT(code.immediate == 0 || code.immediate == 1);  // kinda weird.
         }
         state.stmod = code.immediate;
         break;
@@ -470,11 +470,11 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
         if (state.stmod == 0) {
           word = handle_unpack_v4_8_mode0(code, (const u8*)start, word, state.cl, state.wl, vu_mem);
         } else if (state.stmod == 1) {
-          assert(state.row_init);
+          ASSERT(state.row_init);
           word = handle_unpack_v4_8_mode1(code, (const u8*)start, word, state.cl, state.wl,
                                           state.row, vu_mem);
         } else {
-          assert(false);
+          ASSERT(false);
         }
         break;
       case VifCode::Kind::UNPACK_V4_16:
@@ -482,19 +482,19 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
           word =
               handle_unpack_v4_16_mode0(code, (const u8*)start, word, state.cl, state.wl, vu_mem);
         } else if (state.stmod == 1) {
-          assert(state.row_init);
+          ASSERT(state.row_init);
           word = handle_unpack_v4_16_mode1(code, (const u8*)start, word, state.cl, state.wl,
                                            state.row, vu_mem);
         } else {
-          assert(false);
+          ASSERT(false);
         }
         break;
       case VifCode::Kind::UNPACK_V4_32:
-        assert(state.stmod == 0);
+        ASSERT(state.stmod == 0);
         word = handle_unpack_v4_32(code, (const u8*)start, word, state.cl, state.wl, vu_mem);
         break;
       case VifCode::Kind::UNPACK_V3_32:
-        assert(state.stmod == 0);
+        ASSERT(state.stmod == 0);
         word = handle_unpack_v3_32(code, (const u8*)start, word, state.cl, state.wl, vu_mem);
         break;
       case VifCode::Kind::NOP:
@@ -513,8 +513,8 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
     }
   }
 
-  assert(word == max_words);
-  assert(state.stmod == 0);
+  ASSERT(word == max_words);
+  ASSERT(state.stmod == 0);
 }
 
 struct TFragColorUnpack {
@@ -548,7 +548,7 @@ void emulate_dma_building_for_tfrag(const level_tools::TFragment& frag,
   // do the "canned" unpacks
   if (frag.num_level0_colors == 0) {
     // we're using base
-    assert(frag.num_level1_colors == 0);
+    ASSERT(frag.num_level1_colors == 0);
     stats->num_base++;
     emulate_chain(state, frag.dma_qwc[1] * 4, (const u32*)frag.dma_base.data(), vu_mem.data());
 
@@ -623,8 +623,8 @@ struct VuMemWrapper {
   u16 ilw_data(int offset, int xyzw) {
     u16 result;
 
-    assert(offset < 328);
-    assert(offset >= 0);
+    ASSERT(offset < 328);
+    ASSERT(offset >= 0);
     int mem_offset = (xyzw * 4) + (offset * 16);
     memcpy(&result, mem->data() + mem_offset, 2);
     return result;
@@ -633,8 +633,8 @@ struct VuMemWrapper {
   math::Vector4f load_vector_data(int offset) {
     math::Vector4f result;
     // offset = offset & 0x3ff;  // not super happy with this...
-    assert(offset < 328);
-    assert(offset >= 0);
+    ASSERT(offset < 328);
+    ASSERT(offset >= 0);
     memcpy(&result, mem->data() + (offset * 16), 16);
     return result;
   }
@@ -1025,7 +1025,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   ////////////////////////////////////////////////////////////////////////////////////////
 
   //  ilwr.x vi02, vi03          |  nop
-  assert(vi03_vert_addr_book < 328);                            // should be a buffer 0 addr
+  ASSERT(vi03_vert_addr_book < 328);                            // should be a buffer 0 addr
   u16 vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 0);  // is an addr? v4/16 with strom
   if (DEBUG) {
     fmt::print("vi02-warmup 0: {}\n", vi02_pre_vtx_ptr);
@@ -1579,7 +1579,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
     //  mtir vi04, vf28.w          |  maxy.w vf15, vf15, vf01
     vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);  // L131 previously
-    // assert(vars.vi04 != 0xbeef);             // hit
+    // ASSERT(vars.vi04 != 0xbeef);             // hit
     // vars.vf15_loop_pos_1.w() = std::max(vars.vf15_loop_pos_1.w(), m_tfrag_data.fog.y());
 
     //  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf13
@@ -1665,7 +1665,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
       }
     }
 
-    // assert(false);
+    // ASSERT(false);
   }
 
 end:
@@ -1685,7 +1685,7 @@ std::string debug_dump_to_obj(const std::vector<TFragDraw>& draws) {
 
   for (auto& draw : draws) {
     // add verts...
-    assert(draw.verts.size() >= 3);
+    ASSERT(draw.verts.size() >= 3);
 
     int vert_idx = 0;
 
@@ -1750,7 +1750,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
              reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::DEST) {
-    assert(reg.fix() == 128);
+    ASSERT(reg.fix() == 128);
     // Cv = (Cs - 0) * FIX + Cd
     // if fix = 128, it works out to 1.0
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
@@ -1759,7 +1759,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
                (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -1784,7 +1784,7 @@ void update_mode_from_test1(u64 val, DrawMode& mode) {
     default:
       fmt::print("Alpha test: {} not supported\n", (int)test.alpha_test());
       mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
-      assert(false);
+      ASSERT(false);
   }
 
   // AREF
@@ -1794,7 +1794,7 @@ void update_mode_from_test1(u64 val, DrawMode& mode) {
   mode.set_alpha_fail(test.afail());
 
   // DATE
-  assert(test.date() == false);
+  ASSERT(test.date() == false);
 
   // DATM
   // who cares, if date is off
@@ -1870,7 +1870,7 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
       mode.enable_ab();
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   for (auto& draw : all_draws) {
@@ -1879,14 +1879,14 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
       u64 val = draw.get_adgif_val(ad_idx);
       switch (addr) {
         case GsRegisterAddress::TEST_1:
-          assert(false);
+          ASSERT(false);
           update_mode_from_test1(val, mode);
           break;
         case GsRegisterAddress::TEX0_1:
-          assert(val == 0);
+          ASSERT(val == 0);
           break;
         case GsRegisterAddress::TEX1_1:
-          assert(val == 0x120);  // some flag
+          ASSERT(val == 0x120);  // some flag
           {
             u32 original_tex = draw.get_adgif_upper(ad_idx);
             u32 new_tex = remap_texture(original_tex, map);
@@ -1906,7 +1906,7 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
         case GsRegisterAddress::CLAMP_1:
           if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
             fmt::print("clamp: 0x{:x}\n", val);
-            assert(false);
+            ASSERT(false);
           }
 
           // this isn't quite right, but I'm hoping it's enough!
@@ -2015,7 +2015,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
               combo_tex_id);
           fmt::print("tpage is {}\n", combo_tex_id >> 16);
           fmt::print("id is {} (0x{:x})\n", combo_tex_id & 0xffff, combo_tex_id & 0xffff);
-          assert(false);
+          ASSERT(false);
         }
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2051,10 +2051,10 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.t = vert.stq.y();
           vtx.q = vert.stq.z();
           // if this is true, we can remove a divide in the shader
-          assert(vtx.q == 1.f);
+          ASSERT(vtx.q == 1.f);
           vtx.color_index = vert.rgba / 4;
-          // assert((vert.rgba >> 2) < 1024); spider cave has 2048?
-          assert((vert.rgba & 3) == 0);
+          // ASSERT((vert.rgba >> 2) < 1024); spider cave has 2048?
+          ASSERT((vert.rgba & 3) == 0);
 
           size_t vert_idx = tree_out.vertices.size();
           tree_out.vertices.push_back(vtx);
@@ -2150,25 +2150,25 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
     this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
   } else {
     fmt::print("unknown tfrag tree kind: {}\n", tree->my_type());
-    assert(false);
+    ASSERT(false);
   }
 
-  assert(tree->length == (int)tree->arrays.size());
-  assert(tree->length > 0);
+  ASSERT(tree->length == (int)tree->arrays.size());
+  ASSERT(tree->length > 0);
 
   auto last_array = tree->arrays.back().get();
 
   auto as_tfrag_array = dynamic_cast<level_tools::DrawableInlineArrayTFrag*>(last_array);
-  assert(as_tfrag_array);
-  assert(as_tfrag_array->length == (int)as_tfrag_array->tfragments.size());
-  assert(as_tfrag_array->length > 0);
+  ASSERT(as_tfrag_array);
+  ASSERT(as_tfrag_array->length == (int)as_tfrag_array->tfragments.size());
+  ASSERT(as_tfrag_array->length > 0);
   u16 idx = as_tfrag_array->tfragments.front().id;
   for (auto& elt : as_tfrag_array->tfragments) {
-    assert(elt.id == idx);
+    ASSERT(elt.id == idx);
     idx++;
   }
   bool ok = verify_node_indices(tree);
-  assert(ok);
+  ASSERT(ok);
   fmt::print("    tree has {} arrays and {} tfragments\n", tree->length, as_tfrag_array->length);
 
   auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
@@ -2189,7 +2189,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
       }
     }
   }
-  //  assert(result.vis_nodes.last_child_node + 1 == idx);
+  //  ASSERT(result.vis_nodes.last_child_node + 1 == idx);
 
   emulate_tfrags(as_tfrag_array->tfragments, debug_name, map, out, this_tree, tex_db,
                  expected_missing_textures, dump_level);

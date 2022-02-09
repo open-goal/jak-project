@@ -213,11 +213,11 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
     switch (next.kind) {
       case VifCode::Kind::UNPACK_V4_16: {
         VifCodeUnpack up(next);
-        assert(up.use_tops_flag == true);
-        assert(up.is_unsigned == true);
-        // assert(up.addr_qw == 0);
+        ASSERT(up.use_tops_flag == true);
+        ASSERT(up.is_unsigned == true);
+        // ASSERT(up.addr_qw == 0);
         int qw_to_write = next.num;
-        assert(next.num);
+        ASSERT(next.num);
         for (int qw = 0; qw < qw_to_write; qw++) {
           u32 words[2];
           words[0] = deref_u32(start, word_offset++);
@@ -232,10 +232,10 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
 
       case VifCode::Kind::UNPACK_V4_32: {
         VifCodeUnpack up(next);
-        assert(up.use_tops_flag == true);
-        assert(up.is_unsigned == false);
-        // assert(up.addr_qw == 9);
-        assert(next.num);
+        ASSERT(up.use_tops_flag == true);
+        ASSERT(up.is_unsigned == false);
+        // ASSERT(up.addr_qw == 9);
+        ASSERT(next.num);
         for (int qw = 0; qw < next.num; qw++) {
           u32 words[4];
           words[0] = deref_u32(start, word_offset++);
@@ -248,10 +248,10 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
 
       case VifCode::Kind::UNPACK_V3_32: {
         VifCodeUnpack up(next);
-        assert(up.use_tops_flag == true);
-        assert(up.is_unsigned == false);
-        // assert(up.addr_qw == 19);
-        assert(next.num);
+        ASSERT(up.use_tops_flag == true);
+        ASSERT(up.is_unsigned == false);
+        // ASSERT(up.addr_qw == 19);
+        ASSERT(next.num);
         for (int qw = 0; qw < next.num; qw++) {
           u32 words[3];
           words[0] = deref_u32(start, word_offset++);
@@ -278,10 +278,10 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
 
       case VifCode::Kind::UNPACK_V4_8: {
         VifCodeUnpack up(next);
-        assert(up.use_tops_flag == true);
-        //        assert(up.is_unsigned == false);
-        //        assert(up.addr_qw == 129);
-        assert(next.num);
+        ASSERT(up.use_tops_flag == true);
+        //        ASSERT(up.is_unsigned == false);
+        //        ASSERT(up.addr_qw == 129);
+        ASSERT(next.num);
         for (int qw = 0; qw < next.num; qw++) {
           s8 words[4];
           u32 all = deref_u32(start, word_offset++);
@@ -293,7 +293,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
         break;
       default:
         fmt::print("unknown: {}\n", next.print());
-        assert(false);
+        ASSERT(false);
     }
   }
   fmt::print("-------------------------------------------\n");
@@ -392,15 +392,15 @@ void TFragment::read_from_file(TypedRef ref,
     color_indices.push_back(high & 0xffff);
     color_indices.push_back(high >> 16);
   }
-  assert((int)color_indices.size() == num_colors);
+  ASSERT((int)color_indices.size() == num_colors);
 
   // todo shader
 
-  assert(num_colors / 4 == color_count);
+  ASSERT(num_colors / 4 == color_count);
   // fmt::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
-  assert(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
-  assert(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
-  assert(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
+  ASSERT(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
+  ASSERT(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
+  ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
 }
 
 std::string TFragment::print(const PrintSettings& settings, int indent) const {
@@ -445,13 +445,13 @@ void TieFragment::read_from_file(TypedRef ref,
 
   auto gif_data_ref = deref_label(get_field_ref(ref, "gif-ref", dts));
 
-  assert((tex_count % 5) == 0);
+  ASSERT((tex_count % 5) == 0);
   u32 total_gif_qw = tex_count + gif_count;
   gif_data.resize(16 * total_gif_qw);
   for (u32 i = 0; i < total_gif_qw * 4; i++) {
     auto& word =
         gif_data_ref.data->words_by_seg.at(gif_data_ref.seg).at((gif_data_ref.byte_offset / 4) + i);
-    assert(word.kind() == decompiler::LinkedWord::PLAIN_DATA);
+    ASSERT(word.kind() == decompiler::LinkedWord::PLAIN_DATA);
     memcpy(gif_data.data() + (i * 4), &word.data, 4);
   }
 
@@ -461,7 +461,7 @@ void TieFragment::read_from_file(TypedRef ref,
   for (u32 i = 0; i < vertex_count * 4; i++) {
     auto& word = points_data_ref.data->words_by_seg.at(points_data_ref.seg)
                      .at((points_data_ref.byte_offset / 4) + i);
-    assert(word.kind() == decompiler::LinkedWord::PLAIN_DATA);
+    ASSERT(word.kind() == decompiler::LinkedWord::PLAIN_DATA);
     memcpy(point_ref.data() + (i * 4), &word.data, 4);
   }
 
@@ -498,7 +498,7 @@ void InstanceTie::read_from_file(TypedRef ref,
   bucket_index = read_plain_data_field<u16>(ref, "bucket-index", dts);
   id = read_plain_data_field<s16>(ref, "id", dts);
   flags = read_plain_data_field<u16>(ref, "flags", dts);
-  //  assert(flags == 0); // TODO
+  //  ASSERT(flags == 0); // TODO
   origin.read_from_file(get_field_ref(ref, "origin", dts));
   wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
   color_indices = deref_label(get_field_ref(ref, "color-indices", dts));
@@ -772,10 +772,10 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
   auto palette = deref_label(get_field_ref(ref, "time-of-day-pal", dts));
   time_of_day.width = deref_u32(palette, 0);
 
-  assert(time_of_day.width == 8);
+  ASSERT(time_of_day.width == 8);
   time_of_day.height = deref_u32(palette, 1);
   time_of_day.pad = deref_u32(palette, 2);
-  assert(time_of_day.pad == 0);
+  ASSERT(time_of_day.pad == 0);
   for (int i = 0; i < int(8 * time_of_day.height); i++) {
     time_of_day.colors.push_back(deref_u32(palette, 3 + i));
   }
@@ -869,7 +869,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
                                         DrawStats* stats) {
   name = read_string_field(ref, "name", dts, true);
   flags = read_plain_data_field<u32>(ref, "flags", dts);
-  assert(flags == 0 || flags == 2);
+  ASSERT(flags == 0 || flags == 2);
   in_level = read_plain_data_field<u16>(ref, "in-level", dts);
   utextures = read_plain_data_field<u16>(ref, "utextures", dts);
   // todo drawables
@@ -918,16 +918,16 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   }
 
   for (auto x : next) {
-    assert(x == 0);
+    ASSERT(x == 0);
   }
   for (auto x : count) {
-    assert(x == 0);
+    ASSERT(x == 0);
   }
   for (auto x : generic_count) {
-    assert(x == 0);
+    ASSERT(x == 0);
   }
   for (auto x : generic_next) {
-    assert(x == 0);
+    ASSERT(x == 0);
   }
 
   // get the color count data
@@ -937,7 +937,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
       u32 start = index_start[i];
       u32 end = start + frag_count[i];
       // fmt::print("i = {}: {} -> {}\n", i, start, end);
-      assert(num_color_qwcs <= end);
+      ASSERT(num_color_qwcs <= end);
       num_color_qwcs = std::max(end, num_color_qwcs);
     }
 
@@ -953,10 +953,10 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   auto palette = deref_label(get_field_ref(ref, "tie-colors", dts));
   time_of_day.width = deref_u32(palette, 0);
 
-  assert(time_of_day.width == 8);
+  ASSERT(time_of_day.width == 8);
   time_of_day.height = deref_u32(palette, 1);
   time_of_day.pad = deref_u32(palette, 2);
-  assert(time_of_day.pad == 0);
+  ASSERT(time_of_day.pad == 0);
   for (int i = 0; i < int(8 * time_of_day.height); i++) {
     time_of_day.colors.push_back(deref_u32(palette, 3 + i));
   }

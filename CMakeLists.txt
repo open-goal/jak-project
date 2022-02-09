@@ -159,6 +159,10 @@ add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 # build format library
 add_subdirectory(third-party/fmt EXCLUDE_FROM_ALL)
 
+# discord rich presence
+include_directories(third-party/discord-rpc/include)
+add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
+
 # build zydis third party library for disassembling x86
 # NOTE: Once under CMake 3.13's policy CMP0077, override with `set()` instead
 option(ZYDIS_BUILD_TOOLS "Zydis: Build tools" OFF)

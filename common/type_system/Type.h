@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include "common/goal_constants.h"
 #include "TypeSpec.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 class TypeSystem;
 
@@ -219,12 +219,12 @@ class Field {
   std::string diff(const Field& other) const;
 
   int alignment() const {
-    assert(m_alignment != -1);
+    ASSERT(m_alignment != -1);
     return m_alignment;
   }
 
   int array_size() const {
-    assert(is_array() && !is_dynamic());
+    ASSERT(is_array() && !is_dynamic());
     return m_array_size;
   }
 

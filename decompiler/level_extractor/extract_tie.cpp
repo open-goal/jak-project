@@ -19,7 +19,7 @@ u16 get_first_idx(const level_tools::DrawableInlineArray* array) {
   } else if (as_nodes) {
     return as_nodes->draw_nodes.at(0).id;
   } else {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -88,14 +88,14 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
   } else if (tree->arrays.size() == 1) {
     auto array =
         dynamic_cast<const level_tools::DrawableInlineArrayInstanceTie*>(tree->arrays.at(0).get());
-    assert(array);
+    ASSERT(array);
     out.bvh.first_root = array->instances.at(0).id;
     out.bvh.num_roots = array->instances.size();
     out.bvh.only_children = true;
   } else {
     auto array =
         dynamic_cast<const level_tools::DrawableInlineArrayNode*>(tree->arrays.at(0).get());
-    assert(array);
+    ASSERT(array);
     out.bvh.first_root = array->draw_nodes.at(0).id;
     out.bvh.num_roots = array->draw_nodes.size();
     out.bvh.only_children = false;
@@ -109,29 +109,29 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
 
     auto array =
         dynamic_cast<const level_tools::DrawableInlineArrayNode*>(tree->arrays.at(i).get());
-    assert(array);
+    ASSERT(array);
     u16 idx = first_child;
     for (auto& elt : array->draw_nodes) {
       auto& vis = out.bvh.vis_nodes.at(elt.id - out.bvh.first_root);
-      assert(vis.num_kids == 0xff);
+      ASSERT(vis.num_kids == 0xff);
       for (int j = 0; j < 4; j++) {
         vis.bsphere[j] = elt.bsphere.data[j];
       }
       vis.num_kids = elt.child_count;
       vis.flags = elt.flags;
       vis.my_id = elt.id;
-      assert(vis.flags == expecting_leaves ? 0 : 1);
-      assert(vis.num_kids > 0);
-      assert(vis.num_kids <= 8);
-      assert(elt.children.size() == vis.num_kids);
+      ASSERT(vis.flags == expecting_leaves ? 0 : 1);
+      ASSERT(vis.num_kids > 0);
+      ASSERT(vis.num_kids <= 8);
+      ASSERT(elt.children.size() == vis.num_kids);
       if (expecting_leaves) {
         for (int leaf = 0; leaf < (int)vis.num_kids; leaf++) {
           auto l = dynamic_cast<level_tools::InstanceTie*>(elt.children.at(leaf).get());
-          assert(l);
+          ASSERT(l);
 
-          assert(idx == l->id);
+          ASSERT(idx == l->id);
 
-          assert(l->id >= out.bvh.first_leaf_node);
+          ASSERT(l->id >= out.bvh.first_leaf_node);
           if (leaf == 0) {
             vis.child_id = l->id;
           }
@@ -143,18 +143,18 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
         u16 arr_idx = 0;
         for (int child = 0; child < (int)vis.num_kids; child++) {
           auto l = dynamic_cast<level_tools::DrawNode*>(elt.children.at(child).get());
-          assert(l);
+          ASSERT(l);
           if (child == 0) {
             arr_idx = l->id;
           } else {
-            assert(arr_idx < l->id);
+            ASSERT(arr_idx < l->id);
             arr_idx = l->id;
           }
           if (child == 0) {
             vis.child_id = l->id;
           }
 
-          assert(l->id < out.bvh.first_leaf_node);
+          ASSERT(l->id < out.bvh.first_leaf_node);
         }
       }
     }
@@ -266,9 +266,9 @@ struct TieFrag {
 
   // simulate a load in the points data (using vu mem addr)
   math::Vector<float, 4> lq_points(u32 qw) const {
-    assert(qw >= 50);
+    ASSERT(qw >= 50);
     qw -= 50;
-    assert((qw * 16) + 16 <= points_data.size());
+    ASSERT((qw * 16) + 16 <= points_data.size());
     math::Vector<float, 4> result;
     memcpy(result.data(), points_data.data() + (qw * 16), 16);
     return result;
@@ -277,7 +277,7 @@ struct TieFrag {
   // simulate a load from points, but don't die if we load past the end
   // this can happen when pipelining.
   math::Vector<float, 4> lq_points_allow_past_end(u32 qw) const {
-    assert(qw >= 50);
+    ASSERT(qw >= 50);
     qw -= 50;
     if ((qw * 16) + 16 <= points_data.size()) {
       math::Vector<float, 4> result;
@@ -291,9 +291,9 @@ struct TieFrag {
   // store data into points. annoyingly the points have to be unpacked
   // and they are modified in place.
   void sq_points(u32 qw, const math::Vector4f& data) {
-    assert(qw >= 50);
+    ASSERT(qw >= 50);
     qw -= 50;
-    assert((qw * 16) + 16 <= points_data.size());
+    ASSERT((qw * 16) + 16 <= points_data.size());
     memcpy(points_data.data() + (qw * 16), data.data(), 16);
   }
 
@@ -302,7 +302,7 @@ struct TieFrag {
     // unpacked with v8.
     int qwi = qw;
     qwi -= (adgifs.size() * 5);
-    assert(qwi >= 0);
+    ASSERT(qwi >= 0);
     return other_gif_data.at(qwi * 4 + offset);
   }
 
@@ -380,8 +380,8 @@ void check_wind_vectors_zero(const std::vector<TieProtoInfo>& protos, Ref wind_r
   wind_words *= 4;
   for (size_t i = 0; i < wind_words; i++) {
     auto& word = wind_ref.data->words_by_seg.at(wind_ref.seg).at(wind_ref.byte_offset / 4 + i);
-    assert(word.kind() == LinkedWord::PLAIN_DATA);
-    assert(word.data == 0);
+    ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word.data == 0);
   }
 }
 
@@ -436,7 +436,7 @@ std::vector<TieProtoInfo> collect_instance_info(
         }
       }
       info.frags.push_back(std::move(frag_info));
-      assert(info.frags.back().color_indices.size() > 0);
+      ASSERT(info.frags.back().color_indices.size() > 0);
 
       offset_bytes += num_color_qwc * 16;
     }
@@ -459,7 +459,7 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   for (auto& t : map) {
     if (t.original_texid == masked) {
       fmt::print("OKAY! remapped!\n");
-      assert(false);
+      ASSERT(false);
       return t.new_texid | 20;
     }
   }
@@ -478,7 +478,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     const auto& proto = protos[i];
     auto& info = out->at(i);
     // the flags can either be 0 or 2.
-    assert(proto.flags == 0 || proto.flags == 2);
+    ASSERT(proto.flags == 0 || proto.flags == 2);
     // flag of 2 means it should use the generic renderer (determined from EE asm)
     // for now, we ignore this and use TIE on everything.
     info.uses_generic = (proto.flags == 2);
@@ -519,11 +519,11 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         memcpy(&ra_tex0_val, &gif_data.at(16 * (tex_idx * 5 + 0)), 8);
 
         // always expecting TEX0_1
-        assert(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
+        ASSERT(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
 
         // the value is overwritten by the login function. We don't care about this value, it's
         // specific to the PS2's texture system.
-        assert(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
+        ASSERT(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
         // the original value is a flag. this means to use decal texture mode (todo)
         frag_info.has_magic_tex0_bit = ra_tex0_val == 0x800000000;
         // there's also a hidden value in the unused bits of the a+d data. it'll be used by the
@@ -534,8 +534,8 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u8 ra_tex1 = gif_data.at(16 * (tex_idx * 5 + 1) + 8);
         u64 ra_tex1_val;
         memcpy(&ra_tex1_val, &gif_data.at(16 * (tex_idx * 5 + 1)), 8);
-        assert(ra_tex1 == (u8)GsRegisterAddress::TEX1_1);
-        assert(ra_tex1_val == 0x120);  // some flag
+        ASSERT(ra_tex1 == (u8)GsRegisterAddress::TEX1_1);
+        ASSERT(ra_tex1_val == 0x120);  // some flag
         u32 original_tex;
         memcpy(&original_tex, &gif_data.at(16 * (tex_idx * 5 + 1) + 8), 4);
         // try remapping it
@@ -549,7 +549,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u32 tex_combo = (((u32)tpage) << 16) | tidx;
         // look up the texture to make sure it's valid
         auto tex = tdb.textures.find(tex_combo);
-        assert(tex != tdb.textures.end());
+        ASSERT(tex != tdb.textures.end());
         // remember the texture id
         adgif.combo_tex = tex_combo;
         // and the hidden value in the unused a+d
@@ -561,20 +561,20 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
 
         // mipmap settings. we ignore, but get the hidden value
         u8 ra_mip = gif_data.at(16 * (tex_idx * 5 + 2) + 8);
-        assert(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
+        ASSERT(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
         memcpy(&adgif.third_w, &gif_data.at(16 * (tex_idx * 5 + 2) + 12), 4);
         // who cares about the value
 
         // clamp settings. we care about these. no hidden value.
         u8 ra_clamp = gif_data.at(16 * (tex_idx * 5 + 3) + 8);
-        assert(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
+        ASSERT(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
         u64 clamp;
         memcpy(&clamp, &gif_data.at(16 * (tex_idx * 5 + 3)), 8);
         adgif.clamp_val = clamp;
 
         // alpha settings. we care about these, but no hidden value
         u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
-        assert(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
+        ASSERT(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
         u64 alpha;
         memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
         adgif.alpha_val = alpha;
@@ -763,20 +763,20 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // the first one has the offset in the gif buffer.
       // we expect this to be 0 for the first one - we should start with adgif shaders always.
       u16 vi04 = frag.adgifs.at(0).first_w;
-      assert(vi04 == 0);
+      ASSERT(vi04 == 0);
 
       //    ilw.w vi_ind, 1(vi_point_ptr)         |  nop
       // the next hidden integer is the number of adgif shaders used in this fragment.
       // we already know this, so check it.
       u16 vi_ind = frag.adgifs.at(0).second_w;
-      assert(vi_ind == frag.adgifs.size());
+      ASSERT(vi_ind == frag.adgifs.size());
 
       //    mtir vi06, vf_gifbufs.y               |  nop
       // vi06 will be one of our gifbufs we can use.
       u16 vi06;
       memcpy(&vi06, &vf_gifbufs.y(), sizeof(u16));
       // fmt::print("vi06: {}\n", vi06);
-      assert(vi06 == 470 || vi06 == 286 || vi06 == 654);  // should be one of the three gifbufs.
+      ASSERT(vi06 == 470 || vi06 == 286 || vi06 == 654);  // should be one of the three gifbufs.
 
       //    lqi.xyzw vf02, vi_point_ptr        |  suby.xz vf_gifbufs, vf_gifbufs, vf_gifbufs
       //    lqi.xyzw vf03, vi_point_ptr        |  nop
@@ -795,11 +795,11 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // fmt::print("vi05: {}\n", vi05);
       // check that we understand the buffer rotation.
       if (vi06 == 470) {
-        assert(vi05 == 286);
+        ASSERT(vi05 == 286);
       } else if (vi06 == 286) {
-        assert(vi05 == 654);
+        ASSERT(vi05 == 654);
       } else {
-        assert(vi05 == 470);
+        ASSERT(vi05 == 470);
       }
       vi_point_ptr += 5;
 
@@ -863,7 +863,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // again, we do it in two parts. The extra gif data gives us offsets,
       // The extra gif stuff is unpacked immediately after adgifs. Unpacked with v8 4.
       // the above adgif loop will run off the end and vf02 will have the first byte in it's w.
-      assert(frag.other_gif_data.size() > 1);
+      ASSERT(frag.other_gif_data.size() > 1);
       //    mtir vi_ind, vf02.w          |  nop
       // vi_ind will contain the number of drawing packets for this fragment.
       vi_ind = frag.other_gif_data.at(3);
@@ -878,8 +878,8 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       u16 vf04_y = frag.other_gif_data.at(9);
       u16 vf04_z = frag.other_gif_data.at(10);
       // u16 vf04_w = frag.other_gif_data.at(11);
-      assert(vi_ind >= frag.adgifs.size());  // at least 1 draw per shader.
-      assert(vi_ind < 1000);                 // check for insane value.
+      ASSERT(vi_ind >= frag.adgifs.size());  // at least 1 draw per shader.
+      ASSERT(vi_ind < 1000);                 // check for insane value.
       // fmt::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
 
       //    iaddi vi_point_ptr, vi_point_ptr, -0x2     |  subw.w vf07, vf07, vf07
@@ -895,7 +895,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       //    ilwr.y vi08, vi_point_ptr          |  nop
       u16 vi08 = frag.ilw_other_gif(vi_point_ptr, 1);
       // this can toggle to a different mode but I don't understand it yet.
-      assert(vi08 == 0);
+      ASSERT(vi08 == 0);
 
       //    ilwr.z vi04, vi_point_ptr          |  nop
       vi04 = frag.ilw_other_gif(vi_point_ptr, 2);
@@ -930,7 +930,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
         //    iswr.x vi07, vi03          |  nop
         info.nloop = vi07 & 0x7fff;
         info.eop = vi07 & 0x8000;
-        assert(!info.eop);  // seems like we handle this manually after the loop
+        ASSERT(!info.eop);  // seems like we handle this manually after the loop
         info.mode = next_mode;
 
         //    sq.xyzw vf07, 0(vi04)      |  nop
@@ -1263,7 +1263,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // todo: maybe we need more.
     }
 
-    // assert(false);
+    // ASSERT(false);
   }
 }
 
@@ -1450,7 +1450,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.z() = tex_coord.z();
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
-          assert(inserted);
+          ASSERT(inserted);
 
           if (reached_target) {
             past_target++;
@@ -1492,10 +1492,10 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
           // fmt::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
-          assert(inserted);
+          ASSERT(inserted);
 
           bool inserted2 = frag.vertex_by_dest_addr.insert({(u32)dest2_ptr, vertex_info}).second;
-          assert(inserted2);
+          ASSERT(inserted2);
 
           if (reached_target) {
             past_target++;
@@ -1612,7 +1612,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.z() = tex_coord.z();
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
-          assert(inserted);
+          ASSERT(inserted);
 
           ip_1_count++;
         }
@@ -1644,14 +1644,14 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.z() = tex_coord.z();
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
-          assert(inserted);
+          ASSERT(inserted);
 
           // first iteration of ip2 is a bit strange because how it jumps from loop to loop.
           // in some cases it uses ip2 on a point that should have used ip1 with the same addr
           // twice. I am pretty sure it's not our fault because we get exactly the right dvert.
           bool inserted2 = frag.vertex_by_dest_addr.insert({(u32)dest2_ptr, vertex_info}).second;
           if (!first_iter) {
-            assert(inserted2);
+            ASSERT(inserted2);
           }
           first_iter = false;
           ip_1_count++;
@@ -1659,10 +1659,10 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       }
 
       // now, let's check count:
-      assert(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
+      ASSERT(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
 
     program_end:;
-      //      assert(false);
+      //      ASSERT(false);
     }
 
     //    }
@@ -1685,9 +1685,9 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
 
       // but, we should always start with an adgif (otherwise we'd use the draw settings from
       // the last model, which we don't know)
-      assert(frag.prog_info.adgif_offset_in_gif_buf_qw.at(0) == 0);
+      ASSERT(frag.prog_info.adgif_offset_in_gif_buf_qw.at(0) == 0);
       // and we expect that the VU program placed all adgifs somewhere
-      assert(frag.prog_info.adgif_offset_in_gif_buf_qw.size() == frag.adgifs.size());
+      ASSERT(frag.prog_info.adgif_offset_in_gif_buf_qw.size() == frag.adgifs.size());
 
       const AdgifInfo* adgif_info = nullptr;
       int expected_next_tag = 0;
@@ -1703,10 +1703,10 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
           expected_next_tag += 6;
           adgif_it++;
         }
-        assert(adgif_info);
+        ASSERT(adgif_info);
 
         // make sure the next str is where we expect
-        assert(expected_next_tag == str_it->address);
+        ASSERT(expected_next_tag == str_it->address);
         // the next tag (either str/adgif) should be located at the end of this tag's data.
         expected_next_tag += 3 * str_it->nloop + 1;
         // here we have the right str and adgif.
@@ -1715,7 +1715,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
         // 286 gifbuf
         // 470 gifbuf again
         // 654 ??
-        assert(!frag.vertex_by_dest_addr.empty());
+        ASSERT(!frag.vertex_by_dest_addr.empty());
         int gifbuf_addr = frag.vertex_by_dest_addr.begin()->first;
         int base_address = 286;
         if (gifbuf_addr >= 654) {
@@ -1739,7 +1739,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
         str_it++;
       }
 
-      assert(adgif_it == adgif_end);
+      ASSERT(adgif_it == adgif_end);
     }
   }
 }
@@ -1757,7 +1757,7 @@ std::string debug_dump_proto_to_obj(const TieProtoInfo& proto) {
   for (auto& frag : proto.frags) {
     for (auto& strip : frag.strips) {
       // add verts...
-      assert(strip.verts.size() >= 3);
+      ASSERT(strip.verts.size() >= 3);
 
       int vert_idx = 0;
 
@@ -1833,7 +1833,7 @@ std::string dump_full_to_obj(const std::vector<TieProtoInfo>& protos) {
       for (auto& frag : proto.frags) {
         for (auto& strip : frag.strips) {
           // add verts...
-          assert(strip.verts.size() >= 3);
+          ASSERT(strip.verts.size() >= 3);
 
           int vert_idx = 0;
 
@@ -1916,7 +1916,7 @@ BigPalette make_big_palette(std::vector<TieProtoInfo>& protos) {
 
     for (u32 instance_idx = 0; instance_idx < proto.instances.size(); instance_idx++) {
       auto& instance = proto.instances[instance_idx];
-      assert(proto.frags.size() == instance.frags.size());
+      ASSERT(proto.frags.size() == instance.frags.size());
       for (u32 frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
         auto& ifrag = instance.frags.at(frag_idx);
         ifrag.color_index_offset_in_big_palette = base_color_of_proto;
@@ -1924,7 +1924,7 @@ BigPalette make_big_palette(std::vector<TieProtoInfo>& protos) {
     }
   }
 
-  assert(result.colors.size() < UINT16_MAX);
+  ASSERT(result.colors.size() < UINT16_MAX);
   return result;
 }
 
@@ -1950,7 +1950,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
              reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::DEST) {
-    assert(reg.fix() == 128);
+    ASSERT(reg.fix() == 128);
     // Cv = (Cs - 0) * FIX + Cd
     // if fix = 128, it works out to 1.0
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
@@ -1960,7 +1960,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::DEST) {
     // Cv = (Cs - Cd) * FIX + Cd
-    assert(reg.fix() == 64);
+    ASSERT(reg.fix() == 64);
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
   }
 
@@ -1968,7 +1968,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
                (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -2006,7 +2006,7 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   if (!(info.clamp_val == 0b101 || info.clamp_val == 0 || info.clamp_val == 1 ||
         info.clamp_val == 0b100)) {
     fmt::print("clamp: 0x{:x}\n", info.clamp_val);
-    assert(false);
+    ASSERT(false);
   }
 
   mode.set_clamp_s_enable(info.clamp_val & 0b1);
@@ -2082,7 +2082,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                     combo_tex);
                 fmt::print("tpage is {}\n", combo_tex >> 16);
                 fmt::print("id is {} (0x{:x})\n", combo_tex & 0xffff, combo_tex & 0xffff);
-                assert(false);
+                ASSERT(false);
               }
             }
             // add a new texture to the level data
@@ -2144,12 +2144,12 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
               vtx.t = vert.tex.y();
               vtx.q = vert.tex.z();
               // if this is true, we can remove a divide in the shader
-              assert(vtx.q == 1.f);
+              ASSERT(vtx.q == 1.f);
               if (vert.color_index_index == UINT32_MAX) {
                 vtx.color_index = 0;
               } else {
                 vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
-                assert(vert.color_index_index < ifrag.color_indices.size());
+                ASSERT(vert.color_index_index < ifrag.color_indices.size());
                 vtx.color_index += ifrag.color_index_offset_in_big_palette;
               }
 
@@ -2197,12 +2197,12 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
               vtx.t = vert.tex.y();
               vtx.q = vert.tex.z();
               // if this is true, we can remove a divide in the shader
-              assert(vtx.q == 1.f);
+              ASSERT(vtx.q == 1.f);
               if (vert.color_index_index == UINT32_MAX) {
                 vtx.color_index = 0;
               } else {
                 vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
-                assert(vert.color_index_index < ifrag.color_indices.size());
+                ASSERT(vert.color_index_index < ifrag.color_indices.size());
                 vtx.color_index += ifrag.color_index_offset_in_big_palette;
               }
 
@@ -2266,20 +2266,20 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
   tfrag3::TieTree this_tree;
 
   // sanity check the vis tree (not a perfect check, but this is used in game and should be right)
-  assert(tree->length == (int)tree->arrays.size());
-  assert(tree->length > 0);
+  ASSERT(tree->length == (int)tree->arrays.size());
+  ASSERT(tree->length > 0);
   auto last_array = tree->arrays.back().get();
   auto as_instance_array = dynamic_cast<level_tools::DrawableInlineArrayInstanceTie*>(last_array);
-  assert(as_instance_array);
-  assert(as_instance_array->length == (int)as_instance_array->instances.size());
-  assert(as_instance_array->length > 0);
+  ASSERT(as_instance_array);
+  ASSERT(as_instance_array->length == (int)as_instance_array->instances.size());
+  ASSERT(as_instance_array->length > 0);
   u16 idx = as_instance_array->instances.front().id;
   for (auto& elt : as_instance_array->instances) {
-    assert(elt.id == idx);
+    ASSERT(elt.id == idx);
     idx++;
   }
   bool ok = verify_node_indices(tree);
-  assert(ok);
+  ASSERT(ok);
   fmt::print("    tree has {} arrays and {} instances\n", tree->length, as_instance_array->length);
 
   // extract the vis tree. Note that this extracts the tree only down to the last draw node, a

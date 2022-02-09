@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <string>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * A simple prefix tree. It works similarly to a map, but also supports fast lookups by prefix with

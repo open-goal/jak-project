@@ -111,7 +111,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
                                           env.get_variable_name(let_dest_var),
                                           env.get_variable_name(*var));
       } else {
-        assert(false);
+        ASSERT(false);
       }
     }
 
@@ -173,7 +173,7 @@ FormElement* rewrite_nonvirtual_defstate(
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
   // first thing in the body should be something like:
   //  (set! teetertotter-idle (the-as (state none) v1-3))
-  assert(elt->body()->size() > 0);
+  ASSERT(elt->body()->size() > 0);
   int body_index = 0;
 
   // the setup
@@ -256,7 +256,7 @@ FormElement* rewrite_virtual_defstate(
     const std::string& expected_state_name,
     FormPool& pool,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
-  assert(elt->body()->size() > 1);
+  ASSERT(elt->body()->size() > 1);
   // variable at the top of let, contains the static state with name exptected_state_name
   auto state_var_from_let_def = elt->entries().at(0).dest;
   // our index into the let body

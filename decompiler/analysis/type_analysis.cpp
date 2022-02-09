@@ -5,9 +5,9 @@ namespace {
 TypeState construct_initial_typestate(const TypeSpec& f_ts, const Env& env) {
   TypeState result;
   int goal_args[] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3, Reg::T0, Reg::T1, Reg::T2, Reg::T3};
-  assert(f_ts.base_type() == "function");
-  assert(f_ts.arg_count() >= 1);
-  assert(f_ts.arg_count() <= 8 + 1);  // 8 args + 1 return.
+  ASSERT(f_ts.base_type() == "function");
+  ASSERT(f_ts.arg_count() >= 1);
+  ASSERT(f_ts.arg_count() <= 8 + 1);  // 8 args + 1 return.
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
     auto reg_type = f_ts.get_arg(i);
@@ -50,7 +50,7 @@ void modify_input_types_for_casts(
       }
     } catch (std::exception& e) {
       printf("failed to parse hint: %s\n", e.what());
-      assert(false);
+      ASSERT(false);
     }
   }
 }
@@ -87,7 +87,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
 
   if (my_type.last_arg() == TypeSpec("none")) {
     auto as_end = dynamic_cast<FunctionEndOp*>(func.ir2.atomic_ops->ops.back().get());
-    assert(as_end);
+    ASSERT(as_end);
     as_end->mark_function_as_no_return_value();
   }
 
@@ -101,8 +101,8 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
   // - never visit unreachable blocks (we can't type propagate these)
   // - always visit at least one predecessor of a block before that block
   auto order = func.bb_topo_sort();
-  assert(!order.vist_order.empty());
-  assert(order.vist_order.front() == 0);
+  ASSERT(!order.vist_order.empty());
+  ASSERT(order.vist_order.front() == 0);
 
   // STEP 2 - initialize type state for the first block to the function argument types.
   block_init_types.at(0) = construct_initial_typestate(my_type, func.ir2.env);

@@ -147,9 +147,9 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
       throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
-  assert(false);
+  ASSERT(false);
   return get_none();
 }
 
@@ -204,9 +204,9 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
       throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
-  assert(false);
+  ASSERT(false);
   return get_none();
 }
 
@@ -298,9 +298,9 @@ Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest
       throw_compiler_error(form, "Cannot do imul64 on a {}.", first_type.print());
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
-  assert(false);
+  ASSERT(false);
   return get_none();
 }
 
@@ -366,9 +366,9 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
       throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
-  assert(false);
+  ASSERT(false);
   return get_none();
 }
 
@@ -493,9 +493,9 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
       throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
-  assert(false);
+  ASSERT(false);
   return get_none();
 }
 

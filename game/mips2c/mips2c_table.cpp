@@ -324,7 +324,7 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
 u32 LinkedFunctionTable::get(const std::string& name) {
   auto it = m_executes.find(name);
   if (it == m_executes.end()) {
-    assert(false);
+    ASSERT(false);
   }
   return it->second.goal_trampoline.offset;
 }

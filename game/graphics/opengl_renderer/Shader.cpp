@@ -2,7 +2,7 @@
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 Shader::Shader(const std::string& shader_name) {
   // read the shader source
@@ -60,7 +60,7 @@ Shader::Shader(const std::string& shader_name) {
 }
 
 void Shader::activate() {
-  assert(m_is_okay);
+  ASSERT(m_is_okay);
   glUseProgram(m_program);
 }
 

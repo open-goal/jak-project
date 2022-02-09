@@ -198,7 +198,7 @@ std::vector<std::string> MakeSystem::get_dependencies(const std::string& target)
 
 void MakeSystem::add_tool(std::shared_ptr<Tool> tool) {
   auto& name = tool->name();
-  assert(m_tools.find(name) == m_tools.end());
+  ASSERT(m_tools.find(name) == m_tools.end());
   m_tools[name] = tool;
 }
 

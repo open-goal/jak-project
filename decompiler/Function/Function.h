@@ -60,7 +60,7 @@ struct FunctionName {
   }
 
   int get_anon_id() const {
-    assert(kind == FunctionKind::UNIDENTIFIED);
+    ASSERT(kind == FunctionKind::UNIDENTIFIED);
     return id_in_object;
   }
 

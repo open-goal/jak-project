@@ -23,10 +23,10 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
   // note that flg = true, this should use double buffering
   bool ok = verify_unpack_with_stcycl(transfer, VifCode::Kind::UNPACK_V4_32, 4, 4, 1,
                                       SpriteDataMem::Header, false, true);
-  assert(ok);
+  ASSERT(ok);
   u32 header[4];
   memcpy(header, transfer.data, 16);
-  assert(header[0] <= SpriteRenderer::SPRITES_PER_CHUNK);
+  ASSERT(header[0] <= SpriteRenderer::SPRITES_PER_CHUNK);
   return header[0];
 }
 }  // namespace
@@ -111,18 +111,18 @@ void SpriteRenderer::render_distorter(DmaFollower& dma,
   }
   // m_direct_renderer.flush_pending(render_state, prof);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
-  assert(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
-  assert(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
-  assert(sprite_distorter_direct_setup.vifcode1().immediate == 7);
+  ASSERT(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
+  ASSERT(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
+  ASSERT(sprite_distorter_direct_setup.vifcode1().immediate == 7);
   memcpy(m_sprite_distorter_setup, sprite_distorter_direct_setup.data, 7 * 16);
 
   // Next thing should be the sprite-distorter tables
   auto sprite_distorter_tables = dma.read_and_advance();
-  assert(sprite_distorter_tables.size_bytes == 0x8b * 16);
-  assert(sprite_distorter_tables.vifcode0().kind == VifCode::Kind::STCYCL);
+  ASSERT(sprite_distorter_tables.size_bytes == 0x8b * 16);
+  ASSERT(sprite_distorter_tables.vifcode0().kind == VifCode::Kind::STCYCL);
   VifCodeStcycl distorter_table_transfer(sprite_distorter_tables.vifcode0());
-  assert(distorter_table_transfer.cl == 4);
-  assert(distorter_table_transfer.wl == 4);
+  ASSERT(distorter_table_transfer.cl == 4);
+  ASSERT(distorter_table_transfer.wl == 4);
   // TODO: check unpack cmd (vif1)
 
   // TODO: do something with the table
@@ -140,48 +140,48 @@ void SpriteRenderer::render_distorter(DmaFollower& dma,
 void SpriteRenderer::handle_sprite_frame_setup(DmaFollower& dma) {
   // first is some direct data
   auto direct_data = dma.read_and_advance();
-  assert(direct_data.size_bytes == 3 * 16);
+  ASSERT(direct_data.size_bytes == 3 * 16);
   memcpy(m_sprite_direct_setup, direct_data.data, 3 * 16);
 
   // next would be the program, but it's 0 size on the PC and isn't sent.
 
   // next is the "frame data"
   auto frame_data = dma.read_and_advance();
-  assert(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
-  assert(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
+  ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
+  ASSERT(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
   VifCodeStcycl frame_data_stcycl(frame_data.vifcode0());
-  assert(frame_data_stcycl.cl == 4);
-  assert(frame_data_stcycl.wl == 4);
-  assert(frame_data.vifcode1().kind == VifCode::Kind::UNPACK_V4_32);
+  ASSERT(frame_data_stcycl.cl == 4);
+  ASSERT(frame_data_stcycl.wl == 4);
+  ASSERT(frame_data.vifcode1().kind == VifCode::Kind::UNPACK_V4_32);
   VifCodeUnpack frame_data_unpack(frame_data.vifcode1());
-  assert(frame_data_unpack.addr_qw == SpriteDataMem::FrameData);
-  assert(frame_data_unpack.use_tops_flag == false);
+  ASSERT(frame_data_unpack.addr_qw == SpriteDataMem::FrameData);
+  ASSERT(frame_data_unpack.use_tops_flag == false);
   memcpy(&m_frame_data, frame_data.data, sizeof(SpriteFrameData));
 
   // next, a MSCALF.
   auto mscalf = dma.read_and_advance();
-  assert(mscalf.size_bytes == 0);
-  assert(mscalf.vifcode0().kind == VifCode::Kind::MSCALF);
-  assert(mscalf.vifcode0().immediate == SpriteProgMem::Init);
-  assert(mscalf.vifcode1().kind == VifCode::Kind::FLUSHE);
+  ASSERT(mscalf.size_bytes == 0);
+  ASSERT(mscalf.vifcode0().kind == VifCode::Kind::MSCALF);
+  ASSERT(mscalf.vifcode0().immediate == SpriteProgMem::Init);
+  ASSERT(mscalf.vifcode1().kind == VifCode::Kind::FLUSHE);
 
   // next base and offset
   auto base_offset = dma.read_and_advance();
-  assert(base_offset.size_bytes == 0);
-  assert(base_offset.vifcode0().kind == VifCode::Kind::BASE);
-  assert(base_offset.vifcode0().immediate == SpriteDataMem::Buffer0);
-  assert(base_offset.vifcode1().kind == VifCode::Kind::OFFSET);
-  assert(base_offset.vifcode1().immediate == SpriteDataMem::Buffer1);
+  ASSERT(base_offset.size_bytes == 0);
+  ASSERT(base_offset.vifcode0().kind == VifCode::Kind::BASE);
+  ASSERT(base_offset.vifcode0().immediate == SpriteDataMem::Buffer0);
+  ASSERT(base_offset.vifcode1().kind == VifCode::Kind::OFFSET);
+  ASSERT(base_offset.vifcode1().immediate == SpriteDataMem::Buffer1);
 }
 
 void SpriteRenderer::render_3d(DmaFollower& dma) {
   // one time matrix data
   auto matrix_data = dma.read_and_advance();
-  assert(matrix_data.size_bytes == sizeof(Sprite3DMatrixData));
+  ASSERT(matrix_data.size_bytes == sizeof(Sprite3DMatrixData));
 
   bool unpack_ok = verify_unpack_with_stcycl(matrix_data, VifCode::Kind::UNPACK_V4_32, 4, 4, 5,
                                              SpriteDataMem::Matrix, false, false);
-  assert(unpack_ok);
+  ASSERT(unpack_ok);
   static_assert(sizeof(m_3d_matrix_data) == 5 * 16);
   memcpy(&m_3d_matrix_data, matrix_data.data, sizeof(m_3d_matrix_data));
   // TODO
@@ -233,21 +233,21 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     // second is the vector data
     u32 expected_vec_size = sizeof(SpriteVecData2d) * sprite_count;
     auto vec_data = dma.read_and_advance();
-    assert(expected_vec_size <= sizeof(m_vec_data_2d));
+    ASSERT(expected_vec_size <= sizeof(m_vec_data_2d));
     unpack_to_no_stcycl(&m_vec_data_2d, vec_data, VifCode::Kind::UNPACK_V4_32, expected_vec_size,
                         SpriteDataMem::Vector, false, true);
 
     // third is the adgif data
     u32 expected_adgif_size = sizeof(AdGifData) * sprite_count;
     auto adgif_data = dma.read_and_advance();
-    assert(expected_adgif_size <= sizeof(m_adgif));
+    ASSERT(expected_adgif_size <= sizeof(m_adgif));
     unpack_to_no_stcycl(&m_adgif, adgif_data, VifCode::Kind::UNPACK_V4_32, expected_adgif_size,
                         SpriteDataMem::Adgif, false, true);
 
     // fourth is the actual run!!!!!
     auto run = dma.read_and_advance();
-    assert(run.vifcode0().kind == VifCode::Kind::NOP);
-    assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
+    ASSERT(run.vifcode0().kind == VifCode::Kind::NOP);
+    ASSERT(run.vifcode1().kind == VifCode::Kind::MSCAL);
 
     if (m_enabled) {
       if (run.vifcode1().immediate != last_prog) {
@@ -279,8 +279,8 @@ void SpriteRenderer::render_fake_shadow(DmaFollower& dma) {
   // TODO
   // nop + flushe
   auto nop_flushe = dma.read_and_advance();
-  assert(nop_flushe.vifcode0().kind == VifCode::Kind::NOP);
-  assert(nop_flushe.vifcode1().kind == VifCode::Kind::FLUSHE);
+  ASSERT(nop_flushe.vifcode0().kind == VifCode::Kind::NOP);
+  ASSERT(nop_flushe.vifcode1().kind == VifCode::Kind::FLUSHE);
 }
 
 /*!
@@ -293,8 +293,8 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma,
   auto mat_upload = dma.read_and_advance();
   bool mat_ok = verify_unpack_with_stcycl(mat_upload, VifCode::Kind::UNPACK_V4_32, 4, 4, 80,
                                           SpriteDataMem::Matrix, false, false);
-  assert(mat_ok);
-  assert(mat_upload.size_bytes == sizeof(m_hud_matrix_data));
+  ASSERT(mat_ok);
+  ASSERT(mat_upload.size_bytes == sizeof(m_hud_matrix_data));
   memcpy(&m_hud_matrix_data, mat_upload.data, sizeof(m_hud_matrix_data));
 
   // opengl sprite frame setup
@@ -321,22 +321,22 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma,
     // second is the vector data
     u32 expected_vec_size = sizeof(SpriteVecData2d) * sprite_count;
     auto vec_data = dma.read_and_advance();
-    assert(expected_vec_size <= sizeof(m_vec_data_2d));
+    ASSERT(expected_vec_size <= sizeof(m_vec_data_2d));
     unpack_to_no_stcycl(&m_vec_data_2d, vec_data, VifCode::Kind::UNPACK_V4_32, expected_vec_size,
                         SpriteDataMem::Vector, false, true);
 
     // third is the adgif data
     u32 expected_adgif_size = sizeof(AdGifData) * sprite_count;
     auto adgif_data = dma.read_and_advance();
-    assert(expected_adgif_size <= sizeof(m_adgif));
+    ASSERT(expected_adgif_size <= sizeof(m_adgif));
     unpack_to_no_stcycl(&m_adgif, adgif_data, VifCode::Kind::UNPACK_V4_32, expected_adgif_size,
                         SpriteDataMem::Adgif, false, true);
 
     // fourth is the actual run!!!!!
     auto run = dma.read_and_advance();
-    assert(run.vifcode0().kind == VifCode::Kind::NOP);
-    assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
-    assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
+    ASSERT(run.vifcode0().kind == VifCode::Kind::NOP);
+    ASSERT(run.vifcode1().kind == VifCode::Kind::MSCAL);
+    ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
     if (m_enabled && m_2d_enable) {
       do_block_common(SpriteMode::ModeHUD, sprite_count, render_state, prof);
     }
@@ -349,16 +349,16 @@ void SpriteRenderer::render(DmaFollower& dma,
   m_debug_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
-  assert(data0.vif1() == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.size_bytes == 0);
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     // sprite renderer didn't run, let's just get out of here.
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
@@ -482,7 +482,7 @@ void SpriteRenderer::handle_tex0(u64 val,
   // tw: assume they got it right
   // th: assume they got it right
 
-  assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+  ASSERT(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
   // cpsm: assume they got it right
@@ -494,13 +494,13 @@ void SpriteRenderer::handle_tex1(u64 val,
                                  ScopedProfilerNode& /*prof*/) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
-  //   assert(reg.mxl() == 0);
+  //   ASSERT(reg.mxl() == 0);
   // if that's true, we can ignore LCM, MTBA, L, K
 
   m_adgif_state.enable_tex_filt = reg.mmag();
 
   // MMAG/MMIN specify texture filtering. For now, assume always linear
-  //  assert(reg.mmag() == true);
+  //  ASSERT(reg.mmag() == true);
   //  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
   //                                                //    lg::error("unsupported mmin");
   //  }
@@ -512,8 +512,8 @@ void SpriteRenderer::handle_zbuf(u64 val,
   // note: we can basically ignore this. There's a single z buffer that's always configured the same
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
-  assert(x.psm() == TextureFormat::PSMZ24);
-  assert(x.zbp() == 448);
+  ASSERT(x.psm() == TextureFormat::PSMZ24);
+  ASSERT(x.zbp() == 448);
 
   m_adgif_state.z_write = !x.zmsk();
 }
@@ -523,7 +523,7 @@ void SpriteRenderer::handle_clamp(u64 val,
                                   ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     fmt::print("clamp: 0x{:x}\n", val);
-    assert(false);
+    ASSERT(false);
   }
 
   m_adgif_state.reg_clamp = val;
@@ -563,7 +563,7 @@ void SpriteRenderer::update_gl_blend(AdGifState& state) {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {} NOTE THIS DOWN IMMEDIATELY!!", (int)state.a,
                 (int)state.b, (int)state.c, (int)state.d);
-      assert(false);
+      ASSERT(false);
     }
   }
 }
@@ -580,19 +580,19 @@ void SpriteRenderer::update_gl_prim(SharedRenderState* /*render_state*/) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.fogging_enable) {
-    //    assert(false);
+    //    ASSERT(false);
   }
   if (state.aa_enable) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.use_uv) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.ctxt) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.fix) {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -617,7 +617,7 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
       // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
     }
   }
-  assert(tex);
+  ASSERT(tex);
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {

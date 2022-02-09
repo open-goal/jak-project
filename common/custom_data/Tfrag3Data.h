@@ -7,7 +7,7 @@
 #include "common/dma/gs.h"
 #include "common/util/Serializer.h"
 #include "common/math/Vector.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace tfrag3 {
 

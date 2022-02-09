@@ -17,7 +17,7 @@
 #include "common/symbols.h"
 #include "common/goal_constants.h"
 #include "game/mips2c/mips2c_table.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -83,7 +83,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
           "VERSION ERROR: C Kernel built from GOAL %d.%d, but object file %s is from GOAL %d.%d\n",
           versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR, name, ofh->goal_version_major,
           ofh->goal_version_minor);
-      assert(false);
+      ASSERT(false);
     }
     if (link_debug_printfs) {
       printf("Object file header:\n");
@@ -144,7 +144,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
       }
     } else {
       printf("UNHANDLED OBJECT FILE VERSION\n");
-      assert(false);
+      ASSERT(false);
     }
 
     if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {
@@ -248,14 +248,14 @@ uint32_t link_control::work() {
   uint32_t rv;
 
   if (m_version == 3) {
-    assert(m_opengoal);
+    ASSERT(m_opengoal);
     rv = work_v3();
   } else if (m_version == 2 || m_version == 4) {
-    assert(!m_opengoal);
+    ASSERT(!m_opengoal);
     rv = work_v2();
   } else {
     printf("UNHANDLED OBJECT FILE VERSION %d IN WORK!\n", m_version);
-    assert(false);
+    ASSERT(false);
     return 0;
   }
 
@@ -274,7 +274,7 @@ uint32_t typelink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
   while (link.c()[seek]) {
     sym_name[seek] = link.c()[seek];
     seek++;
-    assert(seek < 256);
+    ASSERT(seek < 256);
   }
   sym_name[seek] = 0;
   seek++;
@@ -311,7 +311,7 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
   while (link.c()[seek]) {
     sym_name[seek] = link.c()[seek];
     seek++;
-    assert(seek < 256);
+    ASSERT(seek < 256);
   }
   sym_name[seek] = 0;
   seek++;
@@ -353,7 +353,7 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
                                 int size) {
   // target seg, dist into mine, dist into target, patch loc in mine
   uint8_t target_seg = *link;
-  assert(target_seg < ofh->segment_count);
+  ASSERT(target_seg < ofh->segment_count);
 
   uint32_t* link_data = (link + 1).cast<uint32_t>().c();
   int32_t mine = link_data[0] + ofh->code_infos[current_seg].offset;
@@ -378,7 +378,7 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   } else if (size == 8) {
     *Ptr<int64_t>(offset_of_patch).c() = diff;
   } else {
-    assert(false);
+    ASSERT(false);
   }
 
   return 1 + 3 * 4;
@@ -503,7 +503,7 @@ uint32_t link_control::work_v3() {
               break;
             default:
               printf("unknown link table thing %d\n", *lp);
-              assert(false);
+              ASSERT(false);
               break;
           }
         }
@@ -554,7 +554,7 @@ Ptr<u8> c_symlink2(Ptr<u8> objData, Ptr<u8> linkObj, Ptr<u8> relocTable) {
       *(objPtr.cast<u32>()) = linkObj.offset;
     } else {
       // I don't think we should hit this ever.
-      assert(false);
+      ASSERT(false);
     }
   } while (*relocPtr);
 
@@ -581,7 +581,7 @@ uint32_t link_control::work_v2() {
       m_heap_gap =
           m_object_data - m_heap->current;  // distance between end of heap and start of object
       if (m_object_data.offset < m_heap->current.offset) {
-        assert(false);
+        ASSERT(false);
       }
     }
 
@@ -677,7 +677,7 @@ uint32_t link_control::work_v2() {
         } else {      // offset mode
           for (u32 i = 0; i < count; i++) {
             if (m_loc_ptr.offset % 4) {
-              assert(false);
+              ASSERT(false);
             }
             u32 code = *(m_loc_ptr.cast<u32>());
             code += m_base_ptr.offset;

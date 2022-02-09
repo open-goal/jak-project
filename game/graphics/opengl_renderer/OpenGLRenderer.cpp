@@ -326,22 +326,22 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
 
   // Find the default regs buffer
   auto initial_call_tag = dma.current_tag();
-  assert(initial_call_tag.kind == DmaTag::Kind::CALL);
+  ASSERT(initial_call_tag.kind == DmaTag::Kind::CALL);
   auto initial_call_default_regs = dma.read_and_advance();
-  assert(initial_call_default_regs.transferred_tag == 0);  // should be a nop.
+  ASSERT(initial_call_default_regs.transferred_tag == 0);  // should be a nop.
   m_render_state.default_regs_buffer = dma.current_tag_offset();
   auto default_regs_tag = dma.current_tag();
-  assert(default_regs_tag.kind == DmaTag::Kind::CNT);
-  assert(default_regs_tag.qwc == 10);
+  ASSERT(default_regs_tag.kind == DmaTag::Kind::CNT);
+  ASSERT(default_regs_tag.qwc == 10);
   // TODO verify data in here.
   dma.read_and_advance();
   auto default_ret_tag = dma.current_tag();
-  assert(default_ret_tag.qwc == 0);
-  assert(default_ret_tag.kind == DmaTag::Kind::RET);
+  ASSERT(default_ret_tag.qwc == 0);
+  ASSERT(default_ret_tag.kind == DmaTag::Kind::RET);
   dma.read_and_advance();
 
   // now we should point to the first bucket!
-  assert(dma.current_tag_offset() == m_render_state.next_bucket);
+  ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
   m_render_state.next_bucket += 16;
 
   // loop over the buckets!
@@ -353,7 +353,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     renderer->render(dma, &m_render_state, bucket_prof);
     // lg::info("Render: {} end", g_current_render);
     //  should have ended at the start of the next chain
-    assert(dma.current_tag_offset() == m_render_state.next_bucket);
+    ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
 
     if (!m_render_state.dump_playback) {

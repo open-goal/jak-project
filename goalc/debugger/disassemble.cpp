@@ -47,7 +47,7 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   char print_buff[print_buff_size];
   int offset = 0;
 
-  assert(highlight_addr >= base_addr);
+  ASSERT(highlight_addr >= base_addr);
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';
@@ -107,7 +107,7 @@ std::string disassemble_x86_function(u8* data,
 
   std::vector<std::pair<int, std::string>> lines;
 
-  assert(highlight_addr >= base_addr);
+  ASSERT(highlight_addr >= base_addr);
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';

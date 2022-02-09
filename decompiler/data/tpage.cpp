@@ -214,7 +214,7 @@ struct TexturePage {
  * If basic is set, gives you a pointer to the beginning of the memory, if the thing is a basic.
  */
 int label_to_word_offset(DecompilerLabel l, bool basic) {
-  assert((l.offset & 3) == 0);
+  ASSERT((l.offset & 3) == 0);
   int result = l.offset / 4;
   if (basic) {
     result--;
@@ -223,7 +223,7 @@ int label_to_word_offset(DecompilerLabel l, bool basic) {
 }
 
 std::string get_type_tag(const LinkedWord& word) {
-  assert(word.kind() == LinkedWord::TYPE_PTR);
+  ASSERT(word.kind() == LinkedWord::TYPE_PTR);
   return word.symbol_name();
 }
 
@@ -232,14 +232,14 @@ bool is_type_tag(const LinkedWord& word, const std::string& type) {
 }
 
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
-  assert(word.kind() == LinkedWord::PTR);
+  ASSERT(word.kind() == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id());
 }
 
 template <typename T>
 T get_word(const LinkedWord& word) {
   T result;
-  assert(word.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
   static_assert(sizeof(T) == 4, "bad get_word size");
   memcpy(&result, &word.data, 4);
   return result;
@@ -251,7 +251,7 @@ T get_word(const LinkedWord& word) {
 Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words, int offset) {
   Texture tex;
   if (!is_type_tag(words.at(offset), "texture")) {
-    assert(false);
+    ASSERT(false);
   }
   offset++;
 
@@ -259,7 +259,7 @@ Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words,
     word = get_word<u32>(words.at(offset));
     offset++;
   }
-  assert(tex.pad == 0);
+  ASSERT(tex.pad == 0);
 
   tex.name_label = get_label(data, words.at(offset));
   offset++;
@@ -277,7 +277,7 @@ Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words,
   auto kv = psms.find(tex.psm);
   if (kv == psms.end()) {
     printf("Got unsupported texture 0x%x!\n", tex.psm);
-    assert(false);
+    ASSERT(false);
   }
 
   return tex;
@@ -289,7 +289,7 @@ Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words,
 FileInfo read_file_info(ObjectFileData& data, const std::vector<LinkedWord>& words, int offset) {
   FileInfo info;
   if (!is_type_tag(words.at(offset), "file-info")) {
-    assert(false);
+    ASSERT(false);
   }
   offset++;
 
@@ -331,18 +331,18 @@ TexturePage read_texture_page(ObjectFileData& data,
   TexturePage tpage;
   // offset 0 - 4, type tag
   if (!is_type_tag(words.at(offset), "texture-page")) {
-    assert(false);
+    ASSERT(false);
   }
   offset++;
 
   // offset 4 - 8, info label
   tpage.info_label = get_label(data, words.at(offset));
   tpage.info = read_file_info(data, words, label_to_word_offset(tpage.info_label, true));
-  assert(tpage.info.file_type == "texture-page");
-  assert(tpage.info.major_version == versions::TX_PAGE_VERSION);
-  assert(tpage.info.minor_version == 0);
-  assert(tpage.info.maya_file_name == "Unknown");
-  assert(tpage.info.mdb_file_name == 0);
+  ASSERT(tpage.info.file_type == "texture-page");
+  ASSERT(tpage.info.major_version == versions::TX_PAGE_VERSION);
+  ASSERT(tpage.info.minor_version == 0);
+  ASSERT(tpage.info.maya_file_name == "Unknown");
+  ASSERT(tpage.info.mdb_file_name == 0);
   offset++;
 
   // offset 8 - 12, name
@@ -381,7 +381,7 @@ TexturePage read_texture_page(ObjectFileData& data,
   for (unsigned int& i : tpage.pad) {
     i = get_word<u32>(words.at(offset));
     offset++;
-    assert(i == 0);
+    ASSERT(i == 0);
   }
 
   for (int i = 0; i < tpage.length; i++) {
@@ -392,7 +392,7 @@ TexturePage read_texture_page(ObjectFileData& data,
         null_tex.null_texture = true;
         tpage.textures.push_back(null_tex);
       } else {
-        assert(false);
+        ASSERT(false);
       }
     } else {
       tpage.data.push_back(get_label(data, words.at(offset)));
@@ -404,7 +404,7 @@ TexturePage read_texture_page(ObjectFileData& data,
   }
 
   auto aligned_end = (offset + 3) & (~3);
-  assert(aligned_end == end);
+  ASSERT(aligned_end == end);
 
   return tpage;
 }
@@ -429,7 +429,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
     }
   }
 
-  assert(end_of_texture_page != -1);
+  ASSERT(end_of_texture_page != -1);
   // todo check it's not too small.
 
   // Read the texture_page struct
@@ -439,7 +439,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
   std::vector<u32> tex_data;
   auto tex_start = label_to_word_offset(texture_page.segments[0].block_data_label, false);
   auto tex_size = int(words.size()) - int(tex_start);
-  assert(tex_size > 0);
+  ASSERT(tex_size > 0);
   tex_data.resize(tex_size);
   for (int i = 0; i < tex_size; i++) {
     tex_data[i] = get_word<u32>(words.at(tex_start + i));

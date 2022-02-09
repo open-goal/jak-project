@@ -2,7 +2,7 @@
 #include "decompiler/util/data_decompile.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/print_float.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 // sparticle fields.
@@ -203,12 +203,12 @@ goos::Object decompile_sparticle_tex_field_init(const std::vector<LinkedWord>& w
                                                 const TypeSystem& ts,
                                                 const std::string& field_name,
                                                 const std::string& flag_name) {
-  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 0);
-  assert(flag_name == "plain-v1");
+  ASSERT(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 0);
+  ASSERT(flag_name == "plain-v1");
 
   auto tex_id_type = TypeSpec("texture-id");
   auto tex_id_str = bitfield_defs_print(
@@ -218,26 +218,26 @@ goos::Object decompile_sparticle_tex_field_init(const std::vector<LinkedWord>& w
 }
 
 float word_as_float(const LinkedWord& w) {
-  assert(w.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(w.kind() == LinkedWord::PLAIN_DATA);
   float v;
   memcpy(&v, &w.data, 4);
   return v;
 }
 
 s32 word_as_s32(const LinkedWord& w) {
-  assert(w.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(w.kind() == LinkedWord::PLAIN_DATA);
   return w.data;
 }
 
 goos::Object decompile_sparticle_func(const std::vector<LinkedWord>& words,
                                       const std::string& field_name,
                                       const std::string& flag_name) {
-  assert(words.at(1).kind() == LinkedWord::SYM_PTR);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 0);
-  assert(flag_name == "from-pointer");
+  ASSERT(words.at(1).kind() == LinkedWord::SYM_PTR);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 0);
+  ASSERT(flag_name == "from-pointer");
   return pretty_print::to_symbol(
       fmt::format("(sp-func {} '{})", field_name, words.at(1).symbol_name()));
 }
@@ -245,21 +245,21 @@ goos::Object decompile_sparticle_func(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_end(const std::vector<LinkedWord>& words,
                                      const std::string& field_name,
                                      const std::string& flag_name) {
-  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(1).data == 0);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 0);
-  assert(flag_name == "plain-v1");
-  assert(field_name == "spt-end");
+  ASSERT(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(1).data == 0);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 0);
+  ASSERT(flag_name == "plain-v1");
+  ASSERT(field_name == "spt-end");
   return pretty_print::to_symbol("(sp-end)");
 }
 
 goos::Object decompile_sparticle_int_with_rand_to_float(const std::vector<LinkedWord>& words,
                                                         const std::string& field_name,
                                                         const std::string& flag_name) {
-  assert(flag_name == "int-with-rand");
+  ASSERT(flag_name == "int-with-rand");
 
   return pretty_print::to_symbol(fmt::format("(sp-rnd-int {} {} {} {})", field_name,
                                              word_as_s32(words.at(1)), word_as_s32(words.at(2)),
@@ -272,7 +272,7 @@ goos::Object decompile_sparticle_float_with_rand_init(const std::vector<LinkedWo
   if (flag_name == "int-with-rand") {
     return decompile_sparticle_int_with_rand_to_float(words, field_name, flag_name);
   }
-  assert(flag_name == "float-with-rand");
+  ASSERT(flag_name == "float-with-rand");
 
   float range = word_as_float(words.at(2));
   float mult = word_as_float(words.at(3));
@@ -301,12 +301,12 @@ goos::Object decompile_sparticle_userdata(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_int_init(const std::vector<LinkedWord>& words,
                                           const std::string& field_name,
                                           const std::string& flag_name) {
-  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 1);
-  assert(flag_name == "plain-v1");
+  ASSERT(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 1);
+  ASSERT(flag_name == "plain-v1");
   return pretty_print::to_symbol(
       fmt::format("(sp-int {} {})", field_name, word_as_s32(words.at(1))));
 }
@@ -327,7 +327,7 @@ goos::Object decompile_sparticle_int_with_rand_init(const std::vector<LinkedWord
   if (flag_name != "plain-v1") {
     fmt::print("Bad {} {}\n", field_name, flag_name);
   }
-  assert(flag_name == "plain-v1");
+  ASSERT(flag_name == "plain-v1");
   if (word_as_s32(words.at(2)) == 0 && word_as_s32(words.at(3)) == 1) {
     return decompile_sparticle_int_init(words, field_name, flag_name);
   }
@@ -339,12 +339,12 @@ goos::Object decompile_sparticle_int_with_rand_init(const std::vector<LinkedWord
 goos::Object decompile_sparticle_launcher_by_id(const std::vector<LinkedWord>& words,
                                                 const std::string& field_name,
                                                 const std::string& flag_name) {
-  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 0);
-  assert(flag_name == "part-by-id");
+  ASSERT(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 0);
+  ASSERT(flag_name == "part-by-id");
   return pretty_print::to_symbol(
       fmt::format("(sp-launcher-by-id {} {})", field_name, word_as_s32(words.at(1))));
 }
@@ -353,12 +353,12 @@ goos::Object decompile_sparticle_flags(const std::vector<LinkedWord>& words,
                                        const TypeSystem& ts,
                                        const std::string& field_name,
                                        const std::string& flag_name) {
-  assert(flag_name == "plain-v1");
-  assert(field_name == "spt-flags");
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 1);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
+  ASSERT(flag_name == "plain-v1");
+  ASSERT(field_name == "spt-flags");
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 1);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
   auto flag_def =
       decompile_bitfield_enum_from_int(TypeSpec("sp-cpuinfo-flag"), ts, word_as_s32(words.at(1)));
   std::string result = "(sp-cpuinfo-flags";
@@ -373,12 +373,12 @@ goos::Object decompile_sparticle_flags(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_from_other(const std::vector<LinkedWord>& words,
                                             const std::string& field_name,
                                             const std::string& flag_name) {
-  assert(words.at(1).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(2).data == 0);
-  assert(words.at(3).kind() == LinkedWord::PLAIN_DATA);
-  assert(words.at(3).data == 1);
-  assert(flag_name == "copy-from-other-field");
+  ASSERT(words.at(1).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(2).data == 0);
+  ASSERT(words.at(3).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(words.at(3).data == 1);
+  ASSERT(flag_name == "copy-from-other-field");
   return pretty_print::to_symbol(
       fmt::format("(sp-copy-from-other {} {})", field_name, word_as_s32(words.at(1))));
 }
@@ -392,7 +392,7 @@ goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<L
                                                word_as_s32(words.at(2)),
                                                float_to_string(word_as_float(words.at(3)))));
   }
-  assert(flag_name == "float-with-rand");
+  ASSERT(flag_name == "float-with-rand");
 
   float range = word_as_float(words.at(2));
   float mult = word_as_float(words.at(3));
@@ -417,7 +417,7 @@ goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<
                     float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
                     word_as_s32(words.at(2)), float_to_string(word_as_float(words.at(3)))));
   }
-  assert(flag_name == "float-with-rand");
+  ASSERT(flag_name == "float-with-rand");
   float range = word_as_float(words.at(2));
   float mult = word_as_float(words.at(3));
   if (range == 0.f && mult == 1.f) {
@@ -437,8 +437,8 @@ goos::Object decompile_sparticle_sound_spec(const std::vector<LinkedWord>& /*wor
                                             const std::string& field_name,
                                             const std::string& flag_name,
                                             const goos::Object& original) {
-  assert(field_name == "spt-sound");
-  assert(flag_name == "plain-v2");
+  ASSERT(field_name == "spt-sound");
+  ASSERT(flag_name == "plain-v2");
   return pretty_print::build_list("sp-sound", original);
 }
 
@@ -455,7 +455,7 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
   if (!type_info) {
     throw std::runtime_error(fmt::format("Type {} wasn't a structure type.", type.print()));
   }
-  assert(type_info->get_size_in_memory() == 0x1c);
+  ASSERT(type_info->get_size_in_memory() == 0x1c);
 
   // get words for real
   auto offset_location = label.offset - type_info->get_offset();
@@ -545,7 +545,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
   if (!type_info) {
     throw std::runtime_error(fmt::format("Type {} wasn't a structure type.", type.print()));
   }
-  assert(type_info->get_size_in_memory() == 16);
+  ASSERT(type_info->get_size_in_memory() == 16);
 
   // get words for real
   auto offset_location = label.offset - type_info->get_offset();
@@ -555,11 +555,11 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                    words.at(label.target_segment).begin() + (offset_location / 4),
                    words.at(label.target_segment).begin() + (offset_location / 4) + word_count);
 
-  assert(obj_words.at(0).kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(obj_words.at(0).kind() == LinkedWord::PLAIN_DATA);
   u16 field_id = obj_words.at(0).data & 0xffff;
   u16 flags = obj_words.at(0).data >> 16;
 
-  assert(field_id <= (u32)FieldId::SPT_END);
+  ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
   const auto& field_info = field_kinds[field_id];
   if (!field_info.known) {
@@ -617,7 +617,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
         result = decompile_sparticle_rot_x(obj_words, field_name, flag_name);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -625,13 +625,13 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
   return result;
 }
 
-goos::Object decompile_sparticle_userdata_assert(const std::vector<LinkedWord>& words,
+goos::Object decompile_sparticle_userdata_ASSERT(const std::vector<LinkedWord>& words,
                                                  const std::string& field_name,
                                                  const std::string& flag_name) {
   if (flag_name == "int-with-rand" || flag_name == "float-with-rand") {
     return decompile_sparticle_float_with_rand_init(words, field_name, flag_name);
   } else {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -640,7 +640,7 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
   auto field_id = field.field_id;
   auto flags = field.flags;
 
-  assert(field_id <= (u32)FieldId::SPT_END);
+  ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
   const auto& field_info = field_kinds[field_id];
   if (!field_info.known) {
@@ -686,13 +686,13 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         result = decompile_sparticle_launcher_by_id(field.data, field_name, flag_name);
         break;
       case FieldKind::NO_FANCY_DECOMP:
-        assert(false);
+        ASSERT(false);
         break;
       case FieldKind::FUNCTION:
         result = decompile_sparticle_func(field.data, field_name, flag_name);
         break;
       case FieldKind::USERDATA:
-        result = decompile_sparticle_userdata_assert(field.data, field_name, flag_name);
+        result = decompile_sparticle_userdata_ASSERT(field.data, field_name, flag_name);
         break;
       case FieldKind::ROT_X:
         result = decompile_sparticle_rot_x(field.data, field_name, flag_name);
@@ -702,7 +702,7 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
             decompile_sparticle_sound_spec(field.data, field_name, flag_name, field.sound_spec);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 

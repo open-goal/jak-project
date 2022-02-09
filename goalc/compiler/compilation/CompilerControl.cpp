@@ -407,7 +407,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
       return fmt::format("[Forward-Declared] Name: {} Defined: {}", info.name(),
                          m_goos.reader.db.get_info_for(info.src_form()));
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
