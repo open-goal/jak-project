@@ -137,9 +137,10 @@ Form* try_cast_simplify(Form* in,
     auto ic = get_goal_integer_constant(in, env);
     if (ic) {
       s64 value = *ic;
-      if (std::abs(value) == 1) {
+      if (std::abs(value) <= 1) {
         // if they used a 1 as a time-frame, they likely just want to literally remove 1
         // instead of (seconds 0.0034) or whatever the result would be.
+        // also 0 is decompiled as just 0.
         return pool.alloc_single_element_form<ConstantTokenElement>(nullptr,
                                                                     fmt::format("{}", value));
       }
@@ -161,7 +162,7 @@ Form* try_cast_simplify(Form* in,
       // TODO hardcode cases for rand-vu-int-range:
       // (rand-vu-int-range 1200 2400) -> (rand-vu-int-range (seconds 4) (seconds 8))
       // return try_cast_simplify(in, TypeSpec("int"), pool, env, tc_pass);
-      return in;
+      // return nullptr;
     }
   }
 
