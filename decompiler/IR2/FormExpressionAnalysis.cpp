@@ -137,7 +137,9 @@ Form* try_cast_simplify(Form* in,
     auto ic = get_goal_integer_constant(in, env);
     if (ic) {
       s64 value = *ic;
-      if (std::abs(value) < TICKS_PER_SECOND / 100) {
+      if (std::abs(value) == 1) {
+        // if they used a 1 as a time-frame, they likely just want to literally remove 1
+        // instead of (seconds 0.0034) or whatever the result would be.
         return pool.alloc_single_element_form<ConstantTokenElement>(nullptr,
                                                                     fmt::format("{}", value));
       }
@@ -153,6 +155,13 @@ Form* try_cast_simplify(Form* in,
         return pool.alloc_single_element_form<ConstantTokenElement>(
             nullptr, fmt::format("(seconds {})", float_to_string(seconds, false)));
       }
+    } else {
+      // not a constant like (seconds 2), probably an expression or function call. we pretend that a
+      // cast to int happened instead.
+      // TODO hardcode cases for rand-vu-int-range:
+      // (rand-vu-int-range 1200 2400) -> (rand-vu-int-range (seconds 4) (seconds 8))
+      // return try_cast_simplify(in, TypeSpec("int"), pool, env, tc_pass);
+      return in;
     }
   }
 
@@ -395,6 +404,18 @@ Form* cast_form(Form* in,
 }
 
 /*!
+ * Same as cast_form, but only if we know the type is int and we want a time-frame.
+ */
+Form* cast_form_timeframe_guard(Form* in, FormPool& pool, const Env& env, bool tc_pass = false) {
+  auto result = try_cast_simplify(in, TypeSpec("time-frame"), pool, env, tc_pass);
+  if (result) {
+    return result;
+  }
+
+  return in;
+}
+
+/*!
  * Pop each variable in the input list into a form. The variables should be given in the order
  * they are evaluated in the source. It is safe to put the result of these in the same expression.
  * This uses the barrier register approach, but it is only effective if you put all registers
@@ -553,6 +574,12 @@ Form* make_cast_if_needed(Form* in,
   if (out_type == TypeSpec("float") && env.dts->ts.tc(TypeSpec("float"), in_type)) {
     return in;
   }
+
+  if (out_type == TypeSpec("time-frame") && in_type == TypeSpec("int")) {
+    // we want a time-frame from an int.
+    return cast_form_timeframe_guard(in, pool, env);
+  }
+
   return cast_form(in, out_type, pool, env);
 }
 
@@ -565,6 +592,7 @@ std::vector<Form*> make_casts_if_needed(const std::vector<Form*>& in,
   TypeSpec actual_out = out_type;
   ASSERT(in.size() == in_types.size());
   for (size_t i = 0; i < in_types.size(); i++) {
+    // check if there's variables of aliased types. we will cast to those instead.
     if (!get_goal_integer_constant(in.at(i), env) && out_type == TypeSpec("int")) {
       if (in_types.at(i) == TypeSpec("time-frame")) {
         // if we want int, we can output time-frame as well
@@ -578,12 +606,7 @@ std::vector<Form*> make_casts_if_needed(const std::vector<Form*>& in,
     }
   }
   for (size_t i = 0; i < in_types.size(); i++) {
-    auto nice_constant = try_make_constant_for_compare(in.at(i), actual_out, pool, env);
-    if (nice_constant) {
-      out.push_back(nice_constant);
-    } else {
-      out.push_back(make_cast_if_needed(in.at(i), in_types.at(i), actual_out, pool, env));
-    }
+    out.push_back(make_cast_if_needed(in.at(i), in_types.at(i), actual_out, pool, env));
   }
   return out;
 }

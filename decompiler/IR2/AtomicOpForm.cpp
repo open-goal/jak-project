@@ -168,7 +168,7 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
       if (atom.var().reg().get_kind() == Reg::VF) {
         return {};  // no casts needed for VF registers.
       }
-      auto src_type = env.get_types_before_op(my_idx).get(atom.var().reg());
+      auto& src_type = env.get_types_before_op(my_idx).get(atom.var().reg());
 
       if (src_type.requires_cast() || !env.dts->ts.tc(expected_type, src_type.typespec())) {
         // we fail the typecheck for a normal set!, so add a cast.

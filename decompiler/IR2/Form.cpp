@@ -1953,7 +1953,7 @@ CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
     : m_type(std::move(type)), m_source(source), m_numeric(numeric) {
   m_source->parent_element = this;
 
-  if (this->type() == TypeSpec("int")) {
+  if (this->type() == TypeSpec("time-frame")) {
     int aaa = 100;
   }
 }
@@ -2356,6 +2356,9 @@ StorePlainDeref::StorePlainDeref(Form* dst,
       m_src_cast_type(std::move(src_cast_type)),
       m_size(size) {
   m_dst->parent_element = this;
+  if (m_src_cast_type && m_src_cast_type == TypeSpec("time-frame")) {
+    int aaa = 100;
+  }
 }
 
 goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
