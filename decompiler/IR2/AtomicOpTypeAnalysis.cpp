@@ -364,7 +364,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
       if (m_args[1].is_int()) {
         auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()));
-        if (bf) {
+        if (bf && arg0_type.typespec() != TypeSpec("time-frame")) {
           int shift_size = 64;
           int size = shift_size - m_args[1].get_int();
           int start_bit = shift_size - size;

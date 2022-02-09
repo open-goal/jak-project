@@ -163,7 +163,7 @@ Form* try_cast_simplify(Form* in,
       // (rand-vu-int-range 1200 2400) -> (rand-vu-int-range (seconds 4) (seconds 8))
       // return try_cast_simplify(in, TypeSpec("int"), pool, env, tc_pass);
       auto g = dynamic_cast<GenericElement*>(in->try_as_single_element());
-      if (g) {
+      if (g && g->op().kind() == GenericOperator::Kind::FUNCTION_EXPR) {
         auto f = dynamic_cast<SimpleExpressionElement*>(g->op().func()->try_as_single_element());
         if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val() &&
             f->expr().get_arg(0).get_str() == "rand-vu-int-range") {
@@ -1947,7 +1947,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env
   auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (bitfield_info && m_expr.get_arg(1).is_int()) {
+  if (bitfield_info && arg0_type != TypeSpec("time-frame") && m_expr.get_arg(1).is_int()) {
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_ARITH, m_expr.get_arg(1).get_int());
