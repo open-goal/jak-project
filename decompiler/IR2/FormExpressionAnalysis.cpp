@@ -162,7 +162,27 @@ Form* try_cast_simplify(Form* in,
       // TODO hardcode cases for rand-vu-int-range:
       // (rand-vu-int-range 1200 2400) -> (rand-vu-int-range (seconds 4) (seconds 8))
       // return try_cast_simplify(in, TypeSpec("int"), pool, env, tc_pass);
-      // return nullptr;
+      auto g = dynamic_cast<GenericElement*>(in->try_as_single_element());
+      if (g) {
+        auto f = dynamic_cast<SimpleExpressionElement*>(g->op().func()->try_as_single_element());
+        if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val() &&
+            f->expr().get_arg(0).get_str() == "rand-vu-int-range") {
+          std::vector<Form*> new_forms;
+          for (auto e : g->elts()) {
+            e->apply_form([&](Form* f) {
+              new_forms.push_back(try_cast_simplify(f, TypeSpec("time-frame"), pool, env, true));
+            });
+          }
+          // return a new rand-vu-int-range with casted args, and its own cast is stripped for free!
+          return pool.alloc_single_element_form<GenericElement>(in->parent_element, g->op(),
+                                                                new_forms);
+        }
+      }
+      if (tc_pass) {
+        return in;
+      } else {
+        return nullptr;
+      }
     }
   }
 
@@ -2432,9 +2452,6 @@ Form* make_optional_cast(const std::optional<TypeSpec>& cast_type,
                          FormPool& pool,
                          const Env& env) {
   if (cast_type) {
-    if (cast_type == TypeSpec("time-frame")) {
-      int aaaaa = 1000;
-    }
     return cast_form(in, *cast_type, pool, env);
   } else {
     return in;
