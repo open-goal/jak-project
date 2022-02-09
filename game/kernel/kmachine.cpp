@@ -37,7 +37,7 @@
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
 #include "game/sce/libscf.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 #include "game/discord.h"
 using namespace ee;
 
@@ -537,12 +537,12 @@ u64 CPadGetData(u64 cpad_info) {
 
 // TODO InstallHandler
 void InstallHandler(u32 handler_idx, u32 handler_func) {
-  assert(handler_idx == 5);  // vif1
+  ASSERT(handler_idx == 5);  // vif1
   vif1_interrupt_handler = handler_func;
 }
 // TODO InstallDebugHandler
 void InstallDebugHandler() {
-  assert(false);
+  ASSERT(false);
 }
 
 void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
@@ -665,7 +665,7 @@ u64 kclose(u64 fs) {
 
 // TODO dma_to_iop
 void dma_to_iop() {
-  assert(false);
+  ASSERT(false);
 }
 
 u64 DecodeLanguage() {
@@ -701,7 +701,7 @@ void DecodeTime(u32 ptr) {
 
 // TODO PutDisplayEnv
 void PutDisplayEnv() {
-  // assert(false);
+  // ASSERT(false);
 }
 
 /*!

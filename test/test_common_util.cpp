@@ -387,5 +387,8 @@ TEST(SmallVector, Construction) {
   EXPECT_FALSE(one.empty());
 }
 
+TEST(Assert, Death) {
+  EXPECT_DEATH(private_assert_failed("foo", "bar", 12, "aaa"), "");
+}
 }  // namespace test
 }  // namespace cu

@@ -42,7 +42,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
       dma.read_and_advance();  // cnt
       dma.read_and_advance();  // ret
       // on next
-      assert(dma.current_tag_offset() == render_state->next_bucket);
+      ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     }
   }
 
@@ -72,7 +72,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
                      render_state);
       // after conversion, we should be able to populate the texture pool.
       bool ok = try_to_populate_from_cache(uploads[0].page, has_segment, render_state);
-      assert(ok);
+      ASSERT(ok);
     }
 
   } else if (uploads.size() == 1 && uploads[0].mode == -1) {
@@ -83,7 +83,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
                          ee_mem + uploads[0].page, -1, ee_mem, render_state->offset_of_s7),
                      render_state);
       bool ok = try_to_populate_from_cache(uploads[0].page, has_segment, render_state);
-      assert(ok);
+      ASSERT(ok);
     }
 
   } else if (uploads.size() == 1 && uploads[0].mode == -2) {
@@ -93,7 +93,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
                          ee_mem + uploads[0].page, -2, ee_mem, render_state->offset_of_s7),
                      render_state);
       bool ok = try_to_populate_from_cache(uploads[0].page, has_segment, render_state);
-      assert(ok);
+      ASSERT(ok);
     }
 
   } else if (uploads.size() == 1 && uploads[0].mode == 0) {
@@ -103,7 +103,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
                          ee_mem + uploads[0].page, 0, ee_mem, render_state->offset_of_s7),
                      render_state);
       bool ok = try_to_populate_from_cache(uploads[0].page, has_segment, render_state);
-      assert(ok);
+      ASSERT(ok);
     }
   }
 
@@ -114,7 +114,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
     for (auto& upload : uploads) {
       fmt::print(" page: 0x{:x} mode: {}\n", upload.page, upload.mode);
     }
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -127,7 +127,7 @@ void TextureUploadHandler::draw_debug_window() {
 namespace {
 const char* goal_string(u32 ptr, const u8* memory_base) {
   if (ptr == 0) {
-    assert(false);
+    ASSERT(false);
   }
   return (const char*)(memory_base + ptr + 4);
 }

@@ -63,7 +63,7 @@ goos::Object build_list(const std::vector<goos::Object>& objects) {
 
 // build a list out of an array of forms
 goos::Object build_list(const goos::Object* objects, int count) {
-  assert(count);
+  ASSERT(count);
   auto car = objects[0];
   goos::Object cdr;
   if (count - 1) {
@@ -94,7 +94,7 @@ void append(goos::Object& _in, const goos::Object& add) {
   }
 
   if (!in->is_pair()) {
-    assert(false);  // invalid list
+    ASSERT(false);  // invalid list
   }
   in->as_pair()->cdr = add;
 }

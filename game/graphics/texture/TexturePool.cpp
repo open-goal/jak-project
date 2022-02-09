@@ -8,7 +8,7 @@
 #include "common/util/Timer.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 ////////////////////////////////
 // Extraction of textures
@@ -37,7 +37,7 @@ std::string GoalTexturePage::print() const {
 
 void TextureRecord::serialize(Serializer& ser) {
   if (only_on_gpu) {
-    assert(on_gpu);
+    ASSERT(on_gpu);
     if (ser.is_saving()) {
       // we should download the texture and save it.
       data.resize(w * h * 4);
@@ -130,7 +130,7 @@ void TexturePool::unload_all_textures() {
 }
 
 void TextureRecord::unload_from_gpu() {
-  assert(on_gpu);
+  ASSERT(on_gpu);
   GLuint tex_id = gpu_texture;
   glBindTexture(GL_TEXTURE_2D, tex_id);
   glDeleteTextures(1, &tex_id);
@@ -310,7 +310,7 @@ void TexturePool::set_texture(u32 location, std::shared_ptr<TextureRecord> recor
  */
 void TexturePool::relocate(u32 destination, u32 source, u32 format) {
   auto& src = m_textures.at(source).normal_texture;
-  assert(src);
+  ASSERT(src);
   if (format == 44) {
     m_textures.at(destination).mt4hh_texture = std::move(src);
   } else {
@@ -389,7 +389,7 @@ void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex
 }
 
 void TexturePool::upload_to_gpu(TextureRecord* tex) {
-  assert(!tex->on_gpu);
+  ASSERT(!tex->on_gpu);
   GLuint tex_id;
   glGenTextures(1, &tex_id);
   tex->gpu_texture = tex_id;
@@ -435,7 +435,7 @@ void TexturePool::remove_garbage_textures() {
 }
 
 void TexturePool::discard(std::shared_ptr<TextureRecord> tex) {
-  assert(!tex->do_gc);
+  ASSERT(!tex->do_gc);
   fmt::print("discard {}\n", tex->name);
   m_garbage_textures.push_back(tex);
 }

@@ -1,16 +1,16 @@
 #include <cstring>
 #include "IOP_Kernel.h"
 #include "game/sce/iop.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Create a new thread.  Will not run the thread.
  */
 s32 IOP_Kernel::CreateThread(std::string name, u32 (*func)()) {
-  assert(_currentThread == -1);  // can only create thread from kernel thread.
+  ASSERT(_currentThread == -1);  // can only create thread from kernel thread.
 
   u32 ID = (u32)_nextThID++;
-  assert(ID == threads.size());
+  ASSERT(ID == threads.size());
 
   // add entry
   threads.emplace_back(name, func, ID, this);
@@ -47,7 +47,7 @@ void IOP_Kernel::setupThread(s32 id) {
   returnToKernel();
   threads.at(id).waitForDispatch();
   // printf("[IOP Kernel] Thread %s first dispatch!\n", threads.at(id).name.c_str());
-  assert(_currentThread == id);  // should run in the thread.
+  ASSERT(_currentThread == id);  // should run in the thread.
   (threads.at(id).function)();
   //  printf("Thread %s has returned!\n", threads.at(id).name.c_str());
   threads.at(id).done = true;
@@ -58,7 +58,7 @@ void IOP_Kernel::setupThread(s32 id) {
  * Run a thread (call from kernel)
  */
 void IOP_Kernel::runThread(s32 id) {
-  assert(_currentThread == -1);  // should run in the kernel thread
+  ASSERT(_currentThread == -1);  // should run in the kernel thread
   _currentThread = id;
   threads.at(id).dispatch();
   threads.at(id).waitForReturnToKernel();
@@ -75,7 +75,7 @@ void IOP_Kernel::SuspendThread() {
   threads.at(oldThread).returnToKernel();
   threads.at(oldThread).waitForDispatch();
   // check kernel resumed us correctly
-  assert(_currentThread == oldThread);
+  ASSERT(_currentThread == oldThread);
 }
 
 /*!
@@ -127,7 +127,7 @@ void IOP_Kernel::dispatchAll() {
 void IopThreadRecord::returnToKernel() {
   runThreadReady = false;
   // should be called from the correct thread
-  assert(kernel->getCurrentThread() == thID);
+  ASSERT(kernel->getCurrentThread() == thID);
 
   {
     std::lock_guard<std::mutex> lck(*threadToKernelMutex);
@@ -141,7 +141,7 @@ void IopThreadRecord::returnToKernel() {
  */
 void IopThreadRecord::dispatch() {
   syscallReady = false;
-  assert(kernel->getCurrentThread() == thID);
+  ASSERT(kernel->getCurrentThread() == thID);
 
   {
     std::lock_guard<std::mutex> lck(*kernelToThreadMutex);
@@ -168,7 +168,7 @@ void IopThreadRecord::waitForDispatch() {
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
   for (const auto& r : sif_records) {
-    assert(!(r.qd == qd || r.thread_to_wake == thread));
+    ASSERT(!(r.qd == qd || r.thread_to_wake == thread));
   }
   SifRecord rec;
   rec.thread_to_wake = thread;
@@ -189,7 +189,7 @@ bool IOP_Kernel::sif_busy(u32 id) {
       break;
     }
   }
-  assert(found);
+  ASSERT(found);
   sif_mtx.unlock();
   return rv;
 }
@@ -201,7 +201,7 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
                          s32 sendSize,
                          void* recvBuff,
                          s32 recvSize) {
-  assert(async);
+  ASSERT(async);
   sif_mtx.lock();
   // step 1 - find entry
   SifRecord* rec = nullptr;
@@ -213,10 +213,10 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   if (!rec) {
     printf("Failed to find handler for sif channel 0x%x\n", rpcChannel);
   }
-  assert(rec);
+  ASSERT(rec);
 
   // step 2 - check entry is safe to give command to
-  assert(rec->cmd.finished && rec->cmd.started);
+  ASSERT(rec->cmd.finished && rec->cmd.started);
 
   // step 3 - memcpy!
   memcpy(rec->qd->serve_data->buff, sendBuff, sendSize);
@@ -259,7 +259,7 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
 
       if (!cmd.started) {
         // cf
-        assert(func);
+        ASSERT(func);
         auto data = func(cmd.fno, cmd.buff, cmd.size);
         if (cmd.copy_back_buff && cmd.copy_back_size) {
           memcpy(cmd.copy_back_buff, data, cmd.copy_back_size);
@@ -268,7 +268,7 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
         sif_mtx.lock();
         for (auto& r : sif_records) {
           if (r.qd == qd) {
-            assert(r.cmd.started);
+            ASSERT(r.cmd.started);
             r.cmd.finished = true;
           }
         }
@@ -284,12 +284,12 @@ void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
     iso_disc_file = fopen("./disc.iso", "rb");
   }
 
-  assert(iso_disc_file);
+  ASSERT(iso_disc_file);
   if (fseek(iso_disc_file, sector * 0x800, SEEK_SET)) {
-    assert(false);
+    ASSERT(false);
   }
   auto rv = fread(buffer, sectors * 0x800, 1, iso_disc_file);
-  assert(rv == 1);
+  ASSERT(rv == 1);
 }
 
 void IOP_Kernel::shutdown() {

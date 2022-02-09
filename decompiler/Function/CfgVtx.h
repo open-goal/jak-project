@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace goos {
 class Object;
@@ -18,12 +18,12 @@ void replace_exactly_one_in(std::vector<T>& v, T old, T replace) {
   bool replaced = false;
   for (auto& x : v) {
     if (x == old) {
-      assert(!replaced);
+      ASSERT(!replaced);
       x = replace;
       replaced = true;
     }
   }
-  assert(replaced);
+  ASSERT(replaced);
 }
 
 /*!

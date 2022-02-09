@@ -253,7 +253,7 @@ decompiler::ObjectFileData& get_data(Decompiler& dc,
   auto it = std::find_if(files.begin(), files.end(), [&](const decompiler::ObjectFileData& data) {
     return data.to_unique_name() == unique_name;
   });
-  assert(it != files.end());
+  ASSERT(it != files.end());
   return *it;
 }
 

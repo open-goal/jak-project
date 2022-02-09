@@ -14,7 +14,7 @@
 #include "game/kernel/kdgo.h"
 #include "game/common/ramdisk_rpc_types.h"
 #include "game/kernel/fileio.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 constexpr static bool memcard_debug = false;
 

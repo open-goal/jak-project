@@ -17,9 +17,9 @@ struct FunctionAtomicOps {
   std::vector<std::unique_ptr<AtomicOp>> ops;
 
   FunctionEndOp& end_op() const {
-    assert(!ops.empty());
+    ASSERT(!ops.empty());
     auto end = dynamic_cast<FunctionEndOp*>(ops.back().get());
-    assert(end);
+    ASSERT(end);
     return *end;
   }
 

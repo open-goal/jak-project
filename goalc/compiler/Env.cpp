@@ -51,7 +51,7 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
 
 void Env::emit(const goos::Object& form, std::unique_ptr<IR> ir) {
   auto e = function_env();
-  assert(e);
+  ASSERT(e);
   e->emit(form, std::move(ir), this);
 }
 
@@ -134,9 +134,9 @@ std::string FileEnv::print() {
 }
 
 void FileEnv::add_function(std::unique_ptr<FunctionEnv> fe) {
-  assert(fe->idx_in_file == -1);
+  ASSERT(fe->idx_in_file == -1);
   fe->idx_in_file = m_functions.size();
-  assert(!fe->name().empty());
+  ASSERT(!fe->name().empty());
   m_functions.push_back(std::move(fe));
 }
 
@@ -233,7 +233,7 @@ RegVal* FunctionEnv::make_ireg(const TypeSpec& ts, RegClass reg_class) {
   ireg.id = m_iregs.size();
   auto rv = std::make_unique<RegVal>(ireg, coerce_to_reg_type(ts));
   m_iregs.push_back(std::move(rv));
-  assert(reg_class != RegClass::INVALID);
+  ASSERT(reg_class != RegClass::INVALID);
   return m_iregs.back().get();
 }
 
@@ -265,7 +265,7 @@ RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
 
 FunctionEnv::StackSpace FunctionEnv::allocate_aligned_stack_space(int size_bytes, int align_bytes) {
   require_aligned_stack();
-  assert(align_bytes <= 16);
+  ASSERT(align_bytes <= 16);
   int align_slots = (align_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
   while (m_stack_var_slots_used % align_slots) {
     m_stack_var_slots_used++;

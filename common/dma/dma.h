@@ -8,7 +8,7 @@
 #include <string>
 #include <cstring>
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 struct DmaStats {
   double sync_time_ms = 0;
@@ -89,7 +89,7 @@ inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 
       } break;
       default:
         printf("bad tag: %d\n", (int)tag.kind);
-        assert(false);
+        ASSERT(false);
     }
   }
 }

@@ -20,7 +20,7 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
       iter = &iter->as_pair()->cdr;
       iter = &iter->as_pair()->cdr;
     } else {
-      assert(car.is_list());
+      ASSERT(car.is_list());
       return iter->as_pair()->cdr;
     }
   }
@@ -135,7 +135,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       lambda_ts.add_arg(parm.type);
     }
   });
-  assert(lambda.params.size() == lambda_ts.arg_count());
+  ASSERT(lambda.params.size() == lambda_ts.arg_count());
 
   // optional name for debugging (defun sets this)
   if (args.has_named("name")) {
@@ -295,7 +295,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     new_func_env->finish();
 
     // save our code for possible inlining
-    assert(obj_env);
+    ASSERT(obj_env);
     if (new_func_env->settings.save_code) {
       obj_env->add_function(std::move(new_func_env));
     }
@@ -552,7 +552,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     }
   }
 
-  assert(false);
+  ASSERT(false);
   return get_none();
 }
 

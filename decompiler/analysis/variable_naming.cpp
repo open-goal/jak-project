@@ -64,7 +64,7 @@ int VarMapSSA::get_next_var_id(Register reg) {
 void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
   auto& a = m_entries.at(var_a.m_entry_id);
   auto b = m_entries.at(var_b.m_entry_id);
-  assert(a.reg == b.reg);
+  ASSERT(a.reg == b.reg);
   if (b.var_id == 0) {
     //    fmt::print("Merge {} <- {}\n", to_string(var_b), to_string(var_a));
 
@@ -102,7 +102,7 @@ void VarMapSSA::merge_to_first(const VarSSA& var_a, const VarSSA& var_b) {
   auto b = m_entries.at(var_b.m_entry_id);
 
   //  fmt::print("Merge-to-first {} <- {}\n", to_string(var_a), to_string(var_b));
-  assert(a.reg == b.reg);
+  ASSERT(a.reg == b.reg);
 
   //  for (auto& entry : m_entries) {
   for (size_t i = 0; i < m_entries.size(); i++) {
@@ -262,7 +262,7 @@ bool is_arg_reg(Register r) {
 }
 
 int arg_reg_idx(Register r) {
-  assert(is_arg_reg(r));
+  ASSERT(is_arg_reg(r));
   return (int)r.get_gpr() - (int)Reg::A0;
 }
 
@@ -350,7 +350,7 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       // to avoid operator[]
       auto it = current_regs.find(reg);
       if (it != current_regs.end()) {
-        assert(false);
+        ASSERT(false);
         it->second = ssa.get_phi_dest(block_id, reg);
       } else {
         current_regs.insert(std::make_pair(reg, ssa.get_phi_dest(block_id, reg)));
@@ -421,7 +421,7 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       }
 
       // todo - verify no duplicates here?
-      assert(op->write_regs().size() <= 1);
+      ASSERT(op->write_regs().size() <= 1);
       // reads:
       for (auto r : op->read_regs()) {
         if (r.get_kind() == Reg::FPR || r.get_kind() == Reg::GPR) {
@@ -550,7 +550,7 @@ bool SSA::simplify() {
         }
 
         if (remove) {
-          assert(v_j.has_value());
+          ASSERT(v_j.has_value());
           map.merge(*v_j, v_i);
         }
       }
@@ -603,7 +603,7 @@ void SSA::remap(int) {
   // we do this in two passes. the first pass collects only the B0 variables and adds those first,
   // so these remain index 0 (expected by later decompiler passes)
   for (auto& block : blocks) {
-    assert(block.phis.empty());
+    ASSERT(block.phis.empty());
     for (auto& instr : block.ins) {
       if (instr.dst.has_value() && map.var_id(*instr.dst) == 0) {
         used_vars[instr.dst->reg()].insert(map.var_id(*instr.dst));
@@ -618,7 +618,7 @@ void SSA::remap(int) {
 
   // and the second pass grabs all of them
   for (auto& block : blocks) {
-    assert(block.phis.empty());
+    ASSERT(block.phis.empty());
     for (auto& instr : block.ins) {
       if (instr.dst.has_value()) {
         used_vars[instr.dst->reg()].insert(map.var_id(*instr.dst));
@@ -637,12 +637,12 @@ void SSA::remap(int) {
     }
 
     // paranoid
-    assert(var_remap.size() == reg_vars.second.order.size());
+    ASSERT(var_remap.size() == reg_vars.second.order.size());
     std::unordered_set<int> check;
     for (auto kv : var_remap) {
       check.insert(kv.second);
     }
-    assert(check.size() == var_remap.size());
+    ASSERT(check.size() == var_remap.size());
 
     map.remap_reg(reg_vars.first, var_remap);
     program_read_vars[reg_vars.first].resize(i);
@@ -658,8 +658,8 @@ void update_var_info(VariableNames::VarInfo* info,
                      const DecompilerTypeSystem& dts) {
   auto& type = ts.get(reg);
   if (info->initialized) {
-    assert(info->reg_id.id == var_id);
-    assert(info->reg_id.reg == reg);
+    ASSERT(info->reg_id.id == var_id);
+    ASSERT(info->reg_id.reg == reg);
 
     bool changed;
     info->type = dts.tp_lca(info->type, type, &changed);
@@ -733,7 +733,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   }
 
   // override the types of the variables for function arguments:
-  assert(function.type.arg_count() > 0);
+  ASSERT(function.type.arg_count() > 0);
   for (int arg_idx = 0; arg_idx < int(function.type.arg_count()) - 1; arg_idx++) {
     auto arg_reg = Register::get_arg_reg(arg_idx);
     if (!program_read_vars[arg_reg].empty()) {
@@ -751,7 +751,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   //    auto return_reg = return_var.reg();
   //    const auto& last_block = blocks.at(blocks.size() - 1);
   //    const auto& last_ins = last_block.ins.at(last_block.ins.size() - 1);
-  //    assert(last_ins.src.size() == 1);
+  //    ASSERT(last_ins.src.size() == 1);
   //    auto return_idx = map.var_id(last_ins.src.at(0));
   //
   //    if (!program_read_vars[return_reg].empty()) {
@@ -775,7 +775,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
         if (Register::get_arg_reg(arg_idx) == src_ssa.reg()) {
           // copy the type from here.
           auto dst = instr.dst;
-          assert(dst);
+          ASSERT(dst);
           auto dst_reg = instr.dst->reg();
           auto dst_varid = map.var_id(*dst);
           if ((int)program_read_vars[dst_reg].size() > dst_varid) {
@@ -851,8 +851,8 @@ VariableNames SSA::get_vars() const {
   for (auto& instr : blocks.at(0).ins) {
     if (instr.is_arg_coloring_move) {
       result.eliminated_move_op_ids.insert(instr.op_id);
-      assert(instr.dst.has_value());
-      assert(instr.src.size() == 1);
+      ASSERT(instr.dst.has_value());
+      ASSERT(instr.src.size() == 1);
       RegId new_regid, old_regid;
       new_regid.reg = instr.src.at(0).reg();
       new_regid.id = map.var_id(instr.src.at(0));
@@ -1017,7 +1017,7 @@ void promote_register_class(const Function& func,
     // first reads:
     auto read_info = try_lookup_read(result, promotion.first);
     auto write_info = try_lookup_write(result, promotion.first);
-    assert(read_info || write_info);
+    ASSERT(read_info || write_info);
 
     if (read_info && !is_128bit(read_info->type, dts)) {
       read_info->type = TP_Type::make_from_ts("uint128");

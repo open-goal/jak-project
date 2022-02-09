@@ -8,7 +8,7 @@
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 class FormElement;
@@ -136,17 +136,17 @@ class SimpleAtom {
   bool is_var() const { return m_kind == Kind::VARIABLE; }
   bool is_label() const { return m_kind == Kind::STATIC_ADDRESS; }
   const RegisterAccess& var() const {
-    assert(is_var());
+    ASSERT(is_var());
     return m_variable;
   }
 
   int label() const {
-    assert(is_label());
+    ASSERT(is_label());
     return m_int;
   }
 
   s64 get_int() const {
-    assert(is_int());
+    ASSERT(is_int());
     return m_int;
   }
   bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; };
@@ -169,7 +169,7 @@ class SimpleAtom {
   SimpleExpression as_expr() const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
   const std::string& get_str() const {
-    assert(is_sym_ptr() || is_sym_val());
+    ASSERT(is_sym_ptr() || is_sym_val());
     return m_string;
   }
 
@@ -243,7 +243,7 @@ class SimpleExpression {
   // how many arguments?
   int args() const { return n_args; }
   const SimpleAtom& get_arg(int idx) const {
-    assert(idx < args());
+    ASSERT(idx < args());
     return m_args[idx];
   }
   Kind kind() const { return m_kind; }
@@ -260,7 +260,7 @@ class SimpleExpression {
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
   bool is_var() const { return is_identity() && get_arg(0).is_var(); }
   const RegisterAccess& var() const {
-    assert(is_var());
+    ASSERT(is_var());
     return get_arg(0).var();
   }
   void get_regs(std::vector<Register>* out) const;
@@ -288,7 +288,7 @@ class SetVarOp : public AtomicOp {
  public:
   SetVarOp(const RegisterAccess& dst, SimpleExpression src, int my_idx)
       : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {
-    assert(my_idx == dst.idx());
+    ASSERT(my_idx == dst.idx());
   }
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
                                const Env& env) const override;
@@ -334,7 +334,7 @@ class AsmOp : public AtomicOp {
   const Instruction& instruction() const { return m_instr; }
   const std::optional<RegisterAccess> dst() const { return m_dst; }
   const std::optional<RegisterAccess> src(int i) const {
-    assert(i < 4);
+    ASSERT(i < 4);
     return m_src[i];
   }
 
@@ -546,8 +546,8 @@ class IR2_BranchDelay {
   void collect_vars(RegAccessSet& vars) const;
   Kind kind() const { return m_kind; }
   const RegisterAccess& var(int idx) const {
-    assert(idx < 3);
-    assert(m_var[idx].has_value());
+    ASSERT(idx < 3);
+    ASSERT(m_var[idx].has_value());
     return m_var[idx].value();
   }
 
@@ -747,7 +747,7 @@ class FunctionEndOp : public AtomicOp {
   void collect_vars(RegAccessSet& vars) const override;
   void mark_function_as_no_return_value();
   const RegisterAccess& return_var() const {
-    assert(m_function_has_return_value);
+    ASSERT(m_function_has_return_value);
     return m_return_reg;
   }
 

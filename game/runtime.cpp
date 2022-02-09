@@ -84,7 +84,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   server.wait_for_protos_ready();
   // then allow the server to accept connections
   if (!server.init()) {
-    assert(false);
+    ASSERT(false);
   }
 
   lg::debug("[DECI2] Waiting for listener...");

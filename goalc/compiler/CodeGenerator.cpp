@@ -149,7 +149,7 @@ void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, in
       stack_offset += 8;
     }
 
-    assert(stack_offset & 15);
+    ASSERT(stack_offset & 15);
 
     // do manual stack offset.
     if (manually_added_stack_offset) {
@@ -185,7 +185,7 @@ void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, in
                               op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       }
     }
@@ -212,7 +212,7 @@ void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, in
                               RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       }
     }
@@ -227,7 +227,7 @@ void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, in
     }
 
     if (bonus_push) {
-      assert(!manually_added_stack_offset);
+      ASSERT(!manually_added_stack_offset);
       m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(ri.get_saved_gpr(0)),
                             InstructionInfo::Kind::EPILOGUE);
     }
@@ -252,7 +252,7 @@ void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, in
                                 InstructionInfo::Kind::EPILOGUE);
         }
       }
-      assert(j == 0);
+      ASSERT(j == 0);
       m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm(RSP, xmm_backup_stack_offset),
                             InstructionInfo::Kind::EPILOGUE);
     }

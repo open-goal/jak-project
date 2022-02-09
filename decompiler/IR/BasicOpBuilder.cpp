@@ -112,7 +112,7 @@ std::shared_ptr<IR> instr_atom_to_ir(const InstructionAtom& ia, int idx) {
       // not supported by IR1
       return std::make_shared<IR_Failed>();
     default:
-      assert(false);
+      ASSERT(false);
       return nullptr;
   }
 }
@@ -130,8 +130,8 @@ std::shared_ptr<IR_Atomic> to_asm_automatic(const std::string& str, Instruction&
     // not supported by IR1
     return std::make_shared<IR_Failed_Atomic>();
   }
-  assert(instr.n_dst < 2);
-  assert(instr.n_src < 4);
+  ASSERT(instr.n_dst < 2);
+  ASSERT(instr.n_src < 4);
   if (instr.n_dst >= 1) {
     result->dst = instr_atom_to_ir(instr.get_dst(0), idx);
   }
@@ -609,7 +609,7 @@ std::shared_ptr<IR_Atomic> try_lwu(Instruction& instr, int idx) {
 std::shared_ptr<IR_Atomic> try_lq(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LQ && instr.get_src(1).is_reg(make_gpr(Reg::S7)) &&
       instr.get_src(0).kind == InstructionAtom::IMM_SYM) {
-    assert(false);
+    ASSERT(false);
   } else if (instr.kind == InstructionKind::LQ && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
     // static
@@ -1349,7 +1349,7 @@ BranchDelay get_branch_delay(Instruction& i, int idx) {
       b.write_regs.push_back(dst);
       return b;
     } else {
-      assert(false);
+      ASSERT(false);
     }
   } else if (i.kind == InstructionKind::DSLLV) {
     // this is used for ash?
@@ -1521,10 +1521,10 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& i0, Instruction& i1, int idx)
       i0.get_src(0).get_reg() == make_gpr(Reg::S7)) {
     auto dst_reg = i0.get_dst(0).get_reg();
     auto src_reg = i1.get_src(1).get_reg();
-    assert(i0.get_src(0).get_reg() == make_gpr(Reg::S7));
-    assert(i0.get_src(1).get_imm() == 8);
-    assert(i1.get_dst(0).get_reg() == dst_reg);
-    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i0.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i0.get_src(1).get_imm() == 8);
+    ASSERT(i1.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
     auto op = make_set_atomic(
         IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
         std::make_shared<IR_Compare>(
@@ -1537,10 +1537,10 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& i0, Instruction& i1, int idx)
              i0.get_src(0).get_reg() == make_gpr(Reg::S7)) {
     auto dst_reg = i0.get_dst(0).get_reg();
     auto src_reg = i1.get_src(1).get_reg();
-    assert(i0.get_src(0).get_reg() == make_gpr(Reg::S7));
-    assert(i0.get_src(1).get_imm() == 8);
-    assert(i1.get_dst(0).get_reg() == dst_reg);
-    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i0.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i0.get_src(1).get_imm() == 8);
+    ASSERT(i1.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
     auto op = make_set_atomic(
         IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
         std::make_shared<IR_Compare>(
@@ -1556,8 +1556,8 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& i0, Instruction& i1, int idx)
 std::shared_ptr<IR_Atomic> try_lui(Instruction& i0, Instruction& i1, int idx) {
   if (i0.kind == InstructionKind::LUI && i1.kind == InstructionKind::ORI &&
       i0.get_src(0).is_label() && i1.get_src(1).is_label()) {
-    assert(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());
-    assert(i0.get_src(0).get_label() == i1.get_src(1).get_label());
+    ASSERT(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());
+    ASSERT(i0.get_src(0).get_label() == i1.get_src(1).get_label());
     auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
                               std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
     if (i0.get_dst(0).get_reg() != i1.get_dst(0).get_reg()) {
@@ -1628,10 +1628,10 @@ std::shared_ptr<IR_Atomic> try_lui(Instruction& i0, Instruction& i1, Instruction
   if (i0.kind == InstructionKind::LUI && i1.kind == InstructionKind::ORI &&
       i0.get_src(0).is_label() && i1.get_src(1).is_label() &&
       is_gpr_3(i2, InstructionKind::ADDU, {}, make_gpr(Reg::FP), {})) {
-    assert(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());
-    assert(i0.get_src(0).get_label() == i1.get_src(1).get_label());
-    assert(i2.get_dst(0).get_reg() == i2.get_src(1).get_reg());
-    assert(i2.get_dst(0).get_reg() == i1.get_dst(0).get_reg());
+    ASSERT(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());
+    ASSERT(i0.get_src(0).get_label() == i1.get_src(1).get_label());
+    ASSERT(i2.get_dst(0).get_reg() == i2.get_src(1).get_reg());
+    ASSERT(i2.get_dst(0).get_reg() == i1.get_dst(0).get_reg());
     auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
                               std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
     if (i0.get_dst(0).get_reg() != i1.get_dst(0).get_reg()) {
@@ -1653,11 +1653,11 @@ std::shared_ptr<IR_Atomic> try_dsubu(Instruction& i0, Instruction& i1, Instructi
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
-    assert(i2.get_src(1).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i2.get_src(1).get_reg() == clobber_reg);
     auto op = make_set_atomic(
         IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
         std::make_shared<IR_Compare>(Condition(Condition::EQUAL, make_reg(src0_reg, idx),
@@ -1672,10 +1672,10 @@ std::shared_ptr<IR_Atomic> try_dsubu(Instruction& i0, Instruction& i1, Instructi
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1695,8 +1695,8 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
@@ -1709,10 +1709,10 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1738,8 +1738,8 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
@@ -1752,10 +1752,10 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1785,8 +1785,8 @@ std::shared_ptr<IR_Atomic> try_slti(Instruction& i0, Instruction& i1, Instructio
   if (i0.kind == InstructionKind::SLTI && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx), src1,
                   make_reg(clobber_reg, idx)),
@@ -1798,10 +1798,10 @@ std::shared_ptr<IR_Atomic> try_slti(Instruction& i0, Instruction& i1, Instructio
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1815,8 +1815,8 @@ std::shared_ptr<IR_Atomic> try_slti(Instruction& i0, Instruction& i1, Instructio
   } else if (i0.kind == InstructionKind::SLTI && i1.kind == InstructionKind::BEQ) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx), src1, make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1827,10 +1827,10 @@ std::shared_ptr<IR_Atomic> try_slti(Instruction& i0, Instruction& i1, Instructio
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1850,8 +1850,8 @@ std::shared_ptr<IR_Atomic> try_sltiu(Instruction& i0, Instruction& i1, Instructi
   if (i0.kind == InstructionKind::SLTIU && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_UNSIGNED, make_reg(src0_reg, idx), src1,
                   make_reg(clobber_reg, idx)),
@@ -1863,10 +1863,10 @@ std::shared_ptr<IR_Atomic> try_sltiu(Instruction& i0, Instruction& i1, Instructi
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1880,8 +1880,8 @@ std::shared_ptr<IR_Atomic> try_sltiu(Instruction& i0, Instruction& i1, Instructi
   } else if (i0.kind == InstructionKind::SLTIU && i1.kind == InstructionKind::BEQ) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx), src1,
                   make_reg(clobber_reg, idx)),
@@ -1893,10 +1893,10 @@ std::shared_ptr<IR_Atomic> try_sltiu(Instruction& i0, Instruction& i1, Instructi
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -1973,8 +1973,8 @@ std::shared_ptr<IR_Atomic> try_sltu(Instruction& i0, Instruction& i1, Instructio
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_UNSIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
@@ -1987,10 +1987,10 @@ std::shared_ptr<IR_Atomic> try_sltu(Instruction& i0, Instruction& i1, Instructio
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
@@ -2005,8 +2005,8 @@ std::shared_ptr<IR_Atomic> try_sltu(Instruction& i0, Instruction& i1, Instructio
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
-    assert(i1.get_src(0).get_reg() == clobber_reg);
-    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    ASSERT(i1.get_src(0).get_reg() == clobber_reg);
+    ASSERT(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
@@ -2019,10 +2019,10 @@ std::shared_ptr<IR_Atomic> try_sltu(Instruction& i0, Instruction& i1, Instructio
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     auto dst_reg = i1.get_dst(0).get_reg();
-    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
-    assert(i1.get_src(1).get_imm() == 8);
-    assert(i2.get_dst(0).get_reg() == dst_reg);
-    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    ASSERT(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    ASSERT(i1.get_src(1).get_imm() == 8);
+    ASSERT(i2.get_dst(0).get_reg() == dst_reg);
+    ASSERT(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }

@@ -25,7 +25,7 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
         glDepthFunc(GL_GREATER);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   } else {
     glDisable(GL_DEPTH_TEST);
@@ -51,7 +51,7 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
         glBlendColor(0.5, 0.5, 0.5, 0.5);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   } else {
     glDisable(GL_BLEND);
@@ -99,18 +99,18 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
             double_draw.aref_second = alpha_min;
             break;
           default:
-            assert(false);
+            ASSERT(false);
         }
         break;
       case DrawMode::AlphaTest::NEVER:
         if (mode.get_alpha_fail() == GsTest::AlphaFail::FB_ONLY) {
           alpha_hack_to_disable_z_write = true;
         } else {
-          assert(false);
+          ASSERT(false);
         }
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 

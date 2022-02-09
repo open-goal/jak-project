@@ -3,7 +3,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * The Serializer is a tool to load or save data from a buffer.
@@ -93,7 +93,7 @@ class Serializer {
    */
   template <typename T>
   T load() {
-    assert(!m_writing);
+    ASSERT(!m_writing);
     T result;
     read_or_write(&result, sizeof(T));
     return result;
@@ -104,7 +104,7 @@ class Serializer {
    */
   template <typename T>
   void save(const T& thing) {
-    assert(m_writing);
+    ASSERT(m_writing);
     read_or_write(const_cast<T*>(&thing), sizeof(T));
   }
 
@@ -126,7 +126,7 @@ class Serializer {
    * const_cast.
    */
   void save_str(const std::string* str) {
-    assert(is_saving());
+    ASSERT(is_saving());
     // safe, we're saving, so from_str will only read.
     from_str(const_cast<std::string*>(str));
   }
@@ -135,7 +135,7 @@ class Serializer {
    * Load a std::string and return it.
    */
   std::string load_string() {
-    assert(is_loading());
+    ASSERT(is_loading());
     std::string s;
     from_str(&s);
     return s;
@@ -168,7 +168,7 @@ class Serializer {
    * Reset a load back to the beginning.
    */
   void reset_load() {
-    assert(is_loading());
+    ASSERT(is_loading());
     m_offset = 0;
   }
 
@@ -176,7 +176,7 @@ class Serializer {
    * Get the result of the save. This is a view of the buffer owned by the Serializer.
    */
   std::pair<const u8*, size_t> get_save_result() {
-    assert(m_writing);
+    ASSERT(m_writing);
     return {m_data, m_offset};
   }
 
@@ -184,7 +184,7 @@ class Serializer {
    * Have we reached the end of the load?
    */
   bool get_load_finished() const {
-    assert(!m_writing);
+    ASSERT(!m_writing);
     return m_offset == m_size;
   }
 
@@ -206,7 +206,7 @@ class Serializer {
       memcpy(m_data + m_offset, data, size);
     } else {
       // if we would overflow, it's an error.
-      assert(m_offset + size <= m_size);
+      ASSERT(m_offset + size <= m_size);
       memcpy(data, m_data + m_offset, size);
     }
     m_offset += size;

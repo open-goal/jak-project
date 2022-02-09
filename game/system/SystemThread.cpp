@@ -15,7 +15,7 @@
 SystemThread& SystemThreadManager::create_thread(const std::string& name) {
   if (thread_count >= MAX_SYSTEM_THREADS) {
     lg::die("Out of System Threads! MAX_SYSTEM_THREADS is ", MAX_SYSTEM_THREADS);
-    assert(false);
+    ASSERT(false);
   }
   auto& thread = threads[thread_count];
 

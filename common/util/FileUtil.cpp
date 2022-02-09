@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <cstring>
 #endif
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace file_util {
 std::filesystem::path get_user_home_dir() {
@@ -176,7 +176,7 @@ std::string combine_path(const std::string& parent, const std::string& child) {
 
 std::string base_name(const std::string& filename) {
   size_t pos = 0;
-  assert(!filename.empty());
+  ASSERT(!filename.empty());
   for (size_t i = filename.size() - 1; i-- > 0;) {
     if (filename.at(i) == '/' || filename.at(i) == '\\') {
       pos = (i + 1);
@@ -201,7 +201,7 @@ void init_crc() {
 }
 
 uint32_t crc32(const uint8_t* data, size_t size) {
-  assert(sInitCrc);
+  ASSERT(sInitCrc);
   uint32_t crc = 0;
   for (size_t i = size; i != 0; i--, data++) {
     crc = crc_table[crc >> 24u] ^ ((crc << 8u) | *data);
@@ -343,7 +343,7 @@ void MakeISOName(char* dst, const char* src) {
 void assert_file_exists(const char* path, const char* error_message) {
   if (!std::filesystem::exists(path)) {
     fprintf(stderr, "File %s was not found: %s\n", path, error_message);
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -385,12 +385,12 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
       lzokay::EResult ok = lzokay::decompress(
           compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
           decompressed_data.size() - output_offset, bytes_written);
-      assert(ok == lzokay::EResult::Success);
+      ASSERT(ok == lzokay::EResult::Success);
       compressed_reader.ffwd(chunk_size);
       output_offset += bytes_written;
     } else {
       // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
-      //        assert(chunk_size == MAX_CHUNK_SIZE);
+      //        ASSERT(chunk_size == MAX_CHUNK_SIZE);
       memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
       compressed_reader.ffwd(MAX_CHUNK_SIZE);
       output_offset += MAX_CHUNK_SIZE;

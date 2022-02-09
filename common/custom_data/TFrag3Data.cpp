@@ -1,5 +1,5 @@
 #include "Tfrag3Data.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace tfrag3 {
 
@@ -97,7 +97,7 @@ void Level::serialize(Serializer& ser) {
   if (ser.is_loading() && version != TFRAG3_VERSION) {
     fmt::print("version mismatch when loading tfrag3 data. Got {}, expected {}\n", version,
                TFRAG3_VERSION);
-    assert(false);
+    ASSERT(false);
   }
 
   ser.from_str(&level_name);
@@ -133,7 +133,7 @@ void Level::serialize(Serializer& ser) {
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
     fmt::print("version mismatch when loading tfrag3 data (at end). Got {}, expected {}\n",
                version2, TFRAG3_VERSION);
-    assert(false);
+    ASSERT(false);
   }
 }
 

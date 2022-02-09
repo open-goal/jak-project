@@ -103,7 +103,7 @@ class FileEnv : public Env {
     return "anon-function-" + std::to_string(m_anon_func_counter++);
   }
   const FunctionEnv& top_level_function() {
-    assert(m_top_level_func);
+    ASSERT(m_top_level_func);
     return *m_top_level_func;
   }
   const std::string& name() { return m_name; }

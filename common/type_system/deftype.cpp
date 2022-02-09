@@ -526,7 +526,7 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
   } else {
     throw std::runtime_error("invalid typespec: " + src.print());
   }
-  assert(false);
+  ASSERT(false);
   return {};
 }
 
@@ -553,7 +553,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   if (is_type("basic", parent_type, ts)) {
     auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
-    assert(pto);
+    ASSERT(pto);
     if (pto->final()) {
       throw std::runtime_error(
           fmt::format("[TypeSystem] Cannot make a child type {} of final basic type {}", name,
@@ -589,7 +589,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   } else if (is_type("structure", parent_type, ts)) {
     auto new_type = std::make_unique<StructureType>(parent_type_name, name, false, false, false, 0);
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
-    assert(pto);
+    ASSERT(pto);
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "structure");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
@@ -612,11 +612,11 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
     auto pto = ts->lookup_type(parent_type);
-    assert(pto);
+    ASSERT(pto);
     auto new_type = std::make_unique<BitFieldType>(
         parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
     auto parent_value = dynamic_cast<ValueType*>(pto);
-    assert(parent_value);
+    ASSERT(parent_value);
     new_type->inherit(parent_value);
     new_type->set_runtime_type(pto->get_runtime_name());
     auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);

@@ -23,7 +23,7 @@ void for_each_in_list(const goos::Object& list, T f) {
     iter = &lap->cdr;
   }
 
-  assert(iter->is_empty_list());
+  ASSERT(iter->is_empty_list());
 }
 
 int list_length(const goos::Object& list);

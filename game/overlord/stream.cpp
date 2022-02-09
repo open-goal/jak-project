@@ -11,7 +11,7 @@
 #include "game/common/play_rpc_types.h"
 #include "game/overlord/isocommon.h"
 #include "game/overlord/iso_api.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 

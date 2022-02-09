@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <string>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 // Namespace for register name constants
@@ -147,13 +147,13 @@ class Register {
   Register() = default;
   Register(Reg::RegisterKind kind, uint32_t num);
   explicit Register(int reg_id) {
-    assert(reg_id < Reg::MAX_REG_ID);
+    ASSERT(reg_id < Reg::MAX_REG_ID);
     id = reg_id;
   }
 
   Register(const std::string& name);
   static Register get_arg_reg(int idx) {
-    assert(idx >= 0 && idx < 8);
+    ASSERT(idx >= 0 && idx < 8);
     return Register(Reg::GPR, Reg::A0 + idx);
   }
 

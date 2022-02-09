@@ -13,7 +13,7 @@
 #include "common/log/log.h"
 
 #include "common/goos/PrettyPrinter2.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace pretty_print {
 
@@ -141,7 +141,7 @@ void add_to_token_list(const goos::Object& obj, std::vector<FormToken>* tokens) 
     case goos::ObjectType::ENVIRONMENT:
       throw std::runtime_error("tried to pretty print a goos object kind which is not supported.");
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -248,19 +248,19 @@ void insertNewlineBefore(NodePool& pool, PrettyPrinterNode* node, int specialInd
  * After this has been called, the entire selection should be reformatted with propagate_pretty
  */
 void breakList(NodePool& pool, PrettyPrinterNode* leftParen) {
-  assert(!leftParen->is_line_separator);
-  assert(leftParen->tok->kind == FormToken::TokenKind::OPEN_PAREN);
+  ASSERT(!leftParen->is_line_separator);
+  ASSERT(leftParen->tok->kind == FormToken::TokenKind::OPEN_PAREN);
   auto* rp = leftParen->paren;
-  assert(rp->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+  ASSERT(rp->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
 
   for (auto* n = leftParen->next; n && n != rp; n = n->next) {
     if (!n->is_line_separator) {
       if (n->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
         n = n->paren;
-        assert(n->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+        ASSERT(n->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
         insertNewlineAfter(pool, n, 0);
       } else if (n->tok->kind != FormToken::TokenKind::WHITESPACE) {
-        assert(n->tok->kind != FormToken::TokenKind::CLOSE_PAREN);
+        ASSERT(n->tok->kind != FormToken::TokenKind::CLOSE_PAREN);
         insertNewlineAfter(pool, n, 0);
       }
     }
@@ -338,7 +338,7 @@ static PrettyPrinterNode* propagatePretty(NodePool& pool,
  * Get the token on the start of the next line. nullptr if we're the last line.
  */
 PrettyPrinterNode* getNextLine(PrettyPrinterNode* start) {
-  assert(!start->is_line_separator);
+  ASSERT(!start->is_line_separator);
   int line = start->line;
   for (;;) {
     if (start->is_line_separator || start->line == line) {
@@ -359,7 +359,7 @@ PrettyPrinterNode* getNextLine(PrettyPrinterNode* start) {
  */
 PrettyPrinterNode* getNextListOnLine(PrettyPrinterNode* start) {
   int line = start->line;
-  assert(!start->is_line_separator);
+  ASSERT(!start->is_line_separator);
   if (!start->next || start->next->is_line_separator) {
     return nullptr;
   }
@@ -380,7 +380,7 @@ PrettyPrinterNode* getNextListOnLine(PrettyPrinterNode* start) {
 PrettyPrinterNode* getNextOfKindOrStringOnLine(PrettyPrinterNode* start,
                                                FormToken::TokenKind kind) {
   int line = start->line;
-  assert(!start->is_line_separator);
+  ASSERT(!start->is_line_separator);
   if (!start->next || start->next->is_line_separator) {
     return nullptr;
   }
@@ -400,7 +400,7 @@ PrettyPrinterNode* getNextOfKindOrStringOnLine(PrettyPrinterNode* start,
 
 PrettyPrinterNode* getNextListOrEmptyListOnLine(PrettyPrinterNode* start) {
   int line = start->line;
-  assert(!start->is_line_separator);
+  ASSERT(!start->is_line_separator);
   if (!start->next || start->next->is_line_separator) {
     return nullptr;
   }
@@ -454,7 +454,7 @@ loop_end:
  */
 PrettyPrinterNode* getFirstListOnLine(PrettyPrinterNode* start) {
   int line = start->line;
-  assert(!start->is_line_separator);
+  ASSERT(!start->is_line_separator);
   while (!start->is_line_separator && start->line == line) {
     if (start->tok->kind == FormToken::TokenKind::OPEN_PAREN)
       return start;
@@ -469,12 +469,12 @@ PrettyPrinterNode* getFirstListOnLine(PrettyPrinterNode* start) {
  * Get the first token on the first line which exceeds the max length
  */
 PrettyPrinterNode* getFirstBadLine(PrettyPrinterNode* start, int line_length) {
-  assert(!start->is_line_separator);
+  ASSERT(!start->is_line_separator);
   int currentLine = start->line;
   auto* currentLineNode = start;
   for (;;) {
     if (start->is_line_separator) {
-      assert(start->next);
+      ASSERT(start->next);
       start = start->next;
     } else {
       if (start->line != currentLine) {
@@ -518,7 +518,7 @@ void insertBreaksAsNeeded(NodePool& pool, PrettyPrinterNode* head, int line_leng
       break;
 
     // okay, we have a line which needs fixing.
-    assert(!candidate_line->prev || candidate_line->prev->is_line_separator);
+    ASSERT(!candidate_line->prev || candidate_line->prev->is_line_separator);
     PrettyPrinterNode* form_to_start = getFirstListOnLine(candidate_line);
     for (;;) {
       if (!form_to_start) {
@@ -547,10 +547,10 @@ void insertBreaksAsNeeded(NodePool& pool, PrettyPrinterNode* head, int line_leng
  * After this has been called, the entire selection should be reformatted with propagate_pretty
  */
 void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* first_elt) {
-  assert(!leftParen->is_line_separator);
-  assert(leftParen->tok->kind == FormToken::TokenKind::OPEN_PAREN);
+  ASSERT(!leftParen->is_line_separator);
+  ASSERT(leftParen->tok->kind == FormToken::TokenKind::OPEN_PAREN);
   auto* rp = leftParen->paren;
-  assert(rp->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+  ASSERT(rp->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
 
   bool breaking = false;
   for (auto* n = leftParen->next; n && n != rp; n = n->next) {
@@ -560,13 +560,13 @@ void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* 
     if (!n->is_line_separator) {
       if (n->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
         n = n->paren;
-        assert(n->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+        ASSERT(n->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
         if (breaking) {
           insertNewlineAfter(pool, n, 0);
         }
 
       } else if (n->tok->kind != FormToken::TokenKind::WHITESPACE) {
-        assert(n->tok->kind != FormToken::TokenKind::CLOSE_PAREN);
+        ASSERT(n->tok->kind != FormToken::TokenKind::CLOSE_PAREN);
         if (breaking) {
           insertNewlineAfter(pool, n, 0);
         }
@@ -694,9 +694,9 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
 
         while (true) {
           // let's break this case:
-          assert(start_of_case->tok->kind == FormToken::TokenKind::OPEN_PAREN);
+          ASSERT(start_of_case->tok->kind == FormToken::TokenKind::OPEN_PAREN);
           auto end_of_case = start_of_case->paren;
-          assert(end_of_case->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+          ASSERT(end_of_case->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
           // get the first thing in the case
 
           // and break there.
@@ -746,7 +746,7 @@ std::string to_string_v1(const goos::Object& obj, int line_length) {
   NodePool pool;
   std::vector<FormToken> tokens;
   add_to_token_list(obj, &tokens);
-  assert(!tokens.empty());
+  ASSERT(!tokens.empty());
   std::string pretty;
 
   // build linked list of nodes
@@ -780,8 +780,8 @@ std::string to_string_v1(const goos::Object& obj, int line_length) {
       n->paren = parenStack.back();
     }
   }
-  assert(parenStack.size() == 1);
-  assert(!parenStack.back());
+  ASSERT(parenStack.size() == 1);
+  ASSERT(!parenStack.back());
 
   insertSpecialBreaks(pool, head);
   propagatePretty(pool, head, line_length);

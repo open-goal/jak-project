@@ -14,7 +14,7 @@
 #include "third-party/json.hpp"
 #include "common/log/log.h"
 #include "common/goos/PrettyPrinter.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -22,7 +22,7 @@ namespace decompiler {
  * This can only be done once, and must be done before adding any words.
  */
 void LinkedObjectFile::set_segment_count(int n_segs) {
-  assert(segments == 0);
+  ASSERT(segments == 0);
   segments = n_segs;
   words_by_seg.resize(n_segs);
   label_per_seg_by_offset.resize(n_segs);
@@ -56,8 +56,8 @@ int LinkedObjectFile::get_label_id_for(int seg, int offset) {
   } else {
     // return an existing label
     auto& label = labels.at(kv->second);
-    assert(label.offset == offset);
-    assert(label.target_segment == seg);
+    ASSERT(label.offset == offset);
+    ASSERT(label.target_segment == seg);
     return kv->second;
   }
 }
@@ -96,7 +96,7 @@ Function& LinkedObjectFile::get_function_at_label(int label_id) {
     }
   }
 
-  assert(false);
+  ASSERT(false);
   return functions_by_seg.front().front();  // to avoid error
 }
 
@@ -147,16 +147,16 @@ bool LinkedObjectFile::pointer_link_word(int source_segment,
                                          int source_offset,
                                          int dest_segment,
                                          int dest_offset) {
-  assert((source_offset % 4) == 0);
+  ASSERT((source_offset % 4) == 0);
 
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
-  assert(word.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
 
   if (dest_offset / 4 > (int)words_by_seg.at(dest_segment).size()) {
     //    printf("HACK bad link ignored!\n");
     return false;
   }
-  assert(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
+  ASSERT(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
 
   word.set_to_pointer(LinkedWord::PTR, get_label_id_for(dest_segment, dest_offset));
   return true;
@@ -169,9 +169,9 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
                                         int source_offset,
                                         const char* name,
                                         LinkedWord::Kind kind) {
-  assert((source_offset % 4) == 0);
+  ASSERT((source_offset % 4) == 0);
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
-  //  assert(word.kind == LinkedWord::PLAIN_DATA);
+  //  ASSERT(word.kind == LinkedWord::PLAIN_DATA);
   if (word.kind() != LinkedWord::PLAIN_DATA) {
     printf("bad symbol link word\n");
   }
@@ -183,9 +183,9 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
  * the symbol table register.
  */
 void LinkedObjectFile::symbol_link_offset(int source_segment, int source_offset, const char* name) {
-  assert((source_offset % 4) == 0);
+  ASSERT((source_offset % 4) == 0);
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
-  assert(word.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
   word.set_to_symbol(LinkedWord::SYM_OFFSET, name);
 }
 
@@ -197,15 +197,15 @@ void LinkedObjectFile::pointer_link_split_word(int source_segment,
                                                int source_lo_offset,
                                                int dest_segment,
                                                int dest_offset) {
-  assert((source_hi_offset % 4) == 0);
-  assert((source_lo_offset % 4) == 0);
+  ASSERT((source_hi_offset % 4) == 0);
+  ASSERT((source_lo_offset % 4) == 0);
 
   auto& hi_word = words_by_seg.at(source_segment).at(source_hi_offset / 4);
   auto& lo_word = words_by_seg.at(source_segment).at(source_lo_offset / 4);
 
-  //  assert(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
-  assert(hi_word.kind() == LinkedWord::PLAIN_DATA);
-  assert(lo_word.kind() == LinkedWord::PLAIN_DATA);
+  //  ASSERT(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
+  ASSERT(hi_word.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(lo_word.kind() == LinkedWord::PLAIN_DATA);
 
   hi_word.set_to_pointer(LinkedWord::HI_PTR, get_label_id_for(dest_segment, dest_offset));
   lo_word.set_to_pointer(LinkedWord::LO_PTR, hi_word.label_id());
@@ -244,7 +244,7 @@ static const char* segment_names[] = {"main segment", "debug segment", "top-leve
 std::string LinkedObjectFile::print_words() {
   std::string result;
 
-  assert(segments <= 3);
+  ASSERT(segments <= 3);
   for (int seg = segments; seg-- > 0;) {
     // segment header
     result += ";------------------------------------------\n;  ";
@@ -321,7 +321,7 @@ void LinkedObjectFile::find_code() {
     auto& seg = words_by_seg.front();
     for (auto& word : seg) {
       if (word.kind() == LinkedWord::TYPE_PTR) {
-        assert(word.symbol_name() != "function");
+        ASSERT(word.symbol_name() != "function");
       }
     }
     offset_of_data_zone_by_seg.at(0) = 0;
@@ -361,8 +361,8 @@ void LinkedObjectFile::find_code() {
           }
         }
 
-        assert(found_jr_ra);
-        assert(jr_ra_loc + 1 < words_by_seg.at(i).size());
+        ASSERT(found_jr_ra);
+        ASSERT(jr_ra_loc + 1 < words_by_seg.at(i).size());
         offset_of_data_zone_by_seg.at(i) = jr_ra_loc + 2;
 
       } else {
@@ -380,7 +380,7 @@ void LinkedObjectFile::find_code() {
       for (size_t j = offset_of_data_zone_by_seg.at(i); j < words_by_seg.at(i).size(); j++) {
         auto& word = words_by_seg.at(i).at(j);
         if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "function") {
-          assert(false);
+          ASSERT(false);
         }
       }
 
@@ -390,7 +390,7 @@ void LinkedObjectFile::find_code() {
     }
   } else {
     // for files which we couldn't extract link data yet, they will have 0 segments and its ok.
-    assert(segments == 0);
+    ASSERT(segments == 0);
   }
 }
 
@@ -400,7 +400,7 @@ void LinkedObjectFile::find_code() {
 void LinkedObjectFile::find_functions() {
   if (segments == 1) {
     // it's a v2 file, shouldn't have any functions
-    assert(offset_of_data_zone_by_seg.at(0) == 0);
+    ASSERT(offset_of_data_zone_by_seg.at(0) == 0);
   } else {
     // we assume functions don't have any data in between them, so we use the "function" type tag to
     // mark the end of the previous function and the start of the next.  This means that some
@@ -422,7 +422,7 @@ void LinkedObjectFile::find_functions() {
         }
 
         // mark this as a function, and try again from the current function start
-        assert(found_function_tag_loc);
+        ASSERT(found_function_tag_loc);
         stats.function_count++;
         functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end);
         function_end = function_tag_loc;
@@ -506,21 +506,21 @@ void LinkedObjectFile::process_fp_relative_links() {
               // other cases. Also, the position of the fp register is swapped between the two.
               case InstructionKind::DADDU:
               case InstructionKind::ADDU: {
-                assert(prev_instr);
+                ASSERT(prev_instr);
                 if (prev_instr->kind != InstructionKind::ORI) {
                   lg::error("Failed to process fp relative links for (d)addu preceded by: {}",
                             prev_instr->to_string(labels));
                   return;
                 }
-                assert(prev_instr->kind == InstructionKind::ORI);
+                ASSERT(prev_instr->kind == InstructionKind::ORI);
                 int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
                 auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
-                assert(offset_reg == prev_instr->get_dst(0).get_reg());
-                assert(offset_reg == prev_instr->get_src(0).get_reg());
+                ASSERT(offset_reg == prev_instr->get_dst(0).get_reg());
+                ASSERT(offset_reg == prev_instr->get_src(0).get_reg());
                 auto& atom = prev_instr->get_imm_src();
                 int additional_offset = 0;
                 if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
-                  assert(pprev_instr->get_dst(0).get_reg() == offset_reg);
+                  ASSERT(pprev_instr->get_dst(0).get_reg() == offset_reg);
                   additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
                   pprev_instr->get_imm_src().set_label(
                       get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
@@ -532,7 +532,7 @@ void LinkedObjectFile::process_fp_relative_links() {
 
               default:
                 printf("unknown fp using op: %s\n", instr.to_string(labels).c_str());
-                assert(false);
+                ASSERT(false);
             }
           }
         }
@@ -564,11 +564,11 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
     }
 
     for (int j = 1; j < 4; j++) {
-      //          assert(get_label_at(seg, (func.start_word + i)*4 + j) == -1);
+      //          ASSERT(get_label_at(seg, (func.start_word + i)*4 + j) == -1);
       if (get_label_at(seg, (func.start_word + i) * 4 + j) != -1) {
         result += "BAD OFFSET LABEL: ";
         result += labels.at(get_label_at(seg, (func.start_word + i) * 4 + j)).name + "\n";
-        assert(false);
+        ASSERT(false);
       }
     }
 
@@ -695,7 +695,7 @@ std::string LinkedObjectFile::print_asm_function_disassembly(const std::string& 
 std::string LinkedObjectFile::print_disassembly(bool write_hex) {
   std::string result;
 
-  assert(segments <= 3);
+  ASSERT(segments <= 3);
   for (int seg = segments; seg-- > 0;) {
     // segment header
     result += ";------------------------------------------\n;  ";
@@ -819,7 +819,7 @@ std::string LinkedObjectFile::print_scripts() {
  * Is the object pointed to the empty list?
  */
 bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
-  assert((byte_idx % 4) == 0);
+  ASSERT((byte_idx % 4) == 0);
   auto& word = words_by_seg.at(seg).at(byte_idx / 4);
   return word.kind() == LinkedWord::EMPTY_PTR;
 }
@@ -857,7 +857,7 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
         return result;
       } else {
         // cdr object should be aligned.
-        assert((cdr_addr % 4) == 0);
+        ASSERT((cdr_addr % 4) == 0);
         auto& cdr_word = words_by_seg.at(seg).at(cdr_addr / 4);
         // check for proper list
         if (cdr_word.kind() == LinkedWord::PTR &&
@@ -875,7 +875,7 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
       }
     } else {
       // improper list, should be impossible to get here because of earlier checks
-      assert(false);
+      ASSERT(false);
     }
   }
 
@@ -936,7 +936,7 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
         std::string debug;
         append_word_to_string(debug, word);
         printf("don't know how to print %s\n", debug.c_str());
-        assert(false);
+        ASSERT(false);
       }
     } break;
 
@@ -944,21 +944,21 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
     default:
       // pointers should be aligned!
       printf("align %d\n", byte_idx & 7);
-      assert(false);
+      ASSERT(false);
   }
 
   return result;
 }
 
 u32 LinkedObjectFile::read_data_word(const DecompilerLabel& label) {
-  assert(0 == (label.offset % 4));
+  ASSERT(0 == (label.offset % 4));
   auto& word = words_by_seg.at(label.target_segment).at(label.offset / 4);
-  assert(word.kind() == LinkedWord::Kind::PLAIN_DATA);
+  ASSERT(word.kind() == LinkedWord::Kind::PLAIN_DATA);
   return word.data;
 }
 
 std::string LinkedObjectFile::get_goal_string_by_label(const DecompilerLabel& label) const {
-  assert(0 == (label.offset % 4));
+  ASSERT(0 == (label.offset % 4));
   return get_goal_string(label.target_segment, (label.offset / 4) - 1, false);
 }
 

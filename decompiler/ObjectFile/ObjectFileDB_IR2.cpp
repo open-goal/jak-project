@@ -185,10 +185,10 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   for_each_obj([&](ObjectFileData& data) {
     if (data.linked_data.segments == 3) {
       // the top level segment should have a single function
-      assert(data.linked_data.functions_by_seg.at(2).size() == 1);
+      ASSERT(data.linked_data.functions_by_seg.at(2).size() == 1);
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
-      assert(func.guessed_name.empty());
+      ASSERT(func.guessed_name.empty());
       func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
@@ -224,7 +224,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
             total_unknowns++;
             break;
           default:
-            assert(false);
+            ASSERT(false);
         }
         total_functions++;
 
@@ -296,8 +296,8 @@ void ObjectFileDB::ir2_basic_block_pass(int seg, const Config& config, ObjectFil
       func.analyze_prologue(data.linked_data);
     } else {
       // manually exclude the type tag from the basic block.
-      assert(func.basic_blocks.front().start_word == 0);
-      assert(func.basic_blocks.front().end_word >= 1);
+      ASSERT(func.basic_blocks.front().start_word == 0);
+      ASSERT(func.basic_blocks.front().end_word >= 1);
       func.basic_blocks.front().start_word = 1;
     }
 
@@ -629,7 +629,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
   std::string result;
 
   const char* segment_names[] = {"main segment", "debug segment", "top-level segment"};
-  assert(data.linked_data.segments <= 3);
+  ASSERT(data.linked_data.segments <= 3);
   for (int seg = data.linked_data.segments; seg-- > 0;) {
     // segment header
     result += ";------------------------------------------\n;  ";
@@ -676,7 +676,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
             }
             // check for no misaligned labels in code segments.
             for (int j = 1; j < 4; j++) {
-              assert(data.linked_data.get_label_at(seg, (func.start_word + instr_idx) * 4 + j) ==
+              ASSERT(data.linked_data.get_label_at(seg, (func.start_word + instr_idx) * 4 + j) ==
                      -1);
             }
 
@@ -791,7 +791,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
     }
     // check for no misaligned labels in code segments.
     for (int j = 1; j < 4; j++) {
-      assert(data.linked_data.get_label_at(seg, (func.start_word + i) * 4 + j) == -1);
+      ASSERT(data.linked_data.get_label_at(seg, (func.start_word + i) * 4 + j) == -1);
     }
 
     // print the assembly instruction
@@ -815,7 +815,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
       in_delay_slot = true;
     }
     total_instructions_printed++;
-    assert(last_instr_printed + 1 == i);
+    ASSERT(last_instr_printed + 1 == i);
     last_instr_printed = i;
   };
 
@@ -909,7 +909,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
 
   result += "\n";
 
-  assert(total_instructions_printed == (func.end_word - func.start_word - 1));
+  ASSERT(total_instructions_printed == (func.end_word - func.start_word - 1));
   return result;
 }
 
@@ -983,7 +983,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
                                      mi.type.substitute_for_method_call(name.type_name));
     return true;
   } else {
-    assert(false);
+    ASSERT(false);
   }
   return false;
 }
@@ -994,7 +994,7 @@ std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
     std::string result;
     result += ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";
-    assert(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
+    ASSERT(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
     auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
     result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
     result += "\n\n";

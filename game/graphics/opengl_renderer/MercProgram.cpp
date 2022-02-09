@@ -24,7 +24,7 @@ u16 MercRenderer::xtop() {
 }
 
 void MercRenderer::lq_buffer(Mask mask, Vf& dest, u16 addr) {
-  assert(addr * 16 < sizeof(m_buffer.data));
+  ASSERT(addr * 16 < sizeof(m_buffer.data));
   for (int i = 0; i < 4; i++) {
     if ((u64)mask & (1 << i)) {
       memcpy(dest.data + i, m_buffer.data + addr * 16 + i * 4, 4);
@@ -35,7 +35,7 @@ void MercRenderer::lq_buffer(Mask mask, Vf& dest, u16 addr) {
 template <bool DEBUG>
 REALLY_INLINE void MercRenderer::lq_buffer_xyzw(Vf& dest, u16 addr) {
   if constexpr (DEBUG) {
-    assert(addr * 16 < sizeof(m_buffer.data));
+    ASSERT(addr * 16 < sizeof(m_buffer.data));
   }
   copy_vector(dest.data, m_buffer.data + addr * 16);
 }
@@ -43,7 +43,7 @@ REALLY_INLINE void MercRenderer::lq_buffer_xyzw(Vf& dest, u16 addr) {
 template <bool DEBUG>
 REALLY_INLINE void MercRenderer::lq_buffer_xyz(Vf& dest, u16 addr) {
   if constexpr (DEBUG) {
-    assert(addr * 16 < sizeof(m_buffer.data));
+    ASSERT(addr * 16 < sizeof(m_buffer.data));
   }
   auto reg = _mm_load_ps(dest.data);
   auto mem = _mm_load_ps((const float*)(m_buffer.data + addr * 16));
@@ -53,13 +53,13 @@ REALLY_INLINE void MercRenderer::lq_buffer_xyz(Vf& dest, u16 addr) {
 template <bool DEBUG>
 REALLY_INLINE void MercRenderer::sq_buffer_xyzw(const Vf& src, u16 addr) {
   if constexpr (DEBUG) {
-    assert(addr * 16 < sizeof(m_buffer.data));
+    ASSERT(addr * 16 < sizeof(m_buffer.data));
   }
   copy_vector(m_buffer.data + addr * 16, src.data);
 }
 
 void MercRenderer::isw_buffer(Mask mask, u16 val, u16 addr) {
-  assert(addr * 16 < sizeof(m_buffer.data));
+  ASSERT(addr * 16 < sizeof(m_buffer.data));
   u32 val32 = val;
   int offset;
   switch (mask) {
@@ -76,14 +76,14 @@ void MercRenderer::isw_buffer(Mask mask, u16 val, u16 addr) {
       offset = 12;
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   memcpy(m_buffer.data + addr * 16 + offset, &val32, 4);
 }
 
 void MercRenderer::ilw_buffer(Mask mask, u16& dest, u16 addr) {
   // fmt::print("addr is {}\n", addr);
-  assert(addr * 16 < sizeof(m_buffer.data));
+  ASSERT(addr * 16 < sizeof(m_buffer.data));
   int offset;
   switch (mask) {
     case Mask::x:
@@ -99,7 +99,7 @@ void MercRenderer::ilw_buffer(Mask mask, u16& dest, u16 addr) {
       offset = 12;
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   memcpy(&dest, m_buffer.data + addr * 16 + offset, 2);
 }
@@ -123,7 +123,7 @@ void MercRenderer::mscal_impl(int enter_address,
     case 35:
       goto ENTER_35;
     default:
-      assert(false);
+      ASSERT(false);
   }
   ENTER_0:
   // lq.xyzw vf01, 7(vi00)      |  nop
@@ -1195,7 +1195,7 @@ void MercRenderer::mscal_impl(int enter_address,
 case 0x243:
 goto JUMP_243;
 default:
-assert(false);
+ASSERT(false);
 }
   L29:
   // lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
@@ -3146,7 +3146,7 @@ assert(false);
     goto JUMP_539;
   default:
     fmt::print("bad jump to {:x}\n", vu.vi08);
-  assert(false);
+  ASSERT(false);
   }
   L94:
   // 3072.0                     |  mulax.xyzw ACC, vf01, vf11 :i

@@ -20,7 +20,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                                int offset,
                                                Env* env) {
   auto type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type));
-  assert(type_info);
+  ASSERT(type_info);
 
   // make sure we have enough space
   if (int(structure->data.size()) < offset + type_info->get_size_in_memory()) {
@@ -121,10 +121,10 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
     } else if (is_integer(field_info.type)) {
-      assert(field_info.needs_deref);  // for now...
+      ASSERT(field_info.needs_deref);  // for now...
       auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
-      assert(field_offset + deref_info.load_size <= int(structure->data.size()));
-      assert(!field_info.field.is_inline());
+      ASSERT(field_offset + deref_info.load_size <= int(structure->data.size()));
+      ASSERT(!field_info.field.is_inline());
       auto sr = compile_static(field_value, env);
       if (!sr.is_constant_data()) {
         throw_compiler_error(form, "Could not use {} for an integer field", field_value.print());
@@ -144,7 +144,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 
     } else if (is_structure(field_info.type) || is_pair(field_info.type)) {
       if (is_pair(field_info.type)) {
-        assert(!field_info.field.is_inline());
+        ASSERT(!field_info.field.is_inline());
       }
 
       if (field_info.field.is_inline()) {
@@ -184,19 +184,19 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         }
 
       } else {
-        assert(field_info.needs_deref);
+        ASSERT(field_info.needs_deref);
         auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
         auto field_size = deref_info.load_size;
-        assert(field_offset + field_size <= int(structure->data.size()));
+        ASSERT(field_offset + field_size <= int(structure->data.size()));
         auto sr = compile_static(field_value, env);
         if (sr.is_symbol()) {
           if (sr.symbol_name() != "#f" && sr.symbol_name() != "_empty_") {
             typecheck(form, field_info.type, sr.typespec());
           }
           structure->add_symbol_record(sr.symbol_name(), field_offset);
-          assert(deref_info.mem_deref);
-          assert(deref_info.can_deref);
-          assert(deref_info.load_size == 4);
+          ASSERT(deref_info.mem_deref);
+          ASSERT(deref_info.can_deref);
+          ASSERT(deref_info.load_size == 4);
           // the linker needs to see a -1 in order to know to insert a symbol pointer
           // instead of just the symbol table offset.
           u32 linker_val = 0xffffffff;
@@ -218,11 +218,11 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         }
       }
     } else if (is_float(field_info.type)) {
-      assert(field_info.needs_deref);
+      ASSERT(field_info.needs_deref);
       auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
       auto field_size = deref_info.load_size;
-      assert(field_offset + field_size <= int(structure->data.size()));
-      assert(!field_info.field.is_inline());
+      ASSERT(field_offset + field_size <= int(structure->data.size()));
+      ASSERT(!field_info.field.is_inline());
       auto sr = compile_static(field_value, env);
       if (!sr.is_constant_data()) {
         throw_compiler_error(form, "Could not use {} for a float field", field_value.print());
@@ -236,7 +236,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
       }
       typecheck(form, field_info.type, sr.typespec());
-      assert(sr.reference()->get_addr_offset() == 0);
+      ASSERT(sr.reference()->get_addr_offset() == 0);
       structure->add_pointer_record(field_offset, sr.reference(),
                                     sr.reference()->get_addr_offset());
     } else if (field_info.type.base_type() == "pointer") {
@@ -245,9 +245,9 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         // allow #f to be used for a pointer.
         structure->add_symbol_record(sr.symbol_name(), field_offset);
         auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
-        assert(deref_info.mem_deref);
-        assert(deref_info.can_deref);
-        assert(deref_info.load_size == 4);
+        ASSERT(deref_info.mem_deref);
+        ASSERT(deref_info.can_deref);
+        ASSERT(deref_info.load_size == 4);
         // the linker needs to see a -1 in order to know to insert a symbol pointer
         // instead of just the symbol table offset.
         u32 linker_val = 0xffffffff;
@@ -257,7 +257,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
           throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
         }
         typecheck(form, field_info.type, sr.typespec());
-        assert(sr.reference()->get_addr_offset() == 0);
+        ASSERT(sr.reference()->get_addr_offset() == 0);
         structure->add_pointer_record(field_offset, sr.reference(),
                                       sr.reference()->get_addr_offset());
       }
@@ -265,7 +265,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     }
 
     else {
-      assert(false);  // for now
+      ASSERT(false);  // for now
     }
   }
 }
@@ -285,7 +285,7 @@ StaticResult Compiler::compile_new_static_structure(const goos::Object& form,
   }
 
   auto type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type));
-  assert(type_info);
+  ASSERT(type_info);
 
   obj->data.resize(type_info->get_size_in_memory());
   compile_static_structure_inline(form, type, _field_defs, obj.get(), 0, env);
@@ -312,7 +312,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
   // look up the bitfield type we're working with. For now, make sure it's under 8 bytes.
   auto type_info = dynamic_cast<BitFieldType*>(m_ts.lookup_type(type));
-  assert(type_info);
+  ASSERT(type_info);
   bool use_128 = type_info->get_load_size() == 16;
 
   // We will construct this bitfield in two passes.
@@ -347,7 +347,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
     auto field_offset = field_info.offset;
     auto field_size = field_info.size;
-    assert(field_offset + field_size <= type_info->get_load_size() * 8);
+    ASSERT(field_offset + field_size <= type_info->get_load_size() * 8);
 
     if (is_integer(field_info.result_type) || field_info.result_type.base_type() == "pointer") {
       // first, try as a constant
@@ -375,7 +375,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       } else {
         u64 unsigned_value = value;
         u64 or_value = unsigned_value;
-        assert(field_size <= 64);
+        ASSERT(field_size <= 64);
         // shift us all the way left to clear upper bits.
         or_value <<= (64 - field_size);
         // and back right.
@@ -386,7 +386,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
         bool start_lo = field_offset < 64;
         bool end_lo = (field_offset + field_size) <= 64;
-        assert(start_lo == end_lo);
+        ASSERT(start_lo == end_lo);
         if (end_lo) {
           constant_integer_part.lo |= (or_value << field_offset);
         } else {
@@ -422,7 +422,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       u64 float_value = float_as_u32(value);
       bool start_lo = field_offset < 64;
       bool end_lo = (field_offset + field_size) <= 64;
-      assert(start_lo == end_lo);
+      ASSERT(start_lo == end_lo);
       if (end_lo) {
         constant_integer_part.lo |= (float_value << field_offset);
       } else {
@@ -467,7 +467,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     integer = compile_integer(constant_integer_part, env);
   } else {
     integer = compile_integer(constant_integer_part.lo, env);
-    assert(constant_integer_part.hi == 0);
+    ASSERT(constant_integer_part.hi == 0);
   }
 
   integer->set_type(type);
@@ -475,7 +475,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
   if (dynamic_defs.empty()) {
     return integer;
   } else {
-    assert(allow_dynamic_construction);
+    ASSERT(allow_dynamic_construction);
 
     if (use_128) {
       auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(form, env);
@@ -496,8 +496,8 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
         bool start_lo = def.field_offset < 64;
         bool end_lo = def.field_offset + def.field_size <= 64;
-        assert(start_lo == end_lo);
-        assert(def.field_size <= 64);
+        ASSERT(start_lo == end_lo);
+        ASSERT(def.field_size <= 64);
 
         int corrected_offset = def.field_offset;
         if (!start_lo) {
@@ -506,7 +506,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
         int left_shift_amnt = 64 - def.field_size;
         int right_shift_amnt = (64 - def.field_size) - corrected_offset;
-        assert(right_shift_amnt >= 0);
+        ASSERT(right_shift_amnt >= 0);
 
         if (left_shift_amnt > 0) {
           env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, field_val, left_shift_amnt);
@@ -537,7 +537,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         }
         int left_shift_amnt = 64 - def.field_size;
         int right_shift_amnt = (64 - def.field_size) - def.field_offset;
-        assert(right_shift_amnt >= 0);
+        ASSERT(right_shift_amnt >= 0);
 
         if (left_shift_amnt > 0) {
           env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, field_val, left_shift_amnt);
@@ -802,7 +802,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       return StaticResult::make_type_ref(type_name, method_count);
     } else if (first.is_symbol("lambda")) {
       auto lambda = dynamic_cast<LambdaVal*>(compile_lambda(form, rest, env));
-      assert(lambda);
+      ASSERT(lambda);
       if (!lambda->func) {
         throw_compiler_error(form, "Static lambda cannot be inline.");
       }
@@ -829,8 +829,8 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
                                         Env* env) {
   auto pointer_type = m_ts.make_pointer_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(pointer_type);
-  assert(deref_info.can_deref);
-  assert(deref_info.mem_deref);
+  ASSERT(deref_info.can_deref);
+  ASSERT(deref_info.mem_deref);
   for (int arg_idx = 0; arg_idx < args_array_length; arg_idx++) {
     int elt_offset = offset + arg_idx * deref_info.stride;
     auto sr = compile_static(args_array[arg_idx], env);
@@ -840,12 +840,12 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
       typecheck(form, content_type, sr.typespec());
     }
     if (sr.is_symbol()) {
-      assert(deref_info.stride == 4);
+      ASSERT(deref_info.stride == 4);
       structure->add_symbol_record(sr.symbol_name(), elt_offset);
       u32 symbol_placeholder = 0xffffffff;
       memcpy(structure->data.data() + elt_offset, &symbol_placeholder, 4);
     } else if (sr.is_reference()) {
-      assert(deref_info.stride == 4);
+      ASSERT(deref_info.stride == 4);
       structure->add_pointer_record(elt_offset, sr.reference(), sr.reference()->get_addr_offset());
     } else if (sr.is_constant_data()) {
       if (!sr.constant().copy_to(structure->data.data() + elt_offset, deref_info.load_size,
@@ -854,7 +854,7 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
                              sr.constant().print(), arg_idx, content_type.print());
       }
     } else {
-      assert(false);
+      ASSERT(false);
     }
   }
 }
@@ -879,8 +879,8 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   // todo - generalize this array stuff if we ever need other types of static arrays.
   auto pointer_type = m_ts.make_pointer_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(pointer_type);
-  assert(deref_info.can_deref);
-  assert(deref_info.mem_deref);
+  ASSERT(deref_info.can_deref);
+  ASSERT(deref_info.mem_deref);
   auto array_data_size_bytes = length * deref_info.stride;
   std::unique_ptr<StaticStructure> obj;
 
@@ -949,8 +949,8 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   // todo - generalize this array stuff if we ever need other types of static arrays.
   auto pointer_type = m_ts.make_pointer_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(pointer_type);
-  assert(deref_info.can_deref);
-  assert(deref_info.mem_deref);
+  ASSERT(deref_info.can_deref);
+  ASSERT(deref_info.mem_deref);
   auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
@@ -989,8 +989,8 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
                                                Env* env) {
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(inline_array_type);
-  assert(deref_info.can_deref);
-  assert(!deref_info.mem_deref);
+  ASSERT(deref_info.can_deref);
+  ASSERT(!deref_info.mem_deref);
 
   for (size_t i = 4; i < args.size(); i++) {
     auto arg_idx = i - 4;
@@ -1051,8 +1051,8 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(inline_array_type);
-  assert(deref_info.can_deref);
-  assert(!deref_info.mem_deref);
+  ASSERT(deref_info.can_deref);
+  ASSERT(!deref_info.mem_deref);
   auto obj = std::make_unique<StaticStructure>(seg);
   obj->set_offset(is_basic(content_type) ? 4 : 0);
   obj->data.resize(length * deref_info.stride);
@@ -1067,9 +1067,9 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 }
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
-  assert(form.is_pair());  // (quote PAIR)
+  ASSERT(form.is_pair());  // (quote PAIR)
   auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
-  assert(result.is_reference());
+  ASSERT(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());
   return static_result;

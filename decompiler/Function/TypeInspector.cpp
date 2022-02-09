@@ -28,9 +28,9 @@ FieldPrint get_field_print(const std::string& str) {
 
   // first is ~T
   char c0 = next();
-  assert(c0 == '~');
+  ASSERT(c0 == '~');
   char c1 = next();
-  assert(c1 == 'T');
+  ASSERT(c1 == 'T');
 
   // next the name:
   char name_char = next();
@@ -50,21 +50,21 @@ FieldPrint get_field_print(const std::string& str) {
     field_print.has_array = true;
     field_print.array_size = size;
 
-    assert(num_char == ']');
+    ASSERT(num_char == ']');
     char c = next();
-    assert(c == ' ');
+    ASSERT(c == ' ');
     c = next();
-    assert(c == '@');
+    ASSERT(c == '@');
     c = next();
-    assert(c == ' ');
+    ASSERT(c == ' ');
     c = next();
-    assert(c == '#');
+    ASSERT(c == '#');
     c = next();
-    assert(c == 'x');
+    ASSERT(c == 'x');
   } else {
     // next a space
     char space_char = next();
-    assert(space_char == ' ');
+    ASSERT(space_char == ' ');
   }
 
   // next the format
@@ -73,10 +73,10 @@ FieldPrint get_field_print(const std::string& str) {
     char fmt_code = next();
     field_print.format = fmt_code;
     char end1 = next();
-    assert(end1 == '~');
+    ASSERT(end1 == '~');
     char end2 = next();
-    assert(end2 == '%');
-    assert(idx == (int)str.size());
+    ASSERT(end2 == '%');
+    ASSERT(idx == (int)str.size());
   } else if (fmt1 == '#' && peek(0) == '<') {  // struct #<my-struct @ #x~X>~%
     next();
     char type_name_c = next();
@@ -88,17 +88,17 @@ FieldPrint get_field_print(const std::string& str) {
     std::string expect_end = "@ #x~X>~%";
     for (char i : expect_end) {
       char c = next();
-      assert(i == c);
+      ASSERT(i == c);
     }
     field_print.format = 'X';
 
-    assert(idx == (int)str.size());
+    ASSERT(idx == (int)str.size());
   } else if (fmt1 == '#' && peek(0) == 'x') {  // #x~X~%
     next();
     std::string expect_end = "~X~%";
     for (char i : expect_end) {
       char c = next();
-      assert(i == c);
+      ASSERT(i == c);
     }
     field_print.format = 'X';
   } else if (fmt1 == '~' && peek(0) == '`') {  // ~`my-type-with-overriden-print`P~%
@@ -112,11 +112,11 @@ FieldPrint get_field_print(const std::string& str) {
     std::string expect_end = "P~%";
     for (char i : expect_end) {
       char c = next();
-      assert(i == c);
+      ASSERT(i == c);
     }
     field_print.format = 'P';
 
-    assert(idx == (int)str.size());
+    ASSERT(idx == (int)str.size());
   } else if (str.substr(idx - 1) == "(meters ~m)~%") {
     field_print.format = 'm';
   } else if (str.substr(idx - 1) == "(deg ~r)~%") {
@@ -173,9 +173,9 @@ struct LoadInfo {
 
 LoadInfo get_load_info_from_set(IR* load) {
   auto as_set = dynamic_cast<IR_Set*>(load);
-  assert(as_set);
+  ASSERT(as_set);
   auto as_load = dynamic_cast<IR_Load*>(as_set->src.get());
-  assert(as_load);
+  ASSERT(as_load);
   LoadInfo info;
   info.kind = as_load->kind;
   info.size = as_load->size;
@@ -185,10 +185,10 @@ LoadInfo get_load_info_from_set(IR* load) {
   }
 
   auto as_math = dynamic_cast<IR_IntMath2*>(as_load->location.get());
-  assert(as_math);
-  assert(as_math->kind == IR_IntMath2::ADD);
+  ASSERT(as_math);
+  ASSERT(as_math->kind == IR_IntMath2::ADD);
   auto as_int = dynamic_cast<IR_IntegerConstant*>(as_math->arg1.get());
-  assert(as_int);
+  ASSERT(as_int);
   info.offset = as_int->value;
   return info;
 }
@@ -200,13 +200,13 @@ Register get_base_of_load(IR_Load* load) {
   }
 
   auto as_math = dynamic_cast<IR_IntMath2*>(load->location.get());
-  assert(as_math->kind == IR_IntMath2::ADD);
-  assert(dynamic_cast<IR_IntegerConstant*>(as_math->arg1.get()));
+  ASSERT(as_math->kind == IR_IntMath2::ADD);
+  ASSERT(dynamic_cast<IR_IntegerConstant*>(as_math->arg1.get()));
   auto math_reg = dynamic_cast<IR_Register*>(as_math->arg0.get());
   if (math_reg) {
     return math_reg->reg;
   } else {
-    assert(false);
+    ASSERT(false);
   }
   return {};
 }
@@ -443,8 +443,8 @@ int identify_basic_field(int idx,
                          FieldPrint& print_info) {
   (void)file;
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
-  assert(load_info.size == 4);
-  assert(load_info.kind == IR_Load::UNSIGNED || load_info.kind == IR_Load::SIGNED);
+  ASSERT(load_info.size == 4);
+  ASSERT(load_info.kind == IR_Load::UNSIGNED || load_info.kind == IR_Load::SIGNED);
 
   if (load_info.kind == IR_Load::SIGNED) {
     result->warnings += "field " + print_info.field_name + " is a basic loaded with a signed load ";
@@ -467,8 +467,8 @@ int identify_pointer_field(int idx,
                            FieldPrint& print_info) {
   (void)file;
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
-  assert(load_info.size == 4);
-  assert(load_info.kind == IR_Load::UNSIGNED);
+  ASSERT(load_info.size == 4);
+  ASSERT(load_info.kind == IR_Load::UNSIGNED);
 
   int offset = load_info.offset;
   if (result->is_basic) {
@@ -489,7 +489,7 @@ int identify_array_field(int idx,
   int offset = 0;
   if (!get_ptr_offset(get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP), &offset)) {
     printf("bad get ptr offset %s\n", get_op->print(file).c_str());
-    assert(false);
+    ASSERT(false);
   }
   if (result->is_basic) {
     offset += BASIC_OFFSET;
@@ -511,13 +511,13 @@ int identify_float_field(int idx,
                          TypeInspectorResult* result,
                          FieldPrint& print_info) {
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
-  assert(load_info.size == 4);
-  assert(load_info.kind == IR_Load::FLOAT);
+  ASSERT(load_info.size == 4);
+  ASSERT(load_info.kind == IR_Load::FLOAT);
 
   auto& float_move = function.basic_ops.at(idx++);
   if (!is_reg_reg_move(float_move.get(), make_gpr(Reg::A2), make_fpr(0))) {
     printf("bad float move: %s\n", float_move->print(file).c_str());
-    assert(false);
+    ASSERT(false);
   }
 
   std::string type;
@@ -536,7 +536,7 @@ int identify_float_field(int idx,
       result->warnings += "field " + print_info.field_name + " is a float printed as hex? ";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   int offset = load_info.offset;
   if (result->is_basic) {
@@ -578,7 +578,7 @@ int identify_struct_inline_field(int idx,
   int offset = 0;
   if (!get_ptr_offset(get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP), &offset)) {
     printf("bad get ptr offset %s\n", get_op->print(file).c_str());
-    assert(false);
+    ASSERT(false);
   }
   if (result->is_basic) {
     offset += BASIC_OFFSET;
@@ -602,7 +602,7 @@ int identify_int_field(int idx,
   if (load_info.kind == IR_Load::UNSIGNED) {
     field_type_name += "u";
   } else if (load_info.kind == IR_Load::FLOAT) {
-    assert(false);  // ...
+    ASSERT(false);  // ...
   }
   field_type_name += "int";
 
@@ -636,9 +636,9 @@ int identify_int_field(int idx,
         field_type_name = "useconds";
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
-    assert(load_info.size == 8);
+    ASSERT(load_info.size == 8);
   }
 
   int offset = load_info.offset;
@@ -656,13 +656,13 @@ int detect(int idx, Function& function, LinkedObjectFile& file, TypeInspectorRes
   auto& get_format_op = function.basic_ops.at(idx++);
   if (!is_get_sym_value(get_format_op.get(), make_gpr(Reg::T9), "format")) {
     printf("bad get format");
-    assert(false);
+    ASSERT(false);
   }
 
   auto& get_true = function.basic_ops.at(idx++);
   if (!is_get_sym(get_true.get(), make_gpr(Reg::A0), "#t")) {
     printf("bad get true");
-    assert(false);
+    ASSERT(false);
   }
 
   auto& get_str = function.basic_ops.at(idx++);
@@ -717,7 +717,7 @@ int detect(int idx, Function& function, LinkedObjectFile& file, TypeInspectorRes
   auto& call_op = function.basic_ops.at(idx++);
   if (!dynamic_cast<IR_Call*>(call_op.get())) {
     printf("bad call\n");
-    assert(false);
+    ASSERT(false);
   }
 
   return idx;
@@ -739,7 +739,7 @@ TypeInspectorResult inspect_inspect_method(Function& inspect,
   result.type_size = flags.size;
   result.type_method_count = flags.methods;
   result.type_heap_base = flags.heap_base;
-  assert(flags.pad == 0);
+  ASSERT(flags.pad == 0);
 
   int idx = get_start_idx(inspect, file, &result, result.parent_type_name);
   if (idx == 0 || skip_fields) {

@@ -140,7 +140,7 @@ struct GsZbuf {
       case 0b1010:
         return TextureFormat::PSMZ16S;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 

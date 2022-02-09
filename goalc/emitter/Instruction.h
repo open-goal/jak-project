@@ -4,7 +4,7 @@
 #define JAK_INSTRUCTION_H
 
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace emitter {
 /*!
@@ -84,7 +84,7 @@ struct VEX3 {
       result |= (u8(prefix) & 0b11);
       return result;
     } else {
-      assert(false);
+      ASSERT(false);
       return -1;
     }
   }
@@ -124,7 +124,7 @@ struct VEX2 {
       result |= (u8(prefix) & 0b11);
       return result;
     } else {
-      assert(false);
+      ASSERT(false);
       return -1;
     }
   }
@@ -307,9 +307,9 @@ struct Instruction {
       // need three byte version
       set(VEX3(rex_w, rex_r, false, rex_b, lb, vex_reg, prefix));
     } else {
-      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
-      assert(!rex_b);
-      assert(!rex_w);
+      ASSERT(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      ASSERT(!rex_b);
+      ASSERT(!rex_w);
       set(VEX2(rex_r, vex_reg, prefix));
     }
   }
@@ -344,9 +344,9 @@ struct Instruction {
       set(VEX3(rex_w, rex_r, false, rex_b, lb));
     } else {
       // can get away with two byte version
-      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
-      assert(!rex_b);
-      assert(!rex_w);
+      ASSERT(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      ASSERT(!rex_b);
+      ASSERT(!rex_w);
       set(VEX2(rex_r));
     }
   }
@@ -398,7 +398,7 @@ struct Instruction {
       rex_x = addr1_ext;
       rex_b = addr2_ext;
     }
-    assert(sib.index != 4);
+    ASSERT(sib.index != 4);
 
     if (rex_b || rex_w || rex_r || rex_x) {
       set(REX(rex_w, rex_r, rex_x, rex_b));
@@ -457,16 +457,16 @@ struct Instruction {
       rex_x = addr1_ext;
       rex_b = addr2_ext;
     }
-    assert(sib.index != 4);
+    ASSERT(sib.index != 4);
 
     if (rex_b || rex_w || rex_x || lb != VEX3::LeadingBytes::P_0F) {
       // need three byte version
       set(VEX3(rex_w, rex_r, rex_x, rex_b, lb));
     } else {
-      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
-      assert(!rex_b);
-      assert(!rex_w);
-      assert(!rex_x);
+      ASSERT(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      ASSERT(!rex_b);
+      ASSERT(!rex_w);
+      ASSERT(!rex_x);
       set(VEX2(rex_r));
     }
 
@@ -522,7 +522,7 @@ struct Instruction {
       rex_x = addr1_ext;
       rex_b = addr2_ext;
     }
-    assert(sib.index != 4);
+    ASSERT(sib.index != 4);
 
     if (rex_b || rex_w || rex_r || rex_x) {
       set(REX(rex_w, rex_r, rex_x, rex_b));
@@ -581,16 +581,16 @@ struct Instruction {
       rex_x = addr1_ext;
       rex_b = addr2_ext;
     }
-    assert(sib.index != 4);
+    ASSERT(sib.index != 4);
 
     if (rex_b || rex_w || rex_x || lb != VEX3::LeadingBytes::P_0F) {
       // need three byte version
       set(VEX3(rex_w, rex_r, rex_x, rex_b, lb));
     } else {
-      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
-      assert(!rex_b);
-      assert(!rex_w);
-      assert(!rex_x);
+      ASSERT(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      ASSERT(!rex_b);
+      ASSERT(!rex_w);
+      ASSERT(!rex_x);
       set(VEX2(rex_r));
     }
 
@@ -655,8 +655,8 @@ struct Instruction {
         rex_x = addr1_ext;
         rex_b = addr2_ext;
       }
-      assert(sib.base != 5);
-      assert(sib.index != 4);
+      ASSERT(sib.base != 5);
+      ASSERT(sib.index != 4);
     }
 
     if (rex_b || rex_w || rex_r || rex_x || rex_always) {
@@ -723,18 +723,18 @@ struct Instruction {
         rex_x = addr1_ext;
         rex_b = addr2_ext;
       }
-      assert(sib.base != 5);
-      assert(sib.index != 4);
+      ASSERT(sib.base != 5);
+      ASSERT(sib.index != 4);
     }
 
     if (rex_b || rex_w || rex_x || lb != VEX3::LeadingBytes::P_0F) {
       // need three byte version
       set(VEX3(rex_w, rex_r, rex_x, rex_b, lb));
     } else {
-      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
-      assert(!rex_b);
-      assert(!rex_w);
-      assert(!rex_x);
+      ASSERT(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      ASSERT(!rex_b);
+      ASSERT(!rex_w);
+      ASSERT(!rex_x);
       set(VEX2(rex_r));
     }
 
@@ -832,8 +832,8 @@ struct Instruction {
       // need three byte version
       set(VEX3(rex_w, rex_r, false, false, lb));
     } else {
-      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
-      assert(!rex_w);
+      ASSERT(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      ASSERT(!rex_w);
       set(VEX2(rex_r));
     }
 
@@ -882,7 +882,7 @@ struct Instruction {
   int offset_of_disp() const {
     if (is_null)
       return 0;
-    assert(set_disp_imm);
+    ASSERT(set_disp_imm);
     int offset = 0;
     offset += n_vex;
     if (set_rex)
@@ -905,7 +905,7 @@ struct Instruction {
   int offset_of_imm() const {
     if (is_null)
       return 0;
-    assert(set_imm);
+    ASSERT(set_imm);
     int offset = 0;
     offset += n_vex;
     if (set_rex)

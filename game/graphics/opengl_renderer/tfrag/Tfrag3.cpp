@@ -131,7 +131,7 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
       m_cache.vis_temp.resize(vis_temp_len);
       m_cache.draw_idx_temp.resize(max_draw);
 
-      assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
+      ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
       m_load_state.state = UPLOAD_VERTS;
       m_load_state.vert = 0;
     } break;
@@ -164,7 +164,7 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
       }
     } break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return false;
@@ -218,7 +218,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
     return;
   }
   auto& tree = m_cached_trees.at(settings.tree_idx);
-  assert(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
+  ASSERT(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
 
   if (m_color_result.size() < tree.colors->size()) {
     m_color_result.resize(tree.colors->size());
@@ -285,7 +285,7 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
         glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
   glBindVertexArray(0);
@@ -402,7 +402,7 @@ void debug_vis_draw(int first_root,
                     std::vector<Tfrag3::DebugVertex>& verts_out) {
   for (int ki = 0; ki < num; ki++) {
     auto& node = nodes.at(ki + tree - first_root);
-    assert(node.child_id != 0xffff);
+    ASSERT(node.child_id != 0xffff);
     math::Vector4f rgba{frac(0.4 * depth), frac(0.7 * depth), frac(0.2 * depth), 0.06};
     math::Vector3f center = node.bsphere.xyz();
     float rad = node.bsphere.w();
