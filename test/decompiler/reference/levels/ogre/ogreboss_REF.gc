@@ -1728,7 +1728,7 @@
 
 ;; definition for function ogreboss-submerge
 ;; INFO: Return type mismatch int vs none.
-(defbehavior ogreboss-submerge ogreboss ((arg0 int) (arg1 float))
+(defbehavior ogreboss-submerge ogreboss ((arg0 time-frame) (arg1 float))
   (when (not (-> self submerged))
     (cond
       ((= (if (> (-> self skel active-channels) 0)
@@ -1896,9 +1896,9 @@
 ;; definition for function ogreboss-move-near
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defbehavior ogreboss-move-near ogreboss ((arg0 basic) (arg1 float))
+(defbehavior ogreboss-move-near ogreboss ((arg0 time-frame) (arg1 float))
   (when (not (-> self at-near-spot))
-    (ogreboss-submerge (the-as int arg0) arg1)
+    (ogreboss-submerge arg0 arg1)
     (set! (-> self at-near-spot) #t)
     (set! (-> self root-override trans quad) (-> self near-pos quad))
     (ogreboss-emerge arg1)
@@ -1910,7 +1910,7 @@
 ;; definition for function ogreboss-move-far
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defbehavior ogreboss-move-far ogreboss ((arg0 int) (arg1 float))
+(defbehavior ogreboss-move-far ogreboss ((arg0 time-frame) (arg1 float))
   (when (-> self at-near-spot)
     (ogreboss-submerge arg0 arg1)
     (set! (-> self at-near-spot) #f)
@@ -1960,7 +1960,7 @@
   (behavior ()
     (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
     (ogreboss-set-stage1-camera)
-    (ogreboss-move-near (the-as basic 900) (-> (new 'static 'array float 1 1.0) 0))
+    (ogreboss-move-near (seconds 3) (-> (new 'static 'array float 1 1.0) 0))
     (cond
       ((= (if (> (-> self skel active-channels) 0)
               (-> self skel root-channel 0 frame-group)
@@ -2099,7 +2099,7 @@
           )
         )
       )
-    (ogreboss-move-far 600 (-> (new 'static 'array float 1 1.0) 0))
+    (ogreboss-move-far (seconds 2) (-> (new 'static 'array float 1 1.0) 0))
     (ja-channel-push! 1 30)
     (let ((a0-28 (-> self skel root-channel 0)))
       (set! (-> a0-28 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
@@ -2344,7 +2344,7 @@
   :code
   (behavior ()
     (ogreboss-set-stage2-camera)
-    (ogreboss-move-far 30 (-> (new 'static 'array float 1 2.0) 0))
+    (ogreboss-move-far (seconds 0.1) (-> (new 'static 'array float 1 2.0) 0))
     (let ((f30-0 (* 0.75 (-> self difficulty))))
       (let ((gp-0 #f))
         (ja-channel-push! 1 60)
@@ -2715,7 +2715,7 @@
         (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (ogreboss-submerge 300 (-> (new 'static 'array float 1 1.0) 0))
+    (ogreboss-submerge (seconds 1) (-> (new 'static 'array float 1 1.0) 0))
     (while (handle->process (-> self boulder))
       (suspend)
       )
