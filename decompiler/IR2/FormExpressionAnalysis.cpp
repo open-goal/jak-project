@@ -1168,7 +1168,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
-  auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+  auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
 
   if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int()) {
     auto type_info = env.dts->ts.lookup_type(arg0_type.typespec());
@@ -1204,13 +1204,17 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   } else {
     std::optional<TypeSpec> arg0_cast, arg1_cast;
 
-    if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
-        !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {
-      arg0_cast = TypeSpec(arg0_i ? "int" : "uint");
-    }
+    if (arg0_type.typespec() == TypeSpec("time-frame")) {
+      arg1_cast = TypeSpec("time-frame");
+    } else {
+      if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
+          !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {
+        arg0_cast = TypeSpec(arg0_i ? "int" : "uint");
+      }
 
-    if (!arg1_i && !arg1_u) {
-      arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
+      if (!arg1_i && !arg1_u) {
+        arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
+      }
     }
 
     result->push_back(make_and_compact_math_op(args.at(0), args.at(1), arg0_cast, arg1_cast, pool,
