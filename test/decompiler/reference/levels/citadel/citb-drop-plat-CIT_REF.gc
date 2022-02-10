@@ -53,8 +53,8 @@
    (spin-angle    float                        :offset-assert 192)
    (spin-speed    float                        :offset-assert 196)
    (interp        float                        :offset-assert 200)
-   (duration      int64                        :offset-assert 208)
-   (delay         int64                        :offset-assert 216)
+   (duration      time-frame                   :offset-assert 208)
+   (delay         time-frame                   :offset-assert 216)
    (color         int8                         :offset-assert 224)
    )
   :heap-base #x80
@@ -479,22 +479,28 @@
               (set! sv-64 (the int (* 150.0 (rand-vu))))
               (set! sv-48 (get-process *default-dead-pool* drop-plat #x4000))
               (set! (-> self child-array data s1-0)
-                    (ppointer->handle
-                      (when sv-48
-                        (let ((t9-6 (method-of-type drop-plat activate)))
-                          (t9-6 (the-as drop-plat sv-48) self 'drop-plat (the-as pointer #x70004000))
-                          )
-                        (let ((t9-7 run-function-in-process)
-                              (a0-8 sv-48)
-                              (a1-5 drop-plat-init-by-other)
-                              (a2-4 gp-0)
-                              (t0-0 (-> self duration))
-                              )
-                          ((the-as (function process function vector int int int none) t9-7) a0-8 a1-5 a2-4 sv-64 t0-0 s0-0)
-                          )
-                        (-> sv-48 ppointer)
-                        )
-                      )
+                    (ppointer->handle (when sv-48
+                                        (let ((t9-6 (method-of-type drop-plat activate)))
+                                          (t9-6 (the-as drop-plat sv-48) self 'drop-plat (the-as pointer #x70004000))
+                                          )
+                                        (let ((t9-7 run-function-in-process)
+                                              (a0-8 sv-48)
+                                              (a1-5 drop-plat-init-by-other)
+                                              (a2-4 gp-0)
+                                              (t0-0 (-> self duration))
+                                              )
+                                          ((the-as (function process function vector int int int none) t9-7)
+                                           a0-8
+                                           a1-5
+                                           a2-4
+                                           sv-64
+                                           (the-as int t0-0)
+                                           s0-0
+                                           )
+                                          )
+                                        (-> sv-48 ppointer)
+                                        )
+                                      )
                     )
               )
             )
@@ -587,7 +593,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (citb-drop-plat-spawn-children)
     (while #t
-      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) 600))
+      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) (seconds 2)))
               (or (not *target*)
                   (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                   )
@@ -624,7 +630,7 @@
   (set! (-> obj x-spacing) 16384.0)
   (set! (-> obj z-spacing) 16384.0)
   (set! (-> obj idle-distance) (+ 40960.0 (* 0.5 (the float (-> obj z-count)) (-> obj z-spacing))))
-  (set! (-> obj duration) (the int (* 300.0 (+ 2.0 (the float (-> obj z-count))))))
+  (set! (-> obj duration) (the-as time-frame (the int (* 300.0 (+ 2.0 (the float (-> obj z-count)))))))
   (let ((f0-7 (res-lump-float arg0 'rotoffset)))
     (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-7)
     )

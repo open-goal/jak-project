@@ -50,10 +50,10 @@
    (align              uint8       6 :offset-assert  88)
    (direct             uint8       6 :offset-assert  94)
    (buzz-val           uint8       2 :offset-assert 100)
-   (buzz-time          int64       2 :offset-assert 104)
+   (buzz-time          time-frame  2 :offset-assert 104)
    (buzz               basic         :offset-assert 120)
    (buzz-act           int32         :offset-assert 124)
-   (change-time        int64         :offset-assert 128)
+   (change-time        time-frame    :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x88
@@ -200,11 +200,13 @@
      0
      )
     ((= buzz-amount (-> pad buzz-val buzz-idx))
-     (set! (-> pad buzz-time buzz-idx) (max (-> pad buzz-time buzz-idx) (+ (get-current-time) duration)))
+     (set! (-> pad buzz-time buzz-idx)
+           (max (-> pad buzz-time buzz-idx) (+ (get-current-time) (the-as time-frame duration)))
+           )
      )
     ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
      (set! (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
-     (set! (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
+     (set! (-> pad buzz-time buzz-idx) (+ (get-current-time) (the-as time-frame duration)))
      )
     )
   0
@@ -232,7 +234,7 @@
                   (cond
                     ((zero? v1-10)
                      (set! (-> pad direct buzz-idx)
-                           (logand (ash (-> pad buzz-val buzz-idx) (- (logand (get-integral-current-time) 7))) 1)
+                           (logand (ash (-> pad buzz-val buzz-idx) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
                            )
                      )
                     ((= v1-10 1)

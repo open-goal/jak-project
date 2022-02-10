@@ -199,9 +199,9 @@
   (if (logtest? (-> self control status) 1)
       (go target-hit-ground #f)
       )
-  (when (if (and (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
-                 (>= (the-as int arg1) 0)
-                 (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int arg1))
+  (when (if (and (< (target-move-dist (the-as time-frame (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
+                 (>= arg1 0)
+                 (>= (- (-> *display* base-frame-counter) (-> self state-time)) arg1)
                  (not
                    (and *cheat-mode*
                         (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
@@ -1726,7 +1726,7 @@
   :trans
   (behavior ()
     (when (or (logtest? (-> self control status) 1)
-              (if (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
+              (if (< (target-move-dist (the-as time-frame (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
                   #t
                   )
               )
@@ -2304,14 +2304,14 @@
             (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))
             )
           )
-    (target-falling-trans #f (the-as cpad-list (if (= (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      (-> self draw art-group data 38)
-                                                      )
-                                                   15
-                                                   -1
-                                                   )
+    (target-falling-trans #f (the-as time-frame (if (= (if (> (-> self skel active-channels) 0)
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       (-> self draw art-group data 38)
+                                                       )
+                                                    15
+                                                    -1
+                                                    )
                                      )
                           )
     (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
@@ -2329,7 +2329,7 @@
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 26624.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -2521,14 +2521,14 @@
   target-exit
   :trans
   (behavior ()
-    (target-falling-trans #f (the-as cpad-list (if (= (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      (-> self draw art-group data 38)
-                                                      )
-                                                   15
-                                                   -1
-                                                   )
+    (target-falling-trans #f (the-as time-frame (if (= (if (> (-> self skel active-channels) 0)
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       (-> self draw art-group data 38)
+                                                       )
+                                                    15
+                                                    -1
+                                                    )
                                      )
                           )
     (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
@@ -2537,7 +2537,7 @@
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -2662,14 +2662,14 @@
   target-exit
   :trans
   (behavior ()
-    (target-falling-trans #f (the-as cpad-list (if (= (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      (-> self draw art-group data 38)
-                                                      )
-                                                   15
-                                                   -1
-                                                   )
+    (target-falling-trans #f (the-as time-frame (if (= (if (> (-> self skel active-channels) 0)
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       (-> self draw art-group data 38)
+                                                       )
+                                                    15
+                                                    -1
+                                                    )
                                      )
                           )
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
@@ -2682,7 +2682,7 @@
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 73728.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -3229,7 +3229,7 @@
                    (and (>= (-> self control unknown-float63) 0.7) (zero? (logand (-> self control status) 32)))
                    )
                (begin
-                 (set! (-> self control unknown-int21) (-> *display* base-frame-counter))
+                 (set! (-> self control unknown-int21) (the-as int (-> *display* base-frame-counter)))
                  (set! (-> self control unknown-float81) 0.0)
                  (let ((gp-0 (new-stack-vector0))
                        (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -3755,7 +3755,7 @@
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                     (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                        (the-as int (-> *TARGET-bank* stuck-timeout))
+                        (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                         )
                     (zero? (logand (-> self state-flags) 4096))
                     (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -4314,7 +4314,7 @@
           )
         (until (ja-done? 0)
           (if (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
-              (set! gp-0 (-> *display* base-frame-counter))
+              (set! gp-0 (the-as int (-> *display* base-frame-counter)))
               )
           (when (and (or (smack-surface? #f) (>= (-> self control unknown-float63) 0.7))
                      (>= (the-as uint (- (-> *display* base-frame-counter) (the-as int (-> self control unknown-uint20))))
@@ -4331,7 +4331,7 @@
                   )
                 )
             (if (zero? s5-0)
-                (set! s5-0 (-> *display* base-frame-counter))
+                (set! s5-0 (the-as int (-> *display* base-frame-counter)))
                 )
             )
           (if (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
@@ -4421,7 +4421,7 @@
   :trans
   (behavior ()
     (if (and (or (smack-surface? #f)
-                 (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
+                 (< (target-move-dist (the-as time-frame (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
                  )
              (!= (-> self state-time) (-> *display* base-frame-counter))
              )

@@ -731,7 +731,7 @@
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior part-tracker-init part-tracker ((arg0 sparticle-launch-group)
-                                   (arg1 int)
+                                   (arg1 time-frame)
                                    (arg2 (function part-tracker none))
                                    (arg3 (pointer process-drawable))
                                    (arg4 process)
@@ -751,12 +751,12 @@
                 arg1
                 )
                (else
-                 (the-as int (-> arg0 duration))
+                 (the-as time-frame (-> arg0 duration))
                  )
                )
         )
-  (set! (-> self duration) (the-as uint arg1))
-  (set! (-> self linger-duration) (-> arg0 linger-duration))
+  (set! (-> self duration) (the-as time-frame arg1))
+  (set! (-> self linger-duration) (the-as time-frame (-> arg0 linger-duration)))
   (set! (-> self part) (create-launch-control arg0 self))
   (go part-tracker-process)
   (none)
@@ -1149,7 +1149,9 @@
                 )
               )
              (('camera-change-to 'camera)
-              (set! gp-0 (camera-change-to (the-as string (car s4-0)) (command-get-time (car (cdr s4-0)) 0) #f))
+              (set! gp-0
+                    (camera-change-to (the-as string (car s4-0)) (the-as int (command-get-time (car (cdr s4-0)) 0)) #f)
+                    )
               )
              (('intro-done?)
               (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
@@ -2285,7 +2287,7 @@
   (let ((v1-29 (res-lump-struct arg0 'alt-vector vector)))
     (when v1-29
       (set-vector! (-> obj dest) (-> v1-29 x) (-> v1-29 y) (-> v1-29 z) 1.0)
-      (set! (-> obj seek-time) (the-as uint (the int (* 300.0 (-> v1-29 w)))))
+      (set! (-> obj seek-time) (the-as time-frame (the int (* 300.0 (-> v1-29 w)))))
       )
     )
   (set! (-> obj sound-id) (new-sound-id))
@@ -2347,7 +2349,7 @@
   (let ((v1-34 (res-lump-struct (-> self entity) 'alt-vector vector)))
     (when v1-34
       (set-vector! (-> self dest) (-> v1-34 x) (-> v1-34 y) (-> v1-34 z) 1.0)
-      (set! (-> self seek-time) (the-as uint (the int (* 300.0 (-> v1-34 w)))))
+      (set! (-> self seek-time) (the-as time-frame (the int (* 300.0 (-> v1-34 w)))))
       )
     )
   (set! (-> self sound-id) (new-sound-id))
