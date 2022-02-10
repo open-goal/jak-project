@@ -501,9 +501,12 @@ bool is_float_type(const Env& env, int my_idx, RegisterAccess var) {
  * type == int (exactly)?
  * note: time-frame is special.
  */
+bool is_int_type(const TypeSpec& type) {
+  return type == TypeSpec("int") || type == TypeSpec("time-frame");
+}
 bool is_int_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
-  return type == TypeSpec("int") || type == TypeSpec("time-frame");
+  return is_int_type(type);
 }
 
 bool is_pointer_type(const Env& env, int my_idx, RegisterAccess var) {
@@ -514,9 +517,12 @@ bool is_pointer_type(const Env& env, int my_idx, RegisterAccess var) {
 /*!
  * type == uint (exactly)?
  */
+bool is_uint_type(const TypeSpec& type) {
+  return type == TypeSpec("uint");
+}
 bool is_uint_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
-  return type == TypeSpec("uint");
+  return is_uint_type(type);
 }
 
 bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool) {
@@ -923,15 +929,18 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormStack& stack,
                                                       std::vector<FormElement*>* result,
                                                       bool allow_side_effects) {
-  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-  auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+  auto arg0_i = is_int_type(arg0_type.typespec());
+  auto arg0_u = is_uint_type(arg0_type.typespec());
 
   bool arg1_reg = m_expr.get_arg(1).is_var();
   bool arg1_i = true;
   bool arg1_u = true;
   if (arg1_reg) {
-    arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
-    arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
+    auto arg1_type =
+        env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec();
+    arg1_i = is_int_type(arg1_type);
+    arg1_u = is_uint_type(arg1_type);
   }
 
   std::vector<Form*> args;
@@ -952,8 +961,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   // in the case, both are vars.
   if (arg1_reg) {
     // lookup types.
-    auto arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
-    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    auto& arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
     arg1_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(1).var(), true);
 
     // try to find symbol to string stuff
@@ -1175,8 +1183,6 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
-  auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
-
   if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int()) {
     auto type_info = env.dts->ts.lookup_type(arg0_type.typespec());
     if (type_info->get_size_in_memory() == m_expr.get_arg(1).get_int()) {
@@ -1211,21 +1217,17 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   } else {
     std::optional<TypeSpec> arg0_cast, arg1_cast;
 
-    if (arg0_type.typespec() == TypeSpec("time-frame")) {
-      if (!m_expr.get_arg(1).is_var() ||
-          env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec() ==
-              TypeSpec("time-frame")) {
-        arg1_cast = TypeSpec("time-frame");
-      }
-    } else {
-      if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
-          !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {
-        arg0_cast = TypeSpec(arg0_i ? "int" : "uint");
-      }
+    if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
+        !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {
+      arg0_cast = TypeSpec(arg0_i ? "int" : "uint");
+    }
 
-      if (!arg1_i && !arg1_u) {
-        arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
-      }
+    if (!arg1_i && !arg1_u) {
+      arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
+    }
+
+    if (arg0_type.typespec() == TypeSpec("time-frame") && arg1_i) {
+      arg1_cast = TypeSpec("time-frame");
     }
 
     result->push_back(make_and_compact_math_op(args.at(0), args.at(1), arg0_cast, arg1_cast, pool,
@@ -1264,11 +1266,16 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects,
                                                            bool reverse) {
-  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg()).typespec();
+  bool is_timeframe = arg0_type == TypeSpec("time-frame");
+  auto arg0_i = is_int_type(arg0_type);
   bool arg1_i = true;
   bool arg1_reg = m_expr.get_arg(1).is_var();
   if (arg1_reg) {
-    arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+    auto arg1_type =
+        env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec();
+    bool is_timeframe = arg1_type == TypeSpec("time-frame");
+    arg1_i = is_int_type(arg1_type);
   } else {
     ASSERT(m_expr.get_arg(1).is_int());
   }
@@ -1291,12 +1298,26 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
   }
 
+  switch (kind) {
+    case FixedOperatorKind::MOD:
+    case FixedOperatorKind::MIN:
+    case FixedOperatorKind::MAX:
+      // can use time-frame
+      break;
+    default:
+      // makes little sense to divide by a time most of the time.
+      is_timeframe = false;
+      break;
+  }
+
   if (!arg0_i) {
-    args.at(0) = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0));
+    args.at(0) =
+        cast_form(args.at(0), is_timeframe ? TypeSpec("time-frame") : TypeSpec("int"), pool, env);
   }
 
   if (!arg1_i) {
-    args.at(1) = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(1));
+    args.at(1) =
+        cast_form(args.at(1), is_timeframe ? TypeSpec("time-frame") : TypeSpec("int"), pool, env);
   }
 
   auto new_form =
@@ -1470,8 +1491,8 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
                                                                  std::vector<FormElement*>* result,
                                                                  bool allow_side_effects) {
   auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
-  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-  auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg0_i = is_int_type(arg0_type);
+  auto arg0_u = is_uint_type(arg0_type);
   if (!m_expr.get_arg(1).is_var()) {
     auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
 
@@ -1499,13 +1520,21 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
 
     return;
   }
-  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
-  auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
+  auto arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec();
+  auto arg1_i = is_int_type(arg1_type);
+  auto arg1_u = is_uint_type(arg1_type);
 
   auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
                            allow_side_effects);
 
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
+    if (kind == FixedOperatorKind::SUBTRACTION && arg0_i) {
+      if (arg0_type == TypeSpec("time-frame") && arg1_type != TypeSpec("time-frame")) {
+        args.at(1) = cast_form(args.at(1), TypeSpec("time-frame"), pool, env);
+      } else if (arg1_type == TypeSpec("time-frame") && arg0_type != TypeSpec("time-frame")) {
+        args.at(0) = cast_form(args.at(0), TypeSpec("time-frame"), pool, env);
+      }
+    }
     auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
                                                        args.at(0), args.at(1));
     result->push_back(new_form);
