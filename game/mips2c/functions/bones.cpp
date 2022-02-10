@@ -714,20 +714,20 @@ u64 execute(void* ctxt) {
   c->sq(gp, 112, sp);                               // sq gp, 112(sp)
   c->mov64(t8, a3);                                 // or t8, a3, r0
   c->mov64(v1, t0);                                 // or v1, t0, r0
-  c->lui(t0, 4096);                                 // lui t0, 4096
-  c->lui(t1, 18304);                                // lui t1, 18304
+  c->lui(t0, 4096);                                 // lui t0, 4096      0x1000
+  c->lui(t1, 18304);                                // lui t1, 18304     0x4780
   c->daddiu(t0, t0, 1);                             // daddiu t0, t0, 1
   c->dsll32(t1, t1, 0);                             // dsll32 t1, t1, 0
-  c->lui(a3, 12288);                                // lui a3, 12288
-  c->lui(t7, 19201);                                // lui t7, 19201
+  c->lui(a3, 12288);                                // lui a3, 12288     0x3000
+  c->lui(t7, 19201);                                // lui t7, 19201     0x4B01
   c->pcpyld(t0, a3, t0);                            // pcpyld t0, a3, t0
   c->lbu(a3, 58, a0);                               // lbu a3, 58(a0)
   c->pcpyld(t1, t7, t1);                            // pcpyld t1, t7, t1
-  c->lui(t2, 28160);                                // lui t2, 28160
+  c->lui(t2, 28160);                                // lui t2, 28160    0x6E00
   c->addiu(t7, r0, 8);                              // addiu t7, r0, 8
   c->multu3(a3, a3, t7);                            // multu3 a3, a3, t7
-  c->lui(t3, 1280);                                 // lui t3, 1280
-  c->lui(t4, 27648);                                // lui t4, 27648
+  c->lui(t3, 1280);                                 // lui t3, 1280    0x500
+  c->lui(t4, 27648);                                // lui t4, 27648   0x6C00
   c->dsll32(t2, t2, 0);                             // dsll32 t2, t2, 0
   c->dsll32(t4, t4, 0);                             // dsll32 t4, t4, 0
   c->daddu(t4, t4, t3);                             // daddu t4, t4, t3
@@ -735,11 +735,11 @@ u64 execute(void* ctxt) {
   c->daddiu(t3, t3, 1);                             // daddiu t3, t3, 1
   c->daddu(a0, a3, a0);                             // daddu a0, a3, a0
   c->pcpyld(t2, t2, r0);                            // pcpyld t2, t2, r0
-  c->lw(t7, 24, a0);                                // lw t7, 24(a0)
+  c->lw(t7, 24, a0);                                // lw t7, 24(a0)      // load the merc-ctrl!
   c->pcpyld(t3, t3, r0);                            // pcpyld t3, t3, r0
   c->pcpyld(t4, t4, r0);                            // pcpyld t4, t4, r0
   c->mov64(a0, a2);                                 // or a0, a2, r0
-  c->lui(t5, 12288);                                // lui t5, 12288
+  c->lui(t5, 12288);                                // lui t5, 12288     // 0x3000
   c->lui(t6, 4096);                                 // lui t6, 4096
   c->daddiu(t5, t5, 7);                             // daddiu t5, t5, 7
   c->lui(t9, 5120);                                 // lui t9, 5120
@@ -748,144 +748,172 @@ u64 execute(void* ctxt) {
   c->dsll32(a3, a3, 0);                             // dsll32 a3, a3, 0
   c->dsll32(t9, t8, 0);                             // dsll32 t9, t8, 0
   c->pcpyld(t5, a3, t5);                            // pcpyld t5, a3, t5
-  c->lwu(t8, 52, t7);                               // lwu t8, 52(t7)
+  c->lwu(t8, 52, t7);                               // lwu t8, 52(t7)    // effect count.
   c->pcpyld(t6, t9, t6);                            // pcpyld t6, t9, t6
-  c->daddiu(t9, t7, 108);                           // daddiu t9, t7, 108
+  c->daddiu(t9, t7, 108);                           // daddiu t9, t7, 108 // the actual merc-effect
   c->load_symbol(a3, cache.merc_bucket_info);       // lw a3, *merc-bucket-info*(s7)
-  c->daddiu(ra, a3, 124);                           // daddiu ra, a3, 124
+  c->daddiu(ra, a3, 124);                           // daddiu ra, a3, 124  // effect bucket infos
 
+  // effect loop!
   block_1:
-  c->lbu(gp, 4, ra);                                // lbu gp, 4(ra)
+  c->lbu(gp, 4, ra);                                // lbu gp, 4(ra)   effect.use-mercneric
   c->load_symbol(a3, cache.merc_global_stats);      // lw a3, *merc-global-stats*(s7)
   c->daddu(a3, r0, a3);                             // daddu a3, r0, a3
   bc = c->sgpr64(gp) != 0;                          // bne gp, r0, L77
-  c->lhu(s4, 2, a3);                                // lhu s4, 2(a3)
-  if (bc) {goto block_11;}                          // branch non-likely
+  c->lhu(s4, 2, a3);                                // lhu s4, 2(a3) merc-global-stats.merc.fragments
+  if (bc) {goto block_11;}                          // branch non-likely skip mercneric effects
 
-  c->lhu(s3, 18, t9);                               // lhu s3, 18(t9)
-  c->lwu(gp, 4, a3);                                // lwu gp, 4(a3)
-  c->lhu(s5, 22, t9);                               // lhu s5, 22(t9)
-  c->daddu(s4, s4, s3);                             // daddu s4, s4, s3
-  c->lwu(s3, 8, a3);                                // lwu s3, 8(a3)
-  c->lhu(s2, 24, t9);                               // lhu s2, 24(t9)
-  c->daddu(gp, gp, s5);                             // daddu gp, gp, s5
-  c->sh(s4, 2, a3);                                 // sh s4, 2(a3)
-  c->sw(gp, 4, a3);                                 // sw gp, 4(a3)
-  c->daddu(s5, s3, s2);                             // daddu s5, s3, s2
-  c->lwu(t2, 0, t9);                                // lwu t2, 0(t9)
-  c->lwu(gp, 4, t9);                                // lwu gp, 4(t9)
-  c->lui(s4, 12288);                                // lui s4, 12288
-  c->dsll32(t2, t2, 0);                             // dsll32 t2, t2, 0
-  c->sw(s5, 8, a3);                                 // sw s5, 8(a3)
-  c->or_(t2, t2, s4);                               // or t2, t2, s4
-  c->addiu(s5, r0, 0);                              // addiu s5, r0, 0
-  c->lhu(s4, 18, t9);                               // lhu s4, 18(t9)
+  // ra is the effect-info
+  // t9 is the effect
+  // a3 is merc-global-stats
+  c->lhu(s3, 18, t9);                               // lhu s3, 18(t9) // s3 = effect.frag-count
+  c->lwu(gp, 4, a3);                                // lwu gp, 4(a3)  // gp = global-stats.merc.tris
+  c->lhu(s5, 22, t9);                               // lhu s5, 22(t9) // s5 = merc-effect.tri-count
+  c->daddu(s4, s4, s3);                             // daddu s4, s4, s3 // inc frag count
+  c->lwu(s3, 8, a3);                                // lwu s3, 8(a3)    // s3 = global-stats.merc.dverts
+  c->lhu(s2, 24, t9);                               // lhu s2, 24(t9)   // s2 = merc-effect.dvert-count
+  c->daddu(gp, gp, s5);                             // daddu gp, gp, s5 // inc tri count
+  c->sh(s4, 2, a3);                                 // sh s4, 2(a3)     // store frag count
+  c->sw(gp, 4, a3);                                 // sw gp, 4(a3)     // store tri count
+  c->daddu(s5, s3, s2);                             // daddu s5, s3, s2 // inc dvert count
+  c->lwu(t2, 0, t9);                                // lwu t2, 0(t9)    // t2 = merc-fragment
+  c->lwu(gp, 4, t9);                                // lwu gp, 4(t9)    // gp = merc-fragment-control
+  c->lui(s4, 12288);                                // lui s4, 12288    // dma thing?
+  c->dsll32(t2, t2, 0);                             // dsll32 t2, t2, 0 // dma merc-fragment
+  c->sw(s5, 8, a3);                                 // sw s5, 8(a3)     // store dvert stats
+  c->or_(t2, t2, s4);                               // or t2, t2, s4    // lower 64 of dma tag?
+  c->addiu(s5, r0, 0);                              // addiu s5, r0, 0  // s5 = 0 (frag counter)
+  c->lhu(s4, 18, t9);                               // lhu s4, 18(t9)   // s4 = effect.frag-count
 
-  block_3:
-  c->lbu(s0, 0, gp);                                // lbu s0, 0(gp)
+  // fragment loop
+  // (note: frag 0 gets added before header)
+  // 0 = strow tag
+  // 16 = strow data
+  // 32 =
+  //  DMA: 0xe1e903000000f
+  //  vif0: 0x0
+  //  vif1: 0x6e39c08c
+  //  unpack8 (top true): 140, 57
+
+
+block_3:
+  c->lbu(s0, 0, gp);                                // lbu s0, 0(gp)   // s0 = fragment-control.unsigned-four-count (4-byte word count in EE mem)
   // nop                                            // sll r0, r0, 0
-  c->lbu(s2, 1, gp);                                // lbu s2, 1(gp)
-  c->xori(s1, r0, 49292);                           // xori s1, r0, 49292
-  c->lbu(s3, 2, gp);                                // lbu s3, 2(gp)
-  c->daddiu(v0, s0, 3);                             // daddiu v0, s0, 3
-  c->lw(a3, 44, t7);                                // lw a3, 44(t7)
-  c->srl(v0, v0, 2);                                // srl v0, v0, 2
-  c->sq(t0, 0, a2);                                 // sq t0, 0(a2)
-  c->xor_(t2, t2, v0);                              // xor t2, t2, v0
-  c->sq(t2, 32, a2);                                // sq t2, 32(a2)
-  c->xor_(t2, t2, v0);                              // xor t2, t2, v0
-  c->sh(s1, 44, a2);                                // sh s1, 44(a2)
-  c->daddu(s1, s1, s0);                             // daddu s1, s1, s0
-  c->sb(s0, 46, a2);                                // sb s0, 46(a2)
-  c->dsll32(s0, v0, 4);                             // dsll32 s0, v0, 4
-  c->daddu(t3, t2, s0);                             // daddu t3, t2, s0
-  c->daddiu(s0, s2, 3);                             // daddiu s0, s2, 3
-  c->sw(a3, 12, a2);                                // sw a3, 12(a2)
-  c->srl(s0, s0, 2);                                // srl s0, s0, 2
-  c->sq(t1, 16, a2);                                // sq t1, 16(a2)
+  c->lbu(s2, 1, gp);                                // lbu s2, 1(gp)       // s2 = fragment-control.lump-four-count
+  c->xori(s1, r0, 49292);                           // xori s1, r0, 49292  // maybe vif crap 0xC08C
+  c->lbu(s3, 2, gp);                                // lbu s3, 2(gp)       // s3 = fragment-control.fp-qwc
+  c->daddiu(v0, s0, 3);                             // daddiu v0, s0, 3    // v0 = unsigned-four-count + 3
+  c->lw(a3, 44, t7);                                // lw a3, 44(t7)       // a3 = merc-ctrl.header.st-vif-add
+  c->srl(v0, v0, 2);                                // srl v0, v0, 2       // v0 = qwc to transfer for unsigned-four-count
+
+  c->sq(t0, 0, a2);                                 // sq t0, 0(a2)        // dma/vif template for strow setup
+
+  c->xor_(t2, t2, v0);                              // xor t2, t2, v0  // add qwc
+  c->sq(t2, 32, a2);                                // sq t2, 32(a2)   // this is the 0xC08C first unpack 8 with top. always to 140. unsigned-four data.
+  c->xor_(t2, t2, v0);                              // xor t2, t2, v0  // remove qwc
+  c->sh(s1, 44, a2);                                // sh s1, 44(a2) // here's the 0xc08c store
+
+  c->daddu(s1, s1, s0);                             // daddu s1, s1, s0 // s1 is VU data ptr (qw), inc by number of 4 byte words because we're unpacking 4x.
+  c->sb(s0, 46, a2);                                // sb s0, 46(a2)    // store qw to unpack in viftag (output qw's)
+  c->dsll32(s0, v0, 4);                             // dsll32 s0, v0, 4 // qw -> bytes for input unsigned-fours (add offset to addr field of dma tag, it's 4 + 32 bit shift)
+  c->daddu(t3, t2, s0);                             // daddu t3, t2, s0 // t3 = next
+  c->daddiu(s0, s2, 3);                             // daddiu s0, s2, 3 // s0 = lump-four-count + 3
+  c->sw(a3, 12, a2);                                // sw a3, 12(a2)    // st-vif-add's x.
+  c->srl(s0, s0, 2);                                // srl s0, s0, 2    // lump fours / 4
+  c->sq(t1, 16, a2);                                // sq t1, 16(a2)    // row y (will be overwritten) z w (nop).
+
+  // store the dma tag for the lump fours
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
   c->sq(t3, 48, a2);                                // sq t3, 48(a2)
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
-  c->sh(s1, 60, a2);                                // sh s1, 60(a2)
-  c->daddu(s1, s1, s2);                             // daddu s1, s1, s2
-  c->sb(s2, 62, a2);                                // sb s2, 62(a2)
-  c->dsll32(s2, s0, 4);                             // dsll32 s2, s0, 4
-  c->sw(a3, 16, a2);                                // sw a3, 16(a2)
-  c->daddu(t4, t3, s2);                             // daddu t4, t3, s2
-  c->xor_(t4, t4, s3);                              // xor t4, t4, s3
+
+  c->sh(s1, 60, a2);                                // sh s1, 60(a2)        // lump 4 destination.
+  c->daddu(s1, s1, s2);                             // daddu s1, s1, s2     // inc VU dest ptr
+  c->sb(s2, 62, a2);                                // sb s2, 62(a2)        // unpack qwc
+  c->dsll32(s2, s0, 4);                             // dsll32 s2, s0, 4     // EE bytes
+  c->sw(a3, 16, a2);                                // sw a3, 16(a2)        // row y overwrite with st-vif-add
+  c->daddu(t4, t3, s2);                             // daddu t4, t3, s2     // next dma
+  c->xor_(t4, t4, s3);                              // xor t4, t4, s3       // fp-qwc
   c->xori(a3, s1, 16384);                           // xori a3, s1, 16384
-  c->sq(t4, 64, a2);                                // sq t4, 64(a2)
+  c->sq(t4, 64, a2);                                // sq t4, 64(a2)        // dma for fp's
   c->xor_(t4, t4, s3);                              // xor t4, t4, s3
-  c->sb(s3, 78, a2);                                // sb s3, 78(a2)
-  c->dsll32(s3, s3, 4);                             // dsll32 s3, s3, 4
-  c->sh(a3, 76, a2);                                // sh a3, 76(a2)
-  c->daddu(t2, t4, s3);                             // daddu t2, t4, s3
-  c->lbu(s3, 3, gp);                                // lbu s3, 3(gp)
-  c->daddiu(gp, gp, 4);                             // daddiu gp, gp, 4
+  c->sb(s3, 78, a2);                                // sb s3, 78(a2)        // unpack qwc
+  c->dsll32(s3, s3, 4);                             // dsll32 s3, s3, 4     // bytes (in upper 32)
+  c->sh(a3, 76, a2);                                // sh a3, 76(a2)        // destination in VU
+  c->daddu(t2, t4, s3);                             // daddu t2, t4, s3     // next dma
+  c->lbu(s3, 3, gp);                                // lbu s3, 3(gp)        // frag-ctrl.mat-xfer-count
+  c->daddiu(gp, gp, 4);                             // daddiu gp, gp, 4     // gp = frag-ctrl.mat-dest-data
+
+  // skip ahead if on not-first fragment.
   bc = c->sgpr64(s5) != 0;                          // bne s5, r0, L73
   c->daddiu(a2, a2, 80);                            // daddiu a2, a2, 80
   if (bc) {goto block_5;}                           // branch non-likely
 
+  // on first, need to set up lights and stuff common to all fragments.
+  // setup 8 qw upload (132 - 140)
   c->sd(t6, 0, a2);                                 // sd t6, 0(a2)
   c->addiu(s2, r0, 8);                              // addiu s2, r0, 8
   c->sd(t6, 8, a2);                                 // sd t6, 8(a2)
   c->lui(a3, 27656);                                // lui a3, 27656
   c->sb(s2, 0, a2);                                 // sb s2, 0(a2)
-  c->daddiu(a3, a3, 132);                           // daddiu a3, a3, 132
+  c->daddiu(a3, a3, 132);                           // daddiu a3, a3, 132 // (inc global dma buf)
+
   c->load_symbol(s2, cache.merc_bucket_info);       // lw s2, *merc-bucket-info*(s7)
   c->daddu(s2, r0, s2);                             // daddu s2, r0, s2
   c->sw(a3, 12, a2);                                // sw a3, 12(a2)
-  c->lq(a3, 0, s2);                                 // lq a3, 0(s2)
-  c->lq(s1, 16, s2);                                // lq s1, 16(s2)
-  c->lq(s0, 32, s2);                                // lq s0, 32(s2)
-  c->lq(v0, 48, s2);                                // lq v0, 48(s2)
-  c->sq(a3, 16, a2);                                // sq a3, 16(a2)
-  c->sq(s1, 32, a2);                                // sq s1, 32(a2)
-  c->sq(s0, 48, a2);                                // sq s0, 48(a2)
-  c->sq(v0, 64, a2);                                // sq v0, 64(a2)
-  c->lq(a3, 64, s2);                                // lq a3, 64(s2)
-  c->lq(s1, 80, s2);                                // lq s1, 80(s2)
-  c->lq(s0, 96, s2);                                // lq s0, 96(s2)
-  c->lui(v0, 16261);                                // lui v0, 16261
-  c->lq(s2, 28, t7);                                // lq s2, 28(t7)
-  c->daddiu(v0, v0, 619);                           // daddiu v0, v0, 619
-  c->sq(a3, 80, a2);                                // sq a3, 80(a2)
-  c->lbu(a3, 5, ra);                                // lbu a3, 5(ra)
-  c->sq(s1, 96, a2);                                // sq s1, 96(a2)
-  c->sq(s0, 112, a2);                               // sq s0, 112(a2)
-  c->dsubu(a3, v0, a3);                             // dsubu a3, v0, a3
+
+  c->lq(a3, 0, s2);                                 // lq a3, 0(s2)   // load l0
+  c->lq(s1, 16, s2);                                // lq s1, 16(s2)  // load l1
+  c->lq(s0, 32, s2);                                // lq s0, 32(s2)  // load l2
+  c->lq(v0, 48, s2);                                // lq v0, 48(s2)  // load l3
+  c->sq(a3, 16, a2);                                // sq a3, 16(a2)  // store l0
+  c->sq(s1, 32, a2);                                // sq s1, 32(a2)  // store l1
+  c->sq(s0, 48, a2);                                // sq s0, 48(a2)  // store l2
+  c->sq(v0, 64, a2);                                // sq v0, 64(a2)  // store l3
+  c->lq(a3, 64, s2);                                // lq a3, 64(s2)  // load l4
+  c->lq(s1, 80, s2);                                // lq s1, 80(s2)  // load l5
+  c->lq(s0, 96, s2);                                // lq s0, 96(s2)  // load l6
+  c->lui(v0, 16261);                                // lui v0, 16261  // 0x3F85
+  c->lq(s2, 28, t7);                                // lq s2, 28(t7)  // first qw of merc-ctrl header.
+  c->daddiu(v0, v0, 619);                           // daddiu v0, v0, 619 // 0x26B
+  c->sq(a3, 80, a2);                                // sq a3, 80(a2) // store l4
+  c->lbu(a3, 5, ra);                                // lbu a3, 5(ra) // effect-info.ignore-alpha
+  c->sq(s1, 96, a2);                                // sq s1, 96(a2) // store l5
+  c->sq(s0, 112, a2);                               // sq s0, 112(a2) // store l6
+  c->dsubu(a3, v0, a3);                             // dsubu a3, v0, a3 //
   c->sq(s2, 128, a2);                               // sq s2, 128(a2)
   c->sw(a3, 28, a2);                                // sw a3, 28(a2)
   c->daddiu(a2, a2, 144);                           // daddiu a2, a2, 144
 
+  // after first frag setup
   block_5:
   bc = c->sgpr64(s3) == 0;                          // beq s3, r0, L75
-  c->addiu(s2, r0, 128);                            // addiu s2, r0, 128
+  c->addiu(s2, r0, 128);                            // addiu s2, r0, 128 // s2 = mat size
   if (bc) {goto block_8;}                           // branch non-likely
 
-  c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)
+  c->lbu(a3, 0, gp);                                // lbu a3, 0(gp) // a3 = mat-number
 
   block_7:
-  c->multu3(s1, a3, s2);                            // multu3 s1, a3, s2
-  c->sq(t5, 0, a2);                                 // sq t5, 0(a2)
-  c->lbu(s0, 1, gp);                                // lbu s0, 1(gp)
-  c->daddiu(gp, gp, 2);                             // daddiu gp, gp, 2
-  c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)
-  c->daddiu(s3, s3, -1);                            // daddiu s3, s3, -1
-  c->sb(s0, 12, a2);                                // sb s0, 12(a2)
-  c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
-  c->daddu(s1, s1, a1);                             // daddu s1, s1, a1
+  c->multu3(s1, a3, s2);                            // multu3 s1, a3, s2  // s1 = mat-number * 128
+  c->sq(t5, 0, a2);                                 // sq t5, 0(a2)       // dma template
+  c->lbu(s0, 1, gp);                                // lbu s0, 1(gp)      // s0 = mat-dest
+  c->daddiu(gp, gp, 2);                             // daddiu gp, gp, 2   // inc mat-dest-data pr
+  c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)      // load for next iter (ugh)
+  c->daddiu(s3, s3, -1);                            // daddiu s3, s3, -1  // dec count
+  c->sb(s0, 12, a2);                                // sb s0, 12(a2)      // store matrix destination.
+  c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16  // increment dma output.
+  c->daddu(s1, s1, a1);                             // daddu s1, s1, a1   // matrix data + 128 * mat-number
   // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(s3) != 0;                          // bne s3, r0, L74
-  c->sw(s1, -12, a2);                               // sw s1, -12(a2)
+  bc = c->sgpr64(s3) != 0;                          // bne s3, r0, L74    // see if we're done
+  c->sw(s1, -12, a2);                               // sw s1, -12(a2)     // store pointer in input matrix data in dma tag
   if (bc) {goto block_7;}                           // branch non-likely
 
 
   block_8:
-  c->sq(t6, 0, a2);                                 // sq t6, 0(a2)
-  c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
-  bc = c->sgpr64(s5) != 0;                          // bne s5, r0, L76
-  c->daddiu(s5, s5, 1);                             // daddiu s5, s5, 1
+  c->sq(t6, 0, a2);                                 // sq t6, 0(a2)        // dma tag template
+  c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16   // inc
+  bc = c->sgpr64(s5) != 0;                          // bne s5, r0, L76     // skip ahead on non-first fragment
+  c->daddiu(s5, s5, 1);                             // daddiu s5, s5, 1    // inc fragment counter
   if (bc) {goto block_10;}                          // branch non-likely
 
   c->mov64(a3, v1);                                 // or a3, v1, r0
