@@ -1387,11 +1387,11 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
   }
 
   if (expected == "seconds") {
-    expected = "int";
+    expected = "time-frame";
   }
 
   if (actual == "seconds") {
-    actual = "int";
+    actual = "time-frame";
   }
 
   if (expected == "degrees") {

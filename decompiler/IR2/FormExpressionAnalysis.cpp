@@ -165,17 +165,24 @@ Form* try_cast_simplify(Form* in,
       auto g = dynamic_cast<GenericElement*>(in->try_as_single_element());
       if (g && g->op().kind() == GenericOperator::Kind::FUNCTION_EXPR) {
         auto f = dynamic_cast<SimpleExpressionElement*>(g->op().func()->try_as_single_element());
-        if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val() &&
-            f->expr().get_arg(0).get_str() == "rand-vu-int-range") {
-          std::vector<Form*> new_forms;
-          for (auto e : g->elts()) {
-            e->apply_form([&](Form* f) {
-              new_forms.push_back(try_cast_simplify(f, TypeSpec("time-frame"), pool, env, true));
-            });
+        if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
+          auto& func_name = f->expr().get_arg(0).get_str();
+          if (func_name == "rand-vu-int-range" || func_name == "nav-enemy-rnd-int-range") {
+            std::vector<Form*> new_forms;
+            for (auto& e : g->elts()) {
+              auto as_atom_expr =
+                  dynamic_cast<SimpleExpressionElement*>(e->try_as_single_element());
+              if (as_atom_expr && as_atom_expr->expr().is_identity()) {
+                new_forms.push_back(try_cast_simplify(e, TypeSpec("time-frame"), pool, env, true));
+              } else {
+                new_forms.push_back(e);
+              }
+            }
+            // return a new rand-vu-int-range with casted args, and its own cast is stripped for
+            // free!
+            return pool.alloc_single_element_form<GenericElement>(in->parent_element, g->op(),
+                                                                  new_forms);
           }
-          // return a new rand-vu-int-range with casted args, and its own cast is stripped for free!
-          return pool.alloc_single_element_form<GenericElement>(in->parent_element, g->op(),
-                                                                new_forms);
         }
       }
       if (tc_pass) {
@@ -1205,7 +1212,11 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     std::optional<TypeSpec> arg0_cast, arg1_cast;
 
     if (arg0_type.typespec() == TypeSpec("time-frame")) {
-      arg1_cast = TypeSpec("time-frame");
+      if (!m_expr.get_arg(1).is_var() ||
+          env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec() ==
+              TypeSpec("time-frame")) {
+        arg1_cast = TypeSpec("time-frame");
+      }
     } else {
       if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
           !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {

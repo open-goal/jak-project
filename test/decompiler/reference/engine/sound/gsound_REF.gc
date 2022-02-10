@@ -697,8 +697,8 @@
            )
          (cond
            (sv-48
-             (set! (-> obj time-base) (the int (* 300.0 (-> sv-48 0))))
-             (set! (-> obj time-random) (the int (* 300.0 (-> sv-48 1))))
+             (set! (-> obj time-base) (the-as time-frame (the int (* 300.0 (-> sv-48 0)))))
+             (set! (-> obj time-random) (the-as time-frame (the int (* 300.0 (-> sv-48 1)))))
              )
            (else
              (set! (-> obj time-base) -1)
@@ -726,8 +726,10 @@
       ((-> obj spec)
        (when (or (< (-> obj time-base) 0) (>= (-> *display* base-frame-counter) (-> obj play-time)))
          (when (>= (-> obj time-base) 0)
-           (set! (-> obj play-time)
-                 (+ (-> *display* base-frame-counter) (-> obj time-base) (rand-vu-int-count (-> obj time-random)))
+           (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
+                                       (the-as time-frame (-> obj time-base))
+                                       (rand-vu-int-count (the-as int (-> obj time-random)))
+                                       )
                  )
            (set! (-> obj playing-id) (new-sound-id))
            )
@@ -779,19 +781,20 @@
        )
       (else
         (when (>= (-> *display* base-frame-counter) (-> obj play-time))
-          (set! (-> obj playing-id)
-                (sound-play-by-name
-                  (-> obj name)
-                  (new-sound-id)
-                  (-> obj volume)
-                  (-> obj pitch)
-                  0
-                  1
-                  (the-as symbol (-> obj trans))
-                  )
+          (set! (-> obj playing-id) (sound-play-by-name
+                                      (-> obj name)
+                                      (new-sound-id)
+                                      (-> obj volume)
+                                      (-> obj pitch)
+                                      0
+                                      1
+                                      (the-as symbol (-> obj trans))
+                                      )
                 )
-          (set! (-> obj play-time)
-                (+ (-> *display* base-frame-counter) (-> obj time-base) (rand-vu-int-count (-> obj time-random)))
+          (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
+                                      (the-as time-frame (-> obj time-base))
+                                      (rand-vu-int-count (the-as int (-> obj time-random)))
+                                      )
                 )
           )
         )

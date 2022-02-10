@@ -670,7 +670,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior racer-buzz target ((arg0 float))
   (let ((f1-0 (lerp-scale 0.2 1.0 (-> self control unknown-float01) 0.0 (-> self racer transv-max))))
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 (the int (* 255.0 (fmin 1.0 (* arg0 f1-0)))) 15)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 (the int (* 255.0 (fmin 1.0 (* arg0 f1-0)))) (seconds 0.05))
     )
   0
   (none)
@@ -1006,7 +1006,7 @@
           )
         )
       )
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 30)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 (seconds 0.1))
     )
   (when (logtest? (-> self control status) 8)
     (let* ((gp-8 (racer-find-prop-point (new 'stack-no-clear 'vector) (-> self control unknown-vector70)))
@@ -1037,7 +1037,7 @@
         1.0
         )
       )
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 51 15)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 51 (seconds 0.05))
     (sound-play-by-name
       (sound-name-with-material 'zoom-hit (the-as pat-surface (-> self control unknown-int60)) "")
       (-> self racer scrape-sound-id)
@@ -1621,9 +1621,7 @@
             (cond
               ((and (logtest? (-> self control status) 8)
                     (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.1))
-                         (or (-> self racer stick-lock)
-                             (< (target-move-dist (the-as time-frame (-> *TARGET-bank* stuck-time))) 4096.0)
-                             )
+                         (or (-> self racer stick-lock) (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0))
                          (not
                            (and (= *cheat-mode* 'debug)
                                 (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
