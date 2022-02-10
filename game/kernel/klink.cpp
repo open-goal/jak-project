@@ -578,6 +578,9 @@ uint32_t link_control::work_v2() {
     if (m_segment_process == 0) {
       m_heap_gap =
           m_object_data - m_heap->current;  // distance between end of heap and start of object
+      if (m_object_data.offset < m_heap->current.offset) {
+        ASSERT(false);
+      }
     }
 
     if (m_heap_gap <
