@@ -432,18 +432,6 @@ Form* cast_form(Form* in,
 }
 
 /*!
- * Same as cast_form, but only if we know the type is int and we want a time-frame.
- */
-Form* cast_form_timeframe_guard(Form* in, FormPool& pool, const Env& env, bool tc_pass = false) {
-  auto result = try_cast_simplify(in, TypeSpec("time-frame"), pool, env, tc_pass);
-  if (result) {
-    return result;
-  }
-
-  return in;
-}
-
-/*!
  * Pop each variable in the input list into a form. The variables should be given in the order
  * they are evaluated in the source. It is safe to put the result of these in the same expression.
  * This uses the barrier register approach, but it is only effective if you put all registers
@@ -611,7 +599,7 @@ Form* make_cast_if_needed(Form* in,
 
   if (out_type == TypeSpec("time-frame") && in_type == TypeSpec("int")) {
     // we want a time-frame from an int.
-    return cast_form_timeframe_guard(in, pool, env);
+    return try_cast_simplify(in, TypeSpec("time-frame"), pool, env, true);
   }
 
   return cast_form(in, out_type, pool, env);

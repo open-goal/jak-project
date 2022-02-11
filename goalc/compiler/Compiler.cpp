@@ -477,9 +477,6 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
       return;
     }
   }
-  if (actual->type() == TypeSpec("time-frame")) {
-    int aaaaaa = 100;
-  }
   typecheck(form, expected, coerce_to_reg_type(actual->type()), error_message);
 }
 

@@ -4,7 +4,6 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/Range.h"
 #include "common/util/BitUtils.h"
-#include "common/util/print_float.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/Function/Function.h"
@@ -157,9 +156,6 @@ void ModifiedCopyBitfieldElement::get_modified_regs(RegSet& regs) const {
 
 BitfieldAccessElement::BitfieldAccessElement(Form* base_value, const TypeSpec& ts)
     : m_base(base_value), m_type(ts) {
-  if (ts.base_type() == "time-frame") {
-    int aaaaaa = 100;
-  }
   m_base->parent_element = this;
 }
 
@@ -659,9 +655,6 @@ std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
   auto as_atom = form_as_atom(in);
   if (as_atom && as_atom->is_int()) {
-    if (as_atom->get_int() == 300000) {
-      int aaaaaaa = 100;
-    }
     return as_atom->get_int();
   }
 
