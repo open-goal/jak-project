@@ -250,7 +250,9 @@ class TypeSystem {
 
  private:
   std::string lca_base(const std::string& a, const std::string& b) const;
-  bool typecheck_base_types(const std::string& expected, const std::string& actual, bool allow_alias) const;
+  bool typecheck_base_types(const std::string& expected,
+                            const std::string& actual,
+                            bool allow_alias) const;
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name) const;
   StructureType* add_builtin_structure(const std::string& parent,
