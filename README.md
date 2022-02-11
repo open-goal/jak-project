@@ -68,10 +68,10 @@ We don't save any assets from the game - you must bring your own copy of the gam
 
 ## What's Next
 
-- Continue decompilation of GOAL code. We've made huge progress recently in decompiling gameplay code. We're finishing that up and also working on the some of the rendering and collision code. Here's our decompilation progress over the past year: ![](./docs/markdown/imgs/code_progress.png)
-- Start running gameplay code! We can now spawn simple actors like particle effects and collectables.
+- Continue decompilation of GOAL code. We've made huge progress recently in decompiling gameplay code. We're finishing that up and also working on the some of the rendering code. Here's our decompilation progress over the past year: ![](./docs/markdown/imgs/code_progress.png)
+- Bug testing! The game can be beaten 100%, but it's possible a few things do not work correctly.
 - Improve the decompiler. We are always finding new features and macros in the GOAL language.
-- Investigate more complicated renderers. We have an in-progress port of the "tfrag" background renderer, shown in the screenshots above.
+- Investigate more complicated renderers. We have an in-progress port of the "merc" foreground renderer, shown in the screenshots above.
 
 ## Getting Started - Linux (Ubuntu)
 
