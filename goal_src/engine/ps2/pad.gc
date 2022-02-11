@@ -11,8 +11,8 @@
 ;; The cpad-set-buzz! function can be used for vibration.
 
 ;; in display, but we haven't gotten to display-h.gc yet.
-(define-extern get-current-time (function int))
-(define-extern get-integral-current-time (function int))
+(define-extern get-current-time (function time-frame))
+(define-extern get-integral-current-time (function time-frame))
 
 (defenum pad-buttons
     :bitfield #t
@@ -86,10 +86,10 @@
    (align              uint8 6         :offset-assert 88) ;; hardware control of buzzing.
    (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
    (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
-   (buzz-time          int64 2         :offset-assert 104) ;; when to stop buzzing
+   (buzz-time          time-frame 2         :offset-assert 104) ;; when to stop buzzing
    (buzz               basic           :offset-assert 120) ;; is vibration enabled?
    (buzz-act           int32           :offset-assert 124)
-   (change-time        int64           :offset-assert 128)
+   (change-time        time-frame           :offset-assert 128)
    )
   (:methods
    (new (symbol type int) _type_ 0)
@@ -200,7 +200,7 @@
     )
   )
 
-(defun cpad-set-buzz! ((pad cpad-info) (buzz-idx int) (buzz-amount int) (duration int))
+(defun cpad-set-buzz! ((pad cpad-info) (buzz-idx int) (buzz-amount int) (duration time-frame))
   "Turn on vibration motor 'buzz-idx' for duration, at magnitude buzz-amount."
   (cond
     ((zero? buzz-amount)
