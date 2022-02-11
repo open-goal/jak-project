@@ -226,10 +226,10 @@
   )
 
 (deftype darkecobomb (arcing-shot)
-  ((flight-time    int64  :offset-assert 224)
-   (countdown-time float  :offset-assert 232)
-   (anim-speed     float  :offset-assert 236)
-   (next-tick      float  :offset-assert 240)
+  ((flight-time    time-frame  :offset-assert 224)
+   (countdown-time float       :offset-assert 232)
+   (anim-speed     float       :offset-assert 236)
+   (next-tick      float       :offset-assert 240)
    )
   :heap-base #x90
   :method-count-assert 20
@@ -286,7 +286,7 @@
        (send-event (ppointer->process (-> self parent)) 'bomb-going)
        (send-event *camera* 'change-to-entity-by-name "camera-402")
        (set! (-> self state-time) (-> *display* base-frame-counter))
-       (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+       (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
          (suspend)
          )
        (send-event *camera* 'force-blend 0)
@@ -458,7 +458,7 @@
   :trans
   (behavior ()
     (darkecobomb-explode-if-player-high-enough)
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) 150)
+    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.5))
         (go darkecobomb-countdown)
         )
     (none)
@@ -560,7 +560,7 @@
   (the-as (function none :behavior darkecobomb) transform-post)
   )
 
-(defbehavior darkecobomb-init-by-other darkecobomb ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int) (arg4 float))
+(defbehavior darkecobomb-init-by-other darkecobomb ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame) (arg4 float))
   (let ((s1-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s1-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s1-0 reaction) default-collision-reaction)
@@ -606,7 +606,7 @@
   )
 
 (deftype greenshot (arcing-shot)
-  ((flight-time int64  :offset-assert 224)
+  ((flight-time time-frame  :offset-assert 224)
    )
   :heap-base #x80
   :method-count-assert 20
@@ -688,7 +688,7 @@
   (the-as (function none :behavior greenshot) transform-post)
   )
 
-(defbehavior greenshot-init-by-other greenshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int))
+(defbehavior greenshot-init-by-other greenshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame))
   (let ((s2-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s2-0 reaction) default-collision-reaction)
@@ -718,8 +718,8 @@
   )
 
 (deftype redshot (arcing-shot)
-  ((flight-time     int64                            :offset-assert 224)
-   (stall-time      int64                            :offset-assert 232)
+  ((flight-time     time-frame                       :offset-assert 224)
+   (stall-time      time-frame                       :offset-assert 232)
    (ring            torus                    :inline :offset-assert 240)
    (rotation-offset int64                            :offset-assert 280)
    (part-track      handle                           :offset-assert 288)
@@ -777,7 +777,7 @@
   :longest-edge (meters 0)
   )
 
-(defbehavior redshot-trans redshot ((arg0 int))
+(defbehavior redshot-trans redshot ((arg0 time-frame))
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
     0.0
     (matrix-rotate-yx!
@@ -790,6 +790,7 @@
   (if (< (* 0.006666667 (the float (min 150 arg0))) 1.0)
       (spawn (-> self part) (-> self root-override trans))
       )
+  (none)
   )
 
 (defstate redshot-explode (redshot)
@@ -855,12 +856,15 @@
         )
       )
     (let ((f0-3
-            (fmin 1.0 (* 0.006666667 (the float (- 600 (- (-> *display* game-frame-counter) (-> self state-time))))))
+            (fmin
+              1.0
+              (* 0.006666667 (the float (- (seconds 2) (- (-> *display* game-frame-counter) (-> self state-time)))))
+              )
             )
           )
       (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 0.75)
       )
-    (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) 600)
+    (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 2))
       (send-event (ppointer->process (-> self parent)) 'missed-jak)
       (deactivate self)
       )
@@ -927,7 +931,7 @@
     )
   :trans
   (behavior ()
-    (redshot-trans 1500)
+    (redshot-trans (seconds 5))
     (arcing-shot-calculate
       (-> self root-override trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
@@ -949,7 +953,7 @@
   (the-as (function none :behavior redshot) transform-post)
   )
 
-(defbehavior redshot-init-by-other redshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint) (arg4 uint) (arg5 uint))
+(defbehavior redshot-init-by-other redshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame) (arg4 time-frame) (arg5 int))
   (local-vars (sv-16 collide-shape-prim-sphere))
   (let ((s0-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s0-0 dynam) (copy *standard-dynamics* 'process))
@@ -973,9 +977,9 @@
   (initialize-skeleton self *redring-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (arcing-shot-setup arg0 arg1 arg2)
-  (set! (-> self flight-time) (the-as int arg3))
-  (set! (-> self stall-time) (the-as int arg4))
-  (set! (-> self rotation-offset) (the-as int arg5))
+  (set! (-> self flight-time) arg3)
+  (set! (-> self stall-time) arg4)
+  (set! (-> self rotation-offset) arg5)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 647) self))
   (set! (-> self shot-particle) (create-launch-control (-> *part-group-id-table* 665) self))
   (set! (-> self test-particle) (create-launch-control (-> *part-group-id-table* 679) self))
@@ -999,7 +1003,7 @@
   )
 
 (deftype yellowshot (arcing-shot)
-  ((flight-time int64  :offset-assert 224)
+  ((flight-time time-frame  :offset-assert 224)
    )
   :heap-base #x80
   :method-count-assert 20
@@ -1062,7 +1066,7 @@
   (the-as (function none :behavior yellowshot) transform-post)
   )
 
-(defbehavior yellowshot-init-by-other yellowshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint))
+(defbehavior yellowshot-init-by-other yellowshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame))
   (let ((s2-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s2-0 reaction) default-collision-reaction)
@@ -1085,7 +1089,7 @@
   (initialize-skeleton self *redring-sg* '())
   (logior! (-> self draw status) (draw-status drwf01))
   (arcing-shot-setup arg0 arg1 arg2)
-  (set! (-> self flight-time) (the-as int arg3))
+  (set! (-> self flight-time) arg3)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 652) self))
   (go yellowshot-idle)
   (none)

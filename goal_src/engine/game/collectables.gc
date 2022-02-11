@@ -34,9 +34,9 @@
    (extra-trans     vector               :inline :offset-assert 224)
    (jump-pos        vector               :inline :offset-assert 240)
    (flags           collectable-flags            :offset-assert 256)
-   (birth-time      int64                        :offset-assert 264)
-   (collect-timeout int64                        :offset-assert 272)
-   (fadeout-timeout int64                        :offset-assert 280)
+   (birth-time      time-frame                   :offset-assert 264)
+   (collect-timeout time-frame                   :offset-assert 272)
+   (fadeout-timeout time-frame                   :offset-assert 280)
    (bob-offset      int64                        :offset-assert 288)
    (bob-amount      float                        :offset-assert 296)
    (pickup-handle   handle                       :offset-assert 304)
@@ -48,7 +48,7 @@
   :flag-assert         #x1600d0013c
   (:methods
     (initialize (_type_) _type_ 20)
-    (initialize-params (_type_ int float) none 21)
+    (initialize-params (_type_ time-frame float) none 21)
     )
   (:states
     (hud-collecting handle)
@@ -56,7 +56,7 @@
   )
 
 
-(defmethod initialize-params collectable ((obj collectable) (arg0 int) (arg1 float))
+(defmethod initialize-params collectable ((obj collectable) (arg0 time-frame) (arg1 float))
   (logclear! (-> obj mask) (process-mask crate enemy platform ambient))
   (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
   (set! (-> obj flags) (collectable-flags can-collect ignore-blue))
@@ -83,7 +83,7 @@
     (logior! (-> obj flags) (collectable-flags fade))
     (set! (-> obj fadeout-timeout) arg0)
     )
-  (set! (-> obj collect-timeout) 99)
+  (set! (-> obj collect-timeout) (seconds 0.33))
   (set! (-> obj birth-time) (-> *display* base-frame-counter))
   (set! (-> obj base quad) (-> obj root-override trans quad))
   (set! (-> obj old-base quad) (-> obj root-override trans quad))
@@ -103,11 +103,11 @@
   ((eco-effect          sparticle-launch-group         :offset-assert 316)
    (collect-effect      sparticle-launch-group         :offset-assert 320)
    (collect-effect2     sparticle-launch-group         :offset-assert 324)
-   (collect-effect-time seconds                        :offset-assert 328)
-   (respawn-delay       int64                          :offset-assert 336)
+   (collect-effect-time time-frame                     :offset-assert 328)
+   (respawn-delay       time-frame                     :offset-assert 336)
    (sound-name          sound-spec                     :offset-assert 344)
    (target              handle                         :offset-assert 352)
-   (suck-time           int64                          :offset-assert 360)
+   (suck-time           time-frame                     :offset-assert 360)
    (suck-y-offset       float                          :offset-assert 368)
    (speed               vector                 :inline :offset-assert 384)
    (movie-pos-index     int32                          :offset-assert 400)
@@ -131,7 +131,7 @@
 
 
 (defmethod initialize eco-collectable ((obj eco-collectable))
-  (stack-size-set! (-> obj main-thread) 256) ;; hack increased from 128
+  (stack-size-set! (-> obj main-thread) 192) ;; hack increased from 128
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj actor-pause) #t)
   (set! (-> obj notify-parent) #f)
@@ -171,7 +171,7 @@
      (set! (-> obj eco-effect) (-> *part-group-id-table* 56))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 68))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 57))
-     (set! (-> obj collect-effect-time) 150)
+     (set! (-> obj collect-effect-time) (seconds 0.5))
      (set! (-> obj sound-name) (new 'static 'sound-spec
                                  :mask #x80
                                  :num 1.0
@@ -186,7 +186,7 @@
      (set! (-> obj eco-effect) (-> *part-group-id-table* 48))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 69))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 49))
-     (set! (-> obj collect-effect-time) 150)
+     (set! (-> obj collect-effect-time) (seconds 0.5))
      (set! (-> obj sound-name) (new 'static 'sound-spec
                                  :mask #x80
                                  :num 1.0
@@ -201,7 +201,7 @@
      (set! (-> obj eco-effect) (-> *part-group-id-table* 42))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 67))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 43))
-     (set! (-> obj collect-effect-time) 150)
+     (set! (-> obj collect-effect-time) (seconds 0.5))
      (set! (-> obj sound-name) (new 'static 'sound-spec
                                  :mask #x80
                                  :num 1.0
@@ -216,7 +216,7 @@
      (set! (-> obj eco-effect) (-> *part-group-id-table* 58))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 66))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 61))
-     (set! (-> obj collect-effect-time) 150)
+     (set! (-> obj collect-effect-time) (seconds 0.5))
      (set! (-> obj sound-name) (new 'static 'sound-spec
                                  :mask #x80
                                  :num 1.0
@@ -230,7 +230,7 @@
     (((pickup-type eco-pill))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 59))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 60))
-     (set! (-> obj collect-effect-time) 150)
+     (set! (-> obj collect-effect-time) (seconds 0.5))
      )
     )
   (set! (-> obj part) (create-launch-control (-> obj eco-effect) obj))
@@ -261,15 +261,16 @@
     (((pickup-type eco-blue) (pickup-type eco-yellow) (pickup-type eco-red))
      (initialize-params
        self
-       (if (and arg2 (logtest? (-> arg2 options) (fact-options fade)))
-           (-> arg2 fade-time)
-           0
-           )
+       (the-as time-frame (if (and arg2 (logtest? (-> arg2 options) (fact-options fade)))
+                              (the-as int (-> arg2 fade-time))
+                              0
+                              )
+               )
        (the-as float 1024.0)
        )
      )
     (else
-      (initialize-params self 4500 (the-as float 1024.0))
+      (initialize-params self (seconds 15) (the-as float 1024.0))
       )
     )
   (update-transforms! (-> self root-override))
@@ -451,7 +452,7 @@
         (the-as float -2.2755556)
         )
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
         (let ((f0-2 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))
           (eval-position! gp-1 f0-2 (-> self root-override trans))
           )
@@ -554,9 +555,9 @@
          )
         ((= arg2 'fade)
          (logior! (-> self flags) (collectable-flags fade))
-         (set! (-> self fadeout-timeout) 30)
+         (set! (-> self fadeout-timeout) (seconds 0.1))
          (set! v0-3 (the-as none (-> *display* base-frame-counter)))
-         (set! (-> self birth-time) (the-as int v0-3))
+         (set! (-> self birth-time) (the-as time-frame v0-3))
          v0-3
          )
         )
@@ -627,7 +628,10 @@
         (when (and (logtest? (-> self flags) (collectable-flags fade))
                    (>= (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self fadeout-timeout))
                    )
-          (let ((v1-10 (- 300 (- (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self fadeout-timeout)))))
+          (let ((v1-10
+                  (- (seconds 1) (- (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self fadeout-timeout)))
+                  )
+                )
             (cond
               ((< v1-10 0)
                (process-entity-status! self (entity-perm-status dead) #t)
@@ -892,7 +896,7 @@
                       (-> arg0 root trans)
                       (-> arg0 offset)
                       a2-0
-                      (/ (the float (- (-> *display* base-frame-counter) (the-as int (-> arg0 start-time))))
+                      (/ (the float (- (-> *display* base-frame-counter) (-> arg0 start-time)))
                          (the float (-> (the-as eco-collectable s5-0) collect-effect-time))
                          )
                       )
@@ -1115,7 +1119,6 @@
 
 (defmethod initialize eco-pill ((obj eco-pill))
   (set! *eco-pill-count* (+ *eco-pill-count* 1))
-  (stack-size-set! (-> obj main-thread) 256) ;; bumped from 128.
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj actor-pause) #t)
   (set! (-> obj notify-parent) #f)
@@ -1273,7 +1276,7 @@
   )
 
 (defmethod initialize money ((obj money))
-  (stack-size-set! (-> obj main-thread) 256) ;; hack increased from 128
+  (stack-size-set! (-> obj main-thread) 192) ;; hack increased from 128
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1340,7 +1343,7 @@
   (quaternion-identity! (-> self root-override quat))
   (vector-identity! (-> self root-override scale))
   (set! (-> self root-override transv quad) (-> arg1 quad))
-  (initialize-params self 4500 (the-as float 1024.0))
+  (initialize-params self (seconds 15) (the-as float 1024.0))
   (update-transforms! (-> self root-override))
   (set! (-> self event-hook) (-> (method-of-object self wait) event))
   (go-virtual wait)
@@ -1359,7 +1362,7 @@
   (quaternion-identity! (-> self root-override quat))
   (vector-identity! (-> self root-override scale))
   (set! (-> self root-override transv quad) (-> arg1 quad))
-  (initialize-params self 4500 (the-as float 0.0))
+  (initialize-params self (seconds 15) (the-as float 0.0))
   (logior! (-> self flags) (collectable-flags ignore-blue))
   (update-transforms! (-> self root-override))
   (set! (-> self event-hook) (-> (method-of-object self wait) event))
@@ -2072,7 +2075,7 @@
   )
 
 (defmethod initialize fuel-cell ((obj fuel-cell))
-  (stack-size-set! (-> obj main-thread) 1280) ;; was 512
+  (stack-size-set! (-> obj main-thread) 512)
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -2432,7 +2435,7 @@
   )
 
 (defmethod initialize buzzer ((obj buzzer))
-  (stack-size-set! (-> obj main-thread) 512) ;; added
+  (stack-size-set! (-> obj main-thread) 192) ;; added
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -2477,7 +2480,7 @@
   (initialize obj)
   (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
   (initialize-params obj 0 (the-as float 1024.0))
-  (set! (-> obj collect-timeout) 600)
+  (set! (-> obj collect-timeout) (seconds 2))
   (update-transforms! (-> obj root-override))
   (update-trans! (-> obj sound) (-> obj root-override trans))
   (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
@@ -2928,7 +2931,7 @@
    (show-particles      symbol                  :offset-assert 176)
    (collect-effect      sparticle-launch-group  :offset-assert 180)
    (collect-effect2     sparticle-launch-group  :offset-assert 184)
-   (collect-effect-time uint64                  :offset-assert 192)
+   (collect-effect-time time-frame              :offset-assert 192)
    (blocker             entity-actor            :offset-assert 200)
    (block-func          (function vent symbol)  :offset-assert 204)
    (pickup-handle       handle                  :offset-assert 208)

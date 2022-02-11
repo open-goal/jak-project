@@ -8,7 +8,7 @@
 ;; DECOMP BEGINS
 
 (defmethod TODO-RENAME-25 pov-camera ((obj pov-camera))
-  (when (or (and (>= (- (-> *display* base-frame-counter) (the-as int (-> obj debounce-start-time))) 60)
+  (when (or (and (>= (- (-> *display* base-frame-counter) (-> obj debounce-start-time)) (seconds 0.2))
                  (cpad-pressed? 0 triangle)
                  )
             (logtest? (-> obj flags) 2)
@@ -130,7 +130,7 @@
     )
   :enter
   (behavior ()
-    (set! (-> self debounce-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
     (if (= (-> self anim-name type) string)
         (backup-load-state-and-set-cmds *load-state* (-> self command-list))
         )
@@ -218,7 +218,7 @@
     )
   :code
   (behavior ()
-    (set-blackout-frames 10)
+    (set-blackout-frames (seconds 0.033333335))
     (suspend)
     (suspend)
     (go-virtual pov-camera-done-playing)
@@ -262,7 +262,7 @@
       (set! (-> self notify-handle) (process->handle arg4))
       (set! (-> self notify-handle) (the-as handle #f))
       )
-  (set! (-> self debounce-start-time) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))

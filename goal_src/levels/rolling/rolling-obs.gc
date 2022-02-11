@@ -858,7 +858,7 @@
   #f
   )
 
-(defun seconds->race-time ((arg0 race-time) (arg1 int))
+(defun seconds->race-time ((arg0 race-time) (arg1 time-frame))
   (let* ((v1-1 (max 0 (min #x2bf1d arg1)))
          (f0-1 (* 0.0033333334 (the float v1-1)))
          )
@@ -915,7 +915,7 @@
   #f
   )
 
-(defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 int))
+(defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 time-frame))
   (dotimes (s2-0 5)
     (set! (-> arg0 digit s2-0) (get-reminder arg2 (+ arg1 s2-0)))
     )
@@ -1415,7 +1415,7 @@
     (gorge-start-draw-time #t #t)
     (suspend)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
       (set! (-> self timer-pos-offset)
             (seekl (-> self timer-pos-offset) 100 (the int (* 3.0 (-> *display* time-adjust-ratio))))
             )
@@ -1443,7 +1443,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
       (set! (-> self timer-pos-offset)
             (seekl (-> self timer-pos-offset) 100 (the int (* 5.0 (-> *display* time-adjust-ratio))))
             )
@@ -1512,7 +1512,7 @@
     (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'hide)
     (send-event (ppointer->process (-> *hud-parts* money)) 'disable)
     (send-event (ppointer->process (-> *hud-parts* money)) 'hide)
-    (race-time-read (-> self record-time) 1 (-> self tasks) #x34bc)
+    (race-time-read (-> self record-time) 1 (-> self tasks) (seconds 45))
     (let ((gp-0 (get-process *default-dead-pool* rolling-start #x4000)))
       (set! (-> self end-banner)
             (ppointer->handle (when gp-0
@@ -1605,7 +1605,7 @@
         (-> gp-5 ppointer)
         )
       )
-    (sleep (-> self ticker) #x1b7740)
+    (sleep (-> self ticker) (seconds 6000))
     (set-setting! *setting-control* self 'sound-flava #f 40.0 42)
     (none)
     )
