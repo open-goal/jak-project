@@ -1222,12 +1222,10 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       arg0_cast = TypeSpec(arg0_i ? "int" : "uint");
     }
 
-    if (!arg1_i && !arg1_u) {
-      arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
-    }
-
-    if (arg0_type.typespec() == TypeSpec("time-frame") && arg1_i) {
+    if (arg0_type.typespec() == TypeSpec("time-frame") && (!arg1_i || !arg1_reg)) {
       arg1_cast = TypeSpec("time-frame");
+    } else if (!arg1_i && !arg1_u) {
+      arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
     }
 
     result->push_back(make_and_compact_math_op(args.at(0), args.at(1), arg0_cast, arg1_cast, pool,
