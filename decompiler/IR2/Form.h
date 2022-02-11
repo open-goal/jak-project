@@ -1127,6 +1127,8 @@ class DerefToken {
 
   bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
 
+  bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
+
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
     ASSERT(m_kind == Kind::FIELD_NAME);

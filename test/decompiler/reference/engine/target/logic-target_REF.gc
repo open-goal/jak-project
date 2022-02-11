@@ -1055,9 +1055,7 @@
         )
       )
     )
-  (when (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons triangle)
-                       )
+  (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) triangle)
              (zero? (-> self control unknown-int40))
              (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
              )
@@ -1077,7 +1075,7 @@
         )
     )
   (when (and (= *cheat-mode* 'debug)
-             (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
+             (cpad-hold? (-> self control unknown-cpad-info00 number) r2)
              (not *pause-lock*)
              (zero? (logand (-> self state-flags) 768))
              )
@@ -1128,11 +1126,7 @@
                  (and (= (-> self next-state name) 'target-walk) (zero? (logand (-> self control status) 1)))
                  )
              (< f0-17 0.0)
-             (or (not
-                   (and (= *cheat-mode* 'debug)
-                        (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                        )
-                   )
+             (or (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                  *pause-lock*
                  )
              (and (>= (vector-dot
@@ -1153,11 +1147,7 @@
     (when (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 2))
                (and v1-146
                     (< (-> self control trans y) (-> v1-146 info bottom-height))
-                    (not
-                      (and (= *cheat-mode* 'debug)
-                           (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                           )
-                      )
+                    (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                     )
                )
       (let ((a1-32 (new 'stack-no-clear 'event-message-block)))

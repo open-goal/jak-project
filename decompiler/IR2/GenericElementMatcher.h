@@ -105,10 +105,20 @@ class DerefTokenMatcher {
   static DerefTokenMatcher integer(int value);
   static DerefTokenMatcher any_string(int match_id = -1);
   static DerefTokenMatcher any_integer(int match_id = -1);
+  static DerefTokenMatcher any_expr(int match_id = -1);
+  static DerefTokenMatcher any_expr_or_int(int match_id = -1);
 
-  enum class Kind { STRING, ANY_STRING, CONSTANT_INTEGER, ANY_INTEGER, INVALID };
+  enum class Kind {
+    STRING,
+    ANY_STRING,
+    CONSTANT_INTEGER,
+    ANY_INTEGER,
+    ANY_EXPR,
+    ANY_EXPR_OR_INT,
+    INVALID
+  };
 
-  bool do_match(const DerefToken& input, MatchResult::Maps* maps_out) const;
+  bool do_match(DerefToken& input, MatchResult::Maps* maps_out) const;
 
  private:
   Kind m_kind = Kind::INVALID;

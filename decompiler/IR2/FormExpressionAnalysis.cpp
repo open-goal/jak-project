@@ -141,8 +141,8 @@ Form* try_cast_simplify(Form* in,
         // if they used a 1 as a time-frame, they likely just want to literally remove 1
         // instead of (seconds 0.0034) or whatever the result would be.
         // also 0 is decompiled as just 0.
-        return pool.alloc_single_element_form<ConstantTokenElement>(nullptr,
-                                                                    fmt::format("{}", value));
+        return pool.alloc_single_element_form<SimpleAtomElement>(
+            nullptr, SimpleAtom::make_int_constant(value));
       }
 
       // only rewrite if exact.
@@ -3963,7 +3963,7 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
   auto cpad_matcher = Matcher::op(
       GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
       {Matcher::deref(Matcher::symbol("*cpad-list*"), false,
-                      {DerefTokenMatcher::string("cpads"), DerefTokenMatcher::any_integer(0),
+                      {DerefTokenMatcher::string("cpads"), DerefTokenMatcher::any_expr_or_int(0),
                        DerefTokenMatcher::any_string(2), DerefTokenMatcher::integer(0)}),
        Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("pad-buttons")), {})});
   auto mr = match(cpad_matcher, in);
@@ -3979,11 +3979,16 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
       auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
       if (logtest_elt != nullptr) {
         auto buttons_form = logtest_elt->elts().at(1);
-        std::vector<Form*> v = {
-            pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(0)))};
+        std::vector<Form*> v;
+        if (mr.maps.forms.find(0) != mr.maps.forms.end()) {
+          v.push_back(mr.maps.forms.at(0));
+        } else {
+          v.push_back(
+              pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(0))));
+        }
         GenericElement* butts =
             dynamic_cast<GenericElement*>(buttons_form->at(0));  // the form with the buttons itself
-        if (butts != nullptr) {
+        if (butts) {
           v.insert(v.end(), butts->elts().begin(), butts->elts().end());
         }
 

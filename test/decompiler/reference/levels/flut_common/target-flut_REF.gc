@@ -1102,7 +1102,7 @@
     (if (logtest? (-> self control status) 1)
         (go target-flut-hit-ground)
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 40960.0)
              (and (zero? (logand (-> self water flags) 512))
                   (zero? (logand (-> self state-flags) 2048))
@@ -1111,9 +1111,7 @@
              )
         (go target-flut-double-jump (-> *FLUT-bank* double-jump-height-min) (-> *FLUT-bank* double-jump-height-max))
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons square)
-                       )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 61440.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
@@ -1127,11 +1125,7 @@
         )
     (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                    (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-                        (not
-                          (and *cheat-mode*
-                               (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                               )
-                          )
+                        (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                         )
                    )
               #t
@@ -1141,12 +1135,7 @@
       'stuck
       (go target-flut-hit-ground)
       )
-    (mod-var-jump
-      #t
-      #t
-      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-      (-> self control transv)
-      )
+    (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
     (set! (-> self control unknown-float122)
           (seek
             (-> self control unknown-float122)
@@ -1309,12 +1298,7 @@
         (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
         )
     (if (!= (-> self state-time) (-> *display* base-frame-counter))
-        (mod-var-jump
-          #t
-          #t
-          (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-          (-> self control transv)
-          )
+        (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
         )
     (if (= (if (> (-> self skel active-channels) 0)
                (-> self skel root-channel 0 frame-group)
@@ -1533,11 +1517,7 @@
                        (and (>= (- (-> *display* base-frame-counter) (-> self state-time))
                                 (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
                                 )
-                            (not
-                              (and *cheat-mode*
-                                   (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                                   )
-                              )
+                            (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                             )
                        )
                   #t
@@ -2017,11 +1997,7 @@
       )
     (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0)
                    (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
-                        (not
-                          (and *cheat-mode*
-                               (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                               )
-                          )
+                        (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                         )
                    )
               #t
@@ -2197,9 +2173,7 @@
   :trans
   (behavior ()
     (when (= *cheat-mode* 'debug)
-      (when (and (not *pause-lock*)
-                 (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                 )
+      (when (and (not *pause-lock*) (cpad-hold? (-> self control unknown-cpad-info00 number) r2))
         (pickup-collectable! (-> self fact-info-target) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
         (go target-flut-stance)
         )
