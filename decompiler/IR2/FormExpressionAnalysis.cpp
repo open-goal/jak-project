@@ -936,9 +936,11 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   bool arg1_reg = m_expr.get_arg(1).is_var();
   bool arg1_i = true;
   bool arg1_u = true;
+  bool arg1_timeframe = false;
   if (arg1_reg) {
     auto arg1_type =
         env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec();
+    arg1_timeframe = arg1_type == TypeSpec("time-frame");
     arg1_i = is_int_type(arg1_type);
     arg1_u = is_uint_type(arg1_type);
   }
@@ -1226,6 +1228,21 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       arg1_cast = TypeSpec("time-frame");
     } else if (!arg1_i && !arg1_u) {
       arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
+    }
+
+    if (arg0_type.typespec() == TypeSpec("time-frame") && !arg1_timeframe) {
+      auto as_generic = dynamic_cast<GenericElement*>(args.at(1)->try_as_single_element());
+      if (as_generic && as_generic->op().kind() == GenericOperator::Kind::FUNCTION_EXPR) {
+        auto as_func_head = dynamic_cast<SimpleExpressionElement*>(
+            as_generic->op().func()->try_as_single_element());
+        if (as_func_head && as_func_head->expr().is_identity() &&
+            as_func_head->expr().get_arg(0).is_sym_val()) {
+          auto& name = as_func_head->expr().get_arg(0).get_str();
+          if (name == "rand-vu-int-range") {
+            arg1_cast = TypeSpec("time-frame");
+          }
+        }
+      }
     }
 
     result->push_back(make_and_compact_math_op(args.at(0), args.at(1), arg0_cast, arg1_cast, pool,
