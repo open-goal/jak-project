@@ -61,21 +61,9 @@ class OpenGlDebugGui {
     return false;
   }
 
-  bool get_nosync_flag() {
-    if (m_nosync) {
-      m_nosync = false;
-      return true;
-    }
-    return false;
-  }
+  bool screenshot_compress_flag() { return m_compress_screenshot; }
 
-  bool get_vsync_flag() {
-    if (m_vsync) {
-      m_vsync = false;
-      return true;
-    }
-    return false;
-  }
+  bool get_vsync_flag() { return m_vsync; }
 
   bool framelimiter = false;
   float target_fps = 60.f;
@@ -90,10 +78,10 @@ class OpenGlDebugGui {
   bool m_want_save = false;
   bool m_want_replay = false;
   bool m_want_dump_load = false;
+  bool m_compress_screenshot = false;
   bool m_want_screenshot = false;
   char m_dump_save_name[256] = "dump.bin";
   char m_screenshot_save_name[256] = "screenshot.png";
-  bool m_vsync = false;
-  bool m_nosync = false;
+  bool m_vsync = true;
   float m_target_fps_text = 60.0;
 };

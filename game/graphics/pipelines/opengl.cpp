@@ -35,6 +35,7 @@ struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
   std::condition_variable sync_cv;
+  bool vsync_enabled;
 
   // dma chain transfer
   std::mutex dma_mutex;
@@ -262,6 +263,7 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.playing_from_dump = false;
     options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
+    options.screenshot_should_compress = g_gfx_data->debug_gui.screenshot_compress_flag();
     if (options.save_screenshot) {
       options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
     }
@@ -428,10 +430,10 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   // switch vsync modes, if requested
-  if (g_gfx_data->debug_gui.get_nosync_flag()) {
-    glfwSwapInterval(0);
-  } else if (g_gfx_data->debug_gui.get_vsync_flag()) {
-    glfwSwapInterval(1);
+  bool req_vsync = g_gfx_data->debug_gui.get_vsync_flag();
+  if (req_vsync != g_gfx_data->vsync_enabled) {
+    g_gfx_data->vsync_enabled = req_vsync;
+    glfwSwapInterval(req_vsync);
   }
 
   // actual vsync

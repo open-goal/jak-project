@@ -180,7 +180,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   file_util::init_crc();
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
-      file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"})));
+      file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}), {}));
 
   // modify the config
   std::unordered_set<std::string> object_files;

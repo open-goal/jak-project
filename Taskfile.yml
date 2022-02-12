@@ -1,35 +1,43 @@
 version: '3'
 
-vars:
-  # make this OS agnostic eventually
-  RELEASE_PATH: './out/build/Release/bin'
+includes:
+  build: ./scripts/tasks/Taskfile_{{OS}}.yml
 
 tasks:
+  # GENERAL
+  extract-jak1:
+    cmds:
+      - '{{.RELEASE_PATH}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out" "decompile_code=false"'
+  boot-game:
+    cmds:
+      - "{{.RELEASE_PATH}}/gk -boot -fakeiso -debug -v"
+  run-game:
+    cmds:
+      - "{{.RELEASE_PATH}}/gk -fakeiso -debug -v"
+  repl:
+    env:
+      OPENGOAL_DECOMP_DIR: "jak1/"
+    cmds:
+      - "{{.RELEASE_PATH}}/goalc"
+  # DEVELOPMENT
   format:
     cmds:
       - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test -i
       # npm install -g prettier
       - cmd: prettier --write ./decompiler/config/jak1_ntsc_black_label/*.jsonc
         ignore_error: true
-  run-game:
-    cmds:
-      - "{{.RELEASE_PATH}}/gk.exe -fakeiso -debug -v"
   run-game-headless:
     cmds:
-      - "{{.RELEASE_PATH}}/gk.exe -fakeiso -debug -nodisplay"
-  repl:
-    env:
-      OPENGOAL_DECOMP_DIR: "jak1/"
-    cmds:
-      - "{{.RELEASE_PATH}}/goalc.exe"
+      - "{{.RELEASE_PATH}}/gk -fakeiso -debug -nodisplay"
   repl-lt:
     env:
       OPENGOAL_DECOMP_DIR: "jak1/"
     cmds:
-      - "{{.RELEASE_PATH}}/goalc.exe -auto-lt"
+      - "{{.RELEASE_PATH}}/goalc -auto-lt"
+  # DECOMPILING
   decomp:
     cmds:
-      - '{{.RELEASE_PATH}}/decompiler.exe "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out"'
+      - '{{.RELEASE_PATH}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out"'
   decomp-clean:
     cmds:
       - rm ./decompiler_out/**/*.asm
@@ -47,20 +55,10 @@ tasks:
   decomp-watch:
     cmds:
       - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILES="{{.FILES}}"' ./decompiler/config/
-  clean-all-types:
-    cmds:
-      - python ./scripts/cleanup-all-types.py
-  analyze-ee-memory:
-    cmds:
-      - '{{.RELEASE_PATH}}/memory_dump_tool.exe "{{.FILE}}" ./ > ee-analysis.log'
-  watch-pcsx2:
-    cmds:
-      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
-    vars:
-      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
+  # TESTS
   offline-tests:
     cmds:
-      - '{{.RELEASE_PATH}}/offline-test.exe "./iso_data/jak1"'
+      - '{{.RELEASE_PATH}}/offline-test "./iso_data/jak1"'
   add-reference-test:
     cmds:
       - task: decomp-file
@@ -73,7 +71,7 @@ tasks:
   update-reference-tests:
     cmds:
       - cmd: python ./scripts/default-file-or-folder.py --path failures
-      - cmd: '{{.RELEASE_PATH}}/offline-test.exe "./iso_data/jak1" --dump-mode'
+      - cmd: '{{.RELEASE_PATH}}/offline-test "./iso_data/jak1" --dump-mode'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
       - task: offline-tests
@@ -84,11 +82,20 @@ tasks:
       - python ./scripts/find-label-types.py --file "{{.FILES}}"
   type-test:
     cmds:
-      - cmd: '{{.RELEASE_PATH}}/goalc-test.exe --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"'
+      - cmd: '{{.RELEASE_PATH}}/goalc-test --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"'
         ignore_error: true
   check-gsrc-file:
     cmds:
       - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
+  # TOOLS
+  analyze-ee-memory:
+    cmds:
+      - '{{.RELEASE_PATH}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
+  watch-pcsx2:
+    cmds:
+      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
+    vars:
+      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
   update-gsrc:
     cmds:
       - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
@@ -100,3 +107,7 @@ tasks:
   cast-repl:
     cmds:
       - cmd: python ./scripts/cast-repl.py
+  # Doesn't Currently Work
+  # clean-all-types:
+  #   cmds:
+  #     - python ./scripts/cleanup-all-types.py

@@ -13,7 +13,8 @@
 #include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
 #include "common/common_types.h"
-#include "third-party/svpng.h"
+#include "third-party/fpng/fpng.cpp"
+#include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
 #include "third-party/lzokay/lzokay.hpp"
 
@@ -99,15 +100,17 @@ void write_binary_file(const std::string& name, const void* data, size_t size) {
   fclose(fp);
 }
 
-void write_rgba_png(const std::string& name, void* data, int w, int h) {
-  FILE* fp = fopen(name.c_str(), "wb");
-  if (!fp) {
-    throw std::runtime_error("couldn't open file " + name);
+void write_rgba_png(const std::string& name, void* data, int w, int h, bool compress) {
+  auto flags = 0;
+  if (!compress) {
+    flags = fpng::FPNG_FORCE_UNCOMPRESSED;
   }
 
-  svpng(fp, w, h, (const unsigned char*)data, 1);
+  auto ok = fpng::fpng_encode_image_to_file(name.c_str(), data, w, h, 4, flags);
 
-  fclose(fp);
+  if (!ok) {
+    throw std::runtime_error("couldn't save png file " + name);
+  }
 }
 
 void write_text_file(const std::string& file_name, const std::string& text) {
@@ -172,6 +175,10 @@ bool is_printable_char(char c) {
 
 std::string combine_path(const std::string& parent, const std::string& child) {
   return parent + "/" + child;
+}
+
+bool file_exists(const std::string& path) {
+  return std::filesystem::exists(path);
 }
 
 std::string base_name(const std::string& filename) {
