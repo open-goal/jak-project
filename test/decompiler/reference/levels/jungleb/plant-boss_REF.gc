@@ -17,7 +17,7 @@
    (cam-tracker      handle                      :offset-assert 240)
    (want-aphid-count int32                       :offset-assert 248)
    (aphid-count      int32                       :offset-assert 252)
-   (aphid-spawn-time int64                       :offset-assert 256)
+   (aphid-spawn-time time-frame                  :offset-assert 256)
    (interp           float                       :offset-assert 264)
    (try              int32                       :offset-assert 268)
    (camera           handle                      :offset-assert 272)
@@ -133,7 +133,7 @@
   ((root-override    collide-shape-moving  :offset        112)
    (side             int32                 :offset-assert 176)
    (state-object     symbol                :offset-assert 180)
-   (state-time-frame int64                 :offset-assert 184)
+   (state-time-frame time-frame            :offset-assert 184)
    )
   :heap-base #x50
   :method-count-assert 20
@@ -872,7 +872,7 @@
   (behavior ((arg0 symbol))
     (when (not arg0)
       (let ((gp-0 (-> *display* base-frame-counter)))
-        (until (>= (- (-> *display* base-frame-counter) gp-0) 1200)
+        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
           (+! (-> self root-override trans z) (* -4096.0 (-> *display* seconds-per-frame)))
           (suspend)
           )
@@ -1186,8 +1186,8 @@
     (case arg2
       (('kill)
        (set! (-> self state-object) #t)
-       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (-> arg3 param 0)))))
-         (set! (-> self state-time-frame) (the-as int v0-0))
+       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0))))))
+         (set! (-> self state-time-frame) (the-as time-frame v0-0))
          v0-0
          )
        )
@@ -1248,8 +1248,8 @@
     (case arg2
       (('kill)
        (set! (-> self state-object) #t)
-       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (-> arg3 param 0)))))
-         (set! (-> self state-time-frame) (the-as int v0-0))
+       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0))))))
+         (set! (-> self state-time-frame) (the-as time-frame v0-0))
          v0-0
          )
        )
@@ -1544,7 +1544,7 @@
                                         )
                                       (camera-change-to "camera-222" 600 #f)
                                       (let ((gp-0 (-> *display* base-frame-counter)))
-                                        (until (>= (- (-> *display* base-frame-counter) gp-0) 600)
+                                        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
                                           (suspend)
                                           )
                                         )
@@ -1869,7 +1869,7 @@
              )
          )
        )
-      ((>= (- (-> *display* base-frame-counter) (-> self aphid-spawn-time)) 420)
+      ((>= (- (-> *display* base-frame-counter) (-> self aphid-spawn-time)) (seconds 1.4))
        (let ((gp-1 (get-process *default-dead-pool* aphid #x4000)))
          (when (when gp-1
                  (let ((t9-5 (method-of-type aphid activate)))
@@ -2642,7 +2642,7 @@
             )
       )
     (let ((gp-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-1) 1500)
+      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 5))
         (transform-post)
         (do-push-aways! (-> self root-override))
         (suspend)

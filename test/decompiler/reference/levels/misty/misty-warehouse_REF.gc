@@ -4,7 +4,7 @@
 ;; definition of type silostep
 (deftype silostep (process-drawable)
   ((anim-limit  float   :offset-assert 176)
-   (cam-tracker uint64  :offset-assert 184)
+   (cam-tracker handle  :offset-assert 184)
    )
   :heap-base #x50
   :method-count-assert 20
@@ -70,42 +70,41 @@
   )
 
 ;; definition for function misty-camera-view
-;; INFO: Return type mismatch int vs handle.
+;; INFO: Return type mismatch int vs none.
 (defbehavior misty-camera-view silostep ()
-  (let* ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000))
-         (v1-1 (when gp-0
-                 (let ((t9-1 (method-of-type camera-tracker activate)))
-                   (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process
-                   gp-0
-                   camera-tracker-init
-                   (lambda :behavior camera-tracker
-                     ()
-                     (while (not (process-grab? *target*))
-                       (suspend)
-                       )
-                     (camera-change-to "camera-160" 150 #f)
-                     (let ((gp-0 (-> *display* base-frame-counter)))
-                       (until (>= (- (-> *display* base-frame-counter) gp-0) 900)
-                         (suspend)
-                         )
-                       )
-                     (while (not (process-release? (handle->process (-> self grab-target))))
-                       (suspend)
-                       )
-                     (camera-change-to (the-as string 'base) 150 #f)
-                     (none)
-                     )
-                   )
-                 (-> gp-0 ppointer)
-                 )
-               )
-         (v0-3 (logior (new 'static 'handle :pid (-> v1-1 0 pid)) (new 'static 'handle :process v1-1)))
-         )
-    (set! (-> self cam-tracker) (the-as uint v0-3))
-    (the-as handle v0-3)
+  (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
+    (set! (-> self cam-tracker)
+          (ppointer->handle (when gp-0
+                              (let ((t9-1 (method-of-type camera-tracker activate)))
+                                (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+                                )
+                              (run-now-in-process
+                                gp-0
+                                camera-tracker-init
+                                (lambda :behavior camera-tracker
+                                  ()
+                                  (while (not (process-grab? *target*))
+                                    (suspend)
+                                    )
+                                  (camera-change-to "camera-160" 150 #f)
+                                  (let ((gp-0 (-> *display* base-frame-counter)))
+                                    (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
+                                      (suspend)
+                                      )
+                                    )
+                                  (while (not (process-release? (handle->process (-> self grab-target))))
+                                    (suspend)
+                                    )
+                                  (camera-change-to (the-as string 'base) 150 #f)
+                                  (none)
+                                  )
+                                )
+                              (-> gp-0 ppointer)
+                              )
+                            )
+          )
     )
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -120,7 +119,7 @@
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-1) 300)
+      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 1))
         (suspend)
         )
       )

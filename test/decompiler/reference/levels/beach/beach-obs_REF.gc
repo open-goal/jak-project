@@ -755,7 +755,7 @@
       (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-128))
       (when sv-128
         (let ((s5-2 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) s5-2) 150)
+          (until (>= (- (-> *display* base-frame-counter) s5-2) (seconds 0.5))
             (suspend)
             )
           )
@@ -952,7 +952,7 @@
     )
   :post
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
         (go flying-rock-idle)
         )
     (ja-post)
@@ -1210,10 +1210,10 @@
 ;; INFO: Return type mismatch int vs none.
 ;; WARN: Expression building failed: Function (method 20 flutflutegg) has a return type of none, but the expression builder found a return statement.
 (defmethod dummy-20 flutflutegg ((obj flutflutegg) (arg0 float) (arg1 float) (arg2 float))
-  (if (< (- (-> *display* base-frame-counter) (-> obj last-impulse-time)) 150)
+  (if (< (- (-> *display* base-frame-counter) (the-as time-frame (-> obj last-impulse-time))) (seconds 0.5))
       (return 0)
       )
-  (set! (-> obj last-impulse-time) (-> *display* base-frame-counter))
+  (set! (-> obj last-impulse-time) (the-as int (-> *display* base-frame-counter)))
   (+! (-> obj vel) arg0)
   (inc-xy-vel! (-> obj wobbler) arg1 arg2)
   0
@@ -1271,7 +1271,7 @@
     )
   :trans
   (behavior ()
-    (let* ((gp-0 (TODO-RENAME-10 (-> self ambient) (new 'stack-no-clear 'vector) 900 368640.0 self))
+    (let* ((gp-0 (TODO-RENAME-10 (-> self ambient) (new 'stack-no-clear 'vector) (seconds 3) 368640.0 self))
            (v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
            (v1-3 (the-as number (logior #x3f800000 v1-2)))
            (f30-0 (+ -1.0 (the-as float v1-3)))
@@ -1307,7 +1307,7 @@
          )
         ((< (-> gp-0 y) -24576.0)
          )
-        ((< (- (-> *display* base-frame-counter) (-> self ambient last-ambient-time)) 9000)
+        ((< (- (-> *display* base-frame-counter) (-> self ambient last-ambient-time)) (seconds 30))
          )
         ((< 0.8 f30-0)
          (play-ambient (-> self ambient) "BIR-AM07" #f (-> self root-override trans))
@@ -1344,7 +1344,7 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (the-as
       object
-      (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+      (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
                  (= arg2 'attack)
                  (or (= (-> arg3 param 1) 'punch) (= (-> arg3 param 1) 'spin) (= (-> arg3 param 1) 'spin-air))
                  (!= (-> self incomming-attack-id) (-> arg3 param 2))
@@ -1422,7 +1422,7 @@
             (camera-change-to "camera-135" 0 #f)
             (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
             (let ((gp-0 (-> *display* base-frame-counter)))
-              (until (>= (- (-> *display* base-frame-counter) gp-0) 1200)
+              (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
                 (suspend)
                 )
               )
@@ -1462,7 +1462,7 @@
           (quaternion*! (-> self root-override quat) (-> self root-override quat) a2-6)
           )
         (suspend)
-        (set! v1-25 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+        (set! v1-25 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
                          (logtest? (-> self root-override status) 1)
                          )
               )
@@ -1525,7 +1525,7 @@
       )
     (let ((gp-2 (-> *display* base-frame-counter)))
       (while (not (task-closed? (game-task beach-flutflut) (task-status need-reward-speech)))
-        (if (>= (- (-> *display* base-frame-counter) gp-2) 3000)
+        (if (>= (- (-> *display* base-frame-counter) gp-2) (seconds 10))
             (level-hint-spawn
               (game-text-id beach-flutflutegg-hint)
               "sksp0029"

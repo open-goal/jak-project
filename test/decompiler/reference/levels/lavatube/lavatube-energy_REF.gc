@@ -520,6 +520,38 @@
 (defstate energydoor-opened (energydoor)
   :event
   energydoor-open-handler
+  :trans
+  (behavior ()
+    (let ((f30-0 (energydoor-player-dist)))
+      (cond
+        ((< f30-0 -450560.0)
+         (go energydoor-closing)
+         )
+        ((and (not (task-closed? (-> self entity extra perm task) (task-status need-resolution)))
+              (< 61440.0 f30-0)
+              (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-1 from) self)
+                (set! (-> a1-1 num-params) 0)
+                (set! (-> a1-1 message) 'open?)
+                (let ((t9-3 send-event-function)
+                      (v1-7 (-> self alt-actor))
+                      )
+                  (not (t9-3
+                         (if v1-7
+                             (-> v1-7 extra process)
+                             )
+                         a1-1
+                         )
+                       )
+                  )
+                )
+              )
+         (go energydoor-closing)
+         )
+        )
+      )
+    (none)
+    )
   :code
   (behavior ()
     (let ((v1-2 (-> self skel root-channel 0)))

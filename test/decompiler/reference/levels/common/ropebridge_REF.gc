@@ -514,9 +514,9 @@
   ((root-override          collide-shape                      :offset        112)
    (subtype                uint64                             :offset-assert 176)
    (subtype-name           string                             :offset-assert 184)
-   (agitated-time-stamp    uint64                             :offset-assert 192)
-   (bonk-time-stamp        uint64                             :offset-assert 200)
-   (attack-flop-time-stamp uint64                             :offset-assert 208)
+   (agitated-time-stamp    time-frame                         :offset-assert 192)
+   (bonk-time-stamp        time-frame                         :offset-assert 200)
+   (attack-flop-time-stamp time-frame                         :offset-assert 208)
    (player-attack-id       uint64                             :offset-assert 216)
    (sleep-dist             float                              :offset-assert 224)
    (do-physics?            basic                              :offset-assert 228)
@@ -628,8 +628,8 @@
     (let ((f0-0 -1.0))
       (cond
         ((= arg2 'bonk)
-         (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self bonk-time-stamp))) 60)
-           (set! (-> self bonk-time-stamp) (the-as uint (-> *display* base-frame-counter)))
+         (when (>= (- (-> *display* base-frame-counter) (-> self bonk-time-stamp)) (seconds 0.2))
+           (set! (-> self bonk-time-stamp) (-> *display* base-frame-counter))
            (set! f0-0 (the-as float (-> arg3 param 1)))
            (if (>= f0-0 (-> self tuning rider-bonk-max))
                (set! f0-0 (-> self tuning rider-bonk-max))
@@ -640,7 +640,7 @@
          (let ((v1-17 (-> arg3 param 2)))
            (when (!= v1-17 (-> self player-attack-id))
              (set! (-> self player-attack-id) v1-17)
-             (set! (-> self attack-flop-time-stamp) (the-as uint (-> *display* base-frame-counter)))
+             (set! (-> self attack-flop-time-stamp) (-> *display* base-frame-counter))
              (set! f0-0 (* 1.1 (-> self tuning rider-bonk-max)))
              )
            )
@@ -649,7 +649,7 @@
       (the-as
         object
         (when (and (>= f0-0 (-> self tuning rider-bonk-min)) (-> arg3 param 0))
-          (set! (-> self agitated-time-stamp) (the-as uint (-> *display* base-frame-counter)))
+          (set! (-> self agitated-time-stamp) (-> *display* base-frame-counter))
           (let* ((f30-0 (/ (* (- f0-0 (-> self tuning rider-bonk-min)) (-> self tuning rider-bonk-force))
                            (- (-> self tuning rider-bonk-max) (-> self tuning rider-bonk-min))
                            )
@@ -764,7 +764,7 @@
                       (set-vel-from-rider obj (+ s2-1 1) s3-0 1)
                       )
                     )
-                  (set! (-> obj agitated-time-stamp) (the-as uint (-> *display* base-frame-counter)))
+                  (set! (-> obj agitated-time-stamp) (-> *display* base-frame-counter))
                   )
                 )
               )
@@ -1067,7 +1067,7 @@
 ;; definition for method 12 of type ropebridge
 (defmethod run-logic? ropebridge ((obj ropebridge))
   (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
-      (< (- (-> *display* base-frame-counter) (the-as int (-> obj agitated-time-stamp))) 1500)
+      (< (- (-> *display* base-frame-counter) (-> obj agitated-time-stamp)) (seconds 5))
       (or (>= (-> obj sleep-dist) (vector-vector-distance (-> obj root-override trans) (math-camera-pos)))
           (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
           (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status drwf04)))
@@ -1120,9 +1120,9 @@
           )
     )
   (set! (-> obj tuning) (-> *ropebridge-tunings* (the-as int (-> obj subtype))))
-  (set! (-> obj agitated-time-stamp) (the-as uint (-> *display* base-frame-counter)))
-  (set! (-> obj bonk-time-stamp) (the-as uint (-> *display* base-frame-counter)))
-  (set! (-> obj attack-flop-time-stamp) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> obj agitated-time-stamp) (-> *display* base-frame-counter))
+  (set! (-> obj bonk-time-stamp) (-> *display* base-frame-counter))
+  (set! (-> obj attack-flop-time-stamp) (-> *display* base-frame-counter))
   (set-vector! (-> obj extra-trans) 0.0 0.0 (- (* 0.5 (-> obj tuning bridge-end-to-end-len))) 1.0)
   (set! (-> obj do-physics?) #t)
   (let ((a0-13 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -1151,7 +1151,3 @@
   (go ropebridge-idle)
   (none)
   )
-
-
-
-

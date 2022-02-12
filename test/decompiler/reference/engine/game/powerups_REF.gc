@@ -4,7 +4,13 @@
 ;; definition for function cloud-track
 ;; INFO: Return type mismatch symbol vs none.
 ;; Used lq/sq
-(defbehavior cloud-track process ((arg0 process-tree) (arg1 process-tree) (arg2 (function vector none)) (arg3 int) (arg4 int) (arg5 int))
+(defbehavior cloud-track process ((arg0 process-tree)
+                        (arg1 process-tree)
+                        (arg2 (function vector none))
+                        (arg3 time-frame)
+                        (arg4 time-frame)
+                        (arg5 time-frame)
+                        )
   (change-parent self arg0)
   (let ((s1-1 (process->handle arg0))
         (s2-1 (process->handle arg1))
@@ -590,7 +596,7 @@
   (cond
     ((and (= (-> self control ground-pat material) (pat-material ice))
           (and (>= (-> self control unknown-float01) 204.8)
-               (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 15)
+               (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.05))
                )
           )
      (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 74))))
@@ -683,8 +689,8 @@
     (set! (-> a0-33 settings shadow-dir z) (-> v1-67 z))
     )
   (when (and (!= (-> self fact-info-target eco-level) 0.0)
-             (>= (- (-> *display* game-frame-counter) (the-as int (-> self fact-info-target eco-pickup-time)))
-                 (the-as int (-> self fact-info-target eco-timeout))
+             (>= (- (-> *display* game-frame-counter) (-> self fact-info-target eco-pickup-time))
+                 (the-as time-frame (-> self fact-info-target eco-timeout))
                  )
              )
     (set! (-> self fact-info-target eco-level) 0.0)
@@ -701,10 +707,9 @@
                (lerp-scale
                  0.0
                  1.0
-                 (the float
-                      (- (-> self fact-info-target eco-timeout)
-                         (the-as uint (- (-> *display* game-frame-counter) (the-as int (-> self fact-info-target eco-pickup-time))))
-                         )
+                 (the float (- (-> self fact-info-target eco-timeout)
+                               (the-as uint (- (-> *display* game-frame-counter) (-> self fact-info-target eco-pickup-time)))
+                               )
                       )
                  0.0
                  900.0
@@ -712,7 +717,7 @@
                )
              )
     (case (-> self fact-info-target eco-type)
-      ((1)
+      (((pickup-type eco-yellow))
        (change-sound! (-> self sound) (static-sound-name "yel-eco-jak"))
        (let ((s4-0 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
          (sp-launch-particles-var
@@ -741,7 +746,7 @@
            )
          )
        )
-      ((2)
+      (((pickup-type eco-red))
        (target-danger-set! (-> self control unknown-symbol30) #t)
        (update-transforms! (-> self control))
        (let ((a1-23 (new 'stack-no-clear 'touching-shapes-entry)))
@@ -779,7 +784,7 @@
            )
          )
        )
-      ((3)
+      (((pickup-type eco-blue))
        (change-sound! (-> self sound) (static-sound-name "blue-eco-jak"))
        (let ((v1-150 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
          (cond
@@ -835,9 +840,9 @@
            1.0
            )
          )
-       (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 30)
+       (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 (seconds 0.1))
        )
-      ((4)
+      (((pickup-type eco-green))
        (change-sound! (-> self sound) (static-sound-name "green-eco-jak"))
        (let ((s4-8 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
          (sp-launch-particles-var

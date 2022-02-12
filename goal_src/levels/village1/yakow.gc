@@ -37,31 +37,31 @@
   )
 
 (deftype yakow-bank (basic)
-  ((walk-cycle-frame-count float   :offset-assert   4)
-   (run-cycle-frame-count  float   :offset-assert   8)
-   (walk-speed             meters  :offset-assert  12)
-   (run-speed              meters  :offset-assert  16)
-   (walk-anim-speed        float   :offset-assert  20)
-   (run-anim-speed         float   :offset-assert  24)
-   (walk-away-dist         meters  :offset-assert  28)
-   (run-away-dist          meters  :offset-assert  32)
-   (walk-rotate-speed      float   :offset-assert  36)
-   (run-rotate-speed       float   :offset-assert  40)
-   (walk-turn-time         uint64  :offset-assert  48)
-   (run-turn-time          uint64  :offset-assert  56)
-   (max-walk-speed         float   :offset-assert  64)
-   (min-run-speed          float   :offset-assert  68)
-   (walk-run-blend-rate    float   :offset-assert  72)
-   (walk-turn-blend-rate   float   :offset-assert  76)
-   (max-run-speed          float   :offset-assert  80)
-   (acceleration           meters  :offset-assert  84)
-   (default-patrol-time    uint64  :offset-assert  88)
-   (default-idle-distance  meters  :offset-assert  96)
-   (safe-distance          meters  :offset-assert 100)
-   (min-run-anim-speed     float   :offset-assert 104)
-   (max-run-anim-speed     float   :offset-assert 108)
-   (min-walk-anim-speed    float   :offset-assert 112)
-   (speed-boost-impulse    meters  :offset-assert 116)
+  ((walk-cycle-frame-count float       :offset-assert   4)
+   (run-cycle-frame-count  float       :offset-assert   8)
+   (walk-speed             meters      :offset-assert  12)
+   (run-speed              meters      :offset-assert  16)
+   (walk-anim-speed        float       :offset-assert  20)
+   (run-anim-speed         float       :offset-assert  24)
+   (walk-away-dist         meters      :offset-assert  28)
+   (run-away-dist          meters      :offset-assert  32)
+   (walk-rotate-speed      float       :offset-assert  36)
+   (run-rotate-speed       float       :offset-assert  40)
+   (walk-turn-time         time-frame  :offset-assert  48)
+   (run-turn-time          time-frame  :offset-assert  56)
+   (max-walk-speed         float       :offset-assert  64)
+   (min-run-speed          float       :offset-assert  68)
+   (walk-run-blend-rate    float       :offset-assert  72)
+   (walk-turn-blend-rate   float       :offset-assert  76)
+   (max-run-speed          float       :offset-assert  80)
+   (acceleration           meters      :offset-assert  84)
+   (default-patrol-time    time-frame  :offset-assert  88)
+   (default-idle-distance  meters      :offset-assert  96)
+   (safe-distance          meters      :offset-assert 100)
+   (min-run-anim-speed     float       :offset-assert 104)
+   (max-run-anim-speed     float       :offset-assert 108)
+   (min-walk-anim-speed    float       :offset-assert 112)
+   (speed-boost-impulse    meters      :offset-assert 116)
    )
   :method-count-assert 9
   :size-assert         #x78
@@ -73,28 +73,28 @@
                        :walk-cycle-frame-count 16.0
                        :run-cycle-frame-count 16.0
                        :walk-speed (meters 2.13)
-                       :run-speed (meters 6.0)
+                       :run-speed (meters 6)
                        :walk-anim-speed 1.0
                        :run-anim-speed 2.0
-                       :walk-away-dist (meters 10.0)
-                       :run-away-dist (meters 6.0)
+                       :walk-away-dist (meters 10)
+                       :run-away-dist (meters 6)
                        :walk-rotate-speed 131072.0
                        :run-rotate-speed 131072.0
-                       :walk-turn-time #x96
-                       :run-turn-time #x3c
+                       :walk-turn-time (seconds 0.5)
+                       :run-turn-time (seconds 0.2)
                        :max-walk-speed 16384.0
                        :min-run-speed 15155.2
                        :walk-run-blend-rate 6.0
                        :walk-turn-blend-rate 4.0
                        :max-run-speed 61440.0
-                       :acceleration (meters 3.0)
-                       :default-patrol-time #x12c
-                       :default-idle-distance (meters 10.0)
-                       :safe-distance (meters 20.0)
+                       :acceleration (meters 3)
+                       :default-patrol-time (seconds 1)
+                       :default-idle-distance (meters 10)
+                       :safe-distance (meters 20)
                        :min-run-anim-speed 0.5
                        :max-run-anim-speed 1.5
                        :min-walk-anim-speed 0.5
-                       :speed-boost-impulse (meters 4.0)
+                       :speed-boost-impulse (meters 4)
                        )
         )
 
@@ -108,7 +108,7 @@
    (travel-speed       meters                       :offset-assert 192)
    (final-speed        meters                       :offset-assert 196)
    (rotate-speed       float                        :offset-assert 200)
-   (turn-time          uint64                       :offset-assert 208)
+   (turn-time          time-frame                   :offset-assert 208)
    (vulnerable         basic                        :offset-assert 216)
    (grazing            basic                        :offset-assert 220)
    (push-velocity      vector               :inline :offset-assert 224)
@@ -259,7 +259,7 @@ yakow-default-event-handler
           (-> self root-override)
           (-> self nav travel)
           (-> self rotate-speed)
-          (the-as int (-> self turn-time))
+          (-> self turn-time)
           )
         (vector-z-quaternion! gp-0 (-> self root-override quat))
         (set! (-> self rotating) (< (vector-dot gp-0 s5-0) (cos (* 8192.0 (-> *display* seconds-per-frame)))))
@@ -373,7 +373,7 @@ yakow-default-event-handler
                )
              (set! (-> s5-0 frame-num) 0.0)
              )
-           (while (or (< (- (-> *display* base-frame-counter) gp-0) 60) (< (-> self final-speed) 409.6))
+           (while (or (< (- (-> *display* base-frame-counter) gp-0) (seconds 0.2)) (< (-> self final-speed) 409.6))
              (suspend)
              (let ((a0-6 (-> self skel root-channel 0)))
                (set! (-> a0-6 param 0) 1.0)
@@ -524,9 +524,7 @@ yakow-default-event-handler
     )
   :trans
   (behavior ()
-    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time))
-                 (the-as int (-> *YAKOW-bank* default-patrol-time))
-                 )
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
              (and *target* (>= (-> self fact-override idle-distance)
                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                )
@@ -628,9 +626,7 @@ yakow-default-event-handler
     )
   :trans
   (behavior ()
-    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time))
-                 (the-as int (-> *YAKOW-bank* default-patrol-time))
-                 )
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
              (not (-> self in-pen))
              (and *target* (>= (-> self fact-override idle-distance)
                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -640,7 +636,7 @@ yakow-default-event-handler
              )
         (go yakow-notice)
         )
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
       (when (or (logtest? (nav-control-flags bit19) (-> self nav flags))
                 (< (vector-vector-xz-distance (-> self root-override trans) (-> self nav destination-pos)) 4096.0)
                 )
@@ -706,7 +702,7 @@ yakow-default-event-handler
                )
           (ja-channel-push! 1 22)
           )
-      (seek-toward-yaw-angle! (-> self root-override) (-> self dest-rot) 16384.0 150)
+      (seek-toward-yaw-angle! (-> self root-override) (-> self dest-rot) 16384.0 (seconds 0.5))
       (let ((a0-6 (-> self skel root-channel 0)))
         (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
         (set! (-> a0-6 param 0) 1.0)
@@ -873,7 +869,7 @@ yakow-default-event-handler
     )
   :trans
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
         (set! (-> self travel-speed) (seek
                                        (-> self travel-speed)
                                        (-> *YAKOW-bank* run-speed)

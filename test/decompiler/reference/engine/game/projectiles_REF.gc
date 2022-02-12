@@ -5,7 +5,7 @@
 (deftype search-info (structure)
   ((point        vector     :inline :offset-assert   0)
    (best-point   vector     :inline :offset-assert  16)
-   (match-handle uint64             :offset-assert  32)
+   (match-handle handle             :offset-assert  32)
    (match        projectile         :offset-assert  40)
    (best         float              :offset-assert  44)
    (radius       float              :offset-assert  48)
@@ -730,7 +730,7 @@
   :code
   (behavior ()
     (let ((gp-0 #f))
-      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self timeout)))
+      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (-> self timeout))
         (let ((s5-0 (the int (-> *display* time-ratio))))
           (set-time-ratios *display* 1.0)
           (countdown (s4-0 s5-0)
@@ -966,7 +966,7 @@
   (set! (-> self max-turn) 18204.445)
   (set! (-> self tween) 1.0)
   (set! (-> self last-target) arg4)
-  (set! (-> self timeout) (the-as uint 1200))
+  (set! (-> self timeout) (seconds 4))
   (set! (-> self options) arg3)
   (set! (-> self notify-handle) (the-as handle #f))
   (countdown (v1-4 16)
@@ -1007,7 +1007,7 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod dummy-27 projectile-yellow ((obj projectile-yellow))
-  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 30)
+  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
   (set! (-> obj attack-mode) 'eco-yellow)
   (set! (-> obj mode) 1)
   (set! (-> obj max-speed) (vector-length (-> obj root-override transv)))
@@ -1112,8 +1112,8 @@
     (set! (-> *part-id-table* 353 init-specs 16 random-rangef) (the-as float 300))
     (cond
       ((logtest? (-> obj options) 32)
-       (when (>= (- (-> *display* base-frame-counter) (-> obj state-time)) 15)
-         (when (< (- (-> *display* base-frame-counter) (-> obj state-time)) 150)
+       (when (>= (- (-> *display* base-frame-counter) (-> obj state-time)) (seconds 0.05))
+         (when (< (- (-> *display* base-frame-counter) (-> obj state-time)) (seconds 0.5))
            (set! (-> *part-id-table* 353 init-specs 16 initial-valuef) (the-as float 0))
            (set! (-> *part-id-table* 353 init-specs 16 random-rangef) (the-as float 0))
            0
@@ -1233,7 +1233,7 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod dummy-27 projectile-blue ((obj projectile-blue))
-  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 30)
+  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
   (sound-play-by-name (static-sound-name "blue-eco-on") (new-sound-id) 1024 0 0 1 #t)
   (set! (-> obj mode) 2)
   (set! (-> obj max-speed) (-> *TARGET-bank* yellow-projectile-speed))

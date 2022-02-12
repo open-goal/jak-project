@@ -29,12 +29,12 @@
 
 ;; definition of type flut-bank
 (deftype flut-bank (basic)
-  ((jump-height-min        meters  :offset-assert   4)
-   (jump-height-max        meters  :offset-assert   8)
-   (double-jump-height-min meters  :offset-assert  12)
-   (double-jump-height-max meters  :offset-assert  16)
-   (air-attack-speed       meters  :offset-assert  20)
-   (ground-timeout         int64   :offset-assert  24)
+  ((jump-height-min        meters      :offset-assert   4)
+   (jump-height-max        meters      :offset-assert   8)
+   (double-jump-height-min meters      :offset-assert  12)
+   (double-jump-height-max meters      :offset-assert  16)
+   (air-attack-speed       meters      :offset-assert  20)
+   (ground-timeout         time-frame  :offset-assert  24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -55,12 +55,12 @@
 
 ;; definition for symbol *FLUT-bank*, type flut-bank
 (define *FLUT-bank* (new 'static 'flut-bank
-                      :jump-height-min (meters 5.0)
-                      :jump-height-max (meters 7.0)
-                      :double-jump-height-min (meters 1.0)
-                      :double-jump-height-max (meters 2.0)
-                      :air-attack-speed (meters 20.0)
-                      :ground-timeout #x96
+                      :jump-height-min (meters 5)
+                      :jump-height-max (meters 7)
+                      :double-jump-height-min (meters 1)
+                      :double-jump-height-max (meters 2)
+                      :air-attack-speed (meters 20)
+                      :ground-timeout (seconds 0.5)
                       )
         )
 
@@ -1019,10 +1019,10 @@
         (let ((f0-22 (ja-aframe-num 0)))
           (cond
             ((and (>= (-> self skel effect last-frame-num) 20.0) (< f0-22 20.0))
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 51 120)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 51 (seconds 0.4))
              )
             ((and (< (-> self skel effect last-frame-num) 12.0) (>= f0-22 12.0))
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 51 120)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 51 (seconds 0.4))
              )
             )
           )
@@ -1102,7 +1102,7 @@
     (if (logtest? (-> self control status) 1)
         (go target-flut-hit-ground)
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 40960.0)
              (and (zero? (logand (-> self water flags) 512))
                   (zero? (logand (-> self state-flags) 2048))
@@ -1111,13 +1111,11 @@
              )
         (go target-flut-double-jump (-> *FLUT-bank* double-jump-height-min) (-> *FLUT-bank* double-jump-height-max))
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons square)
-                       )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 61440.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -1125,13 +1123,9 @@
              )
         (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
         )
-    (when (if (and (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
-                   (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
-                        (not
-                          (and *cheat-mode*
-                               (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                               )
-                          )
+    (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
+                   (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+                        (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                         )
                    )
               #t
@@ -1141,12 +1135,7 @@
       'stuck
       (go target-flut-hit-ground)
       )
-    (mod-var-jump
-      #t
-      #t
-      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-      (-> self control transv)
-      )
+    (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
     (set! (-> self control unknown-float122)
           (seek
             (-> self control unknown-float122)
@@ -1301,7 +1290,7 @@
              (and (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (< 4096.0 (target-height-above-ground))
                   )
@@ -1309,12 +1298,7 @@
         (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
         )
     (if (!= (-> self state-time) (-> *display* base-frame-counter))
-        (mod-var-jump
-          #t
-          #t
-          (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-          (-> self control transv)
-          )
+        (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
         )
     (if (= (if (> (-> self skel active-channels) 0)
                (-> self skel root-channel 0 frame-group)
@@ -1345,7 +1329,7 @@
       (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 149)) num-func-seek!)
       )
     (until (ja-done? 0)
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 30)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 (seconds 0.1))
       (suspend)
       (let ((a0-4 (-> self skel root-channel 0)))
         (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
@@ -1365,7 +1349,7 @@
         (joint-control-channel-group! s5-0 (the-as art-joint-anim (-> self draw art-group data 149)) num-func-seek!)
         )
       (until (ja-done? 0)
-        (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 30)
+        (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 (seconds 0.1))
         (suspend)
         (let ((a0-10 (-> self skel root-channel 0)))
           (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
@@ -1376,7 +1360,7 @@
       )
     (while (< (-> (new 'static 'array float 1 8192.0) 0) (target-height-above-ground))
       (suspend)
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 30)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 (seconds 0.1))
       (let ((a0-13 (-> self skel root-channel 0)))
         (set! (-> a0-13 param 0) 1.0)
         (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-loop!)
@@ -1455,7 +1439,7 @@
   (behavior ()
     (target-land-effect)
     (if (< 40960.0 (-> self control ground-impact-vel))
-        (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 60)
+        (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.2))
         )
     (set! (-> self control unknown-dword31) 0)
     (set! (-> self control unknown-dword33) 0)
@@ -1529,15 +1513,11 @@
   :trans
   (behavior ()
     (when (or (logtest? (-> self control status) 1)
-              (if (and (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
+              (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                        (and (>= (- (-> *display* base-frame-counter) (-> self state-time))
                                 (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
                                 )
-                            (not
-                              (and *cheat-mode*
-                                   (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                                   )
-                              )
+                            (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                             )
                        )
                   #t
@@ -1683,8 +1663,10 @@
     (set! (-> *run-attack-mods* turnvv) 655360.0)
     (target-start-attack)
     (target-danger-set! 'flut-attack #f)
-    (when (and (and (= (-> self fact-info-target eco-type) 1) (>= (-> self fact-info-target eco-level) 1.0))
-               (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) 75)
+    (when (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
+                    (>= (-> self fact-info-target eco-level) 1.0)
+                    )
+               (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 0.25))
                )
       (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
             (s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 32)))
@@ -1734,7 +1716,7 @@
                    (and (>= (-> self control unknown-float63) 0.7) (zero? (logand (-> self control status) 32)))
                    )
                (begin
-                 (set! (-> self control unknown-int21) (-> *display* base-frame-counter))
+                 (set! (-> self control unknown-int21) (the-as int (-> *display* base-frame-counter)))
                  (set! (-> self control unknown-float81) 0.0)
                  (let ((gp-0 (new-stack-vector0))
                        (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -1864,10 +1846,10 @@
           (set! (-> a0-36 param 1) (-> self control unknown-surface01 align-speed))
           (joint-control-channel-group-eval! a0-36 (the-as art-joint-anim #f) num-func-seek!)
           )
-        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
             (set! (-> *flut-run-attack-mods* turnvv) 0.0)
             )
-        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
             (set! f30-0 (* f30-0 (the-as float (fmin 1.0 (the-as float (-> self control unknown-float140))))))
             )
         )
@@ -2013,13 +1995,9 @@
       (remove-exit)
       (go target-flut-air-attack-hit-ground)
       )
-    (when (if (and (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) 4096.0)
-                   (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
-                        (not
-                          (and *cheat-mode*
-                               (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                               )
-                          )
+    (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0)
+                   (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+                        (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                         )
                    )
               #t
@@ -2093,7 +2071,7 @@
   :enter
   (behavior ()
     (target-land-effect)
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 120)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.4))
     (set! (-> self control unknown-dword31) 0)
     (set! (-> self control unknown-dword33) 0)
     (set! (-> self control unknown-surface00) *flut-air-attack-mods*)
@@ -2195,9 +2173,7 @@
   :trans
   (behavior ()
     (when (= *cheat-mode* 'debug)
-      (when (and (not *pause-lock*)
-                 (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                 )
+      (when (and (not *pause-lock*) (cpad-hold? (-> self control unknown-cpad-info00 number) r2))
         (pickup-collectable! (-> self fact-info-target) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
         (go target-flut-stance)
         )
@@ -2260,7 +2236,7 @@
                   (set! (-> s4-1 quad) (-> self control last-known-safe-ground quad))
                   (ja-channel-set! 0)
                   (let ((s3-1 (-> *display* base-frame-counter)))
-                    (until (>= (- (-> *display* base-frame-counter) s3-1) 300)
+                    (until (>= (- (-> *display* base-frame-counter) s3-1) (seconds 1))
                       (suspend)
                       )
                     )
@@ -2419,7 +2395,7 @@
            )
          )
        (let ((gp-4 (-> *display* base-frame-counter)))
-         (until (>= (- (-> *display* base-frame-counter) gp-4) 300)
+         (until (>= (- (-> *display* base-frame-counter) gp-4) (seconds 1))
            (target-flut-falling-anim-trans)
            (vector-seek! (-> self draw color-mult) *zero-vector* (-> *display* seconds-per-frame))
            (let ((s5-2 (new-stack-vector0))
@@ -2484,7 +2460,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until v1-104
       (suspend)
-      (set! v1-104 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300) (not (movie?))))
+      (set! v1-104 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1)) (not (movie?))))
       )
     (go target-flut-stance)
     (none)
@@ -2575,7 +2551,10 @@
               (-> self control unknown-vector103 y)
               (fmax
                 0.0
-                (fmin 1.0 (* 0.006666667 (the float (+ (- (-> self state-time)) (-> *display* base-frame-counter)))))
+                (fmin
+                  1.0
+                  (* 0.006666667 (the float (+ (- (the-as int (-> self state-time))) (-> *display* base-frame-counter))))
+                  )
                 )
               )
             )
@@ -2708,7 +2687,10 @@
               (-> self control unknown-vector103 y)
               (fmax
                 0.0
-                (fmin 1.0 (* 0.0044444446 (the float (+ (- -150 (-> self state-time)) (-> *display* base-frame-counter)))))
+                (fmin
+                  1.0
+                  (* 0.0044444446 (the float (+ (- (seconds -0.5) (-> self state-time)) (-> *display* base-frame-counter))))
+                  )
                 )
               )
             )

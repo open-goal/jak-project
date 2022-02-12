@@ -3,26 +3,26 @@
 
 ;; definition of type snow-bunny
 (deftype snow-bunny (nav-enemy)
-  ((patrol-rand-distraction int32          :offset-assert 400)
-   (base-hop-dist           float          :offset-assert 404)
-   (halfway-dist            float          :offset-assert 408)
-   (retreat-timeout         float          :offset-assert 412)
-   (gnd-popup               float          :offset-assert 416)
-   (jump-height-min         float          :offset-assert 420)
-   (jump-height-factor      float          :offset-assert 424)
-   (jump-anim-start-frame   float          :offset-assert 428)
-   (defense                 uint64         :offset-assert 432)
-   (retreat-timeout-time    int64          :offset-assert 440)
-   (last-nondangerous-time  int64          :offset-assert 448)
-   (patrol-hop-failed?      basic          :offset-assert 456)
-   (should-retreat?         basic          :offset-assert 460)
-   (got-jump-event?         symbol         :offset-assert 464)
-   (using-jump-event?       basic          :offset-assert 468)
-   (jump-anim               int8           :offset-assert 472)
-   (notice-land-anim        int8           :offset-assert 473)
-   (attack-anim             int8           :offset-assert 474)
-   (final-dest              vector :inline :offset-assert 480)
-   (jump-event-dest         vector :inline :offset-assert 496)
+  ((patrol-rand-distraction int32              :offset-assert 400)
+   (base-hop-dist           float              :offset-assert 404)
+   (halfway-dist            float              :offset-assert 408)
+   (retreat-timeout         float              :offset-assert 412)
+   (gnd-popup               float              :offset-assert 416)
+   (jump-height-min         float              :offset-assert 420)
+   (jump-height-factor      float              :offset-assert 424)
+   (jump-anim-start-frame   float              :offset-assert 428)
+   (defense                 uint64             :offset-assert 432)
+   (retreat-timeout-time    time-frame         :offset-assert 440)
+   (last-nondangerous-time  time-frame         :offset-assert 448)
+   (patrol-hop-failed?      basic              :offset-assert 456)
+   (should-retreat?         basic              :offset-assert 460)
+   (got-jump-event?         symbol             :offset-assert 464)
+   (using-jump-event?       basic              :offset-assert 468)
+   (jump-anim               int8               :offset-assert 472)
+   (notice-land-anim        int8               :offset-assert 473)
+   (attack-anim             int8               :offset-assert 474)
+   (final-dest              vector     :inline :offset-assert 480)
+   (jump-event-dest         vector     :inline :offset-assert 496)
    )
   :heap-base #x190
   :method-count-assert 77
@@ -90,30 +90,30 @@
                                       :die-anim 11
                                       :neck-joint 5
                                       :player-look-at-joint 5
-                                      :run-travel-speed (meters 6.0)
+                                      :run-travel-speed (meters 6)
                                       :run-rotate-speed (degrees 2880.0)
-                                      :run-acceleration (meters 1.0)
+                                      :run-acceleration (meters 1)
                                       :run-turn-time (seconds 0.1)
-                                      :walk-travel-speed (meters 4.0)
+                                      :walk-travel-speed (meters 4)
                                       :walk-rotate-speed (degrees 720.0)
-                                      :walk-acceleration (meters 1.0)
+                                      :walk-acceleration (meters 1)
                                       :walk-turn-time (seconds 0.5)
-                                      :shadow-size (meters 2.0)
+                                      :shadow-size (meters 2)
                                       :notice-nav-radius (meters 1.2)
-                                      :nav-nearest-y-threshold (meters 10.0)
-                                      :notice-distance (meters 30.0)
-                                      :stop-chase-distance (meters 40.0)
-                                      :frustration-distance (meters 8.0)
-                                      :frustration-time #x4b0
+                                      :nav-nearest-y-threshold (meters 10)
+                                      :notice-distance (meters 30)
+                                      :stop-chase-distance (meters 40)
+                                      :frustration-distance (meters 8)
+                                      :frustration-time (seconds 4)
                                       :die-anim-hold-frame 31.0
                                       :jump-anim-start-frame 11.0
                                       :jump-land-anim-end-frame 10000000000.0
-                                      :jump-height-min (meters 1.0)
+                                      :jump-height-min (meters 1)
                                       :jump-height-factor 0.6
                                       :jump-start-anim-speed 1.0
                                       :shadow-max-y (meters 0.25)
-                                      :shadow-min-y (meters -4.0)
-                                      :shadow-locus-dist (meters 150.0)
+                                      :shadow-min-y (meters -4)
+                                      :shadow-locus-dist (meters 150)
                                       :use-align #f
                                       :draw-shadow #t
                                       :move-to-ground #t
@@ -280,7 +280,7 @@
   )
 
 ;; definition for method 58 of type snow-bunny
-;; INFO: Return type mismatch int vs none.
+;; INFO: Return type mismatch time-frame vs none.
 (defmethod dummy-58 snow-bunny ((obj snow-bunny))
   (if (zero? (logand (-> *target* state-flags) 2))
       (set! (-> obj last-nondangerous-time) (-> *display* base-frame-counter))
@@ -350,7 +350,11 @@
           (set! f0-2 40.96)
           )
       (let ((v1-13 (the int (/ f0-2 (* (-> obj nav-info run-travel-speed) (-> *display* seconds-per-frame))))))
-        (if (<= (- (- 108 (- (-> *display* base-frame-counter) (-> obj last-nondangerous-time))) v1-13) 0)
+        (if (<= (- (- (seconds 0.36) (- (-> *display* base-frame-counter) (-> obj last-nondangerous-time)))
+                   (the-as time-frame v1-13)
+                   )
+                0
+                )
             (return #f)
             )
         )
@@ -478,7 +482,7 @@
     (set! (-> self nav flags) (logior (nav-control-flags bit19) (-> self nav flags)))
     (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
     (logior! (-> self nav-enemy-flags) 8)
-    (set! (-> self state-timeout) 30)
+    (set! (-> self state-timeout) (seconds 0.1))
     (none)
     )
   :trans
@@ -535,7 +539,7 @@
           )
         (while #t
           (let ((s5-1 (-> *display* base-frame-counter)))
-            (until (>= (- (-> *display* base-frame-counter) s5-1) 756)
+            (until (>= (- (-> *display* base-frame-counter) s5-1) (seconds 2.52))
               (suspend)
               (let ((a0-6 (-> self skel root-channel 0)))
                 (set! (-> a0-6 param 0) 1.0)
@@ -710,7 +714,7 @@
     (snow-bunny-initialize-jump (-> self nav target-pos))
     (dummy-76 self #t)
     (set! (-> self rotate-speed) 728177.75)
-    (set! (-> self turn-time) 30)
+    (set! (-> self turn-time) (seconds 0.1))
     (none)
     )
   :exit
@@ -810,7 +814,7 @@
         (when *target*
           (let ((gp-2 (new 'stack-no-clear 'vector)))
             (vector-! gp-2 (target-pos 0) (-> self collide-info trans))
-            (seek-toward-heading-vec! (-> self collide-info) gp-2 524288.0 30)
+            (seek-toward-heading-vec! (-> self collide-info) gp-2 524288.0 (seconds 0.1))
             )
           )
         (suspend)
@@ -961,7 +965,7 @@
     (snow-bunny-initialize-jump (-> self nav target-pos))
     (dummy-76 self #t)
     (set! (-> self rotate-speed) 728177.75)
-    (set! (-> self turn-time) 30)
+    (set! (-> self turn-time) (seconds 0.1))
     (none)
     )
   :exit
@@ -1259,7 +1263,7 @@
     (snow-bunny-initialize-jump (-> self nav target-pos))
     (dummy-76 self #t)
     (set! (-> self rotate-speed) 728177.75)
-    (set! (-> self turn-time) 30)
+    (set! (-> self turn-time) (seconds 0.1))
     (none)
     )
   :exit
@@ -1369,7 +1373,7 @@
     (when *target*
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-! gp-0 (target-pos 0) (-> self collide-info trans))
-        (seek-toward-heading-vec! (-> self collide-info) gp-0 524288.0 30)
+        (seek-toward-heading-vec! (-> self collide-info) gp-0 524288.0 (seconds 0.1))
         )
       )
     (+! (-> self collide-info transv y) (* -546119.7 (-> *display* seconds-per-frame)))
@@ -1419,7 +1423,3 @@
   :post
   (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
-
-
-
-

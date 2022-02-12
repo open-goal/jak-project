@@ -457,7 +457,7 @@ void Compiler::typecheck(const goos::Object& form,
                          const TypeSpec& actual,
                          const std::string& error_message) {
   (void)form;
-  if (!m_ts.typecheck_and_throw(expected, actual, error_message, false, false)) {
+  if (!m_ts.typecheck_and_throw(expected, actual, error_message, false, false, true)) {
     throw_compiler_error(form, "Typecheck failed. For {}, got a \"{}\" when expecting a \"{}\"",
                          error_message, actual.print(), expected.print());
   }
