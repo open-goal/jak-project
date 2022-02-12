@@ -3,11 +3,11 @@
 </p>
 
 <p align="center">
-  <a href="https://water111.github.io/jak-project/" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
+  <a href="https://open-goal.github.io/" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
   <a target="_blank" rel="noopener noreferrer" href="https://github.com/water111/jak-project/workflows/Linux/badge.svg"><img src="https://github.com/water111/jak-project/workflows/Linux/badge.svg" alt="Linux" style="max-width:100%;"></a>
   <a target="_blank" rel="noopener noreferrer" href="https://github.com/water111/jak-project/workflows/Windows/badge.svg"><img src="https://github.com/water111/jak-project/workflows/Windows/badge.svg" alt="Windows" style="max-width:100%;"></a>
-  <a href="https://coveralls.io/github/water111/jak-project?branch=master" rel="nofollow"><img src="https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master" alt="Coverage Status" style="max-width:100%;"></a>
-  <a href="https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9" alt="Codacy Badge" style="max-width:100%;"></a>
+  <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&utm_medium=referral&utm_content=open-goal/jak-project&utm_campaign=Badge_Coverage" rel="nofollow"><img src="https://app.codacy.com/project/badge/Coverage/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
+  <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=open-goal/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://discord.gg/V82sTJGEAs"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
