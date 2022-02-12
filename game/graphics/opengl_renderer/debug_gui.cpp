@@ -113,8 +113,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Frame Rate")) {
-      ImGui::MenuItem("Enable V-Sync", nullptr, &m_vsync);
-      ImGui::MenuItem("Disable V-Sync", nullptr, &m_nosync);
+      ImGui::Checkbox("Enable V-Sync", &m_vsync);
       ImGui::Separator();
       ImGui::Checkbox("Framelimiter", &framelimiter);
       ImGui::InputFloat("Target FPS", &m_target_fps_text);

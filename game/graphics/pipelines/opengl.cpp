@@ -35,6 +35,7 @@ struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
   std::condition_variable sync_cv;
+  bool vsync_enabled;
 
   // dma chain transfer
   std::mutex dma_mutex;
@@ -429,10 +430,10 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   // switch vsync modes, if requested
-  if (g_gfx_data->debug_gui.get_nosync_flag()) {
-    glfwSwapInterval(0);
-  } else if (g_gfx_data->debug_gui.get_vsync_flag()) {
-    glfwSwapInterval(1);
+  bool req_vsync = g_gfx_data->debug_gui.get_vsync_flag();
+  if (req_vsync != g_gfx_data->vsync_enabled) {
+    g_gfx_data->vsync_enabled = req_vsync;
+    glfwSwapInterval(req_vsync);
   }
 
   // actual vsync
