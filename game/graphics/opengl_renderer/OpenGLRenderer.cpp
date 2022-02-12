@@ -256,7 +256,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
-                      settings.lbox_width_px, settings.lbox_height_px, settings.screenshot_should_compress);
+                      settings.lbox_width_px, settings.lbox_height_px,
+                      settings.screenshot_should_compress);
   }
 
   m_render_state.loader.update();
@@ -431,7 +432,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        int height,
                                        int x,
                                        int y,
-  bool compress) {
+                                       bool compress) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   glReadBuffer(GL_BACK);
