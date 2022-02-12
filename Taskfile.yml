@@ -4,7 +4,7 @@ includes:
   build: ./scripts/tasks/Taskfile_{{OS}}.yml
 
 tasks:
-  # General Tasks
+  # GENERAL
   extract-jak1:
     cmds:
       - '{{.RELEASE_PATH}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out" "decompile_code=false"'
@@ -14,7 +14,12 @@ tasks:
   run-game:
     cmds:
       - "{{.RELEASE_PATH}}/gk -fakeiso -debug -v"
-  # Developer Focused Tasks
+  repl:
+    env:
+      OPENGOAL_DECOMP_DIR: "jak1/"
+    cmds:
+      - "{{.RELEASE_PATH}}/goalc"
+  # DEVELOPMENT
   format:
     cmds:
       - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test -i
@@ -24,17 +29,12 @@ tasks:
   run-game-headless:
     cmds:
       - "{{.RELEASE_PATH}}/gk -fakeiso -debug -nodisplay"
-  # Decompiling Related Tasks
-  repl:
-    env:
-      OPENGOAL_DECOMP_DIR: "jak1/"
-    cmds:
-      - "{{.RELEASE_PATH}}/goalc"
   repl-lt:
     env:
       OPENGOAL_DECOMP_DIR: "jak1/"
     cmds:
       - "{{.RELEASE_PATH}}/goalc -auto-lt"
+  # DECOMPILING
   decomp:
     cmds:
       - '{{.RELEASE_PATH}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out"'
@@ -55,17 +55,7 @@ tasks:
   decomp-watch:
     cmds:
       - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILES="{{.FILES}}"' ./decompiler/config/
-  clean-all-types:
-    cmds:
-      - python ./scripts/cleanup-all-types.py
-  analyze-ee-memory:
-    cmds:
-      - '{{.RELEASE_PATH}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
-  watch-pcsx2:
-    cmds:
-      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
-    vars:
-      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
+  # TESTS
   offline-tests:
     cmds:
       - '{{.RELEASE_PATH}}/offline-test "./iso_data/jak1"'
@@ -97,6 +87,15 @@ tasks:
   check-gsrc-file:
     cmds:
       - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
+  # TOOLS
+  analyze-ee-memory:
+    cmds:
+      - '{{.RELEASE_PATH}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
+  watch-pcsx2:
+    cmds:
+      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
+    vars:
+      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
   update-gsrc:
     cmds:
       - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
@@ -108,3 +107,7 @@ tasks:
   cast-repl:
     cmds:
       - cmd: python ./scripts/cast-repl.py
+  # Doesn't Currently Work
+  # clean-all-types:
+  #   cmds:
+  #     - python ./scripts/cleanup-all-types.py

@@ -86,7 +86,7 @@ We don't save any assets from the game - you must bring your own copy of the gam
 Install packages and init repository:
 
 ```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev python
 sudo snap install task --classic
 ```
 
@@ -119,7 +119,7 @@ cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse
 Install packages and init repository:
 
 ```sh
-sudo pacman -S gcc make cmake base-devel g++ nasm taskfile-git
+sudo pacman -S gcc make cmake base-devel g++ nasm taskfile-git python
 ```
 
 Compile:
@@ -167,7 +167,7 @@ On Windows, it's recommended to get Scoop to use as a package manager, making th
 Once Scoop is installed, run the following commands:
 
 ```sh
-scoop install git llvm nasm
+scoop install git llvm nasm python
 scoop bucket add extras
 scoop install task
 ```
