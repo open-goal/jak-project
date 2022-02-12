@@ -54,10 +54,10 @@
   )
 
 (deftype training-cam (process)
-  ((root       trsq    :offset-assert 112)
-   (range      meters  :offset-assert 116)
-   (index      int32   :offset-assert 120)
-   (state-time uint64  :offset-assert 128)
+  ((root       trsq        :offset-assert 112)
+   (range      meters      :offset-assert 116)
+   (index      int32       :offset-assert 120)
+   (state-time time-frame  :offset-assert 128)
    )
   :heap-base #x20
   :method-count-assert 15
@@ -97,7 +97,7 @@
                       )
             (suspend)
             )
-          (set! (-> self state-time) (the-as uint (-> *display* base-frame-counter)))
+          (set! (-> self state-time) (-> *display* base-frame-counter))
           (process-grab? *target*)
           (process-entity-status! self (entity-perm-status bit-3) #t)
           (until (not (or (-> *setting-control* current talking) (or (-> *setting-control* current spooling)
@@ -125,7 +125,7 @@
                 (suspend)
                 )
               )
-            (while (< (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) 300)
+            (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
               (suspend)
               )
             (clear-pending-settings-from-process *setting-control* self 'movie)
@@ -311,7 +311,7 @@
                    (game-task none)
                    )
                  (let ((gp-8 (-> *display* base-frame-counter)))
-                   (until (>= (- (-> *display* base-frame-counter) gp-8) 9000)
+                   (until (>= (- (-> *display* base-frame-counter) gp-8) (seconds 30))
                      (suspend)
                      )
                    )
@@ -389,24 +389,24 @@
 (define *tra-pontoon-constants* (new 'static 'rigid-body-platform-constants
                                   :drag-factor 4.0
                                   :buoyancy-factor 3.0
-                                  :max-buoyancy-depth (meters 3.0)
+                                  :max-buoyancy-depth (meters 3)
                                   :gravity-factor 1.0
-                                  :gravity (meters 80.0)
-                                  :player-weight (meters 35.0)
+                                  :gravity (meters 80)
+                                  :player-weight (meters 35)
                                   :player-bonk-factor 1.0
                                   :player-dive-factor 1.0
-                                  :player-force-distance (meters 1000.0)
-                                  :player-force-clamp (meters 1000000.0)
-                                  :player-force-timeout #x1e
-                                  :explosion-force (meters 1000.0)
+                                  :player-force-distance (meters 1000)
+                                  :player-force-clamp (meters 1000000)
+                                  :player-force-timeout (seconds 0.1)
+                                  :explosion-force (meters 1000)
                                   :linear-damping 0.98
                                   :angular-damping 0.98
                                   :control-point-count 4
                                   :mass 2.0
                                   :inertial-tensor-x (meters 2.5)
-                                  :inertial-tensor-y (meters 2.0)
+                                  :inertial-tensor-y (meters 2)
                                   :inertial-tensor-z (meters 3.2)
-                                  :idle-distance (meters 50.0)
+                                  :idle-distance (meters 50)
                                   :platform #t
                                   :sound-name "pontoonten"
                                   )
@@ -953,7 +953,7 @@
     (sound-play-by-name (static-sound-name "break-dummy") (new-sound-id) 1024 0 0 1 #t)
     (ja-channel-set! 0)
     (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
-      (set! (-> s5-2 duration) (the-as uint 450))
+      (set! (-> s5-2 duration) (seconds 1.5))
       (set! (-> s5-2 gravity) -327680.0)
       (set! (-> s5-2 fountain-rand-transv-hi x) 32768.0)
       (set! (-> s5-2 fountain-rand-transv-hi y) 81920.0)
@@ -1162,7 +1162,7 @@
     (sound-play-by-name (static-sound-name "break-dummy") (new-sound-id) 1024 0 0 1 #t)
     (ja-channel-set! 0)
     (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
-      (set! (-> s5-2 duration) (the-as uint 450))
+      (set! (-> s5-2 duration) (seconds 1.5))
       (set! (-> s5-2 fountain-rand-transv-hi x) 32768.0)
       (set! (-> s5-2 fountain-rand-transv-hi y) 81920.0)
       (set! (-> s5-2 fountain-rand-transv-hi z) 40960.0)

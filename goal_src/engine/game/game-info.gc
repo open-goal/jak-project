@@ -526,7 +526,7 @@
   (when (or (not arg0) (= arg0 'health))
    (set! (-> obj health-max) (-> *FACT-bank* health-max-default))
    (set! (-> obj health) (-> obj health-max))
-   (set! (-> obj health-pickup-time) (the-as uint -30000))
+   (set! (-> obj health-pickup-time) (seconds -100))
    )
   (when (or (not arg0) (= arg0 'buzzer))
    (set! (-> obj buzzer-max) (-> *FACT-bank* buzzer-max-default))
@@ -554,7 +554,7 @@
                 ;; when we get a different source, OR we it's been more than 0.5 seconds since we last got eco
                 ;; from this source.
                 (if (or (!= (handle->process source-handle) (handle->process (-> obj eco-source)))
-                        (>= (the-as int (- (-> *display* base-frame-counter) (-> obj eco-source-time))) 150)
+                        (>= (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
                         )
                     
                     ;; play the sound!
@@ -651,7 +651,7 @@
            ;; get money.
            (when (< 0.0 amount)
              ;; play sound.
-             (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj money-pickup-time))) 15)
+             (if (>= (- (-> *display* base-frame-counter) (-> obj money-pickup-time)) (seconds 0.05))
                  (sound-play-by-name (static-sound-name "money-pickup")
                                      (new-sound-id)
                                      1024
@@ -720,10 +720,10 @@
            (when (!= (-> obj eco-type) kind)
              ;; as far as I can tell, the eco-level isn't really used other than just 1 or 0.
              (set! (-> obj eco-level) 0.0)
-             (set! (-> obj eco-timeout) (the-as seconds 0))
+             (set! (-> obj eco-timeout) 0)
              0
              )
-           (set! (-> obj eco-type) (the-as int kind))
+           (set! (-> obj eco-type) kind)
            
            
            (let ((eco-lev (-> obj eco-level)))
@@ -758,11 +758,11 @@
              
              ;; sound and controller vibration.
              (when (not (and (= (handle->process source-handle) (handle->process (-> obj eco-source)))
-                             (< (the-as int (- (-> *display* base-frame-counter) (-> obj eco-source-time))) 150)
+                             (< (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
                              )
                         )
-               (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 60)
-               (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 60)
+               (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
+               (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 (seconds 0.2))
                (case kind 
                      (((pickup-type eco-blue))
                       (sound-play-by-name (static-sound-name "get-blue-eco") (new-sound-id) 1024 0 0 1 #t)
@@ -821,7 +821,7 @@
                          s4-4
                          (lambda ((arg0 process-drawable))
                            (let ((s5-0 (-> *display* base-frame-counter)))
-                             (until (>= (- (-> *display* base-frame-counter) s5-0) 180)
+                             (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
                                (send-event arg0 'effect 'eco-blue)
                                (suspend)
                                )

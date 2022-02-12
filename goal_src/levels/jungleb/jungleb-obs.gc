@@ -15,7 +15,7 @@
 
 (deftype eggtop (process-drawable)
   ((root-override collide-shape-moving  :offset        112)
-   (cam-tracker   uint64                :offset-assert 176)
+   (cam-tracker   handle                :offset-assert 176)
    (sound-id      sound-id              :offset-assert 184)
    )
   :heap-base #x50
@@ -269,54 +269,51 @@
         )
       (let ((gp-2 (get-process *default-dead-pool* camera-tracker #x4000)))
         (set! (-> self cam-tracker)
-              (the-as
-                uint
-                (ppointer->handle (when gp-2
-                                    (let ((t9-6 (method-of-type camera-tracker activate)))
-                                      (t9-6 (the-as camera-tracker gp-2) self 'camera-tracker (the-as pointer #x70004000))
-                                      )
-                                    (run-now-in-process
-                                      gp-2
-                                      camera-tracker-init
-                                      (lambda :behavior camera-tracker
-                                        ()
-                                        (while (not (process-grab? *target*))
-                                          (suspend)
-                                          )
-                                        (let ((gp-0 (-> *display* base-frame-counter)))
-                                          (until (>= (- (-> *display* base-frame-counter) gp-0) 300)
-                                            (suspend)
-                                            )
-                                          )
-                                        (send-event *camera* 'blend-from-as-fixed)
-                                        (camera-look-at (the-as pair "ecovent-171") (the-as uint 0))
-                                        (camera-change-to "camera-223" 0 #f)
-                                        (let ((gp-1 (-> *display* base-frame-counter)))
-                                          (until (>= (- (-> *display* base-frame-counter) gp-1) 900)
-                                            (suspend)
-                                            )
-                                          )
-                                        (while (not (process-release? (handle->process (-> self grab-target))))
-                                          (suspend)
-                                          )
-                                        (send-event *camera* 'blend-from-as-fixed)
-                                        (level-hint-spawn
-                                          (game-text-id jungleb-eco-vents-opened)
-                                          "asstvb02"
-                                          (the-as entity #f)
-                                          *entity-pool*
-                                          (game-task none)
-                                          )
-                                        (camera-look-at (the-as pair *target*) (the-as uint 0))
-                                        (camera-change-to (the-as string 'base) 150 #f)
-                                        (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'show)
-                                        (none)
-                                        )
-                                      )
-                                    (-> gp-2 ppointer)
+              (ppointer->handle (when gp-2
+                                  (let ((t9-6 (method-of-type camera-tracker activate)))
+                                    (t9-6 (the-as camera-tracker gp-2) self 'camera-tracker (the-as pointer #x70004000))
                                     )
+                                  (run-now-in-process
+                                    gp-2
+                                    camera-tracker-init
+                                    (lambda :behavior camera-tracker
+                                      ()
+                                      (while (not (process-grab? *target*))
+                                        (suspend)
+                                        )
+                                      (let ((gp-0 (-> *display* base-frame-counter)))
+                                        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
+                                          (suspend)
+                                          )
+                                        )
+                                      (send-event *camera* 'blend-from-as-fixed)
+                                      (camera-look-at (the-as pair "ecovent-171") (the-as uint 0))
+                                      (camera-change-to "camera-223" 0 #f)
+                                      (let ((gp-1 (-> *display* base-frame-counter)))
+                                        (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 3))
+                                          (suspend)
+                                          )
+                                        )
+                                      (while (not (process-release? (handle->process (-> self grab-target))))
+                                        (suspend)
+                                        )
+                                      (send-event *camera* 'blend-from-as-fixed)
+                                      (level-hint-spawn
+                                        (game-text-id jungleb-eco-vents-opened)
+                                        "asstvb02"
+                                        (the-as entity #f)
+                                        *entity-pool*
+                                        (game-task none)
+                                        )
+                                      (camera-look-at (the-as pair *target*) (the-as uint 0))
+                                      (camera-change-to (the-as string 'base) 150 #f)
+                                      (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'show)
+                                      (none)
+                                      )
+                                    )
+                                  (-> gp-2 ppointer)
                                   )
-                )
+                                )
               )
         )
       (save-reminder (get-task-control (-> self entity extra perm task)) 2 0)

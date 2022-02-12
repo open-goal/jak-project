@@ -21,8 +21,7 @@
 
 ;; DECOMP BEGINS
 
-;; definition for function target-falling-anim
-(defbehavior target-falling-anim target ((arg0 int) (arg1 int))
+(defbehavior target-falling-anim target ((arg0 time-frame) (arg1 int))
   (let ((v1-2 (if (> (-> self skel active-channels) 0)
                   (-> self skel root-channel 0 frame-group)
                   )
@@ -130,14 +129,14 @@
   #f
   )
 
-;; definition for function target-falling-anim-trans
 (defbehavior target-falling-anim-trans target ()
   (let ((v1-2 (if (> (-> self skel active-channels) 0)
                   (-> self skel root-channel 0 frame-group)
                   )
               )
         )
-    (b! (or (= v1-2 (-> self draw art-group data 38)) (= v1-2 (-> self draw art-group data 35)))
+    (b!
+      (or (= v1-2 (-> self draw art-group data 38)) (= v1-2 (-> self draw art-group data 35)))
       cfg-7
       )
     )
@@ -187,14 +186,8 @@
   (none)
   )
 
-;; definition for function target-falling-trans
-;; INFO: Return type mismatch int vs none.
-(defbehavior target-falling-trans target ((arg0 basic) (arg1 cpad-list))
-  (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                     (pad-buttons circle)
-                     )
-           (can-feet?)
-           )
+(defbehavior target-falling-trans target ((arg0 basic) (arg1 time-frame))
+  (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
       (go target-attack-air #f)
       )
   (when (= arg0 'target-eco-powerup)
@@ -206,7 +199,7 @@
                        (pad-buttons x)
                        )
              (zero? (logand (-> self water flags) 512))
-             (< (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+             (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
              (zero? (logand (-> self state-flags) 2048))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
@@ -215,14 +208,10 @@
   (if (logtest? (-> self control status) 1)
       (go target-hit-ground #f)
       )
-  (when (if (and (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
-                 (>= (the-as int arg1) 0)
-                 (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int arg1))
-                 (not
-                   (and *cheat-mode*
-                        (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                        )
-                   )
+  (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
+                 (>= arg1 0)
+                 (>= (- (-> *display* base-frame-counter) (-> self state-time)) arg1)
+                 (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                  )
             #t
             )
@@ -236,7 +225,6 @@
   (none)
   )
 
-;; definition for function target-hit-ground-anim
 (defbehavior target-hit-ground-anim target ((arg0 symbol))
   (let ((v1-2 (if (> (-> self skel active-channels) 0)
                   (-> self skel root-channel 0 frame-group)
@@ -310,9 +298,7 @@
                                                            )
                           )
                  (set! (-> self event-hook) target-jump-event-handler)
-                 (when (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-                            (can-jump? #f)
-                            )
+                 (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) x) (can-jump? #f))
                    (ja-channel-set! 0)
                    (go
                      target-high-jump
@@ -579,7 +565,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-startup (target)
   :event
   target-standard-event-handler
@@ -594,7 +579,6 @@
   target-no-move-post
   )
 
-;; failed to figure out what this is:
 (defstate target-stance (target)
   :event
   target-standard-event-handler
@@ -626,11 +610,7 @@
       (remove-exit)
       (go target-walk)
       )
-    (when (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                         (pad-buttons l1 r1)
-                         )
-               (can-duck?)
-               )
+    (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?))
       (set! (-> self control unknown-float81) 0.0)
       (remove-exit)
       (go target-duck-stance)
@@ -1044,7 +1024,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-walk (target)
   :event
   target-walk-event-handler
@@ -1075,19 +1054,13 @@
                                )
                        (pad-buttons l1 r1)
                        )
-             (and (>= (- (-> *display* base-frame-counter) (the-as int (-> *TARGET-bank* wheel-timeout)))
-                      (-> self control unknown-dword30)
-                      )
+             (and (>= (- (-> *display* base-frame-counter) (-> *TARGET-bank* wheel-timeout)) (-> self control unknown-dword30))
                   (and (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0) (can-wheel?))
                   )
              )
         (go target-wheel)
         )
-    (when (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                         (pad-buttons l1 r1)
-                         )
-               (can-duck?)
-               )
+    (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?))
       (target-effect-exit)
       (remove-exit)
       (go target-duck-walk)
@@ -1122,7 +1095,7 @@
     (if (can-hands? #t)
         (go target-running-attack)
         )
-    (when (and (turn-around?) (>= (- (-> *display* base-frame-counter) (-> self state-time)) 90))
+    (when (and (turn-around?) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.3)))
       (set! (-> self control transv quad)
             (-> self control unknown-vector-array10 (-> self control unknown-int10) quad)
             )
@@ -1634,7 +1607,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-turn-around (target)
   :event
   target-standard-event-handler
@@ -1668,18 +1640,14 @@
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons circle)
-                       )
-             (can-feet?)
-             )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
         (go target-attack)
         )
     (if (can-hands? #t)
         (go target-running-attack)
         )
     (if (and (zero? (logand (-> self control status) 1))
-             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) 24)
+             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.08))
              )
         (go target-falling #f)
         )
@@ -1727,7 +1695,6 @@
   target-no-stick-post
   )
 
-;; failed to figure out what this is:
 (defstate target-slide-down (target)
   :event
   target-walk-event-handler
@@ -1744,7 +1711,7 @@
   :trans
   (behavior ()
     (when (or (logtest? (-> self control status) 1)
-              (if (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
+              (if (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                   #t
                   )
               )
@@ -1788,12 +1755,10 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; definition for function init-var-jump
-;; Used lq/sq
 (defbehavior init-var-jump target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector) (arg4 vector))
   (set! (-> self control status) (logand -16385 (-> self control status)))
   (delete-back-vel)
-  (when (< (- (-> *display* base-frame-counter) (the-as int (-> self control rider-time))) 15)
+  (when (< (- (-> *display* base-frame-counter) (-> self control rider-time)) (seconds 0.05))
     (let ((f0-1
             (fmax
               0.0
@@ -1853,8 +1818,6 @@
     )
   )
 
-;; definition for function mod-var-jump
-;; Used lq/sq
 (defbehavior mod-var-jump target ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 vector))
   (local-vars (v0-2 vector))
   (let ((f30-0 (* 0.033333335 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
@@ -1946,7 +1909,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-stance (target)
   :event
   target-standard-event-handler
@@ -2107,7 +2069,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-walk (target)
   :event
   target-standard-event-handler
@@ -2231,7 +2192,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-jump (target)
   :event
   target-jump-event-handler
@@ -2322,17 +2282,17 @@
             (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))
             )
           )
-    (target-falling-trans #f (the-as cpad-list (if (= (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      (-> self draw art-group data 38)
-                                                      )
-                                                   15
-                                                   -1
-                                                   )
+    (target-falling-trans #f (the-as time-frame (if (= (if (> (-> self skel active-channels) 0)
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       (-> self draw art-group data 38)
+                                                       )
+                                                    15
+                                                    -1
+                                                    )
                                      )
                           )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (zero? (logand (-> self water flags) 512))
@@ -2341,13 +2301,11 @@
              )
         (go target-double-jump (-> *TARGET-bank* double-jump-height-min) (-> *TARGET-bank* double-jump-height-max))
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons square)
-                       )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 26624.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -2364,12 +2322,7 @@
                   )
           )
         )
-    (mod-var-jump
-      #t
-      #t
-      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-      (-> self control transv)
-      )
+    (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
     (slide-down-test)
     (set! (-> self control unknown-float122)
           (seek
@@ -2454,7 +2407,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-jump-forward (target)
   :event
   target-jump-event-handler
@@ -2513,7 +2465,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-double-jump (target)
   :event
   target-jump-event-handler
@@ -2539,23 +2490,21 @@
   target-exit
   :trans
   (behavior ()
-    (target-falling-trans #f (the-as cpad-list (if (= (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      (-> self draw art-group data 38)
-                                                      )
-                                                   15
-                                                   -1
-                                                   )
+    (target-falling-trans #f (the-as time-frame (if (= (if (> (-> self skel active-channels) 0)
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       (-> self draw art-group data 38)
+                                                       )
+                                                    15
+                                                    -1
+                                                    )
                                      )
                           )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons square)
-                       )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -2573,12 +2522,7 @@
           )
         )
     (if (!= (-> self state-time) (-> *display* base-frame-counter))
-        (mod-var-jump
-          #t
-          #t
-          (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-          (-> self control transv)
-          )
+        (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
         )
     (set! (-> self control unknown-float122)
           (seek
@@ -2635,7 +2579,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-high-jump (target)
   :event
   target-jump-event-handler
@@ -2680,14 +2623,14 @@
   target-exit
   :trans
   (behavior ()
-    (target-falling-trans #f (the-as cpad-list (if (= (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      (-> self draw art-group data 38)
-                                                      )
-                                                   15
-                                                   -1
-                                                   )
+    (target-falling-trans #f (the-as time-frame (if (= (if (> (-> self skel active-channels) 0)
+                                                           (-> self skel root-channel 0 frame-group)
+                                                           )
+                                                       (-> self draw art-group data 38)
+                                                       )
+                                                    15
+                                                    -1
+                                                    )
                                      )
                           )
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
@@ -2700,7 +2643,7 @@
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 73728.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                      (the-as int (-> *TARGET-bank* stuck-timeout))
+                      (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) 4096))
                   (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -2717,12 +2660,7 @@
                   )
           )
         )
-    (mod-var-jump
-      #t
-      #t
-      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-      (-> self control transv)
-      )
+    (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
     (set! (-> self control unknown-float122)
           (seek
             (-> self control unknown-float122)
@@ -2741,7 +2679,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-high-jump (target)
   :event
   target-standard-event-handler
@@ -2809,7 +2746,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-high-jump-jump (target)
   :event
   target-jump-event-handler
@@ -2924,7 +2860,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-falling (target)
   :event
   target-jump-event-handler
@@ -2939,10 +2874,10 @@
   (behavior ()
     (target-falling-trans
       (-> self control unknown-spoolanim00)
-      (the-as cpad-list (if (= (-> self control unknown-spoolanim00) #f)
-                            0
-                            (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
-                            )
+      (the-as time-frame (if (= (-> self control unknown-spoolanim00) #f)
+                             0
+                             (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
+                             )
               )
       )
     (none)
@@ -2956,7 +2891,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-hit-ground (target)
   :event
   target-walk-event-handler
@@ -2973,7 +2907,7 @@
          (or (= v1-4 (-> self draw art-group data 42)) (= v1-4 (-> self draw art-group data 43)))
          )
        (dummy-10 (-> self skel effect) 'group-blue-hit-ground-effect (-> (new 'static 'array float 1 0.0) 0) -1)
-       (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 90)
+       (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.3))
        )
       (else
         (let ((f0-1 (vector-dot
@@ -3040,20 +2974,10 @@
           (go target-walk)
           )
       )
-    (if (and (or (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                           (pad-buttons l1 r1)
-                           )
-                 (not (can-exit-duck?))
-                 )
-             (can-duck?)
-             )
+    (if (and (or (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (not (can-exit-duck?))) (can-duck?))
         (go target-duck-stance)
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons circle)
-                       )
-             (can-feet?)
-             )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
         (go target-attack)
         )
     (if (can-hands? #t)
@@ -3073,7 +2997,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-attack (target)
   :event
   target-dangerous-event-handler
@@ -3106,11 +3029,11 @@
       (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 51)) num-func-seek!)
       )
     (until (ja-done? 0)
-      (when (and (= (-> self fact-info-target eco-type) 2)
+      (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                  (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                  )
         (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 74)
-        (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 30)
+        (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
         (level-hint-spawn
           (game-text-id red-eco-tutorial)
           "sksp0072"
@@ -3144,7 +3067,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-running-attack (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -3209,10 +3131,10 @@
     )
   :enter
   (behavior ()
-    (if (or (and (= (-> self fact-info-target eco-type) 1)
+    (if (or (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
                  (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                  )
-            (< (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) 450)
+            (< (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 1.5))
             )
         (go target-yellow-blast)
         )
@@ -3247,7 +3169,7 @@
                    (and (>= (-> self control unknown-float63) 0.7) (zero? (logand (-> self control status) 32)))
                    )
                (begin
-                 (set! (-> self control unknown-int21) (-> *display* base-frame-counter))
+                 (set! (-> self control unknown-int21) (the-as int (-> *display* base-frame-counter)))
                  (set! (-> self control unknown-float81) 0.0)
                  (let ((gp-0 (new-stack-vector0))
                        (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -3281,9 +3203,9 @@
             target-hit
             )
           )
-      (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
+      (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                (and (< 4096.0 (-> self control unknown-float01))
-                    (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+                    (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
                         (zero?
                           (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
                                   (pad-buttons square)
@@ -3311,11 +3233,11 @@
             (-> self control transv)
             )
           )
-      (when (and (= (-> self fact-info-target eco-type) 2)
+      (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                  (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                  )
         (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
-        (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 30)
+        (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
         (level-hint-spawn
           (game-text-id red-eco-tutorial)
           "sksp0072"
@@ -3353,9 +3275,7 @@
           (cond
             ((and (>= (ja-aframe-num 0) 20.0)
                   (and (and (zero? (logand (-> self control status) 1))
-                            (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-                                (the-as int (-> *TARGET-bank* ground-timeout))
-                                )
+                            (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
                             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                             (let ((v1-39 (if (> (-> self skel active-channels) 0)
                                              (-> self skel root-channel 0 frame-group)
@@ -3390,7 +3310,7 @@
                                  (pad-buttons square)
                                  )
                          )
-                  (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
+                  (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
                   )
              (if (= (-> self control ground-pat material) (pat-material ice))
                  (set-forward-vel (fmax 32768.0 (* 0.8 (-> self control unknown-float01))))
@@ -3419,7 +3339,7 @@
           (set! (-> a0-44 param 1) (-> self control unknown-surface01 align-speed))
           (joint-control-channel-group-eval! a0-44 (the-as art-joint-anim #f) num-func-seek!)
           )
-        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
             (set! (-> *run-attack-mods* turnvv) 0.0)
             )
         (if (< 2 gp-2)
@@ -3429,9 +3349,7 @@
         )
       )
     (if (and (zero? (logand (-> self control status) 1))
-             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
-                 (the-as int (-> *TARGET-bank* ground-timeout))
-                 )
+             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
              (let ((v1-121 (if (> (-> self skel active-channels) 0)
                                (-> self skel root-channel 0 frame-group)
@@ -3456,7 +3374,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-attack-air (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -3557,7 +3474,7 @@
       (set-quaternion! (-> self control) (-> self control dir-targ))
       (go target-hit-ground #f)
       )
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
         (set! (-> self control dynam gravity-length) (seek
                                                        (-> self control dynam gravity-length)
                                                        (-> self control unknown-dynamics00 gravity-length)
@@ -3565,7 +3482,7 @@
                                                        )
               )
         )
-    (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
+    (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control unknown-vector10))
                   (vector-dot (-> self control dynam gravity-normal) (-> self control transv))
                   )
@@ -3573,11 +3490,11 @@
       (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
       (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
       )
-    (when (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                )
       (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 70)
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 30)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
       (level-hint-spawn
         (game-text-id red-eco-tutorial)
         "sksp0072"
@@ -3630,7 +3547,7 @@
             )
         (while (not
                  (or (and (< (fabs (/ f0-8 (* 0.0033333334 f1-1))) 150.0) (< f1-1 0.0))
-                     (>= (- (-> *display* base-frame-counter) (-> self state-time)) 510)
+                     (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1.7))
                      )
                  )
           (quaternion-rotate-y!
@@ -3696,7 +3613,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-attack-uppercut (target)
   :event
   target-dangerous-event-handler
@@ -3745,7 +3661,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-attack-uppercut-jump (target)
   :event
   target-dangerous-event-handler
@@ -3771,13 +3686,11 @@
     (if (logtest? (-> self control status) 1)
         (go target-hit-ground #f)
         )
-    (when (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                         (pad-buttons square)
-                         )
+    (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                     (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
-                        (the-as int (-> *TARGET-bank* stuck-timeout))
+                        (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                         )
                     (zero? (logand (-> self state-flags) 4096))
                     (zero? (logand (-> self control unknown-surface01 flags) 384))
@@ -3796,9 +3709,7 @@
                 )
         )
       )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons circle)
-                       )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle)
              (can-feet?)
              (= (if (> (-> self skel active-channels) 0)
                     (-> self skel root-channel 0 frame-group)
@@ -3809,17 +3720,12 @@
              )
         (go target-attack-air 'uppercut)
         )
-    (mod-var-jump
-      #t
-      #t
-      (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-      (-> self control transv)
-      )
-    (when (and (= (-> self fact-info-target eco-type) 2)
+    (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
+    (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                )
       (dummy-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 30)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
       )
     (if (and (= (-> self control unknown-symbol30) 'uppercut)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) -8192.0)
@@ -3872,7 +3778,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-flop (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -3911,7 +3816,7 @@
     )
   :enter
   (behavior ((arg0 float) (arg1 float) (arg2 float))
-    (if (and (= (-> self fact-info-target eco-type) 1)
+    (if (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
              (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
              )
         (go target-yellow-jump-blast)
@@ -3964,7 +3869,7 @@
                               (or (= v1-6 (-> self draw art-group data 64)) (= v1-6 (-> self draw art-group data 66)))
                               )
                  )
-        (when (and (or (< (target-move-dist 30) 1638.4)
+        (when (and (or (< (target-move-dist (seconds 0.1)) 1638.4)
                        (and (logtest? (-> self control status) 8) (< 0.7 (-> self control poly-angle)))
                        )
                    (zero? (logand (-> self control status) 32))
@@ -3976,10 +3881,10 @@
         )
       (when gp-1
         (logior! (-> self control status) 1)
-        (when (and (= (-> self fact-info-target eco-type) 2)
+        (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                    (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                    )
-          (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 150)
+          (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.5))
           (dummy-10 (-> self skel effect) 'group-red-eco-strike-ground (ja-frame-num 0) 0)
           (let* ((s4-1 (get-process *default-dead-pool* touch-tracker #x4000))
                  (s5-1 (when s4-1
@@ -4012,7 +3917,7 @@
         (go target-flop-hit-ground gp-1)
         )
       )
-    (when (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                )
       (dummy-10
@@ -4024,7 +3929,7 @@
             17
             )
         )
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 30)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
       )
     (when (and (not (-> self control unknown-symbol30))
                (= (if (> (-> self skel active-channels) 0)
@@ -4176,13 +4081,10 @@
               )
             )
           )
-        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> *TARGET-bank* fall-timeout)))
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *TARGET-bank* fall-timeout))
             (go target-falling #f)
             )
-        (if (and (= *cheat-mode* 'debug)
-                 (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r2))
-                 (not *pause-lock*)
-                 )
+        (if (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2) (not *pause-lock*))
             (go target-falling #f)
             )
         (suspend)
@@ -4194,7 +4096,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-flop-hit-ground (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -4220,7 +4121,7 @@
           )
       )
     (target-land-effect)
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 30)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self control unknown-uint20) (the-as uint arg0))
     (set-forward-vel (-> (new 'static 'array float 1 0.0) 0))
@@ -4234,18 +4135,14 @@
   :trans
   (behavior ()
     (when (!= (-> self control unknown-spoolanim00) 'stuck)
-      (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                         (pad-buttons circle)
-                         )
-               (can-feet?)
-               )
+      (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
           (go target-attack-air 'flop)
           )
       )
-    (when (and (and (= (-> self fact-info-target eco-type) 2)
+    (when (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                     (>= (-> self fact-info-target eco-level) (-> (new 'static 'array float 1 1.0) 0))
                     )
-               (< (- (-> *display* base-frame-counter) (-> self state-time)) 75)
+               (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.25))
                )
       (dummy-10
         (-> self skel effect)
@@ -4256,7 +4153,7 @@
             17
             )
         )
-      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 30)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
       )
     (let ((v1-33 (if (> (-> self skel active-channels) 0)
                      (-> self skel root-channel 0 frame-group)
@@ -4282,7 +4179,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-wheel (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -4335,8 +4231,8 @@
           (set! (-> s4-0 frame-num) 0.0)
           )
         (until (ja-done? 0)
-          (if (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
-              (set! gp-0 (-> *display* base-frame-counter))
+          (if (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
+              (set! gp-0 (the-as int (-> *display* base-frame-counter)))
               )
           (when (and (or (smack-surface? #f) (>= (-> self control unknown-float63) 0.7))
                      (>= (the-as uint (- (-> *display* base-frame-counter) (the-as int (-> self control unknown-uint20))))
@@ -4353,12 +4249,10 @@
                   )
                 )
             (if (zero? s5-0)
-                (set! s5-0 (-> *display* base-frame-counter))
+                (set! s5-0 (the-as int (-> *display* base-frame-counter)))
                 )
             )
-          (if (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                        (pad-buttons square)
-                        )
+          (if (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
               (-> *display* base-frame-counter)
               )
           (TODO-RENAME-9 (-> self align))
@@ -4389,22 +4283,20 @@
           (set! f30-0 (* f30-0 (fmin (-> (new 'static 'array float 1 1.0) 0) (-> self control unknown-float140))))
           )
         )
-      (if (and (or (< (- (-> *display* base-frame-counter) gp-0) (the-as int (-> *TARGET-bank* wheel-jump-pre-window)))
-                   (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0) (pad-buttons x))
+      (if (and (or (< (- (-> *display* base-frame-counter) (the-as time-frame gp-0)) (-> *TARGET-bank* wheel-jump-pre-window))
+                   (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                    )
                (can-jump? 'target-wheel-flip)
                )
           (go target-wheel-flip (-> *TARGET-bank* wheel-flip-height) (-> *TARGET-bank* wheel-flip-dist))
           )
       )
-    (set! (-> self state-hook-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self state-hook-time) (-> *display* base-frame-counter))
     (set! (-> self state-hook)
           (lambda :behavior target
             ()
             (cond
-              ((>= (- (-> *display* base-frame-counter) (the-as int (-> self state-hook-time)))
-                   (the-as int (-> *TARGET-bank* wheel-jump-post-window))
-                   )
+              ((>= (- (-> *display* base-frame-counter) (-> self state-hook-time)) (-> *TARGET-bank* wheel-jump-post-window))
                (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
                )
               (else
@@ -4431,7 +4323,6 @@
   (the-as (function none :behavior target) target-post)
   )
 
-;; failed to figure out what this is:
 (defstate target-wheel-flip (target)
   :event
   target-standard-event-handler
@@ -4445,7 +4336,7 @@
   :trans
   (behavior ()
     (if (and (or (smack-surface? #f)
-                 (< (target-move-dist (the-as int (-> *TARGET-bank* stuck-time))) (-> *TARGET-bank* stuck-distance))
+                 (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                  )
              (!= (-> self state-time) (-> *display* base-frame-counter))
              )
@@ -4456,9 +4347,7 @@
           target-hit
           )
         )
-    (if (and (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                       (pad-buttons circle)
-                       )
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle)
              (can-feet?)
              (and (= (if (> (-> self skel active-channels) 0)
                          (-> self skel root-channel 0 frame-group)
@@ -4523,7 +4412,7 @@
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (while (zero? (logand (-> self control status) 1))
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 3)
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.01))
         (when (not (= (if (> (-> self skel active-channels) 0)
                           (-> self skel root-channel 0 frame-group)
                           )
@@ -4578,12 +4467,12 @@
         )
       )
     (target-land-effect)
-    (set! (-> self state-hook-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self state-hook-time) (-> *display* base-frame-counter))
     (set! (-> self state-hook)
           (lambda :behavior target
             ()
             (cond
-              ((>= (- (-> *display* base-frame-counter) (the-as int (-> self state-hook-time))) 30)
+              ((>= (- (-> *display* base-frame-counter) (-> self state-hook-time)) (seconds 0.1))
                (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
                )
               (else

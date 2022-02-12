@@ -2,11 +2,10 @@
 (in-package goal)
 
 ;; definition for function set-letterbox-frames
-(defun set-letterbox-frames ((arg0 int))
-  (let ((v0-0 (+ (-> *display* base-frame-counter) arg0)))
-    (set! (-> *game-info* letterbox-time) v0-0)
-    v0-0
-    )
+;; INFO: Return type mismatch time-frame vs none.
+(defun set-letterbox-frames ((arg0 time-frame))
+  (set! (-> *game-info* letterbox-time) (+ (-> *display* base-frame-counter) arg0))
+  (none)
   )
 
 ;; definition for function letterbox
@@ -36,19 +35,15 @@
   )
 
 ;; definition for function set-blackout-frames
-(defun set-blackout-frames ((arg0 int))
-  (local-vars (v0-0 int))
-  (cond
-    ((zero? arg0)
-     (set! v0-0 (-> *display* base-frame-counter))
-     (set! (-> *game-info* blackout-time) v0-0)
-     )
-    (else
-      (set! v0-0 (max (-> *game-info* blackout-time) (+ (-> *display* base-frame-counter) arg0)))
-      (set! (-> *game-info* blackout-time) v0-0)
+;; INFO: Return type mismatch time-frame vs none.
+(defun set-blackout-frames ((arg0 time-frame))
+  (if (zero? arg0)
+      (set! (-> *game-info* blackout-time) (-> *display* base-frame-counter))
+      (set! (-> *game-info* blackout-time)
+            (max (-> *game-info* blackout-time) (+ (-> *display* base-frame-counter) arg0))
+            )
       )
-    )
-  v0-0
+  (none)
   )
 
 ;; definition for function blackout
@@ -917,25 +912,27 @@
                 (let ((t9-28 (method-of-type process activate)))
                   (t9-28 game-end-proc *default-pool* 'process (the-as pointer #x70004000))
                   )
-                (run-next-time-in-process game-end-proc (lambda :behavior process
-                                                          ()
-                                                          (set-blackout-frames #x7530)
-                                                          (set! (-> *setting-control* default allow-pause) #f)
-                                                          (set! (-> *setting-control* default allow-progress) #f)
-                                                          (copy-settings-from-target! *setting-control*)
-                                                          (set! (-> *setting-control* default sfx-volume) 0.0)
-                                                          (set! (-> *setting-control* default music-volume) 0.0)
-                                                          (set! (-> *setting-control* default dialog-volume) 0.0)
-                                                          (set! (-> *setting-control* default ambient-volume) 0.0)
-                                                          (let ((gp-0 (-> *display* base-frame-counter)))
-                                                            (until (>= (- (-> *display* base-frame-counter) gp-0) 30)
-                                                              (suspend)
-                                                              )
-                                                            )
-                                                          (kernel-shutdown)
-                                                          (none)
-                                                          )
-                                          )
+                (run-next-time-in-process
+                  game-end-proc
+                  (lambda :behavior process
+                    ()
+                    (set-blackout-frames (seconds 100))
+                    (set! (-> *setting-control* default allow-pause) #f)
+                    (set! (-> *setting-control* default allow-progress) #f)
+                    (copy-settings-from-target! *setting-control*)
+                    (set! (-> *setting-control* default sfx-volume) 0.0)
+                    (set! (-> *setting-control* default music-volume) 0.0)
+                    (set! (-> *setting-control* default dialog-volume) 0.0)
+                    (set! (-> *setting-control* default ambient-volume) 0.0)
+                    (let ((gp-0 (-> *display* base-frame-counter)))
+                      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
+                        (suspend)
+                        )
+                      )
+                    (kernel-shutdown)
+                    (none)
+                    )
+                  )
                 (-> game-end-proc ppointer)
                 )
               (set! *master-exit* #t)

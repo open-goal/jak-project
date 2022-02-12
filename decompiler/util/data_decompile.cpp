@@ -6,6 +6,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/math_util.h"
 #include "common/log/log.h"
+#include "common/util/print_float.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/final_output.h"
@@ -1056,7 +1057,7 @@ goos::Object decompile_value(const TypeSpec& type,
         }
       }
       return pretty_print::to_symbol(fmt::format("(static-sound-name \"{}\")", name));
-    } else {
+    } else if (as_bitfield->get_name() != "time-frame") {  // time-frame has a special case below
       ASSERT((int)bytes.size() == as_bitfield->get_load_size());
       ASSERT(bytes.size() <= 8);
       u64 value = 0;
@@ -1104,7 +1105,7 @@ goos::Object decompile_value(const TypeSpec& type,
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
     }
-  } else if (type == TypeSpec("seconds")) {
+  } else if (type == TypeSpec("seconds") || type == TypeSpec("time-frame")) {
     ASSERT(bytes.size() == 8);
     s64 value;
     memcpy(&value, bytes.data(), 8);
@@ -1116,7 +1117,7 @@ goos::Object decompile_value(const TypeSpec& type,
     }
     double seconds = (double)value / TICKS_PER_SECOND;
     if (seconds * TICKS_PER_SECOND == value) {
-      return pretty_print::build_list("seconds", pretty_print::float_representation(seconds));
+      return pretty_print::to_symbol(fmt::format("(seconds {})", float_to_string(seconds, false)));
     }
     return pretty_print::to_symbol(fmt::format("#x{:x}", value));
   } else if (ts.tc(TypeSpec("uint64"), type)) {
@@ -1143,7 +1144,7 @@ goos::Object decompile_value(const TypeSpec& type,
       return rep;
       // return pretty_print::build_list("the-as", "meters", rep);
     } else {
-      return pretty_print::build_list("meters", rep);
+      return pretty_print::to_symbol(fmt::format("(meters {})", meters_to_string(value)));
     }
   } else if (type == TypeSpec("degrees")) {
     ASSERT(bytes.size() == 4);

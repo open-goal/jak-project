@@ -23,8 +23,8 @@
 
 ;; definition of type snow-ball-junction
 (deftype snow-ball-junction (structure)
-  ((enter-time int64  :offset-assert   0)
-   (exit-time  int64  :offset-assert   8)
+  ((enter-time time-frame  :offset-assert   0)
+   (exit-time  time-frame  :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -70,8 +70,8 @@
    (delay-til-bounce       int32                          :offset-assert 204)
    (rolling-sound-id       sound-id                       :offset-assert 208)
    (rolling-sound-enabled? symbol                         :offset-assert 212)
-   (last-bounce-time       int64                          :offset-assert 216)
-   (hit-player-time        int64                          :offset-assert 224)
+   (last-bounce-time       time-frame                     :offset-assert 216)
+   (hit-player-time        time-frame                     :offset-assert 224)
    (path-info              snow-ball-path-info  :inline   :offset-assert 240)
    (junctions              snow-ball-junction   4 :inline :offset-assert 272)
    )
@@ -114,7 +114,7 @@
 ;; definition of type snow-ball
 (deftype snow-ball (process)
   ((child-override         (pointer snow-ball-roller)   :offset         20)
-   (state-time             int64                        :offset-assert 112)
+   (state-time             time-frame                   :offset-assert 112)
    (last-path-picked       int32                        :offset-assert 120)
    (same-path-picked-count int32                        :offset-assert 124)
    (delay-til-next         int32                        :offset-assert 128)
@@ -486,7 +486,7 @@
       (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
                        (when (= (-> arg0 type) target)
                          (do-push-aways! (-> self root-override))
-                         (when (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) 150)
+                         (when (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.5))
                            (set! (-> self hit-player-time) (-> *display* base-frame-counter))
                            (dummy-22 self *target*)
                            )

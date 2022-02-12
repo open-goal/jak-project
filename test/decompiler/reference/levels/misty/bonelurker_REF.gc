@@ -3,7 +3,7 @@
 
 ;; definition of type bonelurker
 (deftype bonelurker (nav-enemy)
-  ((bump-player-time uint64  :offset-assert 400)
+  ((bump-player-time time-frame  :offset-assert 400)
    )
   :heap-base #x130
   :method-count-assert 76
@@ -133,7 +133,7 @@
                    )
                  (send-event-function arg0 a1-6)
                  )
-               (set! (-> obj bump-player-time) (the-as uint (-> *display* base-frame-counter)))
+               (set! (-> obj bump-player-time) (-> *display* base-frame-counter))
                (set! (-> obj nav-enemy-flags) (logand -65 (-> obj nav-enemy-flags)))
                'push
                )
@@ -150,7 +150,7 @@
 (defbehavior bonelurker-stunned-event-handler bonelurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
     (the-as object (when (= v1-0 'attack)
-                     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+                     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
                        (nav-enemy-set-hit-from-direction arg0)
                        (send-event arg0 'get-attack-count 1)
                        (logclear! (-> self mask) (process-mask actor-pause))
@@ -257,7 +257,7 @@ nav-enemy-default-event-handler
   (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
     (if (and (zero? (logand (-> self nav-enemy-flags) 64))
-             (>= (- (-> *display* base-frame-counter) (the-as int (-> self bump-player-time))) 150)
+             (>= (- (-> *display* base-frame-counter) (-> self bump-player-time)) (seconds 0.5))
              )
         (logior! (-> self nav-enemy-flags) 64)
         )
@@ -266,7 +266,7 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
     (set! (-> self rotate-speed) 524288.0)
-    (set! (-> self turn-time) 30)
+    (set! (-> self turn-time) (seconds 0.1))
     (set! (-> self speed-scale) 1.0)
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
       (cond
@@ -434,7 +434,7 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
     (set! (-> self rotate-speed) 524288.0)
-    (set! (-> self turn-time) 60)
+    (set! (-> self turn-time) (seconds 0.2))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (when (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
         (ja-channel-push! 1 30)
@@ -532,7 +532,7 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
     (set! (-> self rotate-speed) 524288.0)
-    (set! (-> self turn-time) 30)
+    (set! (-> self turn-time) (seconds 0.1))
     (ja-channel-push! 1 45)
     (let ((s4-0 (-> self collide-info))
           (s5-0 (target-pos 0))
@@ -697,32 +697,32 @@ nav-enemy-default-event-handler
                                       :die-anim 14
                                       :neck-joint 5
                                       :player-look-at-joint 5
-                                      :run-travel-speed (meters 6.0)
+                                      :run-travel-speed (meters 6)
                                       :run-rotate-speed (degrees 2880.0)
-                                      :run-acceleration (meters 1.0)
+                                      :run-acceleration (meters 1)
                                       :run-turn-time (seconds 0.1)
-                                      :walk-travel-speed (meters 3.0)
+                                      :walk-travel-speed (meters 3)
                                       :walk-rotate-speed (degrees 2880.0)
-                                      :walk-acceleration (meters 1.0)
+                                      :walk-acceleration (meters 1)
                                       :walk-turn-time (seconds 0.1)
-                                      :attack-shove-back (meters 3.0)
-                                      :attack-shove-up (meters 2.0)
-                                      :shadow-size (meters 2.0)
-                                      :notice-nav-radius (meters 5.0)
-                                      :nav-nearest-y-threshold (meters 5.0)
-                                      :notice-distance (meters 30.0)
-                                      :stop-chase-distance (meters 40.0)
-                                      :frustration-distance (meters 8.0)
-                                      :frustration-time #x4b0
+                                      :attack-shove-back (meters 3)
+                                      :attack-shove-up (meters 2)
+                                      :shadow-size (meters 2)
+                                      :notice-nav-radius (meters 5)
+                                      :nav-nearest-y-threshold (meters 5)
+                                      :notice-distance (meters 30)
+                                      :stop-chase-distance (meters 40)
+                                      :frustration-distance (meters 8)
+                                      :frustration-time (seconds 4)
                                       :die-anim-hold-frame 24.0
                                       :jump-anim-start-frame 10.0
                                       :jump-land-anim-end-frame 32.0
-                                      :jump-height-min (meters 3.0)
+                                      :jump-height-min (meters 3)
                                       :jump-height-factor 0.5
                                       :jump-start-anim-speed 1.0
-                                      :shadow-max-y (meters 1.0)
-                                      :shadow-min-y (meters -1.0)
-                                      :shadow-locus-dist (meters 150.0)
+                                      :shadow-max-y (meters 1)
+                                      :shadow-min-y (meters -1)
+                                      :shadow-locus-dist (meters 150)
                                       :use-align #t
                                       :draw-shadow #t
                                       :move-to-ground #t

@@ -1625,7 +1625,7 @@
             (and (logtest? (-> *cpad-list* cpads 0 valid) 128)
                  (= *master-mode* 'game)
                  (>= (-> *display* base-frame-counter) (-> *game-info* blackout-time))
-                 (< #x49764 (-> *display* real-frame-counter))
+                 (< (seconds 1003) (-> *display* real-frame-counter))
                  )
             (and (cpad-pressed? 0 r2) (paused?))
             *pause-lock*
@@ -1645,7 +1645,9 @@
 ;; definition for function display-sync
 (defun display-sync ((disp display))
   (sync-path 0 0)
-  (set! (-> disp frames (-> disp on-screen) frame run-time) (timer-count (the-as timer-bank #x10000800)))
+  (set! (-> disp frames (-> disp on-screen) frame run-time)
+        (the-as int (timer-count (the-as timer-bank #x10000800)))
+        )
   (let ((frame-idx (-> disp on-screen))
         (syncv-result (syncv 0))
         )
