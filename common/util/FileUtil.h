@@ -24,6 +24,7 @@ std::vector<uint8_t> read_binary_file(const std::string& filename);
 std::string read_text_file(const std::string& path);
 bool is_printable_char(char c);
 std::string combine_path(const std::string& parent, const std::string& child);
+bool file_exists(const std::string& path);
 std::string base_name(const std::string& filename);
 void init_crc();
 uint32_t crc32(const uint8_t* data, size_t size);

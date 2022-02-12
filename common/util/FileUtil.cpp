@@ -174,6 +174,10 @@ std::string combine_path(const std::string& parent, const std::string& child) {
   return parent + "/" + child;
 }
 
+bool file_exists(const std::string& path) {
+  return std::filesystem::exists(path);
+}
+
 std::string base_name(const std::string& filename) {
   size_t pos = 0;
   ASSERT(!filename.empty());

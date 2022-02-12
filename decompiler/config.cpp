@@ -30,7 +30,7 @@ Config read_config_file(const std::string& path_to_config_file,
 
   // Override JSON
   for (auto const& [key, val] : overrides) {
-    fmt::print("[Config] - Overwriting '{}' with '{}\n", key, val);
+    fmt::print("[Config] - Overwriting '{}' with '{}'\n", key, val);
     cfg[key] = val;
   }
 

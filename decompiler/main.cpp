@@ -83,6 +83,15 @@ int main(int argc, char** argv) {
   std::string in_folder = file_util::combine_path(argv[2], config.game_name);
   std::string out_folder = file_util::combine_path(argv[3], config.game_name);
 
+  // Verify the in_folder is correct
+  // TODO - refactor to use ghc::filesystem, cleanup file_util
+  if (!file_util::file_exists(in_folder) ||
+      (!config.expected_elf_name.empty() &&
+       !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name)))) {
+    printf("Aborting - 'in_folder' does not exist or does not contain the expected files\n");
+    return 1;
+  }
+
   std::vector<std::string> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
     dgos.push_back(file_util::combine_path(in_folder, dgo_name));
