@@ -96,6 +96,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Gfx Dump")) {
+      ImGui::Checkbox("Compress Screenshot", &m_compress_screenshot);
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 30);
       ImGui::Separator();

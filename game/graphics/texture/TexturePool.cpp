@@ -249,7 +249,7 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
                 fmt::format(
                     file_util::get_file_path({"debug_out", "textures", tpage_name, "{}-{}-{}.png"}),
                     tex_idx, tex_name, mip_idx),
-                texture_record->data.data(), ww, hh);
+                texture_record->data.data(), ww, hh, false);
           }
           result.push_back(std::move(texture_record));
         }

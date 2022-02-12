@@ -521,7 +521,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
           fmt::format(file_util::get_file_path(
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h);
+          out.data(), tex.w, tex.h, false);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name);
       stats.successful_textures++;
@@ -569,7 +569,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
           fmt::format(file_util::get_file_path(
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h);
+          out.data(), tex.w, tex.h, false);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name);
       stats.successful_textures++;
@@ -599,7 +599,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
           fmt::format(file_util::get_file_path(
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h);
+          out.data(), tex.w, tex.h, false);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name);
       stats.successful_textures++;
@@ -645,7 +645,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
           fmt::format(file_util::get_file_path(
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h);
+          out.data(), tex.w, tex.h, false);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name);
       stats.successful_textures++;
@@ -691,7 +691,7 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
           fmt::format(file_util::get_file_path(
                           {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h);
+          out.data(), tex.w, tex.h, false);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name);
       stats.successful_textures++;
