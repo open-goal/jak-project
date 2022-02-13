@@ -2101,6 +2101,7 @@ u64 loadc(const char* file_name, kheapinfo* heap, u32 flags) {
 /*!
  * Load Object? Uses DATA_FILE_TYPE and doesn't inform listener about the load, or execute a
  * top level segment if a V3 is loaded. Doesn't load off the CD.
+ * This is used in some debug code to load art-groups directly.
  */
 u64 loado(u32 file_name_in, u32 heap_in) {
   char loadName[272];

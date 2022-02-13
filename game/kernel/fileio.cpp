@@ -275,11 +275,13 @@ char* DecodeFileName(const char* name) {
  * @param new_string: if true, allocate a new global string for file name.
  *  will otherwise use a static buffer.
  * DONE, Had unused int, char*, and MakeFileNameInfo params.
+ * PC PORT NOTE : Changed some paths so that they work for us (namely, got rid of 'host')
  */
 char* MakeFileName(int type, const char* name, int new_string) {
   using namespace versions;
   // start with network filesystem
-  kstrcpy(buffer_633, "host:");
+  // kstrcpy(buffer_633, "host:");
+  kstrcpy(buffer_633, "");
   char* buf = strend(buffer_633);
 
   // prefix to build directory
@@ -308,11 +310,13 @@ char* MakeFileName(int type, const char* name, int new_string) {
   } else if (type == DATA_FILE_TYPE) {
     // GOAL object file, but containing data instead of code.
     // likely packed by a tool that isn't the GOAL compiler.
-    sprintf(buf, "%sdata/%s.go", prefix, name);
+    // sprintf(buf, "%sdata/%s.go", prefix, name);
+    sprintf(buf, "%sout/obj/%s.go", prefix, name);
   } else if (type == TX_PAGE_FILE_TYPE) {
     // Texture Page
     // part of level files, so it has a version number.
-    sprintf(buf, "%sdata/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
+    // sprintf(buf, "%sdata/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
+    sprintf(buf, "%sout/obj/%s.go", prefix, name);
   } else if (type == JA_FILE_TYPE) {
     // Art JA (joint animation? no idea)
     // part of level files, so it has a version number
