@@ -5,7 +5,7 @@
 #include "sif_ee.h"
 #include "game/system/iop_thread.h"
 #include "game/runtime.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace ee {
 
@@ -77,9 +77,9 @@ s32 sceSifCallRpc(sceSifClientData* bd,
                   s32 rsize,
                   void* end_func,
                   void* end_para) {
-  assert(!end_func);
-  assert(!end_para);
-  assert(mode == 1);  // async
+  ASSERT(!end_func);
+  ASSERT(!end_para);
+  ASSERT(mode == 1);  // async
   iop->kernel.sif_rpc(bd->rpcd.id, fno, mode, send, ssize, recv, rsize);
   iop->signal_run_iop();
   return 0;
@@ -91,7 +91,7 @@ s32 sceSifCheckStatRpc(sceSifRpcData* bd) {
 }
 
 s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode) {
-  assert(mode == 1);  // async
+  ASSERT(mode == 1);  // async
   bd->rpcd.id = request;
   bd->serve = (sceSifServeData*)1;
   return 0;
@@ -148,7 +148,7 @@ s32 sceRead(s32 fd, void* buf, s32 nbyte) {
 s32 sceWrite(s32 fd, const void* buf, s32 nbyte) {
   auto kv = sce_fds.find(fd);
   if (kv == sce_fds.end()) {
-    assert(false);
+    ASSERT(false);
     return -1;
   } else {
     return fwrite(buf, 1, nbyte, kv->second);
@@ -171,7 +171,7 @@ s32 sceLseek(s32 fd, s32 offset, s32 where) {
         fseek(kv->second, offset, SEEK_SET);
         return ftell(kv->second);
       default:
-        assert(false);
+        ASSERT(false);
         return -1;
     }
   }

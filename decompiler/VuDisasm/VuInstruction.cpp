@@ -1,15 +1,15 @@
 #include "third-party/fmt/core.h"
 #include "VuInstruction.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 VuInstructionAtom VuInstructionAtom::make_vf(int idx) {
-  assert(idx >= 0 && idx <= 31);
+  ASSERT(idx >= 0 && idx <= 31);
   return {Kind::VF, idx};
 }
 
 VuInstructionAtom VuInstructionAtom::make_vi(int idx) {
-  assert(idx >= 0 && idx <= 15);
+  ASSERT(idx >= 0 && idx <= 15);
   return {Kind::VI, idx};
 }
 
@@ -45,6 +45,10 @@ VuInstructionAtom VuInstructionAtom::make_r() {
   return {Kind::R};
 }
 
+bool VuInstructionAtom::is_int_reg(int idx) const {
+  return m_kind == Kind::VI && m_value == idx;
+}
+
 std::string VuInstructionAtom::to_string(const std::vector<std::string>& labels) const {
   switch (m_kind) {
     case Kind::VF:
@@ -78,7 +82,7 @@ std::string VuInstructionAtom::to_string(const std::vector<std::string>& labels)
       return fmt::format("vi{:02d}", m_value);
     case Kind::INVALID:
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 

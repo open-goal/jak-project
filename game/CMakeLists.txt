@@ -1,35 +1,13 @@
 # We define our own compilation flags here.
 set(CMAKE_CXX_STANDARD 17)
 
-# Set default compile flags for GCC
-# optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-if(UNIX)
-    message(STATUS "GCC detected, adding compile flags")
-    set(CMAKE_CXX_FLAGS
-            "${CMAKE_CXX_FLAGS} \
-        -Wall \
-        -Winit-self \
-        -ggdb \
-        -Wextra \
-        -Wno-cast-align \
-        -Wcast-qual \
-        -Wdisabled-optimization \
-        -Wformat \
-        -Wmissing-include-dirs \
-        -Woverloaded-virtual \
-        -Wredundant-decls \
-        -Wshadow \
-        -Wsign-promo -O3 -march=haswell")
-else()
-        set(CMAKE_CXX_FLAGS "/EHsc")
-endif(UNIX)
-
 enable_language(ASM_NASM)
 set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
+        discord.cpp
         system/SystemThread.cpp
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
@@ -60,12 +38,15 @@ set(RUNTIME_SOURCE
         kernel/ksocket.cpp
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
+        mips2c/functions/bones.cpp
         mips2c/functions/collide_cache.cpp
         mips2c/functions/collide_edge_grab.cpp
         mips2c/functions/collide_func.cpp
         mips2c/functions/collide_mesh.cpp
         mips2c/functions/collide_probe.cpp
         mips2c/functions/draw_string.cpp
+        mips2c/functions/joint.cpp
+        mips2c/functions/merc_blend_shape.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
         mips2c/functions/sparticle_launcher.cpp
@@ -95,19 +76,19 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
         graphics/opengl_renderer/Loader.cpp
+        graphics/opengl_renderer/MercProgram.cpp
+        graphics/opengl_renderer/MercRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
         graphics/opengl_renderer/SkyBlendCPU.cpp
         graphics/opengl_renderer/SkyBlendGPU.cpp
         graphics/opengl_renderer/SkyRenderer.cpp
+        graphics/opengl_renderer/Sprite3.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
-        graphics/opengl_renderer/tfrag/BufferedRenderer.cpp
-        graphics/opengl_renderer/tfrag/program6_cpu.cpp
         graphics/opengl_renderer/tfrag/Tfrag3.cpp
         graphics/opengl_renderer/tfrag/tfrag_common.cpp
-        graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
         graphics/opengl_renderer/tfrag/TFragment.cpp
         graphics/opengl_renderer/tfrag/Tie3.cpp
         graphics/texture/TextureConverter.cpp
@@ -120,7 +101,7 @@ set(RUNTIME_SOURCE
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui)
+target_link_libraries(runtime common fmt glfw imgui discord-rpc)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()
@@ -129,4 +110,3 @@ endif()
 
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
-

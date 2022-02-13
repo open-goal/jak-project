@@ -18,9 +18,11 @@ enum class BucketId {
   TFRAG_TEX_LEVEL0 = 5,
   TFRAG_LEVEL0 = 6,
   TIE_LEVEL0 = 9,
+  MERC_TFRAG_TEX_LEVEL0 = 10,
   TFRAG_TEX_LEVEL1 = 12,
   TFRAG_LEVEL1 = 13,
   TIE_LEVEL1 = 16,
+  MERC_TFRAG_TEX_LEVEL1 = 17,
   SHRUB_TEX_LEVEL0 = 19,
   SHRUB_TEX_LEVEL1 = 25,
   ALPHA_TEX_LEVEL0 = 31,
@@ -31,16 +33,27 @@ enum class BucketId {
   TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1 = 39,
   TFRAG_DIRT_LEVEL1 = 41,
   TFRAG_ICE_LEVEL1 = 43,
+  MERC_AFTER_ALPHA = 45,
   PRIS_TEX_LEVEL0 = 48,
+  MERC_PRIS_LEVEL0 = 49,
   PRIS_TEX_LEVEL1 = 51,
+  MERC_PRIS_LEVEL1 = 52,
+  MERC_AFTER_PRIS = 55,
   WATER_TEX_LEVEL0 = 57,
+  MERC_WATER_LEVEL0 = 58,
   WATER_TEX_LEVEL1 = 60,
+  MERC_WATER_LEVEL1 = 61,
   // ...
   PRE_SPRITE_TEX = 65,  // maybe it's just common textures?
   SPRITE = 66,
   DEBUG_DRAW_0 = 67,
   DEBUG_DRAW_1 = 68,
   MAX_BUCKETS = 69
+};
+
+struct LevelVis {
+  bool valid = false;
+  u8 data[2048];
 };
 
 /*!
@@ -63,8 +76,12 @@ struct SharedRenderState {
   bool dump_playback = false;
 
   bool use_sky_cpu = true;
+  bool use_occlusion_culling = true;
+  bool render_debug = false;
 
+  void reset();
   bool has_camera_planes = false;
+  LevelVis occlusion_vis[2];
   math::Vector4f camera_planes[4];
 };
 
@@ -88,6 +105,22 @@ class BucketRenderer {
   std::string m_name;
   BucketId m_my_id;
   bool m_enabled = true;
+};
+
+class RenderMux : public BucketRenderer {
+ public:
+  RenderMux(const std::string& name,
+            BucketId my_id,
+            std::vector<std::unique_ptr<BucketRenderer>> renderers);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void draw_debug_window() override;
+  void serialize(Serializer& ser) override;
+
+ private:
+  std::vector<std::unique_ptr<BucketRenderer>> m_renderers;
+  int m_render_idx = 0;
+  std::vector<std::string> m_name_strs;
+  std::vector<const char*> m_name_str_ptrs;
 };
 
 /*!

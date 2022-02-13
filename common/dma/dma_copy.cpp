@@ -69,8 +69,8 @@ void FixedChunkDmaCopier::serialize_last_result(Serializer& serializer) {
 
 FixedChunkDmaCopier::FixedChunkDmaCopier(u32 main_memory_size)
     : m_main_memory_size(main_memory_size), m_chunk_count(main_memory_size / chunk_size) {
-  assert(chunk_size * m_chunk_count == m_main_memory_size);  // make sure the memory size is valid.
-  assert(chunk_size >= 16);
+  ASSERT(chunk_size * m_chunk_count == m_main_memory_size);  // make sure the memory size is valid.
+  ASSERT(chunk_size >= 16);
   m_chunk_mask.resize(m_chunk_count);
 }
 
@@ -96,7 +96,7 @@ const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool ver
     m_chunk_mask.at(tag_chunk_idx) = true;
 
     if (tag.addr) {
-      assert(tag.addr > EE_MAIN_MEM_LOW_PROTECT);
+      ASSERT(tag.addr > EE_MAIN_MEM_LOW_PROTECT);
       u32 addr_chunk_idx = tag.addr / chunk_size;
       u32 addr_offset_in_chunk = tag.addr % chunk_size;
       // next, make sure that we get the address (if applicable)
@@ -175,7 +175,7 @@ const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool ver
       }
       diff_dma_chains(DmaFollower(memory, offset),
                       DmaFollower(m_result.data.data(), m_result.start_offset));
-      assert(false);
+      ASSERT(false);
     } else {
       fmt::print("verification ok: {} bytes\n", ref.size());
     }

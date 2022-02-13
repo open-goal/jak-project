@@ -6,10 +6,17 @@
 ;; dgos: GAME, ENGINE
 
 ;; This extremely confusing "connection system" allows the connection between
-;; "engines" and "processes".  Basically, a process may add connections to an engine.
-;; A "connection" is really just a function that gets called when the engine runs.
-;; Another way to use the system is as a queue of messages from processes to the engine,
-;; without using a function.
+;; "engines" and "processes".  Basically, a process can "register" itself with any number of "engines".
+;; The "engines" can then iterate through all the connected processes. If a process is destroyed, it will
+;; be removed from all engines.  It is okay to connect a process to multiple engines, or even to the same engine
+;; multiple times.
+
+;; Some example uses:
+;; - a "foreground-engine" has connections to all foreground objects that need to be drawn on each frame.
+;; - when a process wants to change a game setting, it opens a connection to the settings engine to request a change.
+;;   when the process is killed, the setting change is reverted.
+
+;; A "connection" is really just a function that gets called when the engine runs, or a set of parameters that the engine can iterate through.
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,9 +61,9 @@
 (declare-type engine basic)
 (deftype connection (connectable)
   ((param0 basic      :offset-assert 16) ;; often (function object object object object object)
-   (param1 basic      :offset-assert 20)
-   (param2 basic      :offset-assert 24)
-   (param3 basic      :offset-assert 28)
+   (param1 int32      :offset-assert 20)
+   (param2 int32      :offset-assert 24)
+   (param3 int32      :offset-assert 28)
    (quad   uint128  2 :offset 0)
    )
   :method-count-assert 14
@@ -73,6 +80,19 @@
     )
   )
 
+(defmethod inspect connection ((obj connection))
+  (format #t "[~8x] ~A~%" obj 'connection)
+  (format #t "~Tnext0: ~`connectable`P~%" (-> obj next0))
+  (format #t "~Tprev0: ~`connectable`P~%" (-> obj prev0))
+  (format #t "~Tnext1: ~`connectable`P~%" (-> obj next1))
+  (format #t "~Tprev1: ~`connectable`P~%" (-> obj prev1))
+  (format #t "~Tparam0: ~A~%" (-> obj param0))
+  (format #t "~Tparam1: ~A~%" (-> obj param1))
+  (format #t "~Tparam2: ~A~%" (-> obj param2))
+  (format #t "~Tparam3: ~A~%" (-> obj param3))
+  (format #t "~Tquad[2] @ #x~X~%" (&-> obj next0))
+  obj
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; engine
@@ -86,7 +106,7 @@
   ((name basic :offset-assert 4)
    (length int16 :offset-assert 8)             ;; in use elts of the data array
    (allocated-length int16 :offset-assert 10)  ;; size of the data array
-   (engine-time int64 :offset-assert 16)       ;; frame that we last executed
+   (engine-time time-frame :offset-assert 16)       ;; frame that we last executed
 
    ;; terminating nodes for the next0/prev0 linked lists
    (alive-list connectable :inline :offset-assert 32)
@@ -336,7 +356,7 @@
   (let ((ct (the-as connection (-> obj alive-list-end prev0))))
     (while (!= ct (-> obj alive-list))
       ;; execute!
-      ((the-as (function basic basic basic object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
+      ((the-as (function int int int object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
       ;; advance to previous.
       (set! ct (the-as connection (-> ct prev0)))
       )
@@ -350,7 +370,7 @@
   (let ((ct (the-as connection (-> obj alive-list-end prev0))))
     (while (!= ct (-> obj alive-list))
       ;; execute function
-      (let ((result ((the-as (function basic basic basic object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
+      (let ((result ((the-as (function int int int object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
         ;; set the next one, _before_ removing
         (set! ct (the-as connection (-> ct prev0)))
         ;; remove if desired.
@@ -413,9 +433,9 @@
     (let ((con (the connection con)))
       ;; set the params of the connection
       (set! (-> con param0) (the basic func))
-      (set! (-> con param1) (the basic p1))
-      (set! (-> con param2) (the basic p2))
-      (set! (-> con param3) (the basic p3))
+      (set! (-> con param1) (the int p1))
+      (set! (-> con param2) (the int p2))
+      (set! (-> con param3) (the int p3))
       ;; splice us out of the dead list
       (set! (-> obj dead-list next0) (-> con next0))
       (set! (-> con next0 prev0) (-> obj dead-list))
@@ -542,8 +562,6 @@
    )
   0
   )
-
-
 
 (defmethod remove-by-param2 engine ((obj engine) (p2-value int))
   "Remove all connections with param2 matching p2-value"

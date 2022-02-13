@@ -10,7 +10,7 @@ namespace decompiler {
 FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
                                              FormPool& pool,
                                              const Env& env) {
-  assert(forms.size() == 7);
+  ASSERT(forms.size() == 7);
   // lump object
   // name
   // 'interp

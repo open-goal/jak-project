@@ -53,11 +53,11 @@ std::vector<s16> decode_adpcm(BinaryReader& reader) {
     u8 filter = shift_filter >> 4;
 
     if (shift > 12) {
-      assert(false);
+      ASSERT(false);
     }
 
     if (filter > 4) {
-      assert(false);
+      ASSERT(false);
     }
 
     if (flags == 7) {
@@ -143,7 +143,7 @@ int get_shift_error(int shift, const s32* samples, bool /*debug*/) {
 
   for (int sample_idx = 0; sample_idx < SAMPLES_PER_BLOCK; sample_idx++) {
     int left_shift = 32 - (12 + 4 - shift);
-    assert(left_shift >= 0);
+    ASSERT(left_shift >= 0);
     s32 sample_left = samples[sample_idx] << left_shift;
     s32 sample_right = sample_left >> (32 - 4);
     s32 sample_compressed = sample_right << (12 - shift);
@@ -290,7 +290,7 @@ void test_encode_adpcm(const std::vector<s16>& samples,
         fmt::print(" [{}] {} {}\n", i, filter_errors[i], filter_shifts[i]);
       }
       fmt::print("prev: {} {}\n", prev_block_samples[0], prev_block_samples[1]);
-      assert(false);
+      ASSERT(false);
     }
 
     prev_block_samples[0] = samples.at(block_idx * 28 + 27);

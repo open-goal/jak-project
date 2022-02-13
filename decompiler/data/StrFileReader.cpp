@@ -8,13 +8,13 @@
 #include "game/common/overlord_common.h"
 #include "game/common/str_rpc_types.h"
 #include "StrFileReader.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 StrFileReader::StrFileReader(const std::string& file_path) {
   auto data = file_util::read_binary_file(file_path);
-  assert(data.size() >= SECTOR_SIZE);      // must have at least the header sector
-  assert(data.size() % SECTOR_SIZE == 0);  // should be multiple of the sector size.
+  ASSERT(data.size() >= SECTOR_SIZE);      // must have at least the header sector
+  ASSERT(data.size() % SECTOR_SIZE == 0);  // should be multiple of the sector size.
   int end_sector = int(data.size()) / SECTOR_SIZE;
 
   auto* header = (StrFileHeaderSector*)data.data();
@@ -30,9 +30,9 @@ StrFileReader::StrFileReader(const std::string& file_path) {
       next_sector = header->sectors[i + 1];
     }
     if (sector) {
-      assert(!got_zero);             // shouldn't have a non-zero after a zero!
-      assert(next_sector > sector);  // should have a positive size.
-      assert(next_sector * SECTOR_SIZE <= int(data.size()));  // check for overflowing the file
+      ASSERT(!got_zero);             // shouldn't have a non-zero after a zero!
+      ASSERT(next_sector > sector);  // should have a positive size.
+      ASSERT(next_sector * SECTOR_SIZE <= int(data.size()));  // check for overflowing the file
       // get chunk data.
       std::vector<u8> chunk;
       chunk.insert(chunk.end(), data.begin() + sector * SECTOR_SIZE,
@@ -47,15 +47,15 @@ StrFileReader::StrFileReader(const std::string& file_path) {
   // are sized assuming they are packed in order and dense (sectors);
   for (int i = 0; i < SECTOR_TABLE_SIZE; i++) {
     if (header->sectors[i]) {
-      assert(header->sizes[i] == m_chunks.at(i).size());
+      ASSERT(header->sizes[i] == m_chunks.at(i).size());
     } else {
-      assert(header->sizes[i] == 0);
+      ASSERT(header->sizes[i] == 0);
     }
   }
 
   // check nothing stored in the padding.
   for (auto x : header->pad) {
-    assert(x == 0);
+    ASSERT(x == 0);
   }
 }
 
@@ -87,7 +87,7 @@ std::string get_string_of_max_length(const char* data, int max_length) {
       return result;
     }
   }
-  assert(false);
+  ASSERT(false);
   return "";
 }
 
@@ -99,8 +99,8 @@ struct FullName {
 FullName extract_name(const std::string& file_info_name) {
   FullName name;
   name.name = file_info_name;
-  assert(name.name.length() > 10);
-  assert(name.name.substr(name.name.length() - 6, 6) == "-ag.go");
+  ASSERT(name.name.length() > 10);
+  ASSERT(name.name.substr(name.name.length() - 6, 6) == "-ag.go");
   name.name = name.name.substr(0, name.name.length() - 6);
   int chunk_id = 0;
   int place = 0;
@@ -118,7 +118,7 @@ FullName extract_name(const std::string& file_info_name) {
       break;
     }
   }
-  assert(name.name.back() == '+');
+  ASSERT(name.name.back() == '+');
   name.name.pop_back();
   name.chunk_idx = chunk_id;
   return name;
@@ -147,7 +147,7 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
     if (find_string_in_data(chunk.data(), int(chunk.size()), file_info_string, &offset)) {
       offset += file_info_string.length();
     } else {
-      assert(false);
+      ASSERT(false);
     }
 
     // extract the name info as a "name" + "chunk id" + "-ag.go" format.
@@ -158,11 +158,11 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
     if (!done_first) {
       result = full_name.name;
     } else {
-      assert(result == full_name.name);
+      ASSERT(result == full_name.name);
     }
 
     // make sure the index is right.
-    assert(full_name.chunk_idx == chunk_id);
+    ASSERT(full_name.chunk_idx == chunk_id);
 
     done_first = true;
     chunk_id++;
@@ -176,7 +176,7 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
   file_util::MakeISOName(iso_name_1, short_name.c_str());
   // second, using the full name.
   file_util::ISONameFromAnimationName(iso_name_2, result.c_str());
-  assert(strcmp(iso_name_1, iso_name_2) == 0);
+  ASSERT(strcmp(iso_name_1, iso_name_2) == 0);
 
   return result;
 }

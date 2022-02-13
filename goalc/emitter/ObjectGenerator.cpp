@@ -56,7 +56,7 @@ ObjectFileData ObjectGenerator::generate_data_v3(const TypeSystem* ts) {
         const auto& instr = function.instructions[instr_idx];
         u8 temp[128];
         auto count = instr.emit(temp);
-        assert(count < 128);
+        ASSERT(count < 128);
         function.instruction_to_byte_in_data.push_back(data.size());
         function.debug->instructions.at(instr_idx).offset =
             data.size() - function.debug->offset_in_seg;
@@ -158,7 +158,7 @@ IR_Record ObjectGenerator::add_ir(const FunctionRecord& func) {
  * jumps forward to things we haven't seen yet.
  */
 IR_Record ObjectGenerator::get_future_ir_record(const FunctionRecord& func, int ir_id) {
-  assert(func.func_id == int(m_function_data_by_seg.at(func.seg).size()) - 1);
+  ASSERT(func.func_id == int(m_function_data_by_seg.at(func.seg).size()) - 1);
   IR_Record rec;
   rec.seg = func.seg;
   rec.func_id = func.func_id;
@@ -179,7 +179,7 @@ IR_Record ObjectGenerator::get_future_ir_record_in_same_func(const IR_Record& ir
  */
 InstructionRecord ObjectGenerator::add_instr(Instruction inst, IR_Record ir) {
   // only this second condition is an actual error.
-  assert(ir.ir_id ==
+  ASSERT(ir.ir_id ==
          int(m_function_data_by_seg.at(ir.seg).at(ir.func_id).ir_to_instruction.size()) - 1);
 
   InstructionRecord rec;
@@ -239,8 +239,8 @@ void ObjectGenerator::link_static_type_ptr(StaticRecord rec,
  */
 void ObjectGenerator::link_instruction_jump(InstructionRecord jump_instr, IR_Record destination) {
   // must jump within our own function.
-  assert(jump_instr.seg == destination.seg);
-  assert(jump_instr.func_id == destination.func_id);
+  ASSERT(jump_instr.seg == destination.seg);
+  ASSERT(jump_instr.func_id == destination.func_id);
   m_jump_temp_links_by_seg.at(jump_instr.seg).push_back({jump_instr, destination});
 }
 
@@ -286,7 +286,7 @@ void ObjectGenerator::link_static_pointer_to_data(const StaticRecord& source,
   link.dest = dest;
   link.offset_in_source = source_offset;
   link.offset_in_dest = dest_offset;
-  assert(link.source.seg == link.dest.seg);
+  ASSERT(link.source.seg == link.dest.seg);
   m_static_data_temp_ptr_links_by_seg.at(source.seg).push_back(link);
 }
 
@@ -301,7 +301,7 @@ void ObjectGenerator::link_static_pointer_to_function(const StaticRecord& source
   link.source = source;
   link.offset_in_source = source_offset;
   link.dest = target_func;
-  assert(target_func.seg == source.seg);
+  ASSERT(target_func.seg == source.seg);
   m_static_function_temp_ptr_links_by_seg.at(source.seg).push_back(link);
 }
 
@@ -325,7 +325,7 @@ void ObjectGenerator::handle_temp_static_type_links(int seg) {
   for (const auto& type_links : m_static_type_temp_links_by_seg.at(seg)) {
     const auto& type_name = type_links.first;
     for (const auto& link : type_links.second) {
-      assert(seg == link.rec.seg);
+      ASSERT(seg == link.rec.seg);
       const auto& static_object = m_static_data_by_seg.at(seg).at(link.rec.static_id);
       int total_offset = static_object.location + link.offset;
       m_type_ptr_links_by_seg.at(seg)[type_name].push_back(total_offset);
@@ -342,7 +342,7 @@ void ObjectGenerator::handle_temp_static_sym_links(int seg) {
   for (const auto& sym_links : m_static_sym_temp_links_by_seg.at(seg)) {
     const auto& sym_name = sym_links.first;
     for (const auto& link : sym_links.second) {
-      assert(seg == link.rec.seg);
+      ASSERT(seg == link.rec.seg);
       const auto& static_object = m_static_data_by_seg.at(seg).at(link.rec.static_id);
       int total_offset = static_object.location + link.offset;
       m_sym_links_by_seg.at(seg)[sym_name].push_back(total_offset);
@@ -367,7 +367,7 @@ void ObjectGenerator::handle_temp_static_ptr_links(int seg) {
   for (const auto& link : m_static_function_temp_ptr_links_by_seg.at(seg)) {
     const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
     const auto& dest_function = m_function_data_by_seg.at(seg).at(link.dest.func_id);
-    assert(link.dest.seg == seg);
+    ASSERT(link.dest.seg == seg);
     int loc = dest_function.instruction_to_byte_in_data.at(0);
     PointerLink result_link;
     result_link.segment = seg;
@@ -387,11 +387,11 @@ void ObjectGenerator::handle_temp_jump_links(int seg) {
     // 2). the value of RIP at the jump (the instruction after the jump, on x86)
     // 3). the value of RIP we want
     const auto& function = m_function_data_by_seg.at(seg).at(link.jump_instr.func_id);
-    assert(link.jump_instr.func_id == link.dest.func_id);
-    assert(link.jump_instr.seg == seg);
-    assert(link.dest.seg == seg);
+    ASSERT(link.jump_instr.func_id == link.dest.func_id);
+    ASSERT(link.jump_instr.seg == seg);
+    ASSERT(link.dest.seg == seg);
     const auto& jump_instr = function.instructions.at(link.jump_instr.instr_id);
-    assert(jump_instr.get_imm_size() == 4);
+    ASSERT(jump_instr.get_imm_size() == 4);
 
     // 1). patch = instruction location + location of imm in instruction.
     int patch_location = function.instruction_to_byte_in_data.at(link.jump_instr.instr_id) +
@@ -417,16 +417,16 @@ void ObjectGenerator::handle_temp_instr_sym_links(int seg) {
   for (const auto& links : m_symbol_instr_temp_links_by_seg.at(seg)) {
     const auto& sym_name = links.first;
     for (const auto& link : links.second) {
-      assert(seg == link.rec.seg);
+      ASSERT(seg == link.rec.seg);
       const auto& function = m_function_data_by_seg.at(seg).at(link.rec.func_id);
       const auto& instruction = function.instructions.at(link.rec.instr_id);
       int offset_of_instruction = function.instruction_to_byte_in_data.at(link.rec.instr_id);
       int offset_in_instruction =
           link.is_mem_access ? instruction.offset_of_disp() : instruction.offset_of_imm();
       if (link.is_mem_access) {
-        assert(instruction.get_disp_size() == 4);
+        ASSERT(instruction.get_disp_size() == 4);
       } else {
-        assert(instruction.get_imm_size() == 4);
+        ASSERT(instruction.get_imm_size() == 4);
       }
       m_sym_links_by_seg.at(seg)[sym_name].push_back(offset_of_instruction + offset_in_instruction);
     }
@@ -516,8 +516,8 @@ void ObjectGenerator::emit_link_ptr(int seg) {
   auto& out = m_link_by_seg.at(seg);
   for (auto& rec : m_pointer_links_by_seg.at(seg)) {
     out.push_back(LINK_PTR);
-    assert(rec.dest >= 0);
-    assert(rec.source >= 0);
+    ASSERT(rec.dest >= 0);
+    ASSERT(rec.source >= 0);
     push_data<u32>(rec.source, out);
     push_data<u32>(rec.dest, out);
   }
@@ -540,11 +540,11 @@ void ObjectGenerator::emit_link_rip(int seg) {
     const auto& src_func = m_function_data_by_seg.at(rec.instr.seg).at(rec.instr.func_id);
     push_data<u32>(src_func.instruction_to_byte_in_data.at(rec.instr.instr_id + 1), out);
     // offset into target
-    assert(rec.offset_in_segment >= 0);
+    ASSERT(rec.offset_in_segment >= 0);
     push_data<u32>(rec.offset_in_segment, out);
     // patch location
     const auto& src_instr = src_func.instructions.at(rec.instr.instr_id);
-    assert(src_instr.get_disp_size() == 4);
+    ASSERT(src_instr.get_disp_size() == 4);
     push_data<u32>(
         src_func.instruction_to_byte_in_data.at(rec.instr.instr_id) + src_instr.offset_of_disp(),
         out);

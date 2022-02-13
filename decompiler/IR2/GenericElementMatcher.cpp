@@ -594,7 +594,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -638,7 +638,21 @@ DerefTokenMatcher DerefTokenMatcher::any_integer(int match_id) {
   return result;
 }
 
-bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* maps_out) const {
+DerefTokenMatcher DerefTokenMatcher::any_expr(int match_id) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::ANY_EXPR;
+  result.m_str_out_id = match_id;
+  return result;
+}
+
+DerefTokenMatcher DerefTokenMatcher::any_expr_or_int(int match_id) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::ANY_EXPR_OR_INT;
+  result.m_str_out_id = match_id;
+  return result;
+}
+
+bool DerefTokenMatcher::do_match(DerefToken& input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::STRING:
       return input.kind() == DerefToken::Kind::FIELD_NAME && input.field_name() == m_str;
@@ -652,6 +666,18 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
       return false;
     case Kind::CONSTANT_INTEGER:
       return input.kind() == DerefToken::Kind::INTEGER_CONSTANT && input.is_int(m_int);
+    case Kind::ANY_EXPR:
+    case Kind::ANY_EXPR_OR_INT:
+      if (input.is_expr()) {
+        if (m_str_out_id != -1) {
+          maps_out->forms[m_str_out_id] = input.expr();
+        }
+        return true;
+      }
+      // NOTE intentional fallthrough
+      if (m_kind != Kind::ANY_EXPR_OR_INT) {
+        return false;
+      }
     case Kind::ANY_INTEGER:
       if (input.kind() == DerefToken::Kind::INTEGER_CONSTANT) {
         if (m_str_out_id != -1) {
@@ -661,7 +687,7 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
       }
       return false;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -719,7 +745,7 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
       }
       return false;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }

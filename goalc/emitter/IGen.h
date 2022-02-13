@@ -3,7 +3,7 @@
 #include "Register.h"
 #include "Instruction.h"
 #include <stdexcept>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace emitter {
 class IGen {
@@ -15,8 +15,8 @@ class IGen {
    * Move data from src to dst. Moves all 64-bits of the GPR.
    */
   static Instruction mov_gpr64_gpr64(Register dst, Register src) {
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     Instruction instr(0x89);
     instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
     return instr;
@@ -26,7 +26,7 @@ class IGen {
    * Move a 64-bit constant into a register.
    */
   static Instruction mov_gpr64_u64(Register dst, uint64_t val) {
-    assert(dst.is_gpr());
+    ASSERT(dst.is_gpr());
     bool rex_b = false;
     auto dst_hw_id = dst.hw_id();
     if (dst_hw_id >= 8) {
@@ -43,8 +43,8 @@ class IGen {
    * Move a 32-bit constant into a register. Zeros the upper 32 bits.
    */
   static Instruction mov_gpr64_u32(Register dst, uint64_t val) {
-    assert(val <= UINT32_MAX);
-    assert(dst.is_gpr());
+    ASSERT(val <= UINT32_MAX);
+    ASSERT(dst.is_gpr());
     auto dst_hw_id = dst.hw_id();
     bool rex_b = false;
     if (dst_hw_id >= 8) {
@@ -66,8 +66,8 @@ class IGen {
    * This is always bigger than mov_gpr64_u32, but smaller than a mov_gpr_u64.
    */
   static Instruction mov_gpr64_s32(Register dst, int64_t val) {
-    assert(val >= INT32_MIN && val <= INT32_MAX);
-    assert(dst.is_gpr());
+    ASSERT(val >= INT32_MIN && val <= INT32_MAX);
+    ASSERT(dst.is_gpr());
     Instruction instr(0xc7);
     instr.set_modrm_and_rex(0, dst.hw_id(), 3, true);
     instr.set(Imm(4, val));
@@ -78,8 +78,8 @@ class IGen {
    * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
    */
   static Instruction movd_gpr32_xmm32(Register dst, Register src) {
-    assert(dst.is_gpr());
-    assert(src.is_xmm());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_xmm());
     Instruction instr(0x66);
     instr.set_op2(0x0f);
     instr.set_op3(0x7e);
@@ -92,8 +92,8 @@ class IGen {
    * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
    */
   static Instruction movd_xmm32_gpr32(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_gpr());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_gpr());
     Instruction instr(0x66);
     instr.set_op2(0x0f);
     instr.set_op3(0x6e);
@@ -106,8 +106,8 @@ class IGen {
    * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
    */
   static Instruction movq_gpr64_xmm64(Register dst, Register src) {
-    assert(dst.is_gpr());
-    assert(src.is_xmm());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_xmm());
     Instruction instr(0x66);
     instr.set_op2(0x0f);
     instr.set_op3(0x7e);
@@ -120,8 +120,8 @@ class IGen {
    * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
    */
   static Instruction movq_xmm64_gpr64(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_gpr());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_gpr());
     Instruction instr(0x66);
     instr.set_op2(0x0f);
     instr.set_op3(0x6e);
@@ -134,8 +134,8 @@ class IGen {
    * Move 32-bits between xmm's
    */
   static Instruction mov_xmm32_xmm32(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x10);
@@ -157,12 +157,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load8s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0xf);
     instr.set_op2(0xbe);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true,
@@ -171,12 +171,12 @@ class IGen {
   }
 
   static Instruction store8_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, Register value) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x88);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id());
     if (value.id() > RBX) {
@@ -189,13 +189,13 @@ class IGen {
                                                            Register addr1,
                                                            Register addr2,
                                                            s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xbe);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -207,13 +207,13 @@ class IGen {
                                                            Register addr2,
                                                            Register value,
                                                            s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x88);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                      offset, false);
@@ -227,13 +227,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xbe);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -245,13 +245,13 @@ class IGen {
                                                             Register addr2,
                                                             Register value,
                                                             s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x88);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, false);
@@ -267,12 +267,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load8u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0xf);
     instr.set_op2(0xb6);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true,
@@ -284,13 +284,13 @@ class IGen {
                                                            Register addr1,
                                                            Register addr2,
                                                            s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xb6);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -302,13 +302,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xb6);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -322,12 +322,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load16s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0xf);
     instr.set_op2(0xbf);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true,
@@ -338,12 +338,12 @@ class IGen {
   static Instruction store16_gpr64_gpr64_plus_gpr64(Register addr1,
                                                     Register addr2,
                                                     Register value) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x66);
     instr.set_op2(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id());
@@ -355,13 +355,13 @@ class IGen {
                                                             Register addr2,
                                                             Register value,
                                                             s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x66);
     instr.set_op2(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -374,13 +374,13 @@ class IGen {
                                                              Register addr2,
                                                              Register value,
                                                              s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x66);
     instr.set_op2(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -393,13 +393,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xbf);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -411,13 +411,13 @@ class IGen {
                                                              Register addr1,
                                                              Register addr2,
                                                              s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xbf);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -431,12 +431,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load16u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0xf);
     instr.set_op2(0xb7);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true,
@@ -448,13 +448,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xb7);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -466,13 +466,13 @@ class IGen {
                                                              Register addr1,
                                                              Register addr2,
                                                              s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xb7);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
@@ -486,12 +486,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load32s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x63);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true);
     return instr;
@@ -500,12 +500,12 @@ class IGen {
   static Instruction store32_gpr64_gpr64_plus_gpr64(Register addr1,
                                                     Register addr2,
                                                     Register value) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id());
     return instr;
@@ -515,13 +515,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x63);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                      offset, true);
@@ -532,13 +532,13 @@ class IGen {
                                                             Register addr2,
                                                             Register value,
                                                             s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                      offset, false);
@@ -549,13 +549,13 @@ class IGen {
                                                              Register addr1,
                                                              Register addr2,
                                                              s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x63);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, true);
@@ -566,13 +566,13 @@ class IGen {
                                                              Register addr2,
                                                              Register value,
                                                              s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, false);
@@ -585,12 +585,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load32u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id());
     return instr;
@@ -600,13 +600,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                      offset, false);
@@ -617,13 +617,13 @@ class IGen {
                                                              Register addr1,
                                                              Register addr2,
                                                              s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, false);
@@ -636,12 +636,12 @@ class IGen {
    * Cannot use rsp.
    */
   static Instruction load64_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true);
     return instr;
@@ -650,12 +650,12 @@ class IGen {
   static Instruction store64_gpr64_gpr64_plus_gpr64(Register addr1,
                                                     Register addr2,
                                                     Register value) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                   true);
@@ -666,13 +666,13 @@ class IGen {
                                                            Register addr1,
                                                            Register addr2,
                                                            s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                      offset, true);
@@ -683,13 +683,13 @@ class IGen {
                                                             Register addr2,
                                                             Register value,
                                                             s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                      offset, true);
@@ -700,13 +700,13 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(dst.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, true);
@@ -717,13 +717,13 @@ class IGen {
                                                              Register addr2,
                                                              Register value,
                                                              s64 offset) {
-    assert(value.is_gpr());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(value.is_gpr());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, true);
@@ -738,7 +738,7 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return storevf_gpr64_plus_gpr64_plus_s32(value, addr, off, offset);
     }
-    assert(false);
+    ASSERT(false);
     return {0};
   }
 
@@ -756,7 +756,7 @@ class IGen {
         } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
           return store8_gpr64_gpr64_plus_gpr64_plus_s32(addr, off, value, offset);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       case 2:
         if (offset == 0) {
@@ -766,7 +766,7 @@ class IGen {
         } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
           return store16_gpr64_gpr64_plus_gpr64_plus_s32(addr, off, value, offset);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       case 4:
         if (offset == 0) {
@@ -776,7 +776,7 @@ class IGen {
         } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
           return store32_gpr64_gpr64_plus_gpr64_plus_s32(addr, off, value, offset);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       case 8:
         if (offset == 0) {
@@ -786,10 +786,10 @@ class IGen {
         } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
           return store64_gpr64_gpr64_plus_gpr64_plus_s32(addr, off, value, offset);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       default:
-        assert(false);
+        ASSERT(false);
         return {0};
     }
   }
@@ -802,7 +802,7 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return loadvf_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
@@ -838,7 +838,7 @@ class IGen {
             return load8u_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
           }
         } else {
-          assert(false);
+          ASSERT(false);
         }
       case 2:
         if (offset == 0) {
@@ -860,7 +860,7 @@ class IGen {
             return load16u_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
           }
         } else {
-          assert(false);
+          ASSERT(false);
         }
       case 4:
         if (offset == 0) {
@@ -882,7 +882,7 @@ class IGen {
             return load32u_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
           }
         } else {
-          assert(false);
+          ASSERT(false);
         }
       case 8:
         if (offset == 0) {
@@ -895,10 +895,10 @@ class IGen {
           return load64_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
 
         } else {
-          assert(false);
+          ASSERT(false);
         }
       default:
-        assert(false);
+        ASSERT(false);
         return {0};
     }
   }
@@ -909,9 +909,9 @@ class IGen {
   static Instruction store32_xmm32_gpr64_plus_gpr64(Register addr1,
                                                     Register addr2,
                                                     Register xmm_value) {
-    assert(xmm_value.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -925,9 +925,9 @@ class IGen {
   static Instruction load32_xmm32_gpr64_plus_gpr64(Register xmm_dest,
                                                    Register addr1,
                                                    Register addr2) {
-    assert(xmm_dest.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -942,10 +942,10 @@ class IGen {
                                                             Register addr2,
                                                             Register xmm_value,
                                                             s64 offset) {
-    assert(xmm_value.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -961,10 +961,10 @@ class IGen {
                                                            Register addr1,
                                                            Register addr2,
                                                            s64 offset) {
-    assert(xmm_dest.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -980,10 +980,10 @@ class IGen {
                                                              Register addr2,
                                                              Register xmm_value,
                                                              s64 offset) {
-    assert(xmm_value.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -996,9 +996,9 @@ class IGen {
   }
 
   static Instruction lea_reg_plus_off32(Register dest, Register base, s64 offset) {
-    assert(dest.is_gpr());
-    assert(base.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(base.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x8d);
     instr.set_modrm_rex_sib_for_reg_reg_disp(dest.hw_id(), 2, base.hw_id(), true);
     instr.set(Imm(4, offset));
@@ -1006,9 +1006,9 @@ class IGen {
   }
 
   static Instruction lea_reg_plus_off8(Register dest, Register base, s64 offset) {
-    assert(dest.is_gpr());
-    assert(base.is_gpr());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(base.is_gpr());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x8d);
     instr.set_modrm_rex_sib_for_reg_reg_disp(dest.hw_id(), 1, base.hw_id(), true);
     instr.set(Imm(1, offset));
@@ -1021,15 +1021,15 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return lea_reg_plus_off32(dest, base, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
 
   static Instruction store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 offset) {
-    assert(xmm_value.is_xmm());
-    assert(base.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(base.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x11);
@@ -1040,9 +1040,9 @@ class IGen {
   }
 
   static Instruction store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, s64 offset) {
-    assert(xmm_value.is_xmm());
-    assert(base.is_gpr());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(base.is_gpr());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x11);
@@ -1056,10 +1056,10 @@ class IGen {
                                                             Register addr1,
                                                             Register addr2,
                                                             s64 offset) {
-    assert(xmm_dest.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1072,9 +1072,9 @@ class IGen {
   }
 
   static Instruction load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 offset) {
-    assert(xmm_dest.is_xmm());
-    assert(base.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(base.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x10);
@@ -1085,9 +1085,9 @@ class IGen {
   }
 
   static Instruction load32_xmm32_gpr64_plus_s8(Register xmm_dest, Register base, s64 offset) {
-    assert(xmm_dest.is_xmm());
-    assert(base.is_gpr());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(base.is_gpr());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x10);
@@ -1105,7 +1105,7 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return load32_xmm32_gpr64_plus_gpr64_plus_s32(xmm_dest, addr, off, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
@@ -1118,33 +1118,33 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return store32_xmm32_gpr64_plus_gpr64_plus_s32(addr, off, xmm_value, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
 
   static Instruction store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset) {
-    assert(base.is_gpr());
-    assert(xmm_value.is_xmm());
+    ASSERT(base.is_gpr());
+    ASSERT(xmm_value.is_xmm());
     if (offset >= INT8_MIN && offset <= INT8_MAX) {
       return store32_xmm32_gpr64_plus_s8(base, xmm_value, offset);
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return store32_xmm32_gpr64_plus_s32(base, xmm_value, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
 
   static Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset) {
-    assert(base.is_gpr());
-    assert(xmm_dest.is_xmm());
+    ASSERT(base.is_gpr());
+    ASSERT(xmm_dest.is_xmm());
     if (offset >= INT8_MIN && offset <= INT8_MAX) {
       return load32_xmm32_gpr64_plus_s8(xmm_dest, base, offset);
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return load32_xmm32_gpr64_plus_s32(xmm_dest, base, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
@@ -1157,8 +1157,8 @@ class IGen {
    * Store a 128-bit xmm into an address stored in a register, no offset
    */
   static Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
-    assert(gpr_addr.is_gpr());
-    assert(xmm_value.is_xmm());
+    ASSERT(gpr_addr.is_gpr());
+    ASSERT(xmm_value.is_xmm());
     Instruction instr(0x66);
     //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1169,9 +1169,9 @@ class IGen {
   }
 
   static Instruction store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64 offset) {
-    assert(gpr_addr.is_gpr());
-    assert(xmm_value.is_xmm());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(gpr_addr.is_gpr());
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x66);
     //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1183,9 +1183,9 @@ class IGen {
   }
 
   static Instruction store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 offset) {
-    assert(gpr_addr.is_gpr());
-    assert(xmm_value.is_xmm());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(gpr_addr.is_gpr());
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x66);
     //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1197,8 +1197,8 @@ class IGen {
   }
 
   static Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
-    assert(gpr_addr.is_gpr());
-    assert(xmm_dest.is_xmm());
+    ASSERT(gpr_addr.is_gpr());
+    ASSERT(xmm_dest.is_xmm());
     Instruction instr(0x66);
     //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1209,9 +1209,9 @@ class IGen {
   }
 
   static Instruction load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 offset) {
-    assert(gpr_addr.is_gpr());
-    assert(xmm_dest.is_xmm());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(gpr_addr.is_gpr());
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x66);
     //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1223,9 +1223,9 @@ class IGen {
   }
 
   static Instruction load128_xmm128_gpr64_s8(Register xmm_dest, Register gpr_addr, s64 offset) {
-    assert(gpr_addr.is_gpr());
-    assert(xmm_dest.is_xmm());
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(gpr_addr.is_gpr());
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x66);
     //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1244,7 +1244,7 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return load128_xmm128_gpr64_s32(xmm_dest, base, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
@@ -1257,7 +1257,7 @@ class IGen {
     } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
       return store128_gpr64_xmm128_s32(base, xmm_val, offset);
     } else {
-      assert(false);
+      ASSERT(false);
       return {0};
     }
   }
@@ -1267,32 +1267,32 @@ class IGen {
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   static Instruction load64_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
     return instr;
   }
 
   static Instruction load32s_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x63);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
     return instr;
   }
 
   static Instruction load32u_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x8b);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, false);
     return instr;
   }
 
   static Instruction load16u_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xb7);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
@@ -1300,8 +1300,8 @@ class IGen {
   }
 
   static Instruction load16s_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xbf);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
@@ -1309,8 +1309,8 @@ class IGen {
   }
 
   static Instruction load8u_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xb6);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
@@ -1318,8 +1318,8 @@ class IGen {
   }
 
   static Instruction load8s_rip_s32(Register dest, s64 offset) {
-    assert(dest.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dest.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0xf);
     instr.set_op2(0xbe);
     instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
@@ -1352,32 +1352,32 @@ class IGen {
       case 8:
         return load64_rip_s32(dest, offset);
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
   static Instruction store64_rip_s32(Register src, s64 offset) {
-    assert(src.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(src.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, true);
     return instr;
   }
 
   static Instruction store32_rip_s32(Register src, s64 offset) {
-    assert(src.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(src.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x89);
     instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, false);
     return instr;
   }
 
   static Instruction store16_rip_s32(Register src, s64 offset) {
-    assert(src.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(src.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x66);
     instr.set_op2(0x89);
     instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, false);
@@ -1386,9 +1386,9 @@ class IGen {
   }
 
   static Instruction store8_rip_s32(Register src, s64 offset) {
-    assert(src.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(src.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x88);
     instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, false);
     if (src.id() > RBX) {
@@ -1408,21 +1408,21 @@ class IGen {
       case 8:
         return store64_rip_s32(value, offset);
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
   static Instruction static_addr(Register dst, s64 offset) {
-    assert(dst.is_gpr());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_gpr());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x8d);
     instr.set_modrm_and_rex_for_rip_plus_s32(dst.hw_id(), offset, true);
     return instr;
   }
 
   static Instruction static_load_xmm32(Register xmm_dest, s64 offset) {
-    assert(xmm_dest.is_xmm());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(xmm_dest.is_xmm());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1434,8 +1434,8 @@ class IGen {
   }
 
   static Instruction static_store_xmm32(Register xmm_value, s64 offset) {
-    assert(xmm_value.is_xmm());
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(xmm_value.is_xmm());
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
@@ -1450,8 +1450,8 @@ class IGen {
 
   // TODO, consider specialized stack loads and stores?
   static Instruction load64_gpr64_plus_s32(Register dst_reg, int32_t offset, Register src_reg) {
-    assert(dst_reg.is_gpr());
-    assert(src_reg.is_gpr());
+    ASSERT(dst_reg.is_gpr());
+    ASSERT(src_reg.is_gpr());
     Instruction instr(0x8b);
     instr.set_modrm_rex_sib_for_reg_reg_disp(dst_reg.hw_id(), 2, src_reg.hw_id(), true);
     instr.set_disp(Imm(4, offset));
@@ -1462,8 +1462,8 @@ class IGen {
    * Store 64-bits from gpr into memory located at 64-bit reg + 32-bit signed offset.
    */
   static Instruction store64_gpr64_plus_s32(Register addr, int32_t offset, Register value) {
-    assert(addr.is_gpr());
-    assert(value.is_gpr());
+    ASSERT(addr.is_gpr());
+    ASSERT(value.is_gpr());
     Instruction instr(0x89);
     instr.set_modrm_rex_sib_for_reg_reg_disp(value.hw_id(), 2, addr.hw_id(), true);
     instr.set_disp(Imm(4, offset));
@@ -1482,7 +1482,7 @@ class IGen {
    * Instruction to push gpr (64-bits) onto the stack
    */
   static Instruction push_gpr64(Register reg) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     if (reg.hw_id() >= 8) {
       auto i = Instruction(0x50 + reg.hw_id() - 8);
       i.set(REX(false, false, false, true));
@@ -1495,7 +1495,7 @@ class IGen {
    * Instruction to pop 64 bit gpr from the stack
    */
   static Instruction pop_gpr64(Register reg) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     if (reg.hw_id() >= 8) {
       auto i = Instruction(0x58 + reg.hw_id() - 8);
       i.set(REX(false, false, false, true));
@@ -1508,14 +1508,14 @@ class IGen {
    * Call a function stored in a 64-bit gpr
    */
   static Instruction call_r64(Register reg_) {
-    assert(reg_.is_gpr());
+    ASSERT(reg_.is_gpr());
     auto reg = reg_.hw_id();
     Instruction instr(0xff);
     if (reg >= 8) {
       instr.set(REX(false, false, false, true));
       reg -= 8;
     }
-    assert(reg < 8);
+    ASSERT(reg < 8);
     ModRM mrm;
     mrm.rm = reg;
     mrm.reg_op = 2;
@@ -1528,14 +1528,14 @@ class IGen {
    * Jump to an x86-64 address stored in a 64-bit gpr.
    */
   static Instruction jmp_r64(Register reg_) {
-    assert(reg_.is_gpr());
+    ASSERT(reg_.is_gpr());
     auto reg = reg_.hw_id();
     Instruction instr(0xff);
     if (reg >= 8) {
       instr.set(REX(false, false, false, true));
       reg -= 8;
     }
-    assert(reg < 8);
+    ASSERT(reg < 8);
     ModRM mrm;
     mrm.rm = reg;
     mrm.reg_op = 4;
@@ -1548,8 +1548,8 @@ class IGen {
   //   INTEGER MATH
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   static Instruction sub_gpr64_imm8s(Register reg, int64_t imm) {
-    assert(reg.is_gpr());
-    assert(imm >= INT8_MIN && imm <= INT8_MAX);
+    ASSERT(reg.is_gpr());
+    ASSERT(imm >= INT8_MIN && imm <= INT8_MAX);
     // SUB r/m64, imm8 : REX.W + 83 /5 ib
     Instruction instr(0x83);
     instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
@@ -1558,8 +1558,8 @@ class IGen {
   }
 
   static Instruction sub_gpr64_imm32s(Register reg, int64_t imm) {
-    assert(reg.is_gpr());
-    assert(imm >= INT32_MIN && imm <= INT32_MAX);
+    ASSERT(reg.is_gpr());
+    ASSERT(imm >= INT32_MIN && imm <= INT32_MAX);
     Instruction instr(0x81);
     instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
     instr.set(Imm(4, imm));
@@ -1567,7 +1567,7 @@ class IGen {
   }
 
   static Instruction add_gpr64_imm8s(Register reg, int64_t v) {
-    assert(v >= INT8_MIN && v <= INT8_MAX);
+    ASSERT(v >= INT8_MIN && v <= INT8_MAX);
     Instruction instr(0x83);
     instr.set_modrm_and_rex(0, reg.hw_id(), 3, true);
     instr.set(Imm(1, v));
@@ -1575,7 +1575,7 @@ class IGen {
   }
 
   static Instruction add_gpr64_imm32s(Register reg, int64_t v) {
-    assert(v >= INT32_MIN && v <= INT32_MAX);
+    ASSERT(v >= INT32_MIN && v <= INT32_MAX);
     Instruction instr(0x81);
     instr.set_modrm_and_rex(0, reg.hw_id(), 3, true);
     instr.set(Imm(4, v));
@@ -1606,16 +1606,16 @@ class IGen {
 
   static Instruction add_gpr64_gpr64(Register dst, Register src) {
     Instruction instr(0x01);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
     return instr;
   }
 
   static Instruction sub_gpr64_gpr64(Register dst, Register src) {
     Instruction instr(0x29);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
     return instr;
   }
@@ -1627,8 +1627,8 @@ class IGen {
   static Instruction imul_gpr32_gpr32(Register dst, Register src) {
     Instruction instr(0xf);
     instr.set_op2(0xaf);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
     return instr;
   }
@@ -1640,8 +1640,8 @@ class IGen {
   static Instruction imul_gpr64_gpr64(Register dst, Register src) {
     Instruction instr(0xf);
     instr.set_op2(0xaf);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     return instr;
   }
@@ -1651,14 +1651,14 @@ class IGen {
    */
   static Instruction idiv_gpr32(Register reg) {
     Instruction instr(0xf7);
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     instr.set_modrm_and_rex(7, reg.hw_id(), 3, false);
     return instr;
   }
 
   static Instruction unsigned_div_gpr32(Register reg) {
     Instruction instr(0xf7);
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     instr.set_modrm_and_rex(6, reg.hw_id(), 3, false);
     return instr;
   }
@@ -1677,8 +1677,8 @@ class IGen {
    */
   static Instruction movsx_r64_r32(Register dst, Register src) {
     Instruction instr(0x63);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     return instr;
   }
@@ -1689,8 +1689,8 @@ class IGen {
    */
   static Instruction cmp_gpr64_gpr64(Register a, Register b) {
     Instruction instr(0x3b);
-    assert(a.is_gpr());
-    assert(b.is_gpr());
+    ASSERT(a.is_gpr());
+    ASSERT(b.is_gpr());
     instr.set_modrm_and_rex(a.hw_id(), b.hw_id(), 3, true);
     return instr;
   }
@@ -1704,8 +1704,8 @@ class IGen {
    */
   static Instruction or_gpr64_gpr64(Register dst, Register src) {
     Instruction instr(0x0b);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     return instr;
   }
@@ -1715,8 +1715,8 @@ class IGen {
    */
   static Instruction and_gpr64_gpr64(Register dst, Register src) {
     Instruction instr(0x23);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     return instr;
   }
@@ -1726,8 +1726,8 @@ class IGen {
    */
   static Instruction xor_gpr64_gpr64(Register dst, Register src) {
     Instruction instr(0x33);
-    assert(dst.is_gpr());
-    assert(src.is_gpr());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_gpr());
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     return instr;
   }
@@ -1737,7 +1737,7 @@ class IGen {
    */
   static Instruction not_gpr64(Register reg) {
     Instruction instr(0xf7);
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     instr.set_modrm_and_rex(2, reg.hw_id(), 3, true);
     return instr;
   }
@@ -1750,7 +1750,7 @@ class IGen {
    * Shift 64-bit gpr left by CL register
    */
   static Instruction shl_gpr64_cl(Register reg) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     Instruction instr(0xd3);
     instr.set_modrm_and_rex(4, reg.hw_id(), 3, true);
     return instr;
@@ -1760,7 +1760,7 @@ class IGen {
    * Shift 64-bit gpr right (logical) by CL register
    */
   static Instruction shr_gpr64_cl(Register reg) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     Instruction instr(0xd3);
     instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
     return instr;
@@ -1770,7 +1770,7 @@ class IGen {
    * Shift 64-bit gpr right (arithmetic) by CL register
    */
   static Instruction sar_gpr64_cl(Register reg) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     Instruction instr(0xd3);
     instr.set_modrm_and_rex(7, reg.hw_id(), 3, true);
     return instr;
@@ -1780,7 +1780,7 @@ class IGen {
    * Shift 64-ptr left (logical) by the constant shift amount "sa".
    */
   static Instruction shl_gpr64_u8(Register reg, uint8_t sa) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     Instruction instr(0xc1);
     instr.set_modrm_and_rex(4, reg.hw_id(), 3, true);
     instr.set(Imm(1, sa));
@@ -1791,7 +1791,7 @@ class IGen {
    * Shift 64-ptr right (logical) by the constant shift amount "sa".
    */
   static Instruction shr_gpr64_u8(Register reg, uint8_t sa) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     Instruction instr(0xc1);
     instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
     instr.set(Imm(1, sa));
@@ -1802,7 +1802,7 @@ class IGen {
    * Shift 64-ptr right (arithmetic) by the constant shift amount "sa".
    */
   static Instruction sar_gpr64_u8(Register reg, uint8_t sa) {
-    assert(reg.is_gpr());
+    ASSERT(reg.is_gpr());
     Instruction instr(0xc1);
     instr.set_modrm_and_rex(7, reg.hw_id(), 3, true);
     instr.set(Imm(1, sa));
@@ -1930,8 +1930,8 @@ class IGen {
    * Compare two floats and set flag register for jump (ucomiss)
    */
   static Instruction cmp_flt_flt(Register a, Register b) {
-    assert(a.is_xmm());
-    assert(b.is_xmm());
+    ASSERT(a.is_xmm());
+    ASSERT(b.is_xmm());
     Instruction instr(0x0f);
     instr.set_op2(0x2e);
     instr.set_modrm_and_rex(a.hw_id(), b.hw_id(), 3, false);
@@ -1939,8 +1939,8 @@ class IGen {
   }
 
   static Instruction sqrts_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x51);
@@ -1953,8 +1953,8 @@ class IGen {
    * Multiply two floats in xmm's
    */
   static Instruction mulss_xmm_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x59);
@@ -1967,8 +1967,8 @@ class IGen {
    * Divide two floats in xmm's
    */
   static Instruction divss_xmm_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x5e);
@@ -1981,8 +1981,8 @@ class IGen {
    * Subtract two floats in xmm's
    */
   static Instruction subss_xmm_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x5c);
@@ -1995,8 +1995,8 @@ class IGen {
    * Add two floats in xmm's
    */
   static Instruction addss_xmm_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x58);
@@ -2009,8 +2009,8 @@ class IGen {
    * Floating point minimum.
    */
   static Instruction minss_xmm_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x5d);
@@ -2023,8 +2023,8 @@ class IGen {
    * Floating point maximum.
    */
   static Instruction maxss_xmm_xmm(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x5f);
@@ -2037,8 +2037,8 @@ class IGen {
    * Convert GPR int32 to XMM float (single precision)
    */
   static Instruction int32_to_float(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_gpr());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_gpr());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x2a);
@@ -2051,8 +2051,8 @@ class IGen {
    * Convert XMM float to GPR int32(single precision) (truncate)
    */
   static Instruction float_to_int32(Register dst, Register src) {
-    assert(dst.is_gpr());
-    assert(src.is_xmm());
+    ASSERT(dst.is_gpr());
+    ASSERT(src.is_xmm());
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x2c);
@@ -2100,8 +2100,8 @@ class IGen {
   }
 
   static Instruction mov_vf_vf(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
 
     if (src.hw_id() >= 8 && dst.hw_id() < 8) {
       // in this case, we can use the 0x29 encoding, which swaps src and dst, in order to use the
@@ -2118,12 +2118,12 @@ class IGen {
   }
 
   static Instruction loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
-    assert(dst.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(dst.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x28);
     instr.set_vex_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       VEX3::LeadingBytes::P_0F, false);
@@ -2134,13 +2134,13 @@ class IGen {
                                                      Register addr1,
                                                      Register addr2,
                                                      s64 offset) {
-    assert(dst.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(dst.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x28);
     instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                          offset, VEX3::LeadingBytes::P_0F, false);
@@ -2151,13 +2151,13 @@ class IGen {
                                                       Register addr1,
                                                       Register addr2,
                                                       s64 offset) {
-    assert(dst.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(dst.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x28);
     instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                           offset, VEX3::LeadingBytes::P_0F, false);
@@ -2165,12 +2165,12 @@ class IGen {
   }
 
   static Instruction storevf_gpr64_plus_gpr64(Register value, Register addr1, Register addr2) {
-    assert(value.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
+    ASSERT(value.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
     Instruction instr(0x29);
     instr.set_vex_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       VEX3::LeadingBytes::P_0F, false);
@@ -2181,13 +2181,13 @@ class IGen {
                                                       Register addr1,
                                                       Register addr2,
                                                       s64 offset) {
-    assert(value.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    ASSERT(value.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
     Instruction instr(0x29);
     instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s8(
         value.hw_id(), addr1.hw_id(), addr2.hw_id(), offset, VEX3::LeadingBytes::P_0F, false);
@@ -2198,13 +2198,13 @@ class IGen {
                                                        Register addr1,
                                                        Register addr2,
                                                        s64 offset) {
-    assert(value.is_xmm());
-    assert(addr1.is_gpr());
-    assert(addr2.is_gpr());
-    assert(addr1 != addr2);
-    assert(addr1 != RSP);
-    assert(addr2 != RSP);
-    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    ASSERT(value.is_xmm());
+    ASSERT(addr1.is_gpr());
+    ASSERT(addr2.is_gpr());
+    ASSERT(addr1 != addr2);
+    ASSERT(addr1 != RSP);
+    ASSERT(addr2 != RSP);
+    ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
     Instruction instr(0x29);
     instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s32(
         value.hw_id(), addr1.hw_id(), addr2.hw_id(), offset, VEX3::LeadingBytes::P_0F, false);
@@ -2212,9 +2212,9 @@ class IGen {
   }
 
   static Instruction loadvf_rip_plus_s32(Register dest, s64 offset) {
-    assert(dest.is_xmm());
-    assert(offset >= INT32_MIN);
-    assert(offset <= INT32_MAX);
+    ASSERT(dest.is_xmm());
+    ASSERT(offset >= INT32_MIN);
+    ASSERT(offset <= INT32_MAX);
     Instruction instr(0x28);
     instr.set_vex_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset);
     return instr;
@@ -2223,10 +2223,10 @@ class IGen {
   // TODO - rip relative loads and stores.
 
   static Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
-    assert(!(mask & 0b11110000));
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(!(mask & 0b11110000));
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x0c);  // VBLENDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
                                 src1.hw_id(), false, VexPrefix::P_66);
@@ -2235,12 +2235,12 @@ class IGen {
   }
 
   static Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
-    assert(dx < 4);
-    assert(dy < 4);
-    assert(dz < 4);
-    assert(dw < 4);
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
+    ASSERT(dx < 4);
+    ASSERT(dy < 4);
+    ASSERT(dz < 4);
+    ASSERT(dw < 4);
     u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
     return swizzle_vf(dst, src, imm);
 
@@ -2271,8 +2271,8 @@ class IGen {
     > (4.5, 1.5, 2.5, 3.5)
     */
   static Instruction swizzle_vf(Register dst, Register src, u8 controlBytes) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0xC6);  // VSHUFPS
 
     // we use the AVX "VEX" encoding here. This is a three-operand form,
@@ -2306,93 +2306,93 @@ class IGen {
         return swizzle_vf(dst, src, 0b11111111);
         break;
       default:
-        assert(false);
+        ASSERT(false);
         return {0};
     }
   }
 
   static Instruction xor_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x57);  // VXORPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction sub_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x5c);  // VSUBPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction add_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x58);  // VADDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction mul_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x59);  // VMULPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction max_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x5F);  // VMAXPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction min_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x5D);  // VMINPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction div_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src1.is_xmm());
+    ASSERT(src2.is_xmm());
     Instruction instr(0x5E);  // VDIVPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
   static Instruction sqrt_vf(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0x51);  // VSQRTPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0b0);
     return instr;
   }
 
   static Instruction itof_vf(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     Instruction instr(0x5b);  // VCVTDQ2PS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0);
     return instr;
   }
 
   static Instruction ftoi_vf(Register dst, Register src) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.F3.0F.WIG 5B /r VCVTTPS2DQ xmm1, xmm2/m128
     Instruction instr(0x5b);  // VCVTTPS2DQ
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
@@ -2401,8 +2401,8 @@ class IGen {
   }
 
   static Instruction pw_sra(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.66.0F.WIG 72 /4 ib VPSRAD xmm1, xmm2, imm8
     Instruction instr(0x72);
     instr.set_vex_modrm_and_rex(4, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2412,8 +2412,8 @@ class IGen {
   }
 
   static Instruction pw_srl(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.66.0F.WIG 72 /2 ib VPSRLD xmm1, xmm2, imm8
     Instruction instr(0x72);
     instr.set_vex_modrm_and_rex(2, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2423,8 +2423,8 @@ class IGen {
   }
 
   static Instruction pw_sll(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.66.0F.WIG 72 /6 ib VPSLLD xmm1, xmm2, imm8
     Instruction instr(0x72);
     instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2434,9 +2434,9 @@ class IGen {
   }
 
   static Instruction parallel_bitwise_or(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG EB /r VPOR xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0xEB);
@@ -2446,9 +2446,9 @@ class IGen {
   }
 
   static Instruction parallel_bitwise_xor(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG EF /r VPXOR xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0xEF);
@@ -2458,9 +2458,9 @@ class IGen {
   }
 
   static Instruction parallel_bitwise_and(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG DB /r VPAND xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0xDB);
@@ -2479,9 +2479,9 @@ class IGen {
 
   // -- Unpack High Data Instructions
   static Instruction pextub_swapped(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 68/r VPUNPCKHBW xmm1,xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x68);
@@ -2491,9 +2491,9 @@ class IGen {
   }
 
   static Instruction pextuh_swapped(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 69/r VPUNPCKHWD xmm1,xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x69);
@@ -2503,9 +2503,9 @@ class IGen {
   }
 
   static Instruction pextuw_swapped(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 6A/r VPUNPCKHDQ xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x6a);
@@ -2516,9 +2516,9 @@ class IGen {
 
   // -- Unpack Low Data Instructions
   static Instruction pextlb_swapped(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 60/r VPUNPCKLBW xmm1,xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x60);
@@ -2528,9 +2528,9 @@ class IGen {
   }
 
   static Instruction pextlh_swapped(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 61/r VPUNPCKLWD xmm1,xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x61);
@@ -2540,9 +2540,9 @@ class IGen {
   }
 
   static Instruction pextlw_swapped(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 62/r VPUNPCKLDQ xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x62);
@@ -2553,9 +2553,9 @@ class IGen {
 
   // Equal to than comparison as 16 bytes (8 bits)
   static Instruction parallel_compare_e_b(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 74 /r VPCMPEQB xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x74);
@@ -2566,9 +2566,9 @@ class IGen {
 
   // Equal to than comparison as 8 halfwords (16 bits)
   static Instruction parallel_compare_e_h(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 75 /r VPCMPEQW xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x75);
@@ -2579,9 +2579,9 @@ class IGen {
 
   // Equal to than comparison as 4 words (32 bits)
   static Instruction parallel_compare_e_w(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 76 /r VPCMPEQD xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x76);
@@ -2592,9 +2592,9 @@ class IGen {
 
   // Greater than comparison as 16 bytes (8 bits)
   static Instruction parallel_compare_gt_b(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 64 /r VPCMPGTB xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x64);
@@ -2605,9 +2605,9 @@ class IGen {
 
   // Greater than comparison as 8 halfwords (16 bits)
   static Instruction parallel_compare_gt_h(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 65 /r VPCMPGTW xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x65);
@@ -2618,9 +2618,9 @@ class IGen {
 
   // Greater than comparison as 4 words (32 bits)
   static Instruction parallel_compare_gt_w(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 66 /r VPCMPGTD xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x66);
@@ -2630,9 +2630,9 @@ class IGen {
   }
 
   static Instruction vpunpcklqdq(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 6C/r VPUNPCKLQDQ xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x6c);
@@ -2646,9 +2646,9 @@ class IGen {
   }
 
   static Instruction pcpyud(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG 6D/r VPUNPCKHQDQ xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x6d);
@@ -2658,9 +2658,9 @@ class IGen {
   }
 
   static Instruction vpsubd(Register dst, Register src0, Register src1) {
-    assert(dst.is_xmm());
-    assert(src0.is_xmm());
-    assert(src1.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
     // VEX.128.66.0F.WIG FA /r VPSUBD xmm1, xmm2, xmm3/m128
     // reg, vec, r/m
     Instruction instr(0xfa);
@@ -2670,8 +2670,8 @@ class IGen {
   }
 
   static Instruction vpsrldq(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.66.0F.WIG 73 /3 ib VPSRLDQ xmm1, xmm2, imm8
     Instruction instr(0x73);
     instr.set_vex_modrm_and_rex(3, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2681,8 +2681,8 @@ class IGen {
   }
 
   static Instruction vpslldq(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.66.0F.WIG 73 /7 ib VPSLLDQ xmm1, xmm2, imm8
     Instruction instr(0x73);
     instr.set_vex_modrm_and_rex(7, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
@@ -2692,8 +2692,8 @@ class IGen {
   }
 
   static Instruction vpshuflw(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.F2.0F.WIG 70 /r ib VPSHUFLW xmm1, xmm2/m128, imm8
     Instruction instr(0x70);
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
@@ -2703,8 +2703,8 @@ class IGen {
   }
 
   static Instruction vpshufhw(Register dst, Register src, u8 imm) {
-    assert(dst.is_xmm());
-    assert(src.is_xmm());
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
     // VEX.128.F3.0F.WIG 70 /r ib VPSHUFHW xmm1, xmm2/m128, imm8
     Instruction instr(0x70);
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,

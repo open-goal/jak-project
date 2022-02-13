@@ -10,7 +10,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/link_types.h"
 #include "common/util/BitUtils.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 // There are three link versions:
@@ -133,9 +133,9 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
     } else {
       // offset link - replace lower 16 bits with symbol table offset.
 
-      assert((code_value & 0xffff) == 0 || (code_value & 0xffff) == 0xffff);
-      assert(kind == SymbolLinkKind::SYMBOL);
-      //      assert(false); // this case does not occur in V2/V4.  It does in V3.
+      ASSERT((code_value & 0xffff) == 0 || (code_value & 0xffff) == 0xffff);
+      ASSERT(kind == SymbolLinkKind::SYMBOL);
+      //      ASSERT(false); // this case does not occur in V2/V4.  It does in V3.
       f.symbol_link_offset(seg_id, code_ptr_offset - initial_offset, name);
     }
 
@@ -190,7 +190,7 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
       f.symbol_link_word(seg, code_ptr - initial_offset, name, word_kind);
     } else {
       f.stats.v3_symbol_link_offset++;
-      assert(kind == SymbolLinkKind::SYMBOL);
+      ASSERT(kind == SymbolLinkKind::SYMBOL);
       f.symbol_link_offset(seg, code_ptr - initial_offset, name);
     }
 
@@ -221,7 +221,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
                           const std::string& name,
                           DecompilerTypeSystem& dts) {
   const auto* header = (const LinkHeaderV4*)&data.at(0);
-  assert(header->version == 4 || header->version == 2);
+  ASSERT(header->version == 4 || header->version == 2);
 
   // these are different depending on the version.
   uint32_t code_offset, link_data_offset, code_size;
@@ -241,7 +241,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
     code_offset = header->length;
     // we have to compute the code size ourself
     code_size = data.size() - code_offset;
-    assert(header->type_tag == 0xffffffff);
+    ASSERT(header->type_tag == 0xffffffff);
   }
 
   f.stats.total_code_bytes += code_size;
@@ -251,7 +251,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
   const uint8_t* code_start = &data.at(code_offset);
   const uint8_t* code_end =
       &data.at(code_offset + code_size - 1) + 1;  // get the pointer to one past the end.
-  assert(((code_end - code_start) % 4) == 0);
+  ASSERT(((code_end - code_start) % 4) == 0);
   f.set_segment_count(1);
   for (auto x = code_start; x < code_end; x += 4) {
     f.push_back_word_to_segment(*((const uint32_t*)x), 0);
@@ -262,9 +262,9 @@ static void link_v2_or_v4(LinkedObjectFile& f,
   uint32_t link_ptr_offset = link_data_offset;
   link_ptr_offset += sizeof(LinkHeaderV2);
   auto* link_header_v2 = (const LinkHeaderV2*)(link_data);
-  assert(link_header_v2->type_tag == 0xffffffff);
-  assert(link_header_v2->version == 2);
-  assert(link_header_v2->length == header->length);
+  ASSERT(link_header_v2->type_tag == 0xffffffff);
+  ASSERT(link_header_v2->version == 2);
+  ASSERT(link_header_v2->length == header->length);
   f.stats.total_v2_link_bytes += link_header_v2->length;
 
   // first "section" of link data is a list of where all the pointer are.
@@ -341,7 +341,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
           // always happens.
           link_ptr_offset--;
         } else {
-          assert(false);
+          ASSERT(false);
         }
 
         s_name = (const char*)(&data.at(link_ptr_offset));
@@ -360,12 +360,12 @@ static void link_v2_or_v4(LinkedObjectFile& f,
           // just be on the safe side.
           // (see the !symbolValue case in intern_type_from_c)
         } else {
-          assert(false);
+          ASSERT(false);
         }
       }
 
       if (std::string("_empty_") == s_name) {
-        assert(kind == SymbolLinkKind::SYMBOL);
+        ASSERT(kind == SymbolLinkKind::SYMBOL);
         kind = SymbolLinkKind::EMPTY_LIST;
       }
 
@@ -378,10 +378,10 @@ static void link_v2_or_v4(LinkedObjectFile& f,
   }
 
   // check length
-  assert(link_header_v2->length == align64(link_ptr_offset - link_data_offset + 1));
+  ASSERT(link_header_v2->length == align64(link_ptr_offset - link_data_offset + 1));
   size_t expected_end = header->version == 4 ? data.size() : link_header_v2->length;
   while (link_ptr_offset < expected_end) {
-    assert(data.at(link_ptr_offset) == 0);
+    ASSERT(data.at(link_ptr_offset) == 0);
     link_ptr_offset++;
   }
 }
@@ -391,7 +391,7 @@ static void assert_string_empty_after(const char* str, int size) {
   while (*ptr)
     ptr++;
   while (ptr - str < size) {
-    assert(!*ptr);
+    ASSERT(!*ptr);
     ptr++;
   }
 }
@@ -405,11 +405,11 @@ static void link_v5(LinkedObjectFile& f,
     printf("abandon %s!\n", name.c_str());
     return;
   }
-  assert(header->type_tag == 0);
-  assert(name == header->name);
-  assert(header->n_segments == 3);
-  assert(header->pad == 0x50);
-  assert(header->length_to_get_to_code - header->link_length == 0x50);
+  ASSERT(header->type_tag == 0);
+  ASSERT(name == header->name);
+  ASSERT(header->n_segments == 3);
+  ASSERT(header->pad == 0x50);
+  ASSERT(header->length_to_get_to_code - header->link_length == 0x50);
 
   f.set_segment_count(3);
 
@@ -433,15 +433,15 @@ static void link_v5(LinkedObjectFile& f,
   for (int i = 0; i < 3; i++) {
     segment_data_offsets[i] = data_ptr_offset + header->segment_info[i].data;
     segment_link_offsets[i] = header->segment_info[i].relocs + 0x50;
-    assert(header->segment_info[i].magic == 1);
+    ASSERT(header->segment_info[i].magic == 1);
   }
 
   // check that the data region is filled
   for (int i = 0; i < 2; i++) {
-    assert(align16(segment_data_offsets[i] + header->segment_info[i].size) ==
+    ASSERT(align16(segment_data_offsets[i] + header->segment_info[i].size) ==
            segment_data_offsets[i + 1]);
   }
-  assert(align16(segment_data_offsets[2] + header->segment_info[2].size) == data.size());
+  ASSERT(align16(segment_data_offsets[2] + header->segment_info[2].size) == data.size());
 
   // loop over segments (reverse order for now)
   for (int seg_id = 3; seg_id-- > 0;) {
@@ -471,8 +471,8 @@ static void link_v5(LinkedObjectFile& f,
     auto data_ptr = base_ptr - 4;
     auto link_ptr = segment_link_offsets[seg_id];
 
-    assert((data_ptr % 4) == 0);
-    assert((segment_size % 4) == 0);
+    ASSERT((data_ptr % 4) == 0);
+    ASSERT((segment_size % 4) == 0);
 
     auto code_start = (const uint32_t*)(&data.at(data_ptr + 4));
     auto code_end = ((const uint32_t*)(&data.at(data_ptr + segment_size))) + 1;
@@ -503,10 +503,10 @@ static void link_v5(LinkedObjectFile& f,
                 f.stats.v3_split_pointers++;
                 auto dest_seg = (old_code >> 8) & 0xf;
                 auto lo_hi_offset = (old_code >> 12) & 0xf;
-                assert(lo_hi_offset);
-                assert(dest_seg < 3);
+                ASSERT(lo_hi_offset);
+                ASSERT(dest_seg < 3);
                 auto offset_upper = old_code & 0xff;
-                //                assert(offset_upper == 0);
+                //                ASSERT(offset_upper == 0);
                 uint32_t low_code = *(const uint32_t*)(&data.at(data_ptr + 4 * lo_hi_offset));
                 uint32_t offset = low_code & 0xffff;
                 if (offset_upper) {
@@ -560,7 +560,7 @@ static void link_v5(LinkedObjectFile& f,
                                   SymbolLinkKind::SYMBOL, sname, seg_id, dts);
           }
         } else if ((reloc & 0x3f) == 0x3f) {
-          assert(false);  // todo, does this ever get hit?
+          ASSERT(false);  // todo, does this ever get hit?
         } else {
           int n_methods_base = reloc & 0x3f;
           int n_methods = n_methods_base * 4;
@@ -582,21 +582,21 @@ static void link_v5(LinkedObjectFile& f,
     segment_link_ends[seg_id] = link_ptr;
   }
 
-  assert(segment_link_offsets[0] == 128);
+  ASSERT(segment_link_offsets[0] == 128);
 
   if (header->segment_info[0].size) {
-    assert(segment_link_ends[0] + 1 == segment_link_offsets[1]);
+    ASSERT(segment_link_ends[0] + 1 == segment_link_offsets[1]);
   } else {
-    assert(segment_link_offsets[0] + 2 == segment_link_offsets[1]);
+    ASSERT(segment_link_offsets[0] + 2 == segment_link_offsets[1]);
   }
 
   if (header->segment_info[1].size) {
-    assert(segment_link_ends[1] + 1 == segment_link_offsets[2]);
+    ASSERT(segment_link_ends[1] + 1 == segment_link_offsets[2]);
   } else {
-    assert(segment_link_offsets[1] + 2 == segment_link_offsets[2]);
+    ASSERT(segment_link_offsets[1] + 2 == segment_link_offsets[2]);
   }
 
-  assert(align16(segment_link_ends[2] + 2) == segment_data_offsets[0]);
+  ASSERT(align16(segment_link_ends[2] + 2) == segment_data_offsets[0]);
 }
 
 static void link_v3(LinkedObjectFile& f,
@@ -605,14 +605,14 @@ static void link_v3(LinkedObjectFile& f,
                     DecompilerTypeSystem& dts,
                     int game_version) {
   auto header = (const LinkHeaderV3*)(&data.at(0));
-  assert(name == header->name);
-  assert(header->segments == 3);
+  ASSERT(name == header->name);
+  ASSERT(header->segments == 3);
 
   f.set_segment_count(3);
   assert_string_empty_after(header->name, 64);
 
   for (int i = 0; i < 3; i++) {
-    assert(header->segment_info[i].magic == 0);
+    ASSERT(header->segment_info[i].magic == 0);
     //    printf(" [%d] %d %d %d %d\n", i, header->segment_info[i].size,
     //    header->segment_info[i].data, header->segment_info[i].magic,
     //    header->segment_info[i].relocs);
@@ -631,10 +631,10 @@ static void link_v3(LinkedObjectFile& f,
 
   // check that the data region is filled
   for (int i = 0; i < 2; i++) {
-    assert(align16(segment_data_offsets[i] + header->segment_info[i].size) ==
+    ASSERT(align16(segment_data_offsets[i] + header->segment_info[i].size) ==
            segment_data_offsets[i + 1]);
   }
-  assert(align16(segment_data_offsets[2] + header->segment_info[2].size) == data.size());
+  ASSERT(align16(segment_data_offsets[2] + header->segment_info[2].size) == data.size());
 
   // todo - check link region is filled.
 
@@ -673,8 +673,8 @@ static void link_v3(LinkedObjectFile& f,
     auto data_ptr = base_ptr - 4;
     auto link_ptr = segment_link_offsets[seg_id];
 
-    assert((data_ptr % 4) == 0);
-    assert((segment_size % 4) == 0);
+    ASSERT((data_ptr % 4) == 0);
+    ASSERT((segment_size % 4) == 0);
 
     auto code_start = (const uint32_t*)(&data.at(data_ptr + 4));
     auto code_end = ((const uint32_t*)(&data.at(data_ptr + segment_size))) + 1;
@@ -705,10 +705,10 @@ static void link_v3(LinkedObjectFile& f,
                 f.stats.v3_split_pointers++;
                 auto dest_seg = (old_code >> 8) & 0xf;
                 auto lo_hi_offset = (old_code >> 12) & 0xf;
-                assert(lo_hi_offset);
-                assert(dest_seg < 3);
+                ASSERT(lo_hi_offset);
+                ASSERT(dest_seg < 3);
                 auto offset_upper = old_code & 0xff;
-                //                assert(offset_upper == 0);
+                //                ASSERT(offset_upper == 0);
                 uint32_t low_code = *(const uint32_t*)(&data.at(data_ptr + 4 * lo_hi_offset));
                 uint32_t offset = low_code & 0xffff;
                 if (offset_upper) {
@@ -759,7 +759,7 @@ static void link_v3(LinkedObjectFile& f,
       }
 
       if (std::string("_empty_") == s_name) {
-        assert(kind == SymbolLinkKind::SYMBOL);
+        ASSERT(kind == SymbolLinkKind::SYMBOL);
         kind = SymbolLinkKind::EMPTY_LIST;
       }
 
@@ -770,21 +770,21 @@ static void link_v3(LinkedObjectFile& f,
     segment_link_ends[seg_id] = link_ptr;
   }
 
-  assert(segment_link_offsets[0] == 128);
+  ASSERT(segment_link_offsets[0] == 128);
 
   if (header->segment_info[0].size) {
-    assert(segment_link_ends[0] + 1 == segment_link_offsets[1]);
+    ASSERT(segment_link_ends[0] + 1 == segment_link_offsets[1]);
   } else {
-    assert(segment_link_offsets[0] + 2 == segment_link_offsets[1]);
+    ASSERT(segment_link_offsets[0] + 2 == segment_link_offsets[1]);
   }
 
   if (header->segment_info[1].size) {
-    assert(segment_link_ends[1] + 1 == segment_link_offsets[2]);
+    ASSERT(segment_link_ends[1] + 1 == segment_link_offsets[2]);
   } else {
-    assert(segment_link_offsets[1] + 2 == segment_link_offsets[2]);
+    ASSERT(segment_link_offsets[1] + 2 == segment_link_offsets[2]);
   }
 
-  assert(align16(segment_link_ends[2] + 2) == segment_data_offsets[0]);
+  ASSERT(align16(segment_link_ends[2] + 2) == segment_data_offsets[0]);
 }
 
 /*!
@@ -799,16 +799,16 @@ LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
 
   // use appropriate linker
   if (header->version == 3) {
-    assert(header->type_tag == 0);
+    ASSERT(header->type_tag == 0);
     link_v3(result, data, name, dts, game_version);
   } else if (header->version == 4 || header->version == 2) {
-    assert(header->type_tag == 0xffffffff);
+    ASSERT(header->type_tag == 0xffffffff);
     link_v2_or_v4(result, data, name, dts);
   } else if (header->version == 5) {
     link_v5(result, data, name, dts);
   } else {
     printf("Unsupported version %d\n", header->version);
-    assert(false);
+    ASSERT(false);
   }
 
   return result;

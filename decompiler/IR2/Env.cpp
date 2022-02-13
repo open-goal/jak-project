@@ -148,7 +148,7 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
                     "(var {}) to type {}, but the actual type is {} ({})",
                     access.reg().to_charp(), access.idx(), lookup_name, x.type_name,
                     type_in_reg.print(), type_in_reg.print());
-                assert(false);
+                ASSERT(false);
               }
             }
 
@@ -228,7 +228,7 @@ std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& acce
                   "(var {}) to type {}, but the actual type is {} ({})",
                   access.reg().to_charp(), access.idx(), original_name, x.type_name,
                   type_in_reg.print(), type_in_reg.print());
-              assert(false);
+              ASSERT(false);
             }
           }
 
@@ -289,7 +289,7 @@ void Env::set_types(const std::vector<TypeState>& block_init_types,
   }
 
   for (auto x : m_op_init_types) {
-    assert(x);
+    ASSERT(x);
   }
 
   m_has_types = true;
@@ -306,7 +306,7 @@ void Env::set_types(const std::vector<TypeState>& block_init_types,
 }
 
 std::string Env::print_local_var_types(const Form* top_level_form) const {
-  assert(has_local_vars());
+  ASSERT(has_local_vars());
   auto var_info = extract_visible_variables(top_level_form);
   std::vector<std::string> entries;
   for (auto x : var_info) {
@@ -347,7 +347,7 @@ std::string Env::print_local_var_types(const Form* top_level_form) const {
 
 std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
     const Form* top_level_form) const {
-  assert(has_local_vars());
+  ASSERT(has_local_vars());
   std::vector<VariableNames::VarInfo> entries;
   if (top_level_form) {
     RegAccessSet var_set;
@@ -381,7 +381,7 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
       if (info.initialized) {
         entries.push_back(info);
       } else {
-        assert(false);
+        ASSERT(false);
       }
     }
   } else {
@@ -415,7 +415,7 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
 
 FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
                                                      int nargs_to_ignore) const {
-  assert(nargs_to_ignore <= 8);
+  ASSERT(nargs_to_ignore <= 8);
   auto vars = extract_visible_variables(top_level_form);
 
   FunctionVariableDefinitions result;
@@ -480,7 +480,7 @@ RegId Env::get_program_var_id(const RegisterAccess& var) const {
 }
 
 const UseDefInfo& Env::get_use_def_info(const RegisterAccess& ra) const {
-  assert(has_local_vars());
+  ASSERT(has_local_vars());
   auto var_id = get_program_var_id(ra);
   return m_var_names.use_def_info.at(var_id);
 }
@@ -559,7 +559,7 @@ void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints
         break;
       }
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     m_stack_structures.push_back(entry);

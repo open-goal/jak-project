@@ -5,8 +5,7 @@
 ;; name in dgo: loader-h
 ;; dgos: GAME, ENGINE
 
-;; This is not well-understood yet, but it is definitely related to streaming animation loading,
-;; and possibly art-group stuff.
+;; The loader is responsible for managing streaming loads.
 
 ;; note: lower values are more important.
 ;; negative values will preload.
@@ -80,6 +79,7 @@
   )
 
 ;; An external-art-buffer owns some memory for loading files.
+;; the "external" means it's not part of the level's (or common, always loaded) static data
 ;; status:
 ;;  - 'active: file is loaded and art group is linked to level's art group.
 ;;  - 'reserved: buffer is reserved for other purpose
@@ -145,8 +145,7 @@
   )
 
 
-;; A spool-anim tracks the buffers for spooled animations.
-;; ?? what are the bufs here.
+;; A spool-anim tracks the buffers holding chunks of a spooled animation.
 (deftype spool-anim (basic)
   ((name         string  :offset 16) ;; why?
    (buf1         external-art-buffer  :offset 16) ;; custom
@@ -163,7 +162,9 @@
   :flag-assert         #x90000002c
   )
 
-;; This is the main controller for the loader.
+;; This is the main controller for the streaming loader.
+;; It has two buffers for holding chunks of a spooling animation
+;; The buffer can also be reused to hold other things.
 (deftype external-art-control (basic)
   ((buffer               external-art-buffer    2       :offset-assert 4) ;; actual data buffers
    (rec                  spool-anim 3 :inline :offset-assert 16) ;; things we would consider loading

@@ -330,12 +330,12 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
  * The type is always int.
  */
 Val* Compiler::compile_integer(const goos::Object& code, Env* env) {
-  assert(code.is_int());
+  ASSERT(code.is_int());
   return compile_integer(code.integer_obj.value, env);
 }
 
 Val* Compiler::compile_char(const goos::Object& code, Env* env) {
-  assert(code.is_char());
+  ASSERT(code.is_char());
   return compile_integer(uint8_t(code.char_obj.value), env);
 }
 
@@ -460,7 +460,7 @@ Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
  * of the code, at least in Jak 1.
  */
 Val* Compiler::compile_float(const goos::Object& code, Env* env) {
-  assert(code.is_float());
+  ASSERT(code.is_float());
   // TODO: this will put top-level only floats in main. Which is conservative because I
   // don't think we can take the address of a float constant.
   return compile_float(code.float_obj.value, env, env->function_env()->segment_for_static_data());

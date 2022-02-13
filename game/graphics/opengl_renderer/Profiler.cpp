@@ -54,7 +54,7 @@ void ProfilerNode::sort(ProfilerSort mode) {
                 case ProfilerSort::TRIANGLES:
                   return a.m_stats.triangles > b.m_stats.triangles;
                 default:
-                  assert(false);
+                  ASSERT(false);
               }
             });
   for (auto& child : m_children) {

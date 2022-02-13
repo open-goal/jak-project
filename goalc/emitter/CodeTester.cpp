@@ -48,7 +48,7 @@ std::string CodeTester::dump_to_hex_string(bool nospace) {
  */
 void CodeTester::emit(const Instruction& instr) {
   code_buffer_size += instr.emit(code_buffer + code_buffer_size);
-  assert(code_buffer_size <= code_buffer_capacity);
+  ASSERT(code_buffer_size <= code_buffer_capacity);
 }
 
 /*!
@@ -134,7 +134,7 @@ void CodeTester::init_code_buffer(int capacity) {
                           MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
   if (code_buffer == (u8*)(-1)) {
     printf("[CodeTester] Failed to map memory!\n");
-    assert(false);
+    ASSERT(false);
   }
 
   code_buffer_capacity = capacity;

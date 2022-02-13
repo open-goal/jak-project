@@ -9,7 +9,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstring>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 struct BinaryWriterRef {
   size_t offset;
@@ -30,8 +30,8 @@ class BinaryWriter {
 
   template <typename T>
   void add_at_ref(const T& obj, const BinaryWriterRef& ref) {
-    assert(ref.write_size == sizeof(T));
-    assert(ref.offset + ref.write_size < get_size());
+    ASSERT(ref.write_size == sizeof(T));
+    ASSERT(ref.offset + ref.write_size < get_size());
     memcpy(data.data() + ref.offset, &obj, sizeof(T));
   }
 

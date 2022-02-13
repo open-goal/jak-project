@@ -81,7 +81,7 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
   if (!result) {
     fmt::print("{} bad form is {}\n\n{}\n", env.func->name(), a->to_string(env), b->to_string(env));
   }
-  assert(result);
+  ASSERT(result);
 
   // fmt::print("{}\n\n", result->to_string(env));
   return result;
@@ -133,7 +133,7 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
 
   // check the lt operation:
   auto lt_var = mr.maps.regs.at(0);
-  assert(lt_var);
+  ASSERT(lt_var);
   if (env.get_variable_name(*lt_var) != var) {
     return nullptr;  // wrong variable checked
   }
@@ -155,7 +155,7 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
   }
 
   auto inc_var = int_mr.maps.regs.at(0);
-  assert(inc_var);
+  ASSERT(inc_var);
   if (env.get_variable_name(*inc_var) != var) {
     return nullptr;  // wrong variable incremented
   }
@@ -239,7 +239,7 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
     return nullptr;
   }
   int param_count = num_params_mr.maps.ints.at(1);
-  assert(param_count >= 0 && param_count < 7);
+  ASSERT(param_count >= 0 && param_count < 7);
   if (body->size() != 4 + param_count) {
     // fmt::print(" fail: pc3\n");
     return nullptr;
@@ -360,7 +360,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
 
   // check the zero operation:
   auto lt_var = mr.maps.regs.at(0);
-  assert(lt_var);
+  ASSERT(lt_var);
   if (env.get_variable_name(*lt_var) != idx_var) {
     return nullptr;  // wrong variable checked
   }
@@ -382,7 +382,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
   }
 
   auto inc_var = int_mr.maps.regs.at(0);
-  assert(inc_var);
+  ASSERT(inc_var);
   if (env.get_variable_name(*inc_var) != idx_var) {
     return nullptr;  // wrong variable incremented
   }
@@ -422,7 +422,7 @@ FormElement* fix_up_abs(LetElement* in, const Env& env, FormPool& pool) {
     return nullptr;
   }
 
-  assert(mr.maps.regs.at(0));
+  ASSERT(mr.maps.regs.at(0));
   auto abs_var_name = env.get_variable_name(*mr.maps.regs.at(0));
   if (abs_var_name != temp_name) {
     return nullptr;
@@ -477,7 +477,7 @@ FormElement* fix_up_abs_2(LetElement* in, const Env& env, FormPool& pool) {
     return nullptr;
   }
 
-  assert(mr.maps.regs.at(0));
+  ASSERT(mr.maps.regs.at(0));
 
   auto abs_var_name = env.get_variable_name(*mr.maps.regs.at(0));
   if (abs_var_name != temp_name) {
@@ -851,7 +851,7 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
       return nullptr;
     }
     for (int j = 0; j < 2; j++) {
-      assert(as_op->op()->src(j).has_value());
+      ASSERT(as_op->op()->src(j).has_value());
       vars[i][j] = *as_op->op()->src(j);
     }
   }
@@ -871,14 +871,14 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
         return nullptr;
       }
       auto this_var = mr.maps.regs.at(0);
-      assert(this_var.has_value());
+      ASSERT(this_var.has_value());
       if (in_vars[in_var].has_value()) {
         // seen it before
         if (env.get_variable_name(*this_var) != env.get_variable_name(*in_vars[in_var])) {
           return nullptr;
         }
       } else {
-        assert(axis == 0);
+        ASSERT(axis == 0);
         // first time seeing it.
         in_vars[in_var] = this_var;
       }
@@ -996,7 +996,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     //        }
     //      }
     //
-    //      assert(f);
+    //      ASSERT(f);
     //    }
 
     // and add it.
@@ -1019,7 +1019,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     for (auto fe : kv.second.elts_using_var) {
       lca = lca_form(lca, fe->parent_form, env);
     }
-    assert(lca);
+    ASSERT(lca);
     var_info[kv.first].lca_form = lca;
   }
 
@@ -1051,7 +1051,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
         // kv.second.end_idx, kv.second.lca_form->at(i)->to_string(env));
       }
     }
-    assert(got_one);
+    ASSERT(got_one);
   }
 
   // fmt::print("\n");
@@ -1168,14 +1168,14 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
           elt_idx++;
         } else {
           auto existing_let = lets.at(ownership[elt_idx]);
-          assert(existing_let);
+          ASSERT(existing_let);
           auto& existing_let_info = group.second.at(ownership[elt_idx]);
-          assert(existing_let_info.start_elt == elt_idx);
+          ASSERT(existing_let_info.start_elt == elt_idx);
           body.push_back(existing_let);
           elt_idx = existing_let_info.end_elt;
         }
       }
-      assert(elt_idx == let_desc.end_elt);
+      ASSERT(elt_idx == let_desc.end_elt);
       auto new_let = pool.alloc_element<LetElement>(pool.alloc_sequence_form(nullptr, body));
       // insert a cast, if needed.
       auto casted_src = insert_cast_for_let(let_desc.set_form->dst(), let_desc.set_form->src_type(),
@@ -1194,14 +1194,14 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
         elt_idx++;
       } else {
         auto existing_let = lets.at(ownership[elt_idx]);
-        assert(existing_let);
+        ASSERT(existing_let);
         auto& existing_let_info = group.second.at(ownership[elt_idx]);
-        assert(existing_let_info.start_elt == elt_idx);
+        ASSERT(existing_let_info.start_elt == elt_idx);
         new_body.push_back(existing_let);
         elt_idx = existing_let_info.end_elt;
       }
     }
-    assert(elt_idx == group.first->size());
+    ASSERT(elt_idx == group.first->size());
 
     group.first->elts() = new_body;
     group.first->claim_all_children();
@@ -1260,7 +1260,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
 
         // rewrite:
         form->at(idx) = rewrite_multi_let(as_let, env, pool);
-        assert(form->at(idx)->parent_form == form);
+        ASSERT(form->at(idx)->parent_form == form);
         changed = true;
       }
     });

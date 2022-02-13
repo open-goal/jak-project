@@ -151,8 +151,9 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // this setup allows listener function execution to clean up after itself.
 
       // we have added the LINK_FLAG_OUTPUT_LOAD
+      // jump from c to goal because this is called from the C++ stack.
       ListenerFunction->value = link_and_exec(buffer, "*listener*", 0, kdebugheap,
-                                              LINK_FLAG_FORCE_DEBUG | LINK_FLAG_OUTPUT_LOAD)
+                                              LINK_FLAG_FORCE_DEBUG | LINK_FLAG_OUTPUT_LOAD, true)
                                     .offset;
       return;  // don't ack yet, this will happen after the function runs.
     } break;

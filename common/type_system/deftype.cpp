@@ -229,7 +229,7 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
     auto info = type_system->declare_method(type, method_name, no_virtual, function_typespec,
-                                            replace_method);
+                                            replace_method, id);
 
     // check the method assert
     if (id != -1) {
@@ -277,6 +277,7 @@ struct StructureDefResult {
   bool pack_me = false;
   bool allow_misaligned = false;
   bool final = false;
+  bool always_stack_singleton = false;
 };
 
 StructureDefResult parse_structure_def(StructureType* type,
@@ -326,7 +327,7 @@ StructureDefResult parse_structure_def(StructureType* type,
       } else if (opt_name == ":method-count-assert") {
         method_count_assert = get_int(car(rest));
         if (method_count_assert == -1) {
-          throw std::runtime_error("Cannot use -1 as method_count_assert");
+          throw std::runtime_error("Cannot use -1 as method-count-assert");
         }
         rest = cdr(rest);
       } else if (opt_name == ":flag-assert") {
@@ -341,12 +342,17 @@ StructureDefResult parse_structure_def(StructureType* type,
         result.pack_me = true;
       } else if (opt_name == ":heap-base") {
         u16 hb = get_int(car(rest));
+        if ((hb % 0x10) != 0) {
+          throw std::runtime_error("heap-base is not 16-byte aligned");
+        }
         rest = cdr(rest);
         flags.heap_base = hb;
       } else if (opt_name == ":allow-misaligned") {
         result.allow_misaligned = true;
       } else if (opt_name == ":final") {
         result.final = true;
+      } else if (opt_name == ":always-stack-singleton") {
+        result.always_stack_singleton = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -445,10 +451,6 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
         result.generate_runtime_type = false;
       } else if (opt_name == ":no-inspect") {
         type->set_gen_inspect(false);
-      } else if (opt_name == ":heap-base") {
-        u16 hb = get_int(car(rest));
-        rest = cdr(rest);
-        flags.heap_base = hb;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -524,7 +526,7 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
   } else {
     throw std::runtime_error("invalid typespec: " + src.print());
   }
-  assert(false);
+  ASSERT(false);
   return {};
 }
 
@@ -551,7 +553,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   if (is_type("basic", parent_type, ts)) {
     auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
-    assert(pto);
+    ASSERT(pto);
     if (pto->final()) {
       throw std::runtime_error(
           fmt::format("[TypeSystem] Cannot make a child type {} of final basic type {}", name,
@@ -572,6 +574,13 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
           name);
       throw std::runtime_error("invalid pack option on basic");
     }
+    if (sr.always_stack_singleton) {
+      fmt::print(
+          "[TypeSystem] :always-stack-singleton was set on {}, which is a basic and cannot "
+          "be a stack singleton\n",
+          name);
+      throw std::runtime_error("invalid stack singleton option on basic");
+    }
     new_type->set_heap_base(result.flags.heap_base);
     if (sr.final) {
       new_type->set_final();
@@ -580,7 +589,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   } else if (is_type("structure", parent_type, ts)) {
     auto new_type = std::make_unique<StructureType>(parent_type_name, name, false, false, false, 0);
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
-    assert(pto);
+    ASSERT(pto);
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "structure");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
@@ -592,6 +601,9 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     if (sr.allow_misaligned) {
       new_type->set_allow_misalign(true);
     }
+    if (sr.always_stack_singleton) {
+      new_type->set_always_stack_singleton();
+    }
     if (sr.final) {
       throw std::runtime_error(
           fmt::format("[TypeSystem] :final option cannot be used on structure type {}", name));
@@ -600,11 +612,11 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
     auto pto = ts->lookup_type(parent_type);
-    assert(pto);
+    ASSERT(pto);
     auto new_type = std::make_unique<BitFieldType>(
         parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
     auto parent_value = dynamic_cast<ValueType*>(pto);
-    assert(parent_value);
+    ASSERT(parent_value);
     new_type->inherit(parent_value);
     new_type->set_runtime_type(pto->get_runtime_name());
     auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);

@@ -2,7 +2,8 @@
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
+    : BucketRenderer(name, my_id), m_level_id(level_id) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
@@ -139,7 +140,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       fmt::print("wind: {}\n", max_wind_idx);
       m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
       fmt::print("level max time of day: {}\n", time_of_day_count);
-      assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
+      ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
     }
       m_load_state.state = UPLOAD_VERTS;
       m_load_state.vert = 0;
@@ -166,34 +167,12 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       }
       m_load_state.vert++;
       if (!remaining) {
-        m_load_state.state = INIT_TEX;
-        m_load_state.tex = 0;
+        return true;
       }
     } break;
 
-    case State::INIT_TEX:
-      for (size_t max_tex = std::min((size_t)m_load_state.tex + 3, lev_data->textures.size());
-           m_load_state.tex < max_tex; m_load_state.tex++) {
-        auto& tex = lev_data->textures[m_load_state.tex];
-        GLuint gl_tex;
-        glGenTextures(1, &gl_tex);
-        glBindTexture(GL_TEXTURE_2D, gl_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.w, tex.h, 0, GL_RGBA,
-                     GL_UNSIGNED_INT_8_8_8_8_REV, tex.data.data());
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, gl_tex);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        float aniso = 0.0f;
-        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
-        m_textures.push_back(gl_tex);
-      }
-      return m_load_state.tex == lev_data->textures.size();
-      break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return false;
@@ -207,9 +186,15 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   // TODO: right now this will wait to load from disk and unpack it.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader.get_tfrag3_level(level);
-  if (!lev_data) {
+  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
+    m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+    discard_tree_cache();
     return false;
   }
+  m_textures = &lev_data->textures;
+  m_load_id = lev_data->load_id;
   int init_load_state = m_load_state.state;
 
   if (m_level_name != level) {
@@ -218,7 +203,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
       m_load_state.loading = true;
       m_load_state.state = State::FIRST;
     }
-    if (update_load(lev_data)) {
+    if (update_load(lev_data->level.get())) {
       m_has_level = true;
       m_level_name = level;
       m_load_state.loading = false;
@@ -345,12 +330,6 @@ void do_wind_math(u16 wind_idx,
 }
 
 void Tie3::discard_tree_cache() {
-  for (auto tex : m_textures) {
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glDeleteTextures(1, &tex);
-  }
-  m_textures.clear();
-
   for (auto& tree : m_trees) {
     glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
     glDeleteTextures(1, &tree.time_of_day_texture);
@@ -379,41 +358,41 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   }
 
   auto data0 = dma.read_and_advance();
-  assert(data0.vif1() == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.size_bytes == 0);
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     // renderer didn't run, let's just get out of here.
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
 
   auto gs_test = dma.read_and_advance();
-  assert(gs_test.size_bytes == 32);
+  ASSERT(gs_test.size_bytes == 32);
 
   auto tie_consts = dma.read_and_advance();
-  assert(tie_consts.size_bytes == 9 * 16);
+  ASSERT(tie_consts.size_bytes == 9 * 16);
 
   auto mscalf = dma.read_and_advance();
-  assert(mscalf.size_bytes == 0);
+  ASSERT(mscalf.size_bytes == 0);
 
   auto row = dma.read_and_advance();
-  assert(row.size_bytes == 32);
+  ASSERT(row.size_bytes == 32);
 
   auto next = dma.read_and_advance();
-  assert(next.size_bytes == 0);
+  ASSERT(next.size_bytes == 0);
 
   auto pc_port_data = dma.read_and_advance();
-  assert(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
   auto wind_data = dma.read_and_advance();
-  assert(wind_data.size_bytes == sizeof(WindWork));
+  ASSERT(wind_data.size_bytes == sizeof(WindWork));
   memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -426,6 +405,10 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 
   memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
+
+  if (render_state->occlusion_vis[m_level_id].valid) {
+    settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
+  }
 
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
@@ -490,7 +473,7 @@ void Tie3::render_tree_wind(int idx,
     // auto& mat = tree.instance_info->operator[](inst_id).matrix;
     auto mat = info.matrix;
 
-    assert(info.wind_idx * 4 <= m_wind_vectors.size());
+    ASSERT(info.wind_idx * 4 <= m_wind_vectors.size());
     do_wind_math(info.wind_idx, m_wind_vectors.data(), m_wind_data,
                  info.stiffness * m_wind_multiplier, mat);
 
@@ -523,10 +506,10 @@ void Tie3::render_tree_wind(int idx,
     const auto& draw = tree.wind_draws->operator[](draw_idx);
 
     if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
 
     int off = 0;
     for (auto& grp : draw.instance_groups) {
@@ -564,13 +547,13 @@ void Tie3::render_tree_wind(int idx,
               -10.f);
           glUniform1f(
               glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-              double_draw.aref);
+              double_draw.aref_second);
           glDepthMask(GL_FALSE);
           glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
                          (void*)0);
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
     }
   }
@@ -630,7 +613,8 @@ void Tie3::render_tree(int idx,
     tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
   } else {
     Timer cull_timer;
-    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, m_cache.vis_temp.data());
+    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+                        m_cache.vis_temp.data());
     tree.perf.cull_time.add(cull_timer.getSeconds());
 
     Timer index_timer;
@@ -653,11 +637,11 @@ void Tie3::render_tree(int idx,
     }
 
     if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
+      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
 
-    auto double_draw = setup_tfrag_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
     int draw_size = indices.second - indices.first;
     void* offset = (void*)(indices.first * sizeof(u32));
 
@@ -688,12 +672,12 @@ void Tie3::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
                     -10.f);
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-                    double_draw.aref);
+                    double_draw.aref_second);
         glDepthMask(GL_FALSE);
         glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     if (m_debug_wireframe) {

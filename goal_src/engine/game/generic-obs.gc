@@ -5,24 +5,13 @@
 ;; name in dgo: generic-obs
 ;; dgos: GAME, ENGINE
 
-(declare-type swingpole process)
-
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 
 ;; TODO - temporary
 
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 
-;; TODO - for citb-plat
-(define-extern *particle-quat* quaternion)
-
-;; TODO - for jungle-mirrors
-(define-extern line-in-view-frustum? (function vector vector symbol))
-
 (declare-type beach-part part-spawner)
-(declare-type launcher process-drawable)
-
-(define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
 
 (define-extern beach-part-grotto-1 (state beach-part))
 
@@ -75,7 +64,7 @@
              (logior! (-> self draw status) (draw-status drwf02))
              )
          )
-       (dummy-17 self)
+       (do-joint-math! self)
        (let ((a0-22 (-> self skel effect)))
          (if a0-22
              (TODO-RENAME-9 a0-22)
@@ -145,7 +134,7 @@
       (suspend)
       )
     (let ((gp-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-0) 150)
+      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.5))
         (suspend)
         )
       )
@@ -270,7 +259,7 @@
            )
           ((= v1-0 'art-joint-anim)
            (set! (-> self new-joint-anim)
-                 (the-as art-joint-anim (dummy-10 (-> self draw art-group) (the-as string (-> arg3 param 0)) art-joint-anim))
+                 (the-as art-joint-anim (lookup-art (-> self draw art-group) (the-as string (-> arg3 param 0)) art-joint-anim))
                  )
            (set! v0-0 (the-as none (-> arg3 param 1)))
            (set! (-> self new-joint-anim-blend) (the-as uint v0-0))
@@ -503,7 +492,7 @@
              ""
              )
            )
-         (dummy-17 self)
+         (do-joint-math! self)
          )
         (('clone-anim)
          (clone-anim-once
@@ -536,7 +525,7 @@
   )
 
 (defbehavior manipy-init manipy ((arg0 vector) (arg1 entity) (arg2 skeleton-group) (arg3 vector))
-  (stack-size-set! (-> self main-thread) 128)
+  (stack-size-set! (-> self main-thread) 256) ;; from 128
   (logior! (-> self mask) (process-mask heap-shrunk))
   (set! (-> self entity) arg1)
   (cond
@@ -635,8 +624,8 @@
 (defstate part-tracker-process (part-tracker)
   :code
   (behavior ()
-    (set! (-> self start-time) (the-as uint (-> *display* base-frame-counter)))
-    (while (< (- (-> *display* base-frame-counter) (the-as int (-> self start-time))) (the-as int (-> self duration)))
+    (set! (-> self start-time) (-> *display* base-frame-counter))
+    (while (< (- (-> *display* base-frame-counter) (-> self start-time)) (-> self duration))
       (let ((gp-0 (handle->process (-> self target))))
         (when gp-0
           (if (and gp-0 (type-type? (-> gp-0 type) process-drawable) (nonzero? (-> (the-as process-drawable gp-0) root)))
@@ -653,7 +642,7 @@
       (suspend)
       )
     (let ((gp-2 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-2) (the-as int (-> self linger-duration)))
+      (until (>= (- (-> *display* base-frame-counter) gp-2) (-> self linger-duration))
         (if (-> self linger-callback)
             ((-> self linger-callback) self)
             )
@@ -671,7 +660,7 @@
   )
 
 (defbehavior part-tracker-init part-tracker ((arg0 sparticle-launch-group)
-                                   (arg1 int)
+                                   (arg1 time-frame)
                                    (arg2 (function part-tracker none))
                                    (arg3 (pointer process-drawable))
                                    (arg4 process)
@@ -691,12 +680,12 @@
                 arg1
                 )
                (else
-                 (the-as int (-> arg0 duration))
+                 (the-as time-frame (-> arg0 duration))
                  )
                )
         )
-  (set! (-> self duration) (the-as uint arg1))
-  (set! (-> self linger-duration) (-> arg0 linger-duration))
+  (set! (-> self duration) (the-as time-frame arg1))
+  (set! (-> self linger-duration) (the-as time-frame (-> arg0 linger-duration)))
   (set! (-> self part) (create-launch-control arg0 self))
   (go part-tracker-process)
   (none)
@@ -709,7 +698,6 @@
 (defbehavior command-get-process camera-tracker ((arg0 object) (arg1 process))
   (the-as process (cond
                     ((null? arg0)
-                     (empty)
                      arg1
                      )
                     ((type-type? (rtype-of arg0) process)
@@ -759,14 +747,12 @@
                           (handle->process (-> v1-13 anim-process))
                           )
                          (else
-                           (empty)
                            arg1
                            )
                          )
                        )
                      )
                     (else
-                      (empty)
                       arg1
                       )
                     )
@@ -776,7 +762,6 @@
 (defun command-get-camera ((arg0 object) (arg1 state))
   (cond
     ((null? arg0)
-     (empty)
      arg1
      )
     ((= arg0 'base)
@@ -798,7 +783,6 @@
      (the-as state arg0)
      )
     (else
-      (empty)
       arg1
       )
     )
@@ -807,7 +791,6 @@
 (defun command-get-trans ((arg0 object) (arg1 vector))
   (cond
     ((null? arg0)
-     (empty)
      arg1
      )
     ((= arg0 'null)
@@ -825,14 +808,12 @@
            (-> (the-as target s4-0) node-list data v1-4 bone transform vector 3)
            )
          (else
-           (empty)
            arg1
            )
          )
        )
      )
     (else
-      (empty)
       arg1
       )
     )
@@ -937,7 +918,7 @@
       (when (= arg1 -10)
         (set! arg1 (the-as uint 0))
         (when (> (-> (the-as process-drawable gp-0) skel active-channels) 0)
-          (let ((v1-11 (dummy-10 (-> (the-as process-drawable gp-0) draw jgeo) "camera" (the-as type #f))))
+          (let ((v1-11 (lookup-art (-> (the-as process-drawable gp-0) draw jgeo) "camera" (the-as type #f))))
             (if v1-11
                 (set! arg1 (the-as uint (+ (-> v1-11 number) 1)))
                 )
@@ -1395,7 +1376,7 @@
                                                            (* s3-1 8)
                                                            )
               )
-      (dummy-15 obj *lev-string* '())
+      (initialize-skeleton-by-name obj *lev-string* '())
       (logior! (-> obj draw status) (draw-status drwf06))
       (if (nonzero? (-> obj draw))
           (go med-res-level-idle)
@@ -1512,7 +1493,7 @@
    (spring-height   meters                :offset-assert 176)
    (camera          state                 :offset-assert 180)
    (active-distance float                 :offset-assert 184)
-   (seek-time       uint64                :offset-assert 192)
+   (seek-time       time-frame            :offset-assert 192)
    (dest            vector        :inline :offset-assert 208)
    (sound-id        sound-id              :offset-assert 224)
    )
@@ -1846,7 +1827,7 @@
         (when (not (paused?))
           (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
           (send-event *camera* 'teleport)
-          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) 300))
+          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1)))
               (send-event *camera* 'change-state *camera-base-mode* 150)
               )
           )
@@ -1951,7 +1932,7 @@
           (set! (-> self trans x) (-> *camera* tpos-curr x))
           (set! (-> self trans z) (-> *camera* tpos-curr z))
           (vector+! (-> self trans) (-> self trans) (-> self view-flat))
-          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) 300))
+          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1)))
               (send-event *camera* 'change-state *camera-base-mode* 150)
               )
           )
@@ -2059,6 +2040,7 @@
     )
   :exit
   (behavior ()
+    (#when PC_DEBUG_SOUND_ENABLE
     (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> v1-0 command) (sound-command set-param))
       (set! (-> v1-0 id) (-> self sound-id))
@@ -2067,6 +2049,7 @@
       (set! (-> v1-0 auto-from) 2)
       (set! (-> v1-0 parms mask) (the-as uint 17))
       (-> v1-0 id)
+      )
       )
     (none)
     )
@@ -2093,7 +2076,7 @@
                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                )
                   )
-             (< (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+             (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
              )
         (send-event *target* 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
         )
@@ -2164,7 +2147,7 @@
   (let ((v1-29 (res-lump-struct arg0 'alt-vector vector)))
     (when v1-29
       (set-vector! (-> obj dest) (-> v1-29 x) (-> v1-29 y) (-> v1-29 z) 1.0)
-      (set! (-> obj seek-time) (the-as uint (the int (* 300.0 (-> v1-29 w)))))
+      (set! (-> obj seek-time) (the-as time-frame (the int (* 300.0 (-> v1-29 w)))))
       )
     )
   (set! (-> obj sound-id) (new-sound-id))
@@ -2223,7 +2206,7 @@
   (let ((v1-34 (res-lump-struct (-> self entity) 'alt-vector vector)))
     (when v1-34
       (set-vector! (-> self dest) (-> v1-34 x) (-> v1-34 y) (-> v1-34 z) 1.0)
-      (set! (-> self seek-time) (the-as uint (the int (* 300.0 (-> v1-34 w)))))
+      (set! (-> self seek-time) (the-as time-frame (the int (* 300.0 (-> v1-34 w)))))
       )
     )
   (set! (-> self sound-id) (new-sound-id))
@@ -2383,7 +2366,7 @@
     )
   )
 
-(defbehavior touch-tracker-init touch-tracker ((arg0 vector) (arg1 float) (arg2 uint))
+(defbehavior touch-tracker-init touch-tracker ((arg0 vector) (arg1 float) (arg2 time-frame))
   (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -2410,7 +2393,7 @@
   (set! (-> self run-function)
         (lambda :behavior touch-tracker
           ()
-          (< (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self duration)))
+          (< (- (-> *display* base-frame-counter) (-> self state-time)) (-> self duration))
           )
         )
   (set! (-> self event-hook) (-> touch-tracker-idle event))

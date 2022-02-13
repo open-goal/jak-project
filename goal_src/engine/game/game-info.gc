@@ -240,7 +240,7 @@
                         "demo-start"
                         )
                        (*debug-segment*
-                        "village1-hut"
+                        (#if (user? dass) "citadel-generator-end" "village1-hut")
                         )
                        (else
                         "title-start"
@@ -421,18 +421,11 @@
            ;; increment power cells!
            (set! (-> obj fuel) (+ 1.0 (-> obj fuel)))
            ;; mark as completed
-           (set! (-> obj task-perm-list data s5-1 status)
-                 (logior (-> obj task-perm-list data s5-1 status)
-                         (entity-perm-status real-complete)
-                         )
-                 )
+           (logior! (-> obj task-perm-list data s5-1 status) (entity-perm-status real-complete))
            ;; unused.
            (get-task-control (the game-task s5-1))
            ;; close the task!
-           (close-specific-task!
-            (the-as game-task s5-1)
-            (task-status need-resolution)
-            )
+           (close-specific-task! (the-as game-task s5-1) (task-status need-resolution))
            )
          )
        (-> obj fuel)
@@ -533,7 +526,7 @@
   (when (or (not arg0) (= arg0 'health))
    (set! (-> obj health-max) (-> *FACT-bank* health-max-default))
    (set! (-> obj health) (-> obj health-max))
-   (set! (-> obj health-pickup-time) (the-as uint -30000))
+   (set! (-> obj health-pickup-time) (seconds -100))
    )
   (when (or (not arg0) (= arg0 'buzzer))
    (set! (-> obj buzzer-max) (-> *FACT-bank* buzzer-max-default))
@@ -561,7 +554,7 @@
                 ;; when we get a different source, OR we it's been more than 0.5 seconds since we last got eco
                 ;; from this source.
                 (if (or (!= (handle->process source-handle) (handle->process (-> obj eco-source)))
-                        (>= (the-as int (- (-> *display* base-frame-counter) (-> obj eco-source-time))) 150)
+                        (>= (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
                         )
                     
                     ;; play the sound!
@@ -658,7 +651,7 @@
            ;; get money.
            (when (< 0.0 amount)
              ;; play sound.
-             (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj money-pickup-time))) 15)
+             (if (>= (- (-> *display* base-frame-counter) (-> obj money-pickup-time)) (seconds 0.05))
                  (sound-play-by-name (static-sound-name "money-pickup")
                                      (new-sound-id)
                                      1024
@@ -727,10 +720,10 @@
            (when (!= (-> obj eco-type) kind)
              ;; as far as I can tell, the eco-level isn't really used other than just 1 or 0.
              (set! (-> obj eco-level) 0.0)
-             (set! (-> obj eco-timeout) (the-as seconds 0))
+             (set! (-> obj eco-timeout) 0)
              0
              )
-           (set! (-> obj eco-type) (the-as int kind))
+           (set! (-> obj eco-type) kind)
            
            
            (let ((eco-lev (-> obj eco-level)))
@@ -765,11 +758,11 @@
              
              ;; sound and controller vibration.
              (when (not (and (= (handle->process source-handle) (handle->process (-> obj eco-source)))
-                             (< (the-as int (- (-> *display* base-frame-counter) (-> obj eco-source-time))) 150)
+                             (< (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
                              )
                         )
-               (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 60)
-               (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 60)
+               (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
+               (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 (seconds 0.2))
                (case kind 
                      (((pickup-type eco-blue))
                       (sound-play-by-name (static-sound-name "get-blue-eco") (new-sound-id) 1024 0 0 1 #t)
@@ -791,70 +784,52 @@
              
              ;; special case for blue eco magnet effect
              (when (= kind (pickup-type eco-blue))
-               (when (= eco-lev 0.0) ;; old level was 0, we just got our first piece of eco
+               (when (= eco-lev 0.0)
                  (let ((s5-1 (-> obj process)))
                    (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
-                          (s4-3 (when s3-5
-                                  ;; interestingly, this uses the activate method of touch-tracker, not process.
-                                  (let ((t9-28 (method-of-type touch-tracker activate)))
-                                    (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
-                                  (-> s3-5 ppointer)
-                                  )
+                          (s4-3
+                            (when s3-5
+                              (let ((t9-28 (method-of-type touch-tracker activate)))
+                                (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
                                 )
+                              (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
+                              (-> s3-5 ppointer)
+                              )
+                            )
                           )
-                     
-                     ;; send the touch tracker the target
                      (send-event (ppointer->process s4-3) 'target s5-1)
-                     ;; tell it we have blue eco.
                      (send-event (ppointer->process s4-3) 'event 'eco-blue)
-                     ;; give it a function to call to see if it's time to exit
-                     (send-event (ppointer->process s4-3) 
-                                 'exit 
-                                 (lambda ()
-                                   (send-event *target* 'query 'powerup 3)
-                                   )
-                                 ;; set up some collision thing.
-                                 (send-event (ppointer->process s4-3)
-                                             'eval
-                                             (lambda :behavior process-drawable
-                                               ()
-                                               (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with)
-                                                     (collide-kind cak-1 cak-2 cak-3 blue-eco-suck)
-                                                     )
-                                               (none)
-                                               )
-                                             )
-                                 )
+                     (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup 3)))
+                     (send-event
+                       (ppointer->process s4-3)
+                       'eval
+                       (lambda :behavior process-drawable
+                         ()
+                         (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with)
+                               (collide-kind cak-1 cak-2 cak-3 blue-eco-suck)
+                               )
+                         (none)
+                         )
+                       )
                      )
-                   
-                   ;; create a process that just keeps sending 'effect 'eco-blue
                    (let ((s4-4 (get-process *4k-dead-pool* process #x4000)))
                      (when s4-4
                        (let ((t9-35 (method-of-type process activate)))
                          (t9-35 s4-4 s5-1 'process (the-as pointer #x70004000))
                          )
-                       (run-next-time-in-process s4-4
-                        (lambda ((arg0 process-drawable))
-                          (with-pp
-                            (let ((start-time (-> *display* base-frame-counter)))
-                              (until (>= (the-as int (- (-> *display* base-frame-counter) start-time)) 180)
-                                (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                                  (set! (-> a1-0 from) pp)
-                                  (set! (-> a1-0 num-params) 1)
-                                  (set! (-> a1-0 message) 'effect)
-                                  (set! (-> a1-0 param 0) (the-as uint 'eco-blue))
-                                  (send-event-function arg0 a1-0)
-                                  )
-                                (suspend)
-                                )
-                              )
-                            (none)
-                            )
-                          )
-                        s5-1
-                        )
+                       (run-next-time-in-process
+                         s4-4
+                         (lambda ((arg0 process-drawable))
+                           (let ((s5-0 (-> *display* base-frame-counter)))
+                             (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
+                               (send-event arg0 'effect 'eco-blue)
+                               (suspend)
+                               )
+                             )
+                           (none)
+                           )
+                         s5-1
+                         )
                        (-> s4-4 ppointer)
                        )
                      )
@@ -865,12 +840,7 @@
            (-> obj eco-level)
            )
           (else
-            ((method-of-type fact-info pickup-collectable!)
-             obj
-             kind
-             amount
-             source-handle
-             )
+            ((method-of-type fact-info pickup-collectable!) obj kind amount source-handle)
             )
           )
     )

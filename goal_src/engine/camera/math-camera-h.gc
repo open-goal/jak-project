@@ -7,8 +7,13 @@
 
 
 ;; The math-camera is a global that contains camera projection and culling matrices.
+;; Note that it doesn't take into account the position/rotation of the game camera, but
+;; just computes the projection matrix/culling stuff and the camera stuff will have to
+;; rotate and translate it as needed.
+
 ;; It also contains some GIF stuff, but these seem to be wrong/unused.
-;; Some of the code here may be extremely old and unused.
+;; Some of the code here may be extremely old and unused, but this does compute the camera projection
+;; matrix used almost everywhere.
 
 (deftype vis-gif-tag (structure)
   ((fog0  uint32  :offset-assert 0)
@@ -50,6 +55,8 @@
   ((d                          meters             :offset-assert 4) ;; camera near plane
    (f                          meters             :offset-assert 8) ;; camera far plane
    (fov                        degrees            :offset-assert 12) ;; field of view angle
+
+   ;; view frustum
    (x-ratio                    float              :offset-assert 16)
    (y-ratio                    float              :offset-assert 20)
    (x-pix                      float              :offset-assert 24)
@@ -76,6 +83,10 @@
    (inv-camera-rot             matrix     :inline :offset-assert 432)
    (inv-camera-rot-smooth      matrix     :inline :offset-assert 496)
    (inv-camera-rot-smooth-from quaternion :inline :offset-assert 560)
+   ;; this camera-temp is the main matrix used for renderers.
+   ;; the camera code will set this.
+   ;; it's designed so the renderers can do a single matrix-vector multiply
+   ;; and then get fog, clipping, and final vertex position from the result.
    (camera-temp                matrix     :inline :offset-assert 576)
    (prev-camera-temp           matrix     :inline :offset-assert 640)
    (hmge-scale                 vector     :inline :offset-assert 704)

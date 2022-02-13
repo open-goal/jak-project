@@ -11,7 +11,7 @@
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace goos {
 class Object;
@@ -234,7 +234,7 @@ class IR_IntMath1 : public virtual IR {
   IR_IntMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   IR_IntMath1(Kind _kind, std::shared_ptr<IR> _arg, std::shared_ptr<IR_Atomic> _abs_op)
       : kind(_kind), arg(std::move(_arg)), abs_op(std::move(_abs_op)) {
-    assert(abs_op);
+    ASSERT(abs_op);
   }
   std::shared_ptr<IR> arg;
   std::shared_ptr<IR_Atomic> abs_op = nullptr;
@@ -327,11 +327,11 @@ struct Condition {
       : kind(_kind), src0(std::move(_src0)), src1(std::move(_src1)), clobber(std::move(_clobber)) {
     int nargs = num_args();
     if (nargs == 2) {
-      assert(src0 && src1);
+      ASSERT(src0 && src1);
     } else if (nargs == 1) {
-      assert(src0 && !src1);
+      ASSERT(src0 && !src1);
     } else if (nargs == 0) {
-      assert(!src0 && !src1);
+      ASSERT(!src0 && !src1);
     }
   }
 

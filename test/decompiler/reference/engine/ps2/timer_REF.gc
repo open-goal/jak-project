@@ -61,7 +61,7 @@
 ;; definition for function stopwatch-init
 (defun stopwatch-init ((arg0 stopwatch))
   (set! (-> arg0 begin-level) 0)
-  (set! (-> arg0 prev-time-elapsed) (the-as uint 0))
+  (set! (-> arg0 prev-time-elapsed) 0)
   0
   )
 
@@ -69,11 +69,11 @@
 ;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defun stopwatch-reset ((arg0 stopwatch))
   (local-vars (v1-3 int))
-  (set! (-> arg0 prev-time-elapsed) (the-as uint 0))
+  (set! (-> arg0 prev-time-elapsed) 0)
   (when (> (-> arg0 begin-level) 0)
     0
     (.mfc0 v1-3 Count)
-    (set! (-> arg0 start-time) (the-as uint v1-3))
+    (set! (-> arg0 start-time) (the-as time-frame v1-3))
     )
   0
   )
@@ -86,7 +86,7 @@
     (set! (-> arg0 begin-level) 1)
     0
     (.mfc0 v1-4 Count)
-    (set! (-> arg0 start-time) (the-as uint v1-4))
+    (set! (-> arg0 start-time) (the-as time-frame v1-4))
     )
   0
   )
@@ -100,7 +100,7 @@
     (set! (-> arg0 begin-level) 0)
     0
     (.mfc0 a1-0 Count)
-    (+! (-> arg0 prev-time-elapsed) (- a1-0 (the-as int (-> arg0 start-time))))
+    (+! (-> arg0 prev-time-elapsed) (- (the-as time-frame a1-0) (-> arg0 start-time)))
     )
   (the-as uint 0)
   )
@@ -112,7 +112,7 @@
   (when (zero? (-> arg0 begin-level))
     0
     (.mfc0 v1-3 Count)
-    (set! (-> arg0 start-time) (the-as uint v1-3))
+    (set! (-> arg0 start-time) (the-as time-frame v1-3))
     )
   (+! (-> arg0 begin-level) 1)
   0
@@ -127,12 +127,13 @@
   (when (zero? (-> arg0 begin-level))
     0
     (.mfc0 a1-0 Count)
-    (+! (-> arg0 prev-time-elapsed) (- a1-0 (the-as int (-> arg0 start-time))))
+    (+! (-> arg0 prev-time-elapsed) (- (the-as time-frame a1-0) (-> arg0 start-time)))
     )
   (the-as uint 0)
   )
 
 ;; definition for function stopwatch-elapsed-ticks
+;; INFO: Return type mismatch time-frame vs uint.
 ;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defun stopwatch-elapsed-ticks ((arg0 stopwatch))
   (local-vars (v1-3 int))
@@ -140,9 +141,9 @@
     (when (> (-> arg0 begin-level) 0)
       0
       (.mfc0 v1-3 Count)
-      (+! v0-0 (- v1-3 (the-as int (-> arg0 start-time))))
+      (+! v0-0 (- (the-as time-frame v1-3) (-> arg0 start-time)))
       )
-    v0-0
+    (the-as uint v0-0)
     )
   )
 

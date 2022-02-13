@@ -229,6 +229,17 @@
     )
   )
 
+;; mlet, but recursive, allowing you to define variables in terms of others.
+(defmacro mlet* (bindings &rest body)
+  (if (null? bindings)
+    `(begin ,@body)
+    `((lambda :inline-only #t (,(caar bindings))
+        (mlet* ,(cdr bindings) ,@body))
+      ,(car (cdar bindings))
+      )
+    )
+  )
+
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
   (if (and
@@ -540,6 +551,13 @@
   `(fmax (fmin ,val ,maxval) ,minval)
   )
 
+(defmacro maxmin (val minval maxval)
+  `(min (max ,val ,maxval) ,minval)
+  )
+(defmacro fmaxmin (val minval maxval)
+  `(fmin (fmax ,val ,maxval) ,minval)
+  )
+
 (defmacro &+! (val amount)
   `(set! ,val (&+ ,val ,amount))
   )
@@ -597,12 +615,20 @@
   `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
   )
 
+(defmacro /-0-guard (a b)
+  `(let ((divisor ,b))
+      (if (zero? divisor)
+          0
+          (/ ,a divisor))
+      )
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bit Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro align-n (val n)
   "align val to n-byte boundaries"
-  `(logand ,(- n) (+ (the-as int ,val) ,(- n 1)))
+  `(logand (- ,n) (+ (the-as int ,val) (- ,n 1)))
   )
 
 (defmacro align16 (val)
@@ -859,3 +885,18 @@
 
 ;; load the default project
 (load-project "goal_src/game.gp")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; user stuf
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro __get-user ()
+  `(quote ,*user*)
+  )
+
+(defconstant *user* (__get-user))
+
+
+
+

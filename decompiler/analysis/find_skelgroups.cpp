@@ -142,7 +142,7 @@ DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
                                           env.get_variable_name(let_dest_var),
                                           env.get_variable_name(*var));
       } else {
-        assert(false);
+        ASSERT(false);
       }
     }
 
@@ -167,7 +167,7 @@ FormElement* rewrite_defskelgroup(LetElement* elt,
                                   FormPool& pool) {
   // last thing in the body should be something like:
   //  (set! *hopper-sg* v1-1)
-  assert(elt->body()->size() > 0);
+  ASSERT(elt->body()->size() > 0);
 
   int last_lod = (elt->body()->size() - 3) / 2 - 1;
   if (last_lod > skelgroup_info.max_lod) {

@@ -94,7 +94,7 @@
       :tool 'dgo
       :out `(,out-name)
       )
-    (set! *all-cgos* (cons out-name *all-cgos*))
+    (append!! *all-cgos* out-name)
     )
   )
 
@@ -103,10 +103,12 @@
   (fmt #f "tpage-{}.go" id)
   )
 
+
+(define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
+
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
+  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" (tpage-name tpage-id))))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
@@ -118,8 +120,7 @@
   )
 
 (defmacro copy-go (name)
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "decompiler_out/" folder "raw_obj/" name ".go")))
+  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" name ".go")))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/obj/" name ".go")))))
@@ -135,26 +136,24 @@
   `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
 
 (defun copy-str (name)
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "STR/" name ".STR"))
+  (let* ((path (string-append "iso_data/" *game-directory* "STR/" name ".STR"))
          (out-file (string-append "out/iso/" name ".STR")))
     (defstep :in path
              :tool 'copy
              :out `(,out-file))
-    (set! *all-str* (cons out-file *all-str*))))
+    (append!! *all-str* out-file)))
 
 (define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
   `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
 
 (defun copy-vis-file (name)
-  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
-         (path (string-append "iso_data/" folder "VIS/" name ".VIS"))
+  (let* ((path (string-append "iso_data/" *game-directory* "VIS/" name ".VIS"))
          (out-name (string-append "out/iso/" name ".VIS")))
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
-    (set! *all-vis* (cons out-name *all-vis*))))
+    (append!! *all-vis* out-name)))
 
 
 (defmacro group (name &rest stuff)
@@ -219,22 +218,22 @@
   )
 
 ;; the TWEAKVAL file
-(defstep :in "iso_data/MUS/TWEAKVAL.MUS"
+(defstep :in (string-append "iso_data/" *game-directory* "MUS/TWEAKVAL.MUS")
   :tool 'copy
   :out '("out/iso/TWEAKVAL.MUS"))
 
 ;; the VAGDIR file
-(defstep :in "iso_data/VAG/VAGDIR.AYB"
+(defstep :in (string-append "iso_data/" *game-directory* "VAG/VAGDIR.AYB")
   :tool 'copy
   :out '("out/iso/VAGDIR.AYB"))
 
 ;; the save icon file
-(defstep :in "iso_data/DRIVERS/SAVEGAME.ICO"
+(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SAVEGAME.ICO")
   :tool 'copy
   :out '("out/iso/SAVEGAME.ICO"))
 
 ;; the loading screen file
-(defstep :in "iso_data/DRIVERS/SCREEN1.USA"
+(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SCREEN1.USA")
   :tool 'copy
   :out '("out/iso/SCREEN1.USA"))
 
@@ -258,11 +257,33 @@
   "FUCV6"
   "FUCV7"
   "FUCV8"
+  "FUCRV1"
+  "FUCFV1"
   ;; jak's ambient
   "EIA1"
   "EIA2"
   "EIA3"
   "EIA4"
+  ;; jak death
+  "DE0181"
+  "DE0182"
+  "DE0184"
+  "DE0186"
+  "DE0187"
+  "DE0191"
+  "DE0193"
+  "DE0195"
+  "DE0197"
+  "DE0199"
+  "DE0202"
+  ;; jak other
+  "EIFISH"
+  "EIICE"
+  "EIFLUT"
+  "EIPOLE"
+  "EIRACER"
+  "EITUBE"
+  
   ;; intro camera
   "NDINTRO"
   "LOINTRO"
@@ -371,7 +392,6 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
-   "common/snow-bunny.gc"
    "common/battlecontroller.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
@@ -445,6 +465,19 @@
   "beach-vis"
   )
 
+;; pelican
+(copy-strs "PESEXT")
+;; beachcam
+(copy-strs "BECANNON")
+;; sculptor
+(copy-strs "SCINTROD" "SCR1" "SCRESOLU")
+;; lrocklrg
+(copy-strs "LRFALLIN")
+;; mayor
+(copy-strs "MAINTROD" "MARBEAMS" "MARDONAT" "MAZBEAMS" "MAZDONAT")
+;; bird-lady
+(copy-strs "BILINTRO" "BILR1" "BILR2" "BILBRESO")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle
@@ -506,6 +539,10 @@
   "water-anim-jungle-ag"
   "jungle-vis"
   )
+
+;; fisher
+(copy-strs "FIINTROD" "FIR1" "FIACCEPT" "FIREJECT" "FIRESOLU")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 1
@@ -576,6 +613,18 @@
  "village1-vis"
  )
 
+;; farmer
+(copy-strs "FAINTROD" "FAR1" "FAR2" "FARESOLU")
+;; explorer
+(copy-strs "EXINTROD" "EXR1" "EXR2" "EXRESOLU")
+;; oracle
+(copy-strs "ORI1" "ORLE1" "ORRE1" "ORR1")
+;; assistant
+(copy-strs "ASIBESWI" "ASR1BESW")
+;; sage
+(copy-strs "SAISA" "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
+;; fishermans-boat
+(copy-strs "FIBRTMIS")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Jungle temple
@@ -608,7 +657,6 @@
   "plat-jungleb-ag"
   "jungleb-vis"
   )
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; misty island
@@ -667,6 +715,14 @@
   "misty-vis"
   )
 
+;; fishermans-boat
+(copy-strs "FIBRTVIL" "FIBRT1AL")
+;; muse
+(copy-strs "MUVICTOR")
+;; sidekick-human
+(copy-strs "SIHISA" "SIHISB" "SIHISC")
+;; mistycam
+(copy-strs "MICANNON")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; swamp
@@ -707,6 +763,8 @@
   "swamp-vis"
   )
 
+;; billy
+(copy-strs "BIINTROD" "BIR1" "BIACCEPT" "BIREJECT" "BIRESOLU")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LPC
@@ -822,6 +880,7 @@
  "snow-ram.gc"
  "snow-part.gc"
  "yeti.gc"
+ "snow-bunny.gc"
  )
 
 (copy-textures 710 842 711 712)
@@ -852,6 +911,8 @@
   "snow-vis"
   )
 
+;; ram-boss
+(copy-strs "SNRBICFC" "SNRBIPFC" "SNRBSBFC")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Fire Canyon
@@ -885,6 +946,8 @@
   "spike-ag"
   "firecanyon-vis")
 
+;; assistant firecanyon
+(copy-strs "ASFRESOL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ogre boss
@@ -920,6 +983,9 @@
   "water-anim-ogre-ag"
   "ogre-vis"
   )
+
+;; flying-lurker
+(copy-strs "FLLINTRO" "PLLBLOWU")
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -977,6 +1043,19 @@
   "village2-vis"
   )
 
+;; assistant village2
+(copy-strs "AS2INTRO" "AS2IROOM" "AS2R1ROO" "AS2IROBB" "AS2R1ROB" "AS2IFLUT" "AS2R1FLU" "AS2RESOL")
+;; sage bluehut
+(copy-strs "SABICDUS" "SABR1CDU" "SABIPARM" "SABR1PAR")
+;; geologist
+(copy-strs "GEINTROD" "GERMOLES" "GEZMOLES" "GERMONEY" "GEZMONEY")
+;; gambler
+(copy-strs "GAI1" "GARRACE" "GARMONEY" "GAZRACE" "GAZMONEY")
+;; warrior
+(copy-strs "WAINTROD" "WAR1" "WARESOLU")
+;; oracle
+(copy-strs "ORI2" "ORLE2" "ORRE2" "ORR2")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; rolling hills
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1009,6 +1088,10 @@
   "rolling-vis"
   )
 
+;; happy-plant
+(copy-strs "HAPOPEN")
+;; race-ring
+(copy-strs "RARANIM" "RARSANIM")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 3
@@ -1056,6 +1139,16 @@
   "village3-vis"
   )
 
+;; sage-villagec
+(copy-strs "SA3INTRO" "SA3IDECO" "SA3R1DEC" "SA3IRAMS" "SA3R1RAM")
+;; assistant-villagec
+(copy-strs "AS3REMIN")
+;; oracle
+(copy-strs "ORI3" "ORLE3" "ORRE3" "ORR3")
+;; gondola
+(copy-strs "GORUP" "GORDOWN")
+;; minershort
+(copy-strs "MIIORBS" "MIR1ORBS" "MIR2ORBS" "MIZ1ORBS" "MIZ2ORBS" "MIIGNAWE" "MIR1GNAW" "MIISWITC" "MIR1SWIT")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Training
@@ -1133,6 +1226,7 @@
   "maincave-vis"
   )
 
+(copy-strs "MAGFCELL")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; dark cave
@@ -1217,6 +1311,9 @@
   "lavatube-vis"
   )
 
+;; assistant-lavatube
+(copy-strs "ASLSRESO" "ASLERESO")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; citadel
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1227,7 +1324,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/battlecontroller.o")
+  :deps ("out/obj/battlecontroller.o" "out/obj/snow-bunny.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
@@ -1273,6 +1370,11 @@
   "yellowsage-ag"
   "citadel-vis"
   )
+
+;; green-sagecage
+(copy-strs "GRSINTRO" "GRSRESOL" "GRSOPREB")
+;; sage-cage
+(copy-strs "YERESOLU" "RERESOLU" "BLRESOLU")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Final Boss
@@ -1323,6 +1425,11 @@
   "finalboss-vis"
   )
 
+;; finalboss
+(copy-strs "FIWECO")
+;; green-sagecage
+(copy-strs "GRSDSACR" "GRSOBBA" "GRSOBBB" "GRSOBBEC" "GRSOBBNC" "GRSOBFIN")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; intro only
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1346,6 +1453,9 @@
   "evilsis-ag"
   "intro-vis"
   )
+
+;; evilbro
+(copy-strs "EVMEND")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; demo
@@ -1742,7 +1852,11 @@
 
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
-   ,@(reverse *all-cgos*)
+   ,@*all-cgos*
    ,@*all-vis*
    ,@*all-str*)
+ )
+
+(group-list "spools"
+ `(,@*all-str*)
  )

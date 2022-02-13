@@ -8,7 +8,7 @@
 ;; DECOMP BEGINS
 
 (defmethod TODO-RENAME-25 pov-camera ((obj pov-camera))
-  (when (or (and (>= (- (-> *display* base-frame-counter) (the-as int (-> obj debounce-start-time))) 60)
+  (when (or (and (>= (- (-> *display* base-frame-counter) (-> obj debounce-start-time)) (seconds 0.2))
                  (cpad-pressed? 0 triangle)
                  )
             (logtest? (-> obj flags) 2)
@@ -48,7 +48,7 @@
       (suspend)
       )
     (let ((gp-0 0))
-      (let ((v1-7 (dummy-10 (-> self draw jgeo) "camera" (the-as type #f))))
+      (let ((v1-7 (lookup-art (-> self draw jgeo) "camera" (the-as type #f))))
         (if v1-7
             (set! gp-0 (+ (-> v1-7 number) 1))
             )
@@ -71,14 +71,14 @@
     )
   )
 
-(defbehavior pov-camera-play-and-reposition pov-camera ((arg0 joint-anim-compressed) (arg1 vector) (arg2 float))
+(defbehavior pov-camera-play-and-reposition pov-camera ((arg0 art-joint-anim) (arg1 vector) (arg2 float))
   (let ((s4-0 #f))
     (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim arg0))
-      (set! (-> v1-2 param 0) (the float (+ (-> arg0 data 9 unknown-half) -1)))
+      (set! (-> v1-2 frame-group) arg0)
+      (set! (-> v1-2 param 0) (the float (+ (-> arg0 data 0 length) -1)))
       (set! (-> v1-2 param 1) arg2)
       (set! (-> v1-2 frame-num) 0.0)
-      (joint-control-channel-group! v1-2 (the-as art-joint-anim arg0) num-func-seek!)
+      (joint-control-channel-group! v1-2 arg0 num-func-seek!)
       )
     (until (ja-done? 0)
       (let ((v1-4 (and (not s4-0) (< (the float (+ (-> (if (> (-> self skel active-channels) 0)
@@ -130,7 +130,7 @@
     )
   :enter
   (behavior ()
-    (set! (-> self debounce-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
     (if (= (-> self anim-name type) string)
         (backup-load-state-and-set-cmds *load-state* (-> self command-list))
         )
@@ -218,7 +218,7 @@
     )
   :code
   (behavior ()
-    (set-blackout-frames 10)
+    (set-blackout-frames (seconds 0.033333335))
     (suspend)
     (suspend)
     (go-virtual pov-camera-done-playing)
@@ -262,7 +262,7 @@
       (set! (-> self notify-handle) (process->handle arg4))
       (set! (-> self notify-handle) (the-as handle #f))
       )
-  (set! (-> self debounce-start-time) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
@@ -282,7 +282,7 @@
   (cond
     ((= (-> arg2 type) string)
      (logior! (-> self skel status) 32)
-     (let ((s5-1 (dummy-10 (-> self draw art-group) arg2 art-joint-anim)))
+     (let ((s5-1 (lookup-art (-> self draw art-group) arg2 art-joint-anim)))
        (if (not s5-1)
            (go process-drawable-art-error arg2)
            )

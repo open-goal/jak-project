@@ -305,7 +305,7 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
     if (args.unnamed.size() < spec.unnamed.size()) {
       throw_eval_error(form, "didn't get enough arguments");
     }
-    assert(args.unnamed.size() == spec.unnamed.size());
+    ASSERT(args.unnamed.size() == spec.unnamed.size());
 
     if (!args.rest.empty() && spec.rest.empty()) {
       throw_eval_error(form, "got too many arguments");

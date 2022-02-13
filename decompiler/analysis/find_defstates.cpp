@@ -111,7 +111,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
                                           env.get_variable_name(let_dest_var),
                                           env.get_variable_name(*var));
       } else {
-        assert(false);
+        ASSERT(false);
       }
     }
 
@@ -173,7 +173,7 @@ FormElement* rewrite_nonvirtual_defstate(
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
   // first thing in the body should be something like:
   //  (set! teetertotter-idle (the-as (state none) v1-3))
-  assert(elt->body()->size() > 0);
+  ASSERT(elt->body()->size() > 0);
   int body_index = 0;
 
   // the setup
@@ -194,7 +194,7 @@ FormElement* rewrite_nonvirtual_defstate(
                            info.second, pool, {}, skip_states);
 
   return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first,
-                                             entries, false);
+                                             entries, false, false);
 }
 
 struct VirtualStateInfo {
@@ -256,7 +256,7 @@ FormElement* rewrite_virtual_defstate(
     const std::string& expected_state_name,
     FormPool& pool,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
-  assert(elt->body()->size() > 1);
+  ASSERT(elt->body()->size() > 1);
   // variable at the top of let, contains the static state with name exptected_state_name
   auto state_var_from_let_def = elt->entries().at(0).dest;
   // our index into the let body
@@ -362,15 +362,18 @@ FormElement* rewrite_virtual_defstate(
         method_info.name, type_name, method_info.type.print());
   }
 
+  bool state_override = false;
   {
     MethodInfo parent_method_info;
     auto parent_type_name = env.dts->ts.lookup_type(type_name)->get_parent();
-    if (env.dts->ts.try_lookup_method(parent_type_name, method_info.name, &parent_method_info)) {
+    if (env.dts->ts.try_lookup_method(parent_type_name, method_id, &parent_method_info)) {
       if (!inherit_info) {
-        env.func->warnings.warn_and_throw(
-            "Virtual defstate for state {} in type {}: the state was defined in the "
-            "parent but wasn't inherited.",
-            expected_state_name, type_name);
+        // did NOT inherit parent state, this is an override!
+        state_override = true;
+        // env.func->warnings.warn_and_throw(
+        //     "Virtual defstate for state {} in type {}: the state was defined in the "
+        //     "parent but wasn't inherited.",
+        //     expected_state_name, type_name);
       }
     } else {
       if (inherit_info) {
@@ -415,7 +418,8 @@ FormElement* rewrite_virtual_defstate(
       elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
       method_info.type.substitute_for_method_call(type_name), pool, type_name, skip_states);
 
-  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, entries, true);
+  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, entries, true,
+                                             state_override);
 }
 
 bool is_nonvirtual_state(LetElement* elt) {

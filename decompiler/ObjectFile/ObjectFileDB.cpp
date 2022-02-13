@@ -65,8 +65,8 @@ std::string obj_filename_to_name(const std::string& x) {
     }
   }
 
-  assert(last_dot > last_slash + 1);
-  assert(last_slash + 1 < x.length());
+  ASSERT(last_dot > last_slash + 1);
+  ASSERT(last_slash + 1 < x.length());
   return x.substr(last_slash + 1, last_dot - last_slash - 1);
 }
 }  // namespace
@@ -96,13 +96,13 @@ ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
 
   for (auto& x : obj_files_by_name[rec.name]) {
     if (x.record.version == rec.version) {
-      assert(x.record.hash == rec.hash);
-      assert(!result);
+      ASSERT(x.record.hash == rec.hash);
+      ASSERT(!result);
       result = &x;
     }
   }
 
-  assert(result);
+  ASSERT(result);
   return *result;
 }
 
@@ -190,7 +190,7 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
       auto kv = dgo_obj_name_map[dgo].find(game_name_with_ag);
       if (kv != dgo_obj_name_map[dgo].end()) {
         lg::error("Object {} in dgo {} occurs more than one time.", game_name_with_ag, dgo);
-        assert(false);
+        ASSERT(false);
       }
       dgo_obj_name_map[dgo][game_name_with_ag] = mapped_name;
     }
@@ -212,7 +212,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
   auto header = reader.read<DgoHeader>();
 
   auto dgo_base_name = file_util::base_name(filename);
-  assert(header.name == dgo_base_name);
+  ASSERT(header.name == dgo_base_name);
   assert_string_empty_after(header.name, 60);
 
   // get all obj files...
@@ -226,11 +226,11 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
           reader.ffwd(reader.bytes_left());
           continue;
         } else {
-          assert(false);
+          ASSERT(false);
         }
       }
     } else {
-      assert(reader.bytes_left() >= obj_header.object_count);
+      ASSERT(reader.bytes_left() >= obj_header.object_count);
     }
 
     if (std::string(obj_header.name).find("-ag") != std::string::npos) {
@@ -238,7 +238,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
           "Object file {} has \"-ag\" in its name. This will break any tools which use this to "
           "detect an art group",
           obj_header.name);
-      assert(false);
+      ASSERT(false);
     }
 
     auto name = get_object_file_name(obj_header.name, reader.here(), obj_header.object_count);
@@ -249,7 +249,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
   }
 
   // check we're at the end
-  assert(0 == reader.bytes_left());
+  ASSERT(0 == reader.bytes_left());
 }
 
 /*!
@@ -270,7 +270,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
     }
   }
   stats.total_obj_files++;
-  assert(obj_size > 128);
+  ASSERT(obj_size > 128);
   uint16_t version = *(const uint16_t*)(obj_data + 8);
   auto hash = file_util::crc32(obj_data, obj_size);
 
@@ -279,12 +279,12 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   for (auto& e : obj_files_by_name[obj_name]) {
     if (e.data.size() == obj_size && e.record.hash == hash) {
       // just to make sure we don't have a hash collision.
-      assert(!memcmp(obj_data, e.data.data(), obj_size));
+      ASSERT(!memcmp(obj_data, e.data.data(), obj_size));
 
       // already got it!
       e.reference_count++;
       auto& rec = e.record;
-      assert(name_in_dgo == e.name_in_dgo);
+      ASSERT(name_in_dgo == e.name_in_dgo);
       e.dgo_names.push_back(dgo_name);
       obj_files_by_dgo[dgo_name].push_back(rec);
       duplicated = true;
@@ -316,13 +316,13 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
     auto dgo_kv = dgo_obj_name_map.find(strip_dgo_extension(dgo_name));
     if (dgo_kv == dgo_obj_name_map.end()) {
       lg::error("Object {} is from DGO {}, but this DGO was not in the map.", obj_name, dgo_name);
-      assert(false);
+      ASSERT(false);
     }
 
     auto name_kv = dgo_kv->second.find(obj_name);
     if (name_kv == dgo_kv->second.end()) {
       lg::error("Object {} from DGO {} was not found in the name map.", obj_name, dgo_name);
-      assert(false);
+      ASSERT(false);
     }
     data.name_from_map = name_kv->second;
   }
@@ -384,7 +384,7 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
     for (auto& x : obj_files_by_name.at(obj_file)) {
       std::string dgos = "[";
       for (auto& y : x.dgo_names) {
-        assert(y.length() >= 5);
+        ASSERT(y.length() >= 5);
         std::string new_str = y == "NO-XGO" ? y : y.substr(0, y.length() - 4);
         dgos += "\"" + new_str + "\", ";
       }
@@ -603,7 +603,7 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
     }
   });
 
-  assert(tpage_dir_count <= 1);
+  ASSERT(tpage_dir_count <= 1);
 
   lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
            100.f * float(success) / float(total), timer.getMs());
@@ -631,7 +631,7 @@ std::string ObjectFileDB::process_game_text_files(GameTextVersion version) {
       string_count += statistics.total_text;
       char_count += statistics.total_chars;
       if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
-        assert(false);
+        ASSERT(false);
       }
       text_by_language_by_id[statistics.language] = std::move(statistics.text);
     }
@@ -653,7 +653,7 @@ std::string ObjectFileDB::process_game_count_file() {
 
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo == "game-cnt") {
-      assert(!found);
+      ASSERT(!found);
       found = true;
       result = write_game_count(process_game_count(data));
     }
@@ -683,10 +683,10 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
   for_each_obj([&](ObjectFileData& data) {
     if (data.linked_data.segments == 3) {
       // the top level segment should have a single function
-      assert(data.linked_data.functions_by_seg.at(2).size() == 1);
+      ASSERT(data.linked_data.functions_by_seg.at(2).size() == 1);
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
-      assert(func.guessed_name.empty());
+      ASSERT(func.guessed_name.empty());
       func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);

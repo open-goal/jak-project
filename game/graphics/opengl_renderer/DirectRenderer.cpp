@@ -4,7 +4,7 @@
 #include "third-party/fmt/core.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "third-party/imgui/imgui.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size), m_mode(mode) {
@@ -79,7 +79,7 @@ void DirectRenderer::render(DmaFollower& dma,
     if (dma.current_tag_offset() == render_state->default_regs_buffer) {
       //      reset_state();
       dma.read_and_advance();  // cnt
-      assert(dma.current_tag().kind == DmaTag::Kind::RET);
+      ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
       dma.read_and_advance();  // ret
     }
   }
@@ -206,8 +206,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     if (!m_prim_gl_state.texture_enable) {
       render_state->shaders[ShaderId::DIRECT_BASIC].activate();
     } else {
-      // assert(m_global_texture_state.tcc);
-      assert(m_prim_gl_state.texture_enable);
+      // ASSERT(m_global_texture_state.tcc);
+      ASSERT(m_prim_gl_state.texture_enable);
       render_state->shaders[ShaderId::SPRITE_CPU].activate();
     }
 
@@ -244,7 +244,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.texture_enable) {
-    float alpha_reject = 0.;
+    float alpha_reject = 0.0;
     if (m_test_state.alpha_test_enable) {
       switch (m_test_state.alpha_test) {
         case GsTest::AlphaTest::ALWAYS:
@@ -256,13 +256,13 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
           break;
         default:
           fmt::print("unknown alpha test: {}\n", (int)m_test_state.alpha_test);
-          assert(false);
+          ASSERT(false);
       }
     }
     if (m_mode == Mode::SPRITE_CPU) {
       render_state->shaders[ShaderId::SPRITE_CPU].activate();
     } else if (m_mode == Mode::SKY) {
-      assert(false);
+      ASSERT(false);
     } else {
       render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
       glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
@@ -279,19 +279,19 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     }
   }
   if (state.fogging_enable) {
-    //    assert(false);
+    //    ASSERT(false);
   }
   if (state.aa_enable) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.use_uv) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.ctxt) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.fix) {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -310,13 +310,14 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 
   if (!tex) {
     // TODO Add back
-    fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-    tex = render_state->texture_pool->get_random_texture();
-    if (tex) {
-      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+    if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
+      tex = render_state->texture_pool->get_random_texture();
+    } else {
+      fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+      tex = render_state->texture_pool->get_random_texture();
     }
   }
-  assert(tex);
+  ASSERT(tex);
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {
@@ -353,26 +354,44 @@ void DirectRenderer::update_gl_blend() {
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
+    glEnable(GL_BLEND);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
-      glEnable(GL_BLEND);
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - 0) * As + Cd
-      // Cs * As + (1) * CD
-      glEnable(GL_BLEND);
+      // Cs * As + (1) * Cd
+      // s, d
+      ASSERT(state.fix == 0);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.b == GsAlpha::BlendMode::SOURCE && state.c == GsAlpha::BlendMode::SOURCE &&
+               state.d == GsAlpha::BlendMode::DEST) {
+      // (0 - Cs) * As + Cd
+      // Cd - Cs * As
       // s, d
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
+               state.c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - Cd) * fix + Cd
+      // Cs * fix + (1 - fx) * Cd
+      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendColor(0, 0, 0, state.fix / 127.f);
+      glBlendEquation(GL_FUNC_ADD);
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
-      lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b,
-                (int)state.c, (int)state.d);
-      assert(false);
+      lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
+                (int)state.d);
+      //      ASSERT(false);
     }
   }
 }
@@ -396,14 +415,15 @@ void DirectRenderer::update_gl_test() {
         glDepthFunc(GL_GREATER);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   } else {
-    assert(false);
+    // you aren't supposed to turn off z test enable, the GS had some bugs
+    ASSERT(false);
   }
 
   if (state.date) {
-    assert(false);
+    ASSERT(false);
   }
 
   if (state.depth_writes) {
@@ -435,7 +455,7 @@ u32 get_direct_qwc_or_nop(const VifCode& code) {
         return code.immediate;
       }
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 }  // namespace
@@ -456,7 +476,7 @@ void DirectRenderer::render_vif(u32 vif0,
   u32 gif_qwc = get_direct_qwc_or_nop(VifCode(vif0));
   if (gif_qwc) {
     // we got a direct. expect the second thing to be a nop/similar.
-    assert(get_direct_qwc_or_nop(VifCode(vif1)) == 0);
+    ASSERT(get_direct_qwc_or_nop(VifCode(vif1)) == 0);
   } else {
     gif_qwc = get_direct_qwc_or_nop(VifCode(vif1));
   }
@@ -469,7 +489,7 @@ void DirectRenderer::render_vif(u32 vif0,
         u32 vif;
         memcpy(&vif, data + offset_into_data, 4);
         offset_into_data += 4;
-        assert(get_direct_qwc_or_nop(VifCode(vif)) == 0);
+        ASSERT(get_direct_qwc_or_nop(VifCode(vif)) == 0);
       } else {
         // aligned! do a gif transfer!
         render_gif(data + offset_into_data, gif_qwc * 16, render_state, prof);
@@ -493,7 +513,7 @@ void DirectRenderer::render_gif(const u8* data,
                                 SharedRenderState* render_state,
                                 ScopedProfilerNode& prof) {
   if (size != UINT32_MAX) {
-    assert(size >= 16);
+    ASSERT(size >= 16);
   }
 
   bool eop = false;
@@ -501,7 +521,7 @@ void DirectRenderer::render_gif(const u8* data,
   u32 offset = 0;
   while (!eop) {
     if (size != UINT32_MAX) {
-      assert(offset < size);
+      ASSERT(offset < size);
     }
     GifTag tag(data + offset);
     offset += 16;
@@ -544,7 +564,7 @@ void DirectRenderer::render_gif(const u8* data,
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
                          reg_descriptor_name(reg_desc[reg]));
-              assert(false);
+              ASSERT(false);
           }
           offset += 16;  // PACKED = quadwords
         }
@@ -568,20 +588,20 @@ void DirectRenderer::render_gif(const u8* data,
             default:
               fmt::print("Register {} is not supported in reglist mode yet\n",
                          reg_descriptor_name(reg_desc[reg]));
-              assert(false);
+              ASSERT(false);
           }
           offset += 8;  // PACKED = quadwords
         }
       }
     } else {
-      assert(false);  // format not packed or reglist.
+      ASSERT(false);  // format not packed or reglist.
     }
 
     eop = tag.eop();
   }
 
   if (size != UINT32_MAX) {
-    assert((offset + 15) / 16 == size / 16);
+    ASSERT((offset + 15) / 16 == size / 16);
   }
 
   //  fmt::print("{}\n", GifTag(data).print());
@@ -642,7 +662,7 @@ void DirectRenderer::handle_ad(const u8* data,
       break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -651,7 +671,7 @@ void DirectRenderer::handle_tex1_1(u64 val,
                                    ScopedProfilerNode& prof) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
-  //   assert(reg.mxl() == 0);
+  //   ASSERT(reg.mxl() == 0);
   // if that's true, we can ignore LCM, MTBA, L, K
 
   bool want_tex_filt = reg.mmag();
@@ -672,7 +692,7 @@ void DirectRenderer::handle_tex1_1(u64 val,
   }
 
   // MMAG/MMIN specify texture filtering. For now, assume always linear
-  //  assert(reg.mmag() == true);
+  //  ASSERT(reg.mmag() == true);
   //  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
   //                                                //    lg::error("unsupported mmin");
   //  }
@@ -690,7 +710,6 @@ void DirectRenderer::handle_tex0_1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   GsTex0 reg(val);
-
   // update tbp
   if (current_texture_state()->current_register != reg) {
     if (current_texture_state()->used) {
@@ -717,7 +736,8 @@ void DirectRenderer::handle_tex0_1(u64 val,
   // tw: assume they got it right
   // th: assume they got it right
 
-  assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+  // MERC hack
+  // ASSERT(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
   // cpsm: assume they got it right
@@ -729,10 +749,10 @@ void DirectRenderer::handle_texa(u64 val) {
 
   // rgba16 isn't used so this doesn't matter?
   // but they use sane defaults anyway
-  assert(reg.ta0() == 0);
-  assert(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
+  ASSERT(reg.ta0() == 0);
+  ASSERT(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
 
-  assert(reg.aem() == false);
+  ASSERT(reg.aem() == false);
 }
 
 void DirectRenderer::handle_st_packed(const u8* data) {
@@ -771,11 +791,11 @@ void DirectRenderer::handle_zbuf1(u64 val,
   // note: we can basically ignore this. There's a single z buffer that's always configured the same
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
-  assert(x.psm() == TextureFormat::PSMZ24);
-  assert(x.zbp() == 448);
+  ASSERT(x.psm() == TextureFormat::PSMZ24);
+  ASSERT(x.zbp() == 448);
 
   bool write = !x.zmsk();
-  //  assert(write);
+  //  ASSERT(write);
 
   if (write != m_test_state.depth_writes) {
     m_stats.flush_from_zbuf++;
@@ -791,9 +811,9 @@ void DirectRenderer::handle_test1(u64 val,
                                   ScopedProfilerNode& prof) {
   GsTest reg(val);
   if (reg.alpha_test_enable()) {
-    // assert(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
+    // ASSERT(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
   }
-  assert(!reg.date());
+  ASSERT(!reg.date());
   if (m_test_state.current_register != reg) {
     m_stats.flush_from_test++;
     flush_pending(render_state, prof);
@@ -816,15 +836,15 @@ void DirectRenderer::handle_alpha1(u64 val,
 }
 
 void DirectRenderer::handle_pabe(u64 val) {
-  assert(val == 0);  // not really sure how to handle this yet.
+  ASSERT(val == 0);  // not really sure how to handle this yet.
 }
 
 void DirectRenderer::handle_clamp1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    assert(false);
+    //    fmt::print("clamp: 0x{:x}\n", val);
+    //    ASSERT(false);
   }
 
   if (current_texture_state()->m_clamp_state.current_register != val) {
@@ -864,7 +884,7 @@ void DirectRenderer::handle_prim(u64 val,
     m_prim_building.building_idx = 0;
   } else {
     if (m_prim_building.building_idx > 0) {
-      assert(false);  // shouldn't leave any half-finished prims
+      ASSERT(false);  // shouldn't leave any half-finished prims
     }
   }
   // need to flush any in progress prims to the buffer.
@@ -883,7 +903,7 @@ void DirectRenderer::handle_prim(u64 val,
 }
 
 void DirectRenderer::handle_rgbaq(u64 val) {
-  assert((val >> 32) == 0);  // q = 0
+  ASSERT((val >> 32) == 0);  // q = 0
   memcpy(m_prim_building.rgba_reg.data(), &val, 4);
 }
 
@@ -894,7 +914,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          SharedRenderState* render_state,
                                          ScopedProfilerNode& prof,
                                          bool advance) {
-  assert(z < (1 << 24));
+  ASSERT(z < (1 << 24));
   (void)f;  // TODO: do something with this.
   if (m_prim_buffer.is_full()) {
     // fmt::print("flush due to fill {} {}\n", m_prim_buffer.vert_count, m_prim_buffer.max_verts);
@@ -923,7 +943,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
 
         if (m_prim_gl_state.gouraud_enable) {
           // I'm not really sure what the GS does here.
-          assert(false);
+          ASSERT(false);
         }
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
@@ -1015,7 +1035,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
     } break;
     default:
       fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
-      assert(false);
+      ASSERT(false);
   }
 
   current_texture_state()->used = true;
@@ -1080,8 +1100,6 @@ void DirectRenderer::BlendState::from_register(GsAlpha reg) {
   c = reg.c_mode();
   d = reg.d_mode();
   fix = reg.fix();
-
-  assert(fix == 0);
 }
 
 void DirectRenderer::PrimGlState::from_register(GsPrim reg) {

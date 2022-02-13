@@ -12,7 +12,7 @@ goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
   if (func.type.arg_count() < 1) {
     throw std::runtime_error(fmt::format("Function {} has unknown type.\n", func.name()));
   }
-  assert(func.type.arg_count() >= 1);
+  ASSERT(func.type.arg_count() >= 1);
   for (size_t i = 0; i < func.type.arg_count() - 1; i++) {
     auto reg = Register(Reg::GPR, Reg::A0 + i);
     auto name = fmt::format("{}-0", reg.to_charp());
@@ -92,7 +92,7 @@ std::string final_defun_out(const Function& func,
     if (special_mode == FunctionDefSpecials::DEFUN_DEBUG) {
       def_name = "defun-debug";
     } else {
-      assert(special_mode == FunctionDefSpecials::NONE);
+      ASSERT(special_mode == FunctionDefSpecials::NONE);
     }
 
     auto behavior = func.type.try_get_tag("behavior");
@@ -116,7 +116,7 @@ std::string final_defun_out(const Function& func,
   }
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-    assert(special_mode == FunctionDefSpecials::NONE);
+    ASSERT(special_mode == FunctionDefSpecials::NONE);
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol("defmethod"));
     auto method_info =
@@ -131,7 +131,7 @@ std::string final_defun_out(const Function& func,
   }
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::TOP_LEVEL_INIT) {
-    assert(special_mode == FunctionDefSpecials::NONE);
+    ASSERT(special_mode == FunctionDefSpecials::NONE);
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol("top-level-function"));
     top.push_back(arguments);
@@ -143,7 +143,7 @@ std::string final_defun_out(const Function& func,
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
     std::string def_name = "defun-anon";
-    assert(special_mode == FunctionDefSpecials::NONE);
+    ASSERT(special_mode == FunctionDefSpecials::NONE);
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol(def_name));
     top.push_back(pretty_print::to_symbol(func.name()));
@@ -229,7 +229,7 @@ std::string write_from_top_level_form(Form* top_form,
                                       const std::unordered_set<std::string>& skip_functions,
                                       const Env& env) {
   std::vector<FormElement*> forms = top_form->elts();
-  assert(!forms.empty());
+  ASSERT(!forms.empty());
 
   // remove a (none) from the end, if it exists.
   auto back_as_generic_op = dynamic_cast<GenericElement*>(forms.back());
@@ -406,7 +406,7 @@ std::string write_from_top_level_form(Form* top_form,
         result +=
             fmt::format(";; definition for symbol {}, type {}\n", sym_name, symbol_type.print());
         auto setset = dynamic_cast<SetFormFormElement*>(f.try_as_single_element());
-        assert(setset);
+        ASSERT(setset);
         result += pretty_print::to_string(setset->to_form_for_define(env));
         result += "\n\n";
       }

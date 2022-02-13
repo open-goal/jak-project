@@ -86,8 +86,6 @@
           ;;(spad-vis (the-as (pointer uint128) (+ #x38b0 #x70000000)))
           (spad-vis (scratchpad-ptr uint128 :offset VISIBLE_LIST_SCRATCHPAD))
           )
-      ;; TODO this is a hack.
-      (quad-copy! (-> arg0 vis-bits) (-> arg2 all-visible-list) (/ (+ (-> arg2 visible-list-length) 15) 16))
       
       (b! (not *artist-flip-visible*) cfg-5 :delay (nop!))
       (nop!)
@@ -132,6 +130,57 @@
   (none)
   )
 
+(defun add-pc-port-background-data ((dma-buf dma-buffer))
+  ;; loop over levels
+  (dotimes (lev-idx 2)
+    (let ((lev (-> *level* level lev-idx))
+          (dma-start (-> dma-buf base)))
+      (cond
+        ((= (-> lev status) 'active)
+         ;; the level is active.
+         (let ((packet (the-as dma-packet (-> dma-buf base))))
+           (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 128))
+           (set! (-> packet vif0) (new 'static 'vif-tag))
+           (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+           (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+           )
+         (quad-copy! (-> dma-buf base) (-> lev vis-bits) 128)
+         (&+! (-> dma-buf base) (* 16 128))
+         )
+        (else
+          (let ((packet (the-as dma-packet (-> dma-buf base))))
+            (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 1))
+            (set! (-> packet vif0) (new 'static 'vif-tag))
+            (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+            (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+            )
+          (set! (-> (the (pointer uint128) (-> dma-buf base))) (the uint128 0))
+          (&+! (-> dma-buf base) (* 16 1))
+          )
+        )
+      
+      
+      (let ((a3-3 (-> dma-buf base)))
+        (let ((v1-38 (the-as object (-> dma-buf base))))
+          (set! (-> (the-as dma-packet v1-38) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet v1-38) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet v1-38) vif1) (new 'static 'vif-tag))
+          (set! (-> dma-buf base) (&+ (the-as pointer v1-38) 16))
+          )
+        (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
+
+                                                     (bucket-id tfrag-0)
+
+                                       
+                               dma-start
+                               (the-as (pointer dma-tag) a3-3)
+                               )
+        )
+      
+      )
+    )
+  )
+
 (defun finish-background ()
   "Complete the background drawing.
   This function should run after the background engine has executed.
@@ -139,6 +188,12 @@
   
   ;; set up common VU0 stuff for background.
   (background-upload-vu0)
+  
+  (#when PC_PORT
+    (add-pc-port-background-data
+      (-> *display* frames (-> *display* on-screen) frame global-buf)
+      )
+    )
   
   ;;;;;;;;;;;;;;;;
   ;; shrubbery

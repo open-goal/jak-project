@@ -62,12 +62,12 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
 
     // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
-    assert(adgif.is_normal_adgif());
-    assert(adgif.alpha().data == 0x8000000068);  // Cs + Cd
+    ASSERT(adgif.is_normal_adgif());
+    ASSERT(adgif.alpha().data == 0x8000000068);  // Cs + Cd
 
     // next is the actual draw
     auto draw_data = dma.read_and_advance();
-    assert(draw_data.size_bytes == 6 * 16);
+    ASSERT(draw_data.size_bytes == 6 * 16);
 
     GifTag draw_or_blend_tag(draw_data.data);
 
@@ -89,13 +89,13 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
     } else if (coord == 0x400) {
       buffer_idx = 1;
     } else {
-      assert(false);  // bad data
+      ASSERT(false);  // bad data
     }
 
     // look up the source texture
     auto tex = render_state->texture_pool->lookup(adgif.tex0().tbp0());
-    assert(tex);
-    assert(!tex->only_on_gpu);  // we need the actual data!!
+    ASSERT(tex);
+    ASSERT(!tex->only_on_gpu);  // we need the actual data!!
 
     // slow version
     /*
@@ -105,8 +105,8 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
 
     // intensities should be 0-128 (maybe higher is okay, but I don't see how this could be
     // generated with the GOAL code.)
-    assert(intensity <= 128);
-    assert(m_texture_data[buffer_idx].size() == tex->data.size());
+    ASSERT(intensity <= 128);
+    ASSERT(m_texture_data[buffer_idx].size() == tex->data.size());
     for (size_t i = 0; i < m_texture_data[buffer_idx].size(); i++) {
       u32 val = tex->data[i] * intensity;
       val >>= 7;

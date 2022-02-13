@@ -12,7 +12,7 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -72,7 +72,10 @@ bool Debugger::detach() {
     {
       std::unique_lock<std::mutex> lk(m_watcher_mutex);
       m_attach_return = false;
-      stop_watcher();
+    }
+    stop_watcher();
+    {
+      std::unique_lock<std::mutex> lk(m_watcher_mutex);
       m_attach_cv.wait(lk, [&]() { return m_attach_return; });
     }
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
@@ -205,7 +208,7 @@ InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
           result.function_offset = obj_offset - info->offset_in_seg;
           result.func_debug = info;
 
-          assert(!info->instructions.empty());
+          ASSERT(!info->instructions.empty());
         }
       }
     }
@@ -297,7 +300,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
             found = true;
           }
         } else*/
-        if (fails > 50) {
+        if (fails > 70) {
           fmt::print(
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
               "stack frame is too long.\n");
@@ -305,7 +308,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         }
         // attempt to backtrace anyway! if this fails then rip
         u64 next_rip = 0;
-        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base - 8)) {
           fmt::print("Invalid return address encountered!\n");
           break;
         }
@@ -366,7 +369,7 @@ Disassembly Debugger::disassemble_at_rip(const InstructionPointerInfo& info) {
       FunctionDebugInfo* func_info = info.func_debug;
       std::string name = func_info->name;
       auto continue_info = get_continue_info(rip);
-      assert(!func_info->instructions.empty());
+      ASSERT(!func_info->instructions.empty());
 
       std::vector<u8> function_mem;
       function_mem.resize(func_info->instructions.back().offset +
@@ -435,7 +438,7 @@ void Debugger::update_break_info() {
  * Waits for break to be acknowledged and reads break info.
  */
 bool Debugger::do_break() {
-  assert(is_valid() && is_attached() && is_running());
+  ASSERT(is_valid() && is_attached() && is_running());
   m_expecting_immeidate_break = true;
   m_continue_info.valid = false;
   clear_signal_queue();
@@ -443,7 +446,7 @@ bool Debugger::do_break() {
     return false;
   } else {
     auto info = pop_signal();
-    assert(info.kind == xdbg::SignalInfo::BREAK);
+    ASSERT(info.kind == xdbg::SignalInfo::BREAK);
     update_break_info();
     m_running = false;
     return true;
@@ -454,22 +457,22 @@ bool Debugger::do_break() {
  * Continue the target, must be attached and stopped.
  */
 bool Debugger::do_continue() {
-  assert(is_valid() && is_attached() && is_halted());
+  ASSERT(is_valid() && is_attached() && is_halted());
   if (!m_regs_valid) {
     update_break_info();
   }
-  assert(regs_valid());
+  ASSERT(regs_valid());
 
   if (!m_continue_info.valid) {
     update_continue_info();
   }
-  assert(m_continue_info.valid);
+  ASSERT(m_continue_info.valid);
   m_regs_valid = false;
 
   if (m_continue_info.subtract_1) {
     m_regs_at_break.rip--;
     auto result = xdbg::set_regs_now(m_debug_context.tid, m_regs_at_break);
-    assert(result);
+    ASSERT(result);
   }
 
   m_expecting_immeidate_break = false;
@@ -485,12 +488,12 @@ bool Debugger::do_continue() {
  * Read memory from an attached and halted target.
  */
 bool Debugger::read_memory(u8* dest_buffer, int size, u32 goal_addr) const {
-  assert(is_valid() && is_attached() && is_halted());
+  ASSERT(is_valid() && is_attached() && is_halted());
   return xdbg::read_goal_memory(dest_buffer, size, goal_addr, m_debug_context, m_memory_handle);
 }
 
 bool Debugger::read_memory_if_safe(u8* dest_buffer, int size, u32 goal_addr) const {
-  assert(is_valid() && is_attached() && is_halted());
+  ASSERT(is_valid() && is_attached() && is_halted());
   if (goal_addr >= EE_MAIN_MEM_LOW_PROTECT && goal_addr + size < EE_MAIN_MEM_SIZE) {
     return read_memory(dest_buffer, size, goal_addr);
   }
@@ -501,7 +504,7 @@ bool Debugger::read_memory_if_safe(u8* dest_buffer, int size, u32 goal_addr) con
  * Write the memory of an attached and halted target.
  */
 bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
-  assert(is_valid() && is_attached() && is_halted());
+  ASSERT(is_valid() && is_attached() && is_halted());
   return xdbg::write_goal_memory(src_buffer, size, goal_addr, m_debug_context, m_memory_handle);
 }
 
@@ -509,7 +512,7 @@ bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
  * Read the GOAL Symbol table from an attached and halted target.
  */
 void Debugger::read_symbol_table() {
-  assert(is_valid() && is_attached() && is_halted());
+  ASSERT(is_valid() && is_attached() && is_halted());
   u32 bytes_read = 0;
   u32 reads = 0;
   Timer timer;
@@ -555,7 +558,8 @@ void Debugger::read_symbol_table() {
         sym_type = sym->type;
       } else {
         if (sym_type != sym->type) {
-          fmt::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}\n", sym_type, sym->type);
+          fmt::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}: addr 0x{:x}\n", sym_type,
+                     sym->type, offset + st_base + (uint64_t)m_debug_context.base);
           return;
         }
       }
@@ -574,13 +578,17 @@ void Debugger::read_symbol_table() {
       bytes_read += 128;
       // just in case
       str_buff[127] = '\0';
-      assert(strlen(str_buff) < 50);
-      std::string str(str_buff);
 
       // GOAL sym - s7
       auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
-      assert(sym_offset >= INT16_MIN);
-      assert(sym_offset <= INT16_MAX);
+      ASSERT(sym_offset >= INT16_MIN);
+      ASSERT(sym_offset <= INT16_MAX);
+
+      std::string str(str_buff);
+      if (str.length() >= 50) {
+        fmt::print("Invalid symbol #x{:x}!\n", sym_offset);
+        continue;
+      }
 
       // update maps
       if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
@@ -592,7 +600,8 @@ void Debugger::read_symbol_table() {
           str += "-hack-copy";
         } else {
           fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
-          assert(false);
+          continue;
+          // ASSERT(false);
         }
       }
 
@@ -602,7 +611,7 @@ void Debugger::read_symbol_table() {
     }
   }
 
-  assert(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
+  ASSERT(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
   fmt::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
              m_symbol_name_to_offset_map.size(), timer.getMs());
 }
@@ -612,7 +621,7 @@ void Debugger::read_symbol_table() {
  * Returns 0 if the symbol doesn't exist.
  */
 u32 Debugger::get_symbol_address(const std::string& sym_name) {
-  assert(is_valid());
+  ASSERT(is_valid());
   auto kv = m_symbol_name_to_offset_map.find(sym_name);
   if (kv != m_symbol_name_to_offset_map.end()) {
     return m_debug_context.s7 + kv->second;
@@ -624,7 +633,7 @@ u32 Debugger::get_symbol_address(const std::string& sym_name) {
  * Get the value of a symbol by name. Returns if the symbol exists and populates output if it does.
  */
 bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
-  assert(is_valid());
+  ASSERT(is_valid());
   auto kv = m_symbol_name_to_value_map.find(sym_name);
   if (kv != m_symbol_name_to_value_map.end()) {
     *output = kv->second;
@@ -637,7 +646,7 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
  * Get the value of a symbol by name. Returns NULL if symbol does not exist.
  */
 const char* Debugger::get_symbol_name_from_offset(s32 ofs) const {
-  assert(is_valid());
+  ASSERT(is_valid());
   auto kv = m_symbol_offset_to_name_map.find(ofs);
   if (kv != m_symbol_offset_to_name_map.end()) {
     return kv->second.c_str();
@@ -673,7 +682,7 @@ void Debugger::start_watcher() {
   if (m_watcher_running) {
     stop_watcher();
   }
-  assert(!m_watcher_running);
+  ASSERT(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
   {
@@ -687,7 +696,7 @@ void Debugger::start_watcher() {
  * Stops the debugger watch thread (waits for it to end)
  */
 void Debugger::stop_watcher() {
-  assert(m_watcher_running);
+  ASSERT(m_watcher_running);
   m_watcher_running = false;
   m_watcher_should_stop = true;
   m_watcher_thread.join();
@@ -753,7 +762,7 @@ void Debugger::watcher() {
 #endif
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
-          assert(false);
+          ASSERT(false);
       }
 
       {
@@ -793,7 +802,7 @@ Debugger::SignalInfo Debugger::pop_signal() {
 
   Debugger::SignalInfo result;
   if (!try_pop_signal(&result)) {
-    assert(false);
+    ASSERT(false);
   }
   return result;
 }
@@ -953,7 +962,7 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
       result.replace(pos + 1, read + sym_val_string.length() - 1,
                      sym_str);  // the [ is ignored (result is something like: [identity])
       pos += sym_str.length() + 1;
-      assert(result.at(pos) == ']');  // maybe?
+      ASSERT(result.at(pos) == ']');  // maybe?
     } else {
       // symbol not found for whatever reason, just use regular disassembly and skip over
       pos += 1;

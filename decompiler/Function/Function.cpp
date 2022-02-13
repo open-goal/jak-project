@@ -8,7 +8,7 @@
 #include "decompiler/IR/IR.h"
 #include "decompiler/IR2/Form.h"
 #include "common/util/BitUtils.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 namespace {
@@ -20,14 +20,14 @@ std::vector<Register> fpr_backups = {make_fpr(30), make_fpr(28), make_fpr(26),
                                      make_fpr(24), make_fpr(22), make_fpr(20)};
 
 Register get_expected_gpr_backup(int n, int total) {
-  assert(total <= int(gpr_backups.size()));
-  assert(n < total);
+  ASSERT(total <= int(gpr_backups.size()));
+  ASSERT(n < total);
   return gpr_backups.at((total - 1) - n);
 }
 
 Register get_expected_fpr_backup(int n, int total) {
-  assert(total <= int(fpr_backups.size()));
-  assert(n < total);
+  ASSERT(total <= int(fpr_backups.size()));
+  ASSERT(n < total);
   return fpr_backups.at((total - 1) - n);
 }
 
@@ -79,7 +79,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
                              Register(Reg::GPR, Reg::SP))) {
       prologue.ra_backed_up = true;
       prologue.ra_backup_offset = get_gpr_store_offset_as_int(instructions.at(idx));
-      assert(prologue.ra_backup_offset == 0);
+      ASSERT(prologue.ra_backup_offset == 0);
       idx++;
     }
 
@@ -107,13 +107,13 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       prologue.fp_backup_offset = get_gpr_store_offset_as_int(instructions.at(idx));
       // in Jak 1 like we never backup fp unless ra is also backed up, so the offset is always 8.
       // but it seems like it could be possible to do one without the other?
-      assert(prologue.fp_backup_offset == 8);
+      ASSERT(prologue.fp_backup_offset == 8);
       idx++;
 
       // after backing up fp, we always set it to t9.
       prologue.fp_set = is_gpr_3(instructions.at(idx), InstructionKind::OR, make_gpr(Reg::FP),
                                  make_gpr(Reg::T9), make_gpr(Reg::R0));
-      assert(prologue.fp_set);
+      ASSERT(prologue.fp_set);
       idx++;
     }
 
@@ -144,7 +144,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       for (int i = 0; i < n_gpr_backups; i++) {
         int this_offset = get_gpr_store_offset_as_int(instructions.at(idx + i));
         auto this_reg = instructions.at(idx + i).get_src(0).get_reg();
-        assert(this_offset == prologue.gpr_backup_offset + 16 * i);
+        ASSERT(this_offset == prologue.gpr_backup_offset + 16 * i);
         if (this_reg != get_expected_gpr_backup(i, n_gpr_backups)) {
           suspected_asm = true;
           lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
@@ -173,7 +173,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         for (int i = 0; i < n_fpr_backups; i++) {
           int this_offset = instructions.at(idx + i).get_src(1).get_imm();
           auto this_reg = instructions.at(idx + i).get_src(0).get_reg();
-          assert(this_offset == prologue.fpr_backup_offset + 4 * i);
+          ASSERT(this_offset == prologue.fpr_backup_offset + 4 * i);
           if (this_reg != get_expected_fpr_backup(i, n_fpr_backups)) {
             suspected_asm = true;
             lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
@@ -209,11 +209,11 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       prologue.n_stack_var_bytes = prologue.gpr_backup_offset - prologue.stack_var_offset;
     } else {
       // both, use gprs
-      assert(prologue.fpr_backup_offset > prologue.gpr_backup_offset);
+      ASSERT(prologue.fpr_backup_offset > prologue.gpr_backup_offset);
       prologue.n_stack_var_bytes = prologue.gpr_backup_offset - prologue.stack_var_offset;
     }
 
-    assert(prologue.n_stack_var_bytes >= 0);
+    ASSERT(prologue.n_stack_var_bytes >= 0);
 
     // check that the stack lines up by going in order
 
@@ -221,7 +221,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
     int total_stack = 0;
     if (prologue.ra_backed_up) {
       total_stack = align8(total_stack);
-      assert(prologue.ra_backup_offset == total_stack);
+      ASSERT(prologue.ra_backup_offset == total_stack);
       total_stack += 8;
     }
 
@@ -233,42 +233,42 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
     // FP backup
     if (prologue.fp_backed_up) {
       total_stack = align8(total_stack);
-      assert(prologue.fp_backup_offset == total_stack);
+      ASSERT(prologue.fp_backup_offset == total_stack);
       total_stack += 8;
-      assert(prologue.fp_set);
+      ASSERT(prologue.fp_set);
     }
 
     // Stack Variables
     if (prologue.n_stack_var_bytes) {
       // no alignment because we don't know how the stack vars are aligned.
       // stack var padding counts toward this section.
-      assert(prologue.stack_var_offset == total_stack);
+      ASSERT(prologue.stack_var_offset == total_stack);
       total_stack += prologue.n_stack_var_bytes;
     }
 
     // GPRS
     if (prologue.n_gpr_backup) {
       total_stack = align16(total_stack);
-      assert(prologue.gpr_backup_offset == total_stack);
+      ASSERT(prologue.gpr_backup_offset == total_stack);
       total_stack += 16 * prologue.n_gpr_backup;
     }
 
     // FPRS
     if (prologue.n_fpr_backup) {
       total_stack = align4(total_stack);
-      assert(prologue.fpr_backup_offset == total_stack);
+      ASSERT(prologue.fpr_backup_offset == total_stack);
       total_stack += 4 * prologue.n_fpr_backup;
     }
 
     total_stack = align16(total_stack);
 
     // End!
-    assert(prologue.total_stack_usage == total_stack);
+    ASSERT(prologue.total_stack_usage == total_stack);
   }
 
   // it's fine to have the entire first basic block be the prologue - you could loop back to the
   // first instruction past the prologue.
-  assert(basic_blocks.at(0).end_word >= prologue_end);
+  ASSERT(basic_blocks.at(0).end_word >= prologue_end);
   resize_first_block(prologue_end, file);
   prologue.decoded = true;
 
@@ -366,24 +366,24 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
     if (is_gpr_3(instructions.at(idx), InstructionKind::DADDU, make_gpr(Reg::SP), make_gpr(Reg::SP),
                  make_gpr(Reg::R0))) {
       idx--;
-      assert(is_jr_ra(instructions.at(idx)));
+      ASSERT(is_jr_ra(instructions.at(idx)));
       idx--;
       lg::warn("Function {} has a double return and is being flagged as asm.", name());
       warnings.general_warning("Flagged as asm due to double return");
     }
     // delay slot should be daddiu sp, sp, offset
-    assert(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),
+    ASSERT(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),
                             make_gpr(Reg::SP), prologue.total_stack_usage));
     idx--;
   } else {
     // delay slot is always daddu sp, sp, r0...
-    assert(is_gpr_3(instructions.at(idx), InstructionKind::DADDU, make_gpr(Reg::SP),
+    ASSERT(is_gpr_3(instructions.at(idx), InstructionKind::DADDU, make_gpr(Reg::SP),
                     make_gpr(Reg::SP), make_gpr(Reg::R0)));
     idx--;
   }
 
   // jr ra
-  assert(is_jr_ra(instructions.at(idx)));
+  ASSERT(is_jr_ra(instructions.at(idx)));
   idx--;
 
   // restore gprs
@@ -391,7 +391,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
     int gpr_idx = prologue.n_gpr_backup - (1 + i);
     const auto& expected_reg = gpr_backups.at(gpr_idx);
     auto expected_offset = prologue.gpr_backup_offset + 16 * i;
-    assert(is_no_ll_gpr_load(instructions.at(idx), 16, true, expected_reg, expected_offset,
+    ASSERT(is_no_ll_gpr_load(instructions.at(idx), 16, true, expected_reg, expected_offset,
                              make_gpr(Reg::SP)));
     idx--;
   }
@@ -401,27 +401,27 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
     int fpr_idx = prologue.n_fpr_backup - (1 + i);
     const auto& expected_reg = fpr_backups.at(fpr_idx);
     auto expected_offset = prologue.fpr_backup_offset + 4 * i;
-    assert(
+    ASSERT(
         is_no_ll_fpr_load(instructions.at(idx), expected_reg, expected_offset, make_gpr(Reg::SP)));
     idx--;
   }
 
   // restore fp
   if (prologue.fp_backed_up) {
-    assert(is_no_ll_gpr_load(instructions.at(idx), 8, true, make_gpr(Reg::FP),
+    ASSERT(is_no_ll_gpr_load(instructions.at(idx), 8, true, make_gpr(Reg::FP),
                              prologue.fp_backup_offset, make_gpr(Reg::SP)));
     idx--;
   }
 
   // restore ra
   if (prologue.ra_backed_up) {
-    assert(is_no_ll_gpr_load(instructions.at(idx), 8, true, make_gpr(Reg::RA),
+    ASSERT(is_no_ll_gpr_load(instructions.at(idx), 8, true, make_gpr(Reg::RA),
                              prologue.ra_backup_offset, make_gpr(Reg::SP)));
     idx--;
   }
 
-  assert(!basic_blocks.empty());
-  assert(idx + 1 >= basic_blocks.back().start_word);
+  ASSERT(!basic_blocks.empty());
+  ASSERT(idx + 1 >= basic_blocks.back().start_word);
   basic_blocks.back().end_word = idx + 1;
   prologue.epilogue_ok = true;
   epilogue_start = idx + 1;
@@ -445,7 +445,7 @@ void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeS
       state = 1;
       reg = instr.get_dst(0).get_reg();
       label_id = instr.get_src(0).get_label();
-      assert(label_id != -1);
+      ASSERT(label_id != -1);
       continue;
     }
 
@@ -471,7 +471,7 @@ void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeS
           //            printf("discard as not code: %s\n", name.c_str());
         } else {
           auto& func = file.get_function_at_label(label_id);
-          assert(func.guessed_name.empty());
+          ASSERT(func.guessed_name.empty());
           func.guessed_name.set_as_global(name);
           dts.add_symbol(name, "function");
           ;
@@ -538,7 +538,7 @@ void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dt
         state = 4;
         lui_reg = instr.get_dst(0).get_reg();
         label_id = instr.get_src(0).get_label();
-        assert(label_id != -1);
+        ASSERT(label_id != -1);
         continue;
       } else {
         state = 0;
@@ -560,7 +560,7 @@ void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dt
       if (instr.kind == InstructionKind::JALR && instr.get_dst(0).get_reg() == make_gpr(Reg::RA) &&
           instr.get_src(0).get_reg() == make_gpr(Reg::T9)) {
         auto& func = file.get_function_at_label(label_id);
-        assert(func.guessed_name.empty());
+        ASSERT(func.guessed_name.empty());
         func.guessed_name.set_as_method(type_name, method_id);
         func.method_of_type = type_name;
         if (method_id == GOAL_INSPECT_METHOD) {
@@ -675,7 +675,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
 
 void Function::add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr) {
   op->is_basic_op = true;
-  assert(end_instr > start_instr);
+  ASSERT(end_instr > start_instr);
 
   for (int i = start_instr; i < end_instr; i++) {
     instruction_to_basic_op[i] = basic_ops.size();
@@ -734,7 +734,7 @@ BlockTopologicalSort Function::bb_topo_sort() {
   std::unordered_set<int> visit_set;
   std::vector<int> visit_queue;
   if (basic_blocks.empty()) {
-    assert(false);
+    ASSERT(false);
   }
 
   visit_queue.push_back(0);

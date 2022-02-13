@@ -99,6 +99,11 @@
 ;; vector types (integer)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
 ;; the GOAL vector types are structures, storing values in memory.
 
 ;; Vector of 4 unsigned bytes.
@@ -288,7 +293,7 @@
 ;; vector types (floating point)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Vector of 4 floats. Shortened to "vector" because it is commonly used.
+;; Vector of 4 floats. Shortened to "vector" because it is the most commonly used.
 (deftype vector (structure)
   ((x float :offset 0)
    (y float :offset 4)
@@ -326,6 +331,8 @@
 (define *x-vector*        (new 'static 'vector :x 1. :y 0. :z 0. :w 1.))
 (define *y-vector*        (new 'static 'vector :x 0. :y 1. :z 0. :w 1.))
 (define *z-vector*        (new 'static 'vector :x 0. :y 0. :z 1. :w 1.))
+
+;; note: y is up.
 (define *up-vector*       (new 'static 'vector :x 0. :y 1. :z 0. :w 1.))
 
 
@@ -360,6 +367,10 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; other geometric things
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ax + by + cz = d form
 (deftype plane (vector)
@@ -400,6 +411,8 @@
   `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 
+;; this type represents a bounding-box, stored as minimum/maximum points
+;; note that the types in bounding-box are mostly used, this is used very rarely.
 (deftype box8s (structure)
   ((data   float 8       :offset-assert 0)
    (quad   uint128 2       :offset 0)
@@ -419,10 +432,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
 (set! (-> box8s-array heap-base) 32)
 
-;; This is really a capsule - a cylinder with spheres at both end
+;; This is really a capsule - a cylinder with spheres at both ends
 (deftype cylinder (structure)
   ((origin vector :inline :offset-assert 0)
    (axis   vector :inline :offset-assert 16)
@@ -454,6 +466,7 @@
    )
   )
 
+;; these vertical plane types are basically unused
 (deftype vertical-planes (structure)
   ((data uint128 4 :offset-assert 0) ;; probably wrong
    )
@@ -471,6 +484,8 @@
   :flag-assert         #x900000010
   )
 
+;; common 16-byte "quadword" structure.
+;; allows access to unsigned arrays of integers of all sizes and floats
 (deftype qword (structure)
   ((data     uint32  4       :offset-assert 0)
    (byte     uint8  16      :offset 0)
@@ -486,6 +501,7 @@
   :flag-assert         #x900000010
   )
 
+;; 12-byte vector with only 3 components. It's not used very much.
 (deftype vector3s (structure)
   ((data float 3 :offset-assert 0)
    (x    float     :offset 0)
@@ -647,11 +663,10 @@
     ;; load vectors
     (.lvf vf2 a)
     (.lvf vf3 b)
-    ;; set vf0 to zero
-    (.xor.vf vf0 vf0 vf0)
+    (init-vf0-vector)
     ;; add
     (.add.vf vf1 vf2 vf3)
-    ;; set w = 0
+    ;; set w = 1
     (.blend.vf vf1 vf1 vf0 :mask #b1000)
     ;; store
     (.svf dst vf1)
@@ -669,11 +684,10 @@
     ;; load vectors
     (.lvf vf2 a)
     (.lvf vf3 b)
-    ;; set vf0 to zero
-    (.xor.vf vf0 vf0 vf0)
+    (init-vf0-vector)
     ;; subtract
     (.sub.vf vf1 vf2 vf3)
-    ;; set w = 0
+    ;; set w = 1
     (.blend.vf vf1 vf1 vf0 :mask #b1000)
     ;; store
     (.svf dst vf1)

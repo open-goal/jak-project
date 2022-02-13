@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include "third-party/fmt/core.h"
 #include "Type.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace {
 std::string reg_kind_to_string(RegClass kind) {
@@ -326,7 +326,7 @@ bool Type::get_my_method(const std::string& name, MethodInfo* out) const {
  * Get a method that is defined specifically in this type by id. Returns if it was found or not.
  */
 bool Type::get_my_method(int id, MethodInfo* out) const {
-  assert(id > 0);  // 0 is new, should use explicit new method functions instead.
+  ASSERT(id > 0);  // 0 is new, should use explicit new method functions instead.
   for (auto& x : m_methods) {
     if (x.id == id) {
       *out = x;
@@ -369,7 +369,7 @@ bool Type::get_my_new_method(MethodInfo* out) const {
 const MethodInfo& Type::add_method(const MethodInfo& info) {
   for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
     if (!it->overrides_method_type_of_parent) {
-      assert(it->id + 1 == info.id);
+      ASSERT(it->id + 1 == info.id);
       break;
     }
   }
@@ -383,7 +383,7 @@ const MethodInfo& Type::add_method(const MethodInfo& info) {
  * this is specific to the method named NEW.
  */
 const MethodInfo& Type::add_new_method(const MethodInfo& info) {
-  assert(info.name == "new");
+  ASSERT(info.name == "new");
   m_new_method_info_defined = true;
   m_new_method_info = info;
   return m_new_method_info;
@@ -553,7 +553,7 @@ bool ValueType::get_load_signed() const {
 
 void ValueType::set_offset(int offset) {
   if (offset) {
-    assert(m_is_boxed);
+    ASSERT(m_is_boxed);
   }
   m_offset = offset;
 }
@@ -696,9 +696,9 @@ StructureType::StructureType(std::string parent,
 std::string StructureType::print() const {
   std::string result = fmt::format(
       "[StructureType] {}\n parent: {}\n boxed: {}\n dynamic: {}\n size: {}\n pack: {}\n misalign: "
-      "{}\n heap-base: {}\n fields:\n",
-      m_name, m_parent, m_is_boxed, m_dynamic, m_size_in_mem, m_pack, m_allow_misalign,
-      m_heap_base);
+      "{}\n heap-base: {}\n stack-singleton: {}\n fields:\n",
+      m_name, m_parent, m_is_boxed, m_dynamic, m_size_in_mem, m_pack, m_allow_misalign, m_heap_base,
+      m_always_stack_singleton);
   for (auto& x : m_fields) {
     result += "   " + x.print() + "\n";
   }
@@ -727,7 +727,8 @@ bool StructureType::operator==(const Type& other) const {
          m_pack == p_other->m_pack &&
          m_allow_misalign == p_other->m_allow_misalign &&
          m_offset == p_other->m_offset &&
-         m_idx_of_first_unique_field == p_other->m_idx_of_first_unique_field;
+         m_idx_of_first_unique_field == p_other->m_idx_of_first_unique_field &&
+         m_always_stack_singleton == p_other->m_always_stack_singleton;
   // clang-format on
 }
 
@@ -771,6 +772,11 @@ std::string StructureType::diff_structure_common(const StructureType& other) con
 
   if (m_allow_misalign != other.m_allow_misalign) {
     result += fmt::format("allow_misalign: {} vs. {}\n", m_allow_misalign, other.m_allow_misalign);
+  }
+
+  if (m_always_stack_singleton != other.m_always_stack_singleton) {
+    result += fmt::format("always_stack_singleton: {} vs. {}\n", m_always_stack_singleton,
+                          other.m_always_stack_singleton);
   }
 
   if (m_offset != other.m_offset) {
@@ -906,7 +912,8 @@ bool BasicType::operator==(const Type& other) const {
          m_allow_misalign == p_other->m_allow_misalign &&
          m_offset == p_other->m_offset &&
          m_idx_of_first_unique_field == p_other->m_idx_of_first_unique_field &&
-         m_final == p_other->m_final;
+         m_final == p_other->m_final &&
+         m_always_stack_singleton == p_other->m_always_stack_singleton;
   // clang-format on
 }
 

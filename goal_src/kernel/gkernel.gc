@@ -120,11 +120,10 @@
 (#cond 
   (PC_PORT
   
-  ;; similar thing for the scratchpad data.
-  (let* ((mem (new 'global 'array 'uint8 (* (+ 16 8) 1024)))
-         (aligned (logand (&+ mem 8192) (lognot 8191)))
+  ;; make sure the scratchpad is 16kb aligned, and make it 32 kB so we can big stacks on it.
+  (let* ((mem (new 'global 'array 'uint8 (* (+ 16 32) 1024)))
          )
-      (define *fake-scratchpad-data* aligned)
+      (define *fake-scratchpad-data* (the pointer (align-n mem (* 16 1024))))
     )
   
   ;; We will move stacks on the scratchpad to here.
@@ -1670,6 +1669,12 @@
              (let ((trans (new 'process 'cpu-thread obj 'trans PROCESS_STACK_SAVE_SIZE (-> obj main-thread stack-top))))
                ;; call the function in the thread.
                (reset-and-call trans (-> obj trans-hook))
+               
+               (#when KERNEL_DEBUG
+                 (when (!= (-> trans type) cpu-thread)
+                   (format 0 "corrupted stack after trans for ~A~%" obj)
+                   )
+                 )
                ;; remove the cpu-thread
                (delete trans)
                ;; check for deadness
@@ -2179,7 +2184,7 @@
   (#when PC_PORT
     (when (= stack-top *scratch-memory-top*)
       ;; (format #t "Process ~A requested a stack on the scratchpad, moving to fake scratch~%")
-      (set! stack-top (&+ *fake-scratchpad-stack* (* 16 1024)))
+      (set! stack-top (&+ *fake-scratchpad-stack* (* 32 1024)))
       )
     )
   
@@ -2497,7 +2502,7 @@
     (define *debug-dead-pool* (new 'debug 'dead-pool-heap '*debug-dead-pool* 768 (* 1024 1024)))
     )
 
-(define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* 768 PROCESS_HEAP_SIZE))
+(define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* (* PROCESS_HEAP_MULT 768) PROCESS_HEAP_SIZE))
 (define *default-dead-pool* (the dead-pool *nk-dead-pool*))
 (define *pickup-dead-pool* (the dead-pool *nk-dead-pool*))
 

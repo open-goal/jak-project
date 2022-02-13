@@ -330,7 +330,7 @@ void Compiler::compile_and_send_from_string(const std::string& source_code) {
 
   auto code = m_goos.reader.read_from_string(source_code);
   auto compiled = compile_object_file("test-code", code, true);
-  assert(!compiled->is_empty());
+  ASSERT(!compiled->is_empty());
   color_object_file(compiled);
   auto data = codegen_object_file(compiled);
   m_listener.send_code(data);
@@ -457,7 +457,7 @@ void Compiler::typecheck(const goos::Object& form,
                          const TypeSpec& actual,
                          const std::string& error_message) {
   (void)form;
-  if (!m_ts.typecheck_and_throw(expected, actual, error_message, false, false)) {
+  if (!m_ts.typecheck_and_throw(expected, actual, error_message, false, false, true)) {
     throw_compiler_error(form, "Typecheck failed. For {}, got a \"{}\" when expecting a \"{}\"",
                          error_message, actual.print(), expected.print());
   }

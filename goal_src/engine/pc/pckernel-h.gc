@@ -199,6 +199,8 @@
    (aspect-custom-y int)
    (debug-pad-display symbol)
    (progress-force? symbol)
+   (display-bug-report symbol)
+   (display-heap-status symbol)
 
    (device-audio pc-device-info :inline) ;; used audio device
    (device-screen pc-device-info :inline) ;; used display device
@@ -230,6 +232,7 @@
    (lod-force-ocean int8) ;; ocean lod tier override
    (lod-force-actor int8) ;; merc lod tier override
 
+   (force-actors? symbol) ;; see actor-force-visible?
    (music-fade? symbol) ;; if off, music has no fade in
    (use-vis? symbol) ;; if off, don't use vis trees. this MUST be off for custom (non-cropping) aspect ratios.
    (skip-movies? symbol) ;; if on, enable cutscene skipping
@@ -244,6 +247,8 @@
    (secrets pc-game-secrets :inline) ;; hidden goodies and additional secrets!
 
    (scenes-seen uint8 197) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
+
+   (discord-rpc? symbol) ;; enable discord rich presence integration
    )
 
   (:methods
@@ -266,6 +271,7 @@
     (set-aspect-ratio! (_type_ float) int)
     (read-from-file (_type_ string) symbol)
     (write-to-file (_type_ string) symbol)
+    (actor-force-visible? (_type_) symbol)
     )
   )
 
@@ -278,6 +284,16 @@
    (level0-disp symbol)
    (level1-disp symbol)
    )
+  )
+
+(deftype discord-info (structure)
+  ((fuel (pointer float))
+   (money-total (pointer float))
+   (buzzer-total (pointer float))
+   (status string)
+   (level string)
+   (cutscene? symbol)
+    )
   )
 
 (defconstant PC_TEMP_STRING_LEN 512)
@@ -303,9 +319,12 @@
   (set! (-> obj display-actor-bank) #f)
   (set! (-> obj debug-pad-display) #f)
   (set! (-> obj progress-force?) #f)
+  (set! (-> obj display-bug-report) #f)
+  (set! (-> obj display-heap-status) #f)
   (set! (-> obj font-scale) 1.0)
   (set! (-> obj aspect-custom-x) 1)
   (set! (-> obj aspect-custom-y) 1)
+  (set! (-> obj discord-rpc?) #t)
 
   (reset-gfx obj)
   (reset-audio obj)
@@ -408,6 +427,11 @@
   (set! (-> obj secrets hud-counters?) #t)
   (none))
 
+(defmethod actor-force-visible? pc-settings ((obj pc-settings))
+  "return #t if actors should be visible regardless of vis."
+  (declare (inline))
+  (and (not (-> obj use-vis?)) (-> obj force-actors?))
+  )
 
 
 )

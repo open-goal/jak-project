@@ -63,7 +63,7 @@ class FormElement {
   FormElement& operator=(const FormElement& other) = delete;
 
   void mark_popped() {
-    assert(!m_popped);
+    ASSERT(!m_popped);
     m_popped = true;
   }
 
@@ -430,7 +430,7 @@ class SetFormFormElement : public FormElement {
 
 /*!
  * A wrapper around a single AtomicOp.
- * The "important" special AtomicOps have their own Form type, like FuncitonCallElement.
+ * The "important" special AtomicOps have their own Form type, like FunctionCallElement.
  */
 class AtomicOpElement : public FormElement {
  public:
@@ -1016,22 +1016,22 @@ class GenericOperator {
   void get_modified_regs(RegSet& regs) const;
   Kind kind() const { return m_kind; }
   FixedOperatorKind fixed_kind() const {
-    assert(m_kind == Kind::FIXED_OPERATOR);
+    ASSERT(m_kind == Kind::FIXED_OPERATOR);
     return m_fixed_kind;
   }
 
   IR2_Condition::Kind condition_kind() const {
-    assert(m_kind == Kind::CONDITION_OPERATOR);
+    ASSERT(m_kind == Kind::CONDITION_OPERATOR);
     return m_condition_kind;
   }
 
   const Form* func() const {
-    assert(m_kind == Kind::FUNCTION_EXPR);
+    ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
   }
 
   Form* func() {
-    assert(m_kind == Kind::FUNCTION_EXPR);
+    ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
   }
 
@@ -1127,16 +1127,18 @@ class DerefToken {
 
   bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
 
+  bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
+
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
-    assert(m_kind == Kind::FIELD_NAME);
+    ASSERT(m_kind == Kind::FIELD_NAME);
     return m_name;
   }
 
   s64 int_constant() const { return m_int_constant; }
 
   Form* expr() {
-    assert(m_kind == Kind::INTEGER_EXPRESSION);
+    ASSERT(m_kind == Kind::INTEGER_EXPRESSION);
     return m_expr;
   }
 
@@ -1618,7 +1620,8 @@ class DefstateElement : public FormElement {
   DefstateElement(const std::string& process_type,
                   const std::string& state_name,
                   const std::vector<Entry>& entries,
-                  bool is_virtual);
+                  bool is_virtual,
+                  bool is_override);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1637,6 +1640,7 @@ class DefstateElement : public FormElement {
   std::string m_state_name;
   std::vector<Entry> m_entries;
   bool m_is_virtual = false;
+  bool m_is_override = false;
 };
 
 class DefskelgroupElement : public FormElement {
@@ -1860,17 +1864,17 @@ class Form {
   const FormElement* operator[](int idx) const { return m_elements.at(idx); }
   int size() const { return int(m_elements.size()); }
   FormElement* back() const {
-    assert(!m_elements.empty());
+    ASSERT(!m_elements.empty());
     return m_elements.back();
   }
 
   FormElement** back_ref() {
-    assert(!m_elements.empty());
+    ASSERT(!m_elements.empty());
     return &m_elements.back();
   }
 
   void pop_back() {
-    assert(!m_elements.empty());
+    ASSERT(!m_elements.empty());
     m_elements.pop_back();
   }
 
@@ -1984,7 +1988,7 @@ class FormPool {
   }
 
   void cache_conversion(const CfgVtx* vtx, Form* form) {
-    assert(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
+    ASSERT(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
     m_vtx_to_form_cache[vtx] = form;
   }
 
@@ -1998,7 +2002,6 @@ class FormPool {
 
 std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
-FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);
 GenericElement* alloc_generic_token_op(const std::string& name,
                                        const std::vector<Form*>& args,

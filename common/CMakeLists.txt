@@ -26,6 +26,7 @@ add_library(common
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
+        util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
         util/dgo_util.cpp
@@ -38,18 +39,16 @@ add_library(common
         util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        util/image_loading.cpp "goos/Printer.cpp" "goos/Printer.h" "goos/PrettyPrinter2.cpp" "goos/PrettyPrinter2.h")
+        util/FrameLimiter.cpp
+        util/image_loading.cpp
+        goos/Printer.cpp
+        goos/PrettyPrinter2.cpp
+        )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 
 if(WIN32)
-    target_link_libraries(common wsock32 ws2_32)
+    target_link_libraries(common wsock32 ws2_32 windowsapp)
 else()
     target_link_libraries(common stdc++fs)
-endif()
-
-if(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-elseif(WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
 endif()

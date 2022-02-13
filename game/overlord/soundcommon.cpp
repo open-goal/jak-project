@@ -1,7 +1,7 @@
 #include "soundcommon.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 void PrintBankInfo(void* buffer) {
   (void)buffer;
-  assert(false);
+  ASSERT(false);
 }

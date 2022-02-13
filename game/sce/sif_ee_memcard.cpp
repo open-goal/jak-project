@@ -8,7 +8,7 @@
 #include "game/sce/sif_ee.h"
 #include "common/util/Serializer.h"
 #include "common/util/FileUtil.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace ee {
 /*!
@@ -54,7 +54,7 @@ void CardData::load_from_file(const std::string& name) {
     ser.from_pod_vector(&file_entry.data);
     ser.from_ptr(&file_entry.is_directory);
   }
-  assert(ser.get_load_finished());
+  ASSERT(ser.get_load_finished());
 }
 
 std::string get_memory_card_path() {
@@ -89,8 +89,8 @@ int sceMcInit() {
 }
 
 s32 sceMcMkdir(s32 port, s32 slot, const char* name) {
-  assert(port == 0);
-  assert(slot == 0);
+  ASSERT(port == 0);
+  ASSERT(slot == 0);
   auto& file = g_mc_state.data.files[name];
   file.data.clear();
   file.is_directory = true;
@@ -99,7 +99,7 @@ s32 sceMcMkdir(s32 port, s32 slot, const char* name) {
 
 s32 sceMcSync(s32 mode, s32* cmd, s32* result) {
   // don't care about the mode, all memory card ops are instant.
-  assert(mode == 1 || mode == 0);
+  ASSERT(mode == 1 || mode == 0);
   if (g_mc_state.current_function == -1) {
     return sceMcExecIdle;
   } else {
@@ -111,14 +111,14 @@ s32 sceMcSync(s32 mode, s32* cmd, s32* result) {
 }
 
 s32 sceMcOpen(s32 port, s32 slot, const char* name, s32 mode) {
-  assert(port == 0);
-  assert(slot == 0);
-  assert(g_mc_state.current_function == -1);
+  ASSERT(port == 0);
+  ASSERT(slot == 0);
+  ASSERT(g_mc_state.current_function == -1);
 
   // add existing file, if it does not exist.
   auto existing_file = g_mc_state.data.files.find(name);
   if (existing_file == g_mc_state.data.files.end()) {
-    assert(mode & SCE_CREAT);
+    ASSERT(mode & SCE_CREAT);
     g_mc_state.data.files[name] = {};
   }
 
@@ -137,15 +137,15 @@ s32 sceMcOpen(s32 port, s32 slot, const char* name, s32 mode) {
 }
 
 s32 sceMcWrite(s32 fd, const void* buff, s32 size) {
-  assert(g_mc_state.current_function == -1);
+  ASSERT(g_mc_state.current_function == -1);
 
-  assert(size >= 0 && size < (1024 * 1024 * 1024));
+  ASSERT(size >= 0 && size < (1024 * 1024 * 1024));
   auto hand = g_mc_state.handles.find(fd);
-  assert(hand != g_mc_state.handles.end());  // make sure fd is valid
-  assert(hand->second.mode & SCE_WRONLY);    // make sure we're allowed to write
+  ASSERT(hand != g_mc_state.handles.end());  // make sure fd is valid
+  ASSERT(hand->second.mode & SCE_WRONLY);    // make sure we're allowed to write
 
   const auto& file = g_mc_state.data.files.find(hand->second.name);
-  assert(file != g_mc_state.data.files.end());
+  ASSERT(file != g_mc_state.data.files.end());
 
   file->second.data.resize(size + hand->second.seek);
   memcpy(file->second.data.data() + hand->second.seek, buff, size);
@@ -159,9 +159,9 @@ s32 sceMcWrite(s32 fd, const void* buff, s32 size) {
 }
 
 s32 sceMcClose(s32 fd) {
-  assert(g_mc_state.current_function == -1);
+  ASSERT(g_mc_state.current_function == -1);
   auto hand = g_mc_state.handles.find(fd);
-  assert(hand != g_mc_state.handles.end());  // make sure fd is valid
+  ASSERT(hand != g_mc_state.handles.end());  // make sure fd is valid
   g_mc_state.handles.erase(fd);
   g_mc_state.current_function = sceMcFuncNoClose;
   g_mc_state.current_function_result = sceMcResSucceed;
@@ -169,9 +169,9 @@ s32 sceMcClose(s32 fd) {
 }
 
 s32 sceMcGetInfo(s32 port, s32 slot, s32* type, s32* free, s32* format) {
-  assert(g_mc_state.current_function == -1);
-  assert(port == 0 || port == 1);
-  assert(slot == 0);
+  ASSERT(g_mc_state.current_function == -1);
+  ASSERT(port == 0 || port == 1);
+  ASSERT(slot == 0);
 
   if (port == 0) {
     if (type) {
@@ -200,9 +200,9 @@ s32 sceMcGetInfo(s32 port, s32 slot, s32* type, s32* free, s32* format) {
 }
 
 s32 sceMcFormat(s32 port, s32 slot) {
-  assert(g_mc_state.current_function == -1);
-  assert(port == 0);
-  assert(slot == 0);
+  ASSERT(g_mc_state.current_function == -1);
+  ASSERT(port == 0);
+  ASSERT(slot == 0);
   g_mc_state.data.is_formatted = true;
   g_mc_state.current_function_result = sceMcResSucceed;
   g_mc_state.current_function = sceMcFuncNoFormat;
@@ -210,9 +210,9 @@ s32 sceMcFormat(s32 port, s32 slot) {
 }
 
 s32 sceMcUnformat(s32 port, s32 slot) {
-  assert(g_mc_state.current_function == -1);
-  assert(port == 0);
-  assert(slot == 0);
+  ASSERT(g_mc_state.current_function == -1);
+  ASSERT(port == 0);
+  ASSERT(slot == 0);
   g_mc_state.data.is_formatted = false;
   g_mc_state.current_function_result = sceMcResSucceed;
   g_mc_state.current_function = sceMcFuncNoUnformat;
@@ -220,9 +220,9 @@ s32 sceMcUnformat(s32 port, s32 slot) {
 }
 
 s32 sceMcDelete(s32 port, s32 slot, const char* name) {
-  assert(g_mc_state.current_function == -1);
-  assert(port == 0);
-  assert(slot == 0);
+  ASSERT(g_mc_state.current_function == -1);
+  ASSERT(port == 0);
+  ASSERT(slot == 0);
   g_mc_state.current_function = sceMcFuncNoDelete;
 
   if (!g_mc_state.data.is_formatted) {
@@ -252,12 +252,12 @@ sceMcStDateTime make_fake_date_time() {
 }
 
 s32 sceMcGetDir(s32 port, int slot, const char* name, u32 mode, s32 maxent, sceMcTblGetDir* table) {
-  assert(g_mc_state.current_function == -1);
-  assert(port == 0);
-  assert(slot == 0);
-  assert(maxent == 1);
-  assert(mode == 0);
-  assert(g_mc_state.data.is_formatted);
+  ASSERT(g_mc_state.current_function == -1);
+  ASSERT(port == 0);
+  ASSERT(slot == 0);
+  ASSERT(maxent == 1);
+  ASSERT(mode == 0);
+  ASSERT(g_mc_state.data.is_formatted);
   g_mc_state.current_function = sceMcFuncNoGetDir;
 
   auto file_it = g_mc_state.data.files.find(name);
@@ -266,7 +266,7 @@ s32 sceMcGetDir(s32 port, int slot, const char* name, u32 mode, s32 maxent, sceM
     return 0;
   } else {
     g_mc_state.current_function_result = 1;
-    // assert(strlen(name) < 32);
+    // ASSERT(strlen(name) < 32);
     strcpy(table[0].name, "blah");
     table[0].file_size = file_it->second.data.size();
     table[0].created = make_fake_date_time();
@@ -276,14 +276,14 @@ s32 sceMcGetDir(s32 port, int slot, const char* name, u32 mode, s32 maxent, sceM
 }
 
 s32 sceMcRead(s32 fd, void* buff, s32 size) {
-  assert(g_mc_state.current_function == -1);
-  assert(g_mc_state.data.is_formatted);
+  ASSERT(g_mc_state.current_function == -1);
+  ASSERT(g_mc_state.data.is_formatted);
   auto it = g_mc_state.handles.find(fd);
-  assert(it != g_mc_state.handles.end());
+  ASSERT(it != g_mc_state.handles.end());
   auto file_it = g_mc_state.data.files.find(it->second.name);
   // todo check read/write mode
-  assert(file_it != g_mc_state.data.files.end());
-  assert(size + it->second.seek <= file_it->second.data.size());
+  ASSERT(file_it != g_mc_state.data.files.end());
+  ASSERT(size + it->second.seek <= file_it->second.data.size());
 
   memcpy(buff, file_it->second.data.data() + it->second.seek, size);
   it->second.seek += size;

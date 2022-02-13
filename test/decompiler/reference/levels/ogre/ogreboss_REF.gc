@@ -105,7 +105,7 @@
    (trajectory      trajectory                 :inline :offset-assert 176)
    (src-pos         vector                     :inline :offset-assert 224)
    (dest-pos        vector                     :inline :offset-assert 240)
-   (start-time      int64                              :offset-assert 256)
+   (start-time      time-frame                         :offset-assert 256)
    (tumble-quat     quaternion                 :inline :offset-assert 272)
    (blast-radius    float                              :offset-assert 288)
    (pickup-type     pickup-type                        :offset-assert 292)
@@ -149,7 +149,7 @@
           (s5-0 (new 'stack-no-clear 'vector))
           (s4-0 (new 'stack-no-clear 'collide-tri-result))
           )
-      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 1800)
+      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 6))
         (let ((f0-1 (the float (- (-> *display* base-frame-counter) (-> self start-time)))))
           (eval-position! (-> self trajectory) f0-1 gp-0)
           )
@@ -316,7 +316,7 @@
                (t1-0
                  (let ((s4-1 (new 'stack-no-clear 'vector))
                        (s3-0 (new 'stack-no-clear 'vector))
-                       (t2-0 (new 'stack-no-clear 'vector))
+                       (t2-0 (new 'stack-no-clear 'collide-tri-result))
                        )
                    0.0
                    (set! (-> s4-1 quad) (-> (the-as target t1-0) control trans quad))
@@ -330,7 +330,7 @@
                              (the-as float 40.96)
                              (-> self root-override root-prim collide-with)
                              t1-0
-                             (the-as collide-tri-result t2-0)
+                             t2-0
                              1
                              )
                            )
@@ -378,7 +378,7 @@
     (logclear! (-> self mask) (process-mask enemy projectile))
     (ogreboss-rock-explosion-effect (the-as basic (-> self root-override trans)))
     (when (nonzero? (-> self pickup-type))
-      (let ((t1-0 (new 'static 'fact-info :options (fact-options fade) :fade-time #x5dc)))
+      (let ((t1-0 (new 'static 'fact-info :options (fact-options fade) :fade-time (seconds 5))))
         (birth-pickup-at-point
           (-> self root-override trans)
           (-> self pickup-type)
@@ -418,7 +418,7 @@
 (deftype ogreboss-missile-init-data (structure)
   ((src          vector       :offset-assert   0)
    (dest         vector       :offset-assert   4)
-   (duration     int64        :offset-assert   8)
+   (duration     time-frame   :offset-assert   8)
    (xz-speed     float        :offset-assert  16)
    (blast-radius float        :offset-assert  20)
    (pickup-type  pickup-type  :offset-assert  24)
@@ -1271,7 +1271,7 @@
    (max-hit-count             int8                    :offset-assert 398)
    (roll-boulder              int8                    :offset-assert 399)
    (try-count                 uint8                   :offset-assert 400)
-   (hit-time                  int64                   :offset-assert 408)
+   (hit-time                  time-frame              :offset-assert 408)
    (grow-time                 float                   :offset-assert 416)
    (lava                      entity-actor            :offset-assert 420)
    (vulnerable                symbol                  :offset-assert 424)
@@ -1396,7 +1396,7 @@
              )
            )
          (let ((gp-2 (-> *display* base-frame-counter)))
-           (until (>= (- (-> *display* base-frame-counter) gp-2) 50)
+           (until (>= (- (-> *display* base-frame-counter) gp-2) (seconds 0.16666667))
              (suspend)
              )
            )
@@ -1416,7 +1416,7 @@
              )
            )
          (let ((gp-5 (-> *display* base-frame-counter)))
-           (until (>= (- (-> *display* base-frame-counter) gp-5) 50)
+           (until (>= (- (-> *display* base-frame-counter) gp-5) (seconds 0.16666667))
              (suspend)
              )
            )
@@ -1539,7 +1539,7 @@
   :code
   (behavior ()
     (when (zero? (-> self try-count))
-      (process-drawable-delay-player 300)
+      (process-drawable-delay-player (seconds 1))
       (let ((gp-0 (get-process *default-dead-pool* pov-camera #x4000)))
         (ppointer->handle (when gp-0
                             (let ((t9-2 (method-of-type pov-camera activate)))
@@ -1664,9 +1664,12 @@
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 src) (-> self node-list data 52 bone transform vector 3))
       (set! (-> gp-0 duration)
-            (the int
-                 (* 300.0 (+ 1.25 (* -0.25 (-> self level)) (/ (-> (new 'static 'array float 1 0.5) 0) (-> self difficulty))))
-                 )
+            (the-as
+              time-frame
+              (the int
+                   (* 300.0 (+ 1.25 (* -0.25 (-> self level)) (/ (-> (new 'static 'array float 1 0.5) 0) (-> self difficulty))))
+                   )
+              )
             )
       (set! (-> gp-0 pickup-type) (the-as pickup-type arg0))
       (set! (-> gp-0 blast-radius) 32768.0)
@@ -1728,7 +1731,7 @@
 
 ;; definition for function ogreboss-submerge
 ;; INFO: Return type mismatch int vs none.
-(defbehavior ogreboss-submerge ogreboss ((arg0 int) (arg1 float))
+(defbehavior ogreboss-submerge ogreboss ((arg0 time-frame) (arg1 float))
   (when (not (-> self submerged))
     (cond
       ((= (if (> (-> self skel active-channels) 0)
@@ -1896,9 +1899,9 @@
 ;; definition for function ogreboss-move-near
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defbehavior ogreboss-move-near ogreboss ((arg0 basic) (arg1 float))
+(defbehavior ogreboss-move-near ogreboss ((arg0 time-frame) (arg1 float))
   (when (not (-> self at-near-spot))
-    (ogreboss-submerge (the-as int arg0) arg1)
+    (ogreboss-submerge arg0 arg1)
     (set! (-> self at-near-spot) #t)
     (set! (-> self root-override trans quad) (-> self near-pos quad))
     (ogreboss-emerge arg1)
@@ -1910,7 +1913,7 @@
 ;; definition for function ogreboss-move-far
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defbehavior ogreboss-move-far ogreboss ((arg0 int) (arg1 float))
+(defbehavior ogreboss-move-far ogreboss ((arg0 time-frame) (arg1 float))
   (when (-> self at-near-spot)
     (ogreboss-submerge arg0 arg1)
     (set! (-> self at-near-spot) #f)
@@ -1950,7 +1953,7 @@
   (behavior ()
     (if (and (-> self bridge-assembled)
              (ogreboss-player-inside-range? (the-as float 524288.0))
-             (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
              )
         (go ogreboss-stage2)
         )
@@ -1960,7 +1963,7 @@
   (behavior ()
     (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
     (ogreboss-set-stage1-camera)
-    (ogreboss-move-near (the-as basic 900) (-> (new 'static 'array float 1 1.0) 0))
+    (ogreboss-move-near (seconds 3) (-> (new 'static 'array float 1 1.0) 0))
     (cond
       ((= (if (> (-> self skel active-channels) 0)
               (-> self skel root-channel 0 frame-group)
@@ -2099,7 +2102,7 @@
           )
         )
       )
-    (ogreboss-move-far 600 (-> (new 'static 'array float 1 1.0) 0))
+    (ogreboss-move-far (seconds 2) (-> (new 'static 'array float 1 1.0) 0))
     (ja-channel-push! 1 30)
     (let ((a0-28 (-> self skel root-channel 0)))
       (set! (-> a0-28 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
@@ -2344,7 +2347,7 @@
   :code
   (behavior ()
     (ogreboss-set-stage2-camera)
-    (ogreboss-move-far 30 (-> (new 'static 'array float 1 2.0) 0))
+    (ogreboss-move-far (seconds 0.1) (-> (new 'static 'array float 1 2.0) 0))
     (let ((f30-0 (* 0.75 (-> self difficulty))))
       (let ((gp-0 #f))
         (ja-channel-push! 1 60)
@@ -2368,7 +2371,7 @@
         (set! (-> self state-time) (-> *display* base-frame-counter))
         (while (not gp-0)
           (ogreboss-roll-boulder)
-          (set! gp-0 (or (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+          (set! gp-0 (or (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
                               (not (ogreboss-player-inside-range? (the-as float 524288.0)))
                               )
                          (ogreboss-player-inside-range? (the-as float 409600.0))
@@ -2475,7 +2478,7 @@
           )
       )
     (when (and (not (ogreboss-player-inside-range? (the-as float 409600.0)))
-               (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
                )
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (send-event (handle->process (-> self boulder)) 'grow-faster)
@@ -2715,7 +2718,7 @@
         (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (ogreboss-submerge 300 (-> (new 'static 'array float 1 1.0) 0))
+    (ogreboss-submerge (seconds 1) (-> (new 'static 'array float 1 1.0) 0))
     (while (handle->process (-> self boulder))
       (suspend)
       )

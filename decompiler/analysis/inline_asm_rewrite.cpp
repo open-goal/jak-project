@@ -14,7 +14,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
                                      FormPool& pool,
                                      Function& f,
                                      const DecompilerTypeSystem&) {
-  assert(top_level_form);
+  ASSERT(top_level_form);
 
   try {
     RegSet vf_regs;
@@ -63,7 +63,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
         new_entries.push_back(newElem);
       }
 
-      assert(!new_entries.empty());
+      ASSERT(!new_entries.empty());
       form->clear();
       for (auto x : new_entries) {
         form->push_back(x);

@@ -7,8 +7,8 @@
 
 (define-extern target-powerup-effect (function symbol none :behavior target))
 
-;; definition for function target-generic-event-handler
-;; INFO: Return type mismatch none vs object.
+;; DECOMP BEGINS
+
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 37]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 39]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 60]
@@ -33,11 +33,9 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 524]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 552]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 563]
-;; Used lq/sq
 (defbehavior target-generic-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-0 object))
   (let ((v1-0 arg2))
-    ;;(format 0 "target-generic-event-handler: ~A~%" v1-0)
     (the-as
       object
       (cond
@@ -287,30 +285,24 @@
            )
          )
         ((= v1-0 'no-load-wait)
-         (set! v0-0 (the-as object (+ (-> *display* base-frame-counter) (-> arg3 param 0))))
-         (set! (-> self no-load-wait) (the-as uint v0-0))
+         (set! v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0)))))
+         (set! (-> self no-load-wait) (the-as time-frame v0-0))
          v0-0
          )
         ((= v1-0 'no-look-around)
-         (set! (-> self no-look-around-wait) (the-as uint (+ (-> *display* base-frame-counter) (-> arg3 param 0))))
+         (set! (-> self no-look-around-wait) (the-as time-frame (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0)))))
          (if (= (-> self next-state name) 'target-look-around)
              (send-event self 'end-mode)
              )
          )
         ((= v1-0 'change-state)
-         enter-state
-         (-> arg3 param 1)
-         (-> arg3 param 2)
-         (-> arg3 param 3)
-         (-> arg3 param 4)
-         (go (the-as (state target) (-> arg3 param 0)))
+         (go (the-as (state object object object object target) (-> arg3 param 0)) (-> arg3 param 1) (-> arg3 param 2) (-> arg3 param 3) (-> arg3 param 4))
          )
         )
       )
     )
   )
 
-;; definition for function target-shoved
 (defbehavior target-shoved target ((arg0 meters) (arg1 meters) (arg2 process) (arg3 (state object object target)))
   (let ((s5-0 (new 'static 'attack-info)))
     (set! (-> s5-0 attacker) (process->handle arg2))
@@ -322,14 +314,11 @@
                               )
           )
     (set! (-> s5-0 mask) (the-as uint 2248))
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 30)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (go arg3 'shove s5-0)
     )
   )
 
-
-;; definition for function get-intersect-point
-;; Used lq/sq
 (defun get-intersect-point ((arg0 vector) (arg1 touching-prims-entry) (arg2 control-info) (arg3 process))
   (let ((a0-2 (get-touched-tri arg1 arg2 (the-as touching-shapes-entry arg3))))
     (if a0-2
@@ -340,14 +329,15 @@
   arg0
   )
 
-;; definition for function target-attacked
 (defbehavior target-attacked target ((arg0 symbol) (arg1 attack-info) (arg2 process) (arg3 process) (arg4 (state handle attack-info target)))
   (when (zero? (logand (-> self state-flags) 8))
     (cond
       ((or (logtest? (-> self state-flags) 112)
            (and (logtest? (-> arg1 mask) 32)
                 (= (-> arg1 mode) 'darkeco)
-                (and (and (= (-> self fact-info-target eco-type) 2) (>= (-> self fact-info-target eco-level) 1.0))
+                (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
+                          (>= (-> self fact-info-target eco-level) 1.0)
+                          )
                      (logtest? #x100002 (-> self state-flags))
                      )
                 )
@@ -432,7 +422,7 @@
              )
          self
          )
-       (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 150)
+       (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 (seconds 0.5))
        (sound-play-by-name (static-sound-name "oof") (new-sound-id) 1024 0 0 1 #t)
        #t
        )
@@ -447,9 +437,6 @@
     )
   )
 
-;; definition for function target-send-attack
-;; INFO: Return type mismatch object vs symbol.
-;; Used lq/sq
 (defbehavior target-send-attack target ((arg0 process) (arg1 uint) (arg2 uint) (arg3 int) (arg4 int))
   (local-vars
     (sv-96 touching-prims-entry)
@@ -536,12 +523,12 @@
              (dummy-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
-               (the-as basic -1.0)
+               (the-as float -1.0)
                74
                #f
                (static-sound-name "spin-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 60)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
              )
             ((= v1-5 'punch)
              (set! sv-128
@@ -630,23 +617,23 @@
              (dummy-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
-               (the-as basic -1.0)
+               (the-as float -1.0)
                23
                #f
                (static-sound-name "punch-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((= v1-5 'flip)
              (dummy-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
-               (the-as basic -1.0)
+               (the-as float -1.0)
                74
                #f
                (static-sound-name "punch-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.1))
              )
             ((= v1-5 'uppercut)
              (set! sv-176
@@ -736,12 +723,12 @@
              (dummy-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
-               (the-as basic -1.0)
+               (the-as float -1.0)
                23
                #f
                (static-sound-name "uppercut-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((or (= v1-5 'flop) (= v1-5 'flop-down))
              (dummy-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 23)
@@ -749,23 +736,23 @@
              (dummy-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
-               (the-as basic -1.0)
+               (the-as float -1.0)
                23
                #f
                (static-sound-name "flop-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((= v1-5 'flut-attack)
              (dummy-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
-               (the-as basic -1.0)
+               (the-as float -1.0)
                23
                #f
                (static-sound-name "punch-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 60)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))
              )
             )
           )
@@ -775,7 +762,6 @@
     )
   )
 
-;; definition for function target-apply-tongue
 (defbehavior target-apply-tongue target ((arg0 vector))
   (when (zero? (logand (-> self state-flags) 8))
     (logior! (-> self state-flags) #x7000)
@@ -801,9 +787,7 @@
     )
   )
 
-;; definition for function target-standard-event-handler
 (defbehavior target-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
- ;; (format 0 "target-standard-event-handler: ~A~%" arg2)
   (case arg2
     (('attack 'attack-or-shove 'attack-invinc)
      (target-attacked
@@ -842,7 +826,7 @@
                (or (logtest? (-> self water flags) 512)
                    (logtest? (-> self state-flags) #x830e)
                    (logtest? (-> self control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
-                   (>= (the-as int (-> self no-load-wait)) (-> *display* base-frame-counter))
+                   (>= (-> self no-load-wait) (-> *display* base-frame-counter))
                    )
                )
            )
@@ -937,7 +921,6 @@
     )
   )
 
-;; definition for function target-dangerous-event-handler
 (defbehavior target-dangerous-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touched)
@@ -971,8 +954,6 @@
     )
   )
 
-;; definition for function target-bonk-event-handler
-;; Used lq/sq
 (defbehavior target-bonk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (cond
@@ -1028,7 +1009,7 @@
                       (zero? (logand (-> self state-flags) #x8008))
                       )
              (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
-             (target-timed-invulnerable 30 self)
+             (target-timed-invulnerable (seconds 0.1) self)
              (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
              )
            )
@@ -1048,7 +1029,6 @@
     )
   )
 
-;; definition for function target-jump-event-handler
 (defbehavior target-jump-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (if (and (= arg2 'swim) (< 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
       (return #f)
@@ -1066,7 +1046,6 @@
     )
   )
 
-;; definition for function target-walk-event-handler
 (defbehavior target-walk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
     (cond
@@ -1081,15 +1060,10 @@
     )
   )
 
-;; failed to figure out what this is:
 target-post
 
-;; failed to figure out what this is:
 target-standard-event-handler
 
-;; definition for function target-exit
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defbehavior target-exit target ()
   (set! (-> self control unknown-surface00) *walk-mods*)
   (set! (-> self control unknown-vector13 quad) (the-as uint128 0))
@@ -1112,15 +1086,11 @@ target-standard-event-handler
   (none)
   )
 
-;; definition for function target-state-hook-exit
-;; INFO: Return type mismatch (function none) vs none.
 (defbehavior target-state-hook-exit target ()
   (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
   (none)
   )
 
-;; definition for function target-effect-exit
-;; INFO: Return type mismatch int vs none.
 (defbehavior target-effect-exit target ()
   (let ((v1-1 (-> self skel effect)))
     (set! (-> v1-1 channel-offset) 0)
@@ -1128,5 +1098,7 @@ target-standard-event-handler
   0
   (none)
   )
+
+
 
 

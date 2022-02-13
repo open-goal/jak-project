@@ -232,7 +232,8 @@ class Compiler {
                          const goos::Object& type,
                          const goos::Object* rest,
                          Env* env,
-                         bool call_constructor);
+                         bool call_constructor,
+                         bool use_singleton);
 
   StaticResult fill_static_array(const goos::Object& form,
                                  const goos::Object& rest,
