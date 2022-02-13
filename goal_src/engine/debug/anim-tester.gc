@@ -8,8 +8,6 @@
 ;; NOTES - removed one of the 2 inspects
 ;; - also fixed up a basic file-stream constructor on the stack
 
-(declare-file (debug))
-
 (declare-type list-control structure)
 (define-extern anim-test-anim-list-handler (function int list-control symbol))
 (define-extern anim-test-edit-sequence-list-handler (function int list-control symbol))
@@ -749,6 +747,10 @@
        )
       (else
         (let ((v1-1 (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
+          ;; NOTE : added this if, sometimes the value is -1 which just crashes the game after here. nice work!
+          (if (< (-> self list-con current-index) 0)
+              (set! (-> self list-con current-index) 0))
+
           (when (not v1-1)
             (if (>= (-> self list-con current-index) (glst-num-elements (-> self obj-list)))
                 (set! (-> self list-con current-index) (+ (glst-num-elements (-> self obj-list)) -1))
@@ -803,6 +805,8 @@
   )
 
 (defun anim-tester-disp-frame-num ((arg0 string) (arg1 float) (arg2 float) (arg3 font-context))
+  ;; this function does not work
+  (return (the pointer #f))
   (local-vars (sv-16 (function _varargs_ object)))
   (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
          (gp-0 (-> s3-0 base))
@@ -2492,7 +2496,7 @@
     )
   )
 
-(defun anim-tester-load-object-seqs ()
+(defun anim-tester-load-object-seqs ((arg0 anim-tester) (arg1 string))
   #f
   )
 
@@ -2602,10 +2606,7 @@
            (if s0-0
                (anim-test-obj-remove-invalid s2-0)
                )
-           (let ((t9-1 anim-tester-load-object-seqs))
-             (-> sv-96 name)
-             (t9-1)
-             )
+           (anim-tester-load-object-seqs arg0 (-> sv-96 name))
            (set! s2-0 (the-as anim-test-obj (glst-find-node-by-name (-> arg0 obj-list) (-> sv-96 name))))
            (set! s0-0 (if s2-0
                           #t

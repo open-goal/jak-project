@@ -107,28 +107,28 @@ TEST(Kernel, basename) {
 TEST(Kernel, DecodeFileName) {
   std::string x;
   x = DecodeFileName("$TEXTURE/beans");
-  EXPECT_EQ(x, "host:data/texture-page7/beans.go");
+  EXPECT_EQ(x, "out/obj/beans.go");
 
   x = DecodeFileName("$ART_GROUP/stuff");
-  EXPECT_EQ(x, "host:data/art-group6/stuff-ag.go");
+  EXPECT_EQ(x, "data/art-group6/stuff-ag.go");
 
   x = DecodeFileName("$LEVEL/my-level");
-  EXPECT_EQ(x, "host:data/level30/my-level-bt.go");
+  EXPECT_EQ(x, "data/level30/my-level-bt.go");
 
   x = DecodeFileName("$LEVEL/my-level.123");
-  EXPECT_EQ(x, "host:data/level30/my-level.123");
+  EXPECT_EQ(x, "data/level30/my-level.123");
 
   x = DecodeFileName("$DATA/my-data");
-  EXPECT_EQ(x, "host:data/my-data.go");
+  EXPECT_EQ(x, "out/obj/my-data.go");
 
   x = DecodeFileName("$CODE/my-code");
-  EXPECT_EQ(x, "host:game/obj/my-code.o");
+  EXPECT_EQ(x, "game/obj/my-code.o");
 
   x = DecodeFileName("$RES/my-res");
-  EXPECT_EQ(x, "host:data/res1/my-res.go");
+  EXPECT_EQ(x, "data/res1/my-res.go");
 
   x = DecodeFileName("asdf");
-  EXPECT_EQ(x, "host:game/obj/asdf.o");
+  EXPECT_EQ(x, "game/obj/asdf.o");
 }
 
 TEST(Kernel, reverse) {
