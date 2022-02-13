@@ -48,9 +48,9 @@ This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of t
 - create tools to repack game assets into a format that our port uses.
 
 Our objectives are:
-- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled.
-- Our GOAL compiler's performance should be around the same as unoptimized C.
-- try to match things from the original game and development as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
+- make the port a "native application" on x86-64, with high performance. It shouldn't be emulated, interpreted, or transpiled.
+- our GOAL compiler's performance should be around the same as unoptimized C.
+- try to match things from the original game and development as much as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
 - support modifications. It should be possible to make edits to the code without everything else breaking.
 
 We support both Linux and Windows on x86-64.
@@ -70,7 +70,7 @@ https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
 
 To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where we believe the original code had type casts (or where they feel appropriate) until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`. Our decompiler is designed specifically for processing the output of the original GOAL compiler. As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is tested as part of our unit tests, and so far we have over 300,000 lines (460 files) that pass.
 
-We don't save any assets from the game - you must bring your own copy of the game and use the decompiler to extract assets.
+We don't save any assets from the game - you must bring your own legitimate copy of the game and use the decompiler to extract assets.
 
 ## What's Next
 
@@ -115,11 +115,12 @@ cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse
 ```
 
 ### Arch
+Make sure to grab `yay` from the Arch User Repository (AUR) and build it before proceeding.
 
 Install packages and init repository:
 
 ```sh
-sudo pacman -S gcc make cmake base-devel g++ nasm taskfile-git python
+yay -S gcc make cmake base-devel g++ nasm taskfile-git python
 ```
 
 Compile:
