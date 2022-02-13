@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="500" height="100%" src="./docs/markdown/imgs/logo-text-colored-new.png">
+  <img width="500" height="100%" src="./docs/img/logo-text-colored-new.png">
 </p>
 
 <p align="center">
@@ -62,8 +62,8 @@ We have a Discord server where we discuss development. https://discord.gg/V82sTJ
 So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
 
 Here are some screenshots of the renderer:
-![](./docs/markdown/imgs/screenshot_hut_new_small.png)
-![](./docs/markdown/imgs/screenshot_jungle1_small.png)
+![](./docs/img/screenshot_hut_new_small.png)
+![](./docs/img/screenshot_jungle1_small.png)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
@@ -74,7 +74,7 @@ We don't save any assets from the game - you must bring your own copy of the gam
 
 ## What's Next
 
-- Continue decompilation of GOAL code. We've made huge progress recently in decompiling gameplay code. We're finishing that up and also working on the some of the rendering code. Here's our decompilation progress over the past year: ![](./docs/markdown/imgs/code_progress.png)
+- Continue decompilation of GOAL code. We've made huge progress recently in decompiling gameplay code. We're finishing that up and also working on the some of the rendering code. Here's our decompilation progress over the past year: ![](./docs/img/code_progress.png)
 - Bug testing! The game can be beaten 100%, but it's possible a few things do not work correctly.
 - Improve the decompiler. We are always finding new features and macros in the GOAL language.
 - Investigate more complicated renderers. We have an in-progress port of the "merc" foreground renderer, shown in the screenshots above.
@@ -182,12 +182,12 @@ git clone https://github.com/open-goal/jak-project.git
 
 This will create a `jak-project` folder, we will open the project as a CMake project via Visual Studio.
 
-![](./docs/markdown/imgs/windows/open-project.png)
+![](./docs/img/windows/open-project.png)
 
 Then build the entire project as `Windows Release (clang-cl)`. You can also press Ctrl+Shift+B as a hotkey for Build All.  We currently prefer `clang-cl` on Windows as opposed to `msvc`, though it should work as well!
 
-![](./docs/markdown/imgs/windows/release-build.png)
-![](./docs/markdown/imgs/windows/build-all.png)
+![](./docs/img/windows/release-build.png)
+![](./docs/img/windows/build-all.png)
 
 ## Building and Running the Game
 
@@ -309,7 +309,7 @@ The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of
 
 The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD inside a folder corresponding to the game within `iso_data` folder (`jak1` for Jak 1 Black Label, etc.), as seen in this picture:
 
-![](./docs/markdown/imgs/iso_data-help.png)
+![](./docs/img/iso_data-help.png)
 
 Then run `decomp.sh` (Linux) or `decomp-jak1.bat` (Windows) to run the decompiler. The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
 
