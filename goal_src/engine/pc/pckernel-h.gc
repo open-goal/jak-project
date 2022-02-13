@@ -173,6 +173,7 @@
 (deftype pc-settings (basic)
   ((version uint64) ;; version of this settings
 
+   ;; "generic" graphics settings
    (target-fps int16) ;; the target framerate of the game
    (width int32) ;; the width of the rendering, may not match window
    (height int32)
@@ -190,6 +191,7 @@
    (vsync? symbol) ;; vsync.
    (font-scale float) ;; font scaling.
 
+   ;; debug settings
    (os symbol) ;; windows, linux, macos
    (user symbol) ;; username. not system username, just debug thing.
    (debug? symbol) ;; more debug stuff just in case.
@@ -201,7 +203,9 @@
    (progress-force? symbol)
    (display-bug-report symbol)
    (display-heap-status symbol)
+   (display-actor-counts symbol)
 
+   ;; device settings
    (device-audio pc-device-info :inline) ;; used audio device
    (device-screen pc-device-info :inline) ;; used display device
    (device-gpu pc-device-info :inline) ;; used graphics device
@@ -209,21 +213,25 @@
    ;(device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
    (stick-deadzone float) ;; analog stick deadzone. 0-1
 
+   ;; audio settings
    (audio-latency-ms int16) ;; audio latency in milliseconds
    (audio-pan-override float) ;; audio pan modifier
    (audio-volume-override float) ;; audio volume modifier
    (audio-channel-nb int16) ;; audio channel amount. will be 48 on PS2 mode.
 
+   ;; graphics settings
    (gfx-renderer pc-gfx-renderer) ;; the renderer to use
    (gfx-resolution float) ;; for supersampling
    (gfx-anisotropy float) ;; for anisotropy
 
+   ;; ps2 settings
    (ps2-read-speed? symbol) ;; emulate DVD loads
    (ps2-parts? symbol) ;; if off, increase particle cap
    (ps2-music? symbol) ;; if off, use .wav files stored somewhere
    (ps2-se? symbol) ;; if off, use adjusted sound effects
    (ps2-hints? symbol) ;; if off, enables extra game hints
 
+   ;; lod settings
    (ps2-lod-dist? symbol) ;; use original lod distances
    (shrub-dist-mod float) ;; shrub render distance modifier
    (lod-dist-mod float) ;; non-shrub lod distance modifier
@@ -232,6 +240,7 @@
    (lod-force-ocean int8) ;; ocean lod tier override
    (lod-force-actor int8) ;; merc lod tier override
 
+   ;; misc settings
    (force-actors? symbol) ;; see actor-force-visible?
    (music-fade? symbol) ;; if off, music has no fade in
    (use-vis? symbol) ;; if off, don't use vis trees. this MUST be off for custom (non-cropping) aspect ratios.
@@ -321,6 +330,7 @@
   (set! (-> obj progress-force?) #f)
   (set! (-> obj display-bug-report) #f)
   (set! (-> obj display-heap-status) #f)
+  (set! (-> obj display-actor-counts) #f)
   (set! (-> obj font-scale) 1.0)
   (set! (-> obj aspect-custom-x) 1)
   (set! (-> obj aspect-custom-y) 1)
@@ -433,6 +443,12 @@
   (and (not (-> obj use-vis?)) (-> obj force-actors?))
   )
 
+(defmacro with-pc (&rest body)
+  "encapsulates the code around PC-specific checks"
+  `(#when PC_PORT (when (and *pc-settings*)
+      ,@body
+      ))
+  )
 
 )
 
