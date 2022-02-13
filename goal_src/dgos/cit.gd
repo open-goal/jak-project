@@ -9,7 +9,7 @@
   ("citadel-sages.o" "citadel-sages")
   ("snow-bunny.o" "snow-bunny")
   ("citb-bunny.o" "citb-bunny")
-  ("citb-drop-plat-CIT.o" "citb-drop-plat")
+  ("citb-drop-plat.o" "citb-drop-plat")
   ("assistant-citadel.o" "assistant-citadel")
   ("tpage-1415.go" "tpage-1415")
   ("tpage-1417.go" "tpage-1417")

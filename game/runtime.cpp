@@ -55,6 +55,7 @@
 
 #include "common/goal_constants.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "common/util/FileUtil.h"
 
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
@@ -276,6 +277,8 @@ u32 exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
+
+  file_util::create_dir_if_needed("game_config/");
 
   // parse opengoal arguments
   bool enable_display = true;
