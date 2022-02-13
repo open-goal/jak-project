@@ -663,7 +663,7 @@
     )
   )
 
-(defmethod dummy-16 target ((obj target) (arg0 int) (arg1 (inline-array vector)) (arg2 vector))
+(defmethod apply-alignment target ((obj target) (arg0 int) (arg1 transformq) (arg2 vector))
   (let ((s2-0 (new 'stack-no-clear 'vector)))
     (set! (-> s2-0 quad) (-> arg2 quad))
     (set! (-> s2-0 z) (target-align-vel-z-adjust (-> s2-0 z)))
@@ -677,7 +677,7 @@
             (set-vector! s1-0 0.0 0.0 0.0 1.0)
             )
         (when (logtest? arg0 1)
-          (set! (-> a1-3 x) (+ (* (-> arg1 0 x) (-> s2-0 x) (-> *display* frames-per-second))
+          (set! (-> a1-3 x) (+ (* (-> arg1 trans x) (-> s2-0 x) (-> *display* frames-per-second))
                                (* (-> s1-0 x) (-> *display* seconds-per-frame))
                                )
                 )
@@ -685,14 +685,14 @@
               (set! (-> a1-3 z) 0.0)
               )
           )
-        (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 0 y) 0.0))))
-            (set! (-> a1-3 y) (+ (* (-> arg1 0 y) (-> s2-0 y) (-> *display* frames-per-second))
+        (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 trans y) 0.0))))
+            (set! (-> a1-3 y) (+ (* (-> arg1 trans y) (-> s2-0 y) (-> *display* frames-per-second))
                                  (* (-> s1-0 y) (-> *display* seconds-per-frame))
                                  )
                   )
             )
         (when (logtest? arg0 4)
-          (set! (-> a1-3 z) (+ (* (-> arg1 0 z) (-> s2-0 z) (-> *display* frames-per-second))
+          (set! (-> a1-3 z) (+ (* (-> arg1 trans z) (-> s2-0 z) (-> *display* frames-per-second))
                                (* (-> s1-0 z) (-> *display* seconds-per-frame))
                                )
                 )
@@ -705,15 +705,13 @@
       )
     )
   (if (logtest? arg0 16)
-      (quaternion-normalize! (quaternion*!
-                               (-> obj control unknown-quaternion00)
-                               (-> obj control unknown-quaternion00)
-                               (the-as quaternion (-> arg1 1))
-                               )
-                             )
+      (quaternion-normalize!
+        (quaternion*! (-> obj control unknown-quaternion00) (-> obj control unknown-quaternion00) (-> arg1 quat))
+        )
       )
   (the-as collide-shape (-> obj control))
   )
+
 
 (defun average-turn-angle ((arg0 target))
   (let ((f30-0 0.0))
@@ -991,14 +989,14 @@
   )
 
 (defun target-timed-invulnerable-off ((arg0 target))
-  (logclear! (-> arg0 draw status) (draw-status drwf01))
+  (logclear! (-> arg0 draw status) (draw-status hidden))
   (set! (-> arg0 state-flags) (logand -33 (-> arg0 state-flags)))
   (set-collide-kinds (-> arg0 control) 2 (collide-kind) (collide-kind target-attack))
   0
   (none)
   )
 
-(defmethod dummy-9 attack-info ((obj attack-info) (arg0 attack-info))
+(defmethod combine! attack-info ((obj attack-info) (arg0 attack-info))
   (with-pp
     (let ((s4-0 (-> arg0 mask)))
       (set! (-> obj mask) (-> arg0 mask))

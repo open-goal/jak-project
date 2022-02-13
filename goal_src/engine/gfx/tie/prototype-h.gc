@@ -5,16 +5,25 @@
 ;; name in dgo: prototype-h
 ;; dgos: GAME, ENGINE
 
+;; The "prototype" system is used for instanced background rendering (shrub and tie).
+
+;; The first type is the bucket.  There's one bucket per prototype.  Each prototype can have up to
+;; 4 geometries (level of details). Lower numbers are higher detail.
+;; During drawing, the engine will build linked lists of instance data.  Each instance will pick
+;; a geom, based on distance from the camera (or other settings) and will add itself to the list
+;; for that geom.
 (deftype prototype-bucket (basic)
   ((name          basic            :offset-assert   4)
    (flags         uint32           :offset-assert   8)
    (in-level      uint16           :offset-assert  12)
    (utextures     uint16           :offset-assert  14)
-   (geometry      drawable 4       :offset-assert  16)
-   (dists         vector   :inline :offset-assert  32)
-   (rdists        vector   :inline :offset-assert  48)
-   (next          uint32   4       :offset-assert  64)
-   (count         uint16   4       :offset-assert  80)
+   (geometry      drawable 4       :offset-assert  16) ;; the 4 levels of detail
+   (dists         vector   :inline :offset-assert  32) ;; lod settings
+   (rdists        vector   :inline :offset-assert  48) ;; lod settings
+   (next          uint32   4       :offset-assert  64) ;; linked list of instances of each geom.
+   (count         uint16   4       :offset-assert  80) ;; number of each instance with each geom.
+   
+   ;; overlays
    (near-plane    meters           :offset         32)
    (near-stiff    meters           :offset         36)
    (mid-plane     meters           :offset         40)
@@ -31,6 +40,11 @@
   :flag-assert         #x900000058
   )
 
+;;;;;;;;;;;;;;;
+;; shrub
+;;;;;;;;;;;;;;;
+
+;; specialization for shrub.  We keep the end of the linked list too.
 (deftype prototype-bucket-shrub (prototype-bucket)
   ((mod-count  uint16  4           :offset-assert 88)
    (last       uint32  4           :offset-assert 96)
@@ -41,6 +55,7 @@
   :flag-assert         #x900000070
   )
 
+;; array of all the prototypes in a shrub tree.
 (deftype prototype-inline-array-shrub (drawable)
   ((length int16                  :offset   6)
    (data   prototype-bucket-shrub 1 :inline :offset  32)
@@ -51,18 +66,7 @@
   :flag-assert         #x1200000094
   )
 
-(defmethod
-  inspect
-  prototype-inline-array-shrub
-  ((obj prototype-inline-array-shrub))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tid: ~D~%" (-> obj id))
-  (format #t "~Tbsphere: ~`vector`P~%" (-> obj bsphere))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tdata[1] @ #x~X~%" (-> obj data))
-  obj
-  )
-
+;; shrub prototypes, plus a pointer to the level's wind data.
 (deftype prototype-array-shrub-info (basic)
   ((prototype-inline-array-shrub prototype-inline-array-shrub   :offset-assert 4)
    (wind-vectors                 uint32  :offset-assert 8)
@@ -72,8 +76,18 @@
   :flag-assert         #x90000000c
   )
 
+;;;;;;;;;;;;;;;
+;; tie
+;;;;;;;;;;;;;;;
+
+;; tie has a few special features:
+;; - ability to output to generic (and env map)
+;; - per-proto colors
+;; - instanced collision
+
 (declare-type drawable-inline-array-collide-fragment drawable-inline-array)
 (declare-type prototype-tie drawable)
+;; prototype for a TIE
 (deftype prototype-bucket-tie (prototype-bucket)
   ((generic-count       uint16       4           :offset-assert 88)
    (generic-next        uint32       4           :offset-assert 96)
@@ -96,6 +110,7 @@
   :flag-assert         #x900000094
   )
 
+;; all tie prototypes in a tie tree. (note, not inline like shrub)
 (deftype prototype-array-tie (array)
   ((array-data prototype-bucket-tie :dynamic :offset  16)
    )
@@ -107,6 +122,8 @@
     )
   )
 
+;; all tie prototypes and pointer to level's wind data.
+;; in practice, they are shared with all tie/shrub trees in the level 
 (deftype proxy-prototype-array-tie (basic)
   ((prototype-array-tie prototype-array-tie   :offset-assert 4)
    (wind-vectors        uint32  :offset-assert 8)
@@ -116,12 +133,18 @@
   :flag-assert         #x90000000c
   )
 
+;;;;;;;;;;;;
+;; instance
+;;;;;;;;;;;;
+
+;; note: more specific instances are available in tie/shrub files.
+
 (deftype instance (drawable)
-  ((bucket-index uint16           :offset 6)
-   (error   (pointer drawable-error) :offset 8) ;; - from default-menu::build-instance-list
-   (origin       matrix4h :inline :offset-assert 32) ; TODO - this can also be a float, default-menu::lambda_62
-   (unknown-vector vector :inline :offset 32) ;; todo, this might not be right.
-   (wind-index   uint16           :offset 62)
+  ((bucket-index uint16           :offset 6)         ;; which bucket (index in arrays)
+   (error   (pointer drawable-error) :offset 8)      ;; if we have an error.
+   (origin       matrix4h :inline :offset-assert 32) ;; our location (packed format)
+   (unknown-vector vector :inline :offset 32)        ;; todo, this might not be right.
+   (wind-index   uint16           :offset 62)        ;; used by wind calculation.
    )
   :method-count-assert 18
   :size-assert         #x40

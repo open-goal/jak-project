@@ -1152,7 +1152,7 @@
 (defbehavior periscope-draw-beam-impact periscope ()
   (when (periscope-has-power-input?)
     (update! (-> self sound))
-    (if (logtest? (-> self draw status) (draw-status drwf03))
+    (if (logtest? (-> self draw status) (draw-status was-drawn))
         (sp-launch-particles-var
           *sp-particle-system-2d*
           (-> *part-id-table* 825)
@@ -1398,7 +1398,7 @@
   :exit
   (behavior ()
     (restore-collide-with-as (-> self root-override))
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
   :trans
@@ -1415,7 +1415,7 @@
     (ja-post)
     (suspend)
     (update-transforms! (-> self root-override))
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (while #t
       (suspend)
       )
@@ -1686,7 +1686,7 @@
 (defstate periscope-player-control (periscope)
   :exit
   (behavior ()
-    (logclear! (-> self reflector 0 draw status) (draw-status drwf01))
+    (logclear! (-> self reflector 0 draw status) (draw-status hidden))
     (periscope-find-reflection-angles)
     (set! (-> self turn) (-> self target-turn))
     (set! (-> self tilt) (-> self target-tilt))
@@ -1803,7 +1803,7 @@
       (set! (-> gp-0 vector 3 quad) a2-2)
       )
     (send-event *camera* 'change-state cam-periscope 0)
-    (logior! (-> self reflector 0 draw status) (draw-status drwf01))
+    (logior! (-> self reflector 0 draw status) (draw-status hidden))
     (suspend)
     (while #t
       (if (not (-> self aligned?))
@@ -1831,7 +1831,7 @@
                      (periscope-crosshair)
                      (suspend)
                      )
-                   (logclear! (-> self reflector 0 draw status) (draw-status drwf01))
+                   (logclear! (-> self reflector 0 draw status) (draw-status hidden))
                    (periscope-find-reflection-angles)
                    (set! (-> self turn) (-> self target-turn))
                    (set! (-> self tilt) (-> self target-tilt))
@@ -2175,7 +2175,7 @@
       (while #t
         (draw-power-beam gp-0 (-> self beam-end))
         (update! (-> self sound))
-        (when (logtest? (-> self draw status) (draw-status drwf03))
+        (when (logtest? (-> self draw status) (draw-status was-drawn))
           (sp-launch-particles-var
             *sp-particle-system-2d*
             (-> *part-id-table* 825)

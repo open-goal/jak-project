@@ -155,7 +155,7 @@
 
 (defmethod dummy-28 puffer ((obj puffer))
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status was-drawn)))
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-0 (new 'stack-no-clear 'vector))
            (a2-0 (new 'stack-no-clear 'vector))
@@ -588,7 +588,7 @@
                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                  )
                     )
-               (logtest? (-> self draw status) (draw-status drwf03))
+               (logtest? (-> self draw status) (draw-status was-drawn))
                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
                )
           (go puffer-patrol)
@@ -630,7 +630,7 @@
         (go puffer-idle)
         )
     (cond
-      ((logtest? (-> self draw status) (draw-status drwf03))
+      ((logtest? (-> self draw status) (draw-status was-drawn))
        (set! (-> self last-on-screen-time) (-> *display* base-frame-counter))
        )
       (else
@@ -744,7 +744,7 @@
            (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
            )
           ((= v1-0 'death-end)
-           (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status drwf01)))))
+           (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status hidden)))))
              (set! (-> self draw status) (the-as draw-status v0-0))
              v0-0
              )
@@ -755,7 +755,7 @@
     )
   :code
   (behavior ()
-    (dummy-18 self)
+    (cleanup-for-death self)
     (shut-down! (-> self neck))
     (logclear! (-> self mask) (process-mask actor-pause))
     (ja-channel-push! 1 22)

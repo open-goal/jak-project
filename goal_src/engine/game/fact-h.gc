@@ -69,11 +69,11 @@
   :bitfield #t
   :type uint64
   (vent-blocked 0)
-  (fop1 1)
+  (has-power-cell 1) ;; should spawn power cell on death
   (vent-valve 2)
-  (fop3 3)
-  (fop4 4)
-  (fop5 5)
+  (wrap-phase 3)     ;; phase should wrap from 1 to 0 instead of mirroring.
+  (fop4 4)           ;; unused?
+  (fop5 5)           ;; wait-for-cue after death?
   (fop6 6)
   (fop7 7)
   (can-collect 8)
@@ -81,16 +81,19 @@
   (large 10)
   (fop11 11)
   (powerup 12)
-  (fop13 13)
-  (fop14 14)
-  (fop15 15)
-  (fop16 16)
-  (fop17 17)
+  ;; strengths
+  (touch 13)
+  (normal-attack 14)
+  (strong-attack 15)
+  (indestructible 16)
+  
+  (fop17 17)         ;; unused
   (eco-blocked 18)
   (respawn 19)
   )
 
-;; Each individual enemy and pickup process will allocate a fact-info on its process heap
+;; Each individual enemy and pickup process will allocate a fact-info on its process heap.
+;; The constructor will read the res-lump stored in the entity to pick reasonable defaults.
 ;; The settings may be different per object - for example some eco pickups may have different
 ;; amounts or timings
 ;; The fact-info class stores data that is common to all fact-infos.
@@ -206,8 +209,8 @@
       ;; read the options
       (set! (-> obj options) (res-lump-value ent 'options fact-options))
 
-      ;; TODO - some enum bitfield here.
-      (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
+      ;; read fade time, if we have fade or respawn
+      (if (logtest? (fact-options fade respawn) (-> obj options))
           (set! (-> obj fade-time) (the int (* 300.0 (res-lump-float ent 'timeout))))
           )
       )

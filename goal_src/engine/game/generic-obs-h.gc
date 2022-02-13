@@ -31,6 +31,10 @@
 
 ;; DECOMP BEGINS
 
+;; generic-obs has general game "objects".  It's not related to the generic renderer.
+
+;; A manipy is a way to draw and move something. More complicated objects that want to draw multiple
+;; things may create a child manipy and then send it commands.
 (deftype manipy (process-drawable)
   ((new-trans-hook       (function none)         :offset-assert 176)
    (cur-trans-hook       (function none)         :offset-assert 180)
@@ -57,7 +61,7 @@
     )
   )
 
-
+;; A part-spawner simply spawns particles.
 (deftype part-spawner (process-drawable)
   ((mode         (pointer sparticle-launch-group)         :offset-assert 176)
    (enable       symbol                                   :offset-assert 180)
@@ -69,14 +73,15 @@
   :size-assert         #xd0
   :flag-assert         #x15006000d0
   (:methods
-    (dummy-20 (_type_) symbol 20)
+    (is-visible? (_type_) symbol 20)
     )
   (:states
     part-spawner-active
     )
   )
 
-
+;; a part-tracker will spawn particles, then linger for a bit, and then finally die.
+;; a more complicated object can use this to manage particles that do something interesting (like follow you)
 (deftype part-tracker (process)
   ((root            trsqv                                    :offset-assert 112)
    (part            sparticle-launch-control                 :offset-assert 116)
@@ -101,7 +106,7 @@
     )
   )
 
-
+;; a camera-tracker can control the camera.
 (deftype camera-tracker (process)
   ((entity-override entity-actor     :offset         52)
    (grab-target     handle           :offset        120)
@@ -129,14 +134,14 @@
   :size-assert         #xe0
   :flag-assert         #xf007000e0
   (:methods
-    (dummy-14 (_type_ pair) process 14)
+    (eval (_type_ pair) process 14)
     )
   (:states
     camera-tracker-process
     )
   )
 
-
+;; a touch tracker waits to be touched, then calls some callback function.
 (deftype touch-tracker (process-drawable)
   ((root-override collide-shape-moving           :offset        112)
    (duration      time-frame                     :offset-assert 176)
@@ -155,7 +160,7 @@
     )
   )
 
-
+;; the classic pole
 (deftype swingpole (process)
   ((root        trsq           :offset-assert 112)
    (dir         vector :inline :offset-assert 128)
@@ -172,7 +177,7 @@
     )
   )
 
-
+;; do you want to fish?
 (deftype gui-query (structure)
   ((x-position        int32   :offset-assert   0)
    (y-position        int32   :offset-assert   4)
@@ -192,7 +197,7 @@
     )
   )
 
-
+;; control the camera from something else (an animation)
 (deftype othercam (process)
   ((hand              handle         :offset-assert 112)
    (old-global-mask   uint32         :offset-assert 120)
@@ -216,6 +221,7 @@
   )
 
 
+;; don't draw it! I guess used to disable things during development.
 (deftype process-hidden (process)
   ()
   :method-count-assert 15

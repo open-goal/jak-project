@@ -2,15 +2,15 @@
 (in-package goal)
 
 ;; definition for method 25 of type pov-camera
-(defmethod TODO-RENAME-25 pov-camera ((obj pov-camera))
+(defmethod check-for-abort pov-camera ((obj pov-camera))
   (when (or (and (>= (- (-> *display* base-frame-counter) (-> obj debounce-start-time)) (seconds 0.2))
                  (cpad-pressed? 0 triangle)
                  )
-            (logtest? (-> obj flags) 2)
+            (logtest? (-> obj flags) (pov-camera-flag allow-abort))
             )
     (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
     (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-    (when (logtest? (-> obj flags) 1)
+    (when (logtest? (-> obj flags) (pov-camera-flag notify-of-abort))
       (send-event (handle->process (-> obj notify-handle)) 'notify 'abort-request)
       #t
       )
@@ -121,8 +121,8 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('abort)
-       (when (logtest? (-> self flags) 1)
-         (logior! (-> self flags) 2)
+       (when (logtest? (-> self flags) (pov-camera-flag notify-of-abort))
+         (logior! (-> self flags) (pov-camera-flag allow-abort))
          (if (= (-> self anim-name type) string)
              (go-virtual pov-camera-abort)
              )
@@ -180,7 +180,7 @@
            )
          )
        (until (ja-done? 0)
-         (TODO-RENAME-25 self)
+         (check-for-abort self)
          (suspend)
          (let ((a0-6 (-> self skel root-channel 0)))
            (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
@@ -194,7 +194,7 @@
          (the-as spool-anim (-> self anim-name))
          (the-as art-joint-anim #f)
          (the-as art-joint-anim #f)
-         (method-of-object self TODO-RENAME-25)
+         (method-of-object self check-for-abort)
          )
        )
       )
@@ -216,7 +216,7 @@
   :virtual #t
   :enter
   (behavior ()
-    (logior! (-> self flags) 2)
+    (logior! (-> self flags) (pov-camera-flag allow-abort))
     (none)
     )
   :code
@@ -240,7 +240,7 @@
     (send-event (handle->process (-> self notify-handle)) 'notify 'die)
     (suspend)
     (suspend)
-    (dummy-18 self)
+    (cleanup-for-death self)
     (deactivate self)
     (none)
     )
@@ -248,7 +248,7 @@
 
 ;; definition for method 27 of type pov-camera
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-27 pov-camera ()
+(defmethod pre-startup-callback pov-camera ((obj pov-camera))
   0
   (none)
   )
@@ -262,7 +262,7 @@
 ;; definition for function pov-camera-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior pov-camera-init-by-other pov-camera ((arg0 vector) (arg1 skeleton-group) (arg2 string) (arg3 int) (arg4 process-drawable) (arg5 pair))
+(defbehavior pov-camera-init-by-other pov-camera ((arg0 vector) (arg1 skeleton-group) (arg2 string) (arg3 pov-camera-flag) (arg4 process-drawable) (arg5 pair))
   (set-stack-size! self)
   (set! (-> *game-info* pov-camera-handle) (process->handle self))
   (set! (-> self flags) arg3)
@@ -277,7 +277,7 @@
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
-  (when (logtest? (-> self flags) 4)
+  (when (logtest? (-> self flags) (pov-camera-flag inherit-orientation))
     (let ((v1-20 (if (and (nonzero? arg4) (type-type? (-> arg4 type) process-drawable))
                      arg4
                      )
@@ -287,7 +287,7 @@
       )
     )
   (initialize-skeleton self arg1 '())
-  (logior! (-> self draw status) (draw-status drwf05))
+  (logior! (-> self draw status) (draw-status skip-bones))
   (logior! (-> self skel status) 1)
   (set! (-> self anim-name) arg2)
   (cond
@@ -332,7 +332,7 @@
                                  )
                                )
         )
-  ((method-of-object self dummy-27))
+  (pre-startup-callback self)
   (go-virtual pov-camera-startup)
   (none)
   )
