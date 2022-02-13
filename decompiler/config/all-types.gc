@@ -535,6 +535,7 @@
     (pris-tex1 51)
     (bucket-52 52)
     (bucket-53 53)
+    (bucket-54 54) ;; eye::update-eyes
     ;; merc1 52
     ;; generic1 53
 
@@ -7946,7 +7947,7 @@
 
 (deftype art-joint-anim (art-element)
   ;; figured out manually from custom inspect.
-  ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage
+  ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage and merc-eye-anim
    (speed float :offset 20)
    (artist-base float :offset 24)
    (artist-step float :offset 28)
@@ -14014,11 +14015,11 @@
   )
 
 (deftype eye-control (structure)
-  ((process     uint64         :offset-assert 0)
+  ((process     handle         :offset-assert 0)
    (random-time uint16         :offset-assert 8)
    (level       uint16         :offset-assert 10)
    (blink       float          :offset-assert 12)
-   (shaders     uint32         :offset-assert 16)
+   (shaders     (inline-array adgif-shader)         :offset-assert 16)
    (left        eye    :inline :offset-assert 32)
    (right       eye    :inline :offset-assert 64)
    )
@@ -19909,7 +19910,7 @@
 (define-extern clone-anim-once (function handle int symbol string none :behavior process-drawable))
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 (define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
-(define-extern merc-eye-anim (function process-drawable none))
+(define-extern merc-eye-anim (function manipy none))
 (define-extern ja-anim-done? (function process symbol))
 (define-extern command-get-camera (function object state state))
 (define-extern camera-anim (function symbol basic entity (pointer process) :behavior camera-tracker)) ;; unused
@@ -21829,8 +21830,8 @@
 
 ;; - Functions
 
-(define-extern convert-eye-data function)
-(define-extern render-eyes function)
+(define-extern convert-eye-data (function box8s uint128 float))
+(define-extern render-eyes (function dma-buffer eye-control int pointer))
 (define-extern update-eyes (function none))
 
 ;; - Unknowns
