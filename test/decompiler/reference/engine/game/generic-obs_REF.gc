@@ -125,7 +125,7 @@
       (suspend)
       )
     (let ((gp-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-0) 150)
+      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.5))
         (suspend)
         )
       )
@@ -692,8 +692,8 @@
 (defstate part-tracker-process (part-tracker)
   :code
   (behavior ()
-    (set! (-> self start-time) (the-as uint (-> *display* base-frame-counter)))
-    (while (< (- (-> *display* base-frame-counter) (the-as int (-> self start-time))) (the-as int (-> self duration)))
+    (set! (-> self start-time) (-> *display* base-frame-counter))
+    (while (< (- (-> *display* base-frame-counter) (-> self start-time)) (-> self duration))
       (let ((gp-0 (handle->process (-> self target))))
         (when gp-0
           (if (and gp-0 (type-type? (-> gp-0 type) process-drawable) (nonzero? (-> (the-as process-drawable gp-0) root)))
@@ -710,7 +710,7 @@
       (suspend)
       )
     (let ((gp-2 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-2) (the-as int (-> self linger-duration)))
+      (until (>= (- (-> *display* base-frame-counter) gp-2) (-> self linger-duration))
         (if (-> self linger-callback)
             ((-> self linger-callback) self)
             )
@@ -731,7 +731,7 @@
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior part-tracker-init part-tracker ((arg0 sparticle-launch-group)
-                                   (arg1 int)
+                                   (arg1 time-frame)
                                    (arg2 (function part-tracker none))
                                    (arg3 (pointer process-drawable))
                                    (arg4 process)
@@ -751,12 +751,12 @@
                 arg1
                 )
                (else
-                 (the-as int (-> arg0 duration))
+                 (the-as time-frame (-> arg0 duration))
                  )
                )
         )
-  (set! (-> self duration) (the-as uint arg1))
-  (set! (-> self linger-duration) (-> arg0 linger-duration))
+  (set! (-> self duration) (the-as time-frame arg1))
+  (set! (-> self linger-duration) (the-as time-frame (-> arg0 linger-duration)))
   (set! (-> self part) (create-launch-control arg0 self))
   (go part-tracker-process)
   (none)
@@ -1595,7 +1595,7 @@
    (spring-height   meters                :offset-assert 176)
    (camera          state                 :offset-assert 180)
    (active-distance float                 :offset-assert 184)
-   (seek-time       uint64                :offset-assert 192)
+   (seek-time       time-frame            :offset-assert 192)
    (dest            vector        :inline :offset-assert 208)
    (sound-id        sound-id              :offset-assert 224)
    )
@@ -1959,7 +1959,7 @@
         (when (not (paused?))
           (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
           (send-event *camera* 'teleport)
-          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) 300))
+          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1)))
               (send-event *camera* 'change-state *camera-base-mode* 150)
               )
           )
@@ -2067,7 +2067,7 @@
           (set! (-> self trans x) (-> *camera* tpos-curr x))
           (set! (-> self trans z) (-> *camera* tpos-curr z))
           (vector+! (-> self trans) (-> self trans) (-> self view-flat))
-          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) 300))
+          (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1)))
               (send-event *camera* 'change-state *camera-base-mode* 150)
               )
           )
@@ -2211,7 +2211,7 @@
                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                )
                   )
-             (< (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+             (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
              )
         (send-event *target* 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
         )
@@ -2285,7 +2285,7 @@
   (let ((v1-29 (res-lump-struct arg0 'alt-vector vector)))
     (when v1-29
       (set-vector! (-> obj dest) (-> v1-29 x) (-> v1-29 y) (-> v1-29 z) 1.0)
-      (set! (-> obj seek-time) (the-as uint (the int (* 300.0 (-> v1-29 w)))))
+      (set! (-> obj seek-time) (the-as time-frame (the int (* 300.0 (-> v1-29 w)))))
       )
     )
   (set! (-> obj sound-id) (new-sound-id))
@@ -2347,7 +2347,7 @@
   (let ((v1-34 (res-lump-struct (-> self entity) 'alt-vector vector)))
     (when v1-34
       (set-vector! (-> self dest) (-> v1-34 x) (-> v1-34 y) (-> v1-34 z) 1.0)
-      (set! (-> self seek-time) (the-as uint (the int (* 300.0 (-> v1-34 w)))))
+      (set! (-> self seek-time) (the-as time-frame (the int (* 300.0 (-> v1-34 w)))))
       )
     )
   (set! (-> self sound-id) (new-sound-id))
@@ -2511,7 +2511,7 @@
 ;; definition for function touch-tracker-init
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior touch-tracker-init touch-tracker ((arg0 vector) (arg1 float) (arg2 uint))
+(defbehavior touch-tracker-init touch-tracker ((arg0 vector) (arg1 float) (arg2 time-frame))
   (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -2538,7 +2538,7 @@
   (set! (-> self run-function)
         (lambda :behavior touch-tracker
           ()
-          (< (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self duration)))
+          (< (- (-> *display* base-frame-counter) (-> self state-time)) (-> self duration))
           )
         )
   (set! (-> self event-hook) (-> touch-tracker-idle event))

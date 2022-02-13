@@ -17,7 +17,7 @@
    (path-data       path-control         2       :offset-assert 208)
    (path-target     path-control                 :offset        208)
    (path-flut       path-control                 :offset        212)
-   (touch-time      uint64                       :offset-assert 216)
+   (touch-time      time-frame                   :offset-assert 216)
    )
   :pack-me
   :heap-base #x70
@@ -112,7 +112,7 @@
              )
            )
           ((or (= v1-0 'touch) (= v1-0 'attack))
-           (set! (-> self touch-time) (the-as uint (-> *display* base-frame-counter)))
+           (set! (-> self touch-time) (-> *display* base-frame-counter))
            #f
            )
           )
@@ -161,7 +161,7 @@
                   )
               (if (and *target*
                        (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))
-                       (< (- (-> *display* base-frame-counter) (the-as int (-> self touch-time))) 15)
+                       (< (- (-> *display* base-frame-counter) (-> self touch-time)) (seconds 0.05))
                        )
                   (go-virtual pickup (method-of-object self idle))
                   )
@@ -321,7 +321,7 @@
       (suspend)
       )
     (let ((s5-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) s5-0) 300)
+      (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 1))
         (flutflut-effect)
         (suspend)
         )

@@ -5,26 +5,26 @@
 (define *fishermans-boat-constants* (new 'static 'rigid-body-platform-constants
                                       :drag-factor 2.0
                                       :buoyancy-factor 1.5
-                                      :max-buoyancy-depth (meters 1.0)
+                                      :max-buoyancy-depth (meters 1)
                                       :gravity-factor 1.0
-                                      :gravity (meters 80.0)
-                                      :player-weight (meters 40.0)
+                                      :gravity (meters 80)
+                                      :player-weight (meters 40)
                                       :player-bonk-factor 1.0
                                       :player-dive-factor 1.0
-                                      :player-force-distance (meters 10.0)
-                                      :player-force-clamp (meters 1000000.0)
-                                      :player-force-timeout #x1e
-                                      :explosion-force (meters 1000.0)
+                                      :player-force-distance (meters 10)
+                                      :player-force-clamp (meters 1000000)
+                                      :player-force-timeout (seconds 0.1)
+                                      :explosion-force (meters 1000)
                                       :linear-damping 1.0
                                       :angular-damping 1.0
                                       :control-point-count 6
                                       :mass 2.0
-                                      :inertial-tensor-x (meters 4.0)
-                                      :inertial-tensor-y (meters 10.0)
-                                      :inertial-tensor-z (meters 15.0)
-                                      :cm-joint-y (meters 3.0)
-                                      :cm-joint-z (meters 1.0)
-                                      :idle-distance (meters 50.0)
+                                      :inertial-tensor-x (meters 4)
+                                      :inertial-tensor-y (meters 10)
+                                      :inertial-tensor-z (meters 15)
+                                      :cm-joint-y (meters 3)
+                                      :cm-joint-z (meters 1)
+                                      :idle-distance (meters 50)
                                       :platform #t
                                       :sound-name #f
                                       )
@@ -268,7 +268,7 @@
    (dest-circle            vector          :inline :offset-assert  80)
    (target-point           vector          :inline :offset-assert  96)
    (sample-dir             vector          :inline :offset-assert 112)
-   (sample-time            uint64                  :offset-assert 128)
+   (sample-time            time-frame              :offset-assert 128)
    (sample-index           int32                   :offset-assert 136)
    )
   :method-count-assert 17
@@ -479,7 +479,7 @@
     (vector-xz-normalize! s3-0 1.0)
     (cond
       ((= arg2 (-> obj sample-index))
-       (let* ((f30-0 (* 0.0033333334 (the float (- (-> *display* base-frame-counter) (the-as int (-> obj sample-time))))))
+       (let* ((f30-0 (* 0.0033333334 (the float (- (-> *display* base-frame-counter) (-> obj sample-time)))))
               (f28-0 (* (-> obj table-step) (the float arg2)))
               (f0-4 (acos-rad (vector-dot s3-0 (-> obj sample-dir))))
               (f26-0 (/ (* f28-0 f30-0) f0-4))
@@ -494,7 +494,7 @@
        )
       (else
         (set! (-> obj sample-index) arg2)
-        (set! (-> obj sample-time) (the-as uint (-> *display* base-frame-counter)))
+        (set! (-> obj sample-time) (-> *display* base-frame-counter))
         (set! (-> obj sample-dir quad) (-> s3-0 quad))
         )
       )
@@ -990,7 +990,7 @@
     (when (and (< (vector-vector-distance (target-pos 0) (-> self rbody position)) 6144.0)
                (or (task-complete? *game-info* (game-task jungle-fishgame)) (and *cheat-mode* (cpad-hold? 0 l3)))
                (not (level-hint-displayed?))
-               (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
                (file-status *art-control* (-> self anim name) 0)
                )
       (hide-hud)
@@ -1432,7 +1432,7 @@
           (set! (-> self measure-parameters) #t)
           (set! (-> self controller steering) 1.0)
           (set! (-> self state-time) (-> *display* base-frame-counter))
-          (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+          (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
             (let ((f0-6 (/ (fabs (- f30-0 (vector-xz-length (-> self rbody lin-velocity)))) f30-0)))
               (if (< 0.05 f0-6)
                   (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -1444,7 +1444,7 @@
           (vector-z-quaternion! gp-0 (-> self root-overlay quat))
           (TODO-RENAME-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
           (let ((s3-0 (-> *display* base-frame-counter)))
-            (until (>= (- (-> *display* base-frame-counter) s3-0) 300)
+            (until (>= (- (-> *display* base-frame-counter) s3-0) (seconds 1))
               (fishermans-boat-set-throttle-by-speed f30-0)
               (suspend)
               (suspend)
@@ -1731,7 +1731,7 @@
         (run-next-time-in-process gp-1 (lambda :behavior fishermans-boat
                                          ()
                                          (let ((gp-0 (-> *display* base-frame-counter)))
-                                           (until (>= (- (-> *display* base-frame-counter) gp-0) 300)
+                                           (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
                                              (suspend)
                                              )
                                            )

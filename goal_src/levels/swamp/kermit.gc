@@ -588,7 +588,7 @@
     )
   :code
   (behavior ()
-    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
+    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
       (sound-play-by-name
         (static-sound-name "kermit-loop")
         (-> self sound-id)
@@ -970,7 +970,7 @@ nav-enemy-default-event-handler
            )
        (vector-xz-normalize! (-> self collide-info transv) f0-5)
        )
-     (seek-toward-heading-vec! (-> self collide-info) (-> self rotate-dir) (-> self rotate-speed) 15)
+     (seek-toward-heading-vec! (-> self collide-info) (-> self rotate-dir) (-> self rotate-speed) (seconds 0.05))
      (vector-v++!
        (-> self collide-info transv)
        (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
@@ -1068,7 +1068,7 @@ nav-enemy-default-event-handler
                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                    )
                  )
-             (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
              )
         (go kermit-idle)
         )
@@ -1192,9 +1192,9 @@ nav-enemy-default-event-handler
   :trans
   (behavior ()
     (when (not (-> self airborne))
-      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+      (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
               (and (logtest? (nav-control-flags bit19) (-> self nav flags))
-                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
                    )
               )
           (go kermit-chase)
@@ -1276,7 +1276,7 @@ nav-enemy-default-event-handler
               )
           )
         )
-      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
           (go kermit-give-up)
           )
       )
@@ -1488,7 +1488,7 @@ nav-enemy-default-event-handler
     )
   :post
   (behavior ()
-    (seek-to-point-toward-point! (-> self collide-info) (target-pos 0) (-> self rotate-speed) 15)
+    (seek-to-point-toward-point! (-> self collide-info) (target-pos 0) (-> self rotate-speed) (seconds 0.05))
     (kermit-simple-post)
     (none)
     )
@@ -1518,7 +1518,7 @@ nav-enemy-default-event-handler
     (kermit-set-nav-mesh-target (-> self collide-info trans))
     (kermit-set-rotate-dir-to-player)
     (when (not (-> self airborne))
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 750)
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2.5))
         (kill-and-free-particles (-> self charging-part))
         (set! (-> self charged-up) #t)
         (go kermit-chase)
@@ -1593,31 +1593,31 @@ nav-enemy-default-event-handler
                                   :die-anim 11
                                   :neck-joint 8
                                   :player-look-at-joint 5
-                                  :run-travel-speed (meters 6.0)
+                                  :run-travel-speed (meters 6)
                                   :run-rotate-speed (degrees 10000.0)
-                                  :run-acceleration (meters 1.0)
+                                  :run-acceleration (meters 1)
                                   :run-turn-time (seconds 0.05)
-                                  :walk-travel-speed (meters 3.0)
+                                  :walk-travel-speed (meters 3)
                                   :walk-rotate-speed (degrees 10000.0)
-                                  :walk-acceleration (meters 1.0)
+                                  :walk-acceleration (meters 1)
                                   :walk-turn-time (seconds 0.05)
-                                  :attack-shove-back (meters 3.0)
-                                  :attack-shove-up (meters 2.0)
-                                  :shadow-size (meters 2.0)
-                                  :notice-nav-radius (meters 10.0)
-                                  :nav-nearest-y-threshold (meters 10.0)
-                                  :notice-distance (meters 30.0)
-                                  :stop-chase-distance (meters 40.0)
-                                  :frustration-distance (meters 8.0)
-                                  :frustration-time #x4b0
+                                  :attack-shove-back (meters 3)
+                                  :attack-shove-up (meters 2)
+                                  :shadow-size (meters 2)
+                                  :notice-nav-radius (meters 10)
+                                  :nav-nearest-y-threshold (meters 10)
+                                  :notice-distance (meters 30)
+                                  :stop-chase-distance (meters 40)
+                                  :frustration-distance (meters 8)
+                                  :frustration-time (seconds 4)
                                   :die-anim-hold-frame 10000000000.0
                                   :jump-land-anim-end-frame 10000000000.0
-                                  :jump-height-min (meters 1.0)
+                                  :jump-height-min (meters 1)
                                   :jump-height-factor 0.5
                                   :jump-start-anim-speed 1.0
-                                  :shadow-max-y (meters 1.0)
-                                  :shadow-min-y (meters -1.0)
-                                  :shadow-locus-dist (meters 150.0)
+                                  :shadow-max-y (meters 1)
+                                  :shadow-min-y (meters -1)
+                                  :shadow-locus-dist (meters 150)
                                   :use-align #f
                                   :draw-shadow #t
                                   :move-to-ground #f

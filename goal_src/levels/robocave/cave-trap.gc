@@ -13,8 +13,8 @@
   ((root-override   collide-shape                :offset        112)
    (spider-count    int32                        :offset-assert 176)
    (alt-actors      (array entity-actor)         :offset-assert 180)
-   (spawn-delay     uint64                       :offset-assert 184)
-   (last-spawn-time uint64                       :offset-assert 192)
+   (spawn-delay     time-frame                   :offset-assert 184)
+   (last-spawn-time time-frame                   :offset-assert 192)
    (debug-targ-pos  vector               :inline :offset-assert 208)
    )
   :heap-base #x70
@@ -33,7 +33,7 @@
 
 
 (deftype spider-vent (process-drawable)
-  ((last-spawn-time uint64  :offset-assert 176)
+  ((last-spawn-time time-frame  :offset-assert 176)
    )
   :heap-base #x50
   :method-count-assert 20
@@ -51,12 +51,12 @@
     (local-vars (v0-0 object))
     (case arg2
       (('can-spawn?)
-       (return (>= (- (-> *display* base-frame-counter) (the-as int (-> self last-spawn-time))) 300))
+       (return (>= (- (-> *display* base-frame-counter) (-> self last-spawn-time)) (seconds 1)))
        v0-0
        )
       (('notify-spawned)
        (set! v0-0 (-> *display* base-frame-counter))
-       (set! (-> self last-spawn-time) (the-as uint v0-0))
+       (set! (-> self last-spawn-time) (the-as time-frame v0-0))
        v0-0
        )
       )
@@ -71,7 +71,7 @@
   )
 
 (defmethod init-from-entity! spider-vent ((obj spider-vent) (arg0 entity-actor))
-  (set! (-> obj last-spawn-time) (the-as uint 0))
+  (set! (-> obj last-spawn-time) 0)
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (go spider-vent-idle)
@@ -117,8 +117,8 @@
 
 (defmethod TODO-RENAME-20 cave-trap ((obj cave-trap))
   (with-pp
-    (set! (-> obj last-spawn-time) (the-as uint (-> *display* base-frame-counter)))
-    (set! (-> obj spawn-delay) (the-as uint (rand-vu-int-range 30 150)))
+    (set! (-> obj last-spawn-time) (-> *display* base-frame-counter))
+    (set! (-> obj spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
     (let ((s5-0 (new 'stack-no-clear 'spawn-baby-spider-work)))
       (let ((s4-0 (new 'stack-no-clear 'vector)))
         (dotimes (v1-2 4)
@@ -282,7 +282,7 @@
   cave-trap-default-event-handler
   :enter
   (behavior ()
-    (set! (-> self spawn-delay) (the-as uint 150))
+    (set! (-> self spawn-delay) (seconds 0.5))
     (none)
     )
   :trans
@@ -298,9 +298,7 @@
               )
           )
         (if (and (< (-> self spider-count) 8)
-                 (>= (- (-> *display* base-frame-counter) (the-as int (-> self last-spawn-time)))
-                     (the-as int (-> self spawn-delay))
-                     )
+                 (>= (- (-> *display* base-frame-counter) (-> self last-spawn-time)) (-> self spawn-delay))
                  )
             (TODO-RENAME-20 self)
             )
@@ -344,8 +342,8 @@
 
 (defmethod init-from-entity! cave-trap ((obj cave-trap) (arg0 entity-actor))
   (set! (-> obj spider-count) 0)
-  (set! (-> obj spawn-delay) (the-as uint 0))
-  (set! (-> obj last-spawn-time) (the-as uint 0))
+  (set! (-> obj spawn-delay) 0)
+  (set! (-> obj last-spawn-time) 0)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core offense) (collide-offense no-offense))

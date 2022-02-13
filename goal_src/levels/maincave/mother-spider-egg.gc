@@ -18,7 +18,7 @@
    (root-override      collide-shape-moving             :offset        112)
    (anim-speed         float                            :offset-assert 176)
    (part2              sparticle-launch-control         :offset-assert 180)
-   (falling-start-time uint64                           :offset-assert 184)
+   (falling-start-time time-frame                       :offset-assert 184)
    (fall-dest          vector                   :inline :offset-assert 192)
    (fall-dest-normal   vector                   :inline :offset-assert 208)
    (broken-look        lod-set                  :inline :offset-assert 224)
@@ -229,16 +229,14 @@
     )
   :enter
   (behavior ()
-    (set! (-> self falling-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self falling-start-time) (-> *display* base-frame-counter))
     (none)
     )
   :trans
   (behavior ()
-    (let ((f30-0 (fmin
-                   (the float (- (-> *display* base-frame-counter) (the-as int (-> self falling-start-time))))
-                   (-> self traj time)
-                   )
-                 )
+    (let ((f30-0
+            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
+            )
           )
       (let ((f28-0 (/ f30-0 (-> self traj time))))
         (eval-position! (-> self traj) f30-0 (-> self root-override trans))
@@ -314,7 +312,7 @@
     )
   :trans
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
         (go mother-spider-egg-hatch)
         )
     (draw-egg-shadow self (-> self shadow-pos) #f)
@@ -514,11 +512,9 @@
 (defstate mother-spider-egg-die-while-falling (mother-spider-egg)
   :trans
   (behavior ()
-    (let ((f0-2 (fmin
-                  (the float (- (-> *display* base-frame-counter) (the-as int (-> self falling-start-time))))
-                  (-> self traj time)
-                  )
-                )
+    (let ((f0-2
+            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
+            )
           )
       (eval-position! (-> self traj) f0-2 (-> self root-override trans))
       )
@@ -598,7 +594,7 @@
 (defbehavior mother-spider-egg-init-by-other mother-spider-egg ((arg0 entity) (arg1 vector) (arg2 vector) (arg3 vector))
   (set! (-> self entity) arg0)
   (set! (-> self anim-speed) (rand-vu-float-range 0.8 1.2))
-  (set! (-> self falling-start-time) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> self falling-start-time) (-> *display* base-frame-counter))
   (set! (-> self fall-dest quad) (-> arg2 quad))
   (set! (-> self fall-dest-normal quad) (-> arg3 quad))
   (let ((s4-1 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))

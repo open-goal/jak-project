@@ -12,7 +12,7 @@
    (face-vec              vector        :inline :offset-assert 192)
    (part-track            handle                :offset-assert 208)
    (keep-part-track-alive symbol                :offset-assert 216)
-   (timeout               uint64                :offset-assert 224)
+   (timeout               time-frame            :offset-assert 224)
    (alt-actor             entity-actor          :offset-assert 232)
    (alt-task              uint8                 :offset-assert 236)
    (cyl                   cylinder-flat :inline :offset-assert 240)
@@ -799,9 +799,7 @@
     (cond
       ((handle->process (-> self part-track))
        (if (-> self keep-part-track-alive)
-           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time)
-                 (the-as uint (-> *display* base-frame-counter))
-                 )
+           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time) (-> *display* base-frame-counter))
            )
        )
       ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
@@ -872,7 +870,7 @@
       (cond
         ((first-ring? self)
          )
-        ((>= (- (-> *display* game-frame-counter) (-> self state-time)) (the-as int (-> self timeout)))
+        ((>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self timeout))
          (level-hint-spawn
            (game-text-id rolling-ring-hint-be-quick-all)
            "sksp0121"
@@ -1103,7 +1101,7 @@
                          )
         )
   (let ((f0-1 (res-lump-float arg0 'timeout)))
-    (set! (-> obj timeout) (the-as uint (the int (* 300.0 f0-1))))
+    (set! (-> obj timeout) (the-as time-frame (the int (* 300.0 f0-1))))
     )
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (cond

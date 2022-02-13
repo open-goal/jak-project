@@ -451,6 +451,7 @@
   )
 
 (defenum pickup-type
+  :type int32
   (none)
   (eco-yellow)
   (eco-red)
@@ -2494,18 +2495,18 @@
    (rotv                  vector     :inline :offset-assert 80)
    (scalev                vector     :inline :offset-assert 96)
    (dir-targ              quaternion :inline :offset-assert 112)
-   (angle-change-time     int64              :offset-assert 128)
+   (angle-change-time     time-frame              :offset-assert 128)
    (old-y-angle-diff      float              :offset-assert 136)
    )
   :method-count-assert 28
   :size-assert         #x8c
   :flag-assert         #x1c0000008c
   (:methods
-    (seek-toward-heading-vec! (_type_ vector float int) quaternion 9)
+    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion 9)
     (set-heading-vec! (_type_ vector) quaternion 10)
-    (seek-to-point-toward-point! (_type_ vector float int) quaternion 11)
+    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion 11)
     (point-toward-point! (_type_ vector) quaternion 12)
-    (seek-toward-yaw-angle! (_type_ float float int) quaternion 13)
+    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion 13)
     (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion 14)
     (set-roll-to-grav! (_type_ float) quaternion 15)
     (set-roll-to-grav-2! (_type_ float) quaternion 16)
@@ -3152,9 +3153,9 @@
    (playing-id   sound-id         :offset-assert 8)
    (trans        vector   :inline :offset-assert 16)
    (name         sound-name       :offset-assert 32)
-   (play-time    int64            :offset-assert 48)
-   (time-base    int64            :offset-assert 56)
-   (time-random  int64            :offset-assert 64)
+   (play-time    time-frame            :offset-assert 48)
+   (time-base    time-frame            :offset-assert 56)
+   (time-random  time-frame            :offset-assert 64)
    (volume       int32            :offset-assert 72)
    (pitch        int32            :offset-assert 76)
    (falloff-near int32            :offset-assert 80)
@@ -3234,8 +3235,8 @@
   )
 
 (deftype stopwatch (basic)
-  ((prev-time-elapsed uint64  :offset-assert 8)
-   (start-time        uint64  :offset-assert 16)
+  ((prev-time-elapsed time-frame  :offset-assert 8)
+   (start-time        time-frame  :offset-assert 16)
    (begin-level       int32   :offset-assert 24)
    )
   :method-count-assert 9
@@ -3256,7 +3257,7 @@
 (declare-type dma-buffer basic)
 (deftype profile-bar (basic)
   ((profile-frame-count int32        :offset-assert 4)
-   (cache-time          uint64       :offset-assert 8)
+   (cache-time          time-frame       :offset-assert 8)
    (data                profile-frame 1024 :inline :offset-assert 16)
    )
   :method-count-assert 14
@@ -3289,7 +3290,7 @@
 
 ;; - Functions
 
-(define-extern stopwatch-elapsed-ticks (function stopwatch uint))
+(define-extern stopwatch-elapsed-ticks (function stopwatch time-frame))
 (define-extern timer-reset (function timer-bank none))
 (define-extern timer-count (function timer-bank uint))
 (define-extern disable-irq (function none))
@@ -3297,9 +3298,9 @@
 (define-extern stopwatch-init (function stopwatch int))
 (define-extern stopwatch-reset (function stopwatch int))
 (define-extern stopwatch-start (function stopwatch int))
-(define-extern stopwatch-stop (function stopwatch uint))
+(define-extern stopwatch-stop (function stopwatch none))
 (define-extern stopwatch-begin (function stopwatch int))
-(define-extern stopwatch-end (function stopwatch uint))
+(define-extern stopwatch-end (function stopwatch none))
 (define-extern stopwatch-elapsed-seconds (function stopwatch float))
 
 
@@ -3880,10 +3881,10 @@
    (align              uint8 6  :offset-assert 88)
    (direct             uint8 6  :offset-assert 94)
    (buzz-val           uint8 2  :offset-assert 100)
-   (buzz-time          int64 2  :offset-assert 104)
+   (buzz-time          time-frame 2  :offset-assert 104)
    (buzz               basic      :offset-assert 120)
    (buzz-act           int32      :offset-assert 124)
-   (change-time        int64     :offset-assert 128)
+   (change-time        time-frame     :offset-assert 128)
    )
   (:methods
     (new (symbol type int) _type_ 0)
@@ -3906,10 +3907,10 @@
 
 ;; - Functions
 
-(define-extern cpad-set-buzz! (function cpad-info int int int none))
+(define-extern cpad-set-buzz! (function cpad-info int int time-frame none))
 (define-extern cpad-get-data (function cpad-info cpad-info))
-(define-extern get-current-time (function int))
-(define-extern get-integral-current-time (function int))
+(define-extern get-current-time (function time-frame))
+(define-extern get-integral-current-time (function time-frame))
 (define-extern cpad-invalid! (function cpad-info cpad-info))
 ;; in the kernel.
 (define-extern cpad-open (function cpad-info int cpad-info))
@@ -4614,7 +4615,7 @@
    (bucket-group (inline-array dma-bucket)    :offset 44)
    (buffer       dma-buffer    11  :offset 4)
    (profile-bar  profile-bar 2 :offset 48)
-   (run-time     uint64        :offset 56)
+   (run-time     int64        :offset 56)
    )
   (:methods
    (new (symbol type) _type_ 0)
@@ -4651,22 +4652,22 @@
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
    (bg-clear-color                  rgba         4      :offset-assert 760)
-   (real-frame-counter              int64               :offset-assert 776)
-   (base-frame-counter              int64               :offset-assert 784);; todo, change to signed?
-   (game-frame-counter              int64               :offset-assert 792)
-   (integral-frame-counter          int64               :offset-assert 800)
-   (real-integral-frame-counter     int64               :offset-assert 808)
-   (actual-frame-counter            int64               :offset-assert 816)
-   (real-actual-frame-counter       int64               :offset-assert 824)
-   (part-frame-counter              int64               :offset-assert 832)
-   (old-real-frame-counter          int64               :offset-assert 840)
-   (old-base-frame-counter          int64               :offset-assert 848)
-   (old-game-frame-counter          int64               :offset-assert 856)
-   (old-integral-frame-counter      int64               :offset-assert 864)
-   (old-real-integral-frame-counter int64               :offset-assert 872)
-   (old-actual-frame-counter        int64               :offset-assert 880)
-   (old-real-actual-frame-counter   int64               :offset-assert 888)
-   (old-part-frame-counter          int64               :offset-assert 896)
+   (real-frame-counter              time-frame          :offset-assert 776)
+   (base-frame-counter              time-frame          :offset-assert 784)
+   (game-frame-counter              time-frame          :offset-assert 792)
+   (integral-frame-counter          time-frame          :offset-assert 800)
+   (real-integral-frame-counter     time-frame          :offset-assert 808)
+   (actual-frame-counter            time-frame          :offset-assert 816)
+   (real-actual-frame-counter       time-frame          :offset-assert 824)
+   (part-frame-counter              time-frame          :offset-assert 832)
+   (old-real-frame-counter          time-frame          :offset-assert 840)
+   (old-base-frame-counter          time-frame          :offset-assert 848)
+   (old-game-frame-counter          time-frame          :offset-assert 856)
+   (old-integral-frame-counter      time-frame          :offset-assert 864)
+   (old-real-integral-frame-counter time-frame          :offset-assert 872)
+   (old-actual-frame-counter        time-frame          :offset-assert 880)
+   (old-real-actual-frame-counter   time-frame          :offset-assert 888)
+   (old-part-frame-counter          time-frame          :offset-assert 896)
    (time-ratio                      float               :offset-assert 904)
    (seconds-per-frame               float               :offset-assert 908)
    (frames-per-second               float               :offset-assert 912)
@@ -5780,7 +5781,7 @@
   ((name basic :offset-assert 4)
    (length int16 :offset-assert 8)             ;; in use elts of the data array
    (allocated-length int16 :offset-assert 10)  ;; size of the data array
-   (engine-time int64 :offset-assert 16)      ;; frame that we last executed
+   (engine-time time-frame :offset-assert 16)      ;; frame that we last executed
    ;; terminating nodes for the next0/prev0 linked lists
    (alive-list connectable :inline :offset-assert 32)
    (alive-list-end connectable :inline :offset-assert 48)
@@ -6115,7 +6116,7 @@
 ;; - Types
 
 (deftype frame-stats (structure)
-  ((field-time int64 2 :offset-assert 0)
+  ((field-time time-frame 2 :offset-assert 0)
    (field      int32     :offset-assert 16)
    )
   :method-count-assert 9
@@ -6524,9 +6525,9 @@
    (trans              vector    :offset-assert 120)
    (sound-id           sound-id  :offset-assert 124)
    (mode               symbol    :offset-assert 128)
-   (total-time         int64     :offset-assert 136)
-   (total-off-time     int64     :offset-assert 144)
-   (last-time          int64     :offset-assert 152)
+   (total-time         time-frame     :offset-assert 136)
+   (total-off-time     time-frame     :offset-assert 144)
+   (last-time          time-frame     :offset-assert 152)
    (voicebox           handle    :offset-assert 160)
    )
   :heap-base #x40
@@ -6566,14 +6567,14 @@
 ;; - Types
 
 (deftype level-hint-control (structure)
-  ((delay-before-playing        uint64  :offset-assert 0)
-   (id                          uint32  :offset-assert 8)
+  ((delay-before-playing        time-frame  :offset-assert 0)
+   (id                          game-text-id  :offset-assert 8)
    (num-attempts-before-playing int8    :offset-assert 12)
    (num-success-before-killing  int8    :offset-assert 13)
    (num-attempts                int8    :offset-assert 14)
    (num-success                 int8    :offset-assert 15)
-   (start-time                  int64  :offset-assert 16)
-   (last-time-called            int64  :offset-assert 24)
+   (start-time                  time-frame  :offset-assert 16)
+   (last-time-called            time-frame  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -6582,7 +6583,7 @@
 
 (deftype task-hint-control (structure)
   ((task  game-task   :offset-assert 0)
-   (delay int64  :offset-assert 8)
+   (delay time-frame  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -7676,7 +7677,7 @@
    (itimes               vector4w        4 :inline :offset-assert 1856)
    (state                uint8             16      :offset-assert 1920)
    (num-stars            float                     :offset-assert 1936)
-   (some-byte            uint8                     :offset 1939)
+   (some-byte            uint8                     :offset 1939) ;; cant cast on update-mood-lavatube
    )
   (:methods
     (new (symbol type) _type_ 0)
@@ -9383,18 +9384,18 @@
    (total-deaths          int32     :offset-assert 156)
    (continue-deaths       int32     :offset-assert 160)
    (fuel-cell-deaths      int32     :offset-assert 164)
-   (game-start-time       int64    :offset-assert 168)
-   (continue-time         int64    :offset-assert 176)
-   (death-time            int64    :offset-assert 184)
-   (hit-time              int64    :offset-assert 192)
-   (fuel-cell-pickup-time int64    :offset-assert 200)
-   (fuel-cell-time        (array int64)     :offset-assert 208)
-   (enter-level-time      (array int64)     :offset-assert 212)
-   (in-level-time         (array int64)     :offset-assert 216)
-   (blackout-time         int64     :offset-assert 224)
-   (letterbox-time        int64     :offset-assert 232)
-   (hint-play-time        int64     :offset-assert 240)
-   (display-text-time     int64     :offset-assert 248)
+   (game-start-time       time-frame    :offset-assert 168)
+   (continue-time         time-frame    :offset-assert 176)
+   (death-time            time-frame    :offset-assert 184)
+   (hit-time              time-frame    :offset-assert 192)
+   (fuel-cell-pickup-time time-frame    :offset-assert 200)
+   (fuel-cell-time        (array time-frame)     :offset-assert 208)
+   (enter-level-time      (array time-frame)     :offset-assert 212)
+   (in-level-time         (array time-frame)     :offset-assert 216)
+   (blackout-time         time-frame     :offset-assert 224)
+   (letterbox-time        time-frame     :offset-assert 232)
+   (hint-play-time        time-frame     :offset-assert 240)
+   (display-text-time     time-frame     :offset-assert 248)
    (display-text-handle   handle    :offset-assert 256)
    (death-movie-tick      int32     :offset-assert 264)
    (want-auto-save        symbol     :offset-assert 268)
@@ -10182,7 +10183,7 @@
    (pickup-amount       float   :offset-assert 12)
    (pickup-spawn-amount float   :offset-assert 16)
    (options             fact-options  :offset-assert 24)
-   (fade-time           int64   :offset-assert 32)
+   (fade-time           time-frame   :offset-assert 32)
    )
   :method-count-assert 12
   :size-assert         #x28
@@ -10196,9 +10197,9 @@
   )
 
 (deftype fact-info-target (fact-info)
-  ((eco-type              int32     :offset-assert 40)
+  ((eco-type              pickup-type :offset-assert 40)
    (eco-level             float     :offset-assert 44)
-   (eco-pickup-time       uint64    :offset-assert 48)
+   (eco-pickup-time       time-frame    :offset-assert 48)
    (eco-timeout           seconds   :offset-assert 56)
    (health                float     :offset-assert 64)
    (health-max            float     :offset-assert 68)
@@ -10206,13 +10207,13 @@
    (buzzer-max            float     :offset-assert 76)
    (eco-pill              float     :offset-assert 80)
    (eco-pill-max          float     :offset-assert 84)
-   (health-pickup-time    uint64    :offset-assert 88)
+   (health-pickup-time    time-frame    :offset-assert 88)
    (eco-source            handle    :offset-assert 96)
-   (eco-source-time       uint64    :offset-assert 104)
-   (money-pickup-time     uint64    :offset-assert 112)
-   (buzzer-pickup-time    uint64    :offset-assert 120)
-   (fuel-cell-pickup-time uint64    :offset-assert 128)
-   (eco-pill-pickup-time  uint64    :offset-assert 136)
+   (eco-source-time       time-frame    :offset-assert 104)
+   (money-pickup-time     time-frame    :offset-assert 112)
+   (buzzer-pickup-time    time-frame    :offset-assert 120)
+   (fuel-cell-pickup-time time-frame    :offset-assert 128)
+   (eco-pill-pickup-time  time-frame    :offset-assert 136)
    )
   :method-count-assert 12
   :size-assert         #x90
@@ -10312,7 +10313,7 @@
    (water       water-control   :offset-assert 156)
    (sound       ambient-sound   :offset-assert 160)
    (state-flags uint32  :offset-assert 164)
-   (state-time  int64   :offset-assert 168)
+   (state-time  time-frame   :offset-assert 168)
    )
   :heap-base #x40
   :method-count-assert 20
@@ -10391,7 +10392,7 @@
    (vector       vector :inline :offset-assert 16)
    (intersection vector :inline :offset-assert 32)
    (attacker     handle         :offset-assert 48)
-   (invinc-time  seconds        :offset-assert 56)
+   (invinc-time  time-frame        :offset-assert 56)
    (mask         uint32         :offset-assert 64)
    (mode         symbol         :offset-assert 68)
    (shove-back   meters         :offset-assert 72)
@@ -10486,12 +10487,12 @@
    (target           handle              :offset-assert 120)
    (callback         (function part-tracker vector)               :offset-assert 128)
    (linger-callback  (function part-tracker vector)               :offset-assert 132)
-   (duration         uint64              :offset-assert 136)
-   (linger-duration  uint64              :offset-assert 144)
-   (start-time       uint64              :offset-assert 152)
+   (duration         time-frame              :offset-assert 136)
+   (linger-duration  time-frame              :offset-assert 144)
+   (start-time       time-frame              :offset-assert 152)
    (offset           vector     :inline  :offset-assert 160)
    (userdata         uint64              :offset-assert 176)
-   (user-time        int64   2           :offset-assert 184)
+   (user-time        time-frame   2           :offset-assert 184)
    (user-vector      vector  2  :inline  :offset-assert 208)
    (user-handle      uint32  2           :offset-assert 240)
    )
@@ -10515,7 +10516,7 @@
    (pov-target      handle  :offset-assert 160)
    (work-process    handle  :offset-assert 168)
    (anim-process    handle  :offset-assert 176)
-   (start-time      int64   :offset-assert 184)
+   (start-time      time-frame   :offset-assert 184)
    (callback        basic   :offset-assert 192)
    (userdata        basic   :offset-assert 196)
    (message         basic   :offset-assert 200)
@@ -10539,7 +10540,7 @@
 (declare-type collide-shape-moving basic)
 (deftype touch-tracker (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
-   (duration     uint64  :offset-assert 176)
+   (duration     time-frame  :offset-assert 176)
    (target       handle  :offset-assert 184)
    (event        symbol   :offset-assert 192)
    (run-function (function object)   :offset-assert 196)
@@ -10631,7 +10632,7 @@
 (deftype pov-camera (process-drawable)
   ((cspace-array        cspace-array :offset 112)
    (flags               int32   :offset-assert 176)
-   (debounce-start-time uint64  :offset-assert 184)
+   (debounce-start-time time-frame  :offset-assert 184)
    (notify-handle       handle  :offset-assert 192)
    (anim-name           string   :offset-assert 200)
    (command-list        pair   :offset-assert 204) ;; not a basic atleast!
@@ -10716,7 +10717,7 @@
    (max-time   int32   :offset-assert 4)
    (max-val    float   :offset-assert 8)
    (timer      int32   :offset-assert 12)
-   (start-time int64   :offset-assert 16)
+   (start-time time-frame   :offset-assert 16)
    (value      float   :offset-assert 24)
    )
   :pack-me
@@ -10772,7 +10773,7 @@
    (xz-max     float          :offset-assert 8)
    (y-max      float          :offset-assert 12)
    (timer      int32          :offset-assert 16)
-   (start-time int64          :offset-assert 24)
+   (start-time time-frame          :offset-assert 24)
    (value      vector :inline :offset-assert 32)
    )
   :method-count-assert 13
@@ -10813,7 +10814,7 @@
 ;; - Types
 
 (deftype smush-control (structure)
-  ((start-time  int64   :offset-assert 0)
+  ((start-time  time-frame   :offset-assert 0)
    (period      float   :offset-assert 8)
    (duration    float   :offset-assert 12)
    (amp         float   :offset-assert 16)
@@ -10922,7 +10923,7 @@
    (trans           vector     :inline     :offset-assert 64)
    (quat            quaternion :inline     :offset-assert 80)
    (scale           vector     :inline     :offset-assert 96)
-   (notice-time     int64                  :offset-assert 112)
+   (notice-time     time-frame                  :offset-assert 112)
    (flex-blend      float                  :offset-assert 120)
    (blend           float                  :offset-assert 124)
    (max-dist        meters                 :offset-assert 128)
@@ -11493,7 +11494,7 @@
   )
 
 (deftype collide-shape-moving (collide-shape)
-  ((rider-time            uint64             :offset-assert 184)
+  ((rider-time            time-frame             :offset-assert 184)
    (rider-last-move       vector     :inline :offset-assert 192)
    (trans-old             vector    3 :inline      :offset-assert 208)
    (poly-pat              pat-surface        :offset-assert 256)
@@ -11560,7 +11561,7 @@
    (transv-out     vector :inline :offset-assert 48)
    (local-normal   vector :inline :offset-assert 64)
    (surface-normal vector :inline :offset-assert 80)
-   (time           int64          :offset-assert 96)
+   (time           time-frame          :offset-assert 96)
    (status         uint64         :offset-assert 104)
    (pat            pat-surface    :offset-assert 112)
    (reaction-flag  uint32         :offset-assert 116)
@@ -11625,15 +11626,15 @@
    (unknown-vector53  vector :inline :offset 1232)
    (last-known-safe-ground  vector :inline :offset 1248)
    (unknown-vector55  vector :inline :offset 1264)
-   (unknown-dword10 int64 :offset 1280) ;; from - collide-reaction-target::target-collision-reaction
-   (unknown-dword11 int64 :offset 1288) ;; from - target-util::can-jump?
+   (unknown-dword10 time-frame :offset 1280) ;; from - collide-reaction-target::target-collision-reaction
+   (unknown-dword11 time-frame :offset 1288) ;; from - target-util::can-jump?
    (unknown-float60 float :offset 1300) ;; from - target-util::can-duck?
    (unknown-float61 float :offset 1304) ;; from - target-util::target-align-vel-z-adjust
    (unknown-float62 float :offset 1308) ;; from - target-util::target-print-stats
    (unknown-float63 float :offset 1312) ;; from - logic-target::target-compute-slopes
    (unknown-float64 float :offset 1316) ;; from - logic-target::target-compute-slopes
-   (unknown-dword20 int64 :offset 1320) ;; from target-util::turn-around? - TODO
-   (unknown-dword21 int64 :offset 1328) ;; from target-util::turn-around? - TODO
+   (unknown-dword20 time-frame :offset 1320) ;; from target-util::turn-around? - TODO
+   (unknown-dword21 time-frame :offset 1328) ;; from target-util::turn-around? - TODO
    (unknown-dword-coverage int64 :offset 1336)
    (unknown-float-coverage-0 float :offset 1344)
    (unknown-float-coverage-1 float :offset 1348)
@@ -11657,13 +11658,13 @@
    (unknown-sphere01 collide-shape-prim-sphere :offset 1636) ;; from target-util::target-danger-set!
    (unknown-sphere02 collide-shape-prim-sphere :offset 1640) ;; from target-util::target-danger-set!
    (unknown-int50 int32 :offset 1656) ;; from target::(enter target-wheel)
-   (unknown-dword30 int64 :offset 1664) ;; from target::(trans target-walk)
-   (unknown-dword31 int64 :offset 1672) ;; from target-util::can-hands?
-   (unknown-dword32 int64 :offset 1680) ;; from target-util::can-hands?
-   (unknown-dword33 int64 :offset 1688) ;; from target-util::can-feet?
-   (unknown-dword34 int64 :offset 1696) ;; from target-util::can-feet?
-   (unknown-dword35 int64 :offset 1704) ;; from target::(exit target-slide-down)
-   (unknown-dword36 int64 :offset 1712) ;; from target::(trans target-jump)
+   (unknown-dword30 time-frame :offset 1664) ;; from target::(trans target-walk)
+   (unknown-dword31 time-frame :offset 1672) ;; from target-util::can-hands?
+   (unknown-dword32 time-frame :offset 1680) ;; from target-util::can-hands?
+   (unknown-dword33 time-frame :offset 1688) ;; from target-util::can-feet?
+   (unknown-dword34 time-frame :offset 1696) ;; from target-util::can-feet?
+   (unknown-dword35 time-frame :offset 1704) ;; from target::(exit target-slide-down)
+   (unknown-dword36 time-frame :offset 1712) ;; from target::(trans target-jump)
    (unknown-float80 float :offset 1724) ;; from logic-target::bend-gravity
    (unknown-float81 float :offset 1728) ;; from logic-target::bend-gravity
    (unknown-float82 float :offset 1732) ;; from logic-target::bend-gravity
@@ -11682,8 +11683,8 @@
    (unknown-float110  float :offset 2120) ;; from logic-target::target-compute-edge
    (unknown-vector100  vector :inline :offset 2128) ;; from logic-target::target-compute-edge
    (unknown-vector101  vector :inline :offset 2144) ;; from logic-target::target-compute-edge
-   (unknown-dword40  int64 :offset 2160) ;; from logic-target::target-compute-edge
-   (unknown-dword41  int64 :offset 2168) ;; from logic-target::target-compute-edge
+   (unknown-dword40  time-frame :offset 2160) ;; from logic-target::target-compute-edge
+   (unknown-dword41  time-frame :offset 2168) ;; from logic-target::target-compute-edge
    (unknown-handle10  handle :offset 2176) ;; from logic-target::target-compute-pole - probably a swingpole
    (unknown-uint20     uint32          :offset 2184) ;; from target::(trans target-running-attack)
    (unknown-spoolanim00     spool-anim          :offset 2184) ;; from target2::(trans target-stance-ambient)
@@ -11719,13 +11720,13 @@
    (history-length int16 :offset 2490)
    (history-data collide-history 128 :inline :offset-assert 2496)
    (unknown-float140 float :offset 18944)
-   (unknown-dword70 int64 :offset 18952) ;; from logic-target::add-thrust
+   (unknown-dword70 time-frame :offset 18952) ;; from logic-target::add-thrust
    (unknown-int40 int32 :offset 18880) ;; from logic-target::flag-setup
-   (unknown-dword80 int64 :offset 18888) ;; from logic-target::post-flag-setup
-   (unknown-dword81 int64 :offset 18896) ;; from logic-target::post-flag-setup
+   (unknown-dword80 time-frame :offset 18888) ;; from logic-target::post-flag-setup
+   (unknown-dword81 time-frame :offset 18896) ;; from logic-target::post-flag-setup
    (unknown-float130 float :offset 18904) ;; from target2::target-swim-tilt
    (unknown-float131 float :offset 18908) ;; from target2::target-swim-tilt
-   (unknown-dword82 int64 :offset 18912) ;; from logic-target::reset-target-state
+   (unknown-dword82 time-frame :offset 18912) ;; from logic-target::reset-target-state
    (unknown-vector120 vector :inline :offset 18928) ;; from target::(code target-running-attack)
    (unknown-float150 float :offset 18944) ;; from target::(code target-wheel-flip)
    (unknown-vector121 vector :inline :offset 18960) ;; from target collide response
@@ -12105,7 +12106,7 @@
    (parent-base     vector  :inline :offset-assert 224)
    (parent-quat     vector  :inline :offset-assert 240)
    (base-vector     vector  :inline :offset-assert 256)
-   (timeout         uint64          :offset-assert 272)
+   (timeout         time-frame          :offset-assert 272)
    (options         uint64          :offset-assert 280)
    (last-target     handle          :offset-assert 288)
    (notify-handle   handle          :offset-assert 296)
@@ -12183,7 +12184,7 @@
    (racer               racer-info          :offset-assert 180)
    (game                game-info           :offset-assert 184)
    (neck                joint-mod           :offset-assert 188)
-   (state-hook-time     uint64              :offset-assert 192)
+   (state-hook-time     time-frame              :offset-assert 192)
    (state-hook          (function none :behavior target)     :offset-assert 200)
    (cam-user-mode       symbol              :offset-assert 204)
    (sidekick            (pointer sidekick)              :offset-assert 208)
@@ -12200,8 +12201,8 @@
    (saved-owner         uint64              :offset-assert 528)
    (alt-neck-pos        vector      :inline :offset-assert 544)
    (fp-hud              handle              :offset-assert 560)
-   (no-load-wait        uint64              :offset-assert 568)
-   (no-look-around-wait uint64              :offset-assert 576)
+   (no-load-wait        time-frame              :offset-assert 568)
+   (no-look-around-wait time-frame              :offset-assert 576)
    ;;(burn-proc           handle              :offset-assert 584) ;; PAL only
    )
   :heap-base #x1e0
@@ -14496,7 +14497,7 @@
   ((collide-move-rad        float   :offset-assert 4)
    (joypad                  uint32  :offset-assert 8)
    (min-detectable-velocity float   :offset-assert 12)
-   (attack-timeout          seconds :offset-assert 16)
+   (attack-timeout          time-frame :offset-assert 16)
    (default-string-max-y    meters  :offset-assert 24)
    (default-string-min-y    meters  :offset-assert 28)
    (default-string-max-z    meters  :offset-assert 32)
@@ -14768,7 +14769,7 @@
    (pov-handle          handle                    :offset-assert 336)
    (pov-bone            int32                     :offset-assert 344)
    (being-attacked      symbol                     :offset-assert 348)
-   (attack-start        uint64                    :offset-assert 352)
+   (attack-start        time-frame                    :offset-assert 352)
    (on-ground           symbol                     :offset-assert 360)
    (under-water         int32                     :offset-assert 364)
    (on-pole             symbol                     :offset-assert 368)
@@ -14793,7 +14794,7 @@
    (outro-t             float                     :offset-assert 2372)
    (outro-t-step        float                     :offset-assert 2376)
    (outro-exit-value    float                     :offset-assert 2380)
-   (water-drip-time     uint64                    :offset-assert 2384)
+   (water-drip-time     time-frame                    :offset-assert 2384)
    (water-drip          sparticle-launch-control  :offset-assert 2392)
    (water-drip-mult     float                     :offset-assert 2396)
    (water-drip-speed    float                     :offset-assert 2400)
@@ -14949,8 +14950,8 @@
   ((value                  int32     :offset-assert 112)
    (value2                 int32     :offset-assert 116)
    (target-value           int32     :offset-assert 120)
-   (last-increment-time    int64     :offset-assert 128)
-   (last-target-equal-time int64     :offset-assert 136)
+   (last-increment-time    time-frame     :offset-assert 128)
+   (last-target-equal-time time-frame     :offset-assert 136)
    (offset                 int32     :offset-assert 144)
    (y-offset               int32     :offset-assert 148)
    (next-y-offset          int32     :offset-assert 152)
@@ -14965,8 +14966,8 @@
    (disable                symbol     :offset-assert 188)
    (force-on-screen        symbol     :offset-assert 192)
    (deactivate-when-hidden symbol     :offset-assert 196)
-   (trigger-time           uint64    :offset-assert 200)
-   (last-hide-time         uint64    :offset-assert 208)
+   (trigger-time           time-frame    :offset-assert 200)
+   (last-hide-time         time-frame    :offset-assert 208)
    (nb-of-icons            int32     :offset-assert 216)
    (icons                  hud-icon 6 :offset-assert 220)
    (max-nb-of-particles    int32     :offset-assert 244)
@@ -14981,7 +14982,7 @@
   (:methods
     (dummy-14 (_type_) symbol 14)
     (dummy-15 (_type_) none 15)
-    (TODO-RENAME-16 (_type_ int int) none 16) ;; first int seen as a fixed point from racer-info 'heat'
+    (TODO-RENAME-16 (_type_ int int) none 16)
     (dummy-17 (_type_) none 17)
     (dummy-18 (_type_) none 18)
     (TODO-RENAME-19 (_type_) none 19)
@@ -15179,8 +15180,8 @@
    (total-nb-of-orbs             int32           :offset-assert 284)
    (total-nb-of-buzzers          int32           :offset-assert 288)
    (card-info                    mc-slot-info    :offset-assert 292)
-   (last-option-index-change     int64           :offset-assert 296)
-   (video-mode-timeout           int64           :offset-assert 304)
+   (last-option-index-change     time-frame           :offset-assert 296)
+   (video-mode-timeout           time-frame           :offset-assert 304)
    (display-state-stack          progress-screen 5  :offset-assert 312)
    (option-index-stack           int32        5  :offset-assert 352)
    (display-state-pos            int32           :offset-assert 372)
@@ -15578,7 +15579,7 @@
    (travel              vector   :inline  :offset-assert 144)
    (target-pos          vector   :inline  :offset-assert 160)
    (destination-pos     vector   :inline  :offset-assert 176)
-   (block-time          uint64            :offset-assert 192)
+   (block-time          time-frame            :offset-assert 192)
    (block-count         float             :offset-assert 200)
    (user-poly           nav-poly          :offset-assert 204)
    (nav-cull-radius     float             :offset-assert 208)
@@ -15705,7 +15706,7 @@
 
 (define-extern *dgo-name* string)
 (define-extern *load-dgo-rpc* rpc-buffer-pair)
-(define-extern *dgo-time* int)
+(define-extern *dgo-time* time-frame)
 (define-extern *play-str-rpc* rpc-buffer-pair)
 (define-extern *que-str-lock* symbol)
 (define-extern *load-str-lock* symbol)
@@ -17481,7 +17482,7 @@
   )
 
 (deftype ambient-control (structure)
-  ((last-ambient-time int64     :offset-assert 0)
+  ((last-ambient-time time-frame     :offset-assert 0)
    (last-ambient      string    :offset-assert 8)
    (last-ambient-id   sound-id  :offset-assert 12)
    )
@@ -17491,7 +17492,7 @@
   :pack-me
   (:methods
     (dummy-9 (_type_) none 9)
-    (TODO-RENAME-10 (_type_ vector int float process-drawable) vector 10)
+    (TODO-RENAME-10 (_type_ vector time-frame float process-drawable) vector 10)
     (play-ambient (_type_ string symbol vector) symbol 11)
     )
   )
@@ -17509,7 +17510,7 @@
    (camera               handle                  :offset-assert 288)
    (will-talk            symbol                   :offset-assert 296)
    (talk-message         game-text-id                  :offset-assert 300)
-   (last-talk            int64                  :offset-assert 304)
+   (last-talk            time-frame                  :offset-assert 304)
    (bounce-away          symbol                   :offset-assert 312)
    (ambient              ambient-control :inline :offset-assert 320)
    (center-joint-index   int32                   :offset-assert 336)
@@ -17581,7 +17582,7 @@
 (define-extern close-specific-task! (function game-task task-status game-task))
 (define-extern reset-all-hint-controls (function none))
 (define-extern reset-actors (function symbol none))
-(define-extern set-blackout-frames (function int int))
+(define-extern set-blackout-frames (function time-frame none))
 (define-extern set-master-mode (function symbol none))
 (define-extern stop (function symbol int))
 (define-extern start (function symbol continue-point target))
@@ -17715,7 +17716,7 @@
    (save       game-save            :offset-assert 136)
    (info       mc-slot-info :inline :offset-assert 140)
    (notify     handle               :offset-assert 440)
-   (state-time int64                :offset-assert 448)
+   (state-time time-frame                :offset-assert 448)
    (part       sparticle-launch-control                :offset-assert 456)
    )
   :heap-base #x160
@@ -18083,8 +18084,8 @@
   )
 
 (deftype finalboss-states (structure)
-  ((start-time  uint64  :offset-assert 0)
-   (secret-time uint64  :offset-assert 8)
+  ((start-time  time-frame  :offset-assert 0)
+   (secret-time time-frame  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -18120,8 +18121,8 @@
 (define-extern update-mood-lava (function mood-context int int symbol none))
 (define-extern update-light-kit (function light-group light float float))
 (define-extern set-target-light-index (function int int))
-(define-extern update-mood-caustics (function mood-context int int float)) ;; TODO - double check
-(define-extern update-mood-jungleb-blue (function mood-context float int vector))
+(define-extern update-mood-caustics (function mood-context int int none))
+(define-extern update-mood-jungleb-blue (function mood-context float int none))
 (define-extern update-mood-prt-color (function mood-context vector))
 (define-extern update-mood-default (function mood-context float int none))
 (define-extern update-mood-misty (function mood-context float float none))
@@ -18137,7 +18138,7 @@
 (define-extern update-mood-maincave (function mood-context float int none))
 (define-extern update-mood-darkcave (function mood-context float int none))
 (define-extern update-mood-robocave (function mood-context float int none))
-(define-extern update-mood-snow (function mood-context float int none)) ;; TODO - weirdness with `state` on `mood-context`
+(define-extern update-mood-snow (function mood-context float int none))
 (define-extern update-mood-village3 (function mood-context float int none))
 (define-extern update-mood-lavatube (function mood-context float int none))
 (define-extern update-mood-ogre (function mood-context float int none))
@@ -18433,7 +18434,7 @@
 (define-extern load-state-want-force-vis (function symbol symbol int))
 (define-extern command-get-param (function object object object))
 (define-extern entity-birth-no-kill (function entity none))
-(define-extern part-tracker-init (function sparticle-launch-group int (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker))
+(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker))
 (define-extern command-list-get-process (function object process))
 (define-extern command-get-quoted-param (function object object object))
 (define-extern command-get-int (function object int int))
@@ -18831,11 +18832,11 @@
    (joint-index       int32                 :offset-assert 12)
    (top-y-offset      float                 :offset-assert 16)
    (ripple-size       meters                :offset-assert 20)
-   (enter-water-time  uint64                :offset-assert 24)
-   (wade-time         uint64                :offset-assert 32)
-   (on-water-time     uint64                :offset-assert 40)
-   (enter-swim-time   uint64                :offset-assert 48)
-   (swim-time         uint64                :offset-assert 56)
+   (enter-water-time  time-frame                :offset-assert 24)
+   (wade-time         time-frame                :offset-assert 32)
+   (on-water-time     time-frame                :offset-assert 40)
+   (enter-swim-time   time-frame                :offset-assert 48)
+   (swim-time         time-frame                :offset-assert 56)
    (base-height       meters                :offset-assert 64)
    (wade-height       meters                :offset-assert 68)
    (swim-height       meters                :offset-assert 72)
@@ -18856,7 +18857,7 @@
    (drip-old-pos      vector        :inline :offset-assert 240)
    (drip-joint-index  int32                 :offset-assert 256)
    (drip-wetness      float                 :offset-assert 260)
-   (drip-time         uint64                :offset-assert 264)
+   (drip-time         time-frame                :offset-assert 264)
    (drip-speed        float                 :offset-assert 272)
    (drip-height       meters                :offset-assert 276)
    (drip-mult         float                 :offset-assert 280)
@@ -19734,7 +19735,7 @@
 (define-extern rider-trans (function int :behavior process-drawable))
 (define-extern rider-post (function int :behavior process-drawable))
 (define-extern pusher-post (function int :behavior process-drawable))
-(define-extern process-drawable-delay-player (function int int :behavior process-drawable))
+(define-extern process-drawable-delay-player (function time-frame int :behavior process-drawable))
 (define-extern process-drawable-fuel-cell-handler (function process int symbol event-message-block none :behavior process-drawable))
 (define-extern process-drawable-birth-fuel-cell (function entity vector symbol none :behavior process-drawable))
 (define-extern process-drawable-valid? (function process-drawable symbol))
@@ -19877,7 +19878,7 @@
    (spring-height   meters         :offset-assert 176)
    (camera          state          :offset-assert 180)
    (active-distance float          :offset-assert 184)
-   (seek-time       uint64         :offset-assert 192)
+   (seek-time       time-frame         :offset-assert 192)
    (dest            vector :inline :offset-assert 208)
    (sound-id        sound-id       :offset-assert 224)
    )
@@ -19915,7 +19916,7 @@
 (define-extern camera-tracker-init (function object object :behavior camera-tracker)) ;; TODO - nested SC
 (define-extern cam-launcher-joystick (function vector :behavior camera-slave))
 (define-extern launcher-init-by-other (function vector float int float none :behavior launcher))
-(define-extern touch-tracker-init (function vector float uint none :behavior touch-tracker)) ;; last arg is a handle to `target`
+(define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
 (define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
 (define-extern birth-func-set-quat (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern draw-eco-beam (function vector vector none))
@@ -19954,13 +19955,13 @@
    (swim-jump-height-max         meters           :offset-assert 68)
    (tube-jump-height-min         meters           :offset-assert 72)
    (tube-jump-height-max         meters           :offset-assert 76)
-   (wheel-duration               seconds           :offset-assert 80)
-   (wheel-jump-pre-window        seconds           :offset-assert 88)
-   (wheel-jump-post-window       seconds           :offset-assert 96)
-   (wheel-timeout                seconds           :offset-assert 104)
+   (wheel-duration               time-frame           :offset-assert 80)
+   (wheel-jump-pre-window        time-frame           :offset-assert 88)
+   (wheel-jump-post-window       time-frame           :offset-assert 96)
+   (wheel-timeout                time-frame           :offset-assert 104)
    (wheel-speed-min              meters           :offset-assert 112)
    (wheel-speed-inc              meters           :offset-assert 116)
-   (wheel-flip-duration          seconds           :offset-assert 120)
+   (wheel-flip-duration          time-frame           :offset-assert 120)
    (wheel-flip-height            meters           :offset-assert 128)
    (wheel-flip-dist              meters           :offset-assert 132)
    (wheel-flip-art-height        meters           :offset-assert 136)
@@ -19968,13 +19969,13 @@
    (duck-slide-distance          meters           :offset-assert 144)
    (fall-far                     meters           :offset-assert 148)
    (fall-far-inc                 meters           :offset-assert 152)
-   (attack-timeout               seconds           :offset-assert 160)
-   (ground-timeout               seconds           :offset-assert 168)
-   (slide-down-timeout           seconds           :offset-assert 176)
-   (fall-timeout                 seconds           :offset-assert 184)
+   (attack-timeout               time-frame           :offset-assert 160)
+   (ground-timeout               time-frame           :offset-assert 168)
+   (slide-down-timeout           time-frame           :offset-assert 176)
+   (fall-timeout                 time-frame           :offset-assert 184)
    (fall-stumble-threshold       meters           :offset-assert 192)
    (yellow-projectile-speed      meters           :offset-assert 196)
-   (hit-invulnerable-timeout     seconds           :offset-assert 200)
+   (hit-invulnerable-timeout     time-frame           :offset-assert 200)
    (run-cycle-length             float            :offset-assert 208)
    (walk-cycle-dist              meters           :offset-assert 212)
    (walk-up-cycle-dist           meters           :offset-assert 216)
@@ -20016,7 +20017,7 @@
    (stuck-distance               meters           :offset-assert 576)
    (tongue-pull-speed-min        float            :offset-assert 580)
    (tongue-pull-speed-max        float            :offset-assert 584)
-   (yellow-attack-timeout        seconds           :offset-assert 592)
+   (yellow-attack-timeout        time-frame           :offset-assert 592)
    )
   :method-count-assert 9
   :size-assert         #x258
@@ -20047,7 +20048,7 @@
 (define-extern set-forward-vel (function float vector :behavior target))
 (define-extern delete-back-vel (function none :behavior target))
 (define-extern set-side-vel (function float vector :behavior target))
-(define-extern target-timed-invulnerable (function seconds target none))
+(define-extern target-timed-invulnerable (function time-frame target none))
 (define-extern target-timed-invulnerable-off (function target none))
 (define-extern ground-tween-initialize (function ground-tween-info uint uint uint uint uint uint ground-tween-info :behavior target)) ;; TODO - dealing with inline-array issues
 (define-extern ground-tween-update (function ground-tween-info float float none :behavior target)) ;; TODO - inline array issues as well
@@ -20073,7 +20074,7 @@
 (define-extern birth-func-target-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern birth-func-vector-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern part-tracker-track-target-joint (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; 3rd arg could also be a vector
-(define-extern process-drawable-burn-effect (function int rgbaf :behavior target))
+(define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target))
 
 
 ;; ----------------------
@@ -20133,7 +20134,7 @@
 (define-extern print-history (function control-info none))
 (define-extern local-pad-angle (function float :behavior target))
 (define-extern turn-around? (function symbol :behavior target))
-(define-extern target-move-dist (function int float :behavior target))
+(define-extern target-move-dist (function time-frame float :behavior target))
 (define-extern target-compute-edge-rider (function none :behavior target))
 (define-extern target-post (function none))
 (define-extern target-swim-post (function none :behavior target))
@@ -20248,8 +20249,8 @@
 (define-extern target-hit-ground-anim (function symbol symbol :behavior target))
 (define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
 (define-extern init-var-jump (function float float vector vector vector vector :behavior target)) ;; 1st and 2nd vectors may be symbols instead?
-(define-extern target-falling-anim (function int int symbol :behavior target))
-(define-extern target-falling-trans (function basic cpad-list none :behavior target)) ;; todo - power of 2 array access issue (fixed in another PR?)
+(define-extern target-falling-anim (function time-frame int symbol :behavior target))
+(define-extern target-falling-trans (function basic time-frame none :behavior target))
 (define-extern target-falling-anim-trans (function none :behavior target)) ;; unconfirmed
 
 ;; - Unknowns
@@ -20612,7 +20613,7 @@
 (define-extern pause-allowed? (function symbol))
 (define-extern menu-respond-to-pause (function symbol))
 (define-extern hide-progress-screen (function none))
-(define-extern set-letterbox-frames (function int int))
+(define-extern set-letterbox-frames (function time-frame none))
 (define-extern letterbox (function none))
 (define-extern blackout (function none))
 (define-extern main-cheats (function int))
@@ -20957,9 +20958,9 @@
    (extra-trans     vector :inline :offset-assert 224)
    (jump-pos        vector :inline :offset-assert 240)
    (flags           collectable-flags  :offset-assert 256)
-   (birth-time      int64          :offset-assert 264)
-   (collect-timeout int64          :offset-assert 272)
-   (fadeout-timeout int64          :offset-assert 280)
+   (birth-time      time-frame          :offset-assert 264)
+   (collect-timeout time-frame          :offset-assert 272)
+   (fadeout-timeout time-frame          :offset-assert 280)
    (bob-offset      int64          :offset-assert 288)
    (bob-amount      float          :offset-assert 296)
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
@@ -20971,7 +20972,7 @@
   :flag-assert         #x1600d0013c
   (:methods
     (initialize (_type_) _type_ 20)
-    (initialize-params (_type_ int float) none 21)
+    (initialize-params (_type_ time-frame float) none 21)
     )
   (:states
     (hud-collecting handle))
@@ -20981,11 +20982,11 @@
   ((eco-effect          sparticle-launch-group          :offset-assert 316)
    (collect-effect      sparticle-launch-group          :offset-assert 320)
    (collect-effect2     sparticle-launch-group          :offset-assert 324)
-   (collect-effect-time seconds        :offset-assert 328)
-   (respawn-delay       int64          :offset-assert 336)
+   (collect-effect-time time-frame        :offset-assert 328)
+   (respawn-delay       time-frame          :offset-assert 336)
    (sound-name          sound-spec     :offset-assert 344)
    (target              handle         :offset-assert 352)
-   (suck-time           int64          :offset-assert 360)
+   (suck-time           time-frame          :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
    (speed               vector :inline :offset-assert 384)
    (movie-pos-index     int32          :offset-assert 400)
@@ -21105,7 +21106,7 @@
    (show-particles      symbol  :offset-assert 176)
    (collect-effect      sparticle-launch-group  :offset-assert 180)
    (collect-effect2     sparticle-launch-group  :offset-assert 184)
-   (collect-effect-time uint64 :offset-assert 192)
+   (collect-effect-time time-frame :offset-assert 192)
    (blocker             entity-actor  :offset-assert 200)
    (block-func          (function vent symbol)  :offset-assert 204)
    (pickup-handle       handle :offset-assert 208)
@@ -21265,7 +21266,7 @@
 ;; - Functions
 
 (define-extern eco-blue-glow (function vector none))
-(define-extern cloud-track (function process-tree process-tree (function vector none) int int int none :behavior process))
+(define-extern cloud-track (function process-tree process-tree (function vector none) time-frame time-frame time-frame none :behavior process))
 
 
 ;; ----------------------
@@ -21415,7 +21416,7 @@
    (y-pos       int32   :offset-assert 288)
    (total-orbs  int32   :offset-assert 292)
    (level-index int32   :offset-assert 296)
-   (start-time  uint64  :offset-assert 304)
+   (start-time  time-frame  :offset-assert 304)
    )
   :method-count-assert 27
   :size-assert         #x138
@@ -21583,7 +21584,7 @@
    (center-x-backup       int32   :offset-assert 52)
    (center-y-backup       int32   :offset-assert 56)
    (aspect-ratio-backup   symbol  :offset-assert 60)
-   (last-slider-sound     int64   :offset-assert 64)
+   (last-slider-sound     time-frame   :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x48
@@ -21637,7 +21638,7 @@
 (deftype search-info (structure)
   ((point        vector :inline :offset-assert 0)
    (best-point   vector :inline :offset-assert 16)
-   (match-handle uint64         :offset-assert 32)
+   (match-handle handle         :offset-assert 32)
    (match        projectile          :offset-assert 40)
    (best         float          :offset-assert 44)
    (radius       float          :offset-assert 48)
@@ -22484,7 +22485,7 @@
    (player-dive-factor    float   :offset-assert 28)
    (player-force-distance meters  :offset-assert 32)
    (player-force-clamp    meters  :offset-assert 36)
-   (player-force-timeout  uint64  :offset-assert 40)
+   (player-force-timeout  time-frame  :offset-assert 40)
    (explosion-force       meters  :offset-assert 48)
    (linear-damping        float   :offset-assert 52)
    (angular-damping       float   :offset-assert 56)
@@ -22525,7 +22526,7 @@
    (sim-time-remaining    float                                 :offset-assert 688)
    (float-height-offset   float                                 :offset-assert 692)
    (player-attack-id      int32                                 :offset-assert 696)
-   (player-bonk-timeout   int64                                 :offset-assert 704)
+   (player-bonk-timeout   time-frame                                 :offset-assert 704)
    (water-anim            water-anim                            :offset-assert 712)
    (player-contact        basic                                 :offset-assert 716) ; not a basic
    (player-impulse        collide-shape-prim-mesh               :offset-assert 720)
@@ -22604,7 +22605,7 @@
    (proximity-notice-distance meters    :offset-assert 120)
    (stop-chase-distance       meters    :offset-assert 124)
    (frustration-distance      meters    :offset-assert 128)
-   (frustration-time          uint64    :offset-assert 136)
+   (frustration-time          time-frame    :offset-assert 136)
    (die-anim-hold-frame       float     :offset-assert 144)
    (jump-anim-start-frame     float     :offset-assert 148)
    (jump-land-anim-end-frame  float     :offset-assert 152)
@@ -22640,21 +22641,21 @@
    (frustration-point   vector     :inline :offset-assert 208)
    (jump-dest           vector     :inline :offset-assert 224)
    (jump-trajectory     trajectory :inline :offset-assert 240)
-   (jump-time           int64              :offset-assert 280)
+   (jump-time           time-frame              :offset-assert 280)
    (nav-info            nav-enemy-info     :offset-assert 288)
    (target-speed        float              :offset-assert 292)
    (momentum-speed      float              :offset-assert 296)
    (acceleration        float              :offset-assert 300)
    (rotate-speed        float              :offset-assert 304)
-   (turn-time           int64              :offset-assert 312)
-   (frustration-time    int64              :offset-assert 320)
+   (turn-time           time-frame              :offset-assert 312)
+   (frustration-time    time-frame              :offset-assert 320)
    (speed-scale         float              :offset-assert 328)
    (neck                joint-mod          :offset-assert 332)
-   (reaction-time       int64              :offset-assert 336)
-   (notice-time         int64              :offset-assert 344)
-   (state-timeout       int64              :offset-assert 352)
-   (free-time           int64              :offset-assert 360)
-   (touch-time          int64              :offset-assert 368)
+   (reaction-time       time-frame              :offset-assert 336)
+   (notice-time         time-frame              :offset-assert 344)
+   (state-timeout       time-frame              :offset-assert 352)
+   (free-time           time-frame              :offset-assert 360)
+   (touch-time          time-frame              :offset-assert 368)
    (nav-enemy-flags     uint32             :offset-assert 376)
    (incomming-attack-id handle             :offset-assert 384)
    (jump-return-state   (state process)    :offset-assert 392)
@@ -22966,7 +22967,7 @@
 
 (deftype joint-exploder-tuning (structure)
   ((explosion                   uint64         :offset-assert 0)
-   (duration                    uint64         :offset-assert 8)
+   (duration                    time-frame         :offset-assert 8)
    (gravity                     float          :offset-assert 16)
    (rot-speed                   float          :offset-assert 20)
    (fountain-rand-transv-lo     vector :inline :offset-assert 32)
@@ -23118,7 +23119,7 @@
    (y-max             meters         :offset-assert 440)
    (y-min             meters         :offset-assert 444)
    (attack-time       float          :offset-assert 448)
-   (player-water-time uint64         :offset-assert 456)
+   (player-water-time time-frame         :offset-assert 456)
    (player-in-water   basic          :offset-assert 464)
    (last-y            float          :offset-assert 468)
    (spawn-distance    meters         :offset-assert 472)
@@ -23356,9 +23357,9 @@
   ((root-override collide-shape :score 100 :offset 112)
    (subtype                uint64                    :offset-assert 176)
    (subtype-name           string                    :offset-assert 184)
-   (agitated-time-stamp    uint64                    :offset-assert 192)
-   (bonk-time-stamp        uint64                    :offset-assert 200)
-   (attack-flop-time-stamp uint64                    :offset-assert 208)
+   (agitated-time-stamp    time-frame                    :offset-assert 192)
+   (bonk-time-stamp        time-frame                    :offset-assert 200)
+   (attack-flop-time-stamp time-frame                    :offset-assert 208)
    (player-attack-id       uint64                    :offset-assert 216)
    (sleep-dist             float                     :offset-assert 224)
    (do-physics?            basic                     :offset-assert 228)
@@ -23415,17 +23416,17 @@
 ;; - Types
 
 (deftype ticky (structure)
-  ((delay-til-ramp    int64  :offset-assert 0)
-   (delay-til-timeout int64  :offset-assert 8)
-   (starting-time     int64  :offset-assert 16)
-   (last-tick-time    int64  :offset-assert 24)
+  ((delay-til-ramp    time-frame  :offset-assert 0)
+   (delay-til-timeout time-frame  :offset-assert 8)
+   (starting-time     time-frame  :offset-assert 16)
+   (last-tick-time    time-frame  :offset-assert 24)
    )
   :method-count-assert 12
   :size-assert         #x20
   :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ int) none 9)
-    (reached-delay? (_type_ int) symbol 10)
+    (sleep (_type_ time-frame) none 9)
+    (reached-delay? (_type_ time-frame) symbol 10)
     (completed? (_type_) symbol 11)
     )
   )
@@ -23458,7 +23459,7 @@
    (water-height float              :offset-assert 212)
    (sfx          uint32             :offset-assert 216)
    (part2        sparticle-launch-control              :offset-assert 220)
-   (ground-time  uint64             :offset-assert 224)
+   (ground-time  time-frame             :offset-assert 224)
    )
   :method-count-assert 21
   :size-assert         #xe8
@@ -23494,7 +23495,7 @@
    (front-wheel            float                 :offset-assert 208)
    (rear-wheel             float                 :offset-assert 212)
    (last-known-rotation    float                 :offset-assert 216)
-   (part-timer             uint64                :offset-assert 224)
+   (part-timer             time-frame                :offset-assert 224)
    (hellmouth              vector        :inline :offset-assert 240)
    (postbindinfo-ok        symbol                 :offset-assert 256)
    (launch-origin          vector        :inline :offset-assert 272)
@@ -24003,7 +24004,7 @@
    (path-to-nest1   curve-control             :offset 248)
    (path-to-nest2   curve-control             :offset 252)
    (path-cache      curve-control             :offset-assert 256)
-   (time-cache      uint64            :offset-assert 264)
+   (time-cache      time-frame            :offset-assert 264)
    (path-pos        float             :offset-assert 272)
    (path-speed      float             :offset-assert 276)
    (path-max        float             :offset-assert 280)
@@ -24022,11 +24023,11 @@
     (pelican-wait-at-end symbol)
     (pelican-wait-at-nest symbol)
     pelican-circle
-    (pelican-dive path-control curve-control uint)
+    (pelican-dive path-control curve-control time-frame)
     pelican-from-nest
     (pelican-explode symbol)
     pelican-spit
-    (pelican-fly-to-end path-control int)
+    (pelican-fly-to-end path-control time-frame)
     (pelican-to-nest path-control int))
   )
 
@@ -24155,7 +24156,7 @@
 (deftype beach-rock (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (trigger      basic   :offset-assert 176)
-   (movie-start  uint64  :offset-assert 184)
+   (movie-start  time-frame  :offset-assert 184)
    (part-falling sparticle-launch-control   :offset-assert 192)
    (part-landing sparticle-launch-control   :offset-assert 196)
    (prev-frame   float   :offset-assert 200)
@@ -24206,7 +24207,7 @@
    (scared            int32   :offset-assert 204)
    (temp-heading      float   :offset-assert 208)
    (temp-heading-time int32   :offset-assert 212)
-   (part-time         uint64  :offset-assert 216)
+   (part-time         time-frame  :offset-assert 216)
    (thrust            float   :offset-assert 224)
    (teleport          symbol  :offset-assert 228)
    )
@@ -24243,10 +24244,10 @@
    (birds-at-waterfall int32           :offset-assert 416)
    (target             vector  :inline :offset-assert 432)
    (targetnum          int32           :offset-assert 448)
-   (alert-time         uint64          :offset-assert 456)
+   (alert-time         time-frame          :offset-assert 456)
    (teleport-frames    int32           :offset-assert 464)
    (cam-tracker        uint64          :offset-assert 472)
-   (state-time         uint64          :offset-assert 480)
+   (state-time         time-frame          :offset-assert 480)
    (squall             ambient-sound           :offset-assert 488)
    (max-lift           float           :offset-assert 492)
    )
@@ -24333,7 +24334,7 @@
   ((root-override       trsq   :score 100 :offset-assert 112)
    (range      meters  :offset-assert 116)
    (index      int32   :offset-assert 120)
-   (state-time uint64  :offset-assert 128)
+   (state-time time-frame  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x88
@@ -24407,7 +24408,7 @@
   ((type2            type  :offset-assert 0) ; a guess
    (percent          float  :offset-assert 4)
    (pickup-percent   float  :offset-assert 8)
-   (pickup-type      int32  :offset-assert 12)
+   (pickup-type      pickup-type  :offset-assert 12)
    (max-pickup-count int8   :offset-assert 16)
    (pickup-count     int8   :offset-assert 17)
    )
@@ -24427,7 +24428,7 @@
    (spawner-count               int8            :offset-assert 203)
    (creature-type-count         int8            :offset-assert 204)
    (spawner-array               battlecontroller-spawner 8 :inline :offset-assert 208)
-   (spawn-period                uint64          :offset-assert 464)
+   (spawn-period                time-frame          :offset-assert 464)
    (path-spawn                  path-control           :offset-assert 472)
    (creature-type-array         battlecontroller-creature-type 4 :inline :offset-assert 476)
    (final-pickup-type           pickup-type      :offset-assert 604)
@@ -24837,7 +24838,7 @@
 (deftype citb-stair-plat (citb-base-plat)
   ((idle-height float   :offset-assert 180)
    (rise-height float   :offset-assert 184)
-   (delay       uint64  :offset-assert 192)
+   (delay       time-frame  :offset-assert 192)
    (rise        symbol   :offset-assert 200) ; educated guess
    )
   :method-count-assert 25
@@ -25063,8 +25064,8 @@
    (jump-height-factor      float          :offset-assert 424)
    (jump-anim-start-frame   float          :offset-assert 428)
    (defense                 uint64         :offset-assert 432)
-   (retreat-timeout-time    int64         :offset-assert 440)
-   (last-nondangerous-time  int64         :offset-assert 448)
+   (retreat-timeout-time    time-frame         :offset-assert 440)
+   (last-nondangerous-time  time-frame         :offset-assert 448)
    (patrol-hop-failed?      basic          :offset-assert 456)
    (should-retreat?         basic          :offset-assert 460)
    (got-jump-event?         symbol         :offset-assert 464)
@@ -25152,8 +25153,8 @@
    (spin-angle float          :offset-assert 192)
    (spin-speed float          :offset-assert 196)
    (interp     float          :offset-assert 200)
-   (duration   int64          :offset-assert 208)
-   (delay      int64          :offset-assert 216)
+   (duration   time-frame          :offset-assert 208)
+   (delay      time-frame          :offset-assert 216)
    (color      int8           :offset-assert 224)
    )
   :method-count-assert 22
@@ -25192,8 +25193,8 @@
    (x-spacing         float          :offset-assert 256)
    (z-spacing         float          :offset-assert 260)
    (idle-distance     float          :offset-assert 264)
-   (duration          int64          :offset-assert 272)
-   (drop-time         int64          :offset-assert 280)
+   (duration          time-frame          :offset-assert 272)
+   (drop-time         time-frame          :offset-assert 280)
    )
   :method-count-assert 20
   :size-assert         #x120
@@ -25209,7 +25210,7 @@
 (define-extern citb-drop-plat-spawn-children (function none :behavior citb-drop-plat))
 (define-extern citb-drop-plat-drop-children (function int none :behavior citb-drop-plat))
 (define-extern citb-drop-plat-drop-all-children (function symbol :behavior citb-drop-plat))
-(define-extern drop-plat-init-by-other (function vector int int int none :behavior drop-plat))
+(define-extern drop-plat-init-by-other (function vector time-frame time-frame int none :behavior drop-plat))
 (define-extern drop-plat-set-fade (function none :behavior drop-plat))
 
 ;; - Unknowns
@@ -25257,11 +25258,11 @@
    (glow-u                     float          :offset-assert 184)
    (glow-wf-period             int32          :offset-assert 188)
    (glow-wf-offset             int32          :offset-assert 192)
-   (prev-compute-glow-time     int64         :offset-assert 200)
-   (start-fade-time            int64         :offset-assert 208)
-   (end-fade-time              int64         :offset-assert 216)
-   (activated-time             int64         :offset-assert 224)
-   (last-updated-user-lighting int64         :offset-assert 232)
+   (prev-compute-glow-time     time-frame         :offset-assert 200)
+   (start-fade-time            time-frame         :offset-assert 208)
+   (end-fade-time              time-frame         :offset-assert 216)
+   (activated-time             time-frame         :offset-assert 224)
+   (last-updated-user-lighting time-frame         :offset-assert 232)
    (player-attack-id           uint64         :offset-assert 240)
    (on-color-mult              vector :inline :offset-assert 256)
    (on-color-emissive          vector :inline :offset-assert 272)
@@ -25309,20 +25310,20 @@
 
 (deftype static-screen (process)
   ((part       sparticle-launch-control 1 :offset-assert 112)
-   (state-time uint64    :offset-assert 120)
+   (state-time time-frame    :offset-assert 120)
    )
   :method-count-assert 15
   :size-assert         #x80
   :heap-base           #x10
   :flag-assert         #xf00100080
   (:methods
-    (idle (int int symbol) _type_ :state 14)
+    (idle (int time-frame symbol) _type_ :state 14)
     )
   )
 
 ;; - Functions
 
-(define-extern static-screen-init-by-other (function int int int int int symbol none :behavior static-screen))
+(define-extern static-screen-init-by-other (function int int int int time-frame symbol none :behavior static-screen))
 
 
 ;; ----------------------
@@ -25359,8 +25360,8 @@
    (desired-loc      vector                   :inline :offset-assert 240)
    (old-loc          vector                   :inline :offset-assert 256)
    (loc-t            float                            :offset-assert 272)
-   (loc-t-start      int64                            :offset-assert 280)
-   (loc-t-duration   int64                            :offset-assert 288)
+   (loc-t-start      time-frame                            :offset-assert 280)
+   (loc-t-duration   time-frame                            :offset-assert 288)
    (hits-to-go       int32                            :offset-assert 296)
    (took-hit         symbol                           :offset-assert 300)
    (children-spawned int32                            :offset-assert 304)
@@ -25441,8 +25442,8 @@
   ((root-override  collide-shape  :score 20 :offset 112)
    (angle-bit          int32              :offset-assert 176)
    (ground-y           float              :offset-assert 180)
-   (falling-start-time int64             :offset-assert 184)
-   (last-update-time   int64             :offset-assert 192)
+   (falling-start-time time-frame             :offset-assert 184)
+   (last-update-time   time-frame             :offset-assert 192)
    (rot                vector     :inline :offset-assert 208)
    (rotv               vector     :inline :offset-assert 224)
    (traj               trajectory :inline :offset-assert 240)
@@ -25469,8 +25470,8 @@
    (angle-mask        int64   :offset-assert 184)
    (delay-til-spawn   int32   :offset-assert 192)
    (part2             sparticle-launch-control   :offset-assert 196) ;; guess
-   (last-update-time  int64  :offset-assert 200)
-   (last-spawned-time int64  :offset-assert 208)
+   (last-update-time  time-frame  :offset-assert 200)
+   (last-spawned-time time-frame  :offset-assert 208)
    )
   :method-count-assert 22
   :size-assert         #xd8
@@ -25551,7 +25552,7 @@
   )
 
 (deftype darkecobomb (arcing-shot)
-  ((flight-time    int64  :offset-assert 224)
+  ((flight-time    time-frame  :offset-assert 224)
    (countdown-time float   :offset-assert 232)
    (anim-speed     float   :offset-assert 236)
    (next-tick      float   :offset-assert 240)
@@ -25568,7 +25569,7 @@
   )
 
 (deftype greenshot (arcing-shot)
-  ((flight-time int64  :offset-assert 224)
+  ((flight-time time-frame  :offset-assert 224)
    )
   :method-count-assert 20
   :size-assert         #xe8
@@ -25579,8 +25580,8 @@
   )
 
 (deftype redshot (arcing-shot)
-  ((flight-time     int64         :offset-assert 224)
-   (stall-time      int64         :offset-assert 232)
+  ((flight-time     time-frame         :offset-assert 224)
+   (stall-time      time-frame         :offset-assert 232)
    (ring            torus  :inline :offset-assert 240)
    (rotation-offset int64         :offset-assert 280)
    (part-track      handle         :offset-assert 288)
@@ -25598,7 +25599,7 @@
   )
 
 (deftype yellowshot (arcing-shot)
-  ((flight-time int64  :offset-assert 224)
+  ((flight-time time-frame  :offset-assert 224)
    )
   :method-count-assert 20
   :size-assert         #xe8
@@ -25612,16 +25613,16 @@
 
 (define-extern arcing-shot-setup (function vector vector float float :behavior arcing-shot))
 (define-extern arcing-shot-calculate (function vector float float :behavior arcing-shot))
-(define-extern redshot-trans (function int object :behavior redshot))
+(define-extern redshot-trans (function time-frame none :behavior redshot))
 (define-extern redshot-particle-callback (function part-tracker none))
 (define-extern darkecobomb-explode-if-player-high-enough (function none :behavior darkecobomb))
 (define-extern arcing-shot-draw (function symbol :behavior arcing-shot))
 (define-extern darkecobomb-handler (function process int symbol event-message-block object :behavior darkecobomb))
-(define-extern darkecobomb-init-by-other (function vector vector float int float none :behavior darkecobomb))
-(define-extern greenshot-init-by-other (function vector vector float int none :behavior greenshot))
+(define-extern darkecobomb-init-by-other (function vector vector float time-frame float none :behavior darkecobomb))
+(define-extern greenshot-init-by-other (function vector vector float time-frame none :behavior greenshot))
 (define-extern redshot-handler (function process int symbol event-message-block object :behavior redshot))
-(define-extern redshot-init-by-other (function vector vector float uint uint uint none :behavior redshot))
-(define-extern yellowshot-init-by-other (function vector vector float uint none :behavior yellowshot))
+(define-extern redshot-init-by-other (function vector vector float time-frame time-frame int none :behavior redshot))
+(define-extern yellowshot-init-by-other (function vector vector float time-frame none :behavior yellowshot))
 
 ;; - Unknowns
 
@@ -25759,8 +25760,8 @@
 
 (deftype redshot-launch-info (structure)
   ((dest         vector :inline :offset-assert 0)
-   (flight-time  int64  :offset-assert 16)
-   (stall-time   int64  :offset-assert 24)
+   (flight-time  time-frame  :offset-assert 16)
+   (stall-time   time-frame  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -25892,7 +25893,7 @@
    (targ-dest  float   :offset-assert 364)
    (dest       float   :offset-assert 368)
    (speed      float   :offset-assert 372)
-   (touch-time int64   :offset-assert 376)
+   (touch-time time-frame   :offset-assert 376)
    )
   :method-count-assert 33
   :size-assert         #x180
@@ -25993,7 +25994,7 @@
 
 (deftype eggtop (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
-   (cam-tracker uint64   :offset-assert 176)
+   (cam-tracker handle   :offset-assert 176)
    (sound-id    sound-id :offset-assert 184)
    )
   :method-count-assert 20
@@ -26113,7 +26114,7 @@
   ((root-override collide-shape-moving :score 100 :offset 112)
    (side int32  :offset-assert 176)
    (state-object symbol           :offset-assert 180)
-   (state-time-frame int64           :offset-assert 184)
+   (state-time-frame time-frame           :offset-assert 184)
    )
   :method-count-assert 20
   :heap-base           #x50
@@ -26144,7 +26145,7 @@
    (cam-tracker handle           :offset-assert 240)
    (want-aphid-count int32           :offset-assert 248)
    (aphid-count int32           :offset-assert 252)
-   (aphid-spawn-time int64           :offset-assert 256)
+   (aphid-spawn-time time-frame           :offset-assert 256)
    (interp float           :offset-assert 264)
    (try int32           :offset-assert 268)
    (camera handle           :offset-assert 272)
@@ -26305,7 +26306,7 @@
 
 (deftype junglesnake (process-drawable)
   ((root-override     collide-shape :score 100 :offset 112)
-   (state-time2       int64      :offset-assert 176) ;; changed
+   (state-time2       time-frame      :offset-assert 176) ;; changed
    (hit-player        symbol      :offset 184)
    (is-lethal?        symbol      :offset-assert 188)
    (refractory-delay  int32      :offset-assert 192)
@@ -26364,7 +26365,7 @@
    (dangerous        symbol   :offset-assert 184)
    (vulnerable       symbol   :offset-assert 188)
    (hit-player       symbol   :offset-assert 192)
-   (touch-time       uint64  :offset-assert 200)
+   (touch-time       time-frame  :offset-assert 200)
    (player-attack-id int32   :offset-assert 208)
    )
   :method-count-assert 20
@@ -26595,7 +26596,7 @@
    (old-camera-matrix      matrix :inline :offset-assert 272)
    (reflector              (pointer reflector)         :offset-assert 336)
    (gauge-rot              degrees            :offset-assert 340)
-   (lock-time              uint64         :offset-assert 344)
+   (lock-time              time-frame         :offset-assert 344)
    (aligned?               symbol          :offset-assert 352)
    (raised?                symbol          :offset-assert 356)
    (player-touching-grips? symbol          :offset-assert 360)
@@ -26728,11 +26729,11 @@
   )
 
 (deftype fisher-params (structure)
-  ((timeout         seconds   :offset-assert 0)
+  ((timeout         time-frame   :offset-assert 0)
    (vel             float   :offset-assert 8)
-   (swing-min       seconds   :offset-assert 16)
-   (swing-max       seconds   :offset-assert 24)
-   (period          seconds   :offset-assert 32)
+   (swing-min       time-frame   :offset-assert 16)
+   (swing-max       time-frame   :offset-assert 24)
+   (period          time-frame   :offset-assert 32)
    (fish-vel        float   :offset-assert 40)
    (bad-percent     float   :offset-assert 44)
    (deadly-percent  float   :offset-assert 48)
@@ -26751,19 +26752,19 @@
    (paddle-vel      float                 :offset-assert 436)
    (spawner         float                 :offset-assert 440)
    (spawner-last    float                 :offset-assert 444)
-   (spawn-time      int64                 :offset-assert 448)
-   (turn-time       int64                 :offset-assert 456)
-   (swing-time      int64                 :offset-assert 464)
-   (block-time      int64                 :offset-assert 472)
+   (spawn-time      time-frame                 :offset-assert 448)
+   (turn-time       time-frame                 :offset-assert 456)
+   (swing-time      time-frame                 :offset-assert 464)
+   (block-time      time-frame                 :offset-assert 472)
    (block           int32                 :offset-assert 480)
    (caught          int32                 :offset-assert 484)
    (missed          int32                 :offset-assert 488)
    (difficulty      int32                 :offset-assert 492)
-   (start-time      int64                 :offset-assert 496)
-   (ambient-big-one int64                 :offset-assert 504)
-   (ambient-steady  int64                 :offset-assert 512)
-   (ambient-sagging int64                 :offset-assert 520)
-   (ambient-almost  int64                 :offset-assert 528)
+   (start-time      time-frame                 :offset-assert 496)
+   (ambient-big-one time-frame                 :offset-assert 504)
+   (ambient-steady  time-frame                 :offset-assert 512)
+   (ambient-sagging time-frame                 :offset-assert 520)
+   (ambient-almost  time-frame                 :offset-assert 528)
    (cheat-temp      int32                 :offset-assert 536)
    (hard            symbol                :offset-assert 540)
    (training        symbol                :offset-assert 544)
@@ -26908,8 +26909,8 @@
    (bob-mult-rot        float                 :offset-assert 300)
    (bob-mult-trans      float                 :offset-assert 304)
    (bob-period          float                 :offset-assert 308)
-   (bob-meta-time       uint64                :offset-assert 312)
-   (bob-hit-ground-time uint64                :offset-assert 320)
+   (bob-meta-time       time-frame                :offset-assert 312)
+   (bob-hit-ground-time time-frame                :offset-assert 320)
    (cur-rotx            degrees                   :offset-assert 328)
    (targ-rotx           degrees                   :offset-assert 332)
    (speed-rotx          float                 :offset-assert 336)
@@ -26924,16 +26925,16 @@
    (tail                joint-mod                 :offset-assert 372)
    (tail-tilt           degrees                   :offset-assert 376)
    (transv-max          meters                :offset-assert 380)
-   (slide-down-time     uint64       2       :offset-assert 384)
-   (slide-enter-time    uint64                :offset-assert 400)
+   (slide-down-time     time-frame       2       :offset-assert 384)
+   (slide-enter-time    time-frame                :offset-assert 400)
    (slide-mode          int32                 :offset-assert 408)
    (slide-amp           float                 :offset-assert 412)
    (slide-grip-mult     float                 :offset-assert 416)
    (slide-shift-x       float                 :offset-assert 420)
    (slide-interp        float                 :offset-assert 424)
    (heat                float                 :offset-assert 428)
-   (boost-time          uint64                :offset-assert 432)
-   (boost-duration      uint64                :offset-assert 440)
+   (boost-time          time-frame                :offset-assert 432)
+   (boost-duration      time-frame                :offset-assert 440)
    (boost-curve         float                 :offset-assert 448)
    (boost-level         float                 :offset-assert 452)
    (boost-target        float                 :offset-assert 456)
@@ -26952,14 +26953,14 @@
    (tail-anim-frame     float                 :offset-assert 508)
    (rudd-anim-vel       float                 :offset-assert 512)
    (rudd-anim-frame     float                 :offset-assert 516)
-   (racing-time         uint64                :offset-assert 520)
+   (racing-time         time-frame                :offset-assert 520)
    (stick-lock          symbol                 :offset-assert 528)
    (stick-off           symbol                 :offset-assert 532)
    (heavy               symbol                 :offset-assert 536)
-   (unstuck-time        int64                :offset-assert 544)
+   (unstuck-time        time-frame                :offset-assert 544)
    (stuck-count         int32                 :offset-assert 552)
    (scrape-sound-id     sound-id              :offset-assert 556)
-   (heat-sound-time     uint64                :offset-assert 560)
+   (heat-sound-time     time-frame                :offset-assert 560)
    )
   :method-count-assert 9
   :size-assert         #x238
@@ -27169,7 +27170,7 @@
    (path-data    path-control 2       :offset-assert 208)
    (path-target  path-control           :offset 208)
    (path-flut    path-control           :offset 212)
-   (touch-time   uint64          :offset-assert 216)
+   (touch-time   time-frame          :offset-assert 216)
    )
   :pack-me
   :method-count-assert 24
@@ -27222,7 +27223,7 @@
    (double-jump-height-min meters :offset-assert 12)
    (double-jump-height-max meters :offset-assert 16)
    (air-attack-speed meters :offset-assert 20)
-   (ground-timeout int64 :offset-assert 24))
+   (ground-timeout time-frame :offset-assert 24))
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
@@ -27357,15 +27358,15 @@
    (run-away-dist          meters  :offset-assert 32)
    (walk-rotate-speed      float   :offset-assert 36)
    (run-rotate-speed       float   :offset-assert 40)
-   (walk-turn-time         uint64  :offset-assert 48)
-   (run-turn-time          uint64  :offset-assert 56)
+   (walk-turn-time         time-frame  :offset-assert 48)
+   (run-turn-time          time-frame  :offset-assert 56)
    (max-walk-speed         float   :offset-assert 64)
    (min-run-speed          float   :offset-assert 68)
    (walk-run-blend-rate    float   :offset-assert 72)
    (walk-turn-blend-rate   float   :offset-assert 76)
    (max-run-speed          float   :offset-assert 80)
    (acceleration           meters  :offset-assert 84)
-   (default-patrol-time    uint64  :offset-assert 88)
+   (default-patrol-time    time-frame  :offset-assert 88)
    (default-idle-distance  meters  :offset-assert 96)
    (safe-distance          meters  :offset-assert 100)
    (min-run-anim-speed     float   :offset-assert 104)
@@ -27388,7 +27389,7 @@
    (travel-speed       meters         :offset-assert 192)
    (final-speed        meters         :offset-assert 196)
    (rotate-speed       float          :offset-assert 200)
-   (turn-time          uint64         :offset-assert 208)
+   (turn-time          time-frame         :offset-assert 208)
    (vulnerable         basic          :offset-assert 216)
    (grazing            basic          :offset-assert 220)
    (push-velocity      vector :inline :offset-assert 224)
@@ -27706,7 +27707,7 @@
    (dest-circle            vector       :inline :offset-assert 80)
    (target-point           vector       :inline :offset-assert 96)
    (sample-dir             vector       :inline :offset-assert 112)
-   (sample-time            uint64               :offset-assert 128)
+   (sample-time            time-frame               :offset-assert 128)
    (sample-index           int32                :offset-assert 136)
    )
   :method-count-assert 17
@@ -27876,7 +27877,7 @@
   ((root       trsq   :offset-assert 112)
    (range      meters  :offset-assert 116)
    (index      int32   :offset-assert 120)
-   (state-time uint64  :offset-assert 128)
+   (state-time time-frame  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x88
@@ -28099,7 +28100,7 @@
 ;; - Functions
 
 (define-extern mis-bone-bridge-event-handler (function process int symbol event-message-block object :behavior mis-bone-bridge))
-(define-extern actor-wait-for-period (function int symbol))
+(define-extern actor-wait-for-period (function time-frame symbol))
 (define-extern misty-cam-restore (function symbol))
 
 ;; - Unknowns
@@ -28125,7 +28126,7 @@
 
 (deftype silostep (process-drawable)
   ((anim-limit  float   :offset-assert 176)
-   (cam-tracker uint64  :offset-assert 184)
+   (cam-tracker handle  :offset-assert 184)
    )
   :method-count-assert 20
   :heap-base           #x50
@@ -28148,7 +28149,7 @@
 ;; - Functions
 
 
-(define-extern misty-camera-view (function handle :behavior silostep))
+(define-extern misty-camera-view (function none :behavior silostep))
 ;; - Unknowns
 
 (define-extern *rounddoor-sg* skeleton-group)
@@ -28316,7 +28317,7 @@
 ;; - Types
 
 (deftype bonelurker (nav-enemy)
-  ((bump-player-time uint64  :offset-assert 400)
+  ((bump-player-time time-frame  :offset-assert 400)
    )
   :method-count-assert 76
   :size-assert         #x198
@@ -29463,13 +29464,13 @@
    (state-vector       vector :inline :offset-assert 432)
    ;(free-time          uint64         :offset-assert 360)
    (_hack              uint64         :offset-assert 448)
-   (wiggle-time        uint64         :offset-assert 456)
+   (wiggle-time        time-frame         :offset-assert 456)
    (wiggle-angle       float          :offset-assert 464)
    (delta-wiggle-angle float          :offset-assert 468)
    (wiggle-factor      float          :offset-assert 472)
    (min-height         float          :offset-assert 476)
-   (chase-rest-time    uint64         :offset-assert 480)
-   (target-nav-time    uint64         :offset-assert 488)
+   (chase-rest-time    time-frame         :offset-assert 480)
+   (target-nav-time    time-frame         :offset-assert 488)
    )
   :method-count-assert 76
   :size-assert         #x1f0
@@ -29513,7 +29514,7 @@
    (defensive-rat-count int8    :offset-assert 187)
    (spawn-period        float   :offset-assert 188)
    (spawn-period-scale  float   :offset-assert 192)
-   (test-interval       uint64  :offset-assert 200)
+   (test-interval       time-frame  :offset-assert 200)
    (player-attack-id    int32   :offset-assert 208)
    )
   :method-count-assert 20
@@ -29729,7 +29730,7 @@
    (passed-last-stage symbol     :offset-assert 404)
    (spawn-rats        symbol     :offset-assert 408)
    (current-wave      int32     :offset-assert 412)
-   (wave-start-time   uint64    :offset-assert 416)
+   (wave-start-time   time-frame    :offset-assert 416)
    (num-snacks        int32     :offset-assert 424)
    (num-rats          int32     :offset-assert 428)
    (max-rats          int32     :offset-assert 432)
@@ -29812,7 +29813,7 @@
 (deftype cavecrystal-light-control (basic)
   ((active-count          int32               :offset-assert 4)
    (head                  cavecrystal-light   :offset-assert 8)
-   (last-known-valid-time int64              :offset-assert 16)
+   (last-known-valid-time time-frame              :offset-assert 16)
    (crystal               cavecrystal-light           7 :inline :offset-assert 32)
    )
   :method-count-assert 15
@@ -29933,7 +29934,7 @@
    (elev-mode               uint64                :offset-assert 176)
    (elev-type               int32                 :offset-assert 184)
    (prev-frame-num          float                 :offset-assert 188)
-   (last-update-bounce-time uint64                :offset-assert 192)
+   (last-update-bounce-time time-frame                :offset-assert 192)
    (orig-trans              vector        :inline :offset-assert 208)
    (sync                    sync-info     :inline :offset-assert 224)
    (smush                   smush-control :inline :offset-assert 232)
@@ -30090,14 +30091,14 @@
    (pickup                            int32   :offset-assert 16)
    (pickup-amount                     int32   :offset-assert 20)
    (event-death                       symbol   :offset-assert 24)
-   (delay-before-dying-if-not-visible int64  :offset-assert 32)
+   (delay-before-dying-if-not-visible time-frame  :offset-assert 32)
    )
   :method-count-assert 11
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (init! (_type_ symbol symbol symbol symbol int int symbol) int 9)
-    (set-delay! (_type_ int) int 10)
+    (init! (_type_ symbol symbol symbol symbol int int symbol) none 9)
+    (set-delay! (_type_ time-frame) none 10)
     )
   )
 
@@ -30109,13 +30110,13 @@
    (delta-wiggle-angle                float          :offset-assert 416)
    (wiggle-factor                     float          :offset-assert 420)
    (event-death                       symbol         :offset-assert 424)
-   (delay-before-dying-if-not-visible int64         :offset-assert 432)
-   (chase-rest-time                   int64         :offset-assert 440)
-   (target-nav-time                   int64         :offset-assert 448)
+   (delay-before-dying-if-not-visible time-frame         :offset-assert 432)
+   (chase-rest-time                   time-frame         :offset-assert 440)
+   (target-nav-time                   time-frame         :offset-assert 448)
    (unknown00                         basic          :offset-assert 456)
    (unknown01                         basic          :offset-assert 460)
-   (wiggle-time                       int64         :offset-assert 464)
-   (last-visible-time                 int64         :offset-assert 472)
+   (wiggle-time                       time-frame         :offset-assert 464)
+   (last-visible-time                 time-frame         :offset-assert 472)
    (up-vector                         vector :inline :offset-assert 480)
    (state-vector                      vector :inline :offset-assert 496)
    )
@@ -30230,15 +30231,15 @@
    (check-z-thresh?                symbol           :offset-assert 276)
    (activate-z-thresh              float           :offset-assert 280)
    (deactivate-z-thresh            float           :offset-assert 284)
-   (spawned-time                   uint64          :offset-assert 288)
-   (last-update-time               uint64          :offset-assert 296)
-   (spin-time                      uint64          :offset-assert 304)
-   (last-spit-time                 uint64          :offset-assert 312)
-   (last-player-in-air-time        uint64          :offset-assert 320)
-   (started-birthing-time          uint64          :offset-assert 328)
+   (spawned-time                   time-frame          :offset-assert 288)
+   (last-update-time               time-frame          :offset-assert 296)
+   (spin-time                      time-frame          :offset-assert 304)
+   (last-spit-time                 time-frame          :offset-assert 312)
+   (last-player-in-air-time        time-frame          :offset-assert 320)
+   (started-birthing-time          time-frame          :offset-assert 328)
    (neck                           joint-mod           :offset-assert 336)
    (player-attack-id               uint64          :offset-assert 344)
-   (leg-socket-part-time           uint64  6       :offset-assert 352)
+   (leg-socket-part-time           time-frame  6       :offset-assert 352)
    (orient-rot                     vector  :inline :offset-assert 400)
    (anchor-trans                   vector  :inline :offset-assert 416)
    (thread-min-trans               vector  :inline :offset-assert 432)
@@ -30293,7 +30294,7 @@
    (root-override collide-shape-moving :score 100 :offset 112)
    (anim-speed         float              :offset-assert 176)
    (part2              sparticle-launch-control              :offset-assert 180)
-   (falling-start-time uint64             :offset-assert 184)
+   (falling-start-time time-frame             :offset-assert 184)
    (fall-dest          vector     :inline :offset-assert 192)
    (fall-dest-normal   vector     :inline :offset-assert 208)
    (broken-look        lod-set    :inline :offset-assert 224)
@@ -30417,7 +30418,7 @@
 (deftype gnawer-route (structure)
   ((src-pt-index      int32          :offset-assert 0)
    (dest-pt-index     int32          :offset-assert 4)
-   (total-travel-time uint64         :offset-assert 8)
+   (total-travel-time time-frame         :offset-assert 8)
    (src-ang           float          :offset-assert 16)
    (dest-ang          float          :offset-assert 20)
    (delta-ang         float          :offset-assert 24)
@@ -30446,7 +30447,7 @@
    (anim-speed     float                :offset-assert 212)
    (part2          sparticle-launch-control                :offset-assert 216)
    (sound2         ambient-sound                :offset-assert 220)
-   (last-hit-time  uint64               :offset-assert 224)
+   (last-hit-time  time-frame               :offset-assert 224)
    (post-trans     vector       :inline :offset-assert 240)
    (fall-trans     vector       :inline :offset-assert 256)
    (route          gnawer-route :inline :offset-assert 272)
@@ -30521,10 +30522,10 @@
    (neck                    joint-mod   :offset-assert 244)
    (drill                   joint-mod   :offset-assert 248)
    (sound2                  ambient-sound   :offset-assert 252)
-   (last-update-time        uint64  :offset-assert 256)
-   (last-player-path-u-time uint64  :offset-assert 264)
-   (started-chasing-time    uint64  :offset-assert 272)
-   (hit-player-time         uint64  :offset-assert 280)
+   (last-update-time        time-frame  :offset-assert 256)
+   (last-player-path-u-time time-frame  :offset-assert 264)
+   (started-chasing-time    time-frame  :offset-assert 272)
+   (hit-player-time         time-frame  :offset-assert 280)
    (player-attack-id        uint64  :offset-assert 288)
    )
   :method-count-assert 28
@@ -30598,7 +30599,7 @@
    (old-transv      vector :inline :offset-assert 96)
    (mod-x           float          :offset-assert 112)
    (mod-y           float          :offset-assert 116)
-   (start-time      uint64         :offset-assert 120)
+   (start-time      time-frame         :offset-assert 120)
    (turn-anim-targ  float          :offset-assert 128)
    (turn-anim-frame float          :offset-assert 132)
    (turn-anim-vel   float          :offset-assert 136)
@@ -30744,7 +30745,7 @@
    (pos-u             float          :offset-assert 232)
    (water-entity      entity-actor          :offset-assert 236)
    (splash-counter    int32          :offset-assert 240)
-   (start-splash-time uint64         :offset-assert 248)
+   (start-splash-time time-frame         :offset-assert 248)
    (part2             sparticle-launch-control          :offset-assert 256) ; these arent basics
    (part3             sparticle-launch-control          :offset-assert 260) ; these arent basics
    (part4             sparticle-launch-control          :offset-assert 264) ; these arent basics
@@ -30779,9 +30780,9 @@
    (plat-mask                uint32         :offset-assert 184)
    (plat-id-dir              int32          :offset-assert 188)
    (wiggled?                 symbol          :offset-assert 192)
-   (timeout                  int64         :offset-assert 200)
-   (last-plat-activated-time int64         :offset-assert 208)
-   (delay-til-wiggle         int64         :offset-assert 216)
+   (timeout                  time-frame         :offset-assert 200)
+   (last-plat-activated-time time-frame         :offset-assert 208)
+   (delay-til-wiggle         time-frame         :offset-assert 216)
    (ticker                   ticky  :inline :offset-assert 224)
    )
   :method-count-assert 20
@@ -31336,9 +31337,9 @@
   )
 
 (deftype sunken-pipegame-prize (structure)
-  ((puzzle-delay            int64          :offset-assert 0)
-   (pipe-travel-time-to-far int64          :offset-assert 8)
-   (pipe-travel-time-to-jar int64          :offset-assert 16)
+  ((puzzle-delay            time-frame          :offset-assert 0)
+   (pipe-travel-time-to-far time-frame          :offset-assert 8)
+   (pipe-travel-time-to-jar time-frame          :offset-assert 16)
    (actor-handle            handle         :offset-assert 24)
    (jar-pos                 vector :inline :offset-assert 32)
    (far-pos                 vector :inline :offset-assert 48)
@@ -31415,10 +31416,10 @@
    (speed-u         float   :offset-assert 196)
    (spin-vel        float   :offset-assert 200)
    (travel-speed    float   :offset-assert 204)
-   (reaction-delay  uint64  :offset-assert 208)
-   (start-spin-time uint64  :offset-assert 216)
-   (slow-down       uint64  :offset-assert 224)
-   (hit-player-time uint64  :offset-assert 232)
+   (reaction-delay  time-frame  :offset-assert 208)
+   (start-spin-time time-frame  :offset-assert 216)
+   (slow-down       time-frame  :offset-assert 224)
+   (hit-player-time time-frame  :offset-assert 232)
    (neck            joint-mod   :offset-assert 240)
    )
   :method-count-assert 21
@@ -31620,11 +31621,11 @@
    (look-mean?           symbol             :offset-assert 232)
    (cprims-type          uint64            :offset-assert 240)
    (neck                 joint-mod             :offset-assert 248)
-   (hit-player-time      uint64            :offset-assert 256)
-   (reaction-delay       uint64            :offset-assert 264)
-   (picked-point-time    uint64            :offset-assert 272)
-   (pick-new-point-delay uint64            :offset-assert 280)
-   (last-on-screen-time  uint64            :offset-assert 288)
+   (hit-player-time      time-frame            :offset-assert 256)
+   (reaction-delay       time-frame            :offset-assert 264)
+   (picked-point-time    time-frame            :offset-assert 272)
+   (pick-new-point-delay time-frame            :offset-assert 280)
+   (last-on-screen-time  time-frame            :offset-assert 288)
    (buddy                process-drawable             :offset-assert 296) ;; what is this, its very likely wrong!
    (nice-look            lod-set   :inline :offset-assert 300)
    (mean-look            lod-set   :inline :offset-assert 336)
@@ -31696,7 +31697,7 @@
    (path-normal-speed-lo   float          :offset-assert 192)
    (path-normal-speed-hi   float          :offset-assert 196)
    (path-dir               float          :offset-assert 200)
-   (change-path-dir-time   uint64         :offset-assert 208)
+   (change-path-dir-time   time-frame         :offset-assert 208)
    (local-path-offset      vector :inline :offset-assert 224)
    (targ-local-path-offset vector :inline :offset-assert 240)
    (local-path-offset-dir  vector :inline :offset-assert 256)
@@ -31911,8 +31912,8 @@
 (define-extern gorge-trans (function none))
 (define-extern gorge-start-draw-time (function symbol symbol none :behavior gorge-start))
 (define-extern gorge-behind (function gorge symbol))
-(define-extern seconds->race-time (function race-time int int))
-(define-extern race-time-read (function race-time int task-control int symbol))
+(define-extern seconds->race-time (function race-time time-frame int))
+(define-extern race-time-read (function race-time int task-control time-frame symbol))
 (define-extern rolling-start-init-by-other (function vector float none :behavior rolling-start))
 (define-extern gorge-finish-init-by-other (function vector vector float none :behavior gorge-finish))
 (define-extern gorge-abort-init-by-other (function vector vector float none :behavior gorge-abort))
@@ -31974,7 +31975,7 @@
   )
 
 (deftype fleeing-nav-enemy (nav-enemy)
-  ((last-reflection-time uint64                         :offset-assert 400)
+  ((last-reflection-time time-frame                         :offset-assert 400)
    (run-blend-interp     float                          :offset-assert 408)
    (desired-travel       vector                 :inline :offset-assert 416)
    (saved-travel         vector                 :inline :offset-assert 432)
@@ -32058,14 +32059,14 @@
    (tangent              vector :inline :offset-assert 208)
    (run-blend-interp     float          :offset-assert 224)
    (near-timer           int32          :offset-assert 228)
-   (far-time             uint64         :offset-assert 232)
+   (far-time             time-frame         :offset-assert 232)
    (y-offset             float          :offset-assert 240)
    (y-offset-desired     float          :offset-assert 244)
    (y-vel                float          :offset-assert 248)
    (water-height         float          :offset-assert 252)
-   (timeout              uint64         :offset-assert 256)
-   (last-ambient-time    uint64         :offset-assert 264)
-   (time-to-next-ambient uint64         :offset-assert 272)
+   (timeout              time-frame         :offset-assert 256)
+   (last-ambient-time    time-frame         :offset-assert 264)
+   (time-to-next-ambient time-frame         :offset-assert 272)
    )
   :method-count-assert 20
   :size-assert         #x118
@@ -32112,7 +32113,7 @@
    (face-vec              vector        :inline :offset-assert 192)
    (part-track            handle                :offset-assert 208)
    (keep-part-track-alive symbol                 :offset-assert 216)
-   (timeout               uint64                :offset-assert 224)
+   (timeout               time-frame                :offset-assert 224)
    (alt-actor             entity-actor                 :offset-assert 232)
    (alt-task              uint8                 :offset-assert 236)
    (cyl                   cylinder-flat :inline :offset-assert 240)
@@ -32268,7 +32269,7 @@
    (trajectory trajectory :inline :offset-assert 176)
    (src-pos vector :inline :offset-assert 224)
    (dest-pos vector :inline :offset-assert 240)
-   (start-time int64 :offset-assert 256)
+   (start-time time-frame :offset-assert 256)
    (tumble-quat quaternion :inline :offset-assert 272)
    (blast-radius float :offset-assert 288)
    (pickup-type pickup-type :offset-assert 292)
@@ -32286,7 +32287,7 @@
 (deftype ogreboss-missile-init-data (structure)
   ((src vector :offset-assert 0)
    (dest vector :offset-assert 4)
-   (duration int64 :offset-assert 8)
+   (duration time-frame :offset-assert 8)
    (xz-speed float :offset-assert 16)
    (blast-radius float :offset-assert 20)
    (pickup-type pickup-type :offset-assert 24)
@@ -32318,7 +32319,7 @@
    (max-hit-count int8 :offset-assert 398)
    (roll-boulder int8 :offset-assert 399)
    (try-count uint8 :offset-assert 400)
-   (hit-time int64 :offset-assert 408)
+   (hit-time time-frame :offset-assert 408)
    (grow-time float :offset-assert 416)
    (lava entity-actor :offset-assert 420)
    (vulnerable symbol :offset-assert 424)
@@ -32349,20 +32350,20 @@
 (define-extern ogreboss-get-targets (function none :behavior ogreboss))
 (define-extern ogreboss-reset-camera (function none))
 (define-extern ogreboss-trigger-steps (function symbol :behavior ogreboss))
-(define-extern ogreboss-submerge (function int float none :behavior ogreboss))
+(define-extern ogreboss-submerge (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-post (function none :behavior ogreboss))
 (define-extern ogreboss-spawn-super-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-update-shuffling (function none :behavior ogreboss))
 (define-extern ogreboss-player-inside-range? (function float symbol :behavior ogreboss))
 (define-extern ogreboss-super-boulder-init-by-other (function vector float entity none :behavior ogreboss-super-boulder))
 (define-extern ogreboss-set-stage2-camera (function none))
-(define-extern ogreboss-move-far (function int float none :behavior ogreboss))
+(define-extern ogreboss-move-far (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-roll-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-update-super-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-blend-hit-anim (function none :behavior ogreboss))
 (define-extern ogreboss-bounce-boulder-init-by-other (function int entity none :behavior ogreboss-bounce-boulder))
 (define-extern ogreboss-set-stage1-camera (function none))
-(define-extern ogreboss-move-near (function basic float none :behavior ogreboss))
+(define-extern ogreboss-move-near (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-shoot-boulder (function int none :behavior ogreboss))
 (define-extern ogreboss-inc-try-count (function none :behavior ogreboss))
 (define-extern ogreboss-emerge (function float none :behavior ogreboss))
@@ -32416,7 +32417,7 @@
   ((anchor-point   vector :inline :offset-assert 736)
    (idle-y-offset  float          :offset-assert 752)
    (float-y-offset float          :offset-assert 756)
-   (delay          uint64         :offset-assert 760)
+   (delay          time-frame         :offset-assert 760)
    (active         symbol          :offset-assert 768)
    (triggered      entity-actor          :offset-assert 772)
    )
@@ -32603,11 +32604,11 @@
    (y-offset          float          :offset-assert 212)
    (y-offset-desired  float          :offset-assert 216)
    (y-vel             float          :offset-assert 220)
-   (last-look-time    int64          :offset-assert 224)
-   (time-to-next-look int64          :offset-assert 232)
+   (last-look-time    time-frame          :offset-assert 224)
+   (time-to-next-look time-frame          :offset-assert 232)
    (take-off          symbol         :offset-assert 240)
    (race-seconds      float          :offset-assert 244)
-   (race-start-time   int64          :offset-assert 248)
+   (race-start-time   time-frame          :offset-assert 248)
    (rank              int32          :offset-assert 256)
    (alt-actor         entity-actor   :offset-assert 260)
    (alt-trans         vector         :offset-assert 264)
@@ -32873,8 +32874,8 @@
   ((root-override   collide-shape  :score 100 :offset 112)
    (spider-count    int32          :offset-assert 176)
    (alt-actors      (array entity-actor)          :offset-assert 180)
-   (spawn-delay     uint64         :offset-assert 184)
-   (last-spawn-time uint64         :offset-assert 192)
+   (spawn-delay     time-frame         :offset-assert 184)
+   (last-spawn-time time-frame         :offset-assert 192)
    (debug-targ-pos  vector :inline :offset-assert 208)
    )
   :method-count-assert 21
@@ -32891,7 +32892,7 @@
   )
 
 (deftype spider-vent (process-drawable)
-  ((last-spawn-time uint64  :offset-assert 176)
+  ((last-spawn-time time-frame  :offset-assert 176)
    )
   :method-count-assert 20
   :size-assert         #xb8
@@ -33023,7 +33024,7 @@
    (charge-angle           float          :offset-assert 440)
    (ground-y               float          :offset-assert 444)
    (cprims-type            uint64         :offset-assert 448)
-   (next-skid-sound-time   uint64         :offset-assert 456)
+   (next-skid-sound-time   time-frame         :offset-assert 456)
    (starting-pos           vector :inline :offset-assert 464)
    (target-pt              vector :inline :offset-assert 480)
    )
@@ -33079,8 +33080,8 @@
   )
 
 (deftype snow-ball-junction (structure)
-  ((enter-time int64  :offset-assert 0)
-   (exit-time  int64  :offset-assert 8)
+  ((enter-time time-frame  :offset-assert 0)
+   (exit-time  time-frame  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -33108,8 +33109,8 @@
    (delay-til-bounce       int32                       :offset-assert 204)
    (rolling-sound-id       sound-id                    :offset-assert 208)
    (rolling-sound-enabled? symbol                       :offset-assert 212)
-   (last-bounce-time       int64                      :offset-assert 216)
-   (hit-player-time        int64                      :offset-assert 224)
+   (last-bounce-time       time-frame                      :offset-assert 216)
+   (hit-player-time        time-frame                      :offset-assert 224)
    (path-info              snow-ball-path-info :inline :offset-assert 240)
    (junctions              snow-ball-junction             4       :inline :offset-assert 272)
    )
@@ -33128,7 +33129,7 @@
 
 (deftype snow-ball (process)
   ((child-override (pointer snow-ball-roller) :score 100         :offset 20)
-   (state-time             int64    :offset-assert 112)
+   (state-time             time-frame    :offset-assert 112)
    (last-path-picked       int32     :offset-assert 120)
    (same-path-picked-count int32     :offset-assert 124)
    (delay-til-next         int32     :offset-assert 128)
@@ -33354,8 +33355,8 @@
 (deftype snow-button (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (wiggled?         symbol          :offset-assert 176)
-   (timeout          int64         :offset-assert 184)
-   (delay-til-wiggle int64         :offset-assert 192)
+   (timeout          time-frame         :offset-assert 184)
+   (delay-til-wiggle time-frame         :offset-assert 192)
    (prev-button      entity-actor          :offset-assert 200)
    (ticker           ticky  :inline :offset-assert 208)
    )
@@ -33414,7 +33415,7 @@
    (base-shove-ry           float   :offset-assert 180)
    (max-shove-diff-ry       float   :offset-assert 184)
    (part2                   sparticle-launch-control   :offset-assert 188)
-   (last-shoved-player-time uint64  :offset-assert 192)
+   (last-shoved-player-time time-frame  :offset-assert 192)
    )
   :method-count-assert 22
   :size-assert         #xc8
@@ -33485,7 +33486,7 @@
    (launched?       symbol          :offset-assert 416)
    (growth          float          :offset-assert 420)
    (charge-sound-id sound-id       :offset-assert 424)
-   (launch-time     uint64         :offset-assert 432)
+   (launch-time     time-frame         :offset-assert 432)
    (facing-dir      vector :inline :offset-assert 448)
    )
   :method-count-assert 29
@@ -33508,8 +33509,8 @@
    (proj-stoked              basic          :offset-assert 424)
    (proj-status              uint64         :offset-assert 432)
    (part2                    sparticle-launch-control          :offset-assert 440)
-   (proj-last-thrown-time    uint64         :offset-assert 448)
-   (nav-enemy-patrol-timeout uint64         :offset-assert 456)
+   (proj-last-thrown-time    time-frame         :offset-assert 448)
+   (nav-enemy-patrol-timeout time-frame         :offset-assert 456)
    (proj-launch-vec          vector :inline :offset-assert 464)
    (local-throw-point        vector :inline :offset-assert 480)
    (shield-jmod              joint-mod-set-local          :offset-assert 496)
@@ -33689,7 +33690,7 @@
 (deftype darkecobarrel-base (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (speed float   :offset-assert 176)
-   (sync  uint64  :offset-assert 184)
+   (sync  time-frame  :offset-assert 184)
    )
   :method-count-assert 20
   :size-assert         #xc0
@@ -33698,7 +33699,7 @@
   )
 
 (deftype darkecobarrel-mover (darkecobarrel-base)
-  ((start-time   uint64                      :offset-assert 192)
+  ((start-time   time-frame                      :offset-assert 192)
    (hits         int32                       :offset-assert 200)
    (leak         darkecobarrel-leak             1       :inline :offset-assert 208)
    (y-offset     bouncing-float      :inline :offset-assert 240)
@@ -33795,12 +33796,12 @@
 ;; - Functions
 
 (define-extern darkecobarrel-base-init (function res-lump path-control-flag :behavior darkecobarrel-base))
-(define-extern darkecobarrel-base-time (function int :behavior darkecobarrel-base))
+(define-extern darkecobarrel-base-time (function time-frame :behavior darkecobarrel-base))
 (define-extern darkecobarrel-cycle-time (function int :behavior darkecobarrel)) ;; likely to darkecobarrels
 (define-extern darkecobarrel-advance-curspawn (function none :behavior darkecobarrel))
-(define-extern darkecobarrel-mover-init-by-other (function res-lump float uint uint none :behavior darkecobarrel-mover))
+(define-extern darkecobarrel-mover-init-by-other (function res-lump float time-frame time-frame none :behavior darkecobarrel-mover))
 (define-extern darkecobarrel-base-done? (function float symbol :behavior darkecobarrel-base))
-(define-extern darkecobarrel-base-pos (function int float :behavior darkecobarrel-base))
+(define-extern darkecobarrel-base-pos (function time-frame float :behavior darkecobarrel-base))
 (define-extern darkecobarrel-mover-pos (function none :behavior darkecobarrel-mover))
 
 ;; - Unknowns

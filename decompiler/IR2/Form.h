@@ -430,7 +430,7 @@ class SetFormFormElement : public FormElement {
 
 /*!
  * A wrapper around a single AtomicOp.
- * The "important" special AtomicOps have their own Form type, like FuncitonCallElement.
+ * The "important" special AtomicOps have their own Form type, like FunctionCallElement.
  */
 class AtomicOpElement : public FormElement {
  public:
@@ -1126,6 +1126,8 @@ class DerefToken {
   }
 
   bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
+
+  bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
 
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
@@ -2000,7 +2002,6 @@ class FormPool {
 
 std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
-FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);
 GenericElement* alloc_generic_token_op(const std::string& name,
                                        const std::vector<Form*>& args,

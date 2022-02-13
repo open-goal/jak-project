@@ -22,14 +22,24 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::
 /*!
  * Parse the main config file and return decompiler config.
  */
-Config read_config_file(const std::string& path_to_config_file) {
+Config read_config_file(const std::string& path_to_config_file,
+                        const std::map<std::string, bool>& overrides) {
   Config config;
   auto config_str = file_util::read_text_file(path_to_config_file);
   auto cfg = parse_commented_json(config_str, path_to_config_file);
 
+  // Override JSON
+  for (auto const& [key, val] : overrides) {
+    fmt::print("[Config] - Overwriting '{}' with '{}'\n", key, val);
+    cfg[key] = val;
+  }
+
   config.game_version = cfg.at("game_version").get<int>();
   config.text_version = cfg.at("text_version").get<GameTextVersion>();
   config.game_name = cfg.at("game_name").get<std::string>();
+  if (cfg.contains("expected_elf_name")) {
+    config.expected_elf_name = cfg.at("expected_elf_name").get<std::string>();
+  }
 
   auto inputs_json = read_json_file_from_config(cfg, "inputs_file");
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();

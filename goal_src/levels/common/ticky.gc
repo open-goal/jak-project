@@ -8,26 +8,26 @@
 ;; DECOMP BEGINS
 
 (deftype ticky (structure)
-  ((delay-til-ramp    int64  :offset-assert   0)
-   (delay-til-timeout int64  :offset-assert   8)
-   (starting-time     int64  :offset-assert  16)
-   (last-tick-time    int64  :offset-assert  24)
+  ((delay-til-ramp    time-frame  :offset-assert   0)
+   (delay-til-timeout time-frame  :offset-assert   8)
+   (starting-time     time-frame  :offset-assert  16)
+   (last-tick-time    time-frame  :offset-assert  24)
    )
   :method-count-assert 12
   :size-assert         #x20
   :flag-assert         #xc00000020
   (:methods
-    (sleep (_type_ int) none 9)
-    (reached-delay? (_type_ int) symbol 10)
+    (sleep (_type_ time-frame) none 9)
+    (reached-delay? (_type_ time-frame) symbol 10)
     (completed? (_type_) symbol 11)
     )
   )
 
 
-(defmethod sleep ticky ((obj ticky) (arg0 int))
+(defmethod sleep ticky ((obj ticky) (arg0 time-frame))
   (set! (-> obj starting-time) (-> *display* base-frame-counter))
   (set! (-> obj delay-til-timeout) arg0)
-  (set! (-> obj delay-til-ramp) (max 0 (+ arg0 -1200)))
+  (set! (-> obj delay-til-ramp) (max 0 (+ arg0 (seconds -4))))
   (set! (-> obj last-tick-time) 0)
   0
   (none)
@@ -60,7 +60,7 @@
     )
   )
 
-(defmethod reached-delay? ticky ((obj ticky) (arg0 int))
+(defmethod reached-delay? ticky ((obj ticky) (arg0 time-frame))
   (>= (- (-> *display* base-frame-counter) (-> obj starting-time)) arg0)
   )
 

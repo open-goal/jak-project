@@ -25,7 +25,7 @@
    (charge-angle           float                            :offset-assert 440)
    (ground-y               float                            :offset-assert 444)
    (cprims-type            uint64                           :offset-assert 448)
-   (next-skid-sound-time   uint64                           :offset-assert 456)
+   (next-skid-sound-time   time-frame                       :offset-assert 456)
    (starting-pos           vector                   :inline :offset-assert 464)
    (target-pt              vector                   :inline :offset-assert 480)
    )
@@ -100,32 +100,32 @@
                                     :die-anim 7
                                     :neck-joint 5
                                     :player-look-at-joint 5
-                                    :run-travel-speed (meters 20.0)
+                                    :run-travel-speed (meters 20)
                                     :run-rotate-speed (degrees 2880.0)
-                                    :run-acceleration (meters 1.0)
+                                    :run-acceleration (meters 1)
                                     :run-turn-time (seconds 0.1)
-                                    :walk-travel-speed (meters 3.0)
+                                    :walk-travel-speed (meters 3)
                                     :walk-rotate-speed (degrees 720.0)
-                                    :walk-acceleration (meters 1.0)
+                                    :walk-acceleration (meters 1)
                                     :walk-turn-time (seconds 0.5)
-                                    :attack-shove-back (meters 3.0)
-                                    :attack-shove-up (meters 2.0)
-                                    :shadow-size (meters 1.0)
+                                    :attack-shove-back (meters 3)
+                                    :attack-shove-up (meters 2)
+                                    :shadow-size (meters 1)
                                     :notice-nav-radius (meters 1.5)
-                                    :nav-nearest-y-threshold (meters 10.0)
-                                    :notice-distance (meters 35.0)
-                                    :stop-chase-distance (meters 45.0)
-                                    :frustration-distance (meters 8.0)
-                                    :frustration-time #x4b0
+                                    :nav-nearest-y-threshold (meters 10)
+                                    :notice-distance (meters 35)
+                                    :stop-chase-distance (meters 45)
+                                    :frustration-distance (meters 8)
+                                    :frustration-time (seconds 4)
                                     :die-anim-hold-frame 10000000000.0
                                     :jump-anim-start-frame 10.0
                                     :jump-land-anim-end-frame 10000000000.0
-                                    :jump-height-min (meters 3.0)
+                                    :jump-height-min (meters 3)
                                     :jump-height-factor 0.5
                                     :jump-start-anim-speed 1.0
-                                    :shadow-max-y (meters 1.0)
+                                    :shadow-max-y (meters 1)
                                     :shadow-min-y (meters -3.5)
-                                    :shadow-locus-dist (meters 150.0)
+                                    :shadow-locus-dist (meters 150)
                                     :use-align #f
                                     :draw-shadow #f
                                     :move-to-ground #t
@@ -716,7 +716,7 @@
           )
       )
     (vector-! gp-0 (-> obj target-pt) (-> obj collide-info trans))
-    (seek-toward-heading-vec! (-> obj collide-info) gp-0 524288.0 30)
+    (seek-toward-heading-vec! (-> obj collide-info) gp-0 524288.0 (seconds 0.1))
     (let ((v0-5 (< (fabs (deg- (quaternion-y-angle (-> obj collide-info quat)) (vector-y-angle gp-0))) 364.0889)))
       (b! #t cfg-10 :delay (nop!))
       (the-as none 0)
@@ -1348,7 +1348,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (dummy-58 self)
     (logior! (-> self nav-enemy-flags) 4)
-    (set! (-> self next-skid-sound-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self next-skid-sound-time) (-> *display* base-frame-counter))
     (if (or (not *target*)
             (logtest? (-> *target* state-flags) #x80f8)
             (not (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos)))
@@ -1358,7 +1358,7 @@
     (set! (-> self target-speed) (-> self nav-info run-travel-speed))
     (set! (-> self acceleration) (-> self nav-info run-acceleration))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-    (set! (-> self turn-time) (the-as int (-> self nav-info run-turn-time)))
+    (set! (-> self turn-time) (-> self nav-info run-turn-time))
     (logclear! (-> self nav flags) (nav-control-flags bit8))
     (set-root-prim-collide-with! (-> self collide-info) (collide-kind cak-2 cak-3 target crate enemy))
     (set! (-> self track-target?) #t)
@@ -1449,10 +1449,8 @@
           (spawn (-> self part4) gp-3)
           )
         )
-      (when (>= (-> *display* base-frame-counter) (the-as int (-> self next-skid-sound-time)))
-        (set! (-> self next-skid-sound-time)
-              (the-as uint (+ (-> *display* base-frame-counter) (nav-enemy-rnd-int-range 60 120)))
-              )
+      (when (>= (-> *display* base-frame-counter) (-> self next-skid-sound-time))
+        (set! (-> self next-skid-sound-time) (+ (-> *display* base-frame-counter) (nav-enemy-rnd-int-range 60 120)))
         (sound-play-by-name
           (static-sound-name "ice-stop")
           (new-sound-id)
@@ -1611,7 +1609,7 @@
     )
   :trans
   (behavior ()
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
       (cond
         ((or (not *target*) (< (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
@@ -1688,7 +1686,7 @@
     (clear-collide-with-as (-> self collide-info))
     (dummy-18 self)
     (let ((gp-1 (new 'stack 'joint-exploder-tuning 1)))
-      (set! (-> gp-1 duration) (the-as uint 900))
+      (set! (-> gp-1 duration) (seconds 3))
       (set! (-> gp-1 gravity) -327680.0)
       (set! (-> gp-1 fountain-rand-transv-lo quad) (-> (target-pos 0) quad))
       (let ((s5-1 (get-process *default-dead-pool* joint-exploder #x4000)))
@@ -1747,7 +1745,3 @@
     (none)
     )
   )
-
-
-
-

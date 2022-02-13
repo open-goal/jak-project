@@ -631,7 +631,7 @@
    (defensive-rat-count int8                            :offset-assert 187)
    (spawn-period        float                           :offset-assert 188)
    (spawn-period-scale  float                           :offset-assert 192)
-   (test-interval       uint64                          :offset-assert 200)
+   (test-interval       time-frame                      :offset-assert 200)
    (player-attack-id    int32                           :offset-assert 208)
    )
   :heap-base #x70
@@ -969,7 +969,7 @@
         (-> gp-0 ppointer)
         )
       )
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (suspend)
       )
     (ja-channel-set! 0)
@@ -1192,9 +1192,9 @@ swamp-rat-nest-default-event-handler
   :trans
   (behavior ()
     (swamp-rat-nest-check-dummy)
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self test-interval)))
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self test-interval))
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (set! (-> self test-interval) (the-as uint 60))
+      (set! (-> self test-interval) (seconds 0.2))
       (let ((v1-6 0))
         (let ((a0-2 (the-as (pointer process-tree) (-> self child-process))))
           (while a0-2
@@ -1327,7 +1327,7 @@ swamp-rat-nest-default-event-handler
   (set! (-> obj damaged) #f)
   (set! (-> obj spawn-period) (* 1200.0 (rand-vu-float-range 0.9 1.1)))
   (set! (-> obj spawn-period-scale) (+ 1.0 (* 2.0 (get-health-percent-lost *game-info* #f))))
-  (set! (-> obj test-interval) (the-as uint (rand-vu-int-range 30 60)))
+  (set! (-> obj test-interval) (rand-vu-int-range (seconds 0.1) (seconds 0.2)))
   (go swamp-rat-nest-idle)
   (none)
   )

@@ -8,17 +8,17 @@
 ;; DECOMP BEGINS
 
 (deftype joint-exploder-tuning (structure)
-  ((explosion                   uint64         :offset-assert   0)
-   (duration                    uint64         :offset-assert   8)
-   (gravity                     float          :offset-assert  16)
-   (rot-speed                   float          :offset-assert  20)
-   (fountain-rand-transv-lo     vector :inline :offset-assert  32)
-   (fountain-rand-transv-hi     vector :inline :offset-assert  48)
-   (away-from-focal-pt          vector :inline :offset         32)
-   (away-from-rand-transv-xz-lo float          :offset         48)
-   (away-from-rand-transv-xz-hi float          :offset         52)
-   (away-from-rand-transv-y-lo  float          :offset         56)
-   (away-from-rand-transv-y-hi  float          :offset         60)
+  ((explosion                   uint64             :offset-assert   0)
+   (duration                    time-frame         :offset-assert   8)
+   (gravity                     float              :offset-assert  16)
+   (rot-speed                   float              :offset-assert  20)
+   (fountain-rand-transv-lo     vector     :inline :offset-assert  32)
+   (fountain-rand-transv-hi     vector     :inline :offset-assert  48)
+   (away-from-focal-pt          vector     :inline :offset         32)
+   (away-from-rand-transv-xz-lo float              :offset         48)
+   (away-from-rand-transv-xz-hi float              :offset         52)
+   (away-from-rand-transv-y-lo  float              :offset         56)
+   (away-from-rand-transv-y-hi  float              :offset         60)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -515,7 +515,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self tuning duration)))
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self tuning duration))
       (suspend)
       (let ((a0-0 (-> self skel root-channel 0)))
         (set! (-> a0-0 param 0) 1.0)
@@ -671,7 +671,7 @@
     (-> type-to-make size)
     (let ((v0-0 (the-as joint-exploder-tuning (t9-0 allocation v1-1))))
       (set! (-> v0-0 explosion) (the-as uint arg0))
-      (set! (-> v0-0 duration) (the-as uint 600))
+      (set! (-> v0-0 duration) (seconds 2))
       (set! (-> v0-0 gravity) -286720.0)
       (set! (-> v0-0 rot-speed) 8.4)
       (cond

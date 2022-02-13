@@ -1309,10 +1309,11 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
                                      const TypeSpec& actual,
                                      const std::string& error_source_name,
                                      bool print_on_error,
-                                     bool throw_on_error) const {
+                                     bool throw_on_error,
+                                     bool allow_type_alias) const {
   bool success = true;
   // first, typecheck the base types:
-  if (!typecheck_base_types(expected.base_type(), actual.base_type())) {
+  if (!typecheck_base_types(expected.base_type(), actual.base_type(), allow_type_alias)) {
     success = false;
   }
 
@@ -1375,8 +1376,10 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
  * Is actual of type expected? For base types.
  */
 bool TypeSystem::typecheck_base_types(const std::string& input_expected,
-                                      const std::string& actual) const {
+                                      const std::string& input_actual,
+                                      bool allow_alias) const {
   std::string expected = input_expected;
+  std::string actual = input_actual;
 
   // the unit types aren't picky.
   if (expected == "meters") {
@@ -1384,14 +1387,26 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
   }
 
   if (expected == "seconds") {
-    if (actual == "seconds") {
-      return true;
-    }
-    expected = "int";
+    expected = "time-frame";
+  }
+
+  if (actual == "seconds") {
+    actual = "time-frame";
   }
 
   if (expected == "degrees") {
     expected = "float";
+  }
+
+  // the decompiler prefers no aliasing so it can detect casts properly
+  if (allow_alias) {
+    if (expected == "time-frame") {
+      expected = "int";
+    }
+
+    if (actual == "time-frame") {
+      actual = "int";
+    }
   }
 
   // just to make sure it exists.

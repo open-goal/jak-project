@@ -386,7 +386,7 @@
     )
   :trans
   (behavior ()
-    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1500)
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 5))
              (or (not *target*)
                  (< 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                  )
@@ -452,7 +452,7 @@
   (if (nonzero? *camera-look-through-other*)
       (set! *camera-look-through-other* 2)
       )
-  (set-letterbox-frames 5)
+  (set-letterbox-frames (seconds 0.016666668))
   (draw-npc-shadow self)
   (none)
   )
@@ -852,7 +852,7 @@
     )
   :trans
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
     (if (or (-> self been-kicked) (should-display? self))
@@ -894,7 +894,7 @@
     )
   :trans
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
     (cond
@@ -1074,7 +1074,7 @@
     )
   :trans
   (behavior ()
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
       (logior! (-> self mask) (process-mask actor-pause))
       (process-entity-status! self (entity-perm-status bit-3) #f)
       )
@@ -1082,7 +1082,7 @@
       ((not *target*)
        )
       ((not (-> self will-talk))
-       (if (>= (- (-> *display* game-frame-counter) (-> self last-talk)) 3000)
+       (if (>= (- (-> *display* game-frame-counter) (-> self last-talk)) (seconds 10))
            (set! (-> self will-talk) #t)
            )
        )
@@ -1271,7 +1271,7 @@
   )
 
 ;; definition for method 10 of type ambient-control
-(defmethod TODO-RENAME-10 ambient-control ((obj ambient-control) (arg0 vector) (arg1 int) (arg2 float) (arg3 process-drawable))
+(defmethod TODO-RENAME-10 ambient-control ((obj ambient-control) (arg0 vector) (arg1 time-frame) (arg2 float) (arg3 process-drawable))
   (when (< (- (-> *display* game-frame-counter) (-> obj last-ambient-time)) arg1)
     (set! arg0 (the-as vector #f))
     (goto cfg-6)
@@ -1442,7 +1442,7 @@
       (let ((a0-25 (-> self hand process 0)))
         (when (or (-> self die?) (and (not (-> self survive-anim-end?)) (ja-anim-done? a0-25)))
           (let ((gp-1 (-> *display* base-frame-counter)))
-            (while (and (< (- (-> *display* base-frame-counter) gp-1) #x4650)
+            (while (and (< (- (-> *display* base-frame-counter) gp-1) (seconds 60))
                         (or (and (-> self entity) (not (is-object-visible? (-> self entity extra level) (-> self entity extra vis-id))))
                             (< 81920.0 (vector-vector-distance (camera-pos) (-> *math-camera* trans)))
                             )

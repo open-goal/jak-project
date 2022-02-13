@@ -18,6 +18,7 @@ struct RenderOptions {
   bool playing_from_dump = false;
 
   bool save_screenshot = false;
+  bool screenshot_should_compress = false;
   std::string screenshot_path;
 };
 
@@ -34,7 +35,12 @@ class OpenGLRenderer {
   void init_bucket_renderers();
   void draw_renderer_selection_window();
 
-  void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
+  void finish_screenshot(const std::string& output_name,
+                         int px,
+                         int py,
+                         int x,
+                         int y,
+                         bool compress);
 
   template <typename T, class... Args>
   void init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {

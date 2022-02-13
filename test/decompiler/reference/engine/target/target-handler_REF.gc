@@ -140,7 +140,7 @@
             (rot->dir-targ! (-> self control))
             (logior! (-> self control status) 7)
             (set! v0-0 (the-as none (-> *display* base-frame-counter)))
-            (set! (-> self control unknown-dword11) (the-as int v0-0))
+            (set! (-> self control unknown-dword11) (the-as time-frame v0-0))
             v0-0
             )
            (('reset)
@@ -280,12 +280,14 @@
            )
          )
         ((= v1-0 'no-load-wait)
-         (set! v0-0 (the-as none (+ (-> *display* base-frame-counter) (-> arg3 param 0))))
-         (set! (-> self no-load-wait) (the-as uint v0-0))
+         (set! v0-0 (the-as none (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0)))))
+         (set! (-> self no-load-wait) (the-as time-frame v0-0))
          v0-0
          )
         ((= v1-0 'no-look-around)
-         (set! (-> self no-look-around-wait) (the-as uint (+ (-> *display* base-frame-counter) (-> arg3 param 0))))
+         (set! (-> self no-look-around-wait)
+               (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0)))
+               )
          (if (= (-> self next-state name) 'target-look-around)
              (send-event self 'end-mode)
              )
@@ -315,7 +317,7 @@
                               )
           )
     (set! (-> s5-0 mask) (the-as uint 2248))
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 30)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (go arg3 'shove s5-0)
     )
   )
@@ -339,7 +341,9 @@
       ((or (logtest? (-> self state-flags) 112)
            (and (logtest? (-> arg1 mask) 32)
                 (= (-> arg1 mode) 'darkeco)
-                (and (and (= (-> self fact-info-target eco-type) 2) (>= (-> self fact-info-target eco-level) 1.0))
+                (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
+                          (>= (-> self fact-info-target eco-level) 1.0)
+                          )
                      (logtest? #x100002 (-> self state-flags))
                      )
                 )
@@ -424,7 +428,7 @@
              )
          self
          )
-       (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 150)
+       (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 (seconds 0.5))
        (sound-play-by-name (static-sound-name "oof") (new-sound-id) 1024 0 0 1 #t)
        #t
        )
@@ -533,7 +537,7 @@
                #f
                (static-sound-name "spin-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 60)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
              )
             ((= v1-5 'punch)
              (set! sv-128
@@ -627,7 +631,7 @@
                #f
                (static-sound-name "punch-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((= v1-5 'flip)
              (dummy-12
@@ -638,7 +642,7 @@
                #f
                (static-sound-name "punch-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.1))
              )
             ((= v1-5 'uppercut)
              (set! sv-176
@@ -733,7 +737,7 @@
                #f
                (static-sound-name "uppercut-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((or (= v1-5 'flop) (= v1-5 'flop-down))
              (dummy-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 23)
@@ -746,7 +750,7 @@
                #f
                (static-sound-name "flop-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 30)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((= v1-5 'flut-attack)
              (dummy-12
@@ -757,7 +761,7 @@
                #f
                (static-sound-name "punch-hit")
                )
-             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 60)
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))
              )
             )
           )
@@ -833,7 +837,7 @@
                (or (logtest? (-> self water flags) 512)
                    (logtest? (-> self state-flags) #x830e)
                    (logtest? (-> self control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
-                   (>= (the-as int (-> self no-load-wait)) (-> *display* base-frame-counter))
+                   (>= (-> self no-load-wait) (-> *display* base-frame-counter))
                    )
                )
            )
@@ -1019,7 +1023,7 @@
                       (zero? (logand (-> self state-flags) #x8008))
                       )
              (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
-             (target-timed-invulnerable 30 self)
+             (target-timed-invulnerable (seconds 0.1) self)
              (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
              )
            )
