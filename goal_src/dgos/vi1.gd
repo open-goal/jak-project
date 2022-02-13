@@ -6,7 +6,7 @@
   ("assistant.o" "assistant")
   ("sage.o" "sage")
   ("yakow.o" "yakow")
-  ("village-obs-VI1.o" "village-obs")
+  ("village-obs.o" "village-obs")
   ("fishermans-boat.o" "fishermans-boat")
   ("village1-part.o" "village1-part")
   ("village1-part2.o" "village1-part2")

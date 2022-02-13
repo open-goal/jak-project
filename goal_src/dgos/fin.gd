@@ -9,7 +9,7 @@
   ("green-eco-lurker.o" "green-eco-lurker")
   ("robotboss.o" "robotboss")
   ("final-door.o" "final-door")
-  ("sage-finalboss-FIN.o" "sage-finalboss")
+  ("sage-finalboss.o" "sage-finalboss")
   ("tpage-1419.go" "tpage-1419")
   ("tpage-1420.go" "tpage-1420")
   ("tpage-634.go" "tpage-634")

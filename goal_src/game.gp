@@ -394,11 +394,11 @@
    "common/launcherdoor.gc"
    "common/battlecontroller.gc"
 
-   "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/target-racer-h.gc"
    "racer_common/racer-part.gc"
    "racer_common/racer.gc"
-   "racer_common/target-racer-FIC-LAV-MIS-OGR-ROL.gc"
-   "racer_common/racer-states-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/target-racer.gc"
+   "racer_common/racer-states.gc"
    "racer_common/collide-reaction-racer.gc"
 
    "flut_common/flut-part.gc"
@@ -501,7 +501,7 @@
  "jungle-obs.gc"
  "jungle-mirrors.gc"
  "junglefish.gc"
- "fisher-JUN.gc"
+ "fisher.gc"
  "jungle-part.gc"
  )
 
@@ -567,7 +567,7 @@
  "village1/assistant.gc"
  "village1/sage.gc"
  "village1/yakow.gc"
- "village1/village-obs-VI1.gc"
+ "village1/village-obs.gc"
  "village1/fishermans-boat.gc"
  "village1/village1-part.gc"
  "village1/village1-part2.gc"
@@ -1331,7 +1331,7 @@
   "citb-plat.gc"
   "citadel-sages.gc"
   "citb-bunny.gc"
-  "citb-drop-plat-CIT.gc"
+  "citb-drop-plat.gc"
   "assistant-citadel.gc"
   )
 
@@ -1397,7 +1397,7 @@
   "green-eco-lurker.gc"
   "robotboss.gc"
   "final-door.gc"
-  "sage-finalboss-FIN.gc"
+  "sage-finalboss.gc"
   )
 
 (copy-textures 1419 1420 634 1418 545)
