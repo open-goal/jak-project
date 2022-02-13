@@ -764,13 +764,23 @@ void update_discord_rpc(u32 discord_info) {
       int cells = (int)*Ptr<float>(info->fuel).c();
       int orbs = (int)*Ptr<float>(info->money_total).c();
       int scout_flies = (int)*Ptr<float>(info->buzzer_total).c();
+      int deaths = *Ptr<int>(info->deaths).c();
       auto cutscene = Ptr<Symbol>(info->cutscene)->value;
+      auto ogreboss = Ptr<Symbol>(info->ogreboss)->value;
+      auto racer = Ptr<Symbol>(info->racer)->value;
+      auto flutflut = Ptr<Symbol>(info->flutflut)->value;
       char* status = Ptr<String>(info->status).c()->data();
       char* level = Ptr<String>(info->level).c()->data();
       const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
+      rpc.largeImageKey = level;
+      rpc.largeImageText = full_level_name;
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
+      } else if (!strcmp(level, "ogre") && ogreboss != offset_of_s7()) {
+        strcpy(state, "Fighting Klaww");
+        rpc.largeImageKey = "ogreboss";
+        rpc.largeImageText = "Klaww";
       } else if (!strcmp(level, "title")) {
         strcpy(state, "On title screen");
       } else if (!strcmp(level, "intro")) {
@@ -784,14 +794,22 @@ void update_discord_rpc(u32 discord_info) {
         strcat(state, std::to_string(orbs).c_str());
         strcat(state, " | Scout flies: ");
         strcat(state, std::to_string(scout_flies).c_str());
+        strcat(state, " | Deaths: ");
+        strcat(state, std::to_string(deaths).c_str());
       }
       rpc.state = state;
+      if (racer != offset_of_s7()) {
+        rpc.smallImageKey = "target-racer";
+        rpc.smallImageText = "Driving A-Grav Zoomer";
+      } else if (flutflut != offset_of_s7()) {
+        rpc.smallImageKey = "flutflut";
+        rpc.smallImageText = "Riding on Flut Flut";
+      } else {
+        rpc.smallImageKey = 0;
+        rpc.smallImageText = 0;
+      }
       rpc.startTimestamp = gStartTime;
       rpc.details = status;
-      rpc.largeImageKey = level;
-      rpc.largeImageText = full_level_name;
-      rpc.smallImageKey = 0;
-      rpc.smallImageText = 0;
       rpc.partySize = 0;
       rpc.partyMax = 0;
       Discord_UpdatePresence(&rpc);

@@ -25,6 +25,8 @@
 
 (#when PC_PORT
 
+(define-extern task-closed? (function game-task task-status symbol))
+(define-extern *ogreboss* basic)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
@@ -148,6 +150,7 @@
     (set! (-> info fuel) (&-> *game-info* fuel))
     (set! (-> info money-total) (&-> *game-info* money-total))
     (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
+    (set! (-> info deaths) (&-> *game-info* total-deaths))
     (set! (-> info status) "Playing Jak and Daxter: TPL")
     (set! (-> info level) (if *target*
       (symbol->string (-> *target* current-level name)) ;; use target's level if it exists
@@ -155,6 +158,18 @@
        )
       )
     (set! (-> info cutscene?) (movie?))
+    (set! (-> info ogreboss?) (when (and *ogreboss* (nonzero? *ogreboss*) *target* (not (task-closed? (game-task ogre-boss) (task-status need-resolution))))
+      #t
+       )
+      )
+    (set! (-> info racer?) (if (and *target* (nonzero? (-> *target* racer)))
+      #t
+       )
+      )
+    (set! (-> info flutflut?) (if (and *target* (nonzero? (-> *target* flut)))
+      #t
+       )
+      )
     (pc-discord-rpc-update info)
     )
 
