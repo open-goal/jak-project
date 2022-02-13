@@ -13,6 +13,7 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 ;; The triangle involved in collision
+;; Note: this is reused for the background collision system.
 (deftype collide-tri-result (structure)
   ((vertex    vector 3 :inline :offset-assert 0)
    (intersect vector  :inline  :offset-assert 48)
@@ -28,7 +29,7 @@
 ;; static mesh data
 ;;;;;;;;;;;;;;;;;;;;
 
-;; A triangle, part of the collision mesh.
+;; A triangle, part of a foreground collision mesh.
 ;; The vertex indices index into the collide-mesh vertex-data array.
 ;; Due to using uint8's you only get 256 vertices.
 (deftype collide-mesh-tri (structure)
@@ -61,8 +62,8 @@
     (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11) ;; spat
     (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12) ;; sopt
     (populate-cache! (_type_ collide-mesh-cache-tri matrix) none 13)
-    (dummy-14 (_type_ object object) none 14)
-    (dummy-15 (_type_ object object object) none 15)
+    (collide-mesh-math-1 (_type_ object object) none 14)
+    (collide-mesh-math-2 (_type_ object object object) none 15)
     )
   )
 
@@ -70,7 +71,9 @@
 ;; cache
 ;;;;;;;;;;;;;;;;;;;;
 
-;; the use of the cache is currently unknown.
+;; this is not the main collide cache, but instead a smaller cache for unpacking and
+;; transforming foreground meshes. It's not useful when filling/probing the real collide-cache,
+;; but is useful for the "loop through all the things that aren't me and see if I collide"
 
 (defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
 

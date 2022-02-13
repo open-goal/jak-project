@@ -178,7 +178,7 @@
 ;; joint animation.
 (deftype art-joint-anim (art-element)
   ;; figured out manually from custom inspect.
-  ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage
+  ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage (maybe merc eye data.)
    (speed float                  :offset 20)
    (artist-base float            :offset 24)
    (artist-step float            :offset 28)
@@ -291,19 +291,22 @@
     )
   )
 
+;; the draw statuses are somewhat confusing, as some are set by the engine
+;; and some are set by the game object code.
 (defenum draw-status
   :type uint8
   :bitfield #t
-  (needs-clip 0)
-  (drwf01 1) ;; hide
-  (drwf02 2) ;; no-anim
-  (drwf03 3) ;; draw
-  (drwf04 4)
-  (drwf05 5) ;; no bones
-  (drwf06 6) ;; don't use for closest check
-  (drwf07 7)
+  (needs-clip 0)          ;; set by engine, determines if object should be clipped
+  (hidden 1)              ;; set by user, can disable drawing and animation codes
+  (no-anim 2)             ;; set by engine, if there is no active joint animation
+  (was-drawn 3)           ;; set by engine, if we were drawn (passed cull checks)
+  (no-skeleton-update 4)  ;; set by engine, if our transforms are not valid
+  (skip-bones 5)          ;; set by user, skips call to draw-bones but does everything else
+  (do-not-check-distance 6) ;; set by user, ignore in finding closest object for texture calcs
+  (has-joint-channels 7)    ;; set by engine, if the object has joint channels.
   )
 
+;; only title seems to be used?
 (defenum draw-effect
   :type uint8
   (drweff0 0)
@@ -319,6 +322,9 @@
 (declare-type ripple-control basic)
 (declare-type shadow-geo basic)
 (declare-type shadow-control basic)
+
+;; the actual draw-control - this is just a collection of references to all info
+;; needed to do drawing.
 (deftype draw-control (basic)
   ((status                   draw-status     :offset-assert 4)
    (matrix-type              uint8           :offset-assert 5)
@@ -366,13 +372,14 @@
   :flag-assert         #xc000000bc
   (:methods
     (new (symbol type process art-joint-geo) _type_ 0)
-    (dummy-9 (_type_) vector 9)
+    (get-skeleton-origin (_type_) vector 9)
     (lod-set! (_type_ int) none 10)
     (lods-assign! (_type_ lod-set) none 11)
     )
   )
 
-(defmethod dummy-9 draw-control ((obj draw-control))
+(defmethod get-skeleton-origin draw-control ((obj draw-control))
+  "Get the origin of the skeleton. Must have up-to-date bones."
   (-> obj skeleton bones 0 position)
   )
 

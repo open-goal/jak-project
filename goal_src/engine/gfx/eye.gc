@@ -818,7 +818,7 @@
            )
       (when (and v1-40
                  (logtest? (-> (the-as process-drawable v1-40) skel status) 256)
-                 (logtest? (-> (the-as process-drawable v1-40) draw status) (draw-status drwf03))
+                 (logtest? (-> (the-as process-drawable v1-40) draw status) (draw-status was-drawn))
                  )
         (when (-> s5-3 shaders)
           (when (not (paused?))
@@ -1116,115 +1116,115 @@
   )
 
 (defun merc-eye-anim ((arg0 manipy))
-  (let* ((s5-0 (-> arg0 draw mgeo header eye-ctrl))
-         (a0-1 (-> arg0 skel root-channel 0))
-         (s4-0 (-> a0-1 frame-group))
-         )
-    (when (and (logtest? (-> arg0 skel status) 256)
-               (nonzero? s5-0)
-               (> (-> arg0 skel active-channels) 0)
-               s4-0
-               (nonzero? (-> s4-0 _unknown))
-               )
-      (let* ((v1-15 (-> *eye-control-array* data (-> s5-0 eye-slot)))
-             (s3-1 (min (the int (-> a0-1 frame-num)) (-> s4-0 _unknown 0)))
-             (s2-1 (min (+ (the int (-> a0-1 frame-num)) 1) (-> s4-0 _unknown 0)))
-             (f0-4 (-> a0-1 frame-num))
-             (f30-0 (- f0-4 (* (the float (the int (/ f0-4 1.0))) 1.0)))
-             )
-        (set! (-> v1-15 process) (process->handle arg0))
-        (set! (-> v1-15 shaders) (the-as (inline-array adgif-shader) (-> s5-0 iris-shader)))
-        (set! (-> v1-15 level) (the-as uint (-> (if (-> arg0 entity)
-                                                    (-> arg0 entity extra level)
-                                                    (-> *level* level-default)
-                                                    )
-                                                index
-                                                )
-                                       )
-              )
-        (let ((s1-0 (new 'stack-no-clear 'box8s))
-              (s0-0 (new 'stack-no-clear 'vector))
-              )
-          (cond
-            ((-> s4-0 _unknown)
-             (convert-eye-data
-               s1-0
-               (the-as
-                 uint128
-                 (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (* s3-1 2) 8))) 1)
-                 )
-               )
-             (convert-eye-data
-               (the-as box8s s0-0)
-               (the-as
-                 uint128
-                 (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (* s2-1 2) 8))) 1)
-                 )
-               )
-             (vector4-lerp!
-               (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 left)) (* 96 (-> s5-0 eye-slot))))
-               (the-as vector (-> s1-0 data))
-               (the-as vector (&-> s0-0 x))
-               f30-0
-               )
-             (vector4-lerp!
-               (the-as vector (&+ (&-> *eye-control-array* data 0 left iris-scale) (* 96 (-> s5-0 eye-slot))))
-               (-> s1-0 max)
-               (&+ s0-0 16)
-               f30-0
-               )
-             (convert-eye-data
-               s1-0
-               (the-as
-                 uint128
-                 (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (+ (* s3-1 2) 1) 8))) 1)
-                 )
-               )
-             (convert-eye-data
-               (the-as box8s s0-0)
-               (the-as
-                 uint128
-                 (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (+ (* s2-1 2) 1) 8))) 1)
-                 )
-               )
-             (vector4-lerp!
-               (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 right)) (* 96 (-> s5-0 eye-slot))))
-               (the-as vector (-> s1-0 data))
-               (the-as vector (&-> s0-0 x))
-               f30-0
-               )
-             (vector4-lerp!
-               (the-as vector (&+ (&-> *eye-control-array* data 0 right iris-scale) (* 96 (-> s5-0 eye-slot))))
-               (-> s1-0 max)
-               (&+ s0-0 16)
-               f30-0
-               )
-             )
-            (else
-              (let ((v1-37 (-> *eye-control-array* data (-> s5-0 eye-slot))))
-                (set! (-> v1-37 left x) 0.0)
-                (set! (-> v1-37 left y) 0.0)
-                (set! (-> v1-37 left lid) -1.0)
-                (set! (-> v1-37 left iris-scale) 1.0)
-                (set! (-> v1-37 left pupil-scale) 1.0)
-                (set! (-> v1-37 left lid-scale) 1.0)
-                (set! (-> v1-37 right x) 0.0)
-                (set! (-> v1-37 right y) 0.0)
-                (set! (-> v1-37 right lid) -1.0)
-                (set! (-> v1-37 right iris-scale) 1.0)
-                (set! (-> v1-37 right pupil-scale) 1.0)
-                (set! (-> v1-37 right lid-scale) 1.0)
-                )
-              )
-            )
-          )
-        )
-      (logior! (-> arg0 skel status) 128)
-      )
-    )
-  (if (logtest? (-> arg0 skel status) 128)
-      (set! (-> arg0 skel status) (logand -129 (-> arg0 skel status)))
-      )
+  ; (let* ((s5-0 (-> arg0 draw mgeo header eye-ctrl))
+  ;        (a0-1 (-> arg0 skel root-channel 0))
+  ;        (s4-0 (-> a0-1 frame-group))
+  ;        )
+  ;   (when (and (logtest? (-> arg0 skel status) 256)
+  ;              (nonzero? s5-0)
+  ;              (> (-> arg0 skel active-channels) 0)
+  ;              s4-0
+  ;              (nonzero? (-> s4-0 _unknown))
+  ;              )
+  ;     (let* ((v1-15 (-> *eye-control-array* data (-> s5-0 eye-slot)))
+  ;            (s3-1 (min (the int (-> a0-1 frame-num)) (-> s4-0 _unknown 0)))
+  ;            (s2-1 (min (+ (the int (-> a0-1 frame-num)) 1) (-> s4-0 _unknown 0)))
+  ;            (f0-4 (-> a0-1 frame-num))
+  ;            (f30-0 (- f0-4 (* (the float (the int (/ f0-4 1.0))) 1.0)))
+  ;            )
+  ;       (set! (-> v1-15 process) (process->handle arg0))
+  ;       (set! (-> v1-15 shaders) (the-as (inline-array adgif-shader) (-> s5-0 iris-shader)))
+  ;       (set! (-> v1-15 level) (the-as uint (-> (if (-> arg0 entity)
+  ;                                                   (-> arg0 entity extra level)
+  ;                                                   (-> *level* level-default)
+  ;                                                   )
+  ;                                               index
+  ;                                               )
+  ;                                      )
+  ;             )
+  ;       (let ((s1-0 (new 'stack-no-clear 'box8s))
+  ;             (s0-0 (new 'stack-no-clear 'vector))
+  ;             )
+  ;         (cond
+  ;           ((-> s4-0 _unknown)
+  ;            (convert-eye-data
+  ;              s1-0
+  ;              (the-as
+  ;                uint128
+  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (* s3-1 2) 8))) 1)
+  ;                )
+  ;              )
+  ;            (convert-eye-data
+  ;              (the-as box8s s0-0)
+  ;              (the-as
+  ;                uint128
+  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (* s2-1 2) 8))) 1)
+  ;                )
+  ;              )
+  ;            (vector4-lerp!
+  ;              (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 left)) (* 96 (-> s5-0 eye-slot))))
+  ;              (the-as vector (-> s1-0 data))
+  ;              (the-as vector (&-> s0-0 x))
+  ;              f30-0
+  ;              )
+  ;            (vector4-lerp!
+  ;              (the-as vector (&+ (&-> *eye-control-array* data 0 left iris-scale) (* 96 (-> s5-0 eye-slot))))
+  ;              (-> s1-0 max)
+  ;              (&+ s0-0 16)
+  ;              f30-0
+  ;              )
+  ;            (convert-eye-data
+  ;              s1-0
+  ;              (the-as
+  ;                uint128
+  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (+ (* s3-1 2) 1) 8))) 1)
+  ;                )
+  ;              )
+  ;            (convert-eye-data
+  ;              (the-as box8s s0-0)
+  ;              (the-as
+  ;                uint128
+  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (+ (* s2-1 2) 1) 8))) 1)
+  ;                )
+  ;              )
+  ;            (vector4-lerp!
+  ;              (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 right)) (* 96 (-> s5-0 eye-slot))))
+  ;              (the-as vector (-> s1-0 data))
+  ;              (the-as vector (&-> s0-0 x))
+  ;              f30-0
+  ;              )
+  ;            (vector4-lerp!
+  ;              (the-as vector (&+ (&-> *eye-control-array* data 0 right iris-scale) (* 96 (-> s5-0 eye-slot))))
+  ;              (-> s1-0 max)
+  ;              (&+ s0-0 16)
+  ;              f30-0
+  ;              )
+  ;            )
+  ;           (else
+  ;             (let ((v1-37 (-> *eye-control-array* data (-> s5-0 eye-slot))))
+  ;               (set! (-> v1-37 left x) 0.0)
+  ;               (set! (-> v1-37 left y) 0.0)
+  ;               (set! (-> v1-37 left lid) -1.0)
+  ;               (set! (-> v1-37 left iris-scale) 1.0)
+  ;               (set! (-> v1-37 left pupil-scale) 1.0)
+  ;               (set! (-> v1-37 left lid-scale) 1.0)
+  ;               (set! (-> v1-37 right x) 0.0)
+  ;               (set! (-> v1-37 right y) 0.0)
+  ;               (set! (-> v1-37 right lid) -1.0)
+  ;               (set! (-> v1-37 right iris-scale) 1.0)
+  ;               (set! (-> v1-37 right pupil-scale) 1.0)
+  ;               (set! (-> v1-37 right lid-scale) 1.0)
+  ;               )
+  ;             )
+  ;           )
+  ;         )
+  ;       )
+  ;     (logior! (-> arg0 skel status) 128)
+  ;     )
+  ;   )
+  ; (if (logtest? (-> arg0 skel status) 128)
+  ;     (set! (-> arg0 skel status) (logand -129 (-> arg0 skel status)))
+  ;     )
   0
   (none)
   )

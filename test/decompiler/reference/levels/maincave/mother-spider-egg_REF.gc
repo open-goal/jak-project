@@ -188,7 +188,10 @@
 ;; Used lq/sq
 (defmethod draw-egg-shadow mother-spider-egg ((obj mother-spider-egg) (arg0 vector) (arg1 symbol))
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-1 (new 'stack-no-clear 'vector))
            (a2-1 (new 'stack-no-clear 'vector))
@@ -407,7 +410,7 @@
 (defstate mother-spider-egg-hatch (mother-spider-egg)
   :trans
   (behavior ()
-    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status drwf03)))
+    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status was-drawn)))
       (let ((a1-0 (new 'stack-no-clear 'vector)))
         (set! (-> a1-0 quad) (-> self fall-dest quad))
         (compute-and-draw-shadow
@@ -597,7 +600,7 @@
   :code
   (behavior ()
     (send-event (ppointer->process (-> self parent-override)) 'untrigger)
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (let ((v1-8 (-> self draw shadow-ctrl)))
       (logior! (-> v1-8 settings flags) 32)
       )
