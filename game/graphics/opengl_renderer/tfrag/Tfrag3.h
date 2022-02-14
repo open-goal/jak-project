@@ -2,6 +2,7 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
+#include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
@@ -12,20 +13,24 @@ class Tfrag3 {
   Tfrag3();
   ~Tfrag3();
 
-  void debug_render_all_trees_nolores(const TfragRenderSettings& settings,
+  void debug_render_all_trees_nolores(int geom,
+                                      const TfragRenderSettings& settings,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof);
 
-  void render_all_trees(const TfragRenderSettings& settings,
+  void render_all_trees(int geom,
+                        const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
-  void render_matching_trees(const std::vector<tfrag3::TFragmentTreeKind>& trees,
+  void render_matching_trees(int geom,
+                             const std::vector<tfrag3::TFragmentTreeKind>& trees,
                              const TfragRenderSettings& settings,
                              SharedRenderState* render_state,
                              ScopedProfilerNode& prof);
 
-  void render_tree(const TfragRenderSettings& settings,
+  void render_tree(int geom,
+                   const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof);
 
@@ -47,7 +52,11 @@ class Tfrag3 {
   bool update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
                    const tfrag3::Level* lev_data);
 
+  int lod() const { return Gfx::g_global_settings.lod_tfrag; }
+
  private:
+  static constexpr int GEOM_MAX = 3;
+
   struct TreeCache {
     tfrag3::TFragmentTreeKind kind;
     GLuint vertex_buffer = -1;
@@ -82,7 +91,7 @@ class Tfrag3 {
   std::string m_level_name;
 
   const std::vector<GLuint>* m_textures = nullptr;
-  std::vector<TreeCache> m_cached_trees;
+  std::array<std::vector<TreeCache>, GEOM_MAX> m_cached_trees;
 
   std::vector<math::Vector<u8, 4>> m_color_result;
 

@@ -161,7 +161,7 @@ struct Level {
   u16 version = TFRAG3_VERSION;
   std::string level_name;
   std::vector<Texture> textures;
-  std::vector<TfragTree> tfrag_trees;
+  std::array<std::vector<TfragTree>, 3> tfrag_trees;
   std::array<std::vector<TieTree>, 4> tie_trees;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
