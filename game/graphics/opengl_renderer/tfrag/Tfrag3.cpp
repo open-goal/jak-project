@@ -328,8 +328,7 @@ void Tfrag3::render_matching_trees(int geom,
     if (!tree.allowed) {
       continue;
     }
-    if (std::find(trees.begin(), trees.end(), tree.kind) != trees.end() ||
-        tree.forced) {
+    if (std::find(trees.begin(), trees.end(), tree.kind) != trees.end() || tree.forced) {
       tree.rendered_this_frame = true;
       settings_copy.tree_idx = i;
       render_tree(geom, settings_copy, render_state, prof);

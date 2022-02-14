@@ -2317,7 +2317,8 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
 
     // debug save to .obj
     if (dump_level) {
-      auto dir = file_util::get_file_path({fmt::format("debug_out/lod{}-tie-{}/", geo, debug_name)});
+      auto dir =
+          file_util::get_file_path({fmt::format("debug_out/lod{}-tie-{}/", geo, debug_name)});
       file_util::create_dir_if_needed(dir);
       for (auto& proto : info) {
         auto data = debug_dump_proto_to_obj(proto);
