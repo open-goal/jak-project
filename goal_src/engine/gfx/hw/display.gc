@@ -6,6 +6,9 @@
 ;; dgos: GAME, ENGINE
 
 
+(defconstant DMA_BUFFER_GLOBAL_SIZE (* PROCESS_HEAP_MULT 1712 1024))
+(defconstant DMA_BUFFER_DEBUG_SIZE (* 8 1024 1024))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -273,14 +276,14 @@
     ;; the main DMA buffers for each frame's drawing. The buckets in the calc buf will reference data in here.
     ;; the individual renderers use these buffers.
     ;; the reason for separate calc/global buf is unknown.
-    (set! (-> arg0 frames 0 frame global-buf) (new 'global 'dma-buffer #x1ac000))
-    (set! (-> arg0 frames 1 frame global-buf) (new 'global 'dma-buffer #x1ac000))
+    (set! (-> arg0 frames 0 frame global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+    (set! (-> arg0 frames 1 frame global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
 
     ;; there are separate debug buffers in debug mode that live in the debug heap.
     ;; these are used to draw all of the debug stuff.
     (when *debug-segment*
-      (set! (-> arg0 frames 0 frame debug-buf) (new 'debug 'dma-buffer #x800000))
-      (set! (-> arg0 frames 1 frame debug-buf) (new 'debug 'dma-buffer #x800000))
+      (set! (-> arg0 frames 0 frame debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      (set! (-> arg0 frames 1 frame debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
       )
     )
   arg0
