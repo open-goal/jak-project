@@ -35,13 +35,6 @@ jobs:
       BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
     steps:
-      # NOTE - useful for debugging
-      # - name: Dump GitHub context
-      #   env:
-      #     GITHUB_CONTEXT: ${{ toJson(github) }}
-      #   run: |
-      #     echo "$GITHUB_CONTEXT"
-
       - name: Checkout Repository
         uses: actions/checkout@v2
 
@@ -56,26 +49,19 @@ jobs:
         with:
           cache_key: ${{ matrix.os }}-${{ matrix.config }}-${{ matrix.compiler }}
 
+      - name: Setup Visual Studio Tools on PATH
+        uses: microsoft/setup-msbuild@v1.0.1
+
       - name: CMake Generation
-        shell: cmd # ideally id like everything to be powershell but running this bat file is finicky
         run: |
-          if "${{ matrix.compiler }}" == "clang" (
-            call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-            cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe "-DCMAKE_C_COMPILER=C:/Program Files/LLVM/bin/clang-cl.exe" "-DCMAKE_CXX_COMPILER=C:/Program Files/LLVM/bin/clang-cl.exe" .
-          ) else (
-            call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-            cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe .
-          )
+          if [ "${{ matrix.compiler }}" == 'clang' ]; then
+            cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe "-DCMAKE_C_COMPILER=C:/Program Files/LLVM/bin/clang-cl.exe" "-DCMAKE_CXX_COMPILER=C:/Program Files/LLVM/bin/clang-cl.exe" .
+          else
+            cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe .
+          fi
 
       - name: Build Project
-        working-directory: ./build
-        shell: cmd
-        run: |
-          call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-          if "${{ matrix.compiler }}" == "msvc" (
-            set CL=/MP
-          )
-          nmake
+        run: cmake --build build
 
       - name: Run Tests
         timeout-minutes: 5
