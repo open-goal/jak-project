@@ -63,7 +63,6 @@ elseif(MSVC)
     endif()
     # c++ flags for all build types
     set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
-    
     # linker flags
     set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
 endif()
@@ -79,24 +78,6 @@ if(ASAN_BUILD)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1")
     message(STATUS "Doing ASAN build")
 endif()
-
-# if(WIN32)
-#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/windows/)
-#   if(buildcache_program)
-#     message("Found Windows BuildCache, gonna use it!")
-#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
-#   else()
-#     message("Windows Buildcache not found!")
-#   endif()
-# else()
-#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/linux/)
-#   if(buildcache_program)
-#     message("Found Linux BuildCache, gonna use it!")
-#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
-#   else()
-#     message("Linux Buildcache not found!")
-#   endif()
-# endif()
 
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
@@ -170,8 +151,11 @@ option(ZYDIS_BUILD_EXAMPLES "Zydis: Build examples" OFF)
 option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
 add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
 
-
 # windows memory management lib
 if(WIN32)
     add_subdirectory(third-party/mman)
 endif()
+
+# Check for AVX / AVX2 extensions
+include(FindAVX)
+FIND_PACKAGE(AVX 2.0 REQUIRED)
