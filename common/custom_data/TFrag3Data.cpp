@@ -120,13 +120,15 @@ void Level::serialize(Serializer& ser) {
     tree.serialize(ser);
   }
 
-  if (ser.is_saving()) {
-    ser.save<size_t>(tie_trees.size());
-  } else {
-    tie_trees.resize(ser.load<size_t>());
-  }
-  for (auto& tree : tie_trees) {
-    tree.serialize(ser);
+  for (int geom = 0; geom < 4; ++geom) {
+    if (ser.is_saving()) {
+      ser.save<size_t>(tie_trees[geom].size());
+    } else {
+      tie_trees[geom].resize(ser.load<size_t>());
+    }
+    for (auto& tree : tie_trees[geom]) {
+      tree.serialize(ser);
+    }
   }
 
   ser.from_ptr(&version2);

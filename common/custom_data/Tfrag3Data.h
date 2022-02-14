@@ -11,7 +11,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 9;
+constexpr int TFRAG3_VERSION = 10;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -162,7 +162,7 @@ struct Level {
   std::string level_name;
   std::vector<Texture> textures;
   std::vector<TfragTree> tfrag_trees;
-  std::vector<TieTree> tie_trees;
+  std::array<std::vector<TieTree>, 4> tie_trees;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
 };

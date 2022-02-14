@@ -187,7 +187,8 @@ void TFragment::render(DmaFollower& dma,
 
         m_many_level_render.tfrag_level_renderers[i]->debug_render_all_trees_nolores(
             settings, render_state, t3prof);
-        m_many_level_render.tie_level_renderers[i]->render_all_trees(settings, render_state,
+        // always renders max lod
+        m_many_level_render.tie_level_renderers[i]->render_all_trees(0, settings, render_state,
                                                                      t3prof);
       }
     }

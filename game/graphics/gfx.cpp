@@ -256,4 +256,18 @@ int PadAnalogValue(Pad::Analog analog, int port) {
   return Pad::AnalogValue(g_settings.pad_mapping_info, analog, port);
 }
 
+void SetLod(RendererTreeType tree, int lod) {
+  switch (tree) {
+    case RendererTreeType::TFRAG3:
+      g_global_settings.lod_tfrag = lod;
+      break;
+    case RendererTreeType::TIE3:
+      g_global_settings.lod_tie = lod;
+      break;
+    default:
+      lg::error("Invalid tree {} specified for SetLod ({})", tree, lod);
+      break;
+  }
+}
+
 }  // namespace Gfx

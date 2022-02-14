@@ -826,6 +826,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
+  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
