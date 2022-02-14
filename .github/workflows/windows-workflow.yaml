@@ -32,6 +32,7 @@ jobs:
       BUILDCACHE_COMPRESS_FORMAT: ZSTD
       BUILDCACHE_COMPRESS_LEVEL: 19
       BUILDCACHE_DIRECT_MODE: true
+      BUILDCACHE_DEBUG: 1
       BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
     steps:
@@ -55,13 +56,16 @@ jobs:
       - name: CMake Generation
         run: |
           if [ "${{ matrix.compiler }}" == 'clang' ]; then
-            cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe "-DCMAKE_C_COMPILER=C:/Program Files/LLVM/bin/clang-cl.exe" "-DCMAKE_CXX_COMPILER=C:/Program Files/LLVM/bin/clang-cl.exe" .
+            cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe "-DCMAKE_C_COMPILER=clang-cl" "-DCMAKE_CXX_COMPILER=clang-cl" .
           else
             cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe .
           fi
 
       - name: Build Project
         run: cmake --build build
+
+      - name: debugging
+        run: cat ${{ github.workspace }}/buildcache.log
 
       - name: Run Tests
         timeout-minutes: 5
