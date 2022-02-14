@@ -126,6 +126,8 @@ static int gl_init(GfxSettings& settings) {
   } else {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
   }
+  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+  glfwWindowHint(GLFW_SAMPLES, 4);
 
   return 0;
 }
@@ -141,7 +143,6 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
                                                         int height,
                                                         const char* title,
                                                         GfxSettings& settings) {
-  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
 
   if (!window) {
