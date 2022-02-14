@@ -159,7 +159,7 @@ nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 
 ### Required Software
 
-We primarily use Visual Studio on Windows for C++ development.  Download the community edition from [here](https://visualstudio.microsoft.com/vs/)
+We primarily use Visual Studio on Windows for C++ development.  Download the latest community edition from [here](https://visualstudio.microsoft.com/vs/)
 
 You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer`, modifying the Visual Studio Installation.
 
