@@ -51,9 +51,9 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // disable specific errors
-  // const GLuint gl_error_ignores_api_perf[1] = {};
-  // glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0,
-  // &gl_error_ignores_api_perf[0], GL_FALSE);
+  const GLuint gl_error_ignores_api_other[1] = {0x20071};
+  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 1,
+                        &gl_error_ignores_api_other[0], GL_FALSE);
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
