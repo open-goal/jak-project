@@ -87,7 +87,7 @@ Install packages and init repository:
 
 ```sh
 sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev python
-sudo snap install task --classic
+sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
 Compile:
