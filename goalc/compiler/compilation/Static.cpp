@@ -352,7 +352,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     if (is_integer(field_info.result_type) || field_info.result_type.base_type() == "pointer") {
       // first, try as a constant
       s64 value = 0;
-      if (!try_getting_constant_integer(field_value, &value, env)) {
+      bool got_constant = false;
+      got_constant = try_getting_constant_integer(field_value, &value, env);
+      if (!got_constant && is_bitfield(field_info.result_type) && !allow_dynamic_construction) {
+        auto static_result = compile_static(field_value, env);
+        if (static_result.is_constant_data()) {
+          auto constant_data = static_result.constant();
+          if (constant_data.size() == 8) {
+            typecheck(field_value, field_info.result_type, static_result.typespec(),
+                      "Type of static constant");
+            got_constant = true;
+            value = constant_data.value_64();
+          }
+        }
+      }
+      if (!got_constant) {
         // failed to get as constant, add to dynamic or error.
         if (allow_dynamic_construction) {
           DynamicDef dyn;

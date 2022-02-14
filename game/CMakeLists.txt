@@ -74,6 +74,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
+        graphics/opengl_renderer/EyeRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
         graphics/opengl_renderer/Loader.cpp
         graphics/opengl_renderer/MercProgram.cpp

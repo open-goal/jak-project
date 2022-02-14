@@ -22,12 +22,11 @@ class AdgifHelper {
 
   std::string print() const {
     std::string result;
-    result +=
-        fmt::format("[0] {}\n  {}\n", register_address_name(m_data.tex0_addr), m_tex0.print());
-    result +=
-        fmt::format("[1] {}\n  {}\n", register_address_name(m_data.tex1_addr), m_tex1.print());
+    result += fmt::format("[0] {}\n  {}", register_address_name(m_data.tex0_addr), m_tex0.print());
+    result += fmt::format("[1] {}\n  {}", register_address_name(m_data.tex1_addr), m_tex1.print());
     result += fmt::format("[2] {}\n", register_address_name(m_data.mip_addr));
-    result += fmt::format("[3] {}\n", register_address_name(m_data.clamp_addr));
+    result += fmt::format("[3] {}\n  0x{:x}\n", register_address_name(m_data.clamp_addr),
+                          m_data.clamp_data);
     result +=
         fmt::format("[4] {}\n  {}\n", register_address_name(m_data.alpha_addr), m_alpha.print());
     return result;

@@ -149,6 +149,15 @@ struct GsZbuf {
   u64 data;
 };
 
+struct GsScissor {
+  GsScissor(u64 val) : data(val) {}
+  u32 x0() const { return data & 0b11111111111; }
+  u32 x1() const { return (data >> 16) & 0b11111111111; }
+  u32 y0() const { return (data >> 32) & 0b11111111111; }
+  u32 y1() const { return (data >> 48) & 0b11111111111; }
+  u64 data;
+};
+
 struct GsTest {
   GsTest() = default;
   GsTest(u64 val) : data(val) {}
