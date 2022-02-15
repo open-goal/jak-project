@@ -35,7 +35,7 @@ void EyeRenderer::render(DmaFollower& dma,
     return;
   }
 
-  handle_eye_dma(dma, render_state, prof);
+  handle_eye_dma2<false>(dma, render_state, prof);
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
@@ -164,99 +164,133 @@ EyeDraw read_eye_draw(DmaFollower& dma) {
   return {sprite, scissor};
 }
 
-void eye_draw_fill(u32* eye_tex_data, u32 y0, u32 y1, u32 val) {
-  u32 idx_start = y0 * EYE_TEX_WIDTH;
-  u32 idx_end = y1 * EYE_TEX_WIDTH;
-  for (u32 i = idx_start; i < idx_end; i++) {
-    eye_tex_data[i] = val;
-  }
+void EyeRenderer::draw_debug_window() {
+  ImGui::Text("Time: %.3f ms\n", m_average_time_ms);
+  ImGui::Text("Debug:\n%s", m_debug.c_str());
+  ImGui::Checkbox("bilinear", &m_use_bilinear);
+  ImGui::Checkbox("alpha hack", &m_alpha_hack);
 }
 
-void eye_draw_slow(u32* eye_tex_data,
-                   int x0,
-                   int x1,
-                   int y0,
-                   int y1,
-                   u32 sx0,
-                   u32 sx1,
-                   u32 sy0,
-                   u32 sy1,
-                   const TextureRecord& tex) {
-  x0 = (x0 - 512) >> 4;
-  y0 = (y0 - 512) >> 4;
-  x1 = (x1 - 512) >> 4;
-  y1 = (y1 - 512) >> 4;
+u32 bilinear_sample_eye(const u8* tex, float tx, float ty, int texw) {
+  int tx0 = tx;
+  int ty0 = ty;
+  int tx1 = tx0 + 1;
+  int ty1 = ty0 + 1;
+  tx1 = std::min(tx1, texw - 1);
+  ty1 = std::min(ty1, texw - 1);
 
-  ASSERT(x1 >= x0);
-  ASSERT(y1 >= y0);
+  u8 tex0[4];
+  u8 tex1[4];
+  u8 tex2[4];
+  u8 tex3[4];
+  memcpy(tex0, tex + (4 * (tx0 + ty0 * texw)), 4);
+  memcpy(tex1, tex + (4 * (tx1 + ty0 * texw)), 4);
+  memcpy(tex2, tex + (4 * (tx0 + ty1 * texw)), 4);
+  memcpy(tex3, tex + (4 * (tx1 + ty1 * texw)), 4);
 
-  for (int y = y0; y < y1; y++) {
-    if (y < sy0 || y > sy1) {
-      continue;
-    }
-    float y_texf = float(y - y0) / float(y1 - y0);
-    int y_tex = y_texf * tex.h;
-    for (int x = x0; x < x1; x++) {
-      if (x < sx0 || x > sx1) {
-        continue;
-      }
+  u8 result[4] = {0, 0, 0, 0};
+  float x0w = float(tx1) - tx;
+  float y0w = float(ty1) - ty;
+  float weights[4] = {x0w * y0w, (1.f - x0w) * y0w, x0w * (1.f - y0w), (1.f - x0w) * (1.f - y0w)};
 
-      float x_texf = float(x - x0) / float(x1 - x0);
-      int x_tex = x_texf * tex.w;
+  for (int i = 0; i < 4; i++) {
+    float total = 0;
+    total += weights[0] * tex0[i];
+    total += weights[1] * tex1[i];
+    total += weights[2] * tex2[i];
+    total += weights[3] * tex3[i];
+    result[i] = total;
+  }
+
+  // clamp
+  u32 tex_out;
+  memcpy(&tex_out, result, 4);
+  return tex_out;
+}
+
+template <bool blend, bool bilinear>
+void draw_eye_impl(u32* out,
+                   const EyeDraw& draw,
+                   const TextureRecord& tex,
+                   int pair,
+                   int lr,
+                   bool flipx) {
+  // first, figure out the rectangle we'd cover if there was no scissoring
+
+  int x0 = ((((int)draw.sprite.xyz0[0]) - 512) >> 4);
+  int x1 = ((((int)draw.sprite.xyz1[0]) - 512) >> 4);
+  if (flipx) {
+    std::swap(x0, x1);
+  }
+
+  int y0 = ((((int)draw.sprite.xyz0[1]) - 512) >> 4);
+  int y1 = ((((int)draw.sprite.xyz1[1]) - 512) >> 4);
+
+  // then the offset because the game tries to draw to a big texture, but we do an eye at a time
+  int x_off = lr * SINGLE_EYE_SIZE;
+  int y_off = pair * SINGLE_EYE_SIZE;
+
+  // apply scissoring bounds
+  int x0s = std::max(x0, (int)draw.scissor.x0) - x_off;
+  int y0s = std::max(y0, (int)draw.scissor.y0) - y_off;
+  int x1s = std::min(x1, (int)draw.scissor.x1) - x_off;
+  int y1s = std::min(y1, (int)draw.scissor.y1) - y_off;
+
+  // compute inverse lengths (of non-scissored)
+  float inv_xl = .999f / ((float)(x1 - x0));
+  float inv_yl = .999f / ((float)(y1 - y0));
+
+  // starts
+  float tx0 = tex.w * (x0s - x0 + x_off) * inv_xl;
+  float ty0 = tex.h * (y0s - y0 + y_off) * inv_yl;
+
+  // steps
+  float txs = tex.w * inv_xl;
+  float tys = tex.h * inv_yl;
+
+  float ty = ty0;
+  for (int yd = y0s; yd < y1s; yd++) {
+    float tx = tx0;
+    for (int xd = x0s; xd < x1s; xd++) {
       u32 val;
-      memcpy(&val, tex.data.data() + (4 * (x_tex + y_tex * tex.w)), 4);
-      eye_tex_data[x + y * EYE_TEX_WIDTH] = val;
+      if (bilinear) {
+        val = bilinear_sample_eye(tex.data.data(), tx, ty, tex.w);
+      } else {
+        int tc = int(tx) + tex.w * int(ty);
+        memcpy(&val, tex.data.data() + (4 * tc), 4);
+      }
+      if (blend) {
+        if ((val >> 24) != 0) {
+          out[xd + yd * SINGLE_EYE_SIZE] = val;
+        }
+      } else {
+        out[xd + yd * SINGLE_EYE_SIZE] = val;
+      }
+      tx += txs;
     }
+    ty += tys;
   }
 }
 
-
-void eye_draw_slow_alpha(u32* eye_tex_data,
-                         int x0,
-                         int x1,
-                         int y0,
-                         int y1,
-                         u32 sx0,
-                         u32 sx1,
-                         u32 sy0,
-                         u32 sy1,
-                         const TextureRecord& tex) {
-  x0 = (x0 - 512) >> 4;
-  y0 = (y0 - 512) >> 4;
-  x1 = (x1 - 512) >> 4;
-  y1 = (y1 - 512) >> 4;
-
-  ASSERT(x1 >= x0);
-  ASSERT(y1 >= y0);
-
-  for (int y = y0; y < y1; y++) {
-    if (y < sy0 || y > sy1) {
-      continue;
-    }
-    float y_texf = float(y - y0) / float(y1 - y0);
-    int y_tex = y_texf * tex.h;
-    for (int x = x0; x < x1; x++) {
-      if (x < sx0 || x > sx1) {
-        continue;
-      }
-
-      float x_texf = float(x - x0) / float(x1 - x0);
-      int x_tex = x_texf * tex.w;
-      u32 val;
-      memcpy(&val, tex.data.data() + (4 * (x_tex + y_tex * tex.w)), 4);
-      if ((val >> 24) == 0) {
-        continue;
-      }
-      eye_tex_data[x + y * EYE_TEX_WIDTH] = val;
-    }
+template <bool blend>
+void draw_eye(u32* out,
+              const EyeDraw& draw,
+              const TextureRecord& tex,
+              int pair,
+              int lr,
+              bool flipx,
+              bool bilinear) {
+  if (bilinear) {
+    draw_eye_impl<blend, true>(out, draw, tex, pair, lr, flipx);
+  } else {
+    draw_eye_impl<blend, false>(out, draw, tex, pair, lr, flipx);
   }
 }
 
-constexpr int EYE_BASE_BLOCK = 8160;
-
-void EyeRenderer::handle_eye_dma(DmaFollower& dma,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
+template <bool DEBUG>
+void EyeRenderer::handle_eye_dma2(DmaFollower& dma,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode&) {
   Timer timer;
   m_debug.clear();
 
@@ -272,8 +306,6 @@ void EyeRenderer::handle_eye_dma(DmaFollower& dma,
   ASSERT(alpha_setup.vifcode0().kind == VifCode::Kind::NOP);
   ASSERT(alpha_setup.vifcode1().kind == VifCode::Kind::DIRECT);
 
-  // begin eyes loop (TODO)
-
   // from the add to bucket
   ASSERT(dma.current_tag().kind == DmaTag::Kind::NEXT);
   ASSERT(dma.current_tag().qwc == 0);
@@ -281,215 +313,155 @@ void EyeRenderer::handle_eye_dma(DmaFollower& dma,
   ASSERT(dma.current_tag_vif1() == 0);
   dma.read_and_advance();
 
-  int num_drawn = 0;
+  // now, loop over eyes. end condition is a 8 qw transfer to restore gs.
   while (dma.current_tag().qwc != 8) {
-    num_drawn++;
-    //  - adgif0
+    // eye background setup
     auto adgif0_dma = dma.read_and_advance();
     ASSERT(adgif0_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
     ASSERT(adgif0_dma.vif0() == 0);
     ASSERT(adgif0_dma.vifcode1().kind == VifCode::Kind::DIRECT);
     AdgifHelper adgif0(adgif0_dma.data + 16);
-    m_debug += fmt::format("ADGIF0:\n{}\n", adgif0.print());
-
     auto tex0 = render_state->texture_pool->lookup(adgif0.tex0().tbp0());
-    m_debug += fmt::format("tex: {}\n", tex0->name);
+    if (DEBUG) {
+      m_debug += fmt::format("ADGIF0:\n{}\n", adgif0.print());
+      m_debug += fmt::format("tex: {}\n", tex0->name);
+    }
 
-    //  - scissor0
-    //  - sprite0
+    u32 pair_idx = -1;
+    // first draw. this is the background. It reads 0,0 of the texture uses that color everywhere.
+    // we'll also figure out the eye index here.
     {
-      // first draw! this is the clear. It reads 0,0 of the texture.
       auto draw0 = read_eye_draw(dma);
       ASSERT(draw0.sprite.uv0[0] == 0);
       ASSERT(draw0.sprite.uv0[1] == 0);
       ASSERT(draw0.sprite.uv1[0] == 0);
       ASSERT(draw0.sprite.uv1[1] == 0);
-      m_debug += fmt::format("DRAW0\n{}", draw0.print());
+      if (DEBUG) {
+        m_debug += fmt::format("DRAW0\n{}", draw0.print());
+      }
       u32 tex_val;
       memcpy(&tex_val, tex0->data.data(), 4);
+
       u32 y0 = (draw0.sprite.xyz0[1] - 512) >> 4;
-      u32 y1 = (draw0.sprite.xyz1[1] - 512) >> 4;
-      eye_draw_fill(render_state->eye_texture.data(), y0, y1, tex_val);
+      pair_idx = y0 / SINGLE_EYE_SIZE;
+      for (auto& x : m_left) {
+        x = tex_val;
+      }
+      for (auto& x : m_right) {
+        x = tex_val;
+      }
     }
 
-    //  - scissor1
-    //  - sprite1
-    auto draw1 = read_eye_draw(dma);
-    m_debug += fmt::format("DRAW1\n{}", draw1.print());
-    /*
-     *             u32 x0,
-                   u32 x1,
-                   u32 y0,
-                   u32 y1,
-                   u32 sx0,
-                   u32 sx1,
-                   u32 sy0,
-                   u32 sy1,
-     */
-    eye_draw_slow(render_state->eye_texture.data(), draw1.sprite.xyz0[0], draw1.sprite.xyz1[0],
-                  draw1.sprite.xyz0[1], draw1.sprite.xyz1[1], draw1.scissor.x0, draw1.scissor.x1,
-                  draw1.scissor.y0, draw1.scissor.y1, *tex0);
+    // up next is the pupil background
+    {
+      auto draw1 = read_eye_draw(dma);
+      auto draw2 = read_eye_draw(dma);
+      if (DEBUG) {
+        m_debug += fmt::format("DRAW1\n{}", draw1.print());
+        m_debug += fmt::format("DRAW2\n{}", draw2.print());
+      }
+      draw_eye<false>(m_left, draw1, *tex0, pair_idx, 0, false, m_use_bilinear);
+      draw_eye<false>(m_right, draw2, *tex0, pair_idx, 1, false, m_use_bilinear);
+    }
 
-    //  - scissor2
-    //  - sprite2
-    auto draw2 = read_eye_draw(dma);
-    m_debug += fmt::format("DRAW2\n{}", draw2.print());
-    eye_draw_slow(render_state->eye_texture.data(), draw2.sprite.xyz0[0], draw2.sprite.xyz1[0],
-                  draw2.sprite.xyz0[1], draw2.sprite.xyz1[1], draw2.scissor.x0, draw2.scissor.x1,
-                  draw2.scissor.y0, draw2.scissor.y1, *tex0);
-
-    //  - ztest/alphas
+    // now we'll draw the iris on top of that
     auto test1 = dma.read_and_advance();
-
-    //  - adgif1
+    (void)test1;
     auto adgif1_dma = dma.read_and_advance();
     ASSERT(adgif1_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
     ASSERT(adgif1_dma.vif0() == 0);
     ASSERT(adgif1_dma.vifcode1().kind == VifCode::Kind::DIRECT);
     AdgifHelper adgif1(adgif1_dma.data + 16);
-    m_debug += fmt::format("ADGIF1:\n{}\n", adgif1.print());
     auto tex1 = render_state->texture_pool->lookup(adgif1.tex0().tbp0());
-    m_debug += fmt::format("tex: {}\n", tex1->name);
+    if (DEBUG) {
+      m_debug += fmt::format("ADGIF1:\n{}\n", adgif1.print());
+      m_debug += fmt::format("tex: {}\n", tex1->name);
+    }
 
-    //  - scissor0
-    //  - sprite0
-    auto draw3 = read_eye_draw(dma);
-    m_debug += fmt::format("DRAW3\n{}", draw3.print());
-    eye_draw_slow_alpha(render_state->eye_texture.data(), draw3.sprite.xyz0[0],
-                        draw3.sprite.xyz1[0], draw3.sprite.xyz0[1], draw3.sprite.xyz1[1],
-                        draw3.scissor.x0, draw3.scissor.x1, draw3.scissor.y0, draw3.scissor.y1,
-                        *tex1);
-    //  - scissor1
-    //  - sprite1
-    auto draw4 = read_eye_draw(dma);
-    m_debug += fmt::format("DRAW4\n{}", draw4.print());
-    eye_draw_slow_alpha(render_state->eye_texture.data(), draw4.sprite.xyz0[0],
-                        draw4.sprite.xyz1[0], draw4.sprite.xyz0[1], draw4.sprite.xyz1[1],
-                        draw4.scissor.x0, draw4.scissor.x1, draw4.scissor.y0, draw4.scissor.y1,
-                        *tex1);
+    {
+      auto draw1 = read_eye_draw(dma);
+      auto draw2 = read_eye_draw(dma);
+      if (DEBUG) {
+        m_debug += fmt::format("DRAW1\n{}", draw1.print());
+        m_debug += fmt::format("DRAW2\n{}", draw2.print());
+      }
+      draw_eye<true>(m_left, draw1, *tex1, pair_idx, 0, false, m_use_bilinear);
+      draw_eye<true>(m_right, draw2, *tex1, pair_idx, 1, false, m_use_bilinear);
+    }
 
-    //  - ztest/alphas
+    // and finally the eyelid
     auto test2 = dma.read_and_advance();
-
+    (void)test2;
     auto adgif2_dma = dma.read_and_advance();
     ASSERT(adgif2_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
     ASSERT(adgif2_dma.vif0() == 0);
     ASSERT(adgif2_dma.vifcode1().kind == VifCode::Kind::DIRECT);
     AdgifHelper adgif2(adgif2_dma.data + 16);
-    m_debug += fmt::format("ADGIF2:\n{}\n", adgif2.print());
     auto tex2 = render_state->texture_pool->lookup(adgif2.tex0().tbp0());
-    m_debug += fmt::format("tex: {}\n", tex2->name);
+    if (DEBUG) {
+      m_debug += fmt::format("ADGIF2:\n{}\n", adgif2.print());
+      m_debug += fmt::format("tex: {}\n", tex2->name);
+    }
 
-    //  - scissor
-    //  - sprite
-    auto draw5 = read_eye_draw(dma);
-    m_debug += fmt::format("DRAW5\n{}", draw5.print());
-    eye_draw_slow(render_state->eye_texture.data(), draw5.sprite.xyz0[0], draw5.sprite.xyz1[0],
-                   draw5.sprite.xyz0[1], draw5.sprite.xyz1[1], draw5.scissor.x0, draw5.scissor.x1,
-                   draw5.scissor.y0, draw5.scissor.y1, *tex2);
-    //  - scissor
-    //  - sprite
-    auto draw6 = read_eye_draw(dma);
-    m_debug += fmt::format("DRAW6\n{}", draw6.print());
-    eye_draw_slow(render_state->eye_texture.data(), draw6.sprite.xyz1[0], draw6.sprite.xyz0[0],
-                  draw6.sprite.xyz0[1], draw6.sprite.xyz1[1], draw6.scissor.x0, draw6.scissor.x1,
-                  draw6.scissor.y0, draw6.scissor.y1, *tex2);
+    {
+      auto draw1 = read_eye_draw(dma);
+      auto draw2 = read_eye_draw(dma);
+      if (DEBUG) {
+        m_debug += fmt::format("DRAW1\n{}", draw1.print());
+        m_debug += fmt::format("DRAW2\n{}", draw2.print());
+      }
+      draw_eye<false>(m_left, draw1, *tex2, pair_idx, 0, false, m_use_bilinear);
+      draw_eye<false>(m_right, draw2, *tex2, pair_idx, 1, true, m_use_bilinear);
+    }
 
     auto end = dma.read_and_advance();
     ASSERT(end.size_bytes == 0);
     ASSERT(end.vif0() == 0);
     ASSERT(end.vif1() == 0);
 
-    if (m_dump_to_file) {
-      file_util::write_rgba_png(file_util::get_file_path({fmt::format("debug_out/eyes-{}-pre.png", num_drawn)}),
-                                render_state->eye_texture.data(), EYE_TEX_WIDTH, EYE_TEX_HEIGHT,
-                                false);
-    }
+    if (m_alpha_hack) {
+      for (auto& a : m_left) {
+        a |= 0xff000000;
+      }
 
-  }
-
-  // how many pairs of eyes.
-  u32 temp_upload[32 * 32];
-  for (int i = 0; i < 11; i++) {
-    TextureRecord* left_eye = render_state->texture_pool->lookup(EYE_BASE_BLOCK + i * 2);
-    if (!left_eye) {
-      // no eye texture... need to create it.
-      auto left = std::make_shared<TextureRecord>();
-      left->name = fmt::format("left-eye-{}", i);
-      left->only_on_gpu = true;
-      left->on_gpu = true;
-      left->do_gc = false;
-      left->w = 32;
-      left->h = 32;
-      GLuint tex;
-      glGenTextures(1, &tex);
-      left->gpu_texture = tex;
-      render_state->texture_pool->set_texture(EYE_BASE_BLOCK + i * 2, left);
-
-      left_eye = left.get();
-    }
-
-    TextureRecord* right_eye = render_state->texture_pool->lookup(EYE_BASE_BLOCK + i * 2 + 1);
-    if (!right_eye) {
-      // no eye texture... need to create it.
-      auto right = std::make_shared<TextureRecord>();
-      right->name = fmt::format("right-eye-{}", i);
-      right->only_on_gpu = true;
-      right->on_gpu = true;
-      right->do_gc = false;
-      right->w = 32;
-      right->h = 32;
-      GLuint tex;
-      glGenTextures(1, &tex);
-      right->gpu_texture = tex;
-      render_state->texture_pool->set_texture(EYE_BASE_BLOCK + i * 2 + 1, right);
-      right_eye = right.get();
-    }
-
-    // hack debug
-//    for (auto& px : render_state->eye_texture) {
-//      px |= 0x7f000000;
-//    }
-
-    // copy left to temp
-    for (int y = 0; y < 32; y++) {
-      for (int x = 0; x < 32; x++) {
-        temp_upload[y * 32 + x] = render_state->eye_texture[(i * 32 + y) * 64 + x];
+      for (auto& a : m_right) {
+        a |= 0xff000000;
       }
     }
 
-    glBindTexture(GL_TEXTURE_2D, left_eye->gpu_texture);
+    // upload to GPU:
+    auto left_tex = get_eye_tex(render_state, pair_idx, 0);
+    auto right_tex = get_eye_tex(render_state, pair_idx, 1);
+    glBindTexture(GL_TEXTURE_2D, left_tex->gpu_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                 temp_upload);
-
-    // copy right to temp
-    for (int y = 0; y < 32; y++) {
-      for (int x = 0; x < 32; x++) {
-        temp_upload[y * 32 + x] = render_state->eye_texture[(i * 32 + y) * 64 + x + 32];
-      }
-    }
-
-    glBindTexture(GL_TEXTURE_2D, right_eye->gpu_texture);
+                 m_left);
+    glBindTexture(GL_TEXTURE_2D, right_tex->gpu_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                 temp_upload);
-
-  }
-
-  if (m_dump_to_file) {
-    file_util::write_rgba_png(file_util::get_file_path({"debug_out/eyes-all.png"}),
-                              render_state->eye_texture.data(), EYE_TEX_WIDTH, EYE_TEX_HEIGHT,
-                              false);
-    m_dump_to_file = false;
+                 m_right);
   }
 
   float time_ms = timer.getMs();
   m_average_time_ms = m_average_time_ms * 0.95 + time_ms * 0.05;
 }
 
-void EyeRenderer::draw_debug_window() {
-  ImGui::Text("Time: %.3f ms\n", m_average_time_ms);
-  ImGui::Text("Debug:\n%s", m_debug.c_str());
-  if (ImGui::Button("Dump")) {
-    m_dump_to_file = true;
+TextureRecord* EyeRenderer::get_eye_tex(SharedRenderState* render_state, int pair_idx, int lr) {
+  int tbp = EYE_BASE_BLOCK + pair_idx * 2 + lr;
+  TextureRecord* existing = render_state->texture_pool->lookup(tbp);
+  if (existing) {
+    return existing;
   }
+
+  auto tex = std::make_shared<TextureRecord>();
+  tex->name = fmt::format("{}-eye-{}", lr ? "left" : "right", pair_idx);
+  tex->only_on_gpu = true;
+  tex->on_gpu = true;
+  tex->do_gc = false;
+  tex->w = 32;
+  tex->h = 32;
+  GLuint gl_tex;
+  glGenTextures(1, &gl_tex);
+  tex->gpu_texture = gl_tex;
+  render_state->texture_pool->set_texture(tbp, tex);
+
+  return tex.get();
 }

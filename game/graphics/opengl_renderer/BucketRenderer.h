@@ -65,9 +65,7 @@ constexpr int EYE_TEX_WIDTH = 64;
 constexpr int EYE_TEX_HEIGHT = 352;
 struct SharedRenderState {
   explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool)
-      : texture_pool(_texture_pool) {
-    eye_texture.resize(EYE_TEX_WIDTH * EYE_TEX_HEIGHT);
-  }
+      : texture_pool(_texture_pool) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
   Loader loader;
@@ -83,8 +81,6 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool render_debug = false;
-
-  std::vector<u32> eye_texture;
 
   void reset();
   bool has_camera_planes = false;
