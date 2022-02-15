@@ -7,18 +7,18 @@ tasks:
   # GENERAL
   extract-jak1:
     cmds:
-      - '{{.RELEASE_PATH}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out" "decompile_code=false"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out" "decompile_code=false"'
   boot-game:
     cmds:
-      - "{{.RELEASE_PATH}}/gk -boot -fakeiso -debug -v"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -debug -v"
   run-game:
     cmds:
-      - "{{.RELEASE_PATH}}/gk -fakeiso -debug -v"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -v"
   repl:
     env:
       OPENGOAL_DECOMP_DIR: "jak1/"
     cmds:
-      - "{{.RELEASE_PATH}}/goalc"
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc"
   # DEVELOPMENT
   format:
     cmds:
@@ -28,16 +28,16 @@ tasks:
         ignore_error: true
   run-game-headless:
     cmds:
-      - "{{.RELEASE_PATH}}/gk -fakeiso -debug -nodisplay"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -nodisplay"
   repl-lt:
     env:
       OPENGOAL_DECOMP_DIR: "jak1/"
     cmds:
-      - "{{.RELEASE_PATH}}/goalc -auto-lt"
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc -auto-lt"
   # DECOMPILING
   decomp:
     cmds:
-      - '{{.RELEASE_PATH}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out"'
   decomp-clean:
     cmds:
       - rm ./decompiler_out/**/*.asm
@@ -58,7 +58,7 @@ tasks:
   # TESTS
   offline-tests:
     cmds:
-      - '{{.RELEASE_PATH}}/offline-test "./iso_data/jak1"'
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test "./iso_data/jak1"'
   add-reference-test:
     cmds:
       - task: decomp-file
@@ -71,7 +71,7 @@ tasks:
   update-reference-tests:
     cmds:
       - cmd: python ./scripts/default-file-or-folder.py --path failures
-      - cmd: '{{.RELEASE_PATH}}/offline-test "./iso_data/jak1" --dump-mode'
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test "./iso_data/jak1" --dump-mode'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
       - task: offline-tests
@@ -82,7 +82,7 @@ tasks:
       - python ./scripts/find-label-types.py --file "{{.FILES}}"
   type-test:
     cmds:
-      - cmd: '{{.RELEASE_PATH}}/goalc-test --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"'
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"'
         ignore_error: true
   check-gsrc-file:
     cmds:
@@ -90,7 +90,7 @@ tasks:
   # TOOLS
   analyze-ee-memory:
     cmds:
-      - '{{.RELEASE_PATH}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
+      - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
   watch-pcsx2:
     cmds:
       - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"

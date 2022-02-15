@@ -86,6 +86,10 @@
 
 (defmethod lod-set! draw-control ((obj draw-control) (arg0 int))
   ;; note: good spot to mess with lods here.
+  (with-pc
+    (if (not (-> *pc-settings* ps2-lod-dist?))
+      (set! arg0 (-> *pc-settings* lod-force-actor)))
+    )
   (let ((v1-1 (max 0 (min arg0 (-> obj lod-set max-lod)))))
     (set! (-> obj desired-lod) v1-1)
     (when (!= (-> obj cur-lod) v1-1)
@@ -258,6 +262,14 @@
   )
 
 (defun execute-math-engine ()
+  (#when PC_PORT
+    (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
+                                 (bucket-id debug-draw1))
+        (when (-> *pc-settings* display-actor-counts)
+          (draw-string-xy (string-format "M: ~D/~D A: ~D" (-> *matrix-engine* length) MATRIX_ENGINE_AMOUNT (process-count *active-pool*)) debug-buf 8 (- 224 18) (font-color default) (font-flags shadow kerning))
+          )
+        )
+    )
   (let ((gp-0 *matrix-engine*))
     (countdown (s5-0 (-> gp-0 length))
       (let ((a0-1 (handle->process (-> gp-0 s5-0))))
@@ -985,9 +997,12 @@
           )
         )
       )
-    (let ((v1-24 *matrix-engine*))
-      (set! (-> v1-24 (-> v1-24 length)) (process->handle self))
-      (+! (-> v1-24 length) 1)
+    ;; NOTE : added matrix-engine check for PC port
+    (if (< (-> *matrix-engine* length) MATRIX_ENGINE_AMOUNT)
+      (let ((v1-24 *matrix-engine*))
+        (set! (-> v1-24 (-> v1-24 length)) (process->handle self))
+        (+! (-> v1-24 length) 1)
+        )
       )
     )
   0

@@ -156,7 +156,7 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
     return NULL;
   }
 
-  std::string image_path = fmt::format("{}/docs/favicon-nobg.png", file_util::get_project_path());
+  std::string image_path = fmt::format("{}/game/appicon.png", file_util::get_project_path());
 
   GLFWimage images[1];
   images[0].pixels =

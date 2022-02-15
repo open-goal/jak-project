@@ -87,7 +87,7 @@ Install packages and init repository:
 
 ```sh
 sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev python
-sudo snap install task --classic
+sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
 Compile:
@@ -119,7 +119,8 @@ cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse
 Install packages and init repository:
 
 ```sh
-sudo pacman -S gcc make cmake base-devel g++ nasm taskfile-git python
+sudo pacman -S gcc make cmake base-devel g++ nasm python
+yay -S taskfile-git
 ```
 
 Compile:
@@ -158,11 +159,11 @@ nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 
 ### Required Software
 
-We primarily use Visual Studio for development on Windows for C++ development.  Download the community addition from [here](https://visualstudio.microsoft.com/vs/)
+We primarily use Visual Studio on Windows for C++ development.  Download the latest community edition from [here](https://visualstudio.microsoft.com/vs/)
 
-You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer` and modifying the Visual Studio Installation.
+You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer`, modifying the Visual Studio Installation.
 
-On Windows, it's recommended to get Scoop to use as a package manager, making the following steps _much_ easier. Follow the steps on the bottom of the homepage [here](https://scoop.sh/)
+On Windows, it's recommended to use a package manager, we use Scoop. Follow the steps on the bottom of the homepage [here](https://scoop.sh/) to get it.
 
 Once Scoop is installed, run the following commands:
 
@@ -180,7 +181,7 @@ Clone the repository by running the following command in your folder of choice.
 git clone https://github.com/open-goal/jak-project.git
 ```
 
-This will create a `jak-project` folder, we will open the project as a CMake project via Visual Studio.
+This will create a `jak-project` folder, open the project as a CMake project via Visual Studio.
 
 ![](./docs/img/windows/open-project.png)
 
@@ -200,7 +201,7 @@ Getting a running game involves 4 steps:
 
 ### Extract Assets
 
-The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of jak  this is `iso_data/jak1`.
+The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of Jak 1 this is `iso_data/jak1`.
 
 Once this is done, open a terminal in the `jak-project` folder and run the following:
 
@@ -239,7 +240,7 @@ g > (mi)
 
 ### Run the Game
 
-Finally the game can be ran.  Open a second terminal from the `jak-project` directly and run the following:
+Finally the game can be ran.  Open a second terminal from the `jak-project` directory and run the following:
 
 ```sh
 task boot-game
@@ -257,7 +258,7 @@ To do so, in the REPL after a successful `(mi)`, run the following:
 g > (lt)
 ```
 
-If successfuly your prompt should change to:
+If successful, your prompt should change to:
 
 ```sh
 gc>
