@@ -15,4 +15,6 @@ class EyeRenderer : public BucketRenderer {
 
  private:
   std::string m_debug;
+  bool m_dump_to_file = false;
+  float m_average_time_ms = 0;
 };

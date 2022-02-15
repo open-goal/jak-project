@@ -187,6 +187,9 @@ void eye_draw_slow(u32* eye_tex_data,
   x1 = (x1 - 512) >> 4;
   y1 = (y1 - 512) >> 4;
 
+  ASSERT(x1 >= x0);
+  ASSERT(y1 >= y0);
+
   for (int y = y0; y < y1; y++) {
     if (y < sy0 || y > sy1) {
       continue;
@@ -207,6 +210,7 @@ void eye_draw_slow(u32* eye_tex_data,
   }
 }
 
+
 void eye_draw_slow_alpha(u32* eye_tex_data,
                          int x0,
                          int x1,
@@ -221,6 +225,9 @@ void eye_draw_slow_alpha(u32* eye_tex_data,
   y0 = (y0 - 512) >> 4;
   x1 = (x1 - 512) >> 4;
   y1 = (y1 - 512) >> 4;
+
+  ASSERT(x1 >= x0);
+  ASSERT(y1 >= y0);
 
   for (int y = y0; y < y1; y++) {
     if (y < sy0 || y > sy1) {
@@ -250,6 +257,7 @@ constexpr int EYE_BASE_BLOCK = 8160;
 void EyeRenderer::handle_eye_dma(DmaFollower& dma,
                                  SharedRenderState* render_state,
                                  ScopedProfilerNode& prof) {
+  Timer timer;
   m_debug.clear();
 
   // first should be the gs setup for render to texture
@@ -377,8 +385,8 @@ void EyeRenderer::handle_eye_dma(DmaFollower& dma,
     auto draw5 = read_eye_draw(dma);
     m_debug += fmt::format("DRAW5\n{}", draw5.print());
     eye_draw_slow(render_state->eye_texture.data(), draw5.sprite.xyz0[0], draw5.sprite.xyz1[0],
-                  draw5.sprite.xyz0[1], draw5.sprite.xyz1[1], draw5.scissor.x0, draw5.scissor.x1,
-                  draw5.scissor.y0, draw5.scissor.y1, *tex2);
+                   draw5.sprite.xyz0[1], draw5.sprite.xyz1[1], draw5.scissor.x0, draw5.scissor.x1,
+                   draw5.scissor.y0, draw5.scissor.y1, *tex2);
     //  - scissor
     //  - sprite
     auto draw6 = read_eye_draw(dma);
@@ -391,11 +399,18 @@ void EyeRenderer::handle_eye_dma(DmaFollower& dma,
     ASSERT(end.size_bytes == 0);
     ASSERT(end.vif0() == 0);
     ASSERT(end.vif1() == 0);
+
+    if (m_dump_to_file) {
+      file_util::write_rgba_png(file_util::get_file_path({fmt::format("debug_out/eyes-{}-pre.png", num_drawn)}),
+                                render_state->eye_texture.data(), EYE_TEX_WIDTH, EYE_TEX_HEIGHT,
+                                false);
+    }
+
   }
 
   // how many pairs of eyes.
   u32 temp_upload[32 * 32];
-  for (int i = 0; i < num_drawn; i++) {
+  for (int i = 0; i < 11; i++) {
     TextureRecord* left_eye = render_state->texture_pool->lookup(EYE_BASE_BLOCK + i * 2);
     if (!left_eye) {
       // no eye texture... need to create it.
@@ -431,6 +446,11 @@ void EyeRenderer::handle_eye_dma(DmaFollower& dma,
       right_eye = right.get();
     }
 
+    // hack debug
+//    for (auto& px : render_state->eye_texture) {
+//      px |= 0x7f000000;
+//    }
+
     // copy left to temp
     for (int y = 0; y < 32; y++) {
       for (int x = 0; x < 32; x++) {
@@ -452,12 +472,24 @@ void EyeRenderer::handle_eye_dma(DmaFollower& dma,
     glBindTexture(GL_TEXTURE_2D, right_eye->gpu_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                  temp_upload);
+
   }
 
-  //  file_util::write_rgba_png(file_util::get_file_path({"debug_out/eyes.png"}),
-  //  render_state->eye_texture.data(), EYE_TEX_WIDTH, EYE_TEX_HEIGHT, false);
+  if (m_dump_to_file) {
+    file_util::write_rgba_png(file_util::get_file_path({"debug_out/eyes-all.png"}),
+                              render_state->eye_texture.data(), EYE_TEX_WIDTH, EYE_TEX_HEIGHT,
+                              false);
+    m_dump_to_file = false;
+  }
+
+  float time_ms = timer.getMs();
+  m_average_time_ms = m_average_time_ms * 0.95 + time_ms * 0.05;
 }
 
 void EyeRenderer::draw_debug_window() {
+  ImGui::Text("Time: %.3f ms\n", m_average_time_ms);
   ImGui::Text("Debug:\n%s", m_debug.c_str());
+  if (ImGui::Button("Dump")) {
+    m_dump_to_file = true;
+  }
 }
