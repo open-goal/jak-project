@@ -100,11 +100,8 @@ void write_binary_file(const std::string& name, const void* data, size_t size) {
   fclose(fp);
 }
 
-void write_rgba_png(const std::string& name, void* data, int w, int h, bool compress) {
+void write_rgba_png(const std::string& name, void* data, int w, int h) {
   auto flags = 0;
-  if (!compress) {
-    flags = fpng::FPNG_FORCE_UNCOMPRESSED;
-  }
 
   auto ok = fpng::fpng_encode_image_to_file(name.c_str(), data, w, h, 4, flags);
 

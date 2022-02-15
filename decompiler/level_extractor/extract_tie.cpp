@@ -161,6 +161,8 @@ void extract_vis_data(const level_tools::DrawableTreeInstanceTie* tree,
   }
 }
 
+constexpr int GEOM_MAX = 4;  // the amount of geoms
+
 // Each TIE prototype is broken up into "fragments". These "fragments" have some maximum size based
 // on the VU memory limit, so an instance may have multiple fragments, depending on how many
 // vertices are in the model.
@@ -362,7 +364,7 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
 }
 
 // geometry we use (todo, should really look at this)
-constexpr int GEOM_IDX = 1;  // todo 0 or 1??
+constexpr int GEOM_IDX = 0;  // todo 0 or 1??
 
 /*!
  * Confirm that the initial value of all wind vectors is 0.
@@ -388,7 +390,8 @@ void check_wind_vectors_zero(const std::vector<TieProtoInfo>& protos, Ref wind_r
 // get per-instance info from the level data
 std::vector<TieProtoInfo> collect_instance_info(
     const level_tools::DrawableInlineArrayInstanceTie* instances,
-    const std::vector<level_tools::PrototypeBucketTie>* protos) {
+    const std::vector<level_tools::PrototypeBucketTie>* protos,
+    int geo) {
   std::vector<TieProtoInfo> result;
 
   // loop over instances in level
@@ -418,13 +421,13 @@ std::vector<TieProtoInfo> collect_instance_info(
 
     // and this is only the indices.... there's yet another lookup on the VU
     auto& proto = protos->at(info.prototype_idx);
-    u32 offset_bytes = proto.base_qw[GEOM_IDX] * 16;
+    u32 offset_bytes = proto.base_qw[geo] * 16;
     // loop over frags. this is only the per-instance info so only colors indices. We know the
     // location/layout of the color data from the EE asm code.
-    for (int frag_idx = 0; frag_idx < proto.frag_count[GEOM_IDX]; frag_idx++) {
+    for (int frag_idx = 0; frag_idx < proto.frag_count[geo]; frag_idx++) {
       TieInstanceFragInfo frag_info;
       // read the number of quadwords
-      u32 num_color_qwc = proto.color_index_qwc.at(proto.index_start[GEOM_IDX] + frag_idx);
+      u32 num_color_qwc = proto.color_index_qwc.at(proto.index_start[geo] + frag_idx);
       // loop over 4-byte words
       for (u32 i = 0; i < num_color_qwc * 4; i++) {
         // loop over bytes in word
@@ -472,7 +475,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 void update_proto_info(std::vector<TieProtoInfo>* out,
                        const std::vector<level_tools::TextureRemap>& map,
                        const TextureDB& tdb,
-                       const std::vector<level_tools::PrototypeBucketTie>& protos) {
+                       const std::vector<level_tools::PrototypeBucketTie>& protos,
+                       int geo) {
   out->resize(std::max(out->size(), protos.size()));
   for (size_t i = 0; i < protos.size(); i++) {
     const auto& proto = protos[i];
@@ -497,12 +501,12 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     }
 
     // loop over fragments in the proto. This is the actual mesh data data and drawing settings
-    for (int frag_idx = 0; frag_idx < proto.frag_count[GEOM_IDX]; frag_idx++) {
+    for (int frag_idx = 0; frag_idx < proto.frag_count[geo]; frag_idx++) {
       TieFrag frag_info;
 
       // loop over adgif shaders
-      for (int tex_idx = 0;
-           tex_idx < proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).tex_count / 5; tex_idx++) {
+      for (int tex_idx = 0; tex_idx < proto.geometry[geo].tie_fragments.at(frag_idx).tex_count / 5;
+           tex_idx++) {
         // this adgif shader data is modified in the real game by the login methods.
         // all TIE things have pretty normal adgif shaders
 
@@ -510,7 +514,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         AdgifInfo adgif;
 
         // pointer to the level data
-        auto& gif_data = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].gif_data;
+        auto& gif_data = proto.geometry[geo].tie_fragments[frag_idx].gif_data;
 
         // address for the first adgif shader qw.
         u8 ra_tex0 = gif_data.at(16 * (tex_idx * 5 + 0) + 8);
@@ -582,20 +586,20 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
       }
 
       // they store a vertex count. we later use this to sanity check out mesh extraction
-      frag_info.expected_dverts = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].num_dverts;
+      frag_info.expected_dverts = proto.geometry[geo].tie_fragments[frag_idx].num_dverts;
 
       // each frag also has "other" data. This is some index data that the VU program uses.
       // it comes in gif_data, after tex_qwc (determined from EE program)
-      int tex_qwc = proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).tex_count;
-      int other_qwc = proto.geometry[GEOM_IDX].tie_fragments.at(frag_idx).gif_count;
+      int tex_qwc = proto.geometry[geo].tie_fragments.at(frag_idx).tex_count;
+      int other_qwc = proto.geometry[geo].tie_fragments.at(frag_idx).gif_count;
       frag_info.other_gif_data.resize(16 * other_qwc);
       memcpy(frag_info.other_gif_data.data(),
-             proto.geometry[GEOM_IDX].tie_fragments[frag_idx].gif_data.data() + (16 * tex_qwc),
+             proto.geometry[geo].tie_fragments[frag_idx].gif_data.data() + (16 * tex_qwc),
              16 * other_qwc);
 
       // each frag's "point" data. These are stored as int16's, but get unpacked to 32-bit ints by
       // the VIF. (determined from EE program)
-      const auto& pr = proto.geometry[GEOM_IDX].tie_fragments[frag_idx].point_ref;
+      const auto& pr = proto.geometry[geo].tie_fragments[frag_idx].point_ref;
       int in_qw = pr.size() / 16;
       int out_qw = in_qw * 2;
       frag_info.points_data.resize(out_qw * 16);
@@ -2263,98 +2267,103 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
                  const TextureDB& tex_db,
                  tfrag3::Level& out,
                  bool dump_level) {
-  tfrag3::TieTree this_tree;
+  for (int geo = 0; geo < GEOM_MAX; ++geo) {
+    tfrag3::TieTree this_tree;
 
-  // sanity check the vis tree (not a perfect check, but this is used in game and should be right)
-  ASSERT(tree->length == (int)tree->arrays.size());
-  ASSERT(tree->length > 0);
-  auto last_array = tree->arrays.back().get();
-  auto as_instance_array = dynamic_cast<level_tools::DrawableInlineArrayInstanceTie*>(last_array);
-  ASSERT(as_instance_array);
-  ASSERT(as_instance_array->length == (int)as_instance_array->instances.size());
-  ASSERT(as_instance_array->length > 0);
-  u16 idx = as_instance_array->instances.front().id;
-  for (auto& elt : as_instance_array->instances) {
-    ASSERT(elt.id == idx);
-    idx++;
-  }
-  bool ok = verify_node_indices(tree);
-  ASSERT(ok);
-  fmt::print("    tree has {} arrays and {} instances\n", tree->length, as_instance_array->length);
-
-  // extract the vis tree. Note that this extracts the tree only down to the last draw node, a
-  // parent of between 1 and 8 instances.
-  extract_vis_data(tree, as_instance_array->instances.front().id, this_tree);
-
-  // we use the index of the instance in the instance list as its index. But this is different
-  // from its visibility index. This map goes from instance index to the parent node in the vis
-  // tree. later, we can use this to remap from instance idx to the visiblity node index.
-  std::unordered_map<int, int> instance_parents;
-  for (size_t node_idx = 0; node_idx < this_tree.bvh.vis_nodes.size(); node_idx++) {
-    const auto& node = this_tree.bvh.vis_nodes[node_idx];
-    if (node.flags == 0) {
-      for (int i = 0; i < node.num_kids; i++) {
-        instance_parents[node.child_id + i] = node_idx;
-      }
+    // sanity check the vis tree (not a perfect check, but this is used in game and should be right)
+    ASSERT(tree->length == (int)tree->arrays.size());
+    ASSERT(tree->length > 0);
+    auto last_array = tree->arrays.back().get();
+    auto as_instance_array = dynamic_cast<level_tools::DrawableInlineArrayInstanceTie*>(last_array);
+    ASSERT(as_instance_array);
+    ASSERT(as_instance_array->length == (int)as_instance_array->instances.size());
+    ASSERT(as_instance_array->length > 0);
+    u16 idx = as_instance_array->instances.front().id;
+    for (auto& elt : as_instance_array->instances) {
+      ASSERT(elt.id == idx);
+      idx++;
     }
-  }
+    bool ok = verify_node_indices(tree);
+    ASSERT(ok);
+    fmt::print("    tree has {} arrays and {} instances\n", tree->length,
+               as_instance_array->length);
 
-  // convert level format data to a nicer format
-  auto info = collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data);
-  update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data);
-  check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
-  // determine draws from VU program
-  emulate_tie_prototype_program(info);
-  emulate_tie_instance_program(info);
-  emulate_kicks(info);
+    // extract the vis tree. Note that this extracts the tree only down to the last draw node, a
+    // parent of between 1 and 8 instances.
+    extract_vis_data(tree, as_instance_array->instances.front().id, this_tree);
 
-  // debug save to .obj
-  if (dump_level) {
-    auto dir = file_util::get_file_path({fmt::format("debug_out/tie-{}/", debug_name)});
-    file_util::create_dir_if_needed(dir);
-    for (auto& proto : info) {
-      auto data = debug_dump_proto_to_obj(proto);
-      file_util::write_text_file(fmt::format("{}/{}.obj", dir, proto.name), data);
-    }
-
-    auto full = dump_full_to_obj(info);
-    file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
-  }
-
-  // create time of day data.
-  auto full_palette = make_big_palette(info);
-
-  // create draws
-  add_vertices_and_static_draw(this_tree, out, tex_db, info);
-
-  // remap vis indices and merge
-  for (auto& draw : this_tree.static_draws) {
-    for (auto& str : draw.vis_groups) {
-      auto it = instance_parents.find(str.vis_idx_in_pc_bvh);
-      if (it == instance_parents.end()) {
-        str.vis_idx_in_pc_bvh = UINT32_MAX;
-      } else {
-        str.vis_idx_in_pc_bvh = it->second;
-      }
-    }
-    merge_groups(draw.vis_groups);
-  }
-
-  for (auto& draw : this_tree.instanced_wind_draws) {
-    for (auto& str : draw.instance_groups) {
-      auto it = instance_parents.find(str.vis_idx);
-      if (it == instance_parents.end()) {
-        str.vis_idx = UINT32_MAX;
-      } else {
-        str.vis_idx = it->second;
+    // we use the index of the instance in the instance list as its index. But this is different
+    // from its visibility index. This map goes from instance index to the parent node in the vis
+    // tree. later, we can use this to remap from instance idx to the visiblity node index.
+    std::unordered_map<int, int> instance_parents;
+    for (size_t node_idx = 0; node_idx < this_tree.bvh.vis_nodes.size(); node_idx++) {
+      const auto& node = this_tree.bvh.vis_nodes[node_idx];
+      if (node.flags == 0) {
+        for (int i = 0; i < node.num_kids; i++) {
+          instance_parents[node.child_id + i] = node_idx;
+        }
       }
     }
 
-    merge_groups(draw.instance_groups);
-  }
+    // convert level format data to a nicer format
+    auto info =
+        collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data, geo);
+    update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data, geo);
+    check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
+    // determine draws from VU program
+    emulate_tie_prototype_program(info);
+    emulate_tie_instance_program(info);
+    emulate_kicks(info);
 
-  this_tree.colors = full_palette.colors;
-  fmt::print("TIE tree has {} draws\n", this_tree.static_draws.size());
-  out.tie_trees.push_back(std::move(this_tree));
+    // debug save to .obj
+    if (dump_level) {
+      auto dir =
+          file_util::get_file_path({fmt::format("debug_out/lod{}-tie-{}/", geo, debug_name)});
+      file_util::create_dir_if_needed(dir);
+      for (auto& proto : info) {
+        auto data = debug_dump_proto_to_obj(proto);
+        file_util::write_text_file(fmt::format("{}/{}.obj", dir, proto.name), data);
+      }
+
+      auto full = dump_full_to_obj(info);
+      file_util::write_text_file(fmt::format("{}/ALL.obj", dir), full);
+    }
+
+    // create time of day data.
+    auto full_palette = make_big_palette(info);
+
+    // create draws
+    add_vertices_and_static_draw(this_tree, out, tex_db, info);
+
+    // remap vis indices and merge
+    for (auto& draw : this_tree.static_draws) {
+      for (auto& str : draw.vis_groups) {
+        auto it = instance_parents.find(str.vis_idx_in_pc_bvh);
+        if (it == instance_parents.end()) {
+          str.vis_idx_in_pc_bvh = UINT32_MAX;
+        } else {
+          str.vis_idx_in_pc_bvh = it->second;
+        }
+      }
+      merge_groups(draw.vis_groups);
+    }
+
+    for (auto& draw : this_tree.instanced_wind_draws) {
+      for (auto& str : draw.instance_groups) {
+        auto it = instance_parents.find(str.vis_idx);
+        if (it == instance_parents.end()) {
+          str.vis_idx = UINT32_MAX;
+        } else {
+          str.vis_idx = it->second;
+        }
+      }
+
+      merge_groups(draw.instance_groups);
+    }
+
+    this_tree.colors = full_palette.colors;
+    fmt::print("TIE tree {} has {} draws\n", geo, this_tree.static_draws.size());
+    out.tie_trees[geo].push_back(std::move(this_tree));
+  }
 }
 }  // namespace decompiler
