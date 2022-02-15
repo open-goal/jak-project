@@ -145,7 +145,7 @@ void TFragment::render(DmaFollower& dma,
     }
 
     auto t3prof = prof.make_scoped_child("t3");
-    m_tfrag3.render_matching_trees(m_tree_kinds, settings, render_state, t3prof);
+    m_tfrag3.render_matching_trees(m_tfrag3.lod(), m_tree_kinds, settings, render_state, t3prof);
   }
 
   m_debug_string += fmt::format("fail: {}\n", dma.current_tag().print());
@@ -186,8 +186,9 @@ void TFragment::render(DmaFollower& dma,
         auto t3prof = prof.make_scoped_child(level_names[i]);
 
         m_many_level_render.tfrag_level_renderers[i]->debug_render_all_trees_nolores(
-            settings, render_state, t3prof);
-        m_many_level_render.tie_level_renderers[i]->render_all_trees(settings, render_state,
+            0, settings, render_state, t3prof);
+        // always renders max lod
+        m_many_level_render.tie_level_renderers[i]->render_all_trees(0, settings, render_state,
                                                                      t3prof);
       }
     }

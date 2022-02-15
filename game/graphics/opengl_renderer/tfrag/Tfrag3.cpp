@@ -46,7 +46,9 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
       m_load_state.state = State::FREE_OLD_TREES;
       break;
     case State::FREE_OLD_TREES:
-      m_cached_trees.clear();
+      for (int geom = 0; geom < GEOM_MAX; ++geom) {
+        m_cached_trees[geom].clear();
+      }
       m_load_state.state = State::INIT_NEW_TREES;
       break;
     case State::INIT_NEW_TREES:
@@ -56,75 +58,77 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
       size_t vis_temp_len = 0;
       size_t max_draw = 0;
 
-      for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees.size(); tree_idx++) {
-        size_t idx_buffer_len = 0;
+      for (int geom = 0; geom < GEOM_MAX; ++geom) {
+        for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees[geom].size(); tree_idx++) {
+          size_t idx_buffer_len = 0;
 
-        const auto& tree = lev_data->tfrag_trees[tree_idx];
-        m_cached_trees.emplace_back();
-        auto& tree_cache = m_cached_trees.back();
+          const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
 
-        tree_cache.kind = tree.kind;
-        if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
-          max_draw = std::max(tree.draws.size(), max_draw);
-          for (auto& draw : tree.draws) {
-            idx_buffer_len += draw.vertex_index_stream.size();
+          auto& tree_cache = m_cached_trees[geom].emplace_back();
+
+          tree_cache.kind = tree.kind;
+          if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
+            max_draw = std::max(tree.draws.size(), max_draw);
+            for (auto& draw : tree.draws) {
+              idx_buffer_len += draw.vertex_index_stream.size();
+            }
+            time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
+            u32 verts = tree.vertices.size();
+            glGenVertexArrays(1, &tree_cache.vao);
+            glBindVertexArray(tree_cache.vao);
+            glGenBuffers(1, &tree_cache.vertex_buffer);
+            tree_cache.vert_count = verts;
+            tree_cache.draws = &tree.draws;  // todo - should we just copy this?
+            tree_cache.colors = &tree.colors;
+            tree_cache.vis = &tree.bvh;
+            tree_cache.tod_cache = swizzle_time_of_day(tree.colors);
+            vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
+            glBindBuffer(GL_ARRAY_BUFFER, tree_cache.vertex_buffer);
+            glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
+                         GL_STREAM_DRAW);
+            glEnableVertexAttribArray(0);
+            glEnableVertexAttribArray(1);
+            glEnableVertexAttribArray(2);
+
+            glVertexAttribPointer(0,                                // location 0 in the shader
+                                  3,                                // 3 values per vert
+                                  GL_FLOAT,                         // floats
+                                  GL_FALSE,                         // normalized
+                                  sizeof(tfrag3::PreloadedVertex),  // stride
+                                  (void*)offsetof(tfrag3::PreloadedVertex, x)  // offset (0)
+            );
+
+            glVertexAttribPointer(1,                                // location 1 in the shader
+                                  3,                                // 3 values per vert
+                                  GL_FLOAT,                         // floats
+                                  GL_FALSE,                         // normalized
+                                  sizeof(tfrag3::PreloadedVertex),  // stride
+                                  (void*)offsetof(tfrag3::PreloadedVertex, s)  // offset (0)
+            );
+
+            glVertexAttribIPointer(
+                2,                                                     // location 2 in the shader
+                1,                                                     // 1 values per vert
+                GL_UNSIGNED_SHORT,                                     // u16
+                sizeof(tfrag3::PreloadedVertex),                       // stride
+                (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
+            );
+
+            glGenBuffers(1, &tree_cache.index_buffer);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree_cache.index_buffer);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr,
+                         GL_STREAM_DRAW);
+            tree_cache.index_list.resize(idx_buffer_len);
+
+            glGenTextures(1, &tree_cache.time_of_day_texture);
+            glBindTexture(GL_TEXTURE_1D, tree_cache.time_of_day_texture);
+            // just fill with zeros. this lets use use the faster texsubimage later
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+                         GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindVertexArray(0);
           }
-          time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
-          u32 verts = tree.vertices.size();
-          glGenVertexArrays(1, &tree_cache.vao);
-          glBindVertexArray(tree_cache.vao);
-          glGenBuffers(1, &tree_cache.vertex_buffer);
-          tree_cache.vert_count = verts;
-          tree_cache.draws = &tree.draws;  // todo - should we just copy this?
-          tree_cache.colors = &tree.colors;
-          tree_cache.vis = &tree.bvh;
-          tree_cache.tod_cache = swizzle_time_of_day(tree.colors);
-          vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
-          glBindBuffer(GL_ARRAY_BUFFER, tree_cache.vertex_buffer);
-          glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
-                       GL_STREAM_DRAW);
-          glEnableVertexAttribArray(0);
-          glEnableVertexAttribArray(1);
-          glEnableVertexAttribArray(2);
-
-          glVertexAttribPointer(0,                                // location 0 in the shader
-                                3,                                // 3 values per vert
-                                GL_FLOAT,                         // floats
-                                GL_FALSE,                         // normalized
-                                sizeof(tfrag3::PreloadedVertex),  // stride
-                                (void*)offsetof(tfrag3::PreloadedVertex, x)  // offset (0)
-          );
-
-          glVertexAttribPointer(1,                                // location 1 in the shader
-                                3,                                // 3 values per vert
-                                GL_FLOAT,                         // floats
-                                GL_FALSE,                         // normalized
-                                sizeof(tfrag3::PreloadedVertex),  // stride
-                                (void*)offsetof(tfrag3::PreloadedVertex, s)  // offset (0)
-          );
-
-          glVertexAttribIPointer(
-              2,                                                     // location 2 in the shader
-              1,                                                     // 1 values per vert
-              GL_UNSIGNED_SHORT,                                     // u16
-              sizeof(tfrag3::PreloadedVertex),                       // stride
-              (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
-          );
-
-          glGenBuffers(1, &tree_cache.index_buffer);
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree_cache.index_buffer);
-          glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr,
-                       GL_STREAM_DRAW);
-          tree_cache.index_list.resize(idx_buffer_len);
-
-          glGenTextures(1, &tree_cache.time_of_day_texture);
-          glBindTexture(GL_TEXTURE_1D, tree_cache.time_of_day_texture);
-          // just fill with zeros. this lets use use the faster texsubimage later
-          glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
-                       GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
-          glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-          glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-          glBindVertexArray(0);
         }
       }
 
@@ -139,21 +143,23 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
     case State::UPLOAD_VERTS: {
       constexpr u32 MAX_VERTS = 40000;
       bool remaining = false;
-      for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees.size(); tree_idx++) {
-        const auto& tree = lev_data->tfrag_trees[tree_idx];
+      for (int geom = 0; geom < GEOM_MAX; ++geom) {
+        for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees[geom].size(); tree_idx++) {
+          const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
 
-        if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
-          u32 verts = tree.vertices.size();
-          u32 start_vert = (m_load_state.vert) * MAX_VERTS;
-          u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
-          if (end_vert > start_vert) {
-            glBindVertexArray(m_cached_trees[tree_idx].vao);
-            glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[tree_idx].vertex_buffer);
-            glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
-                            (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                            tree.vertices.data() + start_vert);
-            if (end_vert < verts) {
-              remaining = true;
+          if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
+            u32 verts = tree.vertices.size();
+            u32 start_vert = (m_load_state.vert) * MAX_VERTS;
+            u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
+            if (end_vert > start_vert) {
+              glBindVertexArray(m_cached_trees[geom][tree_idx].vao);
+              glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[geom][tree_idx].vertex_buffer);
+              glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
+                              (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
+                              tree.vertices.data() + start_vert);
+              if (end_vert < verts) {
+                remaining = true;
+              }
             }
           }
         }
@@ -211,13 +217,14 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
   return m_has_level;
 }
 
-void Tfrag3::render_tree(const TfragRenderSettings& settings,
+void Tfrag3::render_tree(int geom,
+                         const TfragRenderSettings& settings,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof) {
   if (!m_has_level) {
     return;
   }
-  auto& tree = m_cached_trees.at(settings.tree_idx);
+  auto& tree = m_cached_trees.at(geom).at(settings.tree_idx);
   ASSERT(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
 
   if (m_color_result.size() < tree.colors->size()) {
@@ -296,71 +303,74 @@ void Tfrag3::render_tree(const TfragRenderSettings& settings,
  * This is intended to be used only for debugging when we can't easily get commands for all trees
  * working.
  */
-void Tfrag3::render_all_trees(const TfragRenderSettings& settings,
+void Tfrag3::render_all_trees(int geom,
+                              const TfragRenderSettings& settings,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof) {
   TfragRenderSettings settings_copy = settings;
-  for (size_t i = 0; i < m_cached_trees.size(); i++) {
-    if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID) {
+  for (size_t i = 0; i < m_cached_trees[geom].size(); i++) {
+    if (m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::INVALID) {
       settings_copy.tree_idx = i;
-      render_tree(settings_copy, render_state, prof);
+      render_tree(geom, settings_copy, render_state, prof);
     }
   }
 }
 
-void Tfrag3::render_matching_trees(const std::vector<tfrag3::TFragmentTreeKind>& trees,
+void Tfrag3::render_matching_trees(int geom,
+                                   const std::vector<tfrag3::TFragmentTreeKind>& trees,
                                    const TfragRenderSettings& settings,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
   TfragRenderSettings settings_copy = settings;
-  for (size_t i = 0; i < m_cached_trees.size(); i++) {
-    m_cached_trees[i].reset_stats();
-    if (!m_cached_trees[i].allowed) {
+  for (size_t i = 0; i < m_cached_trees[geom].size(); i++) {
+    auto& tree = m_cached_trees[geom][i];
+    tree.reset_stats();
+    if (!tree.allowed) {
       continue;
     }
-    if (std::find(trees.begin(), trees.end(), m_cached_trees[i].kind) != trees.end() ||
-        m_cached_trees[i].forced) {
-      m_cached_trees[i].rendered_this_frame = true;
+    if (std::find(trees.begin(), trees.end(), tree.kind) != trees.end() || tree.forced) {
+      tree.rendered_this_frame = true;
       settings_copy.tree_idx = i;
-      render_tree(settings_copy, render_state, prof);
-      if (m_cached_trees[i].cull_debug) {
+      render_tree(geom, settings_copy, render_state, prof);
+      if (tree.cull_debug) {
         render_tree_cull_debug(settings_copy, render_state, prof);
       }
     }
   }
 }
 
-void Tfrag3::debug_render_all_trees_nolores(const TfragRenderSettings& settings,
+void Tfrag3::debug_render_all_trees_nolores(int geom,
+                                            const TfragRenderSettings& settings,
                                             SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
   TfragRenderSettings settings_copy = settings;
   for (size_t i = 0; i < m_cached_trees.size(); i++) {
-    if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID &&
-        m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
-        m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
+    if (m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::INVALID &&
+        m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
+        m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
       settings_copy.tree_idx = i;
-      render_tree(settings_copy, render_state, prof);
+      render_tree(geom, settings_copy, render_state, prof);
     }
   }
 
-  for (size_t i = 0; i < m_cached_trees.size(); i++) {
-    if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID &&
-        m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
-        m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
-      settings_copy.tree_idx = i;
-      // render_tree_cull_debug(settings_copy, render_state, prof);
-    }
-  }
+  // for (size_t i = 0; i < m_cached_trees.size(); i++) {
+  //  if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID &&
+  //      m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
+  //      m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
+  //    settings_copy.tree_idx = i;
+  //    render_tree_cull_debug(settings_copy, render_state, prof);
+  //  }
+  // }
 }
 
 void Tfrag3::draw_debug_window() {
   for (int i = 0; i < (int)m_cached_trees.size(); i++) {
-    auto& tree = m_cached_trees[i];
+    auto& tree = m_cached_trees[lod()][i];
     if (tree.kind == tfrag3::TFragmentTreeKind::INVALID) {
       continue;
     }
     ImGui::PushID(i);
-    ImGui::Text("[%d] %10s", i, tfrag3::tfrag_tree_names[(int)m_cached_trees[i].kind]);
+    ImGui::Text("[%d] %10s", i, tfrag3::tfrag_tree_names[(int)m_cached_trees[lod()][i].kind]);
     ImGui::SameLine();
     ImGui::Checkbox("Allow?", &tree.allowed);
     ImGui::SameLine();
@@ -376,16 +386,18 @@ void Tfrag3::draw_debug_window() {
 
 void Tfrag3::discard_tree_cache() {
   m_textures = nullptr;
-  for (auto& tree : m_cached_trees) {
-    if (tree.kind != tfrag3::TFragmentTreeKind::INVALID) {
-      glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-      glDeleteTextures(1, &tree.time_of_day_texture);
-      glDeleteBuffers(1, &tree.vertex_buffer);
-      glDeleteBuffers(1, &tree.index_buffer);
-      glDeleteVertexArrays(1, &tree.vao);
+  for (int geom = 0; geom < GEOM_MAX; ++geom) {
+    for (auto& tree : m_cached_trees[geom]) {
+      if (tree.kind != tfrag3::TFragmentTreeKind::INVALID) {
+        glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+        glDeleteTextures(1, &tree.time_of_day_texture);
+        glDeleteBuffers(1, &tree.vertex_buffer);
+        glDeleteBuffers(1, &tree.index_buffer);
+        glDeleteVertexArrays(1, &tree.vao);
+      }
     }
+    m_cached_trees[geom].clear();
   }
-  m_cached_trees.clear();
 }
 
 namespace {
@@ -472,7 +484,7 @@ void Tfrag3::render_tree_cull_debug(const TfragRenderSettings& settings,
                                     ScopedProfilerNode& prof) {
   // generate debug verts:
   m_debug_vert_data.clear();
-  auto& tree = m_cached_trees.at(settings.tree_idx);
+  auto& tree = m_cached_trees.at(settings.tree_idx).at(lod());
 
   debug_vis_draw(tree.vis->first_root, tree.vis->first_root, tree.vis->num_roots, 1,
                  tree.vis->vis_nodes, m_debug_vert_data);

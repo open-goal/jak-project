@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
@@ -14,10 +15,12 @@ class Tie3 : public BucketRenderer {
   void draw_debug_window() override;
   ~Tie3();
 
-  void render_all_trees(const TfragRenderSettings& settings,
+  void render_all_trees(int geom,
+                        const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
   void render_tree(int idx,
+                   int geom,
                    const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof);
@@ -34,13 +37,19 @@ class Tie3 : public BucketRenderer {
     u32 pad2[3];
   } m_wind_data;
 
+  int lod() const { return Gfx::g_global_settings.lod_tie; }
+
  private:
   bool update_load(const tfrag3::Level* lev_data);
   void discard_tree_cache();
   void render_tree_wind(int idx,
+                        int geom,
                         const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
+
+  int m_geom = 0;
+
   struct Tree {
     GLuint vertex_buffer;
     GLuint index_buffer;
@@ -76,7 +85,7 @@ class Tie3 : public BucketRenderer {
     } perf;
   };
 
-  std::vector<Tree> m_trees;
+  std::array<std::vector<Tree>, 4> m_trees;  // includes 4 lods!
   std::string m_level_name;
   const std::vector<GLuint>* m_textures;
   u64 m_load_id = -1;

@@ -71,6 +71,10 @@ struct GfxGlobalSettings {
 
   // current renderer
   const GfxRendererModule* renderer;
+
+  // lod settings, used by bucket renderers
+  int lod_tfrag = 0;
+  int lod_tie = 0;
 };
 
 namespace Gfx {
@@ -104,5 +108,9 @@ s64 get_mapped_button(s64 pad, s64 button);
 
 int PadIsPressed(Pad::Button button, int port);
 int PadAnalogValue(Pad::Analog analog, int port);
+
+// matching enum in kernel-defs.gc !!
+enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };
+void SetLod(RendererTreeType tree, int lod);
 
 }  // namespace Gfx

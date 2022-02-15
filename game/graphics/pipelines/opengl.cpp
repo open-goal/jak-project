@@ -126,6 +126,8 @@ static int gl_init(GfxSettings& settings) {
   } else {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
   }
+  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+  glfwWindowHint(GLFW_SAMPLES, 4);
 
   return 0;
 }
@@ -141,7 +143,6 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
                                                         int height,
                                                         const char* title,
                                                         GfxSettings& settings) {
-  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
 
   if (!window) {
@@ -263,7 +264,6 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.playing_from_dump = false;
     options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
-    options.screenshot_should_compress = g_gfx_data->debug_gui.screenshot_compress_flag();
     if (options.save_screenshot) {
       options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
     }
