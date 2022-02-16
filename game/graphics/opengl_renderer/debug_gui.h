@@ -67,6 +67,8 @@ class OpenGlDebugGui {
   float target_fps = 60.f;
   bool experimental_accurate_lag = false;
   bool sleep_in_frame_limiter = true;
+  //Mutli sample anti-aliasing X4 enabled by default, can be toggled by menu. 
+  bool get_msaa_flag() {return m_msaa;}
 
  private:
   FrameTimeRecorder m_frame_timer;
@@ -80,5 +82,6 @@ class OpenGlDebugGui {
   char m_dump_save_name[256] = "dump.bin";
   char m_screenshot_save_name[256] = "screenshot.png";
   bool m_vsync = true;
+  bool m_msaa = true;
   float m_target_fps_text = 60.0;
 };

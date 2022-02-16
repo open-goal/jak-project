@@ -111,7 +111,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Frame Rate")) {
+    if (ImGui::BeginMenu("Graphics Options")) {
       ImGui::Checkbox("Enable V-Sync", &m_vsync);
       ImGui::Separator();
       ImGui::Checkbox("Framelimiter", &framelimiter);
@@ -122,6 +122,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::Separator();
       ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
       ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
+      ImGui::Checkbox("MSAA 4X",&m_msaa);
       ImGui::EndMenu();
     }
   }
