@@ -1034,7 +1034,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       }
     } break;
     default:
-      fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
+      fmt::print("prim type {} is unsupported in {}.\n", (int)m_prim_building.kind, name_and_id());
       ASSERT(false);
   }
 

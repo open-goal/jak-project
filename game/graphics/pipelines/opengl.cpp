@@ -35,7 +35,7 @@ struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
   std::condition_variable sync_cv;
-  bool vsync_enabled;
+  bool vsync_enabled = true;
 
   // dma chain transfer
   std::mutex dma_mutex;

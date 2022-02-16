@@ -12,6 +12,7 @@
 #include "game/graphics/opengl_renderer/tfrag/TFragment.h"
 #include "game/graphics/opengl_renderer/tfrag/Tie3.h"
 #include "game/graphics/opengl_renderer/MercRenderer.h"
+#include "game/graphics/opengl_renderer/EyeRenderer.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -168,8 +169,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<MercRenderer>("merc-pris-1", BucketId::MERC_PRIS_LEVEL1);        // 52
   // 53
 
-  // 54?
-  init_bucket_renderer<MercRenderer>("merc-after-pris", BucketId::MERC_AFTER_PRIS);  // 55
+  init_bucket_renderer<EyeRenderer>("merc-eyes-after-pris", BucketId::MERC_EYES_AFTER_PRIS);  // 54
+  init_bucket_renderer<MercRenderer>("merc-after-pris", BucketId::MERC_AFTER_PRIS);           // 55
   // 56?
 
   //-----------------------

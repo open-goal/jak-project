@@ -7,52 +7,64 @@
 
 ;; DECOMP BEGINS
 
-(define *eye-work* (new 'static 'eye-work
-                     :sprite-tmpl
-                     (new 'static 'dma-gif-packet
-                       :dma-vif
-                       (new 'static 'dma-packet
-                         :dma
-                         (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                         :vif1
-                         (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                         )
-                       :gif
-                       (new 'static 'array uint64 2 #x508b400000008001 #x53531)
-                       )
-                     :sprite-tmpl2
-                     (new 'static 'dma-gif-packet
-                       :dma-vif
-                       (new 'static 'dma-packet
-                         :dma
-                         (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                         :vif1
-                         (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                         )
-                       :gif
-                       (new 'static 'array uint64 2 #x50ab400000008001 #x53531)
-                       )
-                     :adgif-tmpl
-                     (new 'static 'dma-gif-packet
-                       :dma-vif
-                       (new 'static 'dma-packet
-                         :dma
-                         (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                         :vif1
-                         (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                         )
-                       :gif
-                       (new 'static 'array uint64 2 #x1000000000008005 #xe)
-                       )
-                     :blink-table
-                     (new 'static 'array float 10 0.0 0.667 0.9 1.0 1.0 1.0 1.0 0.333 0.1 0.0)
-                     )
+(define *eye-work* 
+        (new 'static 'eye-work
+             :sprite-tmpl
+             (new 'static 'dma-gif-packet
+                  :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                  :gif0 (new 'static 'gif-tag64
+                             :nloop #x1
+                             :eop #x1
+                             :pre #x1
+                             :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+                             :nreg #x5
+                             )
+                  :gif1 (new 'static 'gif-tag-regs
+                             :regs0 (gif-reg-id rgbaq)
+                             :regs1 (gif-reg-id uv)
+                             :regs2 (gif-reg-id xyz2)
+                             :regs3 (gif-reg-id uv)
+                             :regs4 (gif-reg-id xyz2)
+                             )
+                  )
+             :sprite-tmpl2
+             (new 'static 'dma-gif-packet
+                  :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                  :gif0 (new 'static 'gif-tag64
+                             :nloop #x1
+                             :eop #x1
+                             :pre #x1
+                             :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+                             :nreg #x5
+                             )
+                  :gif1 (new 'static 'gif-tag-regs
+                             :regs0 (gif-reg-id rgbaq)
+                             :regs1 (gif-reg-id uv)
+                             :regs2 (gif-reg-id xyz2)
+                             :regs3 (gif-reg-id uv)
+                             :regs4 (gif-reg-id xyz2)
+                             )
+                  )
+             :adgif-tmpl
+             (new 'static 'dma-gif-packet
+                  :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                  :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+                  :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+                  )
+             :blink-table
+             (new 'static 'array float 10 0.0 0.667 0.9 1.0 1.0 1.0 1.0 0.333 0.1 0.0)
+             )
         )
 
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
 (defun render-eyes ((arg0 dma-buffer) (arg1 eye-control) (arg2 int))
   (local-vars (sv-16 float))
   (let ((s4-0 32)
@@ -65,17 +77,21 @@
           )
       (set! sv-16 (* 16.0 (+ (the float (+ s3-0 16)) (* 32.0 (-> arg1 right y)))))
       (let ((s1-0 (-> arg1 shaders 0)))
+        ;; ADGIF 0
         (let ((v1-6 (the-as object (-> arg0 base))))
           (set! (-> (the-as dma-gif-packet v1-6) dma-vif quad) (-> *eye-work* adgif-tmpl dma-vif quad))
           (set! (-> (the-as dma-gif-packet v1-6) quad 1) (-> *eye-work* adgif-tmpl quad 1))
-          (let ((s0-0 (the-as (pointer uint64) (&+ (the-as pointer v1-6) 32))))
-            (quad-copy! s0-0 (the-as pointer s1-0) 5)
-            (set! (-> s0-0 6) (the-as uint #x7c0007c005))
-            (set! (-> s0-0 8) (the-as uint 68))
-            (set! (-> s0-0 9) (the-as uint 66))
+          (let ((s0-0 (the-as adgif-shader (&+ (the-as pointer v1-6) 32))))
+            (quad-copy! (the-as pointer s0-0) (the-as pointer s1-0) 5)
+            (set! (-> s0-0 clamp)
+                  (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp) :maxu #x1f :maxv #x1f)
+                  )
+            (set! (-> s0-0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+            (set! (-> s0-0 prims 9) (gs-reg64 alpha-1))
             )
           )
         (&+! (-> arg0 base) 112)
+        ;; SCISSOR0
         (let* ((v1-12 arg0)
                (a0-6 (the-as object (-> v1-12 base)))
                )
@@ -119,6 +135,7 @@
           (set! (-> (the-as (pointer gs-reg64) a0-10) 1) (gs-reg64 scissor-1))
           (set! (-> v1-14 base) (&+ a0-10 16))
           )
+        ;; SPRITE0
         (let ((v1-15 (the-as (inline-array vector4w) (-> arg0 base))))
           (set! (-> v1-15 0 quad) (-> *eye-work* sprite-tmpl dma-vif quad))
           (set! (-> v1-15 1 quad) (-> *eye-work* sprite-tmpl quad 1))
@@ -132,6 +149,7 @@
         (let ((v1-20 (ash 16 (-> s1-0 tex0 tw)))
               (a0-30 (ash 16 (-> s1-0 tex0 th)))
               )
+          ;; SCISSOR1
           (let* ((a1-22 arg0)
                  (a2-7 (the-as object (-> a1-22 base)))
                  )
@@ -175,6 +193,7 @@
             (set! (-> (the-as (pointer gs-reg64) a2-11) 1) (gs-reg64 scissor-1))
             (set! (-> a1-24 base) (&+ a2-11 16))
             )
+          ;; SPRITE1
           (let* ((f0-6 (* 256.0 (-> arg1 left iris-scale)))
                  (a1-25 (the-as (inline-array vector4w) (-> arg0 base)))
                  (a2-13 (the int (- f28-0 f0-6)))
@@ -182,6 +201,7 @@
                  (a3-9 (the int (+ f28-0 f0-6)))
                  (t1-0 (the int (+ f26-0 f0-6)))
                  )
+            ;; (format 0 "eye: ~f ~f~%" f28-0 f26-0)
             (set! (-> a1-25 0 quad) (-> *eye-work* sprite-tmpl dma-vif quad))
             (set! (-> a1-25 1 quad) (-> *eye-work* sprite-tmpl quad 1))
             (set-vector! (-> a1-25 2) 128 128 128 128)
@@ -191,6 +211,7 @@
             (set-vector! (-> a1-25 6) a3-9 t1-0 #xffffff 0)
             )
           (set! (-> arg0 base) (the-as pointer (-> (the-as (inline-array vector4w) (-> arg0 base)) 7)))
+          ;; SCISSOR2
           (let* ((a1-29 arg0)
                  (a2-17 (the-as object (-> a1-29 base)))
                  )
@@ -234,6 +255,7 @@
             (set! (-> (the-as (pointer gs-reg64) a2-21) 1) (gs-reg64 scissor-1))
             (set! (-> a1-31 base) (&+ a2-21 16))
             )
+          ;; SPRITE2
           (let* ((f0-10 (* 256.0 (-> arg1 right iris-scale)))
                  (a1-32 (the-as (inline-array vector4w) (-> arg0 base)))
                  (a2-23 (the int (- f30-0 f0-10)))
@@ -299,11 +321,13 @@
         (let ((v1-28 (the-as object (-> arg0 base))))
           (set! (-> (the-as (inline-array vector4w) v1-28) 0 quad) (-> *eye-work* adgif-tmpl dma-vif quad))
           (set! (-> (the-as (inline-array vector4w) v1-28) 1 quad) (-> *eye-work* adgif-tmpl quad 1))
-          (let ((s0-1 (the-as (pointer uint64) (&+ (the-as pointer v1-28) 32))))
-            (quad-copy! s0-1 (the-as pointer s1-1) 5)
-            (set! (-> s0-1 6) (the-as uint #x7c0007c005))
-            (set! (-> s0-1 8) (the-as uint 68))
-            (set! (-> s0-1 9) (the-as uint 66))
+          (let ((s0-1 (the-as adgif-shader (&+ (the-as pointer v1-28) 32))))
+            (quad-copy! (the-as pointer s0-1) (the-as pointer s1-1) 5)
+            (set! (-> s0-1 clamp)
+                  (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp) :maxu #x1f :maxv #x1f)
+                  )
+            (set! (-> s0-1 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+            (set! (-> s0-1 prims 9) (gs-reg64 alpha-1))
             )
           )
         (&+! (-> arg0 base) 112)
@@ -482,11 +506,13 @@
       (let ((v1-43 (the-as object (-> arg0 base))))
         (set! (-> (the-as dma-gif-packet v1-43) dma-vif quad) (-> *eye-work* adgif-tmpl dma-vif quad))
         (set! (-> (the-as dma-gif-packet v1-43) quad 1) (-> *eye-work* adgif-tmpl quad 1))
-        (let ((s0-2 (the-as (pointer uint64) (&+ (the-as pointer v1-43) 32))))
-          (quad-copy! s0-2 (the-as pointer s1-2) 5)
-          (set! (-> s0-2 6) (the-as uint #x7c0007c005))
-          (set! (-> s0-2 8) (the-as uint 1))
-          (set! (-> s0-2 9) (the-as uint 66))
+        (let ((s0-2 (the-as adgif-shader (&+ (the-as pointer v1-43) 32))))
+          (quad-copy! (the-as pointer s0-2) (the-as pointer s1-2) 5)
+          (set! (-> s0-2 clamp)
+                (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp) :maxu #x1f :maxv #x1f)
+                )
+          (set! (-> s0-2 alpha) (new 'static 'gs-alpha :a #x1))
+          (set! (-> s0-2 prims 9) (gs-reg64 alpha-1))
           )
         )
       (set! (-> arg0 base) (-> (the-as (inline-array dma-gif-packet) (-> arg0 base)) 3 gif))
@@ -629,6 +655,7 @@
   )
 
 (defun update-eyes ()
+  ;; Setup GS for level 0 eyes
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
@@ -690,6 +717,8 @@
         )
       )
     )
+  
+  ;; Setup GS for level 1 eyes
   (let* ((s5-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-1 (-> s5-1 base))
          )
@@ -751,6 +780,8 @@
         )
       )
     )
+  
+  ;; Setup GS for common eyes
   (let* ((s5-2 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-2 (-> s5-2 base))
          )
@@ -806,21 +837,27 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id bucket-54)
+        (bucket-id merc-eyes)
         gp-2
         (the-as (pointer dma-tag) a3-5)
         )
       )
     )
+  
+  ;; rendering of eyes.
   (dotimes (gp-3 11)
+    
+    ;; grab the eye and the process
     (let* ((s5-3 (-> *eye-control-array* data gp-3))
            (v1-40 (handle->process (-> s5-3 process)))
            )
+      ;; see if we need the eye
       (when (and v1-40
                  (logtest? (-> (the-as process-drawable v1-40) skel status) 256)
                  (logtest? (-> (the-as process-drawable v1-40) draw status) (draw-status was-drawn))
                  )
         (when (-> s5-3 shaders)
+          ;; update blinking
           (when (not (paused?))
             (cond
               ((and (>= (-> s5-3 left lid) 0.0) (>= (-> s5-3 right lid) 0.0))
@@ -840,8 +877,10 @@
                 )
               )
             )
+          ;; pick between level and common eyes
           (cond
             ((>= (the-as uint 1) (-> s5-3 level))
+             ;; level eyes
              (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
                     (s4-0 (-> s3-0 base))
                     )
@@ -855,11 +894,12 @@
                    )
                  (dma-bucket-insert-tag
                    (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                   (the-as bucket-id (if (zero? (-> s5-3 level))
-                                         48
-                                         51
-                                         )
-                           )
+                   (bucket-id merc-eyes)
+                   ; (the-as bucket-id (if (zero? (-> s5-3 level))
+                   ;                       48
+                   ;                       51
+                   ;                       )
+                   ;         )
                    s4-0
                    (the-as (pointer dma-tag) a3-6)
                    )
@@ -880,7 +920,7 @@
                     )
                   (dma-bucket-insert-tag
                     (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                    (bucket-id bucket-54)
+                    (bucket-id merc-eyes)
                     s4-1
                     (the-as (pointer dma-tag) a3-7)
                     )
@@ -1066,7 +1106,7 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id bucket-54)
+        (bucket-id merc-eyes)
         gp-6
         (the-as (pointer dma-tag) a3-10)
         )
@@ -1076,7 +1116,12 @@
   (none)
   )
 
+;; definition for function get-eye-block
 (defun get-eye-block ((arg0 int) (arg1 int))
+  (#when PC_PORT
+    ;; hack to make this easier to figure out on the PC side.
+    (return (+ *eyes-base-block* (* arg0 2) arg1))
+    )
   (let ((v1-0 arg0)
         (a0-4 (-> ct32-24-block-table (* arg1 4)))
         )
@@ -1084,9 +1129,9 @@
     )
   )
 
-(defun convert-eye-data ((arg0 box8s) (arg1 uint128))
+;; definition for function convert-eye-data
+(defun convert-eye-data ((arg0 eye) (arg1 uint))
   (local-vars
-    (r0-0 uint128)
     (v0-0 float)
     (v1-0 uint128)
     (v1-1 uint128)
@@ -1098,133 +1143,111 @@
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          )
-    (.pextlb v1-0 arg1 r0-0)
-    (.pextlh v1-1 v1-0 r0-0)
+    (.pextlb v1-0 arg1 0)
+    (.pextlh v1-1 v1-0 0)
     (.pw.sra v1-2 v1-1 16)
     (.mov vf1 v1-2)
-    (.pextlb v1-3 r0-0 arg1)
-    (.pextuh v1-4 r0-0 v1-3)
+    (.pextlb v1-3 0 arg1)
+    (.pextuh v1-4 0 v1-3)
     (.pw.sll v1-5 v1-4 6)
     (.mov vf2 v1-5)
     (vitof15.xyzw vf1 vf1)
     (vitof12.xyzw vf2 vf2)
-    (.svf (&-> arg0 min quad) vf1)
-    (.svf (&-> arg0 max quad) vf2)
+    (.svf (&-> arg0 data 0 quad) vf1)
+    (.svf (&-> arg0 data 1 quad) vf2)
     (.mov v0-0 vf2)
     v0-0
     )
   )
 
-(defun merc-eye-anim ((arg0 process-drawable))
-  ; (let* ((s5-0 (-> arg0 draw mgeo header eye-ctrl))
-  ;        (a0-1 (-> arg0 skel root-channel 0))
-  ;        (s4-0 (-> a0-1 frame-group))
-  ;        )
-  ;   (when (and (logtest? (-> arg0 skel status) 256)
-  ;              (nonzero? s5-0)
-  ;              (> (-> arg0 skel active-channels) 0)
-  ;              s4-0
-  ;              (nonzero? (-> s4-0 _unknown))
-  ;              )
-  ;     (let* ((v1-15 (-> *eye-control-array* data (-> s5-0 eye-slot)))
-  ;            (s3-1 (min (the int (-> a0-1 frame-num)) (-> s4-0 _unknown 0)))
-  ;            (s2-1 (min (+ (the int (-> a0-1 frame-num)) 1) (-> s4-0 _unknown 0)))
-  ;            (f0-4 (-> a0-1 frame-num))
-  ;            (f30-0 (- f0-4 (* (the float (the int (/ f0-4 1.0))) 1.0)))
-  ;            )
-  ;       (set! (-> v1-15 process) (process->handle arg0))
-  ;       (set! (-> v1-15 shaders) (the-as (inline-array adgif-shader) (-> s5-0 iris-shader)))
-  ;       (set! (-> v1-15 level) (the-as uint (-> (if (-> arg0 entity)
-  ;                                                   (-> arg0 entity extra level)
-  ;                                                   (-> *level* level-default)
-  ;                                                   )
-  ;                                               index
-  ;                                               )
-  ;                                      )
-  ;             )
-  ;       (let ((s1-0 (new 'stack-no-clear 'box8s))
-  ;             (s0-0 (new 'stack-no-clear 'vector))
-  ;             )
-  ;         (cond
-  ;           ((-> s4-0 _unknown)
-  ;            (convert-eye-data
-  ;              s1-0
-  ;              (the-as
-  ;                uint128
-  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (* s3-1 2) 8))) 1)
-  ;                )
-  ;              )
-  ;            (convert-eye-data
-  ;              (the-as box8s s0-0)
-  ;              (the-as
-  ;                uint128
-  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (* s2-1 2) 8))) 1)
-  ;                )
-  ;              )
-  ;            (vector4-lerp!
-  ;              (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 left)) (* 96 (-> s5-0 eye-slot))))
-  ;              (the-as vector (-> s1-0 data))
-  ;              (the-as vector (&-> s0-0 x))
-  ;              f30-0
-  ;              )
-  ;            (vector4-lerp!
-  ;              (the-as vector (&+ (&-> *eye-control-array* data 0 left iris-scale) (* 96 (-> s5-0 eye-slot))))
-  ;              (-> s1-0 max)
-  ;              (&+ s0-0 16)
-  ;              f30-0
-  ;              )
-  ;            (convert-eye-data
-  ;              s1-0
-  ;              (the-as
-  ;                uint128
-  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (+ (* s3-1 2) 1) 8))) 1)
-  ;                )
-  ;              )
-  ;            (convert-eye-data
-  ;              (the-as box8s s0-0)
-  ;              (the-as
-  ;                uint128
-  ;                (-> (the-as (pointer int64) (&+ (the-as (pointer int64) (-> s4-0 _unknown)) (* (+ (* s2-1 2) 1) 8))) 1)
-  ;                )
-  ;              )
-  ;            (vector4-lerp!
-  ;              (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 right)) (* 96 (-> s5-0 eye-slot))))
-  ;              (the-as vector (-> s1-0 data))
-  ;              (the-as vector (&-> s0-0 x))
-  ;              f30-0
-  ;              )
-  ;            (vector4-lerp!
-  ;              (the-as vector (&+ (&-> *eye-control-array* data 0 right iris-scale) (* 96 (-> s5-0 eye-slot))))
-  ;              (-> s1-0 max)
-  ;              (&+ s0-0 16)
-  ;              f30-0
-  ;              )
-  ;            )
-  ;           (else
-  ;             (let ((v1-37 (-> *eye-control-array* data (-> s5-0 eye-slot))))
-  ;               (set! (-> v1-37 left x) 0.0)
-  ;               (set! (-> v1-37 left y) 0.0)
-  ;               (set! (-> v1-37 left lid) -1.0)
-  ;               (set! (-> v1-37 left iris-scale) 1.0)
-  ;               (set! (-> v1-37 left pupil-scale) 1.0)
-  ;               (set! (-> v1-37 left lid-scale) 1.0)
-  ;               (set! (-> v1-37 right x) 0.0)
-  ;               (set! (-> v1-37 right y) 0.0)
-  ;               (set! (-> v1-37 right lid) -1.0)
-  ;               (set! (-> v1-37 right iris-scale) 1.0)
-  ;               (set! (-> v1-37 right pupil-scale) 1.0)
-  ;               (set! (-> v1-37 right lid-scale) 1.0)
-  ;               )
-  ;             )
-  ;           )
-  ;         )
-  ;       )
-  ;     (logior! (-> arg0 skel status) 128)
-  ;     )
-  ;   )
-  ; (if (logtest? (-> arg0 skel status) 128)
-  ;     (set! (-> arg0 skel status) (logand -129 (-> arg0 skel status)))
-  ;     )
+;; definition for function merc-eye-anim
+;; INFO: Return type mismatch int vs none.
+(defun merc-eye-anim ((arg0 manipy))
+  (let* ((s5-0 (-> arg0 draw mgeo header eye-ctrl))
+         (a0-1 (-> arg0 skel root-channel 0))
+         (s4-0 (-> a0-1 frame-group))
+         )
+    (when (and (logtest? (-> arg0 skel status) 256)
+               (nonzero? s5-0)
+               (> (-> arg0 skel active-channels) 0)
+               s4-0
+               (nonzero? (-> s4-0 eye-anim-data))
+               )
+      (let* ((v1-15 (-> *eye-control-array* data (-> s5-0 eye-slot)))
+             (s3-1 (min (the int (-> a0-1 frame-num)) (-> s4-0 eye-anim-data max-frame)))
+             (s2-1 (min (+ (the int (-> a0-1 frame-num)) 1) (-> s4-0 eye-anim-data max-frame)))
+             (f0-4 (-> a0-1 frame-num))
+             (f30-0 (- f0-4 (* (the float (the int (/ f0-4 1.0))) 1.0)))
+             )
+        (set! (-> v1-15 process) (process->handle arg0))
+        (set! (-> v1-15 shaders) (the-as (inline-array adgif-shader) (-> s5-0 iris-shader)))
+        (set! (-> v1-15 level) (the-as uint (-> (if (-> arg0 entity)
+                                                    (-> arg0 entity extra level)
+                                                    (-> *level* level-default)
+                                                    )
+                                                index
+                                                )
+                                       )
+              )
+        (let ((s1-0 (new 'stack-no-clear 'eye))
+              (s0-0 (new 'stack-no-clear 'eye))
+              )
+          (cond
+            ((-> s4-0 eye-anim-data)
+             (convert-eye-data s1-0 (-> s4-0 eye-anim-data data (* s3-1 2) dword))
+             (convert-eye-data s0-0 (-> s4-0 eye-anim-data data (* s2-1 2) dword))
+             (vector4-lerp!
+               (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 left)) (* 96 (-> s5-0 eye-slot))))
+               (the-as vector (-> s1-0 data))
+               (the-as vector (-> s0-0 data))
+               f30-0
+               )
+             (vector4-lerp!
+               (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 left data 1)) (* 96 (-> s5-0 eye-slot))))
+               (-> s1-0 data 1)
+               (-> s0-0 data 1)
+               f30-0
+               )
+             (convert-eye-data s1-0 (-> s4-0 eye-anim-data data (+ (* s3-1 2) 1) dword))
+             (convert-eye-data s0-0 (-> s4-0 eye-anim-data data (+ (* s2-1 2) 1) dword))
+             (vector4-lerp!
+               (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 right)) (* 96 (-> s5-0 eye-slot))))
+               (the-as vector (-> s1-0 data))
+               (the-as vector (-> s0-0 data))
+               f30-0
+               )
+             (vector4-lerp!
+               (the-as vector (+ (the-as uint (-> *eye-control-array* data 0 right data 1)) (* 96 (-> s5-0 eye-slot))))
+               (-> s1-0 data 1)
+               (-> s0-0 data 1)
+               f30-0
+               )
+             )
+            (else
+              (let ((v1-37 (-> *eye-control-array* data (-> s5-0 eye-slot))))
+                (set! (-> v1-37 left data 0 x) 0.0)
+                (set! (-> v1-37 left data 0 y) 0.0)
+                (set! (-> v1-37 left data 0 z) -1.0)
+                (set! (-> v1-37 left data 1 x) 1.0)
+                (set! (-> v1-37 left data 1 y) 1.0)
+                (set! (-> v1-37 left data 1 z) 1.0)
+                (set! (-> v1-37 right data 0 x) 0.0)
+                (set! (-> v1-37 right data 0 y) 0.0)
+                (set! (-> v1-37 right data 0 z) -1.0)
+                (set! (-> v1-37 right data 1 x) 1.0)
+                (set! (-> v1-37 right data 1 y) 1.0)
+                (set! (-> v1-37 right data 1 z) 1.0)
+                )
+              )
+            )
+          )
+        )
+      (logior! (-> arg0 skel status) 128)
+      )
+    )
+  (if (logtest? (-> arg0 skel status) 128)
+      (set! (-> arg0 skel status) (logand -129 (-> arg0 skel status)))
+      )
   0
   (none)
   )

@@ -535,7 +535,7 @@
     (pris-tex1 51)
     (bucket-52 52)
     (bucket-53 53)
-    (bucket-54 54) ;; eye::update-eyes
+    (merc-eyes 54) ;; eye::update-eyes
     ;; merc1 52
     ;; generic1 53
 
@@ -5109,12 +5109,13 @@
 (deftype adgif-shader (structure)
   ((quad       qword  5 :score -100 :inline  :offset 0)
    (prims      gs-reg64 10 :score -100 :offset 0)
-   (tex0       gs-tex0     :offset 0)
-   (tex1       gs-tex1     :offset 16)
-   (miptbp1    gs-miptbp     :offset 32)
-   (clamp      gs-clamp     :offset 48)
+   (tex0       gs-tex0     :offset 0) ;; prims 1
+   (tex1       gs-tex1     :offset 16) ;; prims 3
+   (miptbp1    gs-miptbp     :offset 32) ;; prims 5
+   (clamp      gs-clamp     :offset 48) ;; prims 7
    (clamp-reg  gs-reg64     :offset 56)
-   (alpha      gs-miptbp     :offset 64)
+   (alpha      gs-alpha     :offset 64) ;; prims 9
+   (alpha-as-miptb2 gs-miptbp :offset 64)
    (link-test  link-test-flags     :offset 8)
    (texture-id texture-id     :offset 24)
    (next       shader-ptr :offset 40)
@@ -7945,9 +7946,10 @@
   :flag-assert         #xd00000020
   )
 
+(declare-type merc-eye-anim-block structure)
 (deftype art-joint-anim (art-element)
   ;; figured out manually from custom inspect.
-  ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage and merc-eye-anim
+  ((eye-anim-data merc-eye-anim-block :offset 4) ;; no clue. used in mem-usage and merc-eye-anim
    (speed float :offset 20)
    (artist-base float :offset 24)
    (artist-step float :offset 28)
@@ -8400,6 +8402,7 @@
    (lid-scale     int8    :offset-assert 6)
    (dword         uint64  :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -8407,7 +8410,7 @@
 
 (deftype merc-eye-anim-block (structure)
   ((max-frame int16            :offset-assert 0)
-   (data      uint8 :dynamic :offset 8)
+   (data      merc-eye-anim-frame :inline :dynamic :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -14009,7 +14012,7 @@
 ;; - Types
 
 (deftype eye (structure)
-  ((data        uint128 2 :offset-assert 0)
+  ((data        vector 2 :inline :offset-assert 0 :score 100)
    (x           float     :offset 0)
    (y           float     :offset 4)
    (lid         float     :offset 8)
@@ -21838,7 +21841,7 @@
 
 ;; - Functions
 
-(define-extern convert-eye-data (function box8s uint128 float))
+(define-extern convert-eye-data (function eye uint float))
 (define-extern render-eyes (function dma-buffer eye-control int pointer))
 (define-extern update-eyes (function none))
 

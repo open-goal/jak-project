@@ -27,7 +27,7 @@ class GfxDisplay {
 
   int m_fullscreen_mode = 0;
   int m_fullscreen_screen;
-  int m_fullscreen_target_mode;
+  int m_fullscreen_target_mode = 0;
   int m_fullscreen_target_screen;
 
  public:
