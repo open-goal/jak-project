@@ -68,11 +68,11 @@
    
    ;; now we store a way to identify and lookup the subtitles.
    
-   ;; the game-text-id if this is for a hint/ambient
+   ;; the game-text-id if this is for a hint
    (id    game-text-id  :offset 8)
    ;; the name of the spool-anim
    (name  string        :offset 8)
-   ;; the 8-character hash if this is for a spool-anim
+   ;; the 8-character name for an ambient or hint
    (hash  uint64        :offset 8)
    
    
@@ -169,13 +169,13 @@
     (label retry)
     (let ((v1-20 (str-load-status (the-as (pointer int32) (& load-status)))))
       (when (= v1-20 'error)
-        (format 0 "Error loading text~%")
+        (format 0 "Error loading subtitle~%")
         (return 0)
         (goto loaded)
         )
       (cond
         ((>= load-status (+ heap-free -300))
-         (format 0 "Game text heap overrun!~%")
+         (format 0 "Game subtitle heap overrun!~%")
          (return 0)
          )
         ((= v1-20 'busy)
@@ -260,9 +260,8 @@
                     (set! pos (the int (ja-aframe-num 0)))
                     )
                   ;; find closest keyframe
-                  (1+! pos)
                   (dotimes (i (-> scene length))
-                    (when (> pos (-> scene keyframes i frame))
+                    (when (>= pos (-> scene keyframes i frame))
                       (set! keyframe (-> scene keyframes i)))
                     )
                   (when keyframe
@@ -308,7 +307,7 @@
 (defun subtitle-stop ()
   "kill the subtitle process"
 
-  (kill-by-type subtitle *default-pool*)
+  (kill-by-type subtitle *active-pool*)
   (set! *subtitle* (the (pointer subtitle) #f)))
 
 (defun subtitle-start ()
@@ -329,7 +328,8 @@
                                         (set-height! (-> self font) (* 11 3))
                                         (go subtitle-process)
                                         )
-                                    :from *pc-dead-pool* :stack-size (* 1 1024)))
+                                    :from *pc-dead-pool* :to *active-pool*
+                                    :stack-size (* 1 1024)))
   )
 
 
