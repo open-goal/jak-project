@@ -37,12 +37,13 @@ enum MemoryUsageCategory {
   TFRAG_VIS,
   TFRAG_INDEX,
   TFRAG_VERTS,
+  TFRAG_CLUSTER,
   TFRAG_TIME_OF_DAY,
   TFRAG_BVH,
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 10;
+constexpr int TFRAG3_VERSION = 11;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -70,10 +71,39 @@ struct PackedTieVertices {
 
   std::vector<u16> color_indices;
   std::vector<std::array<math::Vector4f, 4>> matrices;
-  std::vector<MatrixGroup> matrix_groups; // todo pack
+  std::vector<MatrixGroup> matrix_groups;  // todo pack
   std::vector<Vertex> vertices;
+  float cluster_size = 0;
   void serialize(Serializer& ser);
+};
 
+struct PackedTfragVertices {
+  struct Vertex {
+    u16 xoff, yoff, zoff;
+    u16 cluster_idx;
+    u16 s, t;
+    u16 color_index;
+
+    /*
+    bool operator==(const Vertex& other) const {
+      return xoff == other.xoff && yoff == other.yoff && zoff == other.zoff &&
+             cluster_idx == other.cluster_idx && s == other.s && t == other.t &&
+             color_index == other.color_index;
+    }
+
+    struct hash {
+      auto operator()(const Vertex& x) const {
+        return std::hash<uint16_t>()(x.xoff) ^ std::hash<uint16_t>()(x.yoff) ^
+               std::hash<uint16_t>()(x.zoff) ^ std::hash<uint16_t>()(x.cluster_idx) ^
+               std::hash<uint16_t>()(x.s) ^ std::hash<uint16_t>()(x.t) ^
+               std::hash<uint16_t>()(x.color_index);
+      }
+    };
+     */
+  };
+
+  std::vector<Vertex> vertices;
+  std::vector<math::Vector<u16, 3>> cluster_origins;
 };
 
 // Settings for drawing a group of triangle strips.
@@ -86,9 +116,20 @@ struct StripDraw {
   DrawMode mode;        // the OpenGL draw settings.
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
-  // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
-  // will use to start a new strip.
-  std::vector<u32> vertex_index_stream;
+  struct {
+    // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
+    // will use to start a new strip.
+    std::vector<u32> vertex_index_stream;
+  } unpacked;
+
+  void unpack();
+
+  struct VertexRun {
+    u32 vertex0;
+    u16 length;
+  };
+
+  std::vector<VertexRun> runs;
 
   // to do culling, the above vertex stream is grouped.
   // by following the visgroups and checking the visibility, you can leave out invisible vertices.
@@ -180,11 +221,16 @@ constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",   
 
 // A tfrag model
 struct TfragTree {
-  TFragmentTreeKind kind;                 // our tfrag kind
-  std::vector<StripDraw> draws;           // the actual topology and settings
-  std::vector<PreloadedVertex> vertices;  // mesh vertices
-  std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
-  BVH bvh;                                // the bvh for frustum culling
+  TFragmentTreeKind kind;        // our tfrag kind
+  std::vector<StripDraw> draws;  // the actual topology and settings
+  PackedTfragVertices packed_vertices;
+  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
+  BVH bvh;                             // the bvh for frustum culling
+
+  struct {
+    std::vector<PreloadedVertex> vertices;  // mesh vertices
+  } unpacked;
+  void unpack();
   void serialize(Serializer& ser);
 };
 
@@ -195,19 +241,23 @@ struct TieWindInstance {
   void serialize(Serializer& ser);
 };
 
-
 // A tie model
 struct TieTree {
   BVH bvh;
-  std::vector<StripDraw> static_draws;    // the actual topology and settings
-  //std::vector<PreloadedVertex> vertices;  // mesh vertices
+  std::vector<StripDraw> static_draws;  // the actual topology and settings
+
   PackedTieVertices packed_vertices;
-  std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
+  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
 
   std::vector<InstancedStripDraw> instanced_wind_draws;
   std::vector<TieWindInstance> wind_instance_info;
 
+  struct {
+    std::vector<PreloadedVertex> vertices;  // mesh vertices
+  } unpacked;
+
   void serialize(Serializer& ser);
+  void unpack();
 };
 
 struct Level {

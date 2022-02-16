@@ -2216,6 +2216,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
             grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
             tree.packed_vertices.matrix_groups.push_back(grp);
+            tfrag3::StripDraw::VertexRun run;
+            run.vertex0 = tree.packed_vertices.color_indices.size();
+            run.length = strip.verts.size();
             for (auto& vert : strip.verts) {
               u16 color_index = 0;
               if (vert.color_index_index == UINT32_MAX) {
@@ -2228,9 +2231,10 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
               size_t vert_idx = tree.packed_vertices.color_indices.size();
               tree.packed_vertices.color_indices.push_back(color_index);
-              draw_to_add_to->vertex_index_stream.push_back(vert_idx);
+              // draw_to_add_to->vertex_index_stream.push_back(vert_idx);
             }
-            draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+            draw_to_add_to->runs.push_back(run);
+            // draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
             draw_to_add_to->vis_groups.push_back(vgroup);
           }
         }

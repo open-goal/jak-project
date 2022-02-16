@@ -70,6 +70,7 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"tfrag-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_INDEX]},
       {"tfrag-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VERTS]},
       {"tfrag-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_TIME_OF_DAY]},
+      {"tfrag-cluster", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_CLUSTER]},
       {"tfrag-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_BVH]}};
   for (auto& known : known_categories) {
     total_accounted += known.second;

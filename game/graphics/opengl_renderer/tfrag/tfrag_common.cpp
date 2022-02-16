@@ -327,9 +327,9 @@ u32 make_all_visible_index_list(std::pair<int, int>* group_out,
     const auto& draw = draws[i];
     std::pair<int, int> ds;
     ds.first = idx_buffer_ptr;
-    memcpy(&idx_out[idx_buffer_ptr], draw.vertex_index_stream.data(),
-           draw.vertex_index_stream.size() * sizeof(u32));
-    idx_buffer_ptr += draw.vertex_index_stream.size();
+    memcpy(&idx_out[idx_buffer_ptr], draw.unpacked.vertex_index_stream.data(),
+           draw.unpacked.vertex_index_stream.size() * sizeof(u32));
+    idx_buffer_ptr += draw.unpacked.vertex_index_stream.size();
     ds.second = idx_buffer_ptr;
     group_out[i] = ds;
   }
@@ -357,7 +357,7 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
         } else {
           building_run = false;
           idx_buffer_ptr += grp.num;
-          memcpy(&idx_out[run_start_out], &draw.vertex_index_stream[run_start_in],
+          memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
                  (idx_buffer_ptr - run_start_out) * sizeof(u32));
         }
       } else {
@@ -372,7 +372,7 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
       vtx_idx += grp.num;
     }
     if (building_run) {
-      memcpy(&idx_out[run_start_out], &draw.vertex_index_stream[run_start_in],
+      memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
              (idx_buffer_ptr - run_start_out) * sizeof(u32));
     }
 

@@ -40,8 +40,8 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
           const auto& tree = lev_data->tie_trees[geo][tree_idx];
           max_draw = std::max(tree.static_draws.size(), max_draw);
           for (auto& draw : tree.static_draws) {
-            idx_buffer_len += draw.vertex_index_stream.size();
-            max_idx_per_draw = std::max(max_idx_per_draw, draw.vertex_index_stream.size());
+            idx_buffer_len += draw.unpacked.vertex_index_stream.size();
+            max_idx_per_draw = std::max(max_idx_per_draw, draw.unpacked.vertex_index_stream.size());
           }
           for (auto& draw : tree.instanced_wind_draws) {
             wind_idx_buffer_len += draw.vertex_index_stream.size();
@@ -156,74 +156,33 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       for (int geo = 0; geo < 4; ++geo) {
         for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
           const auto& tree = lev_data->tie_trees[geo][tree_idx];
-          std::vector<tfrag3::PreloadedVertex> temp_verts;
-
-          temp_verts.resize(tree.packed_vertices.color_indices.size());
-          size_t i = 0;
-          for (const auto& grp : tree.packed_vertices.matrix_groups) {
-            if (grp.matrix_idx == -1) {
-              for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
-                auto& vtx = temp_verts[i];
-                vtx.color_index = tree.packed_vertices.color_indices[i];
-                const auto& proto_vtx = tree.packed_vertices.vertices[src_idx];
-                vtx.x = proto_vtx.x;
-                vtx.y = proto_vtx.y;
-                vtx.z = proto_vtx.z;
-                vtx.q = 1.f;
-                vtx.s = proto_vtx.s;
-                vtx.t = proto_vtx.t;
-                i++;
-              }
-            } else {
-              const auto& mat = tree.packed_vertices.matrices[grp.matrix_idx];
-              for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
-                auto& vtx = temp_verts[i];
-                vtx.color_index = tree.packed_vertices.color_indices[i];
-                const auto& proto_vtx = tree.packed_vertices.vertices[src_idx];
-                auto temp =
-                    mat[0] * proto_vtx.x + mat[1] * proto_vtx.y + mat[2] * proto_vtx.z + mat[3];
-                vtx.x = temp.x();
-                vtx.y = temp.y();
-                vtx.z = temp.z();
-                vtx.q = 1.f;
-                vtx.s = proto_vtx.s;
-                vtx.t = proto_vtx.t;
-                i++;
+          constexpr u32 MAX_VERTS = 40000;
+          bool remaining = false;
+          for (int geo = 0; geo < 4; ++geo) {
+            for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
+              const auto& tree = lev_data->tie_trees[geo][tree_idx];
+              u32 verts = tree.unpacked.vertices.size();
+              u32 start_vert = (m_load_state.vert) * MAX_VERTS;
+              u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
+              if (end_vert > start_vert) {
+                glBindVertexArray(m_trees[geo][tree_idx].vao);
+                glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
+                glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
+                                (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
+                                tree.unpacked.vertices.data() + start_vert);
+                if (end_vert < verts) {
+                  remaining = true;
+                }
               }
             }
-
           }
-          glBindVertexArray(m_trees[geo][tree_idx].vao);
-          glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
-          glBufferSubData(GL_ARRAY_BUFFER, 0, temp_verts.size() * sizeof(tfrag3::PreloadedVertex),
-                          temp_verts.data());
+          m_load_state.vert++;
+          if (!remaining) {
+            return true;
+          }
         }
       }
-      return true;
-      //      constexpr u32 MAX_VERTS = 40000;
-      //      bool remaining = false;
-      //      for (int geo = 0; geo < 4; ++geo) {
-      //        for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
-      //          const auto& tree = lev_data->tie_trees[geo][tree_idx];
-      //          u32 verts = tree.vertices.size();
-      //          u32 start_vert = (m_load_state.vert) * MAX_VERTS;
-      //          u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
-      //          if (end_vert > start_vert) {
-      //            glBindVertexArray(m_trees[geo][tree_idx].vao);
-      //            glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
-      //            glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
-      //                            (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-      //                            tree.vertices.data() + start_vert);
-      //            if (end_vert < verts) {
-      //              remaining = true;
-      //            }
-      //          }
-      //        }
-      //      }
-      //      m_load_state.vert++;
-      //      if (!remaining) {
-      //        return true;
-      //      }
+
     } break;
 
     default:
@@ -705,9 +664,9 @@ void Tie3::render_tree(int idx,
     void* offset = (void*)(indices.first * sizeof(u32));
 
     prof.add_draw_call();
-    prof.add_tri(draw.num_triangles * (float)draw_size / draw.vertex_index_stream.size());
+    prof.add_tri(draw.num_triangles * (float)draw_size / draw.unpacked.vertex_index_stream.size());
 
-    bool is_full = draw_size == (int)draw.vertex_index_stream.size();
+    bool is_full = draw_size == (int)draw.unpacked.vertex_index_stream.size();
 
     tree.perf.draws++;
     if (is_full) {
