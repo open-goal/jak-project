@@ -42,7 +42,7 @@
 ;; enum for the subtitle channels, no more than 2 bytes!
 (defenum pc-subtitle-channel
   :type int16
-  (movie) (ambient) (hint))
+  (invalid -1) (movie 0) (ambient 1) (hint 2))
 
 
 ;; information about a single line of subtitles
@@ -152,6 +152,11 @@
   (the subtitle-text #f))
 
 (defun load-subtitle-text-info ((txt-name string) (curr-text symbol) (heap kheap))
+  "load a subtitles text file onto a heap.
+   txt-name = language-agnostic file name
+   curr-text = a symbol to a subtitle-text-info to link the file to
+   heap = the text heap to load the file onto"
+
   (local-vars (v0-2 int) (heap-sym-heap subtitle-text-info) (lang pc-subtitle-lang) (load-status int) (heap-free int))
   (set! heap-sym-heap (the-as subtitle-text-info (-> curr-text value)))
   (set! lang (-> *pc-settings* subtitle-language))
@@ -197,7 +202,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; states
+;;;;  subtitle process and drawing!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -219,6 +224,13 @@
   
   )
 
+(defun subtitle? ()
+  "can a subtitle be displayed right now?"
+  (and (-> *pc-settings* subtitles?)  ;; subtitles enabled
+       (or *debug-segment* (= *master-mode* 'game))  ;; current mode is game, OR we are just debugging
+       )
+  )
+
 
 (defstate subtitle-process (subtitle)
   
@@ -235,11 +247,14 @@
     )
   :trans (behavior ()
     (load-subtitle-text-info PC_SUBTITLE_FILE_NAME '*subtitle-text* *subtitle-text-heap*)
+    ;; reset params
     (set! (-> self spool-name) #f)
+    (set! (-> self cur-channel) (pc-subtitle-channel invalid))
     (none))
   :post (behavior ()
     ;; check what kind of subtitles are running
     (when (and (movie?) (-> *art-control* spool-lock) (-> *art-control* active-stream))
+      ;; there's a cutscene happening and an active spool with a valid owner.
       (set! (-> self spool-name) (-> *art-control* active-stream))
       (set! (-> self cur-channel) (pc-subtitle-channel movie))
       )
@@ -247,9 +262,11 @@
     ;; do subtitles
     (case (-> self cur-channel)
       (((pc-subtitle-channel movie))
-        ;; cutscenes, see if there's an active one
-        (when (and (-> *pc-settings* subtitles?) (-> self spool-name))
-          ;; active cutscene! get a subtitle info that matches our current cutscene, and find at what point we're in.
+        ;; cutscenes, check if user toggled subtitles
+        (if (cpad-pressed? 0 square)
+            (not! (-> *pc-settings* subtitles?)))
+        (when (subtitle?)
+          ;; subtitles on! get a subtitle info that matches our current cutscene, and find at what point we're in.
           (let ((scene (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))))
             (when scene
               ;; got a scene! get closest subtitle now.
