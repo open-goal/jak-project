@@ -153,36 +153,30 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       break;
 
     case State::UPLOAD_VERTS: {
+      constexpr u32 MAX_VERTS = 40000;
+      bool remaining = false;
       for (int geo = 0; geo < 4; ++geo) {
         for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
           const auto& tree = lev_data->tie_trees[geo][tree_idx];
-          constexpr u32 MAX_VERTS = 40000;
-          bool remaining = false;
-          for (int geo = 0; geo < 4; ++geo) {
-            for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
-              const auto& tree = lev_data->tie_trees[geo][tree_idx];
-              u32 verts = tree.unpacked.vertices.size();
-              u32 start_vert = (m_load_state.vert) * MAX_VERTS;
-              u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
-              if (end_vert > start_vert) {
-                glBindVertexArray(m_trees[geo][tree_idx].vao);
-                glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
-                glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
-                                (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                                tree.unpacked.vertices.data() + start_vert);
-                if (end_vert < verts) {
-                  remaining = true;
-                }
-              }
+          u32 verts = tree.unpacked.vertices.size();
+          u32 start_vert = (m_load_state.vert) * MAX_VERTS;
+          u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
+          if (end_vert > start_vert) {
+            glBindVertexArray(m_trees[geo][tree_idx].vao);
+            glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
+            glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
+                            (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
+                            tree.unpacked.vertices.data() + start_vert);
+            if (end_vert < verts) {
+              remaining = true;
             }
-          }
-          m_load_state.vert++;
-          if (!remaining) {
-            return true;
           }
         }
       }
-
+      m_load_state.vert++;
+      if (!remaining) {
+        return true;
+      }
     } break;
 
     default:

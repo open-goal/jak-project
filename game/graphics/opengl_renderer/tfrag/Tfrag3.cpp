@@ -141,44 +141,34 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
     } break;
 
     case State::UPLOAD_VERTS: {
+      constexpr u32 MAX_VERTS = 40000;
+      bool remaining = false;
       for (int geom = 0; geom < GEOM_MAX; ++geom) {
         for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees[geom].size(); tree_idx++) {
           const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
 
           if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
-            constexpr u32 MAX_VERTS = 40000;
-            bool remaining = false;
-            for (int geom = 0; geom < GEOM_MAX; ++geom) {
-              for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees[geom].size(); tree_idx++) {
-                const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
-
-                if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) !=
-                    tree_kinds.end()) {
-                  u32 verts = tree.unpacked.vertices.size();
-                  u32 start_vert = (m_load_state.vert) * MAX_VERTS;
-                  u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
-                  if (end_vert > start_vert) {
-                    glBindVertexArray(m_cached_trees[geom][tree_idx].vao);
-                    glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[geom][tree_idx].vertex_buffer);
-                    glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
-                                    (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                                    tree.unpacked.vertices.data() + start_vert);
-                    if (end_vert < verts) {
-                      remaining = true;
-                    }
-                  }
-                }
+            u32 verts = tree.unpacked.vertices.size();
+            u32 start_vert = (m_load_state.vert) * MAX_VERTS;
+            u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
+            if (end_vert > start_vert) {
+              glBindVertexArray(m_cached_trees[geom][tree_idx].vao);
+              glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[geom][tree_idx].vertex_buffer);
+              glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
+                              (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
+                              tree.unpacked.vertices.data() + start_vert);
+              if (end_vert < verts) {
+                remaining = true;
               }
-            }
-            m_load_state.vert++;
-            if (!remaining) {
-              return true;
             }
           }
         }
       }
+      m_load_state.vert++;
+      if (!remaining) {
+        return true;
+      }
     } break;
-
     default:
       ASSERT(false);
   }
