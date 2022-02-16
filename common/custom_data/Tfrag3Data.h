@@ -11,6 +11,37 @@
 
 namespace tfrag3 {
 
+// NOTE:
+// when updating any data structures in this file:
+// - change the TFRAG3_VERSION
+// - make sure to update the serialize function
+// - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
+// - if adding a new category to the memory usage, update extract_level to print it.
+
+enum MemoryUsageCategory {
+  TEXTURE,
+
+  TIE_DEINST_VIS,
+  TIE_DEINST_INDEX,
+  TIE_INST_VIS,
+  TIE_INST_INDEX,
+  TIE_BVH,
+  TIE_VERTS,
+  TIE_TIME_OF_DAY,
+  TIE_WIND_INSTANCE_INFO,
+
+  TIE_CIDX,
+  TIE_MATRICES,
+  TIE_GRPS,
+
+  TFRAG_VIS,
+  TFRAG_INDEX,
+  TFRAG_VERTS,
+  TFRAG_TIME_OF_DAY,
+  TFRAG_BVH,
+  NUM_CATEGORIES
+};
+
 constexpr int TFRAG3_VERSION = 10;
 
 // These vertices should be uploaded to the GPU at load time and don't change
@@ -24,6 +55,26 @@ struct PreloadedVertex {
   u16 pad[3];
 };
 static_assert(sizeof(PreloadedVertex) == 32, "PreloadedVertex size");
+
+struct PackedTieVertices {
+  struct Vertex {
+    float x, y, z;
+    float s, t;
+  };
+
+  struct MatrixGroup {
+    s32 matrix_idx;
+    u32 start_vert;
+    u32 end_vert;
+  };
+
+  std::vector<u16> color_indices;
+  std::vector<std::array<math::Vector4f, 4>> matrices;
+  std::vector<MatrixGroup> matrix_groups; // todo pack
+  std::vector<Vertex> vertices;
+  void serialize(Serializer& ser);
+
+};
 
 // Settings for drawing a group of triangle strips.
 // This refers to a group of PreloadedVertices that are already uploaded.
@@ -144,15 +195,17 @@ struct TieWindInstance {
   void serialize(Serializer& ser);
 };
 
+
 // A tie model
 struct TieTree {
   BVH bvh;
   std::vector<StripDraw> static_draws;    // the actual topology and settings
-  std::vector<PreloadedVertex> vertices;  // mesh vertices
+  //std::vector<PreloadedVertex> vertices;  // mesh vertices
+  PackedTieVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
 
   std::vector<InstancedStripDraw> instanced_wind_draws;
-  std::vector<TieWindInstance> instance_info;
+  std::vector<TieWindInstance> wind_instance_info;
 
   void serialize(Serializer& ser);
 };
@@ -165,6 +218,8 @@ struct Level {
   std::array<std::vector<TieTree>, 4> tie_trees;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
+
+  std::array<int, MemoryUsageCategory::NUM_CATEGORIES> get_memory_usage() const;
 };
 
 }  // namespace tfrag3

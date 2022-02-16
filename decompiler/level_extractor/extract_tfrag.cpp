@@ -1975,7 +1975,7 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
     }
   }
 
-  fmt::print("    grouped to get {} draw calls\n", dc);
+  // fmt::print("    grouped to get {} draw calls\n", dc);
 
   return result;
 }
@@ -2176,7 +2176,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
     }
     bool ok = verify_node_indices(tree);
     ASSERT(ok);
-    fmt::print("    tree has {} arrays and {} tfragments\n", tree->length, as_tfrag_array->length);
+    // fmt::print("    tree has {} arrays and {} tfragments\n", tree->length, as_tfrag_array->length);
 
     auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
     this_tree.bvh.first_leaf_node = vis_nodes.first_child_node;

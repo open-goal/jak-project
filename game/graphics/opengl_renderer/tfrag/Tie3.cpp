@@ -47,11 +47,11 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
             wind_idx_buffer_len += draw.vertex_index_stream.size();
             max_idx_per_draw = std::max(max_idx_per_draw, draw.vertex_index_stream.size());
           }
-          for (auto& inst : tree.instance_info) {
+          for (auto& inst : tree.wind_instance_info) {
             max_wind_idx = std::max(max_wind_idx, inst.wind_idx);
           }
           time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
-          u32 verts = tree.vertices.size();
+          u32 verts = tree.packed_vertices.color_indices.size();
           fmt::print("  tree {} has {} verts ({} kB) and {} draws\n", tree_idx, verts,
                      verts * sizeof(tfrag3::PreloadedVertex) / 1024.f, tree.static_draws.size());
           auto& lod_tree = m_trees.at(geo);
@@ -62,7 +62,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
           lod_tree[tree_idx].draws = &tree.static_draws;  // todo - should we just copy this?
           lod_tree[tree_idx].colors = &tree.colors;
           lod_tree[tree_idx].vis = &tree.bvh;
-          lod_tree[tree_idx].instance_info = &tree.instance_info;
+          lod_tree[tree_idx].instance_info = &tree.wind_instance_info;
           lod_tree[tree_idx].wind_draws = &tree.instanced_wind_draws;
           vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
           lod_tree[tree_idx].tod_cache = swizzle_time_of_day(tree.colors);
@@ -107,7 +107,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
           lod_tree[tree_idx].index_list.resize(idx_buffer_len);
 
           if (wind_idx_buffer_len > 0) {
-            lod_tree[tree_idx].wind_matrix_cache.resize(tree.instance_info.size());
+            lod_tree[tree_idx].wind_matrix_cache.resize(tree.wind_instance_info.size());
             lod_tree[tree_idx].has_wind = true;
             glGenBuffers(1, &lod_tree[tree_idx].wind_vertex_index_buffer);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lod_tree[tree_idx].wind_vertex_index_buffer);
@@ -153,30 +153,77 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       break;
 
     case State::UPLOAD_VERTS: {
-      constexpr u32 MAX_VERTS = 40000;
-      bool remaining = false;
       for (int geo = 0; geo < 4; ++geo) {
         for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
           const auto& tree = lev_data->tie_trees[geo][tree_idx];
-          u32 verts = tree.vertices.size();
-          u32 start_vert = (m_load_state.vert) * MAX_VERTS;
-          u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
-          if (end_vert > start_vert) {
-            glBindVertexArray(m_trees[geo][tree_idx].vao);
-            glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
-            glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
-                            (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                            tree.vertices.data() + start_vert);
-            if (end_vert < verts) {
-              remaining = true;
+          std::vector<tfrag3::PreloadedVertex> temp_verts;
+
+          temp_verts.resize(tree.packed_vertices.color_indices.size());
+          size_t i = 0;
+          for (const auto& grp : tree.packed_vertices.matrix_groups) {
+            if (grp.matrix_idx == -1) {
+              for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
+                auto& vtx = temp_verts[i];
+                vtx.color_index = tree.packed_vertices.color_indices[i];
+                const auto& proto_vtx = tree.packed_vertices.vertices[src_idx];
+                vtx.x = proto_vtx.x;
+                vtx.y = proto_vtx.y;
+                vtx.z = proto_vtx.z;
+                vtx.q = 1.f;
+                vtx.s = proto_vtx.s;
+                vtx.t = proto_vtx.t;
+                i++;
+              }
+            } else {
+              const auto& mat = tree.packed_vertices.matrices[grp.matrix_idx];
+              for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
+                auto& vtx = temp_verts[i];
+                vtx.color_index = tree.packed_vertices.color_indices[i];
+                const auto& proto_vtx = tree.packed_vertices.vertices[src_idx];
+                auto temp =
+                    mat[0] * proto_vtx.x + mat[1] * proto_vtx.y + mat[2] * proto_vtx.z + mat[3];
+                vtx.x = temp.x();
+                vtx.y = temp.y();
+                vtx.z = temp.z();
+                vtx.q = 1.f;
+                vtx.s = proto_vtx.s;
+                vtx.t = proto_vtx.t;
+                i++;
+              }
             }
+
           }
+          glBindVertexArray(m_trees[geo][tree_idx].vao);
+          glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
+          glBufferSubData(GL_ARRAY_BUFFER, 0, temp_verts.size() * sizeof(tfrag3::PreloadedVertex),
+                          temp_verts.data());
         }
       }
-      m_load_state.vert++;
-      if (!remaining) {
-        return true;
-      }
+      return true;
+      //      constexpr u32 MAX_VERTS = 40000;
+      //      bool remaining = false;
+      //      for (int geo = 0; geo < 4; ++geo) {
+      //        for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
+      //          const auto& tree = lev_data->tie_trees[geo][tree_idx];
+      //          u32 verts = tree.vertices.size();
+      //          u32 start_vert = (m_load_state.vert) * MAX_VERTS;
+      //          u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
+      //          if (end_vert > start_vert) {
+      //            glBindVertexArray(m_trees[geo][tree_idx].vao);
+      //            glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
+      //            glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
+      //                            (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
+      //                            tree.vertices.data() + start_vert);
+      //            if (end_vert < verts) {
+      //              remaining = true;
+      //            }
+      //          }
+      //        }
+      //      }
+      //      m_load_state.vert++;
+      //      if (!remaining) {
+      //        return true;
+      //      }
     } break;
 
     default:
@@ -440,7 +487,6 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }
   render_all_trees(lod(), settings, render_state, prof);
-  // todo render all...
 }
 
 void Tie3::render_all_trees(int geom,
