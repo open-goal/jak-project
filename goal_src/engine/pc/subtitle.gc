@@ -48,8 +48,10 @@
 ;; information about a single line of subtitles
 (deftype subtitle-keyframe (structure)
   (
-   (frame  int32)  ;; the frame to play the subtitle line on
-   (string string) ;; the text for the subtitle line
+   (frame  int32)      ;; the frame to play the subtitle line on
+   (string string)     ;; the text for the subtitle line
+   (speaker string)    ;; name of the speaker. leave blank for no speaker.
+   (offscreen symbol)  ;; speaker is offscreen.
    )
   :pack-me
   )
@@ -106,7 +108,11 @@
    (old-spool-name string)
    (cur-channel pc-subtitle-channel)
    )
-  :heap-base #x20
+  :heap-base #x10
+  
+  (:methods
+    (subtitle-format (_type_ subtitle-keyframe) string)
+    )
   )
 
 
@@ -194,6 +200,23 @@
 ;;;; states
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defmethod subtitle-format subtitle ((obj subtitle) (keyframe subtitle-keyframe))
+  "check settings and format subtitle accordingly."
+  
+  (cond
+    ((or (= #t (-> *pc-settings* subtitle-speaker?))
+         (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (-> keyframe offscreen)))
+     (string-format "~3L~S:~0L ~S" (-> keyframe speaker) (-> keyframe string))
+     )
+    (else
+     (string-format "~S" (-> keyframe string))
+     )
+    )
+  
+  )
+
+
 (defstate subtitle-process (subtitle)
   
   :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
@@ -222,7 +245,7 @@
     (case (-> self cur-channel)
       (((pc-subtitle-channel movie))
         ;; cutscenes, see if there's an active one
-        (when (-> self spool-name)
+        (when (and (-> *pc-settings* subtitles?) (-> self spool-name))
           ;; active cutscene! get a subtitle info that matches our current cutscene, and find at what point we're in.
           (let ((scene (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))))
             (when scene
@@ -241,7 +264,7 @@
                     )
                   (when keyframe
                     ;; we got the closest keyframe! finally just render the subtitles!
-                    (print-game-text (-> keyframe string) (-> self font) #f 128 22)
+                    (print-game-text (subtitle-format self keyframe) (-> self font) #f 128 22)
                     (#when PC_SUBTITLE_DEBUG
                       (draw-debug-text-box (-> self font))
                       )

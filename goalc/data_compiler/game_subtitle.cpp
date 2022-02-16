@@ -117,12 +117,16 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
         auto scene = new GameSubtitleSceneInfo(head.as_string()->data);
         for_each_in_list(cdr(obj), [&](const goos::Object& entry) {
           if (entry.is_pair()) {
-            if (!car(entry).is_int() || !car(cdr(entry)).is_string()) {
-              throw std::runtime_error("Each entry must be of format (number \"string\")");
+            if (!car(entry).is_int() || !car(cdr(entry)).is_symbol() ||
+                !car(cdr(cdr(entry))).is_string() || !car(cdr(cdr(cdr(entry)))).is_string()) {
+              throw std::runtime_error(
+                  "Each entry must be of format (number symbol \"string\" \"string\")");
             }
 
-            scene->add_line(car(entry).as_int(),
-                            font->convert_utf8_to_game(car(cdr(entry)).as_string()->data));
+            auto line = font->convert_utf8_to_game(car(cdr(cdr(cdr(entry)))).as_string()->data);
+            auto speaker = font->convert_utf8_to_game(car(cdr(cdr(entry))).as_string()->data);
+            auto offscreen = car(cdr(entry)).as_symbol()->name != "#f";
+            scene->add_line(car(entry).as_int(), line, speaker, offscreen);
           } else {
             throw std::runtime_error("Each entry must be a list");
           }
@@ -187,8 +191,10 @@ void compile(GameSubtitleDB& db) {
       array_link_sources.pop();
 
       for (auto& subtitle : scene->lines()) {
-        gen.add_word(subtitle.frame);                  // frame
-        gen.add_ref_to_string_in_pool(subtitle.line);  // line
+        gen.add_word(subtitle.frame);                           // frame
+        gen.add_ref_to_string_in_pool(subtitle.line);           // line
+        gen.add_ref_to_string_in_pool(subtitle.speaker);        // speaker
+        gen.add_symbol_link(subtitle.offscreen ? "#t" : "#f");  // offscreen
       }
     }
 

@@ -10,10 +10,13 @@ class GameSubtitleSceneInfo {
   GameSubtitleSceneInfo(std::string name) : m_name(name) {}
 
   struct SubtitleLine {
-    SubtitleLine(int _frame, std::string _line) : frame(_frame), line(_line) {}
+    SubtitleLine(int frame, std::string line, std::string speaker, bool offscreen)
+        : frame(frame), line(line), speaker(speaker), offscreen(offscreen) {}
 
     int frame;
     std::string line;
+    std::string speaker;
+    bool offscreen;
   };
 
   const std::string& name() const { return m_name; }
@@ -24,7 +27,9 @@ class GameSubtitleSceneInfo {
     m_lines = scene->lines();
   }
 
-  void add_line(int frame, std::string line) { m_lines.emplace_back(frame, line); }
+  void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
+    m_lines.emplace_back(frame, line, speaker, offscreen);
+  }
 
  private:
   std::string m_name;

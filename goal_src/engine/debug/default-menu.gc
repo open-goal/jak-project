@@ -4271,6 +4271,12 @@
     )
   )
 
+(defun dm-subtitle-language ((blang int))
+  (let ((lang (the pc-subtitle-lang (/ blang 8))))
+    (set! (-> *pc-settings* subtitle-language) lang)
+    )
+  )
+
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
@@ -4336,8 +4342,17 @@
             )
          (flag "Letterbox" #f ,(dm-lambda-boolean-flag (-> *pc-settings* letterbox?)))
          ;(flag "Skip movies" #f ,(dm-lambda-boolean-flag (-> *pc-settings* skip-movies?)))
-         ;(flag "Subtitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* subtitles?)))
+         (flag "Subtitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* subtitles?)))
          ;(flag "Hinttitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* hinttitles?)))
+         (menu "Subtitle speaker"
+            (function "Off" #f (lambda () (set! (-> *pc-settings* subtitle-speaker?) #f)))
+            (function "On" #f (lambda () (set! (-> *pc-settings* subtitle-speaker?) #t)))
+            (function "Auto" #f (lambda () (set! (-> *pc-settings* subtitle-speaker?) 'auto)))
+            )
+         (menu "Subtitle language"
+            (function "english" (pc-subtitle-lang english) dm-subtitle-language)
+            (function "uk-english" (pc-subtitle-lang uk-english) dm-subtitle-language)
+            )
          (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
          (menu "Game fixes"
             (flag "sagecage crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-sagecage)))
