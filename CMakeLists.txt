@@ -158,4 +158,4 @@ endif()
 
 # Check for AVX / AVX2 extensions
 include(FindAVX)
-FIND_PACKAGE(AVX 2.0 REQUIRED)
+OptimizeForArchitecture()
