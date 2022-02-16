@@ -1741,6 +1741,7 @@
  "level/level-info.gc"
  "level/level.gc"
  "ui/text.gc"
+ "pc/subtitle.gc" ;; added
  "collide/collide-probe.gc"
  "collide/collide-frag.gc"
  "collide/collide-mesh.gc"

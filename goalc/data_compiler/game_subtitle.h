@@ -5,7 +5,6 @@
 #include <map>
 #include <unordered_set>
 
-
 class GameSubtitleSceneInfo {
  public:
   GameSubtitleSceneInfo(std::string name) : m_name(name) {}
@@ -52,7 +51,6 @@ class GameSubtitleBank {
   std::map<std::string, GameSubtitleSceneInfo*> m_scenes;
 };
 
-
 /*!
  * The subtitles database contains a subtitbles bank for each language.
  * Each subtitles bank contains a series of subtitle scene infos.
@@ -82,7 +80,6 @@ class GameSubtitleDB {
  private:
   std::map<int, GameSubtitleBank*> m_banks;
 };
-
 
 void compile_game_subtitle(const std::string& filename,
                            GameTextVersion text_ver,

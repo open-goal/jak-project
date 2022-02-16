@@ -1,6 +1,7 @@
 /*!
  * @file game_subtitle.cpp
- * Builds the XSUBTITLE.TXT text files.  Each file contains all the strings used as subtitles for cutscenes, hints and ambient speech, along with the timings.
+ * Builds the XSUBTIT.TXT text files.  Each file contains all the strings used as subtitles for
+ * cutscenes, hints and ambient speech, along with the timings.
  *
  * This kind of file is completely custom.
  */
@@ -13,7 +14,6 @@
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
-
 
 namespace {
 template <typename T>
@@ -149,6 +149,9 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
       throw std::runtime_error("Invalid game subtitles file");
     }
   });
+  if (!languages_set) {
+    throw std::runtime_error("At least one language must be set.");
+  }
 }
 
 /*!
