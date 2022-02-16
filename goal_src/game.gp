@@ -324,6 +324,12 @@
          "out/iso/6COMMON.TXT")
   )
 
+(defstep :in "game/assets/subtitle/jak1/game_subtitle_en.txt"
+  :tool 'subtitle
+  :out '("out/iso/0SUBTIT.TXT"
+         "out/iso/6SUBTIT.TXT")
+  )
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -333,6 +339,7 @@
 
 (group "engine"
        "out/iso/0COMMON.TXT"
+       "out/iso/0SUBTIT.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        )
@@ -345,6 +352,7 @@
 
 (group "hub1"
        "out/iso/0COMMON.TXT"
+       "out/iso/0SUBTIT.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        "out/iso/VI1.DGO"
@@ -1852,6 +1860,7 @@
 
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
+   "out/iso/0SUBTIT.TXT"
    ,@*all-cgos*
    ,@*all-vis*
    ,@*all-str*)
@@ -1859,4 +1868,11 @@
 
 (group-list "spools"
  `(,@*all-str*)
+ )
+
+(group-list "text"
+ `(
+   "out/iso/0COMMON.TXT"
+   "out/iso/0SUBTIT.TXT"
+   )
  )

@@ -119,3 +119,12 @@ GroupTool::GroupTool() : Tool("group") {}
 bool GroupTool::run(const ToolInput&) {
   return true;
 }
+
+SubtitleTool::SubtitleTool(GameSubtitleDB* subtitle_db)
+    : Tool("subtitle"), m_subtitle_db(subtitle_db) {}
+
+bool SubtitleTool::run(const ToolInput& task) {
+  //  TODO
+  compile_game_subtitle(task.input, GameTextVersion::JAK1_V1, *m_subtitle_db);
+  return true;
+}

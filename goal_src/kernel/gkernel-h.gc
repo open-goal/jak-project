@@ -598,6 +598,14 @@
          ,@body)
   )
 
+(defmacro with-proc (bindings &rest body)
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+      (protect (pp)
+          (set! pp ,(car bindings))
+          ,@body
+          ))
+  )
+
 (defmacro defbehavior (name process-type bindings &rest body)
   (if (and
        (> (length body) 1)     ;; more than one thing in function
@@ -622,6 +630,22 @@
     )
   )
 
+(defmacro kheap-alloc (heap size)
+  "allocate space for a kheap"
+  `(let ((heap ,heap) (size ,size))
+    (set! (-> heap base) (malloc 'global size))
+    (set! (-> heap current) (-> heap base))
+    (set! (-> heap top-base) (&+ (-> heap base) size))
+    (set! (-> heap top) (-> heap top-base))
+    )
+  )
+
+(defmacro kheap-reset (heap)
+  "reset the kheap, so you can use its memory again"
+  `(let ((heap ,heap))
+    (set! (-> heap current) (-> heap base))
+    )
+  )
 
 (defmacro with-sp (&rest body)
   `(rlet ((sp :reg rsp :reset-here #t :type pointer))

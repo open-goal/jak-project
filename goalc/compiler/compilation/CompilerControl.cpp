@@ -16,6 +16,7 @@
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text.h"
+#include "goalc/data_compiler/game_subtitle.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -66,11 +67,15 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
   auto kind = symbol_string(args.unnamed.at(0));
   if (kind == "game-text") {
+    // TODO version
     compile_game_text(as_string(args.unnamed.at(1)));
   } else if (kind == "game-count") {
     compile_game_count(as_string(args.unnamed.at(1)));
   } else if (kind == "dir-tpages") {
     compile_dir_tpages(as_string(args.unnamed.at(1)));
+  } else if (kind == "game-subtitle") {
+    // TODO version
+    compile_game_subtitle(as_string(args.unnamed.at(1)), GameTextVersion::JAK1_V1, m_subtitle_db);
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }

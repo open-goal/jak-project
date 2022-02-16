@@ -18,6 +18,7 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
+#include "goalc/data_compiler/game_subtitle.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -83,6 +84,7 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
+  GameSubtitleDB m_subtitle_db;
 
   struct DebugStats {
     int num_spills = 0;

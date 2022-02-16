@@ -2,6 +2,7 @@
 
 #include "goalc/make/Tool.h"
 #include "common/goos/Reader.h"
+#include "goalc/data_compiler/game_subtitle.h"
 
 class Compiler;
 
@@ -54,4 +55,13 @@ class GroupTool : public Tool {
  public:
   GroupTool();
   bool run(const ToolInput& task) override;
+};
+
+class SubtitleTool : public Tool {
+ public:
+  SubtitleTool(GameSubtitleDB* subtitle_db);
+  bool run(const ToolInput& task) override;
+
+ private:
+  GameSubtitleDB* m_subtitle_db;
 };

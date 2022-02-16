@@ -56,10 +56,9 @@ void DataObjectGenerator::link_word_to_word(int source, int target, int offset) 
 }
 
 void DataObjectGenerator::link_word_to_byte(int source_word, int target_byte) {
-  PointerLinkRecord rec;
+  auto& rec = m_ptr_links.emplace_back();
   rec.source_word = source_word;
   rec.target_byte = target_byte;
-  m_ptr_links.push_back(rec);
 }
 
 int DataObjectGenerator::add_ref_to_string_in_pool(const std::string& str) {

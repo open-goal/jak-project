@@ -95,6 +95,7 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
         if (languages_set) {
           throw std::runtime_error("Languages has been set multiple times.");
         }
+        languages_set = true;
 
         text.resize(get_int(car(cdr(obj))));
         if (!cdr(cdr(obj)).is_empty_list()) {
