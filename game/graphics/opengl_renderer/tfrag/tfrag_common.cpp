@@ -302,7 +302,7 @@ void interp_time_of_day_fast(const float weights[8],
                              const SwizzledTimeOfDay& in,
                              math::Vector<u8, 4>* out) {
   // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
-  if (gCpuInfo.has_avx2) {
+  if (get_cpu_info().has_avx2) {
     interp_time_of_day_fast_avx2(weights, in, out);
     return;
   }

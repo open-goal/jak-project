@@ -16,4 +16,4 @@ struct CpuInfo {
   std::string model;
 };
 
-extern CpuInfo gCpuInfo;
+CpuInfo& get_cpu_info();

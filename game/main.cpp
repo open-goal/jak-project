@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
   // do this as soon as possible - stuff like memcpy might use AVX instructions and we want to
   // warn the user instead of just crashing.
   setup_cpu_info();
-  if (!gCpuInfo.has_avx) {
+  if (!get_cpu_info().has_avx) {
     printf("Your CPU does not support AVX, which is required for OpenGOAL.\n");
     return -1;
   }
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
   if (disable_avx2) {
     // for debugging the non-avx2 code paths, there's a flag to manually disable.
     printf("Note: AVX2 code has been manually disabled.\n");
-    gCpuInfo.has_avx2 = false;
+    get_cpu_info().has_avx2 = false;
   }
 
 #ifndef __AVX2__
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  if (gCpuInfo.has_avx2) {
+  if (get_cpu_info().has_avx2) {
     printf("AVX2 mode enabled\n");
   } else {
     printf("AVX2 mode disabled\n");

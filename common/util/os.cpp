@@ -81,3 +81,7 @@ void setup_cpu_info() {
 
   gCpuInfo.initialized = true;
 }
+
+CpuInfo& get_cpu_info() {
+  return gCpuInfo;
+}

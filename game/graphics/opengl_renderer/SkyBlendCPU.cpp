@@ -19,7 +19,7 @@ SkyBlendCPU::~SkyBlendCPU() {
 }
 
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-  if (gCpuInfo.has_avx2) {
+  if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
     for (u32 i = 0; i < size / 16; i++) {
@@ -48,7 +48,7 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
 }
 
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-  if (gCpuInfo.has_avx2) {
+  if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
     __m256i max_intensity = _mm256_set1_epi16(255);
