@@ -3,6 +3,7 @@
 #include "tfrag_common.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "common/util/os.h"
 
 #include <immintrin.h>
 
@@ -212,11 +213,12 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
 // Due to using integers instead of floats, it may be a tiny bit different.
 // TODO: it might be possible to reorder the loop into two blocks of loads and avoid spilling xmms.
 // It's ~8x faster than the slow version.
-void interp_time_of_day_fast(const float weights[8],
-                             const SwizzledTimeOfDay& in,
-                             math::Vector<u8, 4>* out) {
-  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
 
+void interp_time_of_day_fast_avx2(const float weights[8],
+                                  const SwizzledTimeOfDay& in,
+                                  math::Vector<u8, 4>* out) {
+  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
+#ifdef __AVX2__
   // weight multipliers
   __m256i weights0 = _mm256_set1_epi16(weights[0] * 64.f);
   __m256i weights1 = _mm256_set1_epi16(weights[1] * 64.f);
@@ -234,7 +236,7 @@ void interp_time_of_day_fast(const float weights[8],
                                  255, 255, 255);
 
   for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
-    // first, load colors. We put 16 bytes / register and don't touch the upper half because we will
+    // first, load colors. We put 16 bytes / register and don't touch the upper half because we
     // convert u8s to u16s.
     const u8* base = in.data.data() + color_quad * 128;
     __m128i color0_p = _mm_loadu_si128((const __m128i*)(base + 0));
@@ -290,6 +292,149 @@ void interp_time_of_day_fast(const float weights[8],
     // store result
     _mm_storeu_si128((__m128i*)(&out[color_quad * 4]), result);
   }
+#else
+  // unreachable.
+  ASSERT(false);
+#endif
+}
+
+void interp_time_of_day_fast(const float weights[8],
+                             const SwizzledTimeOfDay& in,
+                             math::Vector<u8, 4>* out) {
+  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
+  if (get_cpu_info().has_avx2) {
+    interp_time_of_day_fast_avx2(weights, in, out);
+    return;
+  }
+
+  // weight multipliers
+  __m128i weights0 = _mm_set1_epi16(weights[0] * 64.f);
+  __m128i weights1 = _mm_set1_epi16(weights[1] * 64.f);
+  __m128i weights2 = _mm_set1_epi16(weights[2] * 64.f);
+  __m128i weights3 = _mm_set1_epi16(weights[3] * 64.f);
+  __m128i weights4 = _mm_set1_epi16(weights[4] * 64.f);
+  __m128i weights5 = _mm_set1_epi16(weights[5] * 64.f);
+  __m128i weights6 = _mm_set1_epi16(weights[6] * 64.f);
+  __m128i weights7 = _mm_set1_epi16(weights[7] * 64.f);
+
+  // saturation: note that alpha is saturated to 128 but the rest are 255.
+  // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
+  // change the shader to deal with this.
+  __m128i sat = _mm_set_epi16(128, 255, 255, 255, 128, 255, 255, 255);
+
+  for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
+    // first, load colors. We put 16 bytes / register and don't touch the upper half because we
+    // convert u8s to u16s.
+    {
+      const u8* base = in.data.data() + color_quad * 128;
+      __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
+      __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
+      __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
+      __m128i color3_p = _mm_loadu_si64((const __m128i*)(base + 48));
+      __m128i color4_p = _mm_loadu_si64((const __m128i*)(base + 64));
+      __m128i color5_p = _mm_loadu_si64((const __m128i*)(base + 80));
+      __m128i color6_p = _mm_loadu_si64((const __m128i*)(base + 96));
+      __m128i color7_p = _mm_loadu_si64((const __m128i*)(base + 112));
+
+      // unpack to 16-bits. each has 16x 16 bit colors.
+      __m128i color0 = _mm_cvtepu8_epi16(color0_p);
+      __m128i color1 = _mm_cvtepu8_epi16(color1_p);
+      __m128i color2 = _mm_cvtepu8_epi16(color2_p);
+      __m128i color3 = _mm_cvtepu8_epi16(color3_p);
+      __m128i color4 = _mm_cvtepu8_epi16(color4_p);
+      __m128i color5 = _mm_cvtepu8_epi16(color5_p);
+      __m128i color6 = _mm_cvtepu8_epi16(color6_p);
+      __m128i color7 = _mm_cvtepu8_epi16(color7_p);
+
+      // multiply by weights
+      color0 = _mm_mullo_epi16(color0, weights0);
+      color1 = _mm_mullo_epi16(color1, weights1);
+      color2 = _mm_mullo_epi16(color2, weights2);
+      color3 = _mm_mullo_epi16(color3, weights3);
+      color4 = _mm_mullo_epi16(color4, weights4);
+      color5 = _mm_mullo_epi16(color5, weights5);
+      color6 = _mm_mullo_epi16(color6, weights6);
+      color7 = _mm_mullo_epi16(color7, weights7);
+
+      // add. This order minimizes dependencies.
+      color0 = _mm_add_epi16(color0, color1);
+      color2 = _mm_add_epi16(color2, color3);
+      color4 = _mm_add_epi16(color4, color5);
+      color6 = _mm_add_epi16(color6, color7);
+
+      color0 = _mm_add_epi16(color0, color2);
+      color4 = _mm_add_epi16(color4, color6);
+
+      color0 = _mm_add_epi16(color0, color4);
+
+      // divide, because we multiplied our weights by 2^7.
+      color0 = _mm_srli_epi16(color0, 6);
+
+      // saturate
+      color0 = _mm_min_epu16(sat, color0);
+
+      // back to u8s.
+      auto result = _mm_packus_epi16(color0, color0);
+
+      // store result
+      _mm_storeu_si64((__m128i*)(&out[color_quad * 4]), result);
+    }
+
+    {
+      const u8* base = in.data.data() + color_quad * 128 + 8;
+      __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
+      __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
+      __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
+      __m128i color3_p = _mm_loadu_si64((const __m128i*)(base + 48));
+      __m128i color4_p = _mm_loadu_si64((const __m128i*)(base + 64));
+      __m128i color5_p = _mm_loadu_si64((const __m128i*)(base + 80));
+      __m128i color6_p = _mm_loadu_si64((const __m128i*)(base + 96));
+      __m128i color7_p = _mm_loadu_si64((const __m128i*)(base + 112));
+
+      // unpack to 16-bits. each has 16x 16 bit colors.
+      __m128i color0 = _mm_cvtepu8_epi16(color0_p);
+      __m128i color1 = _mm_cvtepu8_epi16(color1_p);
+      __m128i color2 = _mm_cvtepu8_epi16(color2_p);
+      __m128i color3 = _mm_cvtepu8_epi16(color3_p);
+      __m128i color4 = _mm_cvtepu8_epi16(color4_p);
+      __m128i color5 = _mm_cvtepu8_epi16(color5_p);
+      __m128i color6 = _mm_cvtepu8_epi16(color6_p);
+      __m128i color7 = _mm_cvtepu8_epi16(color7_p);
+
+      // multiply by weights
+      color0 = _mm_mullo_epi16(color0, weights0);
+      color1 = _mm_mullo_epi16(color1, weights1);
+      color2 = _mm_mullo_epi16(color2, weights2);
+      color3 = _mm_mullo_epi16(color3, weights3);
+      color4 = _mm_mullo_epi16(color4, weights4);
+      color5 = _mm_mullo_epi16(color5, weights5);
+      color6 = _mm_mullo_epi16(color6, weights6);
+      color7 = _mm_mullo_epi16(color7, weights7);
+
+      // add. This order minimizes dependencies.
+      color0 = _mm_add_epi16(color0, color1);
+      color2 = _mm_add_epi16(color2, color3);
+      color4 = _mm_add_epi16(color4, color5);
+      color6 = _mm_add_epi16(color6, color7);
+
+      color0 = _mm_add_epi16(color0, color2);
+      color4 = _mm_add_epi16(color4, color6);
+
+      color0 = _mm_add_epi16(color0, color4);
+
+      // divide, because we multiplied our weights by 2^7.
+      color0 = _mm_srli_epi16(color0, 6);
+
+      // saturate
+      color0 = _mm_min_epu16(sat, color0);
+
+      // back to u8s.
+      auto result = _mm_packus_epi16(color0, color0);
+
+      // store result
+      _mm_storeu_si64((__m128i*)(&out[color_quad * 4 + 2]), result);
+    }
+  }
 }
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {
@@ -327,9 +472,9 @@ u32 make_all_visible_index_list(std::pair<int, int>* group_out,
     const auto& draw = draws[i];
     std::pair<int, int> ds;
     ds.first = idx_buffer_ptr;
-    memcpy(&idx_out[idx_buffer_ptr], draw.vertex_index_stream.data(),
-           draw.vertex_index_stream.size() * sizeof(u32));
-    idx_buffer_ptr += draw.vertex_index_stream.size();
+    memcpy(&idx_out[idx_buffer_ptr], draw.unpacked.vertex_index_stream.data(),
+           draw.unpacked.vertex_index_stream.size() * sizeof(u32));
+    idx_buffer_ptr += draw.unpacked.vertex_index_stream.size();
     ds.second = idx_buffer_ptr;
     group_out[i] = ds;
   }
@@ -357,7 +502,7 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
         } else {
           building_run = false;
           idx_buffer_ptr += grp.num;
-          memcpy(&idx_out[run_start_out], &draw.vertex_index_stream[run_start_in],
+          memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
                  (idx_buffer_ptr - run_start_out) * sizeof(u32));
         }
       } else {
@@ -372,7 +517,7 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
       vtx_idx += grp.num;
     }
     if (building_run) {
-      memcpy(&idx_out[run_start_out], &draw.vertex_index_stream[run_start_in],
+      memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
              (idx_buffer_ptr - run_start_out) * sizeof(u32));
     }
 

@@ -558,9 +558,9 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         adgif.combo_tex = tex_combo;
         // and the hidden value in the unused a+d
         memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
-        // todo: figure out if this matters
+        // todo: figure out if this matters. maybe this is decal?
         if (ra_tex0_val == 0x800000000) {
-          fmt::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
+          // fmt::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
         }
 
         // mipmap settings. we ignore, but get the hidden value
@@ -2036,19 +2036,40 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
 
+    // create the model first
+    std::vector<std::vector<std::pair<int, int>>> packed_vert_indices;
+    for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
+      packed_vert_indices.emplace_back();
+      auto& frag_vert_indices = packed_vert_indices.back();
+      auto& frag = proto.frags[frag_idx];  // shared info for all instances of this frag
+      for (auto& strip : frag.strips) {
+        int start = tree.packed_vertices.vertices.size();
+        for (auto& vert : strip.verts) {
+          tree.packed_vertices.vertices.push_back(
+              {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y()});
+          ASSERT(vert.tex.z() == 1.);
+        }
+        int end = tree.packed_vertices.vertices.size();
+        frag_vert_indices.emplace_back(start, end);
+      }
+    }
+
     // loop over instances of the prototypes
     for (auto& inst : proto.instances) {
       // if we're using wind, we use the instanced renderer, which requires some extra info
       // and we should remember which instance ID we are.
       // Note: this is different from the game's instance index - we don't draw everything instanced
       // so the non-instanced models don't get a C++ renderer instance ID
-      u32 wind_instance_idx = tree.instance_info.size();
+      u32 wind_instance_idx = tree.wind_instance_info.size();
+      u32 matrix_idx = tree.packed_vertices.matrices.size();
       if (using_wind) {
         tfrag3::TieWindInstance wind_instance_info;
         wind_instance_info.wind_idx = inst.wind_index;   // which wind value to apply in the table
         wind_instance_info.stiffness = proto.stiffness;  // wind stiffness (how much we move)
         wind_instance_info.matrix = inst.mat;            // instance transformation matrix.
-        tree.instance_info.push_back(wind_instance_info);
+        tree.wind_instance_info.push_back(wind_instance_info);
+      } else {
+        tree.packed_vertices.matrices.push_back(inst.mat);
       }
 
       // loop over fragments of the prototype
@@ -2056,7 +2077,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         auto& frag = proto.frags[frag_idx];     // shared info for all instances of this frag
         auto& ifrag = inst.frags.at(frag_idx);  // color info for this instance of the frag
         // loop over triangle strips within the fragment
-        for (auto& strip : frag.strips) {
+        for (size_t strip_idx = 0; strip_idx < frag.strips.size(); strip_idx++) {
+          auto& strip = frag.strips[strip_idx];
           // what texture are we using?
           u32 combo_tex = strip.adgif.combo_tex;
 
@@ -2139,31 +2161,30 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             igroup.instance_idx = wind_instance_idx;
             draw_to_add_to->num_triangles += strip.verts.size() - 2;
             // note: this is a bit wasteful to duplicate the xyz/stq.
+            tfrag3::PackedTieVertices::MatrixGroup grp;
+            grp.matrix_idx = -1;
+            grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
+            grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
+            tree.packed_vertices.matrix_groups.push_back(grp);
             for (auto& vert : strip.verts) {
-              tfrag3::PreloadedVertex vtx;
-              vtx.x = vert.pos.x();
-              vtx.y = vert.pos.y();
-              vtx.z = vert.pos.z();
-              vtx.s = vert.tex.x();
-              vtx.t = vert.tex.y();
-              vtx.q = vert.tex.z();
-              // if this is true, we can remove a divide in the shader
-              ASSERT(vtx.q == 1.f);
+              u16 color_index = 0;
               if (vert.color_index_index == UINT32_MAX) {
-                vtx.color_index = 0;
+                color_index = 0;
               } else {
-                vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
+                color_index = ifrag.color_indices.at(vert.color_index_index);
                 ASSERT(vert.color_index_index < ifrag.color_indices.size());
-                vtx.color_index += ifrag.color_index_offset_in_big_palette;
+                color_index += ifrag.color_index_offset_in_big_palette;
               }
 
-              size_t vert_idx = tree.vertices.size();
-              tree.vertices.push_back(vtx);
+              size_t vert_idx = tree.packed_vertices.color_indices.size();
+              tree.packed_vertices.color_indices.push_back(color_index);
               draw_to_add_to->vertex_index_stream.push_back(vert_idx);
             }
+
             // the primitive restart index
             draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
             draw_to_add_to->instance_groups.push_back(igroup);
+
           } else {
             // okay, we now have a texture and draw mode, let's see if we can add to an existing...
             auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
@@ -2190,31 +2211,30 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             vgroup.vis_idx_in_pc_bvh = inst.vis_id;  // associate with the instance for culling
             vgroup.num = strip.verts.size() + 1;     // one for the primitive restart!
             draw_to_add_to->num_triangles += strip.verts.size() - 2;
+            tfrag3::PackedTieVertices::MatrixGroup grp;
+            grp.matrix_idx = matrix_idx;
+            grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
+            grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
+            tree.packed_vertices.matrix_groups.push_back(grp);
+            tfrag3::StripDraw::VertexRun run;
+            run.vertex0 = tree.packed_vertices.color_indices.size();
+            run.length = strip.verts.size();
             for (auto& vert : strip.verts) {
-              tfrag3::PreloadedVertex vtx;
-              // todo fields
-              auto tf = transform_tie(inst.mat, vert.pos);
-              vtx.x = tf.x();
-              vtx.y = tf.y();
-              vtx.z = tf.z();
-              vtx.s = vert.tex.x();
-              vtx.t = vert.tex.y();
-              vtx.q = vert.tex.z();
-              // if this is true, we can remove a divide in the shader
-              ASSERT(vtx.q == 1.f);
+              u16 color_index = 0;
               if (vert.color_index_index == UINT32_MAX) {
-                vtx.color_index = 0;
+                color_index = 0;
               } else {
-                vtx.color_index = ifrag.color_indices.at(vert.color_index_index);
+                color_index = ifrag.color_indices.at(vert.color_index_index);
                 ASSERT(vert.color_index_index < ifrag.color_indices.size());
-                vtx.color_index += ifrag.color_index_offset_in_big_palette;
+                color_index += ifrag.color_index_offset_in_big_palette;
               }
 
-              size_t vert_idx = tree.vertices.size();
-              tree.vertices.push_back(vtx);
-              draw_to_add_to->vertex_index_stream.push_back(vert_idx);
+              size_t vert_idx = tree.packed_vertices.color_indices.size();
+              tree.packed_vertices.color_indices.push_back(color_index);
+              // draw_to_add_to->vertex_index_stream.push_back(vert_idx);
             }
-            draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+            draw_to_add_to->runs.push_back(run);
+            // draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
             draw_to_add_to->vis_groups.push_back(vgroup);
           }
         }
@@ -2285,8 +2305,6 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
     }
     bool ok = verify_node_indices(tree);
     ASSERT(ok);
-    fmt::print("    tree has {} arrays and {} instances\n", tree->length,
-               as_instance_array->length);
 
     // extract the vis tree. Note that this extracts the tree only down to the last draw node, a
     // parent of between 1 and 8 instances.
@@ -2362,7 +2380,6 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
     }
 
     this_tree.colors = full_palette.colors;
-    fmt::print("TIE tree {} has {} draws\n", geo, this_tree.static_draws.size());
     out.tie_trees[geo].push_back(std::move(this_tree));
   }
 }
