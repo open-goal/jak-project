@@ -17,7 +17,7 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         "-Xclang -fcxx-exceptions \
         -Xclang -fexceptions \
         -Xclang -std=c++17 \
-        -mfma -mavx2 \
+        -march=native \
         -Wno-c++11-narrowing -W3 \
         /arch:AVX")
 
@@ -47,7 +47,7 @@ elseif(UNIX)
         -Wshadow \
         -Wsign-promo \
         -fdiagnostics-color=always \
-        -march=haswell")
+        -march=native")
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
