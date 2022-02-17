@@ -473,12 +473,6 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _enable_or_disable(AVX512VBMI "avx512vbmi" "Use AVX512VBMI." false)
 
       # We are only using this to check for flag support...nothing else
-      _my_find(_enable_vector_unit_list "avx2" _found)
-      if(NOT _found)
-        message(FATAL_ERROR "AVX2 Not Supported!")
-      else()
-        message(STATUS "AVX2 Supported!")
-      endif()
       _my_find(_enable_vector_unit_list "avx" _found)
       if(NOT _found)
         message(FATAL_ERROR "AVX Not Supported!")
