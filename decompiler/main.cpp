@@ -85,11 +85,19 @@ int main(int argc, char** argv) {
 
   // Verify the in_folder is correct
   // TODO - refactor to use ghc::filesystem, cleanup file_util
-  if (!file_util::file_exists(in_folder) ||
-      (!config.expected_elf_name.empty() &&
-       !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name)))) {
-    printf("Aborting - 'in_folder' does not exist or does not contain the expected files\n");
+  if (!file_util::file_exists(in_folder)) {
+    fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder);
     return 1;
+  }
+
+  // Warning message if expected ELF isn't found, user could be using bad assets / didn't extract
+  // the ISO properly
+  if (!config.expected_elf_name.empty() &&
+      !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name))) {
+    fmt::print(
+        "WARNING - '{}' does not contain the expected ELF file '{}'.  Was the ISO extracted "
+        "properly or is there a version mismatch?\n",
+        in_folder, config.expected_elf_name);
   }
 
   std::vector<std::string> dgos, objs, strs;
