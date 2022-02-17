@@ -254,7 +254,7 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
       result[TIE_VERTS] +=
           tie_tree.packed_vertices.vertices.size() * sizeof(PackedTieVertices::Vertex);
       result[TIE_CIDX] += tie_tree.packed_vertices.color_indices.size() * sizeof(u16);
-      result[TIE_MATRICES] += tie_tree.packed_vertices.matrices.size() * sizeof(4 * 4 * 4);
+      result[TIE_MATRICES] += tie_tree.packed_vertices.matrices.size() * 4 * 4 * 4;
       result[TIE_GRPS] +=
           tie_tree.packed_vertices.matrix_groups.size() * sizeof(PackedTieVertices::MatrixGroup);
       result[TIE_TIME_OF_DAY] += tie_tree.colors.size() * sizeof(TimeOfDayColor);
