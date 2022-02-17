@@ -37,7 +37,7 @@ struct GraphicsData {
   std::condition_variable sync_cv;
   bool vsync_enabled = true;
 
-  //Msaa toggle...
+  // Msaa toggle...
   bool msaa_enabled = true;
 
   // dma chain transfer
@@ -439,13 +439,15 @@ static void gl_render_display(GfxDisplay* display) {
     glfwSwapInterval(req_vsync);
   }
 
-  //Turn on/off msaa, if requested.
+  // Turn on/off msaa, if requested.
   bool req_msaa = g_gfx_data->debug_gui.get_msaa_flag();
-  if(req_msaa != g_gfx_data->msaa_enabled){
+  if (req_msaa != g_gfx_data->msaa_enabled) {
     g_gfx_data->msaa_enabled = req_msaa;
-    //Turn on multisampling if requested by user, turn off otherwise.
-    if(req_msaa) glEnable(GL_MULTISAMPLE);
-    else glDisable(GL_MULTISAMPLE);
+    // Turn on multisampling if requested by user, turn off otherwise.
+    if (req_msaa)
+      glEnable(GL_MULTISAMPLE);
+    else
+      glDisable(GL_MULTISAMPLE);
   }
 
   // actual vsync
