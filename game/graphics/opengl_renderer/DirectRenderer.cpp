@@ -197,8 +197,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     vertex_offset = 0;
   }
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, vertex_offset * sizeof(Vertex),
-                  m_prim_buffer.vert_count * sizeof(Vertex), m_prim_buffer.vertices.data());
+  glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex), m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
   glActiveTexture(GL_TEXTURE0);
 
   int draw_count = 0;
@@ -212,11 +211,11 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     }
 
     if (m_sprite_mode.do_first_draw) {
-      glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
+      glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
       draw_count++;
     }
   } else {
-    glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
     draw_count++;
   }
 
@@ -224,7 +223,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     draw_count++;
   }
