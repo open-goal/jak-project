@@ -4,6 +4,7 @@
 
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
+#include "common/util/os.h"
 
 // Running subsets of tests, see:
 // -
@@ -17,6 +18,8 @@
 // to make it easier to test a subset of tests
 
 int main(int argc, char** argv) {
+  // hopefully get a debug print on github actions
+  setup_cpu_info();
   lg::initialize();
 
   ::testing::InitGoogleTest(&argc, argv);
