@@ -239,7 +239,6 @@ class DirectRenderer : public BucketRenderer {
     GLuint vao;
     u32 vertex_buffer_bytes = 0;
     u32 vertex_buffer_max_verts = 0;
-    u32 last_vertex_offset = 0;
   } m_ogl;
 
   struct {

@@ -189,13 +189,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
 
   // render!
   // update buffers:
-  u32 vertex_offset = m_ogl.last_vertex_offset;
-  if (vertex_offset + m_prim_buffer.vert_count >= m_ogl.vertex_buffer_max_verts) {
-    lg::warn("Buffer wrapped in {} ({}/{} (+ {}) verts, {} bytes)", m_name,
-             vertex_offset + m_prim_buffer.vert_count, m_ogl.vertex_buffer_max_verts,
-             m_prim_buffer.vert_count, m_prim_buffer.vert_count * sizeof(Vertex));
-    vertex_offset = 0;
-  }
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex),
                m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
@@ -235,8 +228,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   prof.add_draw_call(draw_count);
   m_stats.triangles += n_tris;
   m_stats.draw_calls += draw_count;
-  m_ogl.last_vertex_offset = vertex_offset + m_prim_buffer.vert_count;
-  m_ogl.last_vertex_offset = (m_ogl.last_vertex_offset + 3) & ~3;
   m_prim_buffer.vert_count = 0;
 }
 
@@ -921,7 +912,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   ASSERT(z < (1 << 24));
   (void)f;  // TODO: do something with this.
   if (m_prim_buffer.is_full()) {
-    // fmt::print("flush due to fill {} {}\n", m_prim_buffer.vert_count, m_prim_buffer.max_verts);
+    lg::warn("Buffer wrapped in {} ({} verts, {} bytes)", m_name, m_ogl.vertex_buffer_max_verts,
+             m_prim_buffer.vert_count * sizeof(Vertex));
     flush_pending(render_state, prof);
   }
 
@@ -1073,8 +1065,6 @@ void DirectRenderer::reset_state() {
   m_current_texture_state = 0;
 
   m_prim_building = PrimBuildState();
-
-  m_ogl.last_vertex_offset = 0;
 
   m_stats = {};
 }
