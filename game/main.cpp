@@ -9,6 +9,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "game/discord.h"
+#include "common/util/os.h"
 
 // Discord RPC
 extern int64_t gStartTime;
@@ -28,16 +29,48 @@ void setup_logging(bool verbose) {
 }
 
 int main(int argc, char** argv) {
+  // do this as soon as possible - stuff like memcpy might use AVX instructions and we want to
+  // warn the user instead of just crashing.
+  setup_cpu_info();
+  if (!get_cpu_info().has_avx) {
+    printf("Your CPU does not support AVX, which is required for OpenGOAL.\n");
+    return -1;
+  }
+
   bool verbose = false;
+  bool disable_avx2 = false;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
       break;
     }
+
+    if (std::string("-no-avx2") == argv[i]) {
+      disable_avx2 = true;
+    }
   }
 
   gStartTime = time(0);
   init_discord_rpc();
+
+  if (disable_avx2) {
+    // for debugging the non-avx2 code paths, there's a flag to manually disable.
+    printf("Note: AVX2 code has been manually disabled.\n");
+    get_cpu_info().has_avx2 = false;
+  }
+
+#ifndef __AVX2__
+  if (get_cpu_info().has_avx2) {
+    printf("Note: your CPU supports AVX2, but this build was not compiled with AVX2 support\n");
+    get_cpu_info().has_avx2 = false;
+  }
+#endif
+
+  if (get_cpu_info().has_avx2) {
+    printf("AVX2 mode enabled\n");
+  } else {
+    printf("AVX2 mode disabled\n");
+  }
 
   setup_logging(verbose);
 

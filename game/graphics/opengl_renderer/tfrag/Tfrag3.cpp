@@ -70,10 +70,10 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
           if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
             max_draw = std::max(tree.draws.size(), max_draw);
             for (auto& draw : tree.draws) {
-              idx_buffer_len += draw.vertex_index_stream.size();
+              idx_buffer_len += draw.unpacked.vertex_index_stream.size();
             }
             time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
-            u32 verts = tree.vertices.size();
+            u32 verts = tree.packed_vertices.vertices.size();
             glGenVertexArrays(1, &tree_cache.vao);
             glBindVertexArray(tree_cache.vao);
             glGenBuffers(1, &tree_cache.vertex_buffer);
@@ -148,7 +148,7 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
           const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
 
           if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
-            u32 verts = tree.vertices.size();
+            u32 verts = tree.unpacked.vertices.size();
             u32 start_vert = (m_load_state.vert) * MAX_VERTS;
             u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
             if (end_vert > start_vert) {
@@ -156,7 +156,7 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
               glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[geom][tree_idx].vertex_buffer);
               glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
                               (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                              tree.vertices.data() + start_vert);
+                              tree.unpacked.vertices.data() + start_vert);
               if (end_vert < verts) {
                 remaining = true;
               }
@@ -274,7 +274,7 @@ void Tfrag3::render_tree(int geom,
     void* offset = (void*)(indices.first * sizeof(u32));
 
     prof.add_draw_call();
-    prof.add_tri(draw.num_triangles * (float)draw_size / draw.vertex_index_stream.size());
+    prof.add_tri(draw.num_triangles * (float)draw_size / draw.unpacked.vertex_index_stream.size());
 
     glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
 

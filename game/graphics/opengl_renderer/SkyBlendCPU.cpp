@@ -1,5 +1,6 @@
 #include "SkyBlendCPU.h"
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+#include "common/util/os.h"
 
 #include <immintrin.h>
 
@@ -18,33 +19,72 @@ SkyBlendCPU::~SkyBlendCPU() {
 }
 
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-  __m256i intensity_vec = _mm256_set1_epi16(intensity);
-  for (u32 i = 0; i < size / 16; i++) {
-    __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
-    __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
-    tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
-    tex_data16 = _mm256_srli_epi16(tex_data16, 7);
-    auto hi = _mm256_extracti128_si256(tex_data16, 1);
-    auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
-    _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
+  if (get_cpu_info().has_avx2) {
+#ifdef __AVX2__
+    __m256i intensity_vec = _mm256_set1_epi16(intensity);
+    for (u32 i = 0; i < size / 16; i++) {
+      __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
+      __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm256_srli_epi16(tex_data16, 7);
+      auto hi = _mm256_extracti128_si256(tex_data16, 1);
+      auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
+      _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
+    }
+#else
+    ASSERT(false);
+#endif
+  } else {
+    __m128i intensity_vec = _mm_set1_epi16(intensity);
+    for (u32 i = 0; i < size / 8; i++) {
+      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm_srli_epi16(tex_data16, 7);
+      auto result = _mm_packus_epi16(tex_data16, tex_data16);
+      _mm_storeu_si64((__m128i*)(out + (i * 8)), result);
+    }
   }
 }
 
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-  __m256i intensity_vec = _mm256_set1_epi16(intensity);
-  __m256i max_intensity = _mm256_set1_epi16(255);
-  for (u32 i = 0; i < size / 16; i++) {
-    __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
-    __m128i out_val = _mm_loadu_si128((const __m128i*)(out + (i * 16)));
-    __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
-    tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
-    tex_data16 = _mm256_srli_epi16(tex_data16, 7);
-    tex_data16 = _mm256_min_epi16(max_intensity, tex_data16);
-    auto hi = _mm256_extracti128_si256(tex_data16, 1);
-    auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
-    out_val = _mm_adds_epu8(out_val, result);
-    _mm_storeu_si128((__m128i*)(out + (i * 16)), out_val);
+  if (get_cpu_info().has_avx2) {
+#ifdef __AVX2__
+    __m256i intensity_vec = _mm256_set1_epi16(intensity);
+    __m256i max_intensity = _mm256_set1_epi16(255);
+    for (u32 i = 0; i < size / 16; i++) {
+      __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
+      __m128i out_val = _mm_loadu_si128((const __m128i*)(out + (i * 16)));
+      __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm256_srli_epi16(tex_data16, 7);
+      tex_data16 = _mm256_min_epi16(max_intensity, tex_data16);
+      auto hi = _mm256_extracti128_si256(tex_data16, 1);
+      auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
+      out_val = _mm_adds_epu8(out_val, result);
+      _mm_storeu_si128((__m128i*)(out + (i * 16)), out_val);
+    }
+#else
+    ASSERT(false);
+#endif
+  } else {
+    __m128i intensity_vec = _mm_set1_epi16(intensity);
+    __m128i max_intensity = _mm_set1_epi16(255);
+    for (u32 i = 0; i < size / 8; i++) {
+      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+      __m128i out_val = _mm_loadu_si64((const __m128i*)(out + (i * 8)));
+      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm_srli_epi16(tex_data16, 7);
+      tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
+      auto result = _mm_packus_epi16(tex_data16, tex_data16);
+      out_val = _mm_adds_epu8(out_val, result);
+      _mm_storeu_si64((__m128i*)(out + (i * 8)), out_val);
+    }
   }
+  /*
+
+   */
 }
 
 SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,

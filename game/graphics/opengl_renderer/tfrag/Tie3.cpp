@@ -40,18 +40,18 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
           const auto& tree = lev_data->tie_trees[geo][tree_idx];
           max_draw = std::max(tree.static_draws.size(), max_draw);
           for (auto& draw : tree.static_draws) {
-            idx_buffer_len += draw.vertex_index_stream.size();
-            max_idx_per_draw = std::max(max_idx_per_draw, draw.vertex_index_stream.size());
+            idx_buffer_len += draw.unpacked.vertex_index_stream.size();
+            max_idx_per_draw = std::max(max_idx_per_draw, draw.unpacked.vertex_index_stream.size());
           }
           for (auto& draw : tree.instanced_wind_draws) {
             wind_idx_buffer_len += draw.vertex_index_stream.size();
             max_idx_per_draw = std::max(max_idx_per_draw, draw.vertex_index_stream.size());
           }
-          for (auto& inst : tree.instance_info) {
+          for (auto& inst : tree.wind_instance_info) {
             max_wind_idx = std::max(max_wind_idx, inst.wind_idx);
           }
           time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
-          u32 verts = tree.vertices.size();
+          u32 verts = tree.packed_vertices.color_indices.size();
           fmt::print("  tree {} has {} verts ({} kB) and {} draws\n", tree_idx, verts,
                      verts * sizeof(tfrag3::PreloadedVertex) / 1024.f, tree.static_draws.size());
           auto& lod_tree = m_trees.at(geo);
@@ -62,7 +62,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
           lod_tree[tree_idx].draws = &tree.static_draws;  // todo - should we just copy this?
           lod_tree[tree_idx].colors = &tree.colors;
           lod_tree[tree_idx].vis = &tree.bvh;
-          lod_tree[tree_idx].instance_info = &tree.instance_info;
+          lod_tree[tree_idx].instance_info = &tree.wind_instance_info;
           lod_tree[tree_idx].wind_draws = &tree.instanced_wind_draws;
           vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
           lod_tree[tree_idx].tod_cache = swizzle_time_of_day(tree.colors);
@@ -107,7 +107,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
           lod_tree[tree_idx].index_list.resize(idx_buffer_len);
 
           if (wind_idx_buffer_len > 0) {
-            lod_tree[tree_idx].wind_matrix_cache.resize(tree.instance_info.size());
+            lod_tree[tree_idx].wind_matrix_cache.resize(tree.wind_instance_info.size());
             lod_tree[tree_idx].has_wind = true;
             glGenBuffers(1, &lod_tree[tree_idx].wind_vertex_index_buffer);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lod_tree[tree_idx].wind_vertex_index_buffer);
@@ -158,7 +158,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
       for (int geo = 0; geo < 4; ++geo) {
         for (size_t tree_idx = 0; tree_idx < lev_data->tie_trees[geo].size(); tree_idx++) {
           const auto& tree = lev_data->tie_trees[geo][tree_idx];
-          u32 verts = tree.vertices.size();
+          u32 verts = tree.unpacked.vertices.size();
           u32 start_vert = (m_load_state.vert) * MAX_VERTS;
           u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
           if (end_vert > start_vert) {
@@ -166,7 +166,7 @@ bool Tie3::update_load(const tfrag3::Level* lev_data) {
             glBindBuffer(GL_ARRAY_BUFFER, m_trees[geo][tree_idx].vertex_buffer);
             glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
                             (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                            tree.vertices.data() + start_vert);
+                            tree.unpacked.vertices.data() + start_vert);
             if (end_vert < verts) {
               remaining = true;
             }
@@ -440,7 +440,6 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }
   render_all_trees(lod(), settings, render_state, prof);
-  // todo render all...
 }
 
 void Tie3::render_all_trees(int geom,
@@ -659,9 +658,9 @@ void Tie3::render_tree(int idx,
     void* offset = (void*)(indices.first * sizeof(u32));
 
     prof.add_draw_call();
-    prof.add_tri(draw.num_triangles * (float)draw_size / draw.vertex_index_stream.size());
+    prof.add_tri(draw.num_triangles * (float)draw_size / draw.unpacked.vertex_index_stream.size());
 
-    bool is_full = draw_size == (int)draw.vertex_index_stream.size();
+    bool is_full = draw_size == (int)draw.unpacked.vertex_index_stream.size();
 
     tree.perf.draws++;
     if (is_full) {

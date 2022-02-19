@@ -48,8 +48,6 @@ class Tie3 : public BucketRenderer {
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
-  int m_geom = 0;
-
   struct Tree {
     GLuint vertex_buffer;
     GLuint index_buffer;

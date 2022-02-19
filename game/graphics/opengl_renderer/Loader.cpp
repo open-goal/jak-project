@@ -56,8 +56,27 @@ void Loader::loader_thread() {
     Serializer ser(decomp_data.data(), decomp_data.size());
     result->serialize(ser);
     double import_time = import_timer.getSeconds();
-    fmt::print("------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s\n",
-               disk_load_time, import_time, decomp_time);
+
+    Timer unpack_timer;
+    for (auto& tie_tree : result->tie_trees) {
+      for (auto& tree : tie_tree) {
+        tree.unpack();
+        for (auto& d : tree.static_draws) {
+          d.unpack();
+        }
+      }
+    }
+    for (auto& t_tree : result->tfrag_trees) {
+      for (auto& tree : t_tree) {
+        tree.unpack();
+        for (auto& d : tree.draws) {
+          d.unpack();
+        }
+      }
+    }
+    fmt::print(
+        "------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s unpack {:.3f}s\n",
+        disk_load_time, import_time, decomp_time, unpack_timer.getSeconds());
 
     lk.lock();
     m_initializing_tfrag3_levels[lev].data.level = std::move(result);

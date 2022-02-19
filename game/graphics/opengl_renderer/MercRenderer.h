@@ -353,14 +353,14 @@ struct alignas(16) Accumulator {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
-    _mm_store_ps(data, _mm_fmadd_ps(a, b, acc));
+    _mm_store_ps(data, _mm_add_ps(_mm_mul_ps(a, b), acc));
   }
 
   REALLY_INLINE void madda_xyzw(const Vf& _a, const Vf& _b) {
     auto b = _mm_load_ps(_b.data);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
-    _mm_store_ps(data, _mm_fmadd_ps(a, b, acc));
+    _mm_store_ps(data, _mm_add_ps(_mm_mul_ps(a, b), acc));
   }
 
   void madd(Mask mask, Vf& dest, const Vf& a, const Vf& b) {
@@ -375,14 +375,14 @@ struct alignas(16) Accumulator {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
-    _mm_store_ps(dest.data, _mm_fmadd_ps(a, b, acc));
+    _mm_store_ps(dest.data, _mm_add_ps(_mm_mul_ps(a, b), acc));
   }
 
   REALLY_INLINE void madd_xyz(Vf& dest, const Vf& _a, float _b) {
     auto b = _mm_set1_ps(_b);
     auto a = _mm_load_ps(_a.data);
     auto acc = _mm_load_ps(data);
-    auto prod = _mm_fmadd_ps(a, b, acc);
+    auto prod = _mm_add_ps(_mm_mul_ps(a, b), acc);
     prod = _mm_blend_ps(prod, _mm_load_ps(dest.data), 0b1000);
     _mm_store_ps(dest.data, prod);
   }

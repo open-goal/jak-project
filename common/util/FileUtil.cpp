@@ -13,7 +13,12 @@
 #include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
 #include "common/common_types.h"
+
+// This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
+// because nobody will care if png compression is 10% slower.
+#define FPNG_NO_SSE 1
 #include "third-party/fpng/fpng.cpp"
+
 #include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
 #include "third-party/lzokay/lzokay.hpp"

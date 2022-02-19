@@ -601,7 +601,11 @@ void DirectRenderer::render_gif(const u8* data,
   }
 
   if (size != UINT32_MAX) {
-    ASSERT((offset + 15) / 16 == size / 16);
+    if (!(offset + 15) / 16 == size / 16) {
+      fmt::print("DirectRenderer size failed in {}\n", name_and_id());
+      fmt::print("expected: {}, got: {}\n", size, offset);
+      ASSERT(false);
+    }
   }
 
   //  fmt::print("{}\n", GifTag(data).print());
