@@ -4502,7 +4502,7 @@
   )
 
 (deftype gs-gif-tag (structure)
-  ((qword uint128   :offset-assert 0) ;; is "qword" and inline? in game
+  ((qword uint128   :offset-assert 0 :score -1) ;; is "qword" and inline? in game
 
    (tag   gif-tag64    :offset 0)
    (regs  gif-tag-regs :offset 8)
@@ -9053,7 +9053,7 @@
 (deftype shadow-data (structure)
   ((texoffset           vector     :inline :offset-assert 0)
    (texscale            vector     :inline :offset-assert 16)
-   (clrs                uint128    2       :offset-assert 32)
+   (clrs                vector 2   :inline :offset-assert 32)
    (dma-unpack-template dma-packet :inline :offset-assert 64)
    (dma-cnt             uint64             :offset-assert 80)
    (vif-nop             uint32             :offset-assert 88)
@@ -16656,7 +16656,7 @@
 
 ;; - Unknowns
 
-;;(define-extern generic-vu0-block object) ;; unknown type
+(define-extern generic-vu0-block vu-function) ;; unknown type
 
 
 ;; ----------------------
@@ -16687,7 +16687,7 @@
 
 (define-extern generic-add-constants (function dma-buffer int none))
 (define-extern generic-setup-constants (function generic-constants int none))
-(define-extern generic-reset-buffers function)
+(define-extern generic-reset-buffers (function dma-buffer int int none))
 
 ;; - Unknowns
 
@@ -16734,8 +16734,8 @@
 
 ;; - Unknowns
 
-;;(define-extern *generic-consts* object) ;; unknown type
-;;(define-extern *target-lock* object) ;; unknown type
+(define-extern *generic-consts* generic-consts) ;; unknown type
+(define-extern *target-lock* symbol) ;; unknown type
 
 
 ;; ----------------------
@@ -16765,13 +16765,13 @@
 (define-extern mercneric-convert function)
 (define-extern high-speed-reject function)
 (define-extern generic-merc-execute-asm function)
-(define-extern generic-merc-add-to-cue (function uint none))
+(define-extern generic-merc-add-to-cue (function basic none))
 (define-extern generic-merc-execute-all (function none))
 
 ;; - Unknowns
 
-;;(define-extern mercneric-vu0-block object) ;; unknown type
-;;(define-extern *inv-init-table* object) ;; unknown type
+(define-extern mercneric-vu0-block vu-function) ;; unknown type
+(define-extern *inv-init-table* (inline-array invinitdata)) ;; unknown type
 
 
 ;; ----------------------
@@ -16794,7 +16794,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *generic-tie* object) ;; unknown type
+(define-extern *generic-tie* symbol) ;; unknown type
 
 
 ;; ----------------------
@@ -16846,10 +16846,10 @@
 ;; - Functions
 
 (define-extern shadow-vu0-upload function)
-(define-extern shadow-vu1-init-buffer function)
 (define-extern shadow-dma-init function)
 (define-extern shadow-execute function)
 (define-extern shadow-dma-end function)
+(define-extern shadow-vu1-init-buffer (function dma-buffer none))
 (define-extern shadow-xform-verts function)
 (define-extern shadow-calc-dual-verts function)
 (define-extern shadow-scissor-edges function)
@@ -16872,7 +16872,7 @@
 
 ;; - Unknowns
 
-;;(define-extern shadow-vu0-block object) ;; unknown type
+(define-extern shadow-vu0-block vu-function) ;; unknown type
 
 
 ;; ----------------------
@@ -16883,46 +16883,46 @@
 
 ;; - Types
 
-; (deftype shadow-vu1-constants (structure)
-;   ((hmgescale vector     :inline :offset-assert 0)
-;    (invhscale vector     :inline :offset-assert 16)
-;    (texoffset vector     :inline :offset-assert 32)
-;    (texscale  vector     :inline :offset-assert 48)
-;    (hvdfoff   vector     :inline :offset-assert 64)
-;    (fog       vector     :inline :offset-assert 80)
-;    (clrs      UNKNOWN    2       :offset-assert 96)
-;    (adgif     gs-gif-tag :inline :offset-assert 128)
-;    (texflush  ad-cmd     :inline :offset-assert 144)
-;    (flush     ad-cmd     :inline :offset-assert 160)
-;    (trigif    gs-gif-tag :inline :offset-assert 176)
-;    (quadgif   gs-gif-tag :inline :offset-assert 192)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xd0
-;   :flag-assert         #x9000000d0
-;   )
+ (deftype shadow-vu1-constants (structure)
+   ((hmgescale vector     :inline :offset-assert 0)
+    (invhscale vector     :inline :offset-assert 16)
+    (texoffset vector     :inline :offset-assert 32)
+    (texscale  vector     :inline :offset-assert 48)
+    (hvdfoff   vector     :inline :offset-assert 64)
+    (fog       vector     :inline :offset-assert 80)
+    (clrs      vector 2   :inline :offset-assert 96)
+    (adgif     gs-gif-tag :inline :offset-assert 128)
+    (texflush  ad-cmd     :inline :offset-assert 144)
+    (flush     ad-cmd     :inline :offset-assert 160)
+    (trigif    gs-gif-tag :inline :offset-assert 176)
+    (quadgif   gs-gif-tag :inline :offset-assert 192)
+    )
+   :method-count-assert 9
+   :size-assert         #xd0
+   :flag-assert         #x9000000d0
+   )
 
-; (deftype shadow-vu1-gifbuf-template (structure)
-;   ((adgif   gs-gif-tag :inline :offset-assert 0)
-;    (ad      ad-cmd     :inline :offset-assert 16)
-;    (flush   ad-cmd     :inline :offset-assert 32)
-;    (trigif  gs-gif-tag :inline :offset-assert 48)
-;    (quadgif gs-gif-tag :inline :offset-assert 64)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x50
-;   :flag-assert         #x900000050
-;   )
+ (deftype shadow-vu1-gifbuf-template (structure)
+   ((adgif   gs-gif-tag :inline :offset-assert 0)
+    (ad      ad-cmd     :inline :offset-assert 16)
+    (flush   ad-cmd     :inline :offset-assert 32)
+    (trigif  gs-gif-tag :inline :offset-assert 48)
+    (quadgif gs-gif-tag :inline :offset-assert 64)
+    )
+   :method-count-assert 9
+   :size-assert         #x50
+   :flag-assert         #x900000050
+   )
 
 ;; - Functions
 
-(define-extern shadow-vu1-add-constants function)
-(define-extern shadow-vu1-add-matrix function)
+(define-extern shadow-vu1-add-constants (function dma-buffer none))
+(define-extern shadow-vu1-add-matrix (function dma-buffer math-camera none))
 
 ;; - Unknowns
 
 (define-extern shadow-vu1-block vu-function)
-;;(define-extern *shadow-vu1-tri-template* object) ;; unknown type
+(define-extern *shadow-vu1-tri-template* shadow-vu1-gifbuf-template) ;; unknown type
 
 
 ;; ----------------------
