@@ -541,8 +541,16 @@
       (set! (-> s4-0 param 2) (the-as uint (target-pos 0)))
       (send-event-function *target* s4-0)
       )
+    ;; NOTE : added case for "training" here. in the original game, the training level does NOT come
+    ;; with its own code for warp gates and buttons, and uses the villagep-obs imported from village1
+    ;; instead. opengoal loads files different enough that warp from training to anywhere except village1
+    ;; crashes the game due to running unlinked code. the original game also crashes, but it is not consistent.
+    ;; the citadel/lavatube case makes it so we wait until it's safe to unload both levels in the heaps,
+    ;; since the citadel warp gate is located in both levels at once (visually lavatube, technically citadel)
+    ;; we add "training" to the list here so that the training warp gate waits until it's safe to
+    ;; dispose the old code from memory.
     (case (-> self level)
-      (('citadel 'lavatube)
+      (('citadel 'lavatube 'training)  
        (while (and *target* (zero? (logand (-> *target* draw status) (draw-status hidden))))
          (suspend)
          )
