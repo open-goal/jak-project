@@ -4,8 +4,9 @@
 #include "goalc/make/Tool.h"
 
 struct MakeStep {
-  std::string input;
+  std::vector<std::string> input;
   std::vector<std::string> deps, outputs;
+  goos::Object arg;
   std::string tool;
 
   std::string print() const;

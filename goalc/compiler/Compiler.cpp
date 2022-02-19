@@ -20,14 +20,20 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
 
   // let the build system run us
   m_make.add_tool(std::make_shared<CompilerTool>(this));
+  m_make.add_tool(std::make_shared<SubtitleTool>(this));
 
   // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
   if (user_profile != "#f") {
-    Object user_code = m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
-    compile_object_file(user_profile, user_code, false);
+    try {
+      Object user_code =
+          m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
+      compile_object_file(user_profile, user_code, false);
+    } catch (std::exception& e) {
+      print_compiler_warning("REPL Warning: {}\n", e.what());
+    }
   }
 
   // add built-in forms to symbol info

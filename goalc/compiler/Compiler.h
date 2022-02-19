@@ -18,6 +18,7 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
+#include "goalc/data_compiler/game_subtitle.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -53,6 +54,7 @@ class Compiler {
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
+  GameSubtitleDB& subtitle_db() { return m_subtitle_db; }
   Replxx::completions_t find_symbols_by_prefix(std::string const& context,
                                                int& contextLen,
                                                std::vector<std::string> const& user_data);
@@ -83,6 +85,7 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
+  GameSubtitleDB m_subtitle_db;
 
   struct DebugStats {
     int num_spills = 0;
@@ -550,6 +553,7 @@ class Compiler {
   Val* compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_repl_clear_screen(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env);

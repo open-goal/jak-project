@@ -324,6 +324,13 @@
          "out/iso/6COMMON.TXT")
   )
 
+(defstep :in "game/assets/game_subtitle.txt"
+  :tool 'subtitle
+  :out '("out/iso/0SUBTIT.TXT"
+         "out/iso/3SUBTIT.TXT"
+         "out/iso/6SUBTIT.TXT")
+  )
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -333,6 +340,7 @@
 
 (group "engine"
        "out/iso/0COMMON.TXT"
+       "out/iso/0SUBTIT.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        )
@@ -345,6 +353,7 @@
 
 (group "hub1"
        "out/iso/0COMMON.TXT"
+       "out/iso/0SUBTIT.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        "out/iso/VI1.DGO"
@@ -352,6 +361,7 @@
        "out/iso/FIC.DGO"
        "out/iso/JUN.DGO"
        "out/iso/BEA.DGO"
+       "out/iso/MIS.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1733,6 +1743,7 @@
  "level/level-info.gc"
  "level/level.gc"
  "ui/text.gc"
+ "pc/subtitle.gc" ;; added
  "collide/collide-probe.gc"
  "collide/collide-frag.gc"
  "collide/collide-mesh.gc"
@@ -1852,6 +1863,7 @@
 
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
+   "out/iso/0SUBTIT.TXT"
    ,@*all-cgos*
    ,@*all-vis*
    ,@*all-str*)
@@ -1859,4 +1871,11 @@
 
 (group-list "spools"
  `(,@*all-str*)
+ )
+
+(group-list "text"
+ `(
+   "out/iso/0COMMON.TXT"
+   "out/iso/0SUBTIT.TXT"
+   )
  )

@@ -209,6 +209,7 @@
   ("level-info.o" "level-info")
   ("level.o" "level")
   ("text.o" "text")
+  ("subtitle.o" "subtitle") ;; added
   ("collide-probe.o" "collide-probe")
   ("collide-frag.o" "collide-frag")
   ("collide-mesh.o" "collide-mesh")

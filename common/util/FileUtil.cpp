@@ -292,7 +292,7 @@ void ISONameFromAnimationName(char* dst, const char* src) {
 
   // upper case
   for (i = 0; i < 8; i++) {
-    if (dst[i] > '`' && dst[i] < '{') {
+    if (dst[i] >= 'a' && dst[i] <= 'z') {
       dst[i] -= 0x20;
     }
   }

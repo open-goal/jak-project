@@ -11,7 +11,15 @@
 #include "goalc/make/Tools.h"
 
 std::string MakeStep::print() const {
-  std::string result = fmt::format("Tool {} with input \"{}\" and deps:\n ", tool, input);
+  std::string result = fmt::format("Tool {} with inputs", tool);
+  int i = 0;
+  for (auto& in : input) {
+    if (i++ > 0) {
+      result += ", ";
+    }
+    result += fmt::format("\"{}\"", in);
+  }
+  result += " and deps:\n ";
   for (auto& dep : deps) {
     result += dep;
     result += '\n';
@@ -75,8 +83,9 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
   va_check(form, args, {},
            {{"out", {true, {goos::ObjectType::PAIR}}},
             {"tool", {true, {goos::ObjectType::SYMBOL}}},
-            {"in", {false, {goos::ObjectType::STRING}}},
-            {"dep", {false, {}}}});
+            {"in", {false, {}}},
+            {"dep", {false, {}}},
+            {"arg", {false, {}}}});
 
   auto step = std::make_shared<MakeStep>();
 
@@ -91,13 +100,26 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
   }
 
   if (args.has_named("in")) {
-    step->input = args.get_named("in").as_string()->data;
+    const auto& in = args.get_named("in");
+    if (in.is_pair()) {
+      step->input.clear();
+      goos::for_each_in_list(
+          in, [&](const goos::Object& o) { step->input.push_back(o.as_string()->data); });
+    } else {
+      step->input = {in.as_string()->data};
+    }
   }
 
   if (args.has_named("dep")) {
     goos::for_each_in_list(args.get_named("dep"), [&](const goos::Object& obj) {
       step->deps.push_back(obj.as_string()->data);
     });
+  }
+
+  if (args.has_named("arg")) {
+    step->arg = args.get_named("arg");
+  } else {
+    step->arg = goos::Object::make_empty_list();
   }
 
   for (auto& output : step->outputs) {
@@ -172,8 +194,9 @@ void MakeSystem::get_dependencies(const std::string& master_target,
   }
 
   const auto& rule = rule_it->second;
-  for (auto& dep : m_tools.at(rule->tool)
-                       ->get_additional_dependencies({rule->input, rule->deps, rule->outputs})) {
+  for (auto& dep :
+       m_tools.at(rule->tool)
+           ->get_additional_dependencies({rule->input, rule->deps, rule->outputs, rule->arg})) {
     get_dependencies(master_target, dep, result, result_set);
   }
 
@@ -212,10 +235,11 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
   for (auto& to_make : all_deps) {
     auto& rule = m_output_to_step.at(to_make);
     auto& tool = m_tools.at(rule->tool);
+    const ToolInput task = {rule->input, rule->deps, rule->outputs, rule->arg};
 
     bool added = false;
 
-    if (tool->needs_run({rule->input, rule->deps, rule->outputs})) {
+    if (tool->needs_run(task)) {
       result.push_back(to_make);
       stale_deps.insert(to_make);
       added = true;
@@ -235,8 +259,7 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
 
     if (!added) {
       // check transitive dependencies
-      for (auto& dep :
-           tool->get_additional_dependencies({rule->input, rule->deps, rule->outputs})) {
+      for (auto& dep : tool->get_additional_dependencies(task)) {
         if (stale_deps.find(dep) != stale_deps.end()) {
           result.push_back(to_make);
           stale_deps.insert(to_make);
@@ -253,11 +276,19 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
 }
 
 namespace {
-void print_input(const std::string& in, char end) {
-  if (in.length() > 70) {
-    fmt::print("{}...{}", in.substr(0, 70 - 3), end);
+void print_input(const std::vector<std::string>& in, char end) {
+  int i = 0;
+  std::string all_names;
+  for (auto& name : in) {
+    if (i++ > 0) {
+      all_names += ", ";
+    }
+    all_names += name;
+  }
+  if (all_names.length() > 70) {
+    fmt::print("{}...{}", all_names.substr(0, 70 - 3), end);
   } else {
-    fmt::print("{}{}{}", in, std::string(70 - in.length(), ' '), end);
+    fmt::print("{}{}{}", all_names, std::string(70 - all_names.length(), ' '), end);
   }
 }
 }  // namespace
@@ -286,7 +317,8 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
     auto& tool = m_tools.at(rule->tool);
     int percent = (100.0 * (1 + (i++)) / (deps.size())) + 0.5;
     if (verbose) {
-      fmt::print("[{:3d}%] [{:8s}] {}\n", percent, tool->name(), rule->input);
+      fmt::print("[{:3d}%] [{:8s}] {}{}\n", percent, tool->name(), rule->input.at(0),
+                 rule->input.size() > 1 ? ", ..." : "");
     } else {
       fmt::print("[{:3d}%] [{:8s}]       ", percent, tool->name());
       print_input(rule->input, '\r');
@@ -294,13 +326,14 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
 
     bool success = false;
     try {
-      success = tool->run({rule->input, rule->deps, rule->outputs});
+      success = tool->run({rule->input, rule->deps, rule->outputs, rule->arg});
     } catch (std::exception& e) {
       fmt::print("\n");
       fmt::print("Error: {}\n", e.what());
     }
     if (!success) {
-      fmt::print("Build failed on {}.\n", rule->input);
+      fmt::print("Build failed on {}{}.\n", rule->input.at(0),
+                 rule->input.size() > 1 ? ", ..." : "");
       throw std::runtime_error("Build failed.");
       return false;
     }
