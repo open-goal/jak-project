@@ -197,7 +197,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     vertex_offset = 0;
   }
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex), m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex),
+               m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
   glActiveTexture(GL_TEXTURE0);
 
   int draw_count = 0;
