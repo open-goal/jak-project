@@ -78,6 +78,7 @@ void setup_cpu_info() {
   printf(" Model: %s\n", gCpuInfo.model.c_str());
   printf(" AVX  : %s\n", gCpuInfo.has_avx ? "true" : "false");
   printf(" AVX2 : %s\n", gCpuInfo.has_avx2 ? "true" : "false");
+  fflush(stdout);
 
   gCpuInfo.initialized = true;
 }
