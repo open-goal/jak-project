@@ -13,23 +13,10 @@
 #include "DataObjectGenerator.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
+#include "common/goos/ParseHelpers.h"
 #include "third-party/fmt/core.h"
 
 namespace {
-template <typename T>
-void for_each_in_list(const goos::Object& list, const T& f) {
-  const goos::Object* iter = &list;
-  while (iter->is_pair()) {
-    auto lap = iter->as_pair();
-    f(lap->car);
-    iter = &lap->cdr;
-  }
-
-  if (!iter->is_empty_list()) {
-    throw std::runtime_error("Invalid list");
-  }
-}
-
 int64_t get_int(const goos::Object& obj) {
   if (obj.is_int()) {
     return obj.integer_obj.value;
