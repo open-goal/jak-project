@@ -9,7 +9,6 @@ class Compiler;
 class CompilerTool : public Tool {
  public:
   CompilerTool(Compiler* compiler);
-
   bool run(const ToolInput& task) override;
   bool needs_run(const ToolInput& task) override;
 
@@ -61,6 +60,7 @@ class SubtitleTool : public Tool {
  public:
   SubtitleTool(Compiler* compiler);
   bool run(const ToolInput& task) override;
+  bool needs_run(const ToolInput& task) override;
 
  private:
   Compiler* m_compiler;
