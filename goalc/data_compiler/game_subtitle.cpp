@@ -114,7 +114,7 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
         if (!languages_set) {
           throw std::runtime_error("At least one language must be set before defining entries.");
         }
-        auto scene = new GameSubtitleSceneInfo(head.as_string()->data);
+        GameSubtitleSceneInfo scene(head.as_string()->data);
         for_each_in_list(cdr(obj), [&](const goos::Object& entry) {
           if (entry.is_pair()) {
             if (!car(entry).is_int() || !car(cdr(entry)).is_symbol() ||
@@ -126,25 +126,19 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
             auto line = font->convert_utf8_to_game(car(cdr(cdr(cdr(entry)))).as_string()->data);
             auto speaker = font->convert_utf8_to_game(car(cdr(cdr(entry))).as_string()->data);
             auto offscreen = car(cdr(entry)).as_symbol()->name != "#f";
-            scene->add_line(car(entry).as_int(), line, speaker, offscreen);
+            scene.add_line(car(entry).as_int(), line, speaker, offscreen);
           } else {
             throw std::runtime_error("Each entry must be a list");
           }
         });
-        bool added = false;
         for (auto& [lang, bank] : banks) {
-          if (!bank->scene_exists(scene->name())) {
+          if (!bank->scene_exists(scene.name())) {
             bank->add_scene(scene);
-            added = true;
           } else {
             // this should copy the data, so it's safe to delete the new one afterwards.
-            auto old_scene = bank->scene_by_name(scene->name());
-            old_scene->from_other_scene(scene);
+            auto& old_scene = bank->scene_by_name(scene.name());
+            old_scene.from_other_scene(scene);
           }
-        }
-        if (!added) {
-          // didnt end up using it.
-          delete scene;
         }
       } else {
         throw std::runtime_error("Invalid game subtitles file entry: " + head.print());
@@ -175,12 +169,12 @@ void compile(GameSubtitleDB& db) {
     // now add all the scene infos
     for (auto& [name, scene] : bank->scenes()) {
       gen.add_word(0 |
-                   (scene->lines().size() << 16));  // kind (lower 16 bits), length (upper 16 bits)
+                   (scene.lines().size() << 16));  // kind (lower 16 bits), length (upper 16 bits)
 
       array_link_sources.push(gen.words());
       gen.add_word(0);  // keyframes (linked later)
 
-      gen.add_ref_to_string_in_pool(scene->name());  // name
+      gen.add_ref_to_string_in_pool(scene.name());  // name
 
       gen.add_word(0);  // pad (string is 4 bytes but we have 8)
     }
@@ -190,7 +184,7 @@ void compile(GameSubtitleDB& db) {
       gen.link_word_to_word(array_link_sources.front(), gen.words());
       array_link_sources.pop();
 
-      for (auto& subtitle : scene->lines()) {
+      for (auto& subtitle : scene.lines()) {
         gen.add_word(subtitle.frame);                           // frame
         gen.add_ref_to_string_in_pool(subtitle.line);           // line
         gen.add_ref_to_string_in_pool(subtitle.speaker);        // speaker
@@ -209,14 +203,14 @@ void compile(GameSubtitleDB& db) {
 }
 }  // namespace
 
-void compile_game_subtitle(const std::string& filename,
+void compile_game_subtitle(const std::vector<std::string>& filenames,
                            GameTextVersion text_ver,
                            GameSubtitleDB& db) {
   goos::Reader reader;
-  auto code = reader.read_from_file({filename});
-  fmt::print("[Build Game Subtitle] %s\n", filename.c_str());
-  parse(code, text_ver, db);
-  // TODO this is dumb and inefficient... it writes out all the subtitle binaries even though they
-  // might be split across multiple text files
+  for (auto& filename : filenames) {
+    fmt::print("[Build Game Subtitle] {}\n", filename.c_str());
+    auto code = reader.read_from_file({filename});
+    parse(code, text_ver, db);
+  }
   compile(db);
 }

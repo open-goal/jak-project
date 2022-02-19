@@ -313,6 +313,17 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
+;; enum for text file encoding versions
+(defmacro game-text-version (name)
+  (cond
+    ((eq? name 'jak1-v1) 10)
+    ((eq? name 'jak1-v2) 11)
+    ((eq? name 'jak2) 20)
+    ((eq? name 'jak3) 30)
+    ((eq? name 'jakx) 40)
+    )
+  )
+
 (defstep :in "assets/game_text.txt"
   :tool 'text
   :out '("out/iso/0COMMON.TXT"
@@ -324,10 +335,13 @@
          "out/iso/6COMMON.TXT")
   )
 
-(defstep :in "game/assets/subtitle/jak1/game_subtitle_en.txt"
+(defstep
+  :in '("game/assets/subtitle/jak1/game_subtitle_en.txt"
+        "game/assets/subtitle/jak1/game_subtitle_es.txt")
   :tool 'subtitle
   :out '("out/iso/0SUBTIT.TXT"
          "out/iso/6SUBTIT.TXT")
+  :arg (game-text-version jak1-v1)
   )
 
 

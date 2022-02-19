@@ -4271,10 +4271,18 @@
     )
   )
 
-(defun dm-subtitle-language ((blang int))
+(defun dm-subtitle-language ((blang int) (msg debug-menu-msg))
   (let ((lang (the pc-subtitle-lang (/ blang 8))))
-    (set! (-> *pc-settings* subtitle-language) lang)
+    (when (= msg (debug-menu-msg press))
+      (set! (-> *pc-settings* subtitle-language) lang))
+    (= (-> *pc-settings* subtitle-language) lang)
     )
+  )
+
+(defun dm-subtitle-setting ((setting symbol) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (set! (-> *pc-settings* subtitle-speaker?) setting))
+  (= (-> *pc-settings* subtitle-speaker?) setting)
   )
 
 (when (-> *debug-menu-context* root-menu)
@@ -4345,13 +4353,14 @@
          (flag "Subtitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* subtitles?)))
          ;(flag "Hinttitles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* hinttitles?)))
          (menu "Subtitle speaker"
-            (function "Off" #f (lambda () (set! (-> *pc-settings* subtitle-speaker?) #f)))
-            (function "On" #f (lambda () (set! (-> *pc-settings* subtitle-speaker?) #t)))
-            (function "Auto" #f (lambda () (set! (-> *pc-settings* subtitle-speaker?) 'auto)))
+            (flag "Off" #f dm-subtitle-setting)
+            (flag "On" #t dm-subtitle-setting)
+            (flag "Auto" auto dm-subtitle-setting)
             )
          (menu "Subtitle language"
-            (function "english" 0 dm-subtitle-language)
-            (function "uk-english" 6 dm-subtitle-language)
+            (flag "english" 0 dm-subtitle-language)
+            (flag "spanish" 3 dm-subtitle-language)
+            (flag "uk-english" 6 dm-subtitle-language)
             )
          (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
          (menu "Game fixes"

@@ -73,11 +73,34 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
     compile_game_count(as_string(args.unnamed.at(1)));
   } else if (kind == "dir-tpages") {
     compile_dir_tpages(as_string(args.unnamed.at(1)));
-  } else if (kind == "game-subtitle") {
-    // TODO version
-    compile_game_subtitle(as_string(args.unnamed.at(1)), GameTextVersion::JAK1_V1, m_subtitle_db);
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
+  }
+  return get_none();
+}
+
+/*!
+ * Compile a "text data file"
+ */
+Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::INTEGER},
+           {{"files", {true, goos::ObjectType::PAIR}}});
+  auto kind = symbol_string(args.unnamed.at(0));
+  if (kind == "subtitle") {
+    std::vector<std::string> files;
+    for_each_in_list(args.named.at("files"), [this, &files, &form](const goos::Object& o) {
+      if (o.is_string()) {
+        files.push_back(o.as_string()->data);
+      } else {
+        throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
+      }
+    });
+    compile_game_subtitle(files, (GameTextVersion)args.unnamed.at(1).as_int(),
+                          m_subtitle_db);
+  } else {
+    throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
   return get_none();
 }

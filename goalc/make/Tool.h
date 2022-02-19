@@ -3,11 +3,13 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "common/goos/Object.h"
 
 struct ToolInput {
-  std::string& input;                // the input file
+  std::vector<std::string>& input;   // the input file
   std::vector<std::string>& deps;    // explicit dependencies
   std::vector<std::string>& output;  // produced output files.
+  goos::Object arg;                  // optional argument
 };
 
 class Tool {

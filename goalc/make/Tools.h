@@ -59,9 +59,9 @@ class GroupTool : public Tool {
 
 class SubtitleTool : public Tool {
  public:
-  SubtitleTool(GameSubtitleDB* subtitle_db);
+  SubtitleTool(Compiler* compiler);
   bool run(const ToolInput& task) override;
 
  private:
-  GameSubtitleDB* m_subtitle_db;
+  Compiler* m_compiler;
 };

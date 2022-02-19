@@ -15,7 +15,7 @@
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 
 bool CompilerTool::needs_run(const ToolInput& task) {
-  if (!m_compiler->knows_object_file(std::filesystem::path(task.input).stem().u8string())) {
+  if (!m_compiler->knows_object_file(std::filesystem::path(task.input.at(0)).stem().u8string())) {
     return true;
   }
   return Tool::needs_run(task);
@@ -25,7 +25,7 @@ bool CompilerTool::run(const ToolInput& task) {
   // todo check inputs
   try {
     m_compiler->run_front_end_on_string(
-        fmt::format("(asm-file \"{}\" :no-time-prints :color :write)", task.input));
+        fmt::format("(asm-file \"{}\" :no-time-prints :color :write)", task.input.at(0)));
   } catch (std::exception& e) {
     fmt::print("Compilation failed: {}\n", e.what());
     return false;
@@ -68,14 +68,14 @@ DgoDescription parse_desc_file(const std::string& filename, goos::Reader& reader
 DgoTool::DgoTool() : Tool("dgo") {}
 
 bool DgoTool::run(const ToolInput& task) {
-  auto desc = parse_desc_file(task.input, m_reader);
+  auto desc = parse_desc_file(task.input.at(0), m_reader);
   build_dgo(desc);
   return true;
 }
 
 std::vector<std::string> DgoTool::get_additional_dependencies(const ToolInput& task) {
   std::vector<std::string> result;
-  auto desc = parse_desc_file(task.input, m_reader);
+  auto desc = parse_desc_file(task.input.at(0), m_reader);
   for (auto& x : desc.entries) {
     result.push_back(fmt::format("out/obj/{}", x.file_name));
   }
@@ -85,7 +85,7 @@ std::vector<std::string> DgoTool::get_additional_dependencies(const ToolInput& t
 TpageDirTool::TpageDirTool() : Tool("tpage-dir") {}
 
 bool TpageDirTool::run(const ToolInput& task) {
-  compile_dir_tpages(task.input);
+  compile_dir_tpages(task.input.at(0));
   return true;
 }
 
@@ -93,7 +93,7 @@ CopyTool::CopyTool() : Tool("copy") {}
 
 bool CopyTool::run(const ToolInput& task) {
   for (auto& out : task.output) {
-    std::filesystem::copy(std::filesystem::path(file_util::get_file_path({task.input})),
+    std::filesystem::copy(std::filesystem::path(file_util::get_file_path({task.input.at(0)})),
                           std::filesystem::path(file_util::get_file_path({out})),
                           std::filesystem::copy_options::overwrite_existing);
   }
@@ -103,14 +103,14 @@ bool CopyTool::run(const ToolInput& task) {
 GameCntTool::GameCntTool() : Tool("game-cnt") {}
 
 bool GameCntTool::run(const ToolInput& task) {
-  compile_game_count(task.input);
+  compile_game_count(task.input.at(0));
   return true;
 }
 
 TextTool::TextTool() : Tool("text") {}
 
 bool TextTool::run(const ToolInput& task) {
-  compile_game_text(task.input);
+  compile_game_text(task.input.at(0));
   return true;
 }
 
@@ -120,11 +120,9 @@ bool GroupTool::run(const ToolInput&) {
   return true;
 }
 
-SubtitleTool::SubtitleTool(GameSubtitleDB* subtitle_db)
-    : Tool("subtitle"), m_subtitle_db(subtitle_db) {}
+SubtitleTool::SubtitleTool(Compiler* compiler) : Tool("subtitle"), m_compiler(compiler) {}
 
 bool SubtitleTool::run(const ToolInput& task) {
-  //  TODO
-  compile_game_subtitle(task.input, GameTextVersion::JAK1_V1, *m_subtitle_db);
+  compile_game_subtitle(task.input, (GameTextVersion)task.arg.as_int(), m_compiler->subtitle_db());
   return true;
 }
