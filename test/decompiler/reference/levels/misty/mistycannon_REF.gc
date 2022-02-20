@@ -1099,8 +1099,8 @@
   )
 
 ;; definition for function mistycannon-collision-reaction
-;; INFO: Return type mismatch int vs none.
-(defun mistycannon-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect))
+;; INFO: Return type mismatch int vs uint.
+(defun mistycannon-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
   (let ((s5-0 0))
     (let ((a1-1 (new 'stack-no-clear 'vector)))
       (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
@@ -1115,9 +1115,9 @@
     (vector-float*! (-> arg0 transv) (-> arg0 transv) 0.15)
     (let ((v0-1 (logior s5-0 7)))
       (logior! (-> arg0 status) v0-1)
+      (the-as uint v0-1)
       )
     )
-  (none)
   )
 
 ;; definition of type mistycannon-init-data
@@ -1155,12 +1155,7 @@
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction)
-          (the-as
-            (function collide-shape-moving collide-shape-intersect vector vector none)
-            mistycannon-collision-reaction
-            )
-          )
+    (set! (-> s5-0 reaction) mistycannon-collision-reaction)
     (set! (-> s5-0 no-reaction)
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
