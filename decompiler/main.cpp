@@ -190,9 +190,9 @@ int main(int argc, char** argv) {
   fmt::print("[Mem] After text: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   decompiler::TextureDB tex_db;
-  if (config.process_tpages) {
+  if (config.process_tpages || config.levels_extract) {
     auto result = db.process_tpages(tex_db);
-    if (!result.empty()) {
+    if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
     }
   }
