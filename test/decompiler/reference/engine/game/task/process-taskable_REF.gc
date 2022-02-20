@@ -414,7 +414,7 @@
 ;; definition for function process-taskable-play-anim-enter
 (defbehavior process-taskable-play-anim-enter process-taskable ()
   (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
-  (logior! (-> self skel status) 8)
+  (logior! (-> self skel status) (janim-status blerc))
   (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
     (set! (-> self camera)
           (ppointer->handle (when gp-0
@@ -436,7 +436,7 @@
 
 ;; definition for function process-taskable-play-anim-exit
 (defbehavior process-taskable-play-anim-exit process-taskable ()
-  (set! (-> self skel status) (logand -9 (-> self skel status)))
+  (logclear! (-> self skel status) (janim-status blerc))
   (let ((a0-4 (handle->process (-> self camera))))
     (if a0-4
         (deactivate a0-4)
@@ -768,7 +768,7 @@
 ;; definition for function process-taskable-clean-up-after-talking
 (defbehavior process-taskable-clean-up-after-talking process-taskable ()
   (logclear! (-> self draw status) (draw-status hidden))
-  (set! (-> self skel status) (logand -2 (-> self skel status)))
+  (logclear! (-> self skel status) (janim-status inited))
   (clear-pending-settings-from-process *setting-control* self 'border-mode)
   (clear-pending-settings-from-process *setting-control* self 'talking)
   (none)
@@ -959,14 +959,14 @@
     )
   :enter
   (behavior ((arg0 handle))
-    (logior! (-> self skel status) 8)
+    (logior! (-> self skel status) (janim-status blerc))
     (logclear! (-> self mask) (process-mask actor-pause))
     (set-vector! (-> self draw bounds) 0.0 (-> self draw-bounds-y-offset) 0.0 (-> self draw bounds w))
     (none)
     )
   :exit
   (behavior ()
-    (set! (-> self skel status) (logand -41 (-> self skel status)))
+    (logclear! (-> self skel status) (janim-status blerc spool))
     (logior! (-> self mask) (process-mask actor-pause))
     (let ((v1-6 (-> self entity extra trans)))
       (if v1-6
@@ -1062,7 +1062,7 @@
        )
       (else
         (kill-current-level-hint '() '() 'exit)
-        (logior! (-> self skel status) 1)
+        (logior! (-> self skel status) (janim-status inited))
         (logclear! (-> self mask) (process-mask actor-pause))
         (process-entity-status! self (entity-perm-status bit-3) #t)
         (set-setting! *setting-control* self 'border-mode #f 0.0 0)
@@ -1210,7 +1210,7 @@
   (process-drawable-from-entity! obj (the-as entity-actor arg0))
   (initialize-skeleton obj arg1 '())
   (set! (-> obj shadow-backup) (-> obj draw shadow))
-  (logior! (-> obj skel status) 256)
+  (logior! (-> obj skel status) (janim-status eye))
   (set! (-> obj root-override pause-adjust-distance) -122880.0)
   (set! (-> obj fuel-cell-anim) (fuel-cell-pick-anim obj))
   (set! (-> obj draw origin-joint-index) (the-as uint arg2))
@@ -1407,7 +1407,10 @@
               (s3-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index) bone scale))
               (gp-0 (new 'stack-no-clear 'vector))
               (s5-0 (new 'stack-no-clear 'vector))
-              (s1-0 (or (!= (-> self spooling?) #t) (logtest? (-> (the-as process-taskable s2-0) skel status) 32)))
+              (s1-0 (or (!= (-> self spooling?) #t)
+                        (logtest? (-> (the-as process-taskable s2-0) skel status) (janim-status spool))
+                        )
+                    )
               )
           (vector<-cspace! s5-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index)))
           (vector-normalize-copy! gp-0 (-> s4-0 vector 2) -1.0)
