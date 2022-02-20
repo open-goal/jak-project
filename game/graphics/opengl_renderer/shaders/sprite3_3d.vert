@@ -128,12 +128,12 @@ void main() {
         transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
 
     } else if (rendermode == 2) { // hud sprites
-
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + (matrix == 0 ? hud_hvdf_offset : hud_hvdf_user[matrix - 1]);
 
-        scales_vf01.z = min(max(scales_vf01.z, min_scale), max_scale);
-        scales_vf01.w = min(max(scales_vf01.w, min_scale), max_scale);
+        // NOTE: no max scale for hud
+        scales_vf01.z = max(scales_vf01.z, min_scale);
+        scales_vf01.w = max(scales_vf01.w, min_scale);
 
         quat.z *= deg_to_rad;
         float sp_sin = sin(quat.z);

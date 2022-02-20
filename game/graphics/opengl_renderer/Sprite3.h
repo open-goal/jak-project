@@ -90,9 +90,11 @@ class Sprite3 : public BucketRenderer {
   struct Bucket {
     std::vector<u32> ids;
     u32 offset_in_idx_buffer = 0;
+    u64 key = -1;
   };
 
   std::map<u64, Bucket> m_sprite_buckets;
+  std::vector<Bucket*> m_bucket_list;
 
   u64 m_last_bucket_key = UINT64_MAX;
   Bucket* m_last_bucket = nullptr;

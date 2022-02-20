@@ -36,20 +36,28 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
     glEnable(GL_BLEND);
     switch (mode.get_alpha_blend()) {
       case DrawMode::AlphaBlend::SRC_DST_SRC_DST:
+        glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         break;
       case DrawMode::AlphaBlend::SRC_0_SRC_DST:
+        glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         break;
       case DrawMode::AlphaBlend::SRC_0_FIX_DST:
+        glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_ONE, GL_ONE);
         break;
       case DrawMode::AlphaBlend::SRC_DST_FIX_DST:
         // Cv = (Cs - Cd) * FIX + Cd
         // Cs * FIX * 0.5
         // Cd * FIX * 0.5
+        glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_CONSTANT_COLOR, GL_CONSTANT_COLOR);
         glBlendColor(0.5, 0.5, 0.5, 0.5);
+        break;
+      case DrawMode::AlphaBlend::ZERO_SRC_SRC_DST:
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
         break;
       default:
         ASSERT(false);

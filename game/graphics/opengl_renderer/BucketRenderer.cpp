@@ -71,7 +71,9 @@ RenderMux::RenderMux(const std::string& name,
     : BucketRenderer(name, my_id), m_renderers(std::move(renderers)) {
   for (auto& r : m_renderers) {
     m_name_strs.push_back(r->name_and_id());
-    m_name_str_ptrs.push_back(m_name_strs.back().data());
+  }
+  for (auto& n : m_name_strs) {
+    m_name_str_ptrs.push_back(n.data());
   }
 }
 
