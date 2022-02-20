@@ -18,7 +18,7 @@
 ;; DECOMP BEGINS
 
 (defbehavior clone-anim-once process-drawable ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
-  (set! (-> self skel status) (logand -33 (-> self skel status)))
+  (logclear! (-> self skel status) (janim-status spool))
   (let ((s5-0 (handle->process arg0)))
     (if (the-as process-drawable s5-0)
         (joint-control-copy! (-> self skel) (-> (the-as process-drawable s5-0) skel))
@@ -47,8 +47,8 @@
            )
          (quaternion-copy! (-> self root quat) (-> (the-as process-drawable s5-0) root quat))
          )
-       (if (logtest? (-> (the-as process-drawable s5-0) skel status) 32)
-           (logior! (-> self skel status) 32)
+       (if (logtest? (-> (the-as process-drawable s5-0) skel status) (janim-status spool))
+           (logior! (-> self skel status) (janim-status spool))
            )
        (logclear! (-> self draw status) (draw-status hidden no-anim))
        (if (not (-> self skel root-channel 0 frame-group))
@@ -70,11 +70,11 @@
              (TODO-RENAME-9 a0-22)
              )
          )
-       (if (logtest? (-> self skel status) 72)
+       (if (logtest? (-> self skel status) (janim-status blerc blerc-done))
            (merc-blend-shape self)
            )
-       (if (logtest? (-> self skel status) 384)
-           (merc-eye-anim (the-as manipy self))
+       (if (logtest? (-> self skel status) (janim-status eye-done eye))
+           (merc-eye-anim self)
            )
        )
       (else
@@ -96,7 +96,7 @@
     (clone-anim-once arg0 arg1 #t arg3)
     (suspend)
     )
-  (set! (-> self skel status) (logand -33 (-> self skel status)))
+  (logclear! (-> self skel status) (janim-status spool))
   0
   (none)
   )
@@ -213,12 +213,12 @@
           ((= v1-0 'blend-shape)
            (cond
              ((-> arg3 param 0)
-              (set! v0-0 (the-as none (logior (-> self skel status) 264)))
-              (set! (-> self skel status) (the-as uint v0-0))
+              (set! v0-0 (the-as none (logior (-> self skel status) (janim-status blerc eye))))
+              (set! (-> self skel status) (the-as janim-status v0-0))
               )
              (else
-               (set! v0-0 (the-as none (logand -265 (-> self skel status))))
-               (set! (-> self skel status) (the-as uint v0-0))
+               (set! v0-0 (the-as none (logclear (-> self skel status) (janim-status blerc eye))))
+               (set! (-> self skel status) (the-as janim-status v0-0))
                )
              )
            v0-0
@@ -341,7 +341,7 @@
                   (cond
                     ((nonzero? (-> self skel))
                      (let ((gp-1 (-> self skel status)))
-                       (logior! (-> self skel status) 1)
+                       (logior! (-> self skel status) (janim-status inited))
                        (set! v0-0 (ja-post))
                        (set! (-> self skel status) gp-1)
                        )
@@ -886,25 +886,27 @@
 (defun ja-anim-done? ((arg0 process))
   (with-pp
     (let ((gp-0 (command-get-process arg0 *target*)))
-      (the-as symbol (when gp-0
-                       (cond
-                         ((type-type? (-> gp-0 type) manipy)
-                          (send-event gp-0 'query 'done)
-                          )
-                         ((type-type? (-> gp-0 type) process-drawable)
-                          (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
-                            (let ((s5-0 pp))
-                              (set! pp gp-0)
-                              (let ((v0-1 (the-as object (ja-done? 0))))
-                                (set! pp s5-0)
-                                v0-1
-                                )
-                              )
-                            )
-                          )
-                         )
-                       )
-              )
+      (the-as
+        symbol
+        (when gp-0
+          (cond
+            ((type-type? (-> gp-0 type) manipy)
+             (send-event gp-0 'query 'done)
+             )
+            ((type-type? (-> gp-0 type) process-drawable)
+             (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) (janim-status done)))
+               (let ((s5-0 pp))
+                 (set! pp gp-0)
+                 (let ((v0-1 (the-as object (ja-done? 0))))
+                   (set! pp s5-0)
+                   v0-1
+                   )
+                 )
+               )
+             )
+            )
+          )
+        )
       )
     )
   )
@@ -1065,8 +1067,8 @@
               (set! gp-0 (command-get-process (car s4-0) *target*))
               (when (the-as target gp-0)
                 (if (car (cdr s4-0))
-                    (set! (-> (the-as target gp-0) skel status) (logand -3 (-> (the-as target gp-0) skel status)))
-                    (logior! (-> (the-as target gp-0) skel status) 2)
+                    (logclear! (-> (the-as target gp-0) skel status) (janim-status drawn))
+                    (logior! (-> (the-as target gp-0) skel status) (janim-status drawn))
                     )
                 )
               )
