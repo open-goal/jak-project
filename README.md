@@ -8,7 +8,7 @@
   <a target="_blank" rel="noopener noreferrer" href="https://github.com/open-goal/jak-project/workflows/Windows/badge.svg"><img src="https://github.com/open-goal/jak-project/workflows/Windows/badge.svg" alt="Windows" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&utm_medium=referral&utm_content=open-goal/jak-project&utm_campaign=Badge_Coverage" rel="nofollow"><img src="https://app.codacy.com/project/badge/Coverage/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=open-goal/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
-  <a href="https://discord.gg/V82sTJGEAs"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
+  <a href="https://discord.gg/VZbXMHXzWv"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
@@ -16,7 +16,6 @@
 
 <!-- toc -->
 
-- [Table of Contents](#table-of-contents)
 - [Project Description](#project-description)
 - [Current Status](#current-status)
 - [What's Next](#whats-next)
@@ -41,7 +40,7 @@
 
 ## Project Description
 
-This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
+This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 98% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
 - decompile the original game code into human-readable GOAL code
 - develop our own compiler for GOAL and recompile game code for x86-64
 - create a tool to extract game assets into formats that can be easily viewed or modified
@@ -55,7 +54,9 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
-We have a Discord server where we discuss development. https://discord.gg/V82sTJGEAs
+We have a Discord server where we discuss development. https://discord.gg/VZbXMHXzWv
+
+**[If you have any questions, please read the FAQ here beforehand.](FAQ.md)**
 
 ## Current Status
 
@@ -300,7 +301,7 @@ gc>
 
 In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 
-Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files have instructions for how to run them if they are not loaded automatically by the engine.
+Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files that are not loaded automatically by the engine have instructions for how to run them.
 
 ## Project Layout
 
