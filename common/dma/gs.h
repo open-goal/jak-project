@@ -362,8 +362,9 @@ class DrawMode {
     DISABLED = 0,
     SRC_DST_SRC_DST = 1,
     SRC_0_SRC_DST = 2,
-    SRC_0_FIX_DST = 3,   // fix = 128
-    SRC_DST_FIX_DST = 4  // fix = 64
+    SRC_0_FIX_DST = 3,    // fix = 128
+    SRC_DST_FIX_DST = 4,  // fix = 64
+    ZERO_SRC_SRC_DST = 5,
   };
 
   enum class AlphaTest {

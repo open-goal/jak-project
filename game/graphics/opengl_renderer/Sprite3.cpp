@@ -453,11 +453,10 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
 
   // two passes through the buckets. first to build the index buffer
   u32 idx_offset = 0;
-  for (auto& kv : m_sprite_buckets) {
-    memcpy(&m_index_buffer_data[idx_offset], kv.second.ids.data(),
-           kv.second.ids.size() * sizeof(u32));
-    kv.second.offset_in_idx_buffer = idx_offset;
-    idx_offset += kv.second.ids.size();
+  for (const auto bucket : m_bucket_list) {
+    memcpy(&m_index_buffer_data[idx_offset], bucket->ids.data(), bucket->ids.size() * sizeof(u32));
+    bucket->offset_in_idx_buffer = idx_offset;
+    idx_offset += bucket->ids.size();
   }
 
   // now upload it
@@ -466,10 +465,10 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
                GL_STREAM_DRAW);
 
   // now do draws!
-  for (auto& kv : m_sprite_buckets) {
-    u32 tbp = kv.first >> 32;
+  for (const auto bucket : m_bucket_list) {
+    u32 tbp = bucket->key >> 32;
     DrawMode mode;
-    mode.as_int() = kv.first & 0xffffffff;
+    mode.as_int() = bucket->key & 0xffffffff;
 
     TextureRecord* tex = nullptr;
     tex = render_state->texture_pool->lookup(tbp);
@@ -497,10 +496,10 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "tex_T0"), 0);
 
     prof.add_draw_call();
-    prof.add_tri(2 * (kv.second.ids.size() / 5));
+    prof.add_tri(2 * (bucket->ids.size() / 5));
 
-    glDrawElements(GL_TRIANGLE_STRIP, kv.second.ids.size(), GL_UNSIGNED_INT,
-                   (void*)(kv.second.offset_in_idx_buffer * sizeof(u32)));
+    glDrawElements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
+                   (void*)(bucket->offset_in_idx_buffer * sizeof(u32)));
 
     if (double_draw) {
       switch (settings.kind) {
@@ -508,7 +507,7 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
           break;
         case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
           prof.add_draw_call();
-          prof.add_tri(2 * (kv.second.ids.size() / 5));
+          prof.add_tri(2 * (bucket->ids.size() / 5));
           glUniform1f(
               glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "alpha_min"),
               -10.f);
@@ -516,8 +515,8 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
               glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "alpha_max"),
               settings.aref_second);
           glDepthMask(GL_FALSE);
-          glDrawElements(GL_TRIANGLE_STRIP, kv.second.ids.size(), GL_UNSIGNED_INT,
-                         (void*)(kv.second.offset_in_idx_buffer * sizeof(u32)));
+          glDrawElements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
+                         (void*)(bucket->offset_in_idx_buffer * sizeof(u32)));
           break;
         default:
           ASSERT(false);
@@ -526,6 +525,7 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
   }
 
   m_sprite_buckets.clear();
+  m_bucket_list.clear();
   m_last_bucket_key = UINT64_MAX;
   m_last_bucket = nullptr;
   m_sprite_idx = 0;
@@ -616,6 +616,14 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     // Cv = (Cs - Cd) * FIX + Cd
     ASSERT(reg.fix() == 64);
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+  } else if (reg.a_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.c_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    // (0 - Cs) * As + Cd
+    // Cd - Cs * As
+    // s, d
+    mode.set_alpha_blend(DrawMode::AlphaBlend::ZERO_SRC_SRC_DST);
   }
 
   else {
@@ -667,7 +675,14 @@ void Sprite3::do_block_common(SpriteMode mode,
     if (key == m_last_bucket_key) {
       bucket = m_last_bucket;
     } else {
-      bucket = &m_sprite_buckets[key];
+      auto it = m_sprite_buckets.find(key);
+      if (it == m_sprite_buckets.end()) {
+        bucket = &m_sprite_buckets[key];
+        bucket->key = key;
+        m_bucket_list.push_back(bucket);
+      } else {
+        bucket = &it->second;
+      }
     }
     u32 start_vtx_id = m_sprite_idx * 4;
     bucket->ids.push_back(start_vtx_id);

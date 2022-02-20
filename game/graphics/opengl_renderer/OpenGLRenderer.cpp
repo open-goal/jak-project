@@ -196,8 +196,9 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);  // 65
 
   std::vector<std::unique_ptr<BucketRenderer>> sprite_renderers;
-  sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
+  // the first renderer added will be the default for sprite.
   sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", BucketId::SPRITE));
+  sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
   init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));  // 66
 
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000,
