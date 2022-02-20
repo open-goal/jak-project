@@ -94,7 +94,7 @@
       :tool 'dgo
       :out `(,out-name)
       )
-    (append!! *all-cgos* out-name)
+    (set! *all-cgos* (cons out-name *all-cgos*))
     )
   )
 
@@ -141,7 +141,7 @@
     (defstep :in path
              :tool 'copy
              :out `(,out-file))
-    (append!! *all-str* out-file)))
+    (set! *all-str* (cons out-file *all-str*))))
 
 (define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
@@ -153,7 +153,7 @@
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
-    (append!! *all-vis* out-name)))
+    (set! *all-vis* (cons out-name *all-vis*))))
 
 
 (defmacro group (name &rest stuff)
@@ -1864,13 +1864,14 @@
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
-   ,@*all-cgos*
-   ,@*all-vis*
-   ,@*all-str*)
+   ,@(reverse *all-cgos*)
+   ,@(reverse *all-vis*)
+   ,@(reverse *all-str*))
  )
 
+
 (group-list "spools"
- `(,@*all-str*)
+ `(,@(reverse *all-str*))
  )
 
 (group-list "text"
