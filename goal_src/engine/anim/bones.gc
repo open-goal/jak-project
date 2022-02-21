@@ -15,6 +15,7 @@
 
 ;; It's more than just bones in here - submitting to merc is done from here.
 
+(defglobalconstant USE_GENERIC #t)
 
 ;;;;;;;;;;;;;;;;;;
 ;; calc list
@@ -350,7 +351,7 @@
   ;; reset globals
   (let ((v1-3 *merc-globals*))
     (set! (-> v1-3 first) (the-as uint 0))
-    (set! (-> v1-3 next) (the-as uint 0))
+    (set! (-> v1-3 next) (the-as (pointer uint32) 0))
     )
   
   ;; upload bones program.
@@ -656,104 +657,162 @@
                                     )
         )
 
-;; draw-bones-shadow
-;; draw-bones-generic-merc
+;; TODO draw-bones-shadow
+
+(defun draw-bones-generic-merc ((arg0 draw-control) (arg1 pointer) (arg2 pointer) (arg3 int))
+  "Add data for generic merc drawing to the dma buffer. Note that this data is not yet converted to the generic format,
+   so it is not linked into the chain. This data is linked to itself and can be found again by following the chain
+   in *merc-globals*, which, despite the name, only contains generic merc data."
+  (local-vars
+    (sv-16 generic-merc-ctrl)
+    (sv-32 merc-effect)
+    (sv-48 int)
+    (sv-64 merc-fragment)
+    (sv-80 merc-fragment-control)
+    (sv-96 uint)
+    (sv-112 int)
+    (sv-128 int)
+    (sv-144 generic-merc-ctrl)
+    )
+  (let ((gp-0 (the-as object (&+ arg2 0))))
+    (let ((s2-0 (-> arg0 lod-set lod (-> arg0 cur-lod) geo))
+          (s0-0 (-> *merc-globals* next))
+          )
+      (set! sv-144 (the-as generic-merc-ctrl (&+ arg2 16)))
+      (dotimes (s1-0 (the-as int (-> s2-0 header effect-count)))
+        (when (nonzero? (-> *merc-bucket-info* effect s1-0 use-mercneric))
+          (set! sv-16 sv-144)
+          (set! sv-32 (-> s2-0 effect s1-0))
+          (+! (-> *merc-global-stats* mercneric fragments) (-> sv-32 frag-count))
+          (+! (-> *merc-global-stats* mercneric tris) (-> sv-32 tri-count))
+          (+! (-> *merc-global-stats* mercneric dverts) (-> sv-32 dvert-count))
+          (when (nonzero? s0-0)
+            (set! (-> s0-0 0) (the-as uint sv-16))
+            sv-16
+            )
+          (when (zero? (-> *merc-globals* first))
+            (set! (-> *merc-globals* first) (the-as uint sv-16))
+            sv-16
+            )
+          (set! s0-0 (&-> sv-16 tag vif1))
+          (quad-copy! (the-as pointer (-> sv-16 lights)) (the-as pointer (-> *merc-bucket-info* light)) 7)
+          (quad-copy! (the-as pointer (-> sv-16 header)) (the-as pointer (-> s2-0 header)) 5)
+          (set! (-> sv-16 header envmap-tint) (the-as uint (-> *merc-bucket-info* effect s1-0 color-fade)))
+          (set! (-> sv-16 header needs-clip) (the-as uint (-> *merc-bucket-info* needs-clip)))
+          (set! (-> sv-16 header use-isometric) (the-as uint arg3))
+          (when (nonzero? arg3)
+            (set! (-> sv-16 header needs-clip) (the-as uint 0))
+            0
+            )
+          (set! (-> sv-16 header use-attached-shader) (the-as uint 0))
+          (set! (-> sv-16 header display-triangles) (the-as uint 1))
+          (set! (-> sv-16 header two-mat-count) (the-as uint 0))
+          (set! (-> sv-16 header shader-upload-count) (the-as uint (if (logtest? (-> sv-32 effect-bits) 2)
+                                                                       1
+                                                                       0
+                                                                       )
+                                                              )
+                )
+          (when (nonzero? (-> arg0 death-timer))
+            (when (>= (the-as int (- (-> arg0 death-timer-org) (-> arg0 death-timer)))
+                      (the-as int (-> arg0 death-draw-overlap))
+                      )
+              (set! (-> sv-16 header display-triangles) (the-as uint 0))
+              0
+              )
+            (when (not (paused?))
+              (set! (-> sv-16 header two-mat-count) (-> arg0 death-vertex-skip))
+              (set! (-> sv-16 header death-effect) (-> arg0 death-effect))
+              (set! (-> sv-16 header two-mat-reuse-count)
+                    (/ (* (-> arg0 death-vertex-skip) (- (-> arg0 death-timer-org) (-> arg0 death-timer)))
+                       (-> arg0 death-timer-org)
+                       )
+                    )
+              )
+            )
+          (set! (-> sv-16 header query) (the-as basic 0))
+          (when (logtest? (-> sv-32 effect-bits) 4)
+            (when (-> arg0 ripple)
+              (if (-> arg0 ripple send-query)
+                  (set! (-> sv-16 header query) (-> arg0 ripple query))
+                  )
+              )
+            )
+          (quad-copy! (the-as pointer (-> sv-16 effect)) (the-as pointer sv-32) 2)
+          (set! sv-48 15)
+          (when (nonzero? (-> sv-32 extra-info))
+            (when (nonzero? (-> sv-32 extra-info shader-offset))
+              (set! (-> sv-16 header use-attached-shader) (the-as uint 1))
+              (quad-copy!
+                (the-as pointer (&+ sv-16 240))
+                (the-as pointer (+ (the-as uint (-> sv-32 extra-info)) (* (-> sv-32 extra-info shader-offset) 16)))
+                5
+                )
+              (set! sv-48 (+ sv-48 5))
+              sv-48
+              )
+            )
+          (set! (-> sv-16 tag dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (+ sv-48 -1)))
+          (set! (-> sv-16 tag vif0) (the-as vif-tag sv-48))
+          (set! (-> sv-16 tag vif1) (new 'static 'vif-tag))
+          (set! sv-144 (the-as generic-merc-ctrl (+ (the-as uint sv-144) (* sv-48 16))))
+          sv-144
+          (set! sv-64 (-> sv-32 frag-geo))
+          (set! sv-80 (-> sv-32 frag-ctrl))
+          (set! sv-96 (-> sv-32 frag-count))
+          (set! sv-112 0)
+          (while (< sv-112 (the-as int sv-96))
+            (set! sv-128 (asize-of sv-80))
+            (let ((v1-104 (asize-of sv-64)))
+              (set! (-> sv-144 tag dma)
+                    (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int sv-64) :qwc (shr v1-104 4))
+                    )
+              (set! (-> sv-144 tag vif0) (new 'static 'vif-tag))
+              (set! (-> sv-144 tag vif1) (new 'static 'vif-tag))
+              (when (nonzero? sv-112)
+                (set! (-> (the-as (pointer vif-tag) s0-0) 0) (the-as vif-tag sv-144))
+                (set! s0-0 (&-> sv-144 tag vif1))
+                )
+              (let ((a0-55 (the-as structure (-> sv-144 lights))))
+                (dotimes (a1-17 (the-as int (-> sv-80 mat-xfer-count)))
+                  (let ((a3-2 (&+ arg1 (* (-> sv-80 mat-dest-data a1-17 matrix-number) 128))))
+                    (set! (-> (the-as dma-packet a0-55) dma)
+                          (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id ref) :addr (the-as int a3-2))
+                          )
+                    )
+                  (set! (-> (the-as dma-packet a0-55) vif0) (new 'static 'vif-tag))
+                  (set! (-> (the-as dma-packet a0-55) vif1) (new 'static 'vif-tag))
+                  (set! a0-55 (&+ (the-as dma-packet a0-55) 16))
+                  )
+                (set! (-> (the-as dma-packet a0-55) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+                (set! (-> (the-as dma-packet a0-55) vif0) (new 'static 'vif-tag))
+                (set! (-> (the-as dma-packet a0-55) vif1) (new 'static 'vif-tag))
+                (set! sv-144 (the-as generic-merc-ctrl (&+ (the-as dma-packet a0-55) 16)))
+                )
+              (set! sv-80 (the-as merc-fragment-control (&+ (the-as pointer sv-80) sv-128)))
+              (set! sv-64 (the-as merc-fragment (&+ (the-as pointer sv-64) v1-104)))
+              )
+            sv-64
+            (set! sv-112 (+ sv-112 1))
+            )
+          )
+        )
+      (set! (-> *merc-globals* next) s0-0)
+      )
+    (set! (-> (the-as dma-packet gp-0) dma)
+          (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int sv-144))
+          )
+    (set! (-> (the-as dma-packet gp-0) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet gp-0) vif1) (new 'static 'vif-tag))
+    )
+  0
+  (the-as pointer sv-144)
+  )
 ;; draw-boes-merc
 ;; draw-bones-check-longest-edge
 ;; draw-bones-check-longest-edgei-asm
 ;; draw-bones
 ;; draw-bones-hud
-
-;; HACK incomplete:
-(defun draw-bones-hack ((arg0 draw-control) (arg1 dma-buffer) (arg2 float))
-  (local-vars
-    (at-0 object)
-    (a0-16 int)
-    (a0-17 int)
-    (a0-62 int)
-    (a2-10 int)
-    (a2-12 int)
-    (sv-96 int)
-    (sv-112 int)
-    (sv-128 int)
-    (sv-144 ripple-control)
-    )
-  (rlet ((vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         (vf8 :class vf)
-         (vf9 :class vf)
-         )
-    (let* ((s1-0 (+ (-> arg0 mgeo num-joints) 3))
-           (a0-1 (* s1-0 128))
-           )
-      ;;(.lui at-0 28672)
-      (let* ((v1-2 (-> arg1 base))
-             (a1-1 (the-as object (&+ v1-2 16)))
-             (s3-0 (the-as object (&+ v1-2 64)))
-             )
-        (let ((a2-1 (logand (the-as int s3-0) 48)))
-          (b! (zero? a2-1) cfg-2 :delay (nop!))
-          (set! s3-0 (&- (&+ (the-as pointer s3-0) 64) (the-as uint a2-1)))
-          )
-        (label cfg-2)
-        ; (let* ((a2-3 (-> *perf-stats* data 13))
-        ;        (a3-1 (-> a2-3 ctrl))
-        ;        )
-        ;   (+! (-> a2-3 count) 1)
-        ;   (b! (zero? a3-1) cfg-4 :delay (nop!))
-        ;   (.mtc0 Perf r0)
-        ;   (.sync.l)
-        ;   (.sync.p)
-        ;   (.mtpc pcr0 r0)
-        ;   (.mtpc pcr1 r0)
-        ;   (.sync.l)
-        ;   (.sync.p)
-        ;   (.mtc0 Perf a3-1)
-        ;   )
-        ; (.sync.l)
-        ; (.sync.p)
-        ; (label cfg-4)
-        0
-        (let ((a2-6 (the-as bone-regs (+ 240 (scratchpad-object int)))))
-          (set! (-> a2-6 joint-ptr) (the-as (inline-array joint) (-> arg0 jgeo data 0)))
-          (set! (-> a2-6 bone-ptr) (-> arg0 skeleton bones))
-          (set! (-> a2-6 num-bones) (the-as uint s1-0))
-          )
-        (let ((t0-2 s3-0)
-              (t1-0 0)
-              (t4-0 (the-as bone-memory (+ 16 (scratchpad-object int))))
-              (a2-8 *bone-calculation-list*)
-              (a3-8 (the-as bone-calculation a1-1))
-              )
-          (let ((t2-0 (-> t4-0 work regs joint-ptr))
-                (t3-0 (-> t4-0 work regs bone-ptr))
-                (t4-1 (-> t4-0 work regs num-bones))
-                (t5-0 a3-8)
-                )
-            (set! (-> t5-0 flags) (the-as bone-calc-flags t1-0))
-            (set! (-> t5-0 num-bones) t4-1)
-            (set! (-> t5-0 matrix-area) (the-as (inline-array matrix) t0-2))
-            (set! (-> t5-0 joints) t2-0)
-            (set! (-> t5-0 bones) t3-0)
-            (set! (-> t5-0 next) (the-as bone-calculation 0))
-            )
-          (if (nonzero? (-> a2-8 next))
-              (set! (-> a2-8 next next) a3-8)
-              )
-          (if (zero? (-> a2-8 first))
-              (set! (-> a2-8 first) a3-8)
-              )
-          (set! (-> a2-8 next) a3-8)
-          ;; total guess
-          (&+! (-> arg1 base) (* 2 (+ 256 a0-1)))
-          )
-        )))
-  (none))
 
 (def-mips2c draw-bones-merc (function draw-control object object int int pointer))
 (def-mips2c draw-bones-check-longest-edge-asm (function draw-control float symbol))
@@ -1081,31 +1140,40 @@
                     )
                   )
                 
-                ;; HACK just use merc.
-                (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-                  (unless (logtest? (-> arg0 status) (draw-status needs-clip))
-                    (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
-                    )
-                  (when (and (logtest? (-> arg0 status) (draw-status needs-clip)) ;; we need to clip
-                             ;;(nonzero? (-> arg0 longest-edge))                    ;; we known the longest edge
-                             ;;(draw-bones-check-longest-edge-asm arg0 arg2)        ;; it's ok to use percprime.
+                ;; HACK just use merc if we aren't using generic.
+                (#unless USE_GENERIC
+                         (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+                           (unless (logtest? (-> arg0 status) (draw-status needs-clip))
+                             ;; no clip, but wants generic. Just use merc for now.
+                             (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                             (set! used-merc 1)
                              )
-                      (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
-                      (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)
-                    )
-                )
+                           (when (and (logtest? (-> arg0 status) (draw-status needs-clip)) ;; we need to clip
+                                      ;;(nonzero? (-> arg0 longest-edge))                    ;; we known the longest edge
+                                      ;;(draw-bones-check-longest-edge-asm arg0 arg2)        ;; it's ok to use percprime.
+                                      )
+                             ;; wants clip. in all cases, give to merc. this might give it to merc even if it fails the
+                             ;; long edge check, but it does ok
+                             (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                             (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)
+                             (set! used-merc 1)
+                             )
+                           )
+                         )
+                
                 (set! effect-idx (+ effect-idx 1))
                 ) ;; end effect loop
               
               ;; draw generic!
               ;; note: this doesn't do the fully draw, there's some other stuff in process-drawable.gc to actually execute.  
-              ;; TODO!!            
-              ; (when (nonzero? used-mercneric)
-              ;   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-              ;     (set! (-> dma-buf base) (draw-bones-generic-merc arg0 matrix-data s2-0 0))
-              ;     (set! s2-0 (-> dma-buf base))
-              ;     )
-              ;   )
+              (#when USE_GENERIC
+                (when (nonzero? used-mercneric)
+                  (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+                    (set! (-> dma-buf base) (draw-bones-generic-merc arg0 (the pointer matrix-data) (the pointer s2-0) 0))
+                    (set! s2-0 (-> dma-buf base))
+                    )
+                  )
+                )
               
               ;; draw shadow!
               ;; TODO
@@ -1118,7 +1186,7 @@
             
               ;; draw merc!
               
-              (set! used-merc 1)
+              ;; 
               (when (nonzero? used-merc)
                 (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
                   (when (= (-> arg0 cur-lod) (-> arg0 lod-set max-lod))
@@ -1177,6 +1245,7 @@
     )
   )
 
+;; TODO
 (defun draw-bones-hud ((arg0 draw-control) (arg1 dma-buffer))
   (none)
   )

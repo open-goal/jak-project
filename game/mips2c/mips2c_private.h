@@ -354,6 +354,19 @@ struct ExecutionContext {
     }
   }
 
+  void pextuh(int dst, int src0, int src1) {
+    auto s0 = gpr_src(src0);
+    auto s1 = gpr_src(src1);
+    gprs[dst].du16[0] = s1.du16[4];
+    gprs[dst].du16[1] = s0.du16[4];
+    gprs[dst].du16[2] = s1.du16[5];
+    gprs[dst].du16[3] = s0.du16[5];
+    gprs[dst].du16[4] = s1.du16[6];
+    gprs[dst].du16[5] = s0.du16[6];
+    gprs[dst].du16[6] = s1.du16[7];
+    gprs[dst].du16[7] = s0.du16[7];
+  }
+
   void pextuw(int dst, int src0, int src1) {
     auto s0 = gpr_src(src0);
     auto s1 = gpr_src(src1);
@@ -596,6 +609,21 @@ struct ExecutionContext {
     }
   }
 
+  void pand(int dst, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    gprs[dst].du64[0] = s.du64[0] & t.du64[0];
+    gprs[dst].du64[1] = s.du64[1] & t.du64[1];
+  }
+
+  void pceqb(int dst, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 16; i++) {
+      gprs[dst].du8[i] = (s.du8[i] == t.du8[i]) ? 0xff : 0;
+    }
+  }
+
   void pmfhl_lh(int dest) {
     gprs[dest].du16[0] = lo.du16[0];
     gprs[dest].du16[1] = lo.du16[2];
@@ -810,6 +838,14 @@ struct ExecutionContext {
     }
   }
 
+  void slt(int dst, int src0, int src1) {
+    gprs[dst].du64[0] = (gpr_src(src0).ds64[0] < gpr_src(src1).ds64[0]) ? 1 : 0;
+  }
+
+  void sltu(int dst, int src0, int src1) {
+    gprs[dst].du64[0] = (gpr_src(src0).du64[0] < gpr_src(src1).du64[0]) ? 1 : 0;
+  }
+
   void sll(int dst, int src, int sa) {
     u32 value = gpr_src(src).du32[0] << sa;
     s32 value_signed = value;
@@ -826,6 +862,9 @@ struct ExecutionContext {
   void dsrl(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> sa; }
   void dsrav(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> gpr_src(sa).du32[0];
+  }
+  void dsllv(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds64[0] << (gpr_src(sa).du32[0] & 0b111111);
   }
   void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
   void dsrl32(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> (32 + sa); }
@@ -1104,6 +1143,59 @@ struct ExecutionContext {
     vfs[dst].f[0] = acc.f[0] - s0.f[1] * s1.f[2];
     vfs[dst].f[1] = acc.f[1] - s0.f[2] * s1.f[0];
     vfs[dst].f[2] = acc.f[2] - s0.f[0] * s1.f[1];
+  }
+
+  // copied from PCSX2, to handle the weirdo special case in lwr.
+  static constexpr u32 LWL_MASK[4] = {0xffffff, 0x0000ffff, 0x000000ff, 0x00000000};
+  static constexpr u32 LWR_MASK[4] = {0x000000, 0xff000000, 0xffff0000, 0xffffff00};
+  static constexpr u8 LWL_SHIFT[4] = {24, 16, 8, 0};
+  static constexpr u8 LWR_SHIFT[4] = {0, 8, 16, 24};
+
+  void lwl(int dst, int offset, int addr_reg) {
+    s32 addr = sgpr64(addr_reg) + offset;
+    u32 shift = addr & 3;
+
+    u32 mem;
+    memcpy(&mem, g_ee_main_mem + (addr & ~3), 4);
+
+    if (!dst)
+      return;
+
+    // ensure the compiler does correct sign extension into 64 bits by using s32
+    gprs[dst].ds64[0] = (s32)((gprs[dst].du32[0] & LWL_MASK[shift]) | (mem << LWL_SHIFT[shift]));
+
+    /*
+    Mem = 1234.  Reg = abcd
+    (result is always sign extended into the upper 32 bits of the Rt)
+
+    0   4bcd   (mem << 24) | (reg & 0x00ffffff)
+    1   34cd   (mem << 16) | (reg & 0x0000ffff)
+    2   234d   (mem <<  8) | (reg & 0x000000ff)
+    3   1234   (mem      ) | (reg & 0x00000000)
+    */
+  }
+
+  void lwr(int dst, int offset, int addr_reg) {
+    s32 addr = sgpr64(addr_reg) + offset;
+    u32 shift = addr & 3;
+
+    u32 mem;
+    memcpy(&mem, g_ee_main_mem + (addr & ~3), 4);
+
+    if (!dst)
+      return;
+
+    // Use unsigned math here, and conditionally sign extend below, when needed.
+    mem = (gprs[dst].du32[0] & LWR_MASK[shift]) | (mem >> LWR_SHIFT[shift]);
+
+    if (shift == 0) {
+      // This special case requires sign extension into the full 64 bit dest.
+      gprs[dst].ds64[0] = (s32)mem;
+    } else {
+      // This case sets the lower 32 bits of the target register.  Upper
+      // 32 bits are always preserved.
+      gprs[dst].du32[0] = mem;
+    }
   }
 
   std::string print_vf_float(int vf) {

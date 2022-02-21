@@ -869,9 +869,16 @@ Mips2C_Line handle_vopmsub(const Instruction& i0, const std::string& instr_strin
           instr_string};
 }
 
-Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string) {
-  return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
-          instr_string};
+Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string, Mips2C_Output& op) {
+  if (i0.get_src(0).get_imm() == 0x7000) {
+    op.require_symbol("*fake-scratchpad-data*");
+    return {fmt::format("get_fake_spad_addr({}, cache.fake_scratchpad_data, 0, c);",
+                        reg_to_name(i0.get_dst(0))),
+            instr_string};
+  } else {
+    return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
+            instr_string};
+  }
 }
 
 Mips2C_Line handle_clts(const Instruction& i0, const std::string& instr_string) {
@@ -896,15 +903,33 @@ Mips2C_Line handle_pmfhl_lh(const Instruction& i0, const std::string& instr_stri
   return {fmt::format("c->pmfhl_lh({});", reg_to_name(i0.get_dst(0))), instr_string};
 }
 
+Mips2C_Line handle_ctc2(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("{} = c->gpr_src({}).du16[0];", reg_to_name(i0.get_dst(0)),
+                      reg_to_name(i0.get_src(0))),
+          instr_string};
+}
+
+Mips2C_Line handle_cfc2(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->gprs[{}].du64[0] = {};", reg_to_name(i0.get_dst(0)),
+                      reg_to_name(i0.get_src(0))),
+          instr_string};
+}
+
 Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
                                 int& unknown_count,
                                 const LinkedObjectFile* file) {
   switch (i0.kind) {
+    case InstructionKind::CTC2:
+      return handle_ctc2(i0, instr_str);
+    case InstructionKind::CFC2:
+      return handle_cfc2(i0, instr_str);
     case InstructionKind::LW:
       return handle_lw(output, i0, instr_str, file);
     case InstructionKind::LB:
+    case InstructionKind::LWL:
+    case InstructionKind::LWR:
     case InstructionKind::LBU:
     case InstructionKind::LWU:
     case InstructionKind::LQ:
@@ -988,6 +1013,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PEXTLB:
     case InstructionKind::MOVN:
     case InstructionKind::PEXTUW:
+    case InstructionKind::PEXTUH:
     case InstructionKind::PEXTLW:
     case InstructionKind::PCPYUD:
     case InstructionKind::PCPYLD:
@@ -1008,7 +1034,12 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMAXW:
     case InstructionKind::PMAXH:
     case InstructionKind::SUBU:
+    case InstructionKind::SLT:
+    case InstructionKind::SLTU:
     case InstructionKind::DSRAV:
+    case InstructionKind::DSLLV:
+    case InstructionKind::PAND:
+    case InstructionKind::PCEQB:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
@@ -1079,7 +1110,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PCPYH:
       return handle_generic_op2(i0, instr_str, "pcpyh");
     case InstructionKind::LUI:
-      return handle_lui(i0, instr_str);
+      return handle_lui(i0, instr_str, output);
     case InstructionKind::CLTS:
       output.needs_cop1_bc = true;
       return handle_clts(i0, instr_str);
@@ -1317,13 +1348,17 @@ void run_mips2c(Function* f) {
             // set the branch condition
             output.lines.push_back(handle_non_likely_branch_bc(instr, instr_str));
             // then the delay slot
-            ASSERT(i + 1 < block.end_instr);
+            if (!(i + 1 < block.end_instr)) {
+              output.lines.emplace_back("DANGER jump to delay slot, this MUST be fixed manually!",
+                                        "");
+              lg::warn("Delay slot weirdness in {}, block {}", f->name(), block_idx);
+            }
             i++;
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
                 handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
-            ASSERT(i + 1 == block.end_instr);
+            // ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("if (bc) {{goto block_{};}}", block.succ_branch),
                                       "branch non-likely\n");
