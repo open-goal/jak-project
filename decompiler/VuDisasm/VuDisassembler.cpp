@@ -865,12 +865,14 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
     case VuInstrK::ITOF15:
     case VuInstrK::FTOI0:
     case VuInstrK::FTOI4:
+    case VuInstrK::FTOI12:
       return fmt::format("{}.{}(Mask::{}, {});",
                          vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
                          info(instr.kind).name, mask_to_string(*instr.mask),
                          vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format));
 
     case VuInstrK::ADDbc:
+    case VuInstrK::SUBbc:
     case VuInstrK::MULbc:
     case VuInstrK::MINIbc:
     case VuInstrK::MAXbc:

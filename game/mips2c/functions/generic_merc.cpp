@@ -275,6 +275,8 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   u32 call_addr = 0;
+  u32 qwc = 0;
+  u32 madr = 0;
   c->daddiu(sp, sp, -272);                          // daddiu sp, sp, -272
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
@@ -488,7 +490,13 @@ u64 execute(void* ctxt) {
   // Unknown instr: sync.l
   c->addiu(a0, r0, 324);                            // addiu a0, r0, 324
   // c->sw(a0, 0, s3);                                 // sw a0, 0(s3)
-  spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr, tadr);
+  // hack - I don't really know why, but the andi above puts sadr into a 64 kb
+  // range instead of a 16 kB range. I believe the hardware will just mask it.
+  // or, maybe there's something else wrong? Not sure, but the transfer does seem to go
+  // to the right spot when I use this.
+  spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr & 0x3fff, tadr);
+  u32 debug2;
+  memcpy(&debug2, g_ee_main_mem + 12 + 0x175040, 4);
   // Unknown instr: sync.l
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
 
@@ -1020,41 +1028,46 @@ u64 execute(void* ctxt) {
   c->lui(a2, 4096);                                 // lui a2, 4096
   c->lwu(a1, 76, at);                               // lwu a1, 76(at)
   c->ori(a2, a2, 53248);                            // ori a2, a2, 53248
-  c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
+  //c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
   // nop                                            // sll r0, r0, 0
   c->daddiu(t0, at, 108);                           // daddiu t0, at, 108
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
   c->andi(t1, t1, 256);                             // andi t1, t1, 256
   // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L55
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_80;}                          // branch non-likely
-
-  c->mov64(t1, a2);                                 // or t1, a2, r0
-  // nop                                            // sll r0, r0, 0
-
-  block_78:
-  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
-  // nop                                            // sll r0, r0, 0
-  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
-  // nop                                            // sll r0, r0, 0
-  c->andi(t3, t3, 256);                             // andi t3, t3, 256
-  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
-  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L54
-  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
-  if (bc) {goto block_78;}                          // branch non-likely
-
-  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
+//  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L55
+//  // nop                                            // sll r0, r0, 0
+//  if (bc) {goto block_80;}                          // branch non-likely
+//
+//  c->mov64(t1, a2);                                 // or t1, a2, r0
+//  // nop                                            // sll r0, r0, 0
+//
+//  block_78:
+//  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
+//  // nop                                            // sll r0, r0, 0
+//  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
+//  // nop                                            // sll r0, r0, 0
+//  c->andi(t3, t3, 256);                             // andi t3, t3, 256
+//  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
+//  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L54
+//  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
+//  if (bc) {goto block_78;}                          // branch non-likely
+//
+//  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
   block_80:
+// spr from
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
-  c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  //c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  sadr = c->sgpr64(a3);
   // nop                                            // sll r0, r0, 0
-  c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  // c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  madr = c->sgpr64(a1);
   c->addiu(a3, r0, 256);                            // addiu a3, r0, 256
-  c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  // c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  qwc = c->sgpr64(a0);
   c->daddu(a0, a1, t0);                             // daddu a0, a1, t0
-  c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 76, at);                                // sw a0, 76(at)
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
@@ -1121,7 +1134,7 @@ u64 execute(void* ctxt) {
   c->lui(a2, 4096);                                 // lui a2, 4096
   c->lwu(a1, 76, at);                               // lwu a1, 76(at)
   c->ori(a2, a2, 53248);                            // ori a2, a2, 53248
-  c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
+//  c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
   // nop                                            // sll r0, r0, 0
   c->daddiu(t0, at, 108);                           // daddiu t0, at, 108
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
@@ -1129,33 +1142,38 @@ u64 execute(void* ctxt) {
   // nop                                            // sll r0, r0, 0
   bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L60
   // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_90;}                          // branch non-likely
-
-  c->mov64(t1, a2);                                 // or t1, a2, r0
-  // nop                                            // sll r0, r0, 0
-
-  block_88:
-  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
-  // nop                                            // sll r0, r0, 0
-  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
-  // nop                                            // sll r0, r0, 0
-  c->andi(t3, t3, 256);                             // andi t3, t3, 256
-  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
-  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L59
-  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
-  if (bc) {goto block_88;}                          // branch non-likely
-
-  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
+//  if (bc) {goto block_90;}                          // branch non-likely
+//
+//  c->mov64(t1, a2);                                 // or t1, a2, r0
+//  // nop                                            // sll r0, r0, 0
+//
+//  block_88:
+//  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
+//  // nop                                            // sll r0, r0, 0
+//  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
+//  // nop                                            // sll r0, r0, 0
+//  c->andi(t3, t3, 256);                             // andi t3, t3, 256
+//  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
+//  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L59
+//  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
+//  if (bc) {goto block_88;}                          // branch non-likely
+//
+//  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
   block_90:
+  // spr from
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
-  c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  // c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  sadr = c->sgpr64(a3);
   // nop                                            // sll r0, r0, 0
-  c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  // c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  madr = c->sgpr64(a1);
   c->addiu(a3, r0, 256);                            // addiu a3, r0, 256
-  c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  // c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  qwc = c->sgpr64(a0);
   c->daddu(a0, a1, t0);                             // daddu a0, a1, t0
-  c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 76, at);                                // sw a0, 76(at)
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
@@ -1315,7 +1333,7 @@ void sq_buffer(Mask mask, const Vf& data, u32 qw) {
   }
 }
 
-void lq_buffer(Mask mask, Vf& data, u32 qw) {
+void lq_buffer(int line, Mask mask, Vf& data, u32 qw) {
   ASSERT(qw * 16 < sizeof(vu0_data_mem));
   for (int i = 0; i < 4; i++) {
     if ((u64)mask & (1 << i)) {
@@ -1373,7 +1391,7 @@ void vcallms_280(ExecutionContext* c, u16* vis) {
   vis[vi01] = vis[vi03];
   L3:
   // lqi.xyzw vf29, vi10        |  nop
-  lq_buffer(Mask::xyzw, c->vfs[vf29].vf, vis[vi10]++);
+  lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf29].vf, vis[vi10]++);
   // iadd vi02, vi08, vi11      |  nop
   vis[vi02] = vis[vi08] + vis[vi11];
   // iadd vi04, vi02, vi12      |  nop
@@ -1415,9 +1433,17 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   c->vfs[vf14].vf.mul(Mask::xyzw, c->vf_src(vf13).vf, c->Q);
   // sqi.xyzw vf04, vi08        |  mulaw.xyzw ACC, vf20, vf08
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf08).vf.w());   sq_buffer(Mask::xyzw, c->vf_src(vf04).vf, vis[vi08]++);
+
+  // fmt::print("doing jump {}\n", vis[vi01]);
   switch(vis[vi01]) {
     case 314:
       goto JUMP_314;
+    case 326:
+      goto JUMP_326;
+    case 353:
+      goto JUMP_353;
+    case 386:
+      goto JUMP_386;
     case 427:
       goto JUMP_427;
     default:
@@ -1429,22 +1455,22 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // rsqrt Q, vf00.w, vf16.x    |  maddaw.xyzw ACC, vf21, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf21].vf, c->vfs[vf09].vf.w());   c->Q = c->vf_src(vf00).vf.w() / std::sqrt(c->vf_src(vf16).vf.x());
   // lq.xyzw vf24, -124(vi11)   |  maddaw.xyzw ACC, vf22, vf10
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf22].vf, c->vfs[vf10].vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf24].vf, vis[vi11] + -124);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf22].vf, c->vfs[vf10].vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf24].vf, vis[vi11] + -124);
   // lq.xyzw vf25, -123(vi11)   |  maddw.xyzw vf15, vf23, vf00
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf15].vf, c->vf_src(vf23).vf, c->vf_src(vf00).vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf25].vf, vis[vi11] + -123);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf15].vf, c->vf_src(vf23).vf, c->vf_src(vf00).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf25].vf, vis[vi11] + -123);
   // lq.xyzw vf26, -122(vi11)   |  mul.xyzw vf16, vf11, vf11
-  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(Mask::xyzw, c->vfs[vf26].vf, vis[vi11] + -122);
+  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf26].vf, vis[vi11] + -122);
   // lq.xyzw vf20, -128(vi11)   |  add.xyzw vf08, vf01, vf05
-  c->vfs[vf08].vf.add(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf05).vf);   lq_buffer(Mask::xyzw, c->vfs[vf20].vf, vis[vi11] + -128);
+  c->vfs[vf08].vf.add(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf05).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf20].vf, vis[vi11] + -128);
   // lq.xyzw vf21, -127(vi11)   |  add.xyzw vf09, vf02, vf06
-  c->vfs[vf09].vf.add(Mask::xyzw, c->vf_src(vf02).vf, c->vf_src(vf06).vf);   lq_buffer(Mask::xyzw, c->vfs[vf21].vf, vis[vi11] + -127);
+  c->vfs[vf09].vf.add(Mask::xyzw, c->vf_src(vf02).vf, c->vf_src(vf06).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf21].vf, vis[vi11] + -127);
   // lq.xyzw vf22, -126(vi11)   |  add.xyzw vf10, vf03, vf07
-  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(Mask::xyzw, c->vfs[vf22].vf, vis[vi11] + -126);
+  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf22].vf, vis[vi11] + -126);
   // BRANCH!
   // ibne vi08, vi02, L4        |  adday.xyzw vf16, vf16
   c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   bc = (vis[vi08] != vis[vi02]);
   // lq.xyzw vf23, -125(vi11)   |  maddz.xyzw vf16, vf17, vf16
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf23].vf, vis[vi11] + -125);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf23].vf, vis[vi11] + -125);
   if (bc) { goto L4; }
 
   // ior vi01, vi03, vi00       |  nop
@@ -1455,6 +1481,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // move.xyzw vf12, vf11       |  maddaz.xyzw ACC, vf25, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf25].vf, c->vfs[vf09].vf.z());   c->vfs[vf12].vf.move(Mask::xyzw, c->vf_src(vf11).vf);
   return;
+  JUMP_326:
   // rsqrt Q, vf00.w, vf16.x    |  maddaw.xyzw ACC, vf21, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf21].vf, c->vfs[vf09].vf.w());   c->Q = c->vf_src(vf00).vf.w() / std::sqrt(c->vf_src(vf16).vf.x());
   // mtir vi12, vf01.y          |  maddaw.xyzw ACC, vf22, vf10
@@ -1462,7 +1489,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // iand vi11, vi11, vi09      |  maddw.xyzw vf15, vf23, vf00
   c->acc.vf.madd(Mask::xyzw, c->vfs[vf15].vf, c->vf_src(vf23).vf, c->vf_src(vf00).vf.w());   vis[vi11] = vis[vi11] & vis[vi09];
   // lq.xyzw vf19, 4(vi11)      |  mul.xyzw vf16, vf11, vf11
-  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 4);
+  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 4);
   // BRANCH!
   // ibeq vi09, vi11, L7        |  add.xyzw vf08, vf01, vf05
   c->vfs[vf08].vf.add(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf05).vf);   bc = (vis[vi09] == vis[vi11]);
@@ -1473,31 +1500,31 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // nop                        |  muly.xyzw vf18, vf18, vf17
   c->vfs[vf18].vf.mul(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf17).vf.y());
   // lq.xyzw vf24, 4(vi12)      |  add.xyzw vf10, vf03, vf07
-  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(Mask::xyzw, c->vfs[vf24].vf, vis[vi12] + 4);
+  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf24].vf, vis[vi12] + 4);
   // lq.xyzw vf27, 5(vi11)      |  adday.xyzw vf16, vf16
-  c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 5);
+  c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 5);
   // lq.xyzw vf25, 5(vi12)      |  maddz.xyzw vf16, vf17, vf16
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf25].vf, vis[vi12] + 5);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf25].vf, vis[vi12] + 5);
   // lq.xyzw vf28, 6(vi11)      |  mulax.xyzw ACC, vf19, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 6);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 6);
   // lq.xyzw vf26, 6(vi12)      |  maddy.xyzw vf24, vf24, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf24].vf, c->vf_src(vf24).vf, c->vf_src(vf18).vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf26].vf, vis[vi12] + 6);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf24].vf, c->vf_src(vf24).vf, c->vf_src(vf18).vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf26].vf, vis[vi12] + 6);
   // lq.xyzw vf29, 0(vi11)      |  mulax.xyzw ACC, vf27, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf29].vf, vis[vi11]);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf29].vf, vis[vi11]);
   // lq.xyzw vf20, 0(vi12)      |  maddy.xyzw vf25, vf25, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf25].vf, c->vf_src(vf25).vf, c->vf_src(vf18).vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf20].vf, vis[vi12]);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf25].vf, c->vf_src(vf25).vf, c->vf_src(vf18).vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf20].vf, vis[vi12]);
   // lq.xyzw vf19, 1(vi11)      |  mulax.xyzw ACC, vf28, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 1);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 1);
   // lq.xyzw vf21, 1(vi12)      |  maddy.xyzw vf26, vf26, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf26].vf, c->vf_src(vf26).vf, c->vf_src(vf18).vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf21].vf, vis[vi12] + 1);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf26].vf, c->vf_src(vf26).vf, c->vf_src(vf18).vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf21].vf, vis[vi12] + 1);
   // lq.xyzw vf27, 2(vi11)      |  mulax.xyzw ACC, vf29, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf29).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 2);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf29).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 2);
   // lq.xyzw vf22, 2(vi12)      |  maddy.xyzw vf20, vf20, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf20].vf, c->vf_src(vf20).vf, c->vf_src(vf18).vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf22].vf, vis[vi12] + 2);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf20].vf, c->vf_src(vf20).vf, c->vf_src(vf18).vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf22].vf, vis[vi12] + 2);
   // lq.xyzw vf28, 3(vi11)      |  mulax.xyzw ACC, vf19, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 3);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 3);
   // lq.xyzw vf23, 3(vi12)      |  maddy.xyzw vf21, vf21, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf21].vf, c->vf_src(vf21).vf, c->vf_src(vf18).vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf23].vf, vis[vi12] + 3);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf21].vf, c->vf_src(vf21).vf, c->vf_src(vf18).vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf23].vf, vis[vi12] + 3);
   // nop                        |  mulax.xyzw ACC, vf27, vf18
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());
   // iaddiu vi01, vi00, 0x161   |  maddy.xyzw vf22, vf22, vf18
@@ -1517,6 +1544,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // move.xyzw vf12, vf11       |  maddaz.xyzw ACC, vf25, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf25].vf, c->vfs[vf09].vf.z());   c->vfs[vf12].vf.move(Mask::xyzw, c->vf_src(vf11).vf);
   return;
+  JUMP_353:
   // rsqrt Q, vf00.w, vf16.x    |  maddaw.xyzw ACC, vf21, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf21].vf, c->vfs[vf09].vf.w());   c->Q = c->vf_src(vf00).vf.w() / std::sqrt(c->vf_src(vf16).vf.x());
   // mtir vi12, vf01.y          |  maddaw.xyzw ACC, vf22, vf10
@@ -1524,7 +1552,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // iand vi11, vi11, vi09      |  maddw.xyzw vf15, vf23, vf00
   c->acc.vf.madd(Mask::xyzw, c->vfs[vf15].vf, c->vf_src(vf23).vf, c->vf_src(vf00).vf.w());   vis[vi11] = vis[vi11] & vis[vi09];
   // lq.xyzw vf19, 4(vi11)      |  mul.xyzw vf16, vf11, vf11
-  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 4);
+  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 4);
   // BRANCH!
   // ibeq vi09, vi11, L7        |  add.xyzw vf08, vf01, vf05
   c->vfs[vf08].vf.add(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf05).vf);   bc = (vis[vi09] == vis[vi11]);
@@ -1533,33 +1561,33 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   if (bc) { goto L7; }
 
   // lq.xyzw vf24, 4(vi12)      |  add.xyzw vf10, vf03, vf07
-  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(Mask::xyzw, c->vfs[vf24].vf, vis[vi12] + 4);
+  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf24].vf, vis[vi12] + 4);
   // lq.xyzw vf27, 5(vi11)      |  adday.xyzw vf16, vf16
-  c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 5);
+  c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 5);
   // lq.xyzw vf25, 5(vi12)      |  maddz.xyzw vf16, vf17, vf16
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf25].vf, vis[vi12] + 5);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf25].vf, vis[vi12] + 5);
   // lq.xyzw vf28, 6(vi11)      |  mulaz.xyzw ACC, vf19, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 6);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 6);
   // lq.xyzw vf26, 6(vi12)      |  maddw.xyzw vf24, vf24, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf24].vf, c->vf_src(vf24).vf, c->vf_src(vf18).vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf26].vf, vis[vi12] + 6);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf24].vf, c->vf_src(vf24).vf, c->vf_src(vf18).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf26].vf, vis[vi12] + 6);
   // lq.xyzw vf29, 0(vi11)      |  mulaz.xyzw ACC, vf27, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf29].vf, vis[vi11]);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf29].vf, vis[vi11]);
   // lq.xyzw vf20, 0(vi12)      |  maddw.xyzw vf25, vf25, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf25].vf, c->vf_src(vf25).vf, c->vf_src(vf18).vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf20].vf, vis[vi12]);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf25].vf, c->vf_src(vf25).vf, c->vf_src(vf18).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf20].vf, vis[vi12]);
   // lq.xyzw vf19, 1(vi11)      |  mulaz.xyzw ACC, vf28, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 1);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 1);
   // lq.xyzw vf21, 1(vi12)      |  maddw.xyzw vf26, vf26, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf26].vf, c->vf_src(vf26).vf, c->vf_src(vf18).vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf21].vf, vis[vi12] + 1);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf26].vf, c->vf_src(vf26).vf, c->vf_src(vf18).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf21].vf, vis[vi12] + 1);
   // lq.xyzw vf27, 2(vi11)      |  mulaz.xyzw ACC, vf29, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf29).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 2);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf29).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 2);
   // lq.xyzw vf22, 2(vi12)      |  maddw.xyzw vf20, vf20, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf20].vf, c->vf_src(vf20).vf, c->vf_src(vf18).vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf22].vf, vis[vi12] + 2);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf20].vf, c->vf_src(vf20).vf, c->vf_src(vf18).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf22].vf, vis[vi12] + 2);
   // lq.xyzw vf28, 3(vi11)      |  mulaz.xyzw ACC, vf19, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 3);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 3);
   // lq.xyzw vf23, 3(vi12)      |  maddw.xyzw vf21, vf21, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf21].vf, c->vf_src(vf21).vf, c->vf_src(vf18).vf.w());   lq_buffer(Mask::xyzw, c->vfs[vf23].vf, vis[vi12] + 3);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf21].vf, c->vf_src(vf21).vf, c->vf_src(vf18).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf23].vf, vis[vi12] + 3);
   // lqi.xyzw vf29, vi10        |  mulaz.xyzw ACC, vf27, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf29].vf, vis[vi10]++);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf29].vf, vis[vi10]++);
   // iaddiu vi01, vi00, 0x146   |  maddw.xyzw vf22, vf22, vf18
   c->acc.vf.madd(Mask::xyzw, c->vfs[vf22].vf, c->vf_src(vf22).vf, c->vf_src(vf18).vf.w());   vis[vi01] = 0x146; /* 326 */
   // BRANCH!
@@ -1597,6 +1625,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // move.xyzw vf12, vf11       |  maddaz.xyzw ACC, vf25, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf25].vf, c->vfs[vf09].vf.z());   c->vfs[vf12].vf.move(Mask::xyzw, c->vf_src(vf11).vf);
   return;
+  JUMP_386:
   // rsqrt Q, vf00.w, vf16.x    |  maddaw.xyzw ACC, vf21, vf09
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf21].vf, c->vfs[vf09].vf.w());   c->Q = c->vf_src(vf00).vf.w() / std::sqrt(c->vf_src(vf16).vf.x());
   // mtir vi12, vf01.y          |  maddaw.xyzw ACC, vf22, vf10
@@ -1604,7 +1633,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // iand vi11, vi11, vi09      |  maddw.xyzw vf15, vf23, vf00
   c->acc.vf.madd(Mask::xyzw, c->vfs[vf15].vf, c->vf_src(vf23).vf, c->vf_src(vf00).vf.w());   vis[vi11] = vis[vi11] & vis[vi09];
   // lq.xyzw vf19, 4(vi11)      |  mul.xyzw vf16, vf11, vf11
-  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 4);
+  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 4);
   // BRANCH!
   // ibeq vi09, vi11, L10       |  add.xyzw vf08, vf01, vf05
   c->vfs[vf08].vf.add(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf05).vf);   bc = (vis[vi09] == vis[vi11]);
@@ -1615,47 +1644,47 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   // nop                        |  muly.xyzw vf18, vf18, vf17
   c->vfs[vf18].vf.mul(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf17).vf.y());
   // lq.xyzw vf27, 4(vi12)      |  add.xyzw vf10, vf03, vf07
-  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi12] + 4);
+  c->vfs[vf10].vf.add(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf07).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi12] + 4);
   // lq.xyzw vf24, 4(vi13)      |  adday.xyzw vf16, vf16
-  c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf24].vf, vis[vi13] + 4);
+  c->acc.vf.adda(Mask::xyzw, c->vfs[vf16].vf, c->vfs[vf16].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf24].vf, vis[vi13] + 4);
   // lq.xyzw vf28, 5(vi11)      |  maddz.xyzw vf16, vf17, vf16
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 5);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf16].vf, c->vf_src(vf17).vf, c->vf_src(vf16).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 5);
   // lq.xyzw vf19, 5(vi12)      |  mulax.xyzw ACC, vf19, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi12] + 5);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi12] + 5);
   // lq.xyzw vf25, 5(vi13)      |  madday.xyzw ACC, vf27, vf18
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf27].vf, c->vfs[vf18].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf25].vf, vis[vi13] + 5);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf27].vf, c->vfs[vf18].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf25].vf, vis[vi13] + 5);
   // lq.xyzw vf27, 6(vi11)      |  maddz.xyzw vf24, vf24, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf24].vf, c->vf_src(vf24).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 6);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf24].vf, c->vf_src(vf24).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 6);
   // lq.xyzw vf28, 6(vi12)      |  mulax.xyzw ACC, vf28, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi12] + 6);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi12] + 6);
   // lq.xyzw vf26, 6(vi13)      |  madday.xyzw ACC, vf19, vf18
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf19].vf, c->vfs[vf18].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf26].vf, vis[vi13] + 6);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf19].vf, c->vfs[vf18].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf26].vf, vis[vi13] + 6);
   // lq.xyzw vf19, 0(vi11)      |  maddz.xyzw vf25, vf25, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf25].vf, c->vf_src(vf25).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11]);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf25].vf, c->vf_src(vf25).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11]);
   // lq.xyzw vf27, 0(vi12)      |  mulax.xyzw ACC, vf27, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi12]);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi12]);
   // lq.xyzw vf20, 0(vi13)      |  madday.xyzw ACC, vf28, vf18
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf28].vf, c->vfs[vf18].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf20].vf, vis[vi13]);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf28].vf, c->vfs[vf18].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf20].vf, vis[vi13]);
   // lq.xyzw vf28, 1(vi11)      |  maddz.xyzw vf26, vf26, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf26].vf, c->vf_src(vf26).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 1);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf26].vf, c->vf_src(vf26).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi11] + 1);
   // lq.xyzw vf19, 1(vi12)      |  mulax.xyzw ACC, vf19, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi12] + 1);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi12] + 1);
   // lq.xyzw vf21, 1(vi13)      |  madday.xyzw ACC, vf27, vf18
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf27].vf, c->vfs[vf18].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf21].vf, vis[vi13] + 1);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf27].vf, c->vfs[vf18].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf21].vf, vis[vi13] + 1);
   // lq.xyzw vf27, 2(vi11)      |  maddz.xyzw vf20, vf20, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf20].vf, c->vf_src(vf20).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 2);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf20].vf, c->vf_src(vf20).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi11] + 2);
   // lq.xyzw vf28, 2(vi12)      |  mulax.xyzw ACC, vf28, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf28].vf, vis[vi12] + 2);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf28).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf28].vf, vis[vi12] + 2);
   // lq.xyzw vf22, 2(vi13)      |  madday.xyzw ACC, vf19, vf18
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf19].vf, c->vfs[vf18].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf22].vf, vis[vi13] + 2);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf19].vf, c->vfs[vf18].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf22].vf, vis[vi13] + 2);
   // lq.xyzw vf19, 3(vi11)      |  maddz.xyzw vf21, vf21, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf21].vf, c->vf_src(vf21).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 3);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf21].vf, c->vf_src(vf21).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf19].vf, vis[vi11] + 3);
   // lq.xyzw vf27, 3(vi12)      |  mulax.xyzw ACC, vf27, vf18
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());   lq_buffer(Mask::xyzw, c->vfs[vf27].vf, vis[vi12] + 3);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf27).vf, c->vf_src(vf18).vf.x());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf27].vf, vis[vi12] + 3);
   // lq.xyzw vf23, 3(vi13)      |  madday.xyzw ACC, vf28, vf18
-  c->acc.vf.madda(Mask::xyzw, c->vfs[vf28].vf, c->vfs[vf18].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf23].vf, vis[vi13] + 3);
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf28].vf, c->vfs[vf18].vf.y());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf23].vf, vis[vi13] + 3);
   // lqi.xyzw vf29, vi10        |  maddz.xyzw vf22, vf22, vf18
-  c->acc.vf.madd(Mask::xyzw, c->vfs[vf22].vf, c->vf_src(vf22).vf, c->vf_src(vf18).vf.z());   lq_buffer(Mask::xyzw, c->vfs[vf29].vf, vis[vi10]++);
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf22].vf, c->vf_src(vf22).vf, c->vf_src(vf18).vf.z());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf29].vf, vis[vi10]++);
   // BRANCH!
   // ibne vi08, vi06, L9        |  mulax.xyzw ACC, vf19, vf18
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf18).vf.x());   bc = (vis[vi08] != vis[vi06]);
@@ -2500,6 +2529,8 @@ u64 execute(void* ctxt) {
   c->sll(v0, v0, 2);                                // sll v0, v0, 2
   c->lq(t8, 32, a0);                                // lq t8, 32(a0)
   c->daddu(v0, v0, a0);                             // daddu v0, v0, a0
+  u32 val;
+  memcpy(&val, cache.fake_scratchpad_data, 4);
   c->lbu(t0, 13, a0);                               // lbu t0, 13(a0)
   c->daddu(at, at, a0);                             // daddu at, at, a0
   c->lbu(t2, 11, a0);                               // lbu t2, 11(a0)

@@ -233,9 +233,13 @@ extern void link();
 namespace mercneric_convert {
 extern void link();
 }
-// add generic_prepare_dma_double::link to the link callback table for the object file.
-// FWD DEC:
 namespace generic_prepare_dma_double {
+extern void link();
+}
+namespace generic_light_proc {
+extern void link();
+}
+namespace generic_envmap_proc {
 extern void link();
 }
 LinkedFunctionTable gLinkedFunctionTable;
@@ -276,7 +280,8 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
     {"merc-blend-shape", {blerc_execute::link, setup_blerc_chains_for_one_fragment::link}},
     {"generic-merc",
      {generic_merc_init_asm::link, generic_merc_execute_asm::link, mercneric_convert::link}},
-    {"generic-effect", {generic_prepare_dma_double::link}}};
+    {"generic-effect",
+     {generic_prepare_dma_double::link, generic_light_proc::link, generic_envmap_proc::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

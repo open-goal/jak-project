@@ -254,6 +254,14 @@ struct alignas(16) Vf {
     }
   }
 
+  void sub(Mask mask, const Vf& a, float b) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] = a[i] - b;
+      }
+    }
+  }
+
   REALLY_INLINE void mul_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_mul_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
   }
@@ -303,6 +311,15 @@ struct alignas(16) Vf {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         s32 val = a.data[i] * 16.f;
+        memcpy(&data[i], &val, 4);
+      }
+    }
+  }
+
+  void ftoi12(Mask mask, const Vf& a) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        s32 val = a.data[i] * 4096.f;
         memcpy(&data[i], &val, 4);
       }
     }

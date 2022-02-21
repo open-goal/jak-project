@@ -278,6 +278,7 @@ struct ExecutionContext {
   }
 
   void lqc2(int vf, int offset, int gpr) {
+    ASSERT(((gpr_src(gpr).du32[0] + offset) & 0xf) == 0);
     memcpy(&vfs[vf], g_ee_main_mem + gpr_src(gpr).du32[0] + offset, 16);
   }
 
@@ -638,6 +639,21 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       gprs[dest].ds32[i] = s.ds32[i] >> (sa & 0x1f);
     }
+  }
+
+  void psllw(int dest, int src, int sa) {
+    auto s = gpr_src(src);
+    for (int i = 0; i < 4; i++) {
+      gprs[dest].ds32[i] = s.ds32[i] << (sa & 0x1f);
+    }
+  }
+
+  void prot3w(int dst, int src) {
+    auto s = gpr_src(src);
+    gprs[dst].du32[0] = s.du32[1];
+    gprs[dst].du32[1] = s.du32[2];
+    gprs[dst].du32[2] = s.du32[0];
+    gprs[dst].du32[3] = s.du32[3];
   }
 
   void paddh(int dest, int rs, int rt) {
@@ -1248,6 +1264,42 @@ struct ExecutionContext {
     }
   }
 
+  static constexpr u64 LDL_MASK[8] = {
+      0x00ffffffffffffffULL, 0x0000ffffffffffffULL, 0x000000ffffffffffULL, 0x00000000ffffffffULL,
+      0x0000000000ffffffULL, 0x000000000000ffffULL, 0x00000000000000ffULL, 0x0000000000000000ULL};
+  static constexpr u64 LDR_MASK[8] = {
+      0x0000000000000000ULL, 0xff00000000000000ULL, 0xffff000000000000ULL, 0xffffff0000000000ULL,
+      0xffffffff00000000ULL, 0xffffffffff000000ULL, 0xffffffffffff0000ULL, 0xffffffffffffff00ULL};
+
+  static constexpr u8 LDR_SHIFT[8] = {0, 8, 16, 24, 32, 40, 48, 56};
+  static constexpr u8 LDL_SHIFT[8] = {56, 48, 40, 32, 24, 16, 8, 0};
+
+  void ldl(int dst, int offset, int addr_reg) {
+    u32 addr = sgpr64(addr_reg) + offset;
+    u32 shift = addr & 7;
+
+    u64 mem;
+    // memRead64(addr & ~7, &mem);
+    memcpy(&mem, g_ee_main_mem + (addr & ~7), 8);
+
+    if (!dst)
+      return;
+    gprs[dst].du64[0] = (gprs[dst].du64[0] & LDL_MASK[shift]) | (mem << LDL_SHIFT[shift]);
+  }
+
+  void ldr(int dst, int offset, int addr_reg) {
+    u32 addr = sgpr64(addr_reg) + offset;
+    u32 shift = addr & 7;
+
+    u64 mem;
+    // memRead64(addr & ~7, &mem);
+    memcpy(&mem, g_ee_main_mem + (addr & ~7), 8);
+
+    if (!dst)
+      return;
+    gprs[dst].du64[0] = (gprs[dst].du64[0] & LDR_MASK[shift]) | (mem >> LDR_SHIFT[shift]);
+  }
+
   std::string print_vf_float(int vf) {
     auto src = vf_src(vf);
     return fmt::format("{} {} {} {}", src.f[0], src.f[1], src.f[2], src.f[3]);
@@ -1360,6 +1412,7 @@ inline void spad_to_dma_blerc_chain(void* spad_sym_addr, u32 sadr, u32 tadr) {
   u32 spad_addr_goal;
   memcpy(&spad_addr_goal, spad_sym_addr, 4);
   void* spad_addr_c = g_ee_main_mem + spad_addr_goal;
+  ASSERT(sadr < 0x4000);
   emulate_dma(g_ee_main_mem, spad_addr_c, tadr, sadr);
 }
 }  // namespace Mips2C

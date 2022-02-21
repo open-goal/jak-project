@@ -444,3 +444,1187 @@ void link() {
 
 } // namespace generic_prepare_dma_double
 } // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace generic_light_proc {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
+
+
+void vcallms0(ExecutionContext* c) {
+  // move.xyzw vf21, vf17       |  mulax.xyzw ACC, vf10, vf01
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf01).vf.x());   c->vfs[vf21].vf.move(Mask::xyzw, c->vf_src(vf17).vf);
+  // move.xyzw vf22, vf18       |  madday.xyzw ACC, vf11, vf01
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf01].vf.y());   c->vfs[vf22].vf.move(Mask::xyzw, c->vf_src(vf18).vf);
+  // move.xyzw vf23, vf19       |  maddz.xyzw vf01, vf12, vf01
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf01].vf, c->vf_src(vf12).vf, c->vf_src(vf01).vf.z());   c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf19).vf);
+  // move.xyzw vf24, vf20       |  mulax.xyzw ACC, vf10, vf02
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf02).vf.x());   c->vfs[vf24].vf.move(Mask::xyzw, c->vf_src(vf20).vf);
+  // nop                        |  itof0.xyzw vf17, vf05
+  c->vfs[vf17].vf.itof0(Mask::xyzw, c->vf_src(vf05).vf);
+  // nop                        |  itof0.xyzw vf18, vf06
+  c->vfs[vf18].vf.itof0(Mask::xyzw, c->vf_src(vf06).vf);
+  // nop                        |  itof0.xyzw vf19, vf07
+  c->vfs[vf19].vf.itof0(Mask::xyzw, c->vf_src(vf07).vf);
+  // nop                        |  itof0.xyzw vf20, vf08
+  c->vfs[vf20].vf.itof0(Mask::xyzw, c->vf_src(vf08).vf);
+  // nop                        |  madday.xyzw ACC, vf11, vf02
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf02].vf.y());
+  // nop                        |  maddz.xyzw vf02, vf12, vf02
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf02].vf, c->vf_src(vf12).vf, c->vf_src(vf02).vf.z());
+  // nop                        |  mulax.xyzw ACC, vf10, vf03
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf03).vf.x());
+  // nop                        |  madday.xyzw ACC, vf11, vf03
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf03].vf.y());
+  // nop                        |  maddz.xyzw vf03, vf12, vf03
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf03].vf, c->vf_src(vf12).vf, c->vf_src(vf03).vf.z());
+  // nop                        |  mulax.xyzw ACC, vf10, vf04
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf04).vf.x());
+  // nop                        |  madday.xyzw ACC, vf11, vf04
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf04].vf.y());
+  // nop                        |  maddz.xyzw vf04, vf12, vf04
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf04].vf, c->vf_src(vf12).vf, c->vf_src(vf04).vf.z());
+  // nop                        |  maxx.xyzw vf01, vf01, vf00
+  c->vfs[vf01].vf.max(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  maxx.xyzw vf02, vf02, vf00
+  c->vfs[vf02].vf.max(Mask::xyzw, c->vf_src(vf02).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  maxx.xyzw vf03, vf03, vf00
+  c->vfs[vf03].vf.max(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  maxx.xyzw vf04, vf04, vf00
+  c->vfs[vf04].vf.max(Mask::xyzw, c->vf_src(vf04).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf01
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf01].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf01
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf01].vf.y());
+  // nop                        |  maddz.xyzw vf01, vf16, vf01
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf01].vf, c->vf_src(vf16).vf, c->vf_src(vf01).vf.z());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf02
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf02].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf02
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf02].vf.y());
+  // nop                        |  maddz.xyzw vf02, vf16, vf02
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf02].vf, c->vf_src(vf16).vf, c->vf_src(vf02).vf.z());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf03
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf03].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf03
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf03].vf.y());
+  // nop                        |  maddz.xyzw vf03, vf16, vf03
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf03].vf, c->vf_src(vf16).vf, c->vf_src(vf03).vf.z());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf04
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf04].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf04
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf04].vf.y());
+  // nop                        |  maddz.xyzw vf04, vf16, vf04
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf04].vf, c->vf_src(vf16).vf, c->vf_src(vf04).vf.z());
+  // nop                        |  mul.xyzw vf17, vf17, vf01
+  c->vfs[vf17].vf.mul(Mask::xyzw, c->vf_src(vf17).vf, c->vf_src(vf01).vf);
+  // nop                        |  mul.xyzw vf18, vf18, vf02
+  c->vfs[vf18].vf.mul(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf02).vf);
+  // nop                        |  mul.xyzw vf19, vf19, vf03
+  c->vfs[vf19].vf.mul(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf03).vf);
+  // nop                        |  mul.xyzw vf20, vf20, vf04
+  c->vfs[vf20].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf04).vf);
+  // nop                        |  minix.xyzw vf17, vf17, vf09
+  c->vfs[vf17].vf.mini(Mask::xyzw, c->vf_src(vf17).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  minix.xyzw vf18, vf18, vf09
+  c->vfs[vf18].vf.mini(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  minix.xyzw vf19, vf19, vf09
+  c->vfs[vf19].vf.mini(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  minix.xyzw vf20, vf20, vf09
+  c->vfs[vf20].vf.mini(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  ftoi0.xyzw vf17, vf17
+  c->vfs[vf17].vf.ftoi0(Mask::xyzw, c->vf_src(vf17).vf);
+  // nop                        |  ftoi0.xyzw vf18, vf18
+  c->vfs[vf18].vf.ftoi0(Mask::xyzw, c->vf_src(vf18).vf);
+  // nop                        |  ftoi0.xyzw vf19, vf19 :e
+  c->vfs[vf19].vf.ftoi0(Mask::xyzw, c->vf_src(vf19).vf);
+  // nop                        |  ftoi0.xyzw vf20, vf20
+  c->vfs[vf20].vf.ftoi0(Mask::xyzw, c->vf_src(vf20).vf);
+}
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
+  c->sd(ra, 12432, at);                             // sd ra, 12432(at)
+  c->sq(s2, 12448, at);                             // sq s2, 12448(at)
+  c->sq(s3, 12464, at);                             // sq s3, 12464(at)
+  c->sq(s4, 12480, at);                             // sq s4, 12480(at)
+  c->sq(s5, 12496, at);                             // sq s5, 12496(at)
+  c->sq(gp, 12512, at);                             // sq gp, 12512(at)
+  get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lw(v1, 60, at);                                // lw v1, 60(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(a1, 52, at);                                // lw a1, 52(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(a0, 4, v1);                                 // lw a0, 4(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t0, 0, v1);                                 // lw t0, 0(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t3, 20, at);                                // lw t3, 20(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(v1, 24, at);                                // lw v1, 24(at)
+  c->addiu(a3, r0, 255);                            // addiu a3, r0, 255
+  c->lw(t2, 28, at);                                // lw t2, 28(at)
+  c->addiu(a2, r0, 256);                            // addiu a2, r0, 256
+  c->lui(t1, -2);                                   // lui t1, -2
+  c->mov64(t4, a1);                                 // or t4, a1, r0
+  c->lqc2(vf10, 12688, at);                         // lqc2 vf10, 12688(at)
+  c->ori(a1, t1, 65534);                            // ori a1, t1, 65534
+  c->lqc2(vf11, 12704, at);                         // lqc2 vf11, 12704(at)
+  c->pextlw(a1, a1, a1);                            // pextlw a1, a1, a1
+  c->lqc2(vf12, 12720, at);                         // lqc2 vf12, 12720(at)
+  c->pextlw(t1, a0, a0);                            // pextlw t1, a0, a0
+  c->lqc2(vf15, 12752, at);                         // lqc2 vf15, 12752(at)
+  c->pextlw(a0, a1, a1);                            // pextlw a0, a1, a1
+  c->lqc2(vf14, 12736, at);                         // lqc2 vf14, 12736(at)
+  c->pextlw(a1, t1, t1);                            // pextlw a1, t1, t1
+  c->lqc2(vf16, 12768, at);                         // lqc2 vf16, 12768(at)
+  c->pcpyh(a3, a3);                                 // pcpyh a3, a3
+  c->lqc2(vf13, 12784, at);                         // lqc2 vf13, 12784(at)
+  c->pcpyh(t1, a2);                                 // pcpyh t1, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(a2, a3, a3);                            // pcpyld a2, a3, a3
+  c->lqc2(vf9, 12144, at);                          // lqc2 vf9, 12144(at)
+  c->pcpyld(a3, t1, t1);                            // pcpyld a3, t1, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->ldr(t1, 0, t0);                                // ldr t1, 0(t0)
+  // nop                                            // sll r0, r0, 0
+  c->ldl(t1, 7, t0);                                // ldl t1, 7(t0)
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(t0, t0, 8);                             // daddiu t0, t0, 8
+  c->pextlh(t1, r0, t1);                            // pextlh t1, r0, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t5, t1, a2);                              // pand t5, t1, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->psllw(t5, t5, 5);                              // psllw t5, t5, 5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->paddw(s5, t5, a1);                             // paddw s5, t5, a1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->dsrl32(t9, s5, 0);                             // dsrl32 t9, s5, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyud(s4, s5, r0);                            // pcpyud s4, s5, r0
+  c->lq(t6, 0, s5);                                 // lq t6, 0(s5)
+  c->dsrl32(ra, s4, 0);                             // dsrl32 ra, s4, 0
+  c->lq(t7, 0, t9);                                 // lq t7, 0(t9)
+  c->pand(t8, t1, a3);                              // pand t8, t1, a3
+  c->lq(t5, 0, s4);                                 // lq t5, 0(s4)
+  c->psraw(gp, t8, 8);                              // psraw gp, t8, 8
+  c->lq(t8, 0, ra);                                 // lq t8, 0(ra)
+  c->pextuw(s3, t7, t6);                            // pextuw s3, t7, t6
+  c->lq(s5, 16, s5);                                // lq s5, 16(s5)
+  c->pextuw(s2, t8, t5);                            // pextuw s2, t8, t5
+  c->lq(t9, 16, t9);                                // lq t9, 16(t9)
+  c->pcpyud(s3, s3, s2);                            // pcpyud s3, s3, s2
+  c->lq(s4, 16, s4);                                // lq s4, 16(s4)
+  c->pand(s3, s3, a0);                              // pand s3, s3, a0
+  c->lq(ra, 16, ra);                                // lq ra, 16(ra)
+  c->por(s3, s3, gp);                               // por s3, s3, gp
+  c->mov128_vf_gpr(vf1, s5);                        // qmtc2.ni vf1, s5
+  c->pextub(gp, r0, s5);                            // pextub gp, r0, s5
+  c->sq(s3, 0, t2);                                 // sq s3, 0(t2)
+  c->pextub(s5, r0, t9);                            // pextub s5, r0, t9
+  c->mov128_vf_gpr(vf2, t9);                        // qmtc2.ni vf2, t9
+  c->pextub(t9, r0, s4);                            // pextub t9, r0, s4
+  c->mov128_vf_gpr(vf3, s4);                        // qmtc2.ni vf3, s4
+  c->pextub(s4, r0, ra);                            // pextub s4, r0, ra
+  c->mov128_vf_gpr(vf4, ra);                        // qmtc2.ni vf4, ra
+  c->pextuh(ra, r0, gp);                            // pextuh ra, r0, gp
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextuh(gp, r0, s5);                            // pextuh gp, r0, s5
+  c->mov128_vf_gpr(vf5, ra);                        // qmtc2.ni vf5, ra
+  c->pextuh(t9, r0, t9);                            // pextuh t9, r0, t9
+  c->mov128_vf_gpr(vf6, gp);                        // qmtc2.ni vf6, gp
+  c->pextuh(ra, r0, s4);                            // pextuh ra, r0, s4
+  c->mov128_vf_gpr(vf7, t9);                        // qmtc2.ni vf7, t9
+  c->prot3w(t8, t8);                                // prot3w t8, t8
+  c->mov128_vf_gpr(vf8, ra);                        // qmtc2.ni vf8, ra
+  c->prot3w(t7, t7);                                // prot3w t7, t7
+  // Unknown instr: vcallms 0
+  vcallms0(c);
+  c->pextuw(t9, t7, t6);                            // pextuw t9, t7, t6
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(t7, t5, t7);                            // pcpyld t7, t5, t7
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(t6, t9, t6);                            // pcpyld t6, t9, t6
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->daddiu(t2, t2, 16);                            // daddiu t2, t2, 16
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextuw(t5, t8, t5);                            // pextuw t5, t8, t5
+  c->sq(t7, 16, t3);                                // sq t7, 16(t3)
+  c->pcpyld(t5, t8, t5);                            // pcpyld t5, t8, t5
+  c->sq(t6, 0, t3);                                 // sq t6, 0(t3)
+  // nop                                            // sll r0, r0, 0
+  c->sq(t5, 32, t3);                                // sq t5, 32(t3)
+  c->daddiu(t3, t3, 48);                            // daddiu t3, t3, 48
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->daddiu(t4, t4, -4);                            // daddiu t4, t4, -4
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  bc = ((s64)c->sgpr64(t4)) <= 0;                   // blez t4, L74
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  if (bc) {goto block_2;}                           // branch non-likely
+
+
+  block_1:
+  // nop                                            // sll r0, r0, 0
+  c->ldr(t1, 0, t0);                                // ldr t1, 0(t0)
+  // nop                                            // sll r0, r0, 0
+  c->ldl(t1, 7, t0);                                // ldl t1, 7(t0)
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(t0, t0, 8);                             // daddiu t0, t0, 8
+  c->pextlh(t1, r0, t1);                            // pextlh t1, r0, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t5, t1, a2);                              // pand t5, t1, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->psllw(t5, t5, 5);                              // psllw t5, t5, 5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->paddw(s5, t5, a1);                             // paddw s5, t5, a1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->dsrl32(t9, s5, 0);                             // dsrl32 t9, s5, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyud(s4, s5, r0);                            // pcpyud s4, s5, r0
+  c->lq(t6, 0, s5);                                 // lq t6, 0(s5)
+  c->dsrl32(ra, s4, 0);                             // dsrl32 ra, s4, 0
+  c->lq(t7, 0, t9);                                 // lq t7, 0(t9)
+  c->pand(t8, t1, a3);                              // pand t8, t1, a3
+  c->lq(t5, 0, s4);                                 // lq t5, 0(s4)
+  c->psraw(gp, t8, 8);                              // psraw gp, t8, 8
+  c->lq(t8, 0, ra);                                 // lq t8, 0(ra)
+  c->pextuw(s3, t7, t6);                            // pextuw s3, t7, t6
+  c->lq(s5, 16, s5);                                // lq s5, 16(s5)
+  c->pextuw(s2, t8, t5);                            // pextuw s2, t8, t5
+  c->lq(t9, 16, t9);                                // lq t9, 16(t9)
+  c->pcpyud(s3, s3, s2);                            // pcpyud s3, s3, s2
+  c->lq(s4, 16, s4);                                // lq s4, 16(s4)
+  c->pand(s3, s3, a0);                              // pand s3, s3, a0
+  c->lq(ra, 16, ra);                                // lq ra, 16(ra)
+  c->por(s3, s3, gp);                               // por s3, s3, gp
+  c->mov128_vf_gpr(vf1, s5);                        // qmtc2.ni vf1, s5
+  c->pextub(gp, r0, s5);                            // pextub gp, r0, s5
+  c->sq(s3, 0, t2);                                 // sq s3, 0(t2)
+  c->pextub(s5, r0, t9);                            // pextub s5, r0, t9
+  c->mov128_vf_gpr(vf2, t9);                        // qmtc2.ni vf2, t9
+  c->pextub(t9, r0, s4);                            // pextub t9, r0, s4
+  c->mov128_vf_gpr(vf3, s4);                        // qmtc2.ni vf3, s4
+  c->pextub(s4, r0, ra);                            // pextub s4, r0, ra
+  c->mov128_vf_gpr(vf4, ra);                        // qmtc2.ni vf4, ra
+  c->pextuh(ra, r0, gp);                            // pextuh ra, r0, gp
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextuh(gp, r0, s5);                            // pextuh gp, r0, s5
+  c->mov128_vf_gpr(vf5, ra);                        // qmtc2.ni vf5, ra
+  c->pextuh(t9, r0, t9);                            // pextuh t9, r0, t9
+  c->mov128_vf_gpr(vf6, gp);                        // qmtc2.ni vf6, gp
+  c->pextuh(ra, r0, s4);                            // pextuh ra, r0, s4
+  c->mov128_vf_gpr(vf7, t9);                        // qmtc2.ni vf7, t9
+  c->prot3w(t8, t8);                                // prot3w t8, t8
+  c->mov128_vf_gpr(vf8, ra);                        // qmtc2.ni vf8, ra
+  c->prot3w(t7, t7);                                // prot3w t7, t7
+  // Unknown instr: vcallms 0
+  vcallms0(c);
+  c->pextuw(t9, t7, t6);                            // pextuw t9, t7, t6
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(t7, t5, t7);                            // pcpyld t7, t5, t7
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(t6, t9, t6);                            // pcpyld t6, t9, t6
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextuw(t5, t8, t5);                            // pextuw t5, t8, t5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(t5, t8, t5);                            // pcpyld t5, t8, t5
+  c->sq(t6, 0, t3);                                 // sq t6, 0(t3)
+  // nop                                            // sll r0, r0, 0
+  c->sq(t7, 16, t3);                                // sq t7, 16(t3)
+  // nop                                            // sll r0, r0, 0
+  c->sq(t5, 32, t3);                                // sq t5, 32(t3)
+  c->daddiu(t2, t2, 16);                            // daddiu t2, t2, 16
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->daddiu(t3, t3, 48);                            // daddiu t3, t3, 48
+  c->mov128_gpr_vf(t7, vf21);                       // qmfc2.ni t7, vf21
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t8, vf22);                       // qmfc2.ni t8, vf22
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t5, vf23);                       // qmfc2.ni t5, vf23
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t6, vf24);                       // qmfc2.ni t6, vf24
+  c->ppach(t7, t8, t7);                             // ppach t7, t8, t7
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppach(t5, t6, t5);                             // ppach t5, t6, t5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppacb(t5, t5, t7);                             // ppacb t5, t5, t7
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->sq(t5, 0, v1);                                 // sq t5, 0(v1)
+  c->daddiu(t4, t4, -4);                            // daddiu t4, t4, -4
+  c->daddiu(v1, v1, 16);                            // daddiu v1, v1, 16
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  bc = ((s64)c->sgpr64(t4)) > 0;                    // bgtz t4, L73
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_1;}                           // branch non-likely
+
+
+  block_2:
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // vnop
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(a2, vf17);                       // qmfc2.ni a2, vf17
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(a3, vf18);                       // qmfc2.ni a3, vf18
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(a0, vf19);                       // qmfc2.ni a0, vf19
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(a1, vf20);                       // qmfc2.ni a1, vf20
+  c->ppach(a2, a3, a2);                             // ppach a2, a3, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppach(a0, a1, a0);                             // ppach a0, a1, a0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppacb(a0, a0, a2);                             // ppacb a0, a0, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  c->ld(ra, 12432, at);                             // ld ra, 12432(at)
+  c->lq(gp, 12512, at);                             // lq gp, 12512(at)
+  c->lq(s5, 12496, at);                             // lq s5, 12496(at)
+  c->lq(s4, 12480, at);                             // lq s4, 12480(at)
+  c->lq(s3, 12464, at);                             // lq s3, 12464(at)
+  c->lq(s2, 12448, at);                             // lq s2, 12448(at)
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 96);                            // daddiu sp, sp, 96
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
+  gLinkedFunctionTable.reg("generic-light-proc", execute, 128);
+}
+
+} // namespace generic_light_proc
+} // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace generic_envmap_proc {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
+
+void vcallms48(ExecutionContext* c) {
+  // nop                        |  mulx.xyzw vf13, vf09, vf31
+  c->vfs[vf13].vf.mul(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf21, vf21, vf00
+  c->vfs[vf21].vf.sub(Mask::z, c->vf_src(vf21).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf08, vf08, vf30
+  c->vfs[vf08].vf.mul(Mask::xyz, c->vf_src(vf08).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf05, vf05, vf31
+  c->vfs[vf05].vf.add(Mask::xy, c->vf_src(vf05).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf21, vf13
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf21).vf, c->vf_src(vf13).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf08, vf08, vf16
+  c->vfs[vf08].vf.add(Mask::xyz, c->vf_src(vf08).vf, c->vf_src(vf16).vf);
+  // move.xyzw vf28, vf27       |  ftoi12.xy vf17, vf05
+  c->vfs[vf17].vf.ftoi12(Mask::xy, c->vf_src(vf05).vf);   c->vfs[vf28].vf.move(Mask::xyzw, c->vf_src(vf27).vf);
+  // move.xyzw vf02, vf22       |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());   c->vfs[vf02].vf.move(Mask::xyzw, c->vf_src(vf22).vf);
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf06, vf06, Q
+  c->vfs[vf06].vf.mul(Mask::xyz, c->vf_src(vf06).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // nop                        |  mul.xyz vf29, vf08, vf08
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf08).vf, c->vf_src(vf08).vf);
+  // nop                        |  mulx.xyz vf01, vf21, vf28
+  c->vfs[vf01].vf.mul(Mask::xyz, c->vf_src(vf21).vf, c->vf_src(vf28).vf.x());
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+  // nop                        |  mulx.xyzw vf14, vf10, vf31
+  c->vfs[vf14].vf.mul(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf02, vf02, vf00
+  c->vfs[vf02].vf.sub(Mask::z, c->vf_src(vf02).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf01, vf01, vf30
+  c->vfs[vf01].vf.mul(Mask::xyz, c->vf_src(vf01).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf06, vf06, vf31
+  c->vfs[vf06].vf.add(Mask::xy, c->vf_src(vf06).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf02, vf14
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf14).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf01, vf01, vf13
+  c->vfs[vf01].vf.add(Mask::xyz, c->vf_src(vf01).vf, c->vf_src(vf13).vf);
+  // nop                        |  ftoi12.xy vf18, vf06
+  c->vfs[vf18].vf.ftoi12(Mask::xy, c->vf_src(vf06).vf);
+  // nop                        |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf07, vf07, Q
+  c->vfs[vf07].vf.mul(Mask::xyz, c->vf_src(vf07).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // move.xyzw vf03, vf23       |  mul.xyz vf29, vf01, vf01
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf01).vf, c->vf_src(vf01).vf);   c->vfs[vf03].vf.move(Mask::xyzw, c->vf_src(vf23).vf);
+  // nop                        |  muly.xyz vf02, vf02, vf28
+  c->vfs[vf02].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf28).vf.y());
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+  // nop                        |  mulx.xyzw vf15, vf11, vf31
+  c->vfs[vf15].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf03, vf03, vf00
+  c->vfs[vf03].vf.sub(Mask::z, c->vf_src(vf03).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf02, vf02, vf30
+  c->vfs[vf02].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf07, vf07, vf31
+  c->vfs[vf07].vf.add(Mask::xy, c->vf_src(vf07).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf03, vf15
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf15).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf02, vf02, vf14
+  c->vfs[vf02].vf.add(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf14).vf);
+  // nop                        |  ftoi12.xy vf19, vf07
+  c->vfs[vf19].vf.ftoi12(Mask::xy, c->vf_src(vf07).vf);
+  // nop                        |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf08, vf08, Q
+  c->vfs[vf08].vf.mul(Mask::xyz, c->vf_src(vf08).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // move.xyzw vf04, vf24       |  mul.xyz vf29, vf02, vf02
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf02).vf);   c->vfs[vf04].vf.move(Mask::xyzw, c->vf_src(vf24).vf);
+  // nop                        |  mulz.xyz vf03, vf03, vf28
+  c->vfs[vf03].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf28).vf.z());
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+  // nop                        |  mulx.xyzw vf16, vf12, vf31
+  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf12).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf04, vf04, vf00
+  c->vfs[vf04].vf.sub(Mask::z, c->vf_src(vf04).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf03, vf03, vf30
+  c->vfs[vf03].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf08, vf08, vf31
+  c->vfs[vf08].vf.add(Mask::xy, c->vf_src(vf08).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf04, vf16
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf04).vf, c->vf_src(vf16).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf03, vf03, vf15
+  c->vfs[vf03].vf.add(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf15).vf);
+  // nop                        |  ftoi12.xy vf20, vf08
+  c->vfs[vf20].vf.ftoi12(Mask::xy, c->vf_src(vf08).vf);
+  // nop                        |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf05, vf01, Q
+  c->vfs[vf05].vf.mul(Mask::xyz, c->vf_src(vf01).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // move.xyzw vf06, vf02       |  mul.xyz vf29, vf03, vf03
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf03).vf);   c->vfs[vf06].vf.move(Mask::xyzw, c->vf_src(vf02).vf);
+  // move.xyzw vf07, vf03       |  mulw.xyz vf08, vf04, vf28 :e
+  c->vfs[vf08].vf.mul(Mask::xyz, c->vf_src(vf04).vf, c->vf_src(vf28).vf.w());   c->vfs[vf07].vf.move(Mask::xyzw, c->vf_src(vf03).vf);
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+
+}
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
+  c->sd(ra, 12432, at);                             // sd ra, 12432(at)
+  c->sq(s0, 12448, at);                             // sq s0, 12448(at)
+  c->sq(s1, 12464, at);                             // sq s1, 12464(at)
+  c->sq(s2, 12480, at);                             // sq s2, 12480(at)
+  c->sq(s3, 12496, at);                             // sq s3, 12496(at)
+  c->sq(s4, 12512, at);                             // sq s4, 12512(at)
+  c->sq(s5, 12528, at);                             // sq s5, 12528(at)
+  c->sq(gp, 12544, at);                             // sq gp, 12544(at)
+  get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
+  // nop                                            // sll r0, r0, 0
+  c->lw(v1, 60, at);                                // lw v1, 60(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(a0, 52, at);                                // lw a0, 52(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t0, 0, v1);                                 // lw t0, 0(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lw(a2, 4, v1);                                 // lw a2, 4(v1)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t3, 32, at);                                // lw t3, 32(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(v1, 36, at);                                // lw v1, 36(at)
+  // nop                                            // sll r0, r0, 0
+  c->addiu(t1, r0, 255);                            // addiu t1, r0, 255
+  c->addiu(a3, r0, 256);                            // addiu a3, r0, 256
+  c->lui(a1, -2);                                   // lui a1, -2
+  c->lui(t2, 16256);                                // lui t2, 16256
+  c->ori(a1, a1, 65534);                            // ori a1, a1, 65534
+  c->mtc1(f0, t2);                                  // mtc1 f0, t2
+  c->daddiu(t2, a0, 3);                             // daddiu t2, a0, 3
+  c->sra(t5, t2, 2);                                // sra t5, t2, 2
+  c->lq(t2, 12048, at);                             // lq t2, 12048(at)
+  c->sra(t4, t5, 2);                                // sra t4, t5, 2
+  c->andi(t5, t5, 3);                               // andi t5, t5, 3
+  bc = c->sgpr64(t4) == 0;                          // beq t4, r0, L68
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_2;}                           // branch non-likely
+
+
+  block_1:
+  c->daddiu(t3, t3, 64);                            // daddiu t3, t3, 64
+  c->sq(t2, -64, t3);                               // sq t2, -64(t3)
+  // nop                                            // sll r0, r0, 0
+  c->sq(t2, -48, t3);                               // sq t2, -48(t3)
+  c->daddiu(t4, t4, -1);                            // daddiu t4, t4, -1
+  c->sq(t2, -32, t3);                               // sq t2, -32(t3)
+  bc = ((s64)c->sgpr64(t4)) > 0;                    // bgtz t4, L67
+  c->sq(t2, -16, t3);                               // sq t2, -16(t3)
+  if (bc) {goto block_1;}                           // branch non-likely
+
+
+  block_2:
+  bc = c->sgpr64(t5) == 0;                          // beq t5, r0, L69
+  c->daddiu(t4, t5, -1);                            // daddiu t4, t5, -1
+  if (bc) {goto block_6;}                           // branch non-likely
+
+  bc = c->sgpr64(t4) == 0;                          // beq t4, r0, L69
+  c->sq(t2, 0, t3);                                 // sq t2, 0(t3)
+  if (bc) {goto block_6;}                           // branch non-likely
+
+  c->daddiu(t3, t3, 16);                            // daddiu t3, t3, 16
+  c->daddiu(t4, t4, -1);                            // daddiu t4, t4, -1
+  bc = c->sgpr64(t4) == 0;                          // beq t4, r0, L69
+  c->sq(t2, 0, t3);                                 // sq t2, 0(t3)
+  if (bc) {goto block_6;}                           // branch non-likely
+
+  c->daddiu(t3, t3, 16);                            // daddiu t3, t3, 16
+  c->daddiu(t4, t4, -1);                            // daddiu t4, t4, -1
+  // nop                                            // sll r0, r0, 0
+  c->sq(t2, 0, t3);                                 // sq t2, 0(t3)
+
+  block_6:
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->lqc2(vf31, 12016, at);                         // lqc2 vf31, 12016(at)
+  c->pextlw(a1, a1, a1);                            // pextlw a1, a1, a1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextlw(a1, a1, a1);                            // pextlw a1, a1, a1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextlw(a2, a2, a2);                            // pextlw a2, a2, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextlw(a2, a2, a2);                            // pextlw a2, a2, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyh(t2, t1);                                 // pcpyh t2, t1
+  c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
+  c->pcpyld(t2, t2, t2);                            // pcpyld t2, t2, t2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyh(a3, a3);                                 // pcpyh a3, a3
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(a3, a3, a3);                            // pcpyld a3, a3, a3
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->daddiu(t0, t0, 8);                             // daddiu t0, t0, 8
+  c->sq(t2, 112, at);                               // sq t2, 112(at)
+  c->pextlh(t1, r0, t1);                            // pextlh t1, r0, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t2, t1, t2);                              // pand t2, t1, t2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->psllw(t2, t2, 5);                              // psllw t2, t2, 5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->paddw(t5, t2, a2);                             // paddw t5, t2, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->dsrl32(t6, t5, 0);                             // dsrl32 t6, t5, 0
+  c->lwc1(f4, 24, t5);                              // lwc1 f4, 24(t5)
+  c->pcpyud(t7, t5, r0);                            // pcpyud t7, t5, r0
+  c->lwc1(f3, 24, t6);                              // lwc1 f3, 24(t6)
+  c->dsrl32(t8, t7, 0);                             // dsrl32 t8, t7, 0
+  c->lwc1(f2, 24, t7);                              // lwc1 f2, 24(t7)
+  c->pand(t1, t1, a3);                              // pand t1, t1, a3
+  c->lwc1(f1, 24, t8);                              // lwc1 f1, 24(t8)
+  c->psraw(t2, t1, 8);                              // psraw t2, t1, 8
+  c->lq(t1, 16, t5);                                // lq t1, 16(t5)
+  c->mov128_gpr_gpr(s0, t2);                        // por s0, t2, r0
+  c->subs(f4, f4, f0);                              // sub.s f4, f4, f0
+  c->divs(f4, f0, f4);                              // div.s f4, f0, f4
+  c->lq(t2, 16, t6);                                // lq t2, 16(t6)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t3, 16, t7);                                // lq t3, 16(t7)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t4, 16, t8);                                // lq t4, 16(t8)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 0, t5);                                 // lq t5, 0(t5)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t6, 0, t6);                                 // lq t6, 0(t6)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t7, 0, t7);                                 // lq t7, 0(t7)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t8, 0, t8);                                 // lq t8, 0(t8)
+  c->muls(f4, f4, f0);                              // mul.s f4, f4, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f3, f3, f0);                              // sub.s f3, f3, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f3, f0, f3);                              // div.s f3, f0, f3
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t9, f4);                                  // mfc1 t9, f4
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f3, f3, f0);                              // mul.s f3, f3, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f2, f2, f0);                              // sub.s f2, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f2, f0, f2);                              // div.s f2, f0, f2
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(ra, f3);                                  // mfc1 ra, f3
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f2, f2, f0);                              // mul.s f2, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f1, f1, f0);                              // sub.s f1, f1, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f1, f0, f1);                              // div.s f1, f0, f1
+  // nop                                            // sll r0, r0, 0
+  c->pextlw(t9, ra, t9);                            // pextlw t9, ra, t9
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(ra, f2);                                  // mfc1 ra, f2
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(gp, f1);                                  // mfc1 gp, f1
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->pextlw(ra, gp, ra);                            // pextlw ra, gp, ra
+  // nop                                            // sll r0, r0, 0
+  c->pcpyld(t9, ra, t9);                            // pcpyld t9, ra, t9
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf21, t1);                       // qmtc2.ni vf21, t1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf22, t2);                       // qmtc2.ni vf22, t2
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf23, t3);                       // qmtc2.ni vf23, t3
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf24, t4);                       // qmtc2.ni vf24, t4
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf9, t5);                        // qmtc2.ni vf9, t5
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf10, t6);                       // qmtc2.ni vf10, t6
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf11, t7);                       // qmtc2.ni vf11, t7
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf12, t8);                       // qmtc2.ni vf12, t8
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf27, t9);                       // qmtc2.ni vf27, t9
+  c->lq(t2, 112, at);                               // lq t2, 112(at)
+  // Unknown instr: vcallms 48
+  vcallms48(c);
+  // nop                                            // sll r0, r0, 0
+  c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(t0, t0, 8);                             // daddiu t0, t0, 8
+  c->pextlh(t1, r0, t1);                            // pextlh t1, r0, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t2, t1, t2);                              // pand t2, t1, t2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->psllw(t2, t2, 5);                              // psllw t2, t2, 5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->paddw(t5, t2, a2);                             // paddw t5, t2, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->dsrl32(t6, t5, 0);                             // dsrl32 t6, t5, 0
+  c->lwc1(f3, 24, t5);                              // lwc1 f3, 24(t5)
+  c->pcpyud(t7, t5, r0);                            // pcpyud t7, t5, r0
+  c->lwc1(f2, 24, t6);                              // lwc1 f2, 24(t6)
+  c->dsrl32(t8, t7, 0);                             // dsrl32 t8, t7, 0
+  c->lwc1(f1, 24, t7);                              // lwc1 f1, 24(t7)
+  c->pand(t1, t1, a3);                              // pand t1, t1, a3
+  c->lwc1(f4, 24, t8);                              // lwc1 f4, 24(t8)
+  c->psraw(t2, t1, 8);                              // psraw t2, t1, 8
+  c->lq(t1, 16, t5);                                // lq t1, 16(t5)
+  c->mov128_gpr_gpr(s1, t2);                        // por s1, t2, r0
+  c->subs(f5, f3, f0);                              // sub.s f5, f3, f0
+  c->subs(f3, f2, f0);                              // sub.s f3, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f2, f1, f0);                              // sub.s f2, f1, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f1, f4, f0);                              // sub.s f1, f4, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f4, f0, f5);                              // div.s f4, f0, f5
+  c->lq(t2, 16, t6);                                // lq t2, 16(t6)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t3, 16, t7);                                // lq t3, 16(t7)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t4, 16, t8);                                // lq t4, 16(t8)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 0, t5);                                 // lq t5, 0(t5)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t6, 0, t6);                                 // lq t6, 0(t6)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t7, 0, t7);                                 // lq t7, 0(t7)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t8, 0, t8);                                 // lq t8, 0(t8)
+  c->muls(f4, f4, f0);                              // mul.s f4, f4, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f3, f0, f3);                              // div.s f3, f0, f3
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t9, f4);                                  // mfc1 t9, f4
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f3, f3, f0);                              // mul.s f3, f3, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f2, f0, f2);                              // div.s f2, f0, f2
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(ra, f3);                                  // mfc1 ra, f3
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f2, f2, f0);                              // mul.s f2, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f1, f0, f1);                              // div.s f1, f0, f1
+  // nop                                            // sll r0, r0, 0
+  c->pextlw(t9, ra, t9);                            // pextlw t9, ra, t9
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(ra, f2);                                  // mfc1 ra, f2
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(gp, f1);                                  // mfc1 gp, f1
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf21, t1);                       // qmtc2.ni vf21, t1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf9, t5);                        // qmtc2.ni vf9, t5
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf10, t6);                       // qmtc2.ni vf10, t6
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf11, t7);                       // qmtc2.ni vf11, t7
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf12, t8);                       // qmtc2.ni vf12, t8
+  c->pextlw(t1, gp, ra);                            // pextlw t1, gp, ra
+  // nop                                            // sll r0, r0, 0
+  c->pcpyld(t1, t1, t9);                            // pcpyld t1, t1, t9
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf22, t2);                       // qmtc2.ni vf22, t2
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf23, t3);                       // qmtc2.ni vf23, t3
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf24, t4);                       // qmtc2.ni vf24, t4
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf27, t1);                       // qmtc2.ni vf27, t1
+  c->lq(t2, 112, at);                               // lq t2, 112(at)
+  // Unknown instr: vcallms 48
+  vcallms48(c);
+  // nop                                            // sll r0, r0, 0
+  c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(t0, t0, 8);                             // daddiu t0, t0, 8
+  c->pextlh(t1, r0, t1);                            // pextlh t1, r0, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t2, t1, t2);                              // pand t2, t1, t2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->psllw(t2, t2, 5);                              // psllw t2, t2, 5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->paddw(t2, t2, a2);                             // paddw t2, t2, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->dsrl32(t3, t2, 0);                             // dsrl32 t3, t2, 0
+  c->lwc1(f3, 24, t2);                              // lwc1 f3, 24(t2)
+  c->pcpyud(t7, t2, r0);                            // pcpyud t7, t2, r0
+  c->lwc1(f2, 24, t3);                              // lwc1 f2, 24(t3)
+  c->dsrl32(t8, t7, 0);                             // dsrl32 t8, t7, 0
+  c->lwc1(f1, 24, t7);                              // lwc1 f1, 24(t7)
+  c->pand(t1, t1, a3);                              // pand t1, t1, a3
+  c->lwc1(f4, 24, t8);                              // lwc1 f4, 24(t8)
+  c->psraw(t4, t1, 8);                              // psraw t4, t1, 8
+  c->lq(t1, 16, t2);                                // lq t1, 16(t2)
+  c->mov128_gpr_gpr(s2, t4);                        // por s2, t4, r0
+  c->subs(f5, f3, f0);                              // sub.s f5, f3, f0
+  c->subs(f3, f2, f0);                              // sub.s f3, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f2, f1, f0);                              // sub.s f2, f1, f0
+  // nop                                            // sll r0, r0, 0
+  c->subs(f1, f4, f0);                              // sub.s f1, f4, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f4, f0, f5);                              // div.s f4, f0, f5
+  c->lq(t4, 16, t3);                                // lq t4, 16(t3)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 16, t7);                                // lq t5, 16(t7)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t6, 16, t8);                                // lq t6, 16(t8)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t2, 0, t2);                                 // lq t2, 0(t2)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t3, 0, t3);                                 // lq t3, 0(t3)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t7, 0, t7);                                 // lq t7, 0(t7)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t8, 0, t8);                                 // lq t8, 0(t8)
+  c->muls(f4, f4, f0);                              // mul.s f4, f4, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f3, f0, f3);                              // div.s f3, f0, f3
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t9, f4);                                  // mfc1 t9, f4
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f3, f3, f0);                              // mul.s f3, f3, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f2, f0, f2);                              // div.s f2, f0, f2
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(ra, f3);                                  // mfc1 ra, f3
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f2, f2, f0);                              // mul.s f2, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f1, f0, f1);                              // div.s f1, f0, f1
+  // nop                                            // sll r0, r0, 0
+  c->pextlw(t9, ra, t9);                            // pextlw t9, ra, t9
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(ra, f2);                                  // mfc1 ra, f2
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf21, t1);                       // qmtc2.ni vf21, t1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf22, t4);                       // qmtc2.ni vf22, t4
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf23, t5);                       // qmtc2.ni vf23, t5
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf24, t6);                       // qmtc2.ni vf24, t6
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t1, f1);                                  // mfc1 t1, f1
+  c->pextlw(t1, t1, ra);                            // pextlw t1, t1, ra
+  // nop                                            // sll r0, r0, 0
+  c->pcpyld(t1, t1, t9);                            // pcpyld t1, t1, t9
+  c->mov128_vf_gpr(vf9, t2);                        // qmtc2.ni vf9, t2
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf10, t3);                       // qmtc2.ni vf10, t3
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf11, t7);                       // qmtc2.ni vf11, t7
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf12, t8);                       // qmtc2.ni vf12, t8
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf27, t1);                       // qmtc2.ni vf27, t1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t4, vf17);                       // qmfc2.ni t4, vf17
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t5, vf18);                       // qmfc2.ni t5, vf18
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t6, vf19);                       // qmfc2.ni t6, vf19
+  bc = ((s64)c->sgpr64(a0)) <= 0;                   // blez a0, L71
+  c->mov128_gpr_vf(t7, vf20);                       // qmfc2.ni t7, vf20
+  if (bc) {goto block_8;}                           // branch non-likely
+
+
+  block_7:
+  c->lq(t2, 112, at);                               // lq t2, 112(at)
+  // Unknown instr: vcallms 48
+  vcallms48(c);
+  c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
+  c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(v1, v1, 16);                            // daddiu v1, v1, 16
+  c->daddiu(t0, t0, 8);                             // daddiu t0, t0, 8
+  c->pextlh(t1, r0, t1);                            // pextlh t1, r0, t1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t2, t1, t2);                              // pand t2, t1, t2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->psllw(t2, t2, 5);                              // psllw t2, t2, 5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->paddw(t9, t2, a2);                             // paddw t9, t2, a2
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->dsrl32(ra, t9, 0);                             // dsrl32 ra, t9, 0
+  c->lwc1(f1, 24, t9);                              // lwc1 f1, 24(t9)
+  c->pcpyud(s4, t9, r0);                            // pcpyud s4, t9, r0
+  c->lwc1(f4, 24, ra);                              // lwc1 f4, 24(ra)
+  c->subs(f3, f1, f0);                              // sub.s f3, f1, f0
+  // nop                                            // sll r0, r0, 0
+  c->dsrl32(s3, s4, 0);                             // dsrl32 s3, s4, 0
+  c->lwc1(f1, 24, s4);                              // lwc1 f1, 24(s4)
+  c->pand(t1, t1, a3);                              // pand t1, t1, a3
+  c->lwc1(f2, 24, s3);                              // lwc1 f2, 24(s3)
+  c->psraw(s5, t1, 8);                              // psraw s5, t1, 8
+  c->lq(t1, 16, t9);                                // lq t1, 16(t9)
+  c->divs(f3, f0, f3);                              // div.s f3, f0, f3
+  c->lq(t2, 16, ra);                                // lq t2, 16(ra)
+  c->mov128_gpr_gpr(gp, s0);                        // por gp, s0, r0
+  c->subs(f4, f4, f0);                              // sub.s f4, f4, f0
+  c->ppach(t4, r0, t4);                             // ppach t4, r0, t4
+  c->lq(t3, 16, s4);                                // lq t3, 16(s4)
+  c->ppach(t5, r0, t5);                             // ppach t5, r0, t5
+  c->lq(t8, 16, s3);                                // lq t8, 16(s3)
+  c->ppach(t6, r0, t6);                             // ppach t6, r0, t6
+  c->lq(t9, 0, t9);                                 // lq t9, 0(t9)
+  c->ppach(t7, r0, t7);                             // ppach t7, r0, t7
+  c->lq(ra, 0, ra);                                 // lq ra, 0(ra)
+  c->pextlw(t4, t5, t4);                            // pextlw t4, t5, t4
+  c->lq(t5, 0, s4);                                 // lq t5, 0(s4)
+  c->pextlw(t6, t7, t6);                            // pextlw t6, t7, t6
+  c->lq(t7, 0, s3);                                 // lq t7, 0(s3)
+  c->mov128_gpr_gpr(s0, s1);                        // por s0, s1, r0
+  c->muls(f5, f3, f0);                              // mul.s f5, f3, f0
+  c->mov128_gpr_gpr(s1, s2);                        // por s1, s2, r0
+  c->divs(f3, f0, f4);                              // div.s f3, f0, f4
+  c->pcpyld(t4, t6, t4);                            // pcpyld t4, t6, t4
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t4, t4, a1);                              // pand t4, t4, a1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->mov128_gpr_gpr(s2, s5);                        // por s2, s5, r0
+  c->mfc1(t6, f5);                                  // mfc1 t6, f5
+  c->subs(f4, f1, f0);                              // sub.s f4, f1, f0
+  // nop                                            // sll r0, r0, 0
+  c->por(t4, t4, gp);                               // por t4, t4, gp
+  // nop                                            // sll r0, r0, 0
+  c->subs(f1, f2, f0);                              // sub.s f1, f2, f0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f2, f3, f0);                              // mul.s f2, f3, f0
+  c->sq(t4, -16, v1);                               // sq t4, -16(v1)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f3, f0, f4);                              // div.s f3, f0, f4
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t4, f2);                                  // mfc1 t4, f2
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->muls(f2, f3, f0);                              // mul.s f2, f3, f0
+  // nop                                            // sll r0, r0, 0
+  c->pextlw(t4, t4, t6);                            // pextlw t4, t4, t6
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->divs(f1, f0, f1);                              // div.s f1, f0, f1
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t6, f2);                                  // mfc1 t6, f2
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf21, t1);                       // qmtc2.ni vf21, t1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf22, t2);                       // qmtc2.ni vf22, t2
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf23, t3);                       // qmtc2.ni vf23, t3
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf24, t8);                       // qmtc2.ni vf24, t8
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->mfc1(t1, f1);                                  // mfc1 t1, f1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf9, t9);                        // qmtc2.ni vf9, t9
+  c->pextlw(t1, t1, t6);                            // pextlw t1, t1, t6
+  c->mov128_vf_gpr(vf10, ra);                       // qmtc2.ni vf10, ra
+  c->pcpyld(t1, t1, t4);                            // pcpyld t1, t1, t4
+  c->mov128_vf_gpr(vf11, t5);                       // qmtc2.ni vf11, t5
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf12, t7);                       // qmtc2.ni vf12, t7
+  // nop                                            // sll r0, r0, 0
+  c->mov128_vf_gpr(vf27, t1);                       // qmtc2.ni vf27, t1
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t4, vf17);                       // qmfc2.ni t4, vf17
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t5, vf18);                       // qmfc2.ni t5, vf18
+  // nop                                            // sll r0, r0, 0
+  c->mov128_gpr_vf(t6, vf19);                       // qmfc2.ni t6, vf19
+  bc = ((s64)c->sgpr64(a0)) > 0;                    // bgtz a0, L70
+  c->mov128_gpr_vf(t7, vf20);                       // qmfc2.ni t7, vf20
+  if (bc) {goto block_7;}                           // branch non-likely
+
+
+  block_8:
+  c->daddiu(v1, v1, 16);                            // daddiu v1, v1, 16
+  // nop                                            // sll r0, r0, 0
+  c->ppach(t4, r0, t4);                             // ppach t4, r0, t4
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppach(t5, r0, t5);                             // ppach t5, r0, t5
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppach(t6, r0, t6);                             // ppach t6, r0, t6
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->ppach(t7, r0, t7);                             // ppach t7, r0, t7
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextlw(t4, t5, t4);                            // pextlw t4, t5, t4
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pextlw(t6, t7, t6);                            // pextlw t6, t7, t6
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pcpyld(t4, t6, t4);                            // pcpyld t4, t6, t4
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->pand(t4, t4, a1);                              // pand t4, t4, a1
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  c->por(t4, t4, s0);                               // por t4, t4, s0
+  c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // nop                                            // sll r0, r0, 0
+  c->sq(t4, -16, v1);                               // sq t4, -16(v1)
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  c->ld(ra, 12432, at);                             // ld ra, 12432(at)
+  c->lq(gp, 12544, at);                             // lq gp, 12544(at)
+  c->lq(s5, 12528, at);                             // lq s5, 12528(at)
+  c->lq(s4, 12512, at);                             // lq s4, 12512(at)
+  c->lq(s3, 12496, at);                             // lq s3, 12496(at)
+  c->lq(s2, 12480, at);                             // lq s2, 12480(at)
+  c->lq(s1, 12464, at);                             // lq s1, 12464(at)
+  c->lq(s0, 12448, at);                             // lq s0, 12448(at)
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 128);                           // daddiu sp, sp, 128
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
+  gLinkedFunctionTable.reg("generic-envmap-proc", execute, 256);
+}
+
+} // namespace generic_envmap_proc
+} // namespace Mips2C
+
+
+

@@ -930,6 +930,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::LB:
     case InstructionKind::LWL:
     case InstructionKind::LWR:
+    case InstructionKind::LDR:
+    case InstructionKind::LDL:
     case InstructionKind::LBU:
     case InstructionKind::LWU:
     case InstructionKind::LQ:
@@ -1003,6 +1005,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PSRAW:
     case InstructionKind::PSRAH:
     case InstructionKind::PSRLH:
+    case InstructionKind::PSLLW:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
       return handle_sll(i0, instr_str);
@@ -1109,6 +1112,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "plzcw");
     case InstructionKind::PCPYH:
       return handle_generic_op2(i0, instr_str, "pcpyh");
+    case InstructionKind::PROT3W:
+      return handle_generic_op2(i0, instr_str, "prot3w");
     case InstructionKind::LUI:
       return handle_lui(i0, instr_str, output);
     case InstructionKind::CLTS:
