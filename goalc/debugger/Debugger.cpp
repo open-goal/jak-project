@@ -582,8 +582,8 @@ void Debugger::read_symbol_table() {
 
       // GOAL sym - s7
       auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
-      ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 2);
-      ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 2);
+      ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 4);
+      ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
 
       std::string str(str_buff);
       if (str.length() >= 50) {

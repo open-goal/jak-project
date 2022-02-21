@@ -18,7 +18,7 @@ constexpr s32 SYM_INFO_OFFSET = 8167 * 8 - 4;
 // constexpr s32 GOAL_MAX_SYMBOLS = 16384;
 // constexpr s32 SYM_INFO_OFFSET = GOAL_MAX_SYMBOLS * 8 - 4;
 
-constexpr u32 SYM_TABLE_MEM_SIZE = GOAL_MAX_SYMBOLS * 8 * 2;
+constexpr s32 SYM_TABLE_MEM_SIZE = GOAL_MAX_SYMBOLS * 8 * 2;
 
 constexpr int bits_for_sym() {
   if (GOAL_MAX_SYMBOLS != (GOAL_MAX_SYMBOLS >> 1) << 1) {
