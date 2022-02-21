@@ -21,13 +21,15 @@ constexpr s32 SYM_INFO_OFFSET = 8167 * 8 - 4;
 constexpr s32 SYM_TABLE_MEM_SIZE = GOAL_MAX_SYMBOLS * 8 * 2;
 
 constexpr int bits_for_sym() {
-  if (GOAL_MAX_SYMBOLS != (GOAL_MAX_SYMBOLS >> 1) << 1) {
-    throw 0;
-  }
-  int b = 0;
-  for (; b < 32; ++b) {
-    if (((GOAL_MAX_SYMBOLS - 1) >> b) == 0)
-      break;
+  int b = -1;
+  for (int i = 0; i < 32; ++i) {
+    if ((GOAL_MAX_SYMBOLS & (1 << i)) != 0) {
+      if (b != -1) {
+        // already got a set bit... not a multiple of 2!
+        throw 0;
+      }
+      b = i;
+    }
   }
   return b + 1;
 }
