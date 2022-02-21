@@ -10,6 +10,7 @@
 #include "common/type_system/state.h"
 #include "common/util/print_float.h"
 #include "decompiler/IR2/ExpressionHelpers.h"
+#include "decompiler/util/goal_constants.h"
 
 /*
  * TODO
@@ -956,7 +957,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
-    if (arg0_int && (*arg0_int == SYM_INFO_OFFSET + 4) &&
+    if (arg0_int && (*arg0_int == DECOMP_SYM_INFO_OFFSET + 4) &&
         arg1_type.typespec() == TypeSpec("symbol")) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
