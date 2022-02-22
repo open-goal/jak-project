@@ -656,13 +656,13 @@ u64 execute(void* ctxt) {
   c->lqc2(vf5, 6672, at);                           // lqc2 vf5, 6672(at)
   c->lqc2(vf6, 6688, at);                           // lqc2 vf6, 6688(at)
   c->lqc2(vf7, 6704, at);                           // lqc2 vf7, 6704(at)
-  c->sqc2(vf1, 12688, at);                          // sqc2 vf1, 12688(at)
-  c->sqc2(vf2, 12704, at);                          // sqc2 vf2, 12704(at)
-  c->sqc2(vf3, 12720, at);                          // sqc2 vf3, 12720(at)
-  c->sqc2(vf4, 12736, at);                          // sqc2 vf4, 12736(at)
-  c->sqc2(vf5, 12752, at);                          // sqc2 vf5, 12752(at)
-  c->sqc2(vf6, 12768, at);                          // sqc2 vf6, 12768(at)
-  c->sqc2(vf7, 12784, at);                          // sqc2 vf7, 12784(at)
+  c->sqc2_debug(__LINE__, vf1, 12688, at);                          // sqc2 vf1, 12688(at)
+  c->sqc2_debug(__LINE__, vf2, 12704, at);                          // sqc2 vf2, 12704(at)
+  c->sqc2_debug(__LINE__, vf3, 12720, at);                          // sqc2 vf3, 12720(at)
+  c->sqc2_debug(__LINE__, vf4, 12736, at);                          // sqc2 vf4, 12736(at)
+  c->sqc2_debug(__LINE__, vf5, 12752, at);                          // sqc2 vf5, 12752(at)
+  c->sqc2_debug(__LINE__, vf6, 12768, at);                          // sqc2 vf6, 12768(at)
+  c->sqc2_debug(__LINE__, vf7, 12784, at);                          // sqc2 vf7, 12784(at)
   c->lwu(a0, 8, v1);                                // lwu a0, 8(v1)
   c->dsll(a0, a0, 4);                               // dsll a0, a0, 4
   c->daddu(v1, v1, a0);                             // daddu v1, v1, a0
@@ -1215,41 +1215,45 @@ u64 execute(void* ctxt) {
   c->lui(a2, 4096);                                 // lui a2, 4096
   c->lwu(a1, 76, at);                               // lwu a1, 76(at)
   c->ori(a2, a2, 53248);                            // ori a2, a2, 53248
-  c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
+  //c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
   // nop                                            // sll r0, r0, 0
   c->daddiu(t0, at, 108);                           // daddiu t0, at, 108
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
   c->andi(t1, t1, 256);                             // andi t1, t1, 256
   // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L64
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_97;}                          // branch non-likely
+//  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L64
+//  // nop                                            // sll r0, r0, 0
+//  if (bc) {goto block_97;}                          // branch non-likely
 
   c->mov64(t1, a2);                                 // or t1, a2, r0
   // nop                                            // sll r0, r0, 0
 
-  block_95:
-  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
-  // nop                                            // sll r0, r0, 0
-  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
-  // nop                                            // sll r0, r0, 0
-  c->andi(t3, t3, 256);                             // andi t3, t3, 256
-  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
-  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L63
-  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
-  if (bc) {goto block_95;}                          // branch non-likely
-
-  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
+//  block_95:
+//  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
+//  // nop                                            // sll r0, r0, 0
+//  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
+//  // nop                                            // sll r0, r0, 0
+//  c->andi(t3, t3, 256);                             // andi t3, t3, 256
+//  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
+//  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L63
+//  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
+//  if (bc) {goto block_95;}                          // branch non-likely
+//
+//  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
   block_97:
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
-  c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  // c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  sadr = c->sgpr64(a3);
   // nop                                            // sll r0, r0, 0
-  c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  // c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  madr = c->sgpr64(a1);
   c->addiu(a3, r0, 256);                            // addiu a3, r0, 256
-  c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  // c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  qwc = c->sgpr64(a0);
   c->daddu(a0, a1, t0);                             // daddu a0, a1, t0
-  c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 76, at);                                // sw a0, 76(at)
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
@@ -1324,7 +1328,7 @@ struct Cache {
 
 u8 vu0_data_mem[1024 * 4];
 
-void sq_buffer(Mask mask, const Vf& data, u32 qw) {
+void sq_buffer(int line, Mask mask, const Vf& data, u32 qw) {
   ASSERT(qw * 16 < sizeof(vu0_data_mem));
   for (int i = 0; i < 4; i++) {
     if ((u64)mask & (1 << i)) {
@@ -1353,13 +1357,15 @@ void vcallms_280(ExecutionContext* c, u16* vis) {
   // iaddiu vi08, vi00, 0x8c    |  minii.z vf06, vf00, I
   c->vfs[vf06].vf.minii(Mask::z, c->vf_src(vf00).vf, c->I);   vis[vi08] = 0x8c; /* 140 */
   // sqi.xyzw vf01, vi08        |  minii.z vf07, vf00, I
-  c->vfs[vf07].vf.minii(Mask::z, c->vf_src(vf00).vf, c->I);   sq_buffer(Mask::xyzw, c->vf_src(vf01).vf, vis[vi08]++);
+
+  c->vfs[vf07].vf.minii(Mask::z, c->vf_src(vf00).vf, c->I);   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf01).vf, vis[vi08]++);
   // sqi.xyzw vf02, vi08        |  minix.w vf05, vf00, vf27
-  c->vfs[vf05].vf.mini(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf27).vf.x());   sq_buffer(Mask::xyzw, c->vf_src(vf02).vf, vis[vi08]++);
+  c->vfs[vf05].vf.mini(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf27).vf.x());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf02).vf, vis[vi08]++);
   // sqi.xyzw vf03, vi08        |  miniy.w vf06, vf00, vf27
-  c->vfs[vf06].vf.mini(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf27).vf.y());   sq_buffer(Mask::xyzw, c->vf_src(vf03).vf, vis[vi08]++);
+  c->vfs[vf06].vf.mini(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf27).vf.y());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf03).vf, vis[vi08]++);
   // sqi.xyzw vf04, vi08        |  miniz.w vf07, vf00, vf27
-  c->vfs[vf07].vf.mini(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf27).vf.z());   sq_buffer(Mask::xyzw, c->vf_src(vf04).vf, vis[vi08]++);
+  c->vfs[vf07].vf.mini(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf27).vf.z());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf04).vf, vis[vi08]++);
+
   // BRANCH!
   // ibne vi00, vi13, L1        |  nop
   bc = (vis[vi13] != 0);
@@ -1407,34 +1413,43 @@ void vcallms_280(ExecutionContext* c, u16* vis) {
 }
 
 void vcallms_303(ExecutionContext* c, u16* vis) {
+  // vf21.x coming into here is bad (should be < 1, I think)
   // sq.xyzw vf23, 3(vi14)      |  mulx.xyzw vf11, vf20, vf19
-  c->vfs[vf11].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf19).vf.x());   sq_buffer(Mask::xyzw, c->vf_src(vf23).vf, vis[vi14] + 3);
+  c->vfs[vf11].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf19).vf.x());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf23).vf, vis[vi14] + 3);
   // sq.xyzw vf24, 4(vi14)      |  mulx.xyzw vf12, vf21, vf19
-  c->vfs[vf12].vf.mul(Mask::xyzw, c->vf_src(vf21).vf, c->vf_src(vf19).vf.x());   sq_buffer(Mask::xyzw, c->vf_src(vf24).vf, vis[vi14] + 4);
+  c->vfs[vf12].vf.mul(Mask::xyzw, c->vf_src(vf21).vf, c->vf_src(vf19).vf.x());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf24).vf, vis[vi14] + 4);
   // sq.xyzw vf25, 5(vi14)      |  mulx.xyzw vf13, vf22, vf19
-  c->vfs[vf13].vf.mul(Mask::xyzw, c->vf_src(vf22).vf, c->vf_src(vf19).vf.x());   sq_buffer(Mask::xyzw, c->vf_src(vf25).vf, vis[vi14] + 5);
+  c->vfs[vf13].vf.mul(Mask::xyzw, c->vf_src(vf22).vf, c->vf_src(vf19).vf.x());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf25).vf, vis[vi14] + 5);
+
   // sq.xyzw vf26, 6(vi14)      |  nop
-  sq_buffer(Mask::xyzw, c->vf_src(vf26).vf, vis[vi14] + 6);
+  sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf26).vf, vis[vi14] + 6);
   // sq.xyzw vf11, 0(vi14)      |  nop
-  sq_buffer(Mask::xyzw, c->vf_src(vf11).vf, vis[vi14]);
+  sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf11).vf, vis[vi14]);
   // sq.xyzw vf12, 1(vi14)      |  nop
-  sq_buffer(Mask::xyzw, c->vf_src(vf12).vf, vis[vi14] + 1);
+  sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf12).vf, vis[vi14] + 1);
   // sq.xyzw vf13, 2(vi14)      |  nop :e
-  sq_buffer(Mask::xyzw, c->vf_src(vf13).vf, vis[vi14] + 2);
+  sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf13).vf, vis[vi14] + 2);
   // nop                        |  nop
 
 }
 
 void vcallms_311(ExecutionContext* c, u16* vis) {
+
+  //  mtir vi11, vf01.x          |  maddz.xyzw vf11, vf26, vf10 ;; 311
+  //  jr vi01                    |  mul.xyzw vf14, vf13, Q
+  //  sqi.xyzw vf04, vi08        |  mulaw.xyzw ACC, vf20, vf08
+  //  rsqrt Q, vf00.w, vf16.x    |  maddaw.xyzw ACC, vf21, vf09
+  //  lq.xyzw vf24, -124(vi11)   |  maddaw.xyzw ACC, vf22, vf10
+  //  lq.xyzw vf25, -123(vi11)   |  maddw.xyzw vf15, vf23, vf00
+
   bool bc;
   // mtir vi11, vf01.x          |  maddz.xyzw vf11, vf26, vf10
   c->acc.vf.madd(Mask::xyzw, c->vfs[vf11].vf, c->vf_src(vf26).vf, c->vf_src(vf10).vf.z());   vis[vi11] = c->vf_src(vf01).vf.x_as_u16();
   // jr vi01                    |  mul.xyzw vf14, vf13, Q
   c->vfs[vf14].vf.mul(Mask::xyzw, c->vf_src(vf13).vf, c->Q);
   // sqi.xyzw vf04, vi08        |  mulaw.xyzw ACC, vf20, vf08
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf08).vf.w());   sq_buffer(Mask::xyzw, c->vf_src(vf04).vf, vis[vi08]++);
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf08).vf.w());   sq_buffer(__LINE__, Mask::xyzw, c->vf_src(vf04).vf, vis[vi08]++);
 
-  // fmt::print("doing jump {}\n", vis[vi01]);
   switch(vis[vi01]) {
     case 314:
       goto JUMP_314;
@@ -1458,6 +1473,16 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf22].vf, c->vfs[vf10].vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf24].vf, vis[vi11] + -124);
   // lq.xyzw vf25, -123(vi11)   |  maddw.xyzw vf15, vf23, vf00
   c->acc.vf.madd(Mask::xyzw, c->vfs[vf15].vf, c->vf_src(vf23).vf, c->vf_src(vf00).vf.w());   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf25].vf, vis[vi11] + -123);
+//  if (c->vfs[vf15].f[0] > 100000) {
+//    fmt::print("likely bad vertex: {}\n", c->vfs[vf15].vf.print());
+//    fmt::print("  rhs vf08: {} * {}\n", c->vfs[vf08].vf.w(), c->vfs[vf20].vf.x());
+//    fmt::print("  rhs vf09: {} * {}\n", c->vfs[vf09].vf.w(), c->vfs[vf21].vf.x());
+//    fmt::print("  rhs vf10: {} * {}\n", c->vfs[vf10].vf.w(), c->vfs[vf22].vf.x());
+//    fmt::print("  rhs vf00: 1 * {}\n",  c->vfs[vf22].vf.x());
+//
+//    fmt::print("  vf16.x was {}\n", c->vf_src(vf16).vf.x());
+//  }
+
   // lq.xyzw vf26, -122(vi11)   |  mul.xyzw vf16, vf11, vf11
   c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf11).vf);   lq_buffer(__LINE__, Mask::xyzw, c->vfs[vf26].vf, vis[vi11] + -122);
   // lq.xyzw vf20, -128(vi11)   |  add.xyzw vf08, vf01, vf05
@@ -2545,7 +2570,6 @@ u64 execute(void* ctxt) {
   c->daddu(t2, t2, a0);                             // daddu t2, t2, a0
   goto block_47;                                    // branch always
 
-
   block_46:
   // Unknown instr: vcallms 303
   vcallms_303(c, vis);
@@ -2656,7 +2680,7 @@ u64 execute(void* ctxt) {
   // nop                                            // sll r0, r0, 0
   c->daddiu(v1, v1, -64);                           // daddiu v1, v1, -64
   // nop                                            // sll r0, r0, 0
-  c->sqc2(vf15, 64, v1);                            // sqc2 vf15, 64(v1)
+  c->sqc2_debug(__LINE__, vf15, 64, v1);                            // sqc2 vf15, 64(v1)
   // Unknown instr: vcallms 311
   vcallms_311(c, vis);
   // nop                                            // sll r0, r0, 0
@@ -2689,7 +2713,7 @@ u64 execute(void* ctxt) {
   // nop                                            // sll r0, r0, 0
   c->daddiu(s6, s6, 16);                            // daddiu s6, s6, 16
   // nop                                            // sll r0, r0, 0
-  c->sqc2(vf15, 96, v1);                            // sqc2 vf15, 96(v1)
+  c->sqc2_debug(__LINE__, vf15, 96, v1);                            // sqc2 vf15, 96(v1)
   // Unknown instr: vcallms 311
   vcallms_311(c, vis);
   c->sw(s3, 76, v1);                                // sw s3, 76(v1)
@@ -2734,10 +2758,10 @@ u64 execute(void* ctxt) {
   c->pextlh(t1, a1, a2);                            // pextlh t1, a1, a2
   c->mov128_vf_gpr(vf3, t1);                        // qmtc2.ni vf3, t1
   c->pextuh(t9, r0, t9);                            // pextuh t9, r0, t9
-  c->sqc2(vf14, 80, v1);                            // sqc2 vf14, 80(v1)
+  c->sqc2_debug(__LINE__, vf14, 80, v1);                            // sqc2 vf14, 80(v1)
   c->daddiu(at, at, 16);                            // daddiu at, at, 16
   c->addiu(s4, s4, 2);                              // addiu s4, s4, 2
-  c->sqc2(vf15, 128, v1);                           // sqc2 vf15, 128(v1)
+  c->sqc2_debug(__LINE__, vf15, 128, v1);                           // sqc2 vf15, 128(v1)
   bc = c->sgpr64(t5) == c->sgpr64(s5);              // beq t5, s5, L104
   c->daddiu(t5, t5, 2);                             // daddiu t5, t5, 2
   if (bc) {goto block_56;}                          // branch non-likely
@@ -2771,10 +2795,10 @@ u64 execute(void* ctxt) {
   c->pextub(t9, r0, t8);                            // pextub t9, r0, t8
   c->mov128_vf_gpr(vf3, t0);                        // qmtc2.ni vf3, t0
   c->pextlh(gp, r0, t9);                            // pextlh gp, r0, t9
-  c->sqc2(vf14, 112, v1);                           // sqc2 vf14, 112(v1)
+  c->sqc2_debug(__LINE__, vf14, 112, v1);                           // sqc2 vf14, 112(v1)
   c->daddiu(v0, v0, 48);                            // daddiu v0, v0, 48
   bc = c->sgpr64(s4) == c->sgpr64(s5);              // beq s4, s5, L105
-  c->sqc2(vf15, 160, v1);                           // sqc2 vf15, 160(v1)
+  c->sqc2_debug(__LINE__, vf15, 160, v1);                           // sqc2 vf15, 160(v1)
   if (bc) {goto block_57;}                          // branch non-likely
 
   // Unknown instr: vcallms 311
@@ -2806,10 +2830,10 @@ u64 execute(void* ctxt) {
   c->pextlh(a2, a1, t1);                            // pextlh a2, a1, t1
   c->mov128_vf_gpr(vf3, a2);                        // qmtc2.ni vf3, a2
   c->pextuh(t9, r0, t9);                            // pextuh t9, r0, t9
-  c->sqc2(vf14, 144, v1);                           // sqc2 vf14, 144(v1)
+  c->sqc2_debug(__LINE__, vf14, 144, v1);                           // sqc2 vf14, 144(v1)
   c->daddiu(v1, v1, 128);                           // daddiu v1, v1, 128
   c->addiu(s4, s4, 2);                              // addiu s4, s4, 2
-  c->sqc2(vf15, 64, v1);                            // sqc2 vf15, 64(v1)
+  c->sqc2_debug(__LINE__, vf15, 64, v1);                            // sqc2 vf15, 64(v1)
   bc = c->sgpr64(t5) == c->sgpr64(s5);              // beq t5, s5, L106
   c->daddiu(t5, t5, 2);                             // daddiu t5, t5, 2
   if (bc) {goto block_58;}                          // branch non-likely
@@ -2843,10 +2867,11 @@ u64 execute(void* ctxt) {
   c->pextlb(t9, r0, t8);                            // pextlb t9, r0, t8
   c->mov128_vf_gpr(vf3, a3);                        // qmtc2.ni vf3, a3
   c->pextlh(gp, r0, t9);                            // pextlh gp, r0, t9
-  c->sqc2(vf14, 48, v1);                            // sqc2 vf14, 48(v1)
+  c->sqc2_debug(__LINE__, vf14, 48, v1);                            // sqc2 vf14, 48(v1)
   c->daddiu(s6, s6, 16);                            // daddiu s6, s6, 16
   bc = c->sgpr64(s4) != c->sgpr64(s5);              // bne s4, s5, L102
-  c->sqc2(vf15, 96, v1);                            // sqc2 vf15, 96(v1)
+  // HERE this one is storing garbage
+  c->sqc2_debug(__LINE__, vf15, 96, v1);                            // sqc2 vf15, 96(v1)
   if (bc) {goto block_50;}                          // branch non-likely
 
   //beq r0, r0, L106                                // beq r0, r0, L106
@@ -3028,4 +3053,298 @@ void link() {
 
 } // namespace mercneric_convert
 } // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace high_speed_reject {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
+
+void vcallms_438(ExecutionContext* c, u16* vis) {
+
+  // nop                        |  mulaz.xyzw ACC, vf09, vf01     158
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf01).vf.z());
+  // nop                        |  maddax.xyzw ACC, vf10, vf01    159
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf01].vf.x());
+  // nop                        |  maddy.xyzw vf01, vf11, vf01    160
+  u16 f1 = c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf01].vf, c->vf_src(vf11).vf, c->vf_src(vf01).vf.y());
+  // nop                        |  mulaz.xyzw ACC, vf09, vf02     161
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf02).vf.z());
+  // nop                        |  maddax.xyzw ACC, vf10, vf02    162
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf02].vf.x());
+  // nop                        |  maddy.xyzw vf02, vf11, vf02    163
+  u16 f2 = c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf02].vf, c->vf_src(vf11).vf, c->vf_src(vf02).vf.y());
+  // fmand vi01, vi09           |  mulaz.xyzw ACC, vf09, vf03     164
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf03).vf.z());   vis[1] = vis[9] & f1;
+  // nop                        |  maddax.xyzw ACC, vf10, vf03    165
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf03].vf.x());
+  // nop                        |  maddy.xyzw vf03, vf11, vf03    166
+  u16 f3 = c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf03].vf, c->vf_src(vf11).vf, c->vf_src(vf03).vf.y());
+  // fmand vi02, vi09           |  mulaz.xyzw ACC, vf09, vf04     167
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf04).vf.z());   vis[2] = vis[9] & f2;
+  // nop                        |  maddax.xyzw ACC, vf10, vf04    168
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf04].vf.x());
+  // nop                        |  maddy.xyzw vf04, vf11, vf04    169
+  c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf04].vf, c->vf_src(vf11).vf, c->vf_src(vf04).vf.y());
+  // fmand vi03, vi09           |  nop                            170
+  // ASSERT(false);
+  vis[3] = vis[9] & f3;
+  // nop                        |  nop                            171
+
+  // nop                        |  nop :e                         172
+
+  // fmand vi04, vi09           |  nop                            173
+  // ASSERT(false);
+  vis[4] = vis[9] & f4;
+
+}
+
+void vcallms_454(ExecutionContext* c, u16* vis) {
+  // nop                        |  mulaz.xyzw ACC, vf09, vf05     174
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf05).vf.z());
+  // nop                        |  maddax.xyzw ACC, vf10, vf05    175
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf05].vf.x());
+  // nop                        |  maddy.xyzw vf05, vf11, vf05    176
+  u16 f1 = c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf05].vf, c->vf_src(vf11).vf, c->vf_src(vf05).vf.y());
+  // nop                        |  mulaz.xyzw ACC, vf09, vf06     177
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf06).vf.z());
+  // nop                        |  maddax.xyzw ACC, vf10, vf06    178
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf06].vf.x());
+  // nop                        |  maddy.xyzw vf06, vf11, vf06    179
+  u16 f2 = c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf06].vf, c->vf_src(vf11).vf, c->vf_src(vf06).vf.y());
+  // fmand vi05, vi09           |  mulaz.xyzw ACC, vf09, vf07     180
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf07).vf.z());   vis[5] = vis[9] & f1;
+  // nop                        |  maddax.xyzw ACC, vf10, vf07    181
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf07].vf.x());
+  // nop                        |  maddy.xyzw vf07, vf11, vf07    182
+  u16 f3 = c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf07].vf, c->vf_src(vf11).vf, c->vf_src(vf07).vf.y());
+  // fmand vi06, vi09           |  mulaz.xyzw ACC, vf09, vf08     183
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf08).vf.z());   vis[5] = vis[9] & f2;
+  // nop                        |  maddax.xyzw ACC, vf10, vf08    184
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf10].vf, c->vfs[vf08].vf.x());
+  // nop                        |  maddy.xyzw vf08, vf11, vf08    185
+  u16 f4 =c->acc.vf.madd_flag(Mask::xyzw, c->vfs[vf08].vf, c->vf_src(vf11).vf, c->vf_src(vf08).vf.y());
+  // fmand vi07, vi09           |  nop                            186
+  vis[7] = vis[9] & f3;
+  // nop                        |  nop                            187
+
+  // nop                        |  nop :e                         188
+
+  // fmand vi08, vi09           |  nop                            189
+  // ASSERT(false);
+  vis[8] = vis[9] & f4;
+
+}
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u16 vis[16];
+  u32 call_addr = 0;
+  get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
+  c->lw(a0, 7308, v1);                              // lw a0, 7308(v1)
+  c->daddiu(a1, a0, 448);                           // daddiu a1, a0, 448
+  c->lhu(a3, 20, a0);                               // lhu a3, 20(a0)
+  c->vmax_bc(DEST::xyzw, BC::w, vf9, vf0, vf0);     // vmaxw.xyzw vf9, vf0, vf0
+  c->lqc2(vf10, 7360, v1);                          // lqc2 vf10, 7360(v1)
+  c->lqc2(vf11, 7376, v1);                          // lqc2 vf11, 7376(v1)
+  c->lqc2(vf1, 0, a1);                              // lqc2 vf1, 0(a1)
+  c->addiu(a0, r0, 240);                            // addiu a0, r0, 240
+  c->lqc2(vf2, 32, a1);                             // lqc2 vf2, 32(a1)
+  vis[9] = c->gpr_src(a0).du16[0];                     // ctc2.i vi9, a0
+  c->lqc2(vf3, 64, a1);                             // lqc2 vf3, 64(a1)
+  c->lqc2(vf4, 96, a1);                             // lqc2 vf4, 96(a1)
+  c->daddiu(a0, r0, -1);                            // daddiu a0, r0, -1
+  // nop                                            // sll r0, r0, 0
+  // Unknown instr: vcallms 438
+  vcallms_438(c, vis);
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf5, 128, a1);                            // lqc2 vf5, 128(a1)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf6, 160, a1);                            // lqc2 vf6, 160(a1)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lwu(t0, 8, a1);                                // lwu t0, 8(a1)
+  c->lqc2(vf7, 192, a1);                            // lqc2 vf7, 192(a1)
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->gprs[a2].du64[0] = vis[1];                        // cfc2.ni a2, vi1
+  c->lqc2(vf8, 224, a1);                            // lqc2 vf8, 224(a1)
+  c->srl(t0, t0, 31);                               // srl t0, t0, 31
+  c->or_(t0, a2, t0);                               // or t0, a2, t0
+  c->lwu(a2, 40, a1);                               // lwu a2, 40(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->daddiu(a1, a1, 128);                           // daddiu a1, a1, 128
+  c->daddiu(a3, a3, -1);                            // daddiu a3, a3, -1
+  bc = c->sgpr64(a3) == 0;                          // beq a3, r0, L70
+  c->gprs[t0].du64[0] = vis[2];                        // cfc2.ni t0, vi2
+  if (bc) {goto block_18;}                          // branch non-likely
+
+
+  block_2:
+  // Unknown instr: vcallms 454
+  vcallms_454(c, vis);
+  c->srl(a2, a2, 31);                               // srl a2, a2, 31
+  c->or_(a2, t0, a2);                               // or a2, t0, a2
+  c->lwu(t0, -56, a1);                              // lwu t0, -56(a1)
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L71
+  c->and_(a0, a0, a2);                              // and a0, a0, a2
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->lqc2(vf1, 128, a1);                            // lqc2 vf1, 128(a1)
+  c->daddiu(a2, a3, -1);                            // daddiu a2, a3, -1
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L70
+  c->gprs[a3].du64[0] = vis[3];                        // cfc2.ni a3, vi3
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  c->daddiu(a2, a2, -1);                            // daddiu a2, a2, -1
+  c->srl(t0, t0, 31);                               // srl t0, t0, 31
+  c->or_(t0, a3, t0);                               // or t0, a3, t0
+  c->lwu(a3, -24, a1);                              // lwu a3, -24(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L70
+  c->gprs[t0].du64[0] = vis[4];                        // cfc2.ni t0, vi4
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  c->lqc2(vf2, 160, a1);                            // lqc2 vf2, 160(a1)
+  c->srl(a3, a3, 31);                               // srl a3, a3, 31
+  c->or_(t0, t0, a3);                               // or t0, t0, a3
+  c->lwu(a3, 8, a1);                                // lwu a3, 8(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->lqc2(vf3, 192, a1);                            // lqc2 vf3, 192(a1)
+  c->daddiu(a2, a2, -1);                            // daddiu a2, a2, -1
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L70
+  c->gprs[t0].du64[0] = vis[5];                        // cfc2.ni t0, vi5
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  c->lqc2(vf4, 224, a1);                            // lqc2 vf4, 224(a1)
+  c->srl(a3, a3, 31);                               // srl a3, a3, 31
+  c->or_(t0, t0, a3);                               // or t0, t0, a3
+  c->lwu(a3, 40, a1);                               // lwu a3, 40(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->daddiu(a1, a1, 128);                           // daddiu a1, a1, 128
+  c->daddiu(a2, a2, -1);                            // daddiu a2, a2, -1
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L70
+  c->gprs[t0].du64[0] = vis[6];                        // cfc2.ni t0, vi6
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  // Unknown instr: vcallms 438
+  vcallms_438(c, vis);
+  c->srl(a3, a3, 31);                               // srl a3, a3, 31
+  c->or_(t0, t0, a3);                               // or t0, t0, a3
+  c->lwu(a3, -56, a1);                              // lwu a3, -56(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->lqc2(vf5, 128, a1);                            // lqc2 vf5, 128(a1)
+  c->daddiu(a2, a2, -1);                            // daddiu a2, a2, -1
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L70
+  c->gprs[t0].du64[0] = vis[7];                        // cfc2.ni t0, vi7
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  c->daddiu(a2, a2, -1);                            // daddiu a2, a2, -1
+  c->srl(a3, a3, 31);                               // srl a3, a3, 31
+  c->or_(t0, t0, a3);                               // or t0, t0, a3
+  c->lwu(a3, -24, a1);                              // lwu a3, -24(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L70
+  c->gprs[t0].du64[0] = vis[8];                        // cfc2.ni t0, vi8
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  c->lqc2(vf6, 160, a1);                            // lqc2 vf6, 160(a1)
+  c->srl(a3, a3, 31);                               // srl a3, a3, 31
+  c->or_(a3, t0, a3);                               // or a3, t0, a3
+  c->lwu(t0, 8, a1);                                // lwu t0, 8(a1)
+  bc = c->sgpr64(a3) == 0;                          // beq a3, r0, L71
+  c->and_(a0, a0, a3);                              // and a0, a0, a3
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->lqc2(vf7, 192, a1);                            // lqc2 vf7, 192(a1)
+  c->daddiu(a3, a2, -1);                            // daddiu a3, a2, -1
+  bc = c->sgpr64(a3) == 0;                          // beq a3, r0, L70
+  c->gprs[a2].du64[0] = vis[1];                        // cfc2.ni a2, vi1
+  if (bc) {goto block_18;}                          // branch non-likely
+
+  c->lqc2(vf8, 224, a1);                            // lqc2 vf8, 224(a1)
+  c->srl(t0, t0, 31);                               // srl t0, t0, 31
+  c->or_(t0, a2, t0);                               // or t0, a2, t0
+  c->lwu(a2, 40, a1);                               // lwu a2, 40(a1)
+  bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L71
+  c->and_(a0, a0, t0);                              // and a0, a0, t0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->daddiu(a1, a1, 128);                           // daddiu a1, a1, 128
+  c->daddiu(a3, a3, -1);                            // daddiu a3, a3, -1
+  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L69
+  c->gprs[t0].du64[0] = vis[2];                        // cfc2.ni t0, vi2
+  if (bc) {goto block_2;}                           // branch non-likely
+
+
+  block_18:
+  bc = c->sgpr64(a0) == 0;                          // beq a0, r0, L71
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_20;}                          // branch non-likely
+
+  c->sb(r0, 6773, v1);                              // sb r0, 6773(v1)
+
+  block_20:
+  //jr ra                                           // jr ra
+  // nop                                            // sll r0, r0, 0
+  goto end_of_function;                             // return
+
+  //jr ra                                           // jr ra
+  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
+  gLinkedFunctionTable.reg("high-speed-reject", execute, 128);
+}
+
+} // namespace high_speed_reject
+} // namespace Mips2C
+
+
 

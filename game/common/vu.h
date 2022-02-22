@@ -74,6 +74,22 @@ struct alignas(16) Vf {
   const float& z() const { return data[2]; }
   const float& w() const { return data[3]; }
 
+  std::string print() const {
+    return fmt::format("{} {} {} {}", x(), y(), z(), w());
+  }
+
+  std::string print_hex() const {
+    return fmt::format("0x{:x} 0x{:x} 0x{:x} 0x{:x}", x_as_u32(), y_as_u32(), z_as_u32(), w_as_u32());
+  }
+
+
+  void set_zero() {
+    data[0] = 0;
+    data[1] = 0;
+    data[2] = 0;
+    data[3] = 0;
+  }
+
   u16 x_as_u16() const {
     u16 result;
     memcpy(&result, &data[0], 2);
@@ -262,6 +278,14 @@ struct alignas(16) Vf {
     }
   }
 
+  void sub(Mask mask, const Vf& a, const Vf& b) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] = a[i] - b[i];
+      }
+    }
+  }
+
   REALLY_INLINE void mul_xyzw(const Vf& a, const Vf& b) {
     _mm_store_ps(data, _mm_mul_ps(_mm_load_ps(a.data), _mm_load_ps(b.data)));
   }
@@ -296,13 +320,22 @@ struct alignas(16) Vf {
     }
   }
 
+  void itof12(Mask mask, const Vf& a) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        s32 val;
+        memcpy(&val, &a.data[i], 4);
+        data[i] = ((float)val) * (1.f / 4096.f);
+      }
+    }
+  }
+
   void itof15(Mask mask, const Vf& a) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         s32 val;
         memcpy(&val, &a.data[i], 4);
         data[i] = ((float)val) * (1.f / 32768.f);
-        ;
       }
     }
   }
@@ -319,6 +352,9 @@ struct alignas(16) Vf {
   void ftoi12(Mask mask, const Vf& a) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
+//        if (std::isnan(a.data[i])) {
+//          ASSERT(false);
+//        }
         s32 val = a.data[i] * 4096.f;
         memcpy(&data[i], &val, 4);
       }

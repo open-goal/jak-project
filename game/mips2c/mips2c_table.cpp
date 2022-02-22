@@ -242,6 +242,16 @@ extern void link();
 namespace generic_envmap_proc {
 extern void link();
 }
+namespace high_speed_reject {
+extern void link();
+}
+namespace draw_bones_generic_merc {
+extern void link();
+}
+
+namespace generic_prepare_dma_single {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -276,12 +286,15 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       method_10_collide_edge_hold_list::link, method_18_collide_edge_work::link}},
     {"joint", {calc_animation_from_spr::link, cspace_parented_transformq_joint::link}},
     {"bones",
-     {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link}},
+     {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link,
+      draw_bones_generic_merc::link}},
     {"merc-blend-shape", {blerc_execute::link, setup_blerc_chains_for_one_fragment::link}},
     {"generic-merc",
-     {generic_merc_init_asm::link, generic_merc_execute_asm::link, mercneric_convert::link}},
+     {generic_merc_init_asm::link, generic_merc_execute_asm::link, mercneric_convert::link,
+      high_speed_reject::link}},
     {"generic-effect",
-     {generic_prepare_dma_double::link, generic_light_proc::link, generic_envmap_proc::link}}};
+     {generic_prepare_dma_double::link, generic_light_proc::link, generic_envmap_proc::link,
+      generic_prepare_dma_single::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

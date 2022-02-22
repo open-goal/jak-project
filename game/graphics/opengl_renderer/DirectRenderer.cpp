@@ -378,7 +378,20 @@ void DirectRenderer::update_gl_blend() {
       glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
       glBlendColor(0, 0, 0, state.fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
-    } else {
+    } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::SOURCE &&
+               state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::SOURCE) {
+      // this is very weird...
+      glBlendFunc(GL_ONE, GL_ZERO);
+      glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE &&
+               state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.c == GsAlpha::BlendMode::DEST && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - 0) * Ad + Cd
+      glBlendFunc(GL_DST_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_ADD);
+    }
+
+    else {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
@@ -911,6 +924,9 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          bool advance) {
   ASSERT(z < (1 << 24));
   (void)f;  // TODO: do something with this.
+  if (m_my_id == BucketId::GENERIC_PRIS) {
+     // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
+  }
   if (m_prim_buffer.is_full()) {
     lg::warn("Buffer wrapped in {} ({} verts, {} bytes)", m_name, m_ogl.vertex_buffer_max_verts,
              m_prim_buffer.vert_count * sizeof(Vertex));

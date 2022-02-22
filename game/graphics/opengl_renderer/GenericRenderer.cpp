@@ -26,9 +26,9 @@ void GenericRenderer::render(DmaFollower& dma,
     auto v1 = data.vifcode1();
     if (data.size_bytes == 0) {
       m_debug += "Emtpy Tag\n";
-      switch(v0.kind) {
+      switch (v0.kind) {
         case VifCode::Kind::STCYCL:
-          m_vu.stcycl = v0.immediate;
+          vu.stcycl = v0.immediate;
           break;
         case VifCode::Kind::NOP:
           break;
@@ -36,14 +36,14 @@ void GenericRenderer::render(DmaFollower& dma,
           fmt::print("unknown vifcode0 empty tag: {}\n", v0.print());
           ASSERT(false);
       }
-      switch(v1.kind) {
+      switch (v1.kind) {
         case VifCode::Kind::STCYCL:
-          m_vu.stcycl = v1.immediate;
+          vu.stcycl = v1.immediate;
           break;
         case VifCode::Kind::NOP:
           break;
         case VifCode::Kind::MSCAL:
-          mscal(v1.immediate);
+          mscal(v1.immediate, render_state, prof);
           break;
         default:
           fmt::print("unknown vifcode1 empty tag: {}\n", v1.print());
@@ -56,44 +56,15 @@ void GenericRenderer::render(DmaFollower& dma,
       m_direct.render_gif(data.data, data.size_bytes, render_state, prof);
       ASSERT(v1.immediate == data.size_bytes / 16);
     } else if (v0.kind == VifCode::Kind::STCYCL && v1.kind == VifCode::Kind::UNPACK_V4_32) {
-      m_vu.stcycl = v0.immediate;
+      vu.stcycl = v0.immediate;
       u32 bytes_used = unpack32_4(VifCodeUnpack(v1), data.data, v1.num);
       if (bytes_used < data.size_bytes) {
-        handle_dma_stream(data.data + bytes_used, data.size_bytes - bytes_used);
+        handle_dma_stream(data.data + bytes_used, data.size_bytes - bytes_used, render_state, prof);
       } else if (bytes_used > data.size_bytes) {
         ASSERT(false);
       }
-      //      if (v1.num != data.size_bytes / 16) {
-      //        u32 data_offset = v1.num * 16;
-      //
-      //        while (data_offset < data.size_bytes) {
-      //          u32 tag_word;
-      //          memcpy(&tag_word, data.data + data_offset, 4);
-      //          if (VifCode(tag_word).kind != VifCode::Kind::NOP) {
-      //            break;
-      //          } else {
-      //            fmt::print("{}/{} skip nop {}\n", data_offset, data.size_bytes,
-      //            VifCode(tag_word).print()); data_offset += 4;
-      //          }
-      //        }
-      //
-      //        u32 stcycl_word;
-      //        memcpy(&stcycl_word, data.data + data_offset, 4);
-      //        data_offset += 4;
-      //        VifCode stcycl(stcycl_word);
-      //        ASSERT(stcycl.kind == VifCode::Kind::STCYCL);
-      //        ASSERT(stcycl.immediate == 0x103);
-      //
-      //
-      //        // 200/2400 = STCYCL cl: 3 wl: 1
-      //        // 204/2400 = UNPACK-V3-32: 68 addr: 11 us: false tops: false
-      //
-      //        // todo make sure we reset stcycl
-      //        ASSERT(false);
-      //      }
-
     } else if (v0.kind == VifCode::Kind::MSCALF && v1.kind == VifCode::Kind::STMOD) {
-      mscal(v0.immediate);
+      mscal(v0.immediate, render_state, prof);
       ASSERT(v1.immediate == 0);
 
       int data_offset = 0;
@@ -123,14 +94,14 @@ void GenericRenderer::render(DmaFollower& dma,
       data_offset += 4;
       ASSERT(strow_vc.kind == VifCode::Kind::STROW);
 
-      memcpy(m_vu.row, data.data + data_offset, 16);
+      memcpy(vu.row, data.data + data_offset, 16);
       data_offset += 16;
 
       ASSERT(data_offset == 32);
     } else if (v0.kind == VifCode::Kind::NOP && v1.kind == VifCode::Kind::UNPACK_V3_32) {
       u32 bytes_used = unpack32_3(VifCodeUnpack(v1), data.data, v1.num);
       if (bytes_used < data.size_bytes) {
-        handle_dma_stream(data.data + bytes_used, data.size_bytes - bytes_used);
+        handle_dma_stream(data.data + bytes_used, data.size_bytes - bytes_used, render_state, prof);
       } else if (bytes_used > data.size_bytes) {
         ASSERT(false);
       }
@@ -145,7 +116,10 @@ void GenericRenderer::render(DmaFollower& dma,
   }
 }
 
-void GenericRenderer::handle_dma_stream(const u8* data, u32 bytes) {
+void GenericRenderer::handle_dma_stream(const u8* data,
+                                        u32 bytes,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
   while (bytes) {
     u32 tag_data;
     memcpy(&tag_data, data, 4);
@@ -156,38 +130,30 @@ void GenericRenderer::handle_dma_stream(const u8* data, u32 bytes) {
       case VifCode::Kind::NOP:
         break;
       case VifCode::Kind::STCYCL:
-        m_vu.stcycl = vc.immediate;
+        vu.stcycl = vc.immediate;
         break;
-      case VifCode::Kind::UNPACK_V3_32:
-        {
-          u32 bytes_transferred = unpack32_3(VifCodeUnpack(vc), data, vc.num);
-          bytes -= bytes_transferred;
-          data += bytes_transferred;
-        }
-        break;
-      case VifCode::Kind::UNPACK_V4_8:
-        {
-          u32 bytes_transferred = unpack8_4(VifCodeUnpack(vc), data, vc.num);
-          bytes -= bytes_transferred;
-          data += bytes_transferred;
-        }
-        break;
-      case VifCode::Kind::UNPACK_V2_16:
-        {
-          u32 bytes_transferred = unpack16_2(VifCodeUnpack(vc), data, vc.num);
-          bytes -= bytes_transferred;
-          data += bytes_transferred;
-        }
-        break;
-      case VifCode::Kind::UNPACK_V4_32:
-        {
-          u32 bytes_transferred = unpack32_4(VifCodeUnpack(vc), data, vc.num);
-          bytes -= bytes_transferred;
-          data += bytes_transferred;
-        }
-        break;
+      case VifCode::Kind::UNPACK_V3_32: {
+        u32 bytes_transferred = unpack32_3(VifCodeUnpack(vc), data, vc.num);
+        bytes -= bytes_transferred;
+        data += bytes_transferred;
+      } break;
+      case VifCode::Kind::UNPACK_V4_8: {
+        u32 bytes_transferred = unpack8_4(VifCodeUnpack(vc), data, vc.num);
+        bytes -= bytes_transferred;
+        data += bytes_transferred;
+      } break;
+      case VifCode::Kind::UNPACK_V2_16: {
+        u32 bytes_transferred = unpack16_2(VifCodeUnpack(vc), data, vc.num);
+        bytes -= bytes_transferred;
+        data += bytes_transferred;
+      } break;
+      case VifCode::Kind::UNPACK_V4_32: {
+        u32 bytes_transferred = unpack32_4(VifCodeUnpack(vc), data, vc.num);
+        bytes -= bytes_transferred;
+        data += bytes_transferred;
+      } break;
       case VifCode::Kind::MSCAL:
-        mscal(vc.immediate);
+        mscal(vc.immediate, render_state, prof);
         break;
       default:
         fmt::print("Generic encountered unknown DMA in handle_dma_stream.\n");
@@ -204,7 +170,7 @@ void GenericRenderer::draw_debug_window() {
 }
 
 u32 GenericRenderer::unpack32_4(const VifCodeUnpack& up, const u8* data, u32 imm) {
-  ASSERT(m_vu.stcycl == 0x404);
+  ASSERT(vu.stcycl == 0x404);
   ASSERT(!up.is_unsigned);
   u32 addr = up.addr_qw;
   ASSERT(imm != 0);
@@ -219,6 +185,8 @@ u32 GenericRenderer::unpack32_4(const VifCodeUnpack& up, const u8* data, u32 imm
   ASSERT(start_in_buff < sizeof(m_buffer.data));
   ASSERT(end_in_buff <= sizeof(m_buffer.data));
   memcpy(m_buffer.data + start_in_buff, data, imm * 16);
+
+  // fmt::print("---------------------------------unpack32_4: {} to {}\n", addr, addr + imm);
   return imm * 16;
 }
 
@@ -226,17 +194,30 @@ u32 GenericRenderer::unpack32_3(const VifCodeUnpack& up, const u8* data, u32 imm
   u32 bytes_read = 0;
   ASSERT(!up.use_tops_flag);
   ASSERT(!up.is_unsigned);
-  ASSERT(m_vu.stcycl == 0x103);  // w = 1, c = 3
+  ASSERT(vu.stcycl == 0x103);  // w = 1, c = 3
   ASSERT(imm != 0);
+
   for (u32 i = 0; i < imm; i++) {
     u32 xyzw[4];
     memcpy(xyzw, data + bytes_read, 12);
     bytes_read += 12;
-    xyzw[3] = 0;
+    xyzw[3] = 0xbeef;
+
+    // check for garbage going into GENERIC VU1 code.
+    float f[3];
+    memcpy(f, xyzw, 12);
+//    if (std::abs(f[0]) > 100000) {
+//      fmt::print("VERY SUSPICIOUS VERTEX: {} 0x{:x} at 0x{:x}\n", f[0], xyzw[0],
+//                 (data + bytes_read) - g_ee_main_mem);
+//    }
+
+    // fmt::print("vtx: {} {} {}\n", f[0], f[1], f[2]);
     u32 total_addr = 16 * (up.addr_qw + 3 * i);
     ASSERT(total_addr + 16 <= sizeof(m_buffer.data));
     memcpy(m_buffer.data + total_addr, xyzw, 16);
   }
+  // fmt::print("---------------------------------unpack32_3: {} to {} imm {}\n", up.addr_qw,
+  // (up.addr_qw + 3 * imm), imm);
   return bytes_read;
 }
 
@@ -244,7 +225,7 @@ u32 GenericRenderer::unpack8_4(const VifCodeUnpack& up, const u8* data, u32 imm)
   u32 bytes_read = 0;
   ASSERT(!up.use_tops_flag);
   ASSERT(up.is_unsigned);
-  ASSERT(m_vu.stcycl == 0x103);  // w = 1, c = 3
+  ASSERT(vu.stcycl == 0x103);  // w = 1, c = 3
   ASSERT(imm != 0);
   for (u32 i = 0; i < imm; i++) {
     u32 xyzw[4] = {data[0], data[1], data[2], data[3]};
@@ -253,6 +234,8 @@ u32 GenericRenderer::unpack8_4(const VifCodeUnpack& up, const u8* data, u32 imm)
     ASSERT(total_addr + 16 <= sizeof(m_buffer.data));
     memcpy(m_buffer.data + total_addr, xyzw, 16);
   }
+  // fmt::print("---------------------------------unpack8_4: {} to {} imm {}\n", up.addr_qw,
+  //           (up.addr_qw + 3 * imm), imm);
   return bytes_read;
 }
 
@@ -260,7 +243,7 @@ u32 GenericRenderer::unpack16_2(const VifCodeUnpack& up, const u8* data, u32 imm
   u32 bytes_read = 0;
   ASSERT(!up.use_tops_flag);
   ASSERT(!up.is_unsigned);
-  ASSERT(m_vu.stcycl == 0x103);  // w = 1, c = 3
+  ASSERT(vu.stcycl == 0x103);  // w = 1, c = 3
   ASSERT(imm != 0);
   for (u32 i = 0; i < imm; i++) {
     s32 xyzw[4];
@@ -277,9 +260,19 @@ u32 GenericRenderer::unpack16_2(const VifCodeUnpack& up, const u8* data, u32 imm
     ASSERT(total_addr + 16 <= sizeof(m_buffer.data));
     memcpy(m_buffer.data + total_addr, xyzw, 16);
   }
+  //  fmt::print("---------------------------------unpack16_2: {} to {} imm {}\n", up.addr_qw,
+  //             (up.addr_qw + 3 * imm), imm);
   return bytes_read;
 }
 
-void GenericRenderer::mscal(int imm) {
+void GenericRenderer::mscal(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof) {
   m_debug += fmt::format("mscal: {}\n", imm);
+  switch (imm) {
+    case 0:
+      mscal0();
+      break;
+    default:
+      mscal_dispatch(imm, render_state, prof);
+      break;
+  }
 }

@@ -773,7 +773,10 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
 
     case VuInstrK::IBGTZ:
       return fmt::format("bc = ((s16)vu.{}) > 0;", instr.src.at(0).to_string(m_label_names));
-
+    case VuInstrK::IBLTZ:
+      return fmt::format("bc = ((s16)vu.{}) < 0;", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::IBLEZ:
+      return fmt::format("bc = ((s16)vu.{}) <= 0;", instr.src.at(0).to_string(m_label_names));
     case VuInstrK::IBGEZ:
       return fmt::format("bc = ((s16)vu.{}) >= 0;", instr.src.at(0).to_string(m_label_names));
 
@@ -844,6 +847,11 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                                        : "vu.{}.mul(Mask::{}, vu.{}, vu.Q);",
                          instr.dst->to_string(m_label_names), mask_to_string(*instr.mask),
                          instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::MULi:
+      return fmt::format(mips2c_format ? "c->vfs[{}].vf.mul(Mask::{}, c->vf_src({}).vf, c->I);"
+                                       : "vu.{}.mul(Mask::{}, vu.{}, vu.I);",
+                         instr.dst->to_string(m_label_names), mask_to_string(*instr.mask),
+                         instr.src.at(0).to_string(m_label_names));
     case VuInstrK::DIV:
       return fmt::format(
           "vu.Q = vu.{}.{}() / vu.{}.{}();", instr.src.at(0).to_string(m_label_names),
@@ -862,6 +870,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
     case VuInstrK::MR32:
     case VuInstrK::MOVE:
     case VuInstrK::ITOF0:
+    case VuInstrK::ITOF12:
     case VuInstrK::ITOF15:
     case VuInstrK::FTOI0:
     case VuInstrK::FTOI4:
@@ -870,6 +879,13 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
                          info(instr.kind).name, mask_to_string(*instr.mask),
                          vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format));
+
+    case VuInstrK::CLIP:
+      return fmt::format("ASSERT(false); cf = clip({}, {}.w(), cf);",
+                         vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                         vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
+    case VuInstrK::FCAND:
+      return fmt::format("ASSERT(false); vu.vi01 = cf & 0x{:x};\n", instr.src.at(0).value());
 
     case VuInstrK::ADDbc:
     case VuInstrK::SUBbc:
@@ -898,6 +914,18 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          info(instr.kind).name, mask_to_string(*instr.mask),
                          vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
                          mips2c_format ? "c->I" : "vu.I");
+    case VuInstrK::SUB:
+      if (instr.dst.value().value() == instr.src.at(0).value() &&
+          instr.src.at(0).value() == instr.src.at(1).value() && instr.mask.value() == 0b1111) {
+        return fmt::format("vu.{}.set_zero();", instr.src.at(0).to_string(m_label_names));
+      } else {
+        return fmt::format("{}.{}(Mask::{}, {}, {});",
+                           vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
+                           info(instr.kind).name, mask_to_string(*instr.mask),
+                           vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                           vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
+      }
+      break;
 
     case VuInstrK::MUL:
     case VuInstrK::ADD:
@@ -951,7 +979,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("vu.{} = xtop();", instr.src.at(0).to_string(m_label_names));
     default:
       unk++;
-      return "???";
+      return "ASSERT(false);";  //"???";
   }
 
 unknown:
@@ -1159,25 +1187,40 @@ std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog, bool mips2
   for (int i = 0; i < (int)prog.instructions().size(); i++) {
     auto lab = m_labels.find(i);
     if (lab != m_labels.end()) {
-      fmt::print("label index is {}\n", lab->second);
       result += m_label_names.at(lab->second);
       result += ':';
       result += '\n';
     }
     auto& pair = prog.instructions().at(i);
-    if (has_branch_delay(pair)) {
+    if (has_branch_delay(pair) && pair.lower.kind != VuInstrK::JALR) {
       result += "  // BRANCH!\n";
       // set bc
-      result += to_string_with_cpp(prog.instructions().at(i), mips2c_format);
+      result += to_string_with_cpp(prog.instructions().at(i), mips2c_format, i);
       result += "\n";
-      result += to_string_with_cpp(prog.instructions().at(i + 1), mips2c_format);
+      result += to_string_with_cpp(prog.instructions().at(i + 1), mips2c_format, i + 1);
       result += "\n";
       result += fmt::format("  if (bc) {{ goto {}; }}", get_label_name(pair, m_label_names));
       result += "\n\n";
       i++;
     } else {
-      result += to_string_with_cpp(prog.instructions().at(i), mips2c_format);
+      result += to_string_with_cpp(prog.instructions().at(i), mips2c_format, i);
       result += '\n';
+    }
+
+    if (i > 0) {
+      const auto& prev = prog.instructions().at(i - 1);
+      bool has_ebit = false;
+      if (prev.lower.iemdt && (*prev.lower.iemdt & 0b100000)) {
+        has_ebit = true;
+      }
+
+      if (prev.upper.iemdt && (*prev.upper.iemdt & 0b100000)) {
+        has_ebit = true;
+      }
+
+      if (has_ebit) {
+        result += "return;\n\n";
+      }
     }
   }
   fmt::print("TOTAL unk: {}\n", unk);
@@ -1190,9 +1233,10 @@ bool is_nop(const VuInstruction& i) {
 }
 }  // namespace
 std::string VuDisassembler::to_string_with_cpp(const VuInstructionPair& pair,
-                                               bool mips2c_format) const {
+                                               bool mips2c_format,
+                                               int idx) const {
   std::string result;
-  result += fmt::format("  // {:25s}  |  {:30s}\n", to_string(pair.lower), to_string(pair.upper));
+  result += fmt::format("  // {:25s}  |  {:30s} {}\n", to_string(pair.lower), to_string(pair.upper), idx);
 
   if (!is_nop(pair.lower) && !is_nop(pair.upper) && pair.lower.kind == VuInstrK::FP_CONSTANT) {
     result += fmt::format("   {:25s}", to_cpp(pair.upper, mips2c_format));

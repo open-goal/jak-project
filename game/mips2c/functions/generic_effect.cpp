@@ -1627,4 +1627,299 @@ void link() {
 } // namespace Mips2C
 
 
+//--------------------------MIPS2C---------------------
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/kscheme.h"
+namespace Mips2C {
+namespace generic_prepare_dma_single {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
+  c->sq(gp, 12448, at);                             // sq gp, 12448(at)
+  get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
+  // nop                                            // sll r0, r0, 0
+  c->lw(t1, 60, at);                                // lw t1, 60(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t8, 64, at);                                // lw t8, 64(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(v1, 40, at);                                // lw v1, 40(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t3, 72, at);                                // lw t3, 72(at)
+  // nop                                            // sll r0, r0, 0
+  c->lh(a1, 18, t1);                                // lh a1, 18(t1)
+  c->mov64(a0, v1);                                 // or a0, v1, r0
+  c->lbu(a2, 16, t1);                               // lbu a2, 16(t1)
+  bc = c->sgpr64(t8) == 0;                          // beq t8, r0, L55
+  c->lq(t4, 11744, at);                             // lq t4, 11744(at)
+  if (bc) {goto block_10;}                          // branch non-likely
+
+  // nop                                            // sll r0, r0, 0
+  c->lq(t9, 11808, at);                             // lq t9, 11808(at)
+  // nop                                            // sll r0, r0, 0
+  c->lq(gp, 11824, at);                             // lq gp, 11824(at)
+  c->mov64(a3, a2);                                 // or a3, a2, r0
+  c->lq(t7, 11840, at);                             // lq t7, 11840(at)
+  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L49
+  c->lq(t2, 11856, at);                             // lq t2, 11856(at)
+  if (bc) {goto block_3;}                           // branch non-likely
+
+  // nop                                            // sll r0, r0, 0
+  c->lq(t0, 11872, at);                             // lq t0, 11872(at)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 11888, at);                             // lq t5, 11888(at)
+  //beq r0, r0, L50                                 // beq r0, r0, L50
+  c->lq(t6, 11936, at);                             // lq t6, 11936(at)
+  goto block_4;                                     // branch always
+
+
+  block_3:
+  // nop                                            // sll r0, r0, 0
+  c->lq(t0, 12032, at);                             // lq t0, 12032(at)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 11936, at);                             // lq t5, 11936(at)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t6, 11936, at);                             // lq t6, 11936(at)
+
+  block_4:
+  // nop                                            // sll r0, r0, 0
+  c->sq(t4, 0, a0);                                 // sq t4, 0(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sq(t9, 16, a0);                                // sq t9, 16(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sq(gp, 32, a0);                                // sq gp, 32(a0)
+  c->mov64(t4, t8);                                 // or t4, t8, r0
+  c->sq(t7, 48, a0);                                // sq t7, 48(a0)
+  c->daddiu(t1, t1, 22);                            // daddiu t1, t1, 22
+  c->sq(t2, 64, a0);                                // sq t2, 64(a0)
+  c->addiu(t2, r0, 0);                              // addiu t2, r0, 0
+  c->sq(t0, 80, a0);                                // sq t0, 80(a0)
+  c->addiu(t0, r0, 128);                            // addiu t0, r0, 128
+  c->sq(t5, 96, a0);                                // sq t5, 96(a0)
+  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L52
+  c->sq(t6, 112, a0);                               // sq t6, 112(a0)
+  if (bc) {goto block_7;}                           // branch non-likely
+
+
+  block_5:
+  c->daddu(a0, a0, t0);                             // daddu a0, a0, t0
+  c->lq(t0, 0, t4);                                 // lq t0, 0(t4)
+  c->daddiu(a3, a3, -1);                            // daddiu a3, a3, -1
+  c->lbu(t3, 0, t1);                                // lbu t3, 0(t1)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 16, t4);                                // lq t5, 16(t4)
+  c->daddu(t7, t3, t3);                             // daddu t7, t3, t3
+  c->lq(t6, 32, t4);                                // lq t6, 32(t4)
+  c->daddu(t8, t7, t3);                             // daddu t8, t7, t3
+  c->lq(t7, 48, t4);                                // lq t7, 48(t4)
+  c->daddiu(t9, t8, 9);                             // daddiu t9, t8, 9
+  c->lq(t8, 64, t4);                                // lq t8, 64(t4)
+  c->daddiu(t4, t4, 80);                            // daddiu t4, t4, 80
+  c->sq(t0, 0, a0);                                 // sq t0, 0(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sw(t2, 12, a0);                                // sw t2, 12(a0)
+  c->daddiu(t1, t1, 1);                             // daddiu t1, t1, 1
+  c->sq(t5, 16, a0);                                // sq t5, 16(a0)
+  c->daddu(t2, t2, t9);                             // daddu t2, t2, t9
+  c->sw(t3, 28, a0);                                // sw t3, 28(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sq(t6, 32, a0);                                // sq t6, 32(a0)
+  c->addiu(t0, r0, 80);                             // addiu t0, r0, 80
+  c->sq(t7, 48, a0);                                // sq t7, 48(a0)
+  bc = ((s64)c->sgpr64(a3)) > 0;                    // bgtz a3, L51
+  c->sq(t8, 64, a0);                                // sq t8, 64(a0)
+  if (bc) {goto block_5;}                           // branch non-likely
+
+  //beq r0, r0, L54                                 // beq r0, r0, L54
+  // nop                                            // sll r0, r0, 0
+  goto block_9;                                     // branch always
+
+
+  block_7:
+  // nop                                            // sll r0, r0, 0
+  c->lw(t3, 68, at);                                // lw t3, 68(at)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t4, 0, t3);                                 // lq t4, 0(t3)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t5, 16, t3);                                // lq t5, 16(t3)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t6, 32, t3);                                // lq t6, 32(t3)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t7, 48, t3);                                // lq t7, 48(t3)
+  // nop                                            // sll r0, r0, 0
+  c->lq(t8, 64, t3);                                // lq t8, 64(t3)
+
+  block_8:
+  c->daddu(a0, a0, t0);                             // daddu a0, a0, t0
+  c->lbu(t3, 0, t1);                                // lbu t3, 0(t1)
+  c->daddiu(a3, a3, -1);                            // daddiu a3, a3, -1
+  c->sq(t4, 0, a0);                                 // sq t4, 0(a0)
+  c->daddu(t0, t3, t3);                             // daddu t0, t3, t3
+  c->sw(t2, 12, a0);                                // sw t2, 12(a0)
+  c->daddu(t0, t0, t3);                             // daddu t0, t0, t3
+  c->sq(t5, 16, a0);                                // sq t5, 16(a0)
+  c->daddiu(t0, t0, 9);                             // daddiu t0, t0, 9
+  c->sw(t3, 28, a0);                                // sw t3, 28(a0)
+  c->daddiu(t1, t1, 1);                             // daddiu t1, t1, 1
+  // nop                                            // sll r0, r0, 0
+  c->daddu(t2, t2, t0);                             // daddu t2, t2, t0
+  c->sq(t6, 32, a0);                                // sq t6, 32(a0)
+  c->addiu(t0, r0, 80);                             // addiu t0, r0, 80
+  c->sq(t7, 48, a0);                                // sq t7, 48(a0)
+  bc = ((s64)c->sgpr64(a3)) > 0;                    // bgtz a3, L53
+  c->sq(t8, 64, a0);                                // sq t8, 64(a0)
+  if (bc) {goto block_8;}                           // branch non-likely
+
+
+  block_9:
+  c->ori(a3, t3, 32768);                            // ori a3, t3, 32768
+  c->sw(a1, 52, at);                                // sw a1, 52(at)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a3, 28, a0);                                // sw a3, 28(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a2, 92, a0);                                // sw a2, 92(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a1, 108, v1);                               // sw a1, 108(v1)
+  //beq r0, r0, L56                                 // beq r0, r0, L56
+  c->sw(r0, 124, v1);                               // sw r0, 124(v1)
+  goto block_11;                                    // branch always
+
+
+  block_10:
+  c->dsll(a3, a2, 2);                               // dsll a3, a2, 2
+  c->sq(t4, 0, a0);                                 // sq t4, 0(a0)
+  c->daddu(a3, a3, a2);                             // daddu a3, a3, a2
+  c->sw(a1, 108, v1);                               // sw a1, 108(v1)
+  c->dsll(a3, a3, 4);                               // dsll a3, a3, 4
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(t0, a3, 128);                           // daddiu t0, a3, 128
+  c->sw(a1, 52, at);                                // sw a1, 52(at)
+
+  block_11:
+  c->dsll(t1, a2, 2);                               // dsll t1, a2, 2
+  c->lw(a3, 12, v1);                                // lw a3, 12(v1)
+  c->daddu(a2, t1, a2);                             // daddu a2, t1, a2
+  c->lw(t1, 84, at);                                // lw t1, 84(at)
+  c->daddiu(a2, a2, 7);                             // daddiu a2, a2, 7
+  // nop                                            // sll r0, r0, 0
+  c->or_(t2, a3, t1);                               // or t2, a3, t1
+  // nop                                            // sll r0, r0, 0
+  c->sll(t3, a2, 16);                               // sll t3, a2, 16
+  c->xori(a3, t1, 38);                              // xori a3, t1, 38
+  c->or_(t1, t2, t3);                               // or t1, t2, t3
+  c->daddiu(a2, a2, 1);                             // daddiu a2, a2, 1
+  // nop                                            // sll r0, r0, 0
+  c->sw(t1, 12, v1);                                // sw t1, 12(v1)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a3, 84, at);                                // sw a3, 84(at)
+  c->daddiu(a1, a1, 3);                             // daddiu a1, a1, 3
+  c->daddu(a0, a0, t0);                             // daddu a0, a0, t0
+  c->dsra(a1, a1, 2);                               // dsra a1, a1, 2
+  c->daddiu(a2, a0, 32);                            // daddiu a2, a0, 32
+  c->dsll(t0, a1, 2);                               // dsll t0, a1, 2
+  // nop                                            // sll r0, r0, 0
+  c->daddu(a3, t0, t0);                             // daddu a3, t0, t0
+  c->dsll(a1, t0, 2);                               // dsll a1, t0, 2
+  c->daddu(a3, a3, t0);                             // daddu a3, a3, t0
+  c->daddiu(a1, a1, 15);                            // daddiu a1, a1, 15
+  c->dsll(a3, a3, 2);                               // dsll a3, a3, 2
+  c->dsra(a1, a1, 4);                               // dsra a1, a1, 4
+  c->daddiu(a3, a3, 15);                            // daddiu a3, a3, 15
+  c->dsll(t1, a1, 4);                               // dsll t1, a1, 4
+  c->dsra(a3, a3, 4);                               // dsra a3, a3, 4
+  c->lw(a1, 88, at);                                // lw a1, 88(at)
+  c->dsll(a3, a3, 4);                               // dsll a3, a3, 4
+  // nop                                            // sll r0, r0, 0
+  c->daddu(a3, a2, a3);                             // daddu a3, a2, a3
+  c->lw(t2, 11968, at);                             // lw t2, 11968(at)
+  c->daddu(a2, a3, t1);                             // daddu a2, a3, t1
+  c->sq(r0, 0, a3);                                 // sq r0, 0(a3)
+  c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
+  c->sq(r0, -16, a3);                               // sq r0, -16(a3)
+  c->daddu(t1, a2, t1);                             // daddu t1, a2, t1
+  c->sq(r0, -32, a3);                               // sq r0, -32(a3)
+  c->daddiu(t1, t1, 16);                            // daddiu t1, t1, 16
+  c->sq(r0, 0, a2);                                 // sq r0, 0(a2)
+  c->subu(t3, t1, v1);                              // subu t3, t1, v1
+  c->sq(r0, -16, a2);                               // sq r0, -16(a2)
+  c->sra(t3, t3, 4);                                // sra t3, t3, 4
+  c->sq(r0, 0, a0);                                 // sq r0, 0(a0)
+  // nop                                            // sll r0, r0, 0
+  c->sh(t3, 0, v1);                                 // sh t3, 0(v1)
+  c->daddiu(v1, t3, 1);                             // daddiu v1, t3, 1
+  c->sq(r0, 0, t1);                                 // sq r0, 0(t1)
+  // nop                                            // sll r0, r0, 0
+  c->sq(r0, -16, t1);                               // sq r0, -16(t1)
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(t5, a1, 1);                             // daddiu t5, a1, 1
+  c->daddiu(t4, a1, 2);                             // daddiu t4, a1, 2
+  c->lw(t3, 11988, at);                             // lw t3, 11988(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t7, 11972, at);                             // lw t7, 11972(at)
+  c->dsll(t0, t0, 16);                              // dsll t0, t0, 16
+  c->lw(t6, 11976, at);                             // lw t6, 11976(at)
+  c->or_(t4, t7, t4);                               // or t4, t7, t4
+  c->lw(t7, 11980, at);                             // lw t7, 11980(at)
+  c->or_(t5, t6, t5);                               // or t5, t6, t5
+  c->lw(t6, 11984, at);                             // lw t6, 11984(at)
+  // nop                                            // sll r0, r0, 0
+  c->lw(t8, 11992, at);                             // lw t8, 11992(at)
+  c->mov64(t9, a1);                                 // or t9, a1, r0
+  c->sw(t2, 8, a0);                                 // sw t2, 8(a0)
+  c->or_(t2, t7, t9);                               // or t2, t7, t9
+  c->sw(t8, 0, t1);                                 // sw t8, 0(t1)
+  c->daddiu(a0, a0, 16);                            // daddiu a0, a0, 16
+  c->sw(r0, 4, t1);                                 // sw r0, 4(t1)
+  c->or_(t4, t4, t0);                               // or t4, t4, t0
+  c->sw(t6, 8, t1);                                 // sw t6, 8(t1)
+  c->daddiu(a3, a3, 16);                            // daddiu a3, a3, 16
+  c->sw(t3, 12, t1);                                // sw t3, 12(t1)
+  c->or_(t1, t5, t0);                               // or t1, t5, t0
+  c->sw(t4, -4, a0);                                // sw t4, -4(a0)
+  c->or_(t0, t2, t0);                               // or t0, t2, t0
+  c->sw(t1, -4, a3);                                // sw t1, -4(a3)
+  c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
+  c->sw(t0, -4, a2);                                // sw t0, -4(a2)
+  c->addiu(t0, r0, 567);                            // addiu t0, r0, 567
+  c->sw(v1, 56, at);                                // sw v1, 56(at)
+  bc = c->sgpr64(a1) != c->sgpr64(t0);              // bne a1, t0, L57
+  c->daddiu(v1, a1, 279);                           // daddiu v1, a1, 279
+  if (bc) {goto block_13;}                          // branch non-likely
+
+  // nop                                            // sll r0, r0, 0
+  c->addiu(v1, r0, 9);                              // addiu v1, r0, 9
+
+  block_13:
+  // nop                                            // sll r0, r0, 0
+  c->sw(v1, 88, at);                                // sw v1, 88(at)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a0, 20, at);                                // sw a0, 20(at)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a3, 24, at);                                // sw a3, 24(at)
+  // nop                                            // sll r0, r0, 0
+  c->sw(a2, 28, at);                                // sw a2, 28(at)
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  c->lq(gp, 12448, at);                             // lq gp, 12448(at)
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 32);                            // daddiu sp, sp, 32
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
+  gLinkedFunctionTable.reg("generic-prepare-dma-single", execute, 128);
+}
+
+} // namespace generic_prepare_dma_single
+} // namespace Mips2C
 

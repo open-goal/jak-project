@@ -83,11 +83,12 @@ TEST(VuDisasm, MercnericVu0) {
   auto data = get_test_data("mercneric-vu0");
   VuDisassembler disasm(VuDisassembler::VuKind::VU0);
   disasm.add_label_with_name(314 - 280, "JUMP_314");
-  disasm.add_label_with_name(427 - 280, "JUMP_427");
   disasm.add_label_with_name(326 - 280, "JUMP_326");
   disasm.add_label_with_name(353 - 280, "JUMP_353");
   disasm.add_label_with_name(386 - 280, "JUMP_386");
-
+  disasm.add_label_with_name(427 - 280, "JUMP_427");
+  disasm.add_label_with_name(438 - 280, "JUMP_438");
+  disasm.add_label_with_name(454 - 280, "JUMP_454");
 
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
 //  EXPECT_EQ(disasm.to_string(prog), get_expected("mercneric-vu0"));
@@ -151,6 +152,7 @@ TEST(VuDisasm, Generic) {
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
   EXPECT_EQ(disasm.to_string(prog), get_expected("generic"));
+  fmt::print("{}\n", disasm.to_string_with_cpp(prog, false));
 }
 
 TEST(VuDisasm, TieNear) {
