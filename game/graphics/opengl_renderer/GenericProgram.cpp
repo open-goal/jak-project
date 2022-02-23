@@ -65,6 +65,8 @@ void GenericRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedPr
      m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
 }
 
+bool clipping_hack = true;
+
 // clang-format off
 void GenericRenderer::mscal0() {
   L4:
@@ -161,6 +163,7 @@ void GenericRenderer::ilw_buffer(Mask mask, u16& dest, u16 addr) {
 void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof) {
   bool bc;
   u16 cf = 0;
+  u16 cf0, cf1, cf2;
   switch(imm) {
     case 6:
       goto L33;
@@ -1162,7 +1165,7 @@ L10:
   // mfir.x vf23, vi07          |  mul.xyz vf12, vf12, Q          402
   vu.vf12.mul(Mask::xyz, vu.vf12, vu.Q);   vu.vf23.mfir(Mask::x, vu.vi07);
   // fcset 0x0                  |  nop                            403
-  ASSERT(false);
+  cf = 0;
   // nop                        |  nop                            404
 
   // nop                        |  mul.xyz vf18, vf18, Q          405
@@ -1190,7 +1193,7 @@ L10:
   // nop                        |  maxy.w vf12, vf12, vf01        416
   vu.vf12.max(Mask::w, vu.vf12, vu.vf01.y());
   // nop                        |  clipw.xyz vf26, vf26           417
-  ASSERT(false); cf = clip(vu.vf26, vu.vf26.w(), cf);
+ cf = clip(vu.vf26, vu.vf26.w(), cf);
   // nop                        |  mul.xyz vf19, vf19, Q          418
   vu.vf19.mul(Mask::xyz, vu.vf19, vu.Q);
   // BRANCH!
@@ -1223,7 +1226,7 @@ L10:
   vu.vf13.max(Mask::w, vu.vf13, vu.vf01.y());   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf27, vf27           431
-  ASSERT(false); cf = clip(vu.vf27, vu.vf27.w(), cf);   bc = (vu.vi14 == vu.vi10);
+   cf = clip(vu.vf27, vu.vf27.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf12, -10(vi10)    |  mul.xyz vf20, vf20, Q          432
   vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   sq_buffer(Mask::xyzw, vu.vf12, vu.vi10 + -10);
   if (bc) { goto L46; }
@@ -1258,7 +1261,7 @@ L10:
   vu.vf14.max(Mask::w, vu.vf14, vu.vf01.y());   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf28, vf28           445
-  ASSERT(false); cf = clip(vu.vf28, vu.vf28.w(), cf);   bc = (vu.vi14 == vu.vi10);
+  cf = clip(vu.vf28, vu.vf28.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf13, -10(vi10)    |  mul.xyz vf21, vf21, Q          446
   vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   sq_buffer(Mask::xyzw, vu.vf13, vu.vi10 + -10);
   if (bc) { goto L46; }
@@ -1275,7 +1278,7 @@ L10:
   vu.vf14.add(Mask::w, vu.vf14, vu.vf01.w());
   L38:
   // fcand vi01, 0x3ffff        |  add.xyzw vf15, vf15, vf04      450
-  vu.vf15.add(Mask::xyzw, vu.vf15, vu.vf04);   ASSERT(false); vu.vi01 = cf & 0x3ffff;
+  vu.vf15.add(Mask::xyzw, vu.vf15, vu.vf04);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L55       |  maddax.xyzw ACC, vf08, vf16    451
@@ -1299,7 +1302,7 @@ L10:
   vu.vf15.max(Mask::w, vu.vf15, vu.vf01.y());   sq_buffer(Mask::xyzw, vu.vf20, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf29, vf29           459
-  ASSERT(false); cf = clip(vu.vf29, vu.vf29.w(), cf);   bc = (vu.vi14 == vu.vi10);
+  cf = clip(vu.vf29, vu.vf29.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf14, -10(vi10)    |  mul.xyz vf18, vf18, Q          460
   vu.vf18.mul(Mask::xyz, vu.vf18, vu.Q);   sq_buffer(Mask::xyzw, vu.vf14, vu.vi10 + -10);
   if (bc) { goto L46; }
@@ -1315,7 +1318,7 @@ L10:
   vu.vf15.add(Mask::w, vu.vf15, vu.vf01.w());
   L40:
   // fcand vi01, 0x3ffff        |  add.xyzw vf12, vf12, vf04      464
-  vu.vf12.add(Mask::xyzw, vu.vf12, vu.vf04);   ASSERT(false); vu.vi01 = cf & 0x3ffff;
+  vu.vf12.add(Mask::xyzw, vu.vf12, vu.vf04);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L59       |  maddax.xyzw ACC, vf08, vf16    465
@@ -1339,7 +1342,7 @@ L10:
   vu.vf12.max(Mask::w, vu.vf12, vu.vf01.y());   sq_buffer(Mask::xyzw, vu.vf21, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf26, vf26           473
-  ASSERT(false); cf = clip(vu.vf26, vu.vf26.w(), cf);   bc = (vu.vi14 == vu.vi10);
+  cf = clip(vu.vf26, vu.vf26.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf15, -10(vi10)    |  mul.xyz vf19, vf19, Q          474
   vu.vf19.mul(Mask::xyz, vu.vf19, vu.Q);   sq_buffer(Mask::xyzw, vu.vf15, vu.vi10 + -10);
   if (bc) { goto L46; }
@@ -1355,7 +1358,7 @@ L10:
   vu.vf12.add(Mask::w, vu.vf12, vu.vf01.w());
   L42:
   // fcand vi01, 0x3ffff        |  add.xyzw vf13, vf13, vf04      478
-  vu.vf13.add(Mask::xyzw, vu.vf13, vu.vf04);   ASSERT(false); vu.vi01 = cf & 0x3ffff;
+  vu.vf13.add(Mask::xyzw, vu.vf13, vu.vf04);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L47       |  maddax.xyzw ACC, vf08, vf16    479
@@ -1379,7 +1382,7 @@ L10:
   vu.vf13.max(Mask::w, vu.vf13, vu.vf01.y());   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf27, vf27           487
-  ASSERT(false); cf = clip(vu.vf27, vu.vf27.w(), cf);   bc = (vu.vi14 == vu.vi10);
+  cf = clip(vu.vf27, vu.vf27.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf12, -10(vi10)    |  mul.xyz vf20, vf20, Q          488
   vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   sq_buffer(Mask::xyzw, vu.vf12, vu.vi10 + -10);
   if (bc) { goto L46; }
@@ -1395,7 +1398,7 @@ L10:
   vu.vf13.add(Mask::w, vu.vf13, vu.vf01.w());
   L44:
   // fcand vi01, 0x3ffff        |  add.xyzw vf14, vf14, vf04      492
-  vu.vf14.add(Mask::xyzw, vu.vf14, vu.vf04);   ASSERT(false); vu.vi01 = cf & 0x3ffff;
+  vu.vf14.add(Mask::xyzw, vu.vf14, vu.vf04);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L51       |  maddax.xyzw ACC, vf08, vf16    493
@@ -1419,7 +1422,7 @@ L10:
   vu.vf14.max(Mask::w, vu.vf14, vu.vf01.y());   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
   // BRANCH!
   // ibne vi14, vi10, L37       |  clipw.xyz vf28, vf28           501
-  ASSERT(false); cf = clip(vu.vf28, vu.vf28.w(), cf);   bc = (vu.vi14 != vu.vi10);
+  cf = clip(vu.vf28, vu.vf28.w(), cf);   bc = (vu.vi14 != vu.vi10);
   // sq.xyzw vf13, -10(vi10)    |  mul.xyz vf21, vf21, Q          502
   vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   sq_buffer(Mask::xyzw, vu.vf13, vu.vi10 + -10);
   if (bc) { goto L37; }
@@ -1449,25 +1452,28 @@ L10:
   // isw.y vi02, 1001(vi00)     |  nop                            510
   isw_buffer(Mask::y, vu.vi02, 1001);
   // isw.z vi03, 1001(vi00)     |  clipw.xyz vf23, vf23           511
-  ASSERT(false); cf = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
+  // TODO: check clipping pipeline here.
+  cf0 = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
   // isw.w vi04, 1001(vi00)     |  clipw.xyz vf24, vf24           512
-  ASSERT(false); cf = clip(vu.vf24, vu.vf24.w(), cf);   isw_buffer(Mask::w, vu.vi04, 1001);
+  cf1 = clip(vu.vf24, vu.vf24.w(), cf0);   isw_buffer(Mask::w, vu.vi04, 1001);
   // mfir.x vf31, vi05          |  clipw.xyz vf25, vf25           513
-  ASSERT(false); cf = clip(vu.vf25, vu.vf25.w(), cf);   vu.vf31.mfir(Mask::x, vu.vi05);
+  cf2 = clip(vu.vf25, vu.vf25.w(), cf1);   vu.vf31.mfir(Mask::x, vu.vi05);
   // iaddiu vi04, vi00, 0x3f    |  nop                            514
   vu.vi04 = 0x3f; /* 63 */
   // fcget vi01                 |  nop                            515
-  ASSERT(false);
+  vu.vi01 = cf0;
   // fcget vi02                 |  nop                            516
-  ASSERT(false);
+  vu.vi02 = cf1;
   // fcget vi03                 |  nop                            517
-  ASSERT(false);
+  vu.vi03 = cf2;
+  cf = cf2;
   // iand vi01, vi01, vi04      |  clipw.xyz vf28, vf28           518
-  ASSERT(false); cf = clip(vu.vf28, vu.vf28.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
+  // TODO, is this right?
+  cf = clip(vu.vf28, vu.vf28.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
   // iand vi01, vi01, vi02      |  clipw.xyz vf29, vf29           519
-  ASSERT(false); cf = clip(vu.vf29, vu.vf29.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
+  cf = clip(vu.vf29, vu.vf29.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
   // iand vi01, vi01, vi03      |  clipw.xyz vf26, vf26           520
-  ASSERT(false); cf = clip(vu.vf26, vu.vf26.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
+  cf = clip(vu.vf26, vu.vf26.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
   // mfir.y vf31, vi06          |  nop                            521
   vu.vf31.mfir(Mask::y, vu.vi06);
   // BRANCH!
@@ -1475,7 +1481,7 @@ L10:
   bc = (vu.vi01 == 0);
   // mfir.z vf31, vi07          |  nop                            523
   vu.vf31.mfir(Mask::z, vu.vi07);
-  if (bc) { goto L49; }
+  if (!clipping_hack && bc) { goto L49; }
 
   L48:
   // div Q, vf01.x, vf14.w      |  nop                            524
@@ -1639,26 +1645,28 @@ L10:
   vu.vf25.mul(Mask::xyzw, vu.vf27, vu.vf07);   isw_buffer(Mask::x, vu.vi01, 1001);
   // isw.y vi02, 1001(vi00)     |  nop                            593
   isw_buffer(Mask::y, vu.vi02, 1001);
+  // TODO more clipping pipeline?
   // isw.z vi03, 1001(vi00)     |  clipw.xyz vf23, vf23           594
-  ASSERT(false); cf = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
+  cf0 = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
   // isw.w vi04, 1001(vi00)     |  clipw.xyz vf24, vf24           595
-  ASSERT(false); cf = clip(vu.vf24, vu.vf24.w(), cf);   isw_buffer(Mask::w, vu.vi04, 1001);
+  cf1 = clip(vu.vf24, vu.vf24.w(), cf0);   isw_buffer(Mask::w, vu.vi04, 1001);
   // mfir.x vf31, vi05          |  clipw.xyz vf25, vf25           596
-  ASSERT(false); cf = clip(vu.vf25, vu.vf25.w(), cf);   vu.vf31.mfir(Mask::x, vu.vi05);
+  cf2 = clip(vu.vf25, vu.vf25.w(), cf1);   vu.vf31.mfir(Mask::x, vu.vi05);
   // iaddiu vi04, vi00, 0x3f    |  nop                            597
   vu.vi04 = 0x3f; /* 63 */
   // fcget vi01                 |  nop                            598
-  ASSERT(false);
+  vu.vi01 = cf0;
   // fcget vi02                 |  nop                            599
-  ASSERT(false);
+  vu.vi02 = cf1;
   // fcget vi03                 |  nop                            600
-  ASSERT(false);
+  vu.vi03 = cf2;
+  cf = cf2;
   // iand vi01, vi01, vi04      |  clipw.xyz vf29, vf29           601
-  ASSERT(false); cf = clip(vu.vf29, vu.vf29.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
+  cf = clip(vu.vf29, vu.vf29.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
   // iand vi01, vi01, vi02      |  clipw.xyz vf26, vf26           602
-  ASSERT(false); cf = clip(vu.vf26, vu.vf26.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
+  cf = clip(vu.vf26, vu.vf26.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
   // iand vi01, vi01, vi03      |  clipw.xyz vf27, vf27           603
-  ASSERT(false); cf = clip(vu.vf27, vu.vf27.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
+  cf = clip(vu.vf27, vu.vf27.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
   // mfir.y vf31, vi06          |  nop                            604
   vu.vf31.mfir(Mask::y, vu.vi06);
   // BRANCH!
@@ -1666,7 +1674,7 @@ L10:
   bc = (vu.vi01 == 0);
   // mfir.z vf31, vi07          |  nop                            606
   vu.vf31.mfir(Mask::z, vu.vi07);
-  if (bc) { goto L53; }
+  if (!clipping_hack && bc) { goto L53; }
 
   L52:
   // div Q, vf01.x, vf15.w      |  nop                            607
@@ -1830,26 +1838,28 @@ L10:
   vu.vf25.mul(Mask::xyzw, vu.vf28, vu.vf07);   isw_buffer(Mask::x, vu.vi01, 1001);
   // isw.y vi02, 1001(vi00)     |  nop                            676
   isw_buffer(Mask::y, vu.vi02, 1001);
+  // TODO more clipping?
   // isw.z vi03, 1001(vi00)     |  clipw.xyz vf23, vf23           677
-  ASSERT(false); cf = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
+  cf0 = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
   // isw.w vi04, 1001(vi00)     |  clipw.xyz vf24, vf24           678
-  ASSERT(false); cf = clip(vu.vf24, vu.vf24.w(), cf);   isw_buffer(Mask::w, vu.vi04, 1001);
+  cf1 = clip(vu.vf24, vu.vf24.w(), cf0);   isw_buffer(Mask::w, vu.vi04, 1001);
   // mfir.x vf31, vi05          |  clipw.xyz vf25, vf25           679
-  ASSERT(false); cf = clip(vu.vf25, vu.vf25.w(), cf);   vu.vf31.mfir(Mask::x, vu.vi05);
+  cf2 = clip(vu.vf25, vu.vf25.w(), cf1);   vu.vf31.mfir(Mask::x, vu.vi05);
   // iaddiu vi04, vi00, 0x3f    |  nop                            680
   vu.vi04 = 0x3f; /* 63 */
   // fcget vi01                 |  nop                            681
-  ASSERT(false);
+  vu.vi01 = cf0;
   // fcget vi02                 |  nop                            682
-  ASSERT(false);
+  vu.vi02 = cf1;
   // fcget vi03                 |  nop                            683
-  ASSERT(false);
+  vu.vi03 = cf2;
+  cf = cf2;
   // iand vi01, vi01, vi04      |  clipw.xyz vf26, vf26           684
-  ASSERT(false); cf = clip(vu.vf26, vu.vf26.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
+  cf = clip(vu.vf26, vu.vf26.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
   // iand vi01, vi01, vi02      |  clipw.xyz vf27, vf27           685
-  ASSERT(false); cf = clip(vu.vf27, vu.vf27.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
+  cf = clip(vu.vf27, vu.vf27.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
   // iand vi01, vi01, vi03      |  clipw.xyz vf28, vf28           686
-  ASSERT(false); cf = clip(vu.vf28, vu.vf28.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
+  cf = clip(vu.vf28, vu.vf28.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
   // mfir.y vf31, vi06          |  nop                            687
   vu.vf31.mfir(Mask::y, vu.vi06);
   // BRANCH!
@@ -1857,7 +1867,7 @@ L10:
   bc = (vu.vi01 == 0);
   // mfir.z vf31, vi07          |  nop                            689
   vu.vf31.mfir(Mask::z, vu.vi07);
-  if (bc) { goto L57; }
+  if (!clipping_hack && bc) { goto L57; }
 
   L56:
   // div Q, vf01.x, vf12.w      |  nop                            690
@@ -2022,25 +2032,27 @@ L10:
   // isw.y vi02, 1001(vi00)     |  nop                            759
   isw_buffer(Mask::y, vu.vi02, 1001);
   // isw.z vi03, 1001(vi00)     |  clipw.xyz vf23, vf23           760
-  ASSERT(false); cf = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
+  // TODO more clipping
+  cf0 = clip(vu.vf23, vu.vf23.w(), cf);   isw_buffer(Mask::z, vu.vi03, 1001);
   // isw.w vi04, 1001(vi00)     |  clipw.xyz vf24, vf24           761
-  ASSERT(false); cf = clip(vu.vf24, vu.vf24.w(), cf);   isw_buffer(Mask::w, vu.vi04, 1001);
+  cf1 = clip(vu.vf24, vu.vf24.w(), cf0);   isw_buffer(Mask::w, vu.vi04, 1001);
   // mfir.x vf31, vi05          |  clipw.xyz vf25, vf25           762
-  ASSERT(false); cf = clip(vu.vf25, vu.vf25.w(), cf);   vu.vf31.mfir(Mask::x, vu.vi05);
+  cf2 = clip(vu.vf25, vu.vf25.w(), cf1);   vu.vf31.mfir(Mask::x, vu.vi05);
   // iaddiu vi04, vi00, 0x3f    |  nop                            763
+  cf = cf2;
   vu.vi04 = 0x3f; /* 63 */
   // fcget vi01                 |  nop                            764
-  ASSERT(false);
+  vu.vi01 = cf0;
   // fcget vi02                 |  nop                            765
-  ASSERT(false);
+  vu.vi02 = cf1;
   // fcget vi03                 |  nop                            766
-  ASSERT(false);
+  vu.vi03 = cf2;
   // iand vi01, vi01, vi04      |  clipw.xyz vf27, vf27           767
-  ASSERT(false); cf = clip(vu.vf27, vu.vf27.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
+  cf = clip(vu.vf27, vu.vf27.w(), cf);   vu.vi01 = vu.vi01 & vu.vi04;
   // iand vi01, vi01, vi02      |  clipw.xyz vf28, vf28           768
-  ASSERT(false); cf = clip(vu.vf28, vu.vf28.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
+  cf = clip(vu.vf28, vu.vf28.w(), cf);   vu.vi01 = vu.vi01 & vu.vi02;
   // iand vi01, vi01, vi03      |  clipw.xyz vf29, vf29           769
-  ASSERT(false); cf = clip(vu.vf29, vu.vf29.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
+  cf = clip(vu.vf29, vu.vf29.w(), cf);   vu.vi01 = vu.vi01 & vu.vi03;
   // mfir.y vf31, vi06          |  nop                            770
   vu.vf31.mfir(Mask::y, vu.vi06);
   // BRANCH!
@@ -2048,7 +2060,7 @@ L10:
   bc = (vu.vi01 == 0);
   // mfir.z vf31, vi07          |  nop                            772
   vu.vf31.mfir(Mask::z, vu.vi07);
-  if (bc) { goto L61; }
+  if (!clipping_hack && bc) { goto L61; }
 
   L60:
   // div Q, vf01.x, vf13.w      |  nop                            773

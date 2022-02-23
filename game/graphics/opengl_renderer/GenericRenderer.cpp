@@ -9,6 +9,7 @@ void GenericRenderer::render(DmaFollower& dma,
                              ScopedProfilerNode& prof) {
   m_skipped_tags = 0;
   m_debug.clear();
+  m_direct.reset_state();
 
   // skip if disabled
   if (!m_enabled) {
@@ -114,6 +115,7 @@ void GenericRenderer::render(DmaFollower& dma,
     }
     m_skipped_tags++;
   }
+  m_direct.flush_pending(render_state, prof);
 }
 
 void GenericRenderer::handle_dma_stream(const u8* data,
@@ -167,6 +169,10 @@ void GenericRenderer::handle_dma_stream(const u8* data,
 void GenericRenderer::draw_debug_window() {
   ImGui::Text("Skipped %d tags", m_skipped_tags);
   ImGui::Text("Debug:\n%s\n", m_debug.c_str());
+  if (ImGui::TreeNode("Direct")) {
+    m_direct.draw_debug_window();
+    ImGui::TreePop();
+  }
 }
 
 u32 GenericRenderer::unpack32_4(const VifCodeUnpack& up, const u8* data, u32 imm) {
