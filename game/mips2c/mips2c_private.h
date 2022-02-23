@@ -644,7 +644,7 @@ struct ExecutionContext {
   void psraw(int dest, int src, int sa) {
     auto s = gpr_src(src);
     for (int i = 0; i < 4; i++) {
-      gprs[dest].ds32[i] = s.ds32[i] >> (sa & 0x1f);
+      gprs[dest].du32[i] = s.ds32[i] >> (sa & 0x1f);
     }
   }
 

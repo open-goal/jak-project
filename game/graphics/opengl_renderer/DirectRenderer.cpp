@@ -346,6 +346,7 @@ void DirectRenderer::update_gl_blend() {
     glDisable(GL_BLEND);
   } else {
     glEnable(GL_BLEND);
+    glBlendColor(1, 1, 1, 1);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd

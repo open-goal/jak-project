@@ -456,6 +456,28 @@ struct Cache {
 
 
 void vcallms0(ExecutionContext* c) {
+  // this function does lighting calculations for 4 vertices.
+  // the input colors (u8's) are in vf5, vf6, vf7, vf8
+
+//  fmt::print("nromal:\n {}\n {}\n {}\n {}\n\n", c->vf_src(vf1).vf.print(), c->vf_src(vf2).vf.print(), c->vf_src(vf3).vf.print(), c->vf_src(vf4).vf.print());
+//  //fmt::print("dir:\n {}\n {}\n {}\n\n", c->vf_src(vf10).vf.print(), c->vf_src(vf11).vf.print(), c->vf_src(vf12).vf.print());
+//
+//  // hack to see normals as colors
+//  c->vfs[vf21].vf.move(Mask::xyzw, c->vf_src(vf17).vf);
+//  c->vfs[vf22].vf.move(Mask::xyzw, c->vf_src(vf18).vf);
+//  c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf19).vf);
+//  c->vfs[vf24].vf.move(Mask::xyzw, c->vf_src(vf20).vf);
+//  for (int vec = 0; vec < 4; vec++) {
+//    for (int cmp = 0; cmp < 3; cmp++) {
+////      c->vfs[vf17 + vec].f[cmp] = vec * 16 + cmp * 4;
+//      u32 val = 128 + 127 * c->vfs[vf1 + vec].f[cmp];
+//      fmt::print("{} ", val);
+//      memcpy(&c->vfs[vf17 + vec].f[cmp], &val, 4);
+//    }
+//  }
+//  fmt::print("\n");
+//  return;
+
   // move.xyzw vf21, vf17       |  mulax.xyzw ACC, vf10, vf01
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf01).vf.x());   c->vfs[vf21].vf.move(Mask::xyzw, c->vf_src(vf17).vf);
   // move.xyzw vf22, vf18       |  madday.xyzw ACC, vf11, vf01
@@ -472,6 +494,9 @@ void vcallms0(ExecutionContext* c) {
   c->vfs[vf19].vf.itof0(Mask::xyzw, c->vf_src(vf07).vf);
   // nop                        |  itof0.xyzw vf20, vf08
   c->vfs[vf20].vf.itof0(Mask::xyzw, c->vf_src(vf08).vf);
+
+  //fmt::print("light in:\n {}\n {}\n {}\n {}\n\n", c->vf_src(vf17).vf.print(), c->vf_src(vf18).vf.print(), c->vf_src(vf19).vf.print(), c->vf_src(vf20).vf.print());
+
   // nop                        |  madday.xyzw ACC, vf11, vf02
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf02].vf.y());
   // nop                        |  maddz.xyzw vf02, vf12, vf02
@@ -544,6 +569,10 @@ void vcallms0(ExecutionContext* c) {
   c->vfs[vf19].vf.mini(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf09).vf.x());
   // nop                        |  minix.xyzw vf20, vf20, vf09
   c->vfs[vf20].vf.mini(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf09).vf.x());
+  //fmt::print("light:\n {}\n {}\n {}\n {}\n\n", c->vf_src(vf17).vf.print(), c->vf_src(vf18).vf.print(), c->vf_src(vf19).vf.print(), c->vf_src(vf20).vf.print());
+
+
+
   // nop                        |  ftoi0.xyzw vf17, vf17
   c->vfs[vf17].vf.ftoi0(Mask::xyzw, c->vf_src(vf17).vf);
   // nop                        |  ftoi0.xyzw vf18, vf18

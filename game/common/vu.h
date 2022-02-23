@@ -74,14 +74,12 @@ struct alignas(16) Vf {
   const float& z() const { return data[2]; }
   const float& w() const { return data[3]; }
 
-  std::string print() const {
-    return fmt::format("{} {} {} {}", x(), y(), z(), w());
-  }
+  std::string print() const { return fmt::format("{} {} {} {}", x(), y(), z(), w()); }
 
   std::string print_hex() const {
-    return fmt::format("0x{:x} 0x{:x} 0x{:x} 0x{:x}", x_as_u32(), y_as_u32(), z_as_u32(), w_as_u32());
+    return fmt::format("0x{:x} 0x{:x} 0x{:x} 0x{:x}", x_as_u32(), y_as_u32(), z_as_u32(),
+                       w_as_u32());
   }
-
 
   void set_zero() {
     data[0] = 0;
@@ -234,6 +232,12 @@ struct alignas(16) Vf {
     }
   }
 
+  void fill(float f) {
+    for (auto& x : data) {
+      x = f;
+    }
+  }
+
   void move(Mask mask, const Vf& other) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
@@ -352,9 +356,9 @@ struct alignas(16) Vf {
   void ftoi12(Mask mask, const Vf& a) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
-//        if (std::isnan(a.data[i])) {
-//          ASSERT(false);
-//        }
+        //        if (std::isnan(a.data[i])) {
+        //          ASSERT(false);
+        //        }
         s32 val = a.data[i] * 4096.f;
         memcpy(&data[i], &val, 4);
       }

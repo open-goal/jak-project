@@ -236,6 +236,7 @@ u32 GenericRenderer::unpack8_4(const VifCodeUnpack& up, const u8* data, u32 imm)
   for (u32 i = 0; i < imm; i++) {
     u32 xyzw[4] = {data[0], data[1], data[2], data[3]};
     bytes_read += 4;
+    data += 4;
     u32 total_addr = 16 * (up.addr_qw + 3 * i);
     ASSERT(total_addr + 16 <= sizeof(m_buffer.data));
     memcpy(m_buffer.data + total_addr, xyzw, 16);

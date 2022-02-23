@@ -245,9 +245,6 @@ extern void link();
 namespace high_speed_reject {
 extern void link();
 }
-namespace draw_bones_generic_merc {
-extern void link();
-}
 
 namespace generic_prepare_dma_single {
 extern void link();
@@ -286,8 +283,7 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       method_10_collide_edge_hold_list::link, method_18_collide_edge_work::link}},
     {"joint", {calc_animation_from_spr::link, cspace_parented_transformq_joint::link}},
     {"bones",
-     {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link,
-      draw_bones_generic_merc::link}},
+     {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link}},
     {"merc-blend-shape", {blerc_execute::link, setup_blerc_chains_for_one_fragment::link}},
     {"generic-merc",
      {generic_merc_init_asm::link, generic_merc_execute_asm::link, mercneric_convert::link,
