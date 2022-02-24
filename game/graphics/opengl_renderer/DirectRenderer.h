@@ -63,6 +63,13 @@ class DirectRenderer : public BucketRenderer {
 
   void draw_debug_window() override;
 
+  void hack_disable_blend() {
+    m_blend_state.a = GsAlpha::BlendMode::SOURCE;
+    m_blend_state.b = GsAlpha::BlendMode::SOURCE;
+    m_blend_state.c = GsAlpha::BlendMode::SOURCE;
+    m_blend_state.d = GsAlpha::BlendMode::SOURCE;
+  }
+
  private:
   void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -97,7 +104,7 @@ class DirectRenderer : public BucketRenderer {
                            bool advance);
 
   void update_gl_prim(SharedRenderState* render_state);
-  void update_gl_blend();
+  void update_gl_blend(SharedRenderState* render_state);
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state, int unit);
 
@@ -239,6 +246,7 @@ class DirectRenderer : public BucketRenderer {
     GLuint vao;
     u32 vertex_buffer_bytes = 0;
     u32 vertex_buffer_max_verts = 0;
+    float color_mult = 1.0;
   } m_ogl;
 
   struct {

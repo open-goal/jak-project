@@ -265,6 +265,10 @@ struct ExecutionContext {
     gprs[gpr].ds64[0] = val;  // sign extend and set
   }
 
+  void load_symbol_addr(int gpr, void* sym_addr) {
+    gprs[gpr].du64[0] = ((const u8*)sym_addr) - g_ee_main_mem;
+  }
+
   void lbu(int dst, int offset, int src) {
     u8 val;
     memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 1);
@@ -796,6 +800,17 @@ struct ExecutionContext {
     }
   }
 
+  void vadda_bc(DEST mask, BC bc, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] = s0.f[i] + s1.f[(int)bc];
+      }
+    }
+  }
+
   void vmadda_bc(DEST mask, BC bc, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -803,6 +818,17 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         acc.f[i] += s0.f[i] * s1.f[(int)bc];
+      }
+    }
+  }
+
+  void vmadda(DEST mask, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] += s0.f[i] * s1.f[i];
       }
     }
   }
@@ -828,6 +854,18 @@ struct ExecutionContext {
       }
     }
   }
+
+  void vmadd(DEST mask, int dst, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = acc.f[i] + s0.f[i] * s1.f[i];
+      }
+    }
+  }
+
 
   void vmsub_bc(DEST mask, BC bc, int dst, int src0, int src1) {
     auto s0 = vf_src(src0);

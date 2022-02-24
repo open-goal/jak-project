@@ -245,8 +245,19 @@ extern void link();
 namespace high_speed_reject {
 extern void link();
 }
-
 namespace generic_prepare_dma_single {
+extern void link();
+}
+namespace ripple_create_wave_table {
+extern void link();
+}
+namespace ripple_execute_init {
+extern void link();
+}
+namespace ripple_apply_wave_table {
+extern void link();
+}
+namespace ripple_matrix_scale {
 extern void link();
 }
 LinkedFunctionTable gLinkedFunctionTable;
@@ -290,7 +301,10 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       high_speed_reject::link}},
     {"generic-effect",
      {generic_prepare_dma_double::link, generic_light_proc::link, generic_envmap_proc::link,
-      generic_prepare_dma_single::link}}};
+      generic_prepare_dma_single::link}},
+    {"ripple",
+     {ripple_execute_init::link, ripple_create_wave_table::link, ripple_apply_wave_table::link,
+      ripple_matrix_scale::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

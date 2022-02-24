@@ -1311,7 +1311,7 @@ void link() {
   cache.merc_globals = intern_from_c("*merc-globals*").c();
   cache.merc_death_spawn = intern_from_c("merc-death-spawn").c();
   cache.vector_matrix = intern_from_c("vector-matrix*!").c();
-  gLinkedFunctionTable.reg("generic-merc-execute-asm", execute, 512);
+  gLinkedFunctionTable.reg("generic-merc-execute-asm", execute, 1024);
 }
 
 } // namespace generic_merc_execute_asm
@@ -2759,6 +2759,7 @@ u64 execute(void* ctxt) {
   c->mov128_vf_gpr(vf3, t1);                        // qmtc2.ni vf3, t1
   c->pextuh(t9, r0, t9);                            // pextuh t9, r0, t9
   c->sqc2_debug(__LINE__, vf14, 80, v1);                            // sqc2 vf14, 80(v1)
+
   c->daddiu(at, at, 16);                            // daddiu at, at, 16
   c->addiu(s4, s4, 2);                              // addiu s4, s4, 2
   c->sqc2_debug(__LINE__, vf15, 128, v1);                           // sqc2 vf15, 128(v1)

@@ -5,6 +5,7 @@ out vec4 color;
 in vec4 fragment_color;
 in vec3 tex_coord;
 uniform float alpha_reject;
+uniform float color_mult;
 
 in flat uvec2 tex_info;
 
@@ -41,6 +42,7 @@ void main() {
     T0.w = 1.0;
   }
   color = fragment_color * T0 * 2.0;
+  color.xyz *= color_mult;
   if (color.a < alpha_reject) {
     discard;
   }

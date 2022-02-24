@@ -11,6 +11,12 @@ void GenericRenderer::render(DmaFollower& dma,
   m_debug.clear();
   m_direct.reset_state();
 
+  // if the first draw should have no blending, it sets ABE in PRIM, but not ALPHA.
+  // the default ALPHA doesn't seem to be right. I don't know what's supposed to set it here.
+  // although this is definitely a hack, it doesn't seem to cause problems when the first thing to
+  // draw is transparent.
+  m_direct.hack_disable_blend();
+
   // skip if disabled
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -99,6 +105,7 @@ void GenericRenderer::render(DmaFollower& dma,
       data_offset += 16;
 
       ASSERT(data_offset == 32);
+      ASSERT(data_offset == data.size_bytes);
     } else if (v0.kind == VifCode::Kind::NOP && v1.kind == VifCode::Kind::UNPACK_V3_32) {
       u32 bytes_used = unpack32_3(VifCodeUnpack(v1), data.data, v1.num);
       if (bytes_used < data.size_bytes) {
@@ -212,10 +219,10 @@ u32 GenericRenderer::unpack32_3(const VifCodeUnpack& up, const u8* data, u32 imm
     // check for garbage going into GENERIC VU1 code.
     float f[3];
     memcpy(f, xyzw, 12);
-//    if (std::abs(f[0]) > 100000) {
-//      fmt::print("VERY SUSPICIOUS VERTEX: {} 0x{:x} at 0x{:x}\n", f[0], xyzw[0],
-//                 (data + bytes_read) - g_ee_main_mem);
-//    }
+    //    if (std::abs(f[0]) > 100000) {
+    //      fmt::print("VERY SUSPICIOUS VERTEX: {} 0x{:x} at 0x{:x}\n", f[0], xyzw[0],
+    //                 (data + bytes_read) - g_ee_main_mem);
+    //    }
 
     // fmt::print("vtx: {} {} {}\n", f[0], f[1], f[2]);
     u32 total_addr = 16 * (up.addr_qw + 3 * i);

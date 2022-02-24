@@ -740,6 +740,18 @@ Mips2C_Line handle_vmadda_bc(const Instruction& i0, const std::string& instr_str
           instr_str};
 }
 
+Mips2C_Line handle_vmadda(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vmadda(DEST::{},  {}, {});", dest_to_char(i0.cop2_dest),
+                      reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
+Mips2C_Line handle_vadda_bc(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vadda_bc(DEST::{}, BC::{}, {}, {});", dest_to_char(i0.cop2_dest),
+                      i0.cop2_bc_to_char(), reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
 Mips2C_Line handle_vmsuba_bc(const Instruction& i0, const std::string& instr_str) {
   return {fmt::format("c->vmsuba_bc(DEST::{}, BC::{}, {}, {});", dest_to_char(i0.cop2_dest),
                       i0.cop2_bc_to_char(), reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
@@ -959,6 +971,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3_bc_mask(i0, instr_str, "vsub_bc");
     case InstructionKind::VMUL_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmul_bc");
+    case InstructionKind::VMADD:
+      return handle_generic_op3_mask(i0, instr_str, "vmadd");
     case InstructionKind::VMUL:
       return handle_generic_op3_mask(i0, instr_str, "vmul");
     case InstructionKind::VADD:
@@ -1068,8 +1082,12 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vmula_bc(i0, instr_str);
     case InstructionKind::VMADDA_BC:
       return handle_vmadda_bc(i0, instr_str);
+    case InstructionKind::VADDA_BC:
+      return handle_vadda_bc(i0, instr_str);
     case InstructionKind::VMSUBA_BC:
       return handle_vmsuba_bc(i0, instr_str);
+    case InstructionKind::VMADDA:
+      return handle_vmadda(i0, instr_str);
     case InstructionKind::VMADD_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmadd_bc");
     case InstructionKind::VMSUB_BC:
