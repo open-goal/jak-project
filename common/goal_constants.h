@@ -26,13 +26,15 @@ constexpr int bits_for_sym() {
     if ((GOAL_MAX_SYMBOLS & (1 << i)) != 0) {
       if (b != -1) {
         // already got a set bit... not a multiple of 2!
-        throw 0;
+        // throw 0;
+        return -1;
       }
       b = i;
     }
   }
   return b + 1;
 }
+static_assert(bits_for_sym() != 1, "symbol table invalid length");
 
 enum class RegClass { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
 
