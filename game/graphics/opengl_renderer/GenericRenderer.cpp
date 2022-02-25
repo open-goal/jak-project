@@ -295,7 +295,8 @@ void GenericRenderer::mscal(int imm, SharedRenderState* render_state, ScopedProf
 }
 
 void GenericRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (render_state->enable_generic_xgkick && m_xgkick_idx >= m_min_xgkick && m_xgkick_idx < m_max_xgkick) {
+  if (render_state->enable_generic_xgkick && m_xgkick_idx >= m_min_xgkick &&
+      m_xgkick_idx < m_max_xgkick) {
     m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
   }
   m_xgkick_idx++;
