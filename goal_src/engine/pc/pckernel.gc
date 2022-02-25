@@ -169,6 +169,8 @@
     (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
     )
   (when (not (-> obj use-vis?))
+    (set-hud-aspect-ratio 'aspect4x3 'ntsc) ;; set hud aspect ratios every frame because why not?
+    
     (when *progress-process*
       ;; adjust sizes for progress.
       ;; video.gc sets the sizes in the normal game.
@@ -311,15 +313,7 @@
 (defun file-stream-read-symbol ((file file-stream))
   (file-stream-seek-past-whitespace file)
   (file-stream-read-word file)
-  (case-str *pc-temp-string*
-    (("#f") #f)
-    (("#t") #t)
-    (("aspect4x3") 'aspect4x3)
-    (("aspect16x9") 'aspect16x9)
-    (("borderless") 'borderless)
-    (("auto") 'auto)
-    (else #t)
-    )
+  (string->symbol *pc-temp-string*)
   )
 
 (defmacro pc-settings-read-throw-error (fs msg)
@@ -434,6 +428,8 @@
                 (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
+                (("camera-hflip?") (set! (-> obj camera-hflip?) (file-stream-read-symbol file)))
+                (("camera-vflip?") (set! (-> obj camera-vflip?) (file-stream-read-symbol file)))
                 (("scenes-seen")
                   (dotimes (i 197)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
@@ -461,6 +457,8 @@
                       (("hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
                       (("hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
                       (("hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
+                      (("hud-watch?") (set! (-> obj secrets hud-watch?) (file-stream-read-symbol file)))
+                      (("watch-12hr?") (set! (-> obj secrets watch-12hr?) (file-stream-read-symbol file)))
                       (("art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
                       (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))

@@ -32,7 +32,7 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0002)
 
 (defglobalconstant PC_KERNEL_VERSION_MINOR #x0000)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
@@ -120,7 +120,10 @@
    (hero-mode? symbol) ;; unsure how this should work
    (hud-map? symbol) ;; enable map in HUD/progress?
    (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
+   (hud-watch? symbol) ;; a watch that tells the time of day!
+   (watch-12hr? symbol) ;; 12-hour clock toggle
    )
+  :pack-me
   )
 
 ;; general fixes
@@ -135,11 +138,13 @@
    (fix-movies symbol) ;; bad camera and single-frame crappiness
    (fix-credits symbol) ;; one of the credits lines has the wrong color!!
    )
+  :pack-me
   )
 
 ;; bingo integration. placeholder for now.
 (deftype pc-bingo-info (structure)
   ()
+  :pack-me
   )
 
 
@@ -205,6 +210,8 @@
    (display-bug-report symbol)
    (display-heap-status symbol)
    (display-actor-counts symbol)
+   (mood-override? symbol)
+   (mood-overrides float 8)
 
    ;; device settings
    ;(device-audio pc-device-info :inline) ;; used audio device
@@ -250,6 +257,8 @@
    (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
    (subtitle-language pc-subtitle-lang) ;; language for subtitles
    (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
+   (camera-hflip? symbol) ;; horizontal camera invert
+   (camera-vflip? symbol) ;; vertical camera invert
 
    (fixes pc-fixes :inline) ;; extra game fixes
 
@@ -333,6 +342,7 @@
   (set! (-> obj display-bug-report) #f)
   (set! (-> obj display-heap-status) #f)
   (set! (-> obj display-actor-counts) #f)
+  (set! (-> obj mood-override?) #f)
   (set! (-> obj font-scale) 1.0)
   (set! (-> obj aspect-custom-x) 1)
   (set! (-> obj aspect-custom-y) 1)
@@ -405,6 +415,8 @@
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
   (set! (-> obj subtitle-language) (pc-subtitle-lang english))
+  (set! (-> obj camera-hflip?) #f)
+  (set! (-> obj camera-vflip?) #f)
   (none))
 
 (defmethod reset-fixes pc-settings ((obj pc-settings))
@@ -439,6 +451,8 @@
   (set! (-> obj secrets hero-mode?) #f)
   (set! (-> obj secrets hud-map?) #t)
   (set! (-> obj secrets hud-counters?) #t)
+  (set! (-> obj secrets hud-watch?) #f)
+  (set! (-> obj secrets watch-12hr?) #f)
   (none))
 
 (defmethod actor-force-visible? pc-settings ((obj pc-settings))
