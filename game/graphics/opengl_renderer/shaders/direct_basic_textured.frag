@@ -7,7 +7,7 @@ in vec3 tex_coord;
 uniform float alpha_reject;
 uniform float color_mult;
 
-in flat uvec2 tex_info;
+in flat uvec4 tex_info;
 
 layout (binding = 20) uniform sampler2D tex_T0;
 layout (binding = 21) uniform sampler2D tex_T1;
@@ -38,10 +38,30 @@ vec4 sample_tex(vec2 coord, uint unit) {
 
 void main() {
   vec4 T0 = sample_tex(tex_coord.xy / tex_coord.z, tex_info.x);
+  // y is tcc
+  // z is decal
+
   if (tex_info.y == 0) {
-    T0.w = 1.0;
+    if (tex_info.z == 0) {
+      // modulate + no tcc
+      color.xyz = fragment_color.xyz * T0.xyz;
+      color.w = fragment_color.w;
+    } else {
+      // decal + no tcc
+      color.xyz = T0.xyz * 0.5;
+      color.w = fragment_color.w;
+    }
+  } else {
+    if (tex_info.z == 0) {
+      // modulate + tcc
+      color = fragment_color * T0;
+    } else {
+      // decal + tcc
+      color.xyz = T0.xyz * 0.5;
+      color.w = T0.w;
+    }
   }
-  color = fragment_color * T0 * 2.0;
+  color *= 2;
   color.xyz *= color_mult;
   if (color.a < alpha_reject) {
     discard;

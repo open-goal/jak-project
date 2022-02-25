@@ -44,11 +44,12 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   );
 
   glEnableVertexAttribArray(3);
-  glVertexAttribIPointer(3,                            // location 0 in the shader
-                         4,                            // 3 floats per vert
-                         GL_UNSIGNED_BYTE,             // floats
-                         sizeof(Vertex),               //
-                         (void*)offsetof(Vertex, tex)  // offset in array (why is this a pointer...)
+  glVertexAttribIPointer(
+      3,                                 // location 0 in the shader
+      4,                                 // 3 floats per vert
+      GL_UNSIGNED_BYTE,                  // floats
+      sizeof(Vertex),                    //
+      (void*)offsetof(Vertex, tex_unit)  // offset in array (why is this a pointer...)
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
@@ -158,14 +159,14 @@ float u32_to_sc(u32 in) {
 
 void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // update opengl state
-  if (m_prim_gl_state_needs_gl_update) {
-    update_gl_prim(render_state);
-    m_prim_gl_state_needs_gl_update = false;
-  }
-
   if (m_blend_state_needs_gl_update) {
     update_gl_blend();
     m_blend_state_needs_gl_update = false;
+  }
+
+  if (m_prim_gl_state_needs_gl_update) {
+    update_gl_prim(render_state);
+    m_prim_gl_state_needs_gl_update = false;
   }
 
   if (m_test_state_needs_gl_update) {
@@ -213,7 +214,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex),
                m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
-  glActiveTexture(GL_TEXTURE0);
 
   int draw_count = 0;
   if (m_mode == Mode::SPRITE_CPU) {
@@ -243,6 +243,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     draw_count++;
   }
 
+  glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(0);
   int n_tris = draw_count * (m_prim_buffer.vert_count / 3);
   prof.add_tri(n_tris);
@@ -262,7 +263,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
-          alpha_reject = m_test_state.aref / 127.f;
+          alpha_reject = m_test_state.aref / 128.f;
           break;
         case GsTest::AlphaTest::NEVER:
           break;
@@ -324,6 +325,8 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   if (!tex) {
     // TODO Add back
     if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
+      fmt::print("Failed to find texture at {}, using random (eye zone)\n", state.texture_base_ptr);
+
       tex = render_state->texture_pool->get_random_texture();
     } else {
       fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
@@ -365,6 +368,7 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
   m_ogl.color_mult = 1.f;
+  m_prim_gl_state_needs_gl_update = true;
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
@@ -414,7 +418,6 @@ void DirectRenderer::update_gl_blend() {
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
       m_ogl.color_mult = 0.5;
-      m_prim_gl_state_needs_gl_update = true;
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
@@ -732,6 +735,9 @@ void DirectRenderer::handle_tex0_1(u64 val) {
     m_tex_state_from_reg.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
     m_tex_state_from_reg.current_register = reg;
     m_tex_state_from_reg.tcc = reg.tcc();
+    m_tex_state_from_reg.decal = reg.tfx() == GsTex0::TextureFunction::DECAL;
+    ASSERT(reg.tfx() == GsTex0::TextureFunction::DECAL ||
+           reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
     // we changed the state_from_reg, we no longer know if it points to a texture state.
     m_current_tex_state_idx = -1;
@@ -945,6 +951,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
 
   int tex_unit = get_texture_unit_for_current_reg(render_state, prof);
   bool tcc = m_buffered_tex_state[tex_unit].tcc;
+  bool decal = m_buffered_tex_state[tex_unit].decal;
 
   switch (m_prim_building.kind) {
     case GsPrim::Kind::SPRITE: {
@@ -965,12 +972,12 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
 
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, false);
-        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, false);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, false);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, false);
-        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, false);
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, false);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal);
+        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, tcc, decal);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal);
+        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, tcc, decal);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal);
         m_prim_building.building_idx = 0;
       }
     } break;
@@ -986,7 +993,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], tex_unit, tcc);
+                               m_prim_building.building_stq[i], tex_unit, tcc, decal);
           }
         }
       }
@@ -998,7 +1005,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal);
         }
       }
       break;
@@ -1014,7 +1021,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal);
         }
       }
     } break;
@@ -1035,13 +1042,13 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         math::Vector<double, 3> d = pt1 - normal * line_width;
 
         // ACB:
-        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {}, 0, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false, false);
         // b c d
-        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {}, 0, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {}, 0, false, false);
         //
 
         m_prim_building.building_idx = 0;
@@ -1111,14 +1118,16 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<u32, 3>& vert,
                                            const math::Vector<float, 3>& st,
                                            int unit,
-                                           bool tcc) {
+                                           bool tcc,
+                                           bool decal) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
   v.xyz[0] = (float)vert[0] / (float)UINT32_MAX;
   v.xyz[1] = (float)vert[1] / (float)UINT32_MAX;
   v.xyz[2] = (float)vert[2] / (float)UINT32_MAX;
   v.stq = st;
-  v.tex[0] = unit;
-  v.tex[1] = tcc;
+  v.tex_unit = unit;
+  v.tcc = tcc;
+  v.decal = decal;
   vert_count++;
 }
