@@ -259,6 +259,9 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
       glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                        "alpha_reject"),
                   alpha_reject);
+      glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                       "color_mult"),
+                  m_ogl.color_mult);
     }
     // update_gl_texture(render_state);
     m_global_texture_state.needs_gl_update = true;
@@ -342,10 +345,12 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 
 void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
+  m_ogl.color_mult = 1.f;
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
     glEnable(GL_BLEND);
+    glBlendColor(1, 1, 1, 1);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
@@ -378,6 +383,19 @@ void DirectRenderer::update_gl_blend() {
       glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
       glBlendColor(0, 0, 0, state.fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::SOURCE &&
+               state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::SOURCE) {
+      // this is very weird...
+      glBlendFunc(GL_ONE, GL_ZERO);
+      glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE &&
+               state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.c == GsAlpha::BlendMode::DEST && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - 0) * Ad + Cd
+      glBlendFunc(GL_DST_ALPHA, GL_ONE);
+      glBlendEquation(GL_FUNC_ADD);
+      m_ogl.color_mult = 0.5;
+      m_prim_gl_state_needs_gl_update = true;
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
@@ -911,6 +929,9 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          bool advance) {
   ASSERT(z < (1 << 24));
   (void)f;  // TODO: do something with this.
+  if (m_my_id == BucketId::GENERIC_PRIS) {
+    // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
+  }
   if (m_prim_buffer.is_full()) {
     lg::warn("Buffer wrapped in {} ({} verts, {} bytes)", m_name, m_ogl.vertex_buffer_max_verts,
              m_prim_buffer.vert_count * sizeof(Vertex));

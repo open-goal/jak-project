@@ -851,26 +851,26 @@
       )
     )
   ;; todo
-  ; (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-  ;   (when (nonzero? (-> *merc-globals* first))
-  ;     (let ((s4-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
-  ;       (let ((a0-25 (-> (the-as (pointer uint32) (+ (the-as uint *level*) (* 2608 arg2) (* arg3 32))) 69)))
-  ;         (generic-merc-add-to-cue a0-25)
-  ;         )
-  ;       (let ((a0-26 *dma-mem-usage*))
-  ;         (when (nonzero? a0-26)
-  ;           (set! (-> a0-26 length) (max 87 (-> a0-26 length)))
-  ;           (set! (-> a0-26 data 86 name) "pris-generic")
-  ;           (+! (-> a0-26 data 86 count) 1)
-  ;           (+! (-> a0-26 data 86 used)
-  ;               (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s4-1))
-  ;               )
-  ;           (set! (-> a0-26 data 86 total) (-> a0-26 data 86 used))
-  ;           )
-  ;         )
-  ;       )
-  ;     )
-  ;   )
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+    (when (nonzero? (-> *merc-globals* first))
+      (let ((s4-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+        (let ((a0-25 (-> (the-as (pointer uint32) (+ (the-as uint *level*) (* 2608 arg2) (* arg3 32))) 69)))
+          (generic-merc-add-to-cue (the-as generic-dma-foreground-sink a0-25))
+          )
+        (let ((a0-26 *dma-mem-usage*))
+          (when (nonzero? a0-26)
+            (set! (-> a0-26 length) (max 87 (-> a0-26 length)))
+            (set! (-> a0-26 data 86 name) "pris-generic")
+            (+! (-> a0-26 data 86 count) 1)
+            (+! (-> a0-26 data 86 used)
+                (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s4-1))
+                )
+            (set! (-> a0-26 data 86 total) (-> a0-26 data 86 used))
+            )
+          )
+        )
+      )
+    )
   (when #t
     (let ((v1-41 *shadow-queue*))
       (+! (-> v1-41 cur-run) 1)
@@ -907,9 +907,12 @@
       )
     )
   "Function to be executed to set up for engine dma"
+
+  ;; update render enables from the debug menu
   (set! *vu1-enable-user* *vu1-enable-user-menu*)
   (set! *texture-enable-user* *texture-enable-user-menu*)
 
+  ;; reset and display dma memory stats.
   (when *debug-segment*
    (when (or *stats-memory* *stats-memory-short*)
     (dotimes (gp-0 (-> *level* length))
@@ -923,9 +926,9 @@
    (reset! *dma-mem-usage*)
    )
 
-  ;; todo debug memory
   ;; todo shrub matrix
   ;; todo generic init
+  (generic-init-buffers)
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; texture uploads
@@ -1081,7 +1084,7 @@
     )
   (let ((gp-9 (-> *display* frames (-> *display* on-screen) frame global-buf)))
     (bones-mtx-calc-execute)
-    ;;(generic-merc-execute-all)
+    (generic-merc-execute-all gp-9)
     ;;(shadow-execute-all gp-9 *shadow-queue*)
     )
   ;; fg engine

@@ -340,7 +340,7 @@ void MercRenderer::draw_debug_window() {
 }
 
 void MercRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (m_enable_send_to_direct) {
+  if (m_enable_send_to_direct && render_state->enable_merc_xgkick) {
     m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
   }
 }

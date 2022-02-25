@@ -87,6 +87,9 @@ inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 
         tadr += 16;
         return;
       } break;
+      case DmaTag::Kind::END:
+        // does this transfer anything in TTE???
+        return;
       default:
         printf("bad tag: %d\n", (int)tag.kind);
         ASSERT(false);
@@ -122,6 +125,7 @@ struct VifCode {
     UNPACK_V4_16 = 0b1101101,
     UNPACK_V3_32 = 0b1101000,
     UNPACK_V4_8 = 0b1101110,
+    UNPACK_V2_16 = 0b1100101,
   };
 
   VifCode(u32 value) {

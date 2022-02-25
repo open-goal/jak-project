@@ -302,6 +302,9 @@ void interp_time_of_day_fast_avx2(const float weights[8],
   }
 #else
   // unreachable.
+  (void)weights;
+  (void)in;
+  (void)out;
   ASSERT(false);
 #endif
 }
