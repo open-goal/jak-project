@@ -182,41 +182,16 @@ class DirectRenderer : public BucketRenderer {
 
   // vertices will reference these texture states
   TextureState m_buffered_tex_state[TEXTURE_STATE_COUNT];
+  int m_next_free_tex_state = 0;
 
   // this texture state mirrors the current GS register.
   TextureState m_tex_state_from_reg;
 
-  // if this is not -1, then its the index of a texture state in m_buffered_tex_state that
+  // if this is not -1, then it is the index of a texture state in m_buffered_tex_state that
   // matches m_tex_state_from_reg.
   int m_current_tex_state_idx = -1;
 
   int get_texture_unit_for_current_reg(SharedRenderState* render_state, ScopedProfilerNode& prof);
-
-  //  void reset_texture_states() {
-  //    m_current_texture_state = 0;
-  //    m_texture_state[0].used = false;
-  //    for (auto& ts : m_texture_state) {
-  //      ts.used = false;
-  //    }
-  //  }
-
-  struct TextureGlobalState {
-    bool needs_gl_update = true;
-  } m_global_texture_state;
-
-  // int m_current_texture_state = 0;
-
-  //  TextureState* current_texture_state() { return &m_texture_state[m_current_texture_state]; }
-  //  bool needs_state_flush() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
-  //  void push_texture_state() {
-  //    ++m_current_texture_state;
-  //    if (m_current_texture_state >= TEXTURE_STATE_COUNT) {
-  //      lg::error("fatal tex push {}!!!!", m_current_texture_state);
-  //    }
-  //    if (m_current_texture_state > 0) {
-  //      m_texture_state[m_current_texture_state] = m_texture_state[m_current_texture_state - 1];
-  //    }
-  //  }
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
   struct PrimBuildState {

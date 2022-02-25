@@ -103,7 +103,8 @@ void DirectRenderer::reset_state() {
     m_buffered_tex_state[i] = TextureState();
   }
   m_tex_state_from_reg = {};
-  m_global_texture_state = TextureGlobalState();
+  m_next_free_tex_state = 0;
+  m_current_tex_state_idx = -1;
 
   m_prim_building = PrimBuildState();
 
@@ -172,22 +173,15 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     m_test_state_needs_gl_update = false;
   }
 
-  // I think it's important that this comes last.
-  //if (m_global_texture_state.needs_gl_update) {
-    for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
-      auto& tex_state = m_buffered_tex_state[i];
-      if (tex_state.used) {
-        update_gl_texture(render_state, i);
-        tex_state.used = false;
-      }
+  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
+    auto& tex_state = m_buffered_tex_state[i];
+    if (tex_state.used) {
+      update_gl_texture(render_state, i);
+      tex_state.used = false;
     }
-    // fmt::print("flushing with {} states\n", m_current_texture_state + 1);
-    //    for (int i = 0; i <= m_current_texture_state; ++i) {
-    //      update_gl_texture(render_state, i);
-    //    }
-    m_global_texture_state.needs_gl_update = false;
-    // fmt::print("tex state flush\n");
-  //}
+  }
+  m_next_free_tex_state = 0;
+  m_current_tex_state_idx = -1;
 
   // NOTE: sometimes we want to update the GL state without actually rendering anything, such as sky
   // textures, so we only return after we've updated the full state
@@ -290,8 +284,6 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                                        "color_mult"),
                   m_ogl.color_mult);
     }
-    // update_gl_texture(render_state);
-    m_global_texture_state.needs_gl_update = true;
   } else {
     if (m_mode == Mode::SKY) {
       render_state->shaders[ShaderId::SKY].activate();
@@ -742,18 +734,6 @@ void DirectRenderer::handle_tex0_1(u64 val,
   GsTex0 reg(val);
   // update tbp
   if (m_tex_state_from_reg.current_register != reg) {
-    //    if (current_texture_state()->used) {
-    //      if (needs_state_flush()) {
-    //        flush_pending(render_state, prof);
-    //        m_texture_state[0] = *current_texture_state();
-    //        reset_texture_states();
-    //        m_stats.flush_from_state_exhaust++;
-    //      } else {
-    //        push_texture_state();
-    //      }
-    //    }
-    //    m_global_texture_state.needs_gl_update = true;
-
     m_tex_state_from_reg.texture_base_ptr = reg.tbp0();
     m_tex_state_from_reg.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
     m_tex_state_from_reg.current_register = reg;
@@ -881,20 +861,6 @@ void DirectRenderer::handle_clamp1(u64 val,
 
   if (m_tex_state_from_reg.m_clamp_state.current_register != val) {
     m_current_tex_state_idx = -1;
-    //    if (current_texture_state()->used) {
-    //      if (needs_state_flush()) {
-    //        flush_pending(render_state, prof);
-    //        m_texture_state[0] = *current_texture_state();
-    //        reset_texture_states();
-    //        //        m_texture_state[0].used = false;
-    //        //        m_current_texture_state = 0;
-    //        m_stats.flush_from_state_exhaust++;
-    //      } else {
-    //        push_texture_state();
-    //      }
-    //    }
-    //    m_global_texture_state.needs_gl_update = true;
-
     m_tex_state_from_reg.m_clamp_state.current_register = val;
     m_tex_state_from_reg.m_clamp_state.clamp_s = val & 0b001;
     m_tex_state_from_reg.m_clamp_state.clamp_t = val & 0b100;
@@ -946,28 +912,19 @@ int DirectRenderer::get_texture_unit_for_current_reg(SharedRenderState* render_s
     return m_current_tex_state_idx;
   }
 
-  // todo, make more efficient, or maybe just skip.
-  int idx_of_unused = -1;
-  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
-    if (m_buffered_tex_state[i].used) {
-      if (m_buffered_tex_state[i].compatible_with(m_tex_state_from_reg)) {
-        return i;
-      }
-    } else {
-      idx_of_unused = i;
-    }
-  }
-
-  if (idx_of_unused == -1) {
+  if (m_next_free_tex_state >= TEXTURE_STATE_COUNT) {
     m_stats.flush_from_state_exhaust++;
     flush_pending(render_state, prof);
     return get_texture_unit_for_current_reg(render_state, prof);
   } else {
-    m_buffered_tex_state[idx_of_unused] = m_tex_state_from_reg;
-    m_buffered_tex_state[idx_of_unused].used = true;
-    return idx_of_unused;
+    ASSERT(!m_buffered_tex_state[m_next_free_tex_state].used);
+    m_buffered_tex_state[m_next_free_tex_state] = m_tex_state_from_reg;
+    m_buffered_tex_state[m_next_free_tex_state].used = true;
+    m_current_tex_state_idx = m_next_free_tex_state++;
+    return m_current_tex_state_idx;
   }
 }
+
 void DirectRenderer::handle_xyzf2_common(u32 x,
                                          u32 y,
                                          u32 z,
