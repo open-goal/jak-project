@@ -587,7 +587,7 @@ void DirectRenderer::render_gif(const u8* data,
               handle_prim_packed(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::TEX0_1:
-              handle_tex0_1_packed(data + offset, render_state, prof);
+              handle_tex0_1_packed(data + offset);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
@@ -662,14 +662,14 @@ void DirectRenderer::handle_ad(const u8* data,
       handle_pabe(value);
       break;
     case GsRegisterAddress::CLAMP_1:
-      handle_clamp1(value, render_state, prof);
+      handle_clamp1(value);
       break;
     case GsRegisterAddress::PRIM:
       handle_prim(value, render_state, prof);
       break;
 
     case GsRegisterAddress::TEX1_1:
-      handle_tex1_1(value, render_state, prof);
+      handle_tex1_1(value);
       break;
     case GsRegisterAddress::TEXA:
       handle_texa(value);
@@ -684,7 +684,7 @@ void DirectRenderer::handle_ad(const u8* data,
       // TODO
       break;
     case GsRegisterAddress::TEX0_1:
-      handle_tex0_1(value, render_state, prof);
+      handle_tex0_1(value);
       break;
     case GsRegisterAddress::MIPTBP1_1:
     case GsRegisterAddress::MIPTBP2_1:
@@ -698,9 +698,7 @@ void DirectRenderer::handle_ad(const u8* data,
   }
 }
 
-void DirectRenderer::handle_tex1_1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex1_1(u64 val) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
   //   ASSERT(reg.mxl() == 0);
@@ -720,17 +718,13 @@ void DirectRenderer::handle_tex1_1(u64 val,
   //  }
 }
 
-void DirectRenderer::handle_tex0_1_packed(const u8* data,
-                                          SharedRenderState* render_state,
-                                          ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex0_1_packed(const u8* data) {
   u64 val;
   memcpy(&val, data, sizeof(u64));
-  handle_tex0_1(val, render_state, prof);
+  handle_tex0_1(val);
 }
 
-void DirectRenderer::handle_tex0_1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex0_1(u64 val) {
   GsTex0 reg(val);
   // update tbp
   if (m_tex_state_from_reg.current_register != reg) {
@@ -851,9 +845,7 @@ void DirectRenderer::handle_pabe(u64 val) {
   ASSERT(val == 0);  // not really sure how to handle this yet.
 }
 
-void DirectRenderer::handle_clamp1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_clamp1(u64 val) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     //    fmt::print("clamp: 0x{:x}\n", val);
     //    ASSERT(false);
