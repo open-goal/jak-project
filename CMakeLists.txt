@@ -17,6 +17,7 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         "-Xclang -fcxx-exceptions \
         -Xclang -fexceptions \
         -Xclang -std=c++17 \
+        -Xclang -D_CRT_SECURE_NO_WARNINGS \
         -mavx \
         -Wno-c++11-narrowing -W3")
 
