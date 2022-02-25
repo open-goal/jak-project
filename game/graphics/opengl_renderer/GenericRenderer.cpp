@@ -74,7 +74,7 @@ void GenericRenderer::render(DmaFollower& dma,
       mscal(v0.immediate, render_state, prof);
       ASSERT(v1.immediate == 0);
 
-      int data_offset = 0;
+      u32 data_offset = 0;
       u32 base_vifcode_data;
       memcpy(&base_vifcode_data, data.data + data_offset, 4);
       VifCode base_vc(base_vifcode_data);
@@ -288,5 +288,11 @@ void GenericRenderer::mscal(int imm, SharedRenderState* render_state, ScopedProf
     default:
       mscal_dispatch(imm, render_state, prof);
       break;
+  }
+}
+
+void GenericRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  if (render_state->enable_generic_xgkick) {
+    m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
   }
 }

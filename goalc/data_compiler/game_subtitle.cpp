@@ -40,13 +40,6 @@ const goos::Object& cdr(const goos::Object& x) {
   return x.as_pair()->cdr;
 }
 
-std::string get_string(const goos::Object& x) {
-  if (x.is_string()) {
-    return x.as_string()->data;
-  }
-  throw std::runtime_error(x.print() + " was supposed to be a string, but isn't");
-}
-
 std::string uppercase(const std::string& in) {
   std::string result;
   result.reserve(in.size());

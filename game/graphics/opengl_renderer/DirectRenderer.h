@@ -104,7 +104,7 @@ class DirectRenderer : public BucketRenderer {
                            bool advance);
 
   void update_gl_prim(SharedRenderState* render_state);
-  void update_gl_blend(SharedRenderState* render_state);
+  void update_gl_blend();
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state, int unit);
 

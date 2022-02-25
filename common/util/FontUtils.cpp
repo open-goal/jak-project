@@ -25,6 +25,7 @@ GameTextFontBank::GameTextFontBank(GameTextVersion version,
   std::sort(
       m_replace_info->begin(), m_replace_info->end(),
       [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
+  (void)m_version;
 }
 
 /*!

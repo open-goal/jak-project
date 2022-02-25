@@ -2,6 +2,9 @@
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/kscheme.h"
+
+// clang-format off
+
 namespace Mips2C {
 namespace generic_prepare_dma_double {
 struct Cache {
@@ -11,7 +14,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 12432, at);                             // sd ra, 12432(at)
   c->sq(s0, 12448, at);                             // sq s0, 12448(at)
@@ -586,7 +588,6 @@ void vcallms0(ExecutionContext* c) {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->sd(ra, 12432, at);                             // sd ra, 12432(at)
   c->sq(s2, 12448, at);                             // sq s2, 12448(at)
@@ -1014,7 +1015,6 @@ void vcallms48(ExecutionContext* c) {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 12432, at);                             // sd ra, 12432(at)
   c->sq(s0, 12448, at);                             // sq s0, 12448(at)
@@ -1668,7 +1668,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
   c->sq(gp, 12448, at);                             // sq gp, 12448(at)
   get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672

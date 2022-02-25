@@ -142,7 +142,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   }
 
   if (m_blend_state_needs_gl_update) {
-    update_gl_blend(render_state);
+    update_gl_blend();
     m_blend_state_needs_gl_update = false;
   }
 
@@ -343,7 +343,7 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 }
 
-void DirectRenderer::update_gl_blend(SharedRenderState* render_state) {
+void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
   m_ogl.color_mult = 1.f;
   if (!state.alpha_blend_enable) {

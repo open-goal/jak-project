@@ -2064,7 +2064,6 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           // ASSERT((vert.rgba >> 2) < 1024); spider cave has 2048?
           ASSERT((vert.rgba & 3) == 0);
 
-          size_t vert_idx = vertices.size();
           vertices.push_back(vtx);
         }
         tdraw.runs.push_back(run);

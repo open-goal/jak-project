@@ -335,7 +335,7 @@ goos::Object decomp_ref_to_integer_array_guess_size(
     int field_location,
     const TypeSystem& ts,
     const std::vector<std::vector<LinkedWord>>& all_words,
-    const LinkedObjectFile* file,
+    const LinkedObjectFile* /*file*/,
     const TypeSpec& array_elt_type,
     int stride) {
   // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());

@@ -372,12 +372,6 @@ struct ExecutionContext {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
   }
 
-  void sqc2_debug(int line, int src, int offset, int addr) {
-    auto s = vf_src(src);
-    ASSERT(((gpr_addr(addr) + offset) & 0xf) == 0);
-    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
-  }
-
   void swc1(int src, int offset, int addr) {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &fprs[src], 4);
   }
@@ -458,7 +452,6 @@ struct ExecutionContext {
     auto s1 = gpr_src(src1);
     gprs[dst].du64[1] = s0.du64[0];
     gprs[dst].du64[0] = s1.du64[0];
-
   }
 
   void pexew(int dst, int src) {
@@ -865,7 +858,6 @@ struct ExecutionContext {
       }
     }
   }
-
 
   void vmsub_bc(DEST mask, BC bc, int dst, int src0, int src1) {
     auto s0 = vf_src(src0);

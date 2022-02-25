@@ -90,6 +90,8 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool render_debug = false;
+  bool enable_merc_xgkick = true;
+  bool enable_generic_xgkick = true;
 
   void reset();
   bool has_camera_planes = false;

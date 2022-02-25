@@ -186,16 +186,16 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-----------------------
   // LEVEL 0 water texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("l0-water-tex", BucketId::WATER_TEX_LEVEL0);  // 57
-  init_bucket_renderer<MercRenderer>("l0-water-merc", BucketId::MERC_WATER_LEVEL0);        // 58
-  init_bucket_renderer<GenericRenderer>("l0-water-generic", BucketId::GENERIC_WATER_LEVEL0); // 59
+  init_bucket_renderer<TextureUploadHandler>("l0-water-tex", BucketId::WATER_TEX_LEVEL0);     // 57
+  init_bucket_renderer<MercRenderer>("l0-water-merc", BucketId::MERC_WATER_LEVEL0);           // 58
+  init_bucket_renderer<GenericRenderer>("l0-water-generic", BucketId::GENERIC_WATER_LEVEL0);  // 59
 
   //-----------------------
   // LEVEL 1 water texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("l1-water-tex", BucketId::WATER_TEX_LEVEL1);  // 60
-  init_bucket_renderer<MercRenderer>("l1-water-merc", BucketId::MERC_WATER_LEVEL1);        // 61
-  init_bucket_renderer<GenericRenderer>("l1-water-generic", BucketId::GENERIC_WATER_LEVEL1); // 62
+  init_bucket_renderer<TextureUploadHandler>("l1-water-tex", BucketId::WATER_TEX_LEVEL1);     // 60
+  init_bucket_renderer<MercRenderer>("l1-water-merc", BucketId::MERC_WATER_LEVEL1);           // 61
+  init_bucket_renderer<GenericRenderer>("l1-water-generic", BucketId::GENERIC_WATER_LEVEL1);  // 62
 
   // 63?
   // 64?
@@ -290,6 +290,8 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
   ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
+  ImGui::Checkbox("Merc XGKICK", &m_render_state.enable_merc_xgkick);
+  ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();

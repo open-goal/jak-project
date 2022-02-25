@@ -4,11 +4,12 @@
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/common/vu.h"
 
-class GenericRenderer: public BucketRenderer {
+class GenericRenderer : public BucketRenderer {
  public:
   GenericRenderer(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+
  private:
   u32 unpack32_4(const VifCodeUnpack& up, const u8* data, u32 imm);
   u32 unpack32_3(const VifCodeUnpack& up, const u8* data, u32 imm);
@@ -18,7 +19,10 @@ class GenericRenderer: public BucketRenderer {
   void mscal(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void mscal0();
   void mscal_dispatch(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_dma_stream(const u8* data, u32 bytes, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_dma_stream(const u8* data,
+                         u32 bytes,
+                         SharedRenderState* render_state,
+                         ScopedProfilerNode& prof);
   void lq_buffer(Mask mask, Vf& dest, u16 addr);
   void isw_buffer(Mask mask, u16 val, u16 addr);
   void ilw_buffer(Mask mask, u16& dest, u16 addr);
@@ -32,7 +36,6 @@ class GenericRenderer: public BucketRenderer {
       }
     }
   }
-
 
   int m_skipped_tags = 0;
   DirectRenderer m_direct;

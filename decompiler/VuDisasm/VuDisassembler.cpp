@@ -1236,7 +1236,8 @@ std::string VuDisassembler::to_string_with_cpp(const VuInstructionPair& pair,
                                                bool mips2c_format,
                                                int idx) const {
   std::string result;
-  result += fmt::format("  // {:25s}  |  {:30s} {}\n", to_string(pair.lower), to_string(pair.upper), idx);
+  result +=
+      fmt::format("  // {:25s}  |  {:30s} {}\n", to_string(pair.lower), to_string(pair.upper), idx);
 
   if (!is_nop(pair.lower) && !is_nop(pair.upper) && pair.lower.kind == VuInstrK::FP_CONSTANT) {
     result += fmt::format("   {:25s}", to_cpp(pair.upper, mips2c_format));

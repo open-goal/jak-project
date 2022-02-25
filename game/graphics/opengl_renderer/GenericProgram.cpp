@@ -1,6 +1,5 @@
 #include "game/graphics/opengl_renderer/GenericRenderer.h"
 
-
 void GenericRenderer::lq_buffer(Mask mask, Vf& dest, u16 addr) {
   ASSERT(addr * 16 < sizeof(m_buffer.data));
   for (int i = 0; i < 4; i++) {
@@ -61,15 +60,11 @@ u16 clip(const Vf& vector, float val, u16 old_clip) {
   return result;
 }
 
-void GenericRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-     m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
-}
-
 bool clipping_hack = true;
 
 // clang-format off
 void GenericRenderer::mscal0() {
-  L4:
+  // L4:
   // iaddiu vi01, vi00, 0x381   |  nop
   vu.vi01 = 0x381; /* 897 */
   // lq.xyzw vf01, 0(vi01)      |  nop
@@ -86,7 +81,7 @@ void GenericRenderer::mscal0() {
   lq_buffer(Mask::xyzw, vu.vf06, vu.vi01 + 5);
   // lq.xyzw vf07, 6(vi01)      |  nop
   lq_buffer(Mask::xyzw, vu.vf07, vu.vi01 + 6);
-  L5:
+  // L5:
   // iaddiu vi13, vi00, 0x363   |  nop
   vu.vi13 = 0x363; /* 867 */
   // iaddi vi02, vi13, 0x5      |  nop
