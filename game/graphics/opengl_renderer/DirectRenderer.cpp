@@ -89,6 +89,28 @@ void DirectRenderer::render(DmaFollower& dma,
   }
 }
 
+void DirectRenderer::reset_state() {
+  m_test_state_needs_gl_update = true;
+  m_test_state = TestState();
+
+  m_blend_state_needs_gl_update = true;
+  m_blend_state = BlendState();
+
+  m_prim_gl_state_needs_gl_update = true;
+  m_prim_gl_state = PrimGlState();
+
+  for (int i = 0; i < TEXTURE_STATE_COUNT; ++i) {
+    m_buffered_tex_state[i] = TextureState();
+  }
+  m_tex_state_from_reg = {};
+  m_next_free_tex_state = 0;
+  m_current_tex_state_idx = -1;
+
+  m_prim_building = PrimBuildState();
+
+  m_stats = {};
+}
+
 void DirectRenderer::draw_debug_window() {
   ImGui::Checkbox("Wireframe", &m_debug_state.wireframe);
   ImGui::SameLine();
@@ -151,15 +173,15 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     m_test_state_needs_gl_update = false;
   }
 
-  // I think it's important that this comes last.
-  if (m_global_texture_state.needs_gl_update) {
-    // fmt::print("flushing with {} states\n", m_current_texture_state + 1);
-    for (int i = 0; i <= m_current_texture_state; ++i) {
+  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
+    auto& tex_state = m_buffered_tex_state[i];
+    if (tex_state.used) {
       update_gl_texture(render_state, i);
+      tex_state.used = false;
     }
-    m_global_texture_state.needs_gl_update = false;
-    // fmt::print("tex state flush\n");
   }
+  m_next_free_tex_state = 0;
+  m_current_tex_state_idx = -1;
 
   // NOTE: sometimes we want to update the GL state without actually rendering anything, such as sky
   // textures, so we only return after we've updated the full state
@@ -186,7 +208,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   }
 
   glBindVertexArray(m_ogl.vao);
-
   // render!
   // update buffers:
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
@@ -263,8 +284,6 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                                        "color_mult"),
                   m_ogl.color_mult);
     }
-    // update_gl_texture(render_state);
-    m_global_texture_state.needs_gl_update = true;
   } else {
     if (m_mode == Mode::SKY) {
       render_state->shaders[ShaderId::SKY].activate();
@@ -291,7 +310,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
 
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
   TextureRecord* tex = nullptr;
-  auto& state = m_texture_state[unit];
+  auto& state = m_buffered_tex_state[unit];
   if (!state.used) {
     // nothing used this state, don't bother binding the texture.
     return;
@@ -568,7 +587,7 @@ void DirectRenderer::render_gif(const u8* data,
               handle_prim_packed(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::TEX0_1:
-              handle_tex0_1_packed(data + offset, render_state, prof);
+              handle_tex0_1_packed(data + offset);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
@@ -643,14 +662,14 @@ void DirectRenderer::handle_ad(const u8* data,
       handle_pabe(value);
       break;
     case GsRegisterAddress::CLAMP_1:
-      handle_clamp1(value, render_state, prof);
+      handle_clamp1(value);
       break;
     case GsRegisterAddress::PRIM:
       handle_prim(value, render_state, prof);
       break;
 
     case GsRegisterAddress::TEX1_1:
-      handle_tex1_1(value, render_state, prof);
+      handle_tex1_1(value);
       break;
     case GsRegisterAddress::TEXA:
       handle_texa(value);
@@ -665,7 +684,7 @@ void DirectRenderer::handle_ad(const u8* data,
       // TODO
       break;
     case GsRegisterAddress::TEX0_1:
-      handle_tex0_1(value, render_state, prof);
+      handle_tex0_1(value);
       break;
     case GsRegisterAddress::MIPTBP1_1:
     case GsRegisterAddress::MIPTBP2_1:
@@ -679,29 +698,17 @@ void DirectRenderer::handle_ad(const u8* data,
   }
 }
 
-void DirectRenderer::handle_tex1_1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex1_1(u64 val) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
   //   ASSERT(reg.mxl() == 0);
   // if that's true, we can ignore LCM, MTBA, L, K
 
   bool want_tex_filt = reg.mmag();
-  if (want_tex_filt != current_texture_state()->enable_tex_filt) {
-    if (current_texture_state()->used) {
-      if (needs_state_flush()) {
-        flush_pending(render_state, prof);
-        m_texture_state[0] = *current_texture_state();
-        reset_texture_states();
-        m_stats.flush_from_state_exhaust++;
-      } else {
-        push_texture_state();
-      }
-    }
-    m_global_texture_state.needs_gl_update = true;
-
-    current_texture_state()->enable_tex_filt = want_tex_filt;
+  if (want_tex_filt != m_tex_state_from_reg.enable_tex_filt) {
+    m_tex_state_from_reg.enable_tex_filt = want_tex_filt;
+    // we changed the state_from_reg, we no longer know if it points to a texture state.
+    m_current_tex_state_idx = -1;
   }
 
   // MMAG/MMIN specify texture filtering. For now, assume always linear
@@ -711,37 +718,23 @@ void DirectRenderer::handle_tex1_1(u64 val,
   //  }
 }
 
-void DirectRenderer::handle_tex0_1_packed(const u8* data,
-                                          SharedRenderState* render_state,
-                                          ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex0_1_packed(const u8* data) {
   u64 val;
   memcpy(&val, data, sizeof(u64));
-  handle_tex0_1(val, render_state, prof);
+  handle_tex0_1(val);
 }
 
-void DirectRenderer::handle_tex0_1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex0_1(u64 val) {
   GsTex0 reg(val);
   // update tbp
-  if (current_texture_state()->current_register != reg) {
-    if (current_texture_state()->used) {
-      if (needs_state_flush()) {
-        flush_pending(render_state, prof);
-        m_texture_state[0] = *current_texture_state();
-        reset_texture_states();
-        m_stats.flush_from_state_exhaust++;
-      } else {
-        push_texture_state();
-      }
-    }
-    m_global_texture_state.needs_gl_update = true;
+  if (m_tex_state_from_reg.current_register != reg) {
+    m_tex_state_from_reg.texture_base_ptr = reg.tbp0();
+    m_tex_state_from_reg.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
+    m_tex_state_from_reg.current_register = reg;
+    m_tex_state_from_reg.tcc = reg.tcc();
 
-    current_texture_state()->texture_base_ptr = reg.tbp0();
-    current_texture_state()->using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
-    current_texture_state()->current_register = reg;
-
-    current_texture_state()->tcc = reg.tcc();
+    // we changed the state_from_reg, we no longer know if it points to a texture state.
+    m_current_tex_state_idx = -1;
   }
 
   // tbw: assume they got it right
@@ -852,32 +845,17 @@ void DirectRenderer::handle_pabe(u64 val) {
   ASSERT(val == 0);  // not really sure how to handle this yet.
 }
 
-void DirectRenderer::handle_clamp1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_clamp1(u64 val) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     //    fmt::print("clamp: 0x{:x}\n", val);
     //    ASSERT(false);
   }
 
-  if (current_texture_state()->m_clamp_state.current_register != val) {
-    if (current_texture_state()->used) {
-      if (needs_state_flush()) {
-        flush_pending(render_state, prof);
-        m_texture_state[0] = *current_texture_state();
-        reset_texture_states();
-        //        m_texture_state[0].used = false;
-        //        m_current_texture_state = 0;
-        m_stats.flush_from_state_exhaust++;
-      } else {
-        push_texture_state();
-      }
-    }
-    m_global_texture_state.needs_gl_update = true;
-
-    current_texture_state()->m_clamp_state.current_register = val;
-    current_texture_state()->m_clamp_state.clamp_s = val & 0b001;
-    current_texture_state()->m_clamp_state.clamp_t = val & 0b100;
+  if (m_tex_state_from_reg.m_clamp_state.current_register != val) {
+    m_current_tex_state_idx = -1;
+    m_tex_state_from_reg.m_clamp_state.current_register = val;
+    m_tex_state_from_reg.m_clamp_state.clamp_s = val & 0b001;
+    m_tex_state_from_reg.m_clamp_state.clamp_t = val & 0b100;
   }
 }
 
@@ -920,6 +898,25 @@ void DirectRenderer::handle_rgbaq(u64 val) {
   memcpy(m_prim_building.rgba_reg.data(), &val, 4);
 }
 
+int DirectRenderer::get_texture_unit_for_current_reg(SharedRenderState* render_state,
+                                                     ScopedProfilerNode& prof) {
+  if (m_current_tex_state_idx != -1) {
+    return m_current_tex_state_idx;
+  }
+
+  if (m_next_free_tex_state >= TEXTURE_STATE_COUNT) {
+    m_stats.flush_from_state_exhaust++;
+    flush_pending(render_state, prof);
+    return get_texture_unit_for_current_reg(render_state, prof);
+  } else {
+    ASSERT(!m_buffered_tex_state[m_next_free_tex_state].used);
+    m_buffered_tex_state[m_next_free_tex_state] = m_tex_state_from_reg;
+    m_buffered_tex_state[m_next_free_tex_state].used = true;
+    m_current_tex_state_idx = m_next_free_tex_state++;
+    return m_current_tex_state_idx;
+  }
+}
+
 void DirectRenderer::handle_xyzf2_common(u32 x,
                                          u32 y,
                                          u32 z,
@@ -945,6 +942,9 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       math::Vector<u32, 3>{x << 16, y << 16, z << 8};
 
   m_prim_building.building_idx++;
+
+  int tex_unit = get_texture_unit_for_current_reg(render_state, prof);
+  bool tcc = m_buffered_tex_state[tex_unit].tcc;
 
   switch (m_prim_building.kind) {
     case GsPrim::Kind::SPRITE: {
@@ -986,8 +986,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], m_current_texture_state,
-                               current_texture_state()->tcc);
+                               m_prim_building.building_stq[i], tex_unit, tcc);
           }
         }
       }
@@ -999,8 +998,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], m_current_texture_state,
-                             current_texture_state()->tcc);
+                             m_prim_building.building_stq[i], tex_unit, tcc);
         }
       }
       break;
@@ -1016,8 +1014,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], m_current_texture_state,
-                             current_texture_state()->tcc);
+                             m_prim_building.building_stq[i], tex_unit, tcc);
         }
       }
     } break;
@@ -1054,8 +1051,6 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       fmt::print("prim type {} is unsupported in {}.\n", (int)m_prim_building.kind, name_and_id());
       ASSERT(false);
   }
-
-  current_texture_state()->used = true;
 }
 
 void DirectRenderer::handle_xyzf2(u64 val,
@@ -1067,27 +1062,6 @@ void DirectRenderer::handle_xyzf2(u64 val,
   u32 f = (val >> 56) & 0xff;
 
   handle_xyzf2_common(x, y, z, f, render_state, prof, true);
-}
-
-void DirectRenderer::reset_state() {
-  m_test_state_needs_gl_update = true;
-  m_test_state = TestState();
-
-  m_blend_state_needs_gl_update = true;
-  m_blend_state = BlendState();
-
-  m_prim_gl_state_needs_gl_update = true;
-  m_prim_gl_state = PrimGlState();
-
-  for (int i = 0; i < TEXTURE_STATE_COUNT; ++i) {
-    m_texture_state[i] = TextureState();
-  }
-  m_global_texture_state = TextureGlobalState();
-  m_current_texture_state = 0;
-
-  m_prim_building = PrimBuildState();
-
-  m_stats = {};
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {

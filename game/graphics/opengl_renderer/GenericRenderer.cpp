@@ -7,6 +7,7 @@ GenericRenderer::GenericRenderer(const std::string& name, BucketId my_id)
 void GenericRenderer::render(DmaFollower& dma,
                              SharedRenderState* render_state,
                              ScopedProfilerNode& prof) {
+  m_xgkick_idx = 0;
   m_skipped_tags = 0;
   m_debug.clear();
   m_direct.reset_state();
@@ -175,6 +176,8 @@ void GenericRenderer::handle_dma_stream(const u8* data,
 
 void GenericRenderer::draw_debug_window() {
   ImGui::Text("Skipped %d tags", m_skipped_tags);
+  ImGui::InputInt("kick min", &m_min_xgkick);
+  ImGui::InputInt("kick max", &m_max_xgkick);
   ImGui::Text("Debug:\n%s\n", m_debug.c_str());
   if (ImGui::TreeNode("Direct")) {
     m_direct.draw_debug_window();
@@ -292,7 +295,9 @@ void GenericRenderer::mscal(int imm, SharedRenderState* render_state, ScopedProf
 }
 
 void GenericRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (render_state->enable_generic_xgkick) {
+  if (render_state->enable_generic_xgkick && m_xgkick_idx >= m_min_xgkick &&
+      m_xgkick_idx < m_max_xgkick) {
     m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
   }
+  m_xgkick_idx++;
 }

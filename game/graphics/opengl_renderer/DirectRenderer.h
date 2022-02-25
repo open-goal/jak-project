@@ -76,7 +76,7 @@ class DirectRenderer : public BucketRenderer {
   void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_pabe(u64 val);
-  void handle_clamp1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_clamp1(u64 val);
   void handle_prim(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_prim_packed(const u8* data,
                           SharedRenderState* render_state,
@@ -88,11 +88,9 @@ class DirectRenderer : public BucketRenderer {
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,
                            ScopedProfilerNode& prof);
-  void handle_tex0_1_packed(const u8* data,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
-  void handle_tex0_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_tex1_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_tex0_1_packed(const u8* data);
+  void handle_tex0_1(u64 val);
+  void handle_tex1_1(u64 val);
   void handle_texa(u64 val);
 
   void handle_xyzf2_common(u32 x,
@@ -172,33 +170,26 @@ class DirectRenderer : public BucketRenderer {
     } m_clamp_state;
 
     bool used = false;
-  } m_texture_state[TEXTURE_STATE_COUNT];
 
-  void reset_texture_states() {
-    m_current_texture_state = 0;
-    m_texture_state[0].used = false;
-    for (auto& ts : m_texture_state) {
-      ts.used = false;
+    bool compatible_with(const TextureState& other) {
+      return current_register == other.current_register &&
+             m_clamp_state.current_register == other.m_clamp_state.current_register &&
+             enable_tex_filt == other.enable_tex_filt;
     }
-  }
+  };
 
-  struct TextureGlobalState {
-    bool needs_gl_update = true;
-  } m_global_texture_state;
+  // vertices will reference these texture states
+  TextureState m_buffered_tex_state[TEXTURE_STATE_COUNT];
+  int m_next_free_tex_state = 0;
 
-  int m_current_texture_state = 0;
+  // this texture state mirrors the current GS register.
+  TextureState m_tex_state_from_reg;
 
-  TextureState* current_texture_state() { return &m_texture_state[m_current_texture_state]; }
-  bool needs_state_flush() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
-  void push_texture_state() {
-    ++m_current_texture_state;
-    if (m_current_texture_state >= TEXTURE_STATE_COUNT) {
-      lg::error("fatal tex push {}!!!!", m_current_texture_state);
-    }
-    if (m_current_texture_state > 0) {
-      m_texture_state[m_current_texture_state] = m_texture_state[m_current_texture_state - 1];
-    }
-  }
+  // if this is not -1, then it is the index of a texture state in m_buffered_tex_state that
+  // matches m_tex_state_from_reg.
+  int m_current_tex_state_idx = -1;
+
+  int get_texture_unit_for_current_reg(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
   struct PrimBuildState {
