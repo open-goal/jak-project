@@ -59,4 +59,8 @@ class GenericRenderer : public BucketRenderer {
   struct alignas(16) BufferMemory {
     u8 data[1024 * 16];
   } m_buffer;
+
+  int m_xgkick_idx = 0;
+  int m_min_xgkick = 0;
+  int m_max_xgkick = 1000000;
 };
