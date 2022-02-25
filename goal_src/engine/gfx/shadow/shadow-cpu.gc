@@ -5,11 +5,47 @@
 ;; name in dgo: shadow-cpu
 ;; dgos: GAME, ENGINE
 
-;; TODO - for video
-(define-extern *shadow-data* shadow-data)
+(defmethod asize-of shadow-geo ((obj shadow-geo))
+  (the-as int (-> obj total-size))
+  )
 
-;; todo
-(define *shadow-data* (new 'static 'shadow-data))
+(defmethod mem-usage shadow-geo ((obj shadow-geo) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 108 (-> arg0 length)))
+  (set! (-> arg0 data 107 name) "shadow-geo")
+  (+! (-> arg0 data 107 count) 1)
+  (let ((v1-5 (-> obj total-size)))
+    (+! (-> arg0 data 107 used) v1-5)
+    (+! (-> arg0 data 107 total) (logand -16 (+ v1-5 15)))
+    )
+  obj
+  )
+
+(define *shadow-data* (new 'static 'shadow-data
+                        :texoffset (new 'static 'vector :x 256.5 :y 112.5)
+                        :texscale
+                        (new 'static 'vector :x 0.001953125 :y 0.00390625)
+                        :clrs
+                        (new 'static 'inline-array vector 2
+                          (new 'static 'vector :x (the-as float #x80) :w (the-as float #x82))
+                          (new 'static 'vector :y (the-as float #x80) :w (the-as float #x7f))
+                          )
+                        :dma-unpack-template
+                        (new 'static 'dma-packet
+                          :dma
+                          (new 'static 'dma-tag :id (dma-tag-id cnt))
+                          :vif0
+                          (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1)
+                          :vif1
+                          (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32))
+                          )
+                        :dma-cnt
+                        (new 'static 'dma-tag :id (dma-tag-id cnt))
+                        :vif-unpack-v4-8
+                        (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-8))
+                        )
+        )
+
+
 
 (defmethod dummy-14 shadow-control ((obj shadow-control))
   (let ((v1-1 (-> *time-of-day-context* current-shadow)))
