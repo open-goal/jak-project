@@ -152,13 +152,14 @@ class DirectRenderer : public BucketRenderer {
     bool fix = false;     // what does this even do?
   } m_prim_gl_state;
 
-  static constexpr int TEXTURE_STATE_COUNT = 10;
+  static constexpr int TEXTURE_STATE_COUNT = 1;
 
   struct TextureState {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;
     bool using_mt4hh = false;
     bool tcc = false;
+    bool decal = false;
 
     bool enable_tex_filt = true;
 
@@ -211,11 +212,13 @@ class DirectRenderer : public BucketRenderer {
     math::Vector<float, 4> xyz;
     math::Vector<float, 3> stq;
     math::Vector<u8, 4> rgba;
-    math::Vector<u8, 2> tex;  // texture unit to use + tcc
-    math::Vector<u8, 30> pad;
+    u8 tex_unit;
+    u8 tcc;
+    u8 decal;
+    math::Vector<u8, 29> pad;
   };
   static_assert(sizeof(Vertex) == 64);
-  static_assert(offsetof(Vertex, tex) == 32);
+  static_assert(offsetof(Vertex, tex_unit) == 32);
 
   struct PrimitiveBuffer {
     PrimitiveBuffer(int max_triangles);
@@ -229,7 +232,8 @@ class DirectRenderer : public BucketRenderer {
               const math::Vector<u32, 3>& vert,
               const math::Vector<float, 3>& stq,
               int unit,
-              bool tcc);
+              bool tcc,
+              bool decal);
   } m_prim_buffer;
 
   struct {

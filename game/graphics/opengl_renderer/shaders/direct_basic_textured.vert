@@ -8,8 +8,8 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 
 // putting all texture info stuff here so it's easier to copy-paste
-layout (location = 3) in uvec2 tex_info_in;
-out flat uvec2 tex_info;
+layout (location = 3) in uvec4 tex_info_in;
+out flat uvec4 tex_info;
 
 void main() {
   gl_Position = vec4((position_in.x - 0.5) * 16., -(position_in.y - 0.5) * 32, position_in.z * 2 - 1., 1.0);
