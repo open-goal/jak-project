@@ -174,7 +174,7 @@
 ;; CGO's
 ;;;;;;;;;;;;;;;;;;;;;;
 (cgo "KERNEL.CGO" "kernel.gd")
-;(cgo "ENGINE.CGO" "engine.gd")
+(cgo "ENGINE.CGO" "engine.gd")
 (cgo "GAME.CGO" "game.gd")
 
 ;;;;;;;;;;;;;;;;;
