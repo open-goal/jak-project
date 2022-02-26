@@ -131,7 +131,7 @@
      (pc-discord-rpc-set 1)
      )
     (else
-     (pc-discord-rpc-set 0) 
+     (pc-discord-rpc-set 0)
      )
     )
 
@@ -170,7 +170,7 @@
     )
   (when (not (-> obj use-vis?))
     (set-hud-aspect-ratio 'aspect4x3 'ntsc) ;; set hud aspect ratios every frame because why not?
-    
+
     (when *progress-process*
       ;; adjust sizes for progress.
       ;; video.gc sets the sizes in the normal game.
@@ -430,6 +430,7 @@
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
                 (("camera-hflip?") (set! (-> obj camera-hflip?) (file-stream-read-symbol file)))
                 (("camera-vflip?") (set! (-> obj camera-vflip?) (file-stream-read-symbol file)))
+                (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
                 (("scenes-seen")
                   (dotimes (i 197)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
@@ -659,9 +660,9 @@
 
 (defmethod new entity-debug-inspect ((allocation symbol) (type-to-make type))
   "make a new entity-debug-inspect object"
-  
+
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    
+
     (set! (-> obj scroll-y) 0)
     (set! (-> obj scroll-y-max) 0)
     (set! (-> obj entity) (the entity #f))
@@ -672,28 +673,30 @@
 
 (defmethod set-entity! entity-debug-inspect ((obj entity-debug-inspect) (e entity))
   "set the entity to inspect"
-  
+
   (set! (-> obj entity) e)
   (unless e
     (set! *display-actor-anim* (the string #f)))
   (set! (-> obj scroll-y) 0)
-    
+
   e
   )
 
 (defmethod update-pad entity-debug-inspect ((obj entity-debug-inspect) (pad-idx int))
   "respond to pad inputs"
-  
+
   ;; scroll up
   (if (cpad-pressed? pad-idx l1)
-    (set! (-> obj scroll-y) (max 0 (1- (-> obj scroll-y)))))
+    (1-! (-> obj scroll-y)))
   ;; scroll down
   (if (cpad-pressed? pad-idx r1)
-    (set! (-> obj scroll-y) (min (-> obj scroll-y-max) (1+ (-> obj scroll-y)))))
+    (1+! (-> obj scroll-y)))
   ;; toggle actor info
   (if (cpad-pressed? pad-idx l3)
     (not! (-> obj show-actor-info)))
-    
+
+  (minmax! (-> obj scroll-y) 0 (-> obj scroll-y-max))
+
   (none))
 
 
