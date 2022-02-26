@@ -48,13 +48,14 @@
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
-  "toggles fullscreen mode"
+  "sets window size"
 
   (pc-set-window-size width height)
   0)
 
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
+  "set the aspect ratio used for rendering. this forces native widescreen and takes width and height ratios."
   (let ((aspect (/ (the float aw) (the float ah))))
     (set-aspect-ratio! obj aspect)
     (set! (-> obj aspect-ratio-auto?) #f)
@@ -64,6 +65,7 @@
 
 
 (defmethod set-aspect-ratio! pc-settings ((obj pc-settings) (aspect float))
+  "set the aspect ratio used for rendering."
   (set! (-> obj aspect-ratio) aspect)
   (set! (-> obj aspect-ratio-scale) (/ aspect ASPECT_4X3))
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
@@ -95,7 +97,7 @@
        )
       ((> win-aspect (-> obj aspect-ratio))
        ;; too wide
-       (set! (-> obj width) (the int (* (-> obj aspect-ratio) (the float (-> obj win-height)))))
+       (set! (-> obj width) (the int (* (the float (-> obj win-height)) (-> obj aspect-ratio))))
        (set! (-> obj height) (-> obj win-height))
        )
       ((< win-aspect (-> obj aspect-ratio))
@@ -157,6 +159,8 @@
 
   (update-from-os obj)
   (update-to-os obj)
+  
+  (set! (-> obj movie?) (movie?))
 
   (let ((info (new 'stack 'discord-info)))
     (set! (-> info fuel) (&-> *game-info* fuel))
@@ -206,6 +210,13 @@
       ))
 
   ;; cheats.
+  (update-cheats obj)
+
+  (none))
+
+(defmethod update-cheats pc-settings ((obj pc-settings))
+  "run cheats."
+  
   (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
     (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 (s p i r i t) :extra (x)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
@@ -230,13 +241,6 @@
     (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
           (pc-cheat-toggle-and-tune obj sidekick-blue))
     )
-  (update-cheats obj)
-
-  (none))
-
-(define-extern vent type)
-(defmethod update-cheats pc-settings ((obj pc-settings))
-  "run cheats."
   
   (when *target*
   
@@ -259,6 +263,7 @@
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
        (with-pp
+        (define-extern vent type)
         (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
         (set! (-> (the basic pp) type) vent)
         (logior! (-> *target* control root-prim prim-core action) #x200)
