@@ -211,10 +211,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
   init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));  // 66
 
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000,
-                                       DirectRenderer::Mode::NORMAL);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,
-                                       DirectRenderer::Mode::NORMAL);
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000);
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -266,6 +264,10 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     m_profiler.draw();
   }
 
+  if (settings.draw_small_profiler_window) {
+    m_profiler.draw_small_window();
+  }
+
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
@@ -287,6 +289,7 @@ void OpenGLRenderer::serialize(Serializer& ser) {
 void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
+  ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
   ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
@@ -348,7 +351,9 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   ASSERT(default_regs_tag.kind == DmaTag::Kind::CNT);
   ASSERT(default_regs_tag.qwc == 10);
   // TODO verify data in here.
-  dma.read_and_advance();
+  auto default_data = dma.read_and_advance();
+  ASSERT(default_data.size_bytes > 148);
+  memcpy(m_render_state.fog_color.data(), default_data.data + 144, 4);
   auto default_ret_tag = dma.current_tag();
   ASSERT(default_ret_tag.qwc == 0);
   ASSERT(default_ret_tag.kind == DmaTag::Kind::RET);

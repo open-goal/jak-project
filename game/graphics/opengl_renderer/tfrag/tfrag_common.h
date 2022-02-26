@@ -6,7 +6,7 @@
 struct TfragRenderSettings {
   math::Matrix4f math_camera;
   math::Vector4f hvdf_offset;
-  float fog_x;
+  math::Vector4f fog;
   int tree_idx;
   float time_of_day_weights[8] = {0};
   math::Vector4f planes[4];
@@ -53,8 +53,7 @@ struct TfragPcPortData {
   math::Vector<s32, 4> itimes[4];
   math::Vector4f camera[4];
   math::Vector4f hvdf_off;
-  float fogx;
-  float unused[3];
+  math::Vector4f fog;
   char level_name[12];
   u32 tree_idx;
 };

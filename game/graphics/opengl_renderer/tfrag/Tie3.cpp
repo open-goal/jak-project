@@ -411,7 +411,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 
   TfragRenderSettings settings;
   settings.hvdf_offset = m_pc_port_data.hvdf_off;
-  settings.fog_x = m_pc_port_data.fogx;
+  settings.fog = m_pc_port_data.fog;
 
   memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
@@ -703,7 +703,7 @@ void Tie3::render_tree(int idx,
           settings.hvdf_offset[3]);
       glUniform1f(
           glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "fog_constant"),
-          settings.fog_x);
+          settings.fog.x());
       glDisable(GL_BLEND);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);

@@ -499,7 +499,7 @@ void Tfrag3::render_tree_cull_debug(const TfragRenderSettings& settings,
       settings.hvdf_offset[3]);
   glUniform1f(
       glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "fog_constant"),
-      settings.fog_x);
+      settings.fog.x());
   // glDisable(GL_DEPTH_TEST);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);

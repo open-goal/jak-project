@@ -92,6 +92,8 @@ struct SharedRenderState {
   bool render_debug = false;
   bool enable_merc_xgkick = true;
   bool enable_generic_xgkick = true;
+  math::Vector<u8, 4> fog_color;
+  float fog_intensity = 1.f;
 
   void reset();
   bool has_camera_planes = false;
