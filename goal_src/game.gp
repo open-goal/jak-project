@@ -174,7 +174,7 @@
 ;; CGO's
 ;;;;;;;;;;;;;;;;;;;;;;
 (cgo "KERNEL.CGO" "kernel.gd")
-(cgo "ENGINE.CGO" "engine.gd")
+;(cgo "ENGINE.CGO" "engine.gd")
 (cgo "GAME.CGO" "game.gd")
 
 ;;;;;;;;;;;;;;;;;
@@ -1679,8 +1679,8 @@
  "nav/navigate-h.gc"
  "load/load-dgo.gc"
  "load/ramdisk.gc"
- "pc/pckernel.gc" ;; added
  "sound/gsound.gc"
+ "pc/pckernel.gc" ;; added
  "math/transformq.gc"
  "collide/collide-func.gc"
  "anim/joint.gc"

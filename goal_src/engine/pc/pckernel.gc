@@ -142,6 +142,15 @@
 
   (none))
 
+(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global 24)))
+(defmacro pc-cheat-toggle-and-tune (obj cheat)
+  `(begin
+    (cpad-clear-buttons! 0 r1)
+    (logxor! (-> ,obj cheats) (pc-cheats ,cheat))
+    (cheats-sound-play (logtest? (-> ,obj cheats) (pc-cheats ,cheat)))
+    )
+  )
+
 (defmethod update pc-settings ((obj pc-settings))
   "Update settings to/from PC kernel. Call this at the start of every frame.
    This will update things like the aspect-ratio, which will be used for graphics code later."
@@ -196,8 +205,71 @@
       (set! (-> *ACTOR-bank* pause-dist) (meters 220))
       ))
 
+  ;; cheats.
+  (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 (s p i r i t) :extra (x)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
+          (pc-cheat-toggle-and-tune obj eco-blue))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 (s p i r i t) :extra (circle)
+          (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
+          (pc-cheat-toggle-and-tune obj eco-red))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 (s p i r i t) :extra (triangle)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
+          (pc-cheat-toggle-and-tune obj eco-green))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 (s p i r i t) :extra (square)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
+          (pc-cheat-toggle-and-tune obj eco-yellow))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 (s t e e l)
+          (logclear! (-> *target* state-flags) 16)
+          (pc-cheat-toggle-and-tune obj invinc))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
+          (pc-cheat-toggle-and-tune obj sidekick-blue))
+    )
+  (update-cheats obj)
+
   (none))
 
+(defmethod update-cheats pc-settings ((obj pc-settings))
+  "run cheats."
+  
+  (when *target*
+  
+      (when (and (pc-cheats? obj eco-blue)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
+        
+      (when (and (pc-cheats? obj eco-yellow)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+        (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))
+        
+      (when (and (pc-cheats? obj eco-red)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+        (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc)))
+        
+      (when (and (pc-cheats? obj eco-green)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+       (with-pp
+        (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
+        (set! (-> (the basic pp) type) vent)
+        (logior! (-> *target* control root-prim prim-core action) #x200)
+        (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
+        ))
+      
+      (when (pc-cheats? obj invinc)
+        (logior! (-> *target* state-flags) 16)
+        )
+      
+      )
+  0)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
