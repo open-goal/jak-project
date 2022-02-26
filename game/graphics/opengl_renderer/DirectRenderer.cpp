@@ -6,8 +6,8 @@
 #include "third-party/imgui/imgui.h"
 #include "common/util/Assert.h"
 
-DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode)
-    : BucketRenderer(name, my_id), m_prim_buffer(batch_size), m_mode(mode) {
+DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
+    : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -17,12 +17,12 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr,
                GL_STREAM_DRAW);  // todo stream?
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,                            // location 0 in the shader
-                        4,                            // 4 floats per vert (w unused)
-                        GL_FLOAT,                     // floats
-                        GL_TRUE,                      // normalized, ignored,
-                        sizeof(Vertex),               //
-                        (void*)offsetof(Vertex, xyz)  // offset in array (why is this a pointer...)
+  glVertexAttribPointer(0,                             // location 0 in the shader
+                        4,                             // 4 floats per vert (w unused)
+                        GL_FLOAT,                      // floats
+                        GL_TRUE,                       // normalized, ignored,
+                        sizeof(Vertex),                //
+                        (void*)offsetof(Vertex, xyzf)  // offset in array (why is this a pointer...)
   );
 
   glEnableVertexAttribArray(1);
@@ -123,10 +123,6 @@ void DirectRenderer::draw_debug_window() {
   ImGui::SameLine();
   ImGui::Checkbox("no mip", &m_debug_state.disable_mipmap);
 
-  if (m_mode == Mode::SPRITE_CPU) {
-    ImGui::Checkbox("draw1", &m_sprite_mode.do_first_draw);
-  }
-
   ImGui::Text("Triangles: %d", m_stats.triangles);
   ImGui::SameLine();
   ImGui::Text("Draws: %d", m_stats.draw_calls);
@@ -193,6 +189,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   if (m_debug_state.disable_texture) {
     // a bit of a hack, this forces the non-textured shader always.
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    m_blend_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
   }
 
   if (m_debug_state.red) {
@@ -216,23 +214,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
                m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
 
   int draw_count = 0;
-  if (m_mode == Mode::SPRITE_CPU) {
-    if (!m_prim_gl_state.texture_enable) {
-      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
-    } else {
-      // ASSERT(m_global_texture_state.tcc);
-      ASSERT(m_prim_gl_state.texture_enable);
-      render_state->shaders[ShaderId::SPRITE_CPU].activate();
-    }
-
-    if (m_sprite_mode.do_first_draw) {
-      glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
-      draw_count++;
-    }
-  } else {
-    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
-    draw_count++;
-  }
+  glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+  draw_count++;
 
   if (m_debug_state.wireframe) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
@@ -240,6 +223,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    m_blend_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
     draw_count++;
   }
 
@@ -272,25 +257,21 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
           ASSERT(false);
       }
     }
-    if (m_mode == Mode::SPRITE_CPU) {
-      render_state->shaders[ShaderId::SPRITE_CPU].activate();
-    } else if (m_mode == Mode::SKY) {
-      ASSERT(false);
-    } else {
-      render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
-      glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
-                                       "alpha_reject"),
-                  alpha_reject);
-      glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
-                                       "color_mult"),
-                  m_ogl.color_mult);
-    }
+
+    render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "alpha_reject"),
+                alpha_reject);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "color_mult"),
+                m_ogl.color_mult);
+    glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "fog_color"),
+                render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
+                render_state->fog_intensity);
+
   } else {
-    if (m_mode == Mode::SKY) {
-      render_state->shaders[ShaderId::SKY].activate();
-    } else {
-      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
-    }
+    render_state->shaders[ShaderId::DIRECT_BASIC].activate();
   }
   if (state.fogging_enable) {
     //    ASSERT(false);
@@ -932,7 +913,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          bool advance) {
   ASSERT(z < (1 << 24));
   (void)f;  // TODO: do something with this.
-  if (m_my_id == BucketId::GENERIC_PRIS) {
+
+  if (m_my_id == BucketId::MERC_TFRAG_TEX_LEVEL0) {
     // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
   }
   if (m_prim_buffer.is_full()) {
@@ -945,13 +927,14 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
   m_prim_building.building_vert.at(m_prim_building.building_idx) =
-      math::Vector<u32, 3>{x << 16, y << 16, z << 8};
+      math::Vector<u32, 4>{x << 16, y << 16, z << 8, f};
 
   m_prim_building.building_idx++;
 
   int tex_unit = get_texture_unit_for_current_reg(render_state, prof);
   bool tcc = m_buffered_tex_state[tex_unit].tcc;
   bool decal = m_buffered_tex_state[tex_unit].decal;
+  bool fge = m_prim_gl_state.fogging_enable;
 
   switch (m_prim_building.kind) {
     case GsPrim::Kind::SPRITE: {
@@ -962,8 +945,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner2_vert = m_prim_building.building_vert[1];
         auto& corner2_rgba = m_prim_building.building_rgba[1];
         // should use most recent vertex z.
-        math::Vector<u32, 3> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
-        math::Vector<u32, 3> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
+        math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
+        math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
 
         if (m_prim_gl_state.gouraud_enable) {
           // I'm not really sure what the GS does here.
@@ -972,12 +955,12 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
 
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal);
-        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, tcc, decal);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal);
-        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, tcc, decal);
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal, fge);
         m_prim_building.building_idx = 0;
       }
     } break;
@@ -993,7 +976,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], tex_unit, tcc, decal);
+                               m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
           }
         }
       }
@@ -1005,7 +988,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc, decal);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
         }
       }
       break;
@@ -1021,15 +1004,15 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc, decal);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
         }
       }
     } break;
 
     case GsPrim::Kind::LINE: {
       if (m_prim_building.building_idx == 2) {
-        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
-        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].cast<double>();
+        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].xyz().cast<double>();
+        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].xyz().cast<double>();
         auto normal = (pt1 - pt0).normalized().cross(math::Vector<double, 3>{0, 0, 1});
 
         double line_width = (1 << 19);
@@ -1040,15 +1023,19 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         math::Vector<double, 3> b = pt1 + normal * line_width;
         math::Vector<double, 3> c = pt0 - normal * line_width;
         math::Vector<double, 3> d = pt1 - normal * line_width;
+        math::Vector<u32, 4> ai{a.x(), a.y(), a.z(), 0};
+        math::Vector<u32, 4> bi{b.x(), b.y(), b.z(), 0};
+        math::Vector<u32, 4> ci{c.x(), c.y(), c.z(), 0};
+        math::Vector<u32, 4> di{d.x(), d.y(), d.z(), 0};
 
         // ACB:
-        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {}, 0, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false);
         // b c d
-        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {}, 0, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false);
         //
 
         m_prim_building.building_idx = 0;
@@ -1115,19 +1102,22 @@ DirectRenderer::PrimitiveBuffer::PrimitiveBuffer(int max_triangles) {
 }
 
 void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
-                                           const math::Vector<u32, 3>& vert,
+                                           const math::Vector<u32, 4>& vert,
                                            const math::Vector<float, 3>& st,
                                            int unit,
                                            bool tcc,
-                                           bool decal) {
+                                           bool decal,
+                                           bool fog_enable) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
-  v.xyz[0] = (float)vert[0] / (float)UINT32_MAX;
-  v.xyz[1] = (float)vert[1] / (float)UINT32_MAX;
-  v.xyz[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[0] = (float)vert[0] / (float)UINT32_MAX;
+  v.xyzf[1] = (float)vert[1] / (float)UINT32_MAX;
+  v.xyzf[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[3] = (float)vert[3];
   v.stq = st;
   v.tex_unit = unit;
   v.tcc = tcc;
   v.decal = decal;
+  v.fog_enable = fog_enable;
   vert_count++;
 }

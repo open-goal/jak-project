@@ -264,6 +264,7 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.playing_from_dump = false;
     options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
+    options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     if (options.save_screenshot) {
       options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
     }

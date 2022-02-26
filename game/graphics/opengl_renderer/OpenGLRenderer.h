@@ -15,6 +15,7 @@ struct RenderOptions {
   int lbox_width_px = 0;
   bool draw_render_debug_window = false;
   bool draw_profiler_window = false;
+  bool draw_small_profiler_window = false;
   bool playing_from_dump = false;
 
   bool save_screenshot = false;

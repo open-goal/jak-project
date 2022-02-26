@@ -2,7 +2,7 @@
 #include "third-party/imgui/imgui.h"
 
 GenericRenderer::GenericRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id), m_direct(name, my_id, 0x4000, DirectRenderer::Mode::NORMAL) {}
+    : BucketRenderer(name, my_id), m_direct(name, my_id, 0x4000) {}
 
 void GenericRenderer::render(DmaFollower& dma,
                              SharedRenderState* render_state,

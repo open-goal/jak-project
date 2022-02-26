@@ -7,10 +7,13 @@ layout (location = 2) in int time_of_day_index;
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
 uniform float fog_constant;
+uniform float fog_min;
+uniform float fog_max;
 layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
 
 out vec4 fragment_color;
 out vec3 tex_coord;
+out float fogginess;
 
 void main() {
 
@@ -37,6 +40,11 @@ void main() {
 
     // compute Q
     float Q = fog_constant / transformed[3];
+
+    float fog1 = -transformed.w + hvdf_offset.w;
+    float fog2 = min(fog1, fog_max);
+    float fog3 = max(fog2, fog_min);
+    fogginess = 255 - fog3;
 
     // perspective divide!
     transformed.xyz *= Q;

@@ -119,7 +119,7 @@ void TFragment::render(DmaFollower& dma,
     m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;
     settings.hvdf_offset = m_tfrag_data.hvdf_offset;
-    settings.fog_x = m_tfrag_data.fog.x();
+    settings.fog = m_tfrag_data.fog;
     memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
            64);
     settings.tree_idx = 0;
@@ -175,7 +175,7 @@ void TFragment::render(DmaFollower& dma,
         m_many_level_render.tie_level_renderers[i]->setup_for_level(level_names[i], render_state);
         TfragRenderSettings settings;
         settings.hvdf_offset = m_tfrag_data.hvdf_offset;
-        settings.fog_x = m_tfrag_data.fog.x();
+        settings.fog = m_tfrag_data.fog;
         memcpy(settings.math_camera.data(),
                &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16], 64);
         settings.tree_idx = 0;

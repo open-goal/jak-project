@@ -19,13 +19,7 @@
  */
 class DirectRenderer : public BucketRenderer {
  public:
-  // specializations of direct renderer to handle certain outputs.
-  enum class Mode {
-    NORMAL,      // use for general debug drawing, font.
-    SPRITE_CPU,  // use for sprites (does the appropriate alpha test tricks)
-    SKY          // disables texture perspective correction
-  };
-  DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode);
+  DirectRenderer(const std::string& name, BucketId my_id, int batch_size);
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
@@ -199,7 +193,7 @@ class DirectRenderer : public BucketRenderer {
     math::Vector<float, 2> st_reg;
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
-    std::array<math::Vector<u32, 3>, 3> building_vert;
+    std::array<math::Vector<u32, 4>, 3> building_vert;
     std::array<math::Vector<float, 3>, 3> building_stq;
     int building_idx = 0;
     int tri_strip_startup = 0;
@@ -209,13 +203,14 @@ class DirectRenderer : public BucketRenderer {
   } m_prim_building;
 
   struct Vertex {
-    math::Vector<float, 4> xyz;
+    math::Vector<float, 4> xyzf;
     math::Vector<float, 3> stq;
     math::Vector<u8, 4> rgba;
     u8 tex_unit;
     u8 tcc;
     u8 decal;
-    math::Vector<u8, 29> pad;
+    u8 fog_enable;
+    math::Vector<u8, 28> pad;
   };
   static_assert(sizeof(Vertex) == 64);
   static_assert(offsetof(Vertex, tex_unit) == 32);
@@ -229,11 +224,12 @@ class DirectRenderer : public BucketRenderer {
     // leave 6 free on the end so we always have room to flush one last primitive.
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
-              const math::Vector<u32, 3>& vert,
+              const math::Vector<u32, 4>& vert,
               const math::Vector<float, 3>& stq,
               int unit,
               bool tcc,
-              bool decal);
+              bool decal,
+              bool fog_enable);
   } m_prim_buffer;
 
   struct {
@@ -273,6 +269,4 @@ class DirectRenderer : public BucketRenderer {
   struct SpriteMode {
     bool do_first_draw = true;
   } m_sprite_mode;
-
-  Mode m_mode;
 };
