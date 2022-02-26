@@ -150,7 +150,14 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderSta
               settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
               settings.hvdf_offset[3]);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_constant"),
-              settings.fog_x);
+              settings.fog.x());
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_min"),
+              settings.fog.y());
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_max"),
+              settings.fog.z());
+  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_color"),
+              render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
+              render_state->fog_intensity);
 }
 
 void interp_time_of_day_slow(const float weights[8],

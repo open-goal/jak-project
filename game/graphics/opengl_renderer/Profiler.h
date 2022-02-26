@@ -67,6 +67,7 @@ class Profiler {
   Profiler();
   void clear();
   void draw();
+  void draw_small_window();
   void finish();
   ProfilerNode* root() { return &m_root; }
 
@@ -79,5 +80,6 @@ class Profiler {
   };
 
   int m_mode_selector = 0;
+  bool m_small_window_open = true;
   ProfilerNode m_root;
 };

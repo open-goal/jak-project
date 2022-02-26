@@ -120,8 +120,7 @@ void SkyBlendHandler::draw_debug_window() {
 }
 
 SkyRenderer::SkyRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id),
-      m_direct_renderer("sky-direct", my_id, 100, DirectRenderer::Mode::NORMAL) {}
+    : BucketRenderer(name, my_id), m_direct_renderer("sky-direct", my_id, 100) {}
 
 void SkyRenderer::render(DmaFollower& dma,
                          SharedRenderState* render_state,
