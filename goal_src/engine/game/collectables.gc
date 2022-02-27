@@ -122,7 +122,7 @@
     (die () _type_ :state 24)
     (jump () _type_ :state 25)
     (notice-blue (handle) _type_ :state 26)
-    (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
+    (initialize-effect (_type_ pickup-type) none 27)
     (initialize-eco (_type_ entity-actor pickup-type float) object 28)
     (animate (_type_) none 29)
     (blocked () _type_ :state 30)
@@ -158,7 +158,7 @@
   obj
   )
 
-(defmethod get-pickup-sound eco-collectable ((obj eco-collectable) (arg0 pickup-type))
+(defmethod initialize-effect eco-collectable ((obj eco-collectable) (arg0 pickup-type))
   (set! (-> obj fact pickup-type) arg0)
   (case (-> obj fact pickup-type)
     (((pickup-type eco-blue) (pickup-type eco-red) (pickup-type eco-green) (pickup-type eco-yellow))
@@ -235,11 +235,9 @@
     )
   (set! (-> obj part) (create-launch-control (-> obj eco-effect) obj))
   (when (-> obj sound-name)
-    (let ((v0-1 (new 'process 'ambient-sound (-> obj sound-name) (-> obj root-override trans))))
-      (set! (-> obj sound) v0-1)
-      v0-1
-      )
+    (set! (-> obj sound) (new 'process 'ambient-sound (-> obj sound-name) (-> obj root-override trans)))
     )
+  (none)
   )
 
 (defbehavior initialize-eco-by-other eco ((arg0 vector) (arg1 vector) (arg2 fact-info))
@@ -255,7 +253,7 @@
   (set! (-> self fact options) (-> arg2 options))
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (set! (-> self root-override transv quad) (-> arg1 quad))
-  (get-pickup-sound self (-> self fact pickup-type))
+  (initialize-effect self (-> self fact pickup-type))
   (set! (-> self notify-parent) #f)
   (case (-> self fact pickup-type)
     (((pickup-type eco-blue) (pickup-type eco-yellow) (pickup-type eco-red))
@@ -287,7 +285,7 @@
   (set! (-> obj pickup-type) arg1)
   (initialize obj)
   (set! (-> obj root-override trans quad) (-> arg0 extra trans quad))
-  (get-pickup-sound obj (-> obj fact pickup-type))
+  (initialize-effect obj (-> obj fact pickup-type))
   (initialize-params obj 0 (the-as float 1024.0))
   (update-transforms! (-> obj root-override))
   (if (logtest? (fact-options eco-blocked) (-> obj fact options))
@@ -1213,7 +1211,7 @@
                    (* f30-0
                       (sin
                         (* 109.22667
-                           (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) 600))
+                           (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) (seconds 2)))
                            )
                         )
                       )
@@ -1223,6 +1221,10 @@
           )
         )
       (ja-post)
+      ;; added! particle
+      (with-pc
+        (if (-> *pc-settings* money-starburst?)
+      (spawn (-> self part) (-> self root-override root-prim world-sphere))))
       (suspend)
       )
     (none)
@@ -1249,7 +1251,7 @@
                      (* f30-0
                         (sin
                           (* 109.22667
-                             (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) 600))
+                             (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) (seconds 2)))
                              )
                           )
                         )
@@ -1258,6 +1260,10 @@
             )
         )
       (transform-post)
+      ;; added! particle
+      (with-pc
+        (if (-> *pc-settings* money-starburst?)
+      (spawn (-> self part) (-> self root-override root-prim world-sphere))))
       (suspend)
       )
     (none)
@@ -1268,6 +1274,9 @@
   :virtual #t
   :code
   (behavior ((arg0 object) (arg1 handle))
+    (if (nonzero? (-> self part))
+        (kill-and-free-particles (-> self part))
+        )
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -1315,6 +1324,8 @@
       )
   (set-vector! (-> obj draw color-mult) 0.8 0.8 0.8 1.0)
   (set-vector! (-> obj draw color-emissive) 0.2 0.2 0.2 1.0)
+  ;; added! money starburst
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 64) obj))
   obj
   )
 
@@ -2559,7 +2570,7 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 356]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 363]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 122]
-(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-drawable) (arg5 fact-info))
+(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
   (local-vars
     (v1-2 basic)
     (v1-28 symbol)

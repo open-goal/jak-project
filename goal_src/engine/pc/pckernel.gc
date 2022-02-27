@@ -48,13 +48,14 @@
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
-  "toggles fullscreen mode"
+  "sets window size"
 
   (pc-set-window-size width height)
   0)
 
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
+  "set the aspect ratio used for rendering. this forces native widescreen and takes width and height ratios."
   (let ((aspect (/ (the float aw) (the float ah))))
     (set-aspect-ratio! obj aspect)
     (set! (-> obj aspect-ratio-auto?) #f)
@@ -64,6 +65,7 @@
 
 
 (defmethod set-aspect-ratio! pc-settings ((obj pc-settings) (aspect float))
+  "set the aspect ratio used for rendering."
   (set! (-> obj aspect-ratio) aspect)
   (set! (-> obj aspect-ratio-scale) (/ aspect ASPECT_4X3))
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
@@ -95,7 +97,7 @@
        )
       ((> win-aspect (-> obj aspect-ratio))
        ;; too wide
-       (set! (-> obj width) (the int (* (-> obj aspect-ratio) (the float (-> obj win-height)))))
+       (set! (-> obj width) (the int (* (the float (-> obj win-height)) (-> obj aspect-ratio))))
        (set! (-> obj height) (-> obj win-height))
        )
       ((< win-aspect (-> obj aspect-ratio))
@@ -131,7 +133,7 @@
      (pc-discord-rpc-set 1)
      )
     (else
-     (pc-discord-rpc-set 0) 
+     (pc-discord-rpc-set 0)
      )
     )
 
@@ -142,12 +144,23 @@
 
   (none))
 
+(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global 24)))
+(defmacro pc-cheat-toggle-and-tune (obj cheat)
+  `(begin
+    (cpad-clear-buttons! 0 r1)
+    (logxor! (-> ,obj cheats) (pc-cheats ,cheat))
+    (cheats-sound-play (logtest? (-> ,obj cheats) (pc-cheats ,cheat)))
+    )
+  )
+
 (defmethod update pc-settings ((obj pc-settings))
   "Update settings to/from PC kernel. Call this at the start of every frame.
    This will update things like the aspect-ratio, which will be used for graphics code later."
 
   (update-from-os obj)
   (update-to-os obj)
+  
+  (set! (-> obj movie?) (movie?))
 
   (let ((info (new 'stack 'discord-info)))
     (set! (-> info fuel) (&-> *game-info* fuel))
@@ -169,6 +182,8 @@
     (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
     )
   (when (not (-> obj use-vis?))
+    (set-hud-aspect-ratio 'aspect4x3 'ntsc) ;; set hud aspect ratios every frame because why not?
+
     (when *progress-process*
       ;; adjust sizes for progress.
       ;; video.gc sets the sizes in the normal game.
@@ -194,8 +209,73 @@
       (set! (-> *ACTOR-bank* pause-dist) (meters 220))
       ))
 
+  ;; cheats.
+  (update-cheats obj)
+
   (none))
 
+(defmethod update-cheats pc-settings ((obj pc-settings))
+  "run cheats."
+  
+  (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 (s p i r i t) :extra (x)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
+          (pc-cheat-toggle-and-tune obj eco-blue))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 (s p i r i t) :extra (circle)
+          (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
+          (pc-cheat-toggle-and-tune obj eco-red))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 (s p i r i t) :extra (triangle)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
+          (pc-cheat-toggle-and-tune obj eco-green))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 (s p i r i t) :extra (square)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
+          (pc-cheat-toggle-and-tune obj eco-yellow))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 (s t e e l)
+          (logclear! (-> *target* state-flags) 16)
+          (pc-cheat-toggle-and-tune obj invinc))
+          
+    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
+          (pc-cheat-toggle-and-tune obj sidekick-blue))
+    )
+  
+  (when *target*
+  
+      (when (and (pc-cheats? obj eco-blue)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
+        
+      (when (and (pc-cheats? obj eco-yellow)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+        (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))
+        
+      (when (and (pc-cheats? obj eco-red)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+        (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc)))
+        
+      (when (and (pc-cheats? obj eco-green)
+                 (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
+                     (<= (-> *target* fact-info-target eco-level) 0.0)))
+       (with-pp
+        (define-extern vent type)
+        (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
+        (set! (-> (the basic pp) type) vent)
+        (logior! (-> *target* control root-prim prim-core action) #x200)
+        (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
+        ))
+      
+      (when (pc-cheats? obj invinc)
+        (logior! (-> *target* state-flags) 16)
+        )
+      
+      )
+  0)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -311,15 +391,7 @@
 (defun file-stream-read-symbol ((file file-stream))
   (file-stream-seek-past-whitespace file)
   (file-stream-read-word file)
-  (case-str *pc-temp-string*
-    (("#f") #f)
-    (("#t") #t)
-    (("aspect4x3") 'aspect4x3)
-    (("aspect16x9") 'aspect16x9)
-    (("borderless") 'borderless)
-    (("auto") 'auto)
-    (else #t)
-    )
+  (string->symbol *pc-temp-string*)
   )
 
 (defmacro pc-settings-read-throw-error (fs msg)
@@ -434,6 +506,9 @@
                 (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
+                (("camera-hflip?") (set! (-> obj camera-hflip?) (file-stream-read-symbol file)))
+                (("camera-vflip?") (set! (-> obj camera-vflip?) (file-stream-read-symbol file)))
+                (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
                 (("scenes-seen")
                   (dotimes (i 197)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
@@ -461,6 +536,8 @@
                       (("hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
                       (("hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
                       (("hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
+                      (("hud-watch?") (set! (-> obj secrets hud-watch?) (file-stream-read-symbol file)))
+                      (("watch-12hr?") (set! (-> obj secrets watch-12hr?) (file-stream-read-symbol file)))
                       (("art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
                       (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
@@ -661,9 +738,9 @@
 
 (defmethod new entity-debug-inspect ((allocation symbol) (type-to-make type))
   "make a new entity-debug-inspect object"
-  
+
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    
+
     (set! (-> obj scroll-y) 0)
     (set! (-> obj scroll-y-max) 0)
     (set! (-> obj entity) (the entity #f))
@@ -674,28 +751,30 @@
 
 (defmethod set-entity! entity-debug-inspect ((obj entity-debug-inspect) (e entity))
   "set the entity to inspect"
-  
+
   (set! (-> obj entity) e)
   (unless e
     (set! *display-actor-anim* (the string #f)))
   (set! (-> obj scroll-y) 0)
-    
+
   e
   )
 
 (defmethod update-pad entity-debug-inspect ((obj entity-debug-inspect) (pad-idx int))
   "respond to pad inputs"
-  
+
   ;; scroll up
   (if (cpad-pressed? pad-idx l1)
-    (set! (-> obj scroll-y) (max 0 (1- (-> obj scroll-y)))))
+    (1-! (-> obj scroll-y)))
   ;; scroll down
   (if (cpad-pressed? pad-idx r1)
-    (set! (-> obj scroll-y) (min (-> obj scroll-y-max) (1+ (-> obj scroll-y)))))
+    (1+! (-> obj scroll-y)))
   ;; toggle actor info
   (if (cpad-pressed? pad-idx l3)
     (not! (-> obj show-actor-info)))
-    
+
+  (minmax! (-> obj scroll-y) 0 (-> obj scroll-y-max))
+
   (none))
 
 
