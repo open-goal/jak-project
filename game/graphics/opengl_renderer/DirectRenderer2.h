@@ -36,7 +36,10 @@ class DirectRenderer2 {
     math::Vector<u8, 4> rgba;
     bool next_vertex_starts_strip = true;
     u32 strip_warmup = 0;
-
+    u8 vertex_flags = 0;
+    void set_tcc_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 1; }
+    void set_decal_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 2; }
+    void set_fog_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 4; }
   } m_state;
 
   // if this is true, then drawing a vertex can just get pushed directly to the vertex buffer.
@@ -117,7 +120,7 @@ class DirectRenderer2 {
                         SharedRenderState* render_state);
 
   // gif handlers
-  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_ad(const u8* data);
 
   void handle_test1(u64 val);
   void handle_tex0_1(u64 val);

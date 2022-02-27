@@ -1,6 +1,7 @@
 #include "DirectRenderer2.h"
 #include "third-party/imgui/imgui.h"
 #include "common/log/log.h"
+#include <immintrin.h>
 
 DirectRenderer2::DirectRenderer2(u32 max_verts,
                                  u32 max_inds,
@@ -126,7 +127,7 @@ void DirectRenderer2::flush_pending(SharedRenderState* render_state, ScopedProfi
   glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, m_vertices.next_vertex * sizeof(Vertex), m_vertices.vertices.data(),
-               GL_STATIC_DRAW);  // ahc hack rmeove remove remove!!
+               GL_STREAM_DRAW);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_vertices.next_index * sizeof(u32),
                m_vertices.indices.data(), GL_STREAM_DRAW);
@@ -200,6 +201,7 @@ void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
                        next_draw.mode.get_clamp_s_enable(), next_draw.mode.get_clamp_t_enable(),
                        render_state);
     }
+
     u32 end_idx;
     if (end_of_draw_group == m_next_free_draw - 1) {
       end_idx = m_vertices.next_index;
@@ -207,6 +209,9 @@ void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
       end_idx = m_draw_buffer[end_of_draw_group + 1].start_index;
     }
     void* offset = (void*)(draw.start_index * sizeof(u32));
+    // fmt::print("drawing {:4d} with abe {} tex {} {}", end_idx - draw.start_index,
+    // (int)draw.mode.get_ab_enable(), end_of_draw_group - draw_idx, draw.to_single_line_string() );
+    // fmt::print("{}\n", draw.mode.to_string());
     glDrawElements(GL_TRIANGLES, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
     prof.add_draw_call();
     prof.add_tri((end_idx - draw.start_index) / 3);
@@ -267,6 +272,7 @@ void DirectRenderer2::setup_opengl_for_draw_mode(const Draw& draw,
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw.mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_SRC_SRC_SRC) {
       // this is very weird...
+      // Cs
       glBlendFunc(GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw.mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST) {
@@ -415,7 +421,7 @@ void DirectRenderer2::render_gif_data(const u8* data,
           // fmt::print("{}\n", reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::AD:
-              handle_ad(data + offset, render_state, prof);
+              handle_ad(data + offset);
               break;
             case GifTag::RegisterDescriptor::ST:
               handle_st_packed(data + offset);
@@ -472,9 +478,7 @@ void DirectRenderer2::render_gif_data(const u8* data,
   }
 }
 
-void DirectRenderer2::handle_ad(const u8* data,
-                                SharedRenderState* render_state,
-                                ScopedProfilerNode& prof) {
+void DirectRenderer2::handle_ad(const u8* data) {
   u64 value;
   GsRegisterAddress addr;
   memcpy(&value, data, sizeof(u64));
@@ -592,7 +596,10 @@ void DirectRenderer2::handle_tex0_1(u64 val) {
     }
     // tw/th
     m_state.as_mode.set_tcc(reg.tcc());
-    m_state.as_mode.set_decal(reg.tfx() == GsTex0::TextureFunction::DECAL);
+    m_state.set_tcc_flag(reg.tcc());
+    bool decal = reg.tfx() == GsTex0::TextureFunction::DECAL;
+    m_state.as_mode.set_decal(decal);
+    m_state.set_decal_flag(decal);
     ASSERT(reg.tfx() == GsTex0::TextureFunction::DECAL ||
            reg.tfx() == GsTex0::TextureFunction::MODULATE);
   }
@@ -629,6 +636,7 @@ void DirectRenderer2::handle_prim(u64 val) {
       ASSERT(false);  // todo, might need this
     }
     m_state.as_mode.set_fog(reg.fge());
+    m_state.set_fog_flag(reg.fge());
     m_state.as_mode.set_ab(reg.abe());
     ASSERT(!reg.aa1());
     ASSERT(!reg.fst());
@@ -703,15 +711,14 @@ void DirectRenderer2::handle_xyzf2_packed(const u8* data,
     m_state.tex_unit = tex_unit;
   }
 
-  vert.xyz[0] = (x << 16) / (float)UINT32_MAX;
-  vert.xyz[1] = (y << 16) / (float)UINT32_MAX;
-  vert.xyz[2] = (z << 8) / (float)UINT32_MAX;
+  vert.xyz[0] = x;
+  vert.xyz[1] = y;
+  vert.xyz[2] = z;
   vert.rgba = m_state.rgba;
   vert.stq = math::Vector<float, 3>(m_state.s, m_state.t, m_state.Q);
   vert.tex_unit = m_state.tex_unit;
   vert.fog = f;
-  vert.flags = (m_state.as_mode.get_tcc_enable()) | (m_state.as_mode.get_decal() << 1) |
-               (m_state.as_mode.get_fog_enable() << 2);
+  vert.flags = m_state.vertex_flags;
 }
 
 void DirectRenderer2::handle_alpha1(u64 val) {
