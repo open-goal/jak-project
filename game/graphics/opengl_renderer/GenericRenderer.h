@@ -2,6 +2,7 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "game/graphics/opengl_renderer/DirectRenderer2.h"
 #include "game/common/vu.h"
 
 class GenericRenderer : public BucketRenderer {
@@ -9,6 +10,7 @@ class GenericRenderer : public BucketRenderer {
   GenericRenderer(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary& shaders) override;
 
  private:
   u32 unpack32_4(const VifCodeUnpack& up, const u8* data, u32 imm);
@@ -39,6 +41,7 @@ class GenericRenderer : public BucketRenderer {
 
   int m_skipped_tags = 0;
   DirectRenderer m_direct;
+  DirectRenderer2 m_direct2;
   std::string m_debug;
 
   struct Vu {

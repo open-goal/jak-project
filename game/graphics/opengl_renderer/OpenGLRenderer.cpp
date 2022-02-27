@@ -43,6 +43,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
   } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
     lg::error("[{}] OpenGL error 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
               message);
+    ASSERT(false);
   }
 }
 
@@ -219,6 +220,8 @@ void OpenGLRenderer::init_bucket_renderers() {
     if (!m_bucket_renderers[i]) {
       init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), (BucketId)i);
     }
+
+    m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
   }
 }
 
@@ -295,6 +298,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
   ImGui::Checkbox("Merc XGKICK", &m_render_state.enable_merc_xgkick);
   ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
+  ImGui::Checkbox("Direct 2", &m_render_state.use_direct2);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();

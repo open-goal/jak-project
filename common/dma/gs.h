@@ -365,6 +365,8 @@ class DrawMode {
     SRC_0_FIX_DST = 3,    // fix = 128
     SRC_DST_FIX_DST = 4,  // fix = 64
     ZERO_SRC_SRC_DST = 5,
+    SRC_SRC_SRC_SRC = 6,
+    SRC_0_DST_DST = 7
   };
 
   enum class AlphaTest {
@@ -483,8 +485,27 @@ class DrawMode {
   bool get_decal() const { return !(m_val & (1 << 28)); }
   void enable_decal() { m_val = m_val & (~(1 << 28)); }
   void disable_decal() { m_val = m_val | (1 << 28); }
+  void set_decal(bool en) {
+    if (en) {
+      enable_decal();
+    } else {
+      disable_decal();
+    }
+  }
+
+  bool get_fog_enable() const { return m_val & (1 << 29); }
+  void enable_fog() { m_val = m_val | (1 << 29); }
+  void disable_fog() { m_val = m_val & (~(1 << 29)); }
+  void set_fog(bool en) {
+    if (en) {
+      enable_fog();
+    } else {
+      disable_fog();
+    }
+  }
 
   u32& as_int() { return m_val; }
+  const u32& as_int() const { return m_val; }
 
   bool operator==(const DrawMode& other) const { return m_val == other.m_val; }
   bool operator!=(const DrawMode& other) const { return m_val != other.m_val; }
@@ -508,5 +529,6 @@ class DrawMode {
   // 23 t clamp
   // 24 - 27 alpha blend
   // 28 !decal
+  // 29 fge
   u32 m_val = UINT32_MAX;
 };

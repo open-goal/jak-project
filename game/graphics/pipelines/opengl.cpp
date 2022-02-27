@@ -31,6 +31,8 @@
 
 namespace {
 
+constexpr bool run_dma_copy = false;
+
 struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
@@ -253,7 +255,6 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
       g_gfx_data->debug_gui.want_save() = false;
     }
 
-    auto& chain = g_gfx_data->dma_copier.get_last_result();
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     RenderOptions options;
     options.window_height_px = height;
@@ -268,10 +269,14 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     if (options.save_screenshot) {
       options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
     }
-    g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
-    //          g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
-    //                                                      g_gfx_data->dma_copier.get_last_input_offset()),
-    //                                          options);
+    if constexpr (run_dma_copy) {
+      auto& chain = g_gfx_data->dma_copier.get_last_result();
+      g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
+    } else {
+      g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
+                                                  g_gfx_data->dma_copier.get_last_input_offset()),
+                                      options);
+    }
   }
 
   // before vsync, mark the chain as rendered.
@@ -518,7 +523,7 @@ void gl_send_chain(const void* data, u32 offset) {
     // The renderers should just operate on DMA chains, so eliminating this step in the future may
     // be easy.
 
-    g_gfx_data->dma_copier.run(data, offset);
+    g_gfx_data->dma_copier.set_input_data(data, offset, run_dma_copy);
 
     g_gfx_data->has_data_to_render = true;
     g_gfx_data->dma_cv.notify_all();
