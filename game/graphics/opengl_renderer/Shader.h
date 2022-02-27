@@ -32,6 +32,7 @@ enum class ShaderId {
   TFRAG3_NO_TEX = 7,
   SPRITE = 8,
   SPRITE3 = 9,
+  DIRECT2 = 10,
   MAX_SHADERS
 };
 
