@@ -5,10 +5,6 @@
 ;; name in dgo: hud
 ;; dgos: GAME, ENGINE
 
-;; TODO - for hud-classes
-(define-extern hud-init-by-other (function int none :behavior hud))
-
-
 ;; DECOMP BEGINS
 
 (defmethod relocate hud ((obj hud) (arg0 int))
@@ -147,7 +143,13 @@
             (* 0.5 (- (* (-> *video-parms* relative-y-scale)
                          (+ (-> obj particles s5-0 init-pos y)
                             (the float (* (-> obj y-sgn) (-> obj offset)))
-                            (* (the float (-> obj y-offset)) (-> *video-parms* relative-x-scale-reciprical))
+                            (#if PC_PORT
+                                (if (not (-> *pc-settings* use-vis?))
+                                    (* (the float (-> obj y-offset)) (-> *video-parms* relative-y-scale))
+                                    (* (the float (-> obj y-offset)) (-> *video-parms* relative-x-scale-reciprical))
+                                    )
+                                (* (the float (-> obj y-offset)) (-> *video-parms* relative-x-scale-reciprical))
+                                )
                             )
                          )
                       (the float (-> *video-parms* screen-sy))

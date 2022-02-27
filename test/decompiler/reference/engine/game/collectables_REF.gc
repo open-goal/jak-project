@@ -129,7 +129,7 @@
     (die () _type_ :state 24)
     (jump () _type_ :state 25)
     (notice-blue (handle) _type_ :state 26)
-    (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
+    (initialize-effect (_type_ pickup-type) none 27)
     (initialize-eco (_type_ entity-actor pickup-type float) object 28)
     (animate (_type_) none 29)
     (blocked () _type_ :state 30)
@@ -185,7 +185,8 @@
   )
 
 ;; definition for method 27 of type eco-collectable
-(defmethod get-pickup-sound eco-collectable ((obj eco-collectable) (arg0 pickup-type))
+;; INFO: Return type mismatch ambient-sound vs none.
+(defmethod initialize-effect eco-collectable ((obj eco-collectable) (arg0 pickup-type))
   (set! (-> obj fact pickup-type) arg0)
   (case (-> obj fact pickup-type)
     (((pickup-type eco-blue) (pickup-type eco-red) (pickup-type eco-green) (pickup-type eco-yellow))
@@ -261,12 +262,10 @@
      )
     )
   (set! (-> obj part) (create-launch-control (-> obj eco-effect) obj))
-  (when (-> obj sound-name)
-    (let ((v0-1 (new 'process 'ambient-sound (-> obj sound-name) (-> obj root-override trans))))
-      (set! (-> obj sound) v0-1)
-      v0-1
+  (if (-> obj sound-name)
+      (set! (-> obj sound) (new 'process 'ambient-sound (-> obj sound-name) (-> obj root-override trans)))
       )
-    )
+  (none)
   )
 
 ;; definition for function initialize-eco-by-other
@@ -285,7 +284,7 @@
   (set! (-> self fact options) (-> arg2 options))
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (set! (-> self root-override transv quad) (-> arg1 quad))
-  (get-pickup-sound self (-> self fact pickup-type))
+  (initialize-effect self (-> self fact pickup-type))
   (set! (-> self notify-parent) #f)
   (case (-> self fact pickup-type)
     (((pickup-type eco-blue) (pickup-type eco-yellow) (pickup-type eco-red))
@@ -319,7 +318,7 @@
   (set! (-> obj pickup-type) arg1)
   (initialize obj)
   (set! (-> obj root-override trans quad) (-> arg0 extra trans quad))
-  (get-pickup-sound obj (-> obj fact pickup-type))
+  (initialize-effect obj (-> obj fact pickup-type))
   (initialize-params obj 0 (the-as float 1024.0))
   (update-transforms! (-> obj root-override))
   (if (logtest? (fact-options eco-blocked) (-> obj fact options))
@@ -2744,7 +2743,7 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 363]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 122]
 ;; Used lq/sq
-(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-drawable) (arg5 fact-info))
+(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
   (local-vars
     (v1-2 basic)
     (v1-28 symbol)
@@ -3017,7 +3016,7 @@
       (if (= (the-as int s3-0) 6)
           (set! (-> s2-1 y) (+ 6144.0 (-> s2-1 y)))
           )
-      (birth-pickup-at-point s2-1 (the-as pickup-type s3-0) f30-0 arg0 (the-as process-drawable arg1) obj)
+      (birth-pickup-at-point s2-1 (the-as pickup-type s3-0) f30-0 arg0 arg1 obj)
       )
     )
   )

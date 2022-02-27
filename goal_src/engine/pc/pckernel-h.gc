@@ -32,7 +32,7 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0002)
 
 (defglobalconstant PC_KERNEL_VERSION_MINOR #x0000)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
@@ -109,6 +109,21 @@
   (test)
   )
 
+;; cheats
+(defenum pc-cheats
+  :bitfield #t
+  :type uint64
+  (eco-green)
+  (eco-red)
+  (eco-blue)
+  (eco-yellow)
+  (invinc)
+  (sidekick-blue)
+  )
+
+(defmacro pc-cheats? (obj &rest cheats)
+  `(logtest? (-> ,obj cheats) (pc-cheats ,@cheats)))
+
 ;; secrets and goodies
 (deftype pc-game-secrets (structure)
   ((art pc-jak1-concept-art) ;; concept art unlocked
@@ -120,7 +135,10 @@
    (hero-mode? symbol) ;; unsure how this should work
    (hud-map? symbol) ;; enable map in HUD/progress?
    (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
+   (hud-watch? symbol) ;; a watch that tells the time of day!
+   (watch-12hr? symbol) ;; 12-hour clock toggle
    )
+  :pack-me
   )
 
 ;; general fixes
@@ -135,11 +153,13 @@
    (fix-movies symbol) ;; bad camera and single-frame crappiness
    (fix-credits symbol) ;; one of the credits lines has the wrong color!!
    )
+  :pack-me
   )
 
 ;; bingo integration. placeholder for now.
 (deftype pc-bingo-info (structure)
   ()
+  :pack-me
   )
 
 
@@ -205,6 +225,9 @@
    (display-bug-report symbol)
    (display-heap-status symbol)
    (display-actor-counts symbol)
+   (mood-override? symbol)
+   (mood-overrides float 8)
+   (movie? symbol)
 
    ;; device settings
    ;(device-audio pc-device-info :inline) ;; used audio device
@@ -250,6 +273,9 @@
    (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
    (subtitle-language pc-subtitle-lang) ;; language for subtitles
    (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
+   (camera-hflip? symbol) ;; horizontal camera invert
+   (camera-vflip? symbol) ;; vertical camera invert
+   (money-starburst? symbol) ;; add a starburst to the money
 
    (fixes pc-fixes :inline) ;; extra game fixes
 
@@ -260,6 +286,8 @@
    (scenes-seen uint8 197) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
 
    (discord-rpc? symbol) ;; enable discord rich presence integration
+   
+   (cheats pc-cheats)
    )
 
   (:methods
@@ -283,6 +311,7 @@
     (read-from-file (_type_ string) symbol)
     (write-to-file (_type_ string) symbol)
     (actor-force-visible? (_type_) symbol)
+    (update-cheats (_type_) int)
     )
   )
 
@@ -333,6 +362,8 @@
   (set! (-> obj display-bug-report) #f)
   (set! (-> obj display-heap-status) #f)
   (set! (-> obj display-actor-counts) #f)
+  (set! (-> obj mood-override?) #f)
+  (set! (-> obj movie?) #f)
   (set! (-> obj font-scale) 1.0)
   (set! (-> obj aspect-custom-x) 1)
   (set! (-> obj aspect-custom-y) 1)
@@ -405,6 +436,9 @@
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
   (set! (-> obj subtitle-language) (pc-subtitle-lang english))
+  (set! (-> obj camera-hflip?) #f)
+  (set! (-> obj camera-vflip?) #f)
+  (set! (-> obj money-starburst?) #f)
   (none))
 
 (defmethod reset-fixes pc-settings ((obj pc-settings))
@@ -439,6 +473,8 @@
   (set! (-> obj secrets hero-mode?) #f)
   (set! (-> obj secrets hud-map?) #t)
   (set! (-> obj secrets hud-counters?) #t)
+  (set! (-> obj secrets hud-watch?) #f)
+  (set! (-> obj secrets watch-12hr?) #f)
   (none))
 
 (defmethod actor-force-visible? pc-settings ((obj pc-settings))
@@ -453,6 +489,84 @@
       ,@body
       ))
   )
+
+(seval (define *pc-cheat-map*
+          '((a (triangle triangle))
+            (b (square square))
+            (c (circle circle))
+            (d (x x))
+            (e (right right))
+            (f (right up))
+            (g (right down))
+            (h (left right))
+            (i (up right))
+            (j (down left))
+            (k (square right))
+            (l (left down))
+            (m (up circle))
+            (n (up up))
+            (o (circle square))
+            (p (down circle))
+            (q (dowm square))
+            (r (circle x))
+            (s (down x))
+            (t (triangle square))
+            (u (square x))
+            (v (x triangle))
+            (w (left left))
+            (x (up down))
+            (y (up x))
+            (z (up circle))
+            ))
+        )
+
+(desfun pc-cheat-encode (letters extra)
+  "turn a cheat word into input names."
+  (let ((out '()))
+  
+  (dolist (in letters)
+    
+    (let ((buttons (cadr (assoc (car in) *pc-cheat-map*))))
+      (dolist (button buttons)
+        
+        (set! out (cons (car button) out))
+        )
+      )
+    )
+
+  (dolist (ex extra)
+    
+    (set! out (cons (car ex) out))
+    )
+  (reverse out)
+    )
+  )
+
+(defmacro pc-check-cheat-code (cheat-var pad-idx input &key (extra ()) &rest body)
+  "execute body when a cheat code made up of sequential inputs has been inputted"
+
+  (let ((buttons (pc-cheat-encode input extra)))
+  `(when (nonzero? (cpad-pressed ,pad-idx)) ;; only check when some button has been pressed
+    (case ,cheat-var
+      ,@(apply-i
+          (lambda (x i)
+            `((,i)
+              (if (cpad-pressed? ,pad-idx ,x)
+                ,(if (< i (- (length buttons) 1))
+                    `(1+! ,cheat-var)
+                    
+                    `(begin ,@body (set! ,cheat-var 0))
+                    )
+                
+                (set! ,cheat-var 0)
+                )
+              )
+            )
+        buttons)
+      )
+    )
+  ))
+
 
 )
 
