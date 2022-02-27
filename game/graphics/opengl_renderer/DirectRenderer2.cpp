@@ -101,6 +101,19 @@ void DirectRenderer2::reset_state() {
 std::string DirectRenderer2::Vertex::print() const {
   return fmt::format("{} {} {}\n", xyz.to_string_aligned(), stq.to_string_aligned(), rgba[0]);
 }
+
+std::string DirectRenderer2::Draw::to_string() const {
+  std::string result;
+  result += mode.to_string();
+  result += fmt::format("TBP: 0x{:x}\n", tbp);
+  result += fmt::format("fix: 0x{:x}\n", fix);
+  return result;
+}
+
+std::string DirectRenderer2::Draw::to_single_line_string() const {
+  return fmt::format("mode 0x{:8x} tbp 0x{:4x} fix 0x{:2x}\n", mode.as_int(), tbp, fix);
+}
+
 void DirectRenderer2::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // skip, if we're empty.
   if (m_next_free_draw == 0) {
@@ -128,9 +141,24 @@ void DirectRenderer2::flush_pending(SharedRenderState* render_state, ScopedProfi
   render_state->shaders[ShaderId::DIRECT2].activate();
 
   // draw call loop
+  // draw_call_loop_simple(render_state, prof);
+  draw_call_loop_grouped(render_state, prof);
+
+  // done! reset.
+  glBindVertexArray(0);
+
+  reset_buffers();
+}
+
+void DirectRenderer2::draw_call_loop_simple(SharedRenderState* render_state,
+                                            ScopedProfilerNode& prof) {
+  fmt::print("------------------------\n");
   for (u32 draw_idx = 0; draw_idx < m_next_free_draw; draw_idx++) {
     const auto& draw = m_draw_buffer[draw_idx];
+    fmt::print("{}", draw.to_single_line_string());
     setup_opengl_for_draw_mode(draw, render_state);
+    setup_opengl_tex(0, draw.tbp, draw.mode.get_filt_enable(), draw.mode.get_clamp_s_enable(),
+                     draw.mode.get_clamp_t_enable(), render_state);
     void* offset = (void*)(draw.start_index * sizeof(u32));
     int end_idx;
     if (draw_idx == m_next_free_draw - 1) {
@@ -142,11 +170,48 @@ void DirectRenderer2::flush_pending(SharedRenderState* render_state, ScopedProfi
     prof.add_draw_call();
     prof.add_tri((end_idx - draw.start_index) / 3);
   }
+}
 
-  // done! reset.
-  glBindVertexArray(0);
+void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
+                                             ScopedProfilerNode& prof) {
+  u32 draw_idx = 0;
+  while (draw_idx < m_next_free_draw) {
+    const auto& draw = m_draw_buffer[draw_idx];
+    u32 end_of_draw_group = draw_idx;  // this is inclusive
+    setup_opengl_for_draw_mode(draw, render_state);
+    setup_opengl_tex(draw.tex_unit, draw.tbp, draw.mode.get_filt_enable(),
+                     draw.mode.get_clamp_s_enable(), draw.mode.get_clamp_t_enable(), render_state);
 
-  reset_buffers();
+    for (u32 draw_to_consider = draw_idx + 1; draw_to_consider < draw_idx + TEX_UNITS;
+         draw_to_consider++) {
+      if (draw_to_consider >= m_next_free_draw) {
+        break;
+      }
+      const auto& next_draw = m_draw_buffer[draw_to_consider];
+      if (next_draw.mode.as_int() != draw.mode.as_int()) {
+        break;
+      }
+      if (next_draw.fix != draw.fix) {
+        break;
+      }
+      m_stats.saved_draws++;
+      end_of_draw_group++;
+      setup_opengl_tex(next_draw.tex_unit, next_draw.tbp, next_draw.mode.get_filt_enable(),
+                       next_draw.mode.get_clamp_s_enable(), next_draw.mode.get_clamp_t_enable(),
+                       render_state);
+    }
+    u32 end_idx;
+    if (end_of_draw_group == m_next_free_draw - 1) {
+      end_idx = m_vertices.next_index;
+    } else {
+      end_idx = m_draw_buffer[end_of_draw_group + 1].start_index;
+    }
+    void* offset = (void*)(draw.start_index * sizeof(u32));
+    glDrawElements(GL_TRIANGLES, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    prof.add_draw_call();
+    prof.add_tri((end_idx - draw.start_index) / 3);
+    draw_idx = end_of_draw_group + 1;
+  }
 }
 
 void DirectRenderer2::setup_opengl_for_draw_mode(const Draw& draw,
@@ -255,56 +320,63 @@ void DirectRenderer2::setup_opengl_for_draw_mode(const Draw& draw,
     glUniform1f(m_ogl.color_mult, color_mult);
     glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
                 render_state->fog_color[2], render_state->fog_intensity);
+  }
+}
 
-    // look up the texture
-    TextureRecord* tex = nullptr;
-    u32 tbp_to_lookup = draw.tbp & 0x7fff;
-    bool use_mt4hh = draw.tbp & 0x8000;
+void DirectRenderer2::setup_opengl_tex(u16 unit,
+                                       u16 tbp,
+                                       bool filter,
+                                       bool clamp_s,
+                                       bool clamp_t,
+                                       SharedRenderState* render_state) {
+  // look up the texture
+  TextureRecord* tex = nullptr;
+  u32 tbp_to_lookup = tbp & 0x7fff;
+  bool use_mt4hh = tbp & 0x8000;
 
-    if (use_mt4hh) {
-      tex = render_state->texture_pool->lookup_mt4hh(tbp_to_lookup);
+  if (use_mt4hh) {
+    tex = render_state->texture_pool->lookup_mt4hh(tbp_to_lookup);
+  } else {
+    tex = render_state->texture_pool->lookup(tbp_to_lookup);
+  }
+
+  if (!tex) {
+    // TODO Add back
+    if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
+      fmt::print("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
+
+      tex = render_state->texture_pool->get_random_texture();
     } else {
-      tex = render_state->texture_pool->lookup(tbp_to_lookup);
+      fmt::print("Failed to find texture at {}, using random\n", tbp_to_lookup);
+      tex = render_state->texture_pool->get_random_texture();
     }
+  }
 
-    if (!tex) {
-      // TODO Add back
-      if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-        fmt::print("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
+  if (!tex->on_gpu) {
+    render_state->texture_pool->upload_to_gpu(tex);
+  }
 
-        tex = render_state->texture_pool->get_random_texture();
-      } else {
-        fmt::print("Failed to find texture at {}, using random\n", tbp_to_lookup);
-        tex = render_state->texture_pool->get_random_texture();
-      }
-    }
+  glActiveTexture(GL_TEXTURE0 + unit);
+  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  if (clamp_s) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
 
-    if (!tex->on_gpu) {
-      render_state->texture_pool->upload_to_gpu(tex);
-    }
+  if (clamp_t) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
-    if (draw.mode.get_clamp_s_enable()) {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    } else {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    }
-
-    if (draw.mode.get_clamp_t_enable()) {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    } else {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    }
-
-    if (draw.mode.get_filt_enable()) {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                      m_debug.disable_mip ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    } else {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    }
+  if (filter) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    m_debug.disable_mip ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
 }
 
@@ -616,11 +688,19 @@ void DirectRenderer2::handle_xyzf2_packed(const u8* data,
     if (m_next_free_draw >= m_draw_buffer.size()) {
       ASSERT(false);
     }
+    // pick a texture unit to use
+    u8 tex_unit = 0;
+    if (m_next_free_draw > 0) {
+      tex_unit = (m_draw_buffer[m_next_free_draw - 1].tex_unit + 1) % TEX_UNITS;
+    }
     auto& draw = m_draw_buffer[m_next_free_draw++];
     draw.mode = m_state.as_mode;
     draw.start_index = m_vertices.next_index;
     draw.tbp = m_state.tbp;
     draw.fix = m_state.gs_alpha.fix();
+    // associate this draw with this texture unit.
+    draw.tex_unit = tex_unit;
+    m_state.tex_unit = tex_unit;
   }
 
   vert.xyz[0] = (x << 16) / (float)UINT32_MAX;
@@ -628,17 +708,10 @@ void DirectRenderer2::handle_xyzf2_packed(const u8* data,
   vert.xyz[2] = (z << 8) / (float)UINT32_MAX;
   vert.rgba = m_state.rgba;
   vert.stq = math::Vector<float, 3>(m_state.s, m_state.t, m_state.Q);
-  vert.tex_unit = 0;
+  vert.tex_unit = m_state.tex_unit;
   vert.fog = f;
   vert.flags = (m_state.as_mode.get_tcc_enable()) | (m_state.as_mode.get_decal() << 1) |
                (m_state.as_mode.get_fog_enable() << 2);
-
-  /*
-   *     u8 tex_unit;
-    u8 flags;
-    u8 fog;
-    u8 pad;
-   */
 }
 
 void DirectRenderer2::handle_alpha1(u64 val) {

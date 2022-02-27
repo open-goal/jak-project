@@ -138,9 +138,9 @@ void GenericRenderer::render(DmaFollower& dma,
     m_skipped_tags++;
   }
   if (render_state->use_direct2) {
-      m_direct2.flush_pending(render_state, prof);
+    m_direct2.flush_pending(render_state, prof);
   } else {
-      m_direct.flush_pending(render_state, prof);
+    m_direct.flush_pending(render_state, prof);
   }
 }
 

@@ -41,7 +41,6 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
     lg::warn("[{}] OpenGL warn 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
              message);
   } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
-
     lg::error("[{}] OpenGL error 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
               message);
     ASSERT(false);

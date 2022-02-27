@@ -16,7 +16,11 @@ class DirectRenderer2 {
   ~DirectRenderer2();
 
  private:
+  static constexpr u8 TEX_UNITS = 10;
   void reset_buffers();
+
+  void draw_call_loop_simple(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void draw_call_loop_grouped(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   // the GsState is the state of all Gs Registers.
   struct GsState {
@@ -26,6 +30,7 @@ class DirectRenderer2 {
     GsTex0 gs_tex0;
     GsPrim gs_prim;
     GsAlpha gs_alpha;
+    u8 tex_unit = 0;
 
     float s, t, Q;
     math::Vector<u8, 4> rgba;
@@ -43,6 +48,10 @@ class DirectRenderer2 {
     u32 start_index = -1;
     u16 tbp = UINT16_MAX;
     u8 fix = 0;
+    u8 tex_unit = 0;
+
+    std::string to_string() const;
+    std::string to_single_line_string() const;
   };
 
   std::vector<Draw> m_draw_buffer;
@@ -67,9 +76,7 @@ class DirectRenderer2 {
     u32 next_vertex = 0;
     u32 next_index = 0;
 
-    void push_reset() {
-      indices[next_index++] = UINT32_MAX;
-    }
+    void push_reset() { indices[next_index++] = UINT32_MAX; }
 
     Vertex& push() {
       indices[next_index++] = next_vertex;
@@ -93,6 +100,7 @@ class DirectRenderer2 {
     u32 num_uploads = 0;
     u32 flush_due_to_full = 0;
     float upload_wait = 0;
+    u32 saved_draws = 0;
   } m_stats;
 
   struct Debug {
@@ -101,6 +109,12 @@ class DirectRenderer2 {
 
   std::string m_name;
   void setup_opengl_for_draw_mode(const Draw& draw, SharedRenderState* render_state);
+  void setup_opengl_tex(u16 unit,
+                        u16 tbp,
+                        bool filter,
+                        bool clamp_s,
+                        bool clamp_t,
+                        SharedRenderState* render_state);
 
   // gif handlers
   void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);

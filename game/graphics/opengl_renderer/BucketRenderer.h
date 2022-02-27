@@ -117,7 +117,7 @@ class BucketRenderer {
   virtual bool empty() const { return false; }
   virtual void draw_debug_window() = 0;
   virtual void serialize(Serializer&) {}
-  virtual void init_shaders(ShaderLibrary& shaders) {}
+  virtual void init_shaders(ShaderLibrary&) {}
 
  protected:
   std::string m_name;

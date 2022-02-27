@@ -493,7 +493,6 @@ class DrawMode {
     }
   }
 
-
   bool get_fog_enable() const { return m_val & (1 << 29); }
   void enable_fog() { m_val = m_val | (1 << 29); }
   void disable_fog() { m_val = m_val & (~(1 << 29)); }
@@ -506,6 +505,7 @@ class DrawMode {
   }
 
   u32& as_int() { return m_val; }
+  const u32& as_int() const { return m_val; }
 
   bool operator==(const DrawMode& other) const { return m_val == other.m_val; }
   bool operator!=(const DrawMode& other) const { return m_val != other.m_val; }

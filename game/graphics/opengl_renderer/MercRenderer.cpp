@@ -57,7 +57,6 @@ void MercRenderer::render(DmaFollower& dma,
   m_direct2.flush_pending(render_state, prof);
 
   m_direct.flush_pending(render_state, prof);
-
 }
 
 bool tag_is_nothing_next(const DmaFollower& dma) {

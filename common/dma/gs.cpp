@@ -430,5 +430,6 @@ std::string DrawMode::to_string() const {
     default:
       ASSERT(false);
   }
+  result += fmt::format(" fog: {}\n decal: {}\n", get_fog_enable(), get_decal());
   return result;
 }

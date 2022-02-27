@@ -76,7 +76,7 @@ FixedChunkDmaCopier::FixedChunkDmaCopier(u32 main_memory_size)
 
 void FixedChunkDmaCopier::set_input_data(const void* memory, u32 offset, bool run_copy) {
   if (run_copy) {
-      run(memory, offset, false);
+    run(memory, offset, false);
   } else {
     m_input_offset = offset;
     m_input_data = memory;
