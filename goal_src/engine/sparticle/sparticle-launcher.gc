@@ -857,15 +857,13 @@
 
 (defmethod create-launch-control sparticle-launch-group ((obj sparticle-launch-group) (arg0 process))
   "create a launch-control to hold the state of the particles. stored on the process heap."
-  (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> obj length)))))
-    (when (zero? (the-as sparticle-launch-control gp-0))
+  (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> obj length)))))
+    (when (zero? gp-0)
       (go process-drawable-art-error "memory")
-      (set! gp-0 0)
-      (goto cfg-4)
+      (return (the-as sparticle-launch-control 0))
       )
-    (initialize (the-as sparticle-launch-control gp-0) obj arg0)
-    (label cfg-4)
-    (the-as sparticle-launch-control gp-0)
+    (initialize gp-0 obj arg0)
+    gp-0
     )
   )
 
@@ -931,7 +929,12 @@
           )
       
       ;; can we see it?
-      (sphere-in-view-frustum? (the-as sphere gp-1))
+      (#if (not PC_PORT)
+          (sphere-in-view-frustum? (the-as sphere gp-1))
+          ;; pc port : launchers considered visible if you have pc rendering on and ps2 parts off
+          (or (not (and (-> *pc-settings* ps2-parts?) (-> *pc-settings* use-vis?)))
+              (sphere-in-view-frustum? (the-as sphere gp-1)))
+          )
       )
      )
     )
