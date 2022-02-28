@@ -122,7 +122,8 @@ void add_field(StructureType* structure,
         auto field_name = symbol_string(car(rest));
         Field overlay_field;
         if (!structure->lookup_field(field_name, &overlay_field)) {
-          throw std::runtime_error(fmt::format("Field {} not found to overlay for {}", field_name, name));
+          throw std::runtime_error(
+              fmt::format("Field {} not found to overlay for {}", field_name, name));
         }
         offset_override = overlay_field.offset();
         rest = cdr(rest);
@@ -583,7 +584,8 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
     }
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "basic");
-    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
+    auto sr =
+        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {
