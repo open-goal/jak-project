@@ -100,6 +100,8 @@ struct SharedRenderState {
   bool has_camera_planes = false;
   LevelVis occlusion_vis[2];
   math::Vector4f camera_planes[4];
+
+  std::string load_status_debug;
 };
 
 /*!

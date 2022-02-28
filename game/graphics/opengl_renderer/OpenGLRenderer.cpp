@@ -262,21 +262,29 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
+  {
+    auto prof = m_profiler.root()->make_scoped_child("loader");
+    m_render_state.loader.update(m_render_state.load_status_debug);
+  }
+
   m_profiler.finish();
   if (settings.draw_profiler_window) {
     m_profiler.draw();
   }
 
+  //  if (m_profiler.root_time() > 0.018) {
+  //    fmt::print("Slow frame: {:.2f} ms\n", m_profiler.root_time() * 1000);
+  //    fmt::print("{}\n", m_profiler.to_string());
+  //  }
+
   if (settings.draw_small_profiler_window) {
-    m_profiler.draw_small_window();
+    m_profiler.draw_small_window(m_render_state.load_status_debug);
   }
 
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
   }
-
-  m_render_state.loader.update();
 }
 
 void OpenGLRenderer::serialize(Serializer& ser) {

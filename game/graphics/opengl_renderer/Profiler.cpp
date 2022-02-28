@@ -88,7 +88,7 @@ void Profiler::draw() {
   ImGui::End();
 }
 
-void Profiler::draw_small_window() {
+void Profiler::draw_small_window(const std::string& status) {
   ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
                                   ImGuiWindowFlags_AlwaysAutoResize |
                                   ImGuiWindowFlags_NoSavedSettings |
@@ -109,6 +109,9 @@ void Profiler::draw_small_window() {
   if (ImGui::Begin("Profiler (short)", p_open, window_flags)) {
     ImGui::Text(" tri: %7d\n", m_root.m_stats.triangles);
     ImGui::Text("  DC: %4d\n", m_root.m_stats.draw_calls);
+    if (!status.empty()) {
+      ImGui::Text("%s", status.c_str());
+    }
   }
   ImGui::End();
 }
@@ -167,4 +170,19 @@ void Profiler::draw_node(ProfilerNode& node, bool expand, int depth, float start
   }
 
   ImGui::PopStyleColor();
+}
+
+std::string Profiler::to_string() {
+  m_root.sort(ProfilerSort::TIME);
+  std::string str;
+  m_root.to_string_helper(str, 0);
+  return str;
+}
+
+void ProfilerNode::to_string_helper(std::string& str, int depth) const {
+  str +=
+      fmt::format("{}{:.2f} ms {:30s}\n", std::string(depth, ' '), m_stats.duration * 1000, m_name);
+  for (const auto& child : m_children) {
+    child.to_string_helper(str, depth + 1);
+  }
 }

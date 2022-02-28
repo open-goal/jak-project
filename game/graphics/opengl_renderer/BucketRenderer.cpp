@@ -63,6 +63,7 @@ void SharedRenderState::reset() {
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }
+  load_status_debug.clear();
 }
 
 RenderMux::RenderMux(const std::string& name,

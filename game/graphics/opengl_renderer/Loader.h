@@ -10,9 +10,11 @@
 
 class Loader {
  public:
+  static constexpr float TIE_LOAD_BUDGET = 1.5f;
+  static constexpr float SHARED_TEXTURE_LOAD_BUDGET = 3.f;
   Loader();
   ~Loader();
-  void update();
+  void update(std::string& status_out);
 
   struct LevelData {
     std::unique_ptr<tfrag3::Level> level;

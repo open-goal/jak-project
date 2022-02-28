@@ -50,7 +50,8 @@ class Tfrag3 {
   };
 
   bool update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                   const tfrag3::Level* lev_data);
+                   const tfrag3::Level* lev_data,
+                   std::string& status_out);
 
   int lod() const { return Gfx::g_global_settings.lod_tfrag; }
 
@@ -122,6 +123,9 @@ class Tfrag3 {
     bool loading = false;
     State state;
     u32 vert = 0;
+    u32 vert_geo = 0;
+    u32 vert_tree = 0;
+    u32 vert_debug_bytes = 0;
   } m_load_state;
   static constexpr int MAX_TEX_PER_FRAME = 4;
 };

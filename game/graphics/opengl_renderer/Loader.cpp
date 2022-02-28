@@ -88,7 +88,7 @@ Loader::Loader() {
   m_loader_thread = std::thread(&Loader::loader_thread, this);
 }
 
-void Loader::update() {
+void Loader::update(std::string& status_out) {
   Timer loader_timer;
 
   // only main thread can touch this.
@@ -104,7 +104,7 @@ void Loader::update() {
     const auto& it = m_initializing_tfrag3_levels.begin();
     if (it != m_initializing_tfrag3_levels.end()) {
       did_gpu_stuff = true;
-      constexpr int MAX_TEX_BYTES_PER_FRAME = 1024 * 1024;
+      constexpr int MAX_TEX_BYTES_PER_FRAME = 1024 * 512;
       auto& data = it->second.data;
 
       int bytes_this_run = 0;
@@ -125,7 +125,9 @@ void Loader::update() {
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
         it->second.data.textures.push_back(gl_tex);
         bytes_this_run += tex.w * tex.h * 4;
-        if (bytes_this_run > MAX_TEX_BYTES_PER_FRAME) {
+        if (bytes_this_run > MAX_TEX_BYTES_PER_FRAME ||
+            loader_timer.getMs() > SHARED_TEXTURE_LOAD_BUDGET) {
+          status_out += fmt::format("LOAD tex {} kB\n", bytes_this_run / 1024);
           break;
         }
       }

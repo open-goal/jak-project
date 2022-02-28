@@ -367,7 +367,9 @@ void TexturePool::draw_debug_window() {
 }
 
 void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex) {
+  bool pushed = false;
   if (tex.on_gpu) {
+    pushed = true;
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3, 0.8, 0.3, 1.0));
   }
   if (ImGui::TreeNode(name.c_str())) {
@@ -383,7 +385,7 @@ void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex
     ImGui::TreePop();
     ImGui::Separator();
   }
-  if (tex.on_gpu) {
+  if (pushed) {
     ImGui::PopStyleColor();
   }
 }
@@ -427,7 +429,7 @@ void TexturePool::remove_garbage_textures() {
   for (auto& t : m_garbage_textures) {
     if (t->on_gpu) {
       m_most_recent_gc_count_gpu++;
-      fmt::print("GC {}\n", t->name);
+      lg::debug("GC {}\n", t->name);
       t->unload_from_gpu();
     }
   }
@@ -436,7 +438,7 @@ void TexturePool::remove_garbage_textures() {
 
 void TexturePool::discard(std::shared_ptr<TextureRecord> tex) {
   ASSERT(!tex->do_gc);
-  fmt::print("discard {}\n", tex->name);
+  lg::debug("discard {}\n", tex->name);
   m_garbage_textures.push_back(tex);
 }
 
