@@ -47,7 +47,7 @@ TEST(TypeSystemReverse, NestedInlineWeird) {
   ts.add_builtin_types();
   goos::Reader reader;
   auto add_type = [&](const std::string& str) {
-    auto in = reader.read_from_string(str).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
+    auto& in = reader.read_from_string(str).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
     parse_deftype(in, &ts);
   };
 

@@ -135,6 +135,11 @@
 ;; launch queue
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+(#if (not PC_BIG_MEMORY)
+    (defconstant SPARTICLE_QUEUE_SIZE 32)
+    (defconstant SPARTICLE_QUEUE_SIZE 80)
+    )
+
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert   0)
    (sp-launcher sparticle-launcher         :offset-assert   4)
@@ -147,11 +152,11 @@
 
 (deftype sp-launch-queue (basic)
   ((in-use int32                                 :offset-assert   4)
-   (queue  sp-queued-launch-particles 32 :inline :offset-assert  16)
+   (queue  sp-queued-launch-particles SPARTICLE_QUEUE_SIZE :inline :offset-assert  16)
    )
   :method-count-assert 9
-  :size-assert         #x410
-  :flag-assert         #x900000410
+  ;:size-assert         #x410
+  ;:flag-assert         #x900000410
   )
 
 (define *sp-launcher-lock* #f)
@@ -224,7 +229,7 @@
   (let ((v1-0 *sp-launch-queue*))
     
     ;; make sure we have room in the queue
-    (when (= (-> v1-0 in-use) 32)
+    (when (= (-> v1-0 in-use) SPARTICLE_QUEUE_SIZE)
       (format 0 "ERROR: sp-launch-particles called during processing, and queue is full~%")
       (return 0)
       )
