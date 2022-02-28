@@ -8,7 +8,7 @@ uniform float alpha_reject;
 uniform float color_mult;
 uniform vec4 fog_color;
 
-in flat uvec4 tex_info;
+in flat uvec2 tex_info;
 in float fog;
 
 layout (binding = 0) uniform sampler2D tex_T0;

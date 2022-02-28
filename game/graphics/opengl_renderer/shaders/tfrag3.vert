@@ -78,7 +78,7 @@ void main() {
     fragment_color.w *= 2;
 
     // fog hack
-    if (fragment_color.r < 0.01 && fragment_color.g < 0.01 && fragment_color.b < 0.01) {
+    if (fragment_color.r < 0.005 && fragment_color.g < 0.01 && fragment_color.b < 0.005) {
         fogginess = 0;
     }
 
