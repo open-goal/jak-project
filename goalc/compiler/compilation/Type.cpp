@@ -362,7 +362,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   (void)env;
 
   // parse the type definition and add to the type system
-  auto result = parse_deftype(rest, &m_ts);
+  auto result = parse_deftype(rest, &m_ts, &m_global_constants);
 
   // look up the type name
   auto kv = m_symbol_types.find(result.type.base_type());

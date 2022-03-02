@@ -135,6 +135,10 @@
 ;; launch queue
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+;(#if (not PC_BIG_MEMORY)
+    (defconstant SPARTICLE_QUEUE_SIZE 32)
+    ;(defconstant SPARTICLE_QUEUE_SIZE 80))
+
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert   0)
    (sp-launcher sparticle-launcher         :offset-assert   4)
@@ -147,7 +151,7 @@
 
 (deftype sp-launch-queue (basic)
   ((in-use int32                                 :offset-assert   4)
-   (queue  sp-queued-launch-particles 32 :inline :offset-assert  16)
+   (queue  sp-queued-launch-particles SPARTICLE_QUEUE_SIZE :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x410
@@ -224,7 +228,7 @@
   (let ((v1-0 *sp-launch-queue*))
     
     ;; make sure we have room in the queue
-    (when (= (-> v1-0 in-use) 32)
+    (when (= (-> v1-0 in-use) SPARTICLE_QUEUE_SIZE)
       (format 0 "ERROR: sp-launch-particles called during processing, and queue is full~%")
       (return 0)
       )
@@ -857,15 +861,13 @@
 
 (defmethod create-launch-control sparticle-launch-group ((obj sparticle-launch-group) (arg0 process))
   "create a launch-control to hold the state of the particles. stored on the process heap."
-  (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> obj length)))))
-    (when (zero? (the-as sparticle-launch-control gp-0))
+  (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> obj length)))))
+    (when (zero? gp-0)
       (go process-drawable-art-error "memory")
-      (set! gp-0 0)
-      (goto cfg-4)
+      (return (the-as sparticle-launch-control 0))
       )
-    (initialize (the-as sparticle-launch-control gp-0) obj arg0)
-    (label cfg-4)
-    (the-as sparticle-launch-control gp-0)
+    (initialize gp-0 obj arg0)
+    gp-0
     )
   )
 
@@ -931,7 +933,12 @@
           )
       
       ;; can we see it?
-      (sphere-in-view-frustum? (the-as sphere gp-1))
+      (#if (not PC_PORT)
+          (sphere-in-view-frustum? (the-as sphere gp-1))
+          ;; pc port : launchers have larger bsphere if you have pc rendering on and ps2 parts off
+          (and (not (and (-> *pc-settings* ps2-parts?) (-> *pc-settings* use-vis?)))
+               (sphere-in-view-frustum? (the-as sphere (let ((bsph (new-stack-vector0))) (vector-copy! bsph gp-1) (*! (-> bsph w) 4.0) bsph))))
+          )
       )
      )
     )
@@ -984,7 +991,8 @@
       
       ;; pc hack for more particles.
       (with-pc
-        (if (not (-> *pc-settings* ps2-parts?)) (/! f30-0 128.0)))
+        (if (and (> (-> *sprite-array-2d* num-sprites 0) 1920) (not (-> *pc-settings* ps2-parts?)))
+            (/! f30-0 256.0)))
       
       ;; loop over particles in the group.
       (let ((s2-1 (-> obj length)))

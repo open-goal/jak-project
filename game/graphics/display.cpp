@@ -94,6 +94,12 @@ int GfxDisplay::width() {
 int GfxDisplay::height() {
   int h;
   m_renderer->display_size(this, NULL, &h);
+#ifdef _WIN32
+  if (fullscreen_mode() == 2) {
+    // windows borderless hack
+    h--;
+  }
+#endif
   return h;
 }
 
