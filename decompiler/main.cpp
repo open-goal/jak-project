@@ -207,6 +207,7 @@ int main(int argc, char** argv) {
   }
 
   if (config.levels_extract) {
+    extract_common(db, tex_db, "GAME.CGO");
     for (auto& lev : config.levels_to_extract) {
       extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
     }

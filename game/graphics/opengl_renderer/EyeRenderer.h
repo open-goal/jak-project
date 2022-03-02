@@ -13,11 +13,10 @@ class EyeRenderer : public BucketRenderer {
   EyeRenderer(const std::string& name, BucketId id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_textures(TexturePool& texture_pool) override;
 
   template <bool DEBUG>
   void handle_eye_dma2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
-
-  TextureRecord* get_eye_tex(SharedRenderState* render_state, int pair_idx, int lr);
 
  private:
   std::string m_debug;
@@ -28,4 +27,11 @@ class EyeRenderer : public BucketRenderer {
 
   u32 m_left[SINGLE_EYE_SIZE * SINGLE_EYE_SIZE];
   u32 m_right[SINGLE_EYE_SIZE * SINGLE_EYE_SIZE];
+
+  struct EyeTex {
+    u64 gl_tex;
+    GpuTexture* gpu_tex;
+    u32 tbp;
+  };
+  EyeTex m_eye_textures[NUM_EYE_PAIRS * 2];
 };

@@ -243,7 +243,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   // make sure we have the level data.
   // TODO: right now this will wait to load from disk and unpack it.
   Timer tfrag3_setup_timer;
-  auto lev_data = render_state->loader.get_tfrag3_level(level);
+  auto lev_data = render_state->loader->get_tfrag3_level(level);
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
     m_has_level = false;
     m_textures = nullptr;

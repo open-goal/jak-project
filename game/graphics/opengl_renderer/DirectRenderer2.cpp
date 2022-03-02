@@ -336,7 +336,7 @@ void DirectRenderer2::setup_opengl_tex(u16 unit,
                                        bool clamp_t,
                                        SharedRenderState* render_state) {
   // look up the texture
-  TextureRecord* tex = nullptr;
+  std::optional<u64> tex;
   u32 tbp_to_lookup = tbp & 0x7fff;
   bool use_mt4hh = tbp & 0x8000;
 
@@ -351,19 +351,20 @@ void DirectRenderer2::setup_opengl_tex(u16 unit,
     if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
       fmt::print("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
 
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     } else {
       fmt::print("Failed to find texture at {}, using random\n", tbp_to_lookup);
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
 
-  if (!tex->on_gpu) {
-    render_state->texture_pool->upload_to_gpu(tex);
+  if (tex == -1) {
+    fmt::print("got -1: {}\n", render_state->texture_pool->lookup_gpu_texture(tbp_to_lookup)->name);;
   }
+  // ASSERT(*tex != (u64)-1);
 
   glActiveTexture(GL_TEXTURE0 + unit);
-  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glBindTexture(GL_TEXTURE_2D, *tex);
   if (clamp_s) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   } else {

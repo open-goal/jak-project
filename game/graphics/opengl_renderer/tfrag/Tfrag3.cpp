@@ -206,7 +206,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
   // first, get the level in memory
   Timer tfrag3_setup_timer;
 
-  const auto* lev_data = render_state->loader.get_tfrag3_level(level);
+  const auto* lev_data = render_state->loader->get_tfrag3_level(level);
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
     m_has_level = false;
     m_textures = nullptr;

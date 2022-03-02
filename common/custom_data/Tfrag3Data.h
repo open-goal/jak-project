@@ -43,7 +43,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 11;
+constexpr int TFRAG3_VERSION = 13;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -210,6 +210,7 @@ struct Texture {
   std::vector<u32> data;
   std::string debug_name;
   std::string debug_tpage_name;
+  bool load_to_pool = false;
   void serialize(Serializer& ser);
 };
 

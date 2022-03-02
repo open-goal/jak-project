@@ -47,8 +47,9 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
   }
 }
 
-OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
-    : m_render_state(texture_pool) {
+OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
+                               std::shared_ptr<Loader> loader)
+    : m_render_state(texture_pool, loader) {
   // setup OpenGL errors
 
   glEnable(GL_DEBUG_OUTPUT);
@@ -222,7 +223,10 @@ void OpenGLRenderer::init_bucket_renderers() {
     }
 
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
   }
+  sky_cpu_blender->init_textures(*m_render_state.texture_pool);
+  m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 
 /*!
@@ -240,10 +244,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
     setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
                 settings.lbox_height_px);
-  }
-  {
-    auto prof = m_profiler.root()->make_scoped_child("texture-gc");
-    m_render_state.texture_pool->remove_garbage_textures();
   }
 
   // draw_test_triangle();
@@ -264,7 +264,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("loader");
-    m_render_state.loader.update(m_render_state.load_status_debug);
+    m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
   }
 
   m_profiler.finish();

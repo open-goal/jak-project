@@ -24,7 +24,7 @@ struct RenderOptions {
 
 class OpenGLRenderer {
  public:
-  OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool);
+  OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool, std::shared_ptr<Loader> loader);
   void render(DmaFollower dma, const RenderOptions& settings);
   void serialize(Serializer& ser);
 

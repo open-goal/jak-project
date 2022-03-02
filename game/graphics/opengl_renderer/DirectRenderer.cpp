@@ -291,7 +291,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
 }
 
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
-  TextureRecord* tex = nullptr;
+  std::optional<u64> tex;
   auto& state = m_buffered_tex_state[unit];
   if (!state.used) {
     // nothing used this state, don't bother binding the texture.
@@ -308,21 +308,16 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
     if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
       fmt::print("Failed to find texture at {}, using random (eye zone)\n", state.texture_base_ptr);
 
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     } else {
       fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
   ASSERT(tex);
 
-  // first: do we need to load the texture?
-  if (!tex->on_gpu) {
-    render_state->texture_pool->upload_to_gpu(tex);
-  }
-
   glActiveTexture(GL_TEXTURE20 + unit);
-  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glBindTexture(GL_TEXTURE_2D, *tex);
   // Note: CLAMP and CLAMP_TO_EDGE are different...
   if (state.m_clamp_state.clamp_s) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

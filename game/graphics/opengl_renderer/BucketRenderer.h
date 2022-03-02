@@ -73,11 +73,12 @@ struct LevelVis {
 constexpr int EYE_TEX_WIDTH = 64;
 constexpr int EYE_TEX_HEIGHT = 352;
 struct SharedRenderState {
-  explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool)
-      : texture_pool(_texture_pool) {}
+  explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool,
+                             std::shared_ptr<Loader> _loader)
+      : texture_pool(_texture_pool), loader(_loader) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
-  Loader loader;
+  std::shared_ptr<Loader> loader;
 
   u32 buckets_base = 0;  // address of buckets array.
   u32 next_bucket = 0;   // address of next bucket that we haven't started rendering in buckets
@@ -120,6 +121,7 @@ class BucketRenderer {
   virtual void draw_debug_window() = 0;
   virtual void serialize(Serializer&) {}
   virtual void init_shaders(ShaderLibrary&) {}
+  virtual void init_textures(TexturePool&) {}
 
  protected:
   std::string m_name;

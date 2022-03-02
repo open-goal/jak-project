@@ -3,70 +3,54 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "common/common_types.h"
 #include "game/graphics/texture/TextureConverter.h"
 #include "common/util/Serializer.h"
 
-// Converting textures happens when textures are uploaded by the game.
-// Uploading textures to the gpu and creating samplers is done lazily, as needed.
+constexpr bool EXTRA_TEX_DEBUG = false;
 
-// Each sampler
-struct TextureSampler {
-  u64 sampler_object = -1;  // the opengl sampler
-  u64 handle = -1;          // the handle used for bindless textures.
-  bool created = false;     // lazily created as needed, by default we don't make them
+struct GpuTexture {
+  std::string page_name;
+  std::string name;
+  struct Tex {
+    u64 gl = -1;
+    const u8* data = nullptr;
+  };
+
+  const u8* get_data_ptr() const {
+    if (is_placeholder) {
+      return nullptr;
+    } else {
+      return gpu_textures.at(0).data;
+    }
+  }
+  std::vector<Tex> gpu_textures;
+  std::vector<u32> slots;
+  std::vector<u32> mt4hh_slots;
+  u32 combo_id = -1;
+  u16 w, h;
+  bool is_placeholder = false;
+  bool is_common = false;
+  u32 data_size() const { return 4 * w * h; }
+
+  void remove_slot(u32 slot);
+  void add_slot(u32 slot);
 };
 
-// Each texture in our pool has a record:
-struct TextureRecord {
-  std::string page_name;  // the page we belong to (from game info)
-  std::string name;       // our name (from game info)
-  u8 mip_level;           // which mip we are
-  u8 psm = -1;            // format in the game
-  u8 cpsm = -1;           // clut format in the game
-  u16 w, h;               // our dimensions
-  u8 data_segment;        // which segment we came from in the texture page
-  bool on_gpu = false;    // if we are uploaded to the GPU
-
-  // garbage collection settings.
-  // by default, do_gc is set, and the pool will take care of freeing textures.
-  // when a texture is uploaded on top of a texture (in PS2 VRAM), the texture will be unloaded from
-  // the GPU. Unless somebody has another instance of the shared_ptr to this texture, this structure
-  // (including converted texture data) will be discarded.
-
-  // In some cases, this is not desirable because the game may toggle between two different textures
-  // in VRAM, and we don't want to reconvert every time. The TextureUploadHandler will implement its
-  // own caching to help with this.  To manage textures yourself, you should:
-  // - keep around a shared_ptr to the TextureRecord (so it doesn't get deleted when it's out of PS2
-  // VRAM).
-  // - set do_gc to false (to keep texture in GPU memory when replaced).
-  // In this case, you must use the discard function to remove the texture from the GPU, if you
-  // really want to get rid of it.
-  bool do_gc = true;
-
-  // The texture data. In some cases, we keep textures only on the GPU (for example, the result of a
-  // render to texture).  In these, data is not populated, but you must set only_on_gpu = true. When
-  // saving graphics state, the texture will be dumped from the GPU and saved to the file so it is
-  // possible to restore.
-  bool only_on_gpu = false;
-  std::vector<u8> data;
-
-  // if we're on the gpu, our OpenGL texture
-  u64 gpu_texture = 0;
-
-  // our VRAM address.
-  u32 dest = -1;
-
-  void unload_from_gpu();
-
-  void serialize(Serializer& ser);
+struct TextureInput {
+  std::string page_name;
+  std::string name;
+  u64 gpu_texture = -1;
+  bool common = false;
+  u32 combo_id = -1;
+  const u8* src_data;
+  u16 w, h;
 };
 
-struct TextureData {
-  std::shared_ptr<TextureRecord> normal_texture;
-  std::shared_ptr<TextureRecord> mt4hh_texture;
-
-  void serialize(Serializer& ser);
+struct TextureReference {
+  u64 gpu_texture = -1;
+  GpuTexture* source = nullptr;  // todo, do we actually need this link?
 };
 
 struct GoalTexture {
@@ -133,56 +117,64 @@ struct GoalTexturePage {
 
 class TexturePool {
  public:
+  TexturePool();
   void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr);
 
-  std::vector<std::shared_ptr<TextureRecord>> convert_textures(const u8* tpage,
-                                                               int mode,
-                                                               const u8* memory_base,
-                                                               u32 s7_ptr);
+  GpuTexture* give_texture(const TextureInput& in);
+  GpuTexture* give_texture_and_load_to_vram(const TextureInput& in, u32 vram_slot);
+  void unload_texture(const std::string& name, u64 id);
+  std::optional<u64> lookup(u32 location) {
+    auto& t = m_textures[location];
+    if (t.source) {
+      // TODO remove this before merging.
+      if constexpr (EXTRA_TEX_DEBUG) {
+        if (t.source->is_placeholder) {
+          ASSERT(t.gpu_texture == m_placeholder_texture_id);
+        } else {
+          bool fnd = false;
+          for (auto& tt : t.source->gpu_textures) {
+            if (tt.gl == t.gpu_texture) {
+              fnd = true;
+              break;
+            }
+          }
+          ASSERT(fnd);
+        }
+      }
 
-  void set_texture(u32 location, std::shared_ptr<TextureRecord> record);
-  void draw_debug_window();
-  TextureRecord* lookup(u32 location) {
-    if (m_textures.at(location).normal_texture) {
-      return m_textures[location].normal_texture.get();
+      return t.gpu_texture;
     } else {
-      return nullptr;
+      return {};
     }
   }
 
-  TextureRecord* lookup_mt4hh(u32 location) {
-    if (m_textures.at(location).mt4hh_texture) {
-      return m_textures[location].mt4hh_texture.get();
-    } else {
-      return nullptr;
-    }
-  }
-
-  TextureRecord* get_random_texture();
-
-  void upload_to_gpu(TextureRecord* rec);
-
-  void relocate(u32 destination, u32 source, u32 format);
-
-  void remove_garbage_textures();
-  void discard(std::shared_ptr<TextureRecord> tex);
-
+  GpuTexture* lookup_gpu_texture(u32 location) { return m_textures[location].source; }
+  std::optional<u64> lookup_mt4hh(u32 location);
   void serialize(Serializer& ser);
 
+  u64 get_placeholder_texture() { return m_placeholder_texture_id; }
+  void draw_debug_window();
+  void relocate(u32 destination, u32 source, u32 format);
+  void draw_debug_for_tex(const std::string& name, GpuTexture* tex, u32 slot);
+  const std::array<TextureReference, 1024 * 1024 * 4 / 256> all_textures() const {
+    return m_textures;
+  }
+  void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);
+
  private:
-  void unload_all_textures();
-  void draw_debug_for_tex(const std::string& name, TextureRecord& tex);
-  TextureConverter m_tex_converter;
-
-  // uses tex.dest[mip] indexing. (bytes / 256). Currently only sets the base of a texture.
-  std::array<TextureData, 1024 * 1024 * 4 / 256> m_textures;
-
-  // textures that the game overwrote, but may be still allocated on the GPU.
-  // TODO: free these periodically.
-  std::vector<std::shared_ptr<TextureRecord>> m_garbage_textures;
+  void refresh_links(GpuTexture& texture);
+  GpuTexture* get_gpu_texture_for_slot(const std::string& name, u32 slot);
 
   char m_regex_input[256] = "";
+  std::array<TextureReference, 1024 * 1024 * 4 / 256> m_textures;
+  struct Mt4hhTexture {
+    TextureReference ref;
+    u32 slot;
+  };
+  std::vector<Mt4hhTexture> m_mt4hh_textures;
 
-  int m_most_recent_gc_count = 0;
-  int m_most_recent_gc_count_gpu = 0;
+  std::vector<u32> m_placeholder_data;
+  u64 m_placeholder_texture_id = 0;
+
+  std::unordered_map<std::string, GpuTexture> m_loaded_textures;
 };

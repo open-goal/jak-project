@@ -11,7 +11,8 @@ void TextureDB::add_texture(u32 tpage,
                             u16 w,
                             u16 h,
                             const std::string& tex_name,
-                            const std::string& tpage_name) {
+                            const std::string& tpage_name,
+                            const std::vector<std::string>& level_names) {
   auto existing_tpage_name = tpage_names.find(tpage);
   if (existing_tpage_name == tpage_names.end()) {
     tpage_names[tpage] = tpage_name;
@@ -34,6 +35,9 @@ void TextureDB::add_texture(u32 tpage,
     new_tex.w = w;
     new_tex.h = h;
     new_tex.page = tpage;
+  }
+  for (const auto& level_name : level_names) {
+    texture_ids_per_level[level_name].insert(combo_id);
   }
 }
 

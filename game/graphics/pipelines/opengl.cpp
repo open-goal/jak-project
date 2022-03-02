@@ -50,6 +50,8 @@ struct GraphicsData {
   // texture pool
   std::shared_ptr<TexturePool> texture_pool;
 
+  std::shared_ptr<Loader> loader;
+
   // temporary opengl renderer
   OpenGLRenderer ogl_renderer;
 
@@ -69,7 +71,8 @@ struct GraphicsData {
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>()),
-        ogl_renderer(texture_pool) {}
+        loader(std::make_shared<Loader>()),
+        ogl_renderer(texture_pool, loader) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
@@ -550,6 +553,10 @@ void gl_poll_events() {
   glfwPollEvents();
 }
 
+void gl_set_levels(const std::vector<std::string>& levels) {
+  g_gfx_data->loader->set_want_levels(levels);
+}
+
 const GfxRendererModule moduleOpenGL = {
     gl_init,                // init
     gl_make_main_display,   // make_main_display
@@ -567,6 +574,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate
     gl_poll_events,         // poll_events
+    gl_set_levels,          // set_levels
     GfxPipeline::OpenGL,    // pipeline
     "OpenGL 4.3"            // name
 };
