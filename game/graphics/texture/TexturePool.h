@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include "common/common_types.h"
 #include "game/graphics/texture/TextureConverter.h"
