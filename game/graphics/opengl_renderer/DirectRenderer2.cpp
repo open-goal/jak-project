@@ -358,11 +358,6 @@ void DirectRenderer2::setup_opengl_tex(u16 unit,
     }
   }
 
-  if (tex == -1) {
-    fmt::print("got -1: {}\n", render_state->texture_pool->lookup_gpu_texture(tbp_to_lookup)->name);;
-  }
-  // ASSERT(*tex != (u64)-1);
-
   glActiveTexture(GL_TEXTURE0 + unit);
   glBindTexture(GL_TEXTURE_2D, *tex);
   if (clamp_s) {

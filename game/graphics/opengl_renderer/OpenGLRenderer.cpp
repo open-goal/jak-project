@@ -235,8 +235,7 @@ void OpenGLRenderer::init_bucket_renderers() {
 void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_profiler.clear();
   m_render_state.reset();
-  m_render_state.dump_playback = settings.playing_from_dump;
-  m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
+  m_render_state.ee_main_memory = g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
   m_render_state.has_camera_planes = false;
 
@@ -257,9 +256,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
-    if (!m_render_state.dump_playback) {
-      vif_interrupt_callback();
-    }
+    vif_interrupt_callback();
   }
 
   {
@@ -284,13 +281,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
-  }
-}
-
-void OpenGLRenderer::serialize(Serializer& ser) {
-  m_render_state.texture_pool->serialize(ser);
-  for (auto& renderer : m_bucket_renderers) {
-    renderer->serialize(ser);
   }
 }
 
@@ -386,10 +376,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-
-    if (!m_render_state.dump_playback) {
-      vif_interrupt_callback();
-    }
+    vif_interrupt_callback();
   }
   g_current_render = "";
 

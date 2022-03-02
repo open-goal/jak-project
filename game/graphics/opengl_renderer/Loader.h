@@ -37,7 +37,6 @@ class Loader {
   void loader_thread();
   u64 add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_common);
 
-
   std::unordered_map<std::string, Level> m_loaded_tfrag3_levels;
   std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;
 

@@ -1743,7 +1743,6 @@ void vcallms_311_case_386(ExecutionContext* c, u16* vis) {
   c->vfs[vf14].vf.mul_xyzw(c->vf_src(vf13).vf, c->Q);
   // sqi.xyzw vf04, vi08        |  mulaw.xyzw ACC, vf20, vf08
   c->acc.vf.mula_xyzw(c->vf_src(vf20).vf, c->vf_src(vf08).vf.w());   sq_xyzw(c->vf_src(vf04).vf, vis[vi08]++);
-  JUMP_386:
   // rsqrt Q, vf00.w, vf16.x    |  maddaw.xyzw ACC, vf21, vf09
   c->acc.vf.madda_xyzw(c->vfs[vf21].vf, c->vfs[vf09].vf.w());   c->Q = c->vf_src(vf00).vf.w() / std::sqrt(c->vf_src(vf16).vf.x());
   // mtir vi12, vf01.y          |  maddaw.xyzw ACC, vf22, vf10

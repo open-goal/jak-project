@@ -519,9 +519,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
           out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
@@ -567,9 +566,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
           out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
@@ -597,9 +595,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
           out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
@@ -643,9 +640,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
           out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
@@ -689,9 +685,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
           out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);

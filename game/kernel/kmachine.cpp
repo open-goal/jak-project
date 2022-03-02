@@ -559,7 +559,6 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
 
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
-  fmt::print("Getting mips: {}\n", n);
   return Mips2C::gLinkedFunctionTable.get(n);
 }
 

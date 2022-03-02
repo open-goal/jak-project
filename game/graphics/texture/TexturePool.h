@@ -3,6 +3,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <mutex>
 #include <unordered_map>
 #include "common/common_types.h"
 #include "game/graphics/texture/TextureConverter.h"
@@ -150,7 +151,6 @@ class TexturePool {
 
   GpuTexture* lookup_gpu_texture(u32 location) { return m_textures[location].source; }
   std::optional<u64> lookup_mt4hh(u32 location);
-  void serialize(Serializer& ser);
 
   u64 get_placeholder_texture() { return m_placeholder_texture_id; }
   void draw_debug_window();
@@ -160,6 +160,8 @@ class TexturePool {
     return m_textures;
   }
   void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);
+
+  std::mutex& mutex() { return m_mutex; }
 
  private:
   void refresh_links(GpuTexture& texture);
@@ -177,4 +179,6 @@ class TexturePool {
   u64 m_placeholder_texture_id = 0;
 
   std::unordered_map<std::string, GpuTexture> m_loaded_textures;
+
+  std::mutex m_mutex;
 };

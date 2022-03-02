@@ -27,5 +27,7 @@ struct TextureDB {
                    const std::string& tex_name,
                    const std::string& tpage_name,
                    const std::vector<std::string>& level_names);
+
+  void replace_textures(const std::string& path);
 };
 }  // namespace decompiler

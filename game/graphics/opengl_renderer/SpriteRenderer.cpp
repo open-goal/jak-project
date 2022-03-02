@@ -615,7 +615,6 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
   ASSERT(tex);
 
-
   glActiveTexture(GL_TEXTURE20 + unit);
   glBindTexture(GL_TEXTURE_2D, *tex);
   // Note: CLAMP and CLAMP_TO_EDGE are different...

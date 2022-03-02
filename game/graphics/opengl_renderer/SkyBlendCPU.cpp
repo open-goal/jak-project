@@ -96,9 +96,6 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
     auto setup_data = dma.read_and_advance();
-    if (render_state->dump_playback) {
-      // continue;
-    }
 
     // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
@@ -157,7 +154,8 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
         blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
                                tex->data_size());
       } else {
-        blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(), tex->data_size());
+        blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                       tex->data_size());
       }
       if (buffer_idx == 0) {
         if (is_first_draw) {
@@ -177,13 +175,6 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
                    GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[buffer_idx].data());
     }
   }
-
-  // put in pool.
-  if (render_state->dump_playback) {
-    return stats;
-  }
-
-  //  fmt::print("sky blend took {:.2f} ms\n", sky_timer.getMs());
 
   return stats;
 }

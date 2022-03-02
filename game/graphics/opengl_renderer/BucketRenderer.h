@@ -86,7 +86,6 @@ struct SharedRenderState {
 
   void* ee_main_memory = nullptr;
   u32 offset_of_s7;
-  bool dump_playback = false;
 
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
@@ -119,7 +118,6 @@ class BucketRenderer {
   bool& enabled() { return m_enabled; }
   virtual bool empty() const { return false; }
   virtual void draw_debug_window() = 0;
-  virtual void serialize(Serializer&) {}
   virtual void init_shaders(ShaderLibrary&) {}
   virtual void init_textures(TexturePool&) {}
 
@@ -136,7 +134,6 @@ class RenderMux : public BucketRenderer {
             std::vector<std::unique_ptr<BucketRenderer>> renderers);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
-  void serialize(Serializer& ser) override;
 
  private:
   std::vector<std::unique_ptr<BucketRenderer>> m_renderers;

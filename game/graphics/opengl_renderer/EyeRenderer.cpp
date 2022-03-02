@@ -457,7 +457,7 @@ void EyeRenderer::handle_eye_dma2(DmaFollower& dma,
 
     // update GPU:
     auto& l = m_eye_textures[pair_idx * 2];
-    auto& r = m_eye_textures[pair_idx * 2  + 1];
+    auto& r = m_eye_textures[pair_idx * 2 + 1];
     glBindTexture(GL_TEXTURE_2D, l.gl_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                  m_left);

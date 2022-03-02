@@ -43,7 +43,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 13;
+constexpr int TFRAG3_VERSION = 12;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {

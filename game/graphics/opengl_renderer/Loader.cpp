@@ -18,15 +18,6 @@ const Loader::LevelData* Loader::get_tfrag3_level(const std::string& level_name)
   const auto& existing = m_loaded_tfrag3_levels.find(level_name);
   if (existing == m_loaded_tfrag3_levels.end()) {
     return nullptr;
-//    if (m_level_to_load.empty() && m_initializing_tfrag3_levels.count(level_name) == 0) {
-//      fmt::print("[pc loader] starting load for {}\n", level_name);
-//      m_level_to_load = level_name;
-//      lk.unlock();
-//      m_loader_cv.notify_all();
-//      return nullptr;
-//    } else {
-//      return nullptr;
-//    }
   } else {
     existing->second.frames_since_last_used = 0;
     return &existing->second.data;
@@ -54,7 +45,6 @@ void Loader::set_want_levels(const std::vector<std::string>& levels) {
       return;
     }
   }
-
 }
 
 void Loader::loader_thread() {
@@ -135,12 +125,6 @@ u64 Loader::add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_c
   glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
   if (tex.load_to_pool) {
-    if (tex.debug_name == "eicharbam-iris-16x16") {
-      fmt::print("got: 0x{:x}\n", (uintptr_t)tex.data.data());
-      u32 val;
-      memcpy(&val, tex.data.data(), 4);
-      fmt::print("{}\n", val);
-    }
     TextureInput in;
     in.page_name = tex.debug_tpage_name;
     in.name = tex.debug_name;
@@ -181,6 +165,7 @@ void Loader::update(std::string& status_out, TexturePool& texture_pool) {
 
       int bytes_this_run = 0;
       int tex_this_run = 0;
+      std::unique_lock<std::mutex> tpool_lock(texture_pool.mutex());
       while (data.textures.size() < data.level->textures.size()) {
         auto& tex = data.level->textures[data.textures.size()];
         it->second.data.textures.push_back(add_texture(texture_pool, tex, false));
@@ -211,6 +196,7 @@ void Loader::update(std::string& status_out, TexturePool& texture_pool) {
     if (m_loaded_tfrag3_levels.size() >= 3) {
       for (const auto& lev : m_loaded_tfrag3_levels) {
         if (lev.second.frames_since_last_used > 180) {
+          std::unique_lock<std::mutex> lk(texture_pool.mutex());
           fmt::print("------------------------- PC unloading {}\n", lev.first);
           for (size_t i = 0; i < lev.second.data.level->textures.size(); i++) {
             auto& tex = lev.second.data.level->textures[i];

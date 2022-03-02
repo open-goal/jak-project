@@ -44,29 +44,18 @@ void TextureUploadHandler::render(DmaFollower& dma,
     }
   }
 
-  // if we're replaying a graphics dump, don't try to read ee memory
-  // TODO, we might still want to grab stuff from the cache
-  if (render_state->dump_playback) {
-    return;
-  }
-
   // NOTE: we don't actually copy the textures in the dma chain copying because they aren't
   // reference by DMA tag.  So there's the potential for race conditions if the game gets messed
   // up and corrupts the texture memory.
   const u8* ee_mem = (const u8*)render_state->ee_main_memory;
 
-  // The logic here is a bit confusing. It works around an issue where higher LODs are uploaded
-  // before their CLUT in some cases.
   if (uploads.size() == 2 && uploads[0].mode == 2 && uploads[1].mode == -2 &&
       uploads[0].page == uploads[1].page) {
-    // couldn't find this texture in cache, need to convert it
     render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, -2, ee_mem,
                                                   render_state->offset_of_s7);
     render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, 2, ee_mem,
                                                   render_state->offset_of_s7);
-    // after conversion, we should be able to populate the texture pool.
   } else if (uploads.size() == 1 && uploads[0].mode == -1) {
-    // look at the texture page and determine if we have it in cache.
     render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, -1, ee_mem,
                                                   render_state->offset_of_s7);
   } else if (uploads.size() == 1 && uploads[0].mode == -2) {
@@ -88,10 +77,4 @@ void TextureUploadHandler::render(DmaFollower& dma,
   }
 }
 
-void TextureUploadHandler::draw_debug_window() {
-
-}
-
-void TextureUploadHandler::serialize(Serializer& ser) {
-
-}
+void TextureUploadHandler::draw_debug_window() {}

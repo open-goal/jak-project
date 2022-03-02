@@ -118,14 +118,15 @@ void confirm_textures_identical(TextureDB& tex_db) {
       if (!ok) {
         fmt::print("BAD duplicate: {} {} vs {}\n", name, tex.second.rgba_bytes.size(),
                    it->second.size());
-      } else {
-        fmt::print("OK duplicate: {} {} vs {}\n", name, tex.second.rgba_bytes.size(),
-                   it->second.size());
+        ASSERT(false);
       }
     }
   }
 }
 
+/*!
+ * Extract common textures found in GAME.CGO
+ */
 void extract_common(ObjectFileDB& db, TextureDB& tex_db, const std::string& dgo_name) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping common extract for {} because the DGO was not part of the input", dgo_name);

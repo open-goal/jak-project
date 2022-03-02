@@ -263,20 +263,15 @@ void GpuTexture::add_slot(u32 slot) {
  * multiple frames.
  */
 void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr) {
-  Timer timer;
-
-  bool dump_textures_to_file = false;
+  std::unique_lock<std::mutex> lk(m_mutex);
   // extract the texture-page object. This is just a description of the page data.
   GoalTexturePage texture_page;
   memcpy(&texture_page, tpage, sizeof(GoalTexturePage));
 
   bool has_segment[3] = {true, true, true};
 
-  u32 sizes[3] = {texture_page.segment[0].size, texture_page.segment[1].size,
-                  texture_page.segment[2].size};
   if (mode == -1) {
   } else if (mode == 2) {
-    //    dump_textures_to_file = true;
     has_segment[0] = false;
     has_segment[1] = false;
   } else if (mode == -2) {
@@ -306,64 +301,12 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
             } else {
               slot.source->remove_slot(tex.dest[mip_idx]);
               slot.source = get_gpu_texture_for_slot(name, tex.dest[mip_idx]);
-              ASSERT(slot.gpu_texture != -1);
+              ASSERT(slot.gpu_texture != (u64)-1);
             }
           } else {
             slot.source = get_gpu_texture_for_slot(name, tex.dest[mip_idx]);
-            ASSERT(slot.gpu_texture != -1);
+            ASSERT(slot.gpu_texture != (u64)-1);
           }
-          //          u32 ww = tex.w >> mip_idx;
-          //          u32 hh = tex.h >> mip_idx;
-          //          u32 size_bytes = ww * hh * 4;
-          //          auto texture_record = std::make_shared<TextureRecord>();
-          //          texture_record->page_name = goal_string(texture_page.name_ptr, memory_base);
-          //          texture_record->name = goal_string(tex.name_ptr, memory_base);
-          //          texture_record->mip_level = mip_idx;
-          //          texture_record->w = ww;
-          //          texture_record->h = hh;
-          //          texture_record->data_segment = tex.segment_of_mip(mip_idx);
-          //          // texture_record->data.resize(size_bytes);
-          //          texture_record->psm = tex.psm;
-          //          texture_record->cpsm = tex.clutpsm;
-          //          texture_record->ps2_vram_dest = tex.dest[mip_idx];
-          //          auto it = m_loaded_textures.find(texture_record->name);
-          //
-          //          m_tex_converter.download_rgba8888(texture_record->data.data(),
-          //          tex.dest[mip_idx],
-          //                                            tex.width[mip_idx], ww, hh, tex.psm,
-          //                                            tex.clutpsm, tex.clut_dest, size_bytes);
-          //
-          //          u8 max_a_zero = 0;
-          //          u8 min_a_zero = 255;
-          //          u8 max_a_nonzero = 0;
-          //          u8 min_a_nonzero = 255;
-          //          for (u32 i = 0; i < ww * hh; i++) {
-          //            u8 r = texture_record->data[i * 4 + 0];
-          //            u8 g = texture_record->data[i * 4 + 1];
-          //            u8 b = texture_record->data[i * 4 + 2];
-          //            u8 a = texture_record->data[i * 4 + 3];
-          //            if (r || g || b) {
-          //              max_a_nonzero = std::max(max_a_nonzero, a);
-          //              min_a_nonzero = std::min(min_a_nonzero, a);
-          //            } else {
-          //              max_a_zero = std::max(max_a_zero, a);
-          //              min_a_zero = std::min(min_a_zero, a);
-          //            }
-          //          }
-          //
-          //          // Debug output.
-          //          if (dump_textures_to_file) {
-          //            const char* tpage_name = goal_string(texture_page.name_ptr, memory_base);
-          //            const char* tex_name = goal_string(tex.name_ptr, memory_base);
-          //            file_util::create_dir_if_needed(
-          //                file_util::get_file_path({"debug_out", "textures", tpage_name}));
-          //            file_util::write_rgba_png(
-          //                fmt::format(
-          //                    file_util::get_file_path({"debug_out", "textures", tpage_name,
-          //                    "{}-{}-{}.png"}), tex_idx, tex_name, mip_idx),
-          //                texture_record->data.data(), ww, hh);
-          //          }
-          //          result.push_back(std::move(texture_record));
         }
       }
     } else {
@@ -373,6 +316,7 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
 }
 
 void TexturePool::relocate(u32 destination, u32 source, u32 format) {
+  std::unique_lock<std::mutex> lk(m_mutex);
   GpuTexture* src = lookup_gpu_texture(source);
   ASSERT(src);
   if (format == 44) {
@@ -416,8 +360,6 @@ std::optional<u64> TexturePool::lookup_mt4hh(u32 location) {
   return {};
 }
 
-void TexturePool::serialize(Serializer& ser) {}
-
 TexturePool::TexturePool() {
   m_placeholder_data.resize(16 * 16);
   u32 c0 = 0xa0303030;
@@ -429,41 +371,7 @@ TexturePool::TexturePool() {
   }
   m_placeholder_texture_id = upload_to_gpu((const u8*)(m_placeholder_data.data()), 16, 16);
 }
-///*!
-// * Store a texture in the pool. Location is specified like TBP.
-// */
-// void TexturePool::set_texture(u32 location, std::shared_ptr<TextureRecord> record) {
-//  if (record->psm == 44) {
-//    if (m_textures.at(location).mt4hh_texture) {
-//      if (record->do_gc && m_textures.at(location).mt4hh_texture != record) {
-//        m_garbage_textures.push_back(std::move(m_textures[location].mt4hh_texture));
-//      }
-//    }
-//    m_textures[location].mt4hh_texture = std::move(record);
-//  } else {
-//    if (m_textures.at(location).normal_texture) {
-//      if (record->do_gc && m_textures.at(location).normal_texture != record) {
-//        m_garbage_textures.push_back(std::move(m_textures[location].normal_texture));
-//        // fmt::print("replace add to garbage list {}\n", m_garbage_textures.back()->name);
-//      }
-//    }
-//    m_textures[location].normal_texture = std::move(record);
-//  }
-//}
-//
-///*!
-// * Move a texture.
-// */
-// void TexturePool::relocate(u32 destination, u32 source, u32 format) {
-//  auto& src = m_textures.at(source).normal_texture;
-//  ASSERT(src);
-//  if (format == 44) {
-//    m_textures.at(destination).mt4hh_texture = std::move(src);
-//  } else {
-//    m_textures.at(destination).normal_texture = std::move(src);
-//  }
-//}
-//
+
 void TexturePool::draw_debug_window() {
   int id = 0;
   int total_vram_bytes = 0;
@@ -520,65 +428,3 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
     ImGui::PopStyleColor();
   }
 }
-
-// void TexturePool::upload_to_gpu(TextureRecord* tex) {
-//  ASSERT(!tex->on_gpu);
-//  GLuint tex_id;
-//  glGenTextures(1, &tex_id);
-//  tex->gpu_texture = tex_id;
-//  GLint old_tex;
-//  glGetIntegerv(GL_ACTIVE_TEXTURE, &old_tex);
-//  glActiveTexture(GL_TEXTURE0);
-//
-//  glBindTexture(GL_TEXTURE_2D, tex_id);
-//  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-//               tex->data.data());
-//  glBindTexture(GL_TEXTURE_2D, 0);
-//
-//  // we have to set these, imgui won't do it automatically
-//
-//  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
-//  glGenerateMipmap(GL_TEXTURE_2D);
-//
-//  float aniso = 0.0f;
-//  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-//  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
-//
-//  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-//  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-//  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//
-//  glActiveTexture(old_tex);
-//  tex->on_gpu = true;
-//}
-//
-// void TexturePool::remove_garbage_textures() {
-//  m_most_recent_gc_count = m_garbage_textures.size();
-//  m_most_recent_gc_count_gpu = 0;
-//
-//  for (auto& t : m_garbage_textures) {
-//    if (t->on_gpu) {
-//      m_most_recent_gc_count_gpu++;
-//      lg::debug("GC {}\n", t->name);
-//      t->unload_from_gpu();
-//    }
-//  }
-//  m_garbage_textures.clear();
-//}
-//
-// void TexturePool::discard(std::shared_ptr<TextureRecord> tex) {
-//  ASSERT(!tex->do_gc);
-//  lg::debug("discard {}\n", tex->name);
-//  m_garbage_textures.push_back(tex);
-//}
-//
-// TextureRecord* TexturePool::get_random_texture() {
-//  u32 idx = 8;
-//  for (u32 i = 0; i < m_textures.size(); i++) {
-//    if (m_textures.at((i + idx) % m_textures.size()).normal_texture) {
-//      return m_textures.at((i + idx) % m_textures.size()).normal_texture.get();
-//    }
-//  }
-//  return nullptr;
-//}
