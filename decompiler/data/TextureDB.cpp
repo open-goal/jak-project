@@ -63,4 +63,5 @@ void TextureDB::replace_textures(const std::string& path) {
       stbi_image_free(data);
     }
   }
+}
 }  // namespace decompiler
