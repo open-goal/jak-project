@@ -70,8 +70,6 @@ struct LevelVis {
  * The main renderer will contain a single SharedRenderState that's passed to all bucket renderers.
  * This allows bucket renders to share textures and shaders.
  */
-constexpr int EYE_TEX_WIDTH = 64;
-constexpr int EYE_TEX_HEIGHT = 352;
 struct SharedRenderState {
   explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool,
                              std::shared_ptr<Loader> _loader)

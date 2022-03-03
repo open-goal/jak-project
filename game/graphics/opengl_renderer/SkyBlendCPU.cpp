@@ -92,7 +92,6 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
                                          ScopedProfilerNode& /*prof*/) {
   SkyBlendStats stats;
 
-  Timer sky_timer;
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
     auto setup_data = dma.read_and_advance();
@@ -181,9 +180,6 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
 
 void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
   for (int i = 0; i < 2; i++) {
-    // todo - these are hardcoded and rely on the vram layout.
-    u32 tbp = i == 0 ? 8064 : 8096;
-
     // update it
     glBindTexture(GL_TEXTURE_2D, m_textures[i]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
@@ -194,7 +190,6 @@ void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
     in.w = m_sizes[i];
     in.h = m_sizes[i];
     in.name = fmt::format("PC-SKY-CPU-{}", i);
-    tex_pool.give_texture_and_load_to_vram(in, tbp);
-    ASSERT(tex_pool.lookup(tbp));
+    tex_pool.give_texture_and_load_to_vram(in, SKY_TEXTURE_VRAM_ADDRS[i]);
   }
 }

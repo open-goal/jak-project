@@ -5,19 +5,10 @@
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
-#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "common/util/Assert.h"
-
-////////////////////////////////
-// Extraction of textures
-//   Note: this is intended to be temporary until we have a better system.
-//    this simply converts the PS2 format textures loaded by the game, then puts them into the PC
-//    port texture pool.
-
-// constexpr bool dump_textures_to_file = false;
 
 namespace {
 const char empty_string[] = "";
@@ -57,79 +48,6 @@ u64 upload_to_gpu(const u8* data, u16 w, u16 h) {
   return tex_id;
 }
 
-void unload_from_gpu(u64 gpu_texture) {
-  GLuint tex_id = gpu_texture;
-  glBindTexture(GL_TEXTURE_2D, tex_id);
-  glDeleteTextures(1, &tex_id);
-}
-
-// void TextureRecord::serialize(Serializer& ser) {
-//   ser.from_str(&page_name);
-//   ser.from_str(&name);
-//   ser.from_ptr(&mip_level);
-//   ser.from_ptr(&psm);
-//   ser.from_ptr(&cpsm);
-//   ser.from_ptr(&w);
-//   ser.from_ptr(&h);
-//   ser.from_ptr(&data_segment);
-//   ser.from_ptr(&ps2_vram_dest);
-//   ser.from_ptr(&texture_missing);
-//
-//   if (ser.is_saving()) {
-//     std::vector<u8> data;
-//     data.resize(w * h * 4);
-//     glBindTexture(GL_TEXTURE_2D, gpu_texture);
-//     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
-//     glBindTexture(GL_TEXTURE_2D, 0);
-//     ser.from_pod_vector(&data);
-//   } else {
-//     std::vector<u8> data;
-//     ser.from_pod_vector(&data);
-//     gpu_texture = upload_to_gpu(data.data(), w, h);
-//   }
-// }
-//
-// void TexturePool::serialize(Serializer& ser) {
-//   for (auto& tex : m_textures) {
-//     if (ser.is_saving()) {
-//       if (tex) {
-//         ser.save<u8>(1);
-//         tex->serialize(ser);
-//       } else {
-//         ser.save<u8>(0);
-//       }
-//     } else {
-//       bool has_it = ser.load<u8>();
-//       if (has_it) {
-//         if (tex) {
-//           unload_from_gpu(tex->gpu_texture);
-//         } else {
-//           tex = std::make_shared<TextureRecord>();
-//         }
-//         tex->serialize(ser);
-//       }
-//     }
-//   }
-//
-//   if (ser.is_saving()) {
-//     ser.save<u64>(m_mt4hh_textures.size());
-//     for (auto& tex : m_mt4hh_textures) {
-//       ASSERT(tex);
-//       tex->serialize(ser);
-//     }
-//   } else {
-//     m_mt4hh_textures.resize(ser.load<u64>());
-//     for (auto& tex : m_mt4hh_textures) {
-//       if (tex) {
-//         unload_from_gpu(tex->gpu_texture);
-//       } else {
-//         tex = std::make_shared<TextureRecord>();
-//       }
-//       tex->serialize(ser);
-//     }
-//   }
-// }
-
 GpuTexture* TexturePool::give_texture(const TextureInput& in) {
   const auto& it = m_loaded_textures.find(in.name);
   if (it == m_loaded_textures.end()) {
@@ -145,8 +63,6 @@ GpuTexture* TexturePool::give_texture(const TextureInput& in) {
     gtex.is_placeholder = false;
 
     return &m_loaded_textures.insert({in.name, gtex}).first->second;
-
-    // m_loaded_textures.insert({name, gpu_tex});
   } else {
     if (!it->second.is_placeholder) {
       fmt::print(
@@ -224,7 +140,7 @@ void TexturePool::unload_texture(const std::string& name, u64 id) {
     return;
   }
   if (tex.is_placeholder) {
-    fmt::print("trying to unload something that was already placholdererd: {} {}\n", name,
+    fmt::print("trying to unload something that was already placholdered: {} {}\n", name,
                tex.gpu_textures.size());
   }
   ASSERT(!tex.is_placeholder);
@@ -404,19 +320,17 @@ void TexturePool::draw_debug_window() {
 }
 
 void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u32 slot) {
-  bool pushed = false;
-  pushed = true;
   if (tex->is_placeholder) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.3, 0.3, 1.0));
-  } else {
+  } else if (tex->slots.size() == 1) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3, 0.8, 0.3, 1.0));
+  } else {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.3, 1.0));
   }
   if (ImGui::TreeNode(fmt::format("{} {}", name, slot).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", tex->page_name.c_str(), tex->w, tex->h);
-
     if (!tex->is_placeholder) {
       ImGui::Image((void*)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
-      ImGui::Text("addr 0x%lx\n", (uintptr_t)tex->gpu_textures.at(0).data);
     } else {
       ImGui::Text("PLACEHOLDER");
     }
@@ -424,7 +338,5 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
     ImGui::TreePop();
     ImGui::Separator();
   }
-  if (pushed) {
-    ImGui::PopStyleColor();
-  }
+  ImGui::PopStyleColor();
 }
