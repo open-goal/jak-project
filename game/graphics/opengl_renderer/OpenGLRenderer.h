@@ -36,8 +36,11 @@ class OpenGLRenderer {
   void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
 
   template <typename T, class... Args>
-  void init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {
-    m_bucket_renderers.at((int)id) = std::make_unique<T>(name, id, std::forward<Args>(args)...);
+  T* init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {
+    auto renderer = std::make_unique<T>(name, id, std::forward<Args>(args)...);
+    T* ret = renderer.get();
+    m_bucket_renderers.at((int)id) = std::move(renderer);
+    return ret;
   }
 
   SharedRenderState m_render_state;

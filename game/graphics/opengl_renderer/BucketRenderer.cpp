@@ -81,6 +81,7 @@ RenderMux::RenderMux(const std::string& name,
 void RenderMux::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
+  m_renderers[m_render_idx]->enabled() = m_enabled;
   m_renderers[m_render_idx]->render(dma, render_state, prof);
 }
 

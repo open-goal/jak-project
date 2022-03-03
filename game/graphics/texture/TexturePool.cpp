@@ -322,7 +322,7 @@ void TexturePool::draw_debug_window() {
 void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u32 slot) {
   if (tex->is_placeholder) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.3, 0.3, 1.0));
-  } else if (tex->slots.size() == 1) {
+  } else if (tex->gpu_textures.size() == 1) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3, 0.8, 0.3, 1.0));
   } else {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.3, 1.0));
