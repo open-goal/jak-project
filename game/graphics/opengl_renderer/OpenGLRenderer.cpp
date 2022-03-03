@@ -181,9 +181,11 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<MercRenderer>("l1-pris-merc", BucketId::MERC_PRIS_LEVEL1);           // 52
   init_bucket_renderer<GenericRenderer>("l1-pris-generic", BucketId::GENERIC_PRIS_LEVEL1);  // 53
 
-  init_bucket_renderer<EyeRenderer>("common-pris-eyes", BucketId::MERC_EYES_AFTER_PRIS);  // 54
-  init_bucket_renderer<MercRenderer>("common-pris-merc", BucketId::MERC_AFTER_PRIS);      // 55
-  init_bucket_renderer<GenericRenderer>("common-pris-generic", BucketId::GENERIC_PRIS);   // 56
+  // other renderers may output to the eye renderer
+  m_render_state.eye_renderer =
+      init_bucket_renderer<EyeRenderer>("common-pris-eyes", BucketId::MERC_EYES_AFTER_PRIS);  // 54
+  init_bucket_renderer<MercRenderer>("common-pris-merc", BucketId::MERC_AFTER_PRIS);          // 55
+  init_bucket_renderer<GenericRenderer>("common-pris-generic", BucketId::GENERIC_PRIS);       // 56
 
   //-----------------------
   // LEVEL 0 water texture

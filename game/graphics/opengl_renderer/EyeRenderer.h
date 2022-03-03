@@ -22,7 +22,7 @@ class EyeRenderer : public BucketRenderer {
   std::string m_debug;
   float m_average_time_ms = 0;
 
-  bool m_use_bilinear = false;
+  bool m_use_bilinear = true;
   bool m_alpha_hack = true;
 
   u32 m_left[SINGLE_EYE_SIZE * SINGLE_EYE_SIZE];
