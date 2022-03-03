@@ -134,7 +134,8 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 }
 
 std::string write_game_text(
-    const Config& cfg, const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
+    const Config& cfg,
+    const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
   // first sort languages:
   std::vector<int> languages;
   for (const auto& lang : data) {
@@ -171,7 +172,8 @@ std::string write_game_text(
     }
     result += ")\n\n";
   }
-  // - now add the ones that are different, if they do not have all languages defined, pad with placeholders
+  // - now add the ones that are different, if they do not have all languages defined, pad with
+  // placeholders
   for (auto const& [key, val] : cfg.new_strings_different_across_langs) {
     result += fmt::format("(#x{}\n  ", key);
     for (auto const& str : val) {
