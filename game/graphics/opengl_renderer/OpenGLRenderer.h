@@ -16,7 +16,6 @@ struct RenderOptions {
   bool draw_render_debug_window = false;
   bool draw_profiler_window = false;
   bool draw_small_profiler_window = false;
-  bool playing_from_dump = false;
 
   bool save_screenshot = false;
   std::string screenshot_path;
@@ -24,9 +23,8 @@ struct RenderOptions {
 
 class OpenGLRenderer {
  public:
-  OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool);
+  OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool, std::shared_ptr<Loader> loader);
   void render(DmaFollower dma, const RenderOptions& settings);
-  void serialize(Serializer& ser);
 
  private:
   void setup_frame(int window_width_px, int window_height_px, int offset_x, int offset_y);

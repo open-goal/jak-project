@@ -50,26 +50,22 @@ struct GraphicsData {
   // texture pool
   std::shared_ptr<TexturePool> texture_pool;
 
+  std::shared_ptr<Loader> loader;
+
   // temporary opengl renderer
   OpenGLRenderer ogl_renderer;
 
   OpenGlDebugGui debug_gui;
 
-  Serializer loaded_dump;
-
   FrameLimiter frame_limiter;
   Timer engine_timer;
   double last_engine_time = 1. / 60.;
 
-  void serialize(Serializer& ser) {
-    dma_copier.serialize_last_result(ser);
-    ogl_renderer.serialize(ser);
-  }
-
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>()),
-        ogl_renderer(texture_pool) {}
+        loader(std::make_shared<Loader>()),
+        ogl_renderer(texture_pool, loader) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
@@ -220,23 +216,6 @@ std::string make_output_file_name(const std::string& file_name) {
 }
 }  // namespace
 
-void make_gfx_dump() {
-  Timer ser_timer;
-  Serializer ser;
-
-  // save the dma chain and renderer state
-  g_gfx_data->serialize(ser);
-  auto result = ser.get_save_result();
-  Timer compression_timer;
-  auto compressed = compression::compress_zstd(result.first, result.second);
-  lg::info("Serialized graphics state in {:.1f} ms, {:.3f} MB, compressed {:.3f} MB {:.1f} ms",
-           ser_timer.getMs(), ((double)result.second) / (1 << 20),
-           ((double)compressed.size() / (1 << 20)), compression_timer.getMs());
-
-  file_util::write_binary_file(make_output_file_name(g_gfx_data->debug_gui.dump_name()),
-                               compressed.data(), compressed.size());
-}
-
 void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
   // wait for a copied chain.
   bool got_chain = false;
@@ -249,12 +228,6 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
   }
   // render that chain.
   if (got_chain) {
-    // we want to serialize before rendering
-    if (g_gfx_data->debug_gui.want_save()) {
-      make_gfx_dump();
-      g_gfx_data->debug_gui.want_save() = false;
-    }
-
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     RenderOptions options;
     options.window_height_px = height;
@@ -263,7 +236,6 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     options.lbox_width_px = lbox_width;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
-    options.playing_from_dump = false;
     options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     if (options.save_screenshot) {
@@ -288,42 +260,6 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
-}
-
-void render_dump_frame(int width, int height, int lbox_width, int lbox_height) {
-  Timer deser_timer;
-  if (g_gfx_data->debug_gui.want_dump_load()) {
-    auto data =
-        file_util::read_binary_file(make_output_file_name(g_gfx_data->debug_gui.dump_name()));
-    auto decompressed = compression::decompress_zstd(data.data(), data.size());
-    g_gfx_data->loaded_dump = Serializer(decompressed.data(), decompressed.size());
-  }
-
-  g_gfx_data->loaded_dump.reset_load();
-  g_gfx_data->serialize(g_gfx_data->loaded_dump);
-
-  if (g_gfx_data->debug_gui.want_dump_load()) {
-    lg::info("Loaded and deserialized graphics state in {:.1f} ms, {:.3f} MB", deser_timer.getMs(),
-             ((double)g_gfx_data->loaded_dump.data_size()) / (1 << 20));
-  }
-  g_gfx_data->debug_gui.want_dump_load() = false;
-
-  auto& chain = g_gfx_data->dma_copier.get_last_result();
-
-  RenderOptions options;
-  options.window_height_px = height;
-  options.window_width_px = width;
-  options.lbox_height_px = lbox_height;
-  options.lbox_width_px = lbox_width;
-  options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
-  options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
-  options.playing_from_dump = true;
-  options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
-  if (options.save_screenshot) {
-    options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
-  }
-
-  g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
 }
 
 static void gl_display_position(GfxDisplay* display, int* x, int* y) {
@@ -419,12 +355,7 @@ static void gl_render_display(GfxDisplay* display) {
 #endif
 
   // render game!
-  if (g_gfx_data->debug_gui.want_dump_replay()) {
-    // hack: no letterbox for dump frames, for now.
-    render_dump_frame(fbuf_w, fbuf_h, 0, 0);
-  } else if (g_gfx_data->debug_gui.should_advance_frame()) {
-    render_game_frame(width, height, lbox_w, lbox_h);
-  }
+  render_game_frame(width, height, lbox_w, lbox_h);
 
   if (g_gfx_data->debug_gui.should_gl_finish()) {
     glFinish();
@@ -457,7 +388,7 @@ static void gl_render_display(GfxDisplay* display) {
   }
 
   // toggle even odd and wake up engine waiting on vsync.
-  if (!g_gfx_data->debug_gui.want_dump_replay()) {
+  {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
     g_gfx_data->sync_cv.notify_all();
@@ -532,7 +463,7 @@ void gl_send_chain(const void* data, u32 offset) {
 
 void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
   // block
-  if (g_gfx_data && !g_gfx_data->debug_gui.want_dump_replay()) {
+  if (g_gfx_data) {
     // just pass it to the texture pool.
     // the texture pool will take care of locking.
     // we don't want to lock here for the entire duration of the conversion.
@@ -541,13 +472,17 @@ void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
 }
 
 void gl_texture_relocate(u32 destination, u32 source, u32 format) {
-  if (g_gfx_data && !g_gfx_data->debug_gui.want_dump_replay()) {
+  if (g_gfx_data) {
     g_gfx_data->texture_pool->relocate(destination, source, format);
   }
 }
 
 void gl_poll_events() {
   glfwPollEvents();
+}
+
+void gl_set_levels(const std::vector<std::string>& levels) {
+  g_gfx_data->loader->set_want_levels(levels);
 }
 
 const GfxRendererModule moduleOpenGL = {
@@ -567,6 +502,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate
     gl_poll_events,         // poll_events
+    gl_set_levels,          // set_levels
     GfxPipeline::OpenGL,    // pipeline
     "OpenGL 4.3"            // name
 };

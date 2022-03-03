@@ -38,7 +38,7 @@ struct GfxRendererModule {
   std::function<void(const u8*, int, u32)> texture_upload_now;
   std::function<void(u32, u32, u32)> texture_relocate;
   std::function<void()> poll_events;
-
+  std::function<void(const std::vector<std::string>&)> set_levels;
   GfxPipeline pipeline;
   const char* name;
 };
@@ -95,6 +95,7 @@ u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
+void set_levels(const std::vector<std::string>& levels);
 void poll_events();
 u64 get_window_width();
 u64 get_window_height();

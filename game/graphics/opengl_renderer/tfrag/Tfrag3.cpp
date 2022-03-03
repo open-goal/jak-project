@@ -39,7 +39,8 @@ Tfrag3::~Tfrag3() {
 }
 
 bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                         const tfrag3::Level* lev_data) {
+                         const tfrag3::Level* lev_data,
+                         std::string& status_out) {
   switch (m_load_state.state) {
     case State::DISCARD_TREE:
       discard_tree_cache();
@@ -122,9 +123,8 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
 
             glGenTextures(1, &tree_cache.time_of_day_texture);
             glBindTexture(GL_TEXTURE_1D, tree_cache.time_of_day_texture);
-            // just fill with zeros. this lets use use the faster texsubimage later
             glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
-                         GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
+                         GL_UNSIGNED_INT_8_8_8_8, nullptr);
             glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindVertexArray(0);
@@ -137,37 +137,61 @@ bool Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
 
       ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
       m_load_state.state = UPLOAD_VERTS;
+      m_load_state.vert_geo = 0;
+      m_load_state.vert_tree = 0;
       m_load_state.vert = 0;
+      m_load_state.vert_debug_bytes = 0;
     } break;
 
     case State::UPLOAD_VERTS: {
-      constexpr u32 MAX_VERTS = 40000;
-      bool remaining = false;
-      for (int geom = 0; geom < GEOM_MAX; ++geom) {
-        for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees[geom].size(); tree_idx++) {
-          const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
+      constexpr u32 MAX_VERTS = 20000;  // about 1.6 MB
+      u32 remaining_verts = MAX_VERTS;
+
+      // loop over geos/trees, picking up where we left off last time
+      while (m_load_state.vert_geo < tfrag3::TFRAG_GEOS) {
+        while (m_load_state.vert_tree < lev_data->tfrag_trees[m_load_state.vert_geo].size()) {
+          const auto& tree = lev_data->tfrag_trees[m_load_state.vert_geo][m_load_state.vert_tree];
 
           if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
-            u32 verts = tree.unpacked.vertices.size();
-            u32 start_vert = (m_load_state.vert) * MAX_VERTS;
-            u32 end_vert = std::min(verts, (m_load_state.vert + 1) * MAX_VERTS);
-            if (end_vert > start_vert) {
-              glBindVertexArray(m_cached_trees[geom][tree_idx].vao);
-              glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[geom][tree_idx].vertex_buffer);
-              glBufferSubData(GL_ARRAY_BUFFER, start_vert * sizeof(tfrag3::PreloadedVertex),
-                              (end_vert - start_vert) * sizeof(tfrag3::PreloadedVertex),
-                              tree.unpacked.vertices.data() + start_vert);
-              if (end_vert < verts) {
-                remaining = true;
-              }
+            // the number of vertices we'd need to finish the tree right now
+            size_t num_verts_left_in_tree = tree.unpacked.vertices.size() - m_load_state.vert;
+            // the last vertex in the tree
+            u32 last_vert = tree.unpacked.vertices.size();
+
+            bool need_more = false;
+            if (num_verts_left_in_tree > remaining_verts) {
+              need_more = true;
+              last_vert = m_load_state.vert + remaining_verts;
+            } else {
+              remaining_verts -= num_verts_left_in_tree;
+            }
+
+            glBindVertexArray(m_cached_trees[m_load_state.vert_geo][m_load_state.vert_tree].vao);
+            glBindBuffer(
+                GL_ARRAY_BUFFER,
+                m_cached_trees[m_load_state.vert_geo][m_load_state.vert_tree].vertex_buffer);
+            glBufferSubData(GL_ARRAY_BUFFER, m_load_state.vert * sizeof(tfrag3::PreloadedVertex),
+                            (last_vert - m_load_state.vert) * sizeof(tfrag3::PreloadedVertex),
+                            tree.unpacked.vertices.data() + m_load_state.vert);
+
+            m_load_state.vert_debug_bytes +=
+                (last_vert - m_load_state.vert) * sizeof(tfrag3::PreloadedVertex);
+
+            m_load_state.vert = last_vert;
+            if (need_more) {
+              status_out +=
+                  fmt::format("TFRAG vertex add: {} kB\n", m_load_state.vert_debug_bytes / 1024);
+              return false;
             }
           }
+
+          m_load_state.vert_tree++;
+          m_load_state.vert = 0;
         }
+        m_load_state.vert_geo++;
+        m_load_state.vert_tree = 0;
       }
-      m_load_state.vert++;
-      if (!remaining) {
-        return true;
-      }
+      return true;
     } break;
     default:
       ASSERT(false);
@@ -182,7 +206,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
   // first, get the level in memory
   Timer tfrag3_setup_timer;
 
-  const auto* lev_data = render_state->loader.get_tfrag3_level(level);
+  const auto* lev_data = render_state->loader->get_tfrag3_level(level);
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
     m_has_level = false;
     m_textures = nullptr;
@@ -201,7 +225,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
       m_load_state.loading = true;
       m_load_state.state = State::FIRST;
     }
-    if (update_load(tree_kinds, lev_data->level.get())) {
+    if (update_load(tree_kinds, lev_data->level.get(), render_state->load_status_debug)) {
       m_has_level = true;
       m_level_name = level;
       m_load_state.loading = false;

@@ -164,9 +164,11 @@ void BVH::serialize(Serializer& ser) {
 void Texture::serialize(Serializer& ser) {
   ser.from_ptr(&w);
   ser.from_ptr(&h);
+  ser.from_ptr(&combo_id);
   ser.from_pod_vector(&data);
   ser.from_str(&debug_name);
   ser.from_str(&debug_tpage_name);
+  ser.from_ptr(&load_to_pool);
 }
 
 void Level::serialize(Serializer& ser) {

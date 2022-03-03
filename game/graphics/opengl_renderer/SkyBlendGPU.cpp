@@ -59,6 +59,17 @@ SkyBlendGPU::~SkyBlendGPU() {
   glDeleteTextures(2, m_textures);
 }
 
+void SkyBlendGPU::init_textures(TexturePool& tex_pool) {
+  for (int i = 0; i < 2; i++) {
+    TextureInput in;
+    in.gpu_texture = m_textures[i];
+    in.w = m_sizes[i];
+    in.h = in.w;
+    in.name = fmt::format("PC-SKY-GPU-{}", i);
+    tex_pool.give_texture_and_load_to_vram(in, SKY_TEXTURE_VRAM_ADDRS[i]);
+  }
+}
+
 SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
                                          SharedRenderState* render_state,
                                          ScopedProfilerNode& prof) {
@@ -76,9 +87,6 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
     auto setup_data = dma.read_and_advance();
-    if (render_state->dump_playback) {
-      // continue;
-    }
 
     // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
@@ -115,10 +123,6 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
     // look up the source texture
     auto tex = render_state->texture_pool->lookup(adgif.tex0().tbp0());
     ASSERT(tex);
-
-    if (!tex->on_gpu) {
-      render_state->texture_pool->upload_to_gpu(tex);
-    }
 
     // setup for rendering!
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[buffer_idx]);
@@ -162,7 +166,7 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
 
     );
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+    glBindTexture(GL_TEXTURE_2D, *tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -188,29 +192,6 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
         stats.cloud_blends++;
       }
     }
-  }
-
-  // put in pool.
-  for (int i = 0; i < 2; i++) {
-    // todo - these are hardcoded and rely on the vram layout.
-    u32 tbp = i == 0 ? 8064 : 8096;
-
-    // lookup existing, or create a new entry
-    TextureRecord* tex = render_state->texture_pool->lookup(tbp);
-    if (!tex) {
-      auto tsp = std::make_shared<TextureRecord>();
-      render_state->texture_pool->set_texture(tbp, tsp);
-      tex = tsp.get();
-    }
-
-    // update it
-    tex->gpu_texture = m_textures[i];
-    tex->on_gpu = true;
-    tex->only_on_gpu = true;
-    tex->do_gc = false;
-    tex->w = m_sizes[i];
-    tex->h = m_sizes[i];
-    tex->name = fmt::format("PC-SKY-{}", i);
   }
 
   glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);

@@ -37,6 +37,8 @@ class ProfilerNode {
 
  private:
   friend class Profiler;
+  void to_string_helper(std::string& str, int depth) const;
+
   std::string m_name;
   ProfilerStats m_stats;
   std::vector<ProfilerNode> m_children;
@@ -67,8 +69,12 @@ class Profiler {
   Profiler();
   void clear();
   void draw();
-  void draw_small_window();
+  void draw_small_window(const std::string& status);
   void finish();
+
+  float root_time() const { return m_root.m_stats.duration; }
+
+  std::string to_string();
   ProfilerNode* root() { return &m_root; }
 
  private:

@@ -198,6 +198,11 @@ int main(int argc, char** argv) {
   }
 
   fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
+  // todo config
+  auto replacements_path = file_util::get_file_path({"texture_replacements"});
+  if (std::filesystem::exists(replacements_path)) {
+    tex_db.replace_textures(replacements_path);
+  }
 
   if (config.process_game_count) {
     auto result = db.process_game_count_file();
@@ -207,6 +212,7 @@ int main(int argc, char** argv) {
   }
 
   if (config.levels_extract) {
+    extract_common(db, tex_db, "GAME.CGO");
     for (auto& lev : config.levels_to_extract) {
       extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
     }

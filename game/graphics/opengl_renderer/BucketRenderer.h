@@ -70,14 +70,13 @@ struct LevelVis {
  * The main renderer will contain a single SharedRenderState that's passed to all bucket renderers.
  * This allows bucket renders to share textures and shaders.
  */
-constexpr int EYE_TEX_WIDTH = 64;
-constexpr int EYE_TEX_HEIGHT = 352;
 struct SharedRenderState {
-  explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool)
-      : texture_pool(_texture_pool) {}
+  explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool,
+                             std::shared_ptr<Loader> _loader)
+      : texture_pool(_texture_pool), loader(_loader) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
-  Loader loader;
+  std::shared_ptr<Loader> loader;
 
   u32 buckets_base = 0;  // address of buckets array.
   u32 next_bucket = 0;   // address of next bucket that we haven't started rendering in buckets
@@ -85,7 +84,6 @@ struct SharedRenderState {
 
   void* ee_main_memory = nullptr;
   u32 offset_of_s7;
-  bool dump_playback = false;
 
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
@@ -100,6 +98,8 @@ struct SharedRenderState {
   bool has_camera_planes = false;
   LevelVis occlusion_vis[2];
   math::Vector4f camera_planes[4];
+
+  std::string load_status_debug;
 };
 
 /*!
@@ -116,8 +116,8 @@ class BucketRenderer {
   bool& enabled() { return m_enabled; }
   virtual bool empty() const { return false; }
   virtual void draw_debug_window() = 0;
-  virtual void serialize(Serializer&) {}
   virtual void init_shaders(ShaderLibrary&) {}
+  virtual void init_textures(TexturePool&) {}
 
  protected:
   std::string m_name;
@@ -132,7 +132,6 @@ class RenderMux : public BucketRenderer {
             std::vector<std::unique_ptr<BucketRenderer>> renderers);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
-  void serialize(Serializer& ser) override;
 
  private:
   std::vector<std::unique_ptr<BucketRenderer>> m_renderers;

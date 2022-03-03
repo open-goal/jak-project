@@ -1727,18 +1727,9 @@
     ;; send now!
     ;; we send this to the GIF, which will basically ignore the
     ;; VIF tags (hopefully).
-    (#cond
-      (PC_PORT
-       (format 0 "Skipping upload-now! for ~A sz #x~X/#x~X bytes~%"
-               obj
-               (* 4 (-> obj segment 2 size))
-               (* 4 NEAR_PRIVATE_WORDS)
-               )
-       )
-      (else
-       (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
-       )
-      )
+    (#unless PC_PORT
+             (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+             )
     )
   ;; sync, wait for upload to complete
   (dma-sync (the-as pointer #x1000a000) 0 0)
@@ -2020,14 +2011,9 @@
                                         0)
 
         ;; send and sync! VIF tags are probably ignored.
-        (#cond
-          (PC_PORT
-           (format 0 "Skipping dma-buffer-send-chain to relocate font texture~%")
-           )
-          (else
-           (dma-buffer-send-chain (the-as dma-bank-source #x10009000) dma-buff)
-           )
-          )
+        (#unless PC_PORT
+                 (dma-buffer-send-chain (the-as dma-bank-source #x10009000) dma-buff)
+                 )
         )
       (dma-sync (the-as pointer #x10009000) 0 0)
 

@@ -470,22 +470,17 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
     DrawMode mode;
     mode.as_int() = bucket->key & 0xffffffff;
 
-    TextureRecord* tex = nullptr;
+    std::optional<u64> tex;
     tex = render_state->texture_pool->lookup(tbp);
 
     if (!tex) {
       fmt::print("Failed to find texture at {}, using random\n", tbp);
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     }
     ASSERT(tex);
 
-    // first: do we need to load the texture?
-    if (!tex->on_gpu) {
-      render_state->texture_pool->upload_to_gpu(tex);
-    }
-
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+    glBindTexture(GL_TEXTURE_2D, *tex);
 
     auto settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, false);
 

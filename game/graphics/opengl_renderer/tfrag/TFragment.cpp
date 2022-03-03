@@ -195,7 +195,7 @@ void TFragment::render(DmaFollower& dma,
   }
 
   if (m_hack_scrambler) {
-    render_state->loader.hack_scramble_textures();
+    render_state->loader->hack_scramble_textures();
     m_hack_scrambler = false;
   }
 }

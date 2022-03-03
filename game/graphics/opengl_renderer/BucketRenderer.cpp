@@ -63,6 +63,7 @@ void SharedRenderState::reset() {
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }
+  load_status_debug.clear();
 }
 
 RenderMux::RenderMux(const std::string& name,
@@ -81,12 +82,6 @@ void RenderMux::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
   m_renderers[m_render_idx]->render(dma, render_state, prof);
-}
-
-void RenderMux::serialize(Serializer& ser) {
-  for (auto& r : m_renderers) {
-    r->serialize(ser);
-  }
 }
 
 void RenderMux::draw_debug_window() {

@@ -177,6 +177,12 @@ void texture_relocate(u32 destination, u32 source, u32 format) {
   }
 }
 
+void set_levels(const std::vector<std::string>& levels) {
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->set_levels(levels);
+  }
+}
+
 void poll_events() {
   GetCurrentRenderer()->poll_events();
 }

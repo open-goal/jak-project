@@ -597,7 +597,7 @@ void SpriteRenderer::update_gl_prim(SharedRenderState* /*render_state*/) {
 }
 
 void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
-  TextureRecord* tex = nullptr;
+  std::optional<u64> tex;
   auto& state = m_adgif_state_stack[unit];
   if (!state.used) {
     // nothing used this state, don't bother binding the texture.
@@ -610,22 +610,13 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 
   if (!tex) {
-    // TODO Add back
     fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-    tex = render_state->texture_pool->get_random_texture();
-    if (tex) {
-      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
-    }
+    tex = render_state->texture_pool->get_placeholder_texture();
   }
   ASSERT(tex);
 
-  // first: do we need to load the texture?
-  if (!tex->on_gpu) {
-    render_state->texture_pool->upload_to_gpu(tex);
-  }
-
   glActiveTexture(GL_TEXTURE20 + unit);
-  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glBindTexture(GL_TEXTURE_2D, *tex);
   // Note: CLAMP and CLAMP_TO_EDGE are different...
   if (state.clamp_s) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

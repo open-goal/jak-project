@@ -47,8 +47,9 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
   }
 }
 
-OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
-    : m_render_state(texture_pool) {
+OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
+                               std::shared_ptr<Loader> loader)
+    : m_render_state(texture_pool, loader) {
   // setup OpenGL errors
 
   glEnable(GL_DEBUG_OUTPUT);
@@ -222,7 +223,10 @@ void OpenGLRenderer::init_bucket_renderers() {
     }
 
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
   }
+  sky_cpu_blender->init_textures(*m_render_state.texture_pool);
+  m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 
 /*!
@@ -231,8 +235,7 @@ void OpenGLRenderer::init_bucket_renderers() {
 void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_profiler.clear();
   m_render_state.reset();
-  m_render_state.dump_playback = settings.playing_from_dump;
-  m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
+  m_render_state.ee_main_memory = g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
   m_render_state.has_camera_planes = false;
 
@@ -240,10 +243,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
     setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
                 settings.lbox_height_px);
-  }
-  {
-    auto prof = m_profiler.root()->make_scoped_child("texture-gc");
-    m_render_state.texture_pool->remove_garbage_textures();
   }
 
   // draw_test_triangle();
@@ -257,9 +256,12 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
-    if (!m_render_state.dump_playback) {
-      vif_interrupt_callback();
-    }
+    vif_interrupt_callback();
+  }
+
+  {
+    auto prof = m_profiler.root()->make_scoped_child("loader");
+    m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
   }
 
   m_profiler.finish();
@@ -267,22 +269,18 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     m_profiler.draw();
   }
 
+  //  if (m_profiler.root_time() > 0.018) {
+  //    fmt::print("Slow frame: {:.2f} ms\n", m_profiler.root_time() * 1000);
+  //    fmt::print("{}\n", m_profiler.to_string());
+  //  }
+
   if (settings.draw_small_profiler_window) {
-    m_profiler.draw_small_window();
+    m_profiler.draw_small_window(m_render_state.load_status_debug);
   }
 
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
-  }
-
-  m_render_state.loader.update();
-}
-
-void OpenGLRenderer::serialize(Serializer& ser) {
-  m_render_state.texture_pool->serialize(ser);
-  for (auto& renderer : m_bucket_renderers) {
-    renderer->serialize(ser);
   }
 }
 
@@ -378,10 +376,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-
-    if (!m_render_state.dump_playback) {
-      vif_interrupt_callback();
-    }
+    vif_interrupt_callback();
   }
   g_current_render = "";
 

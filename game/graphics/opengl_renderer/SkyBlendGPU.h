@@ -8,7 +8,7 @@ class SkyBlendGPU {
  public:
   SkyBlendGPU();
   ~SkyBlendGPU();
-
+  void init_textures(TexturePool& tex_pool);
   SkyBlendStats do_sky_blends(DmaFollower& dma,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof);

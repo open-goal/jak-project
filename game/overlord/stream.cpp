@@ -78,7 +78,6 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
   (void)fno;
   (void)y;
   auto* cmd = (RPC_Str_Cmd*)_cmd;
-  printf("RPC STR runs!\n");
   if (cmd->chunk_id < 0) {
     // it's _not_ a stream file. So we just treat it like a normal load.
 
@@ -149,7 +148,6 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
       }
     }
   }
-  printf("Command result %d\n", cmd->result);
   return cmd;
 }
 
