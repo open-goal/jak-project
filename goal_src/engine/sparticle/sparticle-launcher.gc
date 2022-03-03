@@ -935,9 +935,10 @@
       ;; can we see it?
       (#if (not PC_PORT)
           (sphere-in-view-frustum? (the-as sphere gp-1))
-          ;; pc port : launchers have larger bsphere if you have pc rendering on and ps2 parts off
-          (and (not (and (-> *pc-settings* ps2-parts?) (-> *pc-settings* use-vis?)))
-               (sphere-in-view-frustum? (the-as sphere (let ((bsph (new-stack-vector0))) (vector-copy! bsph gp-1) (*! (-> bsph w) 4.0) bsph))))
+          (if (and (not (-> *pc-settings* ps2-parts?)) (not (-> *pc-settings* use-vis?)) (> (-> *sprite-array-2d* num-sprites 0) 1920))
+              ;; pc port : launchers have larger bsphere if you have pc rendering on and ps2 parts off
+              (sphere-in-view-frustum? (the-as sphere (let ((bsph (new-stack-vector0))) (vector-copy! bsph gp-1) (*! (-> bsph w) 4.0) bsph)))
+              (sphere-in-view-frustum? (the-as sphere gp-1)))
           )
       )
      )
