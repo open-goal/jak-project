@@ -13,6 +13,7 @@
 #include "game/graphics/opengl_renderer/tfrag/Tie3.h"
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
+#include "game/graphics/opengl_renderer/GenericRenderer.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -42,11 +43,13 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
   } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
     lg::error("[{}] OpenGL error 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
               message);
+    // ASSERT(false);
   }
 }
 
-OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
-    : m_render_state(texture_pool) {
+OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
+                               std::shared_ptr<Loader> loader)
+    : m_render_state(texture_pool, loader) {
   // setup OpenGL errors
 
   glEnable(GL_DEBUG_OUTPUT);
@@ -85,29 +88,31 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-----------------------
   // LEVEL 0 tfrag texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);        // 5
-  init_bucket_renderer<TFragment>("tfrag-0", BucketId::TFRAG_LEVEL0, normal_tfrags, false, 0);  // 6
+  init_bucket_renderer<TextureUploadHandler>("l0-tfrag-tex", BucketId::TFRAG_TEX_LEVEL0);  // 5
+  init_bucket_renderer<TFragment>("l0-tfrag-tfrag", BucketId::TFRAG_LEVEL0, normal_tfrags, false,
+                                  0);  // 6
   // 7
   // 8
-  init_bucket_renderer<Tie3>("tie-0", BucketId::TIE_LEVEL0, 0);                      // 9
-  init_bucket_renderer<MercRenderer>("merc-tf-0", BucketId::MERC_TFRAG_TEX_LEVEL0);  // 10
-  // 11
+  init_bucket_renderer<Tie3>("l0-tfrag-tie", BucketId::TIE_LEVEL0, 0);                        // 9
+  init_bucket_renderer<MercRenderer>("l0-tfrag-merc", BucketId::MERC_TFRAG_TEX_LEVEL0);       // 10
+  init_bucket_renderer<GenericRenderer>("l0-tfrag-gmerc", BucketId::GMERC_TFRAG_TEX_LEVEL0);  // 11
 
   //-----------------------
   // LEVEL 1 tfrag texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);  // 12
-  init_bucket_renderer<TFragment>("tfrag-1", BucketId::TFRAG_LEVEL1, normal_tfrags, false, 1);
+  init_bucket_renderer<TextureUploadHandler>("l1-tfrag-tex", BucketId::TFRAG_TEX_LEVEL1);  // 12
+  init_bucket_renderer<TFragment>("l1-tfrag-tfrag", BucketId::TFRAG_LEVEL1, normal_tfrags, false,
+                                  1);
   // 14
   // 15
-  init_bucket_renderer<Tie3>("tie-1", BucketId::TIE_LEVEL1, 1);
-  init_bucket_renderer<MercRenderer>("merc-tf-1", BucketId::MERC_TFRAG_TEX_LEVEL1);  // 17
-  // 18??
+  init_bucket_renderer<Tie3>("l1-tfrag-tie", BucketId::TIE_LEVEL1, 1);
+  init_bucket_renderer<MercRenderer>("l1-tfrag-merc", BucketId::MERC_TFRAG_TEX_LEVEL1);       // 17
+  init_bucket_renderer<GenericRenderer>("l1-tfrag-gmerc", BucketId::GMERC_TFRAG_TEX_LEVEL1);  // 18
 
   //-----------------------
   // LEVEL 0 shrub texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);  // 19
+  init_bucket_renderer<TextureUploadHandler>("l0-shrub-tex", BucketId::SHRUB_TEX_LEVEL0);  // 19
   // 20
   // 21
   // 22
@@ -117,75 +122,84 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-----------------------
   // LEVEL 1 shrub texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);  // 25
+  init_bucket_renderer<TextureUploadHandler>("l1-shrub-tex", BucketId::SHRUB_TEX_LEVEL1);  // 25
   // 26
   // 27
   // 28
   // 29
-  // 30
+
+  // I don't think this is actually used? or it might be wrong.
+  init_bucket_renderer<GenericRenderer>("common-shrub-generic", BucketId::GENERIC_SHRUB);  // 30
 
   //-----------------------
   // LEVEL 0 alpha texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);  // 31
-  init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-0",
+  init_bucket_renderer<TextureUploadHandler>("l0-alpha-tex", BucketId::ALPHA_TEX_LEVEL0);  // 31
+  init_bucket_renderer<SkyBlendHandler>("l0-alpha-sky-blend-and-tfrag-trans",
                                         BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, 0,
                                         sky_gpu_blender, sky_cpu_blender);  // 32
   // 33
-  init_bucket_renderer<TFragment>("tfrag-dirt-0", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false,
+  init_bucket_renderer<TFragment>("l0-alpha-tfrag", BucketId::TFRAG_DIRT_LEVEL0, dirt_tfrags, false,
                                   0);  // 34
   // 35
-  init_bucket_renderer<TFragment>("tfrag-ice-0", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags, false, 0);
+  init_bucket_renderer<TFragment>("l0-alpha-tfrag-ice", BucketId::TFRAG_ICE_LEVEL0, ice_tfrags,
+                                  false, 0);
   // 37
 
   //-----------------------
   // LEVEL 1 alpha texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);  // 38
-  init_bucket_renderer<SkyBlendHandler>("sky-blend-and-tfrag-trans-1",
+  init_bucket_renderer<TextureUploadHandler>("l1-alpha-tex", BucketId::ALPHA_TEX_LEVEL1);  // 38
+  init_bucket_renderer<SkyBlendHandler>("l1-alpha-sky-blend-and-tfrag-trans",
                                         BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1, 1,
                                         sky_gpu_blender, sky_cpu_blender);  // 39
   // 40
-  init_bucket_renderer<TFragment>("tfrag-dirt-1", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags, false,
+  init_bucket_renderer<TFragment>("l1-alpha-tfrag-dirt", BucketId::TFRAG_DIRT_LEVEL1, dirt_tfrags,
+                                  false,
                                   1);  // 41
   // 42
-  init_bucket_renderer<TFragment>("tfrag-ice-1", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false, 1);
+  init_bucket_renderer<TFragment>("l1-alpha-tfrag-ice", BucketId::TFRAG_ICE_LEVEL1, ice_tfrags,
+                                  false, 1);
   // 44
-  init_bucket_renderer<MercRenderer>("merc-after-alpha", BucketId::MERC_AFTER_ALPHA);
-  // 46?
+
+  init_bucket_renderer<MercRenderer>("common-alpha-merc", BucketId::MERC_AFTER_ALPHA);
+
+  init_bucket_renderer<GenericRenderer>("common-alpha-generic", BucketId::GENERIC_ALPHA);  // 46
   // 47?
 
   //-----------------------
   // LEVEL 0 pris texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);  // 48
-  init_bucket_renderer<MercRenderer>("merc-pris-0", BucketId::MERC_PRIS_LEVEL0);        // 49
-  // 50
+  init_bucket_renderer<TextureUploadHandler>("l0-pris-tex", BucketId::PRIS_TEX_LEVEL0);     // 48
+  init_bucket_renderer<MercRenderer>("l0-pris-merc", BucketId::MERC_PRIS_LEVEL0);           // 49
+  init_bucket_renderer<GenericRenderer>("l0-pris-generic", BucketId::GENERIC_PRIS_LEVEL0);  // 50
 
   //-----------------------
   // LEVEL 1 pris texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);  // 51
-  init_bucket_renderer<MercRenderer>("merc-pris-1", BucketId::MERC_PRIS_LEVEL1);        // 52
-  // 53
+  init_bucket_renderer<TextureUploadHandler>("l1-pris-tex", BucketId::PRIS_TEX_LEVEL1);     // 51
+  init_bucket_renderer<MercRenderer>("l1-pris-merc", BucketId::MERC_PRIS_LEVEL1);           // 52
+  init_bucket_renderer<GenericRenderer>("l1-pris-generic", BucketId::GENERIC_PRIS_LEVEL1);  // 53
 
-  init_bucket_renderer<EyeRenderer>("merc-eyes-after-pris", BucketId::MERC_EYES_AFTER_PRIS);  // 54
-  init_bucket_renderer<MercRenderer>("merc-after-pris", BucketId::MERC_AFTER_PRIS);           // 55
-  // 56?
+  // other renderers may output to the eye renderer
+  m_render_state.eye_renderer =
+      init_bucket_renderer<EyeRenderer>("common-pris-eyes", BucketId::MERC_EYES_AFTER_PRIS);  // 54
+  init_bucket_renderer<MercRenderer>("common-pris-merc", BucketId::MERC_AFTER_PRIS);          // 55
+  init_bucket_renderer<GenericRenderer>("common-pris-generic", BucketId::GENERIC_PRIS);       // 56
 
   //-----------------------
   // LEVEL 0 water texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);  // 57
-  init_bucket_renderer<MercRenderer>("merc-water-0", BucketId::MERC_WATER_LEVEL0);        // 58
-  // 59
+  init_bucket_renderer<TextureUploadHandler>("l0-water-tex", BucketId::WATER_TEX_LEVEL0);     // 57
+  init_bucket_renderer<MercRenderer>("l0-water-merc", BucketId::MERC_WATER_LEVEL0);           // 58
+  init_bucket_renderer<GenericRenderer>("l0-water-generic", BucketId::GENERIC_WATER_LEVEL0);  // 59
 
   //-----------------------
   // LEVEL 1 water texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);  // 60
-  init_bucket_renderer<MercRenderer>("merc-water-1", BucketId::MERC_WATER_LEVEL1);        // 61
-  // 62
+  init_bucket_renderer<TextureUploadHandler>("l1-water-tex", BucketId::WATER_TEX_LEVEL1);     // 60
+  init_bucket_renderer<MercRenderer>("l1-water-merc", BucketId::MERC_WATER_LEVEL1);           // 61
+  init_bucket_renderer<GenericRenderer>("l1-water-generic", BucketId::GENERIC_WATER_LEVEL1);  // 62
 
   // 63?
   // 64?
@@ -193,7 +207,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-----------------------
   // COMMON texture
   //-----------------------
-  init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);  // 65
+  init_bucket_renderer<TextureUploadHandler>("common-tex", BucketId::PRE_SPRITE_TEX);  // 65
 
   std::vector<std::unique_ptr<BucketRenderer>> sprite_renderers;
   // the first renderer added will be the default for sprite.
@@ -201,17 +215,20 @@ void OpenGLRenderer::init_bucket_renderers() {
   sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
   init_bucket_renderer<RenderMux>("sprite", BucketId::SPRITE, std::move(sprite_renderers));  // 66
 
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000,
-                                       DirectRenderer::Mode::NORMAL);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000,
-                                       DirectRenderer::Mode::NORMAL);
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 0x20000);
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 0x8000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     if (!m_bucket_renderers[i]) {
       init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), (BucketId)i);
     }
+
+    m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
   }
+  sky_cpu_blender->init_textures(*m_render_state.texture_pool);
+  m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 
 /*!
@@ -220,8 +237,7 @@ void OpenGLRenderer::init_bucket_renderers() {
 void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_profiler.clear();
   m_render_state.reset();
-  m_render_state.dump_playback = settings.playing_from_dump;
-  m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
+  m_render_state.ee_main_memory = g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
   m_render_state.has_camera_planes = false;
 
@@ -229,10 +245,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
     setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
                 settings.lbox_height_px);
-  }
-  {
-    auto prof = m_profiler.root()->make_scoped_child("texture-gc");
-    m_render_state.texture_pool->remove_garbage_textures();
   }
 
   // draw_test_triangle();
@@ -246,9 +258,12 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
-    if (!m_render_state.dump_playback) {
-      vif_interrupt_callback();
-    }
+    vif_interrupt_callback();
+  }
+
+  {
+    auto prof = m_profiler.root()->make_scoped_child("loader");
+    m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
   }
 
   m_profiler.finish();
@@ -256,18 +271,18 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     m_profiler.draw();
   }
 
+  //  if (m_profiler.root_time() > 0.018) {
+  //    fmt::print("Slow frame: {:.2f} ms\n", m_profiler.root_time() * 1000);
+  //    fmt::print("{}\n", m_profiler.to_string());
+  //  }
+
+  if (settings.draw_small_profiler_window) {
+    m_profiler.draw_small_window(m_render_state.load_status_debug);
+  }
+
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);
-  }
-
-  m_render_state.loader.update();
-}
-
-void OpenGLRenderer::serialize(Serializer& ser) {
-  m_render_state.texture_pool->serialize(ser);
-  for (auto& renderer : m_bucket_renderers) {
-    renderer->serialize(ser);
   }
 }
 
@@ -277,9 +292,13 @@ void OpenGLRenderer::serialize(Serializer& ser) {
 void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
+  ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
   ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
+  ImGui::Checkbox("Merc XGKICK", &m_render_state.enable_merc_xgkick);
+  ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
+  ImGui::Checkbox("Direct 2", &m_render_state.use_direct2);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
@@ -336,7 +355,9 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   ASSERT(default_regs_tag.kind == DmaTag::Kind::CNT);
   ASSERT(default_regs_tag.qwc == 10);
   // TODO verify data in here.
-  dma.read_and_advance();
+  auto default_data = dma.read_and_advance();
+  ASSERT(default_data.size_bytes > 148);
+  memcpy(m_render_state.fog_color.data(), default_data.data + 144, 4);
   auto default_ret_tag = dma.current_tag();
   ASSERT(default_ret_tag.qwc == 0);
   ASSERT(default_ret_tag.kind == DmaTag::Kind::RET);
@@ -357,10 +378,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-
-    if (!m_render_state.dump_playback) {
-      vif_interrupt_callback();
-    }
+    vif_interrupt_callback();
   }
   g_current_render = "";
 

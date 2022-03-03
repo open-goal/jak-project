@@ -92,22 +92,13 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::MenuItem("Frame Time Plot", nullptr, &m_draw_frame_time);
       ImGui::MenuItem("Render Debug", nullptr, &m_draw_debug);
       ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
+      ImGui::MenuItem("Small Profiler", nullptr, &small_profiler);
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Gfx Dump")) {
+    if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 50);
-      ImGui::Separator();
-      ImGui::MenuItem("Dump Next Frame!", nullptr, &m_want_save);
-      bool old_replay = m_want_replay;
-      ImGui::MenuItem("Load Saved Dump", nullptr, &m_want_replay);
-      if (!old_replay && m_want_replay) {
-        m_want_dump_load = true;
-      }
-      ImGui::Separator();
-
-      ImGui::InputText("Dump", m_dump_save_name, 12);
       ImGui::EndMenu();
     }
 

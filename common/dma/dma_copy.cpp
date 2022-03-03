@@ -74,6 +74,15 @@ FixedChunkDmaCopier::FixedChunkDmaCopier(u32 main_memory_size)
   m_chunk_mask.resize(m_chunk_count);
 }
 
+void FixedChunkDmaCopier::set_input_data(const void* memory, u32 offset, bool run_copy) {
+  if (run_copy) {
+    run(memory, offset, false);
+  } else {
+    m_input_offset = offset;
+    m_input_data = memory;
+  }
+}
+
 const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool verify) {
   Timer timer;
   m_input_offset = offset;

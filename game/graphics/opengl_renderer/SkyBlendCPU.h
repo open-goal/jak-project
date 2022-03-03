@@ -13,6 +13,7 @@ class SkyBlendCPU {
   SkyBlendStats do_sky_blends(DmaFollower& dma,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof);
+  void init_textures(TexturePool& tex_pool);
 
  private:
   GLuint m_textures[2];  // sky, clouds

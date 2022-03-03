@@ -43,7 +43,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 11;
+constexpr int TFRAG3_VERSION = 12;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -210,6 +210,7 @@ struct Texture {
   std::vector<u32> data;
   std::string debug_name;
   std::string debug_tpage_name;
+  bool load_to_pool = false;
   void serialize(Serializer& ser);
 };
 
@@ -260,12 +261,15 @@ struct TieTree {
   void unpack();
 };
 
+constexpr int TFRAG_GEOS = 3;
+constexpr int TIE_GEOS = 4;
+
 struct Level {
   u16 version = TFRAG3_VERSION;
   std::string level_name;
   std::vector<Texture> textures;
-  std::array<std::vector<TfragTree>, 3> tfrag_trees;
-  std::array<std::vector<TieTree>, 4> tie_trees;
+  std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
+  std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
 

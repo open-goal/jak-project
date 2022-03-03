@@ -87,6 +87,68 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
   }
 }
 
+void add_all_textures_from_level(tfrag3::Level& lev,
+                                 const std::string& level_name,
+                                 TextureDB& tex_db) {
+  ASSERT(lev.textures.empty());
+  for (auto id : tex_db.texture_ids_per_level[level_name]) {
+    const auto& tex = tex_db.textures.at(id);
+    lev.textures.emplace_back();
+    auto& new_tex = lev.textures.back();
+    new_tex.combo_id = id;
+    new_tex.w = tex.w;
+    new_tex.h = tex.h;
+    new_tex.debug_tpage_name = tex_db.tpage_names.at(tex.page);
+    new_tex.debug_name = new_tex.debug_tpage_name + tex.name;
+    new_tex.data = tex.rgba_bytes;
+    new_tex.combo_id = id;
+    new_tex.load_to_pool = true;
+  }
+}
+
+void confirm_textures_identical(TextureDB& tex_db) {
+  std::unordered_map<std::string, std::vector<u32>> tex_dupl;
+  for (auto& tex : tex_db.textures) {
+    auto name = tex_db.tpage_names[tex.second.page] + tex.second.name;
+    auto it = tex_dupl.find(name);
+    if (it == tex_dupl.end()) {
+      tex_dupl.insert({name, tex.second.rgba_bytes});
+    } else {
+      bool ok = it->second == tex.second.rgba_bytes;
+      if (!ok) {
+        fmt::print("BAD duplicate: {} {} vs {}\n", name, tex.second.rgba_bytes.size(),
+                   it->second.size());
+        ASSERT(false);
+      }
+    }
+  }
+}
+
+/*!
+ * Extract common textures found in GAME.CGO
+ */
+void extract_common(ObjectFileDB& db, TextureDB& tex_db, const std::string& dgo_name) {
+  if (db.obj_files_by_dgo.count(dgo_name) == 0) {
+    lg::warn("Skipping common extract for {} because the DGO was not part of the input", dgo_name);
+    return;
+  }
+
+  confirm_textures_identical(tex_db);
+
+  tfrag3::Level tfrag_level;
+  add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
+  Serializer ser;
+  tfrag_level.serialize(ser);
+  auto compressed =
+      compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
+  print_memory_usage(tfrag_level, ser.get_save_result().second);
+  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
+             100.f * compressed.size() / ser.get_save_result().second);
+  file_util::write_binary_file(file_util::get_file_path({fmt::format(
+                                   "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
+                               compressed.data(), compressed.size());
+}
+
 void extract_from_level(ObjectFileDB& db,
                         TextureDB& tex_db,
                         const std::string& dgo_name,
@@ -120,6 +182,8 @@ void extract_from_level(ObjectFileDB& db,
       "drawable-tree-ice-tfrag", "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
   int i = 0;
   tfrag3::Level tfrag_level;
+
+  add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
 
   for (auto& draw_tree : bsp_header.drawable_tree_array.trees) {
     if (tfrag_trees.count(draw_tree->my_type())) {

@@ -92,13 +92,9 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
                                          ScopedProfilerNode& /*prof*/) {
   SkyBlendStats stats;
 
-  Timer sky_timer;
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
     auto setup_data = dma.read_and_advance();
-    if (render_state->dump_playback) {
-      // continue;
-    }
 
     // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
@@ -133,9 +129,8 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
     }
 
     // look up the source texture
-    auto tex = render_state->texture_pool->lookup(adgif.tex0().tbp0());
+    auto tex = render_state->texture_pool->lookup_gpu_texture(adgif.tex0().tbp0());
     ASSERT(tex);
-    ASSERT(!tex->only_on_gpu);  // we need the actual data!!
 
     // slow version
     /*
@@ -153,59 +148,48 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
       m_texture_data[buffer_idx][i] += val;
     }
      */
-    if (is_first_draw) {
-      blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->data.data(),
-                             tex->data.size());
-    } else {
-      blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->data.data(),
-                     tex->data.size());
-    }
-
-    if (buffer_idx == 0) {
+    if (tex->get_data_ptr()) {
       if (is_first_draw) {
-        stats.sky_draws++;
+        blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                               tex->data_size());
       } else {
-        stats.sky_blends++;
+        blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                       tex->data_size());
       }
-    } else {
-      if (is_first_draw) {
-        stats.cloud_draws++;
+      if (buffer_idx == 0) {
+        if (is_first_draw) {
+          stats.sky_draws++;
+        } else {
+          stats.sky_blends++;
+        }
       } else {
-        stats.cloud_blends++;
+        if (is_first_draw) {
+          stats.cloud_draws++;
+        } else {
+          stats.cloud_blends++;
+        }
       }
+      glBindTexture(GL_TEXTURE_2D, m_textures[buffer_idx]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[buffer_idx], m_sizes[buffer_idx], 0, GL_RGBA,
+                   GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[buffer_idx].data());
     }
   }
 
-  // put in pool.
-  if (render_state->dump_playback) {
-    return stats;
-  }
+  return stats;
+}
+
+void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
   for (int i = 0; i < 2; i++) {
-    // todo - these are hardcoded and rely on the vram layout.
-    u32 tbp = i == 0 ? 8064 : 8096;
-
-    // lookup existing, or create a new entry
-    TextureRecord* tex = render_state->texture_pool->lookup(tbp);
-    if (!tex) {
-      auto tsp = std::make_shared<TextureRecord>();
-      render_state->texture_pool->set_texture(tbp, tsp);
-      tex = tsp.get();
-    }
-
     // update it
     glBindTexture(GL_TEXTURE_2D, m_textures[i]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[i].data());
+    TextureInput in;
 
-    tex->gpu_texture = m_textures[i];
-    tex->on_gpu = true;
-    tex->only_on_gpu = true;
-    tex->do_gc = false;
-    tex->w = m_sizes[i];
-    tex->h = m_sizes[i];
-    tex->name = fmt::format("PC-SKY-{}", i);
+    in.gpu_texture = m_textures[i];
+    in.w = m_sizes[i];
+    in.h = m_sizes[i];
+    in.name = fmt::format("PC-SKY-CPU-{}", i);
+    tex_pool.give_texture_and_load_to_vram(in, SKY_TEXTURE_VRAM_ADDRS[i]);
   }
-  //  fmt::print("sky blend took {:.2f} ms\n", sky_timer.getMs());
-
-  return stats;
 }

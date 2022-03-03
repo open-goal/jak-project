@@ -363,9 +363,6 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
   return result;
 }
 
-// geometry we use (todo, should really look at this)
-constexpr int GEOM_IDX = 0;  // todo 0 or 1??
-
 /*!
  * Confirm that the initial value of all wind vectors is 0.
  * If this is true, we don't have to actually save them to the fr3 file, we can just create
@@ -2229,7 +2226,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                 color_index += ifrag.color_index_offset_in_big_palette;
               }
 
-              size_t vert_idx = tree.packed_vertices.color_indices.size();
               tree.packed_vertices.color_indices.push_back(color_index);
               // draw_to_add_to->vertex_index_stream.push_back(vert_idx);
             }

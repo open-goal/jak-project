@@ -10,6 +10,7 @@
 #include "common/type_system/state.h"
 #include "common/util/print_float.h"
 #include "decompiler/IR2/ExpressionHelpers.h"
+#include "decompiler/util/goal_constants.h"
 
 /*
  * TODO
@@ -956,7 +957,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
-    if (arg0_int && (*arg0_int == SYM_INFO_OFFSET + 4) &&
+    if (arg0_int && (*arg0_int == DECOMP_SYM_INFO_OFFSET + 4) &&
         arg1_type.typespec() == TypeSpec("symbol")) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
@@ -1225,8 +1226,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
             as_generic->op().func()->try_as_single_element());
         if (as_func_head && as_func_head->expr().is_identity() &&
             as_func_head->expr().get_arg(0).is_sym_val()) {
-          auto& name = as_func_head->expr().get_arg(0).get_str();
-          if (name == "rand-vu-int-range") {
+          auto& func_name = as_func_head->expr().get_arg(0).get_str();
+          if (func_name == "rand-vu-int-range") {
             arg1_cast = TypeSpec("time-frame");
           }
         }
@@ -1277,7 +1278,7 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
   if (arg1_reg) {
     auto arg1_type =
         env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg()).typespec();
-    bool is_timeframe = arg1_type == TypeSpec("time-frame");
+    // bool is_timeframe = arg1_type == TypeSpec("time-frame");
     arg1_i = is_int_type(arg1_type);
   } else {
     ASSERT(m_expr.get_arg(1).is_int());

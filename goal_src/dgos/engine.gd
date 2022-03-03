@@ -145,8 +145,8 @@
   ("navigate-h.o" "navigate-h")
   ("load-dgo.o" "load-dgo")
   ("ramdisk.o" "ramdisk")
-  ("pckernel.o" "pckernel") ;; added
   ("gsound.o" "gsound")
+  ("pckernel.o" "pckernel") ;; added
   ("transformq.o" "transformq")
   ("collide-func.o" "collide-func")
   ("joint.o" "joint")
@@ -296,3 +296,4 @@
   ("part-tester.o" "part-tester")
   ("default-menu.o" "default-menu")
   )
+

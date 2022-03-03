@@ -45,7 +45,7 @@ void set_discord_rpc(int state) {
 }
 
 // get full level name from symbol name ("village1" -> "Sandover Village")
-const char* jak1_get_full_level_name(char* level_name) {
+const char* jak1_get_full_level_name(const char* level_name) {
   // ignore sublevels
   if (!strcmp(level_name, "jungleb")) {
     level_name = "jungle";
@@ -75,6 +75,6 @@ void handleDiscordError(int errcode, const char* message) {
   printf("\nDiscord: error (%d: %s)\n", errcode, message);
 }
 
-void handleDiscordJoin(const char* secret) {}
-void handleDiscordJoinRequest(const DiscordUser* request) {}
-void handleDiscordSpectate(const char* secret) {}
+void handleDiscordJoin(const char* /*secret*/) {}
+void handleDiscordJoinRequest(const DiscordUser* /*request*/) {}
+void handleDiscordSpectate(const char* /*secret*/) {}

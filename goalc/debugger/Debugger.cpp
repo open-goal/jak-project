@@ -521,14 +521,15 @@ void Debugger::read_symbol_table() {
   u32 empty_pair_offset = (m_debug_context.s7 + FIX_SYM_EMPTY_PAIR - PAIR_OFFSET) - st_base;
 
   std::vector<u8> mem;
-  mem.resize(0x20000);
+  mem.resize(SYM_TABLE_MEM_SIZE);
 
-  if (!xdbg::read_goal_memory(mem.data(), 0x20000, st_base, m_debug_context, m_memory_handle)) {
+  if (!xdbg::read_goal_memory(mem.data(), SYM_TABLE_MEM_SIZE, st_base, m_debug_context,
+                              m_memory_handle)) {
     fmt::print("Read failed during read_symbol_table\n");
     return;
   }
   reads++;
-  bytes_read += 0x20000;
+  bytes_read += SYM_TABLE_MEM_SIZE;
 
   struct SymLower {
     u32 type;
@@ -581,8 +582,8 @@ void Debugger::read_symbol_table() {
 
       // GOAL sym - s7
       auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
-      ASSERT(sym_offset >= INT16_MIN);
-      ASSERT(sym_offset <= INT16_MAX);
+      ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 4);
+      ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
 
       std::string str(str_buff);
       if (str.length() >= 50) {

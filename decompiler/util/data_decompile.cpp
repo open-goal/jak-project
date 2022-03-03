@@ -74,6 +74,11 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       // TODO - having this logic here isn't great.
       auto stride = align(field_type_info->get_size_in_memory(),
                           field_type_info->get_inline_array_stride_alignment());
+      fmt::print("decompiler {} stride {} {} = {}\n", field_type_info->get_name(),
+                 field_type_info->get_size_in_memory(),
+                 field_type_info->get_inline_array_stride_alignment(),
+                 align(field_type_info->get_size_in_memory(),
+                       field_type_info->get_inline_array_stride_alignment()));
 
       if (dynamic_cast<BasicType*>(field_type_info)) {
         throw std::runtime_error("Plan basic arrays not supported yet");
@@ -330,7 +335,7 @@ goos::Object decomp_ref_to_integer_array_guess_size(
     int field_location,
     const TypeSystem& ts,
     const std::vector<std::vector<LinkedWord>>& all_words,
-    const LinkedObjectFile* file,
+    const LinkedObjectFile* /*file*/,
     const TypeSpec& array_elt_type,
     int stride) {
   // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());

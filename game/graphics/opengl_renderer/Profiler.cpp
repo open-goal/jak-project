@@ -88,6 +88,34 @@ void Profiler::draw() {
   ImGui::End();
 }
 
+void Profiler::draw_small_window(const std::string& status) {
+  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
+                                  ImGuiWindowFlags_AlwaysAutoResize |
+                                  ImGuiWindowFlags_NoSavedSettings |
+                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+  auto* p_open = &m_small_window_open;
+  const float PAD = 10.0f;
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  ImVec2 work_pos = viewport->WorkPos;  // Use work area to avoid menu-bar/task-bar, if any!
+  ImVec2 work_size = viewport->WorkSize;
+  ImVec2 window_pos, window_pos_pivot;
+  window_pos.x = (work_pos.x + PAD);
+  window_pos.y = (work_pos.y + work_size.y - PAD);
+  window_pos_pivot.x = 0.0f;
+  window_pos_pivot.y = 1.0f;
+  ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+
+  ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
+  if (ImGui::Begin("Profiler (short)", p_open, window_flags)) {
+    ImGui::Text(" tri: %7d\n", m_root.m_stats.triangles);
+    ImGui::Text("  DC: %4d\n", m_root.m_stats.draw_calls);
+    if (!status.empty()) {
+      ImGui::Text("%s", status.c_str());
+    }
+  }
+  ImGui::End();
+}
+
 u32 name_to_color(const std::string& name) {
   u64 val = std::hash<std::string>{}(name);
   return colors::common_colors[val % colors::COLOR_COUNT] | 0xff000000;
@@ -142,4 +170,19 @@ void Profiler::draw_node(ProfilerNode& node, bool expand, int depth, float start
   }
 
   ImGui::PopStyleColor();
+}
+
+std::string Profiler::to_string() {
+  m_root.sort(ProfilerSort::TIME);
+  std::string str;
+  m_root.to_string_helper(str, 0);
+  return str;
+}
+
+void ProfilerNode::to_string_helper(std::string& str, int depth) const {
+  str +=
+      fmt::format("{}{:.2f} ms {:30s}\n", std::string(depth, ' '), m_stats.duration * 1000, m_name);
+  for (const auto& child : m_children) {
+    child.to_string_helper(str, depth + 1);
+  }
 }

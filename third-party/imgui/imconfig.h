@@ -14,9 +14,13 @@
 
 #pragma once
 
+#include "common/util/Assert.h"
+
 //---- Define assertion handler. Defaults to calling assert().
 // If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.
-//#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
+#ifdef __linux__
+#define IM_ASSERT(_EXPR)  ASSERT(_EXPR)
+#endif
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows

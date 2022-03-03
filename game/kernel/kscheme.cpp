@@ -255,7 +255,7 @@ void delete_structure(u32 s) {
 /*!
  * Allocate a basic of fixed size.
  */
-u64 new_basic(u32 heap, u32 type, u32 /*unused*/, u32 pp) {
+u64 new_basic(u32 heap, u32 type, u32 /*size*/, u32 pp) {
   return alloc_heap_object(heap, type, Ptr<Type>(type)->allocated_size, pp);
 }
 
@@ -708,8 +708,9 @@ Ptr<Symbol> find_symbol_from_c(const char* name) {
     }
   }
 
-  s32 sh1 = hash << 0x13;
-  s32 sh2 = sh1 >> 0x10;
+  auto bits = bits_for_sym() - 1;
+  s32 sh1 = hash << (0x20 - bits);
+  s32 sh2 = sh1 >> (0x20 - bits - 3);
   // will be signed, bottom 3 bits 0 (for alignment, symbol are every 8 bytes)
   // upper 16 bits are the same, so we will reach +/- 8 kb around 0.
 
@@ -1716,14 +1717,15 @@ s32 InitHeapAndSymbol() {
   // reset all mips2c functions
   Mips2C::gLinkedFunctionTable = {};
   // allocate memory for the symbol table
-  auto symbol_table = kmalloc(kglobalheap, 0x20000, KMALLOC_MEMSET, "symbol-table").cast<u32>();
+  auto symbol_table =
+      kmalloc(kglobalheap, SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
 
   // pointer to the middle symbol is stored in the s7 register.
   s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
   // pointer to the first symbol (SymbolTable2 is the "lower" symbol table)
   SymbolTable2 = symbol_table + BASIC_OFFSET;
   // the last symbol we will ever access.
-  LastSymbol = symbol_table + 0xff00;
+  LastSymbol = symbol_table + SYM_TABLE_END * 8;
   NumSymbols = 0;
   // inform compiler the symbol table is reset, and where it is.
   reset_output();

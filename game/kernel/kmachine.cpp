@@ -559,8 +559,23 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
 
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
-  fmt::print("Getting mips: {}\n", n);
   return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+void pc_set_levels(u32 l0, u32 l1) {
+  std::string l0s = Ptr<String>(l0).c()->data();
+  std::string l1s = Ptr<String>(l1).c()->data();
+
+  std::vector<std::string> levels;
+  if (l0s != "none" && l0s != "#f") {
+    levels.push_back(l0s);
+  }
+
+  if (l1s != "none" && l1s != "#f") {
+    levels.push_back(l1s);
+  }
+
+  Gfx::set_levels(levels);
 }
 
 /*!
@@ -809,6 +824,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);

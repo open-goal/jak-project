@@ -26,10 +26,10 @@ std::string VifCode::print() {
       result = fmt::format("STCYCL cl: {} wl: {}", stcycl.cl, stcycl.wl);
     } break;
     case Kind::OFFSET:
-      result = "OFFSET";
+      result = fmt::format("OFFSET 0x{:x}", immediate);
       break;
     case Kind::BASE:
-      result = "BASE";
+      result = fmt::format("BASE 0x{:x}", immediate);
       break;
     case Kind::ITOP:
       result = "ITOP";
@@ -59,7 +59,7 @@ std::string VifCode::print() {
       result = "MSCNT";
       break;
     case Kind::MSCALF:
-      result = "MSCALF";
+      result = fmt::format("MSCALF 0x{:x}", immediate);
       break;
     case Kind::STMASK:
       result = "STMASK";
@@ -103,6 +103,13 @@ std::string VifCode::print() {
     case Kind::UNPACK_V3_32: {
       VifCodeUnpack up(*this);
       result = fmt::format("UNPACK-V3-32: {} addr: {} us: {} tops: {}", num, up.addr_qw,
+                           up.is_unsigned, up.use_tops_flag);
+      break;
+    }
+
+    case Kind::UNPACK_V2_16: {
+      VifCodeUnpack up(*this);
+      result = fmt::format("UNPACK-V2-16: {} addr: {} us: {} tops: {}", num, up.addr_qw,
                            up.is_unsigned, up.use_tops_flag);
       break;
     }

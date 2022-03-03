@@ -6774,8 +6774,8 @@
   )
 
 (deftype generic-gif-tag (structure)
-  ((data       uint32 4       :offset-assert 0)
-   (qword      qword   :inline :offset 0)
+  ((data       uint32 4       :offset-assert 0 :score -1)
+   (qword      qword   :inline :offset 0 :score -1)
    (fan-prim   uint32          :offset 0)
    (str-prim   uint32          :offset 4)
    (regs       uint32          :offset 8)
@@ -6789,10 +6789,10 @@
 (deftype ad-cmd (structure)
   ((word uint32 4 :offset-assert 0)
    (quad uint128   :offset 0)
-   (data uint64    :offset 0)
+   (data uint64    :offset 0 :score 1)
    (cmds uint64    :offset 8)
-   (cmd  gs-reg    :offset 8)
-   (x    uint32    :offset 0)
+   (cmd  gs-reg    :offset 8 :score 1)
+   (x    uint32    :offset 0 )
    (y    uint32    :offset 4)
    (z    uint32    :offset 8)
    (w    uint32    :offset 12)
@@ -8634,7 +8634,7 @@
    (next-chain                 uint32                      :offset-assert 276)
    (buf-index                  uint32                      :offset-assert 280)
    (fragment-count             uint32                      :offset-assert 284)
-   (write-limit                int32                       :offset-assert 288)
+   (write-limit                pointer                     :offset-assert 288)
    (indexed-input-base         generic-merc-input          :offset-assert 292)
    (other-input-base           generic-merc-input          :offset-assert 296)
    (indexed-output-base        generic-merc-output         :offset-assert 300)
@@ -9813,8 +9813,8 @@
 
 (deftype merc-globals (structure)
   ((first uint32  :offset-assert 0)
-   (next  uint32  :offset-assert 4)
-   (sink  basic   :offset-assert 8) ;; dma sink
+   (next  (pointer uint32)  :offset-assert 4)
+   (sink  generic-dma-foreground-sink   :offset-assert 8) ;; dma sink
    )
   :allow-misaligned
   :method-count-assert 9
@@ -13651,9 +13651,9 @@
   )
 
 (deftype foreground-area (structure)
-  ((joint-work   joint-work   :inline :offset-assert 0)
+  ((joint-work   joint-work   :inline :offset-assert 0 :score 1999999999)
    (generic-work generic-work :inline :offset 0)
-   (bone-mem     bone-memory  :score 1999999999 :inline :offset 0)
+   (bone-mem     bone-memory  :inline :offset 0)
    (shadow-work  shadow-work  :inline :offset 0)
    )
   :method-count-assert 9
@@ -16643,7 +16643,7 @@
 (define-extern bones-debug (function none))
 (define-extern dump-bone-mem (function none))
 (define-extern draw-bones-shadow (function draw-control object object pointer))
-(define-extern draw-bones-generic-merc (function draw-control object object int pointer))
+(define-extern draw-bones-generic-merc (function draw-control pointer pointer int pointer))
 (define-extern draw-bones-merc (function draw-control object object int int pointer))
 (define-extern draw-bones-check-longest-edge (function draw-control float none))
 (define-extern draw-bones-check-longest-edge-asm (function draw-control float symbol))
@@ -16716,10 +16716,10 @@
 
 ;; - Functions
 
-(define-extern generic-work-init function)
+(define-extern generic-work-init (function generic-dma-foreground-sink none))
 (define-extern generic-upload-vu0 function)
-(define-extern upload-vu0-program function)
-(define-extern generic-initialize-without-sink function)
+(define-extern upload-vu0-program (function vu-function pointer none))
+(define-extern generic-initialize-without-sink (function matrix vu-lights none))
 (define-extern generic-initialize function)
 (define-extern generic-wrapup function)
 (define-extern generic-dma-from-spr function)
@@ -16765,6 +16765,7 @@
    (init-data uint8   :offset-assert 1)
    (init-addr uint16  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -16772,15 +16773,15 @@
 
 ;; - Functions
 
-(define-extern generic-merc-init-asm function)
+(define-extern generic-merc-init-asm (function none))
 (define-extern mercneric-matrix-asm function)
 (define-extern mercneric-shader-asm function)
 (define-extern mercneric-bittable-asm function)
 (define-extern mercneric-convert function)
-(define-extern high-speed-reject function)
-(define-extern generic-merc-execute-asm function)
-(define-extern generic-merc-add-to-cue (function basic none))
-(define-extern generic-merc-execute-all (function none))
+(define-extern high-speed-reject (function none))
+(define-extern generic-merc-execute-asm (function none))
+(define-extern generic-merc-add-to-cue (function generic-dma-foreground-sink none))
+(define-extern generic-merc-execute-all (function dma-buffer none))
 
 ;; - Unknowns
 
@@ -17817,7 +17818,7 @@
 
 ;; - Functions
 
-(define-extern make-light-kit (function light-group float float float float float))
+(define-extern make-light-kit (function light-group float float float float none))
 (define-extern make-village1-light-kit (function mood-context none))
 (define-extern make-misty-light-kit (function mood-context none))
 (define-extern make-village2-light-kit (function mood-context none))
@@ -18145,7 +18146,7 @@
 (define-extern update-mood-interp (function mood-context mood-context mood-context float none))
 (define-extern update-mood-lightning (function mood-context int int int int float symbol none)) ;; TODO - asm - ret not verified
 (define-extern update-mood-lava (function mood-context int int symbol none))
-(define-extern update-light-kit (function light-group light float float))
+(define-extern update-light-kit (function light-group light float none))
 (define-extern set-target-light-index (function int int))
 (define-extern update-mood-caustics (function mood-context int int none))
 (define-extern update-mood-jungleb-blue (function mood-context float int none))
@@ -18236,7 +18237,7 @@
 (define-extern start-time-of-day (function none))
 (define-extern time-of-day-setup (function symbol symbol))
 (define-extern set-time-of-day (function float none))
-(define-extern init-time-of-day-context (function time-of-day-context float))
+(define-extern init-time-of-day-context (function time-of-day-context none))
 (define-extern update-time-of-day (function time-of-day-context none))
 
 ;; - Symbols
@@ -18822,7 +18823,7 @@
    (timer       uint8   :offset-assert 6)
    (overlap     uint8   :offset-assert 7)
    (effect      uint32  :offset-assert 8)
-   (sound       basic   :offset-assert 12)
+   (sound       symbol  :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -21027,7 +21028,7 @@
     (die () _type_ :state 24) ;; state
     (jump () _type_ :state 25)
     (notice-blue (handle) _type_ :state 26) ;; state
-    (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
+    (initialize-effect (_type_ pickup-type) none 27)
     (initialize-eco (_type_ entity-actor pickup-type float) object 28)
     (animate (_type_) none 29)
     (blocked () _type_ :state 30)
@@ -21187,7 +21188,7 @@
 
 (define-extern vent-standard-event-handler (function process int symbol event-message-block object :behavior vent))
 (define-extern ecovalve-init-by-other (function (function vent symbol) none :behavior ecovalve))
-(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-drawable fact-info (pointer process) :behavior process))
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 (define-extern fuel-cell-pick-anim (function process-drawable spool-anim))
 (define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
 (define-extern fuel-cell-animate (function none :behavior fuel-cell))
@@ -27050,12 +27051,12 @@
 
 ;; - Functions
 
-(define-extern zoomer-heat-slice-color (function matrix float float))
-(define-extern part-hud-racer-speed-func (function sparticle-system sparticle-cpuinfo matrix float))
-(define-extern part-hud-racer-heat-func (function sparticle-system sparticle-cpuinfo matrix float))
-(define-extern part-hud-zoomer-heat-slice-01-func (function sparticle-system sparticle-cpuinfo matrix float))
-(define-extern part-hud-zoomer-heat-slice-02-func (function sparticle-system sparticle-cpuinfo matrix float))
-(define-extern part-hud-zoomer-heat-slice-03-func (function sparticle-system sparticle-cpuinfo matrix float))
+(define-extern zoomer-heat-slice-color (function matrix float none))
+(define-extern part-hud-racer-speed-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-racer-heat-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-zoomer-heat-slice-01-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-zoomer-heat-slice-02-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-zoomer-heat-slice-03-func (function sparticle-system sparticle-cpuinfo matrix none))
 
 
 ;; ----------------------
@@ -29609,7 +29610,7 @@
 (define-extern swamp-rat-nest-spawn-rat (function (pointer process) :behavior swamp-rat-nest)) ;; this needs a t2 symbol arg to pass to swamp-rat-init-from-other...but
 (define-extern swamp-rat-nest-dummy-init-by-other (function swamp-rat-nest-dummy none :behavior swamp-rat-nest-dummy))
 (define-extern swamp-rat-nest-pick-spawn-joint (function int :behavior swamp-rat-nest))
-(define-extern swamp-rat-nest-dummy-take-damage (function int int :behavior swamp-rat-nest-dummy))
+(define-extern swamp-rat-nest-dummy-take-damage (function int none :behavior swamp-rat-nest-dummy))
 (define-extern swamp-rat-nest-dummy-draw-spawn-joints (function symbol :behavior swamp-rat-nest-dummy))
 (define-extern swamp-rat-nest-dummy-event-handler (function process int symbol event-message-block object :behavior swamp-rat-nest-dummy))
 (define-extern swamp-rat-nest-default-event-handler (function process int symbol event-message-block object :behavior swamp-rat-nest))
