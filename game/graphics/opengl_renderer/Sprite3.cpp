@@ -36,7 +36,8 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
 
-Sprite3::Sprite3(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Sprite3::Sprite3(const std::string& name, BucketId my_id)
+    : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -121,16 +122,16 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id) : BucketRenderer(name,
  * the table upload stuff that runs every frame, even if there are no sprites.
  */
 void Sprite3::render_distorter(DmaFollower& dma,
-                               SharedRenderState* /*render_state*/,
-                               ScopedProfilerNode& /*prof*/) {
+                               SharedRenderState* render_state,
+                               ScopedProfilerNode& prof) {
   // Next thing should be the sprite-distorter setup
-  // m_direct_renderer.reset_state();
+  m_direct.reset_state();
   while (dma.current_tag().qwc != 7) {
-    dma.read_and_advance();
-    // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-    // direct_data.size_bytes, render_state, prof);
+    auto direct_data = dma.read_and_advance();
+    m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
+                        direct_data.size_bytes, render_state, prof);
   }
-  // m_direct_renderer.flush_pending(render_state, prof);
+  m_direct.flush_pending(render_state, prof);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   ASSERT(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
   ASSERT(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
@@ -373,13 +374,13 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     return;
   }
 
-  render_state->shaders[ShaderId::SPRITE3].activate();
-
   // First is the distorter
   {
     auto child = prof.make_scoped_child("distorter");
     render_distorter(dma, render_state, child);
   }
+
+  render_state->shaders[ShaderId::SPRITE3].activate();
 
   // next, sprite frame setup.
   handle_sprite_frame_setup(dma);
@@ -405,6 +406,10 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     flush_sprites(render_state, prof, true);
   }
 
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendEquation(GL_FUNC_ADD);
+
   // TODO finish this up.
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -412,15 +417,11 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
     auto data = dma.read_and_advance();
     VifCode code(data.vif0());
-    // fmt::print(" vif: {}\n", code.print());
+    // fmt::print(" vif0: {}\n", code.print());
     if (code.kind == VifCode::Kind::NOP) {
-      // fmt::print(" vif: {}\n", VifCode(data.vif1()).print());
+      // fmt::print(" vif1: {}\n", VifCode(data.vif1()).print());
     }
   }
-
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glBlendEquation(GL_FUNC_ADD);
 }
 
 void Sprite3::draw_debug_window() {
