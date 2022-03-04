@@ -85,6 +85,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/Loader.cpp
         graphics/opengl_renderer/MercProgram.cpp
         graphics/opengl_renderer/MercRenderer.cpp
+        graphics/opengl_renderer/opengl_utils.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp

@@ -16,7 +16,12 @@ class SkyBlendCPU {
   void init_textures(TexturePool& tex_pool);
 
  private:
-  GLuint m_textures[2];  // sky, clouds
   static constexpr int m_sizes[2] = {32, 64};
   std::vector<u8> m_texture_data[2];
+
+  struct TexInfo {
+    GLuint gl;
+    u32 tbp;
+    GpuTexture* tex;
+  } m_textures[2];
 };

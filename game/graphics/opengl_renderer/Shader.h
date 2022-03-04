@@ -33,6 +33,7 @@ enum class ShaderId {
   SPRITE = 8,
   SPRITE3 = 9,
   DIRECT2 = 10,
+  EYE = 11,
   MAX_SHADERS
 };
 

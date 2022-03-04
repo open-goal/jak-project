@@ -22,7 +22,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
     if (dma_tag.qwc == (128 / 16)) {
       // note: these uploads may have texture that we need for eye rendering.
       flush_uploads(uploads, render_state);
-      render_state->eye_renderer->handle_eye_dma2<false>(dma, render_state, prof);
+      render_state->eye_renderer->handle_eye_dma2(dma, render_state, prof);
     }
 
     auto data = dma.read_and_advance();

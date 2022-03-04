@@ -5,9 +5,9 @@
 #include <immintrin.h>
 
 SkyBlendCPU::SkyBlendCPU() {
-  glGenTextures(2, m_textures);
   for (int i = 0; i < 2; i++) {
-    glBindTexture(GL_TEXTURE_2D, m_textures[i]);
+    glGenTextures(1, &m_textures[i].gl);
+    glBindTexture(GL_TEXTURE_2D, m_textures[i].gl);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, 0);
     m_texture_data[i].resize(4 * m_sizes[i] * m_sizes[i]);
@@ -15,7 +15,9 @@ SkyBlendCPU::SkyBlendCPU() {
 }
 
 SkyBlendCPU::~SkyBlendCPU() {
-  glDeleteTextures(2, m_textures);
+  for (auto& tex : m_textures) {
+    glDeleteTextures(1, &tex.gl);
+  }
 }
 
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
@@ -169,9 +171,12 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
           stats.cloud_blends++;
         }
       }
-      glBindTexture(GL_TEXTURE_2D, m_textures[buffer_idx]);
+      glBindTexture(GL_TEXTURE_2D, m_textures[buffer_idx].gl);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[buffer_idx], m_sizes[buffer_idx], 0, GL_RGBA,
                    GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[buffer_idx].data());
+
+      render_state->texture_pool->move_existing_to_vram(m_textures[buffer_idx].tex,
+                                                        m_textures[buffer_idx].tbp);
     }
   }
 
@@ -181,15 +186,17 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
 void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
   for (int i = 0; i < 2; i++) {
     // update it
-    glBindTexture(GL_TEXTURE_2D, m_textures[i]);
+    glBindTexture(GL_TEXTURE_2D, m_textures[i].gl);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[i].data());
     TextureInput in;
 
-    in.gpu_texture = m_textures[i];
+    in.gpu_texture = m_textures[i].gl;
     in.w = m_sizes[i];
     in.h = m_sizes[i];
     in.name = fmt::format("PC-SKY-CPU-{}", i);
-    tex_pool.give_texture_and_load_to_vram(in, SKY_TEXTURE_VRAM_ADDRS[i]);
+    u32 tbp = SKY_TEXTURE_VRAM_ADDRS[i];
+    m_textures[i].tex = tex_pool.give_texture_and_load_to_vram(in, tbp);
+    m_textures[i].tbp = tbp;
   }
 }
