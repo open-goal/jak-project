@@ -4,24 +4,68 @@
 #include "common/util/FileUtil.h"
 #include "third-party/imgui/imgui.h"
 
+/////////////////////////
+// Bucket Renderer
+/////////////////////////
 EyeRenderer::EyeRenderer(const std::string& name, BucketId id) : BucketRenderer(name, id) {}
 
 void EyeRenderer::init_textures(TexturePool& texture_pool) {
+  // set up eyes
   for (int pair_idx = 0; pair_idx < NUM_EYE_PAIRS; pair_idx++) {
     for (int lr = 0; lr < 2; lr++) {
-      GLuint gl_tex;
-      glGenTextures(1, &gl_tex);
-      u32 tbp = EYE_BASE_BLOCK + pair_idx * 2 + lr;
-      TextureInput in;
-      in.gpu_texture = gl_tex;
-      in.w = 32;
-      in.h = 32;
-      in.page_name = "PC-EYES";
-      in.name = fmt::format("{}-eye-{}", lr ? "left" : "right", pair_idx);
-      auto* gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
-      m_eye_textures[pair_idx * 2 + lr] = {gl_tex, gpu_tex, tbp};
+      u32 tidx = pair_idx * 2 + lr;
+
+      // CPU
+      {
+        GLuint gl_tex;
+        glGenTextures(1, &gl_tex);
+        u32 tbp = EYE_BASE_BLOCK + pair_idx * 2 + lr;
+        TextureInput in;
+        in.gpu_texture = gl_tex;
+        in.w = 32;
+        in.h = 32;
+        in.page_name = "PC-EYES";
+        in.name = fmt::format("{}-eye-cpu-{}", lr ? "left" : "right", pair_idx);
+        auto* gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
+        m_cpu_eye_textures[tidx] = {gl_tex, gpu_tex, tbp};
+      }
+
+      // GPU
+      {
+        u32 tbp = EYE_BASE_BLOCK + pair_idx * 2 + lr;
+        TextureInput in;
+        in.gpu_texture = m_gpu_eye_textures[tidx].fb.texture();
+        in.w = 32;
+        in.h = 32;
+        in.page_name = "PC-EYES";
+        in.name = fmt::format("{}-eye-gpu-{}", lr ? "left" : "right", pair_idx);
+        m_gpu_eye_textures[tidx].gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
+        m_gpu_eye_textures[tidx].tbp = tbp;
+      }
     }
   }
+
+  // set up vertices for GPU mode
+  glGenVertexArrays(1, &m_vao);
+  glBindVertexArray(m_vao);
+  glGenBuffers(1, &m_gl_vertex_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, m_gl_vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, VTX_BUFFER_FLOATS * sizeof(float), nullptr, GL_STREAM_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0,                  // location 0 in the shader
+                        4,                  // 2 floats per vert
+                        GL_FLOAT,           // floats
+                        GL_TRUE,            // normalized, ignored,
+                        sizeof(float) * 4,  //
+                        (void*)0            // offset in array
+  );
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
+
+EyeRenderer::~EyeRenderer() {
+  glDeleteVertexArrays(1, &m_vao);
+  glDeleteBuffers(1, &m_gl_vertex_buffer);
 }
 
 void EyeRenderer::render(DmaFollower& dma,
@@ -53,7 +97,7 @@ void EyeRenderer::render(DmaFollower& dma,
     return;
   }
 
-  handle_eye_dma2<false>(dma, render_state, prof);
+  handle_eye_dma2(dma, render_state, prof);
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
@@ -61,13 +105,21 @@ void EyeRenderer::render(DmaFollower& dma,
   }
 }
 
-struct ScissorInfo {
-  int x0, x1;
-  int y0, y1;
-  std::string print() const { return fmt::format("x : [{}, {}], y : [{}, {}]", x0, x1, y0, y1); }
-};
+void EyeRenderer::draw_debug_window() {
+  ImGui::Checkbox("Use GPU", &m_use_gpu);
+  ImGui::Text("Time: %.3f ms\n", m_average_time_ms);
+  ImGui::Text("Debug:\n%s", m_debug.c_str());
+  if (!m_use_gpu) {
+    ImGui::Checkbox("bilinear", &m_use_bilinear);
+  }
+  ImGui::Checkbox("alpha hack", &m_alpha_hack);
+}
 
-ScissorInfo decode_scissor(const DmaTransfer& dma) {
+//////////////////////
+// DMA Decode
+//////////////////////
+
+EyeRenderer::ScissorInfo decode_scissor(const DmaTransfer& dma) {
   ASSERT(dma.vif0() == 0);
   ASSERT(dma.vifcode1().kind == VifCode::Kind::DIRECT);
   ASSERT(dma.size_bytes == 32);
@@ -82,7 +134,7 @@ ScissorInfo decode_scissor(const DmaTransfer& dma) {
   u8 reg_addr;
   memcpy(&reg_addr, dma.data + 24, 1);
   ASSERT((GsRegisterAddress)reg_addr == GsRegisterAddress::SCISSOR_1);
-  ScissorInfo result;
+  EyeRenderer::ScissorInfo result;
   u64 val;
   memcpy(&val, dma.data + 16, 8);
   GsScissor reg(val);
@@ -93,23 +145,7 @@ ScissorInfo decode_scissor(const DmaTransfer& dma) {
   return result;
 }
 
-struct SpriteInfo {
-  u8 a;
-  u32 uv0[2];
-  u32 uv1[2];
-  u32 xyz0[3];
-  u32 xyz1[3];
-
-  std::string print() const {
-    std::string result;
-    result +=
-        fmt::format("a: {:x} uv: ({}, {}), ({}, {}) xyz: ({}, {}, {}), ({}, {}, {})", a, uv0[0],
-                    uv0[1], uv1[0], uv1[1], xyz0[0], xyz0[1], xyz0[2], xyz1[0], xyz1[1], xyz1[2]);
-    return result;
-  }
-};
-
-SpriteInfo decode_sprite(const DmaTransfer& dma) {
+EyeRenderer::SpriteInfo decode_sprite(const DmaTransfer& dma) {
   /*
    (new 'static 'dma-gif-packet
         :dma-vif (new 'static 'dma-packet
@@ -145,7 +181,7 @@ SpriteInfo decode_sprite(const DmaTransfer& dma) {
   ASSERT(gifTag.flg() == GifTag::Format::PACKED);
   ASSERT(gifTag.nreg() == 5);
 
-  SpriteInfo result;
+  EyeRenderer::SpriteInfo result;
 
   // rgba
   ASSERT(dma.data[16] == 128);               // r
@@ -170,24 +206,153 @@ SpriteInfo decode_sprite(const DmaTransfer& dma) {
   return result;
 }
 
-struct EyeDraw {
-  SpriteInfo sprite;
-  ScissorInfo scissor;
-  std::string print() const { return fmt::format("{}\n{}\n", sprite.print(), scissor.print()); }
-};
-
-EyeDraw read_eye_draw(DmaFollower& dma) {
+EyeRenderer::EyeDraw read_eye_draw(DmaFollower& dma) {
   auto scissor = decode_scissor(dma.read_and_advance());
   auto sprite = decode_sprite(dma.read_and_advance());
   return {sprite, scissor};
 }
 
-void EyeRenderer::draw_debug_window() {
-  ImGui::Text("Time: %.3f ms\n", m_average_time_ms);
-  ImGui::Text("Debug:\n%s", m_debug.c_str());
-  ImGui::Checkbox("bilinear", &m_use_bilinear);
-  ImGui::Checkbox("alpha hack", &m_alpha_hack);
+std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma,
+                                                                SharedRenderState* render_state) {
+  std::vector<SingleEyeDraws> draws;
+  // now, loop over eyes. end condition is a 8 qw transfer to restore gs.
+  while (dma.current_tag().qwc != 8) {
+    draws.emplace_back();
+    draws.emplace_back();
+
+    auto& l_draw = draws[draws.size() - 2];
+    auto& r_draw = draws[draws.size() - 1];
+
+    l_draw.lr = 0;
+    r_draw.lr = 1;
+
+    // eye background setup
+    auto adgif0_dma = dma.read_and_advance();
+    ASSERT(adgif0_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
+    ASSERT(adgif0_dma.vif0() == 0);
+    ASSERT(adgif0_dma.vifcode1().kind == VifCode::Kind::DIRECT);
+    AdgifHelper adgif0(adgif0_dma.data + 16);
+    auto tex0 = render_state->texture_pool->lookup_gpu_texture(adgif0.tex0().tbp0());
+
+    u32 pair_idx = -1;
+    // first draw. this is the background. It reads 0,0 of the texture uses that color everywhere.
+    // we'll also figure out the eye index here.
+    {
+      auto draw0 = read_eye_draw(dma);
+      ASSERT(draw0.sprite.uv0[0] == 0);
+      ASSERT(draw0.sprite.uv0[1] == 0);
+      ASSERT(draw0.sprite.uv1[0] == 0);
+      ASSERT(draw0.sprite.uv1[1] == 0);
+      u32 y0 = (draw0.sprite.xyz0[1] - 512) >> 4;
+      pair_idx = y0 / SINGLE_EYE_SIZE;
+      l_draw.pair = pair_idx;
+      r_draw.pair = pair_idx;
+      if (tex0->get_data_ptr()) {
+        u32 tex_val;
+        memcpy(&tex_val, tex0->get_data_ptr(), 4);
+        l_draw.clear_color = tex_val;
+        r_draw.clear_color = tex_val;
+      } else {
+        l_draw.clear_color = 0;
+        r_draw.clear_color = 0;
+      }
+    }
+
+    // up next is the pupil background
+    {
+      l_draw.iris = read_eye_draw(dma);
+      r_draw.iris = read_eye_draw(dma);
+      l_draw.iris_tex = tex0;
+      r_draw.iris_tex = tex0;
+      l_draw.iris_gl_tex = *render_state->texture_pool->lookup(adgif0.tex0().tbp0());
+      r_draw.iris_gl_tex = l_draw.iris_gl_tex;
+    }
+
+    // now we'll draw the iris on top of that
+    auto test1 = dma.read_and_advance();
+    (void)test1;
+    auto adgif1_dma = dma.read_and_advance();
+    ASSERT(adgif1_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
+    ASSERT(adgif1_dma.vif0() == 0);
+    ASSERT(adgif1_dma.vifcode1().kind == VifCode::Kind::DIRECT);
+    AdgifHelper adgif1(adgif1_dma.data + 16);
+    auto tex1 = render_state->texture_pool->lookup_gpu_texture(adgif1.tex0().tbp0());
+
+    {
+      l_draw.pupil = read_eye_draw(dma);
+      r_draw.pupil = read_eye_draw(dma);
+      l_draw.pupil_tex = tex1;
+      r_draw.pupil_tex = tex1;
+      l_draw.pupil_gl_tex = *render_state->texture_pool->lookup(adgif1.tex0().tbp0());
+      r_draw.pupil_gl_tex = l_draw.pupil_gl_tex;
+    }
+
+    // and finally the eyelid
+    auto test2 = dma.read_and_advance();
+    (void)test2;
+    auto adgif2_dma = dma.read_and_advance();
+    ASSERT(adgif2_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
+    ASSERT(adgif2_dma.vif0() == 0);
+    ASSERT(adgif2_dma.vifcode1().kind == VifCode::Kind::DIRECT);
+    AdgifHelper adgif2(adgif2_dma.data + 16);
+    auto tex2 = render_state->texture_pool->lookup_gpu_texture(adgif2.tex0().tbp0());
+
+    {
+      l_draw.lid = read_eye_draw(dma);
+      r_draw.lid = read_eye_draw(dma);
+      l_draw.lid_tex = tex2;
+      r_draw.lid_tex = tex2;
+      l_draw.lid_gl_tex = *render_state->texture_pool->lookup(adgif2.tex0().tbp0());
+      r_draw.lid_gl_tex = l_draw.lid_gl_tex;
+    }
+
+    auto end = dma.read_and_advance();
+    ASSERT(end.size_bytes == 0);
+    ASSERT(end.vif0() == 0);
+    ASSERT(end.vif1() == 0);
+  }
+  return draws;
 }
+
+void EyeRenderer::handle_eye_dma2(DmaFollower& dma,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode&) {
+  Timer timer;
+  m_debug.clear();
+
+  // first should be the gs setup for render to texture
+  auto offset_setup = dma.read_and_advance();
+  ASSERT(offset_setup.size_bytes == 128);
+  ASSERT(offset_setup.vifcode0().kind == VifCode::Kind::FLUSHA);
+  ASSERT(offset_setup.vifcode1().kind == VifCode::Kind::DIRECT);
+
+  // next should be alpha setup
+  auto alpha_setup = dma.read_and_advance();
+  ASSERT(alpha_setup.size_bytes == 32);
+  ASSERT(alpha_setup.vifcode0().kind == VifCode::Kind::NOP);
+  ASSERT(alpha_setup.vifcode1().kind == VifCode::Kind::DIRECT);
+
+  // from the add to bucket
+  ASSERT(dma.current_tag().kind == DmaTag::Kind::NEXT);
+  ASSERT(dma.current_tag().qwc == 0);
+  ASSERT(dma.current_tag_vif0() == 0);
+  ASSERT(dma.current_tag_vif1() == 0);
+  dma.read_and_advance();
+
+  auto draws = get_draws(dma, render_state);
+  if (m_use_gpu) {
+    run_gpu(draws, render_state);
+  } else {
+    run_cpu(draws, render_state);
+  }
+
+  float time_ms = timer.getMs();
+  m_average_time_ms = m_average_time_ms * 0.95 + time_ms * 0.05;
+}
+
+//////////////////////
+// CPU Drawing
+//////////////////////
 
 u32 bilinear_sample_eye(const u8* tex, float tx, float ty, int texw) {
   int tx0 = tx;
@@ -228,7 +393,7 @@ u32 bilinear_sample_eye(const u8* tex, float tx, float ty, int texw) {
 
 template <bool blend, bool bilinear>
 void draw_eye_impl(u32* out,
-                   const EyeDraw& draw,
+                   const EyeRenderer::EyeDraw& draw,
                    const GpuTexture& tex,
                    int pair,
                    int lr,
@@ -292,7 +457,7 @@ void draw_eye_impl(u32* out,
 
 template <bool blend>
 void draw_eye(u32* out,
-              const EyeDraw& draw,
+              const EyeRenderer::EyeDraw& draw,
               const GpuTexture& tex,
               int pair,
               int lr,
@@ -305,170 +470,174 @@ void draw_eye(u32* out,
   }
 }
 
-template <bool DEBUG>
-void EyeRenderer::handle_eye_dma2(DmaFollower& dma,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode&) {
-  Timer timer;
-  m_debug.clear();
-
-  // first should be the gs setup for render to texture
-  auto offset_setup = dma.read_and_advance();
-  ASSERT(offset_setup.size_bytes == 128);
-  ASSERT(offset_setup.vifcode0().kind == VifCode::Kind::FLUSHA);
-  ASSERT(offset_setup.vifcode1().kind == VifCode::Kind::DIRECT);
-
-  // next should be alpha setup
-  auto alpha_setup = dma.read_and_advance();
-  ASSERT(alpha_setup.size_bytes == 32);
-  ASSERT(alpha_setup.vifcode0().kind == VifCode::Kind::NOP);
-  ASSERT(alpha_setup.vifcode1().kind == VifCode::Kind::DIRECT);
-
-  // from the add to bucket
-  ASSERT(dma.current_tag().kind == DmaTag::Kind::NEXT);
-  ASSERT(dma.current_tag().qwc == 0);
-  ASSERT(dma.current_tag_vif0() == 0);
-  ASSERT(dma.current_tag_vif1() == 0);
-  dma.read_and_advance();
-
-  // now, loop over eyes. end condition is a 8 qw transfer to restore gs.
-  while (dma.current_tag().qwc != 8) {
-    // eye background setup
-    auto adgif0_dma = dma.read_and_advance();
-    ASSERT(adgif0_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
-    ASSERT(adgif0_dma.vif0() == 0);
-    ASSERT(adgif0_dma.vifcode1().kind == VifCode::Kind::DIRECT);
-    AdgifHelper adgif0(adgif0_dma.data + 16);
-    auto tex0 = render_state->texture_pool->lookup_gpu_texture(adgif0.tex0().tbp0());
-    if (DEBUG) {
-      m_debug += fmt::format("ADGIF0:\n{}\n", adgif0.print());
-      m_debug += fmt::format("tex: {}\n", tex0->name);
+void EyeRenderer::run_cpu(const std::vector<SingleEyeDraws>& draws,
+                          SharedRenderState* render_state) {
+  for (auto& draw : draws) {
+    for (auto& x : m_temp_tex) {
+      x = draw.clear_color;
     }
 
-    u32 pair_idx = -1;
-    // first draw. this is the background. It reads 0,0 of the texture uses that color everywhere.
-    // we'll also figure out the eye index here.
-    {
-      auto draw0 = read_eye_draw(dma);
-      ASSERT(draw0.sprite.uv0[0] == 0);
-      ASSERT(draw0.sprite.uv0[1] == 0);
-      ASSERT(draw0.sprite.uv1[0] == 0);
-      ASSERT(draw0.sprite.uv1[1] == 0);
-      if (DEBUG) {
-        m_debug += fmt::format("DRAW0\n{}", draw0.print());
-      }
-      u32 y0 = (draw0.sprite.xyz0[1] - 512) >> 4;
-      pair_idx = y0 / SINGLE_EYE_SIZE;
-      if (tex0->get_data_ptr()) {
-        u32 tex_val;
-        memcpy(&tex_val, tex0->get_data_ptr(), 4);
-
-        for (auto& x : m_left) {
-          x = tex_val;
-        }
-        for (auto& x : m_right) {
-          x = tex_val;
-        }
-      }
+    if (draw.iris_tex) {
+      draw_eye<false>(m_temp_tex, draw.iris, *draw.iris_tex, draw.pair, draw.lr, false,
+                      m_use_bilinear);
     }
 
-    // up next is the pupil background
-    {
-      auto draw1 = read_eye_draw(dma);
-      auto draw2 = read_eye_draw(dma);
-      if (DEBUG) {
-        m_debug += fmt::format("DRAW1\n{}", draw1.print());
-        m_debug += fmt::format("DRAW2\n{}", draw2.print());
-      }
-      if (tex0->get_data_ptr()) {
-        draw_eye<false>(m_left, draw1, *tex0, pair_idx, 0, false, m_use_bilinear);
-        draw_eye<false>(m_right, draw2, *tex0, pair_idx, 1, false, m_use_bilinear);
-      }
+    if (draw.pupil_tex) {
+      draw_eye<true>(m_temp_tex, draw.pupil, *draw.pupil_tex, draw.pair, draw.lr, false,
+                     m_use_bilinear);
     }
 
-    // now we'll draw the iris on top of that
-    auto test1 = dma.read_and_advance();
-    (void)test1;
-    auto adgif1_dma = dma.read_and_advance();
-    ASSERT(adgif1_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
-    ASSERT(adgif1_dma.vif0() == 0);
-    ASSERT(adgif1_dma.vifcode1().kind == VifCode::Kind::DIRECT);
-    AdgifHelper adgif1(adgif1_dma.data + 16);
-    auto tex1 = render_state->texture_pool->lookup_gpu_texture(adgif1.tex0().tbp0());
-    if (DEBUG) {
-      m_debug += fmt::format("ADGIF1:\n{}\n", adgif1.print());
-      m_debug += fmt::format("tex: {}\n", tex1->name);
+    if (draw.lid_tex) {
+      draw_eye<false>(m_temp_tex, draw.lid, *draw.lid_tex, draw.pair, draw.lr, draw.lr == 1,
+                      m_use_bilinear);
     }
-
-    {
-      auto draw1 = read_eye_draw(dma);
-      auto draw2 = read_eye_draw(dma);
-      if (DEBUG) {
-        m_debug += fmt::format("DRAW1\n{}", draw1.print());
-        m_debug += fmt::format("DRAW2\n{}", draw2.print());
-      }
-      if (tex1->get_data_ptr()) {
-        draw_eye<true>(m_left, draw1, *tex1, pair_idx, 0, false, m_use_bilinear);
-        draw_eye<true>(m_right, draw2, *tex1, pair_idx, 1, false, m_use_bilinear);
-      }
-    }
-
-    // and finally the eyelid
-    auto test2 = dma.read_and_advance();
-    (void)test2;
-    auto adgif2_dma = dma.read_and_advance();
-    ASSERT(adgif2_dma.size_bytes == 96);  // 5 adgifs a+d's plus tag
-    ASSERT(adgif2_dma.vif0() == 0);
-    ASSERT(adgif2_dma.vifcode1().kind == VifCode::Kind::DIRECT);
-    AdgifHelper adgif2(adgif2_dma.data + 16);
-    auto tex2 = render_state->texture_pool->lookup_gpu_texture(adgif2.tex0().tbp0());
-    if (DEBUG) {
-      m_debug += fmt::format("ADGIF2:\n{}\n", adgif2.print());
-      m_debug += fmt::format("tex: {}\n", tex2->name);
-    }
-
-    {
-      auto draw1 = read_eye_draw(dma);
-      auto draw2 = read_eye_draw(dma);
-      if (DEBUG) {
-        m_debug += fmt::format("DRAW1\n{}", draw1.print());
-        m_debug += fmt::format("DRAW2\n{}", draw2.print());
-      }
-      if (tex2->get_data_ptr()) {
-        draw_eye<false>(m_left, draw1, *tex2, pair_idx, 0, false, m_use_bilinear);
-        draw_eye<false>(m_right, draw2, *tex2, pair_idx, 1, true, m_use_bilinear);
-      }
-    }
-
-    auto end = dma.read_and_advance();
-    ASSERT(end.size_bytes == 0);
-    ASSERT(end.vif0() == 0);
-    ASSERT(end.vif1() == 0);
 
     if (m_alpha_hack) {
-      for (auto& a : m_left) {
-        a |= 0xff000000;
-      }
-
-      for (auto& a : m_right) {
+      for (auto& a : m_temp_tex) {
         a |= 0xff000000;
       }
     }
 
     // update GPU:
-    auto& l = m_eye_textures[pair_idx * 2];
-    auto& r = m_eye_textures[pair_idx * 2 + 1];
-    glBindTexture(GL_TEXTURE_2D, l.gl_tex);
+    auto& tex = m_cpu_eye_textures[draw.pair * 2 + draw.lr];
+    glBindTexture(GL_TEXTURE_2D, tex.gl_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                 m_left);
-    glBindTexture(GL_TEXTURE_2D, r.gl_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                 m_right);
+                 m_temp_tex);
     // make sure they are still in vram
-    render_state->texture_pool->move_existing_to_vram(l.gpu_tex, l.tbp);
-    render_state->texture_pool->move_existing_to_vram(r.gpu_tex, r.tbp);
+    render_state->texture_pool->move_existing_to_vram(tex.gpu_tex, tex.tbp);
+  }
+}
+
+int add_draw_to_buffer(int idx, const EyeRenderer::EyeDraw& draw, float* data, int pair, int lr) {
+  int x_off = lr * SINGLE_EYE_SIZE * 16;
+  int y_off = pair * SINGLE_EYE_SIZE * 16;
+  data[idx++] = draw.sprite.xyz0[0] - x_off;
+  data[idx++] = draw.sprite.xyz0[1] - y_off;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = draw.sprite.xyz1[0] - x_off;
+  data[idx++] = draw.sprite.xyz0[1] - y_off;
+  data[idx++] = 1;
+  data[idx++] = 0;
+
+  data[idx++] = draw.sprite.xyz0[0] - x_off;
+  data[idx++] = draw.sprite.xyz1[1] - y_off;
+  data[idx++] = 0;
+  data[idx++] = 1;
+
+  data[idx++] = draw.sprite.xyz1[0] - x_off;
+  data[idx++] = draw.sprite.xyz1[1] - y_off;
+  data[idx++] = 1;
+  data[idx++] = 1;
+  return idx;
+}
+
+void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
+                          SharedRenderState* render_state) {
+  if (draws.empty()) {
+    return;
   }
 
-  float time_ms = timer.getMs();
-  m_average_time_ms = m_average_time_ms * 0.95 + time_ms * 0.05;
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_gl_vertex_buffer);
+
+  // the first thing we'll do is prepare the vertices
+  int buffer_idx = 0;
+  for (const auto& draw : draws) {
+    buffer_idx = add_draw_to_buffer(buffer_idx, draw.iris, m_gpu_vertex_buffer, draw.pair, draw.lr);
+    buffer_idx =
+        add_draw_to_buffer(buffer_idx, draw.pupil, m_gpu_vertex_buffer, draw.pair, draw.lr);
+    buffer_idx = add_draw_to_buffer(buffer_idx, draw.lid, m_gpu_vertex_buffer, draw.pair, draw.lr);
+  }
+  ASSERT(buffer_idx <= VTX_BUFFER_FLOATS);
+  int check = buffer_idx;
+
+  // maybe buffer sub data.
+  glBufferData(GL_ARRAY_BUFFER, buffer_idx * sizeof(float), m_gpu_vertex_buffer, GL_STREAM_DRAW);
+
+  FramebufferTexturePairContext ctxt(m_gpu_eye_textures[draws.front().tex_slot()].fb);
+
+  // set up common opengl state
+  glDisable(GL_DEPTH_TEST);
+  render_state->shaders[ShaderId::EYE].activate();
+  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::EYE].id(), "tex_T0"), 0);
+  glActiveTexture(GL_TEXTURE0);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  buffer_idx = 0;
+  for (size_t draw_idx = 0; draw_idx < draws.size(); draw_idx++) {
+    const auto& draw = draws[draw_idx];
+    const auto& out_tex = m_gpu_eye_textures[draw.tex_slot()];
+
+    // first, the clear
+    float clear[4] = {0, 0, 0, 0};
+    for (int i = 0; i < 4; i++) {
+      clear[i] = (draw.clear_color >> (8 * i)) / 255.f;
+    }
+    glClearBufferfv(GL_COLOR, 0, clear);
+
+    // iris
+    if (draw.iris_tex) {
+      // set alpha
+      // set Z
+      // set texture
+      glDisable(GL_BLEND);
+      glBindTexture(GL_TEXTURE_2D, draw.iris_gl_tex);
+      glDrawArrays(GL_TRIANGLE_STRIP, buffer_idx / 4, 4);
+    }
+    buffer_idx += 4 * 4;
+
+    if (draw.pupil_tex) {
+      glEnable(GL_BLEND);
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBindTexture(GL_TEXTURE_2D, draw.pupil_gl_tex);
+      glDrawArrays(GL_TRIANGLE_STRIP, buffer_idx / 4, 4);
+    }
+    buffer_idx += 4 * 4;
+
+    if (draw.lid_tex) {
+      glDisable(GL_BLEND);
+      glBindTexture(GL_TEXTURE_2D, draw.lid_gl_tex);
+      glDrawArrays(GL_TRIANGLE_STRIP, buffer_idx / 4, 4);
+    }
+    buffer_idx += 4 * 4;
+
+    // finally, give to "vram"
+    render_state->texture_pool->move_existing_to_vram(out_tex.gpu_tex, out_tex.tbp);
+
+    if (draw_idx != draws.size() - 1) {
+      ctxt.switch_to(m_gpu_eye_textures[draws[draw_idx + 1].tex_slot()].fb);
+    }
+  }
+
+  ASSERT(check == buffer_idx);
+
+  glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+//////////////////////
+// DMA Decode
+//////////////////////
+
+std::string EyeRenderer::SpriteInfo::print() const {
+  std::string result;
+  result +=
+      fmt::format("a: {:x} uv: ({}, {}), ({}, {}) xyz: ({}, {}, {}), ({}, {}, {})", a, uv0[0],
+                  uv0[1], uv1[0], uv1[1], xyz0[0], xyz0[1], xyz0[2], xyz1[0], xyz1[1], xyz1[2]);
+  return result;
+}
+
+std::string EyeRenderer::ScissorInfo::print() const {
+  return fmt::format("x : [{}, {}], y : [{}, {}]", x0, x1, y0, y1);
+}
+
+std::string EyeRenderer::EyeDraw::print() const {
+  return fmt::format("{}\n{}\n", sprite.print(), scissor.print());
 }

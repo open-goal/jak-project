@@ -66,7 +66,8 @@ void SkyBlendGPU::init_textures(TexturePool& tex_pool) {
     in.w = m_sizes[i];
     in.h = in.w;
     in.name = fmt::format("PC-SKY-GPU-{}", i);
-    tex_pool.give_texture_and_load_to_vram(in, SKY_TEXTURE_VRAM_ADDRS[i]);
+    u32 tbp = SKY_TEXTURE_VRAM_ADDRS[i];
+    m_tex_info[i] = {tex_pool.give_texture_and_load_to_vram(in, tbp), tbp};
   }
 }
 
@@ -178,6 +179,9 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
     // 1 draw, 2 triangles
     prof.add_draw_call(1);
     prof.add_tri(2);
+
+    render_state->texture_pool->move_existing_to_vram(m_tex_info[buffer_idx].tex,
+                                                      m_tex_info[buffer_idx].tbp);
 
     if (buffer_idx == 0) {
       if (is_first_draw) {

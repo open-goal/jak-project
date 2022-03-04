@@ -76,4 +76,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex"};
   at(ShaderId::SPRITE3) = {"sprite3_3d"};
   at(ShaderId::DIRECT2) = {"direct2"};
+  at(ShaderId::EYE) = {"eye"};
 }
