@@ -21,6 +21,7 @@ class GenericRenderer : public BucketRenderer {
   void mscal(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void mscal0();
   void mscal_dispatch(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void mscal_noclip_nopipe(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_dma_stream(const u8* data,
                          u32 bytes,
                          SharedRenderState* render_state,
