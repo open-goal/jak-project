@@ -5,7 +5,7 @@
 MercRenderer::MercRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
       m_direct(fmt::format("{}-dir", name), my_id, 0x30000),
-      m_direct2(20000, 40000, 1000, name) {
+      m_direct2(20000, 40000, 1000, name, false) {
   memset(m_buffer.data, 0, sizeof(m_buffer.data));
 }
 
