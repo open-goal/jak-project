@@ -4,7 +4,8 @@
 GenericRenderer::GenericRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
       m_direct(name, my_id, 0x30000),
-      m_direct2(30000, 60000, 1000, name, true) {}
+      m_direct2(30000, 60000, 1000, name, true),
+      m_debug_gen2(name, my_id, 50000, 1000, 1000) {}
 
 void GenericRenderer::init_shaders(ShaderLibrary& shaders) {
   m_direct2.init_shaders(shaders);
@@ -31,6 +32,9 @@ void GenericRenderer::render(DmaFollower& dma,
     }
     return;
   }
+
+  // todo remove
+  DmaFollower gen2_follower = dma;
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
@@ -141,6 +145,12 @@ void GenericRenderer::render(DmaFollower& dma,
     m_direct2.flush_pending(render_state, prof);
   } else {
     m_direct.flush_pending(render_state, prof);
+  }
+
+  {
+    // todo remove
+    auto pp = prof.make_scoped_child("gen2");
+    m_debug_gen2.render(gen2_follower, render_state, pp);
   }
 }
 

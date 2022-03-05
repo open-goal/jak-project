@@ -3,6 +3,7 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer2.h"
+#include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/common/vu.h"
 
 class GenericRenderer : public BucketRenderer {
@@ -43,6 +44,7 @@ class GenericRenderer : public BucketRenderer {
   int m_skipped_tags = 0;
   DirectRenderer m_direct;
   DirectRenderer2 m_direct2;
+  Generic2 m_debug_gen2;
   std::string m_debug;
 
   struct Vu {

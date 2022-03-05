@@ -354,6 +354,8 @@ struct AdGifData {
   u64 alpha_addr;
 };
 
+static_assert(sizeof(AdGifData) == 5 * 16);
+
 // this represents all of the drawing state, stored as an integer.
 // it can also represent "invalid".
 class DrawMode {

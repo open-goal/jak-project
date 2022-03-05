@@ -2,7 +2,8 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
-#include "game/graphics/opengl_renderer/tfrag/Tfrag3.h"
+#include "game/graphics/opengl_renderer/background/Tfrag3.h"
+#include "game/graphics/opengl_renderer/background/Tie3.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 

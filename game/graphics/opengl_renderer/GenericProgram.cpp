@@ -163,6 +163,8 @@ void GenericRenderer::mscal_noclip_nopipe(SharedRenderState *render_state, Scope
   if (vu.vi02 == 0) {
     vu.vi13 = 0x345; /* 837 */
   }
+
+
   vu.vi03 = vu.vi13 + 7;
   ilw_buffer(Mask::w, vu.vi01, vu.vi13 + 5);
   isw_buffer(Mask::x, vu.vi03, 906);
@@ -240,7 +242,13 @@ void GenericRenderer::mscal_noclip_nopipe(SharedRenderState *render_state, Scope
 
     // store!
     sq_buffer(Mask::xyzw, gen.vtx_p0, vu.vi10 + 2);
+    vu.vf18.x() /= vu.vf18.z();
+    vu.vf18.y() /= vu.vf18.z();
+    vu.vf18.z() = 1.f;
+
+    // fmt::print("tex.z = {}\n", vu.vf18.z());
     sq_buffer(Mask::xyzw, vu.vf18, vu.vi10);
+
 
     // iaddi vi10, vi10, 0x3        inc vertex pointer
     vu.vi10 = vu.vi10 + 3;
