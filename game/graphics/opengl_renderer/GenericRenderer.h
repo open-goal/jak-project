@@ -47,9 +47,8 @@ class GenericRenderer : public BucketRenderer {
   struct Vu {
     u32 row[4];
     u32 stcycl = 0;
-    Vf   vf03, vf10, vf11, vf12, vf13, vf14, vf15,
-        vf16, vf17, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30,
-        vf31;
+    Vf vf03, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29,
+        vf30, vf31;
     const Vf vf00;
     u16 vi01, vi02, vi03, vi04, vi05, vi06, vi07, vi09, vi08, vi11, vi12, vi13, vi10, vi14, vi15;
     float I, P, Q;
@@ -66,7 +65,11 @@ class GenericRenderer : public BucketRenderer {
     Vf hmge_scale;
     Vf guard;
 
-    Vf mat0, mat1;
+    Vf mat0, mat1, mat2, mat3;
+
+    Vf vtx_p0, vtx_p1, vtx_p2, vtx_p3;
+
+    Vf vtx_load0, vtx_load1;
   } gen;
 
   struct alignas(16) BufferMemory {

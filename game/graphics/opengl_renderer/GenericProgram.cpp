@@ -200,32 +200,32 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
   // lq.xyzw vf09, 1(vi13)      |  subw.w vf20, vf00, vf00        119
   vu.vf20.sub(Mask::w, vu.vf00, vu.vf00.w());   lq_buffer(Mask::xyzw, gen.mat1, vu.vi13 + 1);
   // lq.xyzw vf10, 2(vi13)      |  subw.w vf21, vf00, vf00        120
-  vu.vf21.sub(Mask::w, vu.vf00, vu.vf00.w());   lq_buffer(Mask::xyzw, vu.vf10, vu.vi13 + 2);
+  vu.vf21.sub(Mask::w, vu.vf00, vu.vf00.w());   lq_buffer(Mask::xyzw, gen.mat2, vu.vi13 + 2);
   // lq.xyzw vf11, 3(vi13)      |  ftoi12.z vf22, vf22            121
   // fmt::print("a: [{}] [{}]\n", vu.vf22.print(), vu.vf23.print());
-  vu.vf22.ftoi12_check(Mask::z, vu.vf22);   lq_buffer(Mask::xyzw, vu.vf11, vu.vi13 + 3);
+  vu.vf22.ftoi12_check(Mask::z, vu.vf22);   lq_buffer(Mask::xyzw, gen.mat3, vu.vi13 + 3);
   // iadd vi02, vi01, vi01      |  ftoi12.z vf23, vf23            122
   vu.vf23.ftoi12_check(Mask::z, vu.vf23);   vu.vi02 = vu.vi01 + vu.vi01;
   // iadd vi01, vi01, vi02      |  sub.xyzw vf16, vf16, vf16      123
-  vu.vf16.set_zero();         vu.vi01 = vu.vi01 + vu.vi02;
+  gen.vtx_load0.set_zero();         vu.vi01 = vu.vi01 + vu.vi02;
   // iaddi vi11, vi00, -0x2     |  sub.xyzw vf17, vf17, vf17      124
-  vu.vf17.set_zero();         vu.vi11 = -2;
+  gen.vtx_load1.set_zero();         vu.vi11 = -2;
   // lq.xy vf22, 0(vi10)        |  nop                            125
   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  nop                            126
-  lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // mtir vi02, vf22.x          |  mulaw.xyzw ACC, vf11, vf00     127
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi02 = vu.vf22.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi02 = vu.vf22.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf16    128
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf23, 0(vi10)        |  madday.xyzw ACC, vf09, vf16    129
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
   // lq.xyz vf17, 2(vi10)       |  nop                            130
-  lq_buffer(Mask::xyz, vu.vf17, vu.vi10 + 2);
+  lq_buffer(Mask::xyz, gen.vtx_load1, vu.vi10 + 2);
   // iand vi06, vi02, vi11      |  nop                            131
   vu.vi06 = vu.vi02 & vu.vi11;
   // mfir.x vf22, vi06          |  maddz.xyzw vf12, vf10, vf16    132
-  vu.acc.madd(Mask::xyzw, vu.vf12, vu.vf10, vu.vf16.z());   vu.vf22.mfir(Mask::x, vu.vi06);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p0, gen.mat2, gen.vtx_load0.z());   vu.vf22.mfir(Mask::x, vu.vi06);
   // iadd vi14, vi10, vi01      |  ftoi12.z vf24, vf24            133
   // fmt::print("b: [{}] [{}]\n", vu.vf24.print(), vu.vf25.print());
   vu.vf24.ftoi12_check(Mask::z, vu.vf24);   vu.vi14 = vu.vi10 + vu.vi01;
@@ -234,178 +234,178 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
   // nop                        |  nop                            135
 
   // div Q, vf01.x, vf12.w      |  itof12.xyz vf18, vf22          136
-  vu.vf18.itof12(Mask::xyz, vu.vf22);   vu.Q = gen.fog.x() / vu.vf12.w();
+  vu.vf18.itof12(Mask::xyz, vu.vf22);   vu.Q = gen.fog.x() / gen.vtx_p0.w();
   // mtir vi03, vf23.x          |  mulaw.xyzw ACC, vf11, vf00     137
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi03 = vu.vf23.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi03 = vu.vf23.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf17    138
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf17.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load1.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf24, 0(vi10)        |  madday.xyzw ACC, vf09, vf17    139
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf17.y());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load1.y());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  nop                            140
-  lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi07, vi03, vi11      |  nop                            141
   vu.vi07 = vu.vi03 & vu.vi11;
   // mfir.x vf23, vi07          |  maddz.xyzw vf13, vf10, vf17    142
-  vu.acc.madd(Mask::xyzw, vu.vf13, vu.vf10, vu.vf17.z());   vu.vf23.mfir(Mask::x, vu.vi07);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p1, gen.mat2, gen.vtx_load1.z());   vu.vf23.mfir(Mask::x, vu.vi07);
   // nop                        |  mul.xyz vf12, vf12, Q          143
-  vu.vf12.mul(Mask::xyz, vu.vf12, vu.Q);
+  gen.vtx_p0.mul(Mask::xyz, gen.vtx_p0, vu.Q);
   // nop                        |  mul.xyz vf18, vf18, Q          144
   vu.vf18.mul(Mask::xyz, vu.vf18, vu.Q);
   // nop                        |  nop                            145
 
   // div Q, vf01.x, vf13.w      |  itof12.xyz vf19, vf23          146
-  vu.vf19.itof12(Mask::xyz, vu.vf23);   vu.Q = gen.fog.x() / vu.vf13.w();
+  vu.vf19.itof12(Mask::xyz, vu.vf23);   vu.Q = gen.fog.x() / gen.vtx_p1.w();
   // nop                        |  add.xyzw vf12, vf12, vf04      147
-  vu.vf12.add(Mask::xyzw, vu.vf12, gen.hvdf_off);
+  gen.vtx_p0.add(Mask::xyzw, gen.vtx_p0, gen.hvdf_off);
   // mtir vi04, vf24.x          |  mulaw.xyzw ACC, vf11, vf00     148
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi04 = vu.vf24.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi04 = vu.vf24.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf16    149
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf25, 0(vi10)        |  madday.xyzw ACC, vf09, vf16    150
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
   // lq.xyz vf17, 2(vi10)       |  miniz.w vf12, vf12, vf01       151
-  vu.vf12.mini(Mask::w, vu.vf12, gen.fog.z());   lq_buffer(Mask::xyz, vu.vf17, vu.vi10 + 2);
+  gen.vtx_p0.mini(Mask::w, gen.vtx_p0, gen.fog.z());   lq_buffer(Mask::xyz, gen.vtx_load1, vu.vi10 + 2);
   // iand vi08, vi04, vi11      |  nop                            152
   vu.vi08 = vu.vi04 & vu.vi11;
   // mfir.x vf24, vi08          |  maddz.xyzw vf14, vf10, vf16    153
-  vu.acc.madd(Mask::xyzw, vu.vf14, vu.vf10, vu.vf16.z());   vu.vf24.mfir(Mask::x, vu.vi08);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p2, gen.mat2, gen.vtx_load0.z());   vu.vf24.mfir(Mask::x, vu.vi08);
   // nop                        |  mul.xyz vf13, vf13, Q          154
-  vu.vf13.mul(Mask::xyz, vu.vf13, vu.Q);
+  gen.vtx_p1.mul(Mask::xyz, gen.vtx_p1, vu.Q);
   // nop                        |  mul.xyz vf19, vf19, Q          155
   vu.vf19.mul(Mask::xyz, vu.vf19, vu.Q);
   // iaddi vi14, vi14, 0x9      |  maxy.w vf12, vf12, vf01        156
-  vu.vf12.max(Mask::w, vu.vf12, gen.fog.y());   vu.vi14 = vu.vi14 + 9;
-  // fmt::print("vf12-1a: [{}]\n", vu.vf12.print());
+  gen.vtx_p0.max(Mask::w, gen.vtx_p0, gen.fog.y());   vu.vi14 = vu.vi14 + 9;
+  // fmt::print("vf12-1a: [{}]\n", gen.vtx_p0.print());
 
 L10: // R
-  // fmt::print("vf12-1b: [{}]\n", vu.vf12.print());
+  // fmt::print("vf12-1b: [{}]\n", gen.vtx_p0.print());
 
   // div Q, vf01.x, vf14.w      |  itof12.xyz vf20, vf24          157
-  vu.vf20.itof12(Mask::xyz, vu.vf24);   vu.Q = gen.fog.x() / vu.vf14.w();
+  vu.vf20.itof12(Mask::xyz, vu.vf24);   vu.Q = gen.fog.x() / gen.vtx_p2.w();
   // BRANCH!
   // ibeq vi02, vi06, L11       |  add.xyzw vf13, vf13, vf04      158
-  vu.vf13.add(Mask::xyzw, vu.vf13, gen.hvdf_off);   bc = (vu.vi02 == vu.vi06);
+  gen.vtx_p1.add(Mask::xyzw, gen.vtx_p1, gen.hvdf_off);   bc = (vu.vi02 == vu.vi06);
   // mtir vi05, vf25.x          |  mulaw.xyzw ACC, vf11, vf00     159
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi05 = vu.vf25.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi05 = vu.vf25.x_as_u16();
   if (bc) { goto L11; }
 
   // nop                        |  addw.w vf12, vf12, vf01        160
-  vu.vf12.add(Mask::w, vu.vf12, kFogFloatOffset);
+  gen.vtx_p0.add(Mask::w, gen.vtx_p0, kFogFloatOffset);
   L11: // R
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf17    161
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf17.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load1.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf22, 0(vi10)        |  madday.xyzw ACC, vf09, vf17    162
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf17.y());   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load1.y());   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  miniz.w vf13, vf13, vf01       163
-  vu.vf13.mini(Mask::w, vu.vf13, gen.fog.z());   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
-  // fmt::print("vf16 vertex [{}] @ \n", vu.vf16.print(), vu.vi10 + 2);
+  gen.vtx_p1.mini(Mask::w, gen.vtx_p1, gen.fog.z());   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
+  // fmt::print("vf16 vertex [{}] @ \n", gen.vtx_load0.print(), vu.vi10 + 2);
   // iand vi09, vi05, vi11      |  ftoi4.xyzw vf12, vf12          164
-  vu.vf12.ftoi4_check(Mask::xyzw, vu.vf12);   vu.vi09 = vu.vi05 & vu.vi11;
+  gen.vtx_p0.ftoi4_check(Mask::xyzw, gen.vtx_p0);   vu.vi09 = vu.vi05 & vu.vi11;
   // mfir.x vf25, vi09          |  maddz.xyzw vf15, vf10, vf17    165
-  vu.acc.madd(Mask::xyzw, vu.vf15, vu.vf10, vu.vf17.z());   vu.vf25.mfir(Mask::x, vu.vi09);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p3, gen.mat2, gen.vtx_load1.z());   vu.vf25.mfir(Mask::x, vu.vi09);
   // sq.xyzw vf18, -12(vi10)    |  mul.xyz vf14, vf14, Q          166
-  vu.vf14.mul(Mask::xyz, vu.vf14, vu.Q);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
+  gen.vtx_p2.mul(Mask::xyz, gen.vtx_p2, vu.Q);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L15       |  mul.xyz vf20, vf20, Q          167
   vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   bc = (vu.vi14 == vu.vi10);
-  // fmt::print("store: {} {}\n", vu.vi10 - 10, vu.vf12.print_hex());
+  // fmt::print("store: {} {}\n", vu.vi10 - 10, gen.vtx_p0.print_hex());
   // sq.xyzw vf12, -10(vi10)    |  maxy.w vf13, vf13, vf01        168
-  vu.vf13.max(Mask::w, vu.vf13, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf12, vu.vi10 + -10);
+  gen.vtx_p1.max(Mask::w, gen.vtx_p1, gen.fog.y());   sq_buffer(Mask::xyzw, gen.vtx_p0, vu.vi10 + -10);
   if (bc) { goto L15; }
 
   // div Q, vf01.x, vf15.w      |  itof12.xyz vf21, vf25          169
-  vu.vf21.itof12(Mask::xyz, vu.vf25);   vu.Q = gen.fog.x() / vu.vf15.w();
+  vu.vf21.itof12(Mask::xyz, vu.vf25);   vu.Q = gen.fog.x() / gen.vtx_p3.w();
   // BRANCH!
   // ibeq vi03, vi07, L12       |  add.xyzw vf14, vf14, vf04      170
-  vu.vf14.add(Mask::xyzw, vu.vf14, gen.hvdf_off);   bc = (vu.vi03 == vu.vi07);
+  gen.vtx_p2.add(Mask::xyzw, gen.vtx_p2, gen.hvdf_off);   bc = (vu.vi03 == vu.vi07);
   // mtir vi02, vf22.x          |  mulaw.xyzw ACC, vf11, vf00     171
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi02 = vu.vf22.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi02 = vu.vf22.x_as_u16();
   if (bc) { goto L12; }
 
   // nop                        |  addw.w vf13, vf13, vf01        172
-  vu.vf13.add(Mask::w, vu.vf13, kFogFloatOffset);
+  gen.vtx_p1.add(Mask::w, gen.vtx_p1, kFogFloatOffset);
   L12: // R
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf16    173
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf23, 0(vi10)        |  madday.xyzw ACC, vf09, vf16    174
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
   // lq.xyz vf17, 2(vi10)       |  miniz.w vf14, vf14, vf01       175
-  vu.vf14.mini(Mask::w, vu.vf14, gen.fog.z());   lq_buffer(Mask::xyz, vu.vf17, vu.vi10 + 2);
+  gen.vtx_p2.mini(Mask::w, gen.vtx_p2, gen.fog.z());   lq_buffer(Mask::xyz, gen.vtx_load1, vu.vi10 + 2);
   // iand vi06, vi02, vi11      |  ftoi4.xyzw vf13, vf13          176
-  vu.vf13.ftoi4_check(Mask::xyzw, vu.vf13);   vu.vi06 = vu.vi02 & vu.vi11;
+  gen.vtx_p1.ftoi4_check(Mask::xyzw, gen.vtx_p1);   vu.vi06 = vu.vi02 & vu.vi11;
   // mfir.x vf22, vi06          |  maddz.xyzw vf12, vf10, vf16    177
-  vu.acc.madd(Mask::xyzw, vu.vf12, vu.vf10, vu.vf16.z());   vu.vf22.mfir(Mask::x, vu.vi06);
-  // fmt::print("vf12 transformed: [{}]\n", vu.vf12.print());
+  vu.acc.madd(Mask::xyzw, gen.vtx_p0, gen.mat2, gen.vtx_load0.z());   vu.vf22.mfir(Mask::x, vu.vi06);
+  // fmt::print("vf12 transformed: [{}]\n", gen.vtx_p0.print());
   // sq.xyzw vf19, -12(vi10)    |  mul.xyz vf15, vf15, Q          178
-  vu.vf15.mul(Mask::xyz, vu.vf15, vu.Q);   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
+  gen.vtx_p3.mul(Mask::xyz, gen.vtx_p3, vu.Q);   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L15       |  mul.xyz vf21, vf21, Q          179
   vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf13, -10(vi10)    |  maxy.w vf14, vf14, vf01        180
-  vu.vf14.max(Mask::w, vu.vf14, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf13, vu.vi10 + -10);
+  gen.vtx_p2.max(Mask::w, gen.vtx_p2, gen.fog.y());   sq_buffer(Mask::xyzw, gen.vtx_p1, vu.vi10 + -10);
   if (bc) { goto L15; }
 
   // div Q, vf01.x, vf12.w      |  itof12.xyz vf18, vf22          181
-  vu.vf18.itof12(Mask::xyz, vu.vf22);   vu.Q = gen.fog.x() / vu.vf12.w();
+  vu.vf18.itof12(Mask::xyz, vu.vf22);   vu.Q = gen.fog.x() / gen.vtx_p0.w();
   // BRANCH!
   // ibeq vi04, vi08, L13       |  add.xyzw vf15, vf15, vf04      182
-  vu.vf15.add(Mask::xyzw, vu.vf15, gen.hvdf_off);   bc = (vu.vi04 == vu.vi08);
+  gen.vtx_p3.add(Mask::xyzw, gen.vtx_p3, gen.hvdf_off);   bc = (vu.vi04 == vu.vi08);
   // mtir vi03, vf23.x          |  mulaw.xyzw ACC, vf11, vf00     183
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi03 = vu.vf23.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi03 = vu.vf23.x_as_u16();
   if (bc) { goto L13; }
 
   // nop                        |  addw.w vf14, vf14, vf01        184
-  vu.vf14.add(Mask::w, vu.vf14, kFogFloatOffset);
+  gen.vtx_p2.add(Mask::w, gen.vtx_p2, kFogFloatOffset);
   L13: // R
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf17    185
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf17.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load1.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf24, 0(vi10)        |  madday.xyzw ACC, vf09, vf17    186
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf17.y());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load1.y());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  miniz.w vf15, vf15, vf01       187
-  vu.vf15.mini(Mask::w, vu.vf15, gen.fog.z());   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  gen.vtx_p3.mini(Mask::w, gen.vtx_p3, gen.fog.z());   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi07, vi03, vi11      |  ftoi4.xyzw vf14, vf14          188
-  vu.vf14.ftoi4_check(Mask::xyzw, vu.vf14);   vu.vi07 = vu.vi03 & vu.vi11;
+  gen.vtx_p2.ftoi4_check(Mask::xyzw, gen.vtx_p2);   vu.vi07 = vu.vi03 & vu.vi11;
   // mfir.x vf23, vi07          |  maddz.xyzw vf13, vf10, vf17    189
-  vu.acc.madd(Mask::xyzw, vu.vf13, vu.vf10, vu.vf17.z());   vu.vf23.mfir(Mask::x, vu.vi07);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p1, gen.mat2, gen.vtx_load1.z());   vu.vf23.mfir(Mask::x, vu.vi07);
   // sq.xyzw vf20, -12(vi10)    |  mul.xyz vf12, vf12, Q          190
-  vu.vf12.mul(Mask::xyz, vu.vf12, vu.Q);   sq_buffer(Mask::xyzw, vu.vf20, vu.vi10 + -12);
+  gen.vtx_p0.mul(Mask::xyz, gen.vtx_p0, vu.Q);   sq_buffer(Mask::xyzw, vu.vf20, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L15       |  mul.xyz vf18, vf18, Q          191
   vu.vf18.mul(Mask::xyz, vu.vf18, vu.Q);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf14, -10(vi10)    |  maxy.w vf15, vf15, vf01        192
-  vu.vf15.max(Mask::w, vu.vf15, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf14, vu.vi10 + -10);
+  gen.vtx_p3.max(Mask::w, gen.vtx_p3, gen.fog.y());   sq_buffer(Mask::xyzw, gen.vtx_p2, vu.vi10 + -10);
   if (bc) { goto L15; }
 
   // div Q, vf01.x, vf13.w      |  itof12.xyz vf19, vf23          193
-  vu.vf19.itof12(Mask::xyz, vu.vf23);   vu.Q = gen.fog.x() / vu.vf13.w();
+  vu.vf19.itof12(Mask::xyz, vu.vf23);   vu.Q = gen.fog.x() / gen.vtx_p1.w();
   // BRANCH!
   // ibeq vi05, vi09, L14       |  add.xyzw vf12, vf12, vf04      194
-  vu.vf12.add(Mask::xyzw, vu.vf12, gen.hvdf_off);   bc = (vu.vi05 == vu.vi09);
+  gen.vtx_p0.add(Mask::xyzw, gen.vtx_p0, gen.hvdf_off);   bc = (vu.vi05 == vu.vi09);
   // mtir vi04, vf24.x          |  mulaw.xyzw ACC, vf11, vf00     195
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.vi04 = vu.vf24.x_as_u16();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.vi04 = vu.vf24.x_as_u16();
   if (bc) { goto L14; }
 
   // nop                        |  addw.w vf15, vf15, vf01        196
-  vu.vf15.add(Mask::w, vu.vf15, kFogFloatOffset);
+  gen.vtx_p3.add(Mask::w, gen.vtx_p3, kFogFloatOffset);
   L14: // R
   // iaddi vi10, vi10, 0x3      |  maddax.xyzw ACC, vf08, vf16    197
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf25, 0(vi10)        |  madday.xyzw ACC, vf09, vf16    198
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
   // lq.xyz vf17, 2(vi10)       |  miniz.w vf12, vf12, vf01       199
-  vu.vf12.mini(Mask::w, vu.vf12, gen.fog.z());   lq_buffer(Mask::xyz, vu.vf17, vu.vi10 + 2);
+  gen.vtx_p0.mini(Mask::w, gen.vtx_p0, gen.fog.z());   lq_buffer(Mask::xyz, gen.vtx_load1, vu.vi10 + 2);
   // iand vi08, vi04, vi11      |  ftoi4.xyzw vf15, vf15          200
-  vu.vf15.ftoi4_check(Mask::xyzw, vu.vf15);   vu.vi08 = vu.vi04 & vu.vi11;
+  gen.vtx_p3.ftoi4_check(Mask::xyzw, gen.vtx_p3);   vu.vi08 = vu.vi04 & vu.vi11;
   // mfir.x vf24, vi08          |  maddz.xyzw vf14, vf10, vf16    201
-  vu.acc.madd(Mask::xyzw, vu.vf14, vu.vf10, vu.vf16.z());   vu.vf24.mfir(Mask::x, vu.vi08);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p2, gen.mat2, gen.vtx_load0.z());   vu.vf24.mfir(Mask::x, vu.vi08);
   // sq.xyzw vf21, -12(vi10)    |  mul.xyz vf13, vf13, Q          202
-  vu.vf13.mul(Mask::xyz, vu.vf13, vu.Q);   sq_buffer(Mask::xyzw, vu.vf21, vu.vi10 + -12);
+  gen.vtx_p1.mul(Mask::xyz, gen.vtx_p1, vu.Q);   sq_buffer(Mask::xyzw, vu.vf21, vu.vi10 + -12);
   // BRANCH!
   // ibne vi14, vi10, L10       |  mul.xyz vf19, vf19, Q          203
   vu.vf19.mul(Mask::xyz, vu.vf19, vu.Q);   bc = (vu.vi14 != vu.vi10);
   // sq.xyzw vf15, -10(vi10)    |  maxy.w vf12, vf12, vf01        204
   // fmt::print("reloop {} {}\n", vu.vi14, vu.vi10);
-  vu.vf12.max(Mask::w, vu.vf12, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf15, vu.vi10 + -10);
+  gen.vtx_p0.max(Mask::w, gen.vtx_p0, gen.fog.y());   sq_buffer(Mask::xyzw, gen.vtx_p3, vu.vi10 + -10);
   if (bc) { goto L10; }
 
   L15: // R
@@ -444,13 +444,13 @@ L10: // R
   // lq.xyzw vf09, 1(vi13)      |  subw.w vf20, vf00, vf00        370
   vu.vf20.sub(Mask::w, vu.vf00, vu.vf00.w());   lq_buffer(Mask::xyzw, gen.mat1, vu.vi13 + 1);
   // lq.xyzw vf10, 2(vi13)      |  subw.w vf21, vf00, vf00        371
-  vu.vf21.sub(Mask::w, vu.vf00, vu.vf00.w());   lq_buffer(Mask::xyzw, vu.vf10, vu.vi13 + 2);
+  vu.vf21.sub(Mask::w, vu.vf00, vu.vf00.w());   lq_buffer(Mask::xyzw, gen.mat2, vu.vi13 + 2);
   // lq.xyzw vf11, 3(vi13)      |  ftoi12.z vf22, vf22            372
-  vu.vf22.ftoi12_check(Mask::z, vu.vf22);   lq_buffer(Mask::xyzw, vu.vf11, vu.vi13 + 3);
+  vu.vf22.ftoi12_check(Mask::z, vu.vf22);   lq_buffer(Mask::xyzw, gen.mat3, vu.vi13 + 3);
   // iadd vi02, vi01, vi01      |  ftoi12.z vf23, vf23            373
   vu.vf23.ftoi12_check(Mask::z, vu.vf23);   vu.vi02 = vu.vi01 + vu.vi01;
   // iadd vi01, vi01, vi02      |  sub.xyzw vf16, vf16, vf16      374
-  vu.vf16.set_zero();         vu.vi01 = vu.vi01 + vu.vi02;
+  gen.vtx_load0.set_zero();         vu.vi01 = vu.vi01 + vu.vi02;
   // iaddi vi11, vi00, -0x2     |  nop                            375
   vu.vi11 = -2;
   // iadd vi14, vi10, vi01      |  ftoi12.z vf24, vf24            376
@@ -462,21 +462,21 @@ L10: // R
   // lq.xy vf22, 0(vi10)        |  nop                            379
   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  nop                            380
-  lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // nop                        |  nop                            381
 
   // nop                        |  nop                            382
 
   // nop                        |  mulaw.xyzw ACC, vf11, vf00     383
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());
   // mtir vi02, vf22.x          |  maddax.xyzw ACC, vf08, vf16    384
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   vu.vi02 = vu.vf22.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   vu.vi02 = vu.vf22.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  madday.xyzw ACC, vf09, vf16    385
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf23, 0(vi10)        |  maddz.xyzw vf12, vf10, vf16    386
-  vu.acc.madd(Mask::xyzw, vu.vf12, vu.vf10, vu.vf16.z());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p0, gen.mat2, gen.vtx_load0.z());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  nop                            387
-  lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi06, vi02, vi11      |  nop                            388
   vu.vi06 = vu.vi02 & vu.vi11;
   // mfir.x vf22, vi06          |  nop                            389
@@ -490,23 +490,23 @@ L10: // R
   // nop                        |  itof12.xyz vf18, vf22          393
   vu.vf18.itof12(Mask::xyz, vu.vf22);
   // div Q, vf01.x, vf12.w      |  mul.xyzw vf26, vf12, vf05      394
-  vu.vf26.mul(Mask::xyzw, vu.vf12, gen.hmge_scale);   vu.Q = gen.fog.x() / vu.vf12.w();
+  vu.vf26.mul(Mask::xyzw, gen.vtx_p0, gen.hmge_scale);   vu.Q = gen.fog.x() / gen.vtx_p0.w();
   // nop                        |  nop                            395
 
   // nop                        |  mulaw.xyzw ACC, vf11, vf00     396
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());
   // mtir vi03, vf23.x          |  maddax.xyzw ACC, vf08, vf16    397
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   vu.vi03 = vu.vf23.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   vu.vi03 = vu.vf23.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  madday.xyzw ACC, vf09, vf16    398
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf24, 0(vi10)        |  maddz.xyzw vf13, vf10, vf16    399
-  vu.acc.madd(Mask::xyzw, vu.vf13, vu.vf10, vu.vf16.z());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
+  vu.acc.madd(Mask::xyzw, gen.vtx_p1, gen.mat2, gen.vtx_load0.z());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  nop                            400
-  lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi07, vi03, vi11      |  nop                            401
   vu.vi07 = vu.vi03 & vu.vi11;
   // mfir.x vf23, vi07          |  mul.xyz vf12, vf12, Q          402
-  vu.vf12.mul(Mask::xyz, vu.vf12, vu.Q);   vu.vf23.mfir(Mask::x, vu.vi07);
+  gen.vtx_p0.mul(Mask::xyz, gen.vtx_p0, vu.Q);   vu.vf23.mfir(Mask::x, vu.vi07);
   // fcset 0x0                  |  nop                            403
   cf = 0;
   // nop                        |  nop                            404
@@ -516,25 +516,25 @@ L10: // R
   // nop                        |  itof12.xyz vf19, vf23          406
   vu.vf19.itof12(Mask::xyz, vu.vf23);
   // div Q, vf01.x, vf13.w      |  mulaw.xyzw ACC, vf11, vf00     407
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf13.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p1.w();
   // nop                        |  add.xyzw vf12, vf12, vf04      408
-  vu.vf12.add(Mask::xyzw, vu.vf12, gen.hvdf_off);
+  gen.vtx_p0.add(Mask::xyzw, gen.vtx_p0, gen.hvdf_off);
   // nop                        |  maddax.xyzw ACC, vf08, vf16    409
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());
   // mtir vi04, vf24.x          |  madday.xyzw ACC, vf09, vf16    410
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi04 = vu.vf24.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi04 = vu.vf24.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf14, vf10, vf16    411
-  vu.acc.madd(Mask::xyzw, vu.vf14, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p2, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf25, 0(vi10)        |  miniz.w vf12, vf12, vf01       412
-  vu.vf12.mini(Mask::w, vu.vf12, gen.fog.z());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
+  gen.vtx_p0.mini(Mask::w, gen.vtx_p0, gen.fog.z());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf27, vf13, vf05      413
-  vu.vf27.mul(Mask::xyzw, vu.vf13, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf27.mul(Mask::xyzw, gen.vtx_p1, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi08, vi04, vi11      |  nop                            414
   vu.vi08 = vu.vi04 & vu.vi11;
   // mfir.x vf24, vi08          |  mul.xyz vf13, vf13, Q          415
-  vu.vf13.mul(Mask::xyz, vu.vf13, vu.Q);   vu.vf24.mfir(Mask::x, vu.vi08);
+  gen.vtx_p1.mul(Mask::xyz, gen.vtx_p1, vu.Q);   vu.vf24.mfir(Mask::x, vu.vi08);
   // nop                        |  maxy.w vf12, vf12, vf01        416
-  vu.vf12.max(Mask::w, vu.vf12, gen.fog.y());
+  gen.vtx_p0.max(Mask::w, gen.vtx_p0, gen.fog.y());
   // nop                        |  clipw.xyz vf26, vf26           417
  cf = clip(vu.vf26, vu.vf26.w(), cf);
   // nop                        |  mul.xyz vf19, vf19, Q          418
@@ -543,70 +543,70 @@ L10: // R
   // ibeq vi02, vi06, L35       |  itof12.xyz vf20, vf24          419
   vu.vf20.itof12(Mask::xyz, vu.vf24);   bc = (vu.vi02 == vu.vi06);
   // div Q, vf01.x, vf14.w      |  mulaw.xyzw ACC, vf11, vf00     420
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf14.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p2.w();
   if (bc) { goto L35; }
 
   // nop                        |  addw.w vf12, vf12, vf01        421
-  vu.vf12.add(Mask::w, vu.vf12, kFogFloatOffset);
+  gen.vtx_p0.add(Mask::w, gen.vtx_p0, kFogFloatOffset);
   L35:
   // nop                        |  add.xyzw vf13, vf13, vf04      422
-  vu.vf13.add(Mask::xyzw, vu.vf13, gen.hvdf_off);
+  gen.vtx_p1.add(Mask::xyzw, gen.vtx_p1, gen.hvdf_off);
   // nop                        |  maddax.xyzw ACC, vf08, vf16    423
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());
   // mtir vi05, vf25.x          |  madday.xyzw ACC, vf09, vf16    424
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi05 = vu.vf25.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi05 = vu.vf25.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf15, vf10, vf16    425
-  vu.acc.madd(Mask::xyzw, vu.vf15, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p3, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf22, 0(vi10)        |  miniz.w vf13, vf13, vf01       426
-  vu.vf13.mini(Mask::w, vu.vf13, gen.fog.z());   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
+  gen.vtx_p1.mini(Mask::w, gen.vtx_p1, gen.fog.z());   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf28, vf14, vf05      427
-  vu.vf28.mul(Mask::xyzw, vu.vf14, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf28.mul(Mask::xyzw, gen.vtx_p2, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi09, vi05, vi11      |  ftoi4.xyzw vf12, vf12          428
-  vu.vf12.ftoi4_check(Mask::xyzw, vu.vf12);   vu.vi09 = vu.vi05 & vu.vi11;
+  gen.vtx_p0.ftoi4_check(Mask::xyzw, gen.vtx_p0);   vu.vi09 = vu.vi05 & vu.vi11;
   // mfir.x vf25, vi09          |  mul.xyz vf14, vf14, Q          429
-  vu.vf14.mul(Mask::xyz, vu.vf14, vu.Q);   vu.vf25.mfir(Mask::x, vu.vi09);
+  gen.vtx_p2.mul(Mask::xyz, gen.vtx_p2, vu.Q);   vu.vf25.mfir(Mask::x, vu.vi09);
   // sq.xyzw vf18, -12(vi10)    |  maxy.w vf13, vf13, vf01        430
-  vu.vf13.max(Mask::w, vu.vf13, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
+  gen.vtx_p1.max(Mask::w, gen.vtx_p1, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf27, vf27           431
    cf = clip(vu.vf27, vu.vf27.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf12, -10(vi10)    |  mul.xyz vf20, vf20, Q          432
-  vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   sq_buffer(Mask::xyzw, vu.vf12, vu.vi10 + -10);
+  vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   sq_buffer(Mask::xyzw, gen.vtx_p0, vu.vi10 + -10);
   if (bc) { goto L46; }
 
   // BRANCH!
   // ibeq vi03, vi07, L36       |  itof12.xyz vf21, vf25          433
   vu.vf21.itof12(Mask::xyz, vu.vf25);   bc = (vu.vi03 == vu.vi07);
   // div Q, vf01.x, vf15.w      |  mulaw.xyzw ACC, vf11, vf00     434
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf15.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p3.w();
   if (bc) { goto L36; }
 
   // nop                        |  addw.w vf13, vf13, vf01        435
-  vu.vf13.add(Mask::w, vu.vf13, kFogFloatOffset);
+  gen.vtx_p1.add(Mask::w, gen.vtx_p1, kFogFloatOffset);
   L36:
   // nop                        |  add.xyzw vf14, vf14, vf04      436
-  vu.vf14.add(Mask::xyzw, vu.vf14, gen.hvdf_off);
+  gen.vtx_p2.add(Mask::xyzw, gen.vtx_p2, gen.hvdf_off);
   // nop                        |  maddax.xyzw ACC, vf08, vf16    437
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());
   // mtir vi02, vf22.x          |  madday.xyzw ACC, vf09, vf16    438
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi02 = vu.vf22.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi02 = vu.vf22.x_as_u16();
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf12, vf10, vf16    439
-  vu.acc.madd(Mask::xyzw, vu.vf12, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p0, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf23, 0(vi10)        |  miniz.w vf14, vf14, vf01       440
-  vu.vf14.mini(Mask::w, vu.vf14, gen.fog.z());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
+  gen.vtx_p2.mini(Mask::w, gen.vtx_p2, gen.fog.z());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf29, vf15, vf05      441
-  vu.vf29.mul(Mask::xyzw, vu.vf15, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf29.mul(Mask::xyzw, gen.vtx_p3, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi06, vi02, vi11      |  ftoi4.xyzw vf13, vf13          442
-  vu.vf13.ftoi4_check(Mask::xyzw, vu.vf13);   vu.vi06 = vu.vi02 & vu.vi11;
+  gen.vtx_p1.ftoi4_check(Mask::xyzw, gen.vtx_p1);   vu.vi06 = vu.vi02 & vu.vi11;
   // mfir.x vf22, vi06          |  mul.xyz vf15, vf15, Q          443
-  vu.vf15.mul(Mask::xyz, vu.vf15, vu.Q);   vu.vf22.mfir(Mask::x, vu.vi06);
+  gen.vtx_p3.mul(Mask::xyz, gen.vtx_p3, vu.Q);   vu.vf22.mfir(Mask::x, vu.vi06);
   // sq.xyzw vf19, -12(vi10)    |  maxy.w vf14, vf14, vf01        444
-  vu.vf14.max(Mask::w, vu.vf14, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
+  gen.vtx_p2.max(Mask::w, gen.vtx_p2, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf28, vf28           445
   cf = clip(vu.vf28, vu.vf28.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf13, -10(vi10)    |  mul.xyz vf21, vf21, Q          446
-  vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   sq_buffer(Mask::xyzw, vu.vf13, vu.vi10 + -10);
+  vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   sq_buffer(Mask::xyzw, gen.vtx_p1, vu.vi10 + -10);
   if (bc) { goto L46; }
 
   L37:
@@ -614,160 +614,160 @@ L10: // R
   // ibeq vi04, vi08, L38       |  itof12.xyz vf18, vf22          447
   vu.vf18.itof12(Mask::xyz, vu.vf22);   bc = (vu.vi04 == vu.vi08);
   // div Q, vf01.x, vf12.w      |  mulaw.xyzw ACC, vf11, vf00     448
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf12.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p0.w();
   if (bc) { goto L38; }
 
   // nop                        |  addw.w vf14, vf14, vf01        449
-  vu.vf14.add(Mask::w, vu.vf14, kFogFloatOffset);
+  gen.vtx_p2.add(Mask::w, gen.vtx_p2, kFogFloatOffset);
   L38:
   // fcand vi01, 0x3ffff        |  add.xyzw vf15, vf15, vf04      450
-  vu.vf15.add(Mask::xyzw, vu.vf15, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
+  gen.vtx_p3.add(Mask::xyzw, gen.vtx_p3, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L55       |  maddax.xyzw ACC, vf08, vf16    451
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   bc = (vu.vi01 != 0);
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   bc = (vu.vi01 != 0);
   // mtir vi03, vf23.x          |  madday.xyzw ACC, vf09, vf16    452
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi03 = vu.vf23.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi03 = vu.vf23.x_as_u16();
   if (bc) { goto L55; }
 
   L39:
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf13, vf10, vf16    453
-  vu.acc.madd(Mask::xyzw, vu.vf13, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p1, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf24, 0(vi10)        |  miniz.w vf15, vf15, vf01       454
-  vu.vf15.mini(Mask::w, vu.vf15, gen.fog.z());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
+  gen.vtx_p3.mini(Mask::w, gen.vtx_p3, gen.fog.z());   lq_buffer(Mask::xy, vu.vf24, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf26, vf12, vf05      455
-  vu.vf26.mul(Mask::xyzw, vu.vf12, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf26.mul(Mask::xyzw, gen.vtx_p0, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi07, vi03, vi11      |  ftoi4.xyzw vf14, vf14          456
-  vu.vf14.ftoi4_check(Mask::xyzw, vu.vf14);   vu.vi07 = vu.vi03 & vu.vi11;
+  gen.vtx_p2.ftoi4_check(Mask::xyzw, gen.vtx_p2);   vu.vi07 = vu.vi03 & vu.vi11;
   // mfir.x vf23, vi07          |  mul.xyz vf12, vf12, Q          457
-  vu.vf12.mul(Mask::xyz, vu.vf12, vu.Q);   vu.vf23.mfir(Mask::x, vu.vi07);
+  gen.vtx_p0.mul(Mask::xyz, gen.vtx_p0, vu.Q);   vu.vf23.mfir(Mask::x, vu.vi07);
   // sq.xyzw vf20, -12(vi10)    |  maxy.w vf15, vf15, vf01        458
-  vu.vf15.max(Mask::w, vu.vf15, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf20, vu.vi10 + -12);
+  gen.vtx_p3.max(Mask::w, gen.vtx_p3, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf20, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf29, vf29           459
   cf = clip(vu.vf29, vu.vf29.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf14, -10(vi10)    |  mul.xyz vf18, vf18, Q          460
-  vu.vf18.mul(Mask::xyz, vu.vf18, vu.Q);   sq_buffer(Mask::xyzw, vu.vf14, vu.vi10 + -10);
+  vu.vf18.mul(Mask::xyz, vu.vf18, vu.Q);   sq_buffer(Mask::xyzw, gen.vtx_p2, vu.vi10 + -10);
   if (bc) { goto L46; }
 
   // BRANCH!
   // ibeq vi05, vi09, L40       |  itof12.xyz vf19, vf23          461
   vu.vf19.itof12(Mask::xyz, vu.vf23);   bc = (vu.vi05 == vu.vi09);
   // div Q, vf01.x, vf13.w      |  mulaw.xyzw ACC, vf11, vf00     462
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf13.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p1.w();
   if (bc) { goto L40; }
 
   // nop                        |  addw.w vf15, vf15, vf01        463
-  vu.vf15.add(Mask::w, vu.vf15, kFogFloatOffset);
+  gen.vtx_p3.add(Mask::w, gen.vtx_p3, kFogFloatOffset);
   L40:
   // fcand vi01, 0x3ffff        |  add.xyzw vf12, vf12, vf04      464
-  vu.vf12.add(Mask::xyzw, vu.vf12, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
+  gen.vtx_p0.add(Mask::xyzw, gen.vtx_p0, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L59       |  maddax.xyzw ACC, vf08, vf16    465
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   bc = (vu.vi01 != 0);
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   bc = (vu.vi01 != 0);
   // mtir vi04, vf24.x          |  madday.xyzw ACC, vf09, vf16    466
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi04 = vu.vf24.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi04 = vu.vf24.x_as_u16();
   if (bc) { goto L59; }
 
   L41:
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf14, vf10, vf16    467
-  vu.acc.madd(Mask::xyzw, vu.vf14, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p2, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf25, 0(vi10)        |  miniz.w vf12, vf12, vf01       468
-  vu.vf12.mini(Mask::w, vu.vf12, gen.fog.z());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
+  gen.vtx_p0.mini(Mask::w, gen.vtx_p0, gen.fog.z());   lq_buffer(Mask::xy, vu.vf25, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf27, vf13, vf05      469
-  vu.vf27.mul(Mask::xyzw, vu.vf13, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf27.mul(Mask::xyzw, gen.vtx_p1, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi08, vi04, vi11      |  ftoi4.xyzw vf15, vf15          470
-  vu.vf15.ftoi4_check(Mask::xyzw, vu.vf15);   vu.vi08 = vu.vi04 & vu.vi11;
+  gen.vtx_p3.ftoi4_check(Mask::xyzw, gen.vtx_p3);   vu.vi08 = vu.vi04 & vu.vi11;
   // mfir.x vf24, vi08          |  mul.xyz vf13, vf13, Q          471
-  vu.vf13.mul(Mask::xyz, vu.vf13, vu.Q);   vu.vf24.mfir(Mask::x, vu.vi08);
+  gen.vtx_p1.mul(Mask::xyz, gen.vtx_p1, vu.Q);   vu.vf24.mfir(Mask::x, vu.vi08);
   // sq.xyzw vf21, -12(vi10)    |  maxy.w vf12, vf12, vf01        472
-  vu.vf12.max(Mask::w, vu.vf12, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf21, vu.vi10 + -12);
+  gen.vtx_p0.max(Mask::w, gen.vtx_p0, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf21, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf26, vf26           473
   cf = clip(vu.vf26, vu.vf26.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf15, -10(vi10)    |  mul.xyz vf19, vf19, Q          474
-  vu.vf19.mul(Mask::xyz, vu.vf19, vu.Q);   sq_buffer(Mask::xyzw, vu.vf15, vu.vi10 + -10);
+  vu.vf19.mul(Mask::xyz, vu.vf19, vu.Q);   sq_buffer(Mask::xyzw, gen.vtx_p3, vu.vi10 + -10);
   if (bc) { goto L46; }
 
   // BRANCH!
   // ibeq vi02, vi06, L42       |  itof12.xyz vf20, vf24          475
   vu.vf20.itof12(Mask::xyz, vu.vf24);   bc = (vu.vi02 == vu.vi06);
   // div Q, vf01.x, vf14.w      |  mulaw.xyzw ACC, vf11, vf00     476
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf14.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p2.w();
   if (bc) { goto L42; }
 
   // nop                        |  addw.w vf12, vf12, vf01        477
-  vu.vf12.add(Mask::w, vu.vf12, kFogFloatOffset);
+  gen.vtx_p0.add(Mask::w, gen.vtx_p0, kFogFloatOffset);
   L42:
   // fcand vi01, 0x3ffff        |  add.xyzw vf13, vf13, vf04      478
-  vu.vf13.add(Mask::xyzw, vu.vf13, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
+  gen.vtx_p1.add(Mask::xyzw, gen.vtx_p1, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L47       |  maddax.xyzw ACC, vf08, vf16    479
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   bc = (vu.vi01 != 0);
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   bc = (vu.vi01 != 0);
   // mtir vi05, vf25.x          |  madday.xyzw ACC, vf09, vf16    480
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi05 = vu.vf25.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi05 = vu.vf25.x_as_u16();
   if (bc) { goto L47; }
 
   L43:
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf15, vf10, vf16    481
-  vu.acc.madd(Mask::xyzw, vu.vf15, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p3, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf22, 0(vi10)        |  miniz.w vf13, vf13, vf01       482
-  vu.vf13.mini(Mask::w, vu.vf13, gen.fog.z());   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
+  gen.vtx_p1.mini(Mask::w, gen.vtx_p1, gen.fog.z());   lq_buffer(Mask::xy, vu.vf22, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf28, vf14, vf05      483
-  vu.vf28.mul(Mask::xyzw, vu.vf14, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf28.mul(Mask::xyzw, gen.vtx_p2, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi09, vi05, vi11      |  ftoi4.xyzw vf12, vf12          484
-  vu.vf12.ftoi4_check(Mask::xyzw, vu.vf12);   vu.vi09 = vu.vi05 & vu.vi11;
+  gen.vtx_p0.ftoi4_check(Mask::xyzw, gen.vtx_p0);   vu.vi09 = vu.vi05 & vu.vi11;
   // mfir.x vf25, vi09          |  mul.xyz vf14, vf14, Q          485
-  vu.vf14.mul(Mask::xyz, vu.vf14, vu.Q);   vu.vf25.mfir(Mask::x, vu.vi09);
+  gen.vtx_p2.mul(Mask::xyz, gen.vtx_p2, vu.Q);   vu.vf25.mfir(Mask::x, vu.vi09);
   // sq.xyzw vf18, -12(vi10)    |  maxy.w vf13, vf13, vf01        486
-  vu.vf13.max(Mask::w, vu.vf13, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
+  gen.vtx_p1.max(Mask::w, gen.vtx_p1, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf18, vu.vi10 + -12);
   // BRANCH!
   // ibeq vi14, vi10, L46       |  clipw.xyz vf27, vf27           487
   cf = clip(vu.vf27, vu.vf27.w(), cf);   bc = (vu.vi14 == vu.vi10);
   // sq.xyzw vf12, -10(vi10)    |  mul.xyz vf20, vf20, Q          488
-  vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   sq_buffer(Mask::xyzw, vu.vf12, vu.vi10 + -10);
+  vu.vf20.mul(Mask::xyz, vu.vf20, vu.Q);   sq_buffer(Mask::xyzw, gen.vtx_p0, vu.vi10 + -10);
   if (bc) { goto L46; }
 
   // BRANCH!
   // ibeq vi03, vi07, L44       |  itof12.xyz vf21, vf25          489
   vu.vf21.itof12(Mask::xyz, vu.vf25);   bc = (vu.vi03 == vu.vi07);
   // div Q, vf01.x, vf15.w      |  mulaw.xyzw ACC, vf11, vf00     490
-  vu.acc.mula(Mask::xyzw, vu.vf11, vu.vf00.w());   vu.Q = gen.fog.x() / vu.vf15.w();
+  vu.acc.mula(Mask::xyzw, gen.mat3, vu.vf00.w());   vu.Q = gen.fog.x() / gen.vtx_p3.w();
   if (bc) { goto L44; }
 
   // nop                        |  addw.w vf13, vf13, vf01        491
-  vu.vf13.add(Mask::w, vu.vf13, kFogFloatOffset);
+  gen.vtx_p1.add(Mask::w, gen.vtx_p1, kFogFloatOffset);
   L44:
   // fcand vi01, 0x3ffff        |  add.xyzw vf14, vf14, vf04      492
-  vu.vf14.add(Mask::xyzw, vu.vf14, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
+  gen.vtx_p2.add(Mask::xyzw, gen.vtx_p2, gen.hvdf_off);    vu.vi01 = cf & 0x3ffff;
 
   // BRANCH!
   // ibne vi00, vi01, L51       |  maddax.xyzw ACC, vf08, vf16    493
-  vu.acc.madda(Mask::xyzw, gen.mat0, vu.vf16.x());   bc = (vu.vi01 != 0);
+  vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());   bc = (vu.vi01 != 0);
   // mtir vi02, vf22.x          |  madday.xyzw ACC, vf09, vf16    494
-  vu.acc.madda(Mask::xyzw, gen.mat1, vu.vf16.y());   vu.vi02 = vu.vf22.x_as_u16();
+  vu.acc.madda(Mask::xyzw, gen.mat1, gen.vtx_load0.y());   vu.vi02 = vu.vf22.x_as_u16();
   if (bc) { goto L51; }
 
   L45:
   // iaddi vi10, vi10, 0x3      |  maddz.xyzw vf12, vf10, vf16    495
-  vu.acc.madd(Mask::xyzw, vu.vf12, vu.vf10, vu.vf16.z());   vu.vi10 = vu.vi10 + 3;
+  vu.acc.madd(Mask::xyzw, gen.vtx_p0, gen.mat2, gen.vtx_load0.z());   vu.vi10 = vu.vi10 + 3;
   // lq.xy vf23, 0(vi10)        |  miniz.w vf14, vf14, vf01       496
-  vu.vf14.mini(Mask::w, vu.vf14, gen.fog.z());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
+  gen.vtx_p2.mini(Mask::w, gen.vtx_p2, gen.fog.z());   lq_buffer(Mask::xy, vu.vf23, vu.vi10);
   // lq.xyz vf16, 2(vi10)       |  mul.xyzw vf29, vf15, vf05      497
-  vu.vf29.mul(Mask::xyzw, vu.vf15, gen.hmge_scale);   lq_buffer(Mask::xyz, vu.vf16, vu.vi10 + 2);
+  vu.vf29.mul(Mask::xyzw, gen.vtx_p3, gen.hmge_scale);   lq_buffer(Mask::xyz, gen.vtx_load0, vu.vi10 + 2);
   // iand vi06, vi02, vi11      |  ftoi4.xyzw vf13, vf13          498
-  vu.vf13.ftoi4_check(Mask::xyzw, vu.vf13);   vu.vi06 = vu.vi02 & vu.vi11;
+  gen.vtx_p1.ftoi4_check(Mask::xyzw, gen.vtx_p1);   vu.vi06 = vu.vi02 & vu.vi11;
   // mfir.x vf22, vi06          |  mul.xyz vf15, vf15, Q          499
-  vu.vf15.mul(Mask::xyz, vu.vf15, vu.Q);   vu.vf22.mfir(Mask::x, vu.vi06);
+  gen.vtx_p3.mul(Mask::xyz, gen.vtx_p3, vu.Q);   vu.vf22.mfir(Mask::x, vu.vi06);
   // sq.xyzw vf19, -12(vi10)    |  maxy.w vf14, vf14, vf01        500
-  vu.vf14.max(Mask::w, vu.vf14, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
+  gen.vtx_p2.max(Mask::w, gen.vtx_p2, gen.fog.y());   sq_buffer(Mask::xyzw, vu.vf19, vu.vi10 + -12);
   // BRANCH!
   // ibne vi14, vi10, L37       |  clipw.xyz vf28, vf28           501
   cf = clip(vu.vf28, vu.vf28.w(), cf);   bc = (vu.vi14 != vu.vi10);
   // sq.xyzw vf13, -10(vi10)    |  mul.xyz vf21, vf21, Q          502
-  vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   sq_buffer(Mask::xyzw, vu.vf13, vu.vi10 + -10);
+  vu.vf21.mul(Mask::xyz, vu.vf21, vu.Q);   sq_buffer(Mask::xyzw, gen.vtx_p1, vu.vi10 + -10);
   if (bc) { goto L37; }
 
   L46:
@@ -783,7 +783,7 @@ L10: // R
   // ibne vi02, vi06, L43       |  nop                            505
   bc = (vu.vi02 != vu.vi06);
   // sq.xyzw vf23, 998(vi00)    |  addw.w vf12, vf12, vf01        506
-  vu.vf12.add(Mask::w, vu.vf12, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
+  gen.vtx_p0.add(Mask::w, gen.vtx_p0, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
   if (bc) { goto L43; }
 
   // sq.xyzw vf24, 999(vi00)    |  mul.xyzw vf23, vf28, vf07      507
@@ -828,7 +828,7 @@ L10: // R
 
   L48:
   // div Q, vf01.x, vf14.w      |  nop                            524
-  vu.Q = gen.fog.x() / vu.vf14.w();
+  vu.Q = gen.fog.x() / gen.vtx_p2.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            525
   lq_buffer(Mask::xyzw, vu.vf23, 998);
   // lq.xyzw vf24, 999(vi00)    |  nop                            526
@@ -856,7 +856,7 @@ L10: // R
   // ibne vi03, vi07, L45       |  nop                            588
   bc = (vu.vi03 != vu.vi07);
   // sq.xyzw vf23, 998(vi00)    |  addw.w vf13, vf13, vf01        589
-  vu.vf13.add(Mask::w, vu.vf13, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
+  gen.vtx_p1.add(Mask::w, gen.vtx_p1, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
   if (bc) { goto L45; }
 
   // sq.xyzw vf24, 999(vi00)    |  mul.xyzw vf23, vf29, vf07      590
@@ -900,7 +900,7 @@ L10: // R
 
   L52:
   // div Q, vf01.x, vf15.w      |  nop                            607
-  vu.Q = gen.fog.x() / vu.vf15.w();
+  vu.Q = gen.fog.x() / gen.vtx_p3.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            608
   lq_buffer(Mask::xyzw, vu.vf23, 998);
   // lq.xyzw vf24, 999(vi00)    |  nop                            609
@@ -928,7 +928,7 @@ L10: // R
   // ibne vi04, vi08, L39       |  nop                            671
   bc = (vu.vi04 != vu.vi08);
   // sq.xyzw vf23, 998(vi00)    |  addw.w vf14, vf14, vf01        672
-  vu.vf14.add(Mask::w, vu.vf14, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
+  gen.vtx_p2.add(Mask::w, gen.vtx_p2, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
   if (bc) { goto L39; }
 
   // sq.xyzw vf24, 999(vi00)    |  mul.xyzw vf23, vf26, vf07      673
@@ -972,7 +972,7 @@ L10: // R
 
   L56:
   // div Q, vf01.x, vf12.w      |  nop                            690
-  vu.Q = gen.fog.x() / vu.vf12.w();
+  vu.Q = gen.fog.x() / gen.vtx_p0.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            691
   lq_buffer(Mask::xyzw, vu.vf23, 998);
   // lq.xyzw vf24, 999(vi00)    |  nop                            692
@@ -1000,7 +1000,7 @@ L10: // R
   // ibne vi05, vi09, L41       |  nop                            754
   bc = (vu.vi05 != vu.vi09);
   // sq.xyzw vf23, 998(vi00)    |  addw.w vf15, vf15, vf01        755
-  vu.vf15.add(Mask::w, vu.vf15, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
+  gen.vtx_p3.add(Mask::w, gen.vtx_p3, kFogFloatOffset);   sq_buffer(Mask::xyzw, vu.vf23, 998);
   if (bc) { goto L41; }
 
   // sq.xyzw vf24, 999(vi00)    |  mul.xyzw vf23, vf27, vf07      756
@@ -1044,7 +1044,7 @@ L10: // R
 
   L60:
   // div Q, vf01.x, vf13.w      |  nop                            773
-  vu.Q = gen.fog.x() / vu.vf13.w();
+  vu.Q = gen.fog.x() / gen.vtx_p1.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            774
   lq_buffer(Mask::xyzw, vu.vf23, 998);
   // lq.xyzw vf24, 999(vi00)    |  nop                            775
@@ -1085,9 +1085,11 @@ L10: // R
   // ilw.w vi04, 1(vi14)        |  nop                            1066
   ilw_buffer(Mask::w, vu.vi04, vu.vi14 + 1);
   // lqi.xyzw vf16, vi14        |  nop                            1067
-  lq_buffer(Mask::xyzw, vu.vf16, vu.vi14++);
+  Vf adgif_temp0;
+  lq_buffer(Mask::xyzw, adgif_temp0, vu.vi14++);
   // lqi.xyzw vf17, vi14        |  nop                            1068
-  lq_buffer(Mask::xyzw, vu.vf17, vu.vi14++);
+  Vf adgif_temp1;
+  lq_buffer(Mask::xyzw, adgif_temp1, vu.vi14++);
   // lqi.xyzw vf18, vi14        |  nop                            1069
   lq_buffer(Mask::xyzw, vu.vf18, vu.vi14++);
   // lqi.xyzw vf19, vi14        |  nop                            1070
@@ -1099,9 +1101,9 @@ L10: // R
   // sqi.xyzw vf02, vi06        |  nop                            1073
   sq_buffer(Mask::xyzw, gen.adgif_tmpl, vu.vi06++);
   // sqi.xyzw vf16, vi06        |  nop                            1074
-  sq_buffer(Mask::xyzw, vu.vf16, vu.vi06++);
+  sq_buffer(Mask::xyzw, adgif_temp0, vu.vi06++);
   // sqi.xyzw vf17, vi06        |  nop                            1075
-  sq_buffer(Mask::xyzw, vu.vf17, vu.vi06++);
+  sq_buffer(Mask::xyzw, adgif_temp1, vu.vi06++);
   // sqi.xyzw vf18, vi06        |  nop                            1076
   sq_buffer(Mask::xyzw, vu.vf18, vu.vi06++);
   // sqi.xyzw vf19, vi06        |  nop                            1077
