@@ -47,8 +47,8 @@ struct McHeader {
   u8 data[944];
   u32 unk1_repeated;
 };
-
 static_assert(sizeof(McHeader) == 0x400, "McHeader size");
+constexpr s32 BANK_TOTAL_SIZE = BANK_SIZE + sizeof(McHeader) * 2;
 
 static McHeader header;
 
@@ -67,22 +67,22 @@ using namespace ee;
 // void cb_createdfile(s32);
 // void cb_writtenfile(s32);
 // void cb_closedfile(s32);
-//void cb_reprobe_save(s32);
-//void cb_reprobe_load(s32);
+// void cb_reprobe_save(s32);
+// void cb_reprobe_load(s32);
 // void cb_probe(s32);
 // void cb_reprobe(s32);
 // void cb_getdir(s32);
 // void cb_check_open(s32);
-//void cb_check_read(s32);
-//void cb_check_close(s32);
-//void cb_openedsave(s32);
-//void cb_savedheader(s32);
-//void cb_saveddata(s32);
-//void cb_savedfooter(s32);
-//void cb_closedsave(s32);
-//void cb_openedload(s32);
-//void cb_readload(s32);
-//void cb_closedload(s32);
+// void cb_check_read(s32);
+// void cb_check_close(s32);
+// void cb_openedsave(s32);
+// void cb_savedheader(s32);
+// void cb_saveddata(s32);
+// void cb_savedfooter(s32);
+// void cb_closedsave(s32);
+// void cb_openedload(s32);
+// void cb_readload(s32);
+// void cb_closedload(s32);
 
 template <typename... Args>
 void mc_print(const std::string& str, Args&&... args) {
@@ -196,7 +196,7 @@ bool pc_bank_try_create(int id, int bank) {
   }
   return true;
 }
-    /*!
+/*!
  * PC port function that returns whether a given bank ID's file exists or not.
  */
 bool file_is_present(int id) {
@@ -253,12 +253,10 @@ void pc_update_card() {
     if (header2->save_count > header1->save_count) {
       // use most recent bank here.
       header1 = header2;
-      mc_print("update_card: picking aux bank");
     }
 
     // banks chosen and checked. copy data and set info.
     mc_files[file].last_saved_bank = header1 == header2;
-    mc_print(fmt::format("update_card: picking bank {}", mc_files[file].last_saved_bank));
     if (header1->save_count > highest_save_count) {
       mc_last_file = file;
     }
@@ -354,7 +352,7 @@ void pc_game_save_synch() {
 void pc_game_load_open_file(FILE* fd) {
   if (fd) {
     // cb_openedload //
-    size_t read_size = (BANK_SIZE + 2 * sizeof(McHeader));
+    size_t read_size = BANK_TOTAL_SIZE;
     mc_print("reading save file...");
     if (fread(op.data_ptr.c() + p2 * read_size, read_size, 1, fd) == 1) {
       // cb_readload //
@@ -377,10 +375,10 @@ void pc_game_load_open_file(FILE* fd) {
 
           headers[0] = (McHeader*)(op.data_ptr.c());
           footers[0] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) + BANK_SIZE);
-          headers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 2 + BANK_SIZE);
-          footers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 2 + BANK_SIZE +
-                                   sizeof(McHeader) + BANK_SIZE);
-          static_assert(sizeof(McHeader) * 4 + BANK_SIZE * 2 == 0x21000, "save layout");
+          headers[1] = (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE);
+          footers[1] =
+              (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE + sizeof(McHeader) + BANK_SIZE);
+          static_assert(BANK_TOTAL_SIZE * 2 == 0x21000, "save layout");
           ok[0] = true;
           ok[1] = true;
 
@@ -445,7 +443,8 @@ void pc_game_load_open_file(FILE* fd) {
             }
 
             u32 current_save_count = headers[bank]->save_count;
-            memcpy(op.data_ptr.c(), op.data_ptr.c() + sizeof(McHeader), BANK_SIZE);
+            memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
+                   BANK_SIZE);
             mc_last_file = op.param2;
             mc_files[op.param2].most_recent_save_count = current_save_count;
             mc_files[op.param2].last_saved_bank = bank;
@@ -477,7 +476,8 @@ void pc_game_load_synch() {
   // cb_reprobe_load //
   p2 = 0;
   mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
-  auto fd = fopen(file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4]}).c_str(), "rb");
+  auto fd = fopen(
+      file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4]}).c_str(), "rb");
   pc_game_load_open_file(fd);
 }
 
@@ -1415,7 +1415,7 @@ bool cb_pcheck(s32 sync_result) {
 /*!
  * Callback after check before saving.
  */
-//void cb_reprobe_save(s32 sync_result) {
+// void cb_reprobe_save(s32 sync_result) {
 //  if (sync_result == sceMcResSucceed) {
 //    if (!file_is_present(op.param2)) {
 //      mc_print("reprobe save: first time!");
@@ -1448,7 +1448,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_openedsave(s32 sync_result) {
+// void cb_openedsave(s32 sync_result) {
 //  mc_print("save file opened, writing header...");
 //  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
 //    p3 = sync_result;
@@ -1469,7 +1469,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_savedheader(s32 sync_result) {
+// void cb_savedheader(s32 sync_result) {
 //  mc_print("save file writing main data");
 //  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
 //    if (sceMcWrite(p3, op.data_ptr.c(), BANK_SIZE) == sceMcResSucceed) {
@@ -1481,7 +1481,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_saveddata(s32 sync_result) {
+// void cb_saveddata(s32 sync_result) {
 //  mc_print("save file writing footer");
 //  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
 //    if (sceMcWrite(p3, &header, sizeof(McHeader)) == sceMcResSucceed) {
@@ -1493,7 +1493,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_savedfooter(s32 sync_result) {
+// void cb_savedfooter(s32 sync_result) {
 //  mc_print("closing after save");
 //  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
 //    if (sceMcClose(p3) == sceMcResSucceed) {
@@ -1505,7 +1505,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_closedsave(s32 sync_result) {
+// void cb_closedsave(s32 sync_result) {
 //  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
 //    mc_print("All done with saving!!");
 //    op.operation = MemoryCardOperationKind::NO_OP;
@@ -1521,7 +1521,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_reprobe_load(s32 sync_result) {
+// void cb_reprobe_load(s32 sync_result) {
 //  if (sync_result == 0) {
 //    p2 = 0;
 //    mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
@@ -1538,10 +1538,10 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_openedload(s32 sync_result) {
+// void cb_openedload(s32 sync_result) {
 //  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
 //    p3 = sync_result;
-//    size_t read_size = (BANK_SIZE + 2 * sizeof(McHeader));
+//    size_t read_size = BANK_TOTAL_SIZE;
 //    mc_print("reading save file...");
 //    if (sceMcRead(sync_result, op.data_ptr.c() + p2 * read_size, read_size) == sceMcResSucceed) {
 //      callback = cb_readload;
@@ -1552,7 +1552,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_readload(s32 sync_result) {
+// void cb_readload(s32 sync_result) {
 //  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
 //    mc_print("closing save file..");
 //    if (sceMcClose(p3) == sceMcResSucceed) {
@@ -1564,7 +1564,7 @@ bool cb_pcheck(s32 sync_result) {
 //  }
 //}
 //
-//void cb_closedload(s32 sync_result) {
+// void cb_closedload(s32 sync_result) {
 //  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
 //    p2++;
 //    if (p2 < 2) {
@@ -1583,9 +1583,9 @@ bool cb_pcheck(s32 sync_result) {
 //
 //      headers[0] = (McHeader*)(op.data_ptr.c());
 //      footers[0] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) + BANK_SIZE);
-//      headers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 2 + BANK_SIZE);
-//      footers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 3 + BANK_SIZE * 2);
-//      static_assert(sizeof(McHeader) * 3 + BANK_SIZE * 2 == 0x20c00, "save layout");
+//      headers[1] = (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE);
+//      footers[1] = (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE + sizeof(McHeader) + BANK_SIZE);
+//      static_assert(BANK_TOTAL_SIZE * 2 == 0x21000, "save layout");
 //      ok[0] = true;
 //      ok[1] = true;
 //
@@ -1625,7 +1625,8 @@ bool cb_pcheck(s32 sync_result) {
 //        // no good data.
 //        if (headers[0]->save_count == 0 && headers[0]->checksum == 0 && headers[0]->magic == 0 &&
 //            headers[0]->unk1_repeated == 0 && headers[1]->save_count == 0 &&
-//            headers[1]->checksum == 0 && headers[1]->magic == 0 && headers[1]->unk1_repeated == 0) {
+//            headers[1]->checksum == 0 && headers[1]->magic == 0 && headers[1]->unk1_repeated == 0)
+//            {
 //          // this is a fresh file that you tried to load from...
 //          mc_print("new game result");
 //          op.operation = MemoryCardOperationKind::NO_OP;
@@ -1649,13 +1650,10 @@ bool cb_pcheck(s32 sync_result) {
 //        }
 //
 //        u32 current_save_count = headers[bank]->save_count;
-//        memcpy(op.data_ptr.c(), op.data_ptr.c() + sizeof(McHeader), BANK_SIZE);
-//        mc_last_file = op.param2;
-//        mc_files[op.param2].most_recent_save_count = current_save_count;
-//        mc_files[op.param2].last_saved_bank = bank;
-//        op.operation = MemoryCardOperationKind::NO_OP;
-//        op.result = McStatusCode::OK;
-//        mc_print("load succeeded");
+//        memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
+//        BANK_SIZE); mc_last_file = op.param2; mc_files[op.param2].most_recent_save_count =
+//        current_save_count; mc_files[op.param2].last_saved_bank = bank; op.operation =
+//        MemoryCardOperationKind::NO_OP; op.result = McStatusCode::OK; mc_print("load succeeded");
 //      }
 //    }
 //  }
