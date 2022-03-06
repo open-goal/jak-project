@@ -67,22 +67,22 @@ using namespace ee;
 // void cb_createdfile(s32);
 // void cb_writtenfile(s32);
 // void cb_closedfile(s32);
-void cb_reprobe_save(s32);
-void cb_reprobe_load(s32);
+//void cb_reprobe_save(s32);
+//void cb_reprobe_load(s32);
 // void cb_probe(s32);
 // void cb_reprobe(s32);
 // void cb_getdir(s32);
 // void cb_check_open(s32);
-void cb_check_read(s32);
-void cb_check_close(s32);
-void cb_openedsave(s32);
-void cb_savedheader(s32);
-void cb_saveddata(s32);
-void cb_savedfooter(s32);
-void cb_closedsave(s32);
-void cb_openedload(s32);
-void cb_readload(s32);
-void cb_closedload(s32);
+//void cb_check_read(s32);
+//void cb_check_close(s32);
+//void cb_openedsave(s32);
+//void cb_savedheader(s32);
+//void cb_saveddata(s32);
+//void cb_savedfooter(s32);
+//void cb_closedsave(s32);
+//void cb_openedload(s32);
+//void cb_readload(s32);
+//void cb_closedload(s32);
 
 template <typename... Args>
 void mc_print(const std::string& str, Args&&... args) {
@@ -121,53 +121,6 @@ void kmemcard_init_globals() {
   p4 = 0;
   memset(&dirent, 0, sizeof(sceMcTblGetDir));
   memset(&header, 0, sizeof(McHeader));
-}
-
-// static empty bank
-static const std::array<u8, 0x11800> nullbank = {0};
-// static temp bank
-static std::array<u8, 0x11800> bankdata = {0};
-/*!
- * PC port function that returns whether a given bank ID's file exists or not.
- */
-bool file_is_present(int id) {
-  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2]});
-  if (!std::filesystem::exists(bankname)) {
-    // file doesn't exist... let's create an empty one but also say we didn't find anything.
-    file_util::create_dir_if_needed("user");
-    file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard"}));
-    file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard", filename[0]}));
-    file_util::write_binary_file(bankname, nullbank.data(), nullbank.size());
-    return false;
-  }
-  // file exists. but let's see if it's an empty one.
-  // this prevents the game from reading a bank but classifying it as corrupt data.
-  // which a file full of zeros logically is.
-  auto fp = fopen(bankname.c_str(), "rb");
-  fseek(fp, 0, SEEK_END);
-  auto len = ftell(fp);
-  rewind(fp);
-  if (len > bankdata.size()) {
-    // file is larger than expected, obviously not valid.
-    fclose(fp);
-    return false;
-  }
-  /*
-  fread(bankdata.data(), len, 1, fp);
-  fclose(fp);
-  for (int i = 0; i < len; ++i) {
-    if (bankdata[i] != nullbank[i]) {
-      return true;
-    }
-  }
-  return false;
-  */
-
-  // we can actually just check if the save count is over zero...
-  u32 savecount = 0;
-  fread(&savecount, sizeof(u32), 1, fp);
-  fclose(fp);
-  return savecount > 0;
 }
 
 /*!
@@ -219,6 +172,99 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
 //    return -1;
 //  }
 //}
+
+// static empty bank
+static const std::array<u8, 0x11800> nullbank = {0};
+// static temp bank
+static std::array<u8, 0x11800> bankdata = {0};
+/*!
+ * PC port function to create a bank file if it doesn't exist.
+ */
+bool pc_bank_try_create(int id, int bank) {
+  if (bank == 0) {
+    // make aux bank too
+    pc_bank_try_create(id, 1);
+  }
+  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2 + bank]});
+  if (!std::filesystem::exists(bankname)) {
+    // file doesn't exist... let's create an empty one
+    file_util::create_dir_if_needed("user");
+    file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard"}));
+    file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard", filename[0]}));
+    file_util::write_binary_file(bankname, nullbank.data(), nullbank.size());
+    return false;
+  }
+  return true;
+}
+    /*!
+ * PC port function that returns whether a given bank ID's file exists or not.
+ */
+bool file_is_present(int id) {
+  if (!pc_bank_try_create(id, 0)) {
+    // file doesn't exist...
+    return false;
+  }
+  // file exists. but let's see if it's an empty one.
+  // this prevents the game from reading a bank but classifying it as corrupt data.
+  // which a file full of zeros logically is.
+  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2]});
+  auto fp = fopen(bankname.c_str(), "rb");
+  fseek(fp, 0, SEEK_END);
+  auto len = ftell(fp);
+  rewind(fp);
+  if (len > bankdata.size()) {
+    // file is larger than expected, obviously not valid.
+    fclose(fp);
+    file_util::write_binary_file(bankname, nullbank.data(), nullbank.size());
+    return false;
+  }
+  /*
+  fread(bankdata.data(), len, 1, fp);
+  fclose(fp);
+  for (int i = 0; i < len; ++i) {
+    if (bankdata[i] != nullbank[i]) {
+      return true;
+    }
+  }
+  return false;
+  */
+
+  // we can actually just check if the save count is over zero...
+  u32 savecount = 0;
+  fread(&savecount, sizeof(u32), 1, fp);
+  fclose(fp);
+  return savecount > 0;
+}
+
+/*!
+ * PC port function to set memcard info. We don't use a memory card, instead just the raw savefiles.
+ */
+void pc_update_card() {
+  int highest_save_count = 0;
+  mc_last_file = -1;
+  for (s32 file = 0; file < 4; file++) {
+    auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + file * 2]});
+    auto bankname2 = file_util::get_file_path({"user", "memcard", filename[1 + 4 + file * 2]});
+    mc_files[file].present = file_is_present(file);
+    auto bankdata = file_util::read_binary_file(bankname);
+    auto bankdata2 = file_util::read_binary_file(bankname2);
+    auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
+    auto header2 = reinterpret_cast<McHeader*>(bankdata2.data());
+    if (header1->save_count > header2->save_count) {
+      // use most recent bank here.
+      header1 = header2;
+    }
+
+    // banks chosen and checked. copy data and set info.
+    mc_files[file].last_saved_bank = header1 == header2;
+    if (header1->save_count > highest_save_count) {
+      mc_last_file = file;
+    }
+    for (s32 i = 0; i < 64; i++) {  // actually a loop over u32's
+      mc_files[file].data[i] = header1->preview_data[i];
+    }
+  }
+}
 
 /*!
  * PC port function to save a file. This does the whole saving at once, synchronously.
@@ -653,6 +699,9 @@ void MC_run() {
       }
     }
   }*/
+
+  // extra PC port code here to initialize our "memory card"
+  pc_update_card();
 }
 
 /////////////////////////
@@ -728,6 +777,7 @@ u64 MC_createfile(s32 param, Ptr<u8> data) {
 /*!
  * Set the current operation to SAVE.
  * The "summary data" is data that will be used when previewing save files (number of orbs etc)
+ * TODO put synchronous call here
  */
 u64 MC_save(s32 card_idx, s32 file_idx, Ptr<u8> save_data, Ptr<u8> save_summary_data) {
   mc_print("requested save");
@@ -747,6 +797,7 @@ u64 MC_save(s32 card_idx, s32 file_idx, Ptr<u8> save_data, Ptr<u8> save_summary_
 
 /*!
  * Set the current operation to LOAD.
+ * TODO put synchronous call here
  */
 u64 MC_load(s32 card_idx, s32 file_idx, Ptr<u8> data) {
   mc_print("requested load");
@@ -830,12 +881,9 @@ void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
   info->initted = 1;
   // copy over the preview data.
   for (s32 file = 0; file < 4; file++) {
-    auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + file * 2]});
-    info->files[file].present = file_is_present(file);
-    auto bankdata = reinterpret_cast<McHeader*>(file_util::read_binary_file(bankname).data());
+    info->files[file].present = mc_files[file].present;
     for (s32 i = 0; i < 64; i++) {  // actually a loop over u32's
-      info->files[file].data[i] = bankdata->preview_data[i];
-      mc_files[file].data[i] = bankdata->preview_data[i];
+      info->files[file].data[i] = mc_files[file].data[i];
     }
   }
   info->last_file = mc_last_file;
@@ -1363,248 +1411,248 @@ bool cb_pcheck(s32 sync_result) {
 /*!
  * Callback after check before saving.
  */
-void cb_reprobe_save(s32 sync_result) {
-  if (sync_result == sceMcResSucceed) {
-    if (!file_is_present(op.param2)) {
-      mc_print("reprobe save: first time!");
-      // first time saving!
-      p2 = 0;  // save count 0
-      p4 = 0;  // first bank for file
-    } else {
-      p2 = mc_files[op.param2].most_recent_save_count + 1;  // increment save count
-      p4 = mc_files[op.param2].last_saved_bank ^ 1;         // use the other bank
-    }
-
-    // reserve 0 as "I never saved" and use 1 instead.
-    if (p2 == 0) {
-      p2 = 1;
-    }
-
-    // file*2 + p4 is the bank (2 banks per file, p4 is 0 or 1 to select the bank)
-    // 4 is the first bank file
-    mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
-    if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4 + p4], 2) == sceMcResSucceed) {
-      callback = cb_openedsave;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  } else {
-    // mc[p1].state = MemoryCardState::UNKNOWN;
-    op.operation = MemoryCardOperationKind::NO_OP;
-    op.result = McStatusCode::BAD_HANDLE;
-  }
-}
-
-void cb_openedsave(s32 sync_result) {
-  mc_print("save file opened, writing header...");
-  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
-    p3 = sync_result;
-    memset(&header, 0, sizeof(McHeader));
-    header.save_count = p2;
-    header.checksum = mc_checksum(op.data_ptr, BANK_SIZE);
-    header.magic = MEM_CARD_MAGIC;
-    header.unk1_repeated = p2;
-    for (int i = 0; i < 64; i++) {
-      header.preview_data[i] = op.data_ptr2.c()[i];
-    }
-    if (sceMcWrite(p3, &header, sizeof(McHeader)) == sceMcResSucceed) {
-      callback = cb_savedheader;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  }
-}
-
-void cb_savedheader(s32 sync_result) {
-  mc_print("save file writing main data");
-  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
-    if (sceMcWrite(p3, op.data_ptr.c(), BANK_SIZE) == sceMcResSucceed) {
-      callback = cb_saveddata;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  }
-}
-
-void cb_saveddata(s32 sync_result) {
-  mc_print("save file writing footer");
-  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
-    if (sceMcWrite(p3, &header, sizeof(McHeader)) == sceMcResSucceed) {
-      callback = cb_savedfooter;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  }
-}
-
-void cb_savedfooter(s32 sync_result) {
-  mc_print("closing after save");
-  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
-    if (sceMcClose(p3) == sceMcResSucceed) {
-      callback = cb_closedsave;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  }
-}
-
-void cb_closedsave(s32 sync_result) {
-  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
-    mc_print("All done with saving!!");
-    op.operation = MemoryCardOperationKind::NO_OP;
-    op.result = McStatusCode::OK;
-    // mc_files[op.param2].present = 1;
-    mc_files[op.param2].most_recent_save_count = p2;
-    mc_files[op.param2].last_saved_bank = p4;
-    for (int i = 0; i < 64; i++) {
-      mc_files[op.param2].data[i] = op.data_ptr2.c()[i];
-    }
-    mc_last_file = op.param2;
-    flush_memory_card_to_file();
-  }
-}
-
-void cb_reprobe_load(s32 sync_result) {
-  if (sync_result == 0) {
-    p2 = 0;
-    mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
-    if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4], 1) == sceMcResSucceed) {
-      callback = cb_openedload;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  } else {
-    // mc[p1].state = MemoryCardState::UNKNOWN;
-    op.operation = MemoryCardOperationKind::NO_OP;
-    op.result = McStatusCode::BAD_HANDLE;
-  }
-}
-
-void cb_openedload(s32 sync_result) {
-  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
-    p3 = sync_result;
-    size_t read_size = (BANK_SIZE + 2 * sizeof(McHeader));
-    mc_print("reading save file...");
-    if (sceMcRead(sync_result, op.data_ptr.c() + p2 * read_size, read_size) == sceMcResSucceed) {
-      callback = cb_readload;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  }
-}
-
-void cb_readload(s32 sync_result) {
-  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
-    mc_print("closing save file..");
-    if (sceMcClose(p3) == sceMcResSucceed) {
-      callback = cb_closedload;
-    } else {
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::INTERNAL_ERROR;
-    }
-  }
-}
-
-void cb_closedload(s32 sync_result) {
-  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
-    p2++;
-    if (p2 < 2) {
-      mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
-      if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4 + p2], 1) == sceMcResSucceed) {
-        callback = cb_openedload;
-      } else {
-        op.operation = MemoryCardOperationKind::NO_OP;
-        op.result = McStatusCode::INTERNAL_ERROR;
-      }
-    } else {
-      // let's verify the data.
-      McHeader* headers[2];
-      McHeader* footers[2];
-      bool ok[2];
-
-      headers[0] = (McHeader*)(op.data_ptr.c());
-      footers[0] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) + BANK_SIZE);
-      headers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 2 + BANK_SIZE);
-      footers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 3 + BANK_SIZE * 2);
-      static_assert(sizeof(McHeader) * 3 + BANK_SIZE * 2 == 0x20c00, "save layout");
-      ok[0] = true;
-      ok[1] = true;
-
-      for (int idx = 0; idx < 2; idx++) {
-        u32 expected_save_count = headers[idx]->save_count;
-        if (headers[idx]->unk1_repeated == expected_save_count &&
-            footers[idx]->save_count == expected_save_count &&
-            footers[idx]->unk1_repeated == expected_save_count) {
-          // save count is okay!
-          if (headers[idx]->magic == MEM_CARD_MAGIC && footers[idx]->magic == MEM_CARD_MAGIC) {
-            // magic numbers okay!
-            if (headers[idx]->checksum == footers[idx]->checksum) {
-              // checksum
-              auto expected_checksum = headers[idx]->checksum;
-              if (mc_checksum(make_u8_ptr(headers[idx] + 1), BANK_SIZE) != expected_checksum) {
-                mc_print("failed checksum");
-                ok[idx] = false;
-              }
-            } else {
-              mc_print("corrupted checksum");
-              ok[idx] = false;
-            }
-          } else {
-            mc_print("bad magic");
-            ok[idx] = false;
-          }
-        } else {
-          mc_print("bad save count");
-          ok[idx] = false;
-        }
-      }
-
-      mc_print("checking loaded banks");
-
-      //
-      if (!ok[0] && !ok[1]) {
-        // no good data.
-        if (headers[0]->save_count == 0 && headers[0]->checksum == 0 && headers[0]->magic == 0 &&
-            headers[0]->unk1_repeated == 0 && headers[1]->save_count == 0 &&
-            headers[1]->checksum == 0 && headers[1]->magic == 0 && headers[1]->unk1_repeated == 0) {
-          // this is a fresh file that you tried to load from...
-          mc_print("new game result");
-          op.operation = MemoryCardOperationKind::NO_OP;
-          op.result = McStatusCode::NEW_GAME;
-          mc_last_file = op.param2;
-        } else {
-          mc_print("corrupted data");
-          op.operation = MemoryCardOperationKind::NO_OP;
-          op.result = McStatusCode::READ_ERROR;
-        }
-      } else {
-        // pick the bank
-        int bank = 0;
-
-        if (!ok[0] || !ok[1]) {
-          if (ok[1]) {
-            bank = 1;
-          }
-        } else {
-          bank = (headers[0]->save_count - headers[1]->save_count) < 1;
-        }
-
-        u32 current_save_count = headers[bank]->save_count;
-        memcpy(op.data_ptr.c(), op.data_ptr.c() + sizeof(McHeader), BANK_SIZE);
-        mc_last_file = op.param2;
-        mc_files[op.param2].most_recent_save_count = current_save_count;
-        mc_files[op.param2].last_saved_bank = bank;
-        op.operation = MemoryCardOperationKind::NO_OP;
-        op.result = McStatusCode::OK;
-        mc_print("load succeeded");
-      }
-    }
-  }
-}
+//void cb_reprobe_save(s32 sync_result) {
+//  if (sync_result == sceMcResSucceed) {
+//    if (!file_is_present(op.param2)) {
+//      mc_print("reprobe save: first time!");
+//      // first time saving!
+//      p2 = 0;  // save count 0
+//      p4 = 0;  // first bank for file
+//    } else {
+//      p2 = mc_files[op.param2].most_recent_save_count + 1;  // increment save count
+//      p4 = mc_files[op.param2].last_saved_bank ^ 1;         // use the other bank
+//    }
+//
+//    // reserve 0 as "I never saved" and use 1 instead.
+//    if (p2 == 0) {
+//      p2 = 1;
+//    }
+//
+//    // file*2 + p4 is the bank (2 banks per file, p4 is 0 or 1 to select the bank)
+//    // 4 is the first bank file
+//    mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
+//    if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4 + p4], 2) == sceMcResSucceed) {
+//      callback = cb_openedsave;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  } else {
+//    // mc[p1].state = MemoryCardState::UNKNOWN;
+//    op.operation = MemoryCardOperationKind::NO_OP;
+//    op.result = McStatusCode::BAD_HANDLE;
+//  }
+//}
+//
+//void cb_openedsave(s32 sync_result) {
+//  mc_print("save file opened, writing header...");
+//  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+//    p3 = sync_result;
+//    memset(&header, 0, sizeof(McHeader));
+//    header.save_count = p2;
+//    header.checksum = mc_checksum(op.data_ptr, BANK_SIZE);
+//    header.magic = MEM_CARD_MAGIC;
+//    header.unk1_repeated = p2;
+//    for (int i = 0; i < 64; i++) {
+//      header.preview_data[i] = op.data_ptr2.c()[i];
+//    }
+//    if (sceMcWrite(p3, &header, sizeof(McHeader)) == sceMcResSucceed) {
+//      callback = cb_savedheader;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  }
+//}
+//
+//void cb_savedheader(s32 sync_result) {
+//  mc_print("save file writing main data");
+//  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+//    if (sceMcWrite(p3, op.data_ptr.c(), BANK_SIZE) == sceMcResSucceed) {
+//      callback = cb_saveddata;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  }
+//}
+//
+//void cb_saveddata(s32 sync_result) {
+//  mc_print("save file writing footer");
+//  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+//    if (sceMcWrite(p3, &header, sizeof(McHeader)) == sceMcResSucceed) {
+//      callback = cb_savedfooter;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  }
+//}
+//
+//void cb_savedfooter(s32 sync_result) {
+//  mc_print("closing after save");
+//  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+//    if (sceMcClose(p3) == sceMcResSucceed) {
+//      callback = cb_closedsave;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  }
+//}
+//
+//void cb_closedsave(s32 sync_result) {
+//  if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+//    mc_print("All done with saving!!");
+//    op.operation = MemoryCardOperationKind::NO_OP;
+//    op.result = McStatusCode::OK;
+//    // mc_files[op.param2].present = 1;
+//    mc_files[op.param2].most_recent_save_count = p2;
+//    mc_files[op.param2].last_saved_bank = p4;
+//    for (int i = 0; i < 64; i++) {
+//      mc_files[op.param2].data[i] = op.data_ptr2.c()[i];
+//    }
+//    mc_last_file = op.param2;
+//    flush_memory_card_to_file();
+//  }
+//}
+//
+//void cb_reprobe_load(s32 sync_result) {
+//  if (sync_result == 0) {
+//    p2 = 0;
+//    mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
+//    if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4], 1) == sceMcResSucceed) {
+//      callback = cb_openedload;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  } else {
+//    // mc[p1].state = MemoryCardState::UNKNOWN;
+//    op.operation = MemoryCardOperationKind::NO_OP;
+//    op.result = McStatusCode::BAD_HANDLE;
+//  }
+//}
+//
+//void cb_openedload(s32 sync_result) {
+//  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
+//    p3 = sync_result;
+//    size_t read_size = (BANK_SIZE + 2 * sizeof(McHeader));
+//    mc_print("reading save file...");
+//    if (sceMcRead(sync_result, op.data_ptr.c() + p2 * read_size, read_size) == sceMcResSucceed) {
+//      callback = cb_readload;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  }
+//}
+//
+//void cb_readload(s32 sync_result) {
+//  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
+//    mc_print("closing save file..");
+//    if (sceMcClose(p3) == sceMcResSucceed) {
+//      callback = cb_closedload;
+//    } else {
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::INTERNAL_ERROR;
+//    }
+//  }
+//}
+//
+//void cb_closedload(s32 sync_result) {
+//  if (cb_check(sync_result, McStatusCode::READ_ERROR) == 0) {
+//    p2++;
+//    if (p2 < 2) {
+//      mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
+//      if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4 + p2], 1) == sceMcResSucceed) {
+//        callback = cb_openedload;
+//      } else {
+//        op.operation = MemoryCardOperationKind::NO_OP;
+//        op.result = McStatusCode::INTERNAL_ERROR;
+//      }
+//    } else {
+//      // let's verify the data.
+//      McHeader* headers[2];
+//      McHeader* footers[2];
+//      bool ok[2];
+//
+//      headers[0] = (McHeader*)(op.data_ptr.c());
+//      footers[0] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) + BANK_SIZE);
+//      headers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 2 + BANK_SIZE);
+//      footers[1] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) * 3 + BANK_SIZE * 2);
+//      static_assert(sizeof(McHeader) * 3 + BANK_SIZE * 2 == 0x20c00, "save layout");
+//      ok[0] = true;
+//      ok[1] = true;
+//
+//      for (int idx = 0; idx < 2; idx++) {
+//        u32 expected_save_count = headers[idx]->save_count;
+//        if (headers[idx]->unk1_repeated == expected_save_count &&
+//            footers[idx]->save_count == expected_save_count &&
+//            footers[idx]->unk1_repeated == expected_save_count) {
+//          // save count is okay!
+//          if (headers[idx]->magic == MEM_CARD_MAGIC && footers[idx]->magic == MEM_CARD_MAGIC) {
+//            // magic numbers okay!
+//            if (headers[idx]->checksum == footers[idx]->checksum) {
+//              // checksum
+//              auto expected_checksum = headers[idx]->checksum;
+//              if (mc_checksum(make_u8_ptr(headers[idx] + 1), BANK_SIZE) != expected_checksum) {
+//                mc_print("failed checksum");
+//                ok[idx] = false;
+//              }
+//            } else {
+//              mc_print("corrupted checksum");
+//              ok[idx] = false;
+//            }
+//          } else {
+//            mc_print("bad magic");
+//            ok[idx] = false;
+//          }
+//        } else {
+//          mc_print("bad save count");
+//          ok[idx] = false;
+//        }
+//      }
+//
+//      mc_print("checking loaded banks");
+//
+//      //
+//      if (!ok[0] && !ok[1]) {
+//        // no good data.
+//        if (headers[0]->save_count == 0 && headers[0]->checksum == 0 && headers[0]->magic == 0 &&
+//            headers[0]->unk1_repeated == 0 && headers[1]->save_count == 0 &&
+//            headers[1]->checksum == 0 && headers[1]->magic == 0 && headers[1]->unk1_repeated == 0) {
+//          // this is a fresh file that you tried to load from...
+//          mc_print("new game result");
+//          op.operation = MemoryCardOperationKind::NO_OP;
+//          op.result = McStatusCode::NEW_GAME;
+//          mc_last_file = op.param2;
+//        } else {
+//          mc_print("corrupted data");
+//          op.operation = MemoryCardOperationKind::NO_OP;
+//          op.result = McStatusCode::READ_ERROR;
+//        }
+//      } else {
+//        // pick the bank
+//        int bank = 0;
+//
+//        if (!ok[0] || !ok[1]) {
+//          if (ok[1]) {
+//            bank = 1;
+//          }
+//        } else {
+//          bank = (headers[0]->save_count - headers[1]->save_count) < 1;
+//        }
+//
+//        u32 current_save_count = headers[bank]->save_count;
+//        memcpy(op.data_ptr.c(), op.data_ptr.c() + sizeof(McHeader), BANK_SIZE);
+//        mc_last_file = op.param2;
+//        mc_files[op.param2].most_recent_save_count = current_save_count;
+//        mc_files[op.param2].last_saved_bank = bank;
+//        op.operation = MemoryCardOperationKind::NO_OP;
+//        op.result = McStatusCode::OK;
+//        mc_print("load succeeded");
+//      }
+//    }
+//  }
+//}
