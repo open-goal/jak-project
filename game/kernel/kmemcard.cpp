@@ -18,7 +18,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Assert.h"
 
-static constexpr bool memcard_debug = false;
+static constexpr bool memcard_debug = true;
 
 using McCallbackFunc = void (*)(s32);
 
@@ -250,13 +250,15 @@ void pc_update_card() {
     auto bankdata2 = file_util::read_binary_file(bankname2);
     auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
     auto header2 = reinterpret_cast<McHeader*>(bankdata2.data());
-    if (header1->save_count > header2->save_count) {
+    if (header2->save_count > header1->save_count) {
       // use most recent bank here.
       header1 = header2;
+      mc_print("update_card: picking aux bank");
     }
 
     // banks chosen and checked. copy data and set info.
     mc_files[file].last_saved_bank = header1 == header2;
+    mc_print(fmt::format("update_card: picking bank {}", mc_files[file].last_saved_bank));
     if (header1->save_count > highest_save_count) {
       mc_last_file = file;
     }
@@ -270,6 +272,7 @@ void pc_update_card() {
  * PC port function to save a file. This does the whole saving at once, synchronously.
  */
 void pc_game_save_synch() {
+  pc_update_card();
   // cd_reprobe_save //
   if (!file_is_present(op.param2)) {
     mc_print("reprobe save: first time!");
@@ -470,6 +473,7 @@ void pc_game_load_open_file(FILE* fd) {
  * PC port function to load a file. This does the whole loading at once, synchronously.
  */
 void pc_game_load_synch() {
+  pc_update_card();
   // cb_reprobe_load //
   p2 = 0;
   mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
