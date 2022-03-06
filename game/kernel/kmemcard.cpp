@@ -181,56 +181,18 @@ static const std::array<u8, 0x11800> nullbank = {0};
 // static temp bank
 static std::array<u8, 0x11800> bankdata = {0};
 /*!
- * PC port function to create a bank file if it doesn't exist.
- */
-bool pc_bank_try_create(int id, int bank) {
-  if (bank == 0) {
-    // make aux bank too
-    pc_bank_try_create(id, 1);
-  }
-  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2 + bank]});
-  if (!std::filesystem::exists(bankname)) {
-    // file doesn't exist... let's create an empty one
-    file_util::create_dir_if_needed("user");
-    file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard"}));
-    file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard", filename[0]}));
-    file_util::write_binary_file(bankname, nullbank.data(), nullbank.size());
-    return false;
-  }
-  return true;
-}
-/*!
  * PC port function that returns whether a given bank ID's file exists or not.
  */
-bool file_is_present(int id) {
-  if (!pc_bank_try_create(id, 0)) {
+bool file_is_present(int id, int bank = 0) {
+  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2 + bank]});
+  if (!std::filesystem::exists(bankname)) {
     // file doesn't exist...
     return false;
   }
   // file exists. but let's see if it's an empty one.
   // this prevents the game from reading a bank but classifying it as corrupt data.
   // which a file full of zeros logically is.
-  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2]});
   auto fp = fopen(bankname.c_str(), "rb");
-  fseek(fp, 0, SEEK_END);
-  auto len = ftell(fp);
-  rewind(fp);
-  if (len > bankdata.size()) {
-    // file is larger than expected, obviously not valid.
-    fclose(fp);
-    file_util::write_binary_file(bankname, nullbank.data(), nullbank.size());
-    return false;
-  }
-  /*
-  fread(bankdata.data(), len, 1, fp);
-  fclose(fp);
-  for (int i = 0; i < len; ++i) {
-    if (bankdata[i] != nullbank[i]) {
-      return true;
-    }
-  }
-  return false;
-  */
 
   // we can actually just check if the save count is over zero...
   u32 savecount = 0;
@@ -247,24 +209,38 @@ void pc_update_card() {
   mc_last_file = -1;
   for (s32 file = 0; file < 4; file++) {
     auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + file * 2]});
-    auto bankname2 = file_util::get_file_path({"user", "memcard", filename[1 + 4 + file * 2]});
     mc_files[file].present = file_is_present(file);
-    auto bankdata = file_util::read_binary_file(bankname);
-    auto bankdata2 = file_util::read_binary_file(bankname2);
-    auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
-    auto header2 = reinterpret_cast<McHeader*>(bankdata2.data());
-    if (header2->save_count > header1->save_count) {
-      // use most recent bank here.
-      header1 = header2;
-    }
+    if (mc_files[file].present) {
+      auto bankdata = file_util::read_binary_file(bankname);
+      auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
+      if (file_is_present(file, 1)) {
+        auto bankname2 = file_util::get_file_path({"user", "memcard", filename[1 + 4 + file * 2]});
+        auto bankdata2 = file_util::read_binary_file(bankname2);
+        auto header2 = reinterpret_cast<McHeader*>(bankdata.data());
 
-    // banks chosen and checked. copy data and set info.
-    mc_files[file].last_saved_bank = header1 == header2;
-    mc_files[file].most_recent_save_count = header1->save_count;
-    // if (mc_files[file].most_recent_save_count > highest_save_count) {
-    //  mc_last_file = file;
-    // }
-    memcpy(mc_files[file].data, header1->preview_data, 64);
+        if (header2->save_count > header1->save_count) {
+          // use most recent bank here.
+          header1 = header2;
+        }
+
+        // banks chosen and checked. copy data and set info.
+        mc_files[file].last_saved_bank = header1 == header2;
+        mc_files[file].most_recent_save_count = header1->save_count;
+
+        memcpy(mc_files[file].data, header1->preview_data, 64);
+      } else {
+        // banks chosen and checked. copy data and set info.
+        mc_files[file].last_saved_bank = 0;
+        mc_files[file].most_recent_save_count = header1->save_count;
+
+        memcpy(mc_files[file].data, header1->preview_data, 64);
+      }
+
+      // if (mc_files[file].most_recent_save_count > highest_save_count) {
+      //  mc_last_file = file;
+      //  highest_save_count = mc_files[file].most_recent_save_count;
+      // }
+    }
   }
 }
 
@@ -298,6 +274,7 @@ void pc_game_save_synch() {
   auto fd =
       fopen(file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4 + p4]}).c_str(),
             "wb");
+  fmt::print("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
   if (fd) {
     // cb_openedsave //
     mc_print("save file opened, writing header...");
@@ -363,12 +340,13 @@ void pc_game_load_open_file(FILE* fd) {
       if (fclose(fd) == 0) {
         // cb_closedload //
         p2++;
-        if (p2 < 2) {
+        // added : check if aux bank exists
+        auto new_bankname =
+            file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4 + p2]});
+        bool aux_exists = std::filesystem::exists(new_bankname);
+        if (p2 < 2 && aux_exists) {
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
-          auto new_fd =
-              fopen(file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4 + p2]})
-                        .c_str(),
-                    "rb");
+          auto new_fd = fopen(new_bankname.c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
           // let's verify the data.
@@ -383,7 +361,7 @@ void pc_game_load_open_file(FILE* fd) {
               (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE + sizeof(McHeader) + BANK_SIZE);
           static_assert(BANK_TOTAL_SIZE * 2 == 0x21000, "save layout");
           ok[0] = true;
-          ok[1] = true;
+          ok[1] = aux_exists;
 
           for (int idx = 0; idx < 2; idx++) {
             u32 expected_save_count = headers[idx]->save_count;
@@ -1424,7 +1402,7 @@ void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
  */
 // void cb_reprobe_save(s32 sync_result) {
 //  if (sync_result == sceMcResSucceed) {
-//    if (!file_is_present(op.param2)) {
+//    if (!mc[p1].files[op.param2].present) {
 //      mc_print("reprobe save: first time!");
 //      // first time saving!
 //      p2 = 0;  // save count 0
