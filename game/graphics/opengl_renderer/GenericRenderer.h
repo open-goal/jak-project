@@ -1,7 +1,6 @@
 #pragma once
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer2.h"
 #include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/common/vu.h"
@@ -42,7 +41,6 @@ class GenericRenderer : public BucketRenderer {
   }
 
   int m_skipped_tags = 0;
-  DirectRenderer m_direct;
   DirectRenderer2 m_direct2;
   Generic2 m_debug_gen2;
   std::string m_debug;
@@ -50,8 +48,7 @@ class GenericRenderer : public BucketRenderer {
   struct Vu {
     u32 row[4];
     u32 stcycl = 0;
-    Vf vf03, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29,
-        vf30, vf31;
+    Vf vf03, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30, vf31;
     const Vf vf00;
     u16 vi01, vi02, vi03, vi04, vi05, vi06, vi07, vi09, vi08, vi11, vi12, vi13, vi10, vi14, vi15;
     float I, P, Q;

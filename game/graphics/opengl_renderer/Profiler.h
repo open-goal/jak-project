@@ -34,6 +34,7 @@ class ProfilerNode {
 
   void add_draw_call(int count = 1) { m_stats.draw_calls += count; }
   void add_tri(int count = 1) { m_stats.triangles += count; }
+  float get_elapsed_time() const { return m_timer.getSeconds(); }
 
  private:
   friend class Profiler;
@@ -59,6 +60,7 @@ class ScopedProfilerNode {
 
   void add_draw_call(int count = 1) { m_node->add_draw_call(count); }
   void add_tri(int count = 1) { m_node->add_tri(count); }
+  float get_elapsed_time() const { return m_node->get_elapsed_time(); }
 
  private:
   ProfilerNode* m_node;

@@ -10,9 +10,9 @@ void Generic2::setup_draws() {
   }
   m_gs = GsState();
   link_adgifs_back_to_frags();
+  process_matrices();
   determine_draw_modes();
   draws_to_buckets();
-  process_matrices();
   final_vertex_update();
   build_index_buffer();
 }
@@ -48,6 +48,8 @@ void Generic2::determine_draw_modes() {
   // iterate over all adgifs
   for (u32 i = 0; i < m_next_free_adgif; i++) {
     auto& ad = m_adgifs[i].data;
+    auto& frag = m_fragments[m_adgifs[i].frag];
+    m_adgifs[i].uses_hud = frag.uses_hud;
 
     // ADGIF 0
     ASSERT((u8)ad.tex0_addr == (u32)GsRegisterAddress::TEX0_1);
@@ -97,7 +99,6 @@ void Generic2::determine_draw_modes() {
       ASSERT((u8)ad.alpha_addr == (u32)GsRegisterAddress::MIPTBP2_1);
     }
 
-    auto& frag = m_fragments[m_adgifs[i].frag];
     u64 bonus_adgif_data[4];
     memcpy(bonus_adgif_data, frag.header + (5 * 16), 4 * sizeof(u64));
     // ADGIF 5
@@ -230,31 +231,59 @@ void Generic2::draws_to_buckets() {
  * I don't think this will hold for TIE...
  */
 void Generic2::process_matrices() {
-  std::array<math::Vector4f, 4> reference_mat;
-  memcpy(&reference_mat, m_fragments[0].header, 64);
-  m_drawing_config.scale[0] = reference_mat[0][0];
-  m_drawing_config.scale[1] = reference_mat[1][1];
-  m_drawing_config.scale[2] = reference_mat[2][2];
-  m_drawing_config.mat_23 = reference_mat[2][3];
-  m_drawing_config.mat_32 = reference_mat[3][2];
+  // first, we need to find the projection matrix.
+  // most of the time, it's first. If you have the hud open, there may be a few others.
+  bool found_proj_matrix = false;
+  std::array<math::Vector4f, 4> projection_matrix, hud_matrix;
+  for (u32 i = 0; i < m_next_free_frag; i++) {
+    float mat_33;
+    memcpy(&mat_33, m_fragments[i].header + 15 * sizeof(float), sizeof(float));
+    if (mat_33 == 0) {
+      // got it.
+      memcpy(&projection_matrix, m_fragments[i].header, 64);
+      found_proj_matrix = true;
+      break;
+    }
+  }
 
-  //  ASSERT(reference_mat[0][1] == 0);
-  //  ASSERT(reference_mat[0][2] == 0);
-  //  ASSERT(reference_mat[0][3] == 0);
-  //  ASSERT(reference_mat[1][0] == 0);
-  //  ASSERT(reference_mat[1][2] == 0);
-  //  ASSERT(reference_mat[1][3] == 0);
-  //  ASSERT(reference_mat[2][0] == 0);
-  //  ASSERT(reference_mat[2][1] == 0);
-  //  ASSERT(reference_mat[3][0] == 0);
-  //  ASSERT(reference_mat[3][1] == 0);
-  //  ASSERT(reference_mat[3][3] == 0);
-  //
-  //  for (u32 i = 0; i < m_next_free_frag; i++) {
-  //    std::array<math::Vector4f, 4> mat;
-  //    memcpy(&mat, m_fragments[i].header, 64);
-  //    ASSERT(mat == reference_mat);
-  //  }
+  if (!found_proj_matrix) {
+    for (auto& row : projection_matrix) {
+      row.fill(0);
+    }
+  }
+
+  // mark as hud/proj
+  bool found_hud_matrix = false;
+  for (u32 i = 0; i < m_next_free_frag; i++) {
+    float mat_33;
+    memcpy(&mat_33, m_fragments[i].header + 15 * sizeof(float), sizeof(float));
+    if (mat_33 == 0) {
+      m_fragments[i].uses_hud = false;
+    } else {
+      m_fragments[i].uses_hud = true;
+      if (!found_hud_matrix) {
+        found_hud_matrix = true;
+        memcpy(&hud_matrix, m_fragments[i].header, 64);
+      }
+    }
+  }
+
+  m_drawing_config.proj_scale[0] = projection_matrix[0][0];
+  m_drawing_config.proj_scale[1] = projection_matrix[1][1];
+  m_drawing_config.proj_scale[2] = projection_matrix[2][2];
+  m_drawing_config.proj_mat_23 = projection_matrix[2][3];
+  m_drawing_config.proj_mat_32 = projection_matrix[3][2];
+
+  if (found_hud_matrix) {
+    m_drawing_config.hud_scale[0] = hud_matrix[0][0];
+    m_drawing_config.hud_scale[1] = hud_matrix[1][1];
+    m_drawing_config.hud_scale[2] = hud_matrix[2][2];
+    m_drawing_config.hud_mat_23 = hud_matrix[2][3];
+    m_drawing_config.hud_mat_32 = hud_matrix[3][2];
+    m_drawing_config.hud_mat_33 = hud_matrix[3][3];
+  }
+
+  m_drawing_config.uses_hud = found_hud_matrix;
 }
 
 /*!
@@ -272,27 +301,29 @@ void Generic2::final_vertex_update() {
 
 /*!
  * Build the index buffer.
- * TODO: this de-strips the strips...
  */
 void Generic2::build_index_buffer() {
   for (u32 bucket_idx = 0; bucket_idx < m_next_free_bucket; bucket_idx++) {
     auto& bucket = m_buckets[bucket_idx];
+    bucket.tri_count = 0;
     bucket.idx_idx = m_next_free_idx;
 
     u32 adgif_idx = bucket.start;
     while (adgif_idx != UINT32_MAX) {
       auto& adgif = m_adgifs[adgif_idx];
-
-      u32 warmup = 0;
+      m_indices[m_next_free_idx++] = UINT32_MAX;
       for (u32 vidx = adgif.vtx_idx; vidx < adgif.vtx_idx + adgif.vtx_count; vidx++) {
         auto& vtx = m_verts[vidx];
-        warmup++;
-        if (vtx.adc && warmup >= 3) {
+        if (vtx.adc) {
           m_indices[m_next_free_idx++] = vidx;
+          bucket.tri_count++;
+        } else {
+          m_indices[m_next_free_idx++] = UINT32_MAX;
           m_indices[m_next_free_idx++] = vidx - 1;
-          m_indices[m_next_free_idx++] = vidx - 2;
+          m_indices[m_next_free_idx++] = vidx;
         }
       }
+      bucket.tri_count -= 2;
       adgif_idx = adgif.next;
     }
 

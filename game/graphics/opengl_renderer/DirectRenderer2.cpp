@@ -87,7 +87,6 @@ void DirectRenderer2::reset_buffers() {
   m_vertices.next_index = 0;
   m_vertices.next_vertex = 0;
   m_state.next_vertex_starts_strip = true;
-  m_state.strip_warmup = 0;
   m_current_state_has_open_draw = false;
 }
 
@@ -168,14 +167,16 @@ void DirectRenderer2::draw_call_loop_simple(SharedRenderState* render_state,
     } else {
       end_idx = m_draw_buffer[draw_idx + 1].start_index;
     }
-    glDrawElements(GL_TRIANGLES, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    glDrawElements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
     prof.add_draw_call();
-    prof.add_tri((end_idx - draw.start_index) / 3);
+    prof.add_tri((end_idx - draw.start_index) - 2);
   }
 }
 
 void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
                                              ScopedProfilerNode& prof) {
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
   u32 draw_idx = 0;
   while (draw_idx < m_next_free_draw) {
     const auto& draw = m_draw_buffer[draw_idx];
@@ -213,7 +214,7 @@ void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
     // fmt::print("drawing {:4d} with abe {} tex {} {}", end_idx - draw.start_index,
     // (int)draw.mode.get_ab_enable(), end_of_draw_group - draw_idx, draw.to_single_line_string() );
     // fmt::print("{}\n", draw.mode.to_string());
-    glDrawElements(GL_TRIANGLES, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    glDrawElements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
     prof.add_draw_call();
     prof.add_tri((end_idx - draw.start_index) / 3);
     draw_idx = end_of_draw_group + 1;
@@ -680,16 +681,18 @@ void DirectRenderer2::handle_xyzf2_packed(const u8* data,
 
   if (m_state.next_vertex_starts_strip) {
     m_state.next_vertex_starts_strip = false;
-    m_state.strip_warmup = 0;
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
   }
 
   // push the vertex
   auto& vert = m_vertices.vertices[m_vertices.next_vertex++];
-  m_state.strip_warmup++;
-  if (adc && m_state.strip_warmup >= 3) {
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 1;
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 2;
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 3;
+  auto vidx = m_vertices.next_vertex - 1;
+  if (adc) {
+    m_vertices.indices[m_vertices.next_index++] = vidx;
+  } else {
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
+    m_vertices.indices[m_vertices.next_index++] = vidx - 1;
+    m_vertices.indices[m_vertices.next_index++] = vidx;
   }
 
   if (!m_current_state_has_open_draw) {
@@ -745,16 +748,19 @@ void DirectRenderer2::handle_xyzf2_mod_packed(const u8* data,
 
   if (m_state.next_vertex_starts_strip) {
     m_state.next_vertex_starts_strip = false;
-    m_state.strip_warmup = 0;
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
   }
 
   // push the vertex
   auto& vert = m_vertices.vertices[m_vertices.next_vertex++];
-  m_state.strip_warmup++;
-  if (adc && m_state.strip_warmup >= 3) {
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 1;
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 2;
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 3;
+
+  auto vidx = m_vertices.next_vertex - 1;
+  if (adc) {
+    m_vertices.indices[m_vertices.next_index++] = vidx;
+  } else {
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
+    m_vertices.indices[m_vertices.next_index++] = vidx - 1;
+    m_vertices.indices[m_vertices.next_index++] = vidx;
   }
 
   if (!m_current_state_has_open_draw) {

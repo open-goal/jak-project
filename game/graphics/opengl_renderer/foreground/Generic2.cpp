@@ -56,34 +56,20 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
   // Generic2 has 3 passes.
   {
     // our first pass is to go over the DMA chain from the game and extract the data into buffers
-    Timer proc_dma_timer;
     auto p = prof.make_scoped_child("dma");
     process_dma(dma, render_state->next_bucket);
-    if (m_next_free_vert > 10000) {
-      // fmt::print("dma: {} in {:.3f} ms\n", m_next_free_vert, proc_dma_timer.getMs());
-    }
   }
 
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
-    Timer setup_timer;
     auto p = prof.make_scoped_child("setup");
     setup_draws();
-    if (m_next_free_vert > 10000) {
-//      fmt::print("setup: {} buckets, {} adgifs {} indices in {:.3f} ms\n", m_next_free_bucket,
-//                 m_next_free_adgif, m_next_free_idx, setup_timer.getMs());
-    }
   }
 
   {
     // the final pass is the actual drawing.
-    Timer draw_timer;
     auto p = prof.make_scoped_child("drawing");
-    do_draws(render_state, prof);
-    if (m_next_free_vert > 10000) {
-      // fmt::print("draw {:.3f} ms\n", draw_timer.getMs());
-    }
-
+    do_draws(render_state, p);
   }
 }

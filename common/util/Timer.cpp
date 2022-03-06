@@ -42,7 +42,7 @@ void Timer::start() {
 #endif
 }
 
-int64_t Timer::getNs() {
+int64_t Timer::getNs() const {
   struct timespec now = {};
 #ifdef __linux__
   clock_gettime(CLOCK_MONOTONIC, &now);

@@ -772,7 +772,7 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
   vu.vf31.mfir(Mask::z, vu.vi07);
   if (!clipping_hack && bc) { goto L49; }
 
-  L48:
+  // L48:
   // div Q, vf01.x, vf14.w      |  nop                            524
   vu.Q = gen.fog.x() / gen.vtx_p2.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            525
@@ -844,7 +844,7 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
   vu.vf31.mfir(Mask::z, vu.vi07);
   if (!clipping_hack && bc) { goto L53; }
 
-  L52:
+  //  L52:
   // div Q, vf01.x, vf15.w      |  nop                            607
   vu.Q = gen.fog.x() / gen.vtx_p3.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            608
@@ -916,7 +916,7 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
   vu.vf31.mfir(Mask::z, vu.vi07);
   if (!clipping_hack && bc) { goto L57; }
 
-  L56:
+  // L56:
   // div Q, vf01.x, vf12.w      |  nop                            690
   vu.Q = gen.fog.x() / gen.vtx_p0.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            691
@@ -988,7 +988,7 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
   vu.vf31.mfir(Mask::z, vu.vi07);
   if (!clipping_hack && bc) { goto L61; }
 
-  L60:
+  // L60:
   // div Q, vf01.x, vf13.w      |  nop                            773
   vu.Q = gen.fog.x() / gen.vtx_p1.w();
   // lq.xyzw vf23, 998(vi00)    |  nop                            774

@@ -38,14 +38,17 @@ class Generic2 : public BucketRenderer {
   void process_dma(DmaFollower& dma, u32 next_bucket);
   void setup_draws();
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void do_draws_for_alpha(SharedRenderState* render_state, ScopedProfilerNode& prof, DrawMode::AlphaBlend alpha);
+  void do_draws_for_alpha(SharedRenderState* render_state,
+                          ScopedProfilerNode& prof,
+                          DrawMode::AlphaBlend alpha,
+                          bool hud);
   bool check_for_end_of_generic_data(DmaFollower& dma, u32 next_bucket);
   void final_vertex_update();
   bool handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket);
 
   void opengl_setup();
   void opengl_cleanup();
-  void opengl_bind(SharedRenderState* render_state);
+  void opengl_bind_and_setup_proj(SharedRenderState* render_state);
   void setup_opengl_for_draw_mode(const DrawMode& draw_mode,
                                   u8 fix,
                                   SharedRenderState* render_state);
@@ -67,8 +70,13 @@ class Generic2 : public BucketRenderer {
     math::Vector4f hvdf_offset;
     float pfog0;             // scale factor for perspective divide
     float fog_min, fog_max;  // clamp for fog
-    math::Vector3f scale;
-    float mat_23, mat_32;
+    math::Vector3f proj_scale;
+    float proj_mat_23, proj_mat_32;
+
+    math::Vector3f hud_scale;
+    float hud_mat_23, hud_mat_32, hud_mat_33;
+
+    bool uses_hud = false;
   } m_drawing_config;
 
   struct GsState {
@@ -96,6 +104,7 @@ class Generic2 : public BucketRenderer {
     u32 vtx_idx = 0;
     u32 vtx_count = 0;
     u8 mscal_addr = 0;
+    bool uses_hud;
   };
 
   struct Adgif {
@@ -107,6 +116,7 @@ class Generic2 : public BucketRenderer {
     u32 frag;
     u32 vtx_idx;
     u32 vtx_count;
+    bool uses_hud;
 
     u32 next = -2;
 
@@ -114,6 +124,7 @@ class Generic2 : public BucketRenderer {
       u64 result = mode.as_int();
       result |= (((u64)tbp) << 32);
       result |= (((u64)fix) << 48);
+      result |= (((u64)uses_hud ? 1ull : 0ull) << 62);
       return result;
     }
   };
@@ -126,6 +137,8 @@ class Generic2 : public BucketRenderer {
 
     u32 idx_idx;
     u32 idx_count;
+
+    u32 tri_count;  // just for debug
   };
 
   u32 handle_fragments_after_unpack_v4_32(const u8* data,
@@ -178,6 +191,7 @@ class Generic2 : public BucketRenderer {
     GLuint vao;
     GLuint vertex_buffer;
     GLuint index_buffer;
-    GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, fog_consts, hvdf_offset;
+    GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
+        hvdf_offset;
   } m_ogl;
 };

@@ -71,18 +71,20 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
   m_ogl.scale = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "scale");
   m_ogl.mat_23 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_23");
   m_ogl.mat_32 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_32");
+  m_ogl.mat_33 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_33");
   m_ogl.fog_consts = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "fog_constants");
   m_ogl.hvdf_offset = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "hvdf_offset");
 }
 
-void Generic2::opengl_bind(SharedRenderState* render_state) {
+void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
   render_state->shaders[ShaderId::GENERIC].activate();
   glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
               render_state->fog_color[2], render_state->fog_intensity);
-  glUniform4f(m_ogl.scale, m_drawing_config.scale[0], m_drawing_config.scale[1],
-              m_drawing_config.scale[2], 0);
-  glUniform1f(m_ogl.mat_23, m_drawing_config.mat_23);
-  glUniform1f(m_ogl.mat_32, m_drawing_config.mat_32);
+  glUniform4f(m_ogl.scale, m_drawing_config.proj_scale[0], m_drawing_config.proj_scale[1],
+              m_drawing_config.proj_scale[2], 0);
+  glUniform1f(m_ogl.mat_23, m_drawing_config.proj_mat_23);
+  glUniform1f(m_ogl.mat_32, m_drawing_config.proj_mat_32);
+  glUniform1f(m_ogl.mat_33, 0);
   glUniform3f(m_ogl.fog_consts, m_drawing_config.pfog0, m_drawing_config.fog_min,
               m_drawing_config.fog_max);
   glUniform4f(m_ogl.hvdf_offset, m_drawing_config.hvdf_offset[0], m_drawing_config.hvdf_offset[1],
@@ -247,18 +249,19 @@ void Generic2::setup_opengl_tex(u16 unit,
 
 void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
                                   ScopedProfilerNode& prof,
-                                  DrawMode::AlphaBlend alpha) {
+                                  DrawMode::AlphaBlend alpha,
+                                  bool hud) {
   for (u32 i = 0; i < m_next_free_bucket; i++) {
     auto& bucket = m_buckets[i];
     auto& first = m_adgifs[bucket.start];
-    if (first.mode.get_alpha_blend() == alpha) {
+    if (first.mode.get_alpha_blend() == alpha && first.uses_hud == hud) {
       setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
       setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
                        first.mode.get_clamp_t_enable(), render_state);
-      glDrawElements(GL_TRIANGLES, bucket.idx_count, GL_UNSIGNED_INT,
+      glDrawElements(GL_TRIANGLE_STRIP, bucket.idx_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * bucket.idx_idx));
       prof.add_draw_call();
-      prof.add_tri(bucket.idx_count / 3);
+      prof.add_tri(bucket.tri_count);
     }
   }
 }
@@ -274,7 +277,7 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
-  opengl_bind(render_state);
+  opengl_bind_and_setup_proj(render_state);
   constexpr DrawMode::AlphaBlend alpha_order[ALPHA_MODE_COUNT] = {
       DrawMode::AlphaBlend::SRC_SRC_SRC_SRC, DrawMode::AlphaBlend::SRC_DST_SRC_DST,
       DrawMode::AlphaBlend::SRC_0_SRC_DST,   DrawMode::AlphaBlend::ZERO_SRC_SRC_DST,
@@ -283,7 +286,21 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
 
   for (int i = 0; i < ALPHA_MODE_COUNT; i++) {
     if (m_alpha_draw_enable[i]) {
-      do_draws_for_alpha(render_state, prof, alpha_order[i]);
+      do_draws_for_alpha(render_state, prof, alpha_order[i], false);
+    }
+  }
+
+  if (m_drawing_config.uses_hud) {
+    glUniform4f(m_ogl.scale, m_drawing_config.hud_scale[0], m_drawing_config.hud_scale[1],
+                m_drawing_config.hud_scale[2], 0);
+    glUniform1f(m_ogl.mat_23, m_drawing_config.hud_mat_23);
+    glUniform1f(m_ogl.mat_32, m_drawing_config.hud_mat_32);
+    glUniform1f(m_ogl.mat_33, m_drawing_config.hud_mat_33);
+
+    for (int i = 0; i < ALPHA_MODE_COUNT; i++) {
+      if (m_alpha_draw_enable[i]) {
+        do_draws_for_alpha(render_state, prof, alpha_order[i], true);
+      }
     }
   }
 }

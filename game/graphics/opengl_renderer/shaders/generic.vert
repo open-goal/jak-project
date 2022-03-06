@@ -9,6 +9,7 @@ uniform float mat_32;
 uniform vec3 fog_constants;
 uniform vec4 scale;
 uniform float mat_23;
+uniform float mat_33;
 uniform vec4 hvdf_offset;
 
 out vec2 tex_coord;
@@ -36,7 +37,7 @@ void main() {
     // vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());
     transformed.xyz = position_in * scale.xyz;
     transformed.z += mat_32;
-    transformed.w = mat_23 * position_in.z;
+    transformed.w = mat_23 * position_in.z + mat_33;
 
     transformed *= -1; // todo?
 

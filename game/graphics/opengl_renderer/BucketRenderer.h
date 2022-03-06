@@ -61,6 +61,19 @@ enum class BucketId {
   MAX_BUCKETS = 69
 };
 
+enum class BucketCategory {
+  SKY,
+  TFRAG,
+  TIE,
+  TEX,
+  MERC,
+  GENERIC_MERC,
+  SPRITE,
+  DEBUG_DRAW,
+  UNUSED,
+  MAX_CATEGORIES
+};
+
 struct LevelVis {
   bool valid = false;
   u8 data[2048];

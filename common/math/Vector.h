@@ -216,6 +216,12 @@ class Vector {
   Vector<T, 3> xyz() const { return head<3>(); }
   Vector<T, 3> xy() const { return head<2>(); }
 
+  void fill(const T& val) {
+    for (auto& x : m_data) {
+      x = val;
+    }
+  }
+
  private:
   T m_data[Size];
 };
