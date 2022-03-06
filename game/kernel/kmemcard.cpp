@@ -263,9 +263,7 @@ void pc_update_card() {
     // if (header1->save_count > highest_save_count) {
     //  mc_last_file = file;
     // }
-    for (s32 i = 0; i < 64; i++) {  // actually a loop over u32's
-      mc_files[file].data[i] = header1->preview_data[i];
-    }
+    memcpy(mc_files[file].data, header1->preview_data, 64);
   }
 }
 
@@ -307,9 +305,7 @@ void pc_game_save_synch() {
     header.checksum = mc_checksum(op.data_ptr, BANK_SIZE);
     header.magic = MEM_CARD_MAGIC;
     header.unk1_repeated = p2;
-    for (int i = 0; i < 64; i++) {
-      header.preview_data[i] = op.data_ptr2.c()[i];
-    }
+    memcpy(header.preview_data, op.data_ptr2.c(), 64);
     if (fwrite(&header, sizeof(McHeader), 1, fd) == 1) {
       // cb_savedheader //
       mc_print("save file writing main data");
@@ -323,12 +319,10 @@ void pc_game_save_synch() {
             mc_print("All done with saving!!");
             op.operation = MemoryCardOperationKind::NO_OP;
             op.result = McStatusCode::OK;
-            // mc_files[op.param2].present = 1;
+            mc_files[op.param2].present = 1;
             mc_files[op.param2].most_recent_save_count = p2;
             mc_files[op.param2].last_saved_bank = p4;
-            for (int i = 0; i < 64; i++) {
-              mc_files[op.param2].data[i] = op.data_ptr2.c()[i];
-            }
+            memcpy(mc_files[op.param2].data, op.data_ptr2.c(), 64);
             mc_last_file = op.param2;
           } else {
             op.operation = MemoryCardOperationKind::NO_OP;
