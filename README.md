@@ -64,7 +64,7 @@ So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 
 
 Here are some screenshots of the renderer:
 ![](./docs/img/screenshot_hut_new_small.png)
-![](./docs/img/screenshot_jungle1_small.png)
+![](./docs/img/screenshot_junglenew_custommood_small.png)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX

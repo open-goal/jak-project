@@ -243,7 +243,7 @@ bool file_is_present(int id) {
  * PC port function to set memcard info. We don't use a memory card, instead just the raw savefiles.
  */
 void pc_update_card() {
-  int highest_save_count = 0;
+  // int highest_save_count = 0;
   mc_last_file = -1;
   for (s32 file = 0; file < 4; file++) {
     auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + file * 2]});
