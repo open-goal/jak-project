@@ -123,20 +123,51 @@ void kmemcard_init_globals() {
   memset(&header, 0, sizeof(McHeader));
 }
 
+// static empty bank
+static const std::array<u8, 0x11800> nullbank = {0};
+// static temp bank
+static std::array<u8, 0x11800> bankdata = {0};
 /*!
  * PC port function that returns whether a given bank ID's file exists or not.
  */
 bool file_is_present(int id) {
   auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2]});
   if (!std::filesystem::exists(bankname)) {
-    std::array<u8, 0x11800> nothingness = {0};
+    // file doesn't exist... let's create an empty one but also say we didn't find anything.
     file_util::create_dir_if_needed("user");
     file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard"}));
     file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard", filename[0]}));
-    file_util::write_binary_file(bankname, nothingness.data(), nothingness.size());
+    file_util::write_binary_file(bankname, nullbank.data(), nullbank.size());
     return false;
   }
-  return true;
+  // file exists. but let's see if it's an empty one.
+  // this prevents the game from reading a bank but classifying it as corrupt data.
+  // which a file full of zeros logically is.
+  auto fp = fopen(bankname.c_str(), "rb");
+  fseek(fp, 0, SEEK_END);
+  auto len = ftell(fp);
+  rewind(fp);
+  if (len > bankdata.size()) {
+    // file is larger than expected, obviously not valid.
+    fclose(fp);
+    return false;
+  }
+  /*
+  fread(bankdata.data(), len, 1, fp);
+  fclose(fp);
+  for (int i = 0; i < len; ++i) {
+    if (bankdata[i] != nullbank[i]) {
+      return true;
+    }
+  }
+  return false;
+  */
+
+  // we can actually just check if the save count is over zero...
+  u32 savecount = 0;
+  fread(&savecount, sizeof(u32), 1, fp);
+  fclose(fp);
+  return savecount > 0;
 }
 
 /*!
@@ -803,7 +834,8 @@ void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
     info->files[file].present = file_is_present(file);
     auto bankdata = reinterpret_cast<McHeader*>(file_util::read_binary_file(bankname).data());
     for (s32 i = 0; i < 64; i++) {  // actually a loop over u32's
-      info->files[file].data[i] = mc_files[file].data[i] = bankdata->preview_data[i];
+      info->files[file].data[i] = bankdata->preview_data[i];
+      mc_files[file].data[i] = bankdata->preview_data[i];
     }
   }
   info->last_file = mc_last_file;
