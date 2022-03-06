@@ -4,7 +4,12 @@
 
 class Generic2 : public BucketRenderer {
  public:
-  Generic2(const std::string& name, BucketId my_id, u32 num_verts, u32 num_frags, u32 num_adgif);
+  Generic2(const std::string& name,
+           BucketId my_id,
+           u32 num_verts,
+           u32 num_frags,
+           u32 num_adgif,
+           u32 num_buckets);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   // void init_shaders(ShaderLibrary& shaders) override;
@@ -15,19 +20,24 @@ class Generic2 : public BucketRenderer {
     math::Vector<float, 2> st;  // 16
     u8 tex_unit;
     u8 flags;
-    u8 fog;
-    u8 pad;
-    u32 pad2;
+    u8 adc;
+    u8 pad0;
+    u32 pad1;
   };
   static_assert(sizeof(Vertex) == 32);
 
  private:
+  void determine_draw_modes();
+  void build_index_buffer();
+  void link_adgifs_back_to_frags();
+  void draws_to_buckets();
   void reset_buffers();
+  void process_matrices();
   void process_dma(DmaFollower& dma, u32 next_bucket);
   void setup_draws();
   void do_draws();
   bool check_for_end_of_generic_data(DmaFollower& dma, u32 next_bucket);
-
+  void final_vertex_update();
   bool handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket);
 
   struct GenericDraw {
@@ -46,8 +56,25 @@ class Generic2 : public BucketRenderer {
     math::Vector4f hvdf_offset;
     float pfog0;             // scale factor for perspective divide
     float fog_min, fog_max;  // clamp for fog
-
+    math::Vector3f scale;
+    float mat_23, mat_32;
   } m_drawing_config;
+
+  struct GsState {
+    DrawMode as_mode;
+    u16 tbp;
+    GsTest gs_test;
+    GsTex0 gs_tex0;
+    GsPrim gs_prim;
+    GsAlpha gs_alpha;
+    u8 tex_unit = 0;
+
+    u8 vertex_flags = 0;
+    void set_tcc_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 1; }
+    void set_decal_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 2; }
+    void set_fog_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 4; }
+
+  } m_gs;
 
   static constexpr u32 FRAG_HEADER_SIZE = 16 * 7;
   struct Fragment {
@@ -59,14 +86,42 @@ class Generic2 : public BucketRenderer {
     u32 vtx_count = 0;
     u8 mscal_addr = 0;
   };
+
+  struct Adgif {
+    AdGifData data;
+    DrawMode mode;
+    u32 tbp;
+    u8 vtx_flags;
+    u32 frag;
+    u32 vtx_idx;
+    u32 vtx_count;
+
+    u32 next = -2;
+
+    u64 key() const {
+      u64 result = mode.as_int();
+      result |= (((u64)tbp) << 32);
+      return result;
+    }
+  };
+
+  struct Bucket {
+    DrawMode mode;
+    u32 tbp;
+    u32 start = UINT32_MAX;
+    u32 last = UINT32_MAX;
+
+    u32 idx_idx;
+    u32 idx_count;
+  };
+
   u32 handle_fragments_after_unpack_v4_32(const u8* data,
                                           u32 off,
                                           u32 first_unpack_bytes,
                                           u32 next_bucket,
                                           u32 end_of_vif,
-                                          Fragment* frag, bool loop);
-
-
+                                          Fragment* frag,
+                                          bool loop);
 
   u32 m_next_free_frag = 0;
   std::vector<Fragment> m_fragments;
@@ -74,13 +129,14 @@ class Generic2 : public BucketRenderer {
   u32 m_next_free_vert = 0;
   std::vector<Vertex> m_verts;
 
-  struct Adgif {
-    AdGifData data;
-    u32 ee_mem_addr;
-  };
-
   u32 m_next_free_adgif = 0;
   std::vector<Adgif> m_adgifs;
+
+  u32 m_next_free_bucket = 0;
+  std::vector<Bucket> m_buckets;
+
+  u32 m_next_free_idx = 0;
+  std::vector<u32> m_indices;
 
   Fragment& next_frag() {
     ASSERT(m_next_free_frag < m_fragments.size());

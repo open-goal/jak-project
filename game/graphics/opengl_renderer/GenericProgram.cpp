@@ -158,7 +158,7 @@ void GenericRenderer::ilw_buffer(Mask mask, u16& dest, u16 addr) {
 
 void GenericRenderer::mscal_noclip_nopipe(SharedRenderState *render_state, ScopedProfilerNode &prof) {
   // buffer crap
-  vu.vi02 = vu.vi13 - 0x363;
+  vu.vi02 = vu.vi13 - 0x363; // 867
   vu.vi13 = vu.vi13 + 0x1e;
   if (vu.vi02 == 0) {
     vu.vi13 = 0x345; /* 837 */

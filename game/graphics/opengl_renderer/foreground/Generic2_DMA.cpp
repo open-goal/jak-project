@@ -1,4 +1,5 @@
 #include "Generic2.h"
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
 
 /*!
  * Advance through DMA data that has no effect on rendering (NOP codes) and see if this is the
@@ -102,6 +103,8 @@ void Generic2::reset_buffers() {
   m_next_free_frag = 0;
   m_next_free_vert = 0;
   m_next_free_adgif = 0;
+  m_next_free_bucket = 0;
+  m_next_free_idx = 0;
 }
 
 bool is_nop_vif(const u8* data) {
@@ -136,11 +139,14 @@ u32 unpack_vtx_tcs(Generic2::Vertex* vtx, const u8* data, int vtx_count) {
     s16 s, t;
     memcpy(&s, data + (i * 4), 2);
     memcpy(&t, data + (i * 4) + 2, 2);
+    s16 s_masked = s & (s16)0xfffe;
     // note: int to float happening here.
     // if this is a bottleneck, we can possible keep integers and do this in the shader.
-    // I've avoided this for now because only some integer formats are efficient on the GPU
-    vtx[i].st[0] = s;
+    // I've avoided this for now because only some integer formats are inefficient on the GPU
+    // and it's hard to know what's supported well on all drivers/GPUs
+    vtx[i].st[0] = s_masked;
     vtx[i].st[1] = t;
+    vtx[i].adc = s_masked == s;
   }
   return vtx_count * 4;
 }
@@ -152,10 +158,12 @@ u32 Generic2::handle_fragments_after_unpack_v4_32(const u8* data,
                                                   u32 end_of_vif,
                                                   Fragment* frag,
                                                   bool loop) {
+  // note: they rely on _something_ aligning this?
+  u32 off_aligned = (off + 15) & ~15;
   // each header should have 7 qw header + at least 5 qw for a single adgif.
   ASSERT(first_unpack_bytes >= FRAG_HEADER_SIZE + sizeof(AdGifData));
   // grab the 7 qw header
-  memcpy(frag->header, data + off, FRAG_HEADER_SIZE);
+  memcpy(frag->header, data + off_aligned, FRAG_HEADER_SIZE);
 
   // figure out how many adgifs and grab those.
   u32 adgif_bytes = (first_unpack_bytes - FRAG_HEADER_SIZE);
@@ -165,7 +173,8 @@ u32 Generic2::handle_fragments_after_unpack_v4_32(const u8* data,
   ASSERT(frag->adgif_count > 0);
   ASSERT(adgif_bytes == adgifs * sizeof(AdGifData));
   for (u32 i = 0; i < adgifs; i++) {
-    memcpy(&next_adgif().data, data + off + FRAG_HEADER_SIZE + (i * sizeof(AdGifData)),
+    auto& add = next_adgif();
+    memcpy(&add.data, data + off_aligned + FRAG_HEADER_SIZE + (i * sizeof(AdGifData)),
            sizeof(AdGifData));
   }
 

@@ -1,14 +1,19 @@
 #include "Generic2.h"
 
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
+
 Generic2::Generic2(const std::string& name,
                    BucketId my_id,
                    u32 num_verts,
                    u32 num_frags,
-                   u32 num_adgif)
+                   u32 num_adgif,
+                   u32 num_buckets)
     : BucketRenderer(name, my_id) {
   m_verts.resize(num_verts);
   m_fragments.resize(num_frags);
   m_adgifs.resize(num_adgif);
+  m_buckets.resize(num_buckets);
+  m_indices.resize(num_verts * 3);
 }
 
 void Generic2::draw_debug_window() {}
@@ -37,17 +42,24 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
   // Generic2 has 3 passes.
   {
     // our first pass is to go over the DMA chain from the game and extract the data into buffers
-    // Timer proc_dma_timer;
+    Timer proc_dma_timer;
     auto p = prof.make_scoped_child("dma");
     process_dma(dma, render_state->next_bucket);
-    // fmt::print("dma: {} in {:.3f} ms\n", m_next_free_vert, proc_dma_timer.getMs());
+    if (m_next_free_vert > 10000) {
+      fmt::print("dma: {} in {:.3f} ms\n", m_next_free_vert, proc_dma_timer.getMs());
+    }
   }
 
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
+    Timer setup_timer;
     auto p = prof.make_scoped_child("setup");
     setup_draws();
+    if (m_next_free_vert > 10000) {
+      fmt::print("setup: {} buckets, {} adgifs {} indices in {:.3f} ms\n", m_next_free_bucket,
+                 m_next_free_adgif, m_next_free_idx, setup_timer.getMs());
+    }
   }
 
   {
@@ -56,8 +68,5 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
     do_draws();
   }
 }
-
-
-void Generic2::setup_draws() {}
 
 void Generic2::do_draws() {}
