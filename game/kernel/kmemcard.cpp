@@ -1,6 +1,7 @@
 /*!
  * @file kmemcard.cpp
- * Memory card interface. Very messy code.
+ * Memory card interface. Very messy code. Most of it is commented out now, as we've switched away
+ * from memory cards to just raw saves.
  */
 
 #include <cstdio>
@@ -24,15 +25,16 @@ using McCallbackFunc = void (*)(s32);
 
 McCallbackFunc callback;
 
-static s32 next;
+// static s32 next;
 static s32 language;
 static MemoryCardOperation op;
 // static MemoryCard mc[2];
 // instead of two memory cards we just simulate the 4 save files (8 banks).
 static MemoryCardFile mc_files[4];
+// keep track of latest file selected. this is only used in an auto-save mode thats not used
 static int mc_last_file = -1;
-static RPC_Ramdisk_LoadCmd ramdisk_cmd;
-static ee::sceMcTblGetDir dirent;
+// static RPC_Ramdisk_LoadCmd ramdisk_cmd;
+// static ee::sceMcTblGetDir dirent;
 
 // a random value we will use as the memory card "handle" for the pc port, which has no memcards.
 constexpr u32 PC_MEM_CARD_HANDLE = 0x6C616F67;
@@ -119,7 +121,7 @@ void kmemcard_init_globals() {
   p2 = 0;
   p3 = 0;
   p4 = 0;
-  memset(&dirent, 0, sizeof(sceMcTblGetDir));
+  // memset(&dirent, 0, sizeof(sceMcTblGetDir));
   memset(&header, 0, sizeof(McHeader));
 }
 
@@ -129,16 +131,16 @@ void kmemcard_init_globals() {
  * A handle is a unique integer that can be passed up to the GOAL game code and represents a
  * specific memory card. If the card is removed, the handle will become invalid.
  */
-s32 new_mc_handle() {
-  s32 handle = next++;
-
-  // if you wrap around, it avoids the zero handle.
-  // it doesn't seem like you will need billions of memory card handles
-  if (handle == 0) {
-    handle = next++;
-  }
-  return handle;
-}
+//s32 new_mc_handle() {
+//  s32 handle = next++;
+//
+//  // if you wrap around, it avoids the zero handle.
+//  // it doesn't seem like you will need billions of memory card handles
+//  if (handle == 0) {
+//    handle = next++;
+//  }
+//  return handle;
+//}
 
 /*!
  * A questionable checksum used on memory card data.
@@ -257,9 +259,9 @@ void pc_update_card() {
 
     // banks chosen and checked. copy data and set info.
     mc_files[file].last_saved_bank = header1 == header2;
-    if (header1->save_count > highest_save_count) {
-      mc_last_file = file;
-    }
+    // if (header1->save_count > highest_save_count) {
+    //  mc_last_file = file;
+    // }
     for (s32 i = 0; i < 64; i++) {  // actually a loop over u32's
       mc_files[file].data[i] = header1->preview_data[i];
     }
@@ -439,9 +441,10 @@ void pc_game_load_open_file(FILE* fd) {
                 bank = 1;
               }
             } else {
-              bank = (headers[0]->save_count - headers[1]->save_count) < 1;
+              bank = headers[0]->save_count <= headers[1]->save_count;
             }
 
+            mc_print(fmt::format("loading bank {}", bank));
             u32 current_save_count = headers[bank]->save_count;
             memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
                    BANK_SIZE);
@@ -703,9 +706,6 @@ void MC_run() {
       }
     }
   }*/
-
-  // extra PC port code here to initialize our "memory card"
-  pc_update_card();
 }
 
 /////////////////////////
@@ -878,6 +878,7 @@ void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
   info->mem_required = SAVE_SIZE;
   info->mem_actual = 0;
 
+  pc_update_card();
   info->known = 1;
   info->handle = PC_MEM_CARD_HANDLE;
   info->formatted = 1;
@@ -927,35 +928,35 @@ void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
 /*!
  * Check for an error. Returns true if there is an error and sets op.result as needed
  */
-u64 cb_check(s32 sony_error, McStatusCode goal_error) {
-  if (sony_error < 0) {
-    // sony thing failed.
-    if (sony_error < -9) {
-      // memory card gone. reset state
-      // mc[p1].state = MemoryCardState::UNKNOWN;
-      // kill in progress op
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = McStatusCode::BAD_HANDLE;
-      return 1;
-    } else {
-      // return the given GOAL error.
-      op.operation = MemoryCardOperationKind::NO_OP;
-      op.result = goal_error;
-      return 1;
-    }
-  }
-  return 0;
-}
+// u64 cb_check(s32 sony_error, McStatusCode goal_error) {
+//  if (sony_error < 0) {
+//    // sony thing failed.
+//    if (sony_error < -9) {
+//      // memory card gone. reset state
+//      mc[p1].state = MemoryCardState::UNKNOWN;
+//      // kill in progress op
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = McStatusCode::BAD_HANDLE;
+//      return 1;
+//    } else {
+//      // return the given GOAL error.
+//      op.operation = MemoryCardOperationKind::NO_OP;
+//      op.result = goal_error;
+//      return 1;
+//    }
+//  }
+//  return 0;
+//}
 
 /*!
  * Is this sync-result an error? If so, set status to unknown.
  */
-bool cb_pcheck(s32 sync_result) {
-  // if (sync_result < 0) {
-  //  mc[p1].state = MemoryCardState::UNKNOWN;
-  //}
-  return sync_result < 0;
-}
+// bool cb_pcheck(s32 sync_result) {
+//   if (sync_result < 0) {
+//    mc[p1].state = MemoryCardState::UNKNOWN;
+//  }
+//  return sync_result < 0;
+//}
 
 /*!
  * Callback for sceMcGetInfo for the first time (assumes nothing about the card)
@@ -1646,7 +1647,7 @@ bool cb_pcheck(s32 sync_result) {
 //            bank = 1;
 //          }
 //        } else {
-//          bank = (headers[0]->save_count - headers[1]->save_count) < 1;
+//          bank = headers[0]->save_count <= headers[1]->save_count;
 //        }
 //
 //        u32 current_save_count = headers[bank]->save_count;
