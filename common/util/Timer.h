@@ -15,7 +15,7 @@ class Timer {
   explicit Timer() { start(); }
 
 #ifdef _WIN32
-  int clock_gettime_monotonic(struct timespec* tv);
+  int clock_gettime_monotonic(struct timespec* tv) const;
 #endif
 
   /*!

@@ -11,7 +11,7 @@
 #define NS_PER_HNS (100ULL)  // NS = nanoseconds
 #define NS_PER_SEC (MS_PER_SEC * US_PER_MS * NS_PER_US)
 
-int Timer::clock_gettime_monotonic(struct timespec* tv) {
+int Timer::clock_gettime_monotonic(struct timespec* tv) const {
   static LARGE_INTEGER ticksPerSec;
   LARGE_INTEGER ticks;
   double seconds;
