@@ -150,7 +150,7 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * Ad + Cd
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
-      color_mult = 0.5;
+      color_mult = 0.5f;  // HACK, should probably be 0.5
     } else {
       ASSERT(false);
     }
@@ -245,6 +245,24 @@ void Generic2::setup_opengl_tex(u16 unit,
   }
 }
 
+void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
+                                  ScopedProfilerNode& prof,
+                                  DrawMode::AlphaBlend alpha) {
+  for (u32 i = 0; i < m_next_free_bucket; i++) {
+    auto& bucket = m_buckets[i];
+    auto& first = m_adgifs[bucket.start];
+    if (first.mode.get_alpha_blend() == alpha) {
+      setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
+      setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
+                       first.mode.get_clamp_t_enable(), render_state);
+      glDrawElements(GL_TRIANGLES, bucket.idx_count, GL_UNSIGNED_INT,
+                     (void*)(sizeof(u32) * bucket.idx_idx));
+      prof.add_draw_call();
+      prof.add_tri(bucket.idx_count / 3);
+    }
+  }
+}
+
 void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
@@ -253,24 +271,19 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
                GL_STREAM_DRAW);
   glBufferData(GL_ARRAY_BUFFER, m_next_free_vert * sizeof(Vertex), m_verts.data(), GL_STREAM_DRAW);
 
-  // hack
-  // glDisable(GL_DEPTH_TEST);
-  // glDisable(GL_BLEND);
-
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
   opengl_bind(render_state);
+  constexpr DrawMode::AlphaBlend alpha_order[ALPHA_MODE_COUNT] = {
+      DrawMode::AlphaBlend::SRC_SRC_SRC_SRC, DrawMode::AlphaBlend::SRC_DST_SRC_DST,
+      DrawMode::AlphaBlend::SRC_0_SRC_DST,   DrawMode::AlphaBlend::ZERO_SRC_SRC_DST,
+      DrawMode::AlphaBlend::SRC_DST_FIX_DST, DrawMode::AlphaBlend::SRC_0_DST_DST,
+  };
 
-  for (u32 i = 0; i < m_next_free_bucket; i++) {
-    auto& bucket = m_buckets[i];
-    auto& first = m_adgifs[bucket.start];
-    setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
-    setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
-                     first.mode.get_clamp_t_enable(), render_state);
-    glDrawElements(GL_TRIANGLES, bucket.idx_count, GL_UNSIGNED_INT,
-                   (void*)(sizeof(u32) * bucket.idx_idx));
-    prof.add_draw_call();
-    prof.add_tri(bucket.idx_count / 3);
+  for (int i = 0; i < ALPHA_MODE_COUNT; i++) {
+    if (m_alpha_draw_enable[i]) {
+      do_draws_for_alpha(render_state, prof, alpha_order[i]);
+    }
   }
 }

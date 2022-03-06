@@ -38,6 +38,7 @@ class Generic2 : public BucketRenderer {
   void process_dma(DmaFollower& dma, u32 next_bucket);
   void setup_draws();
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void do_draws_for_alpha(SharedRenderState* render_state, ScopedProfilerNode& prof, DrawMode::AlphaBlend alpha);
   bool check_for_end_of_generic_data(DmaFollower& dma, u32 next_bucket);
   void final_vertex_update();
   bool handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket);
@@ -130,7 +131,6 @@ class Generic2 : public BucketRenderer {
   u32 handle_fragments_after_unpack_v4_32(const u8* data,
                                           u32 off,
                                           u32 first_unpack_bytes,
-                                          u32 next_bucket,
                                           u32 end_of_vif,
                                           Fragment* frag,
                                           bool loop);
@@ -170,6 +170,9 @@ class Generic2 : public BucketRenderer {
   struct Stats {
     u32 dma_tags = 0;
   } m_stats;
+
+  static constexpr int ALPHA_MODE_COUNT = 6;
+  bool m_alpha_draw_enable[ALPHA_MODE_COUNT] = {true, true, true, true, true, true};
 
   struct {
     GLuint vao;

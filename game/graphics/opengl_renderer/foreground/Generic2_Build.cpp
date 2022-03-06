@@ -9,8 +9,8 @@ void Generic2::setup_draws() {
     return;
   }
   m_gs = GsState();
-  determine_draw_modes();
   link_adgifs_back_to_frags();
+  determine_draw_modes();
   draws_to_buckets();
   process_matrices();
   final_vertex_update();
@@ -88,9 +88,33 @@ void Generic2::determine_draw_modes() {
       current_mode.set_clamp_t_enable(clamp_t);
     }
 
+    std::optional<u64> final_alpha;
+
+    // ADGIF 4
     if ((u8)ad.alpha_addr == (u32)GsRegisterAddress::ALPHA_1) {
-      GsAlpha reg(ad.alpha_data);
-      //if (m_gs.gs_alpha != reg) {
+      final_alpha = ad.alpha_data;
+    } else {
+      ASSERT((u8)ad.alpha_addr == (u32)GsRegisterAddress::MIPTBP2_1);
+    }
+
+    auto& frag = m_fragments[m_adgifs[i].frag];
+    u64 bonus_adgif_data[4];
+    memcpy(bonus_adgif_data, frag.header + (5 * 16), 4 * sizeof(u64));
+    // ADGIF 5
+    ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::TEST_1));
+    u64 final_test = bonus_adgif_data[0];
+
+    // ADGIF 6
+    if ((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::ALPHA_1)) {
+      final_alpha = bonus_adgif_data[2];
+    } else {
+      ASSERT((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::TEST_1));
+      final_test = bonus_adgif_data[2];
+    }
+
+    if (final_alpha) {
+      GsAlpha reg(*final_alpha);
+      if (m_gs.gs_alpha != reg) {
         m_gs.gs_alpha = reg;
         auto a = reg.a_mode();
         auto b = reg.b_mode();
@@ -119,9 +143,32 @@ void Generic2::determine_draw_modes() {
           // lg::error("unsupported blend: a {} b {} c {} d {}", (int)a, (int)b, (int)c, (int)d);
           //      ASSERT(false);
         }
-      // }
-    } else {
-      ASSERT((u8)ad.alpha_addr == (u32)GsRegisterAddress::MIPTBP2_1);
+      }
+    }
+
+    {
+      GsTest reg(final_test);
+      current_mode.set_at(reg.alpha_test_enable());
+      if (reg.alpha_test_enable()) {
+        switch (reg.alpha_test()) {
+          case GsTest::AlphaTest::NEVER:
+            current_mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+            break;
+          case GsTest::AlphaTest::ALWAYS:
+            current_mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
+            break;
+          case GsTest::AlphaTest::GEQUAL:
+            current_mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+            break;
+          default:
+            ASSERT(false);
+        }
+      }
+
+      current_mode.set_aref(reg.aref());
+      current_mode.set_alpha_fail(reg.afail());
+      current_mode.set_zt(reg.zte());
+      current_mode.set_depth_test(reg.ztest());
     }
 
     m_adgifs[i].mode = current_mode;
@@ -191,23 +238,23 @@ void Generic2::process_matrices() {
   m_drawing_config.mat_23 = reference_mat[2][3];
   m_drawing_config.mat_32 = reference_mat[3][2];
 
-//  ASSERT(reference_mat[0][1] == 0);
-//  ASSERT(reference_mat[0][2] == 0);
-//  ASSERT(reference_mat[0][3] == 0);
-//  ASSERT(reference_mat[1][0] == 0);
-//  ASSERT(reference_mat[1][2] == 0);
-//  ASSERT(reference_mat[1][3] == 0);
-//  ASSERT(reference_mat[2][0] == 0);
-//  ASSERT(reference_mat[2][1] == 0);
-//  ASSERT(reference_mat[3][0] == 0);
-//  ASSERT(reference_mat[3][1] == 0);
-//  ASSERT(reference_mat[3][3] == 0);
-//
-//  for (u32 i = 0; i < m_next_free_frag; i++) {
-//    std::array<math::Vector4f, 4> mat;
-//    memcpy(&mat, m_fragments[i].header, 64);
-//    ASSERT(mat == reference_mat);
-//  }
+  //  ASSERT(reference_mat[0][1] == 0);
+  //  ASSERT(reference_mat[0][2] == 0);
+  //  ASSERT(reference_mat[0][3] == 0);
+  //  ASSERT(reference_mat[1][0] == 0);
+  //  ASSERT(reference_mat[1][2] == 0);
+  //  ASSERT(reference_mat[1][3] == 0);
+  //  ASSERT(reference_mat[2][0] == 0);
+  //  ASSERT(reference_mat[2][1] == 0);
+  //  ASSERT(reference_mat[3][0] == 0);
+  //  ASSERT(reference_mat[3][1] == 0);
+  //  ASSERT(reference_mat[3][3] == 0);
+  //
+  //  for (u32 i = 0; i < m_next_free_frag; i++) {
+  //    std::array<math::Vector4f, 4> mat;
+  //    memcpy(&mat, m_fragments[i].header, 64);
+  //    ASSERT(mat == reference_mat);
+  //  }
 }
 
 /*!

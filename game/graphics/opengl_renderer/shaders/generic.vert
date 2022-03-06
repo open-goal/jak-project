@@ -48,7 +48,7 @@ void main() {
     float fog1 = -transformed.w + hvdf_offset.w;
     float fog2 = min(fog1, fog_constants.z);
     float fog3 = max(fog2, fog_constants.y);
-    fog = 255; // 255 - fog3; TODO
+    fog = 1 - (fog3/256);
 
     // itof12.xyz vf18, vf22        texture int to float
     // vu.vf18.itof12(Mask::xyz, vu.vf22);
@@ -83,6 +83,6 @@ void main() {
     // scissoring area adjust
     gl_Position.y *= 512.0/448.0;
 
-    fragment_color = rgba_in;
+    fragment_color = vec4(rgba_in.x, rgba_in.y, rgba_in.z, rgba_in.w * 2.);
     tex_info = byte_info.xy;
 }

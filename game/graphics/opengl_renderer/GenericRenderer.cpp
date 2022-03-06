@@ -5,7 +5,7 @@ GenericRenderer::GenericRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
       m_direct(name, my_id, 0x30000),
       m_direct2(30000, 60000, 1000, name, true),
-      m_debug_gen2(name, my_id, 50000, 1000, 1000, 300) {}
+      m_debug_gen2(name, my_id, 50000, 1000, 1000, 800) {}
 
 void GenericRenderer::init_shaders(ShaderLibrary& shaders) {
   m_direct2.init_shaders(shaders);
@@ -202,10 +202,15 @@ void GenericRenderer::handle_dma_stream(const u8* data,
 }
 
 void GenericRenderer::draw_debug_window() {
+
   ImGui::Text("Skipped %d tags", m_skipped_tags);
   ImGui::InputInt("kick min", &m_min_xgkick);
   ImGui::InputInt("kick max", &m_max_xgkick);
   ImGui::Text("Debug:\n%s\n", m_debug.c_str());
+  if (ImGui::TreeNode("Gen2")) {
+    m_debug_gen2.draw_debug_window();
+    ImGui::TreePop();
+  }
   if (ImGui::TreeNode("Direct")) {
     m_direct.draw_debug_window();
     ImGui::TreePop();

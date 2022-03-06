@@ -1,6 +1,7 @@
 #include "Generic2.h"
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+#include "third-party/imgui/imgui.h"
 
 Generic2::Generic2(const std::string& name,
                    BucketId my_id,
@@ -22,7 +23,14 @@ Generic2::~Generic2() {
   opengl_cleanup();
 }
 
-void Generic2::draw_debug_window() {}
+void Generic2::draw_debug_window() {
+  ImGui::Checkbox("Alpha 1", &m_alpha_draw_enable[0]);
+  ImGui::Checkbox("Alpha 2", &m_alpha_draw_enable[1]);
+  ImGui::Checkbox("Alpha 3", &m_alpha_draw_enable[2]);
+  ImGui::Checkbox("Alpha 4", &m_alpha_draw_enable[3]);
+  ImGui::Checkbox("Alpha 5", &m_alpha_draw_enable[4]);
+  ImGui::Checkbox("Alpha 6", &m_alpha_draw_enable[5]);
+}
 
 /*!
  * Main render function for Generic2. This will be passed a DMA "follower" from the main

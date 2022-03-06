@@ -242,9 +242,10 @@ void GenericRenderer::mscal_noclip_nopipe(SharedRenderState *render_state, Scope
 
     // store!
     sq_buffer(Mask::xyzw, gen.vtx_p0, vu.vi10 + 2);
-    vu.vf18.x() /= vu.vf18.z();
-    vu.vf18.y() /= vu.vf18.z();
-    vu.vf18.z() = 1.f;
+    // this divide should happen in the vertex shader to get perspective correct textures.
+    //    vu.vf18.x() /= vu.vf18.z();
+    //    vu.vf18.y() /= vu.vf18.z();
+    //    vu.vf18.z() = 1.f;
 
     // fmt::print("tex.z = {}\n", vu.vf18.z());
     sq_buffer(Mask::xyzw, vu.vf18, vu.vi10);

@@ -154,7 +154,6 @@ u32 unpack_vtx_tcs(Generic2::Vertex* vtx, const u8* data, int vtx_count) {
 u32 Generic2::handle_fragments_after_unpack_v4_32(const u8* data,
                                                   u32 off,
                                                   u32 first_unpack_bytes,
-                                                  u32 next_bucket,
                                                   u32 end_of_vif,
                                                   Fragment* frag,
                                                   bool loop) {
@@ -352,7 +351,7 @@ void Generic2::process_dma(DmaFollower& dma, u32 next_bucket) {
       ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_32);
       u32 unpack_bytes = v1.num * 16;
       auto& frag = next_frag();
-      u32 off = handle_fragments_after_unpack_v4_32(vif_transfer.data, 0, unpack_bytes, next_bucket,
+      u32 off = handle_fragments_after_unpack_v4_32(vif_transfer.data, 0, unpack_bytes,
                                                     vif_transfer.size_bytes, &frag, false);
 
       if (check_for_end_of_generic_data(dma, next_bucket)) {
@@ -373,8 +372,7 @@ void Generic2::process_dma(DmaFollower& dma, u32 next_bucket) {
 
         auto& continue_frag = next_frag();
         off = handle_fragments_after_unpack_v4_32(vif_transfer.data, off, next_unpack.num * 16,
-                                                  next_bucket, vif_transfer.size_bytes,
-                                                  &continue_frag, true);
+                                                  vif_transfer.size_bytes, &continue_frag, true);
         continued_fragment = &continue_frag;
         ASSERT(off == vif_transfer.size_bytes);
         //    }

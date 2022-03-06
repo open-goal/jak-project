@@ -6,7 +6,8 @@
 DirectRenderer2::DirectRenderer2(u32 max_verts,
                                  u32 max_inds,
                                  u32 max_draws,
-                                 const std::string& name, bool use_ftoi_mod)
+                                 const std::string& name,
+                                 bool use_ftoi_mod)
     : m_name(name), m_use_ftoi_mod(use_ftoi_mod) {
   // allocate buffers
   m_vertices.vertices.resize(max_verts);
@@ -736,7 +737,6 @@ void DirectRenderer2::handle_xyzf2_mod_packed(const u8* data,
 
   u64 upper;
   memcpy(&upper, data + 8, 8);
-  u32 zi = (upper >> 4) & 0xffffff;
   float z;
   memcpy(&z, &upper, 4);
 
@@ -778,9 +778,9 @@ void DirectRenderer2::handle_xyzf2_mod_packed(const u8* data,
   }
 
   // todo move to shader or something.
-  vert.xyz[0] = x * 16.f ;
+  vert.xyz[0] = x * 16.f;
   vert.xyz[1] = y * 16.f;
-  vert.xyz[2] = z ;
+  vert.xyz[2] = z;
   vert.rgba = m_state.rgba;
   vert.stq = math::Vector<float, 3>(m_state.s, m_state.t, m_state.Q);
   vert.tex_unit = m_state.tex_unit;
