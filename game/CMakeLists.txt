@@ -81,6 +81,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/foreground/Generic2.cpp
         graphics/opengl_renderer/foreground/Generic2_DMA.cpp
         graphics/opengl_renderer/foreground/Generic2_Build.cpp
+        graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp

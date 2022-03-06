@@ -14,6 +14,12 @@ Generic2::Generic2(const std::string& name,
   m_adgifs.resize(num_adgif);
   m_buckets.resize(num_buckets);
   m_indices.resize(num_verts * 3);
+
+  opengl_setup();
+}
+
+Generic2::~Generic2() {
+  opengl_cleanup();
 }
 
 void Generic2::draw_debug_window() {}
@@ -46,7 +52,7 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
     auto p = prof.make_scoped_child("dma");
     process_dma(dma, render_state->next_bucket);
     if (m_next_free_vert > 10000) {
-      fmt::print("dma: {} in {:.3f} ms\n", m_next_free_vert, proc_dma_timer.getMs());
+      // fmt::print("dma: {} in {:.3f} ms\n", m_next_free_vert, proc_dma_timer.getMs());
     }
   }
 
@@ -57,16 +63,19 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
     auto p = prof.make_scoped_child("setup");
     setup_draws();
     if (m_next_free_vert > 10000) {
-      fmt::print("setup: {} buckets, {} adgifs {} indices in {:.3f} ms\n", m_next_free_bucket,
-                 m_next_free_adgif, m_next_free_idx, setup_timer.getMs());
+//      fmt::print("setup: {} buckets, {} adgifs {} indices in {:.3f} ms\n", m_next_free_bucket,
+//                 m_next_free_adgif, m_next_free_idx, setup_timer.getMs());
     }
   }
 
   {
     // the final pass is the actual drawing.
+    Timer draw_timer;
     auto p = prof.make_scoped_child("drawing");
-    do_draws();
+    do_draws(render_state, prof);
+    if (m_next_free_vert > 10000) {
+      // fmt::print("draw {:.3f} ms\n", draw_timer.getMs());
+    }
+
   }
 }
-
-void Generic2::do_draws() {}

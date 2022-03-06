@@ -10,8 +10,10 @@ class Generic2 : public BucketRenderer {
            u32 num_frags,
            u32 num_adgif,
            u32 num_buckets);
+  ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary& shaders) override;
   // void init_shaders(ShaderLibrary& shaders) override;
 
   struct Vertex {
@@ -35,16 +37,24 @@ class Generic2 : public BucketRenderer {
   void process_matrices();
   void process_dma(DmaFollower& dma, u32 next_bucket);
   void setup_draws();
-  void do_draws();
+  void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   bool check_for_end_of_generic_data(DmaFollower& dma, u32 next_bucket);
   void final_vertex_update();
   bool handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket);
 
-  struct GenericDraw {
-    u32 first_vert = -1;
-    u32 verts = -1;
-    u16 mscal = 0;
-  };
+  void opengl_setup();
+  void opengl_cleanup();
+  void opengl_bind(SharedRenderState* render_state);
+  void setup_opengl_for_draw_mode(const DrawMode& draw_mode,
+                                  u8 fix,
+                                  SharedRenderState* render_state);
+
+  void setup_opengl_tex(u16 unit,
+                        u16 tbp,
+                        bool filter,
+                        bool clamp_s,
+                        bool clamp_t,
+                        SharedRenderState* render_state);
 
   struct {
     u32 stcycl;
@@ -91,6 +101,7 @@ class Generic2 : public BucketRenderer {
     AdGifData data;
     DrawMode mode;
     u32 tbp;
+    u32 fix;
     u8 vtx_flags;
     u32 frag;
     u32 vtx_idx;
@@ -101,6 +112,7 @@ class Generic2 : public BucketRenderer {
     u64 key() const {
       u64 result = mode.as_int();
       result |= (((u64)tbp) << 32);
+      result |= (((u64)fix) << 48);
       return result;
     }
   };
@@ -158,4 +170,11 @@ class Generic2 : public BucketRenderer {
   struct Stats {
     u32 dma_tags = 0;
   } m_stats;
+
+  struct {
+    GLuint vao;
+    GLuint vertex_buffer;
+    GLuint index_buffer;
+    GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, fog_consts, hvdf_offset;
+  } m_ogl;
 };

@@ -35,7 +35,9 @@ void Generic2::determine_draw_modes() {
   current_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
   current_mode.set_zt(true);
   current_mode.set_depth_test(GsTest::ZTest::GEQUAL);
-  current_mode.set_depth_write_enable(m_drawing_config.zmsk);
+  current_mode.set_depth_write_enable(!m_drawing_config.zmsk);
+  current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
+  m_gs.set_fog_flag(true);
 
   u32 tbp = -1;
 
@@ -88,7 +90,7 @@ void Generic2::determine_draw_modes() {
 
     if ((u8)ad.alpha_addr == (u32)GsRegisterAddress::ALPHA_1) {
       GsAlpha reg(ad.alpha_data);
-      if (m_gs.gs_alpha != reg) {
+      //if (m_gs.gs_alpha != reg) {
         m_gs.gs_alpha = reg;
         auto a = reg.a_mode();
         auto b = reg.b_mode();
@@ -117,7 +119,7 @@ void Generic2::determine_draw_modes() {
           // lg::error("unsupported blend: a {} b {} c {} d {}", (int)a, (int)b, (int)c, (int)d);
           //      ASSERT(false);
         }
-      }
+      // }
     } else {
       ASSERT((u8)ad.alpha_addr == (u32)GsRegisterAddress::MIPTBP2_1);
     }
@@ -125,6 +127,7 @@ void Generic2::determine_draw_modes() {
     m_adgifs[i].mode = current_mode;
     m_adgifs[i].vtx_flags = m_gs.vertex_flags;
     m_adgifs[i].tbp = tbp;
+    m_adgifs[i].fix = m_gs.gs_alpha.fix();
   }
 }
 
@@ -188,23 +191,23 @@ void Generic2::process_matrices() {
   m_drawing_config.mat_23 = reference_mat[2][3];
   m_drawing_config.mat_32 = reference_mat[3][2];
 
-  ASSERT(reference_mat[0][1] == 0);
-  ASSERT(reference_mat[0][2] == 0);
-  ASSERT(reference_mat[0][3] == 0);
-  ASSERT(reference_mat[1][0] == 0);
-  ASSERT(reference_mat[1][2] == 0);
-  ASSERT(reference_mat[1][3] == 0);
-  ASSERT(reference_mat[2][0] == 0);
-  ASSERT(reference_mat[2][1] == 0);
-  ASSERT(reference_mat[3][0] == 0);
-  ASSERT(reference_mat[3][1] == 0);
-  ASSERT(reference_mat[3][3] == 0);
-
-  for (u32 i = 0; i < m_next_free_frag; i++) {
-    std::array<math::Vector4f, 4> mat;
-    memcpy(&mat, m_fragments[i].header, 64);
-    ASSERT(mat == reference_mat);
-  }
+//  ASSERT(reference_mat[0][1] == 0);
+//  ASSERT(reference_mat[0][2] == 0);
+//  ASSERT(reference_mat[0][3] == 0);
+//  ASSERT(reference_mat[1][0] == 0);
+//  ASSERT(reference_mat[1][2] == 0);
+//  ASSERT(reference_mat[1][3] == 0);
+//  ASSERT(reference_mat[2][0] == 0);
+//  ASSERT(reference_mat[2][1] == 0);
+//  ASSERT(reference_mat[3][0] == 0);
+//  ASSERT(reference_mat[3][1] == 0);
+//  ASSERT(reference_mat[3][3] == 0);
+//
+//  for (u32 i = 0; i < m_next_free_frag; i++) {
+//    std::array<math::Vector4f, 4> mat;
+//    memcpy(&mat, m_fragments[i].header, 64);
+//    ASSERT(mat == reference_mat);
+//  }
 }
 
 /*!
@@ -237,7 +240,7 @@ void Generic2::build_index_buffer() {
       for (u32 vidx = adgif.vtx_idx; vidx < adgif.vtx_idx + adgif.vtx_count; vidx++) {
         auto& vtx = m_verts[vidx];
         warmup++;
-        if (!vtx.adc && warmup >= 3) {
+        if (vtx.adc && warmup >= 3) {
           m_indices[m_next_free_idx++] = vidx;
           m_indices[m_next_free_idx++] = vidx - 1;
           m_indices[m_next_free_idx++] = vidx - 2;
