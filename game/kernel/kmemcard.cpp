@@ -176,10 +176,6 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
 //  }
 //}
 
-// static empty bank
-static const std::array<u8, 0x11800> nullbank = {0};
-// static temp bank
-static std::array<u8, 0x11800> bankdata = {0};
 /*!
  * PC port function that returns whether a given bank ID's file exists or not.
  */
@@ -189,6 +185,11 @@ bool file_is_present(int id, int bank = 0) {
     // file doesn't exist...
     return false;
   }
+  // avoid file check tbh. there shouldn't be any saves with a save count of zero anyway.
+  // the file check is quite slow and ultimately not very useful.
+  return true;
+
+  /*
   // file exists. but let's see if it's an empty one.
   // this prevents the game from reading a bank but classifying it as corrupt data.
   // which a file full of zeros logically is.
@@ -199,6 +200,7 @@ bool file_is_present(int id, int bank = 0) {
   fread(&savecount, sizeof(u32), 1, fp);
   fclose(fp);
   return savecount > 0;
+  */
 }
 
 /*!
