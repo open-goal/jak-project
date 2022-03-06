@@ -133,7 +133,7 @@ s32 sceMcOpen(s32 port, s32 slot, const char* name, s32 mode) {
   g_mc_state.handles[fd] = handle;
 
   g_mc_state.current_function_result = fd;
-  return 0;
+  return sceMcResSucceed;
 }
 
 s32 sceMcWrite(s32 fd, const void* buff, s32 size) {
