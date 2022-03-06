@@ -260,7 +260,8 @@ void pc_update_card() {
 
     // banks chosen and checked. copy data and set info.
     mc_files[file].last_saved_bank = header1 == header2;
-    // if (header1->save_count > highest_save_count) {
+    mc_files[file].most_recent_save_count = header1->save_count;
+    // if (mc_files[file].most_recent_save_count > highest_save_count) {
     //  mc_last_file = file;
     // }
     memcpy(mc_files[file].data, header1->preview_data, 64);
