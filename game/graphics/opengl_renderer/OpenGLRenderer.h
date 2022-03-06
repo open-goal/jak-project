@@ -49,6 +49,7 @@ class OpenGLRenderer {
 
   SharedRenderState m_render_state;
   Profiler m_profiler;
+  SmallProfiler m_small_profiler;
 
   std::array<std::unique_ptr<BucketRenderer>, (int)BucketId::MAX_BUCKETS> m_bucket_renderers;
   std::array<BucketCategory, (int)BucketId::MAX_BUCKETS> m_bucket_categories;

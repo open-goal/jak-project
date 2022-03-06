@@ -69,7 +69,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
 void OpenGLRenderer::init_bucket_renderers() {
-  m_bucket_categories.fill(BucketCategory::UNUSED);
+  m_bucket_categories.fill(BucketCategory::OTHER);
   std::vector<tfrag3::TFragmentTreeKind> normal_tfrags = {tfrag3::TFragmentTreeKind::NORMAL,
                                                           tfrag3::TFragmentTreeKind::LOWRES};
   std::vector<tfrag3::TFragmentTreeKind> dirt_tfrags = {tfrag3::TFragmentTreeKind::DIRT};
@@ -83,7 +83,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   // 0
   // 1
   // 2
-  init_bucket_renderer<SkyRenderer>("sky", BucketCategory::SKY, BucketId::SKY_DRAW);  // 3
+  init_bucket_renderer<SkyRenderer>("sky", BucketCategory::OTHER, BucketId::SKY_DRAW);  // 3
   // 4
 
   //-----------------------
@@ -147,7 +147,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("l0-alpha-tex", BucketCategory::TEX,
                                              BucketId::ALPHA_TEX_LEVEL0);  // 31
-  init_bucket_renderer<SkyBlendHandler>("l0-alpha-sky-blend-and-tfrag-trans", BucketCategory::SKY,
+  init_bucket_renderer<SkyBlendHandler>("l0-alpha-sky-blend-and-tfrag-trans", BucketCategory::OTHER,
                                         BucketId::TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0, 0,
                                         sky_gpu_blender, sky_cpu_blender);  // 32
   // 33
@@ -164,7 +164,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("l1-alpha-tex", BucketCategory::TEX,
                                              BucketId::ALPHA_TEX_LEVEL1);  // 38
-  init_bucket_renderer<SkyBlendHandler>("l1-alpha-sky-blend-and-tfrag-trans", BucketCategory::SKY,
+  init_bucket_renderer<SkyBlendHandler>("l1-alpha-sky-blend-and-tfrag-trans", BucketCategory::OTHER,
                                         BucketId::TFRAG_TRANS1_AND_SKY_BLEND_LEVEL1, 1,
                                         sky_gpu_blender, sky_cpu_blender);  // 39
   // 40
@@ -205,7 +205,7 @@ void OpenGLRenderer::init_bucket_renderers() {
 
   // other renderers may output to the eye renderer
   m_render_state.eye_renderer = init_bucket_renderer<EyeRenderer>(
-      "common-pris-eyes", BucketCategory::SKY, BucketId::MERC_EYES_AFTER_PRIS);  // 54
+      "common-pris-eyes", BucketCategory::OTHER, BucketId::MERC_EYES_AFTER_PRIS);  // 54
   init_bucket_renderer<MercRenderer>("common-pris-merc", BucketCategory::MERC,
                                      BucketId::MERC_AFTER_PRIS);  // 55
   init_bucket_renderer<GenericRenderer>("common-pris-generic", BucketCategory::GENERIC_MERC,
@@ -255,7 +255,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     if (!m_bucket_renderers[i]) {
-      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), BucketCategory::UNUSED,
+      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), BucketCategory::OTHER,
                                                 (BucketId)i);
     }
 
@@ -313,7 +313,13 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   //  }
 
   if (settings.draw_small_profiler_window) {
-    m_profiler.draw_small_window(m_render_state.load_status_debug);
+    SmallProfilerStats stats;
+    stats.draw_calls = m_profiler.root()->stats().draw_calls;
+    stats.triangles = m_profiler.root()->stats().triangles;
+    for (int i = 0; i < (int)BucketCategory::MAX_CATEGORIES; i++) {
+      stats.time_per_category[i] = m_category_times[i];
+    }
+    m_small_profiler.draw(m_render_state.load_status_debug, stats);
   }
 
   if (settings.save_screenshot) {
