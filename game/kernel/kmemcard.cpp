@@ -17,9 +17,10 @@
 #include "game/common/ramdisk_rpc_types.h"
 #include "game/kernel/fileio.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
 #include "common/util/Assert.h"
 
-static constexpr bool memcard_debug = true;
+static constexpr bool memcard_debug = false;
 
 using McCallbackFunc = void (*)(s32);
 
@@ -107,7 +108,7 @@ const char* filename[12] = {
     "/BASCUS-97124AYBABTU!/bank6.bin", "/BASCUS-97124AYBABTU!/bank7.bin"};
 
 void kmemcard_init_globals() {
-  next = 0;
+  // next = 0;
   language = 0;
   op = {};
   // mc[0] = {};
@@ -131,7 +132,7 @@ void kmemcard_init_globals() {
  * A handle is a unique integer that can be passed up to the GOAL game code and represents a
  * specific memory card. If the card is removed, the handle will become invalid.
  */
-//s32 new_mc_handle() {
+// s32 new_mc_handle() {
 //  s32 handle = next++;
 //
 //  // if you wrap around, it avoids the zero handle.
@@ -272,7 +273,10 @@ void pc_update_card() {
  * PC port function to save a file. This does the whole saving at once, synchronously.
  */
 void pc_game_save_synch() {
+  Timer mc_timer;
+  mc_timer.start();
   pc_update_card();
+
   // cd_reprobe_save //
   if (!file_is_present(op.param2)) {
     mc_print("reprobe save: first time!");
@@ -349,6 +353,8 @@ void pc_game_save_synch() {
     op.operation = MemoryCardOperationKind::NO_OP;
     op.result = McStatusCode::INTERNAL_ERROR;
   }
+
+  fmt::print("[MC] synchronous save took {:.2f}ms\n", mc_timer.getMs());
 }
 
 void pc_game_load_open_file(FILE* fd) {
@@ -475,13 +481,18 @@ void pc_game_load_open_file(FILE* fd) {
  * PC port function to load a file. This does the whole loading at once, synchronously.
  */
 void pc_game_load_synch() {
+  Timer mc_timer;
+  mc_timer.start();
   pc_update_card();
+
   // cb_reprobe_load //
   p2 = 0;
   mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
   auto fd = fopen(
       file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4]}).c_str(), "rb");
   pc_game_load_open_file(fd);
+
+  fmt::print("[MC] synchronous load took {:.2f}ms\n", mc_timer.getMs());
 }
 
 /*!
