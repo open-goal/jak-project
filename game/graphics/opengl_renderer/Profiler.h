@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 #include "common/common_types.h"
 #include "common/util/Timer.h"
