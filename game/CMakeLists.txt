@@ -74,6 +74,14 @@ set(RUNTIME_SOURCE
         graphics/gfx.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
+        graphics/opengl_renderer/background/background_common.cpp
+        graphics/opengl_renderer/background/Tfrag3.cpp
+        graphics/opengl_renderer/background/TFragment.cpp
+        graphics/opengl_renderer/background/Tie3.cpp
+        graphics/opengl_renderer/foreground/Generic2.cpp
+        graphics/opengl_renderer/foreground/Generic2_DMA.cpp
+        graphics/opengl_renderer/foreground/Generic2_Build.cpp
+        graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
@@ -95,10 +103,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/Sprite3.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
-        graphics/opengl_renderer/tfrag/Tfrag3.cpp
-        graphics/opengl_renderer/tfrag/tfrag_common.cpp
-        graphics/opengl_renderer/tfrag/TFragment.cpp
-        graphics/opengl_renderer/tfrag/Tie3.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp

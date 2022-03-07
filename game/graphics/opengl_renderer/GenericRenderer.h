@@ -1,8 +1,8 @@
 #pragma once
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer2.h"
+#include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/common/vu.h"
 
 class GenericRenderer : public BucketRenderer {
@@ -21,6 +21,7 @@ class GenericRenderer : public BucketRenderer {
   void mscal(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void mscal0();
   void mscal_dispatch(int imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void mscal_noclip_nopipe(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_dma_stream(const u8* data,
                          u32 bytes,
                          SharedRenderState* render_state,
@@ -40,16 +41,14 @@ class GenericRenderer : public BucketRenderer {
   }
 
   int m_skipped_tags = 0;
-  DirectRenderer m_direct;
   DirectRenderer2 m_direct2;
+  Generic2 m_debug_gen2;
   std::string m_debug;
 
   struct Vu {
     u32 row[4];
     u32 stcycl = 0;
-    Vf vf01, vf02, vf03, vf04, vf05, vf06, vf07, vf08, vf09, vf10, vf11, vf12, vf13, vf14, vf15,
-        vf16, vf17, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30,
-        vf31;
+    Vf vf03, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30, vf31;
     const Vf vf00;
     u16 vi01, vi02, vi03, vi04, vi05, vi06, vi07, vi09, vi08, vi11, vi12, vi13, vi10, vi14, vi15;
     float I, P, Q;
@@ -58,6 +57,20 @@ class GenericRenderer : public BucketRenderer {
     const u16 vi00 = 0;
     Vu() : vf00(0, 0, 0, 1) {}
   } vu;
+
+  struct {
+    Vf fog;
+    Vf adgif_tmpl;
+    Vf hvdf_off;
+    Vf hmge_scale;
+    Vf guard;
+
+    Vf mat0, mat1, mat2, mat3;
+
+    Vf vtx_p0, vtx_p1, vtx_p2, vtx_p3;
+
+    Vf vtx_load0, vtx_load1;
+  } gen;
 
   struct alignas(16) BufferMemory {
     u8 data[1024 * 16];

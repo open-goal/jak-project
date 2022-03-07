@@ -6,8 +6,9 @@
 DirectRenderer2::DirectRenderer2(u32 max_verts,
                                  u32 max_inds,
                                  u32 max_draws,
-                                 const std::string& name)
-    : m_name(name) {
+                                 const std::string& name,
+                                 bool use_ftoi_mod)
+    : m_name(name), m_use_ftoi_mod(use_ftoi_mod) {
   // allocate buffers
   m_vertices.vertices.resize(max_verts);
   m_vertices.indices.resize(max_inds);
@@ -86,7 +87,6 @@ void DirectRenderer2::reset_buffers() {
   m_vertices.next_index = 0;
   m_vertices.next_vertex = 0;
   m_state.next_vertex_starts_strip = true;
-  m_state.strip_warmup = 0;
   m_current_state_has_open_draw = false;
 }
 
@@ -167,14 +167,16 @@ void DirectRenderer2::draw_call_loop_simple(SharedRenderState* render_state,
     } else {
       end_idx = m_draw_buffer[draw_idx + 1].start_index;
     }
-    glDrawElements(GL_TRIANGLES, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    glDrawElements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
     prof.add_draw_call();
-    prof.add_tri((end_idx - draw.start_index) / 3);
+    prof.add_tri((end_idx - draw.start_index) - 2);
   }
 }
 
 void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
                                              ScopedProfilerNode& prof) {
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
   u32 draw_idx = 0;
   while (draw_idx < m_next_free_draw) {
     const auto& draw = m_draw_buffer[draw_idx];
@@ -212,7 +214,7 @@ void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
     // fmt::print("drawing {:4d} with abe {} tex {} {}", end_idx - draw.start_index,
     // (int)draw.mode.get_ab_enable(), end_of_draw_group - draw_idx, draw.to_single_line_string() );
     // fmt::print("{}\n", draw.mode.to_string());
-    glDrawElements(GL_TRIANGLES, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    glDrawElements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
     prof.add_draw_call();
     prof.add_tri((end_idx - draw.start_index) / 3);
     draw_idx = end_of_draw_group + 1;
@@ -426,7 +428,11 @@ void DirectRenderer2::render_gif_data(const u8* data,
               handle_rgbaq_packed(data + offset);
               break;
             case GifTag::RegisterDescriptor::XYZF2:
-              handle_xyzf2_packed(data + offset, render_state, prof);
+              if (m_use_ftoi_mod) {
+                handle_xyzf2_mod_packed(data + offset, render_state, prof);
+              } else {
+                handle_xyzf2_packed(data + offset, render_state, prof);
+              }
               break;
             case GifTag::RegisterDescriptor::PRIM:
               ASSERT(false);  // handle_prim_packed(data + offset, render_state, prof);
@@ -675,16 +681,18 @@ void DirectRenderer2::handle_xyzf2_packed(const u8* data,
 
   if (m_state.next_vertex_starts_strip) {
     m_state.next_vertex_starts_strip = false;
-    m_state.strip_warmup = 0;
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
   }
 
   // push the vertex
   auto& vert = m_vertices.vertices[m_vertices.next_vertex++];
-  m_state.strip_warmup++;
-  if (adc && m_state.strip_warmup >= 3) {
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 1;
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 2;
-    m_vertices.indices[m_vertices.next_index++] = m_vertices.next_vertex - 3;
+  auto vidx = m_vertices.next_vertex - 1;
+  if (adc) {
+    m_vertices.indices[m_vertices.next_index++] = vidx;
+  } else {
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
+    m_vertices.indices[m_vertices.next_index++] = vidx - 1;
+    m_vertices.indices[m_vertices.next_index++] = vidx;
   }
 
   if (!m_current_state_has_open_draw) {
@@ -709,6 +717,75 @@ void DirectRenderer2::handle_xyzf2_packed(const u8* data,
 
   vert.xyz[0] = x;
   vert.xyz[1] = y;
+  vert.xyz[2] = z;
+  vert.rgba = m_state.rgba;
+  vert.stq = math::Vector<float, 3>(m_state.s, m_state.t, m_state.Q);
+  vert.tex_unit = m_state.tex_unit;
+  vert.fog = f;
+  vert.flags = m_state.vertex_flags;
+}
+
+void DirectRenderer2::handle_xyzf2_mod_packed(const u8* data,
+                                              SharedRenderState* render_state,
+                                              ScopedProfilerNode& prof) {
+  if (m_vertices.close_to_full()) {
+    m_stats.flush_due_to_full++;
+    flush_pending(render_state, prof);
+  }
+
+  float x;
+  float y;
+  memcpy(&x, data, 4);
+  memcpy(&y, data + 4, 4);
+
+  u64 upper;
+  memcpy(&upper, data + 8, 8);
+  float z;
+  memcpy(&z, &upper, 4);
+
+  u8 f = (upper >> 36);
+  bool adc = !(upper & (1ull << 47));
+
+  if (m_state.next_vertex_starts_strip) {
+    m_state.next_vertex_starts_strip = false;
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
+  }
+
+  // push the vertex
+  auto& vert = m_vertices.vertices[m_vertices.next_vertex++];
+
+  auto vidx = m_vertices.next_vertex - 1;
+  if (adc) {
+    m_vertices.indices[m_vertices.next_index++] = vidx;
+  } else {
+    m_vertices.indices[m_vertices.next_index++] = UINT32_MAX;
+    m_vertices.indices[m_vertices.next_index++] = vidx - 1;
+    m_vertices.indices[m_vertices.next_index++] = vidx;
+  }
+
+  if (!m_current_state_has_open_draw) {
+    m_current_state_has_open_draw = true;
+    if (m_next_free_draw >= m_draw_buffer.size()) {
+      ASSERT(false);
+    }
+    // pick a texture unit to use
+    u8 tex_unit = 0;
+    if (m_next_free_draw > 0) {
+      tex_unit = (m_draw_buffer[m_next_free_draw - 1].tex_unit + 1) % TEX_UNITS;
+    }
+    auto& draw = m_draw_buffer[m_next_free_draw++];
+    draw.mode = m_state.as_mode;
+    draw.start_index = m_vertices.next_index;
+    draw.tbp = m_state.tbp;
+    draw.fix = m_state.gs_alpha.fix();
+    // associate this draw with this texture unit.
+    draw.tex_unit = tex_unit;
+    m_state.tex_unit = tex_unit;
+  }
+
+  // todo move to shader or something.
+  vert.xyz[0] = x * 16.f;
+  vert.xyz[1] = y * 16.f;
   vert.xyz[2] = z;
   vert.rgba = m_state.rgba;
   vert.stq = math::Vector<float, 3>(m_state.s, m_state.t, m_state.Q);

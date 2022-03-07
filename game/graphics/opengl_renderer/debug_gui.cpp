@@ -37,8 +37,9 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
 
   ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
   if (ImGui::Begin("Frame Timing", p_open, window_flags)) {
-    ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
-                dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10), dma_stats.num_chunks);
+    //    ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
+    //                dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10),
+    //                dma_stats.num_chunks);
     float worst = 0, total = 0;
     for (auto x : m_frame_times) {
       worst = std::max(x, worst);

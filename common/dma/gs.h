@@ -352,7 +352,18 @@ struct AdGifData {
   u64 clamp_addr;
   u64 alpha_data;
   u64 alpha_addr;
+
+  bool is_normal_adgif() const {
+    return (u8)tex0_addr == (u32)GsRegisterAddress::TEX0_1 &&
+           (u8)tex1_addr == (u32)GsRegisterAddress::TEX1_1 &&
+           (u8)mip_addr == (u32)GsRegisterAddress::MIPTBP1_1 &&
+           (u8)clamp_addr == (u32)GsRegisterAddress::CLAMP_1 &&
+           ((u8)alpha_addr == (u32)GsRegisterAddress::ALPHA_1 ||
+            (u8)alpha_addr == (u32)GsRegisterAddress::MIPTBP2_1);
+  }
 };
+
+static_assert(sizeof(AdGifData) == 5 * 16);
 
 // this represents all of the drawing state, stored as an integer.
 // it can also represent "invalid".

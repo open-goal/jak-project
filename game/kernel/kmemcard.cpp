@@ -253,6 +253,7 @@ void pc_game_save_synch() {
   Timer mc_timer;
   mc_timer.start();
   pc_update_card();
+  file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard", filename[0]}));
 
   // cd_reprobe_save //
   if (!file_is_present(op.param2)) {

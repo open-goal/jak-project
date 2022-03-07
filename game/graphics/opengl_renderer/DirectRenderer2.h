@@ -7,7 +7,11 @@
 
 class DirectRenderer2 {
  public:
-  DirectRenderer2(u32 max_verts, u32 max_inds, u32 max_draws, const std::string& name);
+  DirectRenderer2(u32 max_verts,
+                  u32 max_inds,
+                  u32 max_draws,
+                  const std::string& name,
+                  bool use_ftoi_mod);
   void init_shaders(ShaderLibrary& shaders);
   void reset_state();
   void render_gif_data(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -35,7 +39,6 @@ class DirectRenderer2 {
     float s, t, Q;
     math::Vector<u8, 4> rgba;
     bool next_vertex_starts_strip = true;
-    u32 strip_warmup = 0;
     u8 vertex_flags = 0;
     void set_tcc_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 1; }
     void set_decal_flag(bool value) { vertex_flags ^= (-(u8)value ^ vertex_flags) & 2; }
@@ -133,7 +136,13 @@ class DirectRenderer2 {
   // packed
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
+
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,
                            ScopedProfilerNode& prof);
+
+  bool m_use_ftoi_mod = false;
+  void handle_xyzf2_mod_packed(const u8* data,
+                               SharedRenderState* render_state,
+                               ScopedProfilerNode& prof);
 };
