@@ -6,7 +6,7 @@
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 #include "game/graphics/opengl_renderer/sprite_common.h"
-#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
 
 #include <map>
 

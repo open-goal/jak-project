@@ -2,7 +2,7 @@
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
-#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
 
 namespace {
 

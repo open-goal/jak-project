@@ -355,7 +355,9 @@ static void gl_render_display(GfxDisplay* display) {
 #endif
 
   // render game!
-  render_game_frame(width, height, lbox_w, lbox_h);
+  if (g_gfx_data->debug_gui.should_advance_frame()) {
+    render_game_frame(width, height, lbox_w, lbox_h);
+  }
 
   if (g_gfx_data->debug_gui.should_gl_finish()) {
     glFinish();

@@ -36,15 +36,23 @@ class OpenGLRenderer {
   void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
 
   template <typename T, class... Args>
-  T* init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {
+  T* init_bucket_renderer(const std::string& name,
+                          BucketCategory cat,
+                          BucketId id,
+                          Args&&... args) {
     auto renderer = std::make_unique<T>(name, id, std::forward<Args>(args)...);
     T* ret = renderer.get();
     m_bucket_renderers.at((int)id) = std::move(renderer);
+    m_bucket_categories.at((int)id) = cat;
     return ret;
   }
 
   SharedRenderState m_render_state;
   Profiler m_profiler;
+  SmallProfiler m_small_profiler;
 
   std::array<std::unique_ptr<BucketRenderer>, (int)BucketId::MAX_BUCKETS> m_bucket_renderers;
+  std::array<BucketCategory, (int)BucketId::MAX_BUCKETS> m_bucket_categories;
+
+  std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
 };

@@ -1,7 +1,29 @@
-//--------------------------MIPS2C---------------------
-// clang-format off
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/kscheme.h"
+
+namespace Mips2C {
+namespace generic_prepare_dma_single {
+u64 execute(void* ctxt);
+}
+namespace generic_prepare_dma_double {
+u64 execute(void* ctxt);
+}
+namespace mercneric_convert {
+u64 execute(void* ctxt);
+}
+namespace generic_light_proc {
+u64 execute(void* ctxt);
+}
+namespace generic_envmap_proc {
+u64 execute(void* ctxt);
+}
+namespace high_speed_reject {
+u64 execute(void* ctxt);
+}
+}  // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+// clang-format off
 namespace Mips2C {
 namespace generic_merc_init_asm {
 struct Cache {
@@ -683,7 +705,8 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7328, v1);                             // lwu t9, 7328(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  mercneric_convert::execute(c);
 
   block_44:
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
@@ -1009,17 +1032,20 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7336, v1);                             // lwu t9, 7336(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_prepare_dma_double::execute(c);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7340, v1);                             // lwu t9, 7340(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_light_proc::execute(c);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7344, v1);                             // lwu t9, 7344(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_envmap_proc::execute(c);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0
@@ -1115,17 +1141,20 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7336, v1);                             // lwu t9, 7336(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_prepare_dma_double::execute(c);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7340, v1);                             // lwu t9, 7340(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_light_proc::execute(c);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7344, v1);                             // lwu t9, 7344(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_envmap_proc::execute(c);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0
@@ -1201,12 +1230,14 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7332, v1);                             // lwu t9, 7332(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_prepare_dma_single::execute(c);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7340, v1);                             // lwu t9, 7340(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  generic_light_proc::execute(c);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0

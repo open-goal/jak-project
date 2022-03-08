@@ -353,12 +353,35 @@ struct alignas(16) Vf {
     }
   }
 
+  void ftoi4_check(Mask /*mask*/, const Vf& a) {
+    for (int i = 0; i < 3; i++) {
+      data[i] = a.data[i];
+    }
+
+    for (int i = 3; i < 4; i++) {
+      s32 val = a.data[i] * 16.f;
+      memcpy(&data[i], &val, 4);
+    }
+  }
+
   void ftoi12(Mask mask, const Vf& a) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         //        if (std::isnan(a.data[i])) {
         //          ASSERT(false);
         //        }
+        s32 val = a.data[i] * 4096.f;
+        memcpy(&data[i], &val, 4);
+      }
+    }
+  }
+
+  void ftoi12_check(Mask mask, const Vf& a) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        if (std::isnan(a.data[i])) {
+          ASSERT(false);
+        }
         s32 val = a.data[i] * 4096.f;
         memcpy(&data[i], &val, 4);
       }

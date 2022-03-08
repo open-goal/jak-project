@@ -88,34 +88,6 @@ void Profiler::draw() {
   ImGui::End();
 }
 
-void Profiler::draw_small_window(const std::string& status) {
-  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
-                                  ImGuiWindowFlags_AlwaysAutoResize |
-                                  ImGuiWindowFlags_NoSavedSettings |
-                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-  auto* p_open = &m_small_window_open;
-  const float PAD = 10.0f;
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImVec2 work_pos = viewport->WorkPos;  // Use work area to avoid menu-bar/task-bar, if any!
-  ImVec2 work_size = viewport->WorkSize;
-  ImVec2 window_pos, window_pos_pivot;
-  window_pos.x = (work_pos.x + PAD);
-  window_pos.y = (work_pos.y + work_size.y - PAD);
-  window_pos_pivot.x = 0.0f;
-  window_pos_pivot.y = 1.0f;
-  ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-
-  ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
-  if (ImGui::Begin("Profiler (short)", p_open, window_flags)) {
-    ImGui::Text(" tri: %7d\n", m_root.m_stats.triangles);
-    ImGui::Text("  DC: %4d\n", m_root.m_stats.draw_calls);
-    if (!status.empty()) {
-      ImGui::Text("%s", status.c_str());
-    }
-  }
-  ImGui::End();
-}
-
 u32 name_to_color(const std::string& name) {
   u64 val = std::hash<std::string>{}(name);
   return colors::common_colors[val % colors::COLOR_COUNT] | 0xff000000;
@@ -185,4 +157,66 @@ void ProfilerNode::to_string_helper(std::string& str, int depth) const {
   for (const auto& child : m_children) {
     child.to_string_helper(str, depth + 1);
   }
+}
+
+void FramePlot::push(float val) {
+  m_buffer[m_idx++] = val;
+  if (m_idx == SIZE) {
+    m_idx = 0;
+  }
+}
+
+void FramePlot::draw(float max) {
+  float worst = 0, total = 0;
+  for (auto x : m_buffer) {
+    worst = std::max(x, worst);
+    total += x;
+  }
+  ImGui::SameLine();
+  ImGui::Text("avg: %.1f", total / SIZE);
+
+  ImGui::SameLine();
+  ImGui::Text("worst: %.1f", worst);
+
+  ImGui::Separator();
+  ImGui::PlotLines(
+      "",
+      [](void* data, int idx) {
+        auto* me = (FramePlot*)data;
+        return me->m_buffer[(me->m_idx + idx) % SIZE];
+      },
+      (void*)this, SIZE, 0, nullptr, 0, max, ImVec2(300, 40));
+}
+
+void SmallProfiler::draw(const std::string& status, const SmallProfilerStats& stats) {
+  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
+                                  ImGuiWindowFlags_AlwaysAutoResize |
+                                  ImGuiWindowFlags_NoSavedSettings |
+                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+  const float PAD = 10.0f;
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  ImVec2 work_pos = viewport->WorkPos;  // Use work area to avoid menu-bar/task-bar, if any!
+  ImVec2 work_size = viewport->WorkSize;
+  ImVec2 window_pos, window_pos_pivot;
+  window_pos.x = (work_pos.x + PAD);
+  window_pos.y = (work_pos.y + work_size.y - PAD);
+  window_pos_pivot.x = 0.0f;
+  window_pos_pivot.y = 1.0f;
+  ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+
+  ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
+  if (ImGui::Begin("Profiler (short)", nullptr, window_flags)) {
+    ImGui::Text(" tri: %7d\n", stats.triangles);
+    ImGui::Text("  DC: %4d\n", stats.draw_calls);
+    if (!status.empty()) {
+      ImGui::Text("%s", status.c_str());
+    }
+
+    for (int i = 0; i < (int)BucketCategory::MAX_CATEGORIES; i++) {
+      m_plots[i].push(stats.time_per_category[i] * 1000.f);
+      ImGui::Text("%6s", BUCKET_CATEGORY_NAMES[i]);
+      m_plots[i].draw(5.f);
+    }
+  }
+  ImGui::End();
 }
