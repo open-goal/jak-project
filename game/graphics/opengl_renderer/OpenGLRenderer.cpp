@@ -14,6 +14,7 @@
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/GenericRenderer.h"
+#include "game/graphics/opengl_renderer/OceanMidAndFar.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -84,7 +85,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   // 1
   // 2
   init_bucket_renderer<SkyRenderer>("sky", BucketCategory::OTHER, BucketId::SKY_DRAW);  // 3
-  // 4
+  init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OTHER,
+                                       BucketId::OCEAN_MID_AND_FAR);  // 4
 
   //-----------------------
   // LEVEL 0 tfrag texture
