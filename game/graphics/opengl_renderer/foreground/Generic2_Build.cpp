@@ -51,6 +51,13 @@ void Generic2::determine_draw_modes() {
     auto& frag = m_fragments[m_adgifs[i].frag];
     m_adgifs[i].uses_hud = frag.uses_hud;
 
+    // the header contains the giftag which might set fogging based on pre.
+    GifTag tag(frag.header + (4 * 16));
+    if (tag.pre()) {
+      GsPrim prim(tag.prim());
+      m_gs.set_fog_flag(prim.fge());
+    }
+
     // ADGIF 0
     ASSERT((u8)ad.tex0_addr == (u32)GsRegisterAddress::TEX0_1);
     if (ad.tex0_data != tex0.data) {
@@ -203,13 +210,13 @@ void Generic2::draws_to_buckets() {
   std::unordered_map<u64, u32> draw_key_to_bucket;
   for (u32 i = 0; i < m_next_free_adgif; i++) {
     auto& ad = m_adgifs[i];
-    u64 key = ad.key();
-    const auto& bucket_it = draw_key_to_bucket.find(key);
-    if (bucket_it == draw_key_to_bucket.end()) {
-      // new bucket!
+    if (ad.uses_hud) {
+      // put all hud draws in separate buckets.
+      // there's some really weird messed up draws for the orbs that fly up to the corner when
+      // breaking a crate on a zoomer.
       u32 bucket_idx = m_next_free_bucket++;
       ASSERT(bucket_idx < m_buckets.size());
-      draw_key_to_bucket[key] = bucket_idx;
+      draw_key_to_bucket[ad.key()] = bucket_idx;
       auto& bucket = m_buckets[bucket_idx];
       bucket.tbp = ad.tbp;
       bucket.mode = ad.mode;
@@ -217,11 +224,26 @@ void Generic2::draws_to_buckets() {
       bucket.last = i;
       ad.next = UINT32_MAX;
     } else {
-      // existing bucket!
-      auto& bucket = m_buckets[bucket_it->second];
-      m_adgifs[bucket.last].next = i;
-      ad.next = UINT32_MAX;
-      bucket.last = i;
+      u64 key = ad.key();
+      const auto& bucket_it = draw_key_to_bucket.find(key);
+      if (bucket_it == draw_key_to_bucket.end()) {
+        // new bucket!
+        u32 bucket_idx = m_next_free_bucket++;
+        ASSERT(bucket_idx < m_buckets.size());
+        draw_key_to_bucket[key] = bucket_idx;
+        auto& bucket = m_buckets[bucket_idx];
+        bucket.tbp = ad.tbp;
+        bucket.mode = ad.mode;
+        bucket.start = i;
+        bucket.last = i;
+        ad.next = UINT32_MAX;
+      } else {
+        // existing bucket!
+        auto& bucket = m_buckets[bucket_it->second];
+        m_adgifs[bucket.last].next = i;
+        ad.next = UINT32_MAX;
+        bucket.last = i;
+      }
     }
   }
 }
