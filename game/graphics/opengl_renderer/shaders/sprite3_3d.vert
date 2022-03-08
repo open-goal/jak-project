@@ -12,6 +12,8 @@ uniform mat4 hud_matrix;
 uniform vec4 hud_hvdf_offset;
 uniform vec4 hud_hvdf_user[75];
 uniform float pfog0;
+uniform float fog_min;
+uniform float fog_max;
 uniform float min_scale;
 uniform float max_scale;
 uniform float bonus;
@@ -104,6 +106,8 @@ void main() {
 
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
+        offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
+        offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
 
         /* transformed_pos_vf02.w = offset_pos_vf10.w - fog_max;
         int fge = matrix == 0;
@@ -130,6 +134,8 @@ void main() {
     } else if (rendermode == 2) { // hud sprites
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + (matrix == 0 ? hud_hvdf_offset : hud_hvdf_user[matrix - 1]);
+        offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
+        offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
 
         // NOTE: no max scale for hud
         scales_vf01.z = max(scales_vf01.z, min_scale);
