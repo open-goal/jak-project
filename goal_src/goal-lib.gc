@@ -785,16 +785,12 @@
   `(dec (length ,coll)))
 
 (defmacro arr-idx-of (coll val def)
-  "Returns the index of an item in an array, returns <def> if is nothing is found.  Assumes the collection is non-empty"
-  `(let ((curr-val #f)
-         (curr-idx -1))
-    (until (or (> curr-idx (length ,coll))
-               (= curr-val ,val))
-      (set! curr-idx (inc curr-idx))
-      (set! curr-val (-> ,coll curr-idx)))
-    (if (= curr-val ,val)
-      curr-idx
-      ,def)))
+  "Returns the index of an item in an array, returns <def> if is nothing is found."
+  `(block find-element
+    (dotimes (i (length arr))
+      (if (= val (-> arr i))
+        (return-from find-element i)))
+    def))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; METHOD STUFF
