@@ -49,6 +49,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/generic_merc.cpp
         mips2c/functions/joint.cpp
         mips2c/functions/merc_blend_shape.cpp
+        mips2c/functions/ocean.cpp
         mips2c/functions/ripple.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
@@ -93,6 +94,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/Loader.cpp
         graphics/opengl_renderer/MercProgram.cpp
         graphics/opengl_renderer/MercRenderer.cpp
+        graphics/opengl_renderer/OceanMidAndFar.cpp
         graphics/opengl_renderer/opengl_utils.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
