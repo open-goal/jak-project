@@ -19,6 +19,8 @@ uniform float deg_to_rad;
 uniform float inv_area;
 uniform vec4 basis_x;
 uniform vec4 basis_y;
+uniform float fog_min;
+uniform float fog_max;
 uniform vec4 hmge_scale;
 uniform vec4 xy_array[8];
 uniform vec4 xyz_array[4];
@@ -104,7 +106,7 @@ void main() {
 
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
-
+        offset_pos_vf10.w = max(offset_pos_vf10.w, fog_min);
         /* transformed_pos_vf02.w = offset_pos_vf10.w - fog_max;
         int fge = matrix == 0;
         if (transformed_pos_vf02.w != 0) {

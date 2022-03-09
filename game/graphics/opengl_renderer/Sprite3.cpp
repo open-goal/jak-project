@@ -221,6 +221,10 @@ void Sprite3::render_2d_group0(DmaFollower& dma,
               m_frame_data.min_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "max_scale"),
               m_frame_data.max_scale);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "fog_min"),
+              m_frame_data.fog_min);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "fog_max"),
+              m_frame_data.fog_max);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "bonus"),
               m_frame_data.bonus);
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "hmge_scale"), 1,

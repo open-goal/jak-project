@@ -12,6 +12,8 @@ uniform mat4 hud_matrix;
 uniform vec4 hud_hvdf_offset;
 uniform vec4 hud_hvdf_user[75];
 uniform float pfog0;
+uniform float fog_min;
+uniform float fog_max;
 uniform float min_scale;
 uniform float max_scale;
 uniform float bonus;
@@ -104,6 +106,7 @@ void main() {
 
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
+        offset_pos_vf10.w = max(offset_pos_vf10.w, fog_min);
 
         /* transformed_pos_vf02.w = offset_pos_vf10.w - fog_max;
         int fge = matrix == 0;
