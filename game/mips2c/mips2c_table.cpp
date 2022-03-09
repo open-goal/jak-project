@@ -269,6 +269,12 @@ extern void link();
 namespace draw_large_polygon_ocean {
 extern void link();
 }
+namespace ocean_interp_wave {
+extern void link();
+}
+namespace ocean_generate_verts {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -314,8 +320,8 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
     {"ripple",
      {ripple_execute_init::link, ripple_create_wave_table::link, ripple_apply_wave_table::link,
       ripple_matrix_scale::link}},
-    {"ocean",
-     {init_ocean_far_regs::link, render_ocean_quad::link, draw_large_polygon_ocean::link}}};
+    {"ocean", {init_ocean_far_regs::link, render_ocean_quad::link, draw_large_polygon_ocean::link}},
+    {"ocean-vu0", {ocean_interp_wave::link, ocean_generate_verts::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

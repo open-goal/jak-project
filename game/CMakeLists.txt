@@ -50,6 +50,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/joint.cpp
         mips2c/functions/merc_blend_shape.cpp
         mips2c/functions/ocean.cpp
+        mips2c/functions/ocean_vu0.cpp
         mips2c/functions/ripple.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
