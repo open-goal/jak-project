@@ -42,6 +42,7 @@ class Generic2 : public BucketRenderer {
                           ScopedProfilerNode& prof,
                           DrawMode::AlphaBlend alpha,
                           bool hud);
+  void do_hud_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   bool check_for_end_of_generic_data(DmaFollower& dma, u32 next_bucket);
   void final_vertex_update();
   bool handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket);
