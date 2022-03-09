@@ -106,8 +106,7 @@ void main() {
 
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
-        offset_pos_vf10.w = max(offset_pos_vf10.w, fog_max);
-        offset_pos_vf10.w = min(offset_pos_vf10.w, fog_min);
+        offset_pos_vf10.w = max(offset_pos_vf10.w, fog_min);
 
         /* transformed_pos_vf02.w = offset_pos_vf10.w - fog_max;
         int fge = matrix == 0;
