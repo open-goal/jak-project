@@ -266,6 +266,22 @@ void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
   }
 }
 
+void Generic2::do_hud_draws(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  for (u32 i = 0; i < m_next_free_bucket; i++) {
+    auto& bucket = m_buckets[i];
+    auto& first = m_adgifs[bucket.start];
+    if (first.uses_hud) {
+      setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
+      setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
+                       first.mode.get_clamp_t_enable(), render_state);
+      glDrawElements(GL_TRIANGLE_STRIP, bucket.idx_count, GL_UNSIGNED_INT,
+                     (void*)(sizeof(u32) * bucket.idx_idx));
+      prof.add_draw_call();
+      prof.add_tri(bucket.tri_count);
+    }
+  }
+}
+
 void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
@@ -297,10 +313,6 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
     glUniform1f(m_ogl.mat_32, m_drawing_config.hud_mat_32);
     glUniform1f(m_ogl.mat_33, m_drawing_config.hud_mat_33);
 
-    for (int i = 0; i < ALPHA_MODE_COUNT; i++) {
-      if (m_alpha_draw_enable[i]) {
-        do_draws_for_alpha(render_state, prof, alpha_order[i], true);
-      }
-    }
+    do_hud_draws(render_state, prof);
   }
 }
