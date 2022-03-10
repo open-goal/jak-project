@@ -14,7 +14,7 @@
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/GenericRenderer.h"
-#include "game/graphics/opengl_renderer/OceanMidAndFar.h"
+#include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
