@@ -47,6 +47,9 @@
          )
   )
 
+;; param3 corresponds to the index defined in `*options-remap*` in progress.gc
+;; it is the screen it should go to next, it's only used for type `6`
+
 (define *main-options-demo-shared*
     (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
          (new 'static 'game-option :option-type #x6 :name (game-text-id game-options) :scale #t :param3 4)
@@ -57,35 +60,65 @@
          )
   )
 
+;; TODO - option type should be an enum
+;; 1 - a list? (only used by language so there might be some bad assumptions here...)
+;; 2 - boolean
+;; 3 - dpad input (center screen)
+;; 4 - used for aspect ratio, also a list
+;; 6 - go forward a screen
+;; 8 - go back a screen
+;; ---
+;; 10 - port aspect ratio
+;; 11 - port resolution
+;; 12 - port window type
+;; 13 - port subtitle language
+;; 14 - port subtitle speaker
+
 (define *game-options*
-    (new 'static 'boxed-array :type game-option :length 4 :allocated-length 4
+    (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
          (new 'static 'game-option :option-type #x2 :name (game-text-id vibrations) :scale #t)
          (new 'static 'game-option :option-type #x2 :name (game-text-id play-hints) :scale #t)
-         (new 'static 'game-option :option-type #x1 :name (game-text-id language) :scale #t)
+         (new 'static 'game-option :option-type #x6 :name (game-text-id progress-language-options) :scale #t :param3 35)
+         (new 'static 'game-option :option-type #x2 :name (game-text-id progress-discord-rpc) :scale #t)
          (new 'static 'game-option :option-type #x8 :name (game-text-id back) :scale #t)
          )
   )
 
 (define *game-options-japan*
-    (new 'static 'boxed-array :type game-option :length 3 :allocated-length 3
+    (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
          (new 'static 'game-option :option-type #x2 :name (game-text-id vibrations) :scale #t)
          (new 'static 'game-option :option-type #x2 :name (game-text-id play-hints) :scale #t)
+         (new 'static 'game-option :option-type #x1 :name (game-text-id progress-language-options) :scale #t :param3 35)
+         (new 'static 'game-option :option-type #x2 :name (game-text-id progress-discord-rpc) :scale #t)
          (new 'static 'game-option :option-type #x8 :name (game-text-id back) :scale #t)
          )
   )
 
 (define *game-options-demo*
-    (new 'static 'boxed-array :type game-option :length 3 :allocated-length 3
+    (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
          (new 'static 'game-option :option-type #x2 :name (game-text-id vibrations) :scale #t)
          (new 'static 'game-option :option-type #x2 :name (game-text-id play-hints) :scale #t)
+         (new 'static 'game-option :option-type #x1 :name (game-text-id progress-language-options) :scale #t :param3 35)
+         (new 'static 'game-option :option-type #x2 :name (game-text-id progress-discord-rpc) :scale #t)
          (new 'static 'game-option :option-type #x8 :name (game-text-id back) :scale #t)
          )
   )
 
+(define *language-options*
+     (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
+          (new 'static 'game-option :option-type #x1 :name (game-text-id language) :scale #t)
+          (new 'static 'game-option :option-type #x2 :name (game-text-id progress-subtitles) :scale #t)
+          (new 'static 'game-option :option-type #x13 :name (game-text-id progress-subtitles-language) :scale #t)
+          (new 'static 'game-option :option-type #x14 :name (game-text-id progress-subtitles-label-speaker) :scale #t)
+          (new 'static 'game-option :option-type #x8 :name (game-text-id back) :scale #t)
+         ))
+
 (define *graphic-options*
-    (new 'static 'boxed-array :type game-option :length 3 :allocated-length 3
-         (new 'static 'game-option :option-type #x3 :name (game-text-id center-screen) :scale #t)
-         (new 'static 'game-option :option-type #x4 :name (game-text-id aspect-ratio) :scale #t)
+    (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
+         (new 'static 'game-option :option-type #x12 :name (game-text-id progress-display-mode) :scale #t)
+         (new 'static 'game-option :option-type #x10 :name (game-text-id aspect-ratio) :scale #t)
+         (new 'static 'game-option :option-type #x11 :name (game-text-id progress-resolution) :scale #t)
+         (new 'static 'game-option :option-type #x2 :name (game-text-id progress-letterbox) :scale #t)
          (new 'static 'game-option :option-type #x8 :name (game-text-id back) :scale #t)
          )
   )
@@ -155,7 +188,7 @@
 
 ;; maps options to a progress screen
 (define *options-remap*
-    (new 'static 'boxed-array :type (array game-option) :length 0 :allocated-length 35)
+    (new 'static 'boxed-array :type (array game-option) :length 0 :allocated-length 36)
   )
 
 ;; TODO probably an enum.
@@ -199,6 +232,104 @@
          (game-text-id japanese)
          )
   )
+
+(define *pc-subtitle-language-name-remap*
+  (new 'static 'boxed-array :type game-text-id :length 14 :allocated-length 14
+        (game-text-id english)
+        (game-text-id french)
+        (game-text-id german)
+        (game-text-id spanish)
+        (game-text-id italian)
+        (game-text-id japanese)
+        (game-text-id progress-subtitle-language-uk-english)
+        (game-text-id progress-subtitle-language-portuguese)
+        (game-text-id progress-subtitle-language-finnish)
+        (game-text-id progress-subtitle-language-swedish)
+        (game-text-id progress-subtitle-language-danish)
+        (game-text-id progress-subtitle-language-norwegian)
+        (game-text-id progress-subtitle-language-korean)
+        (game-text-id progress-subtitle-language-russian)))
+
+(define *pc-subtitle-speaker-setting-remap*
+  (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
+        (game-text-id progress-subtitles-label-speaker-on)
+        (game-text-id progress-subtitles-label-speaker-off)
+        (game-text-id progress-subtitles-label-speaker-auto)))
+
+(define *pc-subtitle-speaker-valid-options*
+     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 #t #f 'auto))
+
+(define *pc-graphics-display-mode-symbol-options*
+     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 'borderless 'fullscreen 'windowed))
+
+(define *pc-graphics-display-mode-remap*
+  (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
+        (game-text-id progress-display-mode-borderless)
+        (game-text-id progress-display-mode-fullscreen)
+        (game-text-id progress-display-mode-windowed)))
+
+(define *pc-graphics-aspect-ratio-options*
+     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 'pc-aspect-4x3 'pc-aspect-5x4 'pc-aspect-16x9 'pc-aspect-21x9 'pc-aspect-32x9))
+
+(define *pc-graphics-aspect-ratio-mode-remap*
+  (new 'static 'boxed-array :type game-text-id :length 5 :allocated-length 5
+        (game-text-id process-aspect-ratio-4x3)
+        (game-text-id process-aspect-ratio-5x4)
+        (game-text-id process-aspect-ratio-16x9)
+        (game-text-id process-aspect-ratio-21x9)
+        (game-text-id process-aspect-ratio-32x9)))
+
+(define *pc-graphics-4x3-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 '640x480 '800x600 '1024x768 '1280x960 '1600x1200))
+
+(define *pc-graphics-4x3-valid-resolutions-names*
+  (new 'static 'boxed-array :type game-text-id :length 5 :allocated-length 5
+        (game-text-id process-res-4x3-640x480)
+        (game-text-id process-res-4x3-800x600)
+        (game-text-id process-res-4x3-1024x768)
+        (game-text-id process-res-4x3-1280x960)
+        (game-text-id process-res-4x3-1600x1200)))
+
+(define *pc-graphics-5x4-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 '960x768 '1280x1024 '1500x1200))
+
+(define *pc-graphics-5x4-valid-resolutions-names*
+  (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
+        (game-text-id process-res-5x4-960x768)
+        (game-text-id process-res-5x4-1280x1024)
+        (game-text-id process-res-5x4-1500x1200)))
+
+(define *pc-graphics-16x9-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 7 :allocated-length 7 '854x480 '1280x720 '1920x1080 '2560x1440 '2880x1620 '3840x2160 '5120x2880))
+
+(define *pc-graphics-16x9-valid-resolutions-names*
+  (new 'static 'boxed-array :type game-text-id :length 7 :allocated-length 7
+        (game-text-id process-res-16x9-854x480)
+        (game-text-id process-res-16x9-1280x720)
+        (game-text-id process-res-16x9-1920x1080)
+        (game-text-id process-res-16x9-2560x1440)
+        (game-text-id process-res-16x9-2880x1620)
+        (game-text-id process-res-16x9-3840x2160)
+        (game-text-id process-res-16x9-5120x2880)))
+
+(define *pc-graphics-21x9-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 6 :allocated-length 6 '2560x1080 '3120x1440 '3200x1440 '3440x1440 '3840x1600 '5120x2160))
+
+(define *pc-graphics-21x9-valid-resolutions-names*
+  (new 'static 'boxed-array :type game-text-id :length 6 :allocated-length 6
+        (game-text-id process-res-21x9-2560x1080)
+        (game-text-id process-res-21x9-3120x1440)
+        (game-text-id process-res-21x9-3200x1440)
+        (game-text-id process-res-21x9-3440x1440)
+        (game-text-id process-res-21x9-3840x1600)
+        (game-text-id process-res-21x9-5120x2160)))
+
+(define *pc-graphics-32x9-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 1 :allocated-length 1 '5120x1440))
+
+(define *pc-graphics-32x9-valid-resolutions-names*
+  (new 'static 'boxed-array :type game-text-id :length 1 :allocated-length 1
+        (game-text-id process-res-32x9-5120x1440)))
 
 ;; all level tasks
 (define *level-task-data*
@@ -1378,6 +1509,7 @@
   )
 
 (define *game-counts* (the-as game-count-info #f))
+
 
 
 

@@ -32,26 +32,29 @@
 
 
 
-(defmethod set-fullscreen! pc-settings ((obj pc-settings) (mode symbol))
-  "toggles fullscreen mode"
+(defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
+  "sets the game's display mode"
 
-  (if (= (-> obj fullscreen?) mode) ;; already fullscreen
+  ;; changing to same mode, no-op
+  (if (= (-> obj display-mode) mode)
     (return 0))
 
-  (set! (-> obj fullscreen?) mode)
-  (pc-set-fullscreen
-          (cond ((= mode 'borderless) 2)
-                (mode 1)
-                (else 0)
-                )
-          0)
-  0)
+  ;; else change it and update it
+  (set! (-> obj display-mode) mode)
+  (cond
+    ((= mode 'borderless)
+      (pc-set-fullscreen 2 0))
+    ((= mode 'fullscreen)
+      (pc-set-fullscreen 1 0))
+    (else ;; default to windowed
+      (pc-set-fullscreen 0 0)))
+  (none))
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
-  "sets window size"
+  "sets the size of the display window"
 
   (pc-set-window-size width height)
-  0)
+  (none))
 
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
@@ -61,7 +64,7 @@
     (set! (-> obj aspect-ratio-auto?) #f)
     (set! (-> obj use-vis?) #f)
     )
-  0)
+  (none))
 
 
 (defmethod set-aspect-ratio! pc-settings ((obj pc-settings) (aspect float))
@@ -69,9 +72,64 @@
   (set! (-> obj aspect-ratio) aspect)
   (set! (-> obj aspect-ratio-scale) (/ aspect ASPECT_4X3))
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
-  0)
+  (none))
 
+(defmethod set-aspect-ratio-mode! pc-settings ((obj pc-settings) (mode symbol))
+  "sets the game's aspect ratio mode"
 
+  ;; changing to same mode, no-op
+  (if (= (-> obj aspect-ratio-mode) mode)
+    (return 0))
+
+  ;; else change it and update it
+  (set! (-> obj aspect-ratio-mode) mode)
+  (cond
+    ((= mode 'pc-aspect-5x4)
+      (set-aspect! obj 5 4))
+    ((= mode 'pc-aspect-16x9)
+      (set-aspect! obj 16 9))
+    ((= mode 'pc-aspect-21x9)
+      (set-aspect! obj 21 9))
+    ((= mode 'pc-aspect-32x9)
+      (set-aspect! obj 32 9))
+    (else ;; default to 4x3
+      (set-aspect! obj 4 3)))
+  (none))
+
+(defmethod set-resolution! pc-settings ((obj pc-settings) (mode symbol))
+  "sets the game's resolution"
+
+  ;; changing to same mode, no-op
+  (if (= (-> obj resolution) mode)
+    (none))
+
+  ;; else change it and update it
+  (set! (-> obj resolution) mode)
+  ;; give me string splitting!
+  (case mode
+    (('640x480) (set-size! obj 640 480))
+    (('800x600) (set-size! obj 800 600))
+    (('1024x768) (set-size! obj 1024 768))
+    (('1280x960) (set-size! obj 1280 960))
+    (('1600x1200) (set-size! obj 1600 1200))
+    (('960x768) (set-size! obj 960 768))
+    (('1280x1024) (set-size! obj 1280 1024))
+    (('1500x1200) (set-size! obj 1500 1200))
+    (('854x480) (set-size! obj 854 480))
+    (('1280x720) (set-size! obj 1280 720))
+    (('1920x1080) (set-size! obj 1920 1080))
+    (('2560x1440) (set-size! obj 2560 1440))
+    (('2880x1620) (set-size! obj 2880 1620))
+    (('3840x2160) (set-size! obj 3840 2160))
+    (('5120x2880) (set-size! obj 5120 2880))
+    (('2560x1080) (set-size! obj 2560 1080))
+    (('3120x1440) (set-size! obj 3120 1440))
+    (('3200x1440) (set-size! obj 3200 1440))
+    (('3440x1440) (set-size! obj 3440 1440))
+    (('3840x1600) (set-size! obj 3840 1600))
+    (('5120x2160) (set-size! obj 5120 2160))
+    (('5120x1440) (set-size! obj 5120 1440)))
+  (none))
 
 (defmethod update-from-os pc-settings ((obj pc-settings))
   "Update settings from the PC kernel to GOAL."
@@ -292,7 +350,7 @@
   (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
   (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
   (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
-  (format *pc-temp-string* "fullscreen: ~A ~A~%" (-> obj fullscreen?) (-> obj vsync?))
+  (format *pc-temp-string* "display-type: ~A ~A~%" (-> obj display-mode) (-> obj vsync?))
 
   (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
 
@@ -473,7 +531,9 @@
                   )
                 (("aspect-auto") (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file)))
                 (("aspect-game") (set! (-> obj aspect-setting) (file-stream-read-symbol file)))
-                (("fullscreen") (set-fullscreen! obj (file-stream-read-symbol file)))
+                (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
+                (("aspect-ratio-mode") (set-aspect-ratio-mode! obj (file-stream-read-symbol file)))
+                (("resolution") (set-resolution! obj (file-stream-read-symbol file)))
                 (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
                 (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
                 (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
@@ -555,7 +615,7 @@
                     (file-stream-close file)
                     (reset obj)
                     (write-to-file obj filename)
-                    (set-fullscreen! obj #f)
+                    (set-display-mode! obj #f)
                     (return #f)
                     )
                   )
@@ -605,7 +665,9 @@
     (format file "  (aspect ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
     (format file "  (aspect-auto ~A)~%" (-> obj aspect-ratio-auto?))
     (format file "  (aspect-game ~A)~%" (-> *setting-control* default aspect-ratio))
-    (format file "  (fullscreen ~A)~%" (-> obj fullscreen?))
+    (format file "  (display-mode ~A)~%" (-> obj display-mode))
+    (format file "  (aspect-ratio-mode ~A)~%" (-> obj aspect-ratio-mode))
+    (format file "  (resolution ~A)~%" (-> obj resolution))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
     (format file "  (font-scale ~f)~%" (-> obj font-scale))

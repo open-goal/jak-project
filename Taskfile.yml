@@ -6,17 +6,29 @@ includes:
 tasks:
   # GENERAL
   extract-jak1:
+    preconditions:
+      - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate decompiler executable -- Have you compiled in release mode?"
     cmds:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out" "decompile_code=false"'
   boot-game:
+    preconditions:
+      - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable -- Have you compiled in release mode?"
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -debug -v"
   run-game:
+    preconditions:
+      - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable -- Have you compiled in release mode?"
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -v"
   repl:
     env:
       OPENGOAL_DECOMP_DIR: "jak1/"
+    preconditions:
+      - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/goalc{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate compiler executable -- Have you compiled in release mode?"
     cmds:
       - "{{.GOALC_BIN_RELEASE_DIR}}/goalc"
   # DEVELOPMENT

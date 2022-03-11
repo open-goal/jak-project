@@ -44,6 +44,8 @@
   (no-disc 32)
   (bad-disc 33)
   (quit 34)
+  ;; custom
+  (language-options 35)
   )
 
 (defun-extern activate-progress process progress-screen none)
@@ -128,6 +130,16 @@
   :flag-assert         #x900000028
   )
 
+;; new custom type to extend the very limited progress-menu system
+;; the user can only interact with one element at a time, so a single global is sufficient
+(deftype progress-menu-list-tracker (basic)
+  ((direction symbol :offset-assert 4) ; 'left | 'right
+   (transition? symbol :offset-assert 8) ; '??
+   (x-offset int32 :offset-assert 12)
+   (selected-index int32 :offset-assert 16)))
+
+;; why a new global? because i dont want to modify the type below....but that would get me what i want as well!
+(define *progress-menu-list-tracker* (new 'static 'progress-menu-list-tracker))
 
 (deftype progress (process)
   ((current-debug-string         int32              :offset-assert 112)
@@ -149,8 +161,9 @@
    (stat-transition              basic              :offset-assert 184)
    (level-transition             int32              :offset-assert 188)
    (language-selection           uint64             :offset-assert 192)
-   (language-direction           basic              :offset-assert 200)
-   (language-transition          basic              :offset-assert 204)
+   ; true = left | false = right
+   (language-direction           symbol              :offset-assert 200)
+   (language-transition          symbol              :offset-assert 204)
    (language-x-offset            int32              :offset-assert 208)
    (sides-x-scale                float              :offset-assert 212)
    (sides-y-scale                float              :offset-assert 216)
@@ -252,6 +265,7 @@
 (define *progress-last-task-index* 0)
 
 0
+
 
 
 
