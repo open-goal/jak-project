@@ -26,6 +26,8 @@ class OceanTexture {
   void run_L3();
   void run_L5();
 
+  void xgkick(Vf* src);
+
   static constexpr int TEX0_SIZE = 128;
   FramebufferTexturePair m_tex0;
 
@@ -76,34 +78,27 @@ class OceanTexture {
     return m_texture_vertices_drawing;
   }
 
-  void swap_dbuf() {
-    std::swap(m_dbuf_x, m_dbuf_y);
-  }
+  void swap_dbuf() { std::swap(m_dbuf_x, m_dbuf_y); }
 
-  void swap_tbuf() {
-    std::swap(m_tbuf_x, m_tbuf_y);
-  }
+  void swap_tbuf() { std::swap(m_tbuf_x, m_tbuf_y); }
 
-  Vf* get_dbuf() {
-    return m_dbuf_x;
-  }
+  Vf* get_dbuf() { return m_dbuf_x; }
 
-  Vf* get_dbuf_other() {
-    return m_dbuf_y;
-  }
+  Vf* get_dbuf_other() { return m_dbuf_y; }
 
-  Vf* get_tbuf() {
-    return m_tbuf_x;
-  }
+  Vf* get_tbuf() { return m_tbuf_x; }
 
   struct {
-    Vf startx;        // vf14
-    Vf* dbuf_read_a;  // vi03
-    Vf* dbuf_read_b;  // vi04
-    Vf* in_ptr;       // vi05
-    Vf* dbuf_write;   // vi06
-    Vf* tptr;         // vi08
-    Vf* tbase;        // vi09
+    Vf startx;  //           vf14
+    // Vf base_pos;          vf15
+    // Vf nrm0;              vf24
+    Vf* dbuf_read_a;      // vi03
+    Vf* dbuf_read_b;      // vi04
+    Vf* in_ptr;           // vi05
+    Vf* dbuf_write;       // vi06
+    Vf* dbuf_write_base;  // vi07
+    Vf* tptr;             // vi08
+    Vf* tbase;            // vi09
   } vu;
 
   enum TexVu1Data {
