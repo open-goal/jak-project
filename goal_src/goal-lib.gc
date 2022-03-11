@@ -510,6 +510,10 @@
   `(+ ,var 1)
   )
 
+(defmacro inc (val)
+  "Increments a value"
+  `(1+ ,val))
+
 (defmacro +! (place amount)
   `(set! ,place (+ ,place ,amount))
   )
@@ -521,6 +525,10 @@
 (defmacro 1- (var)
   `(- ,var 1)
   )
+
+(defmacro dec (val)
+  "Decrements a value"
+  `(1- ,val))
 
 (defmacro -! (place amount)
   `(set! ,place (- ,place ,amount))
@@ -552,14 +560,17 @@
 
 (defmacro not! (var)
   `(set! ,var (not ,var)))
+
 (defmacro true! (var)
   `(set! ,var #t))
+
 (defmacro false! (var)
   `(set! ,var #f))
 
 (defmacro minmax (val minval maxval)
   `(max (min ,val ,maxval) ,minval)
   )
+
 (defmacro fminmax (val minval maxval)
   `(fmax (fmin ,val ,maxval) ,minval)
   )
@@ -573,6 +584,7 @@
 (defmacro maxmin (val minval maxval)
   `(min (max ,val ,maxval) ,minval)
   )
+
 (defmacro fmaxmin (val minval maxval)
   `(fmin (fmax ,val ,maxval) ,minval)
   )
@@ -755,6 +767,30 @@
 (defmacro dcons (a b)
   `(new 'debug 'pair ,a ,b)
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ARRAYS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro first-arr (coll)
+  "Returns the first element in an array"
+  `(-> ,coll 0))
+
+(defmacro last-arr (coll)
+  "Returns the last element in an array"
+  `(-> ,coll (dec (length ,coll))))
+
+(defmacro last-idx-arr (coll)
+  "Returns the index of the last element in an array"
+  `(dec (length ,coll)))
+
+(defmacro arr-idx-of (coll val def)
+  "Returns the index of an item in an array, returns <def> if is nothing is found."
+  `(block find-element
+    (dotimes (i (length ,coll))
+      (if (= ,val (-> ,coll i))
+        (return-from find-element i)))
+    ,def))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; METHOD STUFF

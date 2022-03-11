@@ -134,17 +134,18 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 }
 
 std::string write_game_text(
+    const Config& cfg,
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
   // first sort languages:
-  std::vector<int> langauges;
+  std::vector<int> languages;
   for (const auto& lang : data) {
-    langauges.push_back(lang.first);
+    languages.push_back(lang.first);
   }
-  std::sort(langauges.begin(), langauges.end());
+  std::sort(languages.begin(), languages.end());
 
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
-  for (auto lang : langauges) {
+  for (auto lang : languages) {
     for (auto& text : data.at(lang)) {
       text_by_id[text.first].push_back(text.second);
     }
@@ -152,12 +153,34 @@ std::string write_game_text(
 
   // write!
   std::string result;  // = "\xEF\xBB\xBF";  // UTF-8 encode (don't need this anymore)
-  result += fmt::format("(language-count {})\n", langauges.size());
+  result += fmt::format("(language-count {})\n", languages.size());
   result += "(group-name \"common\")\n";
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {
       result += fmt::format("\"{}\"\n  ", y);
+    }
+    result += ")\n\n";
+  }
+
+  // add our own custom text additions from new_strings.jsonc
+  // - first add the strings that are the same across all languages
+  for (auto const& [key, val] : cfg.new_strings_same_across_langs) {
+    result += fmt::format("(#x{}\n  ", key);
+    for (int i = 0; i < languages.size(); i++) {
+      result += fmt::format("\"{}\"\n  ", val);
+    }
+    result += ")\n\n";
+  }
+  // - now add the ones that are different, if they do not have all languages defined, pad with
+  // placeholders
+  for (auto const& [key, val] : cfg.new_strings_different_across_langs) {
+    result += fmt::format("(#x{}\n  ", key);
+    for (auto const& str : val) {
+      result += fmt::format("\"{}\"\n  ", str);
+    }
+    for (int i = 0; i < languages.size() - val.size(); i++) {
+      result += fmt::format("\"{}\"\n  ", "TODO");
     }
     result += ")\n\n";
   }

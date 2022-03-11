@@ -1487,7 +1487,7 @@
   (none)
   )
 
-(defun print-language-name ((arg0 int) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defun print-list-item-name ((arg0 int) (arg1 font-context) (arg2 int) (arg3 symbol) (name-list (array game-text-id)))
   (let ((s5-0 (if arg3
                   arg2
                   (- arg2)
@@ -1497,7 +1497,7 @@
     (+! (-> arg1 origin x) (the float s5-0))
     (let ((f30-0 (- 1.0 (* 0.0033333334 (the float arg2)))))
       (print-game-text-scaled
-        (lookup-text! *common-text* (-> *language-name-remap* arg0) #f)
+        (lookup-text! *common-text* (-> name-list arg0) #f)
         f30-0
         arg1
         (the int (* 128.0 f30-0))
@@ -1509,9 +1509,73 @@
   arg1
   )
 
+
+(defun draw-options-list ((obj progress)
+                          (font-ctx font-context)
+                          (something-unknown int)
+                          (name-list (array game-text-id)))
+  "Given a progress object, draw it's arbitrarily sized list of options.  This is option-type `1`"
+  (local-vars
+    (list-size int)
+    (curr-selection-index int)
+    (unknown-modified-index int)
+    (unknown-modified-index-2 int)
+    (unknown-modified-index-3 int)
+    (unknown-modified-index-4 int)
+    (screen-arr (array game-option)))
+
+  (set! list-size (length name-list))
+  (set! screen-arr (-> *options-remap* (-> obj display-state)))
+  (set! curr-selection-index (-> *progress-menu-list-tracker* selected-index))
+  (if (-> *progress-menu-list-tracker* transition?)
+      (set! (-> *progress-menu-list-tracker* x-offset)
+            (seekl (-> *progress-menu-list-tracker* x-offset)
+                   200
+                   (the int (* 10.0 (-> *display* time-adjust-ratio))))))
+
+  (when (>= (-> *progress-menu-list-tracker* x-offset) 100)
+    (set! (-> *progress-menu-list-tracker* transition?) #f)
+    (set! (-> *progress-menu-list-tracker* x-offset) 0))
+
+  (set! (-> font-ctx origin y) (the float (+ something-unknown 3)))
+  (set! (-> font-ctx color) (font-color lighter-lighter-blue))
+  (set! unknown-modified-index (mod (+ curr-selection-index 1) list-size))
+
+  (let ((unknown-modified-index-2 (mod (+ list-size -1 curr-selection-index) list-size))
+        (unknown-modified-index-3 (mod (the-as int (+ curr-selection-index 2)) list-size)))
+    (set! unknown-modified-index-4 (mod (+ list-size -2 curr-selection-index) list-size))
+    ; cleanup this logic, doesnt have to all be conds
+    (cond
+      ((= (-> *progress-menu-list-tracker* direction) 'left)
+        (let ((a2-22 (- 200 (+ (-> *progress-menu-list-tracker* x-offset) 100))))
+          (print-list-item-name unknown-modified-index-2 font-ctx a2-22 #f name-list))
+        (let ((a2-23 (+ (-> *progress-menu-list-tracker* x-offset) 100)))
+          (if (< a2-23 150)
+            (print-list-item-name unknown-modified-index font-ctx a2-23 #t name-list)
+            (print-list-item-name unknown-modified-index-4 font-ctx (- 200 (-> *progress-menu-list-tracker* x-offset)) #f name-list))))
+      (else
+        (let ((a2-25 (+ (-> *progress-menu-list-tracker* x-offset) 100)))
+          (cond
+            ((< a2-25 150)
+              (print-list-item-name unknown-modified-index-2 font-ctx a2-25 #f name-list))
+            (else
+              (let ((a2-26 (- 200 (-> *progress-menu-list-tracker* x-offset))))
+                (print-list-item-name unknown-modified-index-3 font-ctx a2-26 #t name-list)))))
+        (let ((a2-27 (- 200 (+ (-> *progress-menu-list-tracker* x-offset) 100))))
+          (print-list-item-name unknown-modified-index font-ctx a2-27 #t name-list)))))
+  (when (not (-> *progress-menu-list-tracker* transition?))
+    (let ((a0-75 font-ctx))
+      (set! (-> a0-75 color) (font-color yellow-green-2))))
+  (print-list-item-name (the-as int curr-selection-index)
+                       font-ctx
+                       (-> *progress-menu-list-tracker* x-offset)
+                       (-> *progress-menu-list-tracker* direction)
+                       name-list))
+
+
 (defmethod draw-options progress ((obj progress) (arg0 int) (arg1 int) (arg2 float))
   (local-vars
-    (sv-112 font-context)
+    (font-ctx font-context)
     (sv-128 int)
     (sv-144 int)
     (sv-160 (function _varargs_ object))
@@ -1570,16 +1634,16 @@
             )
         27
         0
-        (set! sv-112
+        (set! font-ctx
               (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
               )
-        (let ((v1-11 sv-112))
+        (let ((v1-11 font-ctx))
           (set! (-> v1-11 width) (the float 350))
           )
-        (let ((v1-12 sv-112))
+        (let ((v1-12 font-ctx))
           (set! (-> v1-12 height) (the float 25))
           )
-        (set! (-> sv-112 flags) (font-flags shadow kerning middle left large))
+        (set! (-> font-ctx flags) (font-flags shadow kerning middle left large))
         (dotimes (s0-0 (length s3-0))
           (set! sv-912 (the-as string #f))
           (set! sv-128 27)
@@ -1625,24 +1689,24 @@
                  )
                )
               ((and (-> obj selected-option) (= (-> obj option-index) s0-0))
-               (let ((a0-19 sv-112))
+               (let ((a0-19 font-ctx))
                  (set! (-> a0-19 color) (font-color default))
                  )
-               (set! (-> sv-112 origin x) (the float (- sv-128 (-> obj left-x-offset))))
+               (set! (-> font-ctx origin x) (the float (- sv-128 (-> obj left-x-offset))))
                (case (-> s3-0 s0-0 option-type)
                  ((3)
-                  (set! (-> sv-112 origin y) (the float (+ s2-1 -20)))
+                  (set! (-> font-ctx origin y) (the float (+ s2-1 -20)))
                   )
                  (else
-                   (set! (-> sv-112 origin y) (the float (+ s2-1 -8)))
+                   (set! (-> font-ctx origin y) (the float (+ s2-1 -8)))
                    )
                  )
-               (let ((v1-64 sv-112))
+               (let ((v1-64 font-ctx))
                  (set! (-> v1-64 scale) 0.6)
                  )
                (set! sv-288 print-game-text)
                (let ((a0-23 (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
-                     (a1-11 sv-112)
+                     (a1-11 font-ctx)
                      (a2-10 #f)
                      (a3-4 128)
                      (t0-1 22)
@@ -1706,126 +1770,55 @@
                         )
                       )
                     )
+                   ;; language selection - when selected
                    ((= v1-81 1)
-                    (set! sv-512 (-> obj language-selection))
-                    (set! sv-448 (-> (the-as (pointer uint64) (-> s3-0 s0-0 value-to-modify))))
-                    (if (and (zero? (scf-get-territory))
-                             (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
-                             )
-                        (set! sv-464 5)
-                        (set! sv-464 6)
-                        )
-                    (if (-> obj language-transition)
-                        (set! (-> obj language-x-offset)
-                              (seekl (-> obj language-x-offset) 200 (the int (* 10.0 (-> *display* time-adjust-ratio))))
-                              )
-                        )
-                    (when (>= (-> obj language-x-offset) 100)
-                      (set! (-> obj language-selection) sv-448)
-                      (set! sv-512 sv-448)
-                      (set! (-> obj language-transition) #f)
-                      (set! (-> obj language-x-offset) 0)
-                      0
-                      )
-                    (set! (-> sv-112 origin y) (the float (+ s2-1 3)))
-                    (let ((a0-62 sv-112))
-                      (set! (-> a0-62 color) (font-color lighter-lighter-blue))
-                      )
-                    0
-                    (set! sv-480 (mod (the-as int (+ sv-512 1)) sv-464))
-                    (let ((a0-66 (mod (+ sv-464 -1 sv-512) sv-464))
-                          (v1-153 (mod (the-as int (+ sv-512 2)) sv-464))
-                          )
-                      (set! sv-496 (mod (+ sv-464 -2 sv-512) sv-464))
-                      (cond
-                        ((-> obj language-direction)
-                         (let ((a2-22 (- 200 (+ (-> obj language-x-offset) 100))))
-                           (print-language-name a0-66 sv-112 a2-22 #f)
-                           )
-                         (let ((a2-23 (+ (-> obj language-x-offset) 100)))
-                           (cond
-                             ((< a2-23 150)
-                              (let ((t9-27 print-language-name)
-                                    (a1-30 sv-112)
-                                    (a3-9 #t)
-                                    )
-                                (t9-27 sv-480 a1-30 a2-23 a3-9)
-                                )
-                              )
-                             (else
-                               (let ((a2-24 (- 200 (-> obj language-x-offset)))
-                                     (t9-28 print-language-name)
-                                     (a1-31 sv-112)
-                                     (a3-10 #f)
-                                     )
-                                 (t9-28 sv-496 a1-31 a2-24 a3-10)
-                                 )
-                               )
-                             )
-                           )
-                         )
-                        (else
-                          (let ((a2-25 (+ (-> obj language-x-offset) 100)))
-                            (cond
-                              ((< a2-25 150)
-                               (print-language-name a0-66 sv-112 a2-25 #f)
-                               )
-                              (else
-                                (let ((a2-26 (- 200 (-> obj language-x-offset))))
-                                  (print-language-name v1-153 sv-112 a2-26 #t)
-                                  )
-                                )
-                              )
-                            )
-                          (let ((a2-27 (- 200 (+ (-> obj language-x-offset) 100))))
-                            (print-language-name sv-480 sv-112 a2-27 #t)
-                            )
-                          )
-                        )
-                      )
-                    (when (not (-> obj language-transition))
-                      (let ((a0-75 sv-112))
-                        (set! (-> a0-75 color) (font-color yellow-green-2))
-                        )
-                      )
-                    (let ((t9-32 print-language-name)
-                          (a1-37 sv-112)
-                          (a2-28 (-> obj language-x-offset))
-                          (a3-14 (-> obj language-direction))
-                          )
-                      (t9-32 (the-as int sv-512) a1-37 a2-28 (the-as symbol a3-14))
-                      )
-                    )
+                    (draw-options-list obj font-ctx s2-1 *language-name-remap*))
+                   ((= v1-81 #x10)
+                    (draw-options-list obj font-ctx s2-1 *pc-graphics-aspect-ratio-mode-remap*))
+                   ((= v1-81 #x11)
+                    (case (-> *pc-settings* aspect-ratio-mode)
+                          (('pc-aspect-4x3)
+                           (draw-options-list obj font-ctx s2-1 *pc-graphics-4x3-valid-resolutions-names*))
+                          (('pc-aspect-5x4)
+                           (draw-options-list obj font-ctx s2-1 *pc-graphics-5x4-valid-resolutions-names*))
+                          (('pc-aspect-16x9)
+                           (draw-options-list obj font-ctx s2-1 *pc-graphics-16x9-valid-resolutions-names*))
+                          (('pc-aspect-21x9)
+                           (draw-options-list obj font-ctx s2-1 *pc-graphics-21x9-valid-resolutions-names*))
+                          (('pc-aspect-32x9)
+                           (draw-options-list obj font-ctx s2-1 *pc-graphics-32x9-valid-resolutions-names*))))
+                   ((= v1-81 #x12)
+                    (draw-options-list obj font-ctx s2-1 *pc-graphics-display-mode-remap*))
+                   ((= v1-81 #x13)
+                    (draw-options-list obj font-ctx s2-1 *pc-subtitle-language-name-remap*))
+                   ((= v1-81 #x14)
+                    (draw-options-list obj font-ctx s2-1 *pc-subtitle-speaker-setting-remap*))
                    ((= v1-81 3)
                     (set! sv-912 (lookup-text! *common-text* (game-text-id move-dpad) #f))
                     sv-912
                     )
+                   ;; aspect ratio - original
                    ((= v1-81 4)
                     (cond
                       ((= (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify))) 'aspect4x3)
-                       (set! sv-528 format)
-                       (set! sv-544 (clear *temp-string*))
-                       (set! sv-560 "~30L~S~0L ~S")
-                       (set! sv-576 (lookup-text! *common-text* (game-text-id 4x3) #f))
-                       (let ((a3-15 (lookup-text! *common-text* (game-text-id 16x9) #f)))
-                         (sv-528 sv-544 sv-560 sv-576 a3-15)
-                         )
+                       (format (clear *temp-string*)
+                               "~30L~S~0L ~S"
+                               (lookup-text! *common-text* (game-text-id 4x3) #f)
+                               (lookup-text! *common-text* (game-text-id 16x9) #f))
                        (set! sv-912 *temp-string*)
                        sv-912
                        )
                       (else
-                        (set! sv-592 format)
-                        (set! sv-608 (clear *temp-string*))
-                        (set! sv-624 "~0L~S ~30L~S~1L")
-                        (set! sv-640 (lookup-text! *common-text* (game-text-id 4x3) #f))
-                        (let ((a3-16 (lookup-text! *common-text* (game-text-id 16x9) #f)))
-                          (sv-592 sv-608 sv-624 sv-640 a3-16)
-                          )
+                        (format (clear *temp-string*)
+                                "~0L~S ~30L~S~1L"
+                                (lookup-text! *common-text* (game-text-id 4x3) #f)
+                                (lookup-text! *common-text* (game-text-id 16x9) #f))
                         (set! sv-912 *temp-string*)
                         sv-912
                         )
                       )
                     )
+                   ;; pal refresh rate
                    ((= v1-81 5)
                     (cond
                       ((= (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify))) 'ntsc)
@@ -1858,15 +1851,13 @@
               (else
                 (let ((v1-195 (-> s3-0 s0-0 option-type)))
                   (cond
-                    ((or (zero? v1-195) (= v1-195 3) (= v1-195 4) (= v1-195 5))
-                     (set! sv-912 (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
-                     sv-912
-                     )
+                    ;; boolean flag
                     ((= v1-195 2)
                      (set! sv-784 format)
                      (set! sv-800 (clear *temp-string*))
                      (set! sv-816 "~S: ~S")
                      (set! sv-832 (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
+                     ;; Danger -- assumes there is a value to be modified, iniitalized in progress!
                      (let ((a3-19 (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
                                       (lookup-text! *common-text* (game-text-id on) #f)
                                       (lookup-text! *common-text* (game-text-id off) #f)
@@ -1878,6 +1869,8 @@
                      (set! sv-912 *temp-string*)
                      sv-912
                      )
+                    ;; language selection
+                    ;; unfortunate everything is hard-coded with these ids..
                     ((= v1-195 1)
                      (set! sv-848 format)
                      (set! sv-864 (clear *temp-string*))
@@ -1895,6 +1888,9 @@
                      (set! sv-912 *temp-string*)
                      sv-912
                      )
+                    (else
+                      (set! sv-912 (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
+                      sv-912)
                     )
                   )
                 )
@@ -1902,7 +1898,7 @@
             )
           (when sv-912
             (let ((f0-23 (-> obj transition-percentage-invert)))
-              (let ((v1-235 sv-112))
+              (let ((v1-235 font-ctx))
                 (set! (-> v1-235 color)
                       (the-as font-color (if (and (= s0-0 (-> obj option-index)) (not (-> obj in-transition)))
                                              30
@@ -1911,8 +1907,8 @@
                               )
                       )
                 )
-              (set! (-> sv-112 origin x) (the float (- sv-128 (-> obj left-x-offset))))
-              (set! (-> sv-112 origin y) (the float (the int (* (the float sv-144) (if (-> s3-0 s0-0 scale)
+              (set! (-> font-ctx origin x) (the float (- sv-128 (-> obj left-x-offset))))
+              (set! (-> font-ctx origin y) (the float (the int (* (the float sv-144) (if (-> s3-0 s0-0 scale)
                                                                                        f0-23
                                                                                        1.0
                                                                                        )
@@ -1920,11 +1916,11 @@
                                                          )
                                               )
                     )
-              (let ((v1-246 sv-112))
+              (let ((v1-246 font-ctx))
                 (set! (-> v1-246 scale) (* arg2 f0-23))
                 )
               (let ((t9-60 print-game-text)
-                    (a1-64 sv-112)
+                    (a1-64 font-ctx)
                     (a2-50 #f)
                     (a3-21 (the int (* 128.0 f0-23)))
                     (t0-2 22)
@@ -2153,6 +2149,7 @@
   0
   (none)
   )
+
 
 
 
