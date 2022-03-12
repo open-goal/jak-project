@@ -13,19 +13,33 @@ class OceanTexture {
                             ScopedProfilerNode& prof);
   void init_textures(TexturePool& pool);
   void draw_debug_window();
+  ~OceanTexture();
 
  private:
   void handle_tex_call_start(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_tex_call_rest(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
+  void run_L1(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void run_L2(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void run_L3();
   void run_L5(SharedRenderState* render_state, ScopedProfilerNode& prof);
-
   void xgkick(Vf* src, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
+  void run_L1_PC();
+  void run_L2_PC();
+  void run_L3_PC();
+  void run_L5_PC();
+  void xgkick_PC(Vf* src);
+
   void setup_renderer();
   void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  bool m_use_ocean_specific = false;
+  void setup_pc();
+  void flush_pc(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void init_pc();
+  void destroy_pc();
+
+  bool m_use_ocean_specific = true;
 
   static constexpr int TEX0_SIZE = 256;  // TODO actually 128
   FramebufferTexturePair m_tex0;
@@ -100,6 +114,27 @@ class OceanTexture {
     Vf* tptr;             // vi08
     Vf* tbase;            // vi09
   } vu;
+
+  static constexpr u32 NUM_STRIPS = 32;
+  static constexpr u32 NUM_VERTS_PER_STRIP = 66;
+  static constexpr u32 NUM_VERTS = NUM_STRIPS * NUM_VERTS_PER_STRIP;
+
+  // note: if we used u16's for s/t, we could make this 8 bytes, but I'm afraid that some GPUs
+  // will be unhappy with that format.
+  struct Vertex {
+    float s, t;
+    math::Vector<u8, 4> rgba;
+    u32 pad;
+  };
+  static_assert(sizeof(Vertex) == 16);
+  struct {
+    std::vector<math::Vector2f> vertex_positions;
+    std::vector<Vertex> vertex_dynamic;
+    std::vector<u32> index_buffer;
+    u32 vtx_idx = 0;
+
+    GLuint vao, static_vertex_buffer, dynamic_vertex_buffer, gl_index_buffer;
+  } m_pc;
 
   enum TexVu1Data {
     BUF0 = 384,

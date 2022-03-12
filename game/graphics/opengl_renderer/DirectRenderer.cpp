@@ -790,8 +790,8 @@ void DirectRenderer::handle_xyz2_packed(const u8* data,
   float un_mess_up = 448.f / 512.f;
   // TODO total hack
   s32 yy = (((s32)y - 1024) << 17) * un_mess_up;
-  handle_xyzf2_common(((x << 2) + 32768 - 2048 * 2) << 16, ((32768) << 16) - yy, z, 0,
-                      render_state, prof, !adc);
+  handle_xyzf2_common(((x << 2) + 32768 - 2048 * 2) << 16, ((32768) << 16) - yy, z, 0, render_state,
+                      prof, !adc);
 }
 
 void DirectRenderer::handle_zbuf1(u64 val,
@@ -939,8 +939,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
       m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
-  m_prim_building.building_vert.at(m_prim_building.building_idx) =
-      math::Vector<u32, 4>{x, y, z, f};
+  m_prim_building.building_vert.at(m_prim_building.building_idx) = math::Vector<u32, 4>{x, y, z, f};
 
   m_prim_building.building_idx++;
 

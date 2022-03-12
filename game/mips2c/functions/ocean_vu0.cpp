@@ -12,7 +12,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
   c->mov64(fp, t9);                                 // or fp, t9, r0
@@ -217,7 +216,6 @@ struct Cache {
 } cache;
 
 void vcallms0(ExecutionContext* c) {
-  float Q = 0;
   // nop                        |  mulay.x ACC, vf12, vf02        0
   c->acc.vf.mula(Mask::x, c->vf_src(vf12).vf, c->vf_src(vf02).vf.y());
   // nop                        |  mulax.z ACC, vf12, vf03        1
@@ -293,7 +291,7 @@ void vcallms0(ExecutionContext* c) {
   // nop                        |  maddz.xyz vf17, vf07, vf25     34
   c->acc.vf.madd(Mask::xyz, c->vfs[vf17].vf, c->vf_src(vf07).vf, c->vf_src(vf25).vf.z());
   // div Q, vf00.w, vf24.z      |  subw.z vf25, vf25, vf00        35
-  c->vfs[vf25].vf.sub(Mask::z, c->vf_src(vf25).vf, c->vf_src(vf00).vf.w());   Q = 1.f / c->vf_src(vf24).vf.z();
+  c->vfs[vf25].vf.sub(Mask::z, c->vf_src(vf25).vf, c->vf_src(vf00).vf.w());   c->Q = 1.f / c->vf_src(vf24).vf.z();
   // nop                        |  mulax.xyzw ACC, vf05, vf26     36
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf05).vf, c->vf_src(vf26).vf.x());
   // nop                        |  madday.xyzw ACC, vf06, vf26    37
@@ -309,7 +307,7 @@ void vcallms0(ExecutionContext* c) {
   // nop                        |  mul.w vf20, vf00, Q            42
   c->vfs[vf20].vf.mul(Mask::w, c->vf_src(vf00).vf, c->Q);
   // div Q, vf00.w, vf25.z      |  maddz.xyz vf19, vf07, vf27     43
-  c->acc.vf.madd(Mask::xyz, c->vfs[vf19].vf, c->vf_src(vf07).vf, c->vf_src(vf27).vf.z());   Q = 1.f / c->vf_src(vf25).vf.z();
+  c->acc.vf.madd(Mask::xyz, c->vfs[vf19].vf, c->vf_src(vf07).vf, c->vf_src(vf27).vf.z());   c->Q = 1.f / c->vf_src(vf25).vf.z();
   // nop                        |  subw.z vf27, vf27, vf00        44
   c->vfs[vf27].vf.sub(Mask::z, c->vf_src(vf27).vf, c->vf_src(vf00).vf.w());
   // nop                        |  maxx.xyz vf16, vf16, vf00      45
@@ -323,7 +321,7 @@ void vcallms0(ExecutionContext* c) {
   // nop                        |  mul.w vf21, vf00, Q            49
   c->vfs[vf21].vf.mul(Mask::w, c->vf_src(vf00).vf, c->Q);
   // div Q, vf00.w, vf26.z      |  mula.xyzw ACC, vf01, vf11      50
-  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf11).vf);   Q = 1.f / c->vf_src(vf26).vf.z();
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf11).vf);   c->Q = 1.f / c->vf_src(vf26).vf.z();
   // nop                        |  maddax.xyz ACC, vf08, vf16     51
   c->acc.vf.madda(Mask::xyz, c->vfs[vf08].vf, c->vfs[vf16].vf.x());
   // nop                        |  madday.xyz ACC, vf09, vf16     52
@@ -344,7 +342,7 @@ void vcallms0(ExecutionContext* c) {
   // div Q, vf00.w, vf27.z      |  mula.xyzw ACC, vf01, vf11      59
   // vu.acc.mula(Mask::xyzw, vu.vf01, vu.vf11);
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf11).vf);
-  Q = 1.f / c->vf_src(vf27).vf.z();
+  c->Q = 1.f / c->vf_src(vf27).vf.z();
   // nop                        |  maddax.xyz ACC, vf08, vf18     60
   c->acc.vf.madda(Mask::xyz, c->vfs[vf08].vf, c->vfs[vf18].vf.x());
   // nop                        |  madday.xyz ACC, vf09, vf18     61

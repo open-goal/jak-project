@@ -14,8 +14,6 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
   c->mov64(fp, t9);                                 // or fp, t9, r0
@@ -280,8 +278,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   c->copy_vfs_from_other(&ocean_regs_vfs);
-  bool bc = false;
-  u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
   get_fake_spad_addr(t4, cache.fake_scratchpad_data, 0, c);// lui t4, 28672
   c->ori(t4, t4, 12288);                            // ori t4, t4, 12288

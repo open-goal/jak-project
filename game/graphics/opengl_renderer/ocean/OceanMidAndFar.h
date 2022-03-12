@@ -17,7 +17,6 @@ class OceanMidAndFar : public BucketRenderer {
   void init_textures(TexturePool& pool) override;
 
  private:
-
   void handle_ocean_far(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);

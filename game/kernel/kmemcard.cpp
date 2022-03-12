@@ -714,7 +714,7 @@ void MC_set_language(s32 l) {
  * Set the current memory card operation to FORMAT the given card.
  * Doesn't do anything in the port because we don't use memory cards.
  */
-u64 MC_format(s32 card_idx) {
+u64 MC_format(s32 /*card_idx*/) {
   return u64(McStatusCode::OK);
   // u64 can_add = op.operation == MemoryCardOperationKind::NO_OP;
   // mc_print("requested format");
@@ -732,7 +732,7 @@ u64 MC_format(s32 card_idx) {
  * Set the current memory card operation to UNFORMAT the given card.
  * You get the idea.
  */
-u64 MC_unformat(s32 card_idx) {
+u64 MC_unformat(s32 /*card_idx*/) {
   return u64(McStatusCode::OK);
   // u64 can_add = op.operation == MemoryCardOperationKind::NO_OP;
   // mc_print("requested unformat");
@@ -750,7 +750,7 @@ u64 MC_unformat(s32 card_idx) {
  * Set the current memory card operation to create the save file.
  * The data I believe is just an empty buffer used as temporary storage.
  */
-u64 MC_createfile(s32 param, Ptr<u8> data) {
+u64 MC_createfile(s32 /*param*/, Ptr<u8> /*data*/) {
   return u64(McStatusCode::OK);
   // u64 can_add = op.operation == MemoryCardOperationKind::NO_OP;
   // mc_print("requested createfile");

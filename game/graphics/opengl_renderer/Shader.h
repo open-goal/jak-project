@@ -35,6 +35,7 @@ enum class ShaderId {
   DIRECT2 = 10,
   EYE = 11,
   GENERIC = 12,
+  OCEAN_TEXTURE = 13,
   MAX_SHADERS
 };
 

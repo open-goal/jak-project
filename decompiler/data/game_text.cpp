@@ -167,7 +167,7 @@ std::string write_game_text(
   // - first add the strings that are the same across all languages
   for (auto const& [key, val] : cfg.new_strings_same_across_langs) {
     result += fmt::format("(#x{}\n  ", key);
-    for (int i = 0; i < languages.size(); i++) {
+    for (u32 i = 0; i < languages.size(); i++) {
       result += fmt::format("\"{}\"\n  ", val);
     }
     result += ")\n\n";
@@ -179,7 +179,7 @@ std::string write_game_text(
     for (auto const& str : val) {
       result += fmt::format("\"{}\"\n  ", str);
     }
-    for (int i = 0; i < languages.size() - val.size(); i++) {
+    for (u32 i = 0; i < languages.size() - val.size(); i++) {
       result += fmt::format("\"{}\"\n  ", "TODO");
     }
     result += ")\n\n";
