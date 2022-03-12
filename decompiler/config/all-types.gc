@@ -7156,7 +7156,7 @@
    (corner-array       ocean-corner 25 :inline     :offset-assert 80)
    (corner-count       int32           :offset-assert 2080)
    (temp-vecs          vector 4 :inline        :offset-assert 2096)
-   (mid-mask-ptrs      (pointer int32) 36      :offset-assert 2160)
+   (mid-mask-ptrs      (pointer int64) 36      :offset-assert 2160)
    (mid-camera-masks   uint64 36     :offset-assert 2304)
    (trans-mask-ptrs    (pointer int32) 64      :offset-assert 2592)
    (trans-camera-masks ocean-trans-mask 16 :inline      :offset-assert 2848)
@@ -7233,17 +7233,17 @@
    (fog            vector       :inline :offset-assert 48)
    (constants      vector       :inline :offset-assert 64)
    (constants2     vector       :inline :offset-assert 80)
-   (drw-fan        qword        :inline :offset-assert 96)
-   (env-fan        qword        :inline :offset-assert 112)
-   (drw-adgif      qword        :inline :offset-assert 128)
+   (drw-fan        gs-gif-tag        :inline :offset-assert 96) ;; was qword
+   (env-fan        gs-gif-tag        :inline :offset-assert 112) ;; was qword
+   (drw-adgif      gs-gif-tag        :inline :offset-assert 128);; was qword
    (drw-texture    adgif-shader :inline :offset-assert 144)
-   (drw-strip-0    qword        :inline :offset-assert 224)
-   (drw-strip-1    qword        :inline :offset-assert 240)
-   (env-adgif      qword        :inline :offset-assert 256)
+   (drw-strip-0    gs-gif-tag        :inline :offset-assert 224) ;; was qword
+   (drw-strip-1    gs-gif-tag        :inline :offset-assert 240) ;; was qword
+   (env-adgif      gs-gif-tag        :inline :offset-assert 256) ;; was qword
    (env-texture    adgif-shader :inline :offset-assert 272)
-   (env-strip      qword        :inline :offset-assert 352)
+   (env-strip      gs-gif-tag        :inline :offset-assert 352) ;; was qword
    (env-color      vector       :inline :offset-assert 368)
-   (index-table    uint128      8       :offset-assert 384)
+   (index-table    vector4w      8 :inline      :offset-assert 384)
    (pos0           vector       :inline :offset-assert 512)
    (pos1           vector       :inline :offset-assert 528)
    (pos2           vector       :inline :offset-assert 544)
@@ -21768,25 +21768,25 @@
 
 ;; - Functions
 
-(define-extern ocean-mid-add-constants function)
+(define-extern ocean-mid-add-constants (function dma-buffer none))
 (define-extern ocean-mid-add-call (function dma-buffer int none))
-(define-extern ocean-mid-add-upload function)
+(define-extern ocean-mid-add-upload (function dma-buffer int int int int float symbol))
 (define-extern ocean-mid-add-call-flush (function dma-buffer uint none))
 (define-extern draw-ocean-transition (function dma-buffer none))
-(define-extern draw-ocean-mid-seams function)
-(define-extern ocean-seams-add-constants function)
-(define-extern ocean-mid-add-upload-top function)
-(define-extern ocean-mid-add-upload-bottom function)
-(define-extern ocean-mid-add-upload-middle function)
-(define-extern ocean-mid-camera-masks-bit? (function uint uint))
-(define-extern ocean-mid-mask-ptrs-bit? (function uint uint))
-(define-extern ocean-mid-add-upload-table function)
-(define-extern ocean-mid-camera-masks-set! function)
-(define-extern ocean-mid-add-matrices (function dma-buffer none)) ;; not verified
-(define-extern ocean-mid-check function)
+(define-extern draw-ocean-mid-seams (function dma-buffer none))
+(define-extern ocean-seams-add-constants (function dma-buffer none))
+(define-extern ocean-mid-add-upload-top (function dma-buffer uint uint none))
+(define-extern ocean-mid-add-upload-bottom (function dma-buffer uint uint none))
+(define-extern ocean-mid-add-upload-middle (function dma-buffer uint uint none))
+(define-extern ocean-mid-camera-masks-bit? (function uint uint symbol))
+(define-extern ocean-mid-mask-ptrs-bit? (function uint uint symbol))
+(define-extern ocean-mid-add-upload-table (function dma-buffer uint uint (pointer float) int symbol none))
+(define-extern ocean-mid-camera-masks-set! (function uint uint symbol))
+(define-extern ocean-mid-add-matrices (function dma-buffer vector none)) ;; not verified
+(define-extern ocean-mid-check (function pointer int int vector symbol))
 (define-extern ocean-matrix*! (function matrix matrix matrix matrix))
-(define-extern ocean-mid-setup-constants function)
-(define-extern ocean-vector-matrix*! function)
+(define-extern ocean-mid-setup-constants (function ocean-mid-constants none))
+(define-extern ocean-vector-matrix*! (function vector vector matrix vector))
 
 ;; - Unknowns
 
@@ -21824,7 +21824,7 @@
 (define-extern ocean-near-add-constants (function dma-buffer none))
 (define-extern ocean-near-add-heights (function dma-buffer ocean-wave-info))
 (define-extern ocean-near-add-call (function dma-buffer int none))
-(define-extern ocean-near-add-upload (function dma-buffer float float ocean-near-upload))
+(define-extern ocean-near-add-upload (function dma-buffer uint uint ocean-near-upload))
 (define-extern ocean-near-add-matrices (function dma-buffer matrix none))
 (define-extern ocean-near-setup-constants (function (inline-array vector) vector))
 (define-extern ocean-near-add-call-flush (function dma-buffer int none))
