@@ -148,6 +148,10 @@ class VuDisassembler {
       return step({VuDecodeStep::FieldK::FS, VuDecodeStep::AtomK::ASSERT_ZERO});
     }
 
+    OpInfo& vfs_zero() {
+      return step({VuDecodeStep::FieldK::FS, VuDecodeStep::AtomK::ASSERT_ZERO});
+    }
+
     OpInfo& ftf_zero() {
       return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::ASSERT_ZERO});
     }

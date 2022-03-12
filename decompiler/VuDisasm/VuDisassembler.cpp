@@ -143,6 +143,7 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::ADDq, "addq").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_q();
   add_op(VuInstrK::MULi, "muli").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
   add_op(VuInstrK::ADDi, "addi").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
+  add_op(VuInstrK::MULAq, "mula").iemdt().dst_mask().dst_acc().vft_zero().src_vfs().src_q();
 
   m_lower_op6_table[0b000000].set(VuInstrK::LQ);
   m_lower_op6_table[0b000001].set(VuInstrK::SQ);
@@ -214,7 +215,8 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::IBGEZ, "ibgez").dst_mask_zero().vit_zero().src_vis().rel_branch11();
   add_op(VuInstrK::ISWR, "iswr").dst_mask().src_vit().src_vis();
   add_op(VuInstrK::JALR, "jalr").dst_mask_zero().dst_vit().src_vis().imm11_zero();
-  add_op(VuInstrK::WAITQ, "waitq").dst_mask_zero().vft_zero().vis_zero();
+  add_op(VuInstrK::WAITP, "waitp").dst_mask_zero().vft_zero().vfs_zero();
+  add_op(VuInstrK::WAITQ, "waitq").dst_mask_zero().vft_zero().vfs_zero();
   add_op(VuInstrK::IBLEZ, "iblez").dst_mask_zero().vit_zero().src_vis().rel_branch11();
   add_op(VuInstrK::SQRT, "sqrt").fsf_zero().ftf_0().vis_zero().dst_q().src_vft();
   add_op(VuInstrK::SQD, "sqd").dst_mask().src_vfs().src_vit();
@@ -289,6 +291,8 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
         return VuInstrK::XGKICK;
       case 0b11100'1111'11:
         return VuInstrK::ERLENG;
+      case 0b11110'1111'11:
+        return VuInstrK::WAITP;
     }
     fmt::print("Unknown lower special: 0b{:b}\n", in);
     ASSERT(false);
@@ -343,6 +347,8 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
       case 0b00110'1111'10:
       case 0b00110'1111'11:
         return VuInstrK::MULAbc;
+      case 0b00111'1111'00:
+        return VuInstrK::MULAq;
       case 0b00111'1111'11:
         return VuInstrK::CLIP;
       case 0b01010'1111'00:

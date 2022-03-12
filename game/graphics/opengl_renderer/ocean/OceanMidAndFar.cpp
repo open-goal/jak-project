@@ -48,6 +48,8 @@ void OceanMidAndFar::render(DmaFollower& dma,
 
   handle_ocean_far(dma, render_state, prof);
 
+  handle_ocean_mid(dma, render_state, prof);
+
   auto final_next = dma.read_and_advance();
   ASSERT(final_next.vifcode0().kind == VifCode::Kind::NOP &&
          final_next.vifcode1().kind == VifCode::Kind::NOP && final_next.size_bytes == 0);
@@ -74,11 +76,24 @@ void OceanMidAndFar::handle_ocean_far(DmaFollower& dma,
   memcpy(init_data_buffer + 80, &val, 1);
   m_direct.render_gif(init_data_buffer, 160, render_state, prof);
 
-  while (dma.current_tag().kind == DmaTag::Kind::CNT) {
+  while (dma.current_tag().kind == DmaTag::Kind::CNT &&
+         dma.current_tag_vifcode0().kind == VifCode::Kind::NOP) {
     auto data = dma.read_and_advance();
     ASSERT(data.vifcode0().kind == VifCode::Kind::NOP);
     ASSERT(data.vifcode1().kind == VifCode::Kind::DIRECT);
     ASSERT(data.size_bytes / 16 == data.vifcode1().immediate);
     m_direct.render_gif(data.data, data.size_bytes, render_state, prof);
+  }
+}
+
+bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) {
+  return tag.qwc == 0 && tag.kind == DmaTag::Kind::NEXT && v0.kind == VifCode::Kind::NOP &&
+         v1.kind == VifCode::Kind::NOP;
+}
+void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
+                                      SharedRenderState* render_state,
+                                      ScopedProfilerNode& prof) {
+  while (!is_end_tag(dma.current_tag(), dma.current_tag_vifcode0(), dma.current_tag_vifcode1())) {
+    dma.read_and_advance();
   }
 }

@@ -20,6 +20,9 @@ class OceanMidAndFar : public BucketRenderer {
   void handle_ocean_far(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
+  void handle_ocean_mid(DmaFollower& dma,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
 
   DirectRenderer m_direct;
   OceanTexture m_texture_renderer;

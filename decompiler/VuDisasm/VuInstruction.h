@@ -32,7 +32,7 @@ enum class VuInstrK {
   MULbc,  // 20
   MULA,
   //  MULAi,
-  //  MULAq,
+  MULAq,
   MULAbc,
   MADD,
   //  MADDi,
@@ -124,7 +124,7 @@ enum class VuInstrK {
   JR,  // 110
   JALR,
   MFP,
-  //  WAITP,
+  WAITP,
   //  ESADD,
   //  ERSADD,
   //  ELENG,

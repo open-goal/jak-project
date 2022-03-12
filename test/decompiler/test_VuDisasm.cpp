@@ -105,6 +105,21 @@ TEST(VuDisasm, OceanTexture) {
   EXPECT_EQ(disasm.to_string(prog), get_expected("ocean-texture"));
 }
 
+TEST(VuDisasm, OceanMid) {
+  auto data = get_test_data("ocean-mid");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("ocean-mid"));
+}
+
+// TEST(VuDisasm, OceanNear) {
+//   auto data = get_test_data("ocean-near");
+//   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+//   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+//   fmt::print("{}\n", disasm.to_string(prog));
+//   // EXPECT_EQ(disasm.to_string(prog), get_expected("ocean-mid"));
+// }
+
 TEST(VuDisasm, Sky) {
   auto data = get_test_data("sky");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
@@ -152,7 +167,7 @@ TEST(VuDisasm, Generic) {
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
   EXPECT_EQ(disasm.to_string(prog), get_expected("generic"));
-  fmt::print("{}\n", disasm.to_string_with_cpp(prog, false));
+  // fmt::print("{}\n", disasm.to_string_with_cpp(prog, false));
 }
 
 TEST(VuDisasm, TieNear) {
