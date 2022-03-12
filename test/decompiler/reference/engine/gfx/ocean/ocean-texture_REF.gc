@@ -48,8 +48,18 @@
 ;; definition for function ocean-texture-setup-constants
 ;; INFO: Return type mismatch int vs none.
 (defun ocean-texture-setup-constants ((arg0 ocean-texture-constants))
-  (set! (-> arg0 giftag dword 0) (make-u128 0 (the-as uint #x300e400000008042)))
-  (set! (-> arg0 giftag dword 1) (the-as uint 1298))
+  (set! (-> arg0 giftag tag)
+        (new 'static 'gif-tag64
+          :nloop #x42
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1)
+          :nreg #x3
+          )
+        )
+  (set! (-> arg0 giftag regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyz2))
+        )
   (set-vector! (-> arg0 buffers) 384 583 384 583)
   (set-vector! (-> arg0 dests) 782 881 782 881)
   (set-vector! (-> arg0 start) 0.0 0.0 1048575.94 0.0)
@@ -103,7 +113,7 @@
   )
 
 ;; definition for function ocean-texture-add-verts
-(defun ocean-texture-add-verts ((arg0 dma-buffer) (arg1 (pointer vector)))
+(defun ocean-texture-add-verts ((arg0 dma-buffer) (arg1 (inline-array vector)))
   (let* ((v1-0 arg0)
          (a0-1 (the-as object (-> v1-0 base)))
          )
@@ -122,7 +132,7 @@
   )
 
 ;; definition for function ocean-texture-add-verts-last
-(defun ocean-texture-add-verts-last ((arg0 dma-buffer) (arg1 (pointer vector)) (arg2 (pointer vector)))
+(defun ocean-texture-add-verts-last ((arg0 dma-buffer) (arg1 (inline-array vector)) (arg2 (inline-array vector)))
   (let* ((v1-0 arg0)
          (a3-0 (the-as object (-> v1-0 base)))
          )
@@ -197,8 +207,8 @@
 ;; definition for function draw-ocean-texture
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun draw-ocean-texture ((arg0 dma-buffer) (arg1 (pointer vector)) (arg2 symbol))
-  (local-vars (sv-16 (pointer vector)) (sv-32 int) (sv-48 (pointer vector)) (sv-64 (pointer vector)))
+(defun draw-ocean-texture ((arg0 dma-buffer) (arg1 (inline-array vector)) (arg2 symbol))
+  (local-vars (sv-16 (inline-array vector)) (sv-32 int) (sv-48 vector) (sv-64 (inline-array vector)))
   (set! sv-64 arg1)
   (let* ((s0-0 arg2)
          (a1-1 *ocean-base-page*)
@@ -222,16 +232,16 @@
     (ocean-texture-add-envmap arg0)
     (set! sv-16 sv-64)
     (ocean-texture-add-verts arg0 sv-16)
-    (set! sv-48 (&-> sv-16 768))
+    (set! sv-48 (-> sv-16 192))
     (ocean-texture-add-call-start arg0)
     (set! sv-32 0)
     (while (< sv-32 9)
-      (ocean-texture-add-verts arg0 sv-48)
-      (set! sv-48 (&-> sv-48 768))
+      (ocean-texture-add-verts arg0 (the-as (inline-array vector) sv-48))
+      (set! sv-48 (-> (the-as (inline-array vector) sv-48) 192))
       (ocean-texture-add-call-rest arg0)
       (set! sv-32 (+ sv-32 1))
       )
-    (ocean-texture-add-verts-last arg0 sv-48 sv-64)
+    (ocean-texture-add-verts-last arg0 (the-as (inline-array vector) sv-48) sv-64)
     (ocean-texture-add-call-rest arg0)
     (ocean-texture-add-call-done arg0)
     (when s0-0
@@ -591,7 +601,3 @@
   0
   (none)
   )
-
-
-
-
