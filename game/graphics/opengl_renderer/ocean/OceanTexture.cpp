@@ -1,6 +1,11 @@
 #include "OceanTexture.h"
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
+#include "third-party/imgui/imgui.h"
 
-OceanTexture::OceanTexture() : m_tex0(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV) {
+constexpr int OCEAN_TEX_TBP = 8160;  // todo
+OceanTexture::OceanTexture()
+    : m_tex0(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV),
+      m_hack_renderer("burp", BucketId::BUCKET0, 0x8000) {
   m_dbuf_x = m_dbuf_a;
   m_dbuf_y = m_dbuf_b;
 
@@ -8,8 +13,50 @@ OceanTexture::OceanTexture() : m_tex0(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_
   m_tbuf_y = m_tbuf_b;
 }
 
-void OceanTexture::handle_tex_call_start(DmaFollower& dma,
-                                         SharedRenderState* render_state,
+void OceanTexture::init_textures(TexturePool& pool) {
+  TextureInput in;
+  in.gpu_texture = m_tex0.texture();
+  constexpr int boost = 2;
+  in.w = 128 * boost;
+  in.h = 128 * boost;
+  in.page_name = "PC-OCEAN";
+  in.name = "pc-ocean";
+  m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP);
+}
+
+void OceanTexture::draw_debug_window() {
+  if (m_tex0_gpu) {
+    ImGui::Image((void*)m_tex0_gpu->gpu_textures.at(0).gl, ImVec2(m_tex0_gpu->w, m_tex0_gpu->h));
+  }
+  ImGui::Checkbox("Optimized Version", &m_use_ocean_specific);
+}
+
+void OceanTexture::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  if (m_use_ocean_specific) {
+    // todo
+  } else {
+    m_hack_renderer.flush_pending(render_state, prof);
+  }
+}
+
+void OceanTexture::setup_renderer() {
+  if (m_use_ocean_specific) {
+    // todo
+  } else {
+    m_hack_renderer.reset_state();
+  }
+}
+
+void OceanTexture::xgkick(Vf* src, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  // KICK
+  if (m_use_ocean_specific) {
+    // todo
+  } else {
+    m_hack_renderer.render_gif((const u8*)src, UINT32_MAX, render_state, prof);
+  }
+}
+
+void OceanTexture::handle_tex_call_start(SharedRenderState* render_state,
                                          ScopedProfilerNode& prof) {
   //  L1:
   //  lq.xyzw vf14_startx, 988(vi00)    |  maxw.xyzw vf01_ones, vf00, vf00
@@ -49,7 +96,7 @@ void OceanTexture::handle_tex_call_start(DmaFollower& dma,
   //  bal vi12_ra, L5
   //  mtir vi04_dbuf_read_b, vf04_dbuf.y
   vu.dbuf_read_b = get_dbuf_other();
-  run_L5();
+  run_L5(render_state, prof);
 
   //  mtir vi06_dbuf_write, vf04_dbuf.x
   vu.dbuf_write = get_dbuf();
@@ -63,15 +110,13 @@ void OceanTexture::handle_tex_call_start(DmaFollower& dma,
   //  bal vi12_ra, L5
   //  mtir vi04_dbuf_read_b, vf04_dbuf.y
   vu.dbuf_read_b = get_dbuf_other();
-  run_L5();
+  run_L5(render_state, prof);
 
   //  nop                     :e
   //  nop
 }
 
-void OceanTexture::handle_tex_call_rest(DmaFollower& dma,
-                                        SharedRenderState* render_state,
-                                        ScopedProfilerNode& prof) {
+void OceanTexture::handle_tex_call_rest(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   //  L2:
   //  xtop vi05_in_ptr
   vu.in_ptr = swap_vu_upload_buffers();
@@ -87,7 +132,7 @@ void OceanTexture::handle_tex_call_rest(DmaFollower& dma,
   //  bal vi12_ra, L5
   //  mtir vi04_dbuf_read_b, vf04_dbuf.y
   vu.dbuf_read_b = get_dbuf_other();
-  run_L5();
+  run_L5(render_state, prof);
 
   //  mtir vi06_dbuf_write, vf04_dbuf.x
   vu.dbuf_write = get_dbuf();
@@ -101,7 +146,7 @@ void OceanTexture::handle_tex_call_rest(DmaFollower& dma,
   //  bal vi12_ra, L5
   //  mtir vi04_dbuf_read_b, vf04_dbuf.y
   vu.dbuf_read_b = get_dbuf_other();
-  run_L5();
+  run_L5(render_state, prof);
 
   //  mtir vi06_dbuf_write, vf04_dbuf.x
   vu.dbuf_write = get_dbuf();
@@ -115,7 +160,7 @@ void OceanTexture::handle_tex_call_rest(DmaFollower& dma,
   //  bal vi12_ra, L5
   //  mtir vi04_dbuf_read_b, vf04_dbuf.y
   vu.dbuf_read_b = get_dbuf_other();
-  run_L5();
+  run_L5(render_state, prof);
 
   //  nop                     :e
   //  nop
@@ -174,7 +219,7 @@ void OceanTexture::run_L3() {
   const u16 vi11 = 0x80;
   bool bc;
 
-// clang-format off
+  // clang-format off
   L3:
   // ior vi07, vi06, vi00       |  nop                            56
   vu.dbuf_write_base = vu.dbuf_write;
@@ -312,7 +357,7 @@ void OceanTexture::run_L3() {
   // clang-format on
 }
 
-void OceanTexture::run_L5() {
+void OceanTexture::run_L5(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // clang-format off
   u16 loop_idx;
   Vf res0;
@@ -356,6 +401,7 @@ void OceanTexture::run_L5() {
   sq_buffer(Mask::xyzw, vtx1, vu.tptr + 4);
   // sq.xyzw vf21, 5(vi08)      |  nop                            136
   sq_buffer(Mask::xyzw, res1, vu.tptr + 5);
+
   // iaddi vi03, vi03, 0x3      |  nop                            137
   vu.dbuf_read_a = vu.dbuf_read_a + 3;
   // iaddi vi04, vi04, 0x3      |  nop                            138
@@ -368,7 +414,7 @@ void OceanTexture::run_L5() {
   if (bc) { goto L6; }
 
   // xgkick vi09                |  nop                            141
-  xgkick(vu.tbase);
+  xgkick(vu.tbase, render_state, prof);
   // mtir vi08, vf03.x          |  nop                            142
   // vu.tptr = vu.vf03.x_as_u16();
   vu.tptr = get_tbuf();
@@ -383,19 +429,10 @@ void OceanTexture::run_L5() {
   // clang-format on
 }
 
-void OceanTexture::xgkick(Vf* src) {
-  // KICK
-}
-
-void OceanTexture::handle_tex_call_done(DmaFollower& dma,
-                                        SharedRenderState* render_state,
-                                        ScopedProfilerNode& prof) {
-  // this program does nothing.
-}
-
 void OceanTexture::handle_ocean_texture(DmaFollower& dma,
                                         SharedRenderState* render_state,
                                         ScopedProfilerNode& prof) {
+  FramebufferTexturePairContext ctxt(m_tex0);
   // render to the first texture
   {
     // (set-display-gs-state arg0 ocean-tex-page-0 128 128 0 0)
@@ -435,6 +472,27 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::NOP);
     ASSERT(data.vifcode1().kind == VifCode::Kind::DIRECT);
     memcpy(&m_envmap_adgif, data.data + 16, sizeof(AdGifData));
+
+    // fmt::print("adgif is:\n{}\n\n", AdgifHelper(m_envmap_adgif).print());
+    /*
+     * adgif is:
+[0] TEX0_1
+  tbp0: 10010 tbw: 2 psm: 19 tw: 6 th: 6 tcc: 1 tfx: 0 cbp: 10046 cpsm: 0 csm: 0
+[1] TEX1_1
+  lcm: false mxl: 0 mmag: true mmin: 4 mtba: false l: 0 k: 0
+[2] MIPTBP1_1
+[3] CLAMP_1
+  0x5
+[4] ALPHA_1
+  (Cs - Cd) * As / 128.0 + Cd
+
+     */
+
+    // HACK
+    setup_renderer();
+    if (!m_use_ocean_specific) {
+      m_hack_renderer.render_gif(data.data, UINT32_MAX, render_state, prof);
+    }
   }
 
   // vertices are uploaded double buffered
@@ -463,8 +521,7 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(data.vifcode0().immediate == TexVu1Prog::START);
     ASSERT(data.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_start(dma, render_state, prof);
-    // TODO handle call and swapping buffer
+    handle_tex_call_start(render_state, prof);
   }
 
   // loop over vertex groups
@@ -485,9 +542,7 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(call.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(call.vifcode0().immediate == TexVu1Prog::REST);
     ASSERT(call.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_rest(dma, render_state, prof);
-
-    // TODO handle call and swapping buffer
+    handle_tex_call_rest(render_state, prof);
   }
 
   // last upload does something weird...
@@ -523,8 +578,7 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(data.vifcode0().immediate == TexVu1Prog::REST);
     ASSERT(data.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_rest(dma, render_state, prof);
-    // TODO handle call and swapping buffer
+    handle_tex_call_rest(render_state, prof);
   }
 
   // last call
@@ -534,7 +588,9 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(data.vifcode0().immediate == TexVu1Prog::DONE);
     ASSERT(data.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_done(dma, render_state, prof);
-    // TODO handle call and swapping buffer
+    // this program does nothing.
   }
+
+  flush(render_state, prof);
+  render_state->texture_pool->move_existing_to_vram(m_tex0_gpu, 8160);
 }

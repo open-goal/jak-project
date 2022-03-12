@@ -11,25 +11,25 @@ class OceanTexture {
   void handle_ocean_texture(DmaFollower& dma,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof);
+  void init_textures(TexturePool& pool);
+  void draw_debug_window();
 
  private:
-  void handle_tex_call_start(DmaFollower& dma,
-                             SharedRenderState* render_state,
-                             ScopedProfilerNode& prof);
-  void handle_tex_call_rest(DmaFollower& dma,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
-  void handle_tex_call_done(DmaFollower& dma,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
+  void handle_tex_call_start(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_tex_call_rest(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   void run_L3();
-  void run_L5();
+  void run_L5(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  void xgkick(Vf* src);
+  void xgkick(Vf* src, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void setup_renderer();
+  void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  static constexpr int TEX0_SIZE = 128;
+  bool m_use_ocean_specific = false;
+
+  static constexpr int TEX0_SIZE = 256;  // TODO actually 128
   FramebufferTexturePair m_tex0;
+  GpuTexture* m_tex0_gpu = nullptr;
 
   // (deftype ocean-texture-constants (structure)
   struct OceanTextureConstants {
@@ -112,4 +112,6 @@ class OceanTexture {
   enum TexVu1Prog { START = 0, REST = 2, DONE = 4 };
 
   static constexpr int NUM_FRAG_LOOPS = 9;
+
+  DirectRenderer m_hack_renderer;
 };

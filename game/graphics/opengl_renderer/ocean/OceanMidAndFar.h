@@ -14,6 +14,7 @@ class OceanMidAndFar : public BucketRenderer {
   OceanMidAndFar(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_textures(TexturePool& pool) override;
 
  private:
 

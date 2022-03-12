@@ -1,12 +1,16 @@
 #include "OceanMidAndFar.h"
+#include "third-party/imgui/imgui.h"
 
 OceanMidAndFar::OceanMidAndFar(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id),
-      m_direct(name, my_id, 4096)
-       {}
+    : BucketRenderer(name, my_id), m_direct(name, my_id, 4096) {}
 
 void OceanMidAndFar::draw_debug_window() {
+  m_texture_renderer.draw_debug_window();
   m_direct.draw_debug_window();
+}
+
+void OceanMidAndFar::init_textures(TexturePool& pool) {
+  m_texture_renderer.init_textures(pool);
 }
 
 void OceanMidAndFar::render(DmaFollower& dma,
@@ -54,8 +58,6 @@ void OceanMidAndFar::render(DmaFollower& dma,
 
   m_direct.flush_pending(render_state, prof);
 }
-
-
 
 void OceanMidAndFar::handle_ocean_far(DmaFollower& dma,
                                       SharedRenderState* render_state,

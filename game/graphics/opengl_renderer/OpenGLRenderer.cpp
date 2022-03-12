@@ -85,7 +85,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   // 1
   // 2
   init_bucket_renderer<SkyRenderer>("sky", BucketCategory::OTHER, BucketId::SKY_DRAW);  // 3
-  init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OTHER,
+  init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                        BucketId::OCEAN_MID_AND_FAR);  // 4
 
   //-----------------------
