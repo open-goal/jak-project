@@ -93,6 +93,13 @@ bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) {
 void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
+  if (dma.current_tag_vifcode0().kind == VifCode::Kind::BASE) {
+    m_mid_renderer.run(dma, render_state, prof, m_direct);
+  } else {
+    // not drawing
+    return;
+  }
+
   while (!is_end_tag(dma.current_tag(), dma.current_tag_vifcode0(), dma.current_tag_vifcode1())) {
     dma.read_and_advance();
   }

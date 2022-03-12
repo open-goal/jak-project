@@ -830,14 +830,19 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
     case VuInstrK::IOR:
       if (instr.src.at(1).is_int_reg(0)) {
-        ASSERT(!instr.dst->is_int_reg(0));
-        ASSERT(!instr.src.at(0).is_int_reg(0));
-        if (mips2c_format) {
-          return fmt::format("vis[{}] = vis[{}];", instr.dst->to_string(m_label_names),
-                             instr.src.at(0).to_string(m_label_names));
+        fmt::print("instr: {}\n", to_string(instr));
+        if (instr.src.at(0).is_int_reg(0) && instr.src.at(1).is_int_reg(0)) {
+          return fmt::format("vu.{} = 0;", instr.dst->to_string(m_label_names));
         } else {
-          return fmt::format("vu.{} = vu.{};", instr.dst->to_string(m_label_names),
-                             instr.src.at(0).to_string(m_label_names));
+          ASSERT(!instr.dst->is_int_reg(0));
+          ASSERT(!instr.src.at(0).is_int_reg(0));
+          if (mips2c_format) {
+            return fmt::format("vis[{}] = vis[{}];", instr.dst->to_string(m_label_names),
+                               instr.src.at(0).to_string(m_label_names));
+          } else {
+            return fmt::format("vu.{} = vu.{};", instr.dst->to_string(m_label_names),
+                               instr.src.at(0).to_string(m_label_names));
+          }
         }
 
       } else {
@@ -985,13 +990,17 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("vu.{} = xtop();", instr.src.at(0).to_string(m_label_names));
     default:
       unk++;
+      fmt::print("unknown 0 is {}\n", to_string(instr));
+
       return "ASSERT(false);";  //"???";
   }
 
 unknown:
 
   unk++;
-  return "???";
+  fmt::print("unknown 1 is {}\n", to_string(instr));
+
+  return "ASSERT(false);";
 }
 
 std::string VuDisassembler::to_string(const VuInstruction& instr) const {

@@ -982,6 +982,40 @@
   (none)
   )
 
+(defun sphere-cull-for-ocean ((arg0 vector))
+  "NOTE: added in PC port"
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf9 :class vf)
+         )
+        (init-vf0-vector)
+        (let ((v1-5 *math-camera*))
+          ;; note: these are for sphere cull.
+          (.lvf vf16 (&-> v1-5 plane 0 quad))
+          (.lvf vf17 (&-> v1-5 plane 1 quad))
+          (.lvf vf18 (&-> v1-5 plane 2 quad))
+          (.lvf vf19 (&-> v1-5 plane 3 quad))
+          )
+        
+        (.lvf vf10 (&-> arg0 quad))
+        (.mul.x.vf acc vf16 vf10)
+        (.add.mul.y.vf acc vf17 vf10 acc)
+        (.add.mul.z.vf acc vf18 vf10 acc)
+        (.sub.mul.w.vf vf9 vf19 vf0 acc)
+        (.add.w.vf vf9 vf9 vf10)
+        (.mov v1-0 vf9)
+        (.pcgtw v1-1 0 v1-0)
+        (.ppach v1-2 (the-as uint128 0) v1-1)
+        (zero? (the-as int v1-2))
+        )
+  )
+
 ;; definition for function draw-ocean-mid-seams
 ;; INFO: Return type mismatch symbol vs none.
 (defun draw-ocean-mid-seams ((arg0 dma-buffer))
@@ -1004,7 +1038,7 @@
         (while (>= s2-0 s3-0)
           (set! (-> sv-36 x) (+ 196608.0 (* 393216.0 (the float s3-0)) (-> *ocean-map* start-corner x)))
           (set! (-> sv-36 z) (+ 196608.0 (* 393216.0 (the float s5-0)) (-> *ocean-map* start-corner z)))
-          (when (sphere-cull sv-36)
+          (when (sphere-cull-for-ocean sv-36)
             (cond
               ((= s5-0 sv-34)
                (ocean-mid-add-upload-top arg0 s5-0 s3-0)
@@ -1060,6 +1094,7 @@
     (ocean-mid-add-constants arg0)
     (ocean-mid-add-call arg0 0)
     (let ((v1-5 *math-camera*))
+      ;; note: these are for sphere cull.
       (.lvf vf16 (&-> v1-5 plane 0 quad))
       (.lvf vf17 (&-> v1-5 plane 1 quad))
       (.lvf vf18 (&-> v1-5 plane 2 quad))
@@ -1077,14 +1112,19 @@
                  (s1-0 (-> *ocean-map* ocean-spheres spheres s2-0))
                  (s0-0 (-> (the-as (pointer int16) (+ (* s2-0 2) (the-as int (-> *ocean-map* ocean-mid-indices))))))
                  )
-            (when (sphere-cull s1-0)
+            (when (sphere-cull-for-ocean s1-0)
               (cond
                 ((< s0-0 0)
                  )
-                ((let ((f30-0 (- (vector-vector-distance s1-0 s5-0) (-> s1-0 w))))
+                (
+                  
+                 (let ((f30-0 (- (vector-vector-distance s1-0 s5-0) (-> s1-0 w))))
                    (ocean-mid-add-upload arg0 s4-0 s3-0 s0-0 s2-0 f30-0)
                    (< f30-0 786432.0)
+                   ;; HACK
+                   ;; #t
                    )
+                   
                  (ocean-mid-add-call arg0 73)
                  (+! (-> *terrain-stats* ocean-mid fragments) 1)
                  (+! (-> *terrain-stats* ocean-mid tris) 256)
@@ -1102,6 +1142,8 @@
           )
         )
       )
+    #|
+    ;; for now, skip seams.
     (when (not (or *ocean-near-off* (< 196608.0 (fabs (-> *math-camera* trans y)))))
       (let ((a1-11 48)
             (a2-2 0)
@@ -1153,7 +1195,7 @@
           (draw-ocean-mid-seams arg0)
           )
         )
-      )
+      ) |#
     (ocean-mid-add-call-flush arg0 (the-as uint 41))
     0
     (none)
