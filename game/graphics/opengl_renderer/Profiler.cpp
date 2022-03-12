@@ -215,7 +215,7 @@ void SmallProfiler::draw(const std::string& status, const SmallProfilerStats& st
     for (int i = 0; i < (int)BucketCategory::MAX_CATEGORIES; i++) {
       m_plots[i].push(stats.time_per_category[i] * 1000.f);
       ImGui::Text("%6s", BUCKET_CATEGORY_NAMES[i]);
-      m_plots[i].draw(5.f);
+      m_plots[i].draw(3.f);
     }
   }
   ImGui::End();

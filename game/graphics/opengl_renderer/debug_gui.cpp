@@ -17,7 +17,7 @@ void FrameTimeRecorder::start_frame() {
   m_fps_timer.start();
 }
 
-void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
+void FrameTimeRecorder::draw_window(const DmaStats& /*dma_stats*/) {
   auto* p_open = &m_open;
   ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
                                   ImGuiWindowFlags_AlwaysAutoResize |

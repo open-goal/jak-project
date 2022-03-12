@@ -78,4 +78,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::DIRECT2) = {"direct2"};
   at(ShaderId::EYE) = {"eye"};
   at(ShaderId::GENERIC) = {"generic"};
+  at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture"};
 }

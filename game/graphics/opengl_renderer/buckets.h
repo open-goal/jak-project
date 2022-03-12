@@ -82,10 +82,11 @@ enum class BucketCategory {
   MERC,
   GENERIC_MERC,
   SPRITE,
+  OCEAN,
   DEBUG_DRAW,
   OTHER,
   MAX_CATEGORIES
 };
 
 constexpr const char* BUCKET_CATEGORY_NAMES[(int)BucketCategory::MAX_CATEGORIES] = {
-    "tfrag", "tie", "tex", "merc", "mercneric", "sprite", "debug", "other"};
+    "tfrag", "tie", "tex", "merc", "mercneric", "sprite", "ocean", "debug", "other"};

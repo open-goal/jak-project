@@ -133,6 +133,11 @@ void extract_common(ObjectFileDB& db, TextureDB& tex_db, const std::string& dgo_
     return;
   }
 
+  if (tex_db.textures.size() == 0) {
+    lg::warn("Skipping common extract because there were no textures in the input");
+    return;
+  }
+
   confirm_textures_identical(tex_db);
 
   tfrag3::Level tfrag_level;

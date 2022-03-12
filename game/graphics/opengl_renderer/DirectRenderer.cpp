@@ -568,6 +568,9 @@ void DirectRenderer::render_gif(const u8* data,
             case GifTag::RegisterDescriptor::TEX0_1:
               handle_tex0_1_packed(data + offset);
               break;
+            case GifTag::RegisterDescriptor::XYZ2:
+              handle_xyz2_packed(data + offset, render_state, prof);
+              break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
                          reg_descriptor_name(reg_desc[reg]));
@@ -770,7 +773,25 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  handle_xyzf2_common(x, y, z, f, render_state, prof, !adc);
+  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
+}
+
+void DirectRenderer::handle_xyz2_packed(const u8* data,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
+  u32 x, y, z;
+  memcpy(&x, data, 4);
+  memcpy(&y, data + 4, 4);
+  memcpy(&z, data + 8, 4);
+
+  u64 upper;
+  memcpy(&upper, data + 8, 8);
+  bool adc = upper & (1ull << 47);
+  float un_mess_up = 448.f / 512.f;
+  // TODO total hack
+  s32 yy = (((s32)y - 1024) << 17) * un_mess_up;
+  handle_xyzf2_common(((x << 2) + 32768 - 2048 * 2) << 16, ((32768) << 16) - yy, z, 0, render_state,
+                      prof, !adc);
 }
 
 void DirectRenderer::handle_zbuf1(u64 val,
@@ -906,9 +927,6 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          SharedRenderState* render_state,
                                          ScopedProfilerNode& prof,
                                          bool advance) {
-  ASSERT(z < (1 << 24));
-  (void)f;  // TODO: do something with this.
-
   if (m_my_id == BucketId::MERC_TFRAG_TEX_LEVEL0) {
     // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
   }
@@ -921,8 +939,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
       m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
-  m_prim_building.building_vert.at(m_prim_building.building_idx) =
-      math::Vector<u32, 4>{x << 16, y << 16, z << 8, f};
+  m_prim_building.building_vert.at(m_prim_building.building_idx) = math::Vector<u32, 4>{x, y, z, f};
 
   m_prim_building.building_idx++;
 
@@ -1050,7 +1067,7 @@ void DirectRenderer::handle_xyzf2(u64 val,
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x, y, z, f, render_state, prof, true);
+  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, true);
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {
