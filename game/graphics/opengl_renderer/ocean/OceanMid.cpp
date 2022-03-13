@@ -7,9 +7,9 @@ static bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) 
 
 OceanMid::OceanMid() {
   for (auto& x : m_vu_data) {
-    x.fill(0);
+    x.fill(999.);
   }
-   vu.vf25 = Vf(1, 1, 1, 1);
+  vu.vf25 = Vf(1, 1, 1, 1);
 }
 
 void OceanMid::run(DmaFollower& dma,
@@ -56,15 +56,16 @@ void OceanMid::run(DmaFollower& dma,
     if (v0.kind == VifCode::Kind::STCYCL && v0.immediate == 0x404 &&
         v1.kind == VifCode::Kind::UNPACK_V4_32) {
       auto up = VifCodeUnpack(v1);
-      ASSERT(up.use_tops_flag);
-      u16 addr = up.addr_qw + get_upload_buffer();
+      // ASSERT(up.use_tops_flag);
+      u16 addr = up.addr_qw + (up.use_tops_flag ? get_upload_buffer() : 0);
       ASSERT(addr + v1.num <= 1024);
-       memcpy(m_vu_data + addr, data.data, 16 * v1.num);
+      memcpy(m_vu_data + addr, data.data, 16 * v1.num);
       ASSERT(16 * v1.num == data.size_bytes);
     } else if (v0.kind == VifCode::Kind::STCYCL && v0.immediate == 0x404 &&
                v1.kind == VifCode::Kind::UNPACK_V4_8) {
       auto up = VifCodeUnpack(v1);
       ASSERT(up.use_tops_flag);
+      ASSERT(up.is_unsigned);
       u16 addr = up.addr_qw + get_upload_buffer();
       ASSERT(addr + v1.num <= 1024);
 
@@ -73,7 +74,7 @@ void OceanMid::run(DmaFollower& dma,
         for (u32 j = 0; j < 4; j++) {
           temp[j] = data.data[4 * i + j];
         }
-         memcpy(m_vu_data + addr + i, temp, 16);
+        memcpy(m_vu_data + addr + i, temp, 16);
       }
 
       // TODO
@@ -81,6 +82,7 @@ void OceanMid::run(DmaFollower& dma,
                v1.kind == VifCode::Kind::UNPACK_V4_8) {
       auto up = VifCodeUnpack(v1);
       ASSERT(up.use_tops_flag);
+      ASSERT(up.is_unsigned);
       u16 addr = up.addr_qw + get_upload_buffer();
       ASSERT(addr + v1.num <= 1024);
 
@@ -89,33 +91,44 @@ void OceanMid::run(DmaFollower& dma,
         for (u32 j = 0; j < 4; j++) {
           temp[j] = data.data[4 * i + j];
         }
-        u32 addr_off = 4 * i / 2 + i % 2;
+        // cl = 4
+        // wl = 2
+        u32 addr_off = 4 * (i / 2) + i % 2;
         memcpy(m_vu_data + addr + addr_off, temp, 16);
       }
 
       // TODO
     } else if (v0.kind == VifCode::Kind::STCYCL && v0.immediate == 0x404 &&
                v1.kind == VifCode::Kind::MSCALF) {
-      switch(v1.immediate) {
+      switch (v1.immediate) {
         case 46:
           run_call46_vu2c(render_state, prof, direct);
           break;
         case 73:
           run_call73_vu2c(render_state, prof, direct);
           break;
+        case 107:
+          run_call107_vu2c(render_state, prof, direct);
+          break;
+        case 275:
+          run_call275_vu2c(render_state, prof, direct);
+          break;
         default:
-          fmt::print("unknown call: {}\n", v1.immediate);
+          fmt::print("unknown call1: {}\n", v1.immediate);
       }
       // TODO
     } else if (v0.kind == VifCode::Kind::MSCALF && v1.kind == VifCode::Kind::FLUSHA) {
-      switch(v0.immediate) {
+      switch (v0.immediate) {
         case 41:
+          run_call41_vu2c();
+          break;
+        case 43:
+          run_call43_vu2c();
           break;
         default:
-          fmt::print("unknown call: {}\n", v0.immediate);
+          fmt::print("unknown call2: {}\n", v0.immediate);
           ASSERT(false);
       }
-
 
       // TODO
     }

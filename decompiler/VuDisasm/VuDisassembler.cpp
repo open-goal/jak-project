@@ -846,7 +846,9 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
         }
 
       } else {
-        goto unknown;
+        return fmt::format("vu.{} = vu.{} | vu.{};", instr.dst->to_string(m_label_names),
+                           instr.src.at(0).to_string(m_label_names),
+                           instr.src.at(1).to_string(m_label_names));
       }
 
     case VuInstrK::MFP:
@@ -870,8 +872,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
           bc_to_part(*instr.second_src_field));
 
     case VuInstrK::ERLENG:
-      return fmt::format("vu.P = erleng(Mask::{}, vu.{}); /* TODO erleng */",
-                         mask_to_string(*instr.mask), instr.src.at(0).to_string(m_label_names));
+      return fmt::format("vu.P = erleng(vu.{});", instr.src.at(0).to_string(m_label_names));
     case VuInstrK::RSQRT:
       return fmt::format(
           "c->Q = c->vf_src({}).vf.{}() / std::sqrt(c->vf_src({}).vf.{}());",
@@ -896,8 +897,11 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
                          vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
     case VuInstrK::FCAND:
-      return fmt::format("ASSERT(false); vu.vi01 = cf & 0x{:x};\n", instr.src.at(0).value());
-
+      return fmt::format("fcand(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FCOR:
+      return fmt::format("fcor(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FCSET:
+      return fmt::format("cf = 0x{:x};\n", instr.src.at(0).value());
     case VuInstrK::ADDbc:
     case VuInstrK::SUBbc:
     case VuInstrK::MULbc:
@@ -976,6 +980,9 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.{});", mask_to_string(*instr.mask),
                          instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names));
+    case VuInstrK::MULAq:
+      return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.Q);", mask_to_string(*instr.mask),
+                         instr.src.at(0).to_string(m_label_names));
     case VuInstrK::MULAbc:
       return fmt::format(mips2c_format
                              ? "c->acc.vf.mula(Mask::{}, c->vf_src({}).vf, c->vf_src({}).vf.{}());"

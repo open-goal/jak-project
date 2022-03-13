@@ -15,6 +15,8 @@ class OceanMid {
  private:
   void run_call0();
   void run_call0_vu2c();
+  void run_call41_vu2c();
+  void run_call43_vu2c();
   void run_call46_vu2c(SharedRenderState* render_state,
                        ScopedProfilerNode& prof,
                        DirectRenderer& direct);
@@ -22,20 +24,47 @@ class OceanMid {
   void run_call73_vu2c(SharedRenderState* render_state,
                        ScopedProfilerNode& prof,
                        DirectRenderer& direct);
+  void run_call107_vu2c(SharedRenderState* render_state,
+                        ScopedProfilerNode& prof,
+                        DirectRenderer& direct);
+  void run_call275_vu2c(SharedRenderState* render_state,
+                        ScopedProfilerNode& prof,
+                        DirectRenderer& direct);
   void xgkick(u16 addr,
               SharedRenderState* render_state,
               ScopedProfilerNode& prof,
               DirectRenderer& direct);
-  void run_L24_vu2c();
-  void run_L30_vu2c();
-  void run_L36_vu2c(SharedRenderState* render_state,
-                    ScopedProfilerNode& prof,
-                    DirectRenderer& direct);
-  void run_L41_vu2c(SharedRenderState* render_state,
-                    ScopedProfilerNode& prof,
-                    DirectRenderer& direct);
-  void run_L43_vu2c();
 
+  void run_L26_vu2c(SharedRenderState* render_state,
+                    ScopedProfilerNode& prof,
+                    DirectRenderer& direct);
+  void run_L32_vu2c(SharedRenderState* render_state,
+                    ScopedProfilerNode& prof,
+                    DirectRenderer& direct);
+  void run_L38_vu2c(SharedRenderState* render_state,
+                    ScopedProfilerNode& prof,
+                    DirectRenderer& direct);
+  void run_L43_vu2c(SharedRenderState* render_state,
+                    ScopedProfilerNode& prof,
+                    DirectRenderer& direct);
+  void run_L45_vu2c(SharedRenderState* render_state,
+                    ScopedProfilerNode& prof,
+                    DirectRenderer& direct);
+  //  void run_L30_vu2c();
+  //  void run_L36_vu2c(SharedRenderState* render_state,
+  //                    ScopedProfilerNode& prof,
+  //                    DirectRenderer& direct);
+  //  void run_L41_vu2c(SharedRenderState* render_state,
+  //                    ScopedProfilerNode& prof,
+  //                    DirectRenderer& direct);
+  //  void run_L43_vu2c();
+  //
+  //  void run_L42_vu2c(SharedRenderState* render_state,
+  //                    ScopedProfilerNode& prof,
+  //                    DirectRenderer& direct);
+  //  void run_L44_vu2c(SharedRenderState* render_state,
+  //                    ScopedProfilerNode& prof,
+  //                    DirectRenderer& direct);
 
   bool m_buffer_toggle = false;
   static constexpr int VU1_INPUT_BUFFER_BASE = 0;
@@ -123,7 +152,7 @@ class OceanMid {
 
   Vf m_vu_data[1024];
 
-  void sq_buffer(Mask mask, const Vf& val, u16 addr) {
+  void sq_buffer(int line_num, Mask mask, const Vf& val, u16 addr) {
     ASSERT(addr < 1024);
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
@@ -188,7 +217,7 @@ class OceanMid {
     Vf vf01, vf02, vf03, vf04, vf05, vf06, vf07, vf08, vf09, vf10, vf11, vf12, vf13, vf14, vf15,
         vf16, vf17, vf18, vf19, vf20, vf21, vf22, vf23, vf24, vf25, vf26, vf27, vf28, vf29, vf30,
         vf31;
-    u16 vi01, vi02, vi03, vi04, vi05, vi06, vi07, vi08, vi09, vi10, vi11, vi12, vi13, vi14;
+    u16 vi01, vi02, vi03, vi04, vi05, vi06, vi07, vi08, vi09, vi10, vi11, vi12, vi13, vi14, vi15;
     float Q, P;
     Vu() : vf00(0, 0, 0, 1) {}
   } vu;
