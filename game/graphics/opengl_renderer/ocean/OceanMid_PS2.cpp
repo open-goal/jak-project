@@ -30,8 +30,10 @@ u32 clip(const Vf& vector, float val, u32 old_clip) {
 }
 void fcand(u16& dest, u32 imm, u32 cf) {
   // dest = (cf & imm) ? 1 : 0;
-  if((cf & 0xFFFFFF) & (imm& 0xFFFFFF)) dest = 1;
-  else dest = 0;
+  if ((cf & 0xFFFFFF) & (imm & 0xFFFFFF))
+    dest = 1;
+  else
+    dest = 0;
   //  dest = cf & imm; // wrong
 }
 
@@ -82,13 +84,13 @@ L1:
   // lq.xyzw vf21, 749(vi01)    |  nop                            8
   lq_buffer(Mask::xyzw, vu.vf21, vu.vi01 + 749);
   // sq.xyzw vf20, 335(vi01)    |  nop                            9
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi01 + 335);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi01 + 335);
   // sq.xyzw vf20, 457(vi01)    |  nop                            10
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi01 + 457);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi01 + 457);
   // sq.xyzw vf21, 396(vi01)    |  nop                            11
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi01 + 396);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi01 + 396);
   // sq.xyzw vf21, 518(vi01)    |  nop                            12
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi01 + 518);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi01 + 518);
   // BRANCH!
   // ibgtz vi01, L1             |  nop                            13
   bc = ((s16)vu.vi01) > 0;
@@ -109,7 +111,7 @@ L2:
   vu.vi06 = 8;
 L3:
   // sq.xyzw vf16, 236(vi05)    |  nop                            18
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf16, vu.vi05 + 236);
+  sq_buffer(Mask::xyzw, vu.vf16, vu.vi05 + 236);
   // iaddi vi05, vi05, 0x1      |  addw.x vf16, vf16, vf05        19
   vu.vf16.add(Mask::x, vu.vf16, vu.vf05.w());
   vu.vi05 = vu.vi05 + 1;
@@ -144,10 +146,10 @@ L3:
   vu.vi06 = 8;
 L4:
   // sq.xyzw vf20, 317(vi03)    |  nop                            28
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi03 + 317);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi03 + 317);
   // sq.xyzw vf21, 318(vi03)    |  addw.x vf20, vf20, vf00        29
   vu.vf20.add(Mask::x, vu.vf20, vu.vf00.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi03 + 318);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi03 + 318);
   // iaddi vi03, vi03, 0x2      |  addw.x vf21, vf21, vf00        30
   vu.vf21.add(Mask::x, vu.vf21, vu.vf00.w());
   vu.vi03 = vu.vi03 + 2;
@@ -169,9 +171,9 @@ L4:
   vu.vi06 = 0x11; /* 17 */
 L5:
   // sq.xyzw vf08, 396(vi04)    |  nop                            36
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf08, vu.vi04 + 396);
+  sq_buffer(Mask::xyzw, vu.vf08, vu.vi04 + 396);
   // sq.xyzw vf08, 518(vi04)    |  nop                            37
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf08, vu.vi04 + 518);
+  sq_buffer(Mask::xyzw, vu.vf08, vu.vi04 + 518);
   // iaddi vi04, vi04, 0x3      |  nop                            38
   vu.vi04 = vu.vi04 + 3;
   // BRANCH!
@@ -229,9 +231,9 @@ JUMP_46:
   // lq.xyzw vf15, 7(vi02)      |  nop                            51
   lq_buffer(Mask::xyzw, vu.vf15, vu.vi02 + 7);
   // sq.xyzw vf07, 341(vi00)    |  nop                            52
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf07, 341);
+  sq_buffer(Mask::xyzw, vu.vf07, 341);
   // sq.xyzw vf07, 463(vi00)    |  nop                            53
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf07, 463);
+  sq_buffer(Mask::xyzw, vu.vf07, 463);
   // iaddi vi07, vi00, 0x7      |  nop                            54
   vu.vi07 = 7;
   // lq.xyzw vf04, 116(vi02)    |  nop                            55
@@ -321,9 +323,9 @@ JUMP_73:
   // lq.xyzw vf15, 7(vi02)      |  nop                            82
   lq_buffer(Mask::xyzw, vu.vf15, vu.vi02 + 7);
   // sq.xyzw vf07, 341(vi00)    |  nop                            83
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf07, 341);
+  sq_buffer(Mask::xyzw, vu.vf07, 341);
   // sq.xyzw vf07, 463(vi00)    |  nop                            84
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf07, 463);
+  sq_buffer(Mask::xyzw, vu.vf07, 463);
   // iaddi vi07, vi00, 0x7      |  nop                            85
   vu.vi07 = 7;
   // lq.xyzw vf04, 116(vi02)    |  nop                            86
@@ -410,7 +412,7 @@ JUMP_107:
   // xtop vi02                  |  nop                            107
   vu.vi02 = xtop();
   // xtop vi03                  |  nop                            108
-  vu.vi03 = xtop();
+  vu.vi03 = vu.vi02; // xtop();
   // ior vi04, vi00, vi00       |  nop                            109
   vu.vi04 = 0;
   // ilw.x vi05, 8(vi02)        |  nop                            110
@@ -498,13 +500,13 @@ L17:
   vu.acc.madda(Mask::xyzw, vu.vf18, vu.vf16.z());
   // sq.xyzw vf20, 791(vi04)    |  maddw.xyzw vf22, vf19, vf16    145
   vu.acc.madd(Mask::xyzw, vu.vf22, vu.vf19, vu.vf16.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi04 + 791);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi04 + 791);
   // sq.xyzw vf28, 793(vi04)    |  mulw.xy vf24, vf24, vf24       146
   vu.vf24.mul(Mask::xy, vu.vf24, vu.vf24.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi04 + 793);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi04 + 793);
   // sq.xyzw vf22, 792(vi04)    |  mula.xyzw ACC, vf24, vf05      147
   vu.acc.mula(Mask::xyzw, vu.vf24, vu.vf05);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi04 + 792);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi04 + 792);
   // iaddi vi04, vi04, 0x4      |  maddw.xyzw vf24, vf06, vf00    148
   vu.acc.madd(Mask::xyzw, vu.vf24, vu.vf06, vu.vf00.w());
   vu.vi04 = vu.vi04 + 4;
@@ -512,7 +514,7 @@ L17:
   // ibgtz vi05, L17            |  nop                            149
   bc = ((s16)vu.vi05) > 0;
   // sq.xyzw vf24, 790(vi04)    |  nop                            150
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04 + 790);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04 + 790);
   if (bc) {
     goto L17;
   }
@@ -542,29 +544,29 @@ L17:
   // lq.xyzw vf07, 739(vi00)    |  nop                            162
   lq_buffer(Mask::xyzw, vu.vf07, 739);
   // sq.xyzw vf28, 579(vi00)    |  nop                            163
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, 579);
+  sq_buffer(Mask::xyzw, vu.vf28, 579);
   // sq.xyzw vf29, 580(vi00)    |  nop                            164
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, 580);
+  sq_buffer(Mask::xyzw, vu.vf29, 580);
   // sq.xyzw vf30, 581(vi00)    |  nop                            165
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, 581);
+  sq_buffer(Mask::xyzw, vu.vf30, 581);
   // sq.xyzw vf24, 582(vi00)    |  nop                            166
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, 582);
+  sq_buffer(Mask::xyzw, vu.vf24, 582);
   // sq.xyzw vf25, 583(vi00)    |  nop                            167
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, 583);
+  sq_buffer(Mask::xyzw, vu.vf25, 583);
   // sq.xyzw vf26, 584(vi00)    |  nop                            168
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, 584);
+  sq_buffer(Mask::xyzw, vu.vf26, 584);
   // sq.xyzw vf28, 656(vi00)    |  nop                            169
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, 656);
+  sq_buffer(Mask::xyzw, vu.vf28, 656);
   // sq.xyzw vf29, 657(vi00)    |  nop                            170
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, 657);
+  sq_buffer(Mask::xyzw, vu.vf29, 657);
   // sq.xyzw vf30, 658(vi00)    |  nop                            171
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, 658);
+  sq_buffer(Mask::xyzw, vu.vf30, 658);
   // sq.xyzw vf24, 659(vi00)    |  nop                            172
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, 659);
+  sq_buffer(Mask::xyzw, vu.vf24, 659);
   // sq.xyzw vf25, 660(vi00)    |  nop                            173
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, 660);
+  sq_buffer(Mask::xyzw, vu.vf25, 660);
   // sq.xyzw vf26, 661(vi00)    |  nop                            174
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, 661);
+  sq_buffer(Mask::xyzw, vu.vf26, 661);
   // iaddi vi11, vi11, -0x2     |  nop                            175
   vu.vi11 = vu.vi11 + -2;
 L18:
@@ -600,23 +602,23 @@ L18:
   // lq.xyzw vf29, 797(vi14)    |  nop                            188
   lq_buffer(Mask::xyzw, vu.vf29, vu.vi14 + 797);
   // sq.xyzw vf20, 0(vi08)      |  nop                            189
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  nop                            190
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf28, 2(vi08)      |  nop                            191
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // sq.xyzw vf21, 3(vi08)      |  nop                            192
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 3);
   // sq.xyzw vf23, 4(vi08)      |  nop                            193
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 4);
   // sq.xyzw vf29, 5(vi08)      |  nop                            194
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi08 + 5);
   // sq.xyzw vf20, 12(vi08)     |  nop                            195
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08 + 12);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08 + 12);
   // sq.xyzw vf22, 13(vi08)     |  nop                            196
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 13);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 13);
   // sq.xyzw vf28, 14(vi08)     |  nop                            197
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 14);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 14);
   // lq.xyzw vf20, 803(vi14)    |  nop                            198
   lq_buffer(Mask::xyzw, vu.vf20, vu.vi14 + 803);
   // lq.xyzw vf22, 804(vi14)    |  nop                            199
@@ -630,20 +632,20 @@ L18:
   // lq.xyzw vf29, 801(vi14)    |  nop                            203
   lq_buffer(Mask::xyzw, vu.vf29, vu.vi14 + 801);
   // sq.xyzw vf20, 6(vi08)      |  nop                            204
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08 + 6);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08 + 6);
   // sq.xyzw vf22, 7(vi08)      |  nop                            205
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 7);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 7);
   // sq.xyzw vf28, 8(vi08)      |  nop                            206
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 8);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 8);
   // sq.xyzw vf21, 9(vi08)      |  nop                            207
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 9);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 9);
   // sq.xyzw vf23, 10(vi08)     |  nop                            208
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 10);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 10);
   // BRANCH!
   // bal vi13, L45              |  nop                            209
   // ASSERT(false);
   // sq.xyzw vf29, 11(vi08)     |  nop                            210
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi08 + 11);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi08 + 11);
   // if (bc) { goto L45; }
   run_L45_vu2c(render_state, prof, direct);
 
@@ -717,23 +719,23 @@ L20:
   // lq.xyzw vf29, 797(vi14)    |  nop                            234
   lq_buffer(Mask::xyzw, vu.vf29, vu.vi14 + 797);
   // sq.xyzw vf24, 0(vi08)      |  nop                            235
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  nop                            236
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf28, 2(vi08)      |  nop                            237
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // sq.xyzw vf25, 3(vi08)      |  nop                            238
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi08 + 3);
   // sq.xyzw vf22, 4(vi08)      |  nop                            239
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 4);
   // sq.xyzw vf29, 5(vi08)      |  nop                            240
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi08 + 5);
   // sq.xyzw vf24, 12(vi08)     |  nop                            241
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08 + 12);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08 + 12);
   // sq.xyzw vf22, 13(vi08)     |  nop                            242
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 13);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 13);
   // sq.xyzw vf28, 14(vi08)     |  nop                            243
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 14);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 14);
   // lq.xyzw vf24, 806(vi14)    |  nop                            244
   lq_buffer(Mask::xyzw, vu.vf24, vu.vi14 + 806);
   // lq.xyzw vf28, 805(vi14)    |  nop                            245
@@ -743,20 +745,20 @@ L20:
   // lq.xyzw vf29, 801(vi14)    |  nop                            247
   lq_buffer(Mask::xyzw, vu.vf29, vu.vi14 + 801);
   // sq.xyzw vf24, 6(vi08)      |  nop                            248
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08 + 6);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08 + 6);
   // sq.xyzw vf22, 7(vi08)      |  nop                            249
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 7);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 7);
   // sq.xyzw vf28, 8(vi08)      |  nop                            250
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 8);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 8);
   // sq.xyzw vf25, 9(vi08)      |  nop                            251
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi08 + 9);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi08 + 9);
   // sq.xyzw vf22, 10(vi08)     |  nop                            252
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 10);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 10);
   // BRANCH!
   // bal vi13, L45              |  nop                            253
   // ASSERT(false);
   // sq.xyzw vf29, 11(vi08)     |  nop                            254
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi08 + 11);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi08 + 11);
   // if (bc) { goto L45; }
   run_L45_vu2c(render_state, prof, direct);
 
@@ -780,17 +782,17 @@ L20:
   // lq.xyzw vf26, 754(vi00)    |  nop                            261
   lq_buffer(Mask::xyzw, vu.vf26, 754);
   // sq.xyzw vf28, 0(vi10)      |  nop                            262
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi10);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi10);
   // sq.xyzw vf29, 1(vi10)      |  nop                            263
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi10 + 1);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi10 + 1);
   // sq.xyzw vf30, 2(vi10)      |  nop                            264
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi10 + 2);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi10 + 2);
   // sq.xyzw vf24, 3(vi10)      |  nop                            265
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi10 + 3);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi10 + 3);
   // sq.xyzw vf25, 4(vi10)      |  nop                            266
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi10 + 4);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi10 + 4);
   // sq.xyzw vf26, 5(vi10)      |  nop                            267
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi10 + 5);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi10 + 5);
   // iaddiu vi06, vi05, 0x4000  |  nop                            268
   vu.vi06 = vu.vi05 + 0x4000; /* 16384 */
   // BRANCH!
@@ -827,7 +829,7 @@ JUMP_275:
   // xtop vi02                  |  nop                            275
   vu.vi02 = xtop();
   // xtop vi03                  |  nop                            276
-  vu.vi03 = xtop();
+  vu.vi03 = vu.vi02; // xtop();
   // ior vi04, vi00, vi00       |  nop                            277
   vu.vi04 = 0;
   // iaddi vi08, vi10, 0x7      |  nop                            278
@@ -917,15 +919,15 @@ L23:
   vu.acc.madda(Mask::xyzw, vu.vf18, vu.vf16.z());
   // sq.xyzw vf20, 0(vi08)      |  maddw.xyzw vf22, vf19, vf16    314
   vu.acc.madd(Mask::xyzw, vu.vf22, vu.vf19, vu.vf16.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08);
   // sq.xyzw vf28, 2(vi08)      |  mulw.xy vf24, vf24, vf24       315
   vu.vf24.mul(Mask::xy, vu.vf24, vu.vf24.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // sq.xyzw vf28, 792(vi04)    |  nop                            316
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi04 + 792);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi04 + 792);
   // sq.xyzw vf22, 1(vi08)      |  mula.xyzw ACC, vf24, vf05      317
   vu.acc.mula(Mask::xyzw, vu.vf24, vu.vf05);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // iaddi vi04, vi04, 0x2      |  maddw.xyzw vf24, vf06, vf00    318
   vu.acc.madd(Mask::xyzw, vu.vf24, vu.vf06, vu.vf00.w());
   vu.vi04 = vu.vi04 + 2;
@@ -935,7 +937,7 @@ L23:
   // ibgtz vi05, L23            |  nop                            320
   bc = ((s16)vu.vi05) > 0;
   // sq.xyzw vf24, 789(vi04)    |  nop                            321
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04 + 789);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04 + 789);
   if (bc) {
     goto L23;
   }
@@ -952,11 +954,11 @@ L23:
   // lq.xyzw vf28, 9(vi10)      |  nop                            326
   lq_buffer(Mask::xyzw, vu.vf28, vu.vi10 + 9);
   // sq.xyzw vf20, 0(vi08)      |  nop                            327
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  nop                            328
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf28, 2(vi08)      |  nop                            329
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // iaddi vi08, vi10, 0x7      |  nop                            330
   vu.vi08 = vu.vi10 + 7;
   // BRANCH!
@@ -990,17 +992,17 @@ L23:
   // lq.xyzw vf07, 739(vi00)    |  nop                            340
   lq_buffer(Mask::xyzw, vu.vf07, 739);
   // sq.xyzw vf28, 0(vi10)      |  nop                            341
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi10);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi10);
   // sq.xyzw vf29, 1(vi10)      |  nop                            342
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi10 + 1);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi10 + 1);
   // sq.xyzw vf30, 2(vi10)      |  nop                            343
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi10 + 2);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi10 + 2);
   // sq.xyzw vf24, 3(vi10)      |  nop                            344
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi10 + 3);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi10 + 3);
   // sq.xyzw vf25, 4(vi10)      |  nop                            345
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi10 + 4);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi10 + 4);
   // sq.xyzw vf26, 5(vi10)      |  nop                            346
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi10 + 5);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi10 + 5);
   // iaddiu vi06, vi05, 0x4000  |  nop                            347
   vu.vi06 = vu.vi05 + 0x4000; /* 16384 */
   // BRANCH!
@@ -1031,11 +1033,11 @@ L24:
   // iaddi vi05, vi05, -0x1     |  nop                            357
   vu.vi05 = vu.vi05 + -1;
   // sq.xyzw vf22, 1(vi08)      |  nop                            358
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf28, 2(vi08)      |  nop                            359
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // sq.xyzw vf24, 0(vi08)      |  nop                            360
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08);
   // BRANCH!
   // ibgtz vi05, L24            |  nop                            361
   bc = ((s16)vu.vi05) > 0;
@@ -1054,11 +1056,11 @@ L24:
   // lq.xyzw vf24, 9(vi10)      |  nop                            366
   lq_buffer(Mask::xyzw, vu.vf24, vu.vi10 + 9);
   // sq.xyzw vf24, 0(vi08)      |  nop                            367
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  nop                            368
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf28, 2(vi08)      |  nop                            369
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // iaddi vi08, vi10, 0x7      |  nop                            370
   vu.vi08 = vu.vi10 + 7;
   // BRANCH!
@@ -1086,17 +1088,17 @@ L24:
   // lq.xyzw vf07, 740(vi00)    |  nop                            379
   lq_buffer(Mask::xyzw, vu.vf07, 740);
   // sq.xyzw vf28, 0(vi10)      |  nop                            380
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi10);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi10);
   // sq.xyzw vf29, 1(vi10)      |  nop                            381
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi10 + 1);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi10 + 1);
   // sq.xyzw vf30, 2(vi10)      |  nop                            382
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi10 + 2);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi10 + 2);
   // sq.xyzw vf24, 3(vi10)      |  nop                            383
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi10 + 3);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi10 + 3);
   // sq.xyzw vf25, 4(vi10)      |  nop                            384
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi10 + 4);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi10 + 4);
   // sq.xyzw vf26, 5(vi10)      |  nop                            385
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi10 + 5);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi10 + 5);
   // iaddiu vi06, vi05, 0x4000  |  nop                            386
   vu.vi06 = vu.vi05 + 0x4000; /* 16384 */
   // BRANCH!
@@ -1235,13 +1237,13 @@ L28:
   vu.vi12 = vu.vi12 + vu.vi12;
   // sq.xyzw vf21, 3(vi08)      |  mulax.xyzw ACC, vf12, vf28     429
   vu.acc.mula(Mask::xyzw, vu.vf12, vu.vf28.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 3);
   // sq.xyzw vf23, 4(vi08)      |  madday.xyzw ACC, vf13, vf28    430
   vu.acc.madda(Mask::xyzw, vu.vf13, vu.vf28.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 4);
   // sq.xyzw vf17, 5(vi08)      |  clipw.xyz vf19, vf19           431
   cf = clip(vu.vf19, vu.vf19.w(), cf);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf17, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf17, vu.vi08 + 5);
   // lq.xyzw vf29, 245(vi05)    |  miniz.w vf16, vf16, vf03       432
   vu.vf16.mini(Mask::w, vu.vf16, vu.vf03.z());
   lq_buffer(Mask::xyzw, vu.vf29, vu.vi05 + 245);
@@ -1286,13 +1288,13 @@ L30:
   vu.vi04 = vu.vi04 + 1;
   // sq.xyzw vf20, 0(vi08)      |  mulax.xyzw ACC, vf12, vf29     444
   vu.acc.mula(Mask::xyzw, vu.vf12, vu.vf29.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  madday.xyzw ACC, vf13, vf29    445
   vu.acc.madda(Mask::xyzw, vu.vf13, vu.vf29.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf16, 2(vi08)      |  clipw.xyz vf18, vf18           446
   cf = clip(vu.vf18, vu.vf18.w(), cf);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf16, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf16, vu.vi08 + 2);
   // lq.xyzw vf28, 236(vi05)    |  miniz.w vf17, vf17, vf03       447
   vu.vf17.mini(Mask::w, vu.vf17, vu.vf03.z());
   lq_buffer(Mask::xyzw, vu.vf28, vu.vi05 + 236);
@@ -1323,11 +1325,11 @@ L31:
   vu.vf17.ftoi4(Mask::xyzw, vu.vf17);
   // vu.vf17.fill(0);
   //  sq.xyzw vf21, 3(vi08)      |  nop                            454
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 3);
   // sq.xyzw vf23, 4(vi08)      |  nop                            455
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 4);
   // sq.xyzw vf17, 5(vi08)      |  nop                            456
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf17, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf17, vu.vi08 + 5);
   // jr vi15                    |  nop                            457
   return;
   // nop                        |  nop                            458
@@ -1575,19 +1577,19 @@ L34:
   // sq.xyzw vf21, 3(vi08)      |  mulz.xyzw vf25, vf25, vf21     533
   vu.vf25.z() = 1;  // TODO hack
   vu.vf25.mul(Mask::xyzw, vu.vf25, vu.vf21.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 3);
   // sq.xyzw vf23, 4(vi08)      |  mulw.xy vf24, vf26, vf26       534
   vu.vf24.mul(Mask::xy, vu.vf26, vu.vf26.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 4);
   // sq.xyzw vf17, 5(vi08)      |  mulax.xyzw ACC, vf12, vf28     535
   vu.acc.mula(Mask::xyzw, vu.vf12, vu.vf28.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf17, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf17, vu.vi08 + 5);
   // sq.xyzw vf17, 66(vi08)     |  madday.xyzw ACC, vf13, vf28    536
   vu.acc.madda(Mask::xyzw, vu.vf13, vu.vf28.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf17, vu.vi08 + 66);
+  sq_buffer(Mask::xyzw, vu.vf17, vu.vi08 + 66);
   // sq.xyzw vf25, 64(vi08)     |  maddaz.xyzw ACC, vf14, vf28    537
   vu.acc.madda(Mask::xyzw, vu.vf14, vu.vf28.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi08 + 64);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi08 + 64);
   // iaddi vi08, vi08, 0x6      |  maddw.xyzw vf30, vf15, vf00    538
   vu.acc.madd(Mask::xyzw, vu.vf30, vu.vf15, vu.vf00.w());
   vu.vi08 = vu.vi08 + 6;
@@ -1719,19 +1721,19 @@ L36:
   // todo hack
   vu.vf24.z() = 1;
   vu.vf24.mul(Mask::xyzw, vu.vf24, vu.vf20.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  mulw.xy vf25, vf27, vf27       574
   vu.vf25.mul(Mask::xy, vu.vf27, vu.vf27.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf16, 2(vi08)      |  mulax.xyzw ACC, vf12, vf29     575
   vu.acc.mula(Mask::xyzw, vu.vf12, vu.vf29.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf16, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf16, vu.vi08 + 2);
   // sq.xyzw vf16, 63(vi08)     |  madday.xyzw ACC, vf13, vf29    576
   vu.acc.madda(Mask::xyzw, vu.vf13, vu.vf29.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf16, vu.vi08 + 63);
+  sq_buffer(Mask::xyzw, vu.vf16, vu.vi08 + 63);
   // sq.xyzw vf24, 61(vi08)     |  maddaz.xyzw ACC, vf14, vf29    577
   vu.acc.madda(Mask::xyzw, vu.vf14, vu.vf29.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08 + 61);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08 + 61);
   // iaddi vi04, vi04, 0x1      |  maddw.xyzw vf31, vf15, vf00    578
   vu.acc.madd(Mask::xyzw, vu.vf31, vu.vf15, vu.vf00.w());
   vu.vi04 = vu.vi04 + 1;
@@ -1846,15 +1848,15 @@ L37:
   // vu.vf17.fill(0);
   // sq.xyzw vf21, 3(vi08)      |  mulz.xyzw vf25, vf25, vf21     607
   vu.vf25.mul(Mask::xyzw, vu.vf25, vu.vf21.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 3);
   // sq.xyzw vf23, 4(vi08)      |  nop                            608
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 4);
   // sq.xyzw vf17, 5(vi08)      |  nop                            609
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf17, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf17, vu.vi08 + 5);
   // sq.xyzw vf17, 66(vi08)     |  nop                            610
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf17, vu.vi08 + 66);
+  sq_buffer(Mask::xyzw, vu.vf17, vu.vi08 + 66);
   // sq.xyzw vf25, 64(vi08)     |  nop                            611
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi08 + 64);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi08 + 64);
   // jr vi15                    |  nop                            612
   // nop                        |  nop                            613
 }
@@ -1962,28 +1964,28 @@ L41:
   vu.vf16.itof0(Mask::xyzw, vu.vf16);
   // sq.xyzw vf20, 0(vi08)      |  mulax.xyzw ACC, vf08, vf29     649
   vu.acc.mula(Mask::xyzw, vu.vf08, vu.vf29.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  madday.xyzw ACC, vf09, vf29    650
   vu.acc.madda(Mask::xyzw, vu.vf09, vu.vf29.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf21, 3(vi08)      |  maddaz.xyzw ACC, vf10, vf29    651
   vu.acc.madda(Mask::xyzw, vu.vf10, vu.vf29.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + 3);
   // sq.xyzw vf23, 4(vi08)      |  maddw.xyzw vf25, vf11, vf00    652
   vu.acc.madd(Mask::xyzw, vu.vf25, vu.vf11, vu.vf00.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi08 + 4);
   // sq.xyzw vf07, 6(vi08)      |  mulax.xyzw ACC, vf12, vf29     653
   vu.acc.mula(Mask::xyzw, vu.vf12, vu.vf29.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf07, vu.vi08 + 6);
+  sq_buffer(Mask::xyzw, vu.vf07, vu.vi08 + 6);
   // sq.xyzw vf16, 7(vi08)      |  madday.xyzw ACC, vf13, vf29    654
   vu.acc.madda(Mask::xyzw, vu.vf13, vu.vf29.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf16, vu.vi08 + 7);
+  sq_buffer(Mask::xyzw, vu.vf16, vu.vi08 + 7);
   // sq.xyzw vf20, 9(vi08)      |  maddaz.xyzw ACC, vf14, vf29    655
   vu.acc.madda(Mask::xyzw, vu.vf14, vu.vf29.z());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf20, vu.vi08 + 9);
+  sq_buffer(Mask::xyzw, vu.vf20, vu.vi08 + 9);
   // sq.xyzw vf22, 10(vi08)     |  maddw.xyzw vf29, vf15, vf00    656
   vu.acc.madd(Mask::xyzw, vu.vf29, vu.vf15, vu.vf00.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 10);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 10);
   // waitp                      |  mul.xyzw vf28, vf28, vf01      657
   vu.vf28.mul(Mask::xyzw, vu.vf28, vu.vf01);
   // mfp.w vf24, P              |  nop                            658
@@ -1994,13 +1996,13 @@ L41:
   vu.vf25.add(Mask::y, vu.vf00, vu.vf25.z());
   // sq.xyzw vf28, 2(vi08)      |  mulax.xyzw ACC, vf08, vf30     661
   vu.acc.mula(Mask::xyzw, vu.vf08, vu.vf30.x());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // sq.xyzw vf28, 11(vi08)     |  mulw.xy vf24, vf24, vf24       662
   vu.vf24.mul(Mask::xy, vu.vf24, vu.vf24.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 11);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 11);
   // sq.xyzw vf28, 772(vi00)    |  madday.xyzw ACC, vf09, vf30    663
   vu.acc.madda(Mask::xyzw, vu.vf09, vu.vf30.y());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, 772);
+  sq_buffer(Mask::xyzw, vu.vf28, 772);
   // nop                        |  maddaz.xyzw ACC, vf10, vf30    664
   vu.acc.madda(Mask::xyzw, vu.vf10, vu.vf30.z());
   // nop                        |  maddw.xyzw vf26, vf11, vf00    665
@@ -2017,7 +2019,7 @@ L41:
   vu.acc.madda(Mask::xyzw, vu.vf14, vu.vf30.z());
   // sq.xyzw vf24, 769(vi00)    |  maddw.xyzw vf30, vf15, vf00    671
   vu.acc.madd(Mask::xyzw, vu.vf30, vu.vf15, vu.vf00.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, 769);
+  sq_buffer(Mask::xyzw, vu.vf24, 769);
   // waitp                      |  mul.xyzw vf29, vf29, vf01      672
   vu.vf29.mul(Mask::xyzw, vu.vf29, vu.vf01);
   // mfp.w vf25, P              |  nop                            673
@@ -2027,10 +2029,10 @@ L41:
   // nop                        |  addz.y vf26, vf00, vf26        675
   vu.vf26.add(Mask::y, vu.vf00, vu.vf26.z());
   // sq.xyzw vf29, 5(vi08)      |  nop                            676
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi08 + 5);
   // sq.xyzw vf29, 773(vi00)    |  mulw.xy vf25, vf25, vf25       677
   vu.vf25.mul(Mask::xy, vu.vf25, vu.vf25.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, 773);
+  sq_buffer(Mask::xyzw, vu.vf29, 773);
   // nop                        |  mula.xyzw ACC, vf25, vf05      678
   vu.acc.mula(Mask::xyzw, vu.vf25, vu.vf05);
   // nop                        |  maddw.xyzw vf25, vf06, vf00    679
@@ -2040,13 +2042,13 @@ L41:
   // mfp.w vf26, P              |  nop                            681
   vu.vf26.mfp(Mask::w, vu.P);
   // sq.xyzw vf30, 8(vi08)      |  nop                            682
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi08 + 8);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi08 + 8);
   // sq.xyzw vf30, 774(vi00)    |  mulw.xy vf26, vf26, vf26       683
   vu.vf26.mul(Mask::xy, vu.vf26, vu.vf26.w());
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, 774);
+  sq_buffer(Mask::xyzw, vu.vf30, 774);
   // sq.xyzw vf25, 770(vi00)    |  mula.xyzw ACC, vf26, vf05      684
   vu.acc.mula(Mask::xyzw, vu.vf26, vu.vf05);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, 770);
+  sq_buffer(Mask::xyzw, vu.vf25, 770);
   // lq.xyzw vf07, 739(vi00)    |  maddw.xyzw vf26, vf06, vf00    685
   vu.acc.madd(Mask::xyzw, vu.vf26, vu.vf06, vu.vf00.w());
   lq_buffer(Mask::xyzw, vu.vf07, 739);
@@ -2058,7 +2060,7 @@ L41:
   // bal vi13, L45              |  nop                            688
 
   // sq.xyzw vf26, 771(vi00)    |  nop                            689
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, 771);
+  sq_buffer(Mask::xyzw, vu.vf26, 771);
   // if (bc) { goto L45; }
   run_L45_vu2c(render_state, prof, direct);
 
@@ -2082,17 +2084,17 @@ L41:
   // lq.xyzw vf26, 746(vi00)    |  nop                            696
   lq_buffer(Mask::xyzw, vu.vf26, 746);
   // sq.xyzw vf28, 0(vi10)      |  nop                            697
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi10);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi10);
   // sq.xyzw vf29, 1(vi10)      |  nop                            698
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi10 + 1);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi10 + 1);
   // sq.xyzw vf30, 2(vi10)      |  nop                            699
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi10 + 2);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi10 + 2);
   // sq.xyzw vf24, 3(vi10)      |  nop                            700
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi10 + 3);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi10 + 3);
   // sq.xyzw vf25, 4(vi10)      |  nop                            701
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi10 + 4);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi10 + 4);
   // sq.xyzw vf26, 5(vi10)      |  nop                            702
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi10 + 5);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi10 + 5);
   // iaddiu vi06, vi05, 0x4000  |  nop                            703
   vu.vi06 = vu.vi05 + 0x4000; /* 16384 */
   // BRANCH!
@@ -2120,29 +2122,29 @@ L41:
   // lq.xyzw vf30, 774(vi00)    |  nop                            713
   lq_buffer(Mask::xyzw, vu.vf30, 774);
   // sq.xyzw vf24, 0(vi08)      |  nop                            714
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08);
   // sq.xyzw vf22, 1(vi08)      |  nop                            715
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 1);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 1);
   // sq.xyzw vf28, 2(vi08)      |  nop                            716
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 2);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 2);
   // sq.xyzw vf25, 3(vi08)      |  nop                            717
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi08 + 3);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi08 + 3);
   // sq.xyzw vf22, 4(vi08)      |  nop                            718
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 4);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 4);
   // sq.xyzw vf29, 5(vi08)      |  nop                            719
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi08 + 5);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi08 + 5);
   // sq.xyzw vf26, 6(vi08)      |  nop                            720
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi08 + 6);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi08 + 6);
   // sq.xyzw vf22, 7(vi08)      |  nop                            721
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 7);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 7);
   // sq.xyzw vf30, 8(vi08)      |  nop                            722
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi08 + 8);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi08 + 8);
   // sq.xyzw vf24, 9(vi08)      |  nop                            723
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08 + 9);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08 + 9);
   // sq.xyzw vf22, 10(vi08)     |  nop                            724
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf22, vu.vi08 + 10);
+  sq_buffer(Mask::xyzw, vu.vf22, vu.vi08 + 10);
   // sq.xyzw vf28, 11(vi08)     |  nop                            725
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi08 + 11);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi08 + 11);
   // ior vi03, vi08, vi00       |  nop                            726
   vu.vi03 = vu.vi08;
   // iaddi vi05, vi00, 0x3      |  nop                            727
@@ -2168,17 +2170,17 @@ L41:
   // lq.xyzw vf26, 754(vi00)    |  nop                            735
   lq_buffer(Mask::xyzw, vu.vf26, 754);
   // sq.xyzw vf28, 0(vi10)      |  nop                            736
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf28, vu.vi10);
+  sq_buffer(Mask::xyzw, vu.vf28, vu.vi10);
   // sq.xyzw vf29, 1(vi10)      |  nop                            737
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi10 + 1);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi10 + 1);
   // sq.xyzw vf30, 2(vi10)      |  nop                            738
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf30, vu.vi10 + 2);
+  sq_buffer(Mask::xyzw, vu.vf30, vu.vi10 + 2);
   // sq.xyzw vf24, 3(vi10)      |  nop                            739
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi10 + 3);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi10 + 3);
   // sq.xyzw vf25, 4(vi10)      |  nop                            740
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf25, vu.vi10 + 4);
+  sq_buffer(Mask::xyzw, vu.vf25, vu.vi10 + 4);
   // sq.xyzw vf26, 5(vi10)      |  nop                            741
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi10 + 5);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi10 + 5);
   // iaddiu vi06, vi05, 0x4000  |  nop                            742
   vu.vi06 = vu.vi05 + 0x4000; /* 16384 */
   // BRANCH!
@@ -2208,7 +2210,7 @@ void OceanMid::run_L43_vu2c(SharedRenderState* render_state,
   bool bc;
 L43:
   // sq.xyzw vf07, -1(vi08)     |  nop                            749
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf07, vu.vi08 + -1);
+  sq_buffer(Mask::xyzw, vu.vf07, vu.vi08 + -1);
   // isw.x vi06, -1(vi08)       |  nop                            750
   isw_buffer(Mask::x, vu.vi06, vu.vi08 + -1);
 L44:
@@ -2277,11 +2279,11 @@ L44:
   // nop                        |  nop                            781
 
   // sq.xyzw vf24, -3(vi08)     |  nop                            782
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi08 + -3);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi08 + -3);
   // sq.xyzw vf27, -2(vi08)     |  nop                            783
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi08 + -2);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi08 + -2);
   // sq.xyzw vf21, -1(vi08)     |  nop                            784
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi08 + -1);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi08 + -1);
   // iaddi vi05, vi05, -0x1     |  nop                            785
   vu.vi05 = vu.vi05 + -1;
   // nop                        |  nop                            786
@@ -2376,11 +2378,11 @@ L46:
   }
 
   // sqi.xyzw vf24, vi04        |  nop                            814
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            815
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            816
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
 L47:
   // move.xyzw vf24, vf25       |  nop                            817
   vu.vf24.move(Mask::xyzw, vu.vf25);
@@ -2406,11 +2408,11 @@ L47:
   // ior vi03, vi08, vi00       |  nop                            825
   vu.vi03 = vu.vi08;
   // sqi.xyzw vf24, vi04        |  nop                            826
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            827
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            828
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi00, vi06, L56       |  nop                            829
   bc = (vu.vi06 == 0);
@@ -2483,11 +2485,11 @@ L48:
   }
 
   // sqi.xyzw vf24, vi04        |  nop                            852
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            853
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            854
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
 L49:
   // move.xyzw vf24, vf25       |  nop                            855
   vu.vf24.move(Mask::xyzw, vu.vf25);
@@ -2513,11 +2515,11 @@ L49:
   // ior vi03, vi08, vi00       |  nop                            863
   vu.vi03 = vu.vi08;
   // sqi.xyzw vf24, vi04        |  nop                            864
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            865
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            866
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi00, vi06, L56       |  nop                            867
   bc = (vu.vi06 == 0);
@@ -2590,11 +2592,11 @@ L50:
   }
 
   // sqi.xyzw vf24, vi04        |  nop                            890
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            891
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            892
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
 L51:
   // move.xyzw vf24, vf25       |  nop                            893
   vu.vf24.move(Mask::xyzw, vu.vf25);
@@ -2620,11 +2622,11 @@ L51:
   // ior vi03, vi08, vi00       |  nop                            901
   vu.vi03 = vu.vi08;
   // sqi.xyzw vf24, vi04        |  nop                            902
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            903
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            904
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi00, vi06, L56       |  nop                            905
   bc = (vu.vi06 == 0);
@@ -2697,11 +2699,11 @@ L52:
   }
 
   // sqi.xyzw vf24, vi04        |  nop                            928
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            929
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            930
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
 L53:
   // move.xyzw vf24, vf25       |  nop                            931
   vu.vf24.move(Mask::xyzw, vu.vf25);
@@ -2727,11 +2729,11 @@ L53:
   // ior vi03, vi08, vi00       |  nop                            939
   vu.vi03 = vu.vi08;
   // sqi.xyzw vf24, vi04        |  nop                            940
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            941
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            942
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi00, vi06, L56       |  nop                            943
   bc = (vu.vi06 == 0);
@@ -2804,11 +2806,11 @@ L54:
   }
 
   // sqi.xyzw vf24, vi04        |  nop                            966
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            967
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            968
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
 L55:
   // move.xyzw vf24, vf25       |  nop                            969
   vu.vf24.move(Mask::xyzw, vu.vf25);
@@ -2834,11 +2836,11 @@ L55:
   // ior vi03, vi08, vi00       |  nop                            977
   vu.vi03 = vu.vi08;
   // sqi.xyzw vf24, vi04        |  nop                            978
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  nop                            979
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  nop                            980
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi00, vi06, L56       |  nop                            981
   bc = (vu.vi06 == 0);
@@ -2867,13 +2869,13 @@ L57:
 L58:
   // sqi.xyzw vf24, vi04        |  sub.xyzw vf23, vf22, vf21      987
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf21);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  sub.xyzw vf26, vf25, vf24      988
   vu.vf26.sub(Mask::xyzw, vu.vf25, vu.vf24);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  sub.xyzw vf29, vf28, vf27      989
   vu.vf29.sub(Mask::xyzw, vu.vf28, vu.vf27);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi03, vi04, L47       |  nop                            990
   bc = (vu.vi03 == vu.vi04);
@@ -2904,14 +2906,14 @@ L58:
   // iaddi vi06, vi06, 0x1      |  nop                            1001
   vu.vi06 = vu.vi06 + 1;
   // sqi.xyzw vf26, vi04        |  nop                            1002
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1003
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L47                      |  nop                            1004
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1005
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L47;
   }
@@ -2944,14 +2946,14 @@ L59:
   // nop                        |  sub.xyzw vf23, vf22, vf23      1018
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf23);
   // sqi.xyzw vf26, vi04        |  nop                            1019
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1020
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L47                      |  nop                            1021
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1022
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L47;
   }
@@ -2969,13 +2971,13 @@ L60:
 L61:
   // sqi.xyzw vf24, vi04        |  sub.xyzw vf23, vf22, vf21      1025
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf21);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  sub.xyzw vf26, vf25, vf24      1026
   vu.vf26.sub(Mask::xyzw, vu.vf25, vu.vf24);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  sub.xyzw vf29, vf28, vf27      1027
   vu.vf29.sub(Mask::xyzw, vu.vf28, vu.vf27);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi03, vi04, L49       |  nop                            1028
   bc = (vu.vi03 == vu.vi04);
@@ -3006,14 +3008,14 @@ L61:
   // iaddi vi06, vi06, 0x1      |  nop                            1039
   vu.vi06 = vu.vi06 + 1;
   // sqi.xyzw vf26, vi04        |  nop                            1040
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1041
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L49                      |  nop                            1042
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1043
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L49;
   }
@@ -3046,14 +3048,14 @@ L62:
   // nop                        |  sub.xyzw vf23, vf22, vf23      1056
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf23);
   // sqi.xyzw vf26, vi04        |  nop                            1057
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1058
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L49                      |  nop                            1059
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1060
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L49;
   }
@@ -3071,13 +3073,13 @@ L63:
 L64:
   // sqi.xyzw vf24, vi04        |  sub.xyzw vf23, vf22, vf21      1063
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf21);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  sub.xyzw vf26, vf25, vf24      1064
   vu.vf26.sub(Mask::xyzw, vu.vf25, vu.vf24);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  sub.xyzw vf29, vf28, vf27      1065
   vu.vf29.sub(Mask::xyzw, vu.vf28, vu.vf27);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi03, vi04, L51       |  nop                            1066
   bc = (vu.vi03 == vu.vi04);
@@ -3108,14 +3110,14 @@ L64:
   // iaddi vi06, vi06, 0x1      |  nop                            1077
   vu.vi06 = vu.vi06 + 1;
   // sqi.xyzw vf26, vi04        |  nop                            1078
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1079
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L51                      |  nop                            1080
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1081
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L51;
   }
@@ -3148,14 +3150,14 @@ L65:
   // nop                        |  add.xyzw vf23, vf22, vf23      1094
   vu.vf23.add(Mask::xyzw, vu.vf22, vu.vf23);
   // sqi.xyzw vf26, vi04        |  nop                            1095
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1096
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L51                      |  nop                            1097
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1098
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L51;
   }
@@ -3173,13 +3175,13 @@ L66:
 L67:
   // sqi.xyzw vf24, vi04        |  sub.xyzw vf23, vf22, vf21      1101
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf21);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  sub.xyzw vf26, vf25, vf24      1102
   vu.vf26.sub(Mask::xyzw, vu.vf25, vu.vf24);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  sub.xyzw vf29, vf28, vf27      1103
   vu.vf29.sub(Mask::xyzw, vu.vf28, vu.vf27);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi03, vi04, L53       |  nop                            1104
   bc = (vu.vi03 == vu.vi04);
@@ -3210,14 +3212,14 @@ L67:
   // iaddi vi06, vi06, 0x1      |  nop                            1115
   vu.vi06 = vu.vi06 + 1;
   // sqi.xyzw vf26, vi04        |  nop                            1116
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1117
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L53                      |  nop                            1118
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1119
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L53;
   }
@@ -3250,14 +3252,14 @@ L68:
   // nop                        |  sub.xyzw vf23, vf22, vf23      1132
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf23);
   // sqi.xyzw vf26, vi04        |  nop                            1133
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1134
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L53                      |  nop                            1135
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1136
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L53;
   }
@@ -3275,13 +3277,13 @@ L69:
 L70:
   // sqi.xyzw vf24, vi04        |  sub.xyzw vf23, vf22, vf21      1139
   vu.vf23.sub(Mask::xyzw, vu.vf22, vu.vf21);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf24, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf24, vu.vi04++);
   // sqi.xyzw vf27, vi04        |  sub.xyzw vf26, vf25, vf24      1140
   vu.vf26.sub(Mask::xyzw, vu.vf25, vu.vf24);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf27, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf27, vu.vi04++);
   // sqi.xyzw vf21, vi04        |  sub.xyzw vf29, vf28, vf27      1141
   vu.vf29.sub(Mask::xyzw, vu.vf28, vu.vf27);
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf21, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf21, vu.vi04++);
   // BRANCH!
   // ibeq vi03, vi04, L55       |  nop                            1142
   bc = (vu.vi03 == vu.vi04);
@@ -3312,14 +3314,14 @@ L70:
   // iaddi vi06, vi06, 0x1      |  nop                            1153
   vu.vi06 = vu.vi06 + 1;
   // sqi.xyzw vf26, vi04        |  nop                            1154
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1155
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L55                      |  nop                            1156
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1157
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L55;
   }
@@ -3352,14 +3354,14 @@ L71:
   // nop                        |  add.xyzw vf23, vf22, vf23      1170
   vu.vf23.add(Mask::xyzw, vu.vf22, vu.vf23);
   // sqi.xyzw vf26, vi04        |  nop                            1171
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf26, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf26, vu.vi04++);
   // sqi.xyzw vf29, vi04        |  nop                            1172
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf29, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf29, vu.vi04++);
   // BRANCH!
   // b L55                      |  nop                            1173
   bc = true;
   // sqi.xyzw vf23, vi04        |  nop                            1174
-  sq_buffer(__LINE__, Mask::xyzw, vu.vf23, vu.vi04++);
+  sq_buffer(Mask::xyzw, vu.vf23, vu.vi04++);
   if (bc) {
     goto L55;
   }

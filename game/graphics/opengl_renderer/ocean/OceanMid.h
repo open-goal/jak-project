@@ -152,7 +152,7 @@ class OceanMid {
 
   Vf m_vu_data[1024];
 
-  void sq_buffer(int line_num, Mask mask, const Vf& val, u16 addr) {
+  void sq_buffer(Mask mask, const Vf& val, u16 addr) {
     ASSERT(addr < 1024);
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {

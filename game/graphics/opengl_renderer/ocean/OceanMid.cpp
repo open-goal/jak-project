@@ -76,8 +76,8 @@ void OceanMid::run(DmaFollower& dma,
         }
         memcpy(m_vu_data + addr + i, temp, 16);
       }
+      ASSERT(4 * v1.num == data.size_bytes);
 
-      // TODO
     } else if (v0.kind == VifCode::Kind::STCYCL && v0.immediate == 0x204 &&
                v1.kind == VifCode::Kind::UNPACK_V4_8) {
       auto up = VifCodeUnpack(v1);
@@ -96,7 +96,7 @@ void OceanMid::run(DmaFollower& dma,
         u32 addr_off = 4 * (i / 2) + i % 2;
         memcpy(m_vu_data + addr + addr_off, temp, 16);
       }
-
+      ASSERT(8 * v1.num == data.size_bytes);
       // TODO
     } else if (v0.kind == VifCode::Kind::STCYCL && v0.immediate == 0x404 &&
                v1.kind == VifCode::Kind::MSCALF) {
