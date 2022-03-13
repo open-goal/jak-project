@@ -35,36 +35,15 @@ class OceanMid {
               ScopedProfilerNode& prof,
               DirectRenderer& direct);
 
-  void run_L26_vu2c(SharedRenderState* render_state,
-                    ScopedProfilerNode& prof,
-                    DirectRenderer& direct);
-  void run_L32_vu2c(SharedRenderState* render_state,
-                    ScopedProfilerNode& prof,
-                    DirectRenderer& direct);
+  void run_L26_vu2c();
+  void run_L32_vu2c();
   void run_L38_vu2c(SharedRenderState* render_state,
                     ScopedProfilerNode& prof,
                     DirectRenderer& direct);
   void run_L43_vu2c(SharedRenderState* render_state,
                     ScopedProfilerNode& prof,
                     DirectRenderer& direct);
-  void run_L45_vu2c(SharedRenderState* render_state,
-                    ScopedProfilerNode& prof,
-                    DirectRenderer& direct);
-  //  void run_L30_vu2c();
-  //  void run_L36_vu2c(SharedRenderState* render_state,
-  //                    ScopedProfilerNode& prof,
-  //                    DirectRenderer& direct);
-  //  void run_L41_vu2c(SharedRenderState* render_state,
-  //                    ScopedProfilerNode& prof,
-  //                    DirectRenderer& direct);
-  //  void run_L43_vu2c();
-  //
-  //  void run_L42_vu2c(SharedRenderState* render_state,
-  //                    ScopedProfilerNode& prof,
-  //                    DirectRenderer& direct);
-  //  void run_L44_vu2c(SharedRenderState* render_state,
-  //                    ScopedProfilerNode& prof,
-  //                    DirectRenderer& direct);
+  void run_L45_vu2c();
 
   bool m_buffer_toggle = false;
   static constexpr int VU1_INPUT_BUFFER_BASE = 0;
