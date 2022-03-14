@@ -105,23 +105,29 @@
       (set-resolution! obj (-> *pc-graphics-16x9-valid-resolutions* 0)))
     (('pc-aspect-4x3)
       (set-aspect! obj 4 3)
+      (set! (-> *setting-control* default aspect-ratio) 'aspect4x3)
+      (set-aspect-ratio (-> *setting-control* default aspect-ratio))
+      (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
+      (set-aspect-ratio (-> *setting-control* default aspect-ratio))
       (set-resolution! obj (-> *pc-graphics-4x3-valid-resolutions* 0)))
     (('pc-aspect-5x4)
       (set-aspect! obj 5 4)
       (set-resolution! obj (-> *pc-graphics-5x4-valid-resolutions* 0)))
     (('pc-aspect-16x9)
       (set-aspect! obj 16 9)
+      (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
+      (set-aspect-ratio (-> *setting-control* default aspect-ratio))
       (set-resolution! obj (-> *pc-graphics-16x9-valid-resolutions* 0)))
     (('pc-aspect-21x9)
       (set-aspect! obj 21 9)
+      (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
+      (set-aspect-ratio (-> *setting-control* default aspect-ratio))
       (set-resolution! obj (-> *pc-graphics-21x9-valid-resolutions* 0)))
     (('pc-aspect-32x9)
       (set-aspect! obj 32 9)
+      (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
+      (set-aspect-ratio (-> *setting-control* default aspect-ratio))
       (set-resolution! obj (-> *pc-graphics-32x9-valid-resolutions* 0))))
-
-  ; fix hud by picking either 4x3 or 16x9 on the game's aspect ratio
-  ; this probably just a temporary hack
-  ; (set-aspect-ratio (-> *setting-control* default aspect-ratio))
 
   (none))
 
@@ -803,22 +809,25 @@
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (reset obj)
     ;; auto load settings if available
+    ;; if saved settings are corrupted, reset them
     (clear *pc-temp-string-1*)
     (format *pc-temp-string-1* "~S/pc-settings.gc" *pc-settings-folder*)
+
     (if (pc-filepath-exists? *pc-temp-string-1*)
       (begin
         (format 0 "[PC] PC Settings found at '~S'...loading!~%" *pc-temp-string-1*)
-        (read-from-file obj *pc-temp-string-1*))
-      ;; - otherwise, create the dir and initialize the file
-      (begin
-        (format 0 "[PC] PC Settings not found at '~S'...creating and initializing with defaults!~%" *pc-temp-string-1*)
-        (pc-mkdir-path *pc-temp-string-1*)
-        (commit-to-file obj)))
-    (clear *pc-temp-string-1*)
-    obj
-    )
-  )
+        (if (read-from-file obj *pc-temp-string-1*)
+          (return obj)
+          (begin
+            (format 0 "[PC] PC Settings found at '~S' but could not be loaded, re-creating with defaults!~%" *pc-temp-string-1*)
+            (reset obj))))
+      (format 0 "[PC] PC Settings not found at '~S'...creating and initializing with defaults!~%" *pc-temp-string-1*))
 
+    ;; persist reset / new settings if we made it this far
+    (pc-mkdir-path *pc-temp-string-1*)
+    (commit-to-file obj)
+    (clear *pc-temp-string-1*)
+    obj))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
