@@ -73,6 +73,7 @@
 ;; 12 - port window type
 ;; 13 - port subtitle language
 ;; 14 - port subtitle speaker
+;; 15 - original aspect ratio
 
 (define *game-options*
     (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
@@ -114,7 +115,8 @@
          ))
 
 (define *graphic-options*
-    (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
+    (new 'static 'boxed-array :type game-option :length 6
+         (new 'static 'game-option :option-type #x15 :name (game-text-id progress-use-original-aspect) :scale #t)
          (new 'static 'game-option :option-type #x12 :name (game-text-id progress-display-mode) :scale #t)
          (new 'static 'game-option :option-type #x10 :name (game-text-id aspect-ratio) :scale #t)
          (new 'static 'game-option :option-type #x11 :name (game-text-id progress-resolution) :scale #t)
@@ -256,80 +258,61 @@
         (game-text-id progress-subtitles-label-speaker-off)
         (game-text-id progress-subtitles-label-speaker-auto)))
 
-(define *pc-subtitle-speaker-valid-options*
-     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 #t #f 'auto))
-
-(define *pc-graphics-display-mode-symbol-options*
-     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 'borderless 'fullscreen 'windowed))
-
 (define *pc-graphics-display-mode-remap*
   (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
         (game-text-id progress-display-mode-borderless)
         (game-text-id progress-display-mode-fullscreen)
         (game-text-id progress-display-mode-windowed)))
 
-(define *pc-graphics-aspect-ratio-options*
-     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 'pc-aspect-4x3 'pc-aspect-5x4 'pc-aspect-16x9 'pc-aspect-21x9 'pc-aspect-32x9))
+(define *pc-graphics-original-aspect-ratio-mode-remap*
+  (new 'static 'boxed-array :type game-text-id :length 2 :allocated-length 2
+        (game-text-id progress-aspect-ratio-4x3)
+        (game-text-id progress-aspect-ratio-16x9)))
 
 (define *pc-graphics-aspect-ratio-mode-remap*
   (new 'static 'boxed-array :type game-text-id :length 5 :allocated-length 5
-        (game-text-id process-aspect-ratio-4x3)
-        (game-text-id process-aspect-ratio-5x4)
-        (game-text-id process-aspect-ratio-16x9)
-        (game-text-id process-aspect-ratio-21x9)
-        (game-text-id process-aspect-ratio-32x9)))
-
-(define *pc-graphics-4x3-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 '640x480 '800x600 '1024x768 '1280x960 '1600x1200))
+        (game-text-id progress-aspect-ratio-4x3)
+        (game-text-id progress-aspect-ratio-5x4)
+        (game-text-id progress-aspect-ratio-16x9)
+        (game-text-id progress-aspect-ratio-21x9)
+        (game-text-id progress-aspect-ratio-32x9)))
 
 (define *pc-graphics-4x3-valid-resolutions-names*
   (new 'static 'boxed-array :type game-text-id :length 5 :allocated-length 5
-        (game-text-id process-res-4x3-640x480)
-        (game-text-id process-res-4x3-800x600)
-        (game-text-id process-res-4x3-1024x768)
-        (game-text-id process-res-4x3-1280x960)
-        (game-text-id process-res-4x3-1600x1200)))
-
-(define *pc-graphics-5x4-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 '960x768 '1280x1024 '1500x1200))
+        (game-text-id progress-res-4x3-640x480)
+        (game-text-id progress-res-4x3-800x600)
+        (game-text-id progress-res-4x3-1024x768)
+        (game-text-id progress-res-4x3-1280x960)
+        (game-text-id progress-res-4x3-1600x1200)))
 
 (define *pc-graphics-5x4-valid-resolutions-names*
   (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
-        (game-text-id process-res-5x4-960x768)
-        (game-text-id process-res-5x4-1280x1024)
-        (game-text-id process-res-5x4-1500x1200)))
-
-(define *pc-graphics-16x9-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 7 :allocated-length 7 '854x480 '1280x720 '1920x1080 '2560x1440 '2880x1620 '3840x2160 '5120x2880))
+        (game-text-id progress-res-5x4-960x768)
+        (game-text-id progress-res-5x4-1280x1024)
+        (game-text-id progress-res-5x4-1500x1200)))
 
 (define *pc-graphics-16x9-valid-resolutions-names*
   (new 'static 'boxed-array :type game-text-id :length 7 :allocated-length 7
-        (game-text-id process-res-16x9-854x480)
-        (game-text-id process-res-16x9-1280x720)
-        (game-text-id process-res-16x9-1920x1080)
-        (game-text-id process-res-16x9-2560x1440)
-        (game-text-id process-res-16x9-2880x1620)
-        (game-text-id process-res-16x9-3840x2160)
-        (game-text-id process-res-16x9-5120x2880)))
-
-(define *pc-graphics-21x9-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 6 :allocated-length 6 '2560x1080 '3120x1440 '3200x1440 '3440x1440 '3840x1600 '5120x2160))
+        (game-text-id progress-res-16x9-854x480)
+        (game-text-id progress-res-16x9-1280x720)
+        (game-text-id progress-res-16x9-1920x1080)
+        (game-text-id progress-res-16x9-2560x1440)
+        (game-text-id progress-res-16x9-2880x1620)
+        (game-text-id progress-res-16x9-3840x2160)
+        (game-text-id progress-res-16x9-5120x2880)))
 
 (define *pc-graphics-21x9-valid-resolutions-names*
   (new 'static 'boxed-array :type game-text-id :length 6 :allocated-length 6
-        (game-text-id process-res-21x9-2560x1080)
-        (game-text-id process-res-21x9-3120x1440)
-        (game-text-id process-res-21x9-3200x1440)
-        (game-text-id process-res-21x9-3440x1440)
-        (game-text-id process-res-21x9-3840x1600)
-        (game-text-id process-res-21x9-5120x2160)))
-
-(define *pc-graphics-32x9-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 1 :allocated-length 1 '5120x1440))
+        (game-text-id progress-res-21x9-2560x1080)
+        (game-text-id progress-res-21x9-3120x1440)
+        (game-text-id progress-res-21x9-3200x1440)
+        (game-text-id progress-res-21x9-3440x1440)
+        (game-text-id progress-res-21x9-3840x1600)
+        (game-text-id progress-res-21x9-5120x2160)))
 
 (define *pc-graphics-32x9-valid-resolutions-names*
   (new 'static 'boxed-array :type game-text-id :length 1 :allocated-length 1
-        (game-text-id process-res-32x9-5120x1440)))
+        (game-text-id progress-res-32x9-5120x1440)))
 
 ;; all level tasks
 (define *level-task-data*

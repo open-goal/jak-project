@@ -1876,7 +1876,7 @@
 
 ;; Custom or Modified Code
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
-(goal-src "pc/pckernel.gc" "gsound")
+(goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text")
 
 (goal-src "pc/engine/ui/text-h.gc" "connect")
