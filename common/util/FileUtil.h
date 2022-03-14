@@ -14,6 +14,7 @@ namespace fs = std::filesystem;
 
 namespace file_util {
 std::filesystem::path get_user_home_dir();
+std::filesystem::path get_user_game_dir();
 std::string get_project_path();
 std::string get_file_path(const std::vector<std::string>& input);
 bool create_dir_if_needed(const std::string& path);
