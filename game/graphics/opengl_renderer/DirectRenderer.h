@@ -64,6 +64,8 @@ class DirectRenderer : public BucketRenderer {
     m_blend_state.d = GsAlpha::BlendMode::SOURCE;
   }
 
+  void set_mipmap(bool en) { m_debug_state.disable_mipmap = !en; }
+
  private:
   void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
