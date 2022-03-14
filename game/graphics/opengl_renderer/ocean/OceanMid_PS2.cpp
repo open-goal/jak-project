@@ -50,8 +50,7 @@ void fcor(u16& dest, u32 imm, u32 cf) {
 
 static inline REALLY_INLINE float erleng(const Vf& in) {
   float len = in.x() * in.x() + in.y() * in.y() + in.z() * in.z();
-  float res = _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(len)));
-  return res;
+  return _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(len)));
 }
 }  // namespace
 

@@ -22,9 +22,8 @@ OceanTexture::~OceanTexture() {
 void OceanTexture::init_textures(TexturePool& pool) {
   TextureInput in;
   in.gpu_texture = m_tex0.texture();
-  constexpr int boost = 2;
-  in.w = 128 * boost;
-  in.h = 128 * boost;
+  in.w = TEX0_SIZE;
+  in.h = TEX0_SIZE;
   in.page_name = "PC-OCEAN";
   in.name = "pc-ocean";
   m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP);

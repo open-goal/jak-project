@@ -41,7 +41,7 @@ class OceanTexture {
 
   bool m_use_ocean_specific = true;
 
-  static constexpr int TEX0_SIZE = 256;  // TODO actually 128
+  static constexpr int TEX0_SIZE = 128;
   FramebufferTexturePair m_tex0;
   GpuTexture* m_tex0_gpu = nullptr;
 
