@@ -9,14 +9,21 @@
 
 
 (defun ocean-mid-setup-constants ((arg0 ocean-mid-constants))
+  "Generate the ocean VU1 renderer constants in-place."
+  
+  ;; the usual camera math
   (let ((v1-0 *math-camera*))
     (set! (-> arg0 hmge-scale quad) (-> v1-0 hmge-scale quad))
     (set! (-> arg0 inv-hmge-scale quad) (-> v1-0 inv-hmge-scale quad))
     (set! (-> arg0 hvdf-offset quad) (-> v1-0 hvdf-off quad))
     (set-vector! (-> arg0 fog) (-> v1-0 pfog0) (-> v1-0 fog-min) (-> v1-0 fog-max) 3072.0)
     )
+  
+  ;; is this 393216 the size of a triangle? (96 meters)
   (set-vector! (-> arg0 constants) 0.5 0.5 0.0 393216.0)
   (set-vector! (-> arg0 constants2) 0.5 0.5 1.0 0.0)
+
+  
   (let ((v1-3 *ocean-subdivide-draw-mode*))
     (cond
       ((zero? v1-3)
@@ -258,6 +265,8 @@
   (set-vector! (-> arg0 index-table 5) 18 24 21 0)
   (set-vector! (-> arg0 index-table 6) 9 12 12 0)
   (set-vector! (-> arg0 index-table 7) 0 0 3 0)
+
+  
   (set-vector! (-> arg0 pos0) 0.0 0.0 0.0 1.0)
   (set-vector! (-> arg0 pos1) 393216.0 0.0 0.0 1.0)
   (set-vector! (-> arg0 pos2) 0.0 0.0 393216.0 1.0)
@@ -265,9 +274,8 @@
   (none)
   )
 
-;; definition for function ocean-mid-add-constants
-;; INFO: Return type mismatch pointer vs none.
 (defun ocean-mid-add-constants ((arg0 dma-buffer))
+  "Generate DMA for loading ocean-mid constants to VU1 data memory."
   (let* ((a1-0 36)
          (v1-0 arg0)
          (a0-1 (the-as object (-> v1-0 base)))
@@ -279,6 +287,7 @@
           )
     (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
     )
+  ;; generate the constants in place.
   (ocean-mid-setup-constants (the-as ocean-mid-constants (-> arg0 base)))
   (&+! (-> arg0 base) 576)
   (none)
@@ -509,9 +518,10 @@
   (none)
   )
 
-;; definition for function ocean-mid-add-upload
-;; Used lq/sq
 (defun ocean-mid-add-upload ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 float))
+  "Add DMA data to upload data needed to draw an ocean tile."
+  
+  ;; calculate the location of the tile.
   (let ((gp-0 (new-stack-vector0)))
     (let ((v1-1 (-> *ocean-map* start-corner)))
       (set! (-> gp-0 x) (+ (-> v1-1 x) (* 3145728.0 (the float arg2))))
@@ -519,7 +529,11 @@
       (set! (-> gp-0 z) (+ (-> v1-1 z) (* 3145728.0 (the float arg1))))
       )
     (set! (-> gp-0 w) 1.0)
+    
+    ;; compute combined matrix
     (ocean-mid-add-matrices arg0 gp-0)
+    
+    ;; upload color.
     (let ((v1-4 (+ (the-as uint (-> *ocean-map* ocean-colors)) (* (+ (* 416 arg1) (* arg2 8)) 4))))
       (dotimes (a0-6 9)
         (let* ((a1-3 arg0)
@@ -538,6 +552,10 @@
         (+! v1-4 208)
         )
       )
+
+    ;; upload "mid masks".
+    ;; these allow some zones to be skipped.
+    ;; using 0 will draw, using 1 willl skip.
     (let* ((a2-3 1)
            (v1-7 arg0)
            (a0-7 (the-as object (-> v1-7 base)))
@@ -553,10 +571,15 @@
       (let ((a0-12 (-> *ocean-map* ocean-mid-masks data arg3)))
         (set! (-> *ocean-work* mid-mask-ptrs arg4) (the-as (pointer int64) v1-8))
         (set! (-> (the-as (pointer uint64) v1-8)) (-> a0-12 dword))
+        ;; (set! (-> (the-as (pointer uint64) v1-8)) #xffffffffffffffff)
         )
       (set! (-> (the-as (pointer uint64) v1-8) 1) (the-as uint 0))
       )
     (&+! (-> arg0 base) 16)
+
+    ;; when the camera is very close, we need to do additional checking.
+    ;; I believe this checks which subtiles will be skipped by the renderer
+    ;; and adds them to the camera masks.
     (when (< arg5 556091.4)
       (let* ((v1-12 (-> *math-camera* trans))
              (s5-1 (&-> *ocean-work* mid-camera-masks arg4))
@@ -694,6 +717,7 @@
           (set! (-> a1-2 z) (+ (-> v1-1 z) (* 393216.0 (the float arg1))))
           )
         (set! (-> a1-2 w) 1.0)
+        ;; (format 0 "~`vector`P~%" (-> *ocean-map* start-corner))
         (ocean-mid-add-matrices arg0 a1-2)
         )
       (let* ((a1-3 9)
@@ -982,6 +1006,41 @@
   (none)
   )
 
+(defun sphere-cull-for-ocean ((arg0 vector))
+  "NOTE: added in PC port"
+  
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf9 :class vf)
+         )
+        (init-vf0-vector)
+        (let ((v1-5 *math-camera*))
+          ;; note: these are for sphere cull.
+          (.lvf vf16 (&-> v1-5 plane 0 quad))
+          (.lvf vf17 (&-> v1-5 plane 1 quad))
+          (.lvf vf18 (&-> v1-5 plane 2 quad))
+          (.lvf vf19 (&-> v1-5 plane 3 quad))
+          )
+        
+        (.lvf vf10 (&-> arg0 quad))
+        (.mul.x.vf acc vf16 vf10)
+        (.add.mul.y.vf acc vf17 vf10 acc)
+        (.add.mul.z.vf acc vf18 vf10 acc)
+        (.sub.mul.w.vf vf9 vf19 vf0 acc)
+        (.add.w.vf vf9 vf9 vf10)
+        (.mov v1-0 vf9)
+        (.pcgtw v1-1 0 v1-0)
+        (.ppach v1-2 (the-as uint128 0) v1-1)
+        (zero? (the-as int v1-2))
+        )
+  )
+
 ;; definition for function draw-ocean-mid-seams
 ;; INFO: Return type mismatch symbol vs none.
 (defun draw-ocean-mid-seams ((arg0 dma-buffer))
@@ -1004,7 +1063,7 @@
         (while (>= s2-0 s3-0)
           (set! (-> sv-36 x) (+ 196608.0 (* 393216.0 (the float s3-0)) (-> *ocean-map* start-corner x)))
           (set! (-> sv-36 z) (+ 196608.0 (* 393216.0 (the float s5-0)) (-> *ocean-map* start-corner z)))
-          (when (sphere-cull sv-36)
+          (when (sphere-cull-for-ocean sv-36)
             (cond
               ((= s5-0 sv-34)
                (ocean-mid-add-upload-top arg0 s5-0 s3-0)
@@ -1031,10 +1090,60 @@
   (none)
   )
 
-;; definition for function draw-ocean-mid
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
+;; ADDED for PC Port
+(defun debug-draw-ocean-tile ((y int) (x int) (color0 rgba) (color1 rgba) (masks int))
+  ;;3145728.0
+  (let* ((ps (-> *ocean-map* start-corner))
+         (p0 (vector-copy! (new-stack-vector0) ps))
+         (p1 (vector-copy! (new-stack-vector0) ps))
+         (p2 (vector-copy! (new-stack-vector0) ps))
+         (p1s (vector-copy! (new-stack-vector0) ps))
+         (p2s (vector-copy! (new-stack-vector0) ps))
+         (p3 (vector-copy! (new-stack-vector0) ps))
+         (x0 (* 3145728.0 (the float x)))
+         (y0 (* 3145728.0 (the float y)))
+
+         )
+    (+! (-> p0 x) x0)
+    (+! (-> p0 z) y0)
+    
+    (+! (-> p1 x) (+ x0 3145728.0))
+    (+! (-> p1 z) y0)
+    
+    (+! (-> p2 x) x0)
+    (+! (-> p2 z) (+ y0 3145728.0))
+    
+    (+! (-> p1s x) (+ x0 314572.0))
+    (+! (-> p1s z) y0)
+    
+    (+! (-> p2s x) x0)
+    (+! (-> p2s z) (+ y0 314572.0))
+    
+    (+! (-> p3 x) (+ x0 3145728.0))
+    (+! (-> p3 z) (+ y0 3145728.0))
+    
+    (add-debug-flat-triangle #t (bucket-id debug-draw1) p0 p1s p2s color0)
+    ;; (add-debug-flat-triangle #t (bucket-id debug-draw1) p3 p1 p2 color0)
+    (add-debug-outline-triangle #t (bucket-id debug-draw1) p0 p1 p2 color1)
+    (add-debug-outline-triangle #t (bucket-id debug-draw1) p3 p1 p2 color1)
+    (format (clear *temp-string*) "o: ~d ~d ~d ~b" x y (+ (* 6 y) x) masks)
+    
+    (add-debug-text-3d
+      #t
+      (bucket-id debug-draw1)
+      *temp-string*
+      p0
+      (font-color orange-red)
+      (the vector2h #f)
+      )
+    )
+  )
+
 (defun draw-ocean-mid ((arg0 dma-buffer))
+  "Main function to draw the 'mid' ocean
+   The mid ocean is used to draw the non-transparent ocean parts.
+   There is a large 6x6 grid of tiles.
+   Tiles that are closer to the camera have an environment mapping effect applied."
   (rlet ((vf16 :class vf)
          (vf17 :class vf)
          (vf18 :class vf)
@@ -1044,11 +1153,16 @@
          (vf22 :class vf)
          (vf23 :class vf)
          )
+
+    ;; first, reset all masks to 0
     (dotimes (v1-0 36)
       (set! (-> *ocean-work* mid-mask-ptrs v1-0) (the-as (pointer int64) #f))
       (set! (-> *ocean-work* mid-camera-masks v1-0) (the-as uint 0))
       )
+    ;; upload VU1 program
     (dma-buffer-add-vu-function arg0 ocean-mid-block 1)
+    
+    ;; set up base+offset for the VU1 program uploads
     (let* ((v1-3 arg0)
            (a0-6 (the-as object (-> v1-3 base)))
            )
@@ -1057,8 +1171,14 @@
       (set! (-> (the-as dma-packet a0-6) vif1) (new 'static 'vif-tag :imm #x76 :cmd (vif-cmd offset)))
       (set! (-> v1-3 base) (&+ (the-as pointer a0-6) 16))
       )
+
+    ;; upload ocean constants
     (ocean-mid-add-constants arg0)
+
+    ;; run program to initialize VU1 renderer
     (ocean-mid-add-call arg0 0)
+    
+    ;; set up VF registers for sphere culling.
     (let ((v1-5 *math-camera*))
       (.lvf vf16 (&-> v1-5 plane 0 quad))
       (.lvf vf17 (&-> v1-5 plane 1 quad))
@@ -1070,21 +1190,30 @@
       (.lvf vf23 (&-> v1-5 guard-plane 3 quad))
       )
     (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
+    
+    ;; draw tiles!
     (let ((s5-0 (-> *math-camera* trans)))
-      (dotimes (s4-0 6)
-        (dotimes (s3-0 6)
-          (let* ((s2-0 (+ (* 6 s4-0) s3-0))
-                 (s1-0 (-> *ocean-map* ocean-spheres spheres s2-0))
+      (dotimes (s4-0 6)   ;; x?
+        (dotimes (s3-0 6) ;; y?
+          (let* ((s2-0 (+ (* 6 s4-0) s3-0)) ;; tile index
+                 (s1-0 (-> *ocean-map* ocean-spheres spheres s2-0)) ;; vis sphere of ocean
                  (s0-0 (-> (the-as (pointer int16) (+ (* s2-0 2) (the-as int (-> *ocean-map* ocean-mid-indices))))))
                  )
-            (when (sphere-cull s1-0)
+            ;; (format 0 "draw ocean tile: ~d x ~d = ~d index ~d~%" s4-0 s3-0 s2-0 s0-0)
+            ;; (debug-draw-ocean-tile s4-0 s3-0 (new 'static 'rgba :r #x80 :a #x80) (new 'static 'rgba :g #x80 :a #x80) s0-0)
+            (when (sphere-cull-for-ocean s1-0)
+              ;;(format 0 " vis!~%")
               (cond
                 ((< s0-0 0)
+                 ;; (format 0 " skip tile.~%")
                  )
                 ((let ((f30-0 (- (vector-vector-distance s1-0 s5-0) (-> s1-0 w))))
                    (ocean-mid-add-upload arg0 s4-0 s3-0 s0-0 s2-0 f30-0)
                    (< f30-0 786432.0)
+                   ;; HACK
+                   ;; #t
                    )
+                 ;; (format 0 " draw env map~%")
                  (ocean-mid-add-call arg0 73)
                  (+! (-> *terrain-stats* ocean-mid fragments) 1)
                  (+! (-> *terrain-stats* ocean-mid tris) 256)
@@ -1102,6 +1231,13 @@
           )
         )
       )
+    
+    ; (dotimes (i 36)
+    ;   (format 0 "tidx: ~d ~X~%" i (-> *ocean-work* mid-camera-masks i))
+    ;   )
+    
+    ;; for now, skip seams.
+    ;; when it's both on and cam is low
     (when (not (or *ocean-near-off* (< 196608.0 (fabs (-> *math-camera* trans y)))))
       (let ((a1-11 48)
             (a2-2 0)

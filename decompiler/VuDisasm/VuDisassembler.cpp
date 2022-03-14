@@ -830,18 +830,25 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
     case VuInstrK::IOR:
       if (instr.src.at(1).is_int_reg(0)) {
-        ASSERT(!instr.dst->is_int_reg(0));
-        ASSERT(!instr.src.at(0).is_int_reg(0));
-        if (mips2c_format) {
-          return fmt::format("vis[{}] = vis[{}];", instr.dst->to_string(m_label_names),
-                             instr.src.at(0).to_string(m_label_names));
+        fmt::print("instr: {}\n", to_string(instr));
+        if (instr.src.at(0).is_int_reg(0) && instr.src.at(1).is_int_reg(0)) {
+          return fmt::format("vu.{} = 0;", instr.dst->to_string(m_label_names));
         } else {
-          return fmt::format("vu.{} = vu.{};", instr.dst->to_string(m_label_names),
-                             instr.src.at(0).to_string(m_label_names));
+          ASSERT(!instr.dst->is_int_reg(0));
+          ASSERT(!instr.src.at(0).is_int_reg(0));
+          if (mips2c_format) {
+            return fmt::format("vis[{}] = vis[{}];", instr.dst->to_string(m_label_names),
+                               instr.src.at(0).to_string(m_label_names));
+          } else {
+            return fmt::format("vu.{} = vu.{};", instr.dst->to_string(m_label_names),
+                               instr.src.at(0).to_string(m_label_names));
+          }
         }
 
       } else {
-        goto unknown;
+        return fmt::format("vu.{} = vu.{} | vu.{};", instr.dst->to_string(m_label_names),
+                           instr.src.at(0).to_string(m_label_names),
+                           instr.src.at(1).to_string(m_label_names));
       }
 
     case VuInstrK::MFP:
@@ -865,8 +872,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
           bc_to_part(*instr.second_src_field));
 
     case VuInstrK::ERLENG:
-      return fmt::format("vu.P = erleng(Mask::{}, vu.{}); /* TODO erleng */",
-                         mask_to_string(*instr.mask), instr.src.at(0).to_string(m_label_names));
+      return fmt::format("vu.P = erleng(vu.{});", instr.src.at(0).to_string(m_label_names));
     case VuInstrK::RSQRT:
       return fmt::format(
           "c->Q = c->vf_src({}).vf.{}() / std::sqrt(c->vf_src({}).vf.{}());",
@@ -891,8 +897,11 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
                          vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
     case VuInstrK::FCAND:
-      return fmt::format("ASSERT(false); vu.vi01 = cf & 0x{:x};\n", instr.src.at(0).value());
-
+      return fmt::format("fcand(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FCOR:
+      return fmt::format("fcor(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FCSET:
+      return fmt::format("cf = 0x{:x};\n", instr.src.at(0).value());
     case VuInstrK::ADDbc:
     case VuInstrK::SUBbc:
     case VuInstrK::MULbc:
@@ -971,6 +980,9 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.{});", mask_to_string(*instr.mask),
                          instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names));
+    case VuInstrK::MULAq:
+      return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.Q);", mask_to_string(*instr.mask),
+                         instr.src.at(0).to_string(m_label_names));
     case VuInstrK::MULAbc:
       return fmt::format(mips2c_format
                              ? "c->acc.vf.mula(Mask::{}, c->vf_src({}).vf, c->vf_src({}).vf.{}());"
@@ -985,13 +997,17 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("vu.{} = xtop();", instr.src.at(0).to_string(m_label_names));
     default:
       unk++;
+      fmt::print("unknown 0 is {}\n", to_string(instr));
+
       return "ASSERT(false);";  //"???";
   }
 
 unknown:
 
   unk++;
-  return "???";
+  fmt::print("unknown 1 is {}\n", to_string(instr));
+
+  return "ASSERT(false);";
 }
 
 std::string VuDisassembler::to_string(const VuInstruction& instr) const {

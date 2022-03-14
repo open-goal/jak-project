@@ -79,4 +79,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::EYE) = {"eye"};
   at(ShaderId::GENERIC) = {"generic"};
   at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture"};
+  at(ShaderId::OCEAN_TEXTURE_MIPMAP) = {"ocean_texture_mipmap"};
 }

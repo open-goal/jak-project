@@ -4,7 +4,8 @@
 
 constexpr int OCEAN_TEX_TBP = 8160;  // todo
 OceanTexture::OceanTexture()
-    : m_tex0(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV),
+    : m_result_texture(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV, 8),
+      m_temp_texture(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV),
       m_hack_renderer("burp", BucketId::BUCKET0, 0x8000) {
   m_dbuf_x = m_dbuf_a;
   m_dbuf_y = m_dbuf_b;
@@ -13,6 +14,34 @@ OceanTexture::OceanTexture()
   m_tbuf_y = m_tbuf_b;
 
   init_pc();
+
+  // initialize the mipmap drawing
+  glGenVertexArrays(1, &m_mipmap.vao);
+  glBindVertexArray(m_mipmap.vao);
+  glGenBuffers(1, &m_mipmap.vtx_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, m_mipmap.vtx_buffer);
+  std::vector<MipMap::Vertex> vertices = {
+      {-1, -1, 0, 0}, {-1, 1, 0, 1}, {1, -1, 1, 0}, {1, 1, 1, 1}};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(MipMap::Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(
+      0,                                  // location 0 in the shader
+      2,                                  // 4 color components
+      GL_FLOAT,                           // floats
+      GL_FALSE,                           // normalized, ignored,
+      sizeof(MipMap::Vertex),             //
+      (void*)offsetof(MipMap::Vertex, x)  // offset in array (why is this a pointer...)
+  );
+  glVertexAttribPointer(
+      1,                                  // location 0 in the shader
+      2,                                  // 4 color components
+      GL_FLOAT,                           // floats
+      GL_FALSE,                           // normalized, ignored,
+      sizeof(MipMap::Vertex),             //
+      (void*)offsetof(MipMap::Vertex, s)  // offset in array (why is this a pointer...)
+  );
+  glBindVertexArray(0);
 }
 
 OceanTexture::~OceanTexture() {
@@ -21,10 +50,9 @@ OceanTexture::~OceanTexture() {
 
 void OceanTexture::init_textures(TexturePool& pool) {
   TextureInput in;
-  in.gpu_texture = m_tex0.texture();
-  constexpr int boost = 2;
-  in.w = 128 * boost;
-  in.h = 128 * boost;
+  in.gpu_texture = m_result_texture.texture();
+  in.w = TEX0_SIZE;
+  in.h = TEX0_SIZE;
   in.page_name = "PC-OCEAN";
   in.name = "pc-ocean";
   m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP);
@@ -73,7 +101,7 @@ void OceanTexture::handle_tex_call_rest(SharedRenderState* render_state, ScopedP
 void OceanTexture::handle_ocean_texture(DmaFollower& dma,
                                         SharedRenderState* render_state,
                                         ScopedProfilerNode& prof) {
-  FramebufferTexturePairContext ctxt(m_tex0);
+  FramebufferTexturePairContext ctxt(m_temp_texture);
   // render to the first texture
   {
     // (set-display-gs-state arg0 ocean-tex-page-0 128 128 0 0)
@@ -234,5 +262,43 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
   }
 
   flush(render_state, prof);
-  render_state->texture_pool->move_existing_to_vram(m_tex0_gpu, 8160);
+  make_mipmaps(render_state, prof);
+}
+
+/*!
+ * Generate mipmaps for the ocean texture.
+ * There's a trick here - we reduce the intensity of alpha on the lower lods. This lets texture
+ * filtering slowly fade the alpha value out to 0 with distance.
+ */
+void OceanTexture::make_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  glBindVertexArray(m_mipmap.vao);
+  render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].activate();
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(),
+                                   "alpha_intensity"),
+              1.0);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, m_temp_texture.texture());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+  glUniform1i(
+      glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(), "tex_T0"),
+      0);
+  glBindBuffer(GL_ARRAY_BUFFER, m_mipmap.vtx_buffer);
+
+  for (int i = 0; i < 8; i++) {
+    FramebufferTexturePairContext ctxt(m_result_texture, i);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(),
+                                     "alpha_intensity"),
+                std::max(0.f, 1.f - 0.5f * i));
+    glUniform1f(
+        glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(), "scale"),
+        1.f / (1 << i));
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    prof.add_draw_call();
+    prof.add_tri(2);
+  }
+  render_state->texture_pool->move_existing_to_vram(m_tex0_gpu, OCEAN_TEX_TBP);
+  glBindVertexArray(0);
 }

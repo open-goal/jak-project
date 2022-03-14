@@ -47,7 +47,9 @@ void OceanMidAndFar::render(DmaFollower& dma,
   }
 
   handle_ocean_far(dma, render_state, prof);
+  m_direct.flush_pending(render_state, prof);
 
+  m_direct.set_mipmap(true);
   handle_ocean_mid(dma, render_state, prof);
 
   auto final_next = dma.read_and_advance();
@@ -59,6 +61,7 @@ void OceanMidAndFar::render(DmaFollower& dma,
   ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 
   m_direct.flush_pending(render_state, prof);
+  m_direct.set_mipmap(false);
 }
 
 void OceanMidAndFar::handle_ocean_far(DmaFollower& dma,
@@ -93,6 +96,13 @@ bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) {
 void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
+  if (dma.current_tag_vifcode0().kind == VifCode::Kind::BASE) {
+    m_mid_renderer.run(dma, render_state, prof, m_direct);
+  } else {
+    // not drawing
+    return;
+  }
+
   while (!is_end_tag(dma.current_tag(), dma.current_tag_vifcode0(), dma.current_tag_vifcode1())) {
     dma.read_and_advance();
   }

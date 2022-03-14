@@ -4,10 +4,14 @@
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
+#include "game/graphics/opengl_renderer/ocean/OceanMid.h"
 
 /*!
  * OceanMidAndFar is the handler for the first ocean bucket.
- *
+ * This bucket runs three renderers:
+ * - ocean-texture (handled by the OceanTexture C++ class)
+ * - ocean-far (handled by this class, it's very simple)
+ * - ocean-mid (handled by the C++ OceanMid class)
  */
 class OceanMidAndFar : public BucketRenderer {
  public:
@@ -26,4 +30,5 @@ class OceanMidAndFar : public BucketRenderer {
 
   DirectRenderer m_direct;
   OceanTexture m_texture_renderer;
+  OceanMid m_mid_renderer;
 };
