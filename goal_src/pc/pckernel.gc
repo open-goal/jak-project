@@ -91,42 +91,43 @@
   (if (= (-> obj aspect-ratio-mode) mode)
     (return 0))
 
-  ;; if i set the aspect ratio at boot time here....crashes
-  ;; if it does it at runtime though, its perfectly fine....what?
-
   ;; else change it and update it
   (set! (-> obj aspect-ratio-mode) mode)
   ;; also default to the lowest resolution option at the same time
   (case mode
     (('orig-aspect-4x3)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect4x3)
       (set-resolution! obj (-> *pc-graphics-4x3-valid-resolutions* 0)))
     (('orig-aspect-16x9)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
       (set-resolution! obj (-> *pc-graphics-16x9-valid-resolutions* 0)))
     (('pc-aspect-4x3)
       (set-aspect! obj 4 3)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect4x3)
       (set-resolution! obj (-> *pc-graphics-4x3-valid-resolutions* 0)))
     (('pc-aspect-5x4)
       (set-aspect! obj 5 4)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect4x3)
       (set-resolution! obj (-> *pc-graphics-5x4-valid-resolutions* 0)))
     (('pc-aspect-16x9)
       (set-aspect! obj 16 9)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
       (set-resolution! obj (-> *pc-graphics-16x9-valid-resolutions* 0)))
     (('pc-aspect-21x9)
       (set-aspect! obj 21 9)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
       (set-resolution! obj (-> *pc-graphics-21x9-valid-resolutions* 0)))
     (('pc-aspect-32x9)
       (set-aspect! obj 32 9)
-      ; (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
       (set-resolution! obj (-> *pc-graphics-32x9-valid-resolutions* 0))))
 
-    ; (set-aspect-ratio (-> *setting-control* default aspect-ratio))
+  ;; NOTE - i believe this is a temporary workaround to get the hud looking decent on pc aspect ratios
+  ;; eventually i assume this will only be required for the original ones!
+  (case mode
+    (('orig-aspect-4x3 'pc-aspect-4x3)
+      (set! (-> *setting-control* default aspect-ratio) 'aspect4x3))
+    (else
+      (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)))
 
+  ;; NOTE - it should not be necessarily to call `set-aspect-ratio` as that is
+  ;; done on a per frame basis as long as it differs from the "current" setting-control value
+  ;;
+  ;; However, if I'm wrong, then that needs to be fixed at the build/load level again
+  ;; as that function is defined in `video` later in the order.
   (none))
 
 (defmethod set-resolution! pc-settings ((obj pc-settings) (mode symbol))
