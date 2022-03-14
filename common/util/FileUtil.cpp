@@ -48,6 +48,14 @@ std::filesystem::path get_user_game_dir() {
   return get_user_home_dir() / "OpenGOAL";
 }
 
+std::filesystem::path get_user_settings_dir() {
+  return get_user_game_dir() / "jak1" / "settings";
+}
+
+std::filesystem::path get_user_memcard_dir() {
+  return get_user_game_dir() / "jak1" / "saves";
+}
+
 std::string get_project_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];

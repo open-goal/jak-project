@@ -877,7 +877,7 @@ void InitMachine_PCPort() {
   intern_from_c("*pc-user-dir-base-path*")->value =
       make_string_from_c(user_dir_path.string().c_str());
   // TODO - we will eventually need a better way to know what game we are playing
-  auto settings_path = std::filesystem::path(user_dir_path) / "jak1" / "settings";
+  auto settings_path = file_util::get_user_settings_dir();
   intern_from_c("*pc-settings-folder*")->value =
       make_string_from_c(settings_path.string().c_str());
   
