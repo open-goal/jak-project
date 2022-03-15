@@ -146,7 +146,6 @@
   ("load-dgo.o" "load-dgo")
   ("ramdisk.o" "ramdisk")
   ("gsound.o" "gsound")
-  ("pckernel.o" "pckernel") ;; added
   ("transformq.o" "transformq")
   ("collide-func.o" "collide-func")
   ("joint.o" "joint")
@@ -196,6 +195,7 @@
   ("game-info.o" "game-info")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
+  ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
   ("weather-part.o" "weather-part")

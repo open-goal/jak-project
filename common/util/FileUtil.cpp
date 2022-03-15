@@ -105,9 +105,15 @@ std::string get_file_path(const std::vector<std::string>& input) {
 }
 
 bool create_dir_if_needed(const std::string& path) {
-  if (!std::filesystem::is_directory(path)) {
-    return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+  if (std::filesystem::is_directory(path)) {
+    return std::filesystem::create_directories(path);
   } else {
+    // check if the "file" has an extension
+    auto temp = std::filesystem::path(path);
+    if (temp.has_extension()) {
+      return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+    }
+    // otherwise, assume it's a directory with no trailing slash
     return std::filesystem::create_directories(path);
   }
 }
