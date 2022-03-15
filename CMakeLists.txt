@@ -80,9 +80,6 @@ if(ASAN_BUILD)
     message(STATUS "Doing ASAN build")
 endif()
 
-# preserve CXX Flags
-set(SAVE_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 
@@ -110,8 +107,6 @@ add_subdirectory(common)
 add_subdirectory(decompiler)
 
 # build glfw library
-string(REPLACE " -W3" " -W0" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-string(REPLACE " -Wall" " -w" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 add_subdirectory(third-party/glfw)
 add_subdirectory(third-party/zstd)
 
@@ -119,7 +114,6 @@ add_subdirectory(third-party/zstd)
 include_directories(third-party/glad/include)
 include_directories(third-party/glfw/include)
 add_subdirectory(third-party/imgui)
-set(CMAKE_CXX_FLAGS "${SAVE_CMAKE_CXX_FLAGS}")
 
 # build the game code in C++
 add_subdirectory(game)
@@ -134,18 +128,13 @@ add_subdirectory(tools)
 if(WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif()
-string(REPLACE " -W3" " -W0" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-string(REPLACE " -Wall" " -w" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 add_subdirectory(third-party/googletest EXCLUDE_FROM_ALL)
 include(GoogleTest)
-set(CMAKE_CXX_FLAGS "${SAVE_CMAKE_CXX_FLAGS}")
 
 # build tests
 include(test/CMakeLists.txt)
 
 # build lzokay library
-string(REPLACE " -W3" " -W0" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-string(REPLACE " -Wall" " -w" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 
 # build format library
@@ -166,4 +155,3 @@ if(WIN32)
     add_subdirectory(third-party/mman)
 endif()
 
-set(CMAKE_CXX_FLAGS "${SAVE_CMAKE_CXX_FLAGS}")
