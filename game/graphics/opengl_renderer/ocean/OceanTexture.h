@@ -7,7 +7,7 @@
 
 class OceanTexture {
  public:
-  OceanTexture();
+  OceanTexture(bool generate_mipmaps);
   void handle_ocean_texture(DmaFollower& dma,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof);
@@ -39,11 +39,13 @@ class OceanTexture {
   void init_pc();
   void destroy_pc();
 
-  void make_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void make_texture_with_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   bool m_use_ocean_specific = true;
+  bool m_generate_mipmaps;
 
   static constexpr int TEX0_SIZE = 128;
+  static constexpr int NUM_MIPS = 8;
   FramebufferTexturePair m_result_texture;
   FramebufferTexturePair m_temp_texture;
   GpuTexture* m_tex0_gpu = nullptr;

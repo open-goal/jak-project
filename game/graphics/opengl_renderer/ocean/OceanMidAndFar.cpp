@@ -2,7 +2,7 @@
 #include "third-party/imgui/imgui.h"
 
 OceanMidAndFar::OceanMidAndFar(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id), m_direct(name, my_id, 4096) {}
+    : BucketRenderer(name, my_id), m_direct(name, my_id, 4096), m_texture_renderer(true) {}
 
 void OceanMidAndFar::draw_debug_window() {
   m_texture_renderer.draw_debug_window();

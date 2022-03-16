@@ -113,6 +113,7 @@ void DirectRenderer::reset_state() {
 }
 
 void DirectRenderer::draw_debug_window() {
+  ImGui::SliderFloat("debug", &m_debug_tune, 0., 1.);
   ImGui::Checkbox("Wireframe", &m_debug_state.wireframe);
   ImGui::SameLine();
   ImGui::Checkbox("No-texture", &m_debug_state.disable_texture);
@@ -265,6 +266,9 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "color_mult"),
                 m_ogl.color_mult);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "alpha_mult"),
+                m_ogl.alpha_mult);
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "fog_color"),
                 render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
@@ -344,12 +348,14 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
   m_ogl.color_mult = 1.f;
+  m_ogl.alpha_mult = 1.f;
   m_prim_gl_state_needs_gl_update = true;
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
     glEnable(GL_BLEND);
     glBlendColor(1, 1, 1, 1);
+
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
@@ -399,6 +405,24 @@ void DirectRenderer::update_gl_blend() {
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
       //      ASSERT(false);
+    }
+  }
+
+  if (m_my_id == BucketId::OCEAN_NEAR) {
+    if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
+        state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
+      if (m_prim_gl_state.fogging_enable) {
+        // first draw.
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        m_ogl.alpha_mult = .5f;
+        glBlendEquation(GL_FUNC_ADD);
+      } else {
+        // second draw.
+        m_ogl.alpha_mult = 2.f;
+        glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_SRC_ALPHA, GL_ZERO);
+        glBlendEquation(GL_FUNC_ADD);
+      }
     }
   }
 }
@@ -673,6 +697,8 @@ void DirectRenderer::handle_ad(const u8* data,
       // TODO this has the address of different mip levels.
       break;
     case GsRegisterAddress::TEXFLUSH:
+      break;
+    case GsRegisterAddress::FRAME_1:
       break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));

@@ -153,6 +153,7 @@ class DirectRenderer : public BucketRenderer {
 
   static constexpr int TEXTURE_STATE_COUNT = 1;
 
+  float m_debug_tune = 1;
   struct TextureState {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;
@@ -243,6 +244,7 @@ class DirectRenderer : public BucketRenderer {
     u32 vertex_buffer_bytes = 0;
     u32 vertex_buffer_max_verts = 0;
     float color_mult = 1.0;
+    float alpha_mult = 1.0;
   } m_ogl;
 
   struct {

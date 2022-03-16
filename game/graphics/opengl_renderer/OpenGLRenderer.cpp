@@ -15,6 +15,7 @@
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/GenericRenderer.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
+#include "game/graphics/opengl_renderer/ocean/OceanNear.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -233,7 +234,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<GenericRenderer>("l1-water-generic", BucketCategory::GENERIC_MERC,
                                         BucketId::GENERIC_WATER_LEVEL1);  // 62
 
-  // 63?
+  init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);  // 63
   // 64?
 
   //-----------------------

@@ -87,6 +87,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/ocean/OceanMid.cpp
         graphics/opengl_renderer/ocean/OceanMid_PS2.cpp
         graphics/opengl_renderer/ocean/OceanMidAndFar.cpp
+        graphics/opengl_renderer/ocean/OceanNear.cpp
+        graphics/opengl_renderer/ocean/OceanNear_PS2.cpp
         graphics/opengl_renderer/ocean/OceanTexture.cpp
         graphics/opengl_renderer/ocean/OceanTexture_PC.cpp
         graphics/opengl_renderer/ocean/OceanTexture_PS2.cpp

@@ -3,10 +3,14 @@
 #include "third-party/imgui/imgui.h"
 
 constexpr int OCEAN_TEX_TBP = 8160;  // todo
-OceanTexture::OceanTexture()
-    : m_result_texture(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV, 8),
+OceanTexture::OceanTexture(bool generate_mipmaps)
+    : m_generate_mipmaps(generate_mipmaps),
+      m_result_texture(TEX0_SIZE,
+                       TEX0_SIZE,
+                       GL_UNSIGNED_INT_8_8_8_8_REV,
+                       m_generate_mipmaps ? NUM_MIPS : 1),
       m_temp_texture(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV),
-      m_hack_renderer("burp", BucketId::BUCKET0, 0x8000) {
+      m_hack_renderer("ocean-tex-unoptimized", BucketId::BUCKET0, 0x8000) {
   m_dbuf_x = m_dbuf_a;
   m_dbuf_y = m_dbuf_b;
 
@@ -54,7 +58,7 @@ void OceanTexture::init_textures(TexturePool& pool) {
   in.w = TEX0_SIZE;
   in.h = TEX0_SIZE;
   in.page_name = "PC-OCEAN";
-  in.name = "pc-ocean";
+  in.name = fmt::format("pc-ocean-mip-{}", m_generate_mipmaps);
   m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP);
 }
 
@@ -101,7 +105,9 @@ void OceanTexture::handle_tex_call_rest(SharedRenderState* render_state, ScopedP
 void OceanTexture::handle_ocean_texture(DmaFollower& dma,
                                         SharedRenderState* render_state,
                                         ScopedProfilerNode& prof) {
-  FramebufferTexturePairContext ctxt(m_temp_texture);
+  // if we're doing mipmaps, render to temp.
+  // otherwise, render directly to target.
+  FramebufferTexturePairContext ctxt(m_generate_mipmaps ? m_temp_texture : m_result_texture);
   // render to the first texture
   {
     // (set-display-gs-state arg0 ocean-tex-page-0 128 128 0 0)
@@ -262,7 +268,14 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
   }
 
   flush(render_state, prof);
-  make_mipmaps(render_state, prof);
+  if (m_generate_mipmaps) {
+    // if we did mipmaps, the above code rendered to temp, and now we need to generate mipmaps
+    // in the real output
+    make_texture_with_mipmaps(render_state, prof);
+  }
+
+  // give to gpu!
+  render_state->texture_pool->move_existing_to_vram(m_tex0_gpu, OCEAN_TEX_TBP);
 }
 
 /*!
@@ -270,7 +283,8 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
  * There's a trick here - we reduce the intensity of alpha on the lower lods. This lets texture
  * filtering slowly fade the alpha value out to 0 with distance.
  */
-void OceanTexture::make_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void OceanTexture::make_texture_with_mipmaps(SharedRenderState* render_state,
+                                             ScopedProfilerNode& prof) {
   glBindVertexArray(m_mipmap.vao);
   render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].activate();
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(),
@@ -287,11 +301,11 @@ void OceanTexture::make_mipmaps(SharedRenderState* render_state, ScopedProfilerN
       0);
   glBindBuffer(GL_ARRAY_BUFFER, m_mipmap.vtx_buffer);
 
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < NUM_MIPS; i++) {
     FramebufferTexturePairContext ctxt(m_result_texture, i);
     glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(),
                                      "alpha_intensity"),
-                std::max(0.f, 1.f - 0.5f * i));
+                std::max(0.f, 1.f - 0.4f * i));
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(), "scale"),
         1.f / (1 << i));
@@ -299,6 +313,5 @@ void OceanTexture::make_mipmaps(SharedRenderState* render_state, ScopedProfilerN
     prof.add_draw_call();
     prof.add_tri(2);
   }
-  render_state->texture_pool->move_existing_to_vram(m_tex0_gpu, OCEAN_TEX_TBP);
   glBindVertexArray(0);
 }
