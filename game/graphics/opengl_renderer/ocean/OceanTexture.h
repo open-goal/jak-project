@@ -41,7 +41,6 @@ class OceanTexture {
 
   void make_texture_with_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-
   bool m_use_ocean_specific = true;
   bool m_generate_mipmaps;
 

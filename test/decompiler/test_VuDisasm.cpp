@@ -108,17 +108,27 @@ TEST(VuDisasm, OceanTexture) {
 TEST(VuDisasm, OceanMid) {
   auto data = get_test_data("ocean-mid");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  /*
+  disasm.add_label_with_name(41, "JUMP_41");
+  disasm.add_label_with_name(43, "JUMP_43");
+  disasm.add_label_with_name(46, "JUMP_46");
+  disasm.add_label_with_name(73, "JUMP_73");
+  disasm.add_label_with_name(107, "JUMP_107");
+  disasm.add_label_with_name(275, "JUMP_275");
+   */
+
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
   EXPECT_EQ(disasm.to_string(prog), get_expected("ocean-mid"));
 }
 
-// TEST(VuDisasm, OceanNear) {
-//   auto data = get_test_data("ocean-near");
-//   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
-//   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-//   fmt::print("{}\n", disasm.to_string(prog));
-//   // EXPECT_EQ(disasm.to_string(prog), get_expected("ocean-mid"));
-// }
+TEST(VuDisasm, OceanNear) {
+  auto data = get_test_data("ocean-near");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  // disasm.add_label_with_name(39, "JUMP_39");
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  // fmt::print("{}\n", disasm.to_string_with_cpp(prog, false));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("ocean-near"));
+}
 
 TEST(VuDisasm, Sky) {
   auto data = get_test_data("sky");
