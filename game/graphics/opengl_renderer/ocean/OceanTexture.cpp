@@ -305,7 +305,7 @@ void OceanTexture::make_texture_with_mipmaps(SharedRenderState* render_state,
     FramebufferTexturePairContext ctxt(m_result_texture, i);
     glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(),
                                      "alpha_intensity"),
-                std::max(0.f, 1.f - 0.4f * i));
+                std::max(0.f, 1.f - 0.51f * i));
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(), "scale"),
         1.f / (1 << i));

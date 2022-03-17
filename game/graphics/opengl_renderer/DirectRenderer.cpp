@@ -361,7 +361,8 @@ void DirectRenderer::update_gl_blend() {
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
@@ -370,7 +371,7 @@ void DirectRenderer::update_gl_blend() {
       // Cs * As + (1) * Cd
       // s, d
       ASSERT(state.fix == 0);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.b == GsAlpha::BlendMode::SOURCE && state.c == GsAlpha::BlendMode::SOURCE &&
@@ -378,26 +379,26 @@ void DirectRenderer::update_gl_blend() {
       // (0 - Cs) * As + Cd
       // Cd - Cs * As
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
                state.c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * fix + Cd
       // Cs * fix + (1 - fx) * Cd
-      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO);
       glBlendColor(0, 0, 0, state.fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::SOURCE &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::SOURCE) {
       // this is very weird...
-      glBlendFunc(GL_ONE, GL_ZERO);
+      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::DEST && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - 0) * Ad + Cd
-      glBlendFunc(GL_DST_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
       m_ogl.color_mult = 0.5;
     } else {
@@ -409,19 +410,13 @@ void DirectRenderer::update_gl_blend() {
   }
 
   if (m_my_id == BucketId::OCEAN_NEAR) {
+    glDepthMask(GL_FALSE);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       if (m_prim_gl_state.fogging_enable) {
-        // first draw.
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
         m_ogl.alpha_mult = .5f;
-        glBlendEquation(GL_FUNC_ADD);
       } else {
-        // second draw.
-        m_ogl.alpha_mult = 2.f;
-        glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_SRC_ALPHA, GL_ZERO);
-        glBlendEquation(GL_FUNC_ADD);
+        glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_ONE, GL_ZERO);
       }
     }
   }
@@ -831,7 +826,6 @@ void DirectRenderer::handle_zbuf1(u64 val,
 
   bool write = !x.zmsk();
   //  ASSERT(write);
-
   if (write != m_test_state.depth_writes) {
     m_stats.flush_from_zbuf++;
     flush_pending(render_state, prof);

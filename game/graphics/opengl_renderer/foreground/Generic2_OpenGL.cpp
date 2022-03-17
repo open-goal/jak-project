@@ -122,35 +122,35 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_SRC_DST) {
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
       ASSERT(fix == 0);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::ZERO_SRC_SRC_DST) {
       // (0 - Cs) * As + Cd
       // Cd - Cs * As
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_DST_FIX_DST) {
       // (Cs - Cd) * fix + Cd
       // Cs * fix + (1 - fx) * Cd
-      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO);
       glBlendColor(0, 0, 0, fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_SRC_SRC_SRC) {
       // this is very weird...
       // Cs
-      glBlendFunc(GL_ONE, GL_ZERO);
+      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST) {
       // (Cs - 0) * Ad + Cd
-      glBlendFunc(GL_DST_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
       color_mult = 0.5f;  // HACK, should probably be 0.5
     } else {
