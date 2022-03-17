@@ -7,7 +7,7 @@
 
 class OceanTexture {
  public:
-  OceanTexture();
+  OceanTexture(bool generate_mipmaps);
   void handle_ocean_texture(DmaFollower& dma,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof);
@@ -39,10 +39,15 @@ class OceanTexture {
   void init_pc();
   void destroy_pc();
 
-  bool m_use_ocean_specific = true;
+  void make_texture_with_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  static constexpr int TEX0_SIZE = 256;  // TODO actually 128
-  FramebufferTexturePair m_tex0;
+  bool m_use_ocean_specific = true;
+  bool m_generate_mipmaps;
+
+  static constexpr int TEX0_SIZE = 128;
+  static constexpr int NUM_MIPS = 8;
+  FramebufferTexturePair m_result_texture;
+  FramebufferTexturePair m_temp_texture;
   GpuTexture* m_tex0_gpu = nullptr;
 
   // (deftype ocean-texture-constants (structure)
@@ -135,6 +140,15 @@ class OceanTexture {
 
     GLuint vao, static_vertex_buffer, dynamic_vertex_buffer, gl_index_buffer;
   } m_pc;
+
+  struct MipMap {
+    GLuint vao, vtx_buffer;
+    struct Vertex {
+      float x, y;
+      float s, t;
+    };
+    static_assert(sizeof(Vertex) == 16);
+  } m_mipmap;
 
   enum TexVu1Data {
     BUF0 = 384,

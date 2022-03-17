@@ -6,6 +6,9 @@ in vec4 fragment_color;
 in vec3 tex_coord;
 uniform float alpha_reject;
 uniform float color_mult;
+uniform float alpha_mult;
+uniform float alpha_sub;
+
 uniform vec4 fog_color;
 
 in flat uvec4 tex_info;
@@ -65,10 +68,12 @@ void main() {
     }
     color *= 2;
     color.xyz *= color_mult;
+    color.w *= alpha_mult;
     if (color.a < alpha_reject) {
         discard;
     }
     if (tex_info.w == 1) {
         color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fog_color.w * (1 - fog), 0, 1));
     }
+
 }

@@ -7,7 +7,7 @@
  */
 class FramebufferTexturePair {
  public:
-  FramebufferTexturePair(int w, int h, u64 texture_format);
+  FramebufferTexturePair(int w, int h, u64 texture_format, int num_levels = 1);
   ~FramebufferTexturePair();
 
   GLuint texture() const { return m_texture; }
@@ -17,14 +17,14 @@ class FramebufferTexturePair {
 
  private:
   friend class FramebufferTexturePairContext;
-  GLuint m_framebuffer;
+  std::vector<GLuint> m_framebuffers;
   GLuint m_texture;
   int m_w, m_h;
 };
 
 class FramebufferTexturePairContext {
  public:
-  FramebufferTexturePairContext(FramebufferTexturePair& fb);
+  FramebufferTexturePairContext(FramebufferTexturePair& fb, int level = 0);
   ~FramebufferTexturePairContext();
 
   void switch_to(FramebufferTexturePair& fb);

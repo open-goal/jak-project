@@ -113,6 +113,7 @@ void DirectRenderer::reset_state() {
 }
 
 void DirectRenderer::draw_debug_window() {
+  ImGui::SliderFloat("debug", &m_debug_tune, 0., 1.);
   ImGui::Checkbox("Wireframe", &m_debug_state.wireframe);
   ImGui::SameLine();
   ImGui::Checkbox("No-texture", &m_debug_state.disable_texture);
@@ -265,6 +266,9 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "color_mult"),
                 m_ogl.color_mult);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "alpha_mult"),
+                m_ogl.alpha_mult);
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "fog_color"),
                 render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
@@ -344,18 +348,21 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
   m_ogl.color_mult = 1.f;
+  m_ogl.alpha_mult = 1.f;
   m_prim_gl_state_needs_gl_update = true;
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
     glEnable(GL_BLEND);
     glBlendColor(1, 1, 1, 1);
+
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
@@ -364,7 +371,7 @@ void DirectRenderer::update_gl_blend() {
       // Cs * As + (1) * Cd
       // s, d
       ASSERT(state.fix == 0);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.b == GsAlpha::BlendMode::SOURCE && state.c == GsAlpha::BlendMode::SOURCE &&
@@ -372,26 +379,26 @@ void DirectRenderer::update_gl_blend() {
       // (0 - Cs) * As + Cd
       // Cd - Cs * As
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
                state.c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * fix + Cd
       // Cs * fix + (1 - fx) * Cd
-      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO);
       glBlendColor(0, 0, 0, state.fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::SOURCE &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::SOURCE) {
       // this is very weird...
-      glBlendFunc(GL_ONE, GL_ZERO);
+      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::DEST && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - 0) * Ad + Cd
-      glBlendFunc(GL_DST_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
       m_ogl.color_mult = 0.5;
     } else {
@@ -399,6 +406,17 @@ void DirectRenderer::update_gl_blend() {
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
       //      ASSERT(false);
+    }
+  }
+
+  if (m_my_id == BucketId::OCEAN_NEAR) {
+    if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
+        state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
+      if (m_prim_gl_state.fogging_enable) {
+        m_ogl.alpha_mult = .5f;
+      } else {
+        glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_ONE, GL_ZERO);
+      }
     }
   }
 }
@@ -433,7 +451,10 @@ void DirectRenderer::update_gl_test() {
     ASSERT(false);
   }
 
-  if (state.depth_writes) {
+  bool alpha_trick_to_disable = m_test_state.alpha_test_enable &&
+                                m_test_state.alpha_test == GsTest::AlphaTest::NEVER &&
+                                m_test_state.afail == GsTest::AlphaFail::FB_ONLY;
+  if (state.depth_writes && !alpha_trick_to_disable) {
     glDepthMask(GL_TRUE);
   } else {
     glDepthMask(GL_FALSE);
@@ -674,6 +695,8 @@ void DirectRenderer::handle_ad(const u8* data,
       break;
     case GsRegisterAddress::TEXFLUSH:
       break;
+    case GsRegisterAddress::FRAME_1:
+      break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
       ASSERT(false);
@@ -805,7 +828,6 @@ void DirectRenderer::handle_zbuf1(u64 val,
 
   bool write = !x.zmsk();
   //  ASSERT(write);
-
   if (write != m_test_state.depth_writes) {
     m_stats.flush_from_zbuf++;
     flush_pending(render_state, prof);

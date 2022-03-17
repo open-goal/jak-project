@@ -127,7 +127,7 @@ enum class VuInstrK {
   WAITP,
   //  ESADD,
   //  ERSADD,
-  //  ELENG,
+  ELENG,
   ERLENG,
   //  EATANxy,
   //  EATANxz,
