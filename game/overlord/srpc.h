@@ -63,9 +63,13 @@ struct SoundRpcCommand {
     SoundRpcGetIrxVersion irx_version;
     SoundRpcBankCommand load_bank;
     SoundRpcSetLanguageCommand set_language;
+    u8 max_size[0x4C]; // Temporary
   };
 };
+
+static_assert(sizeof(SoundRpcCommand) == 0x50);
 
 extern MusicTweaks gMusicTweakInfo;
 
 u32 Thread_Loader();
+u32 Thread_Player();

@@ -3,6 +3,7 @@
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
+#include "game/common/player_rpc_types.h"
 #include "game/common/game_common_types.h"
 #include "common/versions.h"
 #include "sbank.h"
@@ -14,7 +15,9 @@ using namespace iop;
 MusicTweaks gMusicTweakInfo;
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
 uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
+uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 127];
 int32_t gSoundEnable = 1;
+u32 gMusic, gMusicPause;
 u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 
 // english, french, germain, spanish, italian, japanese, uk.
@@ -24,12 +27,27 @@ const char* gLanguage = nullptr;
 void srpc_init_globals() {
   memset((void*)&gMusicTweakInfo, 0, sizeof(gMusicTweakInfo));
   memset((void*)gLoaderBuf, 0, sizeof(gLoaderBuf));
+  memset((void*)gPlayerBuf, 0, sizeof(gPlayerBuf));
   gSoundEnable = 1;
   gInfoEE = 0;
   gLanguage = languages[(int)Language::English];
 }
 
-// todo Thread_Player
+void* RPC_Player(unsigned int fno, void* data, int size);
+
+u32 Thread_Player() {
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  // set up RPC
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, PLAYER_RPC_ID, RPC_Player, gPlayerBuf, nullptr, nullptr, &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
+  return 0;
+}
 
 void* RPC_Loader(unsigned int fno, void* data, int size);
 
@@ -47,7 +65,65 @@ u32 Thread_Loader() {
   return 0;
 }
 
-// todo RPC_Player
+void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
+  int n_messages = size / SRPC_MESSAGE_SIZE;
+  SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
+  if (gSoundEnable) {
+    while (n_messages > 0) {
+      switch (cmd->command) {
+        case SoundCommand::PLAY: {
+          printf("Ignoring Play Sound command\n");
+        } break;
+        case SoundCommand::PAUSE_SOUND: {
+          printf("Ignoring Pause Sound command\n");
+        } break;
+        case SoundCommand::STOP_SOUND: {
+          printf("Ignoring Stop Sound command\n");
+        } break;
+        case SoundCommand::CONTINUE_SOUND: {
+          printf("Ignoring Continue Sound command\n");
+        } break;
+        case SoundCommand::SET_PARAM: {
+          printf("Ignoring Set param command\n");
+        } break;
+        case SoundCommand::SET_MASTER_VOLUME: {
+          printf("Ignoring Set master volume command\n");
+        } break;
+        case SoundCommand::PAUSE_GROUP: {
+          printf("Ignoring Pause Group comman\n");
+        } break;
+        case SoundCommand::STOP_GROUP: {
+          printf("Ignoring Stop Group command\n");
+        } break;
+        case SoundCommand::CONTINUE_GROUP: {
+          printf("Ignoring Continue Group command\n");
+        } break;
+        case SoundCommand::SET_FALLOFF_CURVE: {
+          printf("Ignoring Set Fallof Curve command\n");
+        } break;
+        case SoundCommand::SET_SOUND_FALLOFF: {
+          printf("Ignoring Set Sound Falloff command\n");
+        } break;
+        case SoundCommand::SET_FLAVA: {
+          printf("Ignoring Set Flava command\n");
+        } break;
+        case SoundCommand::SET_EAR_TRANS: {
+          printf("Ignoring Set Ear Trans command\n");
+        } break;
+        case SoundCommand::SHUTDOWN: {
+          printf("Ignoring Shutdown command\n");
+        } break;
+        default: {
+          printf("Unhandled RPC Player command %d\n", (int)cmd->command);
+          ASSERT(false);
+        } break;
+      }
+      n_messages--;
+      cmd++;
+    }
+  }
+  return nullptr;
+}
 
 void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
   int n_messages = size / SRPC_MESSAGE_SIZE;
