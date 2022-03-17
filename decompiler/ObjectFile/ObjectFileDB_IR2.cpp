@@ -649,7 +649,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
       }
 
       if (func.ir2.top_form && func.ir2.env.has_local_vars()) {
-        result += '\n';
+        result += "\n;;-*-OpenGOAL-Start-*-\n\n";
         if (func.ir2.env.has_local_vars()) {
           if (!func.ir2.print_debug_forms) {
             result += ";; expression building failed part way through, function may be weird\n";
@@ -659,8 +659,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
           result += ";; no variable information\n";
           result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
         }
-
-        result += '\n';
+        result += "\n\n;;-*-OpenGOAL-End-*-\n\n";
       } else if (func.ir2.atomic_ops_succeeded) {
         auto& ao = func.ir2.atomic_ops;
         for (size_t i = 0; i < ao->ops.size(); i++) {
@@ -700,6 +699,8 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
         result += func.ir2.debug_form_string;
         result += '\n';
       }
+
+      result += ";; .endfunction\n\n";
     }
 
     // print data
@@ -723,6 +724,8 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
         result += "; " + data.linked_data.get_goal_string(seg, i) + "\n";
       }
     }
+
+    result += '\n';
   }
 
   return result;
