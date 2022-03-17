@@ -127,10 +127,6 @@ const std::unordered_map<
         {".ppach", &Compiler::compile_asm_ppach},
         {".psubw", &Compiler::compile_asm_psubw},
 
-        {".por", &Compiler::compile_asm_por},
-        {".pnor", &Compiler::compile_asm_pnor},
-        {".pand", &Compiler::compile_asm_pand},
-
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
         {"begin", &Compiler::compile_begin},
