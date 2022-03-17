@@ -410,7 +410,6 @@ void DirectRenderer::update_gl_blend() {
   }
 
   if (m_my_id == BucketId::OCEAN_NEAR) {
-    glDepthMask(GL_FALSE);
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       if (m_prim_gl_state.fogging_enable) {
@@ -452,7 +451,10 @@ void DirectRenderer::update_gl_test() {
     ASSERT(false);
   }
 
-  if (state.depth_writes) {
+  bool alpha_trick_to_disable = m_test_state.alpha_test_enable &&
+                                m_test_state.alpha_test == GsTest::AlphaTest::NEVER &&
+                                m_test_state.afail == GsTest::AlphaFail::FB_ONLY;
+  if (state.depth_writes && !alpha_trick_to_disable) {
     glDepthMask(GL_TRUE);
   } else {
     glDepthMask(GL_FALSE);
