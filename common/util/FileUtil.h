@@ -20,7 +20,8 @@ std::filesystem::path get_user_memcard_dir();
 std::string get_project_path();
 std::string get_file_path(const std::vector<std::string>& input);
 /// <summary>
-/// Like running a `mkdir -p [path]`.  If a file with an extension is provided, the parent_path will be used instead
+/// Like running a `mkdir -p [path]`.  If a file with an extension is provided, the parent_path will
+/// be used instead
 /// </summary>
 /// <param name="path"></param>
 /// <returns>if the path was successfully created</returns>
