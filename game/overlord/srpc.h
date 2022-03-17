@@ -41,6 +41,19 @@ enum class SoundCommand : u16 {
   UNLOAD_MUSIC = 22
 };
 
+struct SoundPlayParms {
+  u16 mask;
+  s16 pitch_mod;
+  s16 bend;
+  s16 fo_min;
+  s16 fo_max;
+  s8 fo_curve;
+  s8 priority;
+  s32 volume;
+  s32 trans[3];
+  u8 group;
+};
+
 struct SoundRpcGetIrxVersion {
   u32 major;
   u32 minor;
@@ -56,6 +69,63 @@ struct SoundRpcSetLanguageCommand {
   u32 langauge_id;  // game_common_types.h, Language
 };
 
+struct SoundRpcPlayCommand {
+  u32 sound_id;
+  u32 pad[2];
+  char name[16];
+  SoundPlayParms parms;
+};
+
+struct SoundRpcSetParam {
+  u32 sound_id;
+  SoundPlayParms parms;
+  s32 auto_time;
+  s32 auto_from;
+};
+
+struct SoundRpcSoundIdCommand {
+  u32 sound_id;
+};
+
+struct SoundRpcSetFlavaCommand {
+  u8 flava;
+};
+
+struct SoundRpcSetReverb {
+  u8 core;
+  s32 reverb;
+  u32 left;
+  u32 right;
+};
+
+struct SoundRpcSetEarTrans {
+  s32 ear_trans[3];
+  s32 cam_trans[3];
+  s32 cam_angle[3];
+};
+
+struct SoundRpcSetFPSCommand {
+  u8 fps;
+};
+
+struct SoundRpcSetFallof {
+  u8 pad[12];
+  char name[16];
+  s32 curve;
+  s32 min;
+  s32 max;
+};
+
+struct SoundRpcSetFallofCurve {
+  s32 curve;
+  s32 falloff;
+  s32 ease;
+};
+
+struct SoundRpcGroupCommand {
+  u8 group;
+};
+
 struct SoundRpcCommand {
   u16 rsvd1;
   SoundCommand command;
@@ -63,7 +133,15 @@ struct SoundRpcCommand {
     SoundRpcGetIrxVersion irx_version;
     SoundRpcBankCommand load_bank;
     SoundRpcSetLanguageCommand set_language;
-    u8 max_size[0x4C]; // Temporary
+    SoundRpcPlayCommand play;
+    SoundRpcSoundIdCommand sound_id;
+    SoundRpcSetFPSCommand fps;
+    SoundRpcSetEarTrans ear_trans;
+    SoundRpcSetReverb reverb;
+    SoundRpcSetFallof fallof;
+    SoundRpcSetFallofCurve fallof_curve;
+    SoundRpcGroupCommand group;
+    u8 max_size[0x4C];  // Temporary
   };
 };
 

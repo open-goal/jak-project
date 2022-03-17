@@ -72,7 +72,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     while (n_messages > 0) {
       switch (cmd->command) {
         case SoundCommand::PLAY: {
-          printf("Ignoring Play Sound command\n");
+          printf("Ignoring Play Sound command for sound %.16s\n", cmd->play.name);
         } break;
         case SoundCommand::PAUSE_SOUND: {
           printf("Ignoring Pause Sound command\n");
