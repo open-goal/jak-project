@@ -37,6 +37,7 @@ enum class ShaderId {
   GENERIC = 12,
   OCEAN_TEXTURE = 13,
   OCEAN_TEXTURE_MIPMAP = 14,
+  OCEAN_COMMON = 15,
   MAX_SHADERS
 };
 

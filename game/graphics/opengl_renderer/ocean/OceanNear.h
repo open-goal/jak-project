@@ -3,6 +3,7 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
 #include "game/common/vu.h"
+#include "game/graphics/opengl_renderer/ocean/CommonOceanRenderer.h"
 
 class OceanNear : public BucketRenderer {
  public:
@@ -23,10 +24,13 @@ class OceanNear : public BucketRenderer {
 
   OceanTexture m_texture_renderer;
   DirectRenderer m_direct;
+  CommonOceanRenderer m_common_ocean_renderer;
 
   bool m_buffer_toggle = false;
   static constexpr int VU1_INPUT_BUFFER_BASE = 0;
   static constexpr int VU1_INPUT_BUFFER_OFFSET = 0x10;
+
+  bool m_use_new = true;
 
   void xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof);
 

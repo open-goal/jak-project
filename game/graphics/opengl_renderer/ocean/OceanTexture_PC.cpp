@@ -394,11 +394,11 @@ void OceanTexture::xgkick_PC(Vf* src) {
   }
 }
 
-void OceanTexture::setup_pc() {
+void OceanTexture::setup_renderer() {
   m_pc.vtx_idx = 0;
 }
 
-void OceanTexture::flush_pc(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void OceanTexture::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   ASSERT(m_pc.vtx_idx == 2112);
   glBindVertexArray(m_pc.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_pc.dynamic_vertex_buffer);

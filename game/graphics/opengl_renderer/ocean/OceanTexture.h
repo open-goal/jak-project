@@ -16,15 +16,6 @@ class OceanTexture {
   ~OceanTexture();
 
  private:
-  void handle_tex_call_start(SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_tex_call_rest(SharedRenderState* render_state, ScopedProfilerNode& prof);
-
-  void run_L1(SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void run_L2(SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void run_L3();
-  void run_L5(SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void xgkick(Vf* src, SharedRenderState* render_state, ScopedProfilerNode& prof);
-
   void run_L1_PC();
   void run_L2_PC();
   void run_L3_PC();
@@ -34,14 +25,11 @@ class OceanTexture {
   void setup_renderer();
   void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  void setup_pc();
-  void flush_pc(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void init_pc();
   void destroy_pc();
 
   void make_texture_with_mipmaps(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  bool m_use_ocean_specific = true;
   bool m_generate_mipmaps;
 
   static constexpr int TEX0_SIZE = 128;
@@ -161,6 +149,4 @@ class OceanTexture {
   enum TexVu1Prog { START = 0, REST = 2, DONE = 4 };
 
   static constexpr int NUM_FRAG_LOOPS = 9;
-
-  DirectRenderer m_hack_renderer;
 };
