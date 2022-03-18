@@ -84,9 +84,6 @@ class DirectRenderer : public BucketRenderer {
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,
                            ScopedProfilerNode& prof);
-  void handle_xyz2_packed(const u8* data,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof);
   void handle_tex0_1_packed(const u8* data);
   void handle_tex0_1(u64 val);
   void handle_tex1_1(u64 val);
@@ -153,7 +150,6 @@ class DirectRenderer : public BucketRenderer {
 
   static constexpr int TEXTURE_STATE_COUNT = 1;
 
-  float m_debug_tune = 1;
   struct TextureState {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;

@@ -9,8 +9,7 @@ OceanTexture::OceanTexture(bool generate_mipmaps)
                        TEX0_SIZE,
                        GL_UNSIGNED_INT_8_8_8_8_REV,
                        m_generate_mipmaps ? NUM_MIPS : 1),
-      m_temp_texture(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV),
-      m_hack_renderer("ocean-tex-unoptimized", BucketId::BUCKET0, 0x8000) {
+      m_temp_texture(TEX0_SIZE, TEX0_SIZE, GL_UNSIGNED_INT_8_8_8_8_REV) {
   m_dbuf_x = m_dbuf_a;
   m_dbuf_y = m_dbuf_b;
 
@@ -66,40 +65,6 @@ void OceanTexture::draw_debug_window() {
   if (m_tex0_gpu) {
     ImGui::Image((void*)m_tex0_gpu->gpu_textures.at(0).gl, ImVec2(m_tex0_gpu->w, m_tex0_gpu->h));
   }
-  ImGui::Checkbox("Optimized Version", &m_use_ocean_specific);
-}
-
-void OceanTexture::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (m_use_ocean_specific) {
-    flush_pc(render_state, prof);
-  } else {
-    m_hack_renderer.flush_pending(render_state, prof);
-  }
-}
-
-void OceanTexture::setup_renderer() {
-  if (m_use_ocean_specific) {
-    setup_pc();
-  } else {
-    m_hack_renderer.reset_state();
-  }
-}
-
-void OceanTexture::handle_tex_call_start(SharedRenderState* render_state,
-                                         ScopedProfilerNode& prof) {
-  if (m_use_ocean_specific) {
-    run_L1_PC();
-  } else {
-    run_L1(render_state, prof);
-  }
-}
-
-void OceanTexture::handle_tex_call_rest(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (m_use_ocean_specific) {
-    run_L2_PC();
-  } else {
-    run_L2(render_state, prof);
-  }
 }
 
 void OceanTexture::handle_ocean_texture(DmaFollower& dma,
@@ -148,27 +113,8 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::NOP);
     ASSERT(data.vifcode1().kind == VifCode::Kind::DIRECT);
     memcpy(&m_envmap_adgif, data.data + 16, sizeof(AdGifData));
-
-    // fmt::print("adgif is:\n{}\n\n", AdgifHelper(m_envmap_adgif).print());
-    /*
-     * adgif is:
-[0] TEX0_1
-  tbp0: 10010 tbw: 2 psm: 19 tw: 6 th: 6 tcc: 1 tfx: 0 cbp: 10046 cpsm: 0 csm: 0
-[1] TEX1_1
-  lcm: false mxl: 0 mmag: true mmin: 4 mtba: false l: 0 k: 0
-[2] MIPTBP1_1
-[3] CLAMP_1
-  0x5
-[4] ALPHA_1
-  (Cs - Cd) * As / 128.0 + Cd
-
-     */
-
     // HACK
     setup_renderer();
-    if (!m_use_ocean_specific) {
-      m_hack_renderer.render_gif(data.data, UINT32_MAX, render_state, prof);
-    }
   }
 
   // vertices are uploaded double buffered
@@ -197,7 +143,7 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(data.vifcode0().immediate == TexVu1Prog::START);
     ASSERT(data.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_start(render_state, prof);
+    run_L1_PC();
   }
 
   // loop over vertex groups
@@ -218,7 +164,7 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(call.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(call.vifcode0().immediate == TexVu1Prog::REST);
     ASSERT(call.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_rest(render_state, prof);
+    run_L2_PC();
   }
 
   // last upload does something weird...
@@ -254,7 +200,7 @@ void OceanTexture::handle_ocean_texture(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(data.vifcode0().immediate == TexVu1Prog::REST);
     ASSERT(data.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    handle_tex_call_rest(render_state, prof);
+    run_L2_PC();
   }
 
   // last call

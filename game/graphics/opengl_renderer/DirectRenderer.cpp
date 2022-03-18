@@ -113,7 +113,6 @@ void DirectRenderer::reset_state() {
 }
 
 void DirectRenderer::draw_debug_window() {
-  ImGui::SliderFloat("debug", &m_debug_tune, 0., 1.);
   ImGui::Checkbox("Wireframe", &m_debug_state.wireframe);
   ImGui::SameLine();
   ImGui::Checkbox("No-texture", &m_debug_state.disable_texture);
@@ -408,17 +407,6 @@ void DirectRenderer::update_gl_blend() {
       //      ASSERT(false);
     }
   }
-
-  if (m_my_id == BucketId::OCEAN_NEAR) {
-    if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
-        state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
-      if (m_prim_gl_state.fogging_enable) {
-        m_ogl.alpha_mult = .5f;
-      } else {
-        glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_ONE, GL_ZERO);
-      }
-    }
-  }
 }
 
 void DirectRenderer::update_gl_test() {
@@ -588,9 +576,6 @@ void DirectRenderer::render_gif(const u8* data,
               break;
             case GifTag::RegisterDescriptor::TEX0_1:
               handle_tex0_1_packed(data + offset);
-              break;
-            case GifTag::RegisterDescriptor::XYZ2:
-              handle_xyz2_packed(data + offset, render_state, prof);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
@@ -797,24 +782,6 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
   handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
-}
-
-void DirectRenderer::handle_xyz2_packed(const u8* data,
-                                        SharedRenderState* render_state,
-                                        ScopedProfilerNode& prof) {
-  u32 x, y, z;
-  memcpy(&x, data, 4);
-  memcpy(&y, data + 4, 4);
-  memcpy(&z, data + 8, 4);
-
-  u64 upper;
-  memcpy(&upper, data + 8, 8);
-  bool adc = upper & (1ull << 47);
-  float un_mess_up = 448.f / 512.f;
-  // TODO total hack
-  s32 yy = (((s32)y - 1024) << 17) * un_mess_up;
-  handle_xyzf2_common(((x << 2) + 32768 - 2048 * 2) << 16, ((32768) << 16) - yy, z, 0, render_state,
-                      prof, !adc);
 }
 
 void DirectRenderer::handle_zbuf1(u64 val,

@@ -1,9 +1,5 @@
 #include "OceanNear.h"
 
-void OceanNear::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  m_direct.render_gif((const u8*)&m_vu_data[addr], UINT32_MAX, render_state, prof);
-}
-
 void OceanNear::run_call0_vu2c() {
   bool bc;
   // lq.xyzw vf01, 951(vi00)    |  nop                            0
