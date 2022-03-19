@@ -14,11 +14,12 @@ using namespace iop;
 
 MusicTweaks gMusicTweakInfo;
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
-uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
-uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 127];
+static uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
+static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 127];
 int32_t gSoundEnable = 1;
-u32 gMusic, gMusicPause;
-u32 gInfoEE = 0;  // EE address where we should send info on each frame.
+static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
+s16 gFlava;
+static s32 gMusic;
 
 // english, french, germain, spanish, italian, japanese, uk.
 static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
@@ -93,22 +94,27 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           printf("Ignoring Pause Group comman\n");
         } break;
         case SoundCommand::STOP_GROUP: {
-          printf("Ignoring Stop Group command\n");
+          u8 group = cmd->group.group;
+          KillSoundsInGroup(group);
+          if ((group & 4) != 0) {
+            // TODO StopVAGStream(0,0);
+          }
         } break;
         case SoundCommand::CONTINUE_GROUP: {
           printf("Ignoring Continue Group command\n");
         } break;
         case SoundCommand::SET_FALLOFF_CURVE: {
-          printf("Ignoring Set Fallof Curve command\n");
+          SetCurve(cmd->fallof_curve.curve, cmd->fallof_curve.falloff, cmd->fallof_curve.ease);
         } break;
         case SoundCommand::SET_SOUND_FALLOFF: {
           printf("Ignoring Set Sound Falloff command\n");
         } break;
         case SoundCommand::SET_FLAVA: {
-          printf("Ignoring Set Flava command\n");
+          gFlava = cmd->flava.flava;
         } break;
         case SoundCommand::SET_EAR_TRANS: {
-          printf("Ignoring Set Ear Trans command\n");
+          SetEarTrans(&cmd->ear_trans.ear_trans, &cmd->ear_trans.cam_trans,
+                      cmd->ear_trans.cam_angle);
         } break;
         case SoundCommand::SHUTDOWN: {
           printf("Ignoring Shutdown command\n");
@@ -162,7 +168,13 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           break;
         }
         case SoundCommand::LOAD_MUSIC:
-          printf("ignoring load music\n");
+          s32 res;
+          do {
+            res = WaitSema(gSema);
+          } while (res != 0);
+          if (gMusic != 0) {
+          }
+          SignalSema(gSema);
           break;
         case SoundCommand::UNLOAD_MUSIC:
           printf("ignoring unload music\n");

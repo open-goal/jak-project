@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ssound.h"
 #include "common/common_types.h"
 
 void srpc_init_globals();
@@ -41,19 +42,6 @@ enum class SoundCommand : u16 {
   UNLOAD_MUSIC = 22
 };
 
-struct SoundPlayParms {
-  u16 mask;
-  s16 pitch_mod;
-  s16 bend;
-  s16 fo_min;
-  s16 fo_max;
-  s8 fo_curve;
-  s8 priority;
-  s32 volume;
-  s32 trans[3];
-  u8 group;
-};
-
 struct SoundRpcGetIrxVersion {
   u32 major;
   u32 minor;
@@ -73,12 +61,12 @@ struct SoundRpcPlayCommand {
   u32 sound_id;
   u32 pad[2];
   char name[16];
-  SoundPlayParms parms;
+  SoundParams parms;
 };
 
 struct SoundRpcSetParam {
   u32 sound_id;
-  SoundPlayParms parms;
+  SoundParams parms;
   s32 auto_time;
   s32 auto_from;
 };
@@ -99,9 +87,9 @@ struct SoundRpcSetReverb {
 };
 
 struct SoundRpcSetEarTrans {
-  s32 ear_trans[3];
-  s32 cam_trans[3];
-  s32 cam_angle[3];
+  Vec3w ear_trans;
+  Vec3w cam_trans;
+  s32 cam_angle;
 };
 
 struct SoundRpcSetFPSCommand {
@@ -141,6 +129,7 @@ struct SoundRpcCommand {
     SoundRpcSetFallof fallof;
     SoundRpcSetFallofCurve fallof_curve;
     SoundRpcGroupCommand group;
+    SoundRpcSetFlavaCommand flava;
     u8 max_size[0x4C];  // Temporary
   };
 };

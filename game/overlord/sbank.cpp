@@ -17,7 +17,7 @@ void sbank_init_globals() {
 void InitBanks() {
   for (auto& gBank : gBanks) {
     gBank->unk1 = 0;
-    gBank->unk2 = 0;
+    gBank->sound_count = 0;
     strcpy(gBank->name, "<unused>");
   }
 }
@@ -37,12 +37,36 @@ SoundBank* AllocateBank() {
   }
 
   if (idx == 0) {
-    gBanks[0]->unk2 = 0x3fe;  // ??
+    gBanks[0]->sound_count = 0x3fe;  // ??
   } else {
-    gBanks[idx]->unk2 = 0x65;  // ??
+    gBanks[idx]->sound_count = 0x65;  // ??
   }
 
   return gBanks[idx];
+}
+
+s32 LookupSoundIndex(const char* name, SoundBank** bank_out) {
+  int idx = 0;
+  while (true) {
+    if (idx > N_BANKS - 1) {
+      return -1;
+    }
+
+    auto& bank = gBanks[idx];
+    if (bank->unk1 == 0) {
+      break;
+    }
+
+    for (int i = 0; i < bank->sound_count; i++) {
+      if (memcmp(bank->name, name, 16) == 0) {
+        *bank_out = bank;
+        return i;
+      }
+    }
+    idx++;
+  }
+
+  return -1;
 }
 
 // name should be a 16-byte "sound name"

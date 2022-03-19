@@ -2,10 +2,16 @@
 
 #include "common/common_types.h"
 
+struct SoundRecord {
+  char name[16];
+  u32 fallof_params;
+};
+
 struct SoundBank {
   char name[16];
-  u32 unk1;  // maybe status?
-  u32 unk2;  // maybe size
+  u32 unk1;
+  u32 sound_count;
+  SoundRecord sound[0];
 };
 
 void sbank_init_globals();
@@ -13,4 +19,5 @@ void sbank_init_globals();
 void InitBanks();
 
 SoundBank* AllocateBank();
+s32 LookupSoundIndex(const char* name, SoundBank** bank_out);
 SoundBank* LookupBank(const char* name);
