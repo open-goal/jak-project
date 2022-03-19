@@ -11,7 +11,10 @@ struct SoundBank {
   char name[16];
   u32 unk1;
   u32 sound_count;
-  SoundRecord sound[0];
+  union {
+    SoundRecord sound[1];
+    u8 buffer[0x800];
+  };
 };
 
 void sbank_init_globals();
