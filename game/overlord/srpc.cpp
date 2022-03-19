@@ -168,13 +168,13 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           break;
         }
         case SoundCommand::LOAD_MUSIC:
-          s32 res;
-          do {
-            res = WaitSema(gSema);
-          } while (res != 0);
-          if (gMusic != 0) {
-          }
-          SignalSema(gSema);
+          // s32 res;
+          // do {
+          //   res = WaitSema(gSema);
+          // } while (res != 0);
+          // if (gMusic != 0) {
+          // }
+          // SignalSema(gSema);
           break;
         case SoundCommand::UNLOAD_MUSIC:
           printf("ignoring unload music\n");
