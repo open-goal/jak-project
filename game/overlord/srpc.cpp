@@ -22,6 +22,8 @@ static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
 static s32 gMusic;
 s32 gMusicTweak = 0x80;
+s32 gMusicPause = 0;
+u32 gFreeMem = 0;
 
 // english, french, germain, spanish, italian, japanese, uk.
 static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
@@ -69,9 +71,31 @@ u32 Thread_Loader() {
 }
 
 void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
-  int n_messages = size / SRPC_MESSAGE_SIZE;
-  SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
   if (gSoundEnable) {
+    gFreeMem = QueryTotalFreeMemSize();
+    // if (!PollSema(gSema)) {
+    if (gMusic) {
+      if (!gMusicPause && !LookupSound(666)) {
+        Sound* music = AllocateSound();
+        if (music != nullptr) {
+          gMusicFade = 0;
+          gMusicFadeDir = 1;
+          SetMusicVol();
+          music->snd_id = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
+        }
+      }
+    }
+    //}
+
+    SetMusicVol();
+    Sound* music = LookupSound(666);
+    if (music != nullptr) {
+      snd_SetSoundVolPan(music->snd_id, 0x7FFFFFFF, 0);
+      snd_SetMIDIRegister(music->snd_id, 0, gFlava);
+    }
+
+    int n_messages = size / SRPC_MESSAGE_SIZE;
+    SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
     while (n_messages > 0) {
       switch (cmd->command) {
         case SoundCommand::PLAY: {
@@ -90,10 +114,27 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           printf("Ignoring Set param command\n");
         } break;
         case SoundCommand::SET_MASTER_VOLUME: {
-          printf("Ignoring Set master volume command\n");
+          u32 group = cmd->master_volume.group.group;
+          for (int i = 0; i < 32; i++) {
+            if (((group >> i) & 1) != 0) {
+              if (i == 1) {
+                gMusicVol = cmd->master_volume.volume;
+              } else if (i == 2) {
+                // TODO SetDialogVolume(cmd->master_volume.volume);
+              } else {
+                snd_SetMasterVolume(i, cmd->master_volume.volume);
+              }
+            }
+          }
         } break;
         case SoundCommand::PAUSE_GROUP: {
-          printf("Ignoring Pause Group comman\n");
+          snd_PauseAllSoundsInGroup(cmd->group.group);
+          if ((cmd->group.group & 4) != 0) {
+            // TODO PauseVAGStream(0,0);
+          }
+          if (cmd->group.group & 2) {
+            gMusicPause = 1;
+          }
         } break;
         case SoundCommand::STOP_GROUP: {
           u8 group = cmd->group.group;
@@ -103,13 +144,25 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           }
         } break;
         case SoundCommand::CONTINUE_GROUP: {
-          printf("Ignoring Continue Group command\n");
+          snd_ContinueAllSoundsInGroup(cmd->group.group);
+          if (cmd->group.group & 4) {
+            //   UnpauseVAGStream();
+          }
+
+          if (cmd->group.group & 2) {
+            gMusicPause = 0;
+          }
         } break;
         case SoundCommand::SET_FALLOFF_CURVE: {
           SetCurve(cmd->fallof_curve.curve, cmd->fallof_curve.falloff, cmd->fallof_curve.ease);
         } break;
         case SoundCommand::SET_SOUND_FALLOFF: {
-          printf("Ignoring Set Sound Falloff command\n");
+          SoundBank* bank;
+          s32 idx = LookupSoundIndex(cmd->fallof.name, &bank);
+          if (idx > 0) {
+            bank->sound[idx].fallof_params =
+                (cmd->fallof.curve << 28) | (cmd->fallof.max << 14) | cmd->fallof.min;
+          }
         } break;
         case SoundCommand::SET_FLAVA: {
           gFlava = cmd->flava.flava;

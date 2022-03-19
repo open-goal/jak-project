@@ -24,5 +24,9 @@ void snd_SetSoundVolPan(s32, s32, s32);
 void snd_SetMasterVolume(s32, s32);
 void snd_UnloadBank(s32);
 void snd_ResolveBankXREFS();
+void snd_ContinueAllSoundsInGroup(u8);
+void snd_PauseAllSoundsInGroup(u8);
+void snd_SetMIDIRegister(s32, u8, u8);
+s32 snd_PlaySoundVolPanPMPB(s32, s32, s32, s32, s32, s32);
 
 #endif  // SNDSHIM_H_

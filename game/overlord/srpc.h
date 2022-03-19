@@ -114,6 +114,11 @@ struct SoundRpcGroupCommand {
   u8 group;
 };
 
+struct SoundRpcMasterVolCommand {
+  SoundRpcGroupCommand group;
+  s32 volume;
+};
+
 struct SoundRpcCommand {
   u16 rsvd1;
   SoundCommand command;
@@ -130,6 +135,7 @@ struct SoundRpcCommand {
     SoundRpcSetFallofCurve fallof_curve;
     SoundRpcGroupCommand group;
     SoundRpcSetFlavaCommand flava;
+    SoundRpcMasterVolCommand master_volume;
     u8 max_size[0x4C];  // Temporary
   };
 };
