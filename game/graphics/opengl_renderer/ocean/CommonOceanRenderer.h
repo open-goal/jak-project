@@ -8,13 +8,19 @@ class CommonOceanRenderer {
 
   void init_for_near();
   void kick_from_near(const u8* data);
-  void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void flush_near(SharedRenderState* render_state, ScopedProfilerNode& prof);
+
+  void init_for_mid();
+  void kick_from_mid(const u8* data);
+  void flush_mid(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
  private:
   void handle_near_vertex_gif_data_fan(const u8* data, u32 offset, u32 loop);
   void handle_near_vertex_gif_data_strip(const u8* data, u32 offset, u32 loop);
 
   void handle_near_adgif(const u8* data, u32 offset, u32 count);
+
+  void handle_mid_adgif(const u8* data, u32 offset);
 
   enum VertexBucket {
     RGB_TEXTURE = 0,

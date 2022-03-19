@@ -2,16 +2,13 @@
 #include "third-party/imgui/imgui.h"
 
 OceanNear::OceanNear(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id), m_texture_renderer(false), m_direct(name, my_id, 0x4000) {
+    : BucketRenderer(name, my_id), m_texture_renderer(false) {
   for (auto& a : m_vu_data) {
     a.fill(0);
   }
 }
 
-void OceanNear::draw_debug_window() {
-  ImGui::Checkbox("New", &m_use_new);
-  m_direct.draw_debug_window();
-}
+void OceanNear::draw_debug_window() {}
 
 void OceanNear::init_textures(TexturePool& pool) {
   m_texture_renderer.init_textures(pool);
@@ -65,19 +62,11 @@ void OceanNear::render(DmaFollower& dma,
 
   // direct setup
   {
-    if (m_use_new) {
-      m_common_ocean_renderer.init_for_near();
-    } else {
-      m_direct.reset_state();
-    }
+    m_common_ocean_renderer.init_for_near();
     auto setup = dma.read_and_advance();
     ASSERT(setup.vifcode0().kind == VifCode::Kind::NOP);
     ASSERT(setup.vifcode1().kind == VifCode::Kind::DIRECT);
     ASSERT(setup.size_bytes == 32);
-    if (m_use_new) {
-    } else {
-      m_direct.render_gif(setup.data, 32, render_state, prof);
-    }
   }
 
   // oofset and base
@@ -110,7 +99,7 @@ void OceanNear::render(DmaFollower& dma,
           run_call0_vu2c();
           break;
         case 39:
-          run_call39_vu2c(render_state, prof);
+          run_call39_vu2c();
           break;
         default:
           fmt::print("unknown ocean near call: {}\n", v0.immediate);
@@ -123,17 +112,9 @@ void OceanNear::render(DmaFollower& dma,
     dma.read_and_advance();
   }
 
-  if (m_use_new) {
-    m_common_ocean_renderer.flush(render_state, prof);
-  } else {
-    m_direct.flush_pending(render_state, prof);
-  }
+  m_common_ocean_renderer.flush_near(render_state, prof);
 }
 
-void OceanNear::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (m_use_new) {
-    m_common_ocean_renderer.kick_from_near((const u8*)&m_vu_data[addr]);
-  } else {
-    m_direct.render_gif((const u8*)&m_vu_data[addr], UINT32_MAX, render_state, prof);
-  }
+void OceanNear::xgkick(u16 addr) {
+  m_common_ocean_renderer.kick_from_near((const u8*)&m_vu_data[addr]);
 }

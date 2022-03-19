@@ -97,7 +97,7 @@ void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
   if (dma.current_tag_vifcode0().kind == VifCode::Kind::BASE) {
-    m_mid_renderer.run(dma, render_state, prof, m_direct);
+    m_mid_renderer.run(dma, render_state, prof);
   } else {
     // not drawing
     return;

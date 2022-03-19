@@ -12,10 +12,8 @@ OceanMid::OceanMid() {
   vu.vf25 = Vf(1, 1, 1, 1);
 }
 
-void OceanMid::run(DmaFollower& dma,
-                   SharedRenderState* render_state,
-                   ScopedProfilerNode& prof,
-                   DirectRenderer& direct) {
+void OceanMid::run(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  m_common_ocean_renderer.init_for_mid();
   // first is setting base and offset
   {
     auto base_offset_tag = dma.read_and_advance();
@@ -97,26 +95,24 @@ void OceanMid::run(DmaFollower& dma,
         memcpy(m_vu_data + addr + addr_off, temp, 16);
       }
       ASSERT(8 * v1.num == data.size_bytes);
-      // TODO
     } else if (v0.kind == VifCode::Kind::STCYCL && v0.immediate == 0x404 &&
                v1.kind == VifCode::Kind::MSCALF) {
       switch (v1.immediate) {
         case 46:
-          run_call46_vu2c(render_state, prof, direct);
+          run_call46_vu2c();
           break;
         case 73:
-          run_call73_vu2c(render_state, prof, direct);
+          run_call73_vu2c();
           break;
         case 107:
-          run_call107_vu2c(render_state, prof, direct);
+          run_call107_vu2c();
           break;
         case 275:
-          run_call275_vu2c(render_state, prof, direct);
+          run_call275_vu2c();
           break;
         default:
           fmt::print("unknown call1: {}\n", v1.immediate);
       }
-      // TODO
     } else if (v0.kind == VifCode::Kind::MSCALF && v1.kind == VifCode::Kind::FLUSHA) {
       switch (v0.immediate) {
         case 41:
@@ -129,17 +125,18 @@ void OceanMid::run(DmaFollower& dma,
           fmt::print("unknown call2: {}\n", v0.immediate);
           ASSERT(false);
       }
-
-      // TODO
-    }
-
-    else {
+    } else {
       fmt::print("{} {}\n", data.vifcode0().print(), data.vifcode1().print());
       ASSERT(false);
     }
   }
+  m_common_ocean_renderer.flush_mid(render_state, prof);
 }
 
 void OceanMid::run_call0() {
   run_call0_vu2c();
+}
+
+void OceanMid::xgkick(u16 addr) {
+  m_common_ocean_renderer.kick_from_mid((const u8*)&m_vu_data[addr]);
 }

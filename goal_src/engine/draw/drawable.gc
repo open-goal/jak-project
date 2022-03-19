@@ -907,6 +907,8 @@
 (define *generic-effect-mode* 0)
 
 (defun real-main-draw-hook ()
+  "The main drawing function. This dispatches all renderers and is called directly from the display-loop
+  in main.gc."
   (when *slow-frame-rate*
     (dotimes (v1-2 40000000) ;; was 50000
       (nop!)
@@ -918,106 +920,109 @@
       )
     )
   "Function to be executed to set up for engine dma"
-
+  
   ;; update render enables from the debug menu
   (set! *vu1-enable-user* *vu1-enable-user-menu*)
   (set! *texture-enable-user* *texture-enable-user-menu*)
-
+  
   ;; reset and display dma memory stats.
   (when *debug-segment*
-   (when (or *stats-memory* *stats-memory-short*)
-    (dotimes (gp-0 (-> *level* length))
-     (let ((s5-0 (-> *level* level gp-0)))
-      (if (= (-> s5-0 status) 'active)
-       (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)
-       )
+    (when (or *stats-memory* *stats-memory-short*)
+      (dotimes (gp-0 (-> *level* length))
+        (let ((s5-0 (-> *level* level gp-0)))
+          (if (= (-> s5-0 status) 'active)
+              (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)
+              )
+          )
+        )
       )
-     )
+    (reset! *dma-mem-usage*)
     )
-   (reset! *dma-mem-usage*)
-   )
-
+  
   ;; todo shrub matrix
-  ;; todo generic init
+  
+  ;; initialize dma buckets that are generic sinks.
+  ;; other renderers may output to these, so do them first.
   (generic-init-buffers)
-
+  
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; texture uploads
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  ;; tfrag
-  ;; note: PC port uses preconverted tfrag textures.
-  ; (#unless PC_PORT
-           (when (logtest? *texture-enable-user* 1)
-             (dotimes (gp-1 (-> *level* length))
-               (let ((a1-2 (-> *level* level gp-1)))
-                 (if (= (-> a1-2 status) 'active)
-                     (add-tex-to-dma! *texture-pool* a1-2 0)
-                     )
-                 )
-               )
-             )
-           ; )
-
-  ;; pris
-
+  
+  ;; next we use the texture system to build DMA commands to load texture.
+  ;; internally, add-tex-to-dma! has special logic to avoid loading textures
+  ;; that won't be used. (though it's pretty basic, it doesn't actually track per-texture usage)
+  
+  ;; level tfrag's upload if the level is running.
+  (when (logtest? *texture-enable-user* 1)
+    (dotimes (gp-1 (-> *level* length))
+      (let ((a1-2 (-> *level* level gp-1)))
+        (if (= (-> a1-2 status) 'active)
+            (add-tex-to-dma! *texture-pool* a1-2 0)
+            )
+        )
+      )
+    )
+  ;; level pris's upload if the level is running.
   (when (logtest? *texture-enable-user* 2)
-   (dotimes (gp-2 (-> *level* length))
-    (let ((a1-3 (-> *level* level gp-2)))
-     (if (= (-> a1-3 status) 'active)
-      (add-tex-to-dma! *texture-pool* a1-3 1)
+    (dotimes (gp-2 (-> *level* length))
+      (let ((a1-3 (-> *level* level gp-2)))
+        (if (= (-> a1-3 status) 'active)
+            (add-tex-to-dma! *texture-pool* a1-3 1)
+            )
+        )
       )
-     )
     )
-   )
-
-  ;; shrub
-
+  
+  ;; level shrubs upload if the level is loading.
   (when (logtest? *texture-enable-user* 4)
-   (dotimes (gp-3 (-> *level* length))
-    (let ((a1-4 (-> *level* level gp-3)))
-     (if (= (-> a1-4 status) 'active)
-      (add-tex-to-dma! *texture-pool* a1-4 2)
+    (dotimes (gp-3 (-> *level* length))
+      (let ((a1-4 (-> *level* level gp-3)))
+        (if (= (-> a1-4 status) 'active)
+            (add-tex-to-dma! *texture-pool* a1-4 2)
+            )
+        )
       )
-     )
     )
-   )
-
+  
   ;; alpha and common.
   (when (logtest? *texture-enable-user* 8)
-   (let ((uploaded-common #f))
-    (dotimes (gp-4 (-> *level* length))
-     (let ((a1-5 (-> *level* level gp-4)))
-      (when (= (-> a1-5 status) 'active)
-       (add-tex-to-dma! *texture-pool* a1-5 3)
-       (when (not uploaded-common)
-        (upload-one-common! *texture-pool* (-> *level* level0))
-        (set! uploaded-common #t)
+    (let ((uploaded-common #f))
+      (dotimes (gp-4 (-> *level* length))
+        (let ((a1-5 (-> *level* level gp-4)))
+          (when (= (-> a1-5 status) 'active)
+            (add-tex-to-dma! *texture-pool* a1-5 3)
+            (when (not uploaded-common)
+              (upload-one-common! *texture-pool* (-> *level* level0))
+              (set! uploaded-common #t)
+              )
+            )
+          )
         )
-       )
+      (when (not uploaded-common)
+        (upload-one-common! *texture-pool* (-> *level* level0))
+        #t
+        )
       )
-     )
-    (when (not uploaded-common)
-     (upload-one-common! *texture-pool* (-> *level* level0))
-     #t
-     )
     )
-   )
-
+  
   ;; water.
   (when (logtest? *texture-enable-user* 16)
-   (dotimes (gp-5 (-> *level* length))
-    (let ((a1-8 (-> *level* level gp-5)))
-     (if (= (-> a1-8 status) 'active)
-      (add-tex-to-dma! *texture-pool* a1-8 4)
+    (dotimes (gp-5 (-> *level* length))
+      (let ((a1-8 (-> *level* level gp-5)))
+        (if (= (-> a1-8 status) 'active)
+            (add-tex-to-dma! *texture-pool* a1-8 4)
+            )
+        )
       )
-     )
     )
-   )
-
+  
+  ;;;;;;;;;;;;;
   ;; sky
-  ;; todo - disabled sky
-  (when (zero? (logand *vu1-enable-user* 8))
+  ;;;;;;;;;;;;;
+  
+  (when (zero? (logand *vu1-enable-user* (vu1-renderer-mask sky)))
+    ;; the sky is disabled. Just draw a solid gradient on the whole screen.
     (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) (bucket-id sky-draw))
       (dma-buffer-add-gs-set dma-buf
                              (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
@@ -1033,28 +1038,63 @@
         )
       )
     )
-  (when (logtest? *vu1-enable-user* 8)
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask sky))
+    ;; check if we want the sky, and if we actually have textures ready.
+    ;; we generate sky textures on the previous frame and they sit in vram (8160) until the next frame.
+    ;; on the first frame after we request sky, we draw the textures, but they aren't ready until the next frame.
     (cond
       ((and (-> *time-of-day-context* sky) *sky-drawn*)
        (render-sky-tng *time-of-day-context*)
        )
       (else
         ;; todo
+        (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) (bucket-id sky-draw))
+          (dma-buffer-add-gs-set dma-buf
+                                 (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+                                 (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                                 (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                                 )
+          (screen-gradient
+            dma-buf
+            (-> *time-of-day-context* erase-color)
+            (-> *time-of-day-context* erase-color)
+            (-> *time-of-day-context* erase-color)
+            (-> *time-of-day-context* erase-color)
+            )
+          )
         )
       )
     )
-
-  ;; tod update
+  
+  
+  ;; update mood lighting, draw sky textures.
   (update-time-of-day *time-of-day-context*)
-  ;; closest
-  (update-ocean)
-  (draw-ocean)
+  
+  ;; reset the closest object and desired texture masks for all levels.
+  (dotimes (v1-150 (-> *level* length))
+    (let ((a0-59 (-> *level* level v1-150)))
+      (when (= (-> a0-59 status) 'active)
+        (dotimes (a1-38 9)
+          (set! (-> a0-59 closest-object a1-38) 4095996000.0)
+          (set! (-> a0-59 texture-mask a1-38) (the-as uint 0))
+          )
+        )
+      )
+    )
+  (add-ee-profile-frame 'draw :r #x40 :b #x40 :a #x80)
+
+  ;;;;;;; OCEAN
+  (update-ocean) ;; ocean map update
+  (draw-ocean)   ;; far, mid, near, transition, and texture.
+  (add-ee-profile-frame 'draw :b #xff :a #x80)
+
+  ;; reset MERC
   (set! (-> *merc-global-array* count) (the-as uint 0))
   (set! *merc-globals* (the-as merc-globals (-> *merc-global-array* globals)))
   (set! (-> *shadow-queue* cur-run) (the-as uint 0))
-  (init-background)
 
-  ;; exec bg
+  ;; draw the background!
+  (init-background)
   (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen) frame))
 
   ;; finish bg (most of the work is here)
@@ -1063,7 +1103,7 @@
   (read! (-> *perf-stats* data 3))
   (update-wait-stats (-> *perf-stats* data 3) (-> *background-work* wait-to-vu0) (the-as uint 0) (the-as uint 0))
   
-  ;; 
+  ;; perf stats are printed and restarted here, for some reason.
   (end-perf-stat-collection)
   (when (not (paused?))
     (when *stats-poly*
@@ -1081,6 +1121,8 @@
         )
     )
   (start-perf-stat-collection)
+
+  ;; draw the foreground engines.
   (foreground-engine-execute
     (-> *level* level-default foreground-draw-engine 0)
     (-> *display* frames (-> *display* on-screen) frame)
@@ -1093,30 +1135,36 @@
     2
     1
     )
+  
+  ;; handle extra processing for foreground
   (let ((gp-9 (-> *display* frames (-> *display* on-screen) frame global-buf)))
-    (bones-mtx-calc-execute)
-    (generic-merc-execute-all gp-9)
+    (bones-mtx-calc-execute)        ;; skinning matrix calculation
+    (generic-merc-execute-all gp-9) ;; mercneric conversion.
     ;;(shadow-execute-all gp-9 *shadow-queue*)
+    (update-eyes)
     )
-  ;; fg engine
-  ;; bones
-  ;; gmerc
-  ;; shadow
-  (update-eyes)
+
+  ;; sprite draw
   (when (logtest? (vu1-renderer-mask sprite) *vu1-enable-user*)
     (swap-fake-shadow-buffers)
     (sprite-draw *display*)
     )
-  ;; lots more in this function.
+  ;; debug drawing
   (when *debug-segment*
     (debug-draw-actors *level* *display-actor-marks*)
     (collide-shape-draw-debug-marks)
     )
   (render-boundaries)
+  
+  ;; for some reason we clear the touching list here...
   (send-events-for-touching-shapes *touching-list*)
   (free-all-prim-nodes *touching-list*)
   
+  (add-ee-profile-frame 'draw :r #x40 :b #x40 :a #x80)
+  ;; spawn actors, compact heaps, etc.
   (actors-update *level*)
+  (add-ee-profile-frame 'draw  :r #x80 :a #x80)
+  
   (when (not (paused?))
     (if *stats-collide*
         (print-collide-stats)
