@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include "game/overlord/srpc.h"
 #include "ssound.h"
 #include "common/util/Assert.h"
 #include "sndshim.h"
@@ -16,7 +17,7 @@ s32 gCamAngle;
 
 s32 gMusicVol = 0x400;
 s32 gMusicFade = 0;
-s32 gMusicTweak;
+s32 gMusicFadeDir = 0;
 
 u32 gVoice;
 u32 gStreamSRAM;

@@ -31,6 +31,7 @@ constexpr int LOAD_TO_IOP_CMD_ID = 0x101;        // command to load to iop
 constexpr int LOAD_TO_EE_OFFSET_CMD_ID = 0x102;  // command to load file to ee with offset.
 constexpr int LOAD_DGO_CMD_ID = 0x200;           // command to load DGO
 constexpr int LOAD_SOUND_BANK = 0x300;           // Command to load a sound bank
+constexpr int LOAD_MUSIC = 0x380;                // Command to load music
 
 constexpr int MAX_ISO_FILES = 350;  // maximum files on FS
 constexpr int MAX_OPEN_FILES = 16;  // maximum number of open files at a time.
@@ -123,6 +124,11 @@ struct SoundBank;
 struct SoundBankLoadCommand : public IsoMessage {
   char bank_name[16];
   SoundBank* bank;
+};
+
+struct MusicLoadCommand : public IsoMessage {
+  char music_name[16];
+  s32* music_handle;
 };
 
 /*!

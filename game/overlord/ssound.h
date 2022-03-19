@@ -6,6 +6,8 @@
 #include "sbank.h"
 
 extern s32 gSema;
+extern s32 gMusicFade;
+extern s32 gMusicFadeDir;
 
 // FIXME where to put this
 struct Vec3w {
@@ -52,5 +54,6 @@ void InitSound_Overlord();
 void SetCurve(s32 curve, s32 fallof, s32 ease);
 void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle);
 void KillSoundsInGroup(u8 group);
+void PrintActiveSounds();
 
 #endif  // JAK_V2_SSOUND_H

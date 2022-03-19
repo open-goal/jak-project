@@ -12,7 +12,7 @@ struct MusicTweaks {
 
   struct {
     char MusicName[12];
-    u32 VolumeAdjust;
+    s32 VolumeAdjust;
   } MusicTweak[MUSIC_TWEAK_COUNT];
 };
 
@@ -137,6 +137,9 @@ struct SoundRpcCommand {
 static_assert(sizeof(SoundRpcCommand) == 0x50);
 
 extern MusicTweaks gMusicTweakInfo;
+extern s32 gMusicTweak;
 
 u32 Thread_Loader();
 u32 Thread_Player();
+
+s32 VBlank_Handler();

@@ -1,5 +1,6 @@
 #include <cstring>
 #include <cstdio>
+#include "game/overlord/sndshim.h"
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
@@ -20,6 +21,7 @@ int32_t gSoundEnable = 1;
 static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
 static s32 gMusic;
+s32 gMusicTweak = 0x80;
 
 // english, french, germain, spanish, italian, japanese, uk.
 static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
@@ -153,32 +155,60 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             }
           }
         } break;
-        case SoundCommand::UNLOAD_BANK:
-          printf("ignoring unload bank command!\n");
-          break;
+        case SoundCommand::UNLOAD_BANK: {
+          SoundBank* bank = LookupBank(cmd->load_bank.bank_name);
+          if (bank != nullptr) {
+            s32 id = bank->snd_id;
+            bank->snd_id = 0;
+            snd_UnloadBank(id);
+            snd_ResolveBankXREFS();
+          }
+        } break;
         case SoundCommand::GET_IRX_VERSION: {
           cmd->irx_version.major = IRX_VERSION_MAJOR;
           cmd->irx_version.minor = IRX_VERSION_MINOR;
           gInfoEE = cmd->irx_version.ee_addr;
           return cmd;
         } break;
+        case SoundCommand::RELOAD_INFO: {
+          ReloadBankInfo();
+        } break;
         case SoundCommand::SET_LANGUAGE: {
           gLanguage = languages[cmd->set_language.langauge_id];
           printf("IOP language: %s\n", gLanguage);  // added.
-          break;
-        }
-        case SoundCommand::LOAD_MUSIC:
-          // s32 res;
-          // do {
-          //   res = WaitSema(gSema);
-          // } while (res != 0);
-          // if (gMusic != 0) {
-          // }
+        } break;
+        case SoundCommand::LOAD_MUSIC: {
+          // while (WaitSema(gSema))
+          //   ;
+          if (gMusic) {
+            gMusicFadeDir = -1;
+            while (gMusicFade) {
+              DelayThread(1000);
+            }
+            snd_UnloadBank(gMusic);
+            snd_ResolveBankXREFS();
+            gMusic = 0;
+          }
+          LoadMusic(cmd->load_bank.bank_name, &gMusic);
+          //  SignalSema(gSema);
+        } break;
+        case SoundCommand::LIST_SOUNDS: {
+          PrintActiveSounds();
+        } break;
+        case SoundCommand::UNLOAD_MUSIC: {
+          // while (WaitSema(gSema))
+          //   ;
+          if (gMusic) {
+            gMusicFadeDir = -1;
+            while (gMusicFade) {
+              DelayThread(1000);
+            }
+            snd_UnloadBank(gMusic);
+            snd_ResolveBankXREFS();
+            gMusic = 0;
+          }
           // SignalSema(gSema);
-          break;
-        case SoundCommand::UNLOAD_MUSIC:
-          printf("ignoring unload music\n");
-          break;
+        } break;
         default:
           printf("Unhandled RPC Loader command %d\n", (int)cmd->command);
           ASSERT(false);
@@ -188,4 +218,8 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
     }
   }
   return nullptr;
+}
+
+s32 VBlank_Handler() {
+  return 1;
 }

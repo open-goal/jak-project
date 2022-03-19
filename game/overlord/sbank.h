@@ -9,7 +9,7 @@ struct SoundRecord {
 
 struct SoundBank {
   char name[16];
-  u32 unk1;
+  u32 snd_id;
   u32 sound_count;
   union {
     SoundRecord sound[1];
@@ -20,6 +20,7 @@ struct SoundBank {
 void sbank_init_globals();
 
 void InitBanks();
+void ReloadBankInfo();
 
 SoundBank* AllocateBank();
 s32 LookupSoundIndex(const char* name, SoundBank** bank_out);

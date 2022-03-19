@@ -22,5 +22,7 @@ s32 snd_SoundIsStillPlaying(s32);
 void snd_StopSound(s32);
 void snd_SetSoundVolPan(s32, s32, s32);
 void snd_SetMasterVolume(s32, s32);
+void snd_UnloadBank(s32);
+void snd_ResolveBankXREFS();
 
 #endif  // SNDSHIM_H_

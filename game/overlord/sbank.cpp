@@ -1,5 +1,6 @@
 #include <cstring>
 #include "sbank.h"
+#include "soundcommon.h"
 
 constexpr int N_BANKS = 3;
 SoundBank* gBanks[N_BANKS];
@@ -16,7 +17,7 @@ void sbank_init_globals() {
 
 void InitBanks() {
   for (auto& gBank : gBanks) {
-    gBank->unk1 = 0;
+    gBank->snd_id = 0;
     gBank->sound_count = 0;
     strcpy(gBank->name, "<unused>");
   }
@@ -30,7 +31,7 @@ SoundBank* AllocateBank() {
       return nullptr;
     }
 
-    if (gBanks[idx]->unk1 == 0) {
+    if (gBanks[idx]->snd_id == 0) {
       break;
     }
     idx++;
@@ -53,7 +54,7 @@ s32 LookupSoundIndex(const char* name, SoundBank** bank_out) {
     }
 
     auto& bank = gBanks[idx];
-    if (bank->unk1 == 0) {
+    if (bank->snd_id == 0) {
       break;
     }
 
@@ -83,5 +84,13 @@ SoundBank* LookupBank(const char* name) {
       return bank;
     }
     idx--;
+  }
+}
+
+void ReloadBankInfo() {
+  for (auto& b : gBanks) {
+    if (b->snd_id) {
+      ReadBankSoundInfo(b, b, 1);
+    }
   }
 }
