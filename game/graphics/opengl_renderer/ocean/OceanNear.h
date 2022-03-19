@@ -14,25 +14,22 @@ class OceanNear : public BucketRenderer {
 
  private:
   void run_call0_vu2c();
-  void run_call39_vu2c(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void run_call39_vu2c();
   void run_L15_vu2c();
   void run_L21_vu2c();
   void run_L23_vu2c();
-  void run_L25_vu2c(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void run_L25_vu2c();
   void run_L30_vu2c();
   void run_L32_vu2c();
 
   OceanTexture m_texture_renderer;
-  DirectRenderer m_direct;
   CommonOceanRenderer m_common_ocean_renderer;
 
   bool m_buffer_toggle = false;
   static constexpr int VU1_INPUT_BUFFER_BASE = 0;
   static constexpr int VU1_INPUT_BUFFER_OFFSET = 0x10;
 
-  bool m_use_new = true;
-
-  void xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void xgkick(u16 addr);
 
   u16 xtop() {
     m_buffer_toggle = !m_buffer_toggle;

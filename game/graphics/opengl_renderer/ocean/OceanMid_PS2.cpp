@@ -54,13 +54,6 @@ static inline REALLY_INLINE float erleng(const Vf& in) {
 }
 }  // namespace
 
-void OceanMid::xgkick(u16 addr,
-                      SharedRenderState* render_state,
-                      ScopedProfilerNode& prof,
-                      DirectRenderer& direct) {
-  direct.render_gif((const u8*)&m_vu_data[addr], UINT32_MAX, render_state, prof);
-}
-
 void OceanMid::run_call0_vu2c() {
   bool bc;
   // lq.xyzw vf01, 733(vi00)    |  nop                            0
@@ -209,9 +202,7 @@ void OceanMid::run_call43_vu2c() {
   return;
 }
 
-void OceanMid::run_call46_vu2c(SharedRenderState* render_state,
-                               ScopedProfilerNode& prof,
-                               DirectRenderer& direct) {
+void OceanMid::run_call46_vu2c() {
   bool bc;
   // xtop vi02                  |  nop                            46
   vu.vi02 = xtop();
@@ -272,7 +263,7 @@ L10:
   // iaddiu vi01, vi00, 0x318   |  nop                            66
   vu.vi01 = 0x318; /* 792 */
   // xgkick vi09                |  nop                            67
-  xgkick(vu.vi09, render_state, prof, direct);
+  xgkick(vu.vi09);
   // isub vi09, vi01, vi09      |  nop                            68
   vu.vi09 = vu.vi01 - vu.vi09;
 L11:
@@ -292,9 +283,7 @@ L11:
   return;
 }
 
-void OceanMid::run_call73_vu2c(SharedRenderState* render_state,
-                               ScopedProfilerNode& prof,
-                               DirectRenderer& direct) {
+void OceanMid::run_call73_vu2c() {
   bool bc;
   // xtop vi02                  |  nop                            73
   vu.vi02 = xtop();
@@ -363,7 +352,7 @@ L14:
   // iaddiu vi01, vi00, 0x318   |  nop                            97
   vu.vi01 = 0x318; /* 792 */
   // xgkick vi09                |  nop                            98
-  xgkick(vu.vi09, render_state, prof, direct);  // draws envmapped ocean
+  xgkick(vu.vi09);  // draws envmapped ocean
   // BRANCH!
   // ibeq vi00, vi14, L15       |  nop                            99
   bc = (vu.vi14 == 0);
@@ -379,7 +368,7 @@ L14:
   // nop                        |  nop                            102
 
   // if (bc) { goto L38; }
-  run_L38_vu2c(render_state, prof, direct);
+  run_L38_vu2c();
 
 L15:
   // BRANCH!
@@ -398,9 +387,7 @@ L15:
   return;
 }
 
-void OceanMid::run_call107_vu2c(SharedRenderState* render_state,
-                                ScopedProfilerNode& prof,
-                                DirectRenderer& direct) {
+void OceanMid::run_call107_vu2c() {
   bool bc;
   // xtop vi02                  |  nop                            107
   vu.vi02 = xtop();
@@ -657,7 +644,7 @@ L18:
   // iaddiu vi06, vi06, 0x4000  |  nop                            214
   vu.vi06 = vu.vi06 + 0x4000; /* 16384 */
   // if (bc) { goto L43; }
-  run_L43_vu2c(render_state, prof, direct);
+  run_L43_vu2c();
 
 L19:
   // BRANCH!
@@ -794,7 +781,7 @@ L20:
   // iaddiu vi06, vi06, 0x4000  |  nop                            270
   vu.vi06 = vu.vi06 + 0x4000; /* 16384 */
   // if (bc) { goto L43; }
-  run_L43_vu2c(render_state, prof, direct);
+  run_L43_vu2c();
 
 L21:
   // BRANCH!
@@ -813,9 +800,7 @@ L21:
   return;
 }
 
-void OceanMid::run_call275_vu2c(SharedRenderState* render_state,
-                                ScopedProfilerNode& prof,
-                                DirectRenderer& direct) {
+void OceanMid::run_call275_vu2c() {
   bool bc;
   // fmt::print("call 275\n");
   // xtop vi02                  |  nop                            275
@@ -1005,7 +990,7 @@ L23:
                               //  if (bc) {
                               //    goto L43;
                               //  }
-  run_L43_vu2c(render_state, prof, direct);
+  run_L43_vu2c();
 
   // ior vi03, vi00, vi00       |  nop                            350
   vu.vi03 = 0;
@@ -1101,7 +1086,7 @@ L24:
                               //  if (bc) {
                               //    goto L43;
                               //  }
-  run_L43_vu2c(render_state, prof, direct);
+  run_L43_vu2c();
 
 L25:
   // nop                        |  nop :e                         389
@@ -1848,9 +1833,7 @@ L37:
   // nop                        |  nop                            613
 }
 
-void OceanMid::run_L38_vu2c(SharedRenderState* render_state,
-                            ScopedProfilerNode& prof,
-                            DirectRenderer& direct) {
+void OceanMid::run_L38_vu2c() {
   bool bc;
 
   // lq.xyzw vf31, 734(vi00)    |  nop                            614
@@ -2089,7 +2072,7 @@ L41:
   // iaddiu vi06, vi06, 0x4000  |  nop                            705
   vu.vi06 = vu.vi06 + 0x4000; /* 16384 */
   // if (bc) { goto L43; }
-  run_L43_vu2c(render_state, prof, direct);
+  run_L43_vu2c();
 
   // iaddi vi08, vi10, 0x7      |  nop                            706
   vu.vi08 = vu.vi10 + 7;
@@ -2175,7 +2158,7 @@ L41:
   // iaddiu vi06, vi06, 0x4000  |  nop                            744
   vu.vi06 = vu.vi06 + 0x4000; /* 16384 */
   // if (bc) { goto L43; }
-  run_L43_vu2c(render_state, prof, direct);
+  run_L43_vu2c();
 
 L42:
   // BRANCH!
@@ -2190,9 +2173,7 @@ L42:
   // jr vi15                    |  nop                            747
   // nop                        |  nop                            748
 }
-void OceanMid::run_L43_vu2c(SharedRenderState* render_state,
-                            ScopedProfilerNode& prof,
-                            DirectRenderer& direct) {
+void OceanMid::run_L43_vu2c() {
   bool bc;
   // sq.xyzw vf07, -1(vi08)     |  nop                            749
   sq_buffer(Mask::xyzw, vu.vf07, vu.vi08 + -1);
@@ -2285,7 +2266,7 @@ L44:
   // iaddiu vi01, vi00, 0x4d3   |  nop                            789
   vu.vi01 = 0x4d3; /* 1235 */
   // xgkick vi10                |  nop                            790
-  xgkick(vu.vi10, render_state, prof, direct);
+  xgkick(vu.vi10);
   // jr vi13                    |  nop                            791
   // ASSERT(false);
   // isub vi10, vi01, vi10      |  nop                            792

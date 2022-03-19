@@ -26,6 +26,13 @@ void main() {
         color.xyzw *= 2;
     } else if (bucket == 2) {
         color = fragment_color * T0;
+    } else if (bucket == 3) {
+        color = fragment_color * T0;
+        color.xyzw *= 2;
+        color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fog_color.w * (1 - fog), 0, 1));
+    } else if (bucket == 4) {
+        color = fragment_color * T0;
+        color.w = 0;
     }
 
 }

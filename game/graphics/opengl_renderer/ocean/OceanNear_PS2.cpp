@@ -110,7 +110,7 @@ L4:
   // nop                        |  nop                            38
 }
 
-void OceanNear::run_call39_vu2c(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void OceanNear::run_call39_vu2c() {
   bool bc;
   // xtop vi02                  |  nop                            39
   vu.vi02 = xtop();
@@ -363,11 +363,11 @@ L9:
   // sq.xyzw vf07, 6(vi09)      |  nop                            138
   sq_buffer(Mask::xyzw, vu.vf07, vu.vi09 + 6);
   // xgkick vi09                |  nop                            139
-  xgkick(vu.vi09, render_state, prof);
+  xgkick(vu.vi09);
   // lq.xyzw vf07, 980(vi00)    |  nop                            140
   lq_buffer(Mask::xyzw, vu.vf07, 980);
   // xgkick vi08                |  nop                            141
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // sq.xyzw vf07, 6(vi09)      |  nop                            142
   sq_buffer(Mask::xyzw, vu.vf07, vu.vi09 + 6);
   // iaddi vi08, vi09, 0x6      |  nop                            143
@@ -375,13 +375,13 @@ L9:
   // nop                        |  nop                            144
 
   // xgkick vi08                |  nop                            145
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // iaddiu vi08, vi00, 0x3d5   |  nop                            146
   vu.vi08 = 0x3d5; /* 981 */
   // nop                        |  nop                            147
 
   // xgkick vi08                |  nop                            148
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // BRANCH!
   // bal vi15, L21              |  nop                            149
   // ASSERT(false);
@@ -405,7 +405,7 @@ L9:
   // nop                        |  nop                            154
 
   // if (bc) { goto L25; }
-  run_L25_vu2c(render_state, prof);
+  run_L25_vu2c();
 
 L10:
   // BRANCH!
@@ -421,7 +421,7 @@ L10:
   // iaddiu vi01, vi00, 0x4b2   |  nop                            158
   vu.vi01 = 0x4b2; /* 1202 */
   // xgkick vi08                |  nop                            159
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // isub vi09, vi01, vi09      |  nop                            160
   vu.vi09 = vu.vi01 - vu.vi09;
 L11:
@@ -479,11 +479,11 @@ L12:
   // sq.xyzw vf07, 6(vi09)      |  nop                            179
   sq_buffer(Mask::xyzw, vu.vf07, vu.vi09 + 6);
   // xgkick vi09                |  nop                            180
-  xgkick(vu.vi09, render_state, prof);
+  xgkick(vu.vi09);
   // lq.xyzw vf07, 980(vi00)    |  nop                            181
   lq_buffer(Mask::xyzw, vu.vf07, 980);
   // xgkick vi08                |  nop                            182
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // sq.xyzw vf07, 6(vi09)      |  nop                            183
   sq_buffer(Mask::xyzw, vu.vf07, vu.vi09 + 6);
   // iaddi vi08, vi09, 0x6      |  nop                            184
@@ -491,13 +491,13 @@ L12:
   // nop                        |  nop                            185
 
   // xgkick vi08                |  nop                            186
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // iaddiu vi08, vi00, 0x3d5   |  nop                            187
   vu.vi08 = 0x3d5; /* 981 */
   // nop                        |  nop                            188
 
   // xgkick vi08                |  nop                            189
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // BRANCH!
   // bal vi15, L21              |  nop                            190
   // ASSERT(false);
@@ -521,7 +521,7 @@ L12:
   // nop                        |  nop                            195
 
   // if (bc) { goto L25; }
-  run_L25_vu2c(render_state, prof);
+  run_L25_vu2c();
 
 L13:
   // BRANCH!
@@ -539,7 +539,7 @@ L13:
   // nop                        |  nop                            200
 
   // xgkick vi08                |  nop                            201
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // isub vi09, vi01, vi09      |  nop                            202
   vu.vi09 = vu.vi01 - vu.vi09;
 L14:
@@ -1362,7 +1362,7 @@ L24:
   // nop                        |  nop                            468
 }
 
-void OceanNear::run_L25_vu2c(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void OceanNear::run_L25_vu2c() {
   bool bc;
   // lq.xyzw vf31, 952(vi00)    |  nop                            469
   lq_buffer(Mask::xyzw, vu.vf31, 952);
@@ -1529,11 +1529,11 @@ L28:
   // iaddiu vi08, vi00, 0x3d1   |  nop                            535
   vu.vi08 = 0x3d1; /* 977 */
   // xgkick vi10                |  nop                            536
-  xgkick(vu.vi10, render_state, prof);
+  xgkick(vu.vi10);
   // lq.xyzw vf07, 960(vi00)    |  nop                            537
   lq_buffer(Mask::xyzw, vu.vf07, 960);
   // xgkick vi08                |  nop                            538
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // iaddi vi08, vi10, 0x6      |  nop                            539
   vu.vi08 = vu.vi10 + 6;
   // sq.xyzw vf07, 6(vi10)      |  nop                            540
@@ -1541,13 +1541,13 @@ L28:
   // isw.x vi06, 6(vi10)        |  nop                            541
   isw_buffer(Mask::x, vu.vi06, vu.vi10 + 6);
   // xgkick vi08                |  nop                            542
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // iaddiu vi08, vi00, 0x3d5   |  nop                            543
   vu.vi08 = 0x3d5; /* 981 */
   // nop                        |  nop                            544
 
   // xgkick vi08                |  nop                            545
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // iaddiu vi08, vi10, 0x2a    |  nop                            546
   vu.vi08 = vu.vi10 + 0x2a; /* 42 */
   // iaddiu vi03, vi10, 0x2a    |  nop                            547
@@ -1577,7 +1577,7 @@ L28:
   // iaddiu vi01, vi00, 0x69c   |  nop                            555
   vu.vi01 = 0x69c; /* 1692 */
   // xgkick vi08                |  nop                            556
-  xgkick(vu.vi08, render_state, prof);
+  xgkick(vu.vi08);
   // isub vi10, vi01, vi10      |  nop                            557
   vu.vi10 = vu.vi01 - vu.vi10;
 L29:

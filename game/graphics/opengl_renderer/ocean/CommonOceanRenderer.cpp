@@ -266,7 +266,7 @@ void CommonOceanRenderer::handle_near_adgif(const u8* data, u32 offset, u32 coun
   }
 }
 
-void CommonOceanRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void CommonOceanRenderer::flush_near(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   glBindVertexArray(m_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glEnable(GL_PRIMITIVE_RESTART);
@@ -325,6 +325,193 @@ void CommonOceanRenderer::flush(SharedRenderState* render_state, ScopedProfilerN
         glBlendEquation(GL_FUNC_ADD);
         glUniform1i(
             glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "bucket"), 2);
+        break;
+    }
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[bucket]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_free_index[bucket] * sizeof(u32),
+                 m_indices[bucket].data(), GL_STREAM_DRAW);
+    glDrawElements(GL_TRIANGLE_STRIP, m_next_free_index[bucket], GL_UNSIGNED_INT, nullptr);
+    prof.add_draw_call();
+    prof.add_tri(m_next_free_index[bucket]);
+  }
+}
+
+void CommonOceanRenderer::kick_from_mid(const u8* data) {
+  bool eop = false;
+
+  u32 offset = 0;
+  while (!eop) {
+    GifTag tag(data + offset);
+    offset += 16;
+
+    // unpack registers.
+    // faster to do it once outside of the nloop loop.
+    GifTag::RegisterDescriptor reg_desc[16];
+    u32 nreg = tag.nreg();
+    for (u32 i = 0; i < nreg; i++) {
+      reg_desc[i] = tag.reg(i);
+    }
+
+    auto format = tag.flg();
+    if (format == GifTag::Format::PACKED) {
+      if (tag.nreg() == 1) {
+        ASSERT(!tag.pre());
+        ASSERT(tag.nloop() == 5);
+        handle_mid_adgif(data, offset);
+        offset += 5 * 16;
+      } else {
+        ASSERT(tag.nreg() == 3);
+        ASSERT(tag.pre());
+        m_current_bucket = GsPrim(tag.prim()).abe() ? 1 : 0;
+
+        int count = tag.nloop();
+        if (GsPrim(tag.prim()).kind() == GsPrim::Kind::TRI_STRIP) {
+          handle_near_vertex_gif_data_strip(data, offset, tag.nloop());
+        } else {
+          handle_near_vertex_gif_data_fan(data, offset, tag.nloop());
+        }
+        offset += 3 * 16 * count;
+        // todo handle.
+      }
+    } else {
+      ASSERT(false);  // format not packed or reglist.
+    }
+
+    eop = tag.eop();
+  }
+}
+
+void CommonOceanRenderer::handle_mid_adgif(const u8* data, u32 offset) {
+  u32 most_recent_tbp = 0;
+
+  for (u32 i = 0; i < 5; i++) {
+    u64 value;
+    GsRegisterAddress addr;
+    memcpy(&value, data + offset + 16 * i, sizeof(u64));
+    memcpy(&addr, data + offset + 16 * i + 8, sizeof(GsRegisterAddress));
+    switch (addr) {
+      case GsRegisterAddress::MIPTBP1_1:
+      case GsRegisterAddress::MIPTBP2_1:
+        // ignore this, it's just mipmapping settings
+        break;
+      case GsRegisterAddress::TEX1_1: {
+        GsTex1 reg(value);
+        ASSERT(reg.mmag());
+      } break;
+      case GsRegisterAddress::CLAMP_1: {
+        bool s = value & 0b001;
+        bool t = value & 0b100;
+        ASSERT(s == t);
+      } break;
+      case GsRegisterAddress::TEX0_1: {
+        GsTex0 reg(value);
+        ASSERT(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+        most_recent_tbp = reg.tbp0();
+      } break;
+      case GsRegisterAddress::ALPHA_1: {
+      } break;
+
+      default:
+        fmt::print("reg: {}\n", register_address_name(addr));
+        break;
+    }
+  }
+
+  if (most_recent_tbp != 8160) {
+    m_envmap_tex = most_recent_tbp;
+  }
+
+  if (m_vertices.size() - 128 < m_next_free_vertex) {
+    ASSERT(false);  // add more vertices.
+  }
+}
+
+void CommonOceanRenderer::init_for_mid() {
+  m_next_free_vertex = 0;
+  for (auto& x : m_next_free_index) {
+    x = 0;
+  }
+}
+
+void reverse_indices(u32* indices, u32 count) {
+  if (count) {
+    for (u32 a = 0, b = count - 1; a < b; a++, b--) {
+      std::swap(indices[a], indices[b]);
+    }
+  }
+}
+
+void CommonOceanRenderer::flush_mid(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  glBindVertexArray(m_ogl.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
+  glBufferData(GL_ARRAY_BUFFER, m_next_free_vertex * sizeof(Vertex), m_vertices.data(),
+               GL_STREAM_DRAW);
+  render_state->shaders[ShaderId::OCEAN_COMMON].activate();
+  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "fog_color"),
+              render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
+              render_state->fog_intensity);
+
+  glDepthMask(GL_TRUE);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_ALWAYS);
+  glDisable(GL_BLEND);
+
+  // note:
+  // there are some places where the game draws the same section of ocean twice, in this order:
+  // - low poly mesh with ocean texture
+  // - low poly mesh with envmap texture
+  // - high poly mesh with ocean texture (overwrites previous draw)
+  // - high poly mesh with envmap texture (overwrites previous draw)
+
+  // we draw all ocean textures together and all envmap textures togther. luckily, there's a trick
+  // we can use to get the same result.
+  // first, we'll draw all ocean textures. The high poly mesh is drawn second, so it wins.
+  // then, we'll draw all envmaps, but with two changes:
+  // - first, we draw it in reverse, so the high poly versions are drawn first
+  // - second, we'll modify the shader to set alpha = 0 of the destination. when the low poly
+  //    version is drawn on top, it won't draw at all because of the blending mode
+  //    (s_factor = DST_ALPHA, d_factor = 1)
+
+  // draw it in reverse
+  reverse_indices(m_indices[1].data(), m_next_free_index[1]);
+
+  for (int bucket = 0; bucket < 2; bucket++) {
+    switch (bucket) {
+      case 0: {
+        auto tex = render_state->texture_pool->lookup(8160);
+        if (!tex) {
+          tex = render_state->texture_pool->get_placeholder_texture();
+        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, *tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glUniform1i(
+            glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "tex_T0"), 0);
+        glUniform1i(
+            glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "bucket"), 3);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      }
+
+      break;
+      case 1:
+        glEnable(GL_BLEND);
+        auto tex = render_state->texture_pool->lookup(m_envmap_tex);
+        if (!tex) {
+          tex = render_state->texture_pool->get_placeholder_texture();
+        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, *tex);
+
+        glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+        glBlendEquation(GL_FUNC_ADD);
+        glUniform1i(
+            glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "bucket"), 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         break;
     }
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[bucket]);
