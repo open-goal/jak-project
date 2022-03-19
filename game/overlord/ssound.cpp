@@ -2,6 +2,7 @@
 #include <cstring>
 #include "ssound.h"
 #include "common/util/Assert.h"
+#include "sndshim.h"
 
 using namespace iop;
 
@@ -61,6 +62,8 @@ static s32 atan_table[257] = {
 
 void CatalogSRAM() {}
 
+static void* SndMemAlloc();
+static void SndMemFree(void* ptr);
 void InitSound_Overlord() {
   for (auto& s : gSounds) {
     s.id = 0;
@@ -74,11 +77,11 @@ void InitSound_Overlord() {
   SetCurve(6, -0x1000, 0);
   SetCurve(6, -0x800, 0);
 
-  // TODO snd_StartSoundSystem();
-  // TODO sndRegisterIOPMemAllocat(SndMemAlloc, SndMemFree);
-  // TODO snd_LockVoiceAllocator(1);
-  u32 voice = 0;  // TODO = snd_ExternVoiceVoiceAlloc(2, 0x7f);
-  // TODO snd_UnlockVoiceAllocator();
+  snd_StartSoundSystem();
+  snd_RegisterIOPMemAllocator(SndMemAlloc, SndMemFree);
+  snd_LockVoiceAllocator(1);
+  u32 voice = snd_ExternVoiceVoiceAlloc(2, 0x7f);
+  snd_UnlockVoiceAllocator();
 
   // The voice allocator returns a number in the range 0-47 where voices
   // 0-23 are on SPU Core 0 and 24-47 are on core 2.
@@ -86,19 +89,19 @@ void InitSound_Overlord() {
   gVoice = voice / 24 + ((voice % 24) * 2);
 
   // Allocate SPU RAM for our streams.
-  gStreamSRAM = 0;  // //TODO = snd_SRAMMalloc(0xc030);
+  gStreamSRAM = snd_SRAMMalloc(0xc030);
 
-  // TODO snd_SetMixerMode(0, 0);
+  snd_SetMixerMode(0, 0);
 
   for (int i = 0; i < 8; i++) {
-    // snd_SetGroupVoiceRange(i, 0x10, 0x2f);
+    snd_SetGroupVoiceRange(i, 0x10, 0x2f);
   }
 
-  // TODO snd_SetGroupVoiceRange(1,0,0xf);
-  // TODO snd_SetGroupVoiceRange(2,0,0xf);
-  // TODO snd_SetReverbDepth(3,0,0);
-  // TODO snd_SetReverbType(1,0);
-  // TODO snd_SetReverbType(2,0);
+  snd_SetGroupVoiceRange(1, 0, 0xf);
+  snd_SetGroupVoiceRange(2, 0, 0xf);
+  snd_SetReverbDepth(3, 0, 0);
+  snd_SetReverbType(1, 0);
+  snd_SetReverbType(2, 0);
 
   CatalogSRAM();
 
@@ -119,8 +122,8 @@ void InitSound_Overlord() {
     gPanTable[270 + i].right = rear_right;
   }
 
-  // TODO snd_SetPanTable(gPanTable);
-  // TODO snd_SetPlayBackMode(2);
+  snd_SetPanTable((s16*)gPanTable);
+  snd_SetPlayBackMode(2);
 
   SemaParam sema;
   sema.attr = 1;
@@ -142,7 +145,7 @@ Sound* LookupSound(s32 id) {
 
   for (auto& s : gSounds) {
     if (s.id == id) {
-      s32 sndid = 0;  // snd_SoundIsStillPlaying(s.sndRef);
+      s32 sndid = snd_SoundIsStillPlaying(s.snd_id);
       s.snd_id = sndid;
 
       if (sndid == 0) {
@@ -160,7 +163,7 @@ Sound* LookupSound(s32 id) {
 void CleanSounds() {
   for (auto& s : gSounds) {
     if (s.id != 0) {
-      s32 sndid = 0;  // snd_SoundIsStillPlaying(s.sndRef);
+      s32 sndid = snd_SoundIsStillPlaying(s.snd_id);
       s.snd_id = sndid;
 
       if (sndid == 0) {
@@ -173,13 +176,13 @@ void CleanSounds() {
 void KillSoundsInGroup(u8 group) {
   for (auto& s : gSounds) {
     if (s.id != 0) {
-      s32 sndid = 0;  // snd_SoundIsStillPlaying(s.sndRef);
+      s32 sndid = snd_SoundIsStillPlaying(s.snd_id);
       s.snd_id = sndid;
 
       if (sndid == 0) {
         s.id = 0;
       } else if (s.params.group & group) {
-        // snd_StopSonud()
+        snd_StopSound(s.snd_id);
         s.id = 0;
       }
     }
@@ -360,7 +363,7 @@ static void UpdateLocation(Sound* sound) {
     return;
   }
 
-  s32 id = 0;  // TODO snd_SoundISStillPlaying(sound->snd_id);
+  s32 id = snd_SoundIsStillPlaying(sound->snd_id);
   if (id == 0) {
     sound->id = 0;
     return;
@@ -368,10 +371,10 @@ static void UpdateLocation(Sound* sound) {
 
   s32 volume = GetVolume(sound);
   if (volume == 0) {
-    // TODO snd_StopSound(sound->snd_id);
+    snd_StopSound(sound->snd_id);
   } else {
     s32 pan = GetPan(sound);
-    // TODO snd_SetSoundVolPan(id, volume, pan);
+    snd_SetSoundVolPan(id, volume, pan);
   }
 }
 
@@ -411,7 +414,7 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
   }
 
   if (sound->new_volume == -4) {
-    // TODO snd_StopSound(sound->snd_id);
+    snd_StopSound(sound->snd_id);
     sound->id = 0;
     return;
   }
@@ -421,13 +424,13 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
 }
 
 void UpdateVolume(Sound* sound) {
-  s32 id = 0;  // TODO snd_SoundIsStillPlaying(sound->snd_id);
+  s32 id = snd_SoundIsStillPlaying(sound->snd_id);
   sound->snd_id = id;
   if (sound->snd_id == 0) {
     sound->id = 0;
   } else {
     s32 volume = GetVolume(sound);
-    // TODO snd_SetSoundVolPan(id, volume, -2);
+    snd_SetSoundVolPan(id, volume, -2);
   }
 }
 
@@ -478,14 +481,14 @@ void SetCurve(s32 curve, s32 fallof, s32 ease) {
 
 void SetMusicVol() {
   s32 volume = (gMusicVol * gMusicFade >> 0x10) * gMusicTweak >> 7;
-  // TODO snd_SetMasterVolume(1, volume);
-  // TODO snd_SetMasterVolume(2, volume);
+  snd_SetMasterVolume(1, volume);
+  snd_SetMasterVolume(2, volume);
 }
 
 // Do we even need/want these
 // TODO void SetBufferMem() {}
 // TODO void ReleaseBufferMem() {}
-// TODO static void* SndMemAlloc() {
-//  return nullptr;
-// }
-// TODO static void SndMemFree(void* ptr) {}
+static void* SndMemAlloc() {
+  return nullptr;
+}
+static void SndMemFree(void* ptr) {}
