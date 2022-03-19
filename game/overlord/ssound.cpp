@@ -389,7 +389,7 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
     step /= sound->ticks;
 
     if (step >= 0) {
-      if (step <= 0) {
+      if (step == 0) {
         step = 1;
       }
 
@@ -399,10 +399,6 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
       }
 
     } else {
-      if (step >= 0) {
-        step = -1;
-      }
-
       sound->params.volume += step;
       if (sound->new_volume > sound->params.volume) {
         sound->params.volume = sound->new_volume;
