@@ -64,7 +64,7 @@ struct SoundRpcPlayCommand {
   SoundParams parms;
 };
 
-struct SoundRpcSetParam {
+struct SoundRpcSetParamCommand {
   u32 sound_id;
   SoundParams parms;
   s32 auto_time;
@@ -136,6 +136,7 @@ struct SoundRpcCommand {
     SoundRpcGroupCommand group;
     SoundRpcSetFlavaCommand flava;
     SoundRpcMasterVolCommand master_volume;
+    SoundRpcSetParamCommand param;
     u8 max_size[0x4C];  // Temporary
   };
 };

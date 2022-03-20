@@ -380,14 +380,14 @@ static void UpdateLocation(Sound* sound) {
 }
 
 static void UpdateAutoVol(Sound* sound, s32 ticks) {
-  if (ticks < sound->ticks) {
+  if (ticks < sound->auto_time) {
     s32 nvol = sound->new_volume;
     if (nvol == -4) {
       nvol = 0;
     }
 
     s32 step = (nvol - sound->params.volume) * ticks;
-    step /= sound->ticks;
+    step /= sound->auto_time;
 
     if (step >= 0) {
       if (step == 0) {
@@ -406,7 +406,7 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
       }
     }
 
-    sound->ticks -= ticks;
+    sound->auto_time -= ticks;
     return;
   }
 
@@ -417,7 +417,7 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
   }
 
   sound->params.volume = sound->new_volume;
-  sound->ticks = 0;
+  sound->auto_time = 0;
 }
 
 void UpdateVolume(Sound* sound) {
@@ -442,7 +442,7 @@ void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
 
   for (auto& s : gSounds) {
     if (s.id != 0 && s.new_volume == 0) {
-      if (s.ticks != 0) {
+      if (s.auto_time != 0) {
         UpdateAutoVol(&s, delta);
       }
       UpdateLocation(&s);

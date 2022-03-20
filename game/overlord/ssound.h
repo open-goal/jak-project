@@ -35,7 +35,7 @@ struct Sound {
   s32 sound_handle;
   s32 unk;  // is_music?
   s32 new_volume;
-  s32 ticks;
+  s32 auto_time;
   SoundParams params;
   SoundRecord* bank_entry;
 };

@@ -4,7 +4,6 @@
 // TODO strcpy_toupper
 // TODO atoi
 // TODO ReadBankSoundNames
-// TODO PrintBankInfo
 
 void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2) {
   (void)bank;

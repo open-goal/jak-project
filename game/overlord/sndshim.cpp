@@ -4,6 +4,9 @@
 void snd_StartSoundSystem() {
   printf("snd_StartSoundSystem\n");
 }
+void snd_StopSoundSystem() {
+  printf("snd_StopSoundSystem\n");
+}
 void snd_RegisterIOPMemAllocator(AllocFun, FreeFun) {
   printf("snd_RegisterIOPMemAllocator\n");
 }
@@ -73,10 +76,21 @@ s32 snd_PlaySoundVolPanPMPB(s32, s32, s32, s32, s32, s32) {
   printf("snd_PlaySoundVolPanPMPB\n");
   return 0;
 }
-
 void snd_SetSoundPitchModifier(s32, s32) {
   printf("snd_SetSoundPitchModifier\n");
 }
 void snd_SetSoundPitchBend(s32, s32) {
   printf("snd_SetSoundPitchBend\n");
+}
+void snd_PauseSound(s32) {
+  printf("snd_PauseSound\n");
+}
+void snd_ContinueSound(s32) {
+  printf("snd_ContinueSound\n");
+}
+void snd_AutoPitch(s32, s32, s32, s32) {
+  printf("snd_AutoPitch\n");
+}
+void snd_AutoPitchBend(s32, s32, s32, s32) {
+  printf("snd_AutoPitchBend\n");
 }

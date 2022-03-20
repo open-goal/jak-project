@@ -25,6 +25,8 @@ s32 gMusicTweak = 0x80;
 s32 gMusicPause = 0;
 u32 gFreeMem = 0;
 
+s32 gVAG_Id = 0;  // TODO probably doesn't belong here.
+
 // english, french, germain, spanish, italian, japanese, uk.
 static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
 const char* gLanguage = nullptr;
@@ -140,7 +142,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
 
           SoundBank* bank = nullptr;
           s32 index = LookupSoundIndex(cmd->play.name, &bank);
-          if (!index) {
+          if (index < 0) {
             break;
           }
 
@@ -171,7 +173,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           memcpy(&sound->params, &cmd->play.parms, sizeof(sound->params));
           sound->bank_entry = &bank->sound[index];
           sound->unk = 0;
-          sound->ticks = 0;
+          sound->auto_time = 0;
 
           if ((sound->params.mask & 0x40) == 0) {
             sound->params.fo_min = sound->bank_entry->fallof_params & 0x3fff;
@@ -192,16 +194,69 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           }
         } break;
         case SoundCommand::PAUSE_SOUND: {
-          printf("Ignoring Pause Sound command\n");
+          Sound* sound = LookupSound(cmd->sound_id.sound_id);
+          if (sound != nullptr) {
+            snd_PauseSound(sound->sound_handle);
+          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+            // TODO PauseVAGStream();
+          }
         } break;
         case SoundCommand::STOP_SOUND: {
-          printf("Ignoring Stop Sound command\n");
+          Sound* sound = LookupSound(cmd->sound_id.sound_id);
+          if (sound != nullptr) {
+            snd_StopSound(sound->sound_handle);
+          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+            // TODO StopVAGStream();
+          }
         } break;
         case SoundCommand::CONTINUE_SOUND: {
-          printf("Ignoring Continue Sound command\n");
+          Sound* sound = LookupSound(cmd->sound_id.sound_id);
+          if (sound != nullptr) {
+            snd_ContinueSound(sound->sound_handle);
+          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+            // TODO UNpauseVAGStream();
+          }
         } break;
         case SoundCommand::SET_PARAM: {
-          printf("Ignoring Set param command\n");
+          Sound* sound = LookupSound(cmd->sound_id.sound_id);
+          u32 mask = cmd->param.parms.mask;
+          if (sound != nullptr) {
+            if (mask & 1) {
+              if (mask & 0x20) {
+                sound->auto_time = cmd->param.auto_time;
+                sound->new_volume = cmd->param.parms.volume;
+              } else {
+                sound->params.volume = cmd->param.parms.volume;
+              }
+            }
+            if (mask & 0x20) {
+              sound->params.trans = cmd->param.parms.trans;
+            }
+            if (mask & 0x21) {
+              UpdateVolume(sound);
+            }
+            if (mask & 2) {
+              sound->params.pitch_mod = cmd->param.parms.pitch_mod;
+              if (mask & 0x10) {
+                snd_AutoPitch(sound->sound_handle, sound->params.pitch_mod, cmd->param.auto_time,
+                              cmd->param.auto_time);
+              } else {
+                snd_SetSoundPitchModifier(sound->sound_handle, cmd->param.parms.pitch_mod);
+              }
+            }
+            if (mask & 4) {
+              sound->params.bend = cmd->param.parms.bend;
+              if (mask & 0x10) {
+                snd_AutoPitchBend(sound->sound_handle, sound->params.bend, cmd->param.auto_time,
+                                  cmd->param.auto_time);
+              } else {
+                snd_SetSoundPitchBend(sound->sound_handle, cmd->param.parms.bend);
+              }
+            }
+
+          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+            // TODO SetVAGStreamVolume();
+          }
         } break;
         case SoundCommand::SET_MASTER_VOLUME: {
           u32 group = cmd->master_volume.group.group;
@@ -249,7 +304,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         case SoundCommand::SET_SOUND_FALLOFF: {
           SoundBank* bank;
           s32 idx = LookupSoundIndex(cmd->fallof.name, &bank);
-          if (idx > 0) {
+          if (idx >= 0) {
             bank->sound[idx].fallof_params =
                 (cmd->fallof.curve << 28) | (cmd->fallof.max << 14) | cmd->fallof.min;
           }
@@ -262,7 +317,9 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
                       cmd->ear_trans.cam_angle);
         } break;
         case SoundCommand::SHUTDOWN: {
-          printf("Ignoring Shutdown command\n");
+          gSoundEnable = 0;
+          snd_StopSoundSystem();
+          // TODO ShutdownFilingSystem();
         } break;
         default: {
           printf("Unhandled RPC Player command %d\n", (int)cmd->command);
