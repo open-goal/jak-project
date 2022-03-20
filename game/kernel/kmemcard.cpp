@@ -254,7 +254,7 @@ void pc_game_save_synch() {
   mc_timer.start();
   pc_update_card();
   auto path = file_util::get_user_memcard_dir() / filename[0];
-  file_util::create_dir_if_needed(path.string());
+  file_util::create_dir_if_needed_for_file(path.string());
 
   // cd_reprobe_save //
   if (!file_is_present(op.param2)) {
@@ -276,7 +276,7 @@ void pc_game_save_synch() {
   // 4 is the first bank file
   mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
   auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
-  file_util::create_dir_if_needed(save_path.string());
+  file_util::create_dir_if_needed_for_file(save_path.string());
   auto fd = fopen(save_path.string().c_str(), "wb");
   fmt::print("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
   if (fd) {

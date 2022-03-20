@@ -819,15 +819,15 @@ void update_discord_rpc(u32 discord_info) {
 
 u64 filepath_exists(u32 filepath) {
   auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
-  if (file_util::file_exists(filepath_str)) {
+  if (std::filesystem::exists(filepath_str)) {
     return intern_from_c("#t").offset;
   }
-  return intern_from_c("#f").offset;
+  return s7.offset;
 }
 
 void mkdir_path(u32 filepath) {
   auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
-  file_util::create_dir_if_needed(filepath_str);
+  file_util::create_dir_if_needed_for_file(filepath_str);
 }
 
 void InitMachine_PCPort() {
@@ -860,7 +860,7 @@ void InitMachine_PCPort() {
 
   // file related functions
   make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
-  make_function_symbol_from_c("pc-mkdir-path", (void*)mkdir_path);
+  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
