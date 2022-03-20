@@ -157,16 +157,9 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     input = g_gamepad_analogs[(int)analog];
   }
 
-  // Invert the horizontal axis of the right joystick, to match behaviour of PS joystick. The rest
-  // are already correct.
-  bool inverted = false;
-  if (analog == Analog::Right_X) {
-    inverted = true;
-  }
-
   // GLFW provides float in range -1 to 1, caller expects 0-255
-  float input_low = inverted ? 1.0f : -1.0f;
-  float input_high = inverted ? -1.0f : 1.0f;
+  const float input_low = -1.0f;
+  const float input_high = 1.0f;
   const int output_low = 0;
   const int output_high = 255;
 
