@@ -124,7 +124,6 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
 int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
-
   float input = 0.0f;
 
   if (CheckPadIdx(pad) == -1) {
@@ -132,7 +131,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     return 127;
   }
 
-  if (g_gamepads.gamepad_idx == -1) { // Gamepad not present - use keyboard
+  if (g_gamepads.gamepad_idx == -1) {  // Gamepad not present - use keyboard
 
     // Movement controls mapped to WASD keys
     if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
@@ -154,11 +153,12 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
 
-  } else { // Gamepad present
+  } else {  // Gamepad present
     input = g_gamepad_analogs[(int)analog];
   }
 
-  // Invert the horizontal axis of the right joystick, to match behaviour of PS joystick. The rest are already correct.
+  // Invert the horizontal axis of the right joystick, to match behaviour of PS joystick. The rest
+  // are already correct.
   bool inverted = false;
   if (analog == Analog::Right_X) {
     inverted = true;
@@ -171,7 +171,8 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
   const int output_high = 255;
 
   // Map from input to output range
-  return int((input - input_low) * (output_high - output_low) / (input_high - input_low) + output_low);
+  return int((input - input_low) * (output_high - output_low) / (input_high - input_low) +
+    output_low);
 }
 
 // map a button on a pad to a key
