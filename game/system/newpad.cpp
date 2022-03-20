@@ -134,6 +134,15 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
 
   if (g_gamepads.gamepad_idx == -1) {
     // TODO - keyboard mapping when no pad present
+    if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_S] && analog == Analog::Left_Y)
+      input += 1.0f;
+    if (g_buffered_key_status[GLFW_KEY_A] && analog == Analog::Left_X)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_D] && analog == Analog::Left_X)
+      input += 1.0f;
+
   } else {
     // TODO - dead-zone support needed?
     input = g_gamepad_analogs[(int)analog];
@@ -173,15 +182,19 @@ void DefaultMapping(MappingInfo& mapping) {
     }
   }
 
-  // r1/l1
-  MapButton(mapping, Button::L1, 0, GLFW_KEY_U);
+  // R1 / L1
+  MapButton(mapping, Button::L1, 0, GLFW_KEY_Q);
   MapButton(mapping, Button::R1, 0, GLFW_KEY_I);
 
+  // R2 / L2
+  MapButton(mapping, Button::L2, 0, GLFW_KEY_1);
+  MapButton(mapping, Button::R2, 0, GLFW_KEY_O);
+
   // face buttons
-  MapButton(mapping, Button::Ecks, 0, GLFW_KEY_Z);
-  MapButton(mapping, Button::Square, 0, GLFW_KEY_X);
-  MapButton(mapping, Button::Triangle, 0, GLFW_KEY_S);
-  MapButton(mapping, Button::Circle, 0, GLFW_KEY_A);
+  MapButton(mapping, Button::Ecks, 0, GLFW_KEY_SPACE);
+  MapButton(mapping, Button::Square, 0, GLFW_KEY_F);
+  MapButton(mapping, Button::Triangle, 0, GLFW_KEY_R);
+  MapButton(mapping, Button::Circle, 0, GLFW_KEY_E);
 
   // dpad
   MapButton(mapping, Button::Up, 0, GLFW_KEY_UP);
