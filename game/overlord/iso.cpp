@@ -368,9 +368,25 @@ u32 ISOThread() {
             // no buffers, try again.
             SendMbx(iso_mbx, msg_from_mbx);
           } else {
-            // todo - actual load here
             auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
-            printf("Ignoring request to load sound bank %s\n", cmd->bank_name);
+            isofs->load_sound_bank(cmd->bank_name, cmd->bank);
+            FreeBuffer(buff);
+            ReturnMessage(msg_from_mbx);
+          }
+        } else {
+          // just try again...
+          SendMbx(iso_mbx, msg_from_mbx);
+        }
+      } else if (msg_from_mbx->cmd_id == LOAD_MUSIC) {
+        // if there's an in progress vag command, try again.
+        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+          auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
+          if (!buff) {
+            // no buffers, try again.
+            SendMbx(iso_mbx, msg_from_mbx);
+          } else {
+            auto* cmd = (MusicLoadCommand*)msg_from_mbx;
+            isofs->load_music(cmd->music_name, cmd->music_handle);
             FreeBuffer(buff);
             ReturnMessage(msg_from_mbx);
           }
