@@ -132,7 +132,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     return 127;
   }
 
-  if (g_gamepads.gamepad_idx == -1) {
+  if (g_gamepads.gamepad_idx == -1) { // Gamepad not present - use keyboard
 
     // Movement controls mapped to WASD keys
     if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
@@ -154,7 +154,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
 
-  } else {
+  } else { // Gamepad present
     input = g_gamepad_analogs[(int)analog];
   }
 
@@ -163,6 +163,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
   if (analog == Analog::Right_X) {
     inverted = true;
   }
+
   // GLFW provides float in range -1 to 1, caller expects 0-255
   float input_low = inverted ? 1.0f : -1.0f;
   float input_high = inverted ? -1.0f : 1.0f;
