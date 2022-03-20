@@ -37,10 +37,12 @@ SoundBank* AllocateBank() {
     idx++;
   }
 
+  // Funny hack: The loader will read this out of the destination buffer in order to determine how
+  // many sectors of sound name mapping it needs to read.
   if (idx == 0) {
-    gBanks[0]->sound_count = 0x3fe;  // ??
+    gBanks[0]->sound_count = 0x3fe;
   } else {
-    gBanks[idx]->sound_count = 0x65;  // ??
+    gBanks[idx]->sound_count = 0x65;
   }
 
   return gBanks[idx];

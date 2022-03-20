@@ -5,7 +5,7 @@
 #include "common/common_types.h"
 #include "game/overlord/sbank.h"
 
-void PrintBankInfo(void* buffer);
+void PrintBankInfo(SoundBank* buffer);
 void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2);
 
 #endif  // JAK_V2_SOUNDCOMMON_H

@@ -94,3 +94,8 @@ void snd_AutoPitch(s32, s32, s32, s32) {
 void snd_AutoPitchBend(s32, s32, s32, s32) {
   printf("snd_AutoPitchBend\n");
 }
+
+s32 snd_BankLoadEx(const char*, s32, s32, s32) {
+  printf("snd_BankLoadEx\n");
+  return 0;
+}

@@ -1,4 +1,5 @@
 #include "soundcommon.h"
+#include <cstdio>
 #include "common/util/Assert.h"
 
 // TODO strcpy_toupper
@@ -12,7 +13,11 @@ void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2) {
   ASSERT(false);
 }
 
-void PrintBankInfo(void* buffer) {
-  (void)buffer;
-  ASSERT(false);
+void PrintBankInfo(SoundBank* bank) {
+  printf("Bank %s\n\n", bank->name);
+  for (int i = 0; i < bank->sound_count; i++) {
+    printf("%d : %16s : min %d max %d curve %d\n", i, bank->sound[i].name,
+           bank->sound[i].fallof_params & 0x3fff, (bank->sound[i].fallof_params >> 14) & 0x3fff,
+           bank->sound[i].fallof_params >> 28);
+  }
 }
