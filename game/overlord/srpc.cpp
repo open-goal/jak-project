@@ -85,7 +85,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           SetMusicVol();
           music->sound_handle = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
           music->id = 666;
-          music->unk = 1;
+          music->is_music = 1;
         }
       }
     }
@@ -150,7 +150,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           if (sound) {
             memcpy(&sound->params, &cmd->play.parms, sizeof(sound->params));
             sound->bank_entry = &bank->sound[index];
-            sound->unk = 0;
+            sound->is_music = 0;
             if ((sound->params.mask & 0x40) == 0) {
               sound->params.fo_min = sound->bank_entry->fallof_params & 0x3fff;
             }
@@ -172,7 +172,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           }
           memcpy(&sound->params, &cmd->play.parms, sizeof(sound->params));
           sound->bank_entry = &bank->sound[index];
-          sound->unk = 0;
+          sound->is_music = 0;
           sound->auto_time = 0;
 
           if ((sound->params.mask & 0x40) == 0) {

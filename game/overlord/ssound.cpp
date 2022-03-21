@@ -441,7 +441,7 @@ void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
   gCamAngle = cam_angle;
 
   for (auto& s : gSounds) {
-    if (s.id != 0 && s.new_volume == 0) {
+    if (s.id != 0 && s.is_music == 0) {
       if (s.auto_time != 0) {
         UpdateAutoVol(&s, delta);
       }
@@ -456,7 +456,7 @@ void PrintActiveSounds() {
   char string[64];
 
   for (auto& s : gSounds) {
-    if (s.id != 0 && s.new_volume == 0) {
+    if (s.id != 0 && s.is_music == 0) {
       u32 len = strlen(s.bank_entry->name);
       if (len > 16) {
         len = 16;

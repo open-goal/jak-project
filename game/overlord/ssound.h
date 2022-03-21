@@ -33,7 +33,7 @@ struct SoundParams {
 struct Sound {
   s32 id;
   s32 sound_handle;
-  s32 unk;  // is_music?
+  s32 is_music;
   s32 new_volume;
   s32 auto_time;
   SoundParams params;
