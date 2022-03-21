@@ -100,12 +100,12 @@ void mc_print(const std::string& str, Args&&... args) {
 }
 
 const char* filename[12] = {
-    "/BASCUS-97124AYBABTU!",           "/BASCUS-97124AYBABTU!/icon.sys",
-    "/BASCUS-97124AYBABTU!/icon.ico",  "/BASCUS-97124AYBABTU!/BASCUS-97124AYBABTU!",
-    "/BASCUS-97124AYBABTU!/bank0.bin", "/BASCUS-97124AYBABTU!/bank1.bin",
-    "/BASCUS-97124AYBABTU!/bank2.bin", "/BASCUS-97124AYBABTU!/bank3.bin",
-    "/BASCUS-97124AYBABTU!/bank4.bin", "/BASCUS-97124AYBABTU!/bank5.bin",
-    "/BASCUS-97124AYBABTU!/bank6.bin", "/BASCUS-97124AYBABTU!/bank7.bin"};
+    "BASCUS-97124AYBABTU!",           "BASCUS-97124AYBABTU!/icon.sys",
+    "BASCUS-97124AYBABTU!/icon.ico",  "BASCUS-97124AYBABTU!/BASCUS-97124AYBABTU!",
+    "BASCUS-97124AYBABTU!/bank0.bin", "BASCUS-97124AYBABTU!/bank1.bin",
+    "BASCUS-97124AYBABTU!/bank2.bin", "BASCUS-97124AYBABTU!/bank3.bin",
+    "BASCUS-97124AYBABTU!/bank4.bin", "BASCUS-97124AYBABTU!/bank5.bin",
+    "BASCUS-97124AYBABTU!/bank6.bin", "BASCUS-97124AYBABTU!/bank7.bin"};
 
 void kmemcard_init_globals() {
   // next = 0;
@@ -180,7 +180,7 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  * PC port function that returns whether a given bank ID's file exists or not.
  */
 bool file_is_present(int id, int bank = 0) {
-  auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + id * 2 + bank]});
+  auto bankname = file_util::get_user_memcard_dir() / filename[4 + id * 2 + bank];
   if (!std::filesystem::exists(bankname)) {
     // file doesn't exist...
     return false;
@@ -210,14 +210,14 @@ void pc_update_card() {
   // int highest_save_count = 0;
   mc_last_file = -1;
   for (s32 file = 0; file < 4; file++) {
-    auto bankname = file_util::get_file_path({"user", "memcard", filename[4 + file * 2]});
+    auto bankname = file_util::get_user_memcard_dir() / filename[4 + file * 2];
     mc_files[file].present = file_is_present(file);
     if (mc_files[file].present) {
-      auto bankdata = file_util::read_binary_file(bankname);
+      auto bankdata = file_util::read_binary_file(bankname.string());
       auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
       if (file_is_present(file, 1)) {
-        auto bankname2 = file_util::get_file_path({"user", "memcard", filename[1 + 4 + file * 2]});
-        auto bankdata2 = file_util::read_binary_file(bankname2);
+        auto bankname2 = file_util::get_user_memcard_dir() / filename[1 + 4 + file * 2];
+        auto bankdata2 = file_util::read_binary_file(bankname2.string());
         auto header2 = reinterpret_cast<McHeader*>(bankdata.data());
 
         if (header2->save_count > header1->save_count) {
@@ -253,7 +253,8 @@ void pc_game_save_synch() {
   Timer mc_timer;
   mc_timer.start();
   pc_update_card();
-  file_util::create_dir_if_needed(file_util::get_file_path({"user", "memcard", filename[0]}));
+  auto path = file_util::get_user_memcard_dir() / filename[0];
+  file_util::create_dir_if_needed_for_file(path.string());
 
   // cd_reprobe_save //
   if (!file_is_present(op.param2)) {
@@ -274,9 +275,9 @@ void pc_game_save_synch() {
   // file*2 + p4 is the bank (2 banks per file, p4 is 0 or 1 to select the bank)
   // 4 is the first bank file
   mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
-  auto fd =
-      fopen(file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4 + p4]}).c_str(),
-            "wb");
+  auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
+  file_util::create_dir_if_needed_for_file(save_path.string());
+  auto fd = fopen(save_path.string().c_str(), "wb");
   fmt::print("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
   if (fd) {
     // cb_openedsave //
@@ -325,6 +326,7 @@ void pc_game_save_synch() {
       op.result = McStatusCode::INTERNAL_ERROR;
     }
   } else {
+    fmt::print("[MC] Error opening file, errno - {}", errno);
     op.operation = MemoryCardOperationKind::NO_OP;
     op.result = McStatusCode::INTERNAL_ERROR;
   }
@@ -344,12 +346,11 @@ void pc_game_load_open_file(FILE* fd) {
         // cb_closedload //
         p2++;
         // added : check if aux bank exists
-        auto new_bankname =
-            file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4 + p2]});
+        auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
         bool aux_exists = std::filesystem::exists(new_bankname);
         if (p2 < 2 && aux_exists) {
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
-          auto new_fd = fopen(new_bankname.c_str(), "rb");
+          auto new_fd = fopen(new_bankname.string().c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
           // let's verify the data.
@@ -464,8 +465,9 @@ void pc_game_load_synch() {
   // cb_reprobe_load //
   p2 = 0;
   mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
-  auto fd = fopen(
-      file_util::get_file_path({"user", "memcard", filename[op.param2 * 2 + 4]}).c_str(), "rb");
+
+  auto path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4];
+  auto fd = fopen(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 
   fmt::print("[MC] synchronous load took {:.2f}ms\n", mc_timer.getMs());

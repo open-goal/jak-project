@@ -43,6 +43,19 @@ std::filesystem::path get_user_home_dir() {
 #endif
 }
 
+std::filesystem::path get_user_game_dir() {
+  // TODO - i anticipate UTF-8 problems on windows with our current FS api
+  return get_user_home_dir() / "OpenGOAL";
+}
+
+std::filesystem::path get_user_settings_dir() {
+  return get_user_game_dir() / "jak1" / "settings";
+}
+
+std::filesystem::path get_user_memcard_dir() {
+  return get_user_game_dir() / "jak1" / "saves";
+}
+
 std::string get_project_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
@@ -66,6 +79,14 @@ std::string get_project_path() {
 }
 
 std::string get_file_path(const std::vector<std::string>& input) {
+  // TODO - clean this behaviour up, it causes unexpected behaviour when working with files
+  // the project path should be explicitly provided by whatever if needed
+  // TEMP HACK
+  // - if the provided path is absolute, don't add the project path
+  if (input.size() == 1 && std::filesystem::path(input.at(0)).is_absolute()) {
+    return input.at(0);
+  }
+
   std::string currentPath = file_util::get_project_path();
   char dirSeparator;
 
@@ -89,6 +110,10 @@ bool create_dir_if_needed(const std::string& path) {
     return true;
   }
   return false;
+}
+
+bool create_dir_if_needed_for_file(const std::string& path) {
+  return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
 }
 
 void write_binary_file(const std::string& name, const void* data, size_t size) {

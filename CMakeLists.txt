@@ -19,7 +19,7 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         -Xclang -std=c++17 \
         -Xclang -D_CRT_SECURE_NO_WARNINGS \
         -mavx \
-        -Wno-c++11-narrowing -W3")
+        -Wno-c++11-narrowing -Wno-c++98-compat -W3")
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -80,24 +80,6 @@ if(ASAN_BUILD)
     message(STATUS "Doing ASAN build")
 endif()
 
-# if(WIN32)
-#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/windows/)
-#   if(buildcache_program)
-#     message("Found Windows BuildCache, gonna use it!")
-#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
-#   else()
-#     message("Windows Buildcache not found!")
-#   endif()
-# else()
-#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/linux/)
-#   if(buildcache_program)
-#     message("Found Linux BuildCache, gonna use it!")
-#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
-#   else()
-#     message("Linux Buildcache not found!")
-#   endif()
-# endif()
-
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 
@@ -126,7 +108,6 @@ add_subdirectory(decompiler)
 
 # build glfw library
 add_subdirectory(third-party/glfw)
-
 add_subdirectory(third-party/zstd)
 
 # build imgui
@@ -158,7 +139,6 @@ add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 
 # build format library
 add_subdirectory(third-party/fmt EXCLUDE_FROM_ALL)
-
 # discord rich presence
 include_directories(third-party/discord-rpc/include)
 add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
@@ -170,8 +150,8 @@ option(ZYDIS_BUILD_EXAMPLES "Zydis: Build examples" OFF)
 option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
 add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
 
-
 # windows memory management lib
 if(WIN32)
     add_subdirectory(third-party/mman)
 endif()
+

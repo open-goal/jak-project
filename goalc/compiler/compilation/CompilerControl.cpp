@@ -212,9 +212,9 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // save file
     if (write) {
-      file_util::create_dir_if_needed(file_util::get_file_path({"out", "obj"}));
-      file_util::write_binary_file(file_util::get_file_path({"out", "obj", obj_file_name + ".o"}),
-                                   (void*)data.data(), data.size());
+      auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
+      file_util::create_dir_if_needed_for_file(path);
+      file_util::write_binary_file(path, (void*)data.data(), data.size());
     }
   } else {
     if (load) {

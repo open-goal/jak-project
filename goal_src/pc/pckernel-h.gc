@@ -55,7 +55,32 @@
 
 (defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
 
+(define *pc-subtitle-speaker-valid-options*
+     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 #t #f 'auto))
 
+(define *pc-graphics-display-mode-symbol-options*
+     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 'borderless 'fullscreen 'windowed))
+
+(define *pc-graphics-original-aspect-ratio-options*
+     (new 'static 'boxed-array :type symbol :length 2 :allocated-length 2 'orig-aspect-4x3 'orig-aspect-16x9))
+
+(define *pc-graphics-aspect-ratio-options*
+     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 'pc-aspect-4x3 'pc-aspect-5x4 'pc-aspect-16x9 'pc-aspect-21x9 'pc-aspect-32x9))
+
+(define *pc-graphics-4x3-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 '640x480 '800x600 '1024x768 '1280x960 '1600x1200))
+
+(define *pc-graphics-5x4-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 '960x768 '1280x1024 '1500x1200))
+
+(define *pc-graphics-16x9-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 7 :allocated-length 7 '854x480 '1280x720 '1920x1080 '2560x1440 '2880x1620 '3840x2160 '5120x2880))
+
+(define *pc-graphics-21x9-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 6 :allocated-length 6 '2560x1080 '3120x1440 '3200x1440 '3440x1440 '3840x1600 '5120x2160))
+
+(define *pc-graphics-32x9-valid-resolutions*
+     (new 'static 'boxed-array :type symbol :length 1 :allocated-length 1 '5120x1440))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -202,7 +227,7 @@
    (win-height int32)
    (dpi-x float) ;; DPI width scale
    (dpi-y float) ;; DPI height scale
-   (aspect-setting symbol) ;; aspect ratio setting, for the original game
+   (use-original-aspect-ratio? symbol)
    (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically.
    (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
    (aspect-ratio-scale float) ;; aspect ratio compared to 4x3
@@ -290,6 +315,8 @@
    (discord-rpc? symbol) ;; enable discord rich presence integration
    
    (cheats pc-cheats)
+
+   ;; TODO - save/restore original settings (language/sound/etc)
    )
 
   (:methods
@@ -306,6 +333,7 @@
     (reset-fixes (_type_) none)
     (reset-extra (_type_) none)
     (draw (_type_ dma-buffer) none)
+    (use-orig-aspect-ratio! (_type_ symbol) none)
     (set-display-mode! (_type_ symbol) none)
     (set-aspect-ratio-mode! (_type_ symbol) none)
     (set-resolution! (_type_ symbol) none)
@@ -316,6 +344,7 @@
     (write-to-file (_type_ string) symbol)
     (actor-force-visible? (_type_) symbol)
     (update-cheats (_type_) int)
+    (commit-to-file (_type_) none)
     )
   )
 
@@ -344,6 +373,8 @@
 (define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the-as string #f)))
 (define *pc-settings* (the-as pc-settings #f))
 (format 0 "PC kernel version: ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR)
+
+(define *pc-temp-string-1* (new 'global 'string 2048 (the-as string #f)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; resets
@@ -390,7 +421,8 @@
   (set! (-> obj target-fps) 60)
   (set! (-> obj width) PC_BASE_WIDTH)
   (set! (-> obj height) PC_BASE_HEIGHT)
-  (set! (-> obj use-vis?) #t)
+  (set! (-> obj use-vis?) #f)
+  (set! (-> obj use-original-aspect-ratio?) #f)
   (set! (-> obj aspect-ratio-auto?) #f)
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)

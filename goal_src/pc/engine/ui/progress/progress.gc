@@ -153,7 +153,6 @@
   (set! (-> *options-remap* 32) *ok-options*)
   (set! (-> *options-remap* 33) *ok-options*)
   (set! (-> *options-remap* 34) *yes-no-options*)
-  (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
   (set! (-> *progress-state* video-mode-choice) (get-video-mode))
   (set! (-> *progress-state* yes-no-choice) #f)
   (set! (-> *game-options* 0 value-to-modify) (&-> *setting-control* default vibration))
@@ -176,10 +175,11 @@
   (set! (-> *language-options* 1 value-to-modify) (&-> *pc-settings* subtitles?))
   (set! (-> *language-options* 2 value-to-modify) (&-> *pc-settings* subtitle-language))
   (set! (-> *language-options* 3 value-to-modify) (&-> *pc-settings* subtitle-speaker?)) ;; TODO - refactor this like i did with display-mode
-  (set! (-> *graphic-options* 0 value-to-modify) (&-> *pc-settings* display-mode))
-  (set! (-> *graphic-options* 1 value-to-modify) (&-> *pc-settings* aspect-ratio-mode))
-  (set! (-> *graphic-options* 2 value-to-modify) (&-> *pc-settings* resolution))
-  (set! (-> *graphic-options* 3 value-to-modify) (&-> *pc-settings* letterbox?))
+  (set! (-> *graphic-options* 0 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
+  (set! (-> *graphic-options* 1 value-to-modify) (&-> *pc-settings* display-mode))
+  (set! (-> *graphic-options* 2 value-to-modify) (&-> *pc-settings* aspect-ratio-mode))
+  (set! (-> *graphic-options* 3 value-to-modify) (&-> *pc-settings* resolution))
+  (set! (-> *graphic-options* 4 value-to-modify) (&-> *pc-settings* letterbox?))
 
   (none)
   )
@@ -1344,6 +1344,9 @@
                    (set! play-sound? (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'ntsc))
                    (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'pal)
                    )
+                  ((#x15)
+                   (set! play-sound? (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) #f))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) #t))
                   ;; arbitrary list options
                   ((1 #x10 #x11 #x12 #x13 #x14)
                    ;; every list moves the same way, common logic
@@ -1373,22 +1376,35 @@
                               (dec (-> *progress-menu-list-tracker* selected-index))))))
                     ;; aspect ratio setting
                     ((#x10)
-                     ;; get the current selected item
-                     (let ((curr-val (-> *pc-graphics-aspect-ratio-options*
+                     (if (-> *pc-settings* use-original-aspect-ratio?)
+                      (let ((curr-val (-> *pc-graphics-original-aspect-ratio-options*
                                          (-> *progress-menu-list-tracker* selected-index))))
-                      (if (= curr-val (first-arr *pc-graphics-aspect-ratio-options*))
-                        ;; if we've hit the beginning, wrap around to the end
-                        (set! (-> *progress-menu-list-tracker* selected-index)
-                              (last-idx-arr *pc-graphics-aspect-ratio-options*))
-                        ;; else just move left
-                        (set! (-> *progress-menu-list-tracker* selected-index)
-                              (dec (-> *progress-menu-list-tracker* selected-index))))))
+                        (if (= curr-val (first-arr *pc-graphics-original-aspect-ratio-options*))
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (last-idx-arr *pc-graphics-original-aspect-ratio-options*))
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (dec (-> *progress-menu-list-tracker* selected-index)))))
+                      (let ((curr-val (-> *pc-graphics-aspect-ratio-options*
+                                         (-> *progress-menu-list-tracker* selected-index))))
+                        (if (= curr-val (first-arr *pc-graphics-aspect-ratio-options*))
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (last-idx-arr *pc-graphics-aspect-ratio-options*))
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (dec (-> *progress-menu-list-tracker* selected-index)))))))
                     ;; resolution setting
                     ;; this is a little more sophisticated -- only display the ones related to the aspect ratio
                     ((#x11)
                      (let ((curr-idx (-> *progress-menu-list-tracker* selected-index))
                            (new-idx (dec (-> *progress-menu-list-tracker* selected-index))))
                         (case (-> *pc-settings* aspect-ratio-mode)
+                          (('orig-aspect-4x3)
+                           (when (= (-> *pc-graphics-4x3-valid-resolutions* curr-idx)
+                                    (first-arr *pc-graphics-4x3-valid-resolutions*))
+                            (set! new-idx (last-idx-arr *pc-graphics-4x3-valid-resolutions*))))
+                          (('orig-aspect-16x9)
+                           (when (= (-> *pc-graphics-16x9-valid-resolutions* curr-idx)
+                                    (first-arr *pc-graphics-16x9-valid-resolutions*))
+                            (set! new-idx (last-idx-arr *pc-graphics-16x9-valid-resolutions*))))
                           (('pc-aspect-4x3)
                            (when (= (-> *pc-graphics-4x3-valid-resolutions* curr-idx)
                                     (first-arr *pc-graphics-4x3-valid-resolutions*))
@@ -1424,7 +1440,7 @@
                               (last-idx-arr *pc-subtitle-speaker-valid-options*))
                         (set! (-> *progress-menu-list-tracker* selected-index)
                               (dec (-> *progress-menu-list-tracker* selected-index)))))))
-                   (format #t "VAS: Moving Left. New Index: ~D" (-> *progress-menu-list-tracker* selected-index))))
+                   (format 0 "VAS: Moving Left. New Index: ~D~%" (-> *progress-menu-list-tracker* selected-index))))
                 (if play-sound?
                   (sound-play-by-name (static-sound-name "cursor-l-r") (new-sound-id) 1024 0 0 1 #t)))))
            (else
@@ -1496,6 +1512,9 @@
                    (set! play-sound? (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'pal))
                    (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) 'ntsc)
                    )
+                  ((#x15)
+                   (set! play-sound? (= (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) #t))
+                   (set! (-> (the-as (pointer symbol) (-> s5-0 (-> obj option-index) value-to-modify))) #f))
                   ;; arbitrary list options
                   ((1 #x10 #x11 #x12 #x13 #x14)
                    ;; every list moves the same way, common logic
@@ -1524,21 +1543,33 @@
                               (inc (-> *progress-menu-list-tracker* selected-index))))))
                     ;; aspect ratio setting
                     ((#x10)
-                     ;; get the current selected item
-                     (let ((curr-val (-> *pc-graphics-aspect-ratio-options*
-                                         (-> *progress-menu-list-tracker* selected-index))))
-                      (if (= curr-val (last-arr *pc-graphics-aspect-ratio-options*))
-                        ;; if we've hit the end, wrap around to the beginning
-                        (set! (-> *progress-menu-list-tracker* selected-index) 0)
-                        ;; else just move left
-                        (set! (-> *progress-menu-list-tracker* selected-index)
-                              (inc (-> *progress-menu-list-tracker* selected-index))))))
+                     (if (-> *pc-settings* use-original-aspect-ratio?)
+                      (let ((curr-val (-> *pc-graphics-original-aspect-ratio-options*
+                                          (-> *progress-menu-list-tracker* selected-index))))
+                        (if (= curr-val (last-arr *pc-graphics-original-aspect-ratio-options*))
+                          (set! (-> *progress-menu-list-tracker* selected-index) 0)
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (inc (-> *progress-menu-list-tracker* selected-index)))))
+                      (let ((curr-val (-> *pc-graphics-aspect-ratio-options*
+                                          (-> *progress-menu-list-tracker* selected-index))))
+                        (if (= curr-val (last-arr *pc-graphics-aspect-ratio-options*))
+                          (set! (-> *progress-menu-list-tracker* selected-index) 0)
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (inc (-> *progress-menu-list-tracker* selected-index)))))))
                     ;; resolution setting
                     ;; this is a little more sophisticated -- only display the ones related to the aspect ratio
                     ((#x11)
                      (let ((curr-idx (-> *progress-menu-list-tracker* selected-index))
                            (new-idx (inc (-> *progress-menu-list-tracker* selected-index))))
                         (case (-> *pc-settings* aspect-ratio-mode)
+                          (('orig-aspect-4x3)
+                           (when (= (-> *pc-graphics-4x3-valid-resolutions* curr-idx)
+                                    (last-arr *pc-graphics-4x3-valid-resolutions*))
+                            (set! new-idx 0)))
+                          (('orig-aspect-16x9)
+                           (when (= (-> *pc-graphics-16x9-valid-resolutions* curr-idx)
+                                    (last-arr *pc-graphics-16x9-valid-resolutions*))
+                            (set! new-idx 0)))
                           (('pc-aspect-4x3)
                            (when (= (-> *pc-graphics-4x3-valid-resolutions* curr-idx)
                                     (last-arr *pc-graphics-4x3-valid-resolutions*))
@@ -1573,7 +1604,7 @@
                         (set! (-> *progress-menu-list-tracker* selected-index) 0)
                         (set! (-> *progress-menu-list-tracker* selected-index)
                               (inc (-> *progress-menu-list-tracker* selected-index)))))))
-                    (format #t "VAS: Moving Right. New Index: ~D" (-> *progress-menu-list-tracker* selected-index))))
+                    (format 0 "VAS: Moving Right. New Index: ~D~%" (-> *progress-menu-list-tracker* selected-index))))
                 (if play-sound?
                   (sound-play-by-name (static-sound-name "cursor-l-r") (new-sound-id) 1024 0 0 1 #t)))))
            (else
@@ -1739,13 +1770,8 @@
                     (set! (-> *progress-state* center-x-backup) (-> *setting-control* default screenx))
                     (set! (-> *progress-state* center-y-backup) (-> *setting-control* default screeny))
                     )
-                   ((or (= v1-427 4) (= v1-427 5))
-                    (set! (-> *progress-state* aspect-ratio-backup)
-                          (the-as symbol (-> (the-as (pointer uint32) (-> s5-0 (-> obj option-index) value-to-modify))))
-                          )
-                    )
-                   )
-                 )
+                   ((= v1-427 #x15)
+                    (set! (-> *progress-state* aspect-ratio-choice) (-> *pc-settings* use-original-aspect-ratio?)))))
                (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
                (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
                (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
@@ -1759,7 +1785,7 @@
                          (= (-> s5-0 (-> obj option-index) option-type) #x12)
                          (= (-> s5-0 (-> obj option-index) option-type) #x13)
                          (= (-> s5-0 (-> obj option-index) option-type) #x14))
-                  (format #t "VAS: list option opened")
+                  (format 0 "VAS: list option opened~%")
                   ;; reset tracker to defaults ;; defaults to left?
                   (set! (-> *progress-menu-list-tracker* direction) 'left)
                   (set! (-> *progress-menu-list-tracker* transition?) #f)
@@ -1771,10 +1797,19 @@
                      (set! (-> *progress-menu-list-tracker* selected-index)
                            (the-as int (-> *setting-control* current language))))
                     ((#x10)
-                     (set! (-> *progress-menu-list-tracker* selected-index)
-                           (arr-idx-of *pc-graphics-aspect-ratio-options* (-> *pc-settings* aspect-ratio-mode) 0)))
+                     (if (-> *pc-settings* use-original-aspect-ratio?)
+                      (set! (-> *progress-menu-list-tracker* selected-index)
+                           (arr-idx-of *pc-graphics-original-aspect-ratio-options* (-> *pc-settings* aspect-ratio-mode) 0))
+                      (set! (-> *progress-menu-list-tracker* selected-index)
+                           (arr-idx-of *pc-graphics-aspect-ratio-options* (-> *pc-settings* aspect-ratio-mode) 0))))
                     ((#x11)
                      (case (-> *pc-settings* aspect-ratio-mode)
+                        (('orig-aspect-4x3)
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (arr-idx-of *pc-graphics-4x3-valid-resolutions* (-> *pc-settings* resolution) 0)))
+                        (('orig-aspect-16x9)
+                          (set! (-> *progress-menu-list-tracker* selected-index)
+                                (arr-idx-of *pc-graphics-16x9-valid-resolutions* (-> *pc-settings* resolution) 0)))
                         (('pc-aspect-4x3)
                           (set! (-> *progress-menu-list-tracker* selected-index)
                                 (arr-idx-of *pc-graphics-4x3-valid-resolutions* (-> *pc-settings* resolution) 0)))
@@ -1805,13 +1840,10 @@
            (else
              (sound-play-by-name (static-sound-name "start-options") (new-sound-id) 1024 0 0 1 #t)
              (set! (-> obj selected-option) #f)
-             (format #t "VAS: list selection confirmed!")
+             (format 0 "VAS: list selection confirmed!~%")
              (case (-> s5-0 (-> obj option-index) option-type)
-               ((4)
-                (set! (-> *setting-control* default aspect-ratio)
-                      (the-as symbol (-> (the-as (pointer uint32) (-> s5-0 (-> obj option-index) value-to-modify))))
-                      )
-                )
+               ((#x15)
+                (use-orig-aspect-ratio! *pc-settings* (-> *progress-state* aspect-ratio-choice)))
                ((5)
                 (case (-> (the-as (pointer uint32) (-> s5-0 (-> obj option-index) value-to-modify)))
                   (('pal)
@@ -1829,23 +1861,19 @@
                 (when (not (-> *progress-menu-list-tracker* transition?))
                   (load-level-text-files (-> obj display-level-index))))
                ((#x10)
-                (set-aspect-ratio-mode! *pc-settings*
-                                        (-> *pc-graphics-aspect-ratio-options* (-> *progress-menu-list-tracker* selected-index)))
-                ;; change to the lowest option for that resolution as well
-                (case (-> *pc-settings* aspect-ratio-mode)
-                  (('pc-aspect-4x3)
-                   (set-resolution! *pc-settings* (-> *pc-graphics-4x3-valid-resolutions* 0)))
-                  (('pc-aspect-5x4)
-                   (set-resolution! *pc-settings* (-> *pc-graphics-5x4-valid-resolutions* 0)))
-                  (('pc-aspect-16x9)
-                   (set-resolution! *pc-settings* (-> *pc-graphics-16x9-valid-resolutions* 0)))
-                  (('pc-aspect-21x9)
-                   (set-resolution! *pc-settings* (-> *pc-graphics-21x9-valid-resolutions* 0)))
-                  (('pc-aspect-32x9)
-                   (set-resolution! *pc-settings* (-> *pc-graphics-32x9-valid-resolutions* 0))))
-                )
+                (if (-> *pc-settings* use-original-aspect-ratio?)
+                  (set-aspect-ratio-mode! *pc-settings*
+                                          (-> *pc-graphics-original-aspect-ratio-options* (-> *progress-menu-list-tracker* selected-index)))
+                  (set-aspect-ratio-mode! *pc-settings*
+                                          (-> *pc-graphics-aspect-ratio-options* (-> *progress-menu-list-tracker* selected-index)))))
                ((#x11)
                 (case (-> *pc-settings* aspect-ratio-mode)
+                  (('orig-aspect-4x3)
+                   (set-resolution! *pc-settings*
+                                    (-> *pc-graphics-4x3-valid-resolutions* (-> *progress-menu-list-tracker* selected-index))))
+                  (('orig-aspect-16x9)
+                   (set-resolution! *pc-settings*
+                                    (-> *pc-graphics-16x9-valid-resolutions* (-> *progress-menu-list-tracker* selected-index))))
                   (('pc-aspect-4x3)
                    (set-resolution! *pc-settings*
                                     (-> *pc-graphics-4x3-valid-resolutions* (-> *progress-menu-list-tracker* selected-index))))
@@ -1871,6 +1899,8 @@
                 (set! (-> *pc-settings* subtitle-speaker?)
                       (-> *pc-subtitle-speaker-valid-options* (-> *progress-menu-list-tracker* selected-index))))
                )
+               ;; persist pc-settings
+               (commit-to-file *pc-settings*)
              )
            )
          )

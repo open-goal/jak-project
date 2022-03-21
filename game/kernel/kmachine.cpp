@@ -28,6 +28,7 @@
 #include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/graphics/gfx.h"
@@ -816,6 +817,19 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+u64 filepath_exists(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  if (std::filesystem::exists(filepath_str)) {
+    return intern_from_c("#t").offset;
+  }
+  return s7.offset;
+}
+
+void mkdir_path(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  file_util::create_dir_if_needed_for_file(filepath_str);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
@@ -844,6 +858,10 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
   make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
 
+  // file related functions
+  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
+  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
+
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
@@ -853,6 +871,14 @@ void InitMachine_PCPort() {
     make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
     VM::vm_init();
   }
+
+  // setup string constants
+  auto user_dir_path = file_util::get_user_game_dir();
+  intern_from_c("*pc-user-dir-base-path*")->value =
+      make_string_from_c(user_dir_path.string().c_str());
+  // TODO - we will eventually need a better way to know what game we are playing
+  auto settings_path = file_util::get_user_settings_dir();
+  intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
 }
 
 void vif_interrupt_callback() {
