@@ -1899,6 +1899,7 @@
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
+   "out/iso/TWEAKVAL.MUS"
    ,@(reverse *all-cgos*)
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
