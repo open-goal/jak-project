@@ -3,6 +3,10 @@
 #pragma once
 #include "common/common_types.h"
 
+constexpr int SND_CORE_0 = 1;
+constexpr int SND_CORE_1 = 2;
+constexpr int SD_REV_MODE_OFF = 0;
+
 typedef void* (*AllocFun)();
 typedef void (*FreeFun)(void*);
 

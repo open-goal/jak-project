@@ -13,7 +13,7 @@
 #include <filesystem>
 #include "fake_iso.h"
 #include "game/overlord/sbank.h"
-#include "game/overlord/sndshim.h"
+#include "game/sound/sndshim.h"
 #include "game/overlord/soundcommon.h"
 #include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
@@ -343,7 +343,7 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   fread(buffer, offset, 1, fp);
   fclose(fp);
 
-  s32 handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
+  s32 handle = 0;//snd_BankLoadEx(get_file_path(file), offset, 0, 0);
   snd_ResolveBankXREFS();
   PrintBankInfo(bank);
   bank->bank_handle = handle;

@@ -3,7 +3,7 @@
 #include "game/overlord/srpc.h"
 #include "ssound.h"
 #include "common/util/Assert.h"
-#include "sndshim.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -100,9 +100,10 @@ void InitSound_Overlord() {
 
   snd_SetGroupVoiceRange(1, 0, 0xf);
   snd_SetGroupVoiceRange(2, 0, 0xf);
-  snd_SetReverbDepth(3, 0, 0);
-  snd_SetReverbType(1, 0);
-  snd_SetReverbType(2, 0);
+
+  snd_SetReverbDepth(SND_CORE_0 | SND_CORE_1, 0, 0);
+  snd_SetReverbType(SND_CORE_0, SD_REV_MODE_OFF);
+  snd_SetReverbType(SND_CORE_1, SD_REV_MODE_OFF);
 
   CatalogSRAM();
 

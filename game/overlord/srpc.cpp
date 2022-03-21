@@ -1,6 +1,6 @@
 #include <cstring>
 #include <cstdio>
-#include "game/overlord/sndshim.h"
+#include "game/sound/sndshim.h"
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
