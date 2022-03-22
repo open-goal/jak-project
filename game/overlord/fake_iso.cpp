@@ -301,7 +301,6 @@ uint32_t FS_SyncRead() {
  */
 void FS_PollDrive() {}
 
-// TODO FS_LoadMusic
 uint32_t FS_LoadMusic(char* name, void* buffer) {
   s32* bank_handle = (s32*)buffer;
   char namebuf[16];
@@ -318,7 +317,6 @@ uint32_t FS_LoadMusic(char* name, void* buffer) {
   return 0;
 }
 
-// TODO FS_LoadSoundBank
 uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   SoundBank* bank = (SoundBank*)buffer;
   char namebuf[16];
@@ -335,6 +333,8 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   auto file = FS_Find(namebuf);
   if (!file) {
     file = FS_Find("empty1.sbk");
+    if (!file)  // Might have no files when running tests.
+      return 0;
   }
 
   auto fp = fopen(get_file_path(file), "rb");
