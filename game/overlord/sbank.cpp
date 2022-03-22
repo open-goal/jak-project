@@ -1,5 +1,6 @@
 #include <cstring>
 #include "sbank.h"
+#include "soundcommon.h"
 
 constexpr int N_BANKS = 3;
 SoundBank* gBanks[N_BANKS];
@@ -16,8 +17,8 @@ void sbank_init_globals() {
 
 void InitBanks() {
   for (auto& gBank : gBanks) {
-    gBank->unk1 = 0;
-    gBank->unk2 = 0;
+    gBank->bank_handle = 0;
+    gBank->sound_count = 0;
     strcpy(gBank->name, "<unused>");
   }
 }
@@ -30,19 +31,45 @@ SoundBank* AllocateBank() {
       return nullptr;
     }
 
-    if (gBanks[idx]->unk1 == 0) {
+    if (gBanks[idx]->bank_handle == 0) {
       break;
     }
     idx++;
   }
 
+  // Funny hack: The loader will read this out of the destination buffer in order to determine how
+  // many sectors of sound name mapping it needs to read.
   if (idx == 0) {
-    gBanks[0]->unk2 = 0x3fe;  // ??
+    gBanks[0]->sound_count = 0x3fe;
   } else {
-    gBanks[idx]->unk2 = 0x65;  // ??
+    gBanks[idx]->sound_count = 0x65;
   }
 
   return gBanks[idx];
+}
+
+s32 LookupSoundIndex(const char* name, SoundBank** bank_out) {
+  int idx = 0;
+  while (true) {
+    if (idx > N_BANKS - 1) {
+      return -1;
+    }
+
+    auto& bank = gBanks[idx];
+    if (bank->bank_handle == 0) {
+      break;
+    }
+
+    for (int i = 0; i < bank->sound_count; i++) {
+      if (memcmp(bank->name, name, 16) == 0) {
+        *bank_out = bank;
+        return i;
+      }
+    }
+    idx++;
+  }
+
+  return -1;
 }
 
 // name should be a 16-byte "sound name"
@@ -59,5 +86,13 @@ SoundBank* LookupBank(const char* name) {
       return bank;
     }
     idx--;
+  }
+}
+
+void ReloadBankInfo() {
+  for (auto& b : gBanks) {
+    if (b->bank_handle) {
+      ReadBankSoundInfo(b, b, 1);
+    }
   }
 }

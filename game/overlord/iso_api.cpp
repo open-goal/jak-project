@@ -1,4 +1,5 @@
 #include "iso_api.h"
+#include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
 #include "common/log/log.h"
 #include "sbank.h"
@@ -83,4 +84,25 @@ void LoadSoundBank(const char* bank_name, SoundBank* bank) {
   cmd.bank = bank;
   SendMbx(iso_mbx, &cmd);
   SleepThread();  // wait for finish.
+}
+
+void LoadMusic(const char* music_name, s32* bank) {
+  ASSERT(strlen(music_name) < 16);
+  MusicLoadCommand cmd;
+  cmd.cmd_id = LOAD_MUSIC;
+  cmd.messagebox_to_reply = 0;
+  cmd.thread_id = GetThreadId();
+  strcpy(cmd.music_name, music_name);
+  cmd.music_handle = bank;
+  SendMbx(iso_mbx, &cmd);
+  SleepThread();
+
+  for (int i = 0; i < gMusicTweakInfo.TweakCount; i++) {
+    if (!strcmp(gMusicTweakInfo.MusicTweak[i].MusicName, music_name)) {
+      gMusicTweak = gMusicTweakInfo.MusicTweak[i].VolumeAdjust;
+      return;
+    }
+  }
+
+  gMusicTweak = 0x80;
 }

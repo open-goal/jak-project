@@ -12,6 +12,10 @@
 #include <cstring>
 #include <filesystem>
 #include "fake_iso.h"
+#include "game/overlord/sbank.h"
+#include "game/overlord/sndshim.h"
+#include "game/overlord/soundcommon.h"
+#include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
 #include "isocommon.h"
 #include "overlord.h"
@@ -49,6 +53,7 @@ static uint32_t FS_SyncRead();
 static uint32_t FS_LoadSoundBank(char*, void*);
 static uint32_t FS_LoadMusic(char*, void*);
 static void FS_PollDrive();
+static void LoadMusicTweaks();
 
 void fake_iso_init_globals() {
   // init file lists
@@ -101,7 +106,7 @@ int FS_Init(u8* buffer) {
     sFiles[i].location = i;
   }
 
-  // TODO load tweak music.
+  LoadMusicTweaks();
 
   return 0;
 }
@@ -296,18 +301,62 @@ uint32_t FS_SyncRead() {
  */
 void FS_PollDrive() {}
 
-// TODO FS_LoadMusic
 uint32_t FS_LoadMusic(char* name, void* buffer) {
-  (void)name;
-  (void)buffer;
-  ASSERT(false);
+  s32* bank_handle = (s32*)buffer;
+  char namebuf[16];
+  strcpy(namebuf, name);
+  namebuf[8] = 0;
+  strcat(namebuf, ".mus");
+  auto file = FS_Find(namebuf);
+  if (!file)
+    return CMD_STATUS_FAILED_TO_OPEN;
+
+  *bank_handle = snd_BankLoadEx(get_file_path(file), 0, 0, 0);
+  snd_ResolveBankXREFS();
+
   return 0;
 }
 
-// TODO FS_LoadSoundBank
 uint32_t FS_LoadSoundBank(char* name, void* buffer) {
-  (void)name;
-  (void)buffer;
-  ASSERT(false);
+  SoundBank* bank = (SoundBank*)buffer;
+  char namebuf[16];
+
+  int offset = 10 * 2048;
+  if (bank->sound_count == 101) {
+    offset = 1 * 2048;
+  }
+
+  strcpy(namebuf, name);
+  namebuf[8] = 0;
+  strcat(namebuf, ".sbk");
+
+  auto file = FS_Find(namebuf);
+  if (!file) {
+    file = FS_Find("empty1.sbk");
+    if (!file)  // Might have no files when running tests.
+      return 0;
+  }
+
+  auto fp = fopen(get_file_path(file), "rb");
+  fread(buffer, offset, 1, fp);
+  fclose(fp);
+
+  s32 handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
+  snd_ResolveBankXREFS();
+  PrintBankInfo(bank);
+  bank->bank_handle = handle;
   return 0;
+}
+
+void LoadMusicTweaks() {
+  char tweakname[16];
+  MakeISOName(tweakname, "TWEAKVAL.MUS");
+  auto file = FS_FindIN(tweakname);
+  if (file) {
+    auto fp = fopen(get_file_path(file), "rb");
+    fread(&gMusicTweakInfo, sizeof(gMusicTweakInfo), 1, fp);
+    fclose(fp);
+  } else {
+    gMusicTweakInfo.TweakCount = 0;
+  }
 }

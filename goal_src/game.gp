@@ -131,30 +131,34 @@
     )
   )
 
-(define *all-str* '())
-(defmacro copy-strs (&rest strs)
-  `(begin ,@(apply (lambda (x) `(copy-str ,x)) strs)))
-
-(defun copy-str (name)
-  (let* ((path (string-append "iso_data/" *game-directory* "STR/" name ".STR"))
-         (out-file (string-append "out/iso/" name ".STR")))
-    (defstep :in path
-             :tool 'copy
-             :out `(,out-file))
-    (set! *all-str* (cons out-file *all-str*))))
-
-(define *all-vis* '())
-(defmacro copy-vis-files (&rest files)
-  `(begin ,@(apply (lambda (x) `(copy-vis-file ,x)) files)))
-
-(defun copy-vis-file (name)
-  (let* ((path (string-append "iso_data/" *game-directory* "VIS/" name ".VIS"))
-         (out-name (string-append "out/iso/" name ".VIS")))
+(defun copy-iso-file (name subdir ext)
+  (let* ((path (string-append "iso_data/" *game-directory* subdir name ext))
+         (out-name (string-append "out/iso/" name ext)))
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
-    (set! *all-vis* (cons out-name *all-vis*))))
+    out-name))
 
+(define *all-str* '())
+(defmacro copy-strs (&rest strs)
+  `(begin ,@(apply (lambda (x) `(set! *all-str* (cons (copy-iso-file ,x "STR/" ".STR") *all-str*))) strs)))
+
+(define *all-vis* '())
+(defmacro copy-vis-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-vis* (cons (copy-iso-file ,x "VIS/" ".VIS") *all-vis*))) files)))
+
+;; Files not yet added in here:
+;; - TESTTONE.SBK
+(define *all-sbk* '())
+(defmacro copy-sbk-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-sbk* (cons (copy-iso-file ,x "SBK/" ".SBK") *all-sbk*))) files)))
+
+;; Files not yet added in here:
+;; - DANGER.MUS
+;; - TWEAKVAL.MUS
+(define *all-mus* '())
+(defmacro copy-mus-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-mus* (cons (copy-iso-file ,x "MUS/" ".MUS") *all-mus*))) files)))
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""
@@ -370,6 +374,8 @@
 
 ;; as we find objects that exist in multiple levels, put them here
 
+(copy-sbk-files "COMMON" "EMPTY1" "EMPTY2")
+
 (copy-gos
  "sharkey-ag"
  "orb-cache-top-ag"
@@ -426,6 +432,8 @@
   )
 
 (copy-vis-files "BEA")
+(copy-sbk-files "BEACH")
+(copy-mus-files "BEACH")
 
 (goal-src-sequence
   "levels/beach/"
@@ -497,6 +505,8 @@
   "jun.gd")
 
 (copy-vis-files "JUN")
+(copy-sbk-files "JUNGLE")
+(copy-mus-files "JUNGLE" "FISHGAME")
 
 (goal-src-sequence
  "levels/jungle/"
@@ -565,6 +575,8 @@
 
 ;; the VIS file
 (copy-vis-files "VI1")
+(copy-sbk-files "VILLAGE1")
+(copy-mus-files "VILLAGE1")
 
 ;; the code
 (goal-src-sequence
@@ -643,6 +655,8 @@
 (cgo "JUB.DGO" "jub.gd")
 
 (copy-vis-files "JUB")
+(copy-sbk-files "JUNGLEB")
+(copy-mus-files "JUNGLEB")
 
 (goal-src-sequence
  "levels/jungleb/"
@@ -675,6 +689,8 @@
 (cgo "MIS.DGO" "mis.gd")
 
 (copy-vis-files "MIS")
+(copy-sbk-files "MISTY")
+(copy-mus-files "MISTY")
 
 (goal-src-sequence
   "levels/misty/"
@@ -741,6 +757,8 @@
 (cgo "SWA.DGO" "swa.gd")
 
 (copy-vis-files "SWA")
+(copy-sbk-files "SWAMP")
+(copy-mus-files "SWAMP")
 
 (goal-src-sequence
  "levels/swamp/"
@@ -783,6 +801,8 @@
 (cgo "SUN.DGO" "sun.gd")
 
 (copy-vis-files "SUN")
+(copy-sbk-files "SUNKEN")
+(copy-mus-files "SUNKEN")
 
 (goal-src-sequence
   "levels/sunken/"
@@ -874,6 +894,8 @@
 (cgo "SNO.DGO" "sno.gd")
 
 (copy-vis-files "SNO")
+(copy-sbk-files "SNOW")
+(copy-mus-files "SNOW")
 
 (goal-src-sequence
  "levels/snow/"
@@ -933,6 +955,8 @@
      )
 
 (copy-vis-files "FIC")
+(copy-sbk-files "FIRECANY")
+(copy-mus-files "FIRECANY")
 
 (copy-textures 1119) ;; might be common/zoomer hud?? also in misty, lavatube, ogre and racerpkg
 
@@ -966,6 +990,8 @@
 (cgo "OGR.DGO" "ogr.gd")
 
 (copy-vis-files "OGR")
+(copy-sbk-files "OGRE")
+(copy-mus-files "OGRE" "OGREBOSS")
 
 (goal-src-sequence
  "levels/ogre/"
@@ -1005,6 +1031,8 @@
 (cgo "VI2.DGO" "vi2.gd")
 
 (copy-vis-files "VI2")
+(copy-sbk-files "VILLAGE2")
+(copy-mus-files "VILLAGE2")
 
 (goal-src-sequence
  "levels/village2/"
@@ -1073,6 +1101,8 @@
 (cgo "ROL.DGO" "rol.gd")
 
 (copy-vis-files "ROL")
+(copy-sbk-files "ROLLING")
+(copy-mus-files "ROLLING")
 
 (goal-src-sequence
  "levels/rolling/"
@@ -1111,6 +1141,8 @@
 (cgo "VI3.DGO" "vi3.gd")
 
 (copy-vis-files "VI3")
+(copy-sbk-files "VILLAGE3")
+(copy-mus-files "VILLAGE3")
 
 ;; the code
 (goal-src-sequence
@@ -1169,6 +1201,7 @@
      "tra.gd")
 
 (copy-vis-files "TRA")
+(copy-sbk-files "TRAINING")
 
 ;; The code
 (goal-src-sequence
@@ -1196,6 +1229,8 @@
 
 (cgo "MAI.DGO" "mai.gd")
 (copy-vis-files "MAI")
+(copy-sbk-files "MAINCAVE")
+(copy-mus-files "MAINCAVE")
 
 (goal-src-sequence
  "levels/"
@@ -1244,6 +1279,7 @@
 
 (cgo "DAR.DGO" "dar.gd")
 (copy-vis-files "DAR")
+(copy-sbk-files "DARKCAVE")
 
 (copy-textures 1306 1307 1305 1304 1352)
 
@@ -1261,6 +1297,7 @@
 
 (cgo "ROB.DGO" "rob.gd")
 (copy-vis-files "ROB")
+(copy-sbk-files "ROBOCAVE")
 
 (goal-src-sequence
  "levels/robocave/"
@@ -1288,6 +1325,8 @@
 (cgo "LAV.DGO" "lav.gd")
 
 (copy-vis-files "LAV")
+(copy-sbk-files "LAVATUBE")
+(copy-mus-files "LAVATUBE")
 
 (goal-src-sequence
   "levels/lavatube/"
@@ -1331,6 +1370,8 @@
 (cgo "CIT.DGO" "cit.gd")
 
 (copy-vis-files "CIT")
+(copy-sbk-files "CITADEL")
+(copy-mus-files "CITADEL")
 
 (goal-src-sequence
   "levels/citadel/"
@@ -1393,6 +1434,8 @@
 (cgo "FIN.DGO" "fin.gd")
 
 (copy-vis-files "FIN")
+(copy-sbk-files "FINALBOS")
+(copy-mus-files "FINALBOS" "CREDITS")
 
 (goal-src-sequence
   "levels/finalboss/"
@@ -1856,9 +1899,12 @@
 (group-list "iso"
  `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
+   "out/iso/TWEAKVAL.MUS"
    ,@(reverse *all-cgos*)
    ,@(reverse *all-vis*)
-   ,@(reverse *all-str*))
+   ,@(reverse *all-str*)
+   ,@(reverse *all-sbk*)
+   ,@(reverse *all-mus*))
  )
 
 
