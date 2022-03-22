@@ -464,7 +464,7 @@ void OceanTexture::init_pc() {
 
   glGenBuffers(1, &m_pc.static_vertex_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, m_pc.static_vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(math::Vector4f) * NUM_VERTS, m_pc.vertex_positions.data(),
+  glBufferData(GL_ARRAY_BUFFER, sizeof(math::Vector2f) * NUM_VERTS, m_pc.vertex_positions.data(),
                GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
