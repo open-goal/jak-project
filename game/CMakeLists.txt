@@ -69,6 +69,7 @@ set(RUNTIME_SOURCE
         overlord/overlord.cpp
         overlord/ramdisk.cpp
         overlord/sbank.cpp
+        overlord/sndshim.cpp
         overlord/soundcommon.cpp
         overlord/srpc.cpp
         overlord/ssound.cpp
