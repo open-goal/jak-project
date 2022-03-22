@@ -81,7 +81,9 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           gMusicFade = 0;
           gMusicFadeDir = 1;
           SetMusicVol();
-          music->snd_id = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
+          music->sound_handle = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
+          music->id = 666;
+          music->unk = 1;
         }
       }
     }
@@ -90,8 +92,8 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     SetMusicVol();
     Sound* music = LookupSound(666);
     if (music != nullptr) {
-      snd_SetSoundVolPan(music->snd_id, 0x7FFFFFFF, 0);
-      snd_SetMIDIRegister(music->snd_id, 0, gFlava);
+      snd_SetSoundVolPan(music->sound_handle, 0x7FFFFFFF, 0);
+      snd_SetMIDIRegister(music->sound_handle, 0, gFlava);
     }
 
     int n_messages = size / SRPC_MESSAGE_SIZE;
@@ -99,7 +101,95 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     while (n_messages > 0) {
       switch (cmd->command) {
         case SoundCommand::PLAY: {
-          printf("Ignoring Play Sound command for sound %.16s\n", cmd->play.name);
+          // spool- soundsn are vag sounds?
+          if (!memcmp(cmd->play.name, "spool-", 6)) {
+            char namebuf[8];
+            char langbuf[8];
+            auto name = cmd->play.name;
+            size_t len = strlen(name);
+            if (len < 9) {
+              memset(namebuf, 32, sizeof(namebuf));
+              memcpy(namebuf, name, len);
+            } else {
+              memcpy(namebuf, name, sizeof(namebuf));
+            }
+
+            for (int i = 0; i < 8; i++) {
+              if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
+                namebuf[i] -= 0x20;
+              }
+            }
+
+            // TODO vagfile = FindVAGFile(namebuf);
+            void* vagfile = nullptr;
+
+            memcpy(namebuf, "VAGWAD ", sizeof(namebuf));
+            strcpy(langbuf, gLanguage);
+
+            FileRecord* rec = isofs->find_in(namebuf);
+            if (vagfile != nullptr) {
+              if (cmd->play.parms.pitch_mod) {  // ??? TODO Verify what is being checked here
+                // PlayVagStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0,
+                // cmd->play.parms.trans);
+              } else {
+                // PlayVagStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0, 0);
+              }
+            }
+            break;
+          }
+
+          SoundBank* bank = nullptr;
+          s32 index = LookupSoundIndex(cmd->play.name, &bank);
+          if (!index) {
+            break;
+          }
+
+          Sound* sound = LookupSound(cmd->play.sound_id);
+          if (sound) {
+            memcpy(&sound->params, &cmd->play.parms, sizeof(sound->params));
+            sound->bank_entry = &bank->sound[index];
+            sound->unk = 0;
+            if ((sound->params.mask & 0x40) == 0) {
+              sound->params.fo_min = sound->bank_entry->fallof_params & 0x3fff;
+            }
+            if ((sound->params.mask & 0x80) == 0) {
+              sound->params.fo_max = (sound->bank_entry->fallof_params >> 14) & 0x3fff;
+            }
+            if ((sound->params.mask & 0x100) == 0) {
+              sound->params.fo_curve = sound->bank_entry->fallof_params >> 28;
+            }
+            UpdateVolume(sound);
+            snd_SetSoundPitchModifier(sound->sound_handle, cmd->play.parms.pitch_mod);
+            snd_SetSoundPitchBend(sound->sound_handle, cmd->play.parms.bend);
+            break;
+          }
+
+          sound = AllocateSound();
+          if (!sound) {
+            break;
+          }
+          memcpy(&sound->params, &cmd->play.parms, sizeof(sound->params));
+          sound->bank_entry = &bank->sound[index];
+          sound->unk = 0;
+          sound->ticks = 0;
+
+          if ((sound->params.mask & 0x40) == 0) {
+            sound->params.fo_min = sound->bank_entry->fallof_params & 0x3fff;
+          }
+          if ((sound->params.mask & 0x80) == 0) {
+            sound->params.fo_max = (sound->bank_entry->fallof_params >> 14) & 0x3fff;
+          }
+          if ((sound->params.mask & 0x100) == 0) {
+            sound->params.fo_curve = sound->bank_entry->fallof_params >> 28;
+          }
+          s32 vol = GetVolume(sound);
+          s32 pan = GetPan(sound);
+          s32 handle = snd_PlaySoundVolPanPMPB(bank->bank_handle, index, vol, pan,
+                                               sound->params.pitch_mod, sound->params.bend);
+          sound->sound_handle = handle;
+          if (sound->sound_handle) {
+            sound->id = index;
+          }
         } break;
         case SoundCommand::PAUSE_SOUND: {
           printf("Ignoring Pause Sound command\n");
@@ -211,8 +301,8 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
         case SoundCommand::UNLOAD_BANK: {
           SoundBank* bank = LookupBank(cmd->load_bank.bank_name);
           if (bank != nullptr) {
-            s32 id = bank->snd_id;
-            bank->snd_id = 0;
+            s32 id = bank->bank_handle;
+            bank->bank_handle = 0;
             snd_UnloadBank(id);
             snd_ResolveBankXREFS();
           }

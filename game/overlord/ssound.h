@@ -32,7 +32,8 @@ struct SoundParams {
 
 struct Sound {
   s32 id;
-  s32 snd_id;
+  s32 sound_handle;
+  s32 unk;  // is_music?
   s32 new_volume;
   s32 ticks;
   SoundParams params;
@@ -59,5 +60,8 @@ void PrintActiveSounds();
 void SetMusicVol();
 Sound* LookupSound(s32 id);
 Sound* AllocateSound();
+void UpdateVolume(Sound* sound);
+s32 GetVolume(Sound* sound);
+s32 GetPan(Sound* sound);
 
 #endif  // JAK_V2_SSOUND_H

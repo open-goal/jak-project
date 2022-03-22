@@ -146,8 +146,8 @@ Sound* LookupSound(s32 id) {
 
   for (auto& s : gSounds) {
     if (s.id == id) {
-      s32 sndid = snd_SoundIsStillPlaying(s.snd_id);
-      s.snd_id = sndid;
+      s32 sndid = snd_SoundIsStillPlaying(s.sound_handle);
+      s.sound_handle = sndid;
 
       if (sndid == 0) {
         s.id = 0;
@@ -164,8 +164,8 @@ Sound* LookupSound(s32 id) {
 void CleanSounds() {
   for (auto& s : gSounds) {
     if (s.id != 0) {
-      s32 sndid = snd_SoundIsStillPlaying(s.snd_id);
-      s.snd_id = sndid;
+      s32 sndid = snd_SoundIsStillPlaying(s.sound_handle);
+      s.sound_handle = sndid;
 
       if (sndid == 0) {
         s.id = 0;
@@ -177,13 +177,13 @@ void CleanSounds() {
 void KillSoundsInGroup(u8 group) {
   for (auto& s : gSounds) {
     if (s.id != 0) {
-      s32 sndid = snd_SoundIsStillPlaying(s.snd_id);
-      s.snd_id = sndid;
+      s32 sndid = snd_SoundIsStillPlaying(s.sound_handle);
+      s.sound_handle = sndid;
 
       if (sndid == 0) {
         s.id = 0;
       } else if (s.params.group & group) {
-        snd_StopSound(s.snd_id);
+        snd_StopSound(s.sound_handle);
         s.id = 0;
       }
     }
@@ -364,7 +364,7 @@ static void UpdateLocation(Sound* sound) {
     return;
   }
 
-  s32 id = snd_SoundIsStillPlaying(sound->snd_id);
+  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
   if (id == 0) {
     sound->id = 0;
     return;
@@ -372,7 +372,7 @@ static void UpdateLocation(Sound* sound) {
 
   s32 volume = GetVolume(sound);
   if (volume == 0) {
-    snd_StopSound(sound->snd_id);
+    snd_StopSound(sound->sound_handle);
   } else {
     s32 pan = GetPan(sound);
     snd_SetSoundVolPan(id, volume, pan);
@@ -411,7 +411,7 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
   }
 
   if (sound->new_volume == -4) {
-    snd_StopSound(sound->snd_id);
+    snd_StopSound(sound->sound_handle);
     sound->id = 0;
     return;
   }
@@ -421,9 +421,9 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
 }
 
 void UpdateVolume(Sound* sound) {
-  s32 id = snd_SoundIsStillPlaying(sound->snd_id);
-  sound->snd_id = id;
-  if (sound->snd_id == 0) {
+  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
+  sound->sound_handle = id;
+  if (sound->sound_handle == 0) {
     sound->id = 0;
   } else {
     s32 volume = GetVolume(sound);

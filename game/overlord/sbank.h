@@ -9,7 +9,7 @@ struct SoundRecord {
 
 struct SoundBank {
   char name[16];
-  u32 snd_id;
+  u32 bank_handle;
   u32 sound_count;
   union {
     SoundRecord sound[1];

@@ -73,3 +73,10 @@ s32 snd_PlaySoundVolPanPMPB(s32, s32, s32, s32, s32, s32) {
   printf("snd_PlaySoundVolPanPMPB\n");
   return 0;
 }
+
+void snd_SetSoundPitchModifier(s32, s32) {
+  printf("snd_SetSoundPitchModifier\n");
+}
+void snd_SetSoundPitchBend(s32, s32) {
+  printf("snd_SetSoundPitchBend\n");
+}

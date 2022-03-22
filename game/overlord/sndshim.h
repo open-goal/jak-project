@@ -28,5 +28,7 @@ void snd_ContinueAllSoundsInGroup(u8);
 void snd_PauseAllSoundsInGroup(u8);
 void snd_SetMIDIRegister(s32, u8, u8);
 s32 snd_PlaySoundVolPanPMPB(s32, s32, s32, s32, s32, s32);
+void snd_SetSoundPitchModifier(s32, s32);
+void snd_SetSoundPitchBend(s32, s32);
 
 #endif  // SNDSHIM_H_
