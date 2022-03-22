@@ -12,6 +12,12 @@ class AdgifHelper {
     m_alpha = GsAlpha(m_data.alpha_data);
   }
 
+  explicit AdgifHelper(const AdGifData& data) : m_data(data) {
+    m_tex0 = GsTex0(m_data.tex0_data);
+    m_tex1 = GsTex1(m_data.tex1_data);
+    m_alpha = GsAlpha(m_data.alpha_data);
+  }
+
   bool is_normal_adgif() const {
     return (u8)m_data.tex0_addr == (u32)GsRegisterAddress::TEX0_1 &&
            (u8)m_data.tex1_addr == (u32)GsRegisterAddress::TEX1_1 &&

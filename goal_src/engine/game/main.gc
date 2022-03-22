@@ -20,8 +20,39 @@
   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
                                (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
     ;; draw the two sprites
-    (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
-    (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+    (#cond
+      ((not PC_PORT)
+        (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+        (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+        )
+      (#t
+        (if (-> *pc-settings* use-vis?)
+            ;; original game mode. dont do anything.
+            (begin
+              (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+              (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80)))
+            ;; native mode. force 16x9 letterboxing always.
+            (begin
+              (cond
+                ((< (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too tall. needs vertical letterboxing.
+                  (let ((lbx-h (the int (* 112.0 (- 1.0 (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))))))
+                    (draw-sprite2d-xy dma-buf 0 0 512 lbx-h (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf 0 (- 224 lbx-h) 512 lbx-h (new 'static 'rgba :a #x80))
+                      )
+                  )
+                ((> (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too wide. needs horizontal letterboxing.
+                  (let ((lbx-w (the int (* 256.0 (- 1.0 (/ ASPECT_16X9 (-> *pc-settings* aspect-ratio)))))))
+                    (draw-sprite2d-xy dma-buf 0 0 lbx-w 224 (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf (- 512 lbx-w) 0 lbx-w 224 (new 'static 'rgba :a #x80))
+                      )
+                  )
+                )
+              )
+            )
+        )
+      )
     )
   (none)
   )
@@ -313,15 +344,6 @@
 (define *master-exit* #f)
 (define *progress-cheat* #f)
 (define *first-boot* #t) ;; PAL
-
-(defmacro cheats-sound-play (cheat?)
-  "play the appropriate sound for inputting a cheat code"
-
-  `(if ,cheat?
-      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
-      )
-  )
 
 (defun main-cheats ()
   "Handle cheat codes and timeout"
@@ -672,7 +694,9 @@
         (if (< (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             )
-        (if (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+        (if (#if (not PC_PORT)
+                 (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+                 (or (not (-> *pc-settings* use-vis?)) (and (-> *pc-settings* use-vis?) (= (-> *setting-control* current aspect-ratio) 'aspect4x3))))
             (letterbox)
             )
         )

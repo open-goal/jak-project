@@ -2415,7 +2415,7 @@ u64 execute(void* ctxt) {
   c->lqc2(vf15, 0, a1);                             // lqc2 vf15, 0(a1)
   c->vadd_bc(DEST::y, BC::z, vf2, vf0, vf5);        // vaddz.y vf2, vf0, vf5
   c->lqc2(vf1, 32, a1);                             // lqc2 vf1, 32(a1)
-  c->divs(f4, f0, f1);                              // div.s f4, f0, f1
+  c->divs_accurate(f4, f0, f1);                              // div.s f4, f0, f1
   c->lqc2(vf7, 0, t0);                              // lqc2 vf7, 0(t0)
   c->vsub_bc(DEST::z, BC::y, vf2, vf0, vf5);        // vsuby.z vf2, vf0, vf5
   c->lqc2(vf8, 16, t0);                             // lqc2 vf8, 16(t0)
@@ -2434,7 +2434,7 @@ u64 execute(void* ctxt) {
   c->vsub_bc(DEST::y, BC::x, vf4, vf0, vf5);        // vsubx.y vf4, vf0, vf5
   c->mfc1(t1, f4);                                  // mfc1 t1, f4
   c->vadd_bc(DEST::z, BC::w, vf4, vf0, vf5);        // vaddw.z vf4, vf0, vf5
-  c->divs(f4, f0, f2);                              // div.s f4, f0, f2
+  c->divs_accurate(f4, f0, f2);                              // div.s f4, f0, f2
   c->vsub_bc(DEST::w, BC::w, vf4, vf0, vf0);        // vsubw.w vf4, vf0, vf0
   c->vopmula(vf6, vf2);                             // vopmula.xyz acc, vf6, vf2
   c->vopmsub(vf2, vf2, vf6);                        // vopmsub.xyz vf2, vf2, vf6
@@ -2447,7 +2447,7 @@ u64 execute(void* ctxt) {
   c->vadd_bc(DEST::z, BC::w, vf4, vf4, vf0);        // vaddw.z vf4, vf4, vf0
   c->mfc1(t2, f4);                                  // mfc1 t2, f4
   bc = c->sgpr64(v1) != 0;                          // bne v1, r0, L50
-  c->divs(f4, f0, f3);                              // div.s f4, f0, f3
+  c->divs_accurate(f4, f0, f3);                              // div.s f4, f0, f3
   if (bc) {goto block_2;}                           // branch non-likely
 
   c->vmul_bc(DEST::xyzw, BC::x, vf2, vf2, vf1);     // vmulx.xyzw vf2, vf2, vf1

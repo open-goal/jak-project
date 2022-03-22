@@ -1201,6 +1201,17 @@ struct ExecutionContext {
   void muls(int dst, int src0, int src1) { fprs[dst] = fprs[src0] * fprs[src1]; }
   void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
   void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
+  void divs_accurate(int dst, int src0, int src1) {
+    if (fprs[src1] == 0) {
+      if (fprs[src0] < 0) {
+        fprs[dst] = -std::numeric_limits<float>::max();
+      } else {
+        fprs[dst] = std::numeric_limits<float>::max();
+      }
+    } else {
+      fprs[dst] = fprs[src0] / fprs[src1];
+    }
+  }
   void divs(int dst, int src0, int src1) {
     // ASSERT(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];

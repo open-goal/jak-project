@@ -47,7 +47,7 @@ TEST(TypeSystemReverse, NestedInlineWeird) {
   ts.add_builtin_types();
   goos::Reader reader;
   auto add_type = [&](const std::string& str) {
-    auto in = reader.read_from_string(str).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
+    auto& in = reader.read_from_string(str).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
     parse_deftype(in, &ts);
   };
 
@@ -474,13 +474,14 @@ TEST(Deftype, deftype) {
   TypeSystem ts;
   ts.add_builtin_types();
   std::string input =
-      "(deftype my-type (basic) ((f1 int64) (f2 string) (f3 int8) (f4 type :inline)))";
+      "(deftype my-type (basic) ((f1 int64) (f2 string) (f3 int8) (f4 type :inline) (f5 uint64 "
+      ":overlay-at f1)))";
   goos::Reader reader;
-  auto in = reader.read_from_string(input).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
+  auto& in = reader.read_from_string(input).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
   auto result = parse_deftype(in, &ts);
 
   auto& f = dynamic_cast<StructureType*>(ts.lookup_type(result.type))->fields();
-  EXPECT_EQ(f.size(), 5);
+  EXPECT_EQ(f.size(), 6);
 
   auto& tf = f.at(0);
   EXPECT_EQ(tf.name(), "type");
@@ -511,6 +512,12 @@ TEST(Deftype, deftype) {
   EXPECT_EQ(f4.offset(), 32);
   EXPECT_EQ(f4.type().print(), "type");
   EXPECT_EQ(f4.is_inline(), true);
+
+  auto& f5 = f.at(5);
+  EXPECT_EQ(f5.name(), "f5");
+  EXPECT_EQ(f5.offset(), f1.offset());
+  EXPECT_EQ(f5.type().print(), "uint64");
+  EXPECT_EQ(f5.is_inline(), false);
 }
 
 // TODO - a big test to make sure all the builtin types are what we expect.

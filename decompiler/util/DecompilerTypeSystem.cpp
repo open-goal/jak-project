@@ -46,7 +46,7 @@ void for_each_in_list(goos::Object& list, T f) {
 
 void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_path) {
   auto read = m_reader.read_from_file(file_path);
-  auto data = cdr(read);
+  auto& data = cdr(read);
 
   for_each_in_list(data, [&](goos::Object& o) {
     try {

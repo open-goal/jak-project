@@ -10,12 +10,9 @@
 
 /*!
  * Missing Features
- * - Bitfields
  * - Int128 children
  * - Refer to yourself (structure/basic only)
  * - Method List
- * - Evaluate constants.
- *
  */
 
 namespace {
@@ -80,7 +77,10 @@ double get_float(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an number, but isn't");
 }
 
-void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def) {
+void add_field(StructureType* structure,
+               TypeSystem* ts,
+               const goos::Object& def,
+               std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
   auto rest = &def;
 
   auto name = symbol_string(car(rest));
@@ -101,6 +101,10 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
     if (car(rest).is_int()) {
       array_size = car(rest).integer_obj.value;
       rest = cdr(rest);
+    } else if (car(rest).is_symbol() &&
+               constants.find((car(rest)).as_symbol()) != constants.end()) {
+      array_size = get_int(constants[(car(rest)).as_symbol()]);
+      rest = cdr(rest);
     }
 
     while (!rest->is_empty_list()) {
@@ -113,6 +117,15 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
         is_dynamic = true;
       } else if (opt_name == ":offset") {
         offset_override = get_int(car(rest));
+        rest = cdr(rest);
+      } else if (opt_name == ":overlay-at") {
+        auto field_name = symbol_string(car(rest));
+        Field overlay_field;
+        if (!structure->lookup_field(field_name, &overlay_field)) {
+          throw std::runtime_error(
+              fmt::format("Field {} not found to overlay for {}", field_name, name));
+        }
+        offset_override = overlay_field.offset();
         rest = cdr(rest);
       } else if (opt_name == ":score") {
         score = get_float(car(rest));
@@ -280,12 +293,14 @@ struct StructureDefResult {
   bool always_stack_singleton = false;
 };
 
-StructureDefResult parse_structure_def(StructureType* type,
-                                       TypeSystem* ts,
-                                       const goos::Object& fields,
-                                       const goos::Object& options) {
+StructureDefResult parse_structure_def(
+    StructureType* type,
+    TypeSystem* ts,
+    const goos::Object& fields,
+    const goos::Object& options,
+    std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
   StructureDefResult result;
-  for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o); });
+  for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o, constants); });
   TypeFlags flags;
   flags.heap_base = 0;
 
@@ -530,7 +545,15 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
   return {};
 }
 
-DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
+DeftypeResult parse_deftype(const goos::Object& deftype,
+                            TypeSystem* ts,
+                            std::unordered_map<goos::HeapObject*, goos::Object>* constants) {
+  std::unordered_map<goos::HeapObject*, goos::Object> no_consts;
+  auto& constants_to_use = no_consts;
+  if (constants != nullptr) {
+    constants_to_use = *constants;
+  }
+
   auto iter = &deftype;
 
   auto& type_name_obj = car(iter);
@@ -545,7 +568,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     throw std::runtime_error("deftype must be given a symbol as the type name");
   }
 
-  auto name = type_name_obj.as_symbol()->name;
+  auto& name = type_name_obj.as_symbol()->name;
   auto parent_type_name = deftype_parent_list(parent_list_obj);
   auto parent_type = ts->make_typespec(parent_type_name);
   DeftypeResult result;
@@ -561,7 +584,8 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     }
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "basic");
-    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    auto sr =
+        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {
@@ -592,7 +616,8 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     ASSERT(pto);
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "structure");
-    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    auto sr =
+        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {

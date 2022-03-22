@@ -4,10 +4,13 @@
 #include "common/math/Vector.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/common/vu.h"
+#include "game/graphics/opengl_renderer/DirectRenderer2.h"
 
 class MercRenderer : public BucketRenderer {
  public:
   MercRenderer(const std::string& name, BucketId my_id);
+  void init_shaders(ShaderLibrary& shaders) override;
+
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
@@ -79,6 +82,7 @@ class MercRenderer : public BucketRenderer {
   u16 xitop();
 
   DirectRenderer m_direct;
+  DirectRenderer2 m_direct2;
 
   struct {
     u32 row[4] = {0, 0, 0, 0};

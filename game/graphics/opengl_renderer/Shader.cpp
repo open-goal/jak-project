@@ -75,4 +75,10 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::TFRAG3) = {"tfrag3"};
   at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex"};
   at(ShaderId::SPRITE3) = {"sprite3_3d"};
+  at(ShaderId::DIRECT2) = {"direct2"};
+  at(ShaderId::EYE) = {"eye"};
+  at(ShaderId::GENERIC) = {"generic"};
+  at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture"};
+  at(ShaderId::OCEAN_TEXTURE_MIPMAP) = {"ocean_texture_mipmap"};
+  at(ShaderId::OCEAN_COMMON) = {"ocean_common"};
 }

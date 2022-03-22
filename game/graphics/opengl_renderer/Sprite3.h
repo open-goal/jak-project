@@ -6,7 +6,7 @@
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 #include "game/graphics/opengl_renderer/sprite_common.h"
-#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
 
 #include <map>
 
@@ -50,6 +50,7 @@ class Sprite3 : public BucketRenderer {
   SpriteFrameData m_frame_data;  // qwa: 980
   Sprite3DMatrixData m_3d_matrix_data;
   SpriteHudMatrixData m_hud_matrix_data;
+  DirectRenderer m_direct;
 
   SpriteVecData2d m_vec_data_2d[SPRITES_PER_CHUNK];
   AdGifData m_adgif[SPRITES_PER_CHUNK];

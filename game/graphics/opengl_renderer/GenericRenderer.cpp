@@ -2,20 +2,31 @@
 #include "third-party/imgui/imgui.h"
 
 GenericRenderer::GenericRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id), m_direct(name, my_id, 0x4000, DirectRenderer::Mode::NORMAL) {}
+    : BucketRenderer(name, my_id),
+      m_direct2(30000, 60000, 1000, name, true),
+      m_debug_gen2(name, my_id, 1500000, 10000, 3000, 800) {}
+
+void GenericRenderer::init_shaders(ShaderLibrary& shaders) {
+  m_direct2.init_shaders(shaders);
+  m_debug_gen2.init_shaders(shaders);
+}
 
 void GenericRenderer::render(DmaFollower& dma,
                              SharedRenderState* render_state,
                              ScopedProfilerNode& prof) {
+  if (render_state->use_generic2) {
+    m_debug_gen2.render(dma, render_state, prof);
+    return;
+  }
+  m_xgkick_idx = 0;
   m_skipped_tags = 0;
   m_debug.clear();
-  m_direct.reset_state();
 
   // if the first draw should have no blending, it sets ABE in PRIM, but not ALPHA.
   // the default ALPHA doesn't seem to be right. I don't know what's supposed to set it here.
   // although this is definitely a hack, it doesn't seem to cause problems when the first thing to
   // draw is transparent.
-  m_direct.hack_disable_blend();
+  // m_direct.hack_disable_blend();
 
   // skip if disabled
   if (!m_enabled) {
@@ -57,10 +68,14 @@ void GenericRenderer::render(DmaFollower& dma,
           ASSERT(false);
       }
     } else if (v0.kind == VifCode::Kind::FLUSHA && v1.kind == VifCode::Kind::DIRECT) {
-      m_direct.render_gif(data.data, data.size_bytes, render_state, prof);
+      if (render_state->use_direct2) {
+        m_direct2.render_gif_data(data.data, render_state, prof);
+      }
       ASSERT(v1.immediate == data.size_bytes / 16);
     } else if (v0.kind == VifCode::Kind::NOP && v1.kind == VifCode::Kind::DIRECT) {
-      m_direct.render_gif(data.data, data.size_bytes, render_state, prof);
+      if (render_state->use_direct2) {
+        m_direct2.render_gif_data(data.data, render_state, prof);
+      }
       ASSERT(v1.immediate == data.size_bytes / 16);
     } else if (v0.kind == VifCode::Kind::STCYCL && v1.kind == VifCode::Kind::UNPACK_V4_32) {
       vu.stcycl = v0.immediate;
@@ -122,7 +137,9 @@ void GenericRenderer::render(DmaFollower& dma,
     }
     m_skipped_tags++;
   }
-  m_direct.flush_pending(render_state, prof);
+  if (render_state->use_direct2) {
+    m_direct2.flush_pending(render_state, prof);
+  }
 }
 
 void GenericRenderer::handle_dma_stream(const u8* data,
@@ -175,9 +192,11 @@ void GenericRenderer::handle_dma_stream(const u8* data,
 
 void GenericRenderer::draw_debug_window() {
   ImGui::Text("Skipped %d tags", m_skipped_tags);
+  ImGui::InputInt("kick min", &m_min_xgkick);
+  ImGui::InputInt("kick max", &m_max_xgkick);
   ImGui::Text("Debug:\n%s\n", m_debug.c_str());
-  if (ImGui::TreeNode("Direct")) {
-    m_direct.draw_debug_window();
+  if (ImGui::TreeNode("Gen2")) {
+    m_debug_gen2.draw_debug_window();
     ImGui::TreePop();
   }
 }
@@ -292,7 +311,13 @@ void GenericRenderer::mscal(int imm, SharedRenderState* render_state, ScopedProf
 }
 
 void GenericRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (render_state->enable_generic_xgkick) {
-    m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
+  if (render_state->enable_generic_xgkick && m_xgkick_idx >= m_min_xgkick &&
+      m_xgkick_idx < m_max_xgkick) {
+    if (!render_state->use_generic2) {
+      if (render_state->use_direct2) {
+        m_direct2.render_gif_data(m_buffer.data + (16 * addr), render_state, prof);
+      }
+    }
   }
+  m_xgkick_idx++;
 }
