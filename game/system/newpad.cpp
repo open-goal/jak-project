@@ -165,7 +165,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
 
   // Map from input to output range
   return int((input - input_low) * (output_high - output_low) / (input_high - input_low) +
-    output_low);
+             output_low);
 }
 
 // map a button on a pad to a key
