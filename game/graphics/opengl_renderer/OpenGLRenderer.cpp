@@ -13,6 +13,7 @@
 #include "game/graphics/opengl_renderer/background/Tie3.h"
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
+#include "game/graphics/opengl_renderer/ShadowRenderer.h"
 #include "game/graphics/opengl_renderer/GenericRenderer.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
@@ -183,8 +184,8 @@ void OpenGLRenderer::init_bucket_renderers() {
                                      BucketId::MERC_AFTER_ALPHA);
 
   init_bucket_renderer<GenericRenderer>("common-alpha-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_ALPHA);  // 46
-  // 47?
+                                        BucketId::GENERIC_ALPHA);                           // 46
+  init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW);  // 47
 
   //-----------------------
   // LEVEL 0 pris texture

@@ -526,6 +526,7 @@
     (bucket-45 45)
     (bucket-46 46)
 
+    (shadow 47)
     (pris-tex0 48)
     (bucket-49 49)
     (bucket-50 50)
@@ -9026,6 +9027,7 @@
    (fade-start    float          :offset-assert 68)
    (dummy-2       int32          :offset-assert 72)
    (dummy-3       int32          :offset-assert 76)
+   (fade-vec      vector :inline :offset 64) ;; added
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -9045,8 +9047,8 @@
     (set-top-plane-offset (shadow-control float) int 11)
     (set-bottom-plane-offset (shadow-control float) int 12)
     (dummy-13 (_type_) none 13)
-    (dummy-14 (_type_) none 14)
-    (dummy-15 (_type_ vector float float float) none 15)
+    (update-direction-from-time-of-day (_type_) none 14)
+    (collide-to-find-planes (_type_ vector float float float) none 15)
     )
   )
 
@@ -9055,9 +9057,9 @@
    (texscale            vector     :inline :offset-assert 16)
    (clrs                vector 2   :inline :offset-assert 32)
    (dma-unpack-template dma-packet :inline :offset-assert 64)
-   (dma-cnt             uint64             :offset-assert 80)
-   (vif-nop             uint32             :offset-assert 88)
-   (vif-unpack-v4-8     uint32             :offset-assert 92)
+   (dma-cnt             dma-tag            :offset-assert 80)
+   (vif-nop             vif-tag            :offset-assert 88)
+   (vif-unpack-v4-8     vif-tag            :offset-assert 92)
    (pdc                 basic              :offset-assert 96)
    (dist                float              :offset-assert 100)
    (oddeven             uint8              :offset-assert 104)
@@ -9078,8 +9080,8 @@
   )
 
 (deftype shadow-run (structure)
-  ((first uint32  :offset-assert 0)
-   (next  uint32  :offset-assert 4)
+  ((first dma-packet  :offset-assert 0)
+   (next  (pointer dma-packet)  :offset-assert 4)
    )
   :allow-misaligned
   :method-count-assert 9
@@ -13651,7 +13653,8 @@
   )
 
 (deftype foreground-area (structure)
-  ((joint-work   joint-work   :inline :offset-assert 0 :score 1999999999)
+  (
+   (joint-work   joint-work   :inline :offset-assert 0 :score 1999999999)
    (generic-work generic-work :inline :offset 0)
    (bone-mem     bone-memory  :inline :offset 0)
    (shadow-work  shadow-work  :inline :offset 0)
@@ -16642,7 +16645,7 @@
 (define-extern dump-qword (function qword none))
 (define-extern bones-debug (function none))
 (define-extern dump-bone-mem (function none))
-(define-extern draw-bones-shadow (function draw-control object object pointer))
+(define-extern draw-bones-shadow (function draw-control pointer pointer pointer))
 (define-extern draw-bones-generic-merc (function draw-control pointer pointer int pointer))
 (define-extern draw-bones-merc (function draw-control object object int int pointer))
 (define-extern draw-bones-check-longest-edge (function draw-control float none))
@@ -16860,10 +16863,10 @@
 
 ;; - Functions
 
-(define-extern shadow-vu0-upload function)
-(define-extern shadow-dma-init function)
-(define-extern shadow-execute function)
-(define-extern shadow-dma-end function)
+(define-extern shadow-vu0-upload (function none))
+(define-extern shadow-dma-init (function dma-buffer none))
+(define-extern shadow-execute (function shadow-dma-packet pointer pointer))
+(define-extern shadow-dma-end (function dma-buffer none))
 (define-extern shadow-vu1-init-buffer (function dma-buffer none))
 (define-extern shadow-xform-verts function)
 (define-extern shadow-calc-dual-verts function)

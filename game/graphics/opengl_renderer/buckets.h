@@ -50,7 +50,7 @@ enum class BucketId {
   // 44
   MERC_AFTER_ALPHA = 45,
   GENERIC_ALPHA = 46,
-  // 47
+  SHADOW = 47,
   PRIS_TEX_LEVEL0 = 48,
   MERC_PRIS_LEVEL0 = 49,
   GENERIC_PRIS_LEVEL0 = 50,

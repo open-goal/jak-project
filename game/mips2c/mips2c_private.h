@@ -652,6 +652,13 @@ struct ExecutionContext {
     }
   }
 
+  void psllh(int dest, int src, int sa) {
+    auto s = gpr_src(src);
+    for (int i = 0; i < 8; i++) {
+      gprs[dest].ds16[i] = s.ds16[i] << (sa & 0x1f);
+    }
+  }
+
   void prot3w(int dst, int src) {
     auto s = gpr_src(src);
     gprs[dst].du32[0] = s.du32[1];
@@ -947,6 +954,10 @@ struct ExecutionContext {
 
   void sltu(int dst, int src0, int src1) {
     gprs[dst].du64[0] = (gpr_src(src0).du64[0] < gpr_src(src1).du64[0]) ? 1 : 0;
+  }
+
+  void sltiu(int dst, int src, u64 imm) {
+    gprs[dst].du64[0] = (gpr_src(src).du64[0] < imm) ? 1 : 0;
   }
 
   void sll(int dst, int src, int sa) {

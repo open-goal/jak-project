@@ -1020,6 +1020,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PSRAH:
     case InstructionKind::PSRLH:
     case InstructionKind::PSLLW:
+    case InstructionKind::PSLLH:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
       return handle_sll(i0, instr_str);

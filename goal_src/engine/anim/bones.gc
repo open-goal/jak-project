@@ -380,8 +380,8 @@
         (format #t "Too many shadow-queues!!~%")
         )
     (let ((v1-13 (-> gp-1 run (-> gp-1 cur-run))))
-      (set! (-> v1-13 first) (the-as uint 0))
-      (set! (-> v1-13 next) (the-as uint 0))
+      (set! (-> v1-13 first) (the-as dma-packet 0))
+      (set! (-> v1-13 next) (the-as (pointer dma-packet) 0))
       )
     )
   0
@@ -660,7 +660,109 @@
                                     )
         )
 
-;; TODO draw-bones-shadow
+(defun draw-bones-shadow ((arg0 draw-control) (arg1 pointer) (arg2 pointer))
+  ;; (local-vars (ra-0 int))
+
+  ;;      the dma packet we'll use for shadow in the end.
+  (let* ((v1-0 (the-as dma-packet (&+ arg2 0)))
+         ;; the shadow to draw
+         (t1-0 (-> arg0 shadow))
+         ;; the shadow run to add to
+         (a3-4 (-> *shadow-queue* run (-> *shadow-queue* cur-run)))
+         ;; the dma data to add to
+         (a2-1 (&+ arg2 16))
+         ;; the distance of the thing we're drawing
+         (t4-0 (-> (scratchpad-object terrain-context) work foreground bone-mem work distance w))
+         ;; the shadow packet we'll build here
+         (t0-2 (the-as shadow-dma-packet a2-1))
+         (t2-0 (-> t1-0 header num-joints))
+         (t3-0 (-> a3-4 next))
+         (t5-2 (if (-> arg0 shadow-ctrl)
+                   (-> arg0 shadow-ctrl settings)
+                   *default-shadow-settings*
+                   )
+               )
+         (t6-0 (-> t5-2 flags))
+         )
+    (-> arg0 cur-lod)
+    (when (zero? (logand t6-0 2))
+      (if (< (-> t5-2 fade-dist) t4-0)
+          (set! t6-0 (logior t6-0 32))
+          )
+      )
+    (cond
+      ((zero? (logand t6-0 32))
+       (let ((t2-1 (* t2-0 8))
+             (t4-4 (-> t1-0 total-size))
+             )
+         0
+         (set! (-> t0-2 tag dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
+         (set! (-> t0-2 tag vif0) (new 'static 'vif-tag))
+         (set! (-> t0-2 tag vif1) (new 'static 'vif-tag))
+         (if (nonzero? t3-0)
+             (set! (-> t3-0 0) (the-as dma-packet t0-2))
+             )
+         (if (zero? (-> a3-4 first))
+             (set! (-> a3-4 first) (the-as dma-packet t0-2))
+             )
+         (let ((t3-5 (&-> t0-2 tag vif1)))
+           (let ((t6-4 (the-as (inline-array vector) (-> t0-2 settings)))
+                 (t7-3 (-> t5-2 center quad))
+                 (t8-0 (-> t5-2 shadow-dir quad))
+                 (t9-0 (-> t5-2 bot-plane quad))
+                 (ra-0 (-> t5-2 top-plane quad))
+                 )
+             ;; (.lq ra-0 48 t5-2)
+             (let ((t5-3 (-> t5-2 fade-vec quad)))
+               (set! (-> t6-4 0 quad) t7-3)
+               (set! (-> t6-4 1 quad) t8-0)
+               (set! (-> t6-4 2 quad) t9-0)
+               (set! (-> t6-4 3 quad) ra-0)
+               (set! (-> t6-4 4 quad) t5-3)
+               )
+             )
+           (let ((a0-3
+                   (the-as
+                     vector
+                     (+ (the-as uint (-> arg0 skeleton bones 0 transform vector 3))
+                        (* (the-as uint 96) (-> arg0 shadow-joint-index))
+                        )
+                     )
+                   )
+                 )
+             (set! (-> t0-2 settings center x) (-> a0-3 x))
+             (set! (-> t0-2 settings center y) (-> a0-3 y))
+             (set! (-> t0-2 settings center z) (-> a0-3 z))
+             )
+           (set! (-> t0-2 geo-ref dma)
+                 (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int (&-> t1-0 total-size)) :qwc t4-4)
+                 )
+           (set! (-> t0-2 geo-ref vif0) (new 'static 'vif-tag))
+           (set! (-> t0-2 geo-ref vif1) (new 'static 'vif-tag))
+           (set! (-> t0-2 mtx-ref dma)
+                 (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int (&+ arg1 256)) :qwc t2-1)
+                 )
+           (set! (-> t0-2 mtx-ref vif0) (new 'static 'vif-tag))
+           (set! (-> t0-2 mtx-ref vif1) (new 'static 'vif-tag))
+           (set! (-> t0-2 end-tag dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+           (set! (-> t0-2 end-tag vif0) (new 'static 'vif-tag))
+           (set! (-> t0-2 end-tag vif1) (new 'static 'vif-tag))
+           (let ((v0-0 (&+ a2-1 144)))
+             (set! (-> a3-4 next) (the-as (pointer dma-packet) t3-5))
+             (set! (-> v1-0 dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int v0-0)))
+             (set! (-> v1-0 vif0) (new 'static 'vif-tag))
+             (set! (-> v1-0 vif1) (new 'static 'vif-tag))
+             v0-0
+             )
+           )
+         )
+       )
+      (else
+        (the-as pointer v1-0)
+        )
+      )
+    )
+  )
 
 ;(def-mips2c draw-bones-generic-merc (function draw-control pointer pointer int pointer))
 (defun draw-bones-generic-merc ((arg0 draw-control) (arg1 pointer) (arg2 pointer) (arg3 int))
@@ -1198,12 +1300,12 @@
               
               ;; draw shadow!
               ;; TODO
-              ; (when (-> arg0 shadow)
-              ;   (when #t
-              ;     (set! s2-0 (draw-bones-shadow arg0 matrix-data s2-0))
-              ;     (set! (-> dma-buf base) (the-as pointer s2-0))
-              ;     )
-              ;   )
+              (when (-> arg0 shadow)
+                (when #t
+                  (set! s2-0 (draw-bones-shadow arg0 (the pointer matrix-data) (the pointer s2-0)))
+                  (set! (-> dma-buf base) (the-as pointer s2-0))
+                  )
+                )
             
               ;; draw merc!
               
