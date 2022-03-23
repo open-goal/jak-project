@@ -275,6 +275,51 @@ extern void link();
 namespace ocean_generate_verts {
 extern void link();
 }
+namespace shadow_execute {
+extern void link();
+}
+namespace shadow_add_double_edges {
+extern void link();
+}
+namespace shadow_add_double_tris {
+extern void link();
+}
+namespace shadow_add_single_edges {
+extern void link();
+}
+namespace shadow_add_facing_single_tris {
+extern void link();
+}
+namespace shadow_add_verts {
+extern void link();
+}
+namespace shadow_find_double_edges {
+extern void link();
+}
+namespace shadow_find_facing_double_tris {
+extern void link();
+}
+namespace shadow_find_single_edges {
+extern void link();
+}
+namespace shadow_find_facing_single_tris {
+extern void link();
+}
+namespace shadow_init_vars {
+extern void link();
+}
+namespace shadow_scissor_top {
+extern void link();
+}
+namespace shadow_scissor_edges {
+extern void link();
+}
+namespace shadow_calc_dual_verts {
+extern void link();
+}
+namespace shadow_xform_verts {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -321,7 +366,14 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
      {ripple_execute_init::link, ripple_create_wave_table::link, ripple_apply_wave_table::link,
       ripple_matrix_scale::link}},
     {"ocean", {init_ocean_far_regs::link, render_ocean_quad::link, draw_large_polygon_ocean::link}},
-    {"ocean-vu0", {ocean_interp_wave::link, ocean_generate_verts::link}}};
+    {"ocean-vu0", {ocean_interp_wave::link, ocean_generate_verts::link}},
+    {"shadow-cpu",
+     {shadow_execute::link, shadow_add_double_edges::link, shadow_add_double_tris::link,
+      shadow_add_single_edges::link, shadow_add_facing_single_tris::link, shadow_add_verts::link,
+      shadow_find_double_edges::link, shadow_find_facing_double_tris::link,
+      shadow_find_single_edges::link, shadow_find_facing_single_tris::link, shadow_init_vars::link,
+      shadow_scissor_top::link, shadow_scissor_edges::link, shadow_calc_dual_verts::link,
+      shadow_xform_verts::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

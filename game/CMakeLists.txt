@@ -52,6 +52,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/ocean.cpp
         mips2c/functions/ocean_vu0.cpp
         mips2c/functions/ripple.cpp
+        mips2c/functions/shadow.cpp
         mips2c/functions/sky_tng.cpp
         mips2c/functions/sparticle.cpp
         mips2c/functions/sparticle_launcher.cpp
@@ -108,6 +109,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
+        graphics/opengl_renderer/ShadowRenderer.cpp
         graphics/opengl_renderer/SkyBlendCPU.cpp
         graphics/opengl_renderer/SkyBlendGPU.cpp
         graphics/opengl_renderer/SkyRenderer.cpp
