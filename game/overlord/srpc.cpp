@@ -421,5 +421,22 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
 }
 
 s32 VBlank_Handler() {
+  if (!gSoundEnable)
+    return 1;
+
+  if (gMusicFadeDir > 0) {
+    gMusicFade += 1024;
+    if (gMusicFade > 0x10000) {
+      gMusicFade = 0x10000;
+      gMusicFadeDir = 0;
+    }
+  } else if (gMusicFadeDir < 0) {
+    gMusicFade -= 512;
+    if (gMusicFade < 0) {
+      gMusicFade = 0;
+      gMusicFadeDir = 0;
+    }
+  }
+
   return 1;
 }
