@@ -63,11 +63,22 @@ void exec_0(ExecutionContext* c) {
   c->vfs[vf25].vf.add(Mask::y, c->vf_src(vf20).vf, c->vf_src(vf20).vf.z());
 }
 
+float magic_bogus_float_adjuster(float in) {
+  if (std::isinf(in)) {
+    if (in > 0) {
+      return FLT_MAX;
+    } else {
+      return -FLT_MAX;
+    }
+  }
+  return in;
+}
+
 void exec_28(ExecutionContext* c) {
   // nop                        |  mul.xyzw vf27, vf20, Q         28
   c->vfs[vf27].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->Q);
   // div Q, vf13.x, vf17.x      |  sub.xyzw vf19, vf01, vf03      29
-  c->vfs[vf19].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf03).vf);   c->Q = c->vfs[vf13].vf.x() / c->vfs[vf17].vf.x();
+  c->vfs[vf19].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf03).vf);   c->Q = magic_bogus_float_adjuster(c->vfs[vf13].vf.x()) / magic_bogus_float_adjuster(c->vfs[vf17].vf.x());
   // move.xyzw vf23, vf07       |  sub.xyzw vf20, vf01, vf04      30
   c->vfs[vf20].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf04).vf);   c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf07).vf);
   // nop                        |  sub.xyzw vf21, vf01, vf05      31
@@ -81,7 +92,7 @@ void exec_28(ExecutionContext* c) {
   // nop                        |  mul.xyz vf15, vf19, vf02       35
   c->vfs[vf15].vf.mul(Mask::xyz, c->vf_src(vf19).vf, c->vf_src(vf02).vf);
   // div Q, vf14.x, vf18.x      |  mul.xyzw vf12, vf04, vf02      36
-  c->vfs[vf12].vf.mul(Mask::xyzw, c->vf_src(vf04).vf, c->vf_src(vf02).vf);   c->Q = c->vfs[vf14].vf.x() / c->vfs[vf18].vf.x();
+  c->vfs[vf12].vf.mul(Mask::xyzw, c->vf_src(vf04).vf, c->vf_src(vf02).vf);   c->Q = magic_bogus_float_adjuster(c->vfs[vf14].vf.x()) / magic_bogus_float_adjuster(c->vfs[vf18].vf.x());
   // move.xyzw vf07, vf03       |  mul.xyzw vf28, vf28, Q         37
   c->vfs[vf28].vf.mul(Mask::xyzw, c->vf_src(vf28).vf, c->Q);   c->vfs[vf07].vf.move(Mask::xyzw, c->vf_src(vf03).vf);
   // move.xyzw vf08, vf04       |  mul.xyz vf16, vf20, vf02       38
@@ -119,7 +130,7 @@ void exec_28(ExecutionContext* c) {
   // nop                        |  mul.xyzw vf14, vf10, vf02      54
   c->vfs[vf14].vf.mul(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf02).vf);
   // div Q, vf11.x, vf15.x      |  mul.xyz vf18, vf22, vf02       55
-  c->vfs[vf18].vf.mul(Mask::xyz, c->vf_src(vf22).vf, c->vf_src(vf02).vf);   c->Q = c->vfs[vf11].vf.x() / c->vfs[vf15].vf.x();
+  c->vfs[vf18].vf.mul(Mask::xyz, c->vf_src(vf22).vf, c->vf_src(vf02).vf);   c->Q = magic_bogus_float_adjuster(c->vfs[vf11].vf.x()) / magic_bogus_float_adjuster(c->vfs[vf15].vf.x());
   // nop                        |  addy.x vf13, vf13, vf13        56
   c->vfs[vf13].vf.add(Mask::x, c->vf_src(vf13).vf, c->vf_src(vf13).vf.y());
   // nop                        |  addy.x vf17, vf17, vf17        57
@@ -133,7 +144,7 @@ void exec_28(ExecutionContext* c) {
   // nop                        |  addz.x vf17, vf17, vf17        61
   c->vfs[vf17].vf.add(Mask::x, c->vf_src(vf17).vf, c->vf_src(vf17).vf.z());
   // div Q, vf12.x, vf16.x      |  addz.x vf14, vf14, vf14        62
-  c->vfs[vf14].vf.add(Mask::x, c->vf_src(vf14).vf, c->vf_src(vf14).vf.z());   c->Q = c->vfs[vf12].vf.x() / c->vfs[vf16].vf.x();
+  c->vfs[vf14].vf.add(Mask::x, c->vf_src(vf14).vf, c->vf_src(vf14).vf.z());   c->Q = magic_bogus_float_adjuster(c->vfs[vf12].vf.x()) / magic_bogus_float_adjuster(c->vfs[vf16].vf.x());
   // nop                        |  mul.xyzw vf19, vf19, Q         63
   c->vfs[vf19].vf.mul(Mask::xyzw, c->vf_src(vf19).vf, c->Q);
   // move.xyzw vf28, vf21       |  addz.x vf18, vf18, vf18        64
@@ -150,7 +161,7 @@ void exec_68(ExecutionContext* c) {
   // nop                        |  mul.xyzw vf27, vf20, Q         68
   c->vfs[vf27].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->Q);
   // div Q, vf13.x, vf17.x      |  nop                            69
-  c->Q = c->vfs[vf13].vf.x() / c->vfs[vf17].vf.x();
+  c->Q = magic_bogus_float_adjuster(c->vfs[vf13].vf.x()) / magic_bogus_float_adjuster(c->vfs[vf17].vf.x());
   // move.xyzw vf23, vf07       |  nop                            70
   c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf07).vf);
   // nop                        |  nop                            71
@@ -164,7 +175,7 @@ void exec_68(ExecutionContext* c) {
   // nop                        |  nop                            75
 
   // div Q, vf14.x, vf18.x      |  nop                            76
-  c->Q = c->vfs[vf14].vf.x() / c->vfs[vf18].vf.x();
+  c->Q = magic_bogus_float_adjuster(c->vfs[vf14].vf.x()) / magic_bogus_float_adjuster(c->vfs[vf18].vf.x());
   // nop                        |  mul.xyzw vf28, vf28, Q         77
   c->vfs[vf28].vf.mul(Mask::xyzw, c->vf_src(vf28).vf, c->Q);
   // nop                        |  nop                            78
@@ -174,7 +185,7 @@ void exec_68(ExecutionContext* c) {
   // nop                        |  nop                            80
 
   // nop                        |  sub.xyzw vf25, vf25, vf28      81
-  c->vfs[vf25].vf.sub(Mask::xyzw, c->vf_src(vf25).vf, c->vf_src(vf28).vf);
+  c->vfs[vf25].vf.sub(Mask::xyzw, c->vf_src(vf25).vf, c->vf_src(vf28).vf); // was bad
   // nop                        |  nop                            82
 
   // nop                        |  mul.xyzw vf29, vf29, Q         83
@@ -637,7 +648,7 @@ u64 execute(void* ctxt) {
   // nop                                            // vnop
   c->vadd(DEST::xyzw, vf1, vf1, vf4);               // vadd.xyzw vf1, vf1, vf4
   //beq r0, r0, L91                                 // beq r0, r0, L91
-  c->sqc2(vf1, 0, a0);                              // sqc2 vf1, 0(a0)
+  c->sqc2(vf1, 0, a0);                              // sqc2 vf1, 0(a0) was bad
   goto block_7;                                     // branch always
 
 

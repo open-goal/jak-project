@@ -904,6 +904,8 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("fcand(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
     case VuInstrK::FCOR:
       return fmt::format("fcor(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FSAND:
+      return fmt::format("fsand(vu.vi01, 0x{:x}, sf);\n", instr.src.at(0).value());
     case VuInstrK::FCSET:
       return fmt::format("cf = 0x{:x};\n", instr.src.at(0).value());
     case VuInstrK::ADDbc:
@@ -1007,6 +1009,13 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
 
     case VuInstrK::XTOP:
       return fmt::format("vu.{} = xtop();", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::OPMULA:
+      return fmt::format("vu.acc.opmula(vu.{}, vu.{});", instr.src.at(0).to_string(m_label_names),
+                         instr.src.at(1).to_string(m_label_names));
+    case VuInstrK::OPMSUB:
+      return fmt::format("vu.acc.opmsub(vu.{}, vu.{}, vu.{});", instr.dst->to_string(m_label_names),
+                         instr.src.at(0).to_string(m_label_names),
+                         instr.src.at(1).to_string(m_label_names));
     default:
       unk++;
       fmt::print("unknown 0 is {}\n", to_string(instr));

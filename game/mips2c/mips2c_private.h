@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <cmath>
+#include <cfloat>
 
 #include "common/common_types.h"
 #include "game/mips2c/mips2c_table.h"
@@ -371,6 +372,7 @@ struct ExecutionContext {
     ASSERT(((gpr_addr(addr) + offset) & 0xf) == 0);
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
   }
+
 
   void swc1(int src, int offset, int addr) {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &fprs[src], 4);
