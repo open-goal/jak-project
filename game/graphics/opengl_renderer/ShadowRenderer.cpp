@@ -1,4 +1,5 @@
 #include "ShadowRenderer.h"
+#include <cfloat>
 
 ShadowRenderer::ShadowRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 0x4000) {}
@@ -138,7 +139,8 @@ void ShadowRenderer::render(DmaFollower& dma,
       VifCode mscal(after[3]);
       ASSERT(mscal.kind == VifCode::Kind::MSCALF);
       run_mscal_vu2c(mscal.immediate, render_state, prof);
-    } else if (next.vifcode0().kind == VifCode::Kind::FLUSHA && next.vifcode1().kind == VifCode::Kind::DIRECT) {
+    } else if (next.vifcode0().kind == VifCode::Kind::FLUSHA &&
+               next.vifcode1().kind == VifCode::Kind::DIRECT) {
       dma.read_and_advance();
       dma.read_and_advance();
       dma.read_and_advance();
@@ -235,6 +237,10 @@ void debug_q(int line, float q) {
 }
 }  // namespace
 
+#define CHECK_Q                                  \
+  if (!std::isfinite(vu.Q)) {                    \
+    fmt::print("bad Q {} {}\n", __LINE__, vu.Q); \
+  }
 
 void ShadowRenderer::run_mscal_vu2c(u16 imm,
                                     SharedRenderState* render_state,
@@ -390,7 +396,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // nop                        |  mul.xy vf26, vf26, vf04        86
   vu.vf26.mul(Mask::xy, vu.vf26, vu.vf04);
   // nop                        |  addz.x vf29, vf29, vf29        87
-  sf1 = vu.vf29.add_and_set_sf_s(Mask::x, vu.vf29, vu.vf29.z());
+  sf0 = vu.vf29.add_and_set_sf_s(Mask::x, vu.vf29, vu.vf29.z());
   // nop                        |  ftoi4.xyzw vf18, vf18          88
   vu.vf18.ftoi4(Mask::xyzw, vu.vf18);
   // nop                        |  add.xy vf27, vf19, vf03        89
@@ -398,7 +404,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // sq.xyzw vf26, 6(vi02)      |  add.xyzw vf19, vf19, vf05      90
   vu.vf19.add(Mask::xyzw, vu.vf19, vu.vf05);   sq_buffer(Mask::xyzw, vu.vf26, vu.vi02 + 6);
   // fsand vi01, 0x2            |  clipw.xyz vf22, vf22           91
-  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf1); // hack
+  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0);
 
   // sq.xyzw vf18, 7(vi02)      |  clipw.xyz vf23, vf23           92
   cf = clip(vu.vf23, vu.vf23.w(), cf);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi02 + 7);
@@ -480,8 +486,6 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // lq.xyzw vf19, 174(vi05)    |  nop                            122
   lq_buffer(Mask::xyzw, vu.vf19, vu.vi05 + 174);
   // nop                        |  mulaw.xyzw ACC, vf09, vf00     123
-  {
-  Vf vf17_backup = vu.vf17;
   vu.acc.mula(Mask::xyzw, vu.vf09, vu.vf00.w());
   // move.xyzw vf15, vf17       |  maddax.xyzw ACC, vf06, vf17    124
   vu.acc.madda(Mask::xyzw, vu.vf06, vu.vf17.x());   vu.vf15.move(Mask::xyzw, vu.vf17);
@@ -496,8 +500,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // nop                        |  sub.xyzw vf30, vf19, vf15      129
   vu.vf30.sub(Mask::xyzw, vu.vf19, vu.vf15);
   // div Q, vf12.x, vf17.w      |  maddax.xyzw ACC, vf06, vf18    130
-  vu.acc.madda(Mask::xyzw, vu.vf06, vu.vf18.x());   vu.Q = vu.vf12.x() / vu.vf17.w(); // this one was bad
-  }
+  vu.acc.madda(Mask::xyzw, vu.vf06, vu.vf18.x());   vu.Q = vu.vf12.x() / vu.vf17.w();
   // nop                        |  mul.xyzw vf21, vf17, vf02      131
   vu.vf21.mul(Mask::xyzw, vu.vf17, vu.vf02);
   // nop                        |  madday.xyzw ACC, vf07, vf18    132
@@ -564,7 +567,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // sq.xyzw vf26, 6(vi02)      |  add.xyzw vf19, vf19, vf05      162
   vu.vf19.add(Mask::xyzw, vu.vf19, vu.vf05);   sq_buffer(Mask::xyzw, vu.vf26, vu.vi02 + 6);
   // fsand vi01, 0x2            |  clipw.xyz vf22, vf22           163
-  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0); // hack
+  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0);
 
   // sq.xyzw vf18, 7(vi02)      |  clipw.xyz vf23, vf23           164
   cf = clip(vu.vf23, vu.vf23.w(), cf);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi02 + 7);
@@ -637,11 +640,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vf29.mfir(Mask::z, vu.vi07);
   // BRANCH!
   // bal vi15, L36              |  nop                            189
-  vu.vi15 = 191;
-  // ASSERT(false);
   // mfir.w vf29, vi08          |  nop                            190
   vu.vf29.mfir(Mask::w, vu.vi08);
-  // if (bc) { goto L36; }
+  vu.vi15 = 191;
   goto L36;
 
   INSTR_191:
@@ -675,11 +676,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vf29.mfir(Mask::z, vu.vi07);
   // BRANCH!
   // bal vi15, L36              |  nop                            203
-  vu.vi15 = 205;
-  // ASSERT(false);
   // mfir.w vf29, vi08          |  nop                            204
   vu.vf29.mfir(Mask::w, vu.vi08);
-  // if (bc) { goto L36; }
+  vu.vi15 = 205;
   goto L36;
 
   INSTR_205:
@@ -695,7 +694,6 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // mtir vi02, vf29.x          |  nop                            209
   vu.vi02 = vu.vf29.x_as_u16();
   if (bc) { goto L10; }
-
 
   L13:
   // iaddiu vi03, vi00, 0x258   |  nop                            210
@@ -872,7 +870,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // sq.xyzw vf26, 6(vi02)      |  add.xyzw vf19, vf19, vf05      291
   vu.vf19.add(Mask::xyzw, vu.vf19, vu.vf05);   sq_buffer(Mask::xyzw, vu.vf26, vu.vi02 + 6);
   // fsand vi01, 0x2            |  clipw.xyz vf22, vf22           292
-  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0); // hack
+  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0);
 
   // sq.xyzw vf18, 7(vi02)      |  clipw.xyz vf23, vf23           293
   cf = clip(vu.vf23, vu.vf23.w(), cf);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi02 + 7);
@@ -965,11 +963,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vf29.mfir(Mask::z, vu.vi07);
   // BRANCH!
   // bal vi15, L37              |  nop                            328
-  // ASSERT(false);
-  vu.vi15 = 330;
   // mfir.w vf29, vi08          |  nop                            329
   vu.vf29.mfir(Mask::w, vu.vi08);
-  // if (bc) { goto L37; }
+  vu.vi15 = 330;
   goto L37;
 
   INSTR_330:
@@ -1144,7 +1140,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // sq.xyzw vf26, 6(vi02)      |  add.xyzw vf19, vf19, vf05      407
   vu.vf19.add(Mask::xyzw, vu.vf19, vu.vf05);   sq_buffer(Mask::xyzw, vu.vf26, vu.vi02 + 6);
   // fsand vi01, 0x2            |  clipw.xyz vf22, vf22           408
-  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0); // hack
+  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0);
 
   // sq.xyzw vf18, 7(vi02)      |  clipw.xyz vf23, vf23           409
   cf = clip(vu.vf23, vu.vf23.w(), cf);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi02 + 7);
@@ -1323,7 +1319,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // sq.xyzw vf26, 6(vi02)      |  add.xyzw vf19, vf19, vf05      483
   vu.vf19.add(Mask::xyzw, vu.vf19, vu.vf05);   sq_buffer(Mask::xyzw, vu.vf26, vu.vi02 + 6);
   // fsand vi01, 0x2            |  clipw.xyz vf22, vf22           484
-  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0); // hack
+  cf = clip(vu.vf22, vu.vf22.w(), cf);   fsand(vu.vi01, 0x2, sf0);
 
   // sq.xyzw vf18, 7(vi02)      |  clipw.xyz vf23, vf23           485
   cf = clip(vu.vf23, vu.vf23.w(), cf);   sq_buffer(Mask::xyzw, vu.vf18, vu.vi02 + 7);
@@ -1398,10 +1394,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vf29.mfir(Mask::z, vu.vi07);
   // BRANCH!
   // bal vi15, L36              |  nop                            511
-  // ASSERT(false);
-  vu.vi15 = 513;
   // mfir.w vf29, vi08          |  nop                            512
   vu.vf29.mfir(Mask::w, vu.vi08);
+  vu.vi15 = 513;
   goto L36;
 
   INSTR_513:
@@ -1435,10 +1430,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vf29.mfir(Mask::z, vu.vi07);
   // BRANCH!
   // bal vi15, L36              |  nop                            525
-  // ASSERT(false);
-  vu.vi15 = 527;
   // mfir.w vf29, vi08          |  nop                            526
   vu.vf29.mfir(Mask::w, vu.vi08);
+  vu.vi15 = 527;
   goto L36;
 
   INSTR_527:
@@ -1502,28 +1496,25 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vi05 = 0;
   // BRANCH!
   // bal vi15, L38              |  nop                            554
-  // ASSERT(false);
-  vu.vi15 = 556;
   // iaddiu vi07, vi00, 0x3e8   |  nop                            555
   vu.vi07 = 0x3e8; /* 1000 */
+  vu.vi15 = 556;
   goto L38;
 
   INSTR_556:
   // BRANCH!
   // bal vi15, L38              |  nop                            556
-  // ASSERT(false);
-  vu.vi15 = 558;
   // iaddiu vi07, vi00, 0x3eb   |  nop                            557
   vu.vi07 = 0x3eb; /* 1003 */
+  vu.vi15 = 558;
   goto L38;
 
   INSTR_558:
   // BRANCH!
   // bal vi15, L38              |  nop                            558
-  // ASSERT(false);
-  vu.vi15 = 560;
   // iaddiu vi07, vi00, 0x3ee   |  nop                            559
   vu.vi07 = 0x3ee; /* 1006 */
+  vu.vi15 = 560;
   goto L38;
 
   INSTR_560:
@@ -1581,37 +1572,33 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vi05 = 0;
   // BRANCH!
   // bal vi15, L38              |  nop                            584
-  // ASSERT(false);
-  vu.vi15 = 586;
   // iaddiu vi07, vi00, 0x3e8   |  nop                            585
   vu.vi07 = 0x3e8; /* 1000 */
+  vu.vi15 = 586;
   goto L38;
 
   INSTR_586:
   // BRANCH!
   // bal vi15, L38              |  nop                            586
-  // ASSERT(false);
-  vu.vi15 = 588;
   // iaddiu vi07, vi00, 0x3eb   |  nop                            587
   vu.vi07 = 0x3eb; /* 1003 */
+  vu.vi15 = 588;
   goto L38;
 
   INSTR_588:
   // BRANCH!
   // bal vi15, L38              |  nop                            588
-  // ASSERT(false);
-  vu.vi15 = 590;
   // iaddiu vi07, vi00, 0x3ee   |  nop                            589
   vu.vi07 = 0x3ee; /* 1006 */
+  vu.vi15 = 590;
   goto L38;
 
   INSTR_590:
   // BRANCH!
   // bal vi15, L38              |  nop                            590
-  // ASSERT(false);
-  vu.vi15 = 592;
   // iaddiu vi07, vi00, 0x3f1   |  nop                            591
   vu.vi07 = 0x3f1; /* 1009 */
+  vu.vi15 = 592;
   goto L38;
 
   INSTR_592:
@@ -1652,6 +1639,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   if (bc) { goto L41; }
 
   // jalr vi11, vi06            |  nop                            604
+  // ASSERT(false);
   // iswr.x vi07, vi09          |  nop                            605
   isw_buffer(Mask::x, vu.vi07, vu.vi09);
   handle_jalr_to_end_block(vu.vi06, sf0, sf1);
@@ -1662,7 +1650,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // nop                        |  nop                            608
 
   // fsand vi02, 0x2            |  nop                            609
-  fsand(vu.vi01, 0x2, sf1);
+  fsand(vu.vi02, 0x2, sf1);
 
   // BRANCH!
   // ibne vi00, vi02, L45       |  nop                            610
@@ -1680,8 +1668,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
 
   L41:
   // jalr vi11, vi06            |  nop                            614
-  handle_jalr_to_end_block(vu.vi06, sf0, sf1);
+  // ASSERT(false);
   // nop                        |  nop                            615
+  handle_jalr_to_end_block(vu.vi06, sf0, sf1);
 
   // nop                        |  nop                            616
 
@@ -1691,7 +1680,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   fsand(vu.vi01, 0x2, sf0);
 
   // fsand vi02, 0x2            |  subw.w vf31, vf30, vf31        619
-  vu.vf31.sub(Mask::w, vu.vf30, vu.vf31.w());   fsand(vu.vi01, 0x2, sf1);
+  vu.vf31.sub(Mask::w, vu.vf30, vu.vf31.w());   fsand(vu.vi02, 0x2, sf1);
 
   // BRANCH!
   // ibne vi00, vi01, L43       |  nop                            620
@@ -1717,11 +1706,10 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   L42:
   // BRANCH!
   // bal vi11, L52              |  nop                            626
-  // ASSERT(false);
   // iaddi vi07, vi09, 0x1      |  nop                            627
   vu.vi07 = vu.vi09 + 1;
   // if (bc) { goto L52; }
-  handle_jalr_to_end_block(736, sf0, sf1);
+  handle_bal52();
 
   // sq.xyzw vf16, 1(vi09)      |  nop                            628
   sq_buffer(Mask::xyzw, vu.vf16, vu.vi09 + 1);
@@ -1742,10 +1730,10 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
 
   // BRANCH!
   // bal vi11, L52              |  nop                            633
-  ASSERT(false);
+
   // nop                        |  nop                            634
 
-  if (bc) { goto L52; }
+  handle_bal52();
 
   // sq.xyzw vf16, 4(vi09)      |  nop                            635
   sq_buffer(Mask::xyzw, vu.vf16, vu.vi09 + 4);
@@ -1776,7 +1764,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // iaddi vi03, vi03, 0x2      |  nop                            646
   vu.vi03 = vu.vi03 + 2;
   // waitq                      |  subw.w vf14, vf00, vf00        647
-  vu.vf14.sub(Mask::w, vu.vf00, vu.vf00.w());   ASSERT(false);
+  vu.vf14.sub(Mask::w, vu.vf00, vu.vf00.w());
   // nop                        |  mul.xyz vf14, vf14, Q          648
   vu.vf14.mul(Mask::xyz, vu.vf14, vu.Q);
   // nop                        |  add.xy vf26, vf14, vf03        649
@@ -1835,11 +1823,10 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
     case 699:
       goto INSTR_699;
     default:
-      fmt::print("662: jr vi15: {}\n", vu.vi15);
+      fmt::print("unknown vu.vi15 @ L46: {}\n", vu.vi15);
       ASSERT(false);
   }
   // clang-format off
-
   // nop                        |  nop                            663
 
   L47:
@@ -1870,8 +1857,8 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
 
   // jalr vi11, vi06            |  nop                            673
   // ASSERT(false);
-  handle_jalr_to_end_block(vu.vi06, sf0, sf1);
   // nop                        |  nop                            674
+  handle_jalr_to_end_block(vu.vi06, sf0, sf1);
 
   // nop                        |  nop                            675
 
@@ -1881,7 +1868,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   fsand(vu.vi01, 0x2, sf0);
 
   // fsand vi02, 0x2            |  subw.w vf31, vf30, vf31        678
-  vu.vf31.sub(Mask::w, vu.vf30, vu.vf31.w());   fsand(vu.vi01, 0x2, sf1);
+  vu.vf31.sub(Mask::w, vu.vf30, vu.vf31.w());   fsand(vu.vi02, 0x2, sf1);
 
   // BRANCH!
   // ibeq vi02, vi01, L50       |  nop                            679
@@ -1899,11 +1886,8 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
 
   // BRANCH!
   // bal vi11, L52              |  nop                            683
-  // ASSERT(false);
+  handle_bal52();
   // nop                        |  nop                            684
-
-  // if (bc) { goto L52; }
-  handle_jalr_to_end_block(736, sf0, sf1);
 
   // sq.xyzw vf16, 4(vi09)      |  nop                            685
   sq_buffer(Mask::xyzw, vu.vf16, vu.vi09 + 4);
@@ -1913,10 +1897,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vi12 = vu.vi09;
   // BRANCH!
   // bal vi15, L39              |  nop                            688
-  // ASSERT(false);
-  vu.vi15 = 690;
   // iaddi vi09, vi09, 0x7      |  nop                            689
   vu.vi09 = vu.vi09 + 7;
+  vu.vi15 = 690;
   goto L39;
 
   INSTR_690:
@@ -1930,11 +1913,8 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   L49:
   // BRANCH!
   // bal vi11, L52              |  nop                            692
-  // ASSERT(false);
+  handle_bal52();
   // nop                        |  nop                            693
-
-  // if (bc) { goto L52; }
-  handle_jalr_to_end_block(736, sf0, sf1);
 
   // sq.xyzw vf16, 1(vi09)      |  nop                            694
   sq_buffer(Mask::xyzw, vu.vf16, vu.vi09 + 1);
@@ -1944,10 +1924,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   vu.vi12 = vu.vi09;
   // BRANCH!
   // bal vi15, L39              |  nop                            697
-  // ASSERT(false);
-  vu.vi15 = 699;
   // iaddi vi09, vi09, 0x7      |  nop                            698
   vu.vi09 = vu.vi09 + 7;
+  vu.vi15 = 699;
   goto L39;
 
   INSTR_699:
@@ -2007,7 +1986,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
 
   // jr vi15                    |  nop                            722
   // clang-format on
-  switch (vu.vi15) {
+  switch(vu.vi15) {
     case 191:
       goto INSTR_191;
     case 205:
@@ -2019,10 +1998,9 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
     case 527:
       goto INSTR_527;
     default:
-      fmt::print("722 jr: {}\n", vu.vi15);
+      fmt::print("unknown vu.vi15 @ 722: {}\n", vu.vi15);
       ASSERT(false);
   }
-  // clang-format off
   // nop                        |  nop                            723
 
   // jr vi11                    |  addx.w vf30, vf14, vf14        724
@@ -2057,5 +2035,6 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm,
   // jr vi11                    |  add.xyzw vf16, vf14, vf16      738
   vu.vf16.add(Mask::xyzw, vu.vf14, vu.vf16);   ASSERT(false);
   // nop                        |  nop                            739
+
 }
 

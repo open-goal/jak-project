@@ -56,6 +56,7 @@ class ShadowRenderer : public BucketRenderer {
         second_flag = vu.vf31.sub_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.z());
         return;
       case 736:
+        ASSERT(false); // bad because we don't set flags here
         // nop                        |  sub.xyzw vf16, vf15, vf14      736
         vu.vf16.sub(Mask::xyzw, vu.vf15, vu.vf14);
         // waitq                      |  mul.xyzw vf16, vf16, Q         737
@@ -68,8 +69,16 @@ class ShadowRenderer : public BucketRenderer {
         fmt::print("unhandled end block: {}\n", val);
         ASSERT(false);
     }
+  }
 
-
+  void handle_bal52() {
+    // nop                        |  sub.xyzw vf16, vf15, vf14      736
+    vu.vf16.sub(Mask::xyzw, vu.vf15, vu.vf14);
+    // waitq                      |  mul.xyzw vf16, vf16, Q         737
+    vu.vf16.mul(Mask::xyzw, vu.vf16, vu.Q);
+    // jr vi11                    |  add.xyzw vf16, vf14, vf16      738
+    vu.vf16.add(Mask::xyzw, vu.vf14, vu.vf16);
+    // nop                        |  nop                            739
   }
 
   DirectRenderer m_direct;
