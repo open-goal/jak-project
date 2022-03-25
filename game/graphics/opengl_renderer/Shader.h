@@ -38,6 +38,7 @@ enum class ShaderId {
   OCEAN_TEXTURE = 13,
   OCEAN_TEXTURE_MIPMAP = 14,
   OCEAN_COMMON = 15,
+  SHADOW = 16,
   MAX_SHADERS
 };
 
@@ -45,7 +46,6 @@ class ShaderLibrary {
  public:
   ShaderLibrary();
   Shader& operator[](ShaderId id) { return m_shaders[(int)id]; }
-
   Shader& at(ShaderId id) { return m_shaders[(int)id]; }
 
  private:

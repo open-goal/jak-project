@@ -1,87 +1,23 @@
 #pragma once
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/DirectRenderer.h"
 
 #include "game/common/vu.h"
 
 class ShadowRenderer : public BucketRenderer {
  public:
   ShadowRenderer(const std::string& name, BucketId my_id);
+  ~ShadowRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
  private:
-  void run_mscal_vu2c(u16 imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void xgkick(u16 imm, SharedRenderState* render_state, ScopedProfilerNode& prof);
-
+  void run_mscal_vu2c(u16 imm);
+  void xgkick(u16 imm);
   void run_mscal10_vu2c();
-
-  void handle_jalr_to_end_block(u16 val, u32& first_flag, u32& second_flag) {
-    switch (val) {
-      case 724:
-        // jr vi11                    |  addx.w vf30, vf14, vf14        724
-        first_flag = vu.vf30.add_and_set_sf_s(Mask::w, vu.vf14, vu.vf14.x());
-        // nop                        |  addx.w vf31, vf15, vf15        725
-        second_flag = vu.vf31.add_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.x());
-        return;
-      case 726:
-        // jr vi11                    |  subx.w vf30, vf14, vf14        726
-        first_flag = vu.vf30.sub_and_set_sf_s(Mask::w, vu.vf14, vu.vf14.x());
-        // nop                        |  subx.w vf31, vf15, vf15        727
-        second_flag = vu.vf31.sub_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.x());
-        return;
-      case 728:
-        // jr vi11                    |  addy.w vf30, vf14, vf14        728
-        first_flag = vu.vf30.add_and_set_sf_s(Mask::w, vu.vf14, vu.vf14.y());
-        // nop                        |  addy.w vf31, vf15, vf15        729
-        second_flag = vu.vf31.add_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.y());
-        return;
-      case 730:
-        // jr vi11                    |  suby.w vf30, vf14, vf14        730
-        first_flag = vu.vf30.sub_and_set_sf_s(Mask::w, vu.vf14, vu.vf14.y());
-        // nop                        |  suby.w vf31, vf15, vf15        731
-        second_flag = vu.vf31.sub_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.y());
-        return;
-      case 732:
-        // jr vi11                    |  addz.w vf30, vf14, vf14        732
-        first_flag = vu.vf30.add_and_set_sf_s(Mask::w, vu.vf14, vu.vf14.z());
-        // nop                        |  addz.w vf31, vf15, vf15        733
-        second_flag = vu.vf31.add_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.z());
-        return;
-      case 734:
-        // jr vi11                    |  subz.w vf30, vf14, vf14        734
-        first_flag = vu.vf30.sub_and_set_sf_s(Mask::w, vu.vf14, vu.vf14.z());
-        // nop                        |  subz.w vf31, vf15, vf15        735
-        second_flag = vu.vf31.sub_and_set_sf_s(Mask::w, vu.vf15, vu.vf15.z());
-        return;
-      case 736:
-        ASSERT(false); // bad because we don't set flags here
-        // nop                        |  sub.xyzw vf16, vf15, vf14      736
-        vu.vf16.sub(Mask::xyzw, vu.vf15, vu.vf14);
-        // waitq                      |  mul.xyzw vf16, vf16, Q         737
-        vu.vf16.mul(Mask::xyzw, vu.vf16, vu.Q);
-        // jr vi11                    |  add.xyzw vf16, vf14, vf16      738
-        vu.vf16.add(Mask::xyzw, vu.vf14, vu.vf16);
-        // nop                        |  nop                            739
-        return;
-      default:
-        fmt::print("unhandled end block: {}\n", val);
-        ASSERT(false);
-    }
-  }
-
-  void handle_bal52() {
-    // nop                        |  sub.xyzw vf16, vf15, vf14      736
-    vu.vf16.sub(Mask::xyzw, vu.vf15, vu.vf14);
-    // waitq                      |  mul.xyzw vf16, vf16, Q         737
-    vu.vf16.mul(Mask::xyzw, vu.vf16, vu.Q);
-    // jr vi11                    |  add.xyzw vf16, vf14, vf16      738
-    vu.vf16.add(Mask::xyzw, vu.vf14, vu.vf16);
-    // nop                        |  nop                            739
-  }
-
-  DirectRenderer m_direct;
+  void handle_jalr_to_end_block(u16 val, u32& first_flag, u32& second_flag);
+  void handle_bal52();
+  void draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   Vf m_vu_data[1024];
 
@@ -166,4 +102,28 @@ class ShadowRenderer : public BucketRenderer {
     float Q;
     const u16 vi00 = 0;
   } vu;
+
+  struct Vertex {
+    math::Vector3f xyz;
+    u32 flag;  // 1 if front face, 0 otherwise
+  };
+  static_assert(sizeof(Vertex) == 16);
+
+  static constexpr int MAX_VERTICES = 8192;
+  static constexpr int MAX_INDICES = 8192;
+
+  Vertex m_vertices[MAX_VERTICES];
+  u32 m_front_indices[MAX_INDICES];
+  u32 m_back_indices[MAX_INDICES];
+
+  u32 m_next_vertex = 0;
+  u32 m_next_front_index = 0;
+  u32 m_next_back_index = 0;
+
+  struct {
+    // index is front, back
+    GLuint vertex_buffer, index_buffer[2], vao;
+  } m_ogl;
+
+  bool m_debug_draw_volume = false;
 };

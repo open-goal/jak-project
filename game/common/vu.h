@@ -308,7 +308,6 @@ struct alignas(16) Vf {
     return flag;
   }
 
-
   void sub(Mask mask, const Vf& a, float b) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {

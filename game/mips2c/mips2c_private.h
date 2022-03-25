@@ -373,7 +373,6 @@ struct ExecutionContext {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
   }
 
-
   void swc1(int src, int offset, int addr) {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &fprs[src], 4);
   }
