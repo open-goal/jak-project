@@ -287,6 +287,18 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
                 settings.lbox_height_px);
   }
 
+  {
+    auto prof = m_profiler.root()->make_scoped_child("loader");
+    if (m_last_pmode_alp == 0 && settings.pmode_alp_register != 0) {
+      // blackout, load everything and don't worry about frame rate
+      m_render_state.loader->update_blocking(m_render_state.load_status_debug,
+                                             *m_render_state.texture_pool);
+
+    } else {
+      m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
+    }
+  }
+
   // render the buckets!
   {
     auto prof = m_profiler.root()->make_scoped_child("buckets");
@@ -304,18 +316,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
     vif_interrupt_callback();
-  }
-
-  {
-    auto prof = m_profiler.root()->make_scoped_child("loader");
-    if (m_last_pmode_alp == 0 && settings.pmode_alp_register != 0) {
-      // blackout, load everything and don't worry about frame rate
-      m_render_state.loader->update_blocking(m_render_state.load_status_debug,
-                                             *m_render_state.texture_pool);
-
-    } else {
-      m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
-    }
   }
 
   m_last_pmode_alp = settings.pmode_alp_register;
