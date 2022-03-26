@@ -22,7 +22,7 @@ class Shader {
 
 // note: update the constructor in Shader.cpp
 enum class ShaderId {
-  TEST_SHADER = 0,
+  SOLID_COLOR = 0,
   DIRECT_BASIC = 1,
   DIRECT_BASIC_TEXTURED = 2,
   DEBUG_RED = 3,

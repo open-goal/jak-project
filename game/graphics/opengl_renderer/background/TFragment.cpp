@@ -193,17 +193,9 @@ void TFragment::render(DmaFollower& dma,
       }
     }
   }
-
-  if (m_hack_scrambler) {
-    render_state->loader->hack_scramble_textures();
-    m_hack_scrambler = false;
-  }
 }
 
 void TFragment::draw_debug_window() {
-  if (ImGui::Button("Scrambler")) {
-    m_hack_scrambler = true;
-  }
   ImGui::Checkbox("Manual Time of Day", &m_override_time_of_day);
   if (m_override_time_of_day) {
     for (int i = 0; i < 8; i++) {

@@ -48,9 +48,8 @@ class Tfrag3 {
     math::Vector4f rgba;
   };
 
-  bool update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                   const tfrag3::Level* lev_data,
-                   std::string& status_out);
+  void update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
+                   const Loader::LevelData* loader_data);
 
   int lod() const { return Gfx::g_global_settings.lod_tfrag; }
 
@@ -109,22 +108,4 @@ class Tfrag3 {
 
   bool m_has_level = false;
   bool m_use_fast_time_of_day = true;
-
-  enum State : u32 {
-    FIRST = 0,
-    DISCARD_TREE = 0,
-    FREE_OLD_TREES = 1,
-    INIT_NEW_TREES = 2,
-    UPLOAD_VERTS = 3,
-  };
-
-  struct {
-    bool loading = false;
-    State state;
-    u32 vert = 0;
-    u32 vert_geo = 0;
-    u32 vert_tree = 0;
-    u32 vert_debug_bytes = 0;
-  } m_load_state;
-  static constexpr int MAX_TEX_PER_FRAME = 4;
 };

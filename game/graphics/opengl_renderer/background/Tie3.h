@@ -40,7 +40,7 @@ class Tie3 : public BucketRenderer {
   int lod() const { return Gfx::g_global_settings.lod_tie; }
 
  private:
-  bool update_load(const tfrag3::Level* lev_data, std::string& status_out);
+  void update_load(const Loader::LevelData* loader_data);
   void discard_tree_cache();
   void render_tree_wind(int idx,
                         int geom,
@@ -116,31 +116,4 @@ class Tie3 : public BucketRenderer {
   int m_level_id;
 
   static_assert(sizeof(WindWork) == 84 * 16);
-
-  enum State : u32 {
-    FIRST = 0,
-    DISCARD_TREE = 0,
-    INIT_NEW_TREES = 1,
-    UPLOAD_VERTS = 2,
-    UPLOAD_WIND_INDEX = 3,
-  };
-
-  struct {
-    bool loading = false;
-    State state;
-    u32 tex = 0;
-
-    u32 vert_geo = 0;
-    u32 vert_tree = 0;
-    u32 vert = 0;
-
-    u32 vert_debug_bytes = 0;
-
-    size_t time_of_day_count = 0;
-    size_t vis_temp_len = 0;
-    size_t max_draw = 0;
-    size_t max_idx_per_draw = 0;
-    u16 max_wind_idx = 0;
-
-  } m_load_state;
 };

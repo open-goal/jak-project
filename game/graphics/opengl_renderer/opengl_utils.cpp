@@ -1,7 +1,8 @@
 #include "opengl_utils.h"
-
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "common/util/Assert.h"
 #include <cstdio>
+#include <array>
 
 FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format, int num_levels)
     : m_w(w), m_h(h) {
@@ -92,4 +93,55 @@ void FramebufferTexturePairContext::switch_to(FramebufferTexturePair& fb) {
 FramebufferTexturePairContext::~FramebufferTexturePairContext() {
   glViewport(m_old_viewport[0], m_old_viewport[1], m_old_viewport[2], m_old_viewport[3]);
   glBindFramebuffer(GL_FRAMEBUFFER, m_old_framebuffer);
+}
+
+FullScreenDraw::FullScreenDraw() {
+  glGenVertexArrays(1, &m_vao);
+  glGenBuffers(1, &m_vertex_buffer);
+  glBindVertexArray(m_vao);
+
+  struct Vertex {
+    float x, y;
+  };
+
+  std::array<Vertex, 4> vertices = {
+      Vertex{-1, -1},
+      Vertex{-1, 1},
+      Vertex{1, -1},
+      Vertex{1, 1},
+  };
+
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0,               // location 0 in the shader
+                        2,               // 2 floats per vert
+                        GL_FLOAT,        // floats
+                        GL_TRUE,         // normalized, ignored,
+                        sizeof(Vertex),  //
+                        nullptr          //
+  );
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
+
+FullScreenDraw::~FullScreenDraw() {
+  glDeleteVertexArrays(1, &m_vao);
+  glDeleteBuffers(1, &m_vertex_buffer);
+}
+
+void FullScreenDraw::draw(const math::Vector4f& color,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof) {
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+  auto& shader = render_state->shaders[ShaderId::SOLID_COLOR];
+  shader.activate();
+  glUniform4f(glGetUniformLocation(shader.id(), "fragment_color"), color[0], color[1], color[2],
+              color[3]);
+  prof.add_tri(2);
+  prof.add_draw_call();
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
