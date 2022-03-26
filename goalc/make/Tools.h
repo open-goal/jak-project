@@ -46,8 +46,12 @@ class GameCntTool : public Tool {
 
 class TextTool : public Tool {
  public:
-  TextTool();
+  TextTool(Compiler* compiler);
   bool run(const ToolInput& task) override;
+  bool needs_run(const ToolInput& task) override;
+
+ private:
+  Compiler* m_compiler;
 };
 
 class GroupTool : public Tool {

@@ -317,7 +317,7 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defstep :in "assets/game_text.txt"
+(defstep :in "game/assets/game_text.txt"
   :tool 'text
   :out '("out/iso/0COMMON.TXT"
          "out/iso/1COMMON.TXT"

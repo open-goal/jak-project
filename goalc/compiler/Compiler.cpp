@@ -20,6 +20,7 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
 
   // let the build system run us
   m_make.add_tool(std::make_shared<CompilerTool>(this));
+  m_make.add_tool(std::make_shared<TextTool>(this));
   m_make.add_tool(std::make_shared<SubtitleTool>(this));
 
   // load GOAL library

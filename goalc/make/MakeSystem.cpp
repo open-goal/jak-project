@@ -59,7 +59,6 @@ MakeSystem::MakeSystem() {
   add_tool<TpageDirTool>();
   add_tool<CopyTool>();
   add_tool<GameCntTool>();
-  add_tool<TextTool>();
   add_tool<GroupTool>();
 }
 

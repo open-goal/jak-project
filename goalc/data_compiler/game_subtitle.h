@@ -58,7 +58,7 @@ class GameSubtitleBank {
 };
 
 /*!
- * The subtitles database contains a subtitbles bank for each language.
+ * The subtitles database contains a subtitles bank for each language.
  * Each subtitles bank contains a series of subtitle scene infos.
  */
 class GameSubtitleDB {
