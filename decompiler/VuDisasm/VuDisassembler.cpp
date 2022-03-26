@@ -904,8 +904,6 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
       return fmt::format("fcand(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
     case VuInstrK::FCOR:
       return fmt::format("fcor(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
-    case VuInstrK::FSAND:
-      return fmt::format("fsand(vu.vi01, 0x{:x}, sf);\n", instr.src.at(0).value());
     case VuInstrK::FCSET:
       return fmt::format("cf = 0x{:x};\n", instr.src.at(0).value());
     case VuInstrK::ADDbc:
