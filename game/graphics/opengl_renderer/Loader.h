@@ -9,7 +9,6 @@
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/Timer.h"
 
-
 class Loader {
  public:
   static constexpr float TIE_LOAD_BUDGET = 1.5f;
@@ -25,20 +24,27 @@ class Loader {
     u64 load_id = 0;
 
     struct TieOpenGL {
-      u32 verts_loaded = 0;
       GLuint vertex_buffer;
       bool has_wind = false;
       GLuint wind_indices;
     };
     std::array<std::vector<TieOpenGL>, tfrag3::TIE_GEOS> tie_data;
+    std::array<std::vector<GLuint>, tfrag3::TIE_GEOS> tfrag_vertex_data;
+
+    // internal load state
     bool tie_opengl_created = false;
     bool tie_verts_done = false;
     bool tie_wind_indices_done = false;
     bool tie_load_done = false;
-
     u32 tie_next_geo = 0;
     u32 tie_next_tree = 0;
     u32 tie_next_vert = 0;
+
+    bool tfrag_opengl_created = false;
+    bool tfrag_load_done = false;
+    u32 tfrag_next_geo = 0;
+    u32 tfrag_next_tree = 0;
+    u32 tfrag_next_vert = 0;
   };
 
   const LevelData* get_tfrag3_level(const std::string& level_name);
@@ -56,6 +62,7 @@ class Loader {
 
   bool upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool);
   bool init_tie(Timer& timer, LevelData& data);
+  bool init_tfrag(Timer& timer, LevelData& data);
 
   // used by game and loader thread
   std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;
@@ -74,4 +81,5 @@ class Loader {
   // used only by game thread
   std::unordered_map<std::string, Level> m_loaded_tfrag3_levels;
 
+  std::vector<std::string> m_desired_levels;
 };

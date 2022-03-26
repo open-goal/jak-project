@@ -14,7 +14,7 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
-bool Tie3::update_load(const Loader::LevelData* loader_data) {
+void Tie3::update_load(const Loader::LevelData* loader_data) {
   const tfrag3::Level* lev_data = loader_data->level.get();
   m_wind_vectors.clear();
   // We changed level!
@@ -117,16 +117,14 @@ bool Tie3::update_load(const Loader::LevelData* loader_data) {
   m_cache.draw_idx_temp.resize(max_draws);
   m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
   ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
-
-  return false;
 }
+
 /*!
  * Set up all OpenGL and temporary buffers for a given level name.
  * The level name should be the 3 character short name.
  */
 bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_state) {
   // make sure we have the level data.
-  // TODO: right now this will wait to load from disk and unpack it.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader->get_tfrag3_level(level);
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {

@@ -51,6 +51,7 @@ const Loader::LevelData* Loader::get_tfrag3_level(const std::string& level_name)
  */
 void Loader::set_want_levels(const std::vector<std::string>& levels) {
   std::unique_lock<std::mutex> lk(m_loader_mutex);
+  m_desired_levels = levels;
   if (!m_level_to_load.empty()) {
     // can't do anything, we're loading a level right now
     return;
@@ -192,15 +193,102 @@ u64 Loader::add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_c
   return gl_tex;
 }
 
+bool Loader::init_tfrag(Timer& timer, LevelData& data) {
+  if (data.tfrag_load_done) {
+    return true;
+  }
+
+  if (data.level->tfrag_trees.front().empty()) {
+    data.tfrag_load_done = true;
+    return true;
+  }
+
+  if (!data.tfrag_opengl_created) {
+    for (int geo = 0; geo < tfrag3::TFRAG_GEOS; geo++) {
+      auto& in_trees = data.level->tfrag_trees[geo];
+      for (auto& in_tree : in_trees) {
+        GLuint& tree_out = data.tfrag_vertex_data[geo].emplace_back();
+        glGenBuffers(1, &tree_out);
+        glBindBuffer(GL_ARRAY_BUFFER, tree_out);
+        glBufferData(GL_ARRAY_BUFFER,
+                     in_tree.unpacked.vertices.size() * sizeof(tfrag3::PreloadedVertex), nullptr,
+                     GL_STATIC_DRAW);
+      }
+    }
+    data.tfrag_opengl_created = true;
+    return false;
+  }
+
+  constexpr u32 CHUNK_SIZE = 32768;
+  u32 uploaded_bytes = 0;
+
+  while (true) {
+    const auto& tree = data.level->tfrag_trees[data.tfrag_next_geo][data.tfrag_next_tree];
+    u32 end_vert_in_tree = tree.unpacked.vertices.size();
+    // the number of vertices we'd need to finish the tree right now
+    size_t num_verts_left_in_tree = end_vert_in_tree - data.tfrag_next_vert;
+    size_t start_vert_for_chunk;
+    size_t end_vert_for_chunk;
+
+    bool complete_tree;
+
+    if (num_verts_left_in_tree > CHUNK_SIZE) {
+      complete_tree = false;
+      // should only do partial
+      start_vert_for_chunk = data.tfrag_next_vert;
+      end_vert_for_chunk = start_vert_for_chunk + CHUNK_SIZE;
+      data.tfrag_next_vert += CHUNK_SIZE;
+    } else {
+      // should do all!
+      start_vert_for_chunk = data.tfrag_next_vert;
+      end_vert_for_chunk = end_vert_in_tree;
+      complete_tree = true;
+    }
+
+    // glBindVertexArray(m_trees[m_load_state.vert_geo][m_load_state.vert_tree].vao);
+    glBindBuffer(GL_ARRAY_BUFFER,
+                 data.tfrag_vertex_data[data.tfrag_next_geo][data.tfrag_next_tree]);
+    u32 upload_size = (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::PreloadedVertex);
+    glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
+                    upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
+    uploaded_bytes += upload_size;
+
+    if (complete_tree) {
+      // and move on to next tree
+      data.tfrag_next_vert = 0;
+      data.tfrag_next_tree++;
+      if (data.tfrag_next_tree >= data.level->tfrag_trees[data.tfrag_next_geo].size()) {
+        data.tfrag_next_tree = 0;
+        data.tfrag_next_geo++;
+        if (data.tfrag_next_geo >= tfrag3::TFRAG_GEOS) {
+          data.tfrag_load_done = true;
+          data.tfrag_next_tree = 0;
+          data.tfrag_next_geo = 0;
+          data.tfrag_next_vert = 0;
+          return true;
+        }
+      }
+    }
+
+    if (timer.getMs() > Loader::TIE_LOAD_BUDGET || (uploaded_bytes / 1024) > 2048) {
+      return false;
+    }
+  }
+}
+
 bool Loader::init_tie(Timer& timer, LevelData& data) {
   if (data.tie_load_done) {
+    return true;
+  }
+
+  if (data.level->tie_trees.front().empty()) {
+    data.tie_load_done = true;
     return true;
   }
 
   if (!data.tie_opengl_created) {
     for (int geo = 0; geo < tfrag3::TIE_GEOS; geo++) {
       auto& in_trees = data.level->tie_trees[geo];
-      u32 tree_idx = 0;
       for (auto& in_tree : in_trees) {
         LevelData::TieOpenGL& tree_out = data.tie_data[geo].emplace_back();
         glGenBuffers(1, &tree_out.vertex_buffer);
@@ -341,32 +429,58 @@ bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture
 }
 
 void Loader::update_blocking(std::string& status_out, TexturePool& tex_pool) {
-  bool needs_run = true;
+  fmt::print("NOTE: coming out of blackout on next frame, doing all loads now...\n");
 
-  while (needs_run) {
-    needs_run = false;
+  bool missing_levels = true;
+  while (missing_levels) {
+    bool needs_run = true;
+
+    while (needs_run) {
+      needs_run = false;
+      {
+        std::unique_lock<std::mutex> lk(m_loader_mutex);
+        if (!m_level_to_load.empty()) {
+          m_file_load_done_cv.wait(lk, [&]() { return m_level_to_load.empty(); });
+        }
+      }
+    }
+
+    needs_run = true;
+
+    while (needs_run) {
+      needs_run = false;
+      {
+        std::unique_lock<std::mutex> lk(m_loader_mutex);
+        if (!m_initializing_tfrag3_levels.empty()) {
+          needs_run = true;
+        }
+      }
+
+      if (needs_run) {
+        update(status_out, tex_pool);
+      }
+    }
+
     {
       std::unique_lock<std::mutex> lk(m_loader_mutex);
-      if (!m_level_to_load.empty()) {
-        m_file_load_done_cv.wait(lk, [&]() { return m_level_to_load.empty(); });
+      missing_levels = false;
+      for (auto& des : m_desired_levels) {
+        if (m_loaded_tfrag3_levels.find(des) == m_loaded_tfrag3_levels.end()) {
+          fmt::print("blackout loader doing additional level {}...\n", des);
+          missing_levels = true;
+        }
       }
+    }
+
+    if (missing_levels) {
+      set_want_levels(m_desired_levels);
     }
   }
 
-  needs_run = true;
-
-  while (needs_run) {
-    needs_run = false;
-    {
-      std::unique_lock<std::mutex> lk(m_loader_mutex);
-      if (!m_initializing_tfrag3_levels.empty()) {
-        needs_run = true;
-      }
-    }
-
-    if (needs_run) {
-      update(status_out, tex_pool);
-    }
+  fmt::print("Blackout loads done. Current status:");
+  std::unique_lock<std::mutex> lk(m_loader_mutex);
+  for (auto& ld : m_loaded_tfrag3_levels) {
+    fmt::print("  {} is loaded.\n", ld.first);
   }
 }
 
@@ -393,12 +507,14 @@ void Loader::update(std::string& status_out, TexturePool& texture_pool) {
       lk.unlock();
       if (upload_textures(loader_timer, lev.data, texture_pool)) {
         if (init_tie(loader_timer, lev.data)) {
-          // we're done! lock before removing from loaded.
-          lk.lock();
-          it->second.data.load_id = m_id++;
+          if (init_tfrag(loader_timer, lev.data)) {
+            // we're done! lock before removing from loaded.
+            lk.lock();
+            it->second.data.load_id = m_id++;
 
-          m_loaded_tfrag3_levels[name] = std::move(lev);
-          m_initializing_tfrag3_levels.erase(it);
+            m_loaded_tfrag3_levels[name] = std::move(lev);
+            m_initializing_tfrag3_levels.erase(it);
+          }
         }
       }
     }
@@ -438,6 +554,12 @@ void Loader::update(std::string& status_out, TexturePool& texture_pool) {
               if (tie_tree.has_wind) {
                 glDeleteBuffers(1, &tie_tree.wind_indices);
               }
+            }
+          }
+
+          for (auto& tfrag_geo : lev.second.data.tfrag_vertex_data) {
+            for (auto& tfrag_buff : tfrag_geo) {
+              glDeleteBuffers(1, &tfrag_buff);
             }
           }
 
