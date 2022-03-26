@@ -22,7 +22,11 @@ std::unordered_map<int, int> g_key_status;
 std::unordered_map<int, int> g_buffered_key_status;
 
 bool g_gamepad_buttons[(int)Button::Max] = {0};
-float g_gamepad_analogs[(int)Analog::Max] = {127};
+float g_gamepad_analogs[(int)Analog::Max] = {0};
+
+struct GamepadState {
+  int gamepad_idx = -1;
+} g_gamepads;
 
 // input mode for controller mapping
 InputModeStatus input_mode = InputModeStatus::Disabled;
@@ -120,12 +124,48 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
 int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
+  float input = 0.0f;
+
   if (CheckPadIdx(pad) == -1) {
+    // Pad out of range, return a stable value
     return 127;
   }
-  // TODO - dead-zone support needed?
-  return int((g_gamepad_analogs[(int)analog] + 1) * 127);
-  // TODO - support keyboard inputs as well
+
+  if (g_gamepads.gamepad_idx == -1) {  // Gamepad not present - use keyboard
+
+    // Movement controls mapped to WASD keys
+    if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_S] && analog == Analog::Left_Y)
+      input += 1.0f;
+    if (g_buffered_key_status[GLFW_KEY_A] && analog == Analog::Left_X)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_D] && analog == Analog::Left_X)
+      input += 1.0f;
+
+    // Camera controls mapped to IJKL keys
+    if (g_buffered_key_status[GLFW_KEY_I] && analog == Analog::Right_Y)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_K] && analog == Analog::Right_Y)
+      input += 1.0f;
+    if (g_buffered_key_status[GLFW_KEY_J] && analog == Analog::Right_X)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
+      input += 1.0f;
+
+  } else {  // Gamepad present
+    input = g_gamepad_analogs[(int)analog];
+  }
+
+  // GLFW provides float in range -1 to 1, caller expects 0-255
+  const float input_low = -1.0f;
+  const float input_high = 1.0f;
+  const int output_low = 0;
+  const int output_high = 255;
+
+  // Map from input to output range
+  return int((input - input_low) * (output_high - output_low) / (input_high - input_low) +
+             output_low);
 }
 
 // map a button on a pad to a key
@@ -147,15 +187,19 @@ void DefaultMapping(MappingInfo& mapping) {
     }
   }
 
-  // r1/l1
-  MapButton(mapping, Button::L1, 0, GLFW_KEY_U);
-  MapButton(mapping, Button::R1, 0, GLFW_KEY_I);
+  // R1 / L1
+  MapButton(mapping, Button::L1, 0, GLFW_KEY_Q);
+  MapButton(mapping, Button::R1, 0, GLFW_KEY_O);
+
+  // R2 / L2
+  MapButton(mapping, Button::L2, 0, GLFW_KEY_1);
+  MapButton(mapping, Button::R2, 0, GLFW_KEY_P);
 
   // face buttons
-  MapButton(mapping, Button::Ecks, 0, GLFW_KEY_Z);
-  MapButton(mapping, Button::Square, 0, GLFW_KEY_X);
-  MapButton(mapping, Button::Triangle, 0, GLFW_KEY_S);
-  MapButton(mapping, Button::Circle, 0, GLFW_KEY_A);
+  MapButton(mapping, Button::Ecks, 0, GLFW_KEY_SPACE);
+  MapButton(mapping, Button::Square, 0, GLFW_KEY_F);
+  MapButton(mapping, Button::Triangle, 0, GLFW_KEY_R);
+  MapButton(mapping, Button::Circle, 0, GLFW_KEY_E);
 
   // dpad
   MapButton(mapping, Button::Up, 0, GLFW_KEY_UP);
@@ -203,9 +247,7 @@ void input_mode_pad_set(s64 idx) {
 ********************************
 */
 
-struct GamepadState {
-  int gamepad_idx = -1;
-} g_gamepads;
+
 
 void check_gamepad() {
   if (g_gamepads.gamepad_idx == -1) {
@@ -234,7 +276,7 @@ void clear_gamepads() {
     g_gamepad_buttons[i] = false;
   }
   for (int i = 0; i < 4; ++i) {
-    g_gamepad_analogs[i] = 127;
+    g_gamepad_analogs[i] = 0;
   }
 }
 
