@@ -287,11 +287,28 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
                 settings.lbox_height_px);
   }
 
-  // draw_test_triangle();
+  {
+    auto prof = m_profiler.root()->make_scoped_child("loader");
+    if (m_last_pmode_alp == 0 && settings.pmode_alp_register != 0) {
+      // blackout, load everything and don't worry about frame rate
+      m_render_state.loader->update_blocking(m_render_state.load_status_debug,
+                                             *m_render_state.texture_pool);
+
+    } else {
+      m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
+    }
+  }
+
   // render the buckets!
   {
     auto prof = m_profiler.root()->make_scoped_child("buckets");
     dispatch_buckets(dma, prof);
+  }
+
+  // apply effects done with PCRTC registers
+  {
+    auto prof = m_profiler.root()->make_scoped_child("pcrtc");
+    do_pcrtc_effects(settings.pmode_alp_register, &m_render_state, prof);
   }
 
   if (settings.draw_render_debug_window) {
@@ -301,10 +318,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     vif_interrupt_callback();
   }
 
-  {
-    auto prof = m_profiler.root()->make_scoped_child("loader");
-    m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
-  }
+  m_last_pmode_alp = settings.pmode_alp_register;
 
   m_profiler.finish();
   if (settings.draw_profiler_window) {
@@ -434,64 +448,6 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
   // TODO ending data.
 }
 
-void OpenGLRenderer::draw_test_triangle() {
-  // just remembering how to use opengl here.
-
-  //////////
-  // Setup
-  //////////
-
-  // create "buffer object names"
-  GLuint vertex_buffer, color_buffer, vao;
-  glGenBuffers(1, &vertex_buffer);
-  glGenBuffers(1, &color_buffer);
-
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
-
-  // set vertex data
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  const float verts[9] = {0.0, 0.8, 0, -0.5, -0.5 * .866, 0, 0.5, -0.5 * .866, 0};
-  glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), verts, GL_STATIC_DRAW);
-
-  // set color data
-  glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-  const float colors[12] = {1., 0, 0., 1., 0., 1., 0., 1., 0., 0., 1., 1.};
-  glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float), colors, GL_STATIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  //////////
-  // Draw!
-  //////////
-  m_render_state.shaders[ShaderId::TEST_SHADER].activate();
-
-  // location 0: the vertices
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,         // location 0 in the shader
-                        3,         // 3 floats per vert
-                        GL_FLOAT,  // floats
-                        GL_FALSE,  // normalized, ignored,
-                        0,         // tightly packed
-                        0          // offset in array (why is is this a pointer...)
-  );
-
-  glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-  glDrawArrays(GL_TRIANGLES, 0, 3);
-  glBindVertexArray(0);
-
-  ////////////
-  // Clean Up
-  ////////////
-  // delete buffer
-  glDeleteBuffers(1, &color_buffer);
-  glDeleteBuffers(1, &vertex_buffer);
-  glDeleteVertexArrays(1, &vao);
-}
-
 /*!
  * Take a screenshot!
  */
@@ -516,4 +472,19 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
     px |= 0xff000000;
   }
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
+}
+
+void OpenGLRenderer::do_pcrtc_effects(float alp,
+                                      SharedRenderState* render_state,
+                                      ScopedProfilerNode& prof) {
+  if (alp < 1) {
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    glBlendEquation(GL_FUNC_ADD);
+
+    m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
+
+    glEnable(GL_DEPTH_TEST);
+  }
 }

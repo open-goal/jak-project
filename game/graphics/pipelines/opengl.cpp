@@ -60,6 +60,7 @@ struct GraphicsData {
   FrameLimiter frame_limiter;
   Timer engine_timer;
   double last_engine_time = 1. / 60.;
+  float pmode_alp = 0.f;
 
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
@@ -238,6 +239,7 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
+    options.pmode_alp_register = g_gfx_data->pmode_alp;
     if (options.save_screenshot) {
       options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
     }
@@ -487,6 +489,10 @@ void gl_set_levels(const std::vector<std::string>& levels) {
   g_gfx_data->loader->set_want_levels(levels);
 }
 
+void gl_set_pmode_alp(float val) {
+  g_gfx_data->pmode_alp = val;
+}
+
 const GfxRendererModule moduleOpenGL = {
     gl_init,                // init
     gl_make_main_display,   // make_main_display
@@ -505,6 +511,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_texture_relocate,    // texture_relocate
     gl_poll_events,         // poll_events
     gl_set_levels,          // set_levels
+    gl_set_pmode_alp,       // set_pmode_alp
     GfxPipeline::OpenGL,    // pipeline
     "OpenGL 4.3"            // name
 };
