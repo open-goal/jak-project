@@ -7,6 +7,8 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "common/custom_data/Tfrag3Data.h"
+#include "common/util/Timer.h"
+
 
 class Loader {
  public:
@@ -15,17 +17,32 @@ class Loader {
   Loader();
   ~Loader();
   void update(std::string& status_out, TexturePool& tex_pool);
+  void update_blocking(std::string& status_out, TexturePool& tex_pool);
 
   struct LevelData {
     std::unique_ptr<tfrag3::Level> level;
     std::vector<GLuint> textures;
     u64 load_id = 0;
+
+    struct TieOpenGL {
+      u32 verts_loaded = 0;
+      GLuint vertex_buffer;
+      bool has_wind = false;
+      GLuint wind_indices;
+    };
+    std::array<std::vector<TieOpenGL>, tfrag3::TIE_GEOS> tie_data;
+    bool tie_opengl_created = false;
+    bool tie_verts_done = false;
+    bool tie_wind_indices_done = false;
+    bool tie_load_done = false;
+
+    u32 tie_next_geo = 0;
+    u32 tie_next_tree = 0;
+    u32 tie_next_vert = 0;
   };
 
   const LevelData* get_tfrag3_level(const std::string& level_name);
-  void hack_scramble_textures();
   void load_common(TexturePool& tex_pool, const std::string& name);
-
   void set_want_levels(const std::vector<std::string>& levels);
 
  private:
@@ -37,7 +54,10 @@ class Loader {
   void loader_thread();
   u64 add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_common);
 
-  std::unordered_map<std::string, Level> m_loaded_tfrag3_levels;
+  bool upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool);
+  bool init_tie(Timer& timer, LevelData& data);
+
+  // used by game and loader thread
   std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;
 
   tfrag3::Level m_common_level;
@@ -47,6 +67,11 @@ class Loader {
   std::thread m_loader_thread;
   std::mutex m_loader_mutex;
   std::condition_variable m_loader_cv;
+  std::condition_variable m_file_load_done_cv;
   bool m_want_shutdown = false;
   uint64_t m_id = 0;
+
+  // used only by game thread
+  std::unordered_map<std::string, Level> m_loaded_tfrag3_levels;
+
 };
