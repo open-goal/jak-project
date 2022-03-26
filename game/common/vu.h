@@ -1,6 +1,7 @@
 #pragma once
 #include "immintrin.h"
 #include "common/math/Vector.h"
+#include <cfloat>
 
 enum class Mask {
   NONE = 0,
@@ -75,6 +76,8 @@ struct alignas(16) Vf {
   const float& w() const { return data[3]; }
 
   std::string print() const { return fmt::format("{} {} {} {}", x(), y(), z(), w()); }
+
+  float length_xyz() const { return std::sqrt(x() * x() + y() * y() + z() * z()); }
 
   std::string print_hex() const {
     return fmt::format("0x{:x} 0x{:x} 0x{:x} 0x{:x}", x_as_u32(), y_as_u32(), z_as_u32(),
@@ -336,6 +339,18 @@ struct alignas(16) Vf {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         data[i] = a[i] * b[i];
+      }
+    }
+  }
+
+  void saturate_infs() {
+    for (auto& val : data) {
+      if (std::isinf(val)) {
+        if (val > 0) {
+          val = FLT_MAX;
+        } else {
+          val = -FLT_MAX;
+        }
       }
     }
   }

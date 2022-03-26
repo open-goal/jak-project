@@ -369,6 +369,16 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
   glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);  // increment on depth fail.
   glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
+
+  if (m_debug_draw_volume) {
+    glDisable(GL_BLEND);
+    glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
+                0., 0.0, 0., 0.5);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glEnable(GL_BLEND);
+  }
   prof.add_draw_call();
   prof.add_tri(m_next_back_index / 3);
 
@@ -381,6 +391,16 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   // same settings, but decrement.
   glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);  // decrement on depth fail.
   glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
+  if (m_debug_draw_volume) {
+    glDisable(GL_BLEND);
+    glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
+                0., 0.0, 0., 0.5);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glEnable(GL_BLEND);
+  }
+
   prof.add_draw_call();
   prof.add_tri(m_next_front_index / 3);
 
