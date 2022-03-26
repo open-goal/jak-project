@@ -798,7 +798,7 @@ void update_discord_rpc(u32 discord_info) {
         strcat(state, std::to_string(cells).c_str());
         strcat(state, " | Orbs: ");
         strcat(state, std::to_string(orbs).c_str());
-        strcat(state, " | Scout flies: ");
+        strcat(state, " | Flies: ");
         strcat(state, std::to_string(scout_flies).c_str());
       }
       rpc.state = state;
