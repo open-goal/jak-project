@@ -1,6 +1,7 @@
 #pragma once
 #include "immintrin.h"
 #include "common/math/Vector.h"
+#include <cfloat>
 
 enum class Mask {
   NONE = 0,
@@ -75,6 +76,8 @@ struct alignas(16) Vf {
   const float& w() const { return data[3]; }
 
   std::string print() const { return fmt::format("{} {} {} {}", x(), y(), z(), w()); }
+
+  float length_xyz() const { return std::sqrt(x() * x() + y() * y() + z() * z()); }
 
   std::string print_hex() const {
     return fmt::format("0x{:x} 0x{:x} 0x{:x} 0x{:x}", x_as_u32(), y_as_u32(), z_as_u32(),
@@ -232,6 +235,14 @@ struct alignas(16) Vf {
     }
   }
 
+  void mini(Mask mask, const Vf& a, const Vf& b) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] = vu_min(a[i], b[i]);
+      }
+    }
+  }
+
   void fill(float f) {
     for (auto& x : data) {
       x = f;
@@ -274,6 +285,32 @@ struct alignas(16) Vf {
     }
   }
 
+  u32 add_and_set_sf_s(Mask mask, const Vf& a, float b) {
+    u32 flag = 0;
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] = a[i] + b;
+        if (data[i] < 0) {
+          flag = 0x2;
+        }
+      }
+    }
+    return flag;
+  }
+
+  u32 sub_and_set_sf_s(Mask mask, const Vf& a, float b) {
+    u32 flag = 0;
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] = a[i] - b;
+        if (data[i] < 0) {
+          flag = 0x2;
+        }
+      }
+    }
+    return flag;
+  }
+
   void sub(Mask mask, const Vf& a, float b) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
@@ -302,6 +339,18 @@ struct alignas(16) Vf {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         data[i] = a[i] * b[i];
+      }
+    }
+  }
+
+  void saturate_infs() {
+    for (auto& val : data) {
+      if (std::isinf(val)) {
+        if (val > 0) {
+          val = FLT_MAX;
+        } else {
+          val = -FLT_MAX;
+        }
       }
     }
   }
@@ -521,5 +570,17 @@ struct alignas(16) Accumulator {
     auto b = _mm_load_ps(_b.data);
     auto a = _mm_load_ps(_a.data);
     _mm_store_ps(data, _mm_mul_ps(a, b));
+  }
+
+  void opmula(const Vf& a, const Vf& b) {
+    data[0] = a.data[1] * b.data[2];
+    data[1] = a.data[2] * b.data[0];
+    data[2] = a.data[0] * b.data[1];
+  }
+
+  void opmsub(Vf& dst, Vf a, Vf b) {
+    dst.data[0] = data[0] - a.data[1] * b.data[2];
+    dst.data[1] = data[1] - a.data[2] * b.data[0];
+    dst.data[2] = data[2] - a.data[0] * b.data[1];
   }
 };

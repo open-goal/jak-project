@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <cmath>
+#include <cfloat>
 
 #include "common/common_types.h"
 #include "game/mips2c/mips2c_table.h"
