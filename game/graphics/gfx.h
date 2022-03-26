@@ -39,6 +39,7 @@ struct GfxRendererModule {
   std::function<void(u32, u32, u32)> texture_relocate;
   std::function<void()> poll_events;
   std::function<void(const std::vector<std::string>&)> set_levels;
+  std::function<void(float)> set_pmode_alp;
   GfxPipeline pipeline;
   const char* name;
 };

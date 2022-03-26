@@ -1007,6 +1007,13 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
 
     case VuInstrK::XTOP:
       return fmt::format("vu.{} = xtop();", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::OPMULA:
+      return fmt::format("vu.acc.opmula(vu.{}, vu.{});", instr.src.at(0).to_string(m_label_names),
+                         instr.src.at(1).to_string(m_label_names));
+    case VuInstrK::OPMSUB:
+      return fmt::format("vu.acc.opmsub(vu.{}, vu.{}, vu.{});", instr.dst->to_string(m_label_names),
+                         instr.src.at(0).to_string(m_label_names),
+                         instr.src.at(1).to_string(m_label_names));
     default:
       unk++;
       fmt::print("unknown 0 is {}\n", to_string(instr));

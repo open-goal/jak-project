@@ -716,7 +716,12 @@ void DecodeTime(u32 ptr) {
 }
 
 // TODO PutDisplayEnv
-void PutDisplayEnv() {
+void PutDisplayEnv(u32 ptr) {
+  u8 alp = Ptr<u8>(ptr).c()[1];
+  auto* renderer = Gfx::GetCurrentRenderer();
+  if (renderer) {
+    renderer->set_pmode_alp(alp / 255.f);
+  }
   // ASSERT(false);
 }
 

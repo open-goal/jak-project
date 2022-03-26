@@ -682,6 +682,16 @@ void DirectRenderer::handle_ad(const u8* data,
       break;
     case GsRegisterAddress::FRAME_1:
       break;
+    case GsRegisterAddress::RGBAQ:
+      // shadow scissor does this?
+      {
+        m_prim_building.rgba_reg[0] = data[0];
+        m_prim_building.rgba_reg[1] = data[1];
+        m_prim_building.rgba_reg[2] = data[2];
+        m_prim_building.rgba_reg[3] = data[3];
+        memcpy(&m_prim_building.Q, data + 4, 4);
+      }
+      break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
       ASSERT(false);

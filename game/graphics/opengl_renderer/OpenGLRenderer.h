@@ -7,6 +7,7 @@
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 struct RenderOptions {
   int window_height_px = 0;
@@ -19,6 +20,8 @@ struct RenderOptions {
 
   bool save_screenshot = false;
   std::string screenshot_path;
+
+  float pmode_alp_register = 0.f;
 };
 
 class OpenGLRenderer {
@@ -28,11 +31,10 @@ class OpenGLRenderer {
 
  private:
   void setup_frame(int window_width_px, int window_height_px, int offset_x, int offset_y);
-  void draw_test_triangle();
   void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof);
+  void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
-
   void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
 
   template <typename T, class... Args>
@@ -55,4 +57,7 @@ class OpenGLRenderer {
   std::array<BucketCategory, (int)BucketId::MAX_BUCKETS> m_bucket_categories;
 
   std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
+  FullScreenDraw m_blackout_renderer;
+
+  float m_last_pmode_alp = 1.;
 };

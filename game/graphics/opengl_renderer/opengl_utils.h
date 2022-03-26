@@ -1,6 +1,10 @@
 #pragma once
 
 #include "game/graphics/pipelines/opengl.h"
+#include "common/math/Vector.h"
+
+struct SharedRenderState;
+class ScopedProfilerNode;
 
 /*!
  * This is a wrapper around a framebuffer and texture to make it easier to render to a texture.
@@ -36,4 +40,19 @@ class FramebufferTexturePairContext {
   FramebufferTexturePair* m_fb;
   GLint m_old_viewport[4];
   GLint m_old_framebuffer;
+};
+
+// draw over the full screen.
+// you must set alpha/ztest/etc.
+class FullScreenDraw {
+ public:
+  FullScreenDraw();
+  ~FullScreenDraw();
+  FullScreenDraw(const FullScreenDraw&) = delete;
+  FullScreenDraw& operator=(const FullScreenDraw&) = delete;
+  void draw(const math::Vector4f& color, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
+ private:
+  GLuint m_vao;
+  GLuint m_vertex_buffer;
 };
