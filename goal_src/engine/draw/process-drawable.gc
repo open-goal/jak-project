@@ -49,6 +49,18 @@
     (init-vf0-vector)
     (.lvf vf2 (&-> (-> arg1 bone) transform vector 3 quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+
+    ;; ADDED
+    ;; there's a bug in swamp-blimp where they vector<-cspace!
+    ;; on some default-initialized-to-zero bones
+    ;; we have to return 0s for this to avoid NaNs getting everywhere.
+    (let ((temp (new-stack-vector0)))
+      (.svf (&-> temp quad) vf2)
+      (when (= (-> temp w) 0.0)
+        (set-vector! arg0 0. 0. 0. 1.)
+        (return arg0)
+        )
+      )
     (.wait.vf)
     (.mul.vf vf2 vf2 Q :mask #b111)
     (.nop.vf)

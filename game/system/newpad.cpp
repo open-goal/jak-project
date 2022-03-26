@@ -247,8 +247,6 @@ void input_mode_pad_set(s64 idx) {
 ********************************
 */
 
-
-
 void check_gamepad() {
   if (g_gamepads.gamepad_idx == -1) {
     for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
