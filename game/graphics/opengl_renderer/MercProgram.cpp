@@ -3,11 +3,7 @@
 void MercRenderer::mscal(int enter_address,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof) {
-  if (render_state->render_debug) {
-    mscal_impl<true>(enter_address, render_state, prof);
-  } else {
-    mscal_impl<false>(enter_address, render_state, prof);
-  }
+  mscal_impl<false>(enter_address, render_state, prof);
 }
 
 static inline REALLY_INLINE float erleng(const Vf& in) {

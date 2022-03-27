@@ -289,7 +289,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("loader");
-    if (m_last_pmode_alp == 0 && settings.pmode_alp_register != 0) {
+    if (m_last_pmode_alp == 0 && settings.pmode_alp_register != 0 && m_enable_fast_blackout_loads) {
       // blackout, load everything and don't worry about frame rate
       m_render_state.loader->update_blocking(m_render_state.load_status_debug,
                                              *m_render_state.texture_pool);
@@ -355,9 +355,9 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
-  ImGui::Checkbox("Render Debug (slower)", &m_render_state.render_debug);
   ImGui::Checkbox("Merc XGKICK", &m_render_state.enable_merc_xgkick);
   ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
+  ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
   ImGui::Checkbox("Direct 2", &m_render_state.use_direct2);
   ImGui::Checkbox("Generic 2", &m_render_state.use_generic2);
 
