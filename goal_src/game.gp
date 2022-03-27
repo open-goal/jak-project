@@ -1925,9 +1925,9 @@
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text")
 
-(goal-src "pc/engine/ui/text-h.gc" "connect")
-(goal-src "pc/engine/ui/progress-h.gc" "hud-h")
-(goal-src "pc/engine/ui/progress/progress-static.gc" "hud-classes")
-(goal-src "pc/engine/ui/progress/progress-draw.gc" "progress-part")
-(goal-src "pc/engine/ui/progress/progress.gc" "progress-draw")
+(goal-src "engine/ui/text-h.gc" "connect")
+(goal-src "engine/ui/progress-h.gc" "hud-h")
+(goal-src "engine/ui/progress/progress-static.gc" "hud-classes")
+(goal-src "engine/ui/progress/progress-draw.gc" "progress-part")
+(goal-src "engine/ui/progress/progress.gc" "progress-draw")
 
