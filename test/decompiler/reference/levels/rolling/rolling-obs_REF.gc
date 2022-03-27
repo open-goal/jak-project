@@ -398,7 +398,7 @@
   :code
   (behavior ()
     (dark-plant-randomize self)
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (sound-play-by-name (static-sound-name "darkvine-grow") (new-sound-id) 1024 0 0 1 #t)
     (let ((a0-6 (-> self skel root-channel 0)))
       (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
@@ -428,7 +428,7 @@
 (defstate dark-plant-gone (dark-plant)
   :code
   (behavior ()
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (let* ((f30-0 1500.0)
            (v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
            (v1-5 (the-as number (logior #x3f800000 v1-4)))
@@ -500,7 +500,7 @@
   :code
   (behavior ()
     (while #t
-      (when (and (logtest? (-> self draw status) (draw-status drwf03))
+      (when (and (logtest? (-> self draw status) (draw-status was-drawn))
                  *target*
                  (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                  )
@@ -941,9 +941,9 @@
        (let ((v1-23 (-> obj skel root-channel 0)))
          (set! (-> v1-23 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
          )
-       (logior! (-> obj skel status) 1)
+       (logior! (-> obj skel status) (janim-status inited))
        (ja-post)
-       (set! (-> obj skel status) (logand -2 (-> obj skel status)))
+       (logclear! (-> obj skel status) (janim-status inited))
        (vector<-cspace! s5-1 (-> obj node-list data 25))
        (birth-pickup-at-point s5-1 (pickup-type fuel-cell) 55.0 #f obj (the-as fact-info #f))
        )
@@ -982,7 +982,7 @@
   )
 
 ;; definition for function seconds->race-time
-(defun seconds->race-time ((arg0 race-time) (arg1 int))
+(defun seconds->race-time ((arg0 race-time) (arg1 time-frame))
   (let* ((v1-1 (max 0 (min #x2bf1d arg1)))
          (f0-1 (* 0.0033333334 (the float v1-1)))
          )
@@ -1044,7 +1044,7 @@
 
 ;; definition for function race-time-read
 ;; INFO: Return type mismatch int vs symbol.
-(defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 int))
+(defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 time-frame))
   (dotimes (s2-0 5)
     (set! (-> arg0 digit s2-0) (get-reminder arg2 (+ arg1 s2-0)))
     )
@@ -1224,8 +1224,8 @@
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *rolling-start-whole-sg* '())
-  (dummy-9 (-> self whole-look) *rolling-start-whole-sg* (-> self draw art-group) (-> self entity))
-  (dummy-9 (-> self broken-look) *rolling-start-broken-sg* (-> self draw art-group) (-> self entity))
+  (setup-lods! (-> self whole-look) *rolling-start-whole-sg* (-> self draw art-group) (-> self entity))
+  (setup-lods! (-> self broken-look) *rolling-start-broken-sg* (-> self draw art-group) (-> self entity))
   (let ((s5-1 (new 'stack-no-clear 'matrix)))
     (matrix-rotate-y! s5-1 arg1)
     (matrix->quaternion (-> self root quat) s5-1)
@@ -1626,7 +1626,7 @@
     (gorge-start-draw-time #t #t)
     (suspend)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
       (set! (-> self timer-pos-offset)
             (seekl (-> self timer-pos-offset) 100 (the int (* 3.0 (-> *display* time-adjust-ratio))))
             )
@@ -1655,7 +1655,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
       (set! (-> self timer-pos-offset)
             (seekl (-> self timer-pos-offset) 100 (the int (* 5.0 (-> *display* time-adjust-ratio))))
             )
@@ -1725,7 +1725,7 @@
     (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'hide)
     (send-event (ppointer->process (-> *hud-parts* money)) 'disable)
     (send-event (ppointer->process (-> *hud-parts* money)) 'hide)
-    (race-time-read (-> self record-time) 1 (-> self tasks) #x34bc)
+    (race-time-read (-> self record-time) 1 (-> self tasks) (seconds 45))
     (let ((gp-0 (get-process *default-dead-pool* rolling-start #x4000)))
       (set! (-> self end-banner)
             (ppointer->handle (when gp-0
@@ -1818,7 +1818,7 @@
         (-> gp-5 ppointer)
         )
       )
-    (sleep (-> self ticker) #x1b7740)
+    (sleep (-> self ticker) (seconds 6000))
     (set-setting! *setting-control* self 'sound-flava #f 40.0 42)
     (none)
     )

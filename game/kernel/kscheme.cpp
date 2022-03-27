@@ -23,7 +23,7 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 #include "game/mips2c/mips2c_table.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -88,7 +88,7 @@ u32 crc32(const u8* data, s32 size) {
 
   if ((~crc) == 0) {
     // if this happens, I think the hash table implementation breaks.
-    assert(false);
+    ASSERT(false);
   }
   return ~crc;
 }
@@ -132,7 +132,7 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
  * UNKNOWN_PROCESS (UINT32_MAX).
  */
 u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp) {
-  assert(size > 0);
+  ASSERT(size > 0);
 
   // align to 16 bytes (part one)
   s32 alignedSize = size + 0xf;
@@ -174,13 +174,13 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp) {
       MsgErr(
           "Attempted to do a process allocation, but pp was UNKNOWN_PP. This is not yet supported "
           "by kscheme.cpp.\n");
-      assert(false);
+      ASSERT(false);
     }
 
     if (pp == 0) {
       // added
       MsgErr("Attempted to do a process allocation, but pp was 0.\n");
-      assert(false);
+      ASSERT(false);
     }
 
     // allocate on current process heap
@@ -198,7 +198,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp) {
       return 0;
     }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
-    assert(false);  // nyi, I think unused.
+    ASSERT(false);  // nyi, I think unused.
     return 0;
   } else {
     memset(Ptr<u8>(heapSymbol).c(), 0, (size_t)alignedSize);  // treat it as a stack address
@@ -255,7 +255,7 @@ void delete_structure(u32 s) {
 /*!
  * Allocate a basic of fixed size.
  */
-u64 new_basic(u32 heap, u32 type, u32 /*unused*/, u32 pp) {
+u64 new_basic(u32 heap, u32 type, u32 /*size*/, u32 pp) {
   return alloc_heap_object(heap, type, Ptr<Type>(type)->allocated_size, pp);
 }
 
@@ -708,8 +708,9 @@ Ptr<Symbol> find_symbol_from_c(const char* name) {
     }
   }
 
-  s32 sh1 = hash << 0x13;
-  s32 sh2 = sh1 >> 0x10;
+  auto bits = bits_for_sym() - 1;
+  s32 sh1 = hash << (0x20 - bits);
+  s32 sh2 = sh1 >> (0x20 - bits - 3);
   // will be signed, bottom 3 bits 0 (for alignment, symbol are every 8 bytes)
   // upper 16 bits are the same, so we will reach +/- 8 kb around 0.
 
@@ -844,7 +845,7 @@ Ptr<Type> intern_type_from_c(const char* name, u64 methods) {
           "dkernel: trying to redefine a type '%s' with %d methods when it had %d, try "
           "restarting\n",
           name, (u32)methods, type->num_methods);
-      assert(false);
+      ASSERT(false);
     }
     return type;
   }
@@ -929,7 +930,7 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
     n_methods = DEFAULT_METHOD_COUNT;
   }
 
-  assert(n_methods < 127);  // will cause issues.
+  ASSERT(n_methods < 127);  // will cause issues.
 
   auto new_type = Ptr<Type>(intern_type(info(Ptr<Symbol>(symbol))->str.offset, n_methods));
 
@@ -940,7 +941,7 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
   //    printf("%s %d %d\n", info(Ptr<Symbol>(symbol))->str.c()->data(),
   //    Ptr<Type>(parent)->num_methods,
   //           n_methods);
-  //    assert(false);
+  //    ASSERT(false);
   //  }
 
   // BUG! This uses the child method count, but should probably use the parent method count.
@@ -1213,7 +1214,7 @@ u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32
     }
   }
   printf("[ERROR] call_method_of_type_arg2 failed!\n");
-  assert(false);
+  ASSERT(false);
   return arg;
 }
 
@@ -1716,14 +1717,15 @@ s32 InitHeapAndSymbol() {
   // reset all mips2c functions
   Mips2C::gLinkedFunctionTable = {};
   // allocate memory for the symbol table
-  auto symbol_table = kmalloc(kglobalheap, 0x20000, KMALLOC_MEMSET, "symbol-table").cast<u32>();
+  auto symbol_table =
+      kmalloc(kglobalheap, SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
 
   // pointer to the middle symbol is stored in the s7 register.
   s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
   // pointer to the first symbol (SymbolTable2 is the "lower" symbol table)
   SymbolTable2 = symbol_table + BASIC_OFFSET;
   // the last symbol we will ever access.
-  LastSymbol = symbol_table + 0xff00;
+  LastSymbol = symbol_table + SYM_TABLE_END * 8;
   NumSymbols = 0;
   // inform compiler the symbol table is reset, and where it is.
   reset_output();
@@ -2101,6 +2103,7 @@ u64 loadc(const char* file_name, kheapinfo* heap, u32 flags) {
 /*!
  * Load Object? Uses DATA_FILE_TYPE and doesn't inform listener about the load, or execute a
  * top level segment if a V3 is loaded. Doesn't load off the CD.
+ * This is used in some debug code to load art-groups directly.
  */
 u64 loado(u32 file_name_in, u32 heap_in) {
   char loadName[272];

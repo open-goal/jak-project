@@ -4,7 +4,7 @@
 #include "game/sce/iop.h"
 #include "iso_queue.h"
 #include "isocommon.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 
@@ -163,7 +163,7 @@ void FreeBuffer(IsoBufferHeader* buffer) {
 void DisplayQueue() {
   for (int pri = 0; pri < N_PRIORITIES; pri++) {
     for (int cmd = 0; cmd < (int)gPriStack[pri].n; cmd++) {
-      printf("  PRI %d elt %d %s\n", pri, cmd, gPriStack[pri].names[cmd].c_str());
+      lg::debug("  PRI {} elt {} {}\n", pri, cmd, gPriStack[pri].names[cmd]);
     }
   }
 }
@@ -212,7 +212,7 @@ void UnqueueMessage(IsoMessage* cmd) {
   lg::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
 
 found:
-  assert(gPriStack[pri].cmds[idx] == cmd);
+  ASSERT(gPriStack[pri].cmds[idx] == cmd);
 
   // pop
   gPriStack[pri].n--;

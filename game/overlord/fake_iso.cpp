@@ -12,12 +12,16 @@
 #include <cstring>
 #include <filesystem>
 #include "fake_iso.h"
+#include "game/overlord/sbank.h"
+#include "game/overlord/sndshim.h"
+#include "game/overlord/soundcommon.h"
+#include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
 #include "isocommon.h"
 #include "overlord.h"
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 
@@ -49,6 +53,7 @@ static uint32_t FS_SyncRead();
 static uint32_t FS_LoadSoundBank(char*, void*);
 static uint32_t FS_LoadMusic(char*, void*);
 static void FS_PollDrive();
+static void LoadMusicTweaks();
 
 void fake_iso_init_globals() {
   // init file lists
@@ -82,10 +87,10 @@ int FS_Init(u8* buffer) {
 
   for (const auto& f : std::filesystem::directory_iterator(file_util::get_file_path({"out/iso"}))) {
     if (f.is_regular_file()) {
-      assert(fake_iso_entry_count < MAX_ISO_FILES);
+      ASSERT(fake_iso_entry_count < MAX_ISO_FILES);
       FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];
       std::string file_name = f.path().filename().string();
-      assert(file_name.length() < 16);  // should be 8.3.
+      ASSERT(file_name.length() < 16);  // should be 8.3.
       strcpy(e->iso_name, file_name.c_str());
       strcpy(e->file_path, fmt::format("out/iso/{}", file_name).c_str());
       fake_iso_entry_count++;
@@ -101,7 +106,7 @@ int FS_Init(u8* buffer) {
     sFiles[i].location = i;
   }
 
-  // TODO load tweak music.
+  LoadMusicTweaks();
 
   return 0;
 }
@@ -140,7 +145,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
  * Build a full file path for a FileRecord.
  */
 static const char* get_file_path(FileRecord* fr) {
-  assert(fr->location < fake_iso_entry_count);
+  ASSERT(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
   strcpy(path_buffer, file_util::get_project_path().c_str());
   strcat(path_buffer, "/");
@@ -156,7 +161,7 @@ uint32_t FS_GetLength(FileRecord* fr) {
   const char* path = get_file_path(fr);
   file_util::assert_file_exists(path, "fake_iso FS_GetLength");
   FILE* fp = fopen(path, "rb");
-  assert(fp);
+  ASSERT(fp);
   fseek(fp, 0, SEEK_END);
   uint32_t len = ftell(fp);
   rewind(fp);
@@ -229,7 +234,7 @@ void FS_Close(LoadStackEntry* fd) {
  * Idea: do the fopen in FS_Open and keep the file open?  It would be faster.
  */
 uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
-  assert(fd->fr->location < fake_iso_entry_count);
+  ASSERT(fd->fr->location < fake_iso_entry_count);
 
   int32_t real_size = len;
   if (len < 0) {
@@ -247,7 +252,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   if (!fp) {
     lg::error("[OVERLORD] fake iso could not open the file \"{}\"", path);
   }
-  assert(fp);
+  ASSERT(fp);
   fseek(fp, 0, SEEK_END);
   uint32_t file_len = ftell(fp);
   rewind(fp);
@@ -262,7 +267,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
     }
 
     if (fread(buffer, real_size, 1, fp) != 1) {
-      assert(false);
+      ASSERT(false);
     }
   }
 
@@ -296,18 +301,62 @@ uint32_t FS_SyncRead() {
  */
 void FS_PollDrive() {}
 
-// TODO FS_LoadMusic
 uint32_t FS_LoadMusic(char* name, void* buffer) {
-  (void)name;
-  (void)buffer;
-  assert(false);
+  s32* bank_handle = (s32*)buffer;
+  char namebuf[16];
+  strcpy(namebuf, name);
+  namebuf[8] = 0;
+  strcat(namebuf, ".mus");
+  auto file = FS_Find(namebuf);
+  if (!file)
+    return CMD_STATUS_FAILED_TO_OPEN;
+
+  *bank_handle = snd_BankLoadEx(get_file_path(file), 0, 0, 0);
+  snd_ResolveBankXREFS();
+
   return 0;
 }
 
-// TODO FS_LoadSoundBank
 uint32_t FS_LoadSoundBank(char* name, void* buffer) {
-  (void)name;
-  (void)buffer;
-  assert(false);
+  SoundBank* bank = (SoundBank*)buffer;
+  char namebuf[16];
+
+  int offset = 10 * 2048;
+  if (bank->sound_count == 101) {
+    offset = 1 * 2048;
+  }
+
+  strcpy(namebuf, name);
+  namebuf[8] = 0;
+  strcat(namebuf, ".sbk");
+
+  auto file = FS_Find(namebuf);
+  if (!file) {
+    file = FS_Find("empty1.sbk");
+    if (!file)  // Might have no files when running tests.
+      return 0;
+  }
+
+  auto fp = fopen(get_file_path(file), "rb");
+  fread(buffer, offset, 1, fp);
+  fclose(fp);
+
+  s32 handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
+  snd_ResolveBankXREFS();
+  PrintBankInfo(bank);
+  bank->bank_handle = handle;
   return 0;
+}
+
+void LoadMusicTweaks() {
+  char tweakname[16];
+  MakeISOName(tweakname, "TWEAKVAL.MUS");
+  auto file = FS_FindIN(tweakname);
+  if (file) {
+    auto fp = fopen(get_file_path(file), "rb");
+    fread(&gMusicTweakInfo, sizeof(gMusicTweakInfo), 1, fp);
+    fclose(fp);
+  } else {
+    gMusicTweakInfo.TweakCount = 0;
+  }
 }

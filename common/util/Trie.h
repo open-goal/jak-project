@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <string>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * A simple prefix tree. It works similarly to a map, but also supports fast lookups by prefix with
@@ -37,15 +37,9 @@ class Trie {
   ~Trie();
 
  private:
-  static constexpr int CHAR_START = ' ';
-  static constexpr int CHAR_END = '~' + 1;
-  static constexpr int CHAR_SIZE = CHAR_END - CHAR_START;
+  static constexpr int CHAR_SIZE = 256;
 
-  static int idx(char c) {
-    assert(c >= CHAR_START);
-    assert(c < CHAR_END);
-    return c - CHAR_START;
-  }
+  static int idx(char c) { return (u8)c; }
 
   struct Node {
     T* value = nullptr;

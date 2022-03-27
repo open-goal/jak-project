@@ -21,7 +21,7 @@ void SymbolMapBuilder::add_object(const ObjectFileData& data) {
 
   // add deftypes in the top level function
   const auto& top_level_functions = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT);
-  assert(top_level_functions.size() == 1);
+  ASSERT(top_level_functions.size() == 1);
   add_deftypes_from_top_level_function(top_level_functions.at(0), &m_first_detections.back());
 }
 

@@ -16,7 +16,7 @@
 #include "dma.h"
 #include "fake_iso.h"
 #include "game/common/dgo_rpc_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace iop;
 
@@ -323,7 +323,7 @@ u32 ISOThread() {
 
             if (load_single_cmd->length_to_copy == 0) {
               // if we get zero for some reason, use the commanded length.
-              assert(false);
+              ASSERT(false);
               load_single_cmd->length_to_copy = load_single_cmd->length;
             } else if (load_single_cmd->length < load_single_cmd->length_to_copy) {
               // if we ask for less than the full length, use the smaller value.
@@ -368,9 +368,25 @@ u32 ISOThread() {
             // no buffers, try again.
             SendMbx(iso_mbx, msg_from_mbx);
           } else {
-            // todo - actual load here
             auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
-            printf("Ignoring request to load sound bank %s\n", cmd->bank_name);
+            isofs->load_sound_bank(cmd->bank_name, cmd->bank);
+            FreeBuffer(buff);
+            ReturnMessage(msg_from_mbx);
+          }
+        } else {
+          // just try again...
+          SendMbx(iso_mbx, msg_from_mbx);
+        }
+      } else if (msg_from_mbx->cmd_id == LOAD_MUSIC) {
+        // if there's an in progress vag command, try again.
+        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+          auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
+          if (!buff) {
+            // no buffers, try again.
+            SendMbx(iso_mbx, msg_from_mbx);
+          } else {
+            auto* cmd = (MusicLoadCommand*)msg_from_mbx;
+            isofs->load_music(cmd->music_name, cmd->music_handle);
             FreeBuffer(buff);
             ReturnMessage(msg_from_mbx);
           }
@@ -780,7 +796,7 @@ u32 bswap(u32 in) {
 u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
   (void)_cmd;
   (void)buffer_header;
-  assert(false);
+  ASSERT(false);
   return 0;
 }
 

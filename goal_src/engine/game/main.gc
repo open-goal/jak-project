@@ -9,12 +9,10 @@
 ;; Letterbox and blackout
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun set-letterbox-frames ((arg0 int))
+(defun set-letterbox-frames ((arg0 time-frame))
   "Set the letterbox frame counter for arg0 frames in the future"
-  (let ((v0-0 (+ (current-time) arg0)))
-    (set! (-> *game-info* letterbox-time) v0-0)
-    v0-0
-    )
+  (set! (-> *game-info* letterbox-time) (+ (current-time) arg0))
+  (none)
   )
 
 (defun letterbox ()
@@ -22,13 +20,44 @@
   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
                                (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
     ;; draw the two sprites
-    (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
-    (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+    (#cond
+      ((not PC_PORT)
+        (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+        (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+        )
+      (#t
+        (if (-> *pc-settings* use-vis?)
+            ;; original game mode. dont do anything.
+            (begin
+              (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+              (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80)))
+            ;; native mode. force 16x9 letterboxing always.
+            (begin
+              (cond
+                ((< (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too tall. needs vertical letterboxing.
+                  (let ((lbx-h (the int (* 112.0 (- 1.0 (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))))))
+                    (draw-sprite2d-xy dma-buf 0 0 512 lbx-h (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf 0 (- 224 lbx-h) 512 lbx-h (new 'static 'rgba :a #x80))
+                      )
+                  )
+                ((> (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too wide. needs horizontal letterboxing.
+                  (let ((lbx-w (the int (* 256.0 (- 1.0 (/ ASPECT_16X9 (-> *pc-settings* aspect-ratio)))))))
+                    (draw-sprite2d-xy dma-buf 0 0 lbx-w 224 (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf (- 512 lbx-w) 0 lbx-w 224 (new 'static 'rgba :a #x80))
+                      )
+                  )
+                )
+              )
+            )
+        )
+      )
     )
   (none)
   )
 
-(defun set-blackout-frames ((arg0 int))
+(defun set-blackout-frames ((arg0 time-frame))
   "Set the blackout frame counter. If arg0 is 0, disables blackout immediately.
    Otherwise, this can only be used to increase the blackout period."
   (cond
@@ -36,10 +65,11 @@
      (set! (-> *game-info* blackout-time) (current-time))
      )
     (else
-     (set! (-> *game-info* blackout-time) (max (the int (-> *game-info* blackout-time))
-                                               (the int (+ (current-time) arg0))))
+     (set! (-> *game-info* blackout-time) (max (-> *game-info* blackout-time)
+                                               (+ (current-time) arg0)))
      )
     )
+  (none)
   )
 
 (defun blackout ()
@@ -139,9 +169,7 @@
       (cond
         ;; first, check if the controller fell out, and jak is spawned
         ((and (nonzero? (logand (-> *cpad-list* cpads 0 valid) 128)) *target*)
-         (if (or *progress-process*
-                 (not (-> *setting-control* current allow-pause))
-                 )
+         (if (or *progress-process* (not (-> *setting-control* current allow-pause)))
              *master-mode*
              'pause ;; no controller, jak spawned, no progress open, pause allowed.
              )
@@ -235,13 +263,7 @@
          )
         )
       )
-     (set! *pause-lock*
-           (and *cheat-mode*
-                (nonzero?
-                 (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))
-                 )
-                )
-           )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
      )
     (('pause)
      (set! *last-master-mode* *master-mode*)
@@ -273,9 +295,7 @@
          )
         )
       )
-     (set! *pause-lock*
-           (and *cheat-mode* (cpad-hold? 0 r2))
-           )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
      )
     (('progress)
      (set-master-mode
@@ -296,9 +316,7 @@
          )
         )
       )
-     (set! *pause-lock*
-           (and *cheat-mode* (cpad-hold? 0 r2))
-           )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
      )
     )
   0
@@ -326,15 +344,6 @@
 (define *master-exit* #f)
 (define *progress-cheat* #f)
 (define *first-boot* #t) ;; PAL
-
-(defmacro cheats-sound-play (cheat?)
-  "play the appropriate sound for inputting a cheat code"
-
-  `(if ,cheat?
-      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
-      )
-  )
 
 (defun main-cheats ()
   "Handle cheat codes and timeout"
@@ -595,7 +604,7 @@
       (blerc-execute)
       (blerc-init)
       (texscroll-execute)
-      ; (ripple-execute)
+      (ripple-execute)
       
       ;;;;;;;;;;;;;;;;;;;;
       ;; AMBIENT
@@ -635,8 +644,8 @@
               )
             )
           
-          (countdown (s4-2 (-> (scratchpad-object terrain-context)  work ambient ambient-list num-items))
-            (dummy-18 (-> (scratchpad-object terrain-context)  work ambient ambient-list items s4-2) s5-1)
+          (countdown (s4-2 (-> (scratchpad-object terrain-context) work ambient ambient-list num-items))
+            (execute-ambient (-> (scratchpad-object terrain-context) work ambient ambient-list items s4-2) s5-1)
             )
           )
         )
@@ -685,7 +694,9 @@
         (if (< (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             )
-        (if (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+        (if (#if (not PC_PORT)
+                 (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+                 (or (not (-> *pc-settings* use-vis?)) (and (-> *pc-settings* use-vis?) (= (-> *setting-control* current aspect-ratio) 'aspect4x3))))
             (letterbox)
             )
         )
@@ -768,8 +779,8 @@
                 (dotimes (i LEVEL_COUNT)
                   (format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
                   )
-                (format *stdcon* "music ~A (f: ~D) sound ~A ~A~%"
-                    (-> *setting-control* current music) (-> *setting-control* current sound-flava)
+                (format *stdcon* "music ~A (f: ~D/~S) sound ~A ~A~%"
+                    (-> *setting-control* current music) (-> *setting-control* current sound-flava) (enum->string music-flava (-> *setting-control* default sound-flava))
                     *sound-bank-1* *sound-bank-2*)
                 (let ((pos (target-pos 0)))
                     (format *stdcon* "target ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z))
@@ -779,7 +790,7 @@
                     )
                 (let ((rot (new 'stack 'quaternion)))
                     (matrix->quaternion rot (-> *math-camera* camera-rot))
-                    (format *stdcon* "cam-rot ~f ~f ~f~%" (-> rot x) (-> rot y) (-> rot z))
+                    (format *stdcon* "cam-rot ~f ~f ~f ~f~%" (-> rot x) (-> rot y) (-> rot z) (-> rot w))
                     )
                 )
               (when (-> *pc-settings* display-heap-status)
@@ -888,6 +899,8 @@
       ;; vif0 collide
       ;; swap sound
       ;; str play
+      (swap-sound-buffers (ear-trans) (camera-pos) (camera-angle))
+      (str-play-kick)
       (level-update *level*) ;; also updates settings.
       (mc-run)
       (auto-save-check)

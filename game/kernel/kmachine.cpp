@@ -28,6 +28,7 @@
 #include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/graphics/gfx.h"
@@ -37,7 +38,8 @@
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
 #include "game/sce/libscf.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
+#include "game/discord.h"
 using namespace ee;
 
 /*!
@@ -536,12 +538,12 @@ u64 CPadGetData(u64 cpad_info) {
 
 // TODO InstallHandler
 void InstallHandler(u32 handler_idx, u32 handler_func) {
-  assert(handler_idx == 5);  // vif1
+  ASSERT(handler_idx == 5);  // vif1
   vif1_interrupt_handler = handler_func;
 }
 // TODO InstallDebugHandler
 void InstallDebugHandler() {
-  assert(false);
+  ASSERT(false);
 }
 
 void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
@@ -558,8 +560,23 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
 
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
-  fmt::print("Getting mips: {}\n", n);
   return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+void pc_set_levels(u32 l0, u32 l1) {
+  std::string l0s = Ptr<String>(l0).c()->data();
+  std::string l1s = Ptr<String>(l1).c()->data();
+
+  std::vector<std::string> levels;
+  if (l0s != "none" && l0s != "#f") {
+    levels.push_back(l0s);
+  }
+
+  if (l1s != "none" && l1s != "#f") {
+    levels.push_back(l1s);
+  }
+
+  Gfx::set_levels(levels);
 }
 
 /*!
@@ -664,7 +681,7 @@ u64 kclose(u64 fs) {
 
 // TODO dma_to_iop
 void dma_to_iop() {
-  assert(false);
+  ASSERT(false);
 }
 
 u64 DecodeLanguage() {
@@ -699,8 +716,13 @@ void DecodeTime(u32 ptr) {
 }
 
 // TODO PutDisplayEnv
-void PutDisplayEnv() {
-  // assert(false);
+void PutDisplayEnv(u32 ptr) {
+  u8 alp = Ptr<u8>(ptr).c()[1];
+  auto* renderer = Gfx::GetCurrentRenderer();
+  if (renderer) {
+    renderer->set_pmode_alp(alp / 255.f);
+  }
+  // ASSERT(false);
 }
 
 /*!
@@ -754,6 +776,65 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
   Gfx::get_window_scale(x, y);
 }
 
+void update_discord_rpc(u32 discord_info) {
+  if (gDiscordRpcEnabled) {
+    DiscordRichPresence rpc;
+    char state[128];
+    auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
+    if (info) {
+      int cells = (int)*Ptr<float>(info->fuel).c();
+      int orbs = (int)*Ptr<float>(info->money_total).c();
+      int scout_flies = (int)*Ptr<float>(info->buzzer_total).c();
+      auto cutscene = Ptr<Symbol>(info->cutscene)->value;
+      char* status = Ptr<String>(info->status).c()->data();
+      char* level = Ptr<String>(info->level).c()->data();
+      const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      memset(&rpc, 0, sizeof(rpc));
+      if (!strcmp(level, "finalboss")) {
+        strcpy(state, "Fighting Final Boss");
+      } else if (!strcmp(level, "title")) {
+        strcpy(state, "On title screen");
+      } else if (!strcmp(level, "intro")) {
+        strcpy(state, "Intro");
+      } else if (cutscene != offset_of_s7()) {
+        strcpy(state, "Watching a cutscene");
+      } else {
+        strcpy(state, "Cells: ");
+        strcat(state, std::to_string(cells).c_str());
+        strcat(state, " | Orbs: ");
+        strcat(state, std::to_string(orbs).c_str());
+        strcat(state, " | Scout flies: ");
+        strcat(state, std::to_string(scout_flies).c_str());
+      }
+      rpc.state = state;
+      rpc.startTimestamp = gStartTime;
+      rpc.details = status;
+      rpc.largeImageKey = level;
+      rpc.largeImageText = full_level_name;
+      rpc.smallImageKey = 0;
+      rpc.smallImageText = 0;
+      rpc.partySize = 0;
+      rpc.partyMax = 0;
+      Discord_UpdatePresence(&rpc);
+    }
+  } else {
+    Discord_ClearPresence();
+  }
+}
+
+u64 filepath_exists(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  if (std::filesystem::exists(filepath_str)) {
+    return intern_from_c("#t").offset;
+  }
+  return s7.offset;
+}
+
+void mkdir_path(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  file_util::create_dir_if_needed_for_file(filepath_str);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
@@ -762,6 +843,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
@@ -779,12 +861,29 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
+  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
+
+  // file related functions
+  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
+  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
+
+  // discord rich presence
+  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
   // init ps2 VM
   if (VM::use) {
     make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
     VM::vm_init();
   }
+
+  // setup string constants
+  auto user_dir_path = file_util::get_user_game_dir();
+  intern_from_c("*pc-user-dir-base-path*")->value =
+      make_string_from_c(user_dir_path.string().c_str());
+  // TODO - we will eventually need a better way to know what game we are playing
+  auto settings_path = file_util::get_user_settings_dir();
+  intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
 }
 
 void vif_interrupt_callback() {

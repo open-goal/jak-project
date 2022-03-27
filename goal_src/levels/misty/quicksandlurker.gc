@@ -361,7 +361,7 @@
     )
   :code
   (behavior ()
-    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
+    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
       (fill-cache-integrate-and-collide!
         (-> self root-override)
         (-> self root-override transv)
@@ -386,7 +386,7 @@
         )
       (suspend)
       )
-    (dummy-18 self)
+    (cleanup-for-death self)
     (none)
     )
   :post
@@ -427,10 +427,10 @@
         )
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
       (suspend)
       )
-    (dummy-18 self)
+    (cleanup-for-death self)
     (none)
     )
   )
@@ -535,14 +535,15 @@
 
 (defbehavior orient-to-face-target quicksandlurker ()
   (if *target*
-      (seek-to-point-toward-point! (-> self root-override) (-> *target* control trans) 65536.0 60)
+      (seek-to-point-toward-point! (-> self root-override) (-> *target* control trans) 65536.0 (seconds 0.2))
       )
   )
 
 ;; ERROR: function has no type analysis. Cannot decompile.
+;; get-height-over-navmesh, unused.
 
-(defun intersects-nav-mesh? ((arg0 quicksandlurker) (arg1 int) (arg2 (inline-array vector)) (arg3 vector))
-  (if (dummy-16 arg0 arg1 arg2 arg3)
+(defun intersects-nav-mesh? ((arg0 nav-control) (arg1 vector))
+  (if (dummy-16 arg0 arg1)
       #t
       )
   )
@@ -625,12 +626,12 @@
   (the-as (function process int symbol event-message-block object :behavior quicksandlurker) #f)
   :enter
   (behavior ()
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (none)
     )
   :exit
   (behavior ()
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
   :trans
@@ -815,7 +816,7 @@
           (set! (-> self state-time) (-> *display* base-frame-counter))
           (+! s4-0 1)
           (when (>= s4-0 s5-0)
-            (if (logtest? (-> self draw status) (draw-status drwf03))
+            (if (logtest? (-> self draw status) (draw-status was-drawn))
                 (go quicksandlurker-attack)
                 )
             )
@@ -985,7 +986,7 @@
          (set! (-> self state-time) (-> *display* base-frame-counter))
          )
         (else
-          (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+          (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
               (go quicksandlurker-popup)
               )
           )
@@ -1117,7 +1118,7 @@
         (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (dummy-18 self)
+    (cleanup-for-death self)
     (none)
     )
   :post

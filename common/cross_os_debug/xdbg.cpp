@@ -103,7 +103,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
       return true;
     }
     printf("[Debugger] Failed to waitpid: %s.\n", strerror(errno));
-    //    assert(false);  // todo, temp because I think we should never hit this.
+    //    ASSERT(false);  // todo, temp because I think we should never hit this.
     return false;
   }
 

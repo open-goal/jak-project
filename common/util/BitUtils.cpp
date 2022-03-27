@@ -25,7 +25,7 @@ bool integer_fits(s64 in, int size, bool is_signed) {
     case 8:
       return true;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }

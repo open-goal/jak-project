@@ -117,7 +117,7 @@ class VarAssignment {
 
   // get the register that this variable is assigned to. Must be assigned_to_reg()
   emitter::Register reg() const {
-    assert(assigned_to_reg());
+    ASSERT(assigned_to_reg());
     return m_assigned_register;
   }
 
@@ -136,21 +136,21 @@ class VarAssignment {
 
   // put this variable in the given register and constrain it there (prevent spilling)
   void constrain_to_register(const emitter::Register& reg) {
-    assert(unassigned());
+    ASSERT(unassigned());
     m_kind = Kind::REGISTER;
     m_locked = true;
     m_assigned_register = reg;
   }
 
   void assign_to_register(const emitter::Register& reg) {
-    assert(unassigned());
+    ASSERT(unassigned());
     m_kind = Kind::REGISTER;
     m_locked = false;
     m_assigned_register = reg;
   }
 
   void assign_to_stack(int slot) {
-    assert(unassigned());
+    ASSERT(unassigned());
     m_kind = Kind::STACK;
     m_locked = false;
     m_stack_temp_regs.resize(m_live.size());
@@ -158,7 +158,7 @@ class VarAssignment {
   }
 
   void demote_to_stack(int slot) {
-    assert(assigned_to_reg());
+    ASSERT(assigned_to_reg());
     m_kind = Kind::STACK;
     m_locked = false;
     m_stack_temp_regs.resize(m_live.size());
@@ -166,8 +166,8 @@ class VarAssignment {
   }
 
   void set_stack_slot_reg(const emitter::Register& reg, int instr_idx) {
-    assert(assigned_to_stack());
-    assert(!m_stack_temp_regs.at(instr_idx - first_live()));
+    ASSERT(assigned_to_stack());
+    ASSERT(!m_stack_temp_regs.at(instr_idx - first_live()));
     m_stack_temp_regs.at(instr_idx - first_live()) = reg;
   }
 
@@ -178,13 +178,13 @@ class VarAssignment {
   }
 
   emitter::Register get_stack_slot_reg(int instr_idx) const {
-    assert(assigned_to_stack());
-    assert(m_stack_temp_regs.at(instr_idx - first_live()));
+    ASSERT(assigned_to_stack());
+    ASSERT(m_stack_temp_regs.at(instr_idx - first_live()));
     return *m_stack_temp_regs.at(instr_idx - first_live());
   }
 
   bool stack_bonus_op_needs_reg(const emitter::Register& reg, int instr_idx) const {
-    assert(assigned_to_stack());
+    ASSERT(assigned_to_stack());
     auto& stack_reg = m_stack_temp_regs.at(instr_idx - m_first_live);
     return stack_reg && (*stack_reg == reg);
   }
@@ -215,7 +215,7 @@ class VarAssignment {
       }
       return asses;
     } else {
-      assert(false);
+      ASSERT(false);
     }
   }
 
@@ -356,7 +356,7 @@ std::vector<Range<s32>> find_live_range_instr(const AllocationInput& input,
       }
     }
 
-    assert(block.live.size() == block.instr_idx.size());
+    ASSERT(block.live.size() == block.instr_idx.size());
     for (uint32_t i = 0; i < block.live.size(); i++) {
       for (int j = 0; j < block.live[i].size(); j++) {
         if (block.live[i][j]) {
@@ -388,7 +388,7 @@ std::vector<VarAssignment> initialize_unassigned(const std::vector<Range<s32>>& 
   // allocate
   std::vector<VarAssignment> result;
   result.reserve(input.max_vars);
-  assert(input.max_vars == (int)live_ranges.size());
+  ASSERT(input.max_vars == (int)live_ranges.size());
   int var_idx = 0;
   for (auto lr : live_ranges) {
     result.emplace_back(lr.first(), lr.last(), var_idx++);
@@ -408,7 +408,7 @@ std::vector<VarAssignment> initialize_unassigned(const std::vector<Range<s32>>& 
     }
 
     // and liveliness analysis
-    assert(block.live.size() == block.instr_idx.size());
+    ASSERT(block.live.size() == block.instr_idx.size());
     for (uint32_t instr = 0; instr < block.live.size(); instr++) {
       for (int var = 0; var < block.live[instr].size(); var++) {
         if (block.live[instr][var]) {
@@ -800,7 +800,7 @@ int get_stack_slot_for_var(int var, RACache* cache) {
       slot_size = 1;
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   auto kv = cache->var_to_stack_slot.find(var);
   if (kv == cache->var_to_stack_slot.end()) {

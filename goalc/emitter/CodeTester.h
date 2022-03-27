@@ -49,7 +49,7 @@ class CodeTester {
   template <typename T>
   int emit_data(T x) {
     auto ret = code_buffer_size;
-    assert(int(sizeof(T)) + code_buffer_size <= code_buffer_capacity);
+    ASSERT(int(sizeof(T)) + code_buffer_size <= code_buffer_capacity);
     memcpy(code_buffer + code_buffer_size, &x, sizeof(T));
     code_buffer_size += sizeof(T);
     return ret;
@@ -104,8 +104,8 @@ class CodeTester {
    */
   template <typename T>
   void write(T x, int at) {
-    assert(at >= 0);
-    assert(int(sizeof(T)) + at <= code_buffer_capacity);
+    ASSERT(at >= 0);
+    ASSERT(int(sizeof(T)) + at <= code_buffer_capacity);
     memcpy(code_buffer + at, &x, sizeof(T));
   }
 
@@ -114,8 +114,8 @@ class CodeTester {
    */
   template <typename T>
   T read(int at) {
-    assert(at >= 0);
-    assert(int(sizeof(T)) + at <= code_buffer_capacity);
+    ASSERT(at >= 0);
+    ASSERT(int(sizeof(T)) + at <= code_buffer_capacity);
     T result;
     memcpy(&result, code_buffer + at, sizeof(T));
     return result;

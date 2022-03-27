@@ -3,7 +3,7 @@
 #include <vector>
 #include <stdexcept>
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 class DecompWarnings {
@@ -91,7 +91,7 @@ class DecompWarnings {
         case Kind::INFO:
           return fmt::format("INFO: {}\n", message);
         default:
-          assert(false);
+          ASSERT(false);
           return {};
       }
     }

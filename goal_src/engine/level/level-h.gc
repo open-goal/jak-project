@@ -5,37 +5,64 @@
 ;; name in dgo: level-h
 ;; dgos: GAME, ENGINE
 
-;; The level system is responsible for loading and managning the two levels.
+;; The level system is responsible for loading and managning the two levels,
+;; including the visible data.
+
 ;; The "level" type contains runtime information about a level (possibly one that is loading)
 ;; and the "level-group" type contains two levels.
 
 (defconstant LEVEL_COUNT 2) ;; there are two levels in memory!
 
+(declare-type bsp-header basic)
+(declare-type drawable basic)
+(declare-type engine basic)
+(declare-type entity-links-array basic)
+(declare-type entity-ambient-data-array basic)
+(declare-type mood-context basic)
+(declare-type entity-links structure)
+
+;;;;;;;;;;;;;;;
+;; VIS
+;;;;;;;;;;;;;;;
+
+;; each game "level" has some precomputed visibility.
+;; There's a binary space partition (bsp)
+;; Each leaf node corresponds to a bit string with (up to) 16384 bits
+;; These bits tell you if a certain "drawable" is visible or not.
+;; The drawable's index is the index of its visibilty bit.
+;; Note that not all drawables have a visibility bit - drawable groups sometimes don't and shrub's don't.
+
+;; One challenge of the visibility system is that you can't actually load the visibility for two levels
+;; at the same time.  Each level has a large .VIS file that must be loaded.
+;; The actual level files contain a small amount of VIS file for areas on their borders.
+;; While the .VIS is loading (or you are on the border of two levels), the engine will look in these
+;; small visibility infos.
+
+;; The large .VIS files are stored on the IOP. As a result, there's a small delay to actually
+;; fetch a visibility string.
+
 (defenum vis-info-flag
   :bitfield #t
   :type uint32
-  (twenty-nine 29)       ;; is .VIS file vis?
-  (waiting-for-iop-to-ee 30)
-  (thirty-one 31)        ;; single vis?
+  (from-vis-file 29)                 ;; is .VIS file vis?
+  (waiting-for-iop-to-ee 30)         ;; not here yet
+  (using-this-as-only-vis 31)        ;; using this as the only visibility data
   )
 
 ;; Information related to visibility data for a level.
-;; This is just metadata that describes the actual VIS file.
+;; This is just metadata that describes the actual visibiltiy data.
 ;; The typical use is to do (-> info vis-string idx) to get the offset (in the .VIS file) of the
 ;; compressed visibility string for a given bsp leaf.
 
 ;; Each level may have multiple level-vis-infos.
-;; Each .VIS file can have visibility data for multiple levels.
-;; Each level that is present in a .VIS has a level-vis-info to go with is.
 ;; One level-vis-info (the first) is always for the 
-;; actual level, and there is typically one for each neighboring level.
+;; actual level (stored in .VIS file), and there is typically one for each neighboring level.
 ;; The final level-vis-info (7) should always be empty (set to 0 in the bsp-header)
 
 ;; When travelling between two levels, the game will only have one .VIS file loaded,
 ;; and it does two lookups in this .VIS file - one for the current level, and one for the nearby
 ;; levels.  This means that visibility for "beach" near the border of "village1" is stored in
 ;; both BEA.VIS and VI1.VIS.
-(declare-type bsp-header basic)
 (deftype level-vis-info (basic)
   ((level              symbol           :offset-assert 4)
    (from-level         symbol           :offset-assert 8)
@@ -63,34 +90,35 @@
   )
 
 ;; Per level information related to how to load the level.
-;; These are stored in level-info.gc
+;; These are stored in level-info.gc which is always loaded, so this should have all the information required
+;; to do a level load.
 (deftype level-load-info (basic)
   ((name-list         symbol 3   :offset-assert 4)
-   (index             int32     :offset-assert 16) ;; the level number (starting with 1?)
+   (index             int32      :offset-assert 16) ;; the level number (starting with 1?)
    (name              symbol     :offset 4)         ;; symbol with full name, like "misty"
    (visname           symbol     :offset 8)         ;; symbol with vis file name, like "misty-vis"
    (nickname          symbol     :offset 12)        ;; 3 letter name for DGO, like "mis"
-   (packages          pair      :offset-assert 20) ;; list of symbols, usually empty or the level name
-   (sound-banks       pair      :offset-assert 24) ;; require sound bank files (list of symbols)
+   (packages          pair       :offset-assert 20) ;; list of symbols, usually empty or the level name
+   (sound-banks       pair       :offset-assert 24) ;; require sound bank files (list of symbols)
    (music-bank        symbol     :offset-assert 28) ;; name of level music
-   (ambient-sounds    pair      :offset-assert 32) ;; always empty list.
+   (ambient-sounds    pair       :offset-assert 32) ;; always empty list.
    (mood              symbol     :offset-assert 36) ;; mood object name
    (mood-func         symbol     :offset-assert 40) ;; mood update function name
    (ocean             symbol     :offset-assert 44) ;; ocean map object
    (sky               symbol     :offset-assert 48) ;; boolean to enable sky
-   (sun-fade          float     :offset-assert 52) ;; sun/sky setting
-   (continues         pair      :offset-assert 56) ;; list of checkpoints
-   (tasks             pair      :offset-assert 60) ;; list of boxed integers for tasks
-   (priority          int32     :offset-assert 64) ;; either 100 or 200
-   (load-commands     pair      :offset-assert 68) ;; ??
-   (alt-load-commands pair      :offset-assert 72) ;; ??
-   (bsp-mask          uint64    :offset-assert 80) ;; ??
-   (bsphere           sphere    :offset-assert 88) ;; boundings sphere of level?
-   (buzzer            int32     :offset-assert 92) ;; which task is the scout fly?
+   (sun-fade          float      :offset-assert 52) ;; sun/sky setting
+   (continues         pair       :offset-assert 56) ;; list of checkpoints
+   (tasks             pair       :offset-assert 60) ;; list of boxed integers for tasks
+   (priority          int32      :offset-assert 64) ;; either 100 or 200
+   (load-commands     pair       :offset-assert 68) ;; ??
+   (alt-load-commands pair       :offset-assert 72) ;; ??
+   (bsp-mask          uint64     :offset-assert 80) ;; ??
+   (bsphere           sphere     :offset-assert 88) ;; boundings sphere of level?
+   (buzzer            int32      :offset-assert 92) ;; which task is the scout fly?
    (bottom-height     meters     :offset-assert 96)
-   (run-packages      pair      :offset-assert 100) ;; possibly unused?
-   (prev-level        basic     :offset-assert 104)
-   (next-level        basic     :offset-assert 108)
+   (run-packages      pair       :offset-assert 100) ;; possibly unused?
+   (prev-level        basic      :offset-assert 104)
+   (next-level        basic      :offset-assert 108)
    (wait-for-load     symbol     :offset-assert 112)
    )
   :method-count-assert 9
@@ -100,7 +128,6 @@
 
 ;; The levels are initialized (called "login") over multiple frames.
 ;; The state of this process is stored in a login-state.
-(declare-type drawable basic)
 (deftype login-state (basic)
   ((state int32      :offset-assert 4)
    (pos   uint32     :offset-assert 8)
@@ -112,20 +139,17 @@
   :flag-assert         #x900000050
   )
 
-(declare-type engine basic)
-(declare-type entity-links-array basic)
-(declare-type entity-ambient-data-array basic)
-(declare-type mood-context basic)
+;; The actual "level". This manages loading and running a game level.
 (deftype level (basic)
   ((name                      symbol          :offset-assert 4)
    (load-name                 symbol          :offset-assert 8)
    (nickname                  symbol          :offset-assert 12)
    (index                     int32           :offset-assert 16)
    (status                    symbol          :offset-assert 20)
-   (other                     level           :offset-assert 24)
-   (heap                      kheap   :inline :offset-assert 32)
-   (bsp                       bsp-header      :offset-assert 48)
-   (art-group                 load-dir-art-group  :offset-assert 52)
+   (other                     level           :offset-assert 24)      ;; the other level object
+   (heap                      kheap   :inline :offset-assert 32)      ;; level's ~10 MB heap
+   (bsp                       bsp-header      :offset-assert 48)      ;; the main level object in the DGO
+   (art-group                 load-dir-art-group  :offset-assert 52)  ;; the art (foreground models/anims) for the level
    (info                      level-load-info     :offset-assert 56)
    (texture-page              texture-page 9      :offset-assert 60)
    (loaded-texture-page       texture-page 16     :offset-assert 96)
@@ -190,13 +214,11 @@
     )
   )
 
-(declare-type entity-links structure)
 
 ;; Main *level* object.
 ;; There are actually three levels. level0 and level1 correspond to the actual buffered levels
 ;; The level-default seems to be a fake level that can possibly be used by renderers that
 ;; don't belong to any level, for example to render Jak.
-(declare-type entity-links structure)
 (deftype level-group (basic)
   ((length           int32                :offset-assert 4)
    (log-in-level-bsp bsp-header           :offset-assert 8)  ;; level currently logging in

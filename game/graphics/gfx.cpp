@@ -177,6 +177,12 @@ void texture_relocate(u32 destination, u32 source, u32 format) {
   }
 }
 
+void set_levels(const std::vector<std::string>& levels) {
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->set_levels(levels);
+  }
+}
+
 void poll_events() {
   GetCurrentRenderer()->poll_events();
 }
@@ -254,6 +260,20 @@ int PadIsPressed(Pad::Button button, int port) {
 
 int PadAnalogValue(Pad::Analog analog, int port) {
   return Pad::AnalogValue(g_settings.pad_mapping_info, analog, port);
+}
+
+void SetLod(RendererTreeType tree, int lod) {
+  switch (tree) {
+    case RendererTreeType::TFRAG3:
+      g_global_settings.lod_tfrag = lod;
+      break;
+    case RendererTreeType::TIE3:
+      g_global_settings.lod_tie = lod;
+      break;
+    default:
+      lg::error("Invalid tree {} specified for SetLod ({})", tree, lod);
+      break;
+  }
 }
 
 }  // namespace Gfx

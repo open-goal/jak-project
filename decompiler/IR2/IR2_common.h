@@ -264,13 +264,13 @@ struct VariableNames {
   std::unordered_map<RegId, UseDefInfo, RegId::hash> use_def_info;
 
   void disable_use(const RegisterAccess& access) {
-    assert(access.mode() == AccessMode::READ);
+    ASSERT(access.mode() == AccessMode::READ);
     auto var_id = read_opid_to_varid.at(access.reg()).at(access.idx());
     use_def_info.at(RegId(access.reg(), var_id)).disable_use(access.idx(), access.reg());
   }
 
   void disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
-    assert(access.mode() == AccessMode::WRITE);
+    ASSERT(access.mode() == AccessMode::WRITE);
     auto var_id = write_opid_to_varid.at(access.reg()).at(access.idx());
     use_def_info.at(RegId(access.reg(), var_id)).disable_def(access.idx(), warnings);
   }

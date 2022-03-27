@@ -112,6 +112,7 @@ struct Config {
 
   bool is_pal = false;
   std::string game_name;
+  std::string expected_elf_name;
   GameTextVersion text_version = GameTextVersion::JAK1_V1;
 
   std::unordered_set<std::string> allowed_objects;
@@ -130,6 +131,9 @@ struct Config {
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
 
+  std::unordered_map<std::string, std::string> new_strings_same_across_langs;
+  std::unordered_map<std::string, std::vector<std::string>> new_strings_different_across_langs;
+
   std::unordered_map<std::string, int> bad_format_strings;
 
   std::vector<std::string> levels_to_extract;
@@ -138,6 +142,7 @@ struct Config {
   DecompileHacks hacks;
 };
 
-Config read_config_file(const std::string& path_to_config_file);
+Config read_config_file(const std::string& path_to_config_file,
+                        const std::map<std::string, bool>& overrides);
 
 }  // namespace decompiler

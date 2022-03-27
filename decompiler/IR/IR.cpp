@@ -21,7 +21,7 @@ std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
     auto end_of_check = result.size();
     for (size_t i = last_checked; i < end_of_check; i++) {
       auto it = result.at(i).get();
-      assert(it);
+      ASSERT(it);
       it->get_children(&result);
     }
     last_checked = end_of_check;
@@ -87,7 +87,7 @@ void IR_Set_Atomic::update_reginfo_self<IR_IntMath2>(int n_dest, int n_src, int 
   }
 
   auto src_as = dynamic_cast<IR_IntMath2*>(src.get());
-  assert(src_as);
+  ASSERT(src_as);
 
   for (auto& x : {src_as->arg0, src_as->arg1}) {
     auto reg = dynamic_cast<IR_Register*>(x.get());
@@ -96,9 +96,9 @@ void IR_Set_Atomic::update_reginfo_self<IR_IntMath2>(int n_dest, int n_src, int 
     }
   }
 
-  assert(int(write_regs.size()) == n_dest);
-  assert(int(read_regs.size()) == n_src);
-  assert(int(clobber_regs.size()) == n_clobber);
+  ASSERT(int(write_regs.size()) == n_dest);
+  ASSERT(int(read_regs.size()) == n_src);
+  ASSERT(int(clobber_regs.size()) == n_clobber);
   reg_info_set = true;
 }
 
@@ -110,16 +110,16 @@ void IR_Set_Atomic::update_reginfo_self<IR_IntMath1>(int n_dest, int n_src, int 
   }
 
   auto src_as = dynamic_cast<IR_IntMath1*>(src.get());
-  assert(src_as);
+  ASSERT(src_as);
 
   auto reg = dynamic_cast<IR_Register*>(src_as->arg.get());
   if (reg) {
     read_regs.push_back(reg->reg);
   }
 
-  assert(int(write_regs.size()) == n_dest);
-  assert(int(read_regs.size()) == n_src);
-  assert(int(clobber_regs.size()) == n_clobber);
+  ASSERT(int(write_regs.size()) == n_dest);
+  ASSERT(int(read_regs.size()) == n_src);
+  ASSERT(int(clobber_regs.size()) == n_clobber);
   reg_info_set = true;
 }
 
@@ -131,7 +131,7 @@ void IR_Set_Atomic::update_reginfo_self<IR_Load>(int n_dest, int n_src, int n_cl
   }
 
   auto src_as = dynamic_cast<IR_Load*>(src.get());
-  assert(src_as);
+  ASSERT(src_as);
 
   // try to get the source as a register
   auto reg = dynamic_cast<IR_Register*>(src_as->location.get());
@@ -150,9 +150,9 @@ void IR_Set_Atomic::update_reginfo_self<IR_Load>(int n_dest, int n_src, int n_cl
     }
   }
 
-  assert(int(write_regs.size()) == n_dest);
-  assert(int(read_regs.size()) == n_src);
-  assert(int(clobber_regs.size()) == n_clobber);
+  ASSERT(int(write_regs.size()) == n_dest);
+  ASSERT(int(read_regs.size()) == n_src);
+  ASSERT(int(clobber_regs.size()) == n_clobber);
   reg_info_set = true;
 }
 
@@ -164,7 +164,7 @@ void IR_Set_Atomic::update_reginfo_self<IR_Compare>(int n_dest, int n_src, int n
   }
 
   auto src_as_cmp = dynamic_cast<IR_Compare*>(src.get());
-  assert(src_as_cmp);
+  ASSERT(src_as_cmp);
   for (auto& x : {src_as_cmp->condition.src0, src_as_cmp->condition.src1}) {
     auto as_reg = dynamic_cast<IR_Register*>(x.get());
     if (as_reg) {
@@ -177,9 +177,9 @@ void IR_Set_Atomic::update_reginfo_self<IR_Compare>(int n_dest, int n_src, int n
     clobber_regs.push_back(as_reg->reg);
   }
 
-  assert(int(write_regs.size()) == n_dest);
-  assert(int(read_regs.size()) == n_src);
-  assert(int(clobber_regs.size()) == n_clobber);
+  ASSERT(int(write_regs.size()) == n_dest);
+  ASSERT(int(read_regs.size()) == n_src);
+  ASSERT(int(clobber_regs.size()) == n_clobber);
   reg_info_set = true;
 }
 
@@ -198,9 +198,9 @@ void IR_Set_Atomic::update_reginfo_regreg() {
     read_regs.push_back(src_as->reg);
   }
 
-  assert(int(write_regs.size()) == 1);
-  assert(int(read_regs.size()) == 1);
-  assert(int(clobber_regs.size()) == 0);
+  ASSERT(int(write_regs.size()) == 1);
+  ASSERT(int(read_regs.size()) == 1);
+  ASSERT(int(clobber_regs.size()) == 0);
   reg_info_set = true;
 }
 
@@ -228,11 +228,11 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
           store_operator = "s.q";
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
@@ -263,11 +263,11 @@ goos::Object IR_Store_Atomic::to_form(const LinkedObjectFile& file) const {
           store_operator = "s.q";
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
@@ -296,9 +296,9 @@ void IR_Store_Atomic::update_reginfo_self(int n_dest, int n_src, int n_clobber) 
     }
   }
 
-  assert(int(write_regs.size()) == n_dest);
-  assert(int(read_regs.size()) == n_src);
-  assert(int(clobber_regs.size()) == n_clobber);
+  ASSERT(int(write_regs.size()) == n_dest);
+  ASSERT(int(read_regs.size()) == n_src);
+  ASSERT(int(clobber_regs.size()) == n_clobber);
   reg_info_set = true;
 }
 
@@ -375,7 +375,7 @@ goos::Object IR_Load::to_form(const LinkedObjectFile& file) const {
           load_operator = "l.q";
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     case SIGNED:
@@ -390,11 +390,11 @@ goos::Object IR_Load::to_form(const LinkedObjectFile& file) const {
           load_operator = "l.ws";
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return pretty_print::build_list(pretty_print::to_symbol(load_operator), location->to_form(file));
 }
@@ -425,7 +425,7 @@ goos::Object IR_FloatMath2::to_form(const LinkedObjectFile& file) const {
       math_operator = "max.f";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file),
@@ -496,7 +496,7 @@ goos::Object IR_IntMath2::to_form(const LinkedObjectFile& file) const {
       math_operator = "max.si";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file),
                                   arg1->to_form(file));
@@ -520,7 +520,7 @@ goos::Object IR_IntMath1::to_form(const LinkedObjectFile& file) const {
       math_operator = "-.i";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg->to_form(file));
 }
@@ -548,7 +548,7 @@ goos::Object IR_FloatMath1::to_form(const LinkedObjectFile& file) const {
       math_operator = "sqrt.f";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg->to_form(file));
 }
@@ -613,7 +613,7 @@ goos::Object BranchDelay::to_form(const LinkedObjectFile& file) const {
     case UNKNOWN:
       return pretty_print::build_list("unknown-branch-delay");
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -669,7 +669,7 @@ int Condition::num_args() const {
     case NEVER:
       return 0;
     default:
-      assert(false);
+      ASSERT(false);
       return -1;
   }
 }
@@ -765,7 +765,7 @@ void Condition::invert() {
       kind = FLOAT_GREATER_THAN;
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -852,7 +852,7 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
       condtion_operator = "<=0.si";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   if (nargs == 2) {
@@ -868,7 +868,7 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
   } else if (nargs == 0) {
     return pretty_print::to_symbol(condtion_operator);
   } else {
-    assert(false);
+    ASSERT(false);
     return {};
   }
 }
@@ -897,9 +897,9 @@ void IR_Branch_Atomic::update_reginfo_self(int n_dest, int n_src, int n_clobber)
   if (as_reg) {
     clobber_regs.push_back(as_reg->reg);
   }
-  assert(int(write_regs.size()) == n_dest);
-  assert(int(read_regs.size()) == n_src);
-  assert(int(clobber_regs.size()) == n_clobber);
+  ASSERT(int(write_regs.size()) == n_dest);
+  ASSERT(int(read_regs.size()) == n_src);
+  ASSERT(int(clobber_regs.size()) == n_clobber);
 
   // copy from branch delay
   read_regs.insert(read_regs.end(), branch_delay.read_regs.begin(), branch_delay.read_regs.end());
@@ -994,7 +994,7 @@ goos::Object IR_AsmReg::to_form(const LinkedObjectFile& file) const {
     case VU_ACC:
       return pretty_print::to_symbol("ACC");
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }

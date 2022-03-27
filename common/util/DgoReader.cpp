@@ -28,7 +28,7 @@ DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
           (int)reader.bytes_left());
       obj_header.size = reader.bytes_left();
     }
-    assert(reader.bytes_left() >= obj_header.size);
+    ASSERT(reader.bytes_left() >= obj_header.size);
     assert_string_empty_after(obj_header.name, 60);
 
     DgoDataEntry entry;
@@ -44,7 +44,7 @@ DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
     all_unique_names.insert(entry.unique_name);
     entry.data.resize(obj_header.size);
 
-    assert((reader.get_seek() % 16) == 0);
+    ASSERT((reader.get_seek() % 16) == 0);
     memcpy(entry.data.data(), reader.here(), obj_header.size);
     m_entries.push_back(entry);
 
@@ -52,8 +52,8 @@ DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
   }
 
   // check we're at the end
-  assert(0 == reader.bytes_left());
-  assert(all_unique_names.size() == m_entries.size());
+  ASSERT(0 == reader.bytes_left());
+  ASSERT(all_unique_names.size() == m_entries.size());
 }
 
 std::string DgoReader::description_as_json() const {

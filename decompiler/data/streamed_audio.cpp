@@ -51,7 +51,7 @@ struct AudioDir {
  */
 std::vector<u8> read_entry(const AudioDir& dir, const std::vector<u8>& data, int entry_idx) {
   const auto& entry = dir.entries.at(entry_idx);
-  assert(entry.end_byte > 0);
+  ASSERT(entry.end_byte > 0);
   return std::vector<u8>(data.begin() + entry.start_byte, data.begin() + entry.end_byte);
 }
 
@@ -100,19 +100,19 @@ AudioDir read_audio_dir(const std::string& path) {
 
   u32 count = reader.read<u32>();
   u32 data_end = sizeof(u32) + sizeof(DirEntry) * count;
-  assert(data_end <= data.size());
+  ASSERT(data_end <= data.size());
   std::vector<DirEntry> entries;
   for (u32 i = 0; i < count; i++) {
     entries.push_back(reader.read<DirEntry>());
   }
 
   while (reader.bytes_left()) {
-    assert(reader.read<u8>() == 0);
+    ASSERT(reader.read<u8>() == 0);
   }
 
   AudioDir result;
 
-  assert(!entries.empty());
+  ASSERT(!entries.empty());
   for (size_t i = 0; i < entries.size(); i++) {
     AudioDir::Entry e;
     for (auto c : entries[i].name) {
@@ -153,18 +153,18 @@ AudioFileInfo process_audio_file(const std::vector<u8>& data,
   if (header.magic[0] == 'V') {
     header = header.swapped_endian();
   } else {
-    assert(false);
+    ASSERT(false);
   }
   header.debug_print();
 
   for (int i = 0; i < 16; i++) {
-    assert(reader.read<u8>() == 0);
+    ASSERT(reader.read<u8>() == 0);
   }
 
   std::vector<s16> decoded_samples = decode_adpcm(reader);
 
   while (reader.bytes_left()) {
-    assert(reader.read<u8>() == 0);
+    ASSERT(reader.read<u8>() == 0);
   }
 
   file_util::create_dir_if_needed(file_util::get_file_path({"assets", "streaming_audio", suffix}));

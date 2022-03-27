@@ -25,6 +25,9 @@
 
 ;; which is probably the transpose of what you're used to.
 
+;; note that they also used row-major storage, so the 3rd qword of a matrix is the translation
+;; part of the affine transform.
+
 ;; In general, be careful with using these functions as they often have strange
 ;; requirements for the form of the input matrix or if the input/output matrix are
 ;; allowed to be the same memory.
@@ -315,12 +318,8 @@
          (vf5 :class vf)
          )
     ;; this implementation is better than vector-matrix*!
-    ;; (nop!)
-    ;; (nop!)
     (.lvf vf5 (&-> vec quad))
-    ;; (nop!)
     (.lvf vf1 (&-> mat vector 0 quad))
-    ;; (nop!)
     (.lvf vf2 (&-> mat vector 1 quad))
     ;; the mul's assume the right-most column of the input matrix are 0,0,0,X
     (.mul.x.vf acc vf1 vf5)
@@ -329,8 +328,6 @@
     ;; this load doesn't need to be here!
     (.lvf vf4 (&-> mat vector 3 quad))
     (.add.mul.z.vf vf5 vf3 vf5 acc)
-    ;; (nop!)
-    ;; (nop!)
     (.svf (&-> dst quad) vf5)
     dst
     )
@@ -374,12 +371,8 @@
    (a3-2 uint128)
    (t0-1 uint128)
    )
-  ;; (nop!)
-  ;; (nop!)
   (let ((t0-0 (-> src vector 0 quad)))
-   ;; (nop!)
    (let ((t1-0 (-> src vector 1 quad)))
-    ;; (nop!)
     (let ((a2-0 (-> src vector 2 quad)))
      (.pextlw v1-0 t1-0 t0-0)
      (let ((a3-0 (-> src vector 3 quad)))
@@ -402,7 +395,6 @@
   (set! (-> dst vector 1 quad) v1-1)
   (.pcpyud v1-2 a1-1 a2-1)
   (set! (-> dst vector 2 quad) a3-2)
-  ;; (nop!)
   (set! (-> dst vector 3 quad) v1-2)
   dst
   )
@@ -508,119 +500,66 @@
     (.xor.vf vf19 vf19 vf19)
     
     (init-vf0-vector)
-    ;; (nop!)
-    ;; (nop!)
     (.lvf vf23 (&-> src vector 0 quad))
-    ;; (nop!)
     (.lvf vf24 (&-> src vector 1 quad))
-    ;; (nop!)
     (.lvf vf25 (&-> src vector 2 quad))
-    ;; (nop!)
     (.lvf vf1 (&-> src vector 3 quad))
     (.mul.x.vf vf7 vf24 vf23)
-    ;; (nop!)
     (.mul.y.vf vf8 vf24 vf23)
-    ;; (nop!)
     (.mul.z.vf vf9 vf24 vf23)
-    ;; (nop!)
     (.mul.x.vf vf10 vf25 vf23)
-    ;; (nop!)
     (.mul.y.vf vf11 vf25 vf23)
-    ;; (nop!)
     (.mul.z.vf vf12 vf25 vf23)
-    ;; (nop!)
     (.mul.x.vf vf13 vf25 vf24)
-    ;; (nop!)
     (.mul.y.vf vf14 vf25 vf24)
-    ;; (nop!)
     (.mul.z.vf vf15 vf25 vf24)
-    ;; (nop!)
     (.mul.z.vf vf26 vf7 vf25 :mask #b10)
-    ;; (nop!)
     (.mul.z.vf vf27 vf11 vf24 :mask #b1)
-    ;; (nop!)
     (.mul.y.vf vf28 vf9 vf25 :mask #b1)
-    ;; (nop!)
     (.mul.z.vf vf29 vf14 vf23 :mask #b1)
-    ;; (nop!)
     (.mul.z.vf vf30 vf8 vf25 :mask #b1)
-    ;; (nop!)
     (.mul.y.vf vf31 vf7 vf25 :mask #b100)
-    ;; (nop!)
     (.add.y.vf vf16 vf27 vf26 :mask #b1)
-    ;; (nop!)
     (.sub.vf vf1 vf0 vf1)
-    ;; (nop!)
     (.add.x.vf vf17 vf29 vf30 :mask #b1)
-    ;; (nop!)
     (.sub.z.vf vf18 vf28 vf31 :mask #b1)
-    ;; (nop!)
     (.sub.y.vf vf23 vf14 vf15 :mask #b100)
-    ;; (nop!)
     (.sub.z.vf vf26 vf15 vf13 :mask #b1)
-    ;; (nop!)
     (.sub.x.vf vf29 vf13 vf14 :mask #b10)
-    ;; (nop!)
     (.sub.vf vf19 vf16 vf17 :mask #b1)
-    ;; (nop!)
     (.sub.z.vf vf24 vf12 vf11 :mask #b10)
-    ;; (nop!)
     (.sub.x.vf vf27 vf10 vf12 :mask #b100)
-    ;; (nop!)
     (.sub.y.vf vf30 vf11 vf10 :mask #b1)
-    ;; (nop!)
     (.add.vf vf20 vf19 vf18 :mask #b1)
-    ;; (nop!)
     (.sub.y.vf vf25 vf8 vf9 :mask #b100)
-    ;; (nop!)
     (.sub.z.vf vf28 vf9 vf7 :mask #b1)
-    ;; (nop!)
     (.sub.x.vf vf31 vf7 vf8 :mask #b10)
-    ;; (nop!)
     (.div.vf Q vf0 vf20 :fsf #b11 :ftf #b0)
-    ;; (nop!)
     ;;(.sub.w.vf vf3 vf3 vf3 :mask #b1000)
     (.xor.vf vf3 vf3 vf3)
-    ;; (nop!)
     ;;(.sub.w.vf vf4 vf4 vf4 :mask #b1000)
     (.xor.vf vf4 vf4 vf4)
-    ;; (nop!)
     ;;(.sub.w.vf vf5 vf5 vf5 :mask #b1000)
     (.xor.vf vf5 vf5 vf5)
-    ;; (nop!)
     (.mov.vf vf6 vf0 :mask #b1000)
-    ;; (nop!)
     (.wait.vf)
-    ;; (nop!)
     (.add.vf vf2 vf0 Q :mask #b1)
-    ;; (nop!)
     (.add.x.vf vf2 vf0 vf2 :mask #b111)
-    ;; (nop!)
     (.mul.z.vf vf3 vf2 vf23 :mask #b1)
-    ;; (nop!)
     (.mul.x.vf vf4 vf2 vf26 :mask #b1)
-    ;; (nop!)
     (.mul.y.vf vf5 vf2 vf29 :mask #b1)
-    ;; (nop!)
     (.mul.y.vf vf3 vf2 vf24 :mask #b10)
-    ;; (nop!)
     (.mul.z.vf vf4 vf2 vf27 :mask #b10)
-    ;; (nop!)
     (.mul.x.vf vf5 vf2 vf30 :mask #b10)
-    ;; (nop!)
     (.mul.z.vf vf3 vf2 vf25 :mask #b100)
-    ;; (nop!)
     (.mul.x.vf vf4 vf2 vf28 :mask #b100)
-    ;; (nop!)
     (.mul.y.vf vf5 vf2 vf31 :mask #b100)
-    ;; (nop!)
     (.mul.x.vf acc vf3 vf1)
     (.svf (&-> dst vector 0 quad) vf3)
     (.add.mul.y.vf acc vf4 vf1 acc)
     (.svf (&-> dst vector 1 quad) vf4)
     (.add.mul.z.vf vf6 vf5 vf1 acc :mask #b111)
     (.svf (&-> dst vector 2 quad) vf5)
-    ;; (nop!)
     (.svf (&-> dst vector 3 quad) vf6)
     dst
     )
@@ -1180,81 +1119,33 @@
   "Compute the inverse of a 3x3 matrix. Not very efficient.
    Requires src != dst."
   (let ((f0-0 (matrix-3x3-determinant src)))
-    (set!
-     (-> dst data 0)
-     (/
-      (-
-       (* (-> src data 5) (-> src data 10))
-       (* (-> src data 6) (-> src data 9))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 4)
-     (/
-      (-
-       (* (-> src data 6) (-> src data 8))
-       (* (-> src data 4) (-> src data 10))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 8)
-     (/
-      (- (* (-> src data 4) (-> src data 9)) (* (-> src data 5) (-> src data 8)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 1)
-     (/
-      (-
-       (* (-> src data 9) (-> src data 2))
-       (* (-> src data 10) (-> src data 1))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 5)
-     (/
-      (-
-       (* (-> src data 10) (-> src data 0))
-       (* (-> src data 8) (-> src data 2))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 9)
-     (/
-      (- (* (-> src data 8) (-> src data 1)) (* (-> src data 9) (-> src data 0)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 2)
-     (/
-      (- (* (-> src data 1) (-> src data 6)) (* (-> src data 2) (-> src data 5)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 6)
-     (/
-      (- (* (-> src data 2) (-> src data 4)) (* (-> src data 0) (-> src data 6)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 10)
-     (/
-      (- (* (-> src data 0) (-> src data 5)) (* (-> src data 1) (-> src data 4)))
-      f0-0
-      )
-     )
+    (set! (-> dst vector 0 x)
+          (/ (- (* (-> src vector 1 y) (-> src vector 2 z)) (* (-> src vector 1 z) (-> src vector 2 y))) f0-0)
+          )
+    (set! (-> dst vector 1 x)
+          (/ (- (* (-> src vector 1 z) (-> src vector 2 x)) (* (-> src vector 1 x) (-> src vector 2 z))) f0-0)
+          )
+    (set! (-> dst vector 2 x)
+          (/ (- (* (-> src vector 1 x) (-> src vector 2 y)) (* (-> src vector 1 y) (-> src vector 2 x))) f0-0)
+          )
+    (set! (-> dst vector 0 y)
+          (/ (- (* (-> src vector 2 y) (-> src vector 0 z)) (* (-> src vector 2 z) (-> src vector 0 y))) f0-0)
+          )
+    (set! (-> dst vector 1 y)
+          (/ (- (* (-> src vector 2 z) (-> src vector 0 x)) (* (-> src vector 2 x) (-> src vector 0 z))) f0-0)
+          )
+    (set! (-> dst vector 2 y)
+          (/ (- (* (-> src vector 2 x) (-> src vector 0 y)) (* (-> src vector 2 y) (-> src vector 0 x))) f0-0)
+          )
+    (set! (-> dst vector 0 z)
+          (/ (- (* (-> src vector 0 y) (-> src vector 1 z)) (* (-> src vector 0 z) (-> src vector 1 y))) f0-0)
+          )
+    (set! (-> dst vector 1 z)
+          (/ (- (* (-> src vector 0 z) (-> src vector 1 x)) (* (-> src vector 0 x) (-> src vector 1 z))) f0-0)
+          )
+    (set! (-> dst vector 2 z)
+          (/ (- (* (-> src vector 0 x) (-> src vector 1 y)) (* (-> src vector 0 y) (-> src vector 1 x))) f0-0)
+          )
     )
   dst
   )
@@ -1263,81 +1154,33 @@
   "Invert and transpose.
    Requires dst != src."
   (let ((f0-0 (matrix-3x3-determinant src)))
-    (set!
-     (-> dst data 0)
-     (/
-      (-
-       (* (-> src data 5) (-> src data 10))
-       (* (-> src data 6) (-> src data 9))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 1)
-     (/
-      (-
-       (* (-> src data 6) (-> src data 8))
-       (* (-> src data 4) (-> src data 10))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 2)
-     (/
-      (- (* (-> src data 4) (-> src data 9)) (* (-> src data 5) (-> src data 8)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 4)
-     (/
-      (-
-       (* (-> src data 9) (-> src data 2))
-       (* (-> src data 10) (-> src data 1))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 5)
-     (/
-      (-
-       (* (-> src data 10) (-> src data 0))
-       (* (-> src data 8) (-> src data 2))
-       )
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 6)
-     (/
-      (- (* (-> src data 8) (-> src data 1)) (* (-> src data 9) (-> src data 0)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 8)
-     (/
-      (- (* (-> src data 1) (-> src data 6)) (* (-> src data 2) (-> src data 5)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 9)
-     (/
-      (- (* (-> src data 2) (-> src data 4)) (* (-> src data 0) (-> src data 6)))
-      f0-0
-      )
-     )
-    (set!
-     (-> dst data 10)
-     (/
-      (- (* (-> src data 0) (-> src data 5)) (* (-> src data 1) (-> src data 4)))
-      f0-0
-      )
-     )
+    (set! (-> dst vector 0 x)
+          (/ (- (* (-> src vector 1 y) (-> src vector 2 z)) (* (-> src vector 1 z) (-> src vector 2 y))) f0-0)
+          )
+    (set! (-> dst vector 0 y)
+          (/ (- (* (-> src vector 1 z) (-> src vector 2 x)) (* (-> src vector 1 x) (-> src vector 2 z))) f0-0)
+          )
+    (set! (-> dst vector 0 z)
+          (/ (- (* (-> src vector 1 x) (-> src vector 2 y)) (* (-> src vector 1 y) (-> src vector 2 x))) f0-0)
+          )
+    (set! (-> dst vector 1 x)
+          (/ (- (* (-> src vector 2 y) (-> src vector 0 z)) (* (-> src vector 2 z) (-> src vector 0 y))) f0-0)
+          )
+    (set! (-> dst vector 1 y)
+          (/ (- (* (-> src vector 2 z) (-> src vector 0 x)) (* (-> src vector 2 x) (-> src vector 0 z))) f0-0)
+          )
+    (set! (-> dst vector 1 z)
+          (/ (- (* (-> src vector 2 x) (-> src vector 0 y)) (* (-> src vector 2 y) (-> src vector 0 x))) f0-0)
+          )
+    (set! (-> dst vector 2 x)
+          (/ (- (* (-> src vector 0 y) (-> src vector 1 z)) (* (-> src vector 0 z) (-> src vector 1 y))) f0-0)
+          )
+    (set! (-> dst vector 2 y)
+          (/ (- (* (-> src vector 0 z) (-> src vector 1 x)) (* (-> src vector 0 x) (-> src vector 1 z))) f0-0)
+          )
+    (set! (-> dst vector 2 z)
+          (/ (- (* (-> src vector 0 x) (-> src vector 1 y)) (* (-> src vector 0 y) (-> src vector 1 x))) f0-0)
+          )
     )
   dst
   )

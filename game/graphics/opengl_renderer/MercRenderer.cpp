@@ -4,8 +4,13 @@
 
 MercRenderer::MercRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
-      m_direct(fmt::format("{}-dir", name), my_id, 0x30000, DirectRenderer::Mode::NORMAL) {
+      m_direct(fmt::format("{}-dir", name), my_id, 0x30000),
+      m_direct2(20000, 40000, 1000, name, false) {
   memset(m_buffer.data, 0, sizeof(m_buffer.data));
+}
+
+void MercRenderer::init_shaders(ShaderLibrary& shaders) {
+  m_direct2.init_shaders(shaders);
 }
 
 void MercRenderer::render(DmaFollower& dma,
@@ -23,30 +28,34 @@ void MercRenderer::render(DmaFollower& dma,
 
   // process the first tag. this is just jumping to the merc-specific dma.
   auto data0 = dma.read_and_advance();
-  assert(data0.vif1() == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.size_bytes == 0);
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     // renderer didn't run, let's just get out of here.
     for (int i = 0; i < 4; i++) {
       dma.read_and_advance();
     }
-    assert(dma.current_tag_offset() == render_state->next_bucket);
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     return;
   }
   m_stats.had_data = true;
-  assert(data0.size_bytes == 0);
-  assert(data0.vif0() == 0);
-  assert(data0.vif1() == 0);
+  ASSERT(data0.size_bytes == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0);
 
   // if we reach here, there's stuff to draw
   handle_setup(dma, render_state, prof);
 
+  m_direct2.reset_state();
   m_direct.reset_state();
+
   while (dma.current_tag_offset() != render_state->next_bucket) {
     handle_merc_chain(dma, render_state, prof);
   }
-  assert(dma.current_tag_offset() == render_state->next_bucket);
+  ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+  m_direct2.flush_pending(render_state, prof);
+
   m_direct.flush_pending(render_state, prof);
 }
 
@@ -56,35 +65,35 @@ bool tag_is_nothing_next(const DmaFollower& dma) {
 }
 
 void MercRenderer::unpack32(const VifCodeUnpack& up, const u8* data, u32 imm) {
-  assert(!up.is_unsigned);
+  ASSERT(!up.is_unsigned);
   u32 addr = up.addr_qw;
-  assert(imm != 0);
-  assert(!m_vif.stmod);
+  ASSERT(imm != 0);
+  ASSERT(!m_vif.stmod);
   if (up.use_tops_flag) {
     addr += xitop();
   }
 
   u32 start_in_buff = (addr)*16;
   u32 end_in_buff = start_in_buff + imm * 16;
-  assert(start_in_buff < sizeof(m_buffer.data));
-  assert(end_in_buff <= sizeof(m_buffer.data));
+  ASSERT(start_in_buff < sizeof(m_buffer.data));
+  ASSERT(end_in_buff <= sizeof(m_buffer.data));
   memcpy(m_buffer.data + start_in_buff, data, imm * 16);
 }
 
 void MercRenderer::unpack8(const VifCodeUnpack& up, const u8* data, u32 imm) {
-  // assert(m_vif.stmod);
+  // ASSERT(m_vif.stmod);
 
-  assert(up.is_unsigned);
+  ASSERT(up.is_unsigned);
   u32 addr = up.addr_qw;
   if (up.use_tops_flag) {
     addr += xitop();
   }
-  assert(imm != 0);
+  ASSERT(imm != 0);
 
   u32 start_in_buff = (addr)*16;
   u32 end_in_buff = start_in_buff + imm * 16;
-  assert(start_in_buff < sizeof(m_buffer.data));
-  assert(end_in_buff <= sizeof(m_buffer.data));
+  ASSERT(start_in_buff < sizeof(m_buffer.data));
+  ASSERT(end_in_buff <= sizeof(m_buffer.data));
 
   u8* out_ptr = m_buffer.data + start_in_buff;
 
@@ -130,7 +139,7 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
   //  fmt::print("DMA: {}\n", dma.current_tag().print());
   while (tag_is_nothing_next(dma)) {
     auto nothing = dma.read_and_advance();
-    assert(nothing.size_bytes == 0);
+    ASSERT(nothing.size_bytes == 0);
   }
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
     for (int i = 0; i < 4; i++) {
@@ -141,13 +150,13 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
 
   auto init = dma.read_and_advance();
 
-  assert(init.vifcode0().kind == VifCode::Kind::STROW);
-  assert(init.size_bytes == 16);
+  ASSERT(init.vifcode0().kind == VifCode::Kind::STROW);
+  ASSERT(init.size_bytes == 16);
   m_vif.row[0] = init.vif1();
   memcpy(m_vif.row + 1, init.data, 12);
   u32 extra;
   memcpy(&extra, init.data + 12, 4);
-  assert(extra == 0);
+  ASSERT(extra == 0);
   DmaTransfer next;
 
   bool setting_up = true;
@@ -163,11 +172,11 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
       case VifCode::Kind::FLUSHE:
         break;
       case VifCode::Kind::STMOD:
-        assert(vif0.immediate == 0 || vif0.immediate == 1);
+        ASSERT(vif0.immediate == 0 || vif0.immediate == 1);
         m_vif.stmod = vif0.immediate;
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     auto vif1 = next.vifcode1();
@@ -189,23 +198,23 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
       } break;
       case VifCode::Kind::MSCAL:
         mscal_addr = vif1.immediate;
-        assert(next.size_bytes == 0);
+        ASSERT(next.size_bytes == 0);
         setting_up = false;
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
 
-    assert(offset_in_data <= next.size_bytes);
+    ASSERT(offset_in_data <= next.size_bytes);
     if (offset_in_data < next.size_bytes) {
-      assert((offset_in_data % 4) == 0);
+      ASSERT((offset_in_data % 4) == 0);
       u32 leftover = next.size_bytes - offset_in_data;
       if (leftover < 16) {
         for (u32 i = 0; i < leftover; i++) {
-          assert(next.data[offset_in_data + i] == 0);
+          ASSERT(next.data[offset_in_data + i] == 0);
         }
       } else {
-        assert(false);
+        ASSERT(false);
       }
     }
   }
@@ -239,7 +248,7 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
       break;
     default:
       fmt::print("unknown mscal: {}\n", mscal_addr);
-      assert(false);
+      ASSERT(false);
   }
 
   //  while (true) {
@@ -248,7 +257,7 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
   //
   //    } else {
   //      fmt::print("{} : {} {}\n", next.size_bytes, next.vifcode0().print(),
-  //      next.vifcode1().print()); assert(false);
+  //      next.vifcode1().print()); ASSERT(false);
   //    }
   //  }
 }
@@ -262,7 +271,7 @@ void MercRenderer::handle_setup(DmaFollower& dma,
   auto first = dma.read_and_advance();
 
   // 10 quadword setup packet
-  assert(first.size_bytes == 10 * 16);
+  ASSERT(first.size_bytes == 10 * 16);
   // m_stats.str += fmt::format("Setup 0: {} {} {}", first.size_bytes / 16,
   // first.vifcode0().print(), first.vifcode1().print());
 
@@ -271,12 +280,12 @@ void MercRenderer::handle_setup(DmaFollower& dma,
     auto vif0 = first.vifcode0();
     auto vif1 = first.vifcode1();
     // STCYCL 4, 4
-    assert(vif0.kind == VifCode::Kind::STCYCL);
+    ASSERT(vif0.kind == VifCode::Kind::STCYCL);
     auto vif0_st = VifCodeStcycl(vif0);
-    assert(vif0_st.cl == 4 && vif0_st.wl == 4);
+    ASSERT(vif0_st.cl == 4 && vif0_st.wl == 4);
     // STMOD
-    assert(vif1.kind == VifCode::Kind::STMOD);
-    assert(vif1.immediate == 0);
+    ASSERT(vif1.kind == VifCode::Kind::STMOD);
+    ASSERT(vif1.immediate == 0);
   }
 
   // 1 qw with 4 vifcodes.
@@ -284,19 +293,19 @@ void MercRenderer::handle_setup(DmaFollower& dma,
   memcpy(vifcode_data, first.data, 16);
   {
     auto vif0 = VifCode(vifcode_data[0]);
-    assert(vif0.kind == VifCode::Kind::BASE);
-    assert(vif0.immediate == MercDataMemory::BUFFER_BASE);
+    ASSERT(vif0.kind == VifCode::Kind::BASE);
+    ASSERT(vif0.immediate == MercDataMemory::BUFFER_BASE);
     auto vif1 = VifCode(vifcode_data[1]);
-    assert(vif1.kind == VifCode::Kind::OFFSET);
-    assert((s16)vif1.immediate == MercDataMemory::BUFFER_OFFSET);
+    ASSERT(vif1.kind == VifCode::Kind::OFFSET);
+    ASSERT((s16)vif1.immediate == MercDataMemory::BUFFER_OFFSET);
     auto vif2 = VifCode(vifcode_data[2]);
-    assert(vif2.kind == VifCode::Kind::NOP);
+    ASSERT(vif2.kind == VifCode::Kind::NOP);
     auto vif3 = VifCode(vifcode_data[3]);
-    assert(vif3.kind == VifCode::Kind::UNPACK_V4_32);
+    ASSERT(vif3.kind == VifCode::Kind::UNPACK_V4_32);
     VifCodeUnpack up(vif3);
-    assert(up.addr_qw == MercDataMemory::LOW_MEMORY);
-    assert(!up.use_tops_flag);
-    assert(vif3.num == 8);
+    ASSERT(up.addr_qw == MercDataMemory::LOW_MEMORY);
+    ASSERT(!up.use_tops_flag);
+    ASSERT(vif3.num == 8);
   }
 
   // 8 qw's of low memory data
@@ -307,12 +316,12 @@ void MercRenderer::handle_setup(DmaFollower& dma,
   u32 vifcode_final_data[4];
   memcpy(vifcode_final_data, first.data + 16 + sizeof(LowMemory), 16);
   {
-    assert(VifCode(vifcode_final_data[0]).kind == VifCode::Kind::FLUSHE);
-    assert(vifcode_final_data[1] == 0);
-    assert(vifcode_final_data[2] == 0);
+    ASSERT(VifCode(vifcode_final_data[0]).kind == VifCode::Kind::FLUSHE);
+    ASSERT(vifcode_final_data[1] == 0);
+    ASSERT(vifcode_final_data[2] == 0);
     VifCode mscal(vifcode_final_data[3]);
-    assert(mscal.kind == VifCode::Kind::MSCAL);
-    assert(mscal.immediate == 0);
+    ASSERT(mscal.kind == VifCode::Kind::MSCAL);
+    ASSERT(mscal.immediate == 0);
   }
 
   // copy low memory into the VU "emulation" RAM.
@@ -320,12 +329,12 @@ void MercRenderer::handle_setup(DmaFollower& dma,
   mscal(0, render_state, prof);
 
   auto second = dma.read_and_advance();
-  assert(second.size_bytes == 32);  // setting up test register.
+  ASSERT(second.size_bytes == 32);  // setting up test register.
   m_direct.render_gif(second.data, 32, render_state, prof);
   auto nothing = dma.read_and_advance();
-  assert(nothing.size_bytes == 0);
-  assert(nothing.vif0() == 0);
-  assert(nothing.vif1() == 0);
+  ASSERT(nothing.size_bytes == 0);
+  ASSERT(nothing.vif0() == 0);
+  ASSERT(nothing.vif1() == 0);
 }
 
 void MercRenderer::draw_debug_window() {
@@ -337,10 +346,15 @@ void MercRenderer::draw_debug_window() {
   ImGui::Checkbox("Normal MSCAL enable", &m_enable_normal_mscals);
   ImGui::Checkbox("Prime MSCAL enable", &m_enable_prime_mscals);
   ImGui::Checkbox("Send to direct", &m_enable_send_to_direct);
+  m_direct2.draw_debug_window();
 }
 
 void MercRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (m_enable_send_to_direct) {
-    m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
+  if (m_enable_send_to_direct && render_state->enable_merc_xgkick) {
+    if (render_state->use_direct2) {
+      m_direct2.render_gif_data(m_buffer.data + (16 * addr), render_state, prof);
+    } else {
+      m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
+    }
   }
 }

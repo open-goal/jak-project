@@ -49,6 +49,18 @@
     (init-vf0-vector)
     (.lvf vf2 (&-> (-> arg1 bone) transform vector 3 quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+
+    ;; ADDED
+    ;; there's a bug in swamp-blimp where they vector<-cspace!
+    ;; on some default-initialized-to-zero bones
+    ;; we have to return 0s for this to avoid NaNs getting everywhere.
+    (let ((temp (new-stack-vector0)))
+      (.svf (&-> temp quad) vf2)
+      (when (= (-> temp w) 0.0)
+        (set-vector! arg0 0. 0. 0. 1.)
+        (return arg0)
+        )
+      )
     (.wait.vf)
     (.mul.vf vf2 vf2 Q :mask #b111)
     (.nop.vf)
@@ -106,7 +118,7 @@
   (none)
   )
 
-(defmethod dummy-9 lod-set ((obj lod-set) (arg0 skeleton-group) (arg1 art-group) (arg2 entity))
+(defmethod setup-lods! lod-set ((obj lod-set) (arg0 skeleton-group) (arg1 art-group) (arg2 entity))
   (local-vars (sv-16 res-tag))
   (let ((s4-0 arg0)
         (s5-0 arg1)
@@ -206,9 +218,9 @@
       )
     (add-connection
       (-> (if (-> self entity)
-                (-> self entity extra level)
-                (-> *level* level-default)
-                )
+              (-> self entity extra level)
+              (-> *level* level-default)
+              )
           foreground-draw-engine
           (-> self draw sink-group merc-sink foreground-texture-page)
           )
@@ -257,6 +269,14 @@
   )
 
 (defun execute-math-engine ()
+  (#when PC_PORT
+    (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
+                                 (bucket-id debug-draw1))
+        (when (-> *pc-settings* display-actor-counts)
+          (draw-string-xy (string-format "M: ~D/~D A: ~D" (-> *matrix-engine* length) MATRIX_ENGINE_AMOUNT (process-count *active-pool*)) debug-buf 8 (- 224 18) (font-color default) (font-flags shadow kerning))
+          )
+        )
+    )
   (let ((gp-0 *matrix-engine*))
     (countdown (s5-0 (-> gp-0 length))
       (let ((a0-1 (handle->process (-> gp-0 s5-0))))
@@ -289,7 +309,7 @@
 
 (defmethod do-joint-math! process-drawable ((obj process-drawable))
   (cond
-    ((logtest? (-> obj draw status) (draw-status drwf01 drwf02))
+    ((logtest? (-> obj draw status) (draw-status hidden no-anim))
      )
     ((zero? (-> obj skel))
      (matrix<-transformq+trans!
@@ -368,7 +388,7 @@
   (none)
   )
 
-(defmethod dummy-18 process-drawable ((obj process-drawable))
+(defmethod cleanup-for-death process-drawable ((obj process-drawable))
   (if (type-type? (-> obj root type) collide-shape)
       (clear-collide-with-as (the-as collide-shape (-> obj root)))
       )
@@ -480,7 +500,7 @@
         (set! s3-0 v0-3)
         )
       (let ((v1-26 s3-0))
-        (set! (-> v1-26 status) (draw-status drwf04))
+        (set! (-> v1-26 status) (draw-status no-skeleton-update))
         (set! (-> v1-26 art-group) s4-0)
         (set! (-> v1-26 jgeo) (the-as art-joint-geo sv-16))
         (set! (-> v1-26 force-lod) -1)
@@ -491,9 +511,9 @@
         (set! (-> v1-26 color-mult quad) (-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
         (set! (-> v1-26 color-emissive quad) (-> (new 'static 'vector) quad))
         (set! (-> v1-26 level-index) (the-as uint (-> (if (-> obj entity)
-                                                            (-> obj entity extra level)
-                                                            (-> *level* level-default)
-                                                            )
+                                                          (-> obj entity extra level)
+                                                          (-> *level* level-default)
+                                                          )
                                                       index
                                                       )
                                              )
@@ -513,7 +533,7 @@
             )
           )
         )
-      (if (not (dummy-9 (-> s3-0 lod-set) arg0 s4-0 (-> obj entity)))
+      (if (not (setup-lods! (-> s3-0 lod-set) arg0 s4-0 (-> obj entity)))
           (go process-drawable-art-error "mesh")
           )
       (let ((v1-43 (res-lump-value (-> sv-16 extra) 'texture-bucket int :default (the-as uint128 1))))
@@ -541,7 +561,7 @@
       (let ((a2-10 (res-lump-value (-> sv-16 extra) 'joint-channel int :default (the-as uint128 6))))
         (cond
           ((> a2-10 0)
-           (logior! (-> s3-0 status) (draw-status drwf07))
+           (logior! (-> s3-0 status) (draw-status has-joint-channels))
            (let ((v0-13 (new 'process 'joint-control a2-10)))
              (set! (-> obj skel) v0-13)
              (let ((s2-1 v0-13))
@@ -572,15 +592,15 @@
            )
           (else
             (set! (-> s3-0 skeleton bones 0 transform vector 3 quad) (-> (the-as vector (get-property-struct
-                                                                                            (-> sv-16 extra)
-                                                                                            'trans-offset
-                                                                                            'interp
-                                                                                            -1000000000.0
-                                                                                            *null-vector*
-                                                                                            (the-as (pointer res-tag) #f)
-                                                                                            *res-static-buf*
-                                                                                            )
-                                                                                   )
+                                                                                          (-> sv-16 extra)
+                                                                                          'trans-offset
+                                                                                          'interp
+                                                                                          -1000000000.0
+                                                                                          *null-vector*
+                                                                                          (the-as (pointer res-tag) #f)
+                                                                                          *res-static-buf*
+                                                                                          )
+                                                                                 )
                                                                          quad
                                                                          )
                   )
@@ -611,7 +631,7 @@
   obj
   )
 
-(defmethod dummy-16 process-drawable ((obj process-drawable) (arg0 int) (arg1 (inline-array vector)) (arg2 vector))
+(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 int) (arg1 transformq) (arg2 vector))
   (when (logtest? arg0 7)
     (let* ((body-T-world (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)))
            (world-T-body (matrix-transpose! (new 'stack-no-clear 'matrix) body-T-world))
@@ -622,7 +642,7 @@
           (set-vector! grav-rt-body 0.0 0.0 0.0 1.0)
           )
       (when (logtest? arg0 1)
-        (set! (-> vel-rt-body x) (+ (* (-> arg1 0 x) (-> arg2 x) (-> *display* frames-per-second))
+        (set! (-> vel-rt-body x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body x) (-> *display* seconds-per-frame))
                                     )
               )
@@ -630,14 +650,14 @@
             (set! (-> vel-rt-body z) 0.0)
             )
         )
-      (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 0 y) 0.0))))
-          (set! (-> vel-rt-body y) (+ (* (-> arg1 0 y) (-> arg2 y) (-> *display* frames-per-second))
+      (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 trans y) 0.0))))
+          (set! (-> vel-rt-body y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> *display* frames-per-second))
                                       (* (-> grav-rt-body y) (-> *display* seconds-per-frame))
                                       )
                 )
           )
       (when (logtest? arg0 4)
-        (set! (-> vel-rt-body z) (+ (* (-> arg1 0 z) (-> arg2 z) (-> *display* frames-per-second))
+        (set! (-> vel-rt-body z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body z) (-> *display* seconds-per-frame))
                                     )
               )
@@ -649,7 +669,7 @@
       )
     )
   (if (logtest? arg0 16)
-      (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (the-as quaternion (-> arg1 1))))
+      (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (-> arg1 quat)))
       )
   (the-as collide-shape (-> obj root))
   )
@@ -703,10 +723,10 @@
 (defbehavior ja-aframe process-drawable ((arg0 float) (arg1 int))
   (let ((v1-3 (-> self skel root-channel arg1 frame-group)))
     (/ (- arg0 (if (and v1-3 (nonzero? v1-3))
-                    (-> v1-3 artist-base)
-                    0.0
-                    )
-           )
+                   (-> v1-3 artist-base)
+                   0.0
+                   )
+          )
        (if v1-3
            (-> v1-3 artist-step)
            1.0
@@ -747,21 +767,20 @@
 
 (defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 int))
   (cond
-    ((or
-       (zero? (-> self skel active-channels))
-       (zero? arg1)
-       (when (>= (+ (-> self skel active-channels) arg0) (-> self skel allocated-length))
-         (format
-           0
-           "WARNING: ~A could not do (ja-channel-push ~D) because it has ~D/~D channels.~%"
-           self
-           arg0
-           (-> self skel active-channels)
-           (-> self skel allocated-length)
+    ((or (zero? (-> self skel active-channels))
+         (zero? arg1)
+         (when (>= (+ (-> self skel active-channels) arg0) (-> self skel allocated-length))
+           (format
+             0
+             "WARNING: ~A could not do (ja-channel-push ~D) because it has ~D/~D channels.~%"
+             self
+             arg0
+             (-> self skel active-channels)
+             (-> self skel allocated-length)
+             )
+           #t
            )
-         #t
          )
-       )
      (ja-channel-set! arg0)
      )
     (else
@@ -849,8 +868,8 @@
 
 (defbehavior ja-group-size process-drawable ()
   (if (< (the-as int (-> self skel root-channel))
-           (the-as int (-> self skel channel (-> self skel active-channels)))
-           )
+         (the-as int (-> self skel channel (-> self skel active-channels)))
+         )
       (-> self skel root-channel 0 group-size)
       0
       )
@@ -900,13 +919,14 @@
   0
   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
-(defmethod dummy-19 process-drawable ((obj process-drawable))
+;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
+;; WARN: Unsupported inline assembly instruction kind - [jr ra]
+(defmethod evaluate-joint-control process-drawable ((obj process-drawable))
   (local-vars (s7-0 none) (ra-0 int))
   (let ((gp-0 (-> obj skel)))
     (label cfg-1)
     (let ((s4-0 (-> gp-0 active-channels)))
-      (b! (logtest? (-> obj draw status) (draw-status drwf01)) cfg-27)
+      (b! (logtest? (-> obj draw status) (draw-status hidden)) cfg-27)
       (let ((s3-0 0))
         (b! #t cfg-13 :delay (nop!))
         (label cfg-3)
@@ -946,15 +966,15 @@
         (set! (-> gp-0 channel v1-26 frame-interp) (fmax 0.0 (fmin 1.0 (-> gp-0 channel v1-26 frame-interp))))
         )
       (if (or (zero? s4-0) (not (-> gp-0 root-channel 0 frame-group)))
-          (logior! (-> obj draw status) (draw-status drwf02))
+          (logior! (-> obj draw status) (draw-status no-anim))
           )
       )
-    (if (logtest? (-> obj skel status) 72)
+    (if (logtest? (-> obj skel status) (janim-status blerc blerc-done))
         (merc-blend-shape obj)
         )
-    ; (if (logtest? (-> obj skel status) 384)
-    ;     (merc-eye-anim obj)
-    ;     )
+    (if (logtest? (-> obj skel status) (janim-status eye-done eye))
+        (merc-eye-anim obj)
+        )
     (label cfg-27)
     (let ((a0-17 (-> gp-0 effect)))
       (if a0-17
@@ -968,14 +988,11 @@
 
 (defbehavior ja-post process-drawable ()
   (when (nonzero? (-> self draw))
-    (let ((gp-1 (logtest? (-> self draw status) (draw-status drwf04))))
-      (logclear! (-> self draw status) (draw-status drwf02 drwf04))
+    (let ((gp-1 (logtest? (-> self draw status) (draw-status no-skeleton-update))))
+      (logclear! (-> self draw status) (draw-status no-anim no-skeleton-update))
       (when (nonzero? (-> self skel))
-        (dummy-19 self)
-        
-
-        
-        (when (or (logtest? (-> self skel status) 1) gp-1)
+        (evaluate-joint-control self)
+        (when (or (logtest? (-> self skel status) (janim-status inited)) gp-1)
           (do-joint-math! self)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
               (update-transforms! (the-as collide-shape (-> self root)))
@@ -984,9 +1001,12 @@
           )
         )
       )
-    (let ((v1-24 *matrix-engine*))
-      (set! (-> v1-24 (-> v1-24 length)) (process->handle self))
-      (+! (-> v1-24 length) 1)
+    ;; NOTE : added matrix-engine check for PC port
+    (if (< (-> *matrix-engine* length) MATRIX_ENGINE_AMOUNT)
+      (let ((v1-24 *matrix-engine*))
+        (set! (-> v1-24 (-> v1-24 length)) (process->handle self))
+        (+! (-> v1-24 length) 1)
+        )
       )
     )
   0
@@ -1064,12 +1084,11 @@
   0
   )
 
-(defbehavior process-drawable-delay-player process-drawable ((arg0 int))
-  (while (and
-           *target*
-           (logtest? (-> *target* control unknown-surface00 flags) 2048)
-           (zero? (logand (-> *target* control status) 1))
-           )
+(defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
+  (while (and *target*
+              (logtest? (-> *target* control unknown-surface00 flags) 2048)
+              (zero? (logand (-> *target* control status) 1))
+              )
     (suspend)
     )
   (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -1180,10 +1199,9 @@
               (set! s5-0 (cond
                            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
                             (when (not
-                                    (and
-                                      (>= (the int (-> s2-0 frame-num)) 0)
-                                      (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
-                                      )
+                                    (and (>= (the int (-> s2-0 frame-num)) 0)
+                                         (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
+                                         )
                                     )
                               (format
                                 *valid-con*

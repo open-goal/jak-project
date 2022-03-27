@@ -31,6 +31,7 @@ add_library(compiler
         data_compiler/dir_tpages.cpp
         data_compiler/DataObjectGenerator.cpp
         data_compiler/game_count.cpp
+        data_compiler/game_subtitle.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         listener/Listener.cpp
@@ -48,12 +49,6 @@ target_link_libraries(compiler common Zydis)
 
 if (WIN32)
     target_link_libraries(compiler mman)
-endif ()
-
-if (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-elseif (WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
 endif ()
 
 add_executable(goalc main.cpp)

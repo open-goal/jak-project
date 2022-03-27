@@ -83,12 +83,12 @@ class FormStack {
           if (!my_entry.destination) {
             return {};
           }
-          assert(my_entry.source && !my_entry.elt);
+          ASSERT(my_entry.source && !my_entry.elt);
         } else {
           if (my_entry.destination) {
             return {};
           }
-          assert(my_entry.elt && !my_entry.source);
+          ASSERT(my_entry.elt && !my_entry.source);
         }
         entries.push_back(my_entry);
       } else {
@@ -100,7 +100,7 @@ class FormStack {
 
   void pop(int count) {
     for (int i = 0; i < count; i++) {
-      assert(!m_stack.empty());
+      ASSERT(!m_stack.empty());
       m_stack.pop_back();
     }
   }
@@ -125,7 +125,7 @@ class FormStack {
         return;
       }
     }
-    assert(false);
+    ASSERT(false);
   }
 
   int size() const { return m_stack.size(); }

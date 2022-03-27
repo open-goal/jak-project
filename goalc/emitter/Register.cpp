@@ -93,7 +93,7 @@ HWRegKind reg_class_to_hw(RegClass reg_class) {
     case RegClass::GPR_64:
       return HWRegKind::GPR;
     default:
-      assert(false);
+      ASSERT(false);
       return HWRegKind::INVALID;
   }
 }

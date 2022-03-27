@@ -46,7 +46,7 @@ void for_each_in_list(goos::Object& list, T f) {
 
 void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_path) {
   auto read = m_reader.read_from_file(file_path);
-  auto data = cdr(read);
+  auto& data = cdr(read);
 
   for_each_in_list(data, [&](goos::Object& o) {
     try {
@@ -100,7 +100,7 @@ TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
 }
 
 std::string DecompilerTypeSystem::dump_symbol_types() {
-  assert(symbol_add_order.size() == symbols.size());
+  ASSERT(symbol_add_order.size() == symbols.size());
   std::string result;
   for (auto& symbol_name : symbol_add_order) {
     auto skv = symbol_types.find(symbol_name);
@@ -303,7 +303,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::DYNAMIC_METHOD_ACCESS:
       case TP_Type::Kind::INVALID:
       default:
-        assert(false);
+        ASSERT(false);
         return {};
     }
   } else {

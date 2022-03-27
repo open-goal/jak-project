@@ -17,8 +17,8 @@ struct MatchResult {
     std::vector<std::optional<RegisterAccess>> regs;
     std::unordered_map<int, std::string> strings;
     std::unordered_map<int, Form*> forms;
-    std::unordered_map<int, int> label;
-    std::unordered_map<int, int> ints;
+    std::unordered_map<int, s64> label;
+    std::unordered_map<int, s64> ints;
   } maps;
 };
 
@@ -105,10 +105,20 @@ class DerefTokenMatcher {
   static DerefTokenMatcher integer(int value);
   static DerefTokenMatcher any_string(int match_id = -1);
   static DerefTokenMatcher any_integer(int match_id = -1);
+  static DerefTokenMatcher any_expr(int match_id = -1);
+  static DerefTokenMatcher any_expr_or_int(int match_id = -1);
 
-  enum class Kind { STRING, ANY_STRING, CONSTANT_INTEGER, ANY_INTEGER, INVALID };
+  enum class Kind {
+    STRING,
+    ANY_STRING,
+    CONSTANT_INTEGER,
+    ANY_INTEGER,
+    ANY_EXPR,
+    ANY_EXPR_OR_INT,
+    INVALID
+  };
 
-  bool do_match(const DerefToken& input, MatchResult::Maps* maps_out) const;
+  bool do_match(DerefToken& input, MatchResult::Maps* maps_out) const;
 
  private:
   Kind m_kind = Kind::INVALID;

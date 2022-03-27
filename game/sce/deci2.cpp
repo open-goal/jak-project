@@ -8,7 +8,7 @@
 #include "common/log/log.h"
 #include "deci2.h"
 #include "game/system/Deci2Server.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace ee {
 
@@ -86,7 +86,7 @@ s32 sceDeci2Open(u16 protocol, void* opt, void (*handler)(s32 event, s32 param, 
  * Deactivate a DECI2 protocol by socket descriptor.
  */
 s32 sceDeci2Close(s32 s) {
-  assert(s - 1 < protocol_count);
+  ASSERT(s - 1 < protocol_count);
   protocols[s - 1].active = false;
   return 1;
 }
@@ -95,7 +95,7 @@ s32 sceDeci2Close(s32 s) {
  * Start a send.
  */
 s32 sceDeci2ReqSend(s32 s, char dest) {
-  assert(s - 1 < protocol_count);
+  ASSERT(s - 1 < protocol_count);
   auto& proto = protocols[s - 1];
   proto.pending_send = dest;
   return 0;
@@ -106,7 +106,7 @@ s32 sceDeci2ReqSend(s32 s, char dest) {
  * Returns after data is copied.
  */
 s32 sceDeci2ExRecv(s32 s, void* buf, u16 len) {
-  assert(s - 1 < protocol_count);
+  ASSERT(s - 1 < protocol_count);
   protocols[s - 1].recv_size = len;
   auto avail = protocols[s - 1].available_to_receive;
   if (len <= avail) {
@@ -122,7 +122,7 @@ s32 sceDeci2ExRecv(s32 s, void* buf, u16 len) {
  * Do a send.
  */
 s32 sceDeci2ExSend(s32 s, void* buf, u16 len) {
-  assert(s - 1 < protocol_count);
+  ASSERT(s - 1 < protocol_count);
   if (!sending_driver) {
     printf("sceDeci2ExSend called at illegal time!\n");
   }

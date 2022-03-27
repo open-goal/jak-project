@@ -16,6 +16,8 @@
 
 ;; DECOMP BEGINS
 
+;; control time of day palette from outside the time of day system
+;; (for example, the cave crystals and deadly water in LPC)
 (deftype palette-fade-control (structure)
   ((trans      vector :inline :offset-assert   0)
    (fade       float          :offset-assert  16)
@@ -26,7 +28,7 @@
   :flag-assert         #x900000018
   )
 
-
+;; group of 8 palette fade controls
 (deftype palette-fade-controls (basic)
   ((control palette-fade-control 8 :inline :offset-assert  16)
    )
@@ -39,9 +41,11 @@
     )
   )
 
-
+;; the global palette fade control used by game objects to control time of day lighting effects
 (define-perm *palette-fade-controls* palette-fade-controls (new 'global 'palette-fade-controls))
 
+;; the time-of-day system runs a single process that just ticks time forward and controls
+;; star/sun/moon/green-sun particle launch.
 (deftype time-of-day-proc (process)
   ((year            int32                     :offset-assert 112)
    (month           int32                     :offset-assert 116)
@@ -71,7 +75,8 @@
     )
   )
 
-
+;; a color palette that can be interpolated based on the time of day.
+;; tie/tfrag/shrub all use these.
 (deftype time-of-day-palette (basic)
   ((width  int32   :offset-assert   4)
    (height int32   :offset-assert   8)
@@ -83,7 +88,7 @@
   :flag-assert         #x900000014
   )
 
-
+;; all time of day state.
 (deftype time-of-day-context (basic)
   ((active-count         uint32                 :offset-assert   4)
    (interp               float                  :offset-assert   8)
@@ -112,7 +117,7 @@
   :flag-assert         #x900000848
   )
 
-
+;; dma memory layout for time of day palette interpolation
 (deftype time-of-day-dma (structure)
   ((outa  uint32 256 :offset-assert   0)
    (outb  uint32 256 :offset-assert 1024)
@@ -124,7 +129,8 @@
   :flag-assert         #x900001000
   )
 
-
+;; weird, either 8 (running) or 4 (not running)
 (define *time-of-day-mode* 8)
 
+;; the global time of day context - this is used to access all mood and time of day data.
 (define *time-of-day-context* (new 'static 'time-of-day-context))

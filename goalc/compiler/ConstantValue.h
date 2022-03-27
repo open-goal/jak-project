@@ -4,7 +4,7 @@
 #include "common/common_types.h"
 #include "common/util/BitUtils.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 struct U128 {
   U128() = default;
@@ -16,7 +16,7 @@ struct U128 {
 class ConstantValue {
  public:
   ConstantValue(const void* data, int size) : m_size(size) {
-    assert(size == 8 || size == 16);
+    ASSERT(size == 8 || size == 16);
     memcpy(m_value, data, size);
   }
 
@@ -29,21 +29,21 @@ class ConstantValue {
   }
 
   s64 value_64() const {
-    assert(m_size == 8);
+    ASSERT(m_size == 8);
     s64 result;
     memcpy(&result, m_value, sizeof(s64));
     return result;
   }
 
   u64 value_128_lo() const {
-    assert(m_size == 16);
+    ASSERT(m_size == 16);
     s64 result;
     memcpy(&result, m_value, sizeof(s64));
     return result;
   }
 
   u64 value_128_hi() const {
-    assert(m_size == 16);
+    ASSERT(m_size == 16);
     s64 result;
     memcpy(&result, m_value + sizeof(s64), sizeof(s64));
     return result;
@@ -76,7 +76,7 @@ class ConstantValue {
       memcpy(destination, m_value, 16);
       return true;
     } else {
-      assert(false);
+      ASSERT(false);
     }
     return false;
   }

@@ -15,7 +15,7 @@
 #include "common/common_types.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/analysis/symbol_def_map.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -99,7 +99,7 @@ class ObjectFileDB {
 
   std::string process_tpages(TextureDB& tex_db);
   std::string process_game_count_file();
-  std::string process_game_text_files(GameTextVersion version);
+  std::string process_game_text_files(const Config& cfg);
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
@@ -125,7 +125,7 @@ class ObjectFileDB {
    */
   template <typename Func>
   void for_each_obj(Func f) {
-    assert(obj_files_by_name.size() == obj_file_order.size());
+    ASSERT(obj_files_by_name.size() == obj_file_order.size());
     for (const auto& name : obj_file_order) {
       for (auto& obj : obj_files_by_name.at(name)) {
         // lg::info("{}...", name);

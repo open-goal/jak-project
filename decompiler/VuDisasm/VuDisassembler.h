@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include "decompiler/VuDisasm/VuProgram.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 
@@ -57,11 +57,11 @@ class VuDisassembler {
   VuDisassembler(VuKind kind);
   VuProgram disassemble(void* data, int size_bytes, bool debug_print = false);
   std::string to_string(const VuInstruction& instr) const;
-  std::string to_cpp(const VuInstruction& instr) const;
+  std::string to_cpp(const VuInstruction& instr, bool mips2c_format) const;
   std::string to_string(const VuInstructionPair& pair) const;
-  std::string to_string_with_cpp(const VuInstructionPair& pair) const;
+  std::string to_string_with_cpp(const VuInstructionPair& pair, bool mips2c_format, int idx) const;
   std::string to_string(const VuProgram& prog) const;
-  std::string to_string_with_cpp(const VuProgram& prog) const;
+  std::string to_string_with_cpp(const VuProgram& prog, bool mips2c_format) const;
   int add_label(int instr);
   void add_label_with_name(int instr, const std::string& name);
 
@@ -148,6 +148,10 @@ class VuDisassembler {
       return step({VuDecodeStep::FieldK::FS, VuDecodeStep::AtomK::ASSERT_ZERO});
     }
 
+    OpInfo& vfs_zero() {
+      return step({VuDecodeStep::FieldK::FS, VuDecodeStep::AtomK::ASSERT_ZERO});
+    }
+
     OpInfo& ftf_zero() {
       return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::ASSERT_ZERO});
     }
@@ -220,7 +224,7 @@ class VuDisassembler {
   };
 
   const OpInfo& info(VuInstrK op) const {
-    assert((int)op < (int)VuInstrK::INVALID);
+    ASSERT((int)op < (int)VuInstrK::INVALID);
     return m_op_info[(int)op];
   }
 

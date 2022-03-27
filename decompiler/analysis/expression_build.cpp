@@ -17,7 +17,7 @@ bool convert_to_expressions(
     const std::vector<std::string>& arg_names,
     const std::unordered_map<std::string, LocalVarOverride>& var_override_map,
     const DecompilerTypeSystem& dts) {
-  assert(top_level_form);
+  ASSERT(top_level_form);
 
   // set argument names to some reasonable defaults. these will be used if the user doesn't
   // give us anything more specific.
@@ -141,7 +141,7 @@ bool convert_to_expressions(
 
     // and sanity check for tree errors.
     for (auto x : top_level_form->elts()) {
-      assert(x->parent_form == top_level_form);
+      ASSERT(x->parent_form == top_level_form);
     }
 
     // if we were don't return, make sure we didn't find a return form.

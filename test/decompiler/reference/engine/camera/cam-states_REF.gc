@@ -934,7 +934,7 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (new 'stack-no-clear 'matrix))
+    (let ((gp-0 (new 'stack-no-clear 'cam-vector-seeker))
           (f30-0 (-> self velocity y))
           )
       (let ((s4-0 (new 'stack-no-clear 'vector))
@@ -944,30 +944,24 @@
         (set! (-> s4-0 y) 0.0)
         (set! (-> s5-0 quad) (-> self velocity quad))
         (set! (-> s5-0 y) 0.0)
-        ((method-of-type cam-vector-seeker init!)
-         (the-as cam-vector-seeker gp-0)
-         s4-0
-         (the-as float 81.92)
-         (fmax 819.2 (vector-length s5-0))
-         (the-as float 0.75)
-         )
-        (set! (-> gp-0 vector 2 quad) (-> s5-0 quad))
+        (init! gp-0 s4-0 (the-as float 81.92) (fmax 819.2 (vector-length s5-0)) (the-as float 0.75))
+        (set! (-> gp-0 vel quad) (-> s5-0 quad))
         )
       (while #t
         (when (not (paused?))
-          (set! (-> gp-0 vector 0 x) (-> (target-pos 0) x))
-          (set! (-> gp-0 vector 0 z) (-> (target-pos 0) z))
-          ((method-of-type cam-vector-seeker update!) (the-as cam-vector-seeker gp-0) (the-as vector #f))
-          (when (< 819.2 (-> gp-0 vector 3 y))
-            (set! (-> gp-0 vector 3 y) (* 0.9 (-> gp-0 vector 3 y)))
-            (if (< (-> gp-0 vector 3 y) 819.2)
-                (set! (-> gp-0 vector 3 y) 819.2)
+          (set! (-> gp-0 target x) (-> (target-pos 0) x))
+          (set! (-> gp-0 target z) (-> (target-pos 0) z))
+          (update! gp-0 (the-as vector #f))
+          (when (< 819.2 (-> gp-0 max-vel))
+            (set! (-> gp-0 max-vel) (* 0.9 (-> gp-0 max-vel)))
+            (if (< (-> gp-0 max-vel) 819.2)
+                (set! (-> gp-0 max-vel) 819.2)
                 )
             )
           (set! f30-0 (* 0.9 f30-0))
           (+! (-> self trans y) f30-0)
-          (set! (-> self trans x) (-> gp-0 vector 1 x))
-          (set! (-> self trans z) (-> gp-0 vector 1 z))
+          (set! (-> self trans x) (-> gp-0 value x))
+          (set! (-> self trans z) (-> gp-0 value z))
           )
         (suspend)
         )
@@ -1314,10 +1308,7 @@
   )
 
 ;; definition for symbol *CAM_STRING-bank*, type cam-string-bank
-(define
-  *CAM_STRING-bank*
-  (new 'static 'cam-string-bank :los-coll-rad (meters 1.0) :los-coll-rad2 (meters 0.5))
-  )
+(define *CAM_STRING-bank* (new 'static 'cam-string-bank :los-coll-rad (meters 1) :los-coll-rad2 (meters 0.5)))
 
 ;; definition for function cam-string-find-position-rel!
 ;; Used lq/sq
@@ -2400,7 +2391,7 @@
             )
         (let ((s4-0 (new 'stack-no-clear 'vector))
               (s5-1 (new 'stack-no-clear 'vector))
-              (s3-0 (new 'stack-no-clear 'vector))
+              (s3-0 (new 'stack-no-clear 'matrix))
               )
           0.0
           (vector-flatten! s4-0 (the-as vector (&-> gp-0 found-boundary)) (-> *camera* local-down))
@@ -2413,9 +2404,9 @@
                          )
                        )
                 )
-            (matrix-from-two-vectors-max-angle-partial! (the-as matrix s3-0) s5-1 s4-0 f0-12 (the-as float 0.5))
+            (matrix-from-two-vectors-max-angle-partial! s3-0 s5-1 s4-0 f0-12 (the-as float 0.5))
             )
-          (vector-matrix*! (-> self view-flat) (-> self view-flat) (the-as matrix s3-0))
+          (vector-matrix*! (-> self view-flat) (-> self view-flat) s3-0)
           )
         (vector-normalize! (-> self view-flat) f30-0)
         )
@@ -2453,7 +2444,7 @@
         (set! f28-0 (* 0.05 (-> self phony-joystick-y)))
         )
     (if (and (-> *camera* being-attacked)
-             (< (- (-> *display* base-frame-counter) (the-as int (-> *camera* attack-start))) 75)
+             (< (- (-> *display* base-frame-counter) (-> *camera* attack-start)) (seconds 0.25))
              )
         (set! f28-0 0.05)
         )
@@ -3127,13 +3118,10 @@
   )
 
 ;; definition for symbol *CAM_STICK-bank*, type cam-stick-bank
-(define *CAM_STICK-bank* (new 'static 'cam-stick-bank
-                           :max-z (meters 30.0)
-                           :min-z (meters 5.0)
-                           :max-y (meters 15.0)
-                           :min-y (meters 2.0)
-                           )
-        )
+(define
+  *CAM_STICK-bank*
+  (new 'static 'cam-stick-bank :max-z (meters 30) :min-z (meters 5) :max-y (meters 15) :min-y (meters 2))
+  )
 
 ;; definition for function cam-stick-code
 ;; Used lq/sq
@@ -3379,7 +3367,7 @@
 ;; definition for symbol *CAM_BIKE-bank*, type cam-bike-bank
 (define
   *CAM_BIKE-bank*
-  (new 'static 'cam-bike-bank :max-z (meters 6.0) :min-z (meters 10.0) :max-y (meters 3.0) :min-y (meters 5.0))
+  (new 'static 'cam-bike-bank :max-z (meters 6) :min-z (meters 10) :max-y (meters 3) :min-y (meters 5))
   )
 
 ;; definition for function cam-calc-bike-follow!

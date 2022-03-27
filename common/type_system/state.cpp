@@ -5,7 +5,7 @@
  * Convert a (state <blah> ...) to the function required to go. Must be state.
  */
 TypeSpec state_to_go_function(const TypeSpec& state_type, const TypeSpec& return_type) {
-  assert(state_type.base_type() == "state");
+  ASSERT(state_type.base_type() == "state");
   std::vector<TypeSpec> arg_types;
   for (int i = 0; i < (int)state_type.arg_count() - 1; i++) {
     arg_types.push_back(state_type.get_arg(i));
@@ -31,7 +31,7 @@ StateHandler handler_name_to_kind(const std::string& name) {
   } else if (name == "post") {
     return StateHandler::POST;
   } else {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -50,7 +50,7 @@ std::string handler_kind_to_name(StateHandler kind) {
     case StateHandler::POST:
       return "post";
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -80,7 +80,7 @@ TypeSpec get_state_handler_type(StateHandler kind, const TypeSpec& state_type) {
       break;
 
     default:
-      assert(false);
+      ASSERT(false);
   }
   result.add_or_modify_tag("behavior", state_type.last_arg().base_type());
   return result;

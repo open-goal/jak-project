@@ -152,7 +152,7 @@
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj idle-distance) 245760.0)
   (dummy-22 obj)
-  (logior! (-> obj skel status) 1)
+  (logior! (-> obj skel status) (janim-status inited))
   (dummy-24 obj)
   (none)
   )
@@ -243,7 +243,7 @@
   :virtual #t
   :trans
   (behavior ()
-    (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options fop3))
+    (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
                                  (get-current-phase (-> self sync))
                                  (get-current-phase-with-mirror (-> self sync))
                                  )
@@ -329,10 +329,10 @@
 
 ;; definition of type citb-stair-plat
 (deftype citb-stair-plat (citb-base-plat)
-  ((idle-height float   :offset-assert 180)
-   (rise-height float   :offset-assert 184)
-   (delay       uint64  :offset-assert 192)
-   (rise        symbol  :offset-assert 200)
+  ((idle-height float       :offset-assert 180)
+   (rise-height float       :offset-assert 184)
+   (delay       time-frame  :offset-assert 192)
+   (rise        symbol      :offset-assert 200)
    )
   :heap-base #x60
   :method-count-assert 25
@@ -372,14 +372,14 @@
   (the-as (function none :behavior citb-stair-plat) #f)
   :code
   (behavior ()
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (while (not (-> self rise))
       (suspend)
       )
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (set-vector! (-> self draw color-mult) 0.0 0.0 0.0 1.0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self delay)))
+    (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay))
       (ja-post)
       (suspend)
       )
@@ -432,7 +432,9 @@
   (set! (-> obj idle-height) (+ -409600.0 (-> obj rise-height)))
   (set! (-> obj root-override trans y) (-> obj idle-height))
   (set! (-> obj rise) #f)
-  (set! (-> obj delay) (the-as uint (the int (* 300.0 (res-lump-float (-> obj entity) 'delay :default 1.0)))))
+  (set! (-> obj delay)
+        (the-as time-frame (the int (* 300.0 (res-lump-float (-> obj entity) 'delay :default 1.0))))
+        )
   (let ((f0-7 1.5))
     (set-vector! (-> obj root-override scale) f0-7 f0-7 f0-7 1.0)
     (set! (-> obj root-override root-prim local-sphere w)
@@ -462,24 +464,24 @@
 (define *citb-chain-plat-constants* (new 'static 'rigid-body-platform-constants
                                       :drag-factor 2.0
                                       :buoyancy-factor 2.0
-                                      :max-buoyancy-depth (meters 3.0)
+                                      :max-buoyancy-depth (meters 3)
                                       :gravity-factor 1.0
-                                      :gravity (meters 80.0)
-                                      :player-weight (meters 35.0)
+                                      :gravity (meters 80)
+                                      :player-weight (meters 35)
                                       :player-bonk-factor 1.0
                                       :player-dive-factor 1.0
-                                      :player-force-distance (meters 1000.0)
-                                      :player-force-clamp (meters 1000000.0)
-                                      :player-force-timeout #x1e
-                                      :explosion-force (meters 1000.0)
+                                      :player-force-distance (meters 1000)
+                                      :player-force-clamp (meters 1000000)
+                                      :player-force-timeout (seconds 0.1)
+                                      :explosion-force (meters 1000)
                                       :linear-damping 1.0
                                       :angular-damping 1.0
                                       :control-point-count 5
                                       :mass 2.0
-                                      :inertial-tensor-x (meters 10.0)
-                                      :inertial-tensor-y (meters 5.0)
-                                      :inertial-tensor-z (meters 10.0)
-                                      :idle-distance (meters 70.0)
+                                      :inertial-tensor-x (meters 10)
+                                      :inertial-tensor-y (meters 5)
+                                      :inertial-tensor-z (meters 10)
+                                      :idle-distance (meters 70)
                                       :platform #t
                                       :sound-name "blue-eco-on"
                                       )
@@ -560,7 +562,7 @@
   :virtual #t
   :trans
   (behavior ()
-    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (if (and (and *target* (>= (-> self info idle-distance)
                                  (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
@@ -610,7 +612,7 @@
                  )
             (send-event *target* 'query 'powerup 3)
             )
-       (when (< (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+       (when (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
          (if (rand-vu-percent? 0.05)
              (spawn-projectile-blue *target*)
              )
@@ -655,7 +657,7 @@
       (set! (-> gp-0 quad) (-> self root-overlay trans quad))
       (quaternion-copy! s5-0 (-> self root-overlay quat))
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 75)
+      (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.25))
         (let ((f30-0 (* 0.013333334 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
           (quaternion-slerp! (-> self root-overlay quat) s5-0 (-> self orig-quat) f30-0)
           (vector-lerp! (-> self root-overlay trans) gp-0 (-> self orig-trans) f30-0)
@@ -1045,7 +1047,7 @@
 ;; definition for method 26 of type citb-stopbox
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-26 citb-stopbox ((obj citb-stopbox))
-  (logior! (-> obj fact options) (fact-options fop3))
+  (logior! (-> obj fact options) (fact-options wrap-phase))
   (logclear! (-> obj mask) (process-mask actor-pause))
   0
   (none)
@@ -1363,7 +1365,7 @@
     )
   :code
   (behavior ()
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-override))
     (while #t
       (suspend)
@@ -1378,7 +1380,7 @@
   (the-as (function none :behavior citb-exit-plat) rider-trans)
   :code
   (behavior ()
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (while #t

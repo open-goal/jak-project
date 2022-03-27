@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <ctime>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Timer for measuring time elapsed with clock_monotonic
@@ -15,7 +15,7 @@ class Timer {
   explicit Timer() { start(); }
 
 #ifdef _WIN32
-  int clock_gettime_monotonic(struct timespec* tv);
+  int clock_gettime_monotonic(struct timespec* tv) const;
 #endif
 
   /*!
@@ -26,19 +26,19 @@ class Timer {
   /*!
    * Get milliseconds elapsed
    */
-  double getMs() { return (double)getNs() / 1.e6; }
+  double getMs() const { return (double)getNs() / 1.e6; }
 
-  double getUs() { return (double)getNs() / 1.e3; }
+  double getUs() const { return (double)getNs() / 1.e3; }
 
   /*!
    * Get nanoseconds elapsed
    */
-  int64_t getNs();
+  int64_t getNs() const;
 
   /*!
    * Get seconds elapsed
    */
-  double getSeconds() { return (double)getNs() / 1.e9; }
+  double getSeconds() const { return (double)getNs() / 1.e9; }
 
   struct timespec _startTime = {};
 };

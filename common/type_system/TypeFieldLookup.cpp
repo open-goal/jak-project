@@ -18,8 +18,8 @@ bool deref_matches(const DerefInfo& expected,
                    const DerefKind& actual,
                    bool is_integer,
                    bool is_basic) {
-  assert(expected.mem_deref);
-  assert(expected.can_deref);
+  ASSERT(expected.mem_deref);
+  ASSERT(expected.can_deref);
   if (actual.is_store || actual.size >= 8 || !is_integer) {
     // don't check sign extension
     return expected.load_size == actual.size;
@@ -62,7 +62,7 @@ std::string FieldReverseLookupOutput::Token::print() const {
     case Kind::VAR_IDX:
       return "__VAR__";
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -132,7 +132,7 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
   auto di = ts.get_deref_info(array_data_type);
   bool is_integer = ts.tc(TypeSpec("integer"), input.base_type.get_single_arg());
   bool is_basic = ts.tc(TypeSpec("basic"), input.base_type.get_single_arg());
-  assert(di.mem_deref);  // it's accessing a pointer.
+  ASSERT(di.mem_deref);  // it's accessing a pointer.
   auto elt_type = di.result_type;
 
   if (input.stride) {
@@ -243,8 +243,8 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
     return;
   }
   auto di = ts.get_deref_info(input.base_type);
-  assert(di.can_deref);
-  assert(!di.mem_deref);
+  ASSERT(di.can_deref);
+  ASSERT(!di.mem_deref);
 
   if (input.stride && input.stride == di.stride && input.offset < di.stride) {
     // variable lookup.

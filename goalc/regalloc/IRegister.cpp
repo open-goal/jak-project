@@ -1,6 +1,6 @@
 #include "third-party/fmt/core.h"
 #include "IRegister.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 std::string IRegister::to_string() const {
   //  if (with_constraints) {
@@ -21,7 +21,7 @@ std::string IRegister::to_string() const {
     case RegClass::VECTOR_FLOAT:
       return fmt::format("ivf-{}", id);
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }

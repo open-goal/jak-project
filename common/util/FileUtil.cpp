@@ -13,7 +13,13 @@
 #include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
 #include "common/common_types.h"
-#include "third-party/svpng.h"
+
+// This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
+// because nobody will care if png compression is 10% slower.
+#define FPNG_NO_SSE 1
+#include "third-party/fpng/fpng.cpp"
+
+#include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
 #include "third-party/lzokay/lzokay.hpp"
 
@@ -23,7 +29,7 @@
 #include <unistd.h>
 #include <cstring>
 #endif
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace file_util {
 std::filesystem::path get_user_home_dir() {
@@ -35,6 +41,19 @@ std::filesystem::path get_user_home_dir() {
   std::string home_dir = std::getenv("HOME");
   return std::filesystem::path(home_dir);
 #endif
+}
+
+std::filesystem::path get_user_game_dir() {
+  // TODO - i anticipate UTF-8 problems on windows with our current FS api
+  return get_user_home_dir() / "OpenGOAL";
+}
+
+std::filesystem::path get_user_settings_dir() {
+  return get_user_game_dir() / "jak1" / "settings";
+}
+
+std::filesystem::path get_user_memcard_dir() {
+  return get_user_game_dir() / "jak1" / "saves";
 }
 
 std::string get_project_path() {
@@ -60,6 +79,14 @@ std::string get_project_path() {
 }
 
 std::string get_file_path(const std::vector<std::string>& input) {
+  // TODO - clean this behaviour up, it causes unexpected behaviour when working with files
+  // the project path should be explicitly provided by whatever if needed
+  // TEMP HACK
+  // - if the provided path is absolute, don't add the project path
+  if (input.size() == 1 && std::filesystem::path(input.at(0)).is_absolute()) {
+    return input.at(0);
+  }
+
   std::string currentPath = file_util::get_project_path();
   char dirSeparator;
 
@@ -85,6 +112,10 @@ bool create_dir_if_needed(const std::string& path) {
   return false;
 }
 
+bool create_dir_if_needed_for_file(const std::string& path) {
+  return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+}
+
 void write_binary_file(const std::string& name, const void* data, size_t size) {
   FILE* fp = fopen(name.c_str(), "wb");
   if (!fp) {
@@ -100,14 +131,13 @@ void write_binary_file(const std::string& name, const void* data, size_t size) {
 }
 
 void write_rgba_png(const std::string& name, void* data, int w, int h) {
-  FILE* fp = fopen(name.c_str(), "wb");
-  if (!fp) {
-    throw std::runtime_error("couldn't open file " + name);
+  auto flags = 0;
+
+  auto ok = fpng::fpng_encode_image_to_file(name.c_str(), data, w, h, 4, flags);
+
+  if (!ok) {
+    throw std::runtime_error("couldn't save png file " + name);
   }
-
-  svpng(fp, w, h, (const unsigned char*)data, 1);
-
-  fclose(fp);
 }
 
 void write_text_file(const std::string& file_name, const std::string& text) {
@@ -174,9 +204,13 @@ std::string combine_path(const std::string& parent, const std::string& child) {
   return parent + "/" + child;
 }
 
+bool file_exists(const std::string& path) {
+  return std::filesystem::exists(path);
+}
+
 std::string base_name(const std::string& filename) {
   size_t pos = 0;
-  assert(!filename.empty());
+  ASSERT(!filename.empty());
   for (size_t i = filename.size() - 1; i-- > 0;) {
     if (filename.at(i) == '/' || filename.at(i) == '\\') {
       pos = (i + 1);
@@ -201,7 +235,7 @@ void init_crc() {
 }
 
 uint32_t crc32(const uint8_t* data, size_t size) {
-  assert(sInitCrc);
+  ASSERT(sInitCrc);
   uint32_t crc = 0;
   for (size_t i = size; i != 0; i--, data++) {
     crc = crc_table[crc >> 24u] ^ ((crc << 8u) | *data);
@@ -283,7 +317,7 @@ void ISONameFromAnimationName(char* dst, const char* src) {
 
   // upper case
   for (i = 0; i < 8; i++) {
-    if (dst[i] > '`' && dst[i] < '{') {
+    if (dst[i] >= 'a' && dst[i] <= 'z') {
       dst[i] -= 0x20;
     }
   }
@@ -343,7 +377,7 @@ void MakeISOName(char* dst, const char* src) {
 void assert_file_exists(const char* path, const char* error_message) {
   if (!std::filesystem::exists(path)) {
     fprintf(stderr, "File %s was not found: %s\n", path, error_message);
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -385,12 +419,12 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
       lzokay::EResult ok = lzokay::decompress(
           compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
           decompressed_data.size() - output_offset, bytes_written);
-      assert(ok == lzokay::EResult::Success);
+      ASSERT(ok == lzokay::EResult::Success);
       compressed_reader.ffwd(chunk_size);
       output_offset += bytes_written;
     } else {
       // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
-      //        assert(chunk_size == MAX_CHUNK_SIZE);
+      //        ASSERT(chunk_size == MAX_CHUNK_SIZE);
       memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
       compressed_reader.ffwd(MAX_CHUNK_SIZE);
       output_offset += MAX_CHUNK_SIZE;

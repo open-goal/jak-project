@@ -4,7 +4,7 @@
 #include "third-party/fmt/core.h"
 #include "common/link_types.h"
 #include "common/util/BitUtils.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace listener {
 std::string LoadEntry::print() const {
@@ -60,7 +60,7 @@ MemoryMap::MemoryMap(const std::unordered_map<std::string, LoadEntry>& load_entr
       printf("%s\n", temp.print().c_str());
       printf("Can't add %s\n", entry.print().c_str());
 
-      assert(false);  // todo, handle this more gracefully
+      ASSERT(false);  // todo, handle this more gracefully
     } else if (entry.start_addr > last_addr) {
       // this is fine, there's just a gap.
       MemoryMapEntry gap;
@@ -107,7 +107,7 @@ const MemoryMapEntry& MemoryMap::lookup(u32 addr) {
       return entry;
     }
   }
-  assert(false);
+  ASSERT(false);
   throw std::runtime_error("MemoryMap::lookup failed");
 }
 

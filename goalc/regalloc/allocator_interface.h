@@ -102,7 +102,7 @@ class AssignmentRange {
                   const std::vector<Assignment>& assignments)
       : m_start(start_instr), m_live(live), m_ass(assignments) {
     m_end = start_instr + live.size() - 1;
-    assert(m_live.size() == m_ass.size());
+    ASSERT(m_live.size() == m_ass.size());
   }
   bool is_live_at_instr(int instr) const {
     return has_info_at(instr) && m_live.at(instr - m_start);
@@ -139,12 +139,12 @@ struct AllocationResult {
   int total_stack_slots() const { return stack_slots_for_spills + stack_slots_for_vars; }
 
   int get_slot_for_var(int slot) const {
-    assert(slot < stack_slots_for_vars);
+    ASSERT(slot < stack_slots_for_vars);
     return slot;
   }
 
   int get_slot_for_spill(int slot) const {
-    assert(slot < stack_slots_for_spills);
+    ASSERT(slot < stack_slots_for_spills);
     return slot + stack_slots_for_vars;
   }
 };

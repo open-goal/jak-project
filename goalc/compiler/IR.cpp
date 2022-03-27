@@ -16,20 +16,20 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
       if (lr.has_info_at(irec.ir_id)) {
         auto ass_reg = range.at(rv->ireg().id).get(irec.ir_id);
         if (ass_reg.kind == Assignment::Kind::REGISTER) {
-          assert(ass_reg.reg == reg);
+          ASSERT(ass_reg.reg == reg);
         } else {
-          assert(false);
+          ASSERT(false);
         }
       } else {
-        assert(false);
+        ASSERT(false);
       }
     } else {
-      assert(false);
+      ASSERT(false);
     }
     return reg;
   } else {
     auto& ass = allocs.ass_as_ranges.at(rv->ireg().id).get(irec.ir_id);
-    assert(ass.kind == Assignment::Kind::REGISTER);
+    ASSERT(ass.kind == Assignment::Kind::REGISTER);
     return ass.reg;
   }
 }
@@ -37,12 +37,12 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
 int get_stack_offset(const RegVal* rv, const AllocationResult& allocs) {
   if (rv->rlet_constraint().has_value()) {
     // should be impossible. Can't take the address of an inline assembly form register.
-    assert(false);
+    ASSERT(false);
   } else {
-    assert(rv->forced_on_stack());
+    ASSERT(rv->forced_on_stack());
     auto& ass = allocs.ass_as_ranges.at(rv->ireg().id);
     auto stack_slot = allocs.get_slot_for_spill(ass.stack_slot());
-    assert(stack_slot >= 0);
+    ASSERT(stack_slot >= 0);
     return stack_slot * 8;
   }
 }
@@ -141,7 +141,7 @@ void regset_common(emitter::ObjectGenerator* gen,
   } else if (src_is_xmm128 && dst_class == RegClass::GPR_64) {
     gen->add_instr(IGen::movq_gpr64_xmm64(dst_reg, src_reg), irec);
   } else {
-    assert(false);  // unhandled move.
+    ASSERT(false);  // unhandled move.
   }
 }
 }  // namespace
@@ -356,7 +356,7 @@ std::string IR_GotoLabel::print() {
 }
 
 RegAllocInstr IR_GotoLabel::to_rai() {
-  assert(m_resolved);
+  ASSERT(m_resolved);
   RegAllocInstr rai;
   rai.jumps.push_back(m_dest->idx);
   rai.fallthrough = false;
@@ -372,7 +372,7 @@ void IR_GotoLabel::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 void IR_GotoLabel::resolve(const Label* dest) {
-  assert(!m_resolved);
+  ASSERT(!m_resolved);
   m_dest = dest;
   m_resolved = true;
 }
@@ -621,19 +621,19 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case IntegerMathKind::NOT_64:
       gen->add_instr(IGen::not_gpr64(get_reg(m_dest, allocs, irec)), irec);
-      assert(!m_arg);
+      ASSERT(!m_arg);
       break;
     case IntegerMathKind::SHLV_64:
       gen->add_instr(IGen::shl_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
-      assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SHRV_64:
       gen->add_instr(IGen::shr_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
-      assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SARV_64:
       gen->add_instr(IGen::sar_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
-      assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SHL_64:
       gen->add_instr(IGen::shl_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
@@ -671,7 +671,7 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
     } break;
 
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -746,7 +746,7 @@ void IR_FloatMath::do_codegen(emitter::ObjectGenerator* gen,
                      irec);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -771,12 +771,12 @@ void IR_StaticVarLoad::do_codegen(emitter::ObjectGenerator* gen,
                                   const AllocationResult& allocs,
                                   emitter::IR_Record irec) {
   auto load_info = m_src->get_load_info();
-  assert(m_src->get_addr_offset() == 0);
+  ASSERT(m_src->get_addr_offset() == 0);
 
   if (m_dest->ireg().reg_class == RegClass::FLOAT) {
-    assert(load_info.load_signed == false);
-    assert(load_info.load_size == 4);
-    assert(load_info.requires_load == true);
+    ASSERT(load_info.load_signed == false);
+    ASSERT(load_info.load_size == 4);
+    ASSERT(load_info.requires_load == true);
 
     auto instr = gen->add_instr(IGen::static_load_xmm32(get_reg(m_dest, allocs, irec), 0), irec);
     gen->link_instruction_static(instr, m_src->rec, 0);
@@ -786,7 +786,7 @@ void IR_StaticVarLoad::do_codegen(emitter::ObjectGenerator* gen,
     auto instr = gen->add_instr(IGen::loadvf_rip_plus_s32(get_reg(m_dest, allocs, irec), 0), irec);
     gen->link_instruction_static(instr, m_src->rec, 0);
   } else {
-    assert(false);
+    ASSERT(false);
   }
 }
 
@@ -830,7 +830,7 @@ std::string IR_ConditionalBranch::print() {
 
 RegAllocInstr IR_ConditionalBranch::to_rai() {
   auto rai = condition.to_rai();
-  assert(m_resolved);
+  ASSERT(m_resolved);
   rai.jumps.push_back(label.idx);
   return rai;
 }
@@ -839,7 +839,7 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
   Instruction jump_instr(0);
-  assert(m_resolved);
+  ASSERT(m_resolved);
   switch (condition.kind) {
     case ConditionKind::EQUAL:
       jump_instr = IGen::je_32();
@@ -877,7 +877,7 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   if (condition.is_float) {
@@ -1463,7 +1463,7 @@ std::string IR_VFMath3Asm::print() {
       function = ".div.vf";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
                      m_src1->print(), m_src2->print());
@@ -1509,7 +1509,7 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::div_vf(dst, src1, src2), irec);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1582,7 +1582,7 @@ std::string IR_Int128Math3Asm::print() {
       function = ".pand";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
                      m_src1->print(), m_src2->print());
@@ -1669,7 +1669,7 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::parallel_bitwise_and(dst, src2, src1), irec);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1690,7 +1690,7 @@ std::string IR_VFMath2Asm::print() {
       function = ".ftoi.vf";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return fmt::format("{}{} {}, {}", function, get_color_suffix_string(), m_dst->print(),
@@ -1720,7 +1720,7 @@ void IR_VFMath2Asm::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::ftoi_vf(dst, src), irec);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1768,11 +1768,11 @@ std::string IR_Int128Math2Asm::print() {
       function = ".VPSHUFHW";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   if (use_imm) {
-    assert(m_imm.has_value());
+    ASSERT(m_imm.has_value());
     return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
                        m_src->print(), *m_imm);
   } else {
@@ -1799,49 +1799,49 @@ void IR_Int128Math2Asm::do_codegen(emitter::ObjectGenerator* gen,
   switch (m_kind) {
     case Kind::PW_SLL:
       // you are technically allowed to put values > 32 in here.
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::pw_sll(dst, src, *m_imm), irec);
       break;
     case Kind::PW_SRL:
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::pw_srl(dst, src, *m_imm), irec);
       break;
     case Kind::PW_SRA:
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::pw_sra(dst, src, *m_imm), irec);
       break;
     case Kind::VPSRLDQ:
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::vpsrldq(dst, src, *m_imm), irec);
       break;
     case Kind::VPSLLDQ:
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::vpslldq(dst, src, *m_imm), irec);
       break;
     case Kind::VPSHUFLW:
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::vpshuflw(dst, src, *m_imm), irec);
       break;
     case Kind::VPSHUFHW:
-      assert(m_imm.has_value());
-      assert(*m_imm >= 0);
-      assert(*m_imm <= 255);
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::vpshufhw(dst, src, *m_imm), irec);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 

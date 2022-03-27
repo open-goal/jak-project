@@ -3,7 +3,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "CfgVtx.h"
 #include "Function.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /////////////////////////////////////////
@@ -32,12 +32,12 @@ void CfgVtx::replace_pred_and_check(CfgVtx* old_pred, CfgVtx* new_pred) {
   bool replaced = false;
   for (auto& x : pred) {
     if (x == old_pred) {
-      assert(!replaced);
+      ASSERT(!replaced);
       x = new_pred;
       replaced = true;
     }
   }
-  assert(replaced);
+  ASSERT(replaced);
 }
 
 /*!
@@ -56,7 +56,7 @@ void CfgVtx::replace_succ_and_check(CfgVtx* old_succ, CfgVtx* new_succ) {
     replaced = true;
   }
 
-  assert(replaced);
+  ASSERT(replaced);
 }
 
 void CfgVtx::remove_pred(CfgVtx* to_remove) {
@@ -68,7 +68,7 @@ void CfgVtx::remove_pred(CfgVtx* to_remove) {
       break;
     }
   }
-  assert(found);
+  ASSERT(found);
 }
 
 /*!
@@ -87,7 +87,7 @@ void CfgVtx::replace_preds_with_and_check(std::vector<CfgVtx*> old_preds, CfgVtx
     size_t idx = -1;
     for (size_t i = 0; i < old_preds.size(); i++) {
       if (existing_pred == old_preds[i]) {
-        assert(!match);
+        ASSERT(!match);
         idx = i;
         match = true;
       }
@@ -107,7 +107,7 @@ void CfgVtx::replace_preds_with_and_check(std::vector<CfgVtx*> old_preds, CfgVtx
   pred = new_pred_list;
 
   for (auto x : found) {
-    assert(x);
+    ASSERT(x);
   }
 }
 
@@ -169,7 +169,7 @@ int BlockVtx::get_first_block_id() const {
 }
 
 std::string SequenceVtx::to_string() const {
-  assert(!seq.empty());
+  ASSERT(!seq.empty());
   // todo - this is not a great way to print it. Maybe sequences should have an ID or name?
   std::string result =
       "Seq " + seq.front()->to_string() + " ... " + seq.back()->to_string() + std::to_string(uid);
@@ -198,7 +198,7 @@ goos::Object EntryVtx::to_form() const {
 }
 
 int EntryVtx::get_first_block_id() const {
-  assert(false);
+  ASSERT(false);
   return -1;
 }
 
@@ -211,7 +211,7 @@ goos::Object ExitVtx::to_form() const {
 }
 
 int ExitVtx::get_first_block_id() const {
-  assert(false);
+  ASSERT(false);
   return -1;
 }
 
@@ -264,7 +264,7 @@ goos::Object WhileLoop::to_form() const {
 }
 
 int WhileLoop::get_first_block_id() const {
-  assert(false);
+  ASSERT(false);
   return -1;
 }
 
@@ -293,7 +293,7 @@ goos::Object UntilLoop_single::to_form() const {
 
 int UntilLoop_single::get_first_block_id() const {
   return block->get_first_block_id();
-  assert(false);
+  ASSERT(false);
   return -1;
 }
 
@@ -307,7 +307,7 @@ goos::Object InfiniteLoopBlock::to_form() const {
 }
 
 int InfiniteLoopBlock::get_first_block_id() const {
-  assert(false);
+  ASSERT(false);
   return -1;
 }
 
@@ -377,7 +377,7 @@ goos::Object EmptyVtx::to_form() const {
 }
 
 int EmptyVtx::get_first_block_id() const {
-  assert(false);
+  ASSERT(false);
   return -1;
 }
 
@@ -448,13 +448,13 @@ int ControlFlowGraph::get_top_level_vertices_count() {
  * Get the top level vertex. Only safe to call if we are fully resolved.
  */
 CfgVtx* ControlFlowGraph::get_single_top_level() {
-  assert(get_top_level_vertices_count() == 1);
+  ASSERT(get_top_level_vertices_count() == 1);
   for (auto* x : m_node_pool) {
     if (!x->parent && x != entry() && x != exit()) {
       return x;
     }
   }
-  assert(false);
+  ASSERT(false);
   return nullptr;
 }
 
@@ -516,8 +516,8 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
     return false;
   if (b0->succ_branch != b2)
     return false;
-  assert(b0->end_branch.has_branch);
-  assert(b0->end_branch.branch_always);
+  ASSERT(b0->end_branch.has_branch);
+  ASSERT(b0->end_branch.branch_always);
   if (b0->end_branch.branch_likely)
     return false;
 
@@ -526,7 +526,7 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
     return false;
   if (b1->succ_branch)
     return false;
-  assert(!b1->end_branch.has_branch);
+  ASSERT(!b1->end_branch.has_branch);
   if (!b2->has_pred(b0)) {
     printf("expect b2 (%s) to have pred b0 (%s)\n", b2->to_string().c_str(),
            b0->to_string().c_str());
@@ -541,8 +541,8 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
       printf("b0's succ_branch: %s\n", b0->succ_branch->to_string().c_str());
     }
   }
-  assert(b2->has_pred(b0));
-  assert(b2->has_pred(b1));
+  ASSERT(b2->has_pred(b0));
+  ASSERT(b2->has_pred(b1));
   if (b2->pred.size() != 2)
     return false;
 
@@ -577,14 +577,14 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
     return false;
   if (b1->succ_branch)
     return false;
-  assert(!b1->end_branch.has_branch);
+  ASSERT(!b1->end_branch.has_branch);
 
   if (!b2->has_pred(b1)) {
     fmt::print("Graph error {} (s {}) should have pred {} (s {})\n", b2->to_string(),
                b2->get_first_block_id(), b1->to_string(), b1->get_first_block_id());
   }
 
-  assert(b2->has_pred(b1));
+  ASSERT(b2->has_pred(b1));
   if (b2->pred.size() != 1)
     return false;
 
@@ -618,7 +618,7 @@ bool ControlFlowGraph::is_goto_not_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
     return false;
   }
 
-  assert(b1->prev == b0);
+  ASSERT(b1->prev == b0);
 
   // b1 should have no preds and be unreachable.
   if (!b1->pred.empty()) {
@@ -657,7 +657,7 @@ bool ControlFlowGraph::is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
   // b0 should next to b1
   if (b0->next != b1)
     return false;
-  assert(b1->prev == b0);
+  ASSERT(b1->prev == b0);
 
   // b1 should have no preds
   if (!b1->pred.empty())
@@ -699,7 +699,7 @@ bool ControlFlowGraph::find_while_loop_top_level() {
         b0->replace_succ_and_check(b2, new_vtx);
         new_vtx->pred = {b0};
 
-        assert(b2->succ_ft);
+        ASSERT(b2->succ_ft);
         b2->succ_ft->replace_pred_and_check(b2, new_vtx);
         new_vtx->succ_ft = b2->succ_ft;
         // succ_branch is going back into the loop
@@ -750,7 +750,7 @@ bool ControlFlowGraph::find_until_loop() {
         new_vtx->pred = b1->pred;
         new_vtx->replace_preds_with_and_check({b2}, nullptr);
 
-        assert(b2->succ_ft);
+        ASSERT(b2->succ_ft);
         b2->succ_ft->replace_pred_and_check(b2, new_vtx);
         new_vtx->succ_ft = b2->succ_ft;
         // succ_branch is going back into the loop
@@ -962,17 +962,17 @@ bool ControlFlowGraph::find_infinite_continue() {
       }
       new_goto->pred = b0->pred;
 
-      assert(b0->succs().size() == 1 && b0->succs().front() == b0->succ_branch);
+      ASSERT(b0->succs().size() == 1 && b0->succs().front() == b0->succ_branch);
 
       // patch up next and prev.
       new_goto->next = b0->next;
       if (new_goto->next) {
-        assert(new_goto->next->prev == b0);
+        ASSERT(new_goto->next->prev == b0);
         new_goto->next->prev = new_goto;
       }
       new_goto->prev = b0->prev;
       if (new_goto->prev) {
-        assert(new_goto->prev->next == b0);
+        ASSERT(new_goto->prev->next == b0);
         new_goto->prev->next = new_goto;
       }
 
@@ -980,9 +980,9 @@ bool ControlFlowGraph::find_infinite_continue() {
       if (new_goto->next) {
         // now we will fall through
         new_goto->succ_ft = b0->next;
-        assert(!new_goto->succ_ft->has_pred(new_goto));
+        ASSERT(!new_goto->succ_ft->has_pred(new_goto));
         new_goto->succ_ft->pred.push_back(new_goto);
-        assert(!new_goto->succ_branch);
+        ASSERT(!new_goto->succ_branch);
       }
 
       // break goto preds.
@@ -1082,12 +1082,12 @@ bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops
       return false;
     if (b0->succ_ft)
       return false;
-    assert(b0->end_branch.branch_always);
+    ASSERT(b0->end_branch.branch_always);
   } else {
     // falls through
     if (b0->succ_branch)
       return false;
-    assert(!b0->end_branch.has_branch);
+    ASSERT(!b0->end_branch.has_branch);
   }
 
   if (b1->prev != b0)
@@ -1210,10 +1210,10 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         replaced = true;
         m_blocks.at(bds->succ_branch->get_first_block_id())->needs_label = true;
         auto* seq = dynamic_cast<SequenceVtx*>(b0);
-        assert(seq);
+        ASSERT(seq);
 
         auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
-        assert(old_seq);
+        ASSERT(old_seq);
 
         if (b0->succ_branch) {
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
@@ -1253,7 +1253,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         m_blocks.at(bds->succ_branch->get_first_block_id())->needs_label = true;
 
         auto* seq = dynamic_cast<SequenceVtx*>(b0);
-        assert(seq);
+        ASSERT(seq);
 
         if (b0->succ_branch) {
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
@@ -1308,7 +1308,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         replaced = true;
         if (!b0->succ_branch) {
           fmt::print("asm missing branch in block {}\n", b0->to_string());
-          assert(false);
+          ASSERT(false);
         }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
 
@@ -1357,7 +1357,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         b1->parent_claim(new_seq);
 
         if (new_seq->succ_branch) {
-          assert(!new_seq->succ_branch->parent);
+          ASSERT(!new_seq->succ_branch->parent);
         }
 
         new_seq->end_branch = b1->end_branch;
@@ -1372,12 +1372,12 @@ bool ControlFlowGraph::clean_up_asm_branches() {
           if (debug_asm_branch) {
             fmt::print("  b1 succ_ft is {}\n", b1->succ_ft->to_string());
           }
-          assert(b1->succ_ft->has_pred(b1));
+          ASSERT(b1->succ_ft->has_pred(b1));
         }
         replaced = true;
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
         auto* seq = dynamic_cast<SequenceVtx*>(b0);
-        assert(seq);
+        ASSERT(seq);
 
         seq->seq.push_back(b1);
 
@@ -1400,11 +1400,11 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         }
 
         if (b1->succ_ft) {
-          assert(b1->succ_ft->has_pred(b0));
+          ASSERT(b1->succ_ft->has_pred(b0));
         }
 
         if (b1->succ_ft) {
-          assert(b1->succ_ft->has_pred(b0));
+          ASSERT(b1->succ_ft->has_pred(b0));
         }
 
         // try
@@ -1412,7 +1412,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         seq->succ_ft = b1->succ_ft;
         seq->succ_branch = b1->succ_branch;
         if (b1->succ_branch) {
-          assert(!b1->succ_branch->parent);
+          ASSERT(!b1->succ_branch->parent);
         }
 
         if (seq->succ_branch && debug_asm_branch) {
@@ -1425,7 +1425,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         b1->parent_claim(seq);
         if (seq->succ_branch) {
-          assert(!seq->succ_branch->parent);
+          ASSERT(!seq->succ_branch->parent);
         }
         seq->end_branch = b1->end_branch;
         return false;
@@ -1439,10 +1439,10 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         replaced = true;
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
         auto* seq = dynamic_cast<SequenceVtx*>(b0);
-        assert(seq);
+        ASSERT(seq);
 
         auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
-        assert(old_seq);
+        ASSERT(old_seq);
 
         if (b0->succ_branch) {
           if (debug_asm_branch) {
@@ -1484,7 +1484,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
         auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
-        assert(old_seq);
+        ASSERT(old_seq);
         if (b0->succ_branch) {
           if (debug_asm_branch) {
             fmt::print("  sbp: {}\n", !!b0->succ_branch->parent);
@@ -1615,7 +1615,7 @@ bool ControlFlowGraph::find_seq_top_level(bool allow_self_loops) {
       //      printf("make seq type 2 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b0);
-      assert(seq);
+      ASSERT(seq);
 
       seq->seq.push_back(b1);
 
@@ -1637,7 +1637,7 @@ bool ControlFlowGraph::find_seq_top_level(bool allow_self_loops) {
     if (is_sequence_of_non_sequence_and_sequence(b0, b1, allow_self_loops)) {
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b1);
-      assert(seq);
+      ASSERT(seq);
       seq->seq.insert(seq->seq.begin(), b0);
 
       for (auto* p : b0->pred) {
@@ -1657,10 +1657,10 @@ bool ControlFlowGraph::find_seq_top_level(bool allow_self_loops) {
       //      printf("make seq type 3 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b0);
-      assert(seq);
+      ASSERT(seq);
 
       auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
-      assert(old_seq);
+      ASSERT(old_seq);
 
       for (auto* x : old_seq->seq) {
         x->parent_claim(seq);
@@ -1739,9 +1739,9 @@ bool ControlFlowGraph::find_cond_w_else(const CondWithElseLengthHack& hack) {
       return true;
     }
 
-    assert(b0->end_branch.has_branch);
-    assert(b0->end_branch.branch_always);
-    assert(b0->succ_branch);
+    ASSERT(b0->end_branch.has_branch);
+    ASSERT(b0->end_branch.branch_always);
+    ASSERT(b0->succ_branch);
 
     // TODO - check what's in the delay slot!
     auto* end_block = b0->succ_branch;
@@ -1770,7 +1770,7 @@ bool ControlFlowGraph::find_cond_w_else(const CondWithElseLengthHack& hack) {
     if (else_block->succ_ft != end_block) {
       return true;
     }
-    assert(!else_block->end_branch.has_branch);
+    ASSERT(!else_block->end_branch.has_branch);
 
     std::vector<CondWithElse::Entry> entries = {{c0, b0}};
     auto* prev_condition = c0;
@@ -1923,9 +1923,9 @@ bool ControlFlowGraph::find_cond_w_empty_else() {
       return true;
     }
 
-    assert(b0->end_branch.has_branch);
-    assert(b0->end_branch.branch_always);
-    assert(b0->succ_branch);
+    ASSERT(b0->end_branch.has_branch);
+    ASSERT(b0->end_branch.branch_always);
+    ASSERT(b0->succ_branch);
 
     // TODO - check what's in the delay slot!
     auto* end_block = b0->succ_branch;
@@ -2105,9 +2105,9 @@ bool ControlFlowGraph::find_cond_n_else() {
         printf("reject 2A\n");
         return true;
       }
-      assert(b0->end_branch.has_branch);
-      assert(b0->end_branch.branch_always);
-      assert(b0->succ_branch);
+      ASSERT(b0->end_branch.has_branch);
+      ASSERT(b0->end_branch.branch_always);
+      ASSERT(b0->succ_branch);
     } else {
       single_case = true;
     }
@@ -2467,7 +2467,7 @@ bool ControlFlowGraph::find_short_circuits() {
  * The returned vector will have blocks in ordered, so the i-th entry is for the i-th block.
  */
 const std::vector<BlockVtx*>& ControlFlowGraph::create_blocks(int count) {
-  assert(m_blocks.empty());
+  ASSERT(m_blocks.empty());
   BlockVtx* prev = nullptr;  // for linking next/prev
 
   for (int i = 0; i < count; i++) {
@@ -2492,12 +2492,12 @@ const std::vector<BlockVtx*>& ControlFlowGraph::create_blocks(int count) {
 void ControlFlowGraph::link_fall_through(BlockVtx* first,
                                          BlockVtx* second,
                                          std::vector<BasicBlock>& blocks) {
-  assert(!first->succ_ft);  // don't want to overwrite something by accident.
+  ASSERT(!first->succ_ft);  // don't want to overwrite something by accident.
   // can only fall through to the next code in memory.
-  assert(first->next == second);
-  assert(second->prev == first);
+  ASSERT(first->next == second);
+  ASSERT(second->prev == first);
   first->succ_ft = second;
-  assert(blocks.at(first->block_id).succ_ft == -1);
+  ASSERT(blocks.at(first->block_id).succ_ft == -1);
   blocks.at(first->block_id).succ_ft = second->block_id;
 
   if (!second->has_pred(first)) {
@@ -2515,9 +2515,9 @@ void ControlFlowGraph::link_fall_through(BlockVtx* first,
 void ControlFlowGraph::link_branch(BlockVtx* first,
                                    BlockVtx* second,
                                    std::vector<BasicBlock>& blocks) {
-  assert(!first->succ_branch);
+  ASSERT(!first->succ_branch);
   first->succ_branch = second;
-  assert(blocks.at(first->block_id).succ_branch == -1);
+  ASSERT(blocks.at(first->block_id).succ_branch == -1);
   blocks.at(first->block_id).succ_branch = second->block_id;
 
   if (!second->has_pred(first)) {
@@ -2530,12 +2530,12 @@ void ControlFlowGraph::link_branch(BlockVtx* first,
 void ControlFlowGraph::link_fall_through_likely(BlockVtx* first,
                                                 BlockVtx* second,
                                                 std::vector<BasicBlock>& blocks) {
-  assert(!first->succ_ft);  // don't want to overwrite something by accident.
+  ASSERT(!first->succ_ft);  // don't want to overwrite something by accident.
   // can only fall through to the next code in memory.
-  assert(first->next->next == second);
-  assert(second->prev->prev == first);
+  ASSERT(first->next->next == second);
+  ASSERT(second->prev->prev == first);
   first->succ_ft = second;
-  assert(blocks.at(first->block_id).succ_ft == -1);
+  ASSERT(blocks.at(first->block_id).succ_ft == -1);
   blocks.at(first->block_id).succ_ft = second->block_id;
 
   if (!second->has_pred(first)) {
@@ -2553,7 +2553,7 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
 
   if (block.start_word == block.end_word) {
     b->is_early_exit_block = true;
-    assert(!b->end_branch.has_branch);
+    ASSERT(!b->end_branch.has_branch);
   }
 }
 
@@ -2643,7 +2643,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     } else {
       // room for at least a likely branch, try that first.
       int likely_branch_idx = b.end_word - 1;
-      assert(likely_branch_idx >= b.start_word);
+      ASSERT(likely_branch_idx >= b.start_word);
       auto& likely_branch_candidate = func.instructions.at(likely_branch_idx);
 
       if (is_branch(likely_branch_candidate, true)) {
@@ -2656,12 +2656,12 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
         // need to find block target
         int block_target = -1;
         int label_target = likely_branch_candidate.get_label_target();
-        assert(label_target != -1);
+        ASSERT(label_target != -1);
         const auto& label = file.labels.at(label_target);
-        assert(label.target_segment == seg);
-        assert((label.offset % 4) == 0);
+        ASSERT(label.target_segment == seg);
+        ASSERT((label.offset % 4) == 0);
         int offset = label.offset / 4 - func.start_word;
-        assert(offset >= 0);
+        ASSERT(offset >= 0);
         for (int j = int(func.basic_blocks.size()); j-- > 0;) {
           if (func.basic_blocks[j].start_word == offset) {
             block_target = j;
@@ -2669,7 +2669,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
           }
         }
 
-        assert(block_target != -1);
+        ASSERT(block_target != -1);
         // branch to delay slot
         cfg->link_branch(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
 
@@ -2700,7 +2700,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
         } else {
           // try as a normal branch.
           int idx = b.end_word - 2;
-          assert(idx >= b.start_word);
+          ASSERT(idx >= b.start_word);
           auto& branch_candidate = func.instructions.at(idx);
           auto& delay_slot_candidate = func.instructions.at(idx + 1);
           if (is_branch(branch_candidate, false)) {
@@ -2712,12 +2712,12 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
             // need to find block target
             int block_target = -1;
             int label_target = branch_candidate.get_label_target();
-            assert(label_target != -1);
+            ASSERT(label_target != -1);
             const auto& label = file.labels.at(label_target);
-            assert(label.target_segment == seg);
-            assert((label.offset % 4) == 0);
+            ASSERT(label.target_segment == seg);
+            ASSERT((label.offset % 4) == 0);
             int offset = label.offset / 4 - func.start_word;
-            assert(offset >= 0);
+            ASSERT(offset >= 0);
 
             // the order here matters when there are zero size blocks. Unclear what the best answer
             // is.
@@ -2730,7 +2730,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
               }
             }
 
-            assert(block_target != -1);
+            ASSERT(block_target != -1);
             cfg->link_branch(blocks.at(i), blocks.at(block_target), func.basic_blocks);
 
             if (branch_always) {
@@ -2771,7 +2771,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
 
     // room for at least a likely branch, try that first.
     int likely_branch_idx = bb.end_word - 1;
-    assert(likely_branch_idx >= bb.start_word);
+    ASSERT(likely_branch_idx >= bb.start_word);
     auto& likely_branch_candidate = func.instructions.at(likely_branch_idx);
 
     if (is_branch(likely_branch_candidate, true)) {
@@ -2789,7 +2789,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
 
     if (bb.end_word - bb.start_word >= 2) {
       int idx = bb.end_word - 2;
-      assert(idx >= bb.start_word);
+      ASSERT(idx >= bb.start_word);
       auto& branch_candidate = func.instructions.at(idx);
       auto& delay_slot_candidate = func.instructions.at(idx + 1);
       if (is_branch(branch_candidate, false)) {

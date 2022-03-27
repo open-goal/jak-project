@@ -22,7 +22,7 @@
 #include "klisten.h"
 #include "klink.h"
 #include "common/symbols.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 ///////////
 // SDATA
@@ -356,7 +356,7 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
       value = (char)rounder;
     } else if (!(ru32 >> 31)) {  // sign bit
       value = 0;
-      // assert(false);  // not sure what happens here.
+      // ASSERT(false);  // not sure what happens here.
     } else {
       value = -1;  // happens on NaN's
     }
@@ -403,7 +403,7 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
           value = (char)next_int;
         } else if (!(ru32 >> 0x1f)) {
           value = 0;
-          // assert(false);  // not sure what happens here.
+          // ASSERT(false);  // not sure what happens here.
         } else {
           value = -1;  // happens on NaN's
         }
@@ -417,7 +417,7 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
     // however, the rounding flag is always disabled and the rounding code doesn't work.
     if ((fraction_part != 0.f) && ((flags & 1) != 0)) {
       start_ptr = round(fraction_part, nullptr, start_ptr, count_chrp - 1, 0, lead_char);
-      assert(false);
+      ASSERT(false);
     }
   }
 
@@ -569,7 +569,7 @@ char* kitoa(char* buffer, s64 value, u64 base, s32 length, char pad, u32 flag) {
  * uses C varags, but 128-bit varags don't work, so "format" always passes 0 for quadword printing.
  */
 void kqtoa() {
-  assert(false);
+  ASSERT(false);
 }
 
 struct format_struct {
@@ -807,7 +807,7 @@ s32 format_impl(uint64_t* args) {
                 }
                 kstrinsert(output_ptr, pad, desired_length - print_len);
               } else {
-                assert(false);
+                ASSERT(false);
                 //                output_ptr = strend(output_ptr);
                 //                while(0 < (desired_length - print_len)) {
                 //                  char pad = ' ';
@@ -858,7 +858,7 @@ s32 format_impl(uint64_t* args) {
                 kstrinsert(output_ptr, pad, desired_length - print_len);
 
               } else {
-                assert(false);
+                ASSERT(false);
                 //                output_ptr = strend(output_ptr);
                 //                u32 l140 = 0;
                 //                while(l140 < (desired_length - print_len)) {
@@ -899,7 +899,7 @@ s32 format_impl(uint64_t* args) {
                 call_method_of_type(in, type, GOAL_PRINT_METHOD);
               }
             } else {
-              assert(false);  // bad type.
+              ASSERT(false);  // bad type.
             }
           }
           output_ptr = strend(output_ptr);
@@ -920,7 +920,7 @@ s32 format_impl(uint64_t* args) {
                 call_method_of_type(in, type, GOAL_INSPECT_METHOD);
               }
             } else {
-              assert(false);  // bad type
+              ASSERT(false);  // bad type
             }
           }
           output_ptr = strend(output_ptr);
@@ -928,7 +928,7 @@ s32 format_impl(uint64_t* args) {
 
         case 'Q':  // not yet implemented.  hopefully andy gavin finishes this one soon.
         case 'q':
-          assert(false);
+          ASSERT(false);
           break;
 
         case 'X':  // hex, 64 bit, pad padchar
@@ -1025,7 +1025,7 @@ s32 format_impl(uint64_t* args) {
             precision = 4;
           float value;
           if (in < 0) {
-            assert(false);  // i don't get this one
+            ASSERT(false);  // i don't get this one
           } else {
             value = in;
           }
@@ -1041,7 +1041,7 @@ s32 format_impl(uint64_t* args) {
 
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);
-          assert(false);
+          ASSERT(false);
           break;
       }
       format_ptr++;
@@ -1092,10 +1092,10 @@ s32 format_impl(uint64_t* args) {
         return 0;
       }
     }
-    assert(false);  // unknown destination
+    ASSERT(false);  // unknown destination
     return 0;
   }
 
-  assert(false);  // ??????
+  ASSERT(false);  // ??????
   return 7;
 }

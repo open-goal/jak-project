@@ -9,7 +9,7 @@
 #include <cstring>
 #include <vector>
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 class BinaryReader {
  public:
@@ -17,7 +17,7 @@ class BinaryReader {
 
   template <typename T>
   T read() {
-    assert(m_seek + sizeof(T) <= m_buffer.size());
+    ASSERT(m_seek + sizeof(T) <= m_buffer.size());
     T obj;
     memcpy(&obj, m_buffer.data() + m_seek, sizeof(T));
     m_seek += sizeof(T);
@@ -26,7 +26,7 @@ class BinaryReader {
 
   void ffwd(int amount) {
     m_seek += amount;
-    assert(m_seek <= m_buffer.size());
+    ASSERT(m_seek <= m_buffer.size());
   }
 
   uint32_t bytes_left() const { return m_buffer.size() - m_seek; }

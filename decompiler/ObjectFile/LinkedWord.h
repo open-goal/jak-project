@@ -9,7 +9,7 @@
 #include <string>
 #include <cstring>
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 class LinkedWord {
@@ -114,7 +114,7 @@ class LinkedWord {
   }
 
   u8 get_byte(int idx) const {
-    assert(kind() == PLAIN_DATA);
+    ASSERT(kind() == PLAIN_DATA);
     switch (idx) {
       case 0:
         return data & 0xff;
@@ -125,7 +125,7 @@ class LinkedWord {
       case 3:
         return (data >> 24) & 0xff;
       default:
-        assert(false);
+        ASSERT(false);
         return 0;
     }
   }
@@ -134,12 +134,12 @@ class LinkedWord {
   Kind kind() const { return m_kind; }
 
   u32 label_id() const {
-    assert(m_kind == PTR || m_kind == LO_PTR || m_kind == HI_PTR);
+    ASSERT(m_kind == PTR || m_kind == LO_PTR || m_kind == HI_PTR);
     return m_data_ptr;
   }
 
   std::string symbol_name() const {
-    assert(holds_string());
+    ASSERT(holds_string());
     return (const char*)(m_data_ptr);
   }
 

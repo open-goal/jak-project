@@ -437,6 +437,14 @@
       (set! (-> obj particles 2 init-pos x) 70.0)
       (set! (-> obj particles 2 init-pos y) 76.0)
       (set! (-> obj scale) 6963.2)
+      (with-pc
+        (when (not (-> *pc-settings* use-vis?))
+            (let ((base-x (-> obj particles 0 init-pos x)))
+              (set! (-> obj particles 1 init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles 1 init-pos x) base-x))))
+              (set! (-> obj particles 2 init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles 2 init-pos x) base-x))))
+              )
+            )
+        )
       )
     )
   0
@@ -467,12 +475,12 @@
   )
 
 (deftype hud-money-all (hud)
-  ((x-scale     float   :offset-assert 280)
-   (y-scale     float   :offset-assert 284)
-   (y-pos       int32   :offset-assert 288)
-   (total-orbs  int32   :offset-assert 292)
-   (level-index int32   :offset-assert 296)
-   (start-time  uint64  :offset-assert 304)
+  ((x-scale     float       :offset-assert 280)
+   (y-scale     float       :offset-assert 284)
+   (y-pos       int32       :offset-assert 288)
+   (total-orbs  int32       :offset-assert 292)
+   (level-index int32       :offset-assert 296)
+   (start-time  time-frame  :offset-assert 304)
    )
   :heap-base #xd0
   :method-count-assert 27
@@ -584,9 +592,9 @@
           )
         )
       )
-    (if (>= (+ (-> *display* base-frame-counter) -1500) (the-as int (-> obj start-time)))
+    (if (>= (+ (-> *display* base-frame-counter) (seconds -5)) (-> obj start-time))
         (set! (-> obj deactivate-when-hidden) #t)
-        (TODO-RENAME-16 obj (-> *display* base-frame-counter) 0)
+        (TODO-RENAME-16 obj (the-as int (-> *display* base-frame-counter)) 0)
         )
     )
   0
@@ -683,7 +691,7 @@
         )
       )
     )
-  (set! (-> obj start-time) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> obj start-time) (-> *display* base-frame-counter))
   (sound-play-by-name (static-sound-name "get-all-orbs") (new-sound-id) 1024 0 0 1 #t)
   0
   (none)
@@ -1710,10 +1718,7 @@
                   (the-as
                     uint
                     (- (-> *target* fact-info-target eco-timeout)
-                       (the-as
-                         uint
-                         (- (-> *display* game-frame-counter) (the-as int (-> *target* fact-info-target eco-pickup-time)))
-                         )
+                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
                        )
                     )
                   )
@@ -1725,17 +1730,17 @@
         (t0-0 128)
         )
     (case (-> *target* fact-info-target eco-type)
-      ((1)
+      (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
        (set! t0-0 0)
        )
-      ((2)
+      (((pickup-type eco-red))
        (set! a2-1 128)
        (set! a3-0 32)
        (set! t0-0 0)
        )
-      ((4)
+      (((pickup-type eco-green))
        (set! a2-1 0)
        (set! a3-0 128)
        (set! t0-0 32)
@@ -1757,10 +1762,7 @@
                   (the-as
                     uint
                     (- (-> *target* fact-info-target eco-timeout)
-                       (the-as
-                         uint
-                         (- (-> *display* game-frame-counter) (the-as int (-> *target* fact-info-target eco-pickup-time)))
-                         )
+                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
                        )
                     )
                   )
@@ -1772,17 +1774,17 @@
         (t0-0 128)
         )
     (case (-> *target* fact-info-target eco-type)
-      ((1)
+      (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
        (set! t0-0 0)
        )
-      ((2)
+      (((pickup-type eco-red))
        (set! a2-1 128)
        (set! a3-0 32)
        (set! t0-0 0)
        )
-      ((4)
+      (((pickup-type eco-green))
        (set! a2-1 0)
        (set! a3-0 128)
        (set! t0-0 32)
@@ -1804,10 +1806,7 @@
                   (the-as
                     uint
                     (- (-> *target* fact-info-target eco-timeout)
-                       (the-as
-                         uint
-                         (- (-> *display* game-frame-counter) (the-as int (-> *target* fact-info-target eco-pickup-time)))
-                         )
+                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
                        )
                     )
                   )
@@ -1819,17 +1818,17 @@
         (t0-0 128)
         )
     (case (-> *target* fact-info-target eco-type)
-      ((1)
+      (((pickup-type eco-yellow))
        (set! a2-1 128)
        (set! a3-0 96)
        (set! t0-0 0)
        )
-      ((2)
+      (((pickup-type eco-red))
        (set! a2-1 128)
        (set! a3-0 32)
        (set! t0-0 0)
        )
-      ((4)
+      (((pickup-type eco-green))
        (set! a2-1 0)
        (set! a3-0 128)
        (set! t0-0 32)
@@ -1873,10 +1872,7 @@
             (the-as
               int
               (- (-> *target* fact-info-target eco-timeout)
-                 (the-as
-                   uint
-                   (- (-> *display* game-frame-counter) (the-as int (-> *target* fact-info-target eco-pickup-time)))
-                   )
+                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
                  )
               )
             (the-as int (-> *target* fact-info-target eco-timeout))
@@ -1947,6 +1943,22 @@
       (set! (-> obj scale-timer) 13107.2)
       (set! (-> obj scale-backing) 10240.0)
       )
+    )
+  (#when PC_PORT
+    
+    (let ((base-x (-> obj particles 2 init-pos x)))
+        (+! base-x (* (- 512.0 base-x) (- 1.0 (-> *pc-settings* aspect-ratio-reciprocal))))
+        (set! (-> obj particles 0 init-pos x) 435.0)
+        (set! (-> obj particles 1 init-pos x) 432.0)
+        (set! (-> obj particles 2 init-pos x) 435.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
     )
   0
   (none)

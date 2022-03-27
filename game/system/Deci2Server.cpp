@@ -23,7 +23,7 @@
 #include "common/listener_common.h"
 #include "common/versions.h"
 #include "Deci2Server.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 Deci2Server::Deci2Server(std::function<bool()> shutdown_callback) {
   buffer = new char[BUFFER_SIZE];
@@ -185,7 +185,7 @@ void Deci2Server::run() {
   int got = 0;
 
   while (got < desired_size) {
-    assert(got + desired_size < BUFFER_SIZE);
+    ASSERT(got + desired_size < BUFFER_SIZE);
     auto x = read_from_socket(new_sock, buffer + got, desired_size - got);
     if (want_exit()) {
       return;

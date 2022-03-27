@@ -909,7 +909,7 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   }
 
   snd_ResolveBankXREFS();
-  PrintBankInfo(buffer);
+  PrintBankInfo((SoundBank*)buffer);
   _sector = 0;
   // ??? todo this is probably a field of the buffer.
   *(s32*)(((u8*)buffer) + 0x10) = load_status;

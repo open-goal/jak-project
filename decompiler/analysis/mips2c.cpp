@@ -95,7 +95,7 @@ std::string goal_to_c_function_name(const FunctionName& name) {
     case FunctionName::FunctionKind::METHOD:
       return fmt::format("method_{}_{}", name.method_id, goal_to_c_name(name.type_name));
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -103,7 +103,7 @@ std::string goal_to_c_function_name(const FunctionName& name) {
  * Convert a decompiler register into the name of the register constant in mips2c_private.h
  */
 const char* reg_to_name(const InstructionAtom& atom) {
-  assert(atom.is_reg());
+  ASSERT(atom.is_reg());
   return atom.get_reg().to_charp();
 }
 
@@ -287,9 +287,9 @@ void link_fall_through(int first_idx, int second_idx, std::vector<M2C_Block>& bl
   auto& first = blocks.at(first_idx);
   auto& second = blocks.at(second_idx);
 
-  assert(first.succ_ft == -1);  // don't want to overwrite something by accident.
+  ASSERT(first.succ_ft == -1);  // don't want to overwrite something by accident.
   // can only fall through to the next code in memory.
-  assert(first_idx + 1 == second_idx);
+  ASSERT(first_idx + 1 == second_idx);
   first.succ_ft = second_idx;
 
   if (!second.has_pred(first_idx)) {
@@ -306,7 +306,7 @@ void link_fall_through(int first_idx, int second_idx, std::vector<M2C_Block>& bl
 void link_branch(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) {
   auto& first = blocks.at(first_idx);
   auto& second = blocks.at(second_idx);
-  assert(first.succ_branch == -1);
+  ASSERT(first.succ_branch == -1);
   first.succ_branch = second_idx;
 
   if (!second.has_pred(first_idx)) {
@@ -321,9 +321,9 @@ void link_branch(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) 
 void link_fall_through_likely(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) {
   auto& first = blocks.at(first_idx);
   auto& second = blocks.at(second_idx);
-  assert(first.succ_ft == -1);  // don't want to overwrite something by accident.
+  ASSERT(first.succ_ft == -1);  // don't want to overwrite something by accident.
   // can only fall through to the next code in memory.
-  assert(first_idx + 2 == second_idx);
+  ASSERT(first_idx + 2 == second_idx);
 
   first.succ_ft = second_idx;
 
@@ -361,10 +361,10 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
     auto& b = func.basic_blocks[i];
     if (blocks.at(i).branch_always) {
       // likely branch, already set up.
-      assert(likely_delay_slot_blocks.count(i));
+      ASSERT(likely_delay_slot_blocks.count(i));
       continue;
     } else {
-      assert(!likely_delay_slot_blocks.count(i));
+      ASSERT(!likely_delay_slot_blocks.count(i));
     }
     bool not_last = (i + 1) < int(func.basic_blocks.size());
 
@@ -376,7 +376,7 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
     } else {
       // room for at least a likely branch, try that first.
       int likely_branch_idx = b.end_word - 1;
-      assert(likely_branch_idx >= b.start_word);
+      ASSERT(likely_branch_idx >= b.start_word);
       auto& likely_branch_candidate = func.instructions.at(likely_branch_idx);
 
       if (is_branch(likely_branch_candidate, true)) {
@@ -389,12 +389,12 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
         // need to find block target
         int block_target = -1;
         int label_target = likely_branch_candidate.get_label_target();
-        assert(label_target != -1);
+        ASSERT(label_target != -1);
         const auto& label = file.labels.at(label_target);
-        // assert(label.target_segment == seg);
-        assert((label.offset % 4) == 0);
+        // ASSERT(label.target_segment == seg);
+        ASSERT((label.offset % 4) == 0);
         int offset = label.offset / 4 - func.start_word;
-        assert(offset >= 0);
+        ASSERT(offset >= 0);
         for (int j = int(func.basic_blocks.size()); j-- > 0;) {
           if (func.basic_blocks[j].start_word == offset) {
             block_target = j;
@@ -402,7 +402,7 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
           }
         }
 
-        assert(block_target != -1);
+        ASSERT(block_target != -1);
         // "branch" to delay slot, which then "falls through" to the destination.
         link_branch(i, i + 1, blocks);
 
@@ -423,7 +423,7 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
         delay_block.branch_always = true;
         delay_block.has_branch = true;
         auto inserted = likely_delay_slot_blocks.insert(i + 1).second;
-        assert(inserted);
+        ASSERT(inserted);
         link_branch(i + 1, block_target, blocks);
 
       } else {
@@ -435,7 +435,7 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
         } else {
           // try as a normal branch.
           int idx = b.end_word - 2;
-          assert(idx >= b.start_word);
+          ASSERT(idx >= b.start_word);
           auto& branch_candidate = func.instructions.at(idx);
           if (is_branch(branch_candidate, false)) {
             blocks.at(i).has_branch = true;
@@ -445,12 +445,12 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
             // need to find block target
             int block_target = -1;
             int label_target = branch_candidate.get_label_target();
-            assert(label_target != -1);
+            ASSERT(label_target != -1);
             const auto& label = file.labels.at(label_target);
-            // assert(label.target_segment == seg);
-            assert((label.offset % 4) == 0);
+            // ASSERT(label.target_segment == seg);
+            ASSERT((label.offset % 4) == 0);
             int offset = label.offset / 4 - func.start_word;
-            assert(offset >= 0);
+            ASSERT(offset >= 0);
 
             for (int j = int(func.basic_blocks.size()); j-- > 0;) {
               if (func.basic_blocks[j].start_word == offset) {
@@ -459,7 +459,7 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
               }
             }
 
-            assert(block_target != -1);
+            ASSERT(block_target != -1);
             link_branch(i, block_target, blocks);
 
             if (branch_always) {
@@ -539,7 +539,7 @@ Mips2C_Line handle_lwc1(const Instruction& i0,
   if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(Register(Reg::GPR, Reg::FP))) {
     auto& label = file->labels.at(i0.get_src(0).get_label());
     auto& word = file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    assert(word.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
     float f;
     memcpy(&f, &word.data, 4);
     return {fmt::format("c->fprs[{}] = {};", reg_to_name(i0.get_dst(0)), float_to_string(f)),
@@ -562,9 +562,9 @@ Mips2C_Line handle_lw(Mips2C_Output& out,
   }
   if (i0.get_src(1).is_reg(rfp()) && i0.get_src(0).is_label()) {
     const auto& label = file->labels.at(i0.get_src(0).get_label());
-    assert((label.offset % 4) == 0);
+    ASSERT((label.offset % 4) == 0);
     const auto& word = file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    assert(word.kind() == LinkedWord::PLAIN_DATA);
+    ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
     u32 val_u32 = word.data;
     float val_float;
     memcpy(&val_float, &val_u32, 4);
@@ -740,6 +740,18 @@ Mips2C_Line handle_vmadda_bc(const Instruction& i0, const std::string& instr_str
           instr_str};
 }
 
+Mips2C_Line handle_vmadda(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vmadda(DEST::{},  {}, {});", dest_to_char(i0.cop2_dest),
+                      reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
+Mips2C_Line handle_vadda_bc(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vadda_bc(DEST::{}, BC::{}, {}, {});", dest_to_char(i0.cop2_dest),
+                      i0.cop2_bc_to_char(), reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
 Mips2C_Line handle_vmsuba_bc(const Instruction& i0, const std::string& instr_str) {
   return {fmt::format("c->vmsuba_bc(DEST::{}, BC::{}, {}, {});", dest_to_char(i0.cop2_dest),
                       i0.cop2_bc_to_char(), reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
@@ -869,9 +881,16 @@ Mips2C_Line handle_vopmsub(const Instruction& i0, const std::string& instr_strin
           instr_string};
 }
 
-Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string) {
-  return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
-          instr_string};
+Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string, Mips2C_Output& op) {
+  if (i0.get_src(0).get_imm() == 0x7000) {
+    op.require_symbol("*fake-scratchpad-data*");
+    return {fmt::format("get_fake_spad_addr({}, cache.fake_scratchpad_data, 0, c);",
+                        reg_to_name(i0.get_dst(0))),
+            instr_string};
+  } else {
+    return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
+            instr_string};
+  }
 }
 
 Mips2C_Line handle_clts(const Instruction& i0, const std::string& instr_string) {
@@ -896,15 +915,35 @@ Mips2C_Line handle_pmfhl_lh(const Instruction& i0, const std::string& instr_stri
   return {fmt::format("c->pmfhl_lh({});", reg_to_name(i0.get_dst(0))), instr_string};
 }
 
+Mips2C_Line handle_ctc2(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("{} = c->gpr_src({}).du16[0];", reg_to_name(i0.get_dst(0)),
+                      reg_to_name(i0.get_src(0))),
+          instr_string};
+}
+
+Mips2C_Line handle_cfc2(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->gprs[{}].du64[0] = {};", reg_to_name(i0.get_dst(0)),
+                      reg_to_name(i0.get_src(0))),
+          instr_string};
+}
+
 Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
                                 int& unknown_count,
                                 const LinkedObjectFile* file) {
   switch (i0.kind) {
+    case InstructionKind::CTC2:
+      return handle_ctc2(i0, instr_str);
+    case InstructionKind::CFC2:
+      return handle_cfc2(i0, instr_str);
     case InstructionKind::LW:
       return handle_lw(output, i0, instr_str, file);
     case InstructionKind::LB:
+    case InstructionKind::LWL:
+    case InstructionKind::LWR:
+    case InstructionKind::LDR:
+    case InstructionKind::LDL:
     case InstructionKind::LBU:
     case InstructionKind::LWU:
     case InstructionKind::LQ:
@@ -932,6 +971,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3_bc_mask(i0, instr_str, "vsub_bc");
     case InstructionKind::VMUL_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmul_bc");
+    case InstructionKind::VMADD:
+      return handle_generic_op3_mask(i0, instr_str, "vmadd");
     case InstructionKind::VMUL:
       return handle_generic_op3_mask(i0, instr_str, "vmul");
     case InstructionKind::VADD:
@@ -978,6 +1019,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PSRAW:
     case InstructionKind::PSRAH:
     case InstructionKind::PSRLH:
+    case InstructionKind::PSLLW:
+    case InstructionKind::PSLLH:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
       return handle_sll(i0, instr_str);
@@ -988,6 +1031,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PEXTLB:
     case InstructionKind::MOVN:
     case InstructionKind::PEXTUW:
+    case InstructionKind::PEXTUH:
     case InstructionKind::PEXTLW:
     case InstructionKind::PCPYUD:
     case InstructionKind::PCPYLD:
@@ -1008,7 +1052,12 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMAXW:
     case InstructionKind::PMAXH:
     case InstructionKind::SUBU:
+    case InstructionKind::SLT:
+    case InstructionKind::SLTU:
     case InstructionKind::DSRAV:
+    case InstructionKind::DSLLV:
+    case InstructionKind::PAND:
+    case InstructionKind::PCEQB:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
@@ -1034,8 +1083,12 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vmula_bc(i0, instr_str);
     case InstructionKind::VMADDA_BC:
       return handle_vmadda_bc(i0, instr_str);
+    case InstructionKind::VADDA_BC:
+      return handle_vadda_bc(i0, instr_str);
     case InstructionKind::VMSUBA_BC:
       return handle_vmsuba_bc(i0, instr_str);
+    case InstructionKind::VMADDA:
+      return handle_vmadda(i0, instr_str);
     case InstructionKind::VMADD_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmadd_bc");
     case InstructionKind::VMSUB_BC:
@@ -1078,8 +1131,10 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "plzcw");
     case InstructionKind::PCPYH:
       return handle_generic_op2(i0, instr_str, "pcpyh");
+    case InstructionKind::PROT3W:
+      return handle_generic_op2(i0, instr_str, "prot3w");
     case InstructionKind::LUI:
-      return handle_lui(i0, instr_str);
+      return handle_lui(i0, instr_str, output);
     case InstructionKind::CLTS:
       output.needs_cop1_bc = true;
       return handle_clts(i0, instr_str);
@@ -1151,16 +1206,16 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
           output.lines.emplace_back(fmt::format("if ({}) {{", branch_line.code),
                                     branch_line.comment);
           // next block should be the delay slot
-          assert((int)block_idx + 1 == block.succ_branch);
+          ASSERT((int)block_idx + 1 == block.succ_branch);
           auto& delay_block = blocks.at(block.succ_branch);
-          assert(delay_block.end_instr - delay_block.start_instr == 1);  // only 1 instr.
+          ASSERT(delay_block.end_instr - delay_block.start_instr == 1);  // only 1 instr.
           auto& delay_instr = f->instructions.at(delay_block.start_instr);
           auto delay_instr_str = delay_instr.to_string(file->labels);
           auto delay_instr_line =
               handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count, file);
           output.lines.emplace_back(fmt::format("  {}", delay_instr_line.code),
                                     delay_instr_line.comment);
-          assert(delay_block.succ_ft == -1);
+          ASSERT(delay_block.succ_ft == -1);
           output.lines.emplace_back(fmt::format("  next_block = {};", delay_block.succ_branch), "");
           output.lines.emplace_back("break;");
           output.lines.emplace_back("}", "");
@@ -1169,13 +1224,13 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
             // skip the branch ins.
             output.lines.emplace_back("//" + instr_str, instr_str);
             // then the delay slot
-            assert(i + 1 < block.end_instr);
+            ASSERT(i + 1 < block.end_instr);
             i++;
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
                 handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
-            assert(i + 1 == block.end_instr);
+            ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("next_block = {};", block.succ_branch),
                                       "branch always\n");
@@ -1185,13 +1240,13 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
             // set the branch condition
             output.lines.push_back(handle_non_likely_branch_bc(instr, instr_str));
             // then the delay slot
-            assert(i + 1 < block.end_instr);
+            ASSERT(i + 1 < block.end_instr);
             i++;
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
                 handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
-            assert(i + 1 == block.end_instr);
+            ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(
                 fmt::format("if (bc) {{next_block = {};}}", block.succ_branch),
@@ -1203,7 +1258,7 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
         // skip
         output.lines.emplace_back("//" + instr_str, instr_str);
         // then the delay slot
-        assert(i + 1 < block.end_instr);
+        ASSERT(i + 1 < block.end_instr);
         i++;
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
@@ -1214,8 +1269,8 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
                                   "return\n");
       } else if (instr.kind == InstructionKind::JALR) {
-        assert(instr.get_dst(0).is_reg(Register(Reg::GPR, Reg::RA)));
-        assert(i < block.end_instr - 1);
+        ASSERT(instr.get_dst(0).is_reg(Register(Reg::GPR, Reg::RA)));
+        ASSERT(i < block.end_instr - 1);
         output.lines.emplace_back(
             fmt::format("call_addr = c->gprs[{}].du32[0];", reg_to_name(instr.get_src(0))),
             "function call:");
@@ -1230,14 +1285,14 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
         output.lines.emplace_back(fmt::format("next_block = 0x{:x} ^ c->gprs[{}].du32[0];",
                                               magic_code, reg_to_name(instr.get_src(0))),
                                   instr_str);
-        output.lines.emplace_back(fmt::format("assert(next_block < {});", f->basic_blocks.size()));
+        output.lines.emplace_back(fmt::format("ASSERT(next_block < {});", f->basic_blocks.size()));
         output.lines.emplace_back("break;");
 
       } else {
         output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count, file));
       }
 
-      assert(output.lines.size() > old_line_count);
+      ASSERT(output.lines.size() > old_line_count);
     }
   }
 
@@ -1286,16 +1341,16 @@ void run_mips2c(Function* f) {
           output.lines.emplace_back(fmt::format("if ({}) {{", branch_line.code),
                                     branch_line.comment);
           // next block should be the delay slot
-          assert((int)block_idx + 1 == block.succ_branch);
+          ASSERT((int)block_idx + 1 == block.succ_branch);
           auto& delay_block = blocks.at(block.succ_branch);
-          assert(delay_block.end_instr - delay_block.start_instr == 1);  // only 1 instr.
+          ASSERT(delay_block.end_instr - delay_block.start_instr == 1);  // only 1 instr.
           auto& delay_instr = f->instructions.at(delay_block.start_instr);
           auto delay_instr_str = delay_instr.to_string(file->labels);
           auto delay_instr_line =
               handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count, file);
           output.lines.emplace_back(fmt::format("  {}", delay_instr_line.code),
                                     delay_instr_line.comment);
-          assert(delay_block.succ_ft == -1);
+          ASSERT(delay_block.succ_ft == -1);
           output.lines.emplace_back(fmt::format("  goto block_{};", delay_block.succ_branch), "");
           output.lines.emplace_back("}", "");
         } else {
@@ -1303,13 +1358,13 @@ void run_mips2c(Function* f) {
             // skip the branch ins.
             output.lines.emplace_back("//" + instr_str, instr_str);
             // then the delay slot
-            assert(i + 1 < block.end_instr);
+            ASSERT(i + 1 < block.end_instr);
             i++;
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
                 handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
-            assert(i + 1 == block.end_instr);
+            ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("goto block_{};", block.succ_branch),
                                       "branch always\n");
@@ -1317,13 +1372,17 @@ void run_mips2c(Function* f) {
             // set the branch condition
             output.lines.push_back(handle_non_likely_branch_bc(instr, instr_str));
             // then the delay slot
-            assert(i + 1 < block.end_instr);
+            if (!(i + 1 < block.end_instr)) {
+              output.lines.emplace_back("DANGER jump to delay slot, this MUST be fixed manually!",
+                                        "");
+              lg::warn("Delay slot weirdness in {}, block {}", f->name(), block_idx);
+            }
             i++;
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
                 handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
-            assert(i + 1 == block.end_instr);
+            // ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("if (bc) {{goto block_{};}}", block.succ_branch),
                                       "branch non-likely\n");
@@ -1333,7 +1392,7 @@ void run_mips2c(Function* f) {
         // skip
         output.lines.emplace_back("//" + instr_str, instr_str);
         // then the delay slot
-        assert(i + 1 < block.end_instr);
+        ASSERT(i + 1 < block.end_instr);
         i++;
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
@@ -1344,8 +1403,8 @@ void run_mips2c(Function* f) {
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
                                   "return\n");
       } else if (instr.kind == InstructionKind::JALR) {
-        assert(instr.get_dst(0).is_reg(Register(Reg::GPR, Reg::RA)));
-        assert(i < block.end_instr - 1);
+        ASSERT(instr.get_dst(0).is_reg(Register(Reg::GPR, Reg::RA)));
+        ASSERT(i < block.end_instr - 1);
         output.lines.emplace_back(
             fmt::format("call_addr = c->gprs[{}].du32[0];", reg_to_name(instr.get_src(0))),
             "function call:");
@@ -1359,7 +1418,7 @@ void run_mips2c(Function* f) {
         output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count, file));
       }
 
-      assert(output.lines.size() > old_line_count);
+      ASSERT(output.lines.size() > old_line_count);
     }
   }
 

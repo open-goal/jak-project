@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include "DataParser.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*
  * Allowable lines:
@@ -35,7 +35,7 @@ std::vector<std::string> string_to_lines(const std::string& str) {
 }
 
 std::string get_until_space(std::string& instr) {
-  assert(!instr.empty());
+  ASSERT(!instr.empty());
   size_t i;
   for (i = 0; i < instr.length(); i++) {
     if (instr[i] == ' ') {
@@ -155,7 +155,7 @@ ParsedData parse_data(const std::string& str) {
         continue;
       } else {
         auto val = std::stoull(line, nullptr, 16);
-        assert(val <= UINT32_MAX);
+        ASSERT(val <= UINT32_MAX);
         LinkedWord word(val);
         word.set_to_plain_data();
         result.words.push_back(word);
@@ -211,7 +211,7 @@ std::string ParsedData::print() const {
         result += "    .empty-list\n";
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 

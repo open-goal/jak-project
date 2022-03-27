@@ -31,7 +31,7 @@
   )
 
 ;; definition for method 9 of type trsqv
-(defmethod seek-toward-heading-vec! trsqv ((obj trsqv) (dir vector) (vel float) (frame-count int))
+(defmethod seek-toward-heading-vec! trsqv ((obj trsqv) (dir vector) (vel float) (frame-count time-frame))
   (let* ((yaw-error (deg-diff (quaternion-y-angle (-> obj quat)) (vector-y-angle dir)))
          (yaw-limit
            (fmin (* vel (-> *display* seconds-per-frame)) (/ (* 5.0 (fabs yaw-error)) (the float frame-count)))
@@ -39,20 +39,21 @@
          (saturated-yaw (fmax (fmin yaw-error yaw-limit) (- yaw-limit)))
          )
     (let ((old-diff (-> obj old-y-angle-diff)))
-      (set! saturated-yaw (cond
-                            ((or (= old-diff 0.0)
-                                 (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
-                                 (or (and (< saturated-yaw 0.0) (< old-diff 0.0))
-                                     (>= (- (-> *display* base-frame-counter) (-> obj angle-change-time)) 60)
-                                     )
-                                 )
-                             (set! (-> obj angle-change-time) (-> *display* base-frame-counter))
-                             saturated-yaw
-                             )
-                            (else
-                              (* 0.000000001 saturated-yaw)
-                              )
-                            )
+      (set! saturated-yaw
+            (cond
+              ((or (= old-diff 0.0)
+                   (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
+                   (or (and (< saturated-yaw 0.0) (< old-diff 0.0))
+                       (>= (- (-> *display* base-frame-counter) (-> obj angle-change-time)) (seconds 0.2))
+                       )
+                   )
+               (set! (-> obj angle-change-time) (-> *display* base-frame-counter))
+               saturated-yaw
+               )
+              (else
+                (* 0.000000001 saturated-yaw)
+                )
+              )
             )
       )
     (set! (-> obj old-y-angle-diff) saturated-yaw)
@@ -74,7 +75,7 @@
   )
 
 ;; definition for method 11 of type trsqv
-(defmethod seek-to-point-toward-point! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 int))
+(defmethod seek-to-point-toward-point! trsqv ((obj trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   (seek-toward-heading-vec! obj (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) arg1 arg2)
   )
 
@@ -90,7 +91,7 @@
   )
 
 ;; definition for method 13 of type trsqv
-(defmethod seek-toward-yaw-angle! trsqv ((obj trsqv) (yaw float) (vel float) (frame-count int))
+(defmethod seek-toward-yaw-angle! trsqv ((obj trsqv) (yaw float) (vel float) (frame-count time-frame))
   (let ((s3-0 (method-of-object obj seek-toward-heading-vec!))
         (s2-0 (new 'stack-no-clear 'vector))
         )

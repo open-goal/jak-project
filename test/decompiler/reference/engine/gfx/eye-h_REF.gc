@@ -3,13 +3,13 @@
 
 ;; definition of type eye
 (deftype eye (structure)
-  ((data        uint128 2 :offset-assert   0)
-   (x           float     :offset          0)
-   (y           float     :offset          4)
-   (lid         float     :offset          8)
-   (iris-scale  float     :offset         16)
-   (pupil-scale float     :offset         20)
-   (lid-scale   float     :offset         24)
+  ((data        vector 2 :inline :offset-assert   0)
+   (x           float            :offset          0)
+   (y           float            :offset          4)
+   (lid         float            :offset          8)
+   (iris-scale  float            :offset         16)
+   (pupil-scale float            :offset         20)
+   (lid-scale   float            :offset         24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -20,24 +20,24 @@
 (defmethod inspect eye ((obj eye))
   (format #t "[~8x] ~A~%" obj 'eye)
   (format #t "~Tdata[2] @ #x~X~%" (-> obj data))
-  (format #t "~Tx: ~f~%" (-> obj x))
-  (format #t "~Ty: ~f~%" (-> obj y))
-  (format #t "~Tlid: ~f~%" (-> obj lid))
-  (format #t "~Tiris-scale: ~f~%" (-> obj iris-scale))
-  (format #t "~Tpupil-scale: ~f~%" (-> obj pupil-scale))
-  (format #t "~Tlid-scale: ~f~%" (-> obj lid-scale))
+  (format #t "~Tx: ~f~%" (-> obj data 0 x))
+  (format #t "~Ty: ~f~%" (-> obj data 0 y))
+  (format #t "~Tlid: ~f~%" (-> obj data 0 z))
+  (format #t "~Tiris-scale: ~f~%" (-> obj data 1 x))
+  (format #t "~Tpupil-scale: ~f~%" (-> obj data 1 y))
+  (format #t "~Tlid-scale: ~f~%" (-> obj data 1 z))
   obj
   )
 
 ;; definition of type eye-control
 (deftype eye-control (structure)
-  ((process     uint64         :offset-assert   0)
-   (random-time uint16         :offset-assert   8)
-   (level       uint16         :offset-assert  10)
-   (blink       float          :offset-assert  12)
-   (shaders     uint32         :offset-assert  16)
-   (left        eye    :inline :offset-assert  32)
-   (right       eye    :inline :offset-assert  64)
+  ((process     handle                              :offset-assert   0)
+   (random-time uint16                              :offset-assert   8)
+   (level       uint16                              :offset-assert  10)
+   (blink       float                               :offset-assert  12)
+   (shaders     (inline-array adgif-shader)         :offset-assert  16)
+   (left        eye                         :inline :offset-assert  32)
+   (right       eye                         :inline :offset-assert  64)
    )
   :method-count-assert 9
   :size-assert         #x60
@@ -100,8 +100,8 @@
 
 ;; failed to figure out what this is:
 (dotimes (v1-5 11)
-  (set! (-> *eye-control-array* data v1-5 process) (the-as uint #f))
-  (set! (-> *eye-control-array* data v1-5 shaders) (the-as uint #f))
+  (set! (-> *eye-control-array* data v1-5 process) (the-as handle #f))
+  (set! (-> *eye-control-array* data v1-5 shaders) (the-as (inline-array adgif-shader) #f))
   (set! (-> *eye-control-array* data v1-5 random-time) (the-as uint 60))
   (set! (-> *eye-control-array* data v1-5 blink) 0.0)
   )

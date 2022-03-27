@@ -2,7 +2,7 @@
 
 #include <cstring>
 #include "common/dma/dma.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * @file dma_chain_read.h
@@ -59,12 +59,12 @@ class DmaFollower {
     DmaTransfer result;
     result.transferred_tag = read_val<u64>(m_tag_offset + 8);
     result.size_bytes = (u32)tag.qwc * 16;
-    assert(!tag.spr);
-    assert(!m_ended);
+    ASSERT(!tag.spr);
+    ASSERT(!m_ended);
     switch (tag.kind) {
       case DmaTag::Kind::CNT:
         // data, then next tag. doesn't read address.
-        assert(tag.addr == 0);
+        ASSERT(tag.addr == 0);
         result.data_offset = m_tag_offset + 16;
         m_tag_offset = result.data_offset + result.size_bytes;
         break;
@@ -84,12 +84,12 @@ class DmaFollower {
         break;
       case DmaTag::Kind::CALL:
         result.data_offset = m_tag_offset + 16;
-        assert(m_sp <= 1);
+        ASSERT(m_sp <= 1);
         m_tag_offset = tag.addr;
         m_stack[m_sp++] = result.data_offset + tag.qwc * 16;
         break;
       case DmaTag::Kind::RET:
-        assert(m_sp > 0);
+        ASSERT(m_sp > 0);
         result.data_offset = m_tag_offset + 16;
         m_tag_offset = m_stack[--m_sp];
         break;
@@ -99,7 +99,7 @@ class DmaFollower {
         break;
 
       default:
-        assert(false);
+        ASSERT(false);
     }
     result.data = (const u8*)m_base + result.data_offset;
     return result;

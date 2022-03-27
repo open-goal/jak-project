@@ -2,7 +2,7 @@
 #include "BasicBlocks.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionMatching.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -25,34 +25,34 @@ std::vector<BasicBlock> find_blocks_in_function(const LinkedObjectFile& file,
 
     if (instr_info.is_branch && !instr_info.is_branch_likely) {
       // make sure the delay slot of this branch is included in the function
-      assert(i + func.start_word < func.end_word - 1);
+      ASSERT(i + func.start_word < func.end_word - 1);
       // divider after delay slot
       dividers.push_back(i + 2);
       auto label_id = instr.get_label_target();
-      assert(label_id != -1);
+      ASSERT(label_id != -1);
       const auto& label = file.labels.at(label_id);
       // should only jump to within our own function
-      assert(label.target_segment == seg);
-      assert(label.offset / 4 > func.start_word);
-      assert(label.offset / 4 < func.end_word - 1);
+      ASSERT(label.target_segment == seg);
+      ASSERT(label.offset / 4 > func.start_word);
+      ASSERT(label.offset / 4 < func.end_word - 1);
       dividers.push_back(label.offset / 4 - func.start_word);
     }
 
     // for branch likely, we treat the likely instruction as a separate block.
     if (instr_info.is_branch_likely) {
-      assert(i + func.start_word < func.end_word - 1);
+      ASSERT(i + func.start_word < func.end_word - 1);
       // divider after branch instruction
       dividers.push_back(i + 1);
       // divider after likely delay slot.
       dividers.push_back(i + 2);
       // divider at the destination.
       auto label_id = instr.get_label_target();
-      assert(label_id != -1);
+      ASSERT(label_id != -1);
       const auto& label = file.labels.at(label_id);
       // should only jump to within our own function
-      assert(label.target_segment == seg);
-      assert(label.offset / 4 > func.start_word);
-      assert(label.offset / 4 < func.end_word - 1);
+      ASSERT(label.target_segment == seg);
+      ASSERT(label.offset / 4 > func.start_word);
+      ASSERT(label.offset / 4 < func.end_word - 1);
       dividers.push_back(label.offset / 4 - func.start_word);
     }
   }
@@ -62,7 +62,7 @@ std::vector<BasicBlock> find_blocks_in_function(const LinkedObjectFile& file,
   for (size_t i = 0; i < dividers.size() - 1; i++) {
     if (dividers[i] != dividers[i + 1]) {
       basic_blocks.emplace_back(dividers[i], dividers[i + 1]);
-      assert(dividers[i] >= 0);
+      ASSERT(dividers[i] >= 0);
     }
   }
 

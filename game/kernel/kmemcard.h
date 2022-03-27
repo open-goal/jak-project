@@ -10,7 +10,7 @@
 
 void kmemcard_init_globals();
 
-constexpr s32 SAVE_SIZE = 0x2b3;  // likely different by versions!
+constexpr s32 SAVE_SIZE = 691;  // likely different by versions! 692 on PAL/JPN
 constexpr s32 BANK_SIZE = 0x10000;
 
 // each card can be in one of these states:

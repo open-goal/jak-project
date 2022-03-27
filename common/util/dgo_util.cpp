@@ -2,7 +2,7 @@
 #include "dgo_util.h"
 #include "common/versions.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Assert false if the char[] has non-null data after the null terminated string.
@@ -13,7 +13,7 @@ void assert_string_empty_after(const char* str, int size) {
   while (*ptr)
     ptr++;
   while (ptr - str < size) {
-    assert(!*ptr);
+    ASSERT(!*ptr);
     ptr++;
   }
 }
@@ -37,12 +37,12 @@ std::string get_object_file_name(const std::string& original_name, u8* data, int
     if (!failed) {
       for (int i = 0; i < int(original_name.length()); i++) {
         if (start + len + i >= size || data[start + len + i] != original_name[i]) {
-          assert(false);
+          ASSERT(false);
         }
       }
 
-      assert(int(suffix.length()) + start + len + int(original_name.length()) < size);
-      assert(
+      ASSERT(int(suffix.length()) + start + len + int(original_name.length()) < size);
+      ASSERT(
           !memcmp(data + start + len + original_name.length(), suffix.data(), suffix.length() + 1));
 
       return original_name + "-ag";

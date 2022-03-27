@@ -80,7 +80,7 @@
       (send-event
         (handle->process gp-1)
         'eval
-        (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) (draw-status drwf05))))
+        (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) (draw-status skip-bones))))
                                       (set! (-> self draw status) v0-0)
                                       (the-as uint v0-0)
                                       )
@@ -204,7 +204,7 @@
         )
       (send-event-function *target* a1-15)
       )
-    (dummy-18 self)
+    (cleanup-for-death self)
     (deactivate self)
     (while #t
       (suspend)
@@ -249,7 +249,7 @@
           (-> gp-0 ppointer)
           )
         )
-      (dummy-18 self)
+      (cleanup-for-death self)
       (deactivate self)
       )
     (none)
@@ -348,7 +348,7 @@
 (defstate plunger-lurker-die (plunger-lurker)
   :code
   (behavior ()
-    (dummy-18 self)
+    (cleanup-for-death self)
     (deactivate self)
     (suspend)
     0
@@ -392,11 +392,11 @@
    (y-offset          float                :offset-assert 212)
    (y-offset-desired  float                :offset-assert 216)
    (y-vel             float                :offset-assert 220)
-   (last-look-time    int64                :offset-assert 224)
-   (time-to-next-look int64                :offset-assert 232)
+   (last-look-time    time-frame           :offset-assert 224)
+   (time-to-next-look time-frame           :offset-assert 232)
    (take-off          symbol               :offset-assert 240)
    (race-seconds      float                :offset-assert 244)
-   (race-start-time   int64                :offset-assert 248)
+   (race-start-time   time-frame           :offset-assert 248)
    (rank              int32                :offset-assert 256)
    (alt-actor         entity-actor         :offset-assert 260)
    (alt-trans         vector               :offset-assert 264)
@@ -438,7 +438,7 @@
           (s4-0 #f)
           )
       (when (-> obj draw shadow)
-        (when (or (logtest? (-> obj draw status) (draw-status drwf03))
+        (when (or (logtest? (-> obj draw status) (draw-status was-drawn))
                   (< (vector-vector-xz-distance-squared (-> obj root trans) (camera-pos)) 10485760000.0)
                   )
           (let ((s3-1 (new 'stack-no-clear 'collide-tri-result))
@@ -525,7 +525,7 @@
 (defstate flying-lurker-die (flying-lurker)
   :code
   (behavior ()
-    (dummy-18 self)
+    (cleanup-for-death self)
     (deactivate self)
     (none)
     )
@@ -535,7 +535,7 @@
   :code
   (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (while #t
       (suspend)
       )
@@ -716,7 +716,7 @@
                               )
                             )
                           )
-                        (dummy-18 self)
+                        (cleanup-for-death self)
                         (deactivate self)
                         )
                        ((= v1-0 'sleep)
@@ -776,7 +776,7 @@
   :enter
   (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
   :trans
@@ -857,7 +857,7 @@
                (v1-41 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-42 (the-as float (logior #x3f800000 v1-41)))
                )
-          (set! (-> self time-to-next-look) (the int (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 v1-42))))))
+          (set! (-> self time-to-next-look) (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 v1-42)))))))
           )
         )
       )
@@ -1002,7 +1002,7 @@
     (send-event
       (handle->process gp-1)
       'eval
-      (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) (draw-status drwf05))))
+      (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) (draw-status skip-bones))))
                                     (set! (-> self draw status) v0-0)
                                     (the-as uint v0-0)
                                     )
@@ -1046,7 +1046,7 @@
       (run-next-time-in-process gp-2 (lambda :behavior process
                                        ()
                                        (let ((gp-0 (-> *display* base-frame-counter)))
-                                         (until (>= (- (-> *display* base-frame-counter) gp-0) 30)
+                                         (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
                                            (suspend)
                                            )
                                          )
@@ -1144,7 +1144,7 @@
                               )
                             )
                           )
-                        (dummy-18 self)
+                        (cleanup-for-death self)
                         (deactivate self)
                         )
                        ((= v1-0 'sleep)
@@ -1285,7 +1285,7 @@
     )
   :exit
   (behavior ()
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
   :trans
@@ -1325,7 +1325,7 @@
          (when (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
            (process-grab? *target*)
            (let ((s5-0 (-> *display* base-frame-counter)))
-             (until (>= (- (-> *display* base-frame-counter) s5-0) 300)
+             (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 1))
                (suspend)
                )
              )

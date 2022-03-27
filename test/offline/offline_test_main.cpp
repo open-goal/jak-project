@@ -180,7 +180,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   file_util::init_crc();
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
-      file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"})));
+      file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}), {}));
 
   // modify the config
   std::unordered_set<std::string> object_files;
@@ -195,7 +195,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   std::vector<std::string> dgo_paths;
   if (args.iso_data_path.empty()) {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(file_util::get_file_path({"iso_data", x}));
+      dgo_paths.push_back(file_util::get_file_path({"iso_data/jak1", x}));
     }
   } else {
     for (auto& x : offline_config.dgos) {
@@ -253,7 +253,7 @@ decompiler::ObjectFileData& get_data(Decompiler& dc,
   auto it = std::find_if(files.begin(), files.end(), [&](const decompiler::ObjectFileData& data) {
     return data.to_unique_name() == unique_name;
   });
-  assert(it != files.end());
+  ASSERT(it != files.end());
   return *it;
 }
 

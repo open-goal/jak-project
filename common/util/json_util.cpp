@@ -1,6 +1,6 @@
 #include "common/log/log.h"
 #include "json_util.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Strip out // and / * comments
@@ -57,7 +57,7 @@ std::string strip_cpp_style_comments(const std::string& input) {
         output.push_back(c);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 

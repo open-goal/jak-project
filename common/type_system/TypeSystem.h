@@ -211,7 +211,8 @@ class TypeSystem {
                            const TypeSpec& actual,
                            const std::string& error_source_name = "",
                            bool print_on_error = true,
-                           bool throw_on_error = true) const;
+                           bool throw_on_error = true,
+                           bool allow_type_alias = false) const;
   bool tc(const TypeSpec& expected, const TypeSpec& actual) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
   int get_next_method_id(const Type* type) const;
@@ -249,7 +250,9 @@ class TypeSystem {
 
  private:
   std::string lca_base(const std::string& a, const std::string& b) const;
-  bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
+  bool typecheck_base_types(const std::string& expected,
+                            const std::string& actual,
+                            bool allow_alias) const;
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name) const;
   StructureType* add_builtin_structure(const std::string& parent,

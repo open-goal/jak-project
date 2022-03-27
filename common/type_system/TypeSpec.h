@@ -9,7 +9,7 @@
 #include <string>
 #include <optional>
 #include "common/util/SmallVector.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * A :name value modifier to apply to a type.
@@ -103,8 +103,8 @@ class TypeSpec {
   }
 
   const TypeSpec& get_single_arg() const {
-    assert(m_arguments);
-    assert(m_arguments->size() == 1);
+    ASSERT(m_arguments);
+    ASSERT(m_arguments->size() == 1);
     return m_arguments->front();
   }
 
@@ -118,16 +118,16 @@ class TypeSpec {
   }
 
   const TypeSpec& get_arg(int idx) const {
-    assert(m_arguments);
+    ASSERT(m_arguments);
     return m_arguments->at(idx);
   }
   TypeSpec& get_arg(int idx) {
-    assert(m_arguments);
+    ASSERT(m_arguments);
     return m_arguments->at(idx);
   }
   const TypeSpec& last_arg() const {
-    assert(m_arguments);
-    assert(!m_arguments->empty());
+    ASSERT(m_arguments);
+    ASSERT(!m_arguments->empty());
     return m_arguments->back();
   }
 

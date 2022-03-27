@@ -49,7 +49,7 @@
 #include <stdexcept>
 #include <map>
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace goos {
 

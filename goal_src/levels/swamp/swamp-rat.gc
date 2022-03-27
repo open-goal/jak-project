@@ -11,17 +11,17 @@
 ;; DECOMP BEGINS
 
 (deftype swamp-rat (nav-enemy)
-  ((up-vector          vector :inline :offset-assert 400)
-   (state-float        float          :offset-assert 416)
-   (state-vector       vector :inline :offset-assert 432)
-   (_hack              uint64         :offset-assert 448)
-   (wiggle-time        uint64         :offset-assert 456)
-   (wiggle-angle       float          :offset-assert 464)
-   (delta-wiggle-angle float          :offset-assert 468)
-   (wiggle-factor      float          :offset-assert 472)
-   (min-height         float          :offset-assert 476)
-   (chase-rest-time    uint64         :offset-assert 480)
-   (target-nav-time    uint64         :offset-assert 488)
+  ((up-vector          vector     :inline :offset-assert 400)
+   (state-float        float              :offset-assert 416)
+   (state-vector       vector     :inline :offset-assert 432)
+   (_hack              uint64             :offset-assert 448)
+   (wiggle-time        time-frame         :offset-assert 456)
+   (wiggle-angle       float              :offset-assert 464)
+   (delta-wiggle-angle float              :offset-assert 468)
+   (wiggle-factor      float              :offset-assert 472)
+   (min-height         float              :offset-assert 476)
+   (chase-rest-time    time-frame         :offset-assert 480)
+   (target-nav-time    time-frame         :offset-assert 488)
    )
   :heap-base #x180
   :method-count-assert 76
@@ -238,7 +238,7 @@ swamp-rat-default-event-handler
   swamp-rat-default-event-handler
   :trans
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the-as int (-> self chase-rest-time)))
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self chase-rest-time))
         (go-virtual nav-enemy-victory)
         )
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
@@ -246,10 +246,10 @@ swamp-rat-default-event-handler
     )
   :code
   (behavior ()
-    (set! (-> self target-nav-time) (the-as uint (-> *display* base-frame-counter)))
-    (set! (-> self wiggle-time) (the-as uint (+ (-> *display* base-frame-counter) -3000)))
+    (set! (-> self target-nav-time) (-> *display* base-frame-counter))
+    (set! (-> self wiggle-time) (+ (-> *display* base-frame-counter) (seconds -10)))
     (set! (-> self wiggle-angle) 0.0)
-    (set! (-> self chase-rest-time) (the-as uint (rand-vu-int-range 300 1200)))
+    (set! (-> self chase-rest-time) (rand-vu-int-range (seconds 1) (seconds 4)))
     (ja-channel-push! 1 51)
     (let ((gp-0 (-> self skel root-channel 0)))
       (joint-control-channel-group-eval!
@@ -260,8 +260,8 @@ swamp-rat-default-event-handler
       (set! (-> gp-0 frame-num) 0.0)
       )
     (while #t
-      (when (>= (- (-> *display* base-frame-counter) (the-as int (-> self wiggle-time))) 300)
-        (set! (-> self wiggle-time) (the-as uint (-> *display* base-frame-counter)))
+      (when (>= (- (-> *display* base-frame-counter) (-> self wiggle-time)) (seconds 1))
+        (set! (-> self wiggle-time) (-> *display* base-frame-counter))
         (swamp-rat-update-wiggle-params)
         )
       (suspend)
@@ -295,7 +295,7 @@ swamp-rat-default-event-handler
   :code
   (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
-    (set! (-> self turn-time) 22)
+    (set! (-> self turn-time) (seconds 0.07333333))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (while #t
         (logior! (-> self nav-enemy-flags) 16)
@@ -466,7 +466,7 @@ swamp-rat-default-event-handler
             )
           (when (or (logtest? (-> self collide-info status) 4)
                     (or (< (-> self collide-info trans y) (-> self min-height))
-                        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+                        (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
                         )
                     )
             0
@@ -526,32 +526,32 @@ swamp-rat-default-event-handler
                                      :taunt-anim 10
                                      :die-anim 11
                                      :neck-joint 7
-                                     :run-travel-speed (meters 7.0)
+                                     :run-travel-speed (meters 7)
                                      :run-rotate-speed (degrees 7999.9995)
-                                     :run-acceleration (meters 1.0)
+                                     :run-acceleration (meters 1)
                                      :run-turn-time (seconds 0.07333333)
-                                     :walk-travel-speed (meters 2.0)
+                                     :walk-travel-speed (meters 2)
                                      :walk-rotate-speed (degrees 7999.9995)
-                                     :walk-acceleration (meters 1.0)
+                                     :walk-acceleration (meters 1)
                                      :walk-turn-time (seconds 0.07333333)
-                                     :attack-shove-back (meters 3.0)
-                                     :attack-shove-up (meters 2.0)
-                                     :shadow-size (meters 1.0)
-                                     :notice-nav-radius (meters 1.0)
-                                     :nav-nearest-y-threshold (meters 10.0)
-                                     :notice-distance (meters 30.0)
-                                     :stop-chase-distance (meters 40.0)
-                                     :frustration-distance (meters 3.0)
-                                     :frustration-time #x1c2
+                                     :attack-shove-back (meters 3)
+                                     :attack-shove-up (meters 2)
+                                     :shadow-size (meters 1)
+                                     :notice-nav-radius (meters 1)
+                                     :nav-nearest-y-threshold (meters 10)
+                                     :notice-distance (meters 30)
+                                     :stop-chase-distance (meters 40)
+                                     :frustration-distance (meters 3)
+                                     :frustration-time (seconds 1.5)
                                      :die-anim-hold-frame 20.0
                                      :jump-anim-start-frame 19.0
                                      :jump-land-anim-end-frame 10000000000.0
-                                     :jump-height-min (meters 1.0)
+                                     :jump-height-min (meters 1)
                                      :jump-height-factor 0.5
                                      :jump-start-anim-speed 1.0
-                                     :shadow-max-y (meters 1.0)
-                                     :shadow-min-y (meters -1.0)
-                                     :shadow-locus-dist (meters 150.0)
+                                     :shadow-max-y (meters 1)
+                                     :shadow-min-y (meters -1)
+                                     :shadow-locus-dist (meters 150)
                                      :use-align #f
                                      :draw-shadow #f
                                      :move-to-ground #t
@@ -600,8 +600,8 @@ swamp-rat-default-event-handler
   (set! (-> obj wiggle-angle) 0.0)
   (set! (-> obj delta-wiggle-angle) 910.2222)
   (set! (-> obj wiggle-factor) 1.5)
-  (set! (-> obj reaction-time) (rand-vu-int-range 30 240))
-  (set! (-> obj chase-rest-time) (the-as uint 300))
+  (set! (-> obj reaction-time) (rand-vu-int-range (seconds 0.1) (seconds 0.8)))
+  (set! (-> obj chase-rest-time) (seconds 1))
   (set! (-> obj water) (new 'process 'water-control obj 7 0.0 8192.0 2048.0))
   (set! (-> obj water flags) (the-as uint 2))
   (set! (-> obj water height) (res-lump-float (-> obj entity) 'water-height))

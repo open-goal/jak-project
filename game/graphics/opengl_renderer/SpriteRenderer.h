@@ -137,7 +137,7 @@ class SpriteRenderer : public BucketRenderer {
       d = reg.d_mode();
       fix = reg.fix();
 
-      assert(fix == 0);
+      ASSERT(fix == 0);
     }
     bool z_write = false;
 

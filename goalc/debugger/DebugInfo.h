@@ -8,7 +8,7 @@
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 class FunctionEnv;
 
@@ -40,7 +40,7 @@ class DebugInfo {
 
   FunctionDebugInfo& add_function(const std::string& name, const std::string& obj_name) {
     if (m_functions.find(name) != m_functions.end()) {
-      assert(false);
+      ASSERT(false);
     }
     auto& result = m_functions[name];
     result.name = name;

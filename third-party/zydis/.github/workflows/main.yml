@@ -1,0 +1,115 @@
+name: GitHub Actions CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  cmake-build-and-tests:
+    name: CMake build + tests (${{ matrix.image_name }}, ${{ matrix.no_libc }})
+    runs-on: ${{ matrix.image_name }}
+
+    strategy:
+      matrix:
+        image_name: [macOS-latest, windows-2019, ubuntu-20.04]
+        no_libc: ["", -DZYAN_NO_LIBC=ON]
+        include:
+        - image_name: ubuntu-20.04
+          no_libc: -DCMAKE_BUILD_TYPE=Release
+          dev_mode: -DZYAN_DEV_MODE=ON
+        - image_name: ubuntu-20.04
+          no_libc: ""
+          dev_mode: ""
+          minimal_mode: "-DZYDIS_MINIMAL_MODE=ON -DZYDIS_FEATURE_ENCODER=OFF"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with: { submodules: recursive }
+      - name: Configuring
+        run: |
+          mkdir build
+          cd build
+          cmake ${{ matrix.dev_mode }} ${{ matrix.no_libc }} ${{ matrix.minimal_mode }} ..
+      - name: Building
+        run: |
+          cmake --build build --config Release
+      - name: Running regression tests (decoder)
+        run: |
+          cd tests
+          python3 regression.py test ../build/ZydisInfo
+        if: "!matrix.no_libc && matrix.image_name != 'windows-2019' && !matrix.minimal_mode"
+      - name: Running regression tests (encoder)
+        run: |
+          cd tests
+          python3 regression_encoder.py ../build/ZydisFuzzReEncoding ../build/ZydisFuzzEncoder
+        if: "!matrix.no_libc && matrix.image_name != 'windows-2019' && !matrix.minimal_mode"
+      - name: Running regression tests
+        run: |
+          cd tests
+          python regression.py test ..\\build\\Release\\ZydisInfo.exe
+        if: "!matrix.no_libc && matrix.image_name == 'windows-2019' && !matrix.minimal_mode"
+
+  msbuild-build:
+    name: MSBuild build (windows-2019)
+    runs-on: windows-2019
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with: { submodules: recursive }
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.3
+        with: { vs-version: '[16.0,17)' }
+      - name: Build user-mode
+        run: |
+          cd msvc
+          msbuild.exe Zydis.sln /m /t:Rebuild '/p:Configuration="Release MD";Platform=X64'
+      - name: Build kernel-mode
+        run: |
+          cd msvc
+          msbuild.exe Zydis.sln /m /t:Rebuild '/p:Configuration="Release Kernel";Platform=X64'
+
+  amalgamated:
+    name: Amalgamated build (Ubuntu 20.04)
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with: { submodules: recursive }
+      - name: Amalgamating sources
+        run: |
+          ./assets/amalgamate.py
+      - name: Compiling library
+        run: |
+          cd amalgamated-dist
+          gcc -shared -I. -fPIC -olibzydis.so Zydis.c
+
+  fuzzing:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined, memory]
+    steps:
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+        with:
+          oss-fuzz-project-name: zydis
+          dry-run: false
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+        with:
+          oss-fuzz-project-name: zydis
+          fuzz-seconds: 600
+          dry-run: false
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Upload Crash
+        uses: actions/upload-artifact@v1
+        if: failure() && steps.build.outcome == 'success'
+        with:
+          name: ${{ matrix.sanitizer }}-artifacts
+          path: ./out/artifacts

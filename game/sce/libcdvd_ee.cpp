@@ -4,7 +4,7 @@
  */
 
 #include "libcdvd_ee.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace ee {
 
@@ -22,7 +22,7 @@ void LIBRARY_INIT_sceCd() {
  * init_mode should be SCECdINIT
  */
 int sceCdInit(int init_mode) {
-  assert(init_mode == SCECdINIT);
+  ASSERT(init_mode == SCECdINIT);
   return 1;  // Initialization was performed normally
 }
 

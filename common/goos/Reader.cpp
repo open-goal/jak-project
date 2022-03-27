@@ -77,8 +77,8 @@ void TextStream::seek_past_whitespace_and_comments() {
 
       case '#':
         if (text_remains(1) && peek(1) == '|') {
-          assert(read() == '#');  // #
-          assert(read() == '|');  // |
+          ASSERT(read() == '#');  // #
+          ASSERT(read() == '|');  // |
 
           bool found_end = false;
           // find |#
@@ -167,17 +167,19 @@ Reader::Reader() {
   m_valid_source_text_chars[(int)'\r'] = true;
 
   // allow every character that gets transformed to something else
-  for (auto& remap : g_font_large_char_remap) {
-    for (auto rc : remap.chars) {
-      m_valid_source_text_chars[(u8)rc] = true;
+  for (auto& [version, font] : g_font_banks) {
+    for (auto& remap : *font->encode_info()) {
+      for (auto rc : remap.chars) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
     }
-  }
-  for (auto& remap : g_font_large_string_replace) {
-    for (auto rc : remap.to) {
-      m_valid_source_text_chars[(u8)rc] = true;
-    }
-    for (auto rc : remap.from) {
-      m_valid_source_text_chars[(u8)rc] = true;
+    for (auto& remap : *font->replace_info()) {
+      for (auto rc : remap.to) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
+      for (auto rc : remap.from) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
     }
   }
   m_valid_source_text_chars[0] = false;
@@ -309,7 +311,7 @@ bool Reader::check_string_is_valid(const std::string& str) const {
  * whitespace at the end and leaves the stream on the first character after the token.
  */
 Token Reader::get_next_token(TextStream& stream) {
-  assert(stream.text_remains());
+  ASSERT(stream.text_remains());
   Token t;
   t.source_line = stream.line_count;
   t.source_offset = stream.seek;
@@ -387,7 +389,7 @@ bool Reader::read_object(Token& tok, TextStream& ts, Object& obj) {
     // try as string
     if (tok.text[0] == '"') {
       // it's a string.
-      assert(tok.text.length() == 1);
+      ASSERT(tok.text.length() == 1);
       if (read_string(ts, obj)) {
         return true;
       } else {
@@ -418,22 +420,22 @@ bool Reader::read_object(Token& tok, TextStream& ts, Object& obj) {
 }
 
 bool Reader::read_array(TextStream& stream, Object& o) {
-  //  assert(stream.read() == '(');
+  //  ASSERT(stream.read() == '(');
   stream.seek_past_whitespace_and_comments();
   std::vector<Object> objects;
 
   bool got_close_paren = false;
   while (stream.text_remains()) {
     auto tok = get_next_token(stream);
-    assert(!tok.text.empty());
+    ASSERT(!tok.text.empty());
 
     if (tok.text[0] == '(') {
-      assert(tok.text.length() == 1);
+      ASSERT(tok.text.length() == 1);
       objects.push_back(read_list(stream, true));
       stream.seek_past_whitespace_and_comments();
       continue;
     } else if (tok.text[0] == ')') {
-      assert(tok.text.length() == 1);
+      ASSERT(tok.text.length() == 1);
       got_close_paren = true;
       break;
     } else {
@@ -529,19 +531,19 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     };
 
     if (tok.text.empty()) {
-      assert(false);
+      ASSERT(false);
       // empty list
       break;
     } else if (tok.text[0] == '(') {
       // nested list
-      assert(tok.text.length() == 1);
+      ASSERT(tok.text.length() == 1);
       insert_object(read_list(ts, true));
       ts.seek_past_whitespace_and_comments();
       continue;
     } else if (tok.text[0] == ')') {
       // end of this list
       got_close_paren = true;
-      assert(tok.text.length() == 1);
+      ASSERT(tok.text.length() == 1);
       break;
     } else {
       // try to get an object
@@ -602,7 +604,7 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
  */
 bool Reader::try_token_as_symbol(const Token& tok, Object& obj) {
   // check start character is valid:
-  assert(!tok.text.empty());
+  ASSERT(!tok.text.empty());
   char start = tok.text[0];
   if (m_valid_symbols_chars[(int)start]) {
     obj = SymbolObject::make_new(symbolTable, tok.text);
@@ -661,7 +663,7 @@ bool Reader::read_string(TextStream& stream, Object& obj) {
         if (end != 2) {
           throw_reader_error(stream, "invalid character escape", -2);
         }
-        assert(value < 256);
+        ASSERT(value < 256);
         str.push_back(char(value));
       } else {
         throw_reader_error(stream, "unknown string escape code", -1);

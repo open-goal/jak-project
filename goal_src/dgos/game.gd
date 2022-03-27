@@ -141,7 +141,6 @@
   ("navigate-h.o" "navigate-h")
   ("load-dgo.o" "load-dgo")
   ("ramdisk.o" "ramdisk")
-  ("pckernel.o" "pckernel") ;; added
   ("gsound.o" "gsound")
   ("transformq.o" "transformq")
   ("collide-func.o" "collide-func")
@@ -192,6 +191,7 @@
   ("game-info.o" "game-info")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
+  ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
   ("weather-part.o" "weather-part")
@@ -205,6 +205,7 @@
   ("level-info.o" "level-info")
   ("level.o" "level")
   ("text.o" "text")
+  ("subtitle.o" "subtitle") ;; added
   ("collide-probe.o" "collide-probe")
   ("collide-frag.o" "collide-frag")
   ("collide-mesh.o" "collide-mesh")

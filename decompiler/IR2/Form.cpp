@@ -60,7 +60,7 @@ goos::Object FormElement::to_form(const Env& env) const {
 //////////////////
 
 goos::Object Form::to_form(const Env& env) const {
-  assert(!m_elements.empty());
+  ASSERT(!m_elements.empty());
   if (m_elements.size() == 1) {
     return m_elements.front()->to_form(env);
   } else {
@@ -80,7 +80,7 @@ goos::Object Form::to_form(const Env& env) const {
 }
 
 goos::Object Form::to_form_as_condition(const Env& env) const {
-  assert(!m_elements.empty());
+  ASSERT(!m_elements.empty());
   if (m_elements.size() == 1) {
     return m_elements.front()->to_form_as_condition_internal(env);
   } else {
@@ -203,7 +203,7 @@ LoadSourceElement::LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind)
 goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
   switch (m_kind) {
     case LoadVarOp::Kind::FLOAT:
-      assert(m_size == 4);
+      ASSERT(m_size == 4);
       return pretty_print::build_list("l.f", m_addr->to_form(env));
     case LoadVarOp::Kind::UNSIGNED:
       switch (m_size) {
@@ -218,7 +218,7 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
         case 16:
           return pretty_print::build_list("l.q", m_addr->to_form(env));
         default:
-          assert(false);
+          ASSERT(false);
           return {};
       }
       break;
@@ -231,16 +231,16 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
         case 4:
           return pretty_print::build_list("l.w", m_addr->to_form(env));
         default:
-          assert(false);
+          ASSERT(false);
           return {};
       }
       break;
     case LoadVarOp::Kind::VECTOR_FLOAT:
-      assert(m_size == 16);
+      ASSERT(m_size == 16);
       return pretty_print::build_list("l.vf", m_addr->to_form(env));
       break;
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -271,7 +271,7 @@ void LoadSourceElement::get_modified_regs(RegSet& regs) const {
 SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom, bool omit_var_cast)
     : m_atom(atom), m_omit_var_cast(omit_var_cast) {
   if (m_omit_var_cast) {
-    assert(atom.is_var());
+    ASSERT(atom.is_var());
   }
 }
 
@@ -314,7 +314,7 @@ SetVarElement::SetVarElement(const RegisterAccess& var,
 }
 
 goos::Object SetVarElement::to_form_internal(const Env& env) const {
-  assert(active());
+  ASSERT(active());
   auto reg_kind = m_dst.reg().get_kind();
   if ((reg_kind == Reg::FPR || reg_kind == Reg::GPR) && env.has_type_analysis() &&
       env.has_local_vars()) {
@@ -546,7 +546,7 @@ AsmBranchElement::AsmBranchElement(AsmBranchOp* branch_op, Form* branch_delay, b
     : m_branch_op(branch_op), m_branch_delay(branch_delay), m_likely(likely) {
   m_branch_delay->parent_element = this;
   for (auto& elt : m_branch_delay->elts()) {
-    assert(elt->parent_form == m_branch_delay);
+    ASSERT(elt->parent_form == m_branch_delay);
   }
 }
 
@@ -622,15 +622,15 @@ goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
     }
   }
 
-  assert(block_id >= 0);
+  ASSERT(block_id >= 0);
 
   if (m_branch_delay) {
     if (m_branch_delay->parent_element != this) {
       fmt::print("bad ptr. Parent is {}\n", m_branch_delay->parent_element->to_string(env));
-      assert(false);
+      ASSERT(false);
     }
 
-    assert(m_branch_delay->parent_element->parent_form);
+    ASSERT(m_branch_delay->parent_element->parent_form);
     std::vector<goos::Object> list = {
         pretty_print::to_symbol("b!"), m_branch_condition->to_form(env),
         pretty_print::to_symbol(fmt::format("cfg-{}", block_id)),
@@ -668,11 +668,11 @@ void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const
     if (m_branch_delay) {
       if (m_branch_delay->parent_element != this) {
         fmt::print("bad ptr. Parent is {}\n", (void*)m_branch_delay->parent_element);
-        assert(false);
+        ASSERT(false);
       }
 
       for (auto& elt : m_branch_delay->elts()) {
-        assert(elt->parent_form == m_branch_delay);
+        ASSERT(elt->parent_form == m_branch_delay);
       }
 
       m_branch_delay->collect_vars(vars, recursive);
@@ -1289,7 +1289,7 @@ goos::Object ShortCircuitElement::to_form_internal(const Env& env) const {
       forms.push_back(pretty_print::to_symbol("or"));
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   for (auto& x : entries) {
     forms.push_back(x.condition->to_form_as_condition(env));
@@ -1638,7 +1638,7 @@ void GenericOperator::collect_vars(RegAccessSet& vars, bool recursive) const {
       }
       return;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1651,7 +1651,7 @@ goos::Object GenericOperator::to_form(const Env& env) const {
     case Kind::FUNCTION_EXPR:
       return m_function->to_form(env);
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -1665,7 +1665,7 @@ void GenericOperator::apply(const std::function<void(FormElement*)>& f) {
       m_function->apply(f);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1678,7 +1678,7 @@ void GenericOperator::apply_form(const std::function<void(Form*)>& f) {
       m_function->apply_form(f);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1694,7 +1694,7 @@ bool GenericOperator::operator==(const GenericOperator& other) const {
     case Kind::FUNCTION_EXPR:
       return false;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -1712,7 +1712,7 @@ void GenericOperator::get_modified_regs(RegSet& regs) const {
       m_function->get_modified_regs(regs);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1855,7 +1855,7 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
     case FixedOperatorKind::CPAD_HOLD_P:
       return "cpad-hold?";
     default:
-      assert(false);
+      ASSERT(false);
       return "";
   }
 }
@@ -1898,7 +1898,7 @@ GenericElement::GenericElement(GenericOperator op, std::vector<Form*> forms)
 goos::Object GenericElement::to_form_internal(const Env& env) const {
   if (m_head.kind() == GenericOperator::Kind::CONDITION_OPERATOR &&
       m_head.condition_kind() == IR2_Condition::Kind::TRUTHY) {
-    assert(m_elts.size() == 1);
+    ASSERT(m_elts.size() == 1);
     return m_elts.front()->to_form_as_condition(env);
   } else if (m_head.kind() == GenericOperator::Kind::CONDITION_OPERATOR &&
              m_head.condition_kind() == IR2_Condition::Kind::ALWAYS) {
@@ -1907,7 +1907,7 @@ goos::Object GenericElement::to_form_internal(const Env& env) const {
     std::vector<goos::Object> result;
     result.push_back(m_head.to_form(env));
     for (auto x : m_elts) {
-      assert(x->parent_element);
+      ASSERT(x->parent_element);
       result.push_back(x->to_form(env));
     }
     return pretty_print::build_list(result);
@@ -1955,7 +1955,7 @@ CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
 }
 
 goos::Object CastElement::to_form_internal(const Env& env) const {
-  // assert(m_source->parent_element == this);
+  // ASSERT(m_source->parent_element == this);
   auto atom = form_as_atom(m_source);
   if (atom && atom->is_var()) {
     return pretty_print::build_list(
@@ -1967,25 +1967,25 @@ goos::Object CastElement::to_form_internal(const Env& env) const {
 }
 
 void CastElement::apply(const std::function<void(FormElement*)>& f) {
-  // assert(m_source->parent_element == this);
+  // ASSERT(m_source->parent_element == this);
   f(this);
   m_source->apply(f);
 }
 
 void CastElement::apply_form(const std::function<void(Form*)>& f) {
-  // assert(m_source->parent_element == this);
+  // ASSERT(m_source->parent_element == this);
   m_source->apply_form(f);
 }
 
 void CastElement::collect_vars(RegAccessSet& vars, bool recursive) const {
-  // assert(m_source->parent_element == this);
+  // ASSERT(m_source->parent_element == this);
   if (recursive) {
     m_source->collect_vars(vars, recursive);
   }
 }
 
 void CastElement::get_modified_regs(RegSet& regs) const {
-  assert(m_source->parent_element == this);
+  ASSERT(m_source->parent_element == this);
   m_source->get_modified_regs(regs);
 }
 
@@ -2032,7 +2032,7 @@ void DerefToken::collect_vars(RegAccessSet& vars, bool recursive) const {
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -2047,7 +2047,7 @@ goos::Object DerefToken::to_form(const Env& env) const {
     case Kind::EXPRESSION_PLACEHOLDER:
       return pretty_print::to_symbol("PLACEHOLDER");
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -2062,7 +2062,7 @@ void DerefToken::apply(const std::function<void(FormElement*)>& f) {
       m_expr->apply(f);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -2076,7 +2076,7 @@ void DerefToken::apply_form(const std::function<void(Form*)>& f) {
       m_expr->apply_form(f);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -2090,7 +2090,7 @@ void DerefToken::get_modified_regs(RegSet& regs) const {
       m_expr->get_modified_regs(regs);
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -2131,7 +2131,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> 
 }
 
 goos::Object DerefElement::to_form_internal(const Env& env) const {
-  assert(m_base->parent_element);
+  ASSERT(m_base->parent_element);
   std::vector<goos::Object> forms = {pretty_print::to_symbol(m_is_addr_of ? "&->" : "->"),
                                      m_base->to_form(env)};
   for (auto& tok : m_tokens) {
@@ -2561,8 +2561,8 @@ CounterLoopElement::CounterLoopElement(Kind kind,
       m_kind(kind) {
   m_body->parent_element = this;
   m_check_value->parent_element = this;
-  assert(m_var_inc.reg() == m_var_check.reg());
-  assert(m_var_init.reg() == m_var_inc.reg());
+  ASSERT(m_var_inc.reg() == m_var_check.reg());
+  ASSERT(m_var_init.reg() == m_var_inc.reg());
 }
 
 goos::Object CounterLoopElement::to_form_internal(const Env& env) const {
@@ -2575,7 +2575,7 @@ goos::Object CounterLoopElement::to_form_internal(const Env& env) const {
       loop_name = "countdown";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   std::vector<goos::Object> outer = {
       pretty_print::to_symbol(loop_name),
@@ -2652,7 +2652,7 @@ goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
                                                   m_entry.ref_type.get_single_arg().print(),
                                                   m_entry.hint.container_size));
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -3269,7 +3269,7 @@ goos::Object ResLumpMacroElement::to_form_internal(const Env& env) const {
       forms.push_back(pretty_print::to_symbol("res-lump-value"));
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   forms.push_back(m_lump_object->to_form(env));

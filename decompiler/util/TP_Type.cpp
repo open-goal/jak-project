@@ -79,7 +79,7 @@ std::string TP_Type::print() const {
       return "<run-function-in-process-func>";
     case Kind::INVALID:
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -136,7 +136,7 @@ bool TP_Type::operator==(const TP_Type& other) const {
       return true;
     case Kind::INVALID:
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -201,7 +201,7 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("function");
     case Kind::INVALID:
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }

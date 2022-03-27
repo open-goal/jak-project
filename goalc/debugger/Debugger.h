@@ -107,7 +107,7 @@ class Debugger {
    * Get the x86 address of GOAL memory
    */
   u64 get_x86_base_addr() const {
-    assert(m_context_valid);
+    ASSERT(m_context_valid);
     return m_debug_context.base;
   }
 
@@ -115,7 +115,7 @@ class Debugger {
    * Get the thread being debugged.
    */
   const xdbg::ThreadID& get_thread_id() const {
-    assert(m_context_valid);
+    ASSERT(m_context_valid);
     return m_debug_context.tid;
   }
 
@@ -141,7 +141,7 @@ class Debugger {
   }
 
   const xdbg::Regs& get_regs() {
-    assert(m_regs_valid);
+    ASSERT(m_regs_valid);
     return m_regs_at_break;
   }
 

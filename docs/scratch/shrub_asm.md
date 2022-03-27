@@ -609,68 +609,71 @@ B34:
     lq t4, 6080(t0)    ;; t4 = color constants (some hacky int to float stuff here)
 
 B35:
-    pextlb t5, r0, t6  ;; unpack
-    lqc2 vf4, 6096(t0)
-    pextlh t5, r0, t5
-    lqc2 vf25, 6176(t0)
-    vsub.xyzw vf9, vf6, vf14
+    pextlb t5, r0, t6        ;; t5 = unpacked rgba to u16's
+    lqc2 vf4, 6096(t0)       ;; vf4 = hmge-d
+    pextlh t5, r0, t5        ;; t5 = unpacked rgba to u32's
+    lqc2 vf25, 6176(t0)      ;; vf25 = min-dist (interesting...)
+    vsub.xyzw vf9, vf6, vf14 ;; vf6 is the "dist" of the draw node?
     sll r0, r0, 0
-    psllw t6, t5, 8
+    psllw t6, t5, 8          ;; t6 = multiply colors by 256
     mfc1 r0, f31
-    paddw t4, t6, t4
+    paddw t4, t6, t4         ;; t4 = colors + color constants
     mfc1 r0, f31
-    vmula.xyzw acc, vf1, vf3
+    vmula.xyzw acc, vf1, vf3 ;; 
     sll r0, r0, 0
     vmsub.xyzw vf9, vf9, vf15
-    sq t5, 6160(t0)
-    vadd.xyz vf13, vf13, vf2
-    sq t4, 6144(t0)
-    vsubw.xyzw vf8, vf6, vf2
+    sq t5, 6160(t0)          ;; stash bb color
+    vadd.xyz vf13, vf13, vf2 ;; same bsphere origin trick as tie
+    sq t4, 6144(t0)          ;; store floating point color
+    vsubw.xyzw vf8, vf6, vf2 ;; distance compensate for bsphere radius
     sll r0, r0, 0
-    vitof12.xyzw vf10, vf10
+    vitof12.xyzw vf10, vf10  ;; row 0 as floats
     sll r0, r0, 0
-    vmini.xyzw vf9, vf9, vf3
-    lw t4, 6404(t0)
-    vadd.xyz vf18, vf18, vf13
+    vmini.xyzw vf9, vf9, vf3    ;; dist crap
+    lw t4, 6404(t0)             ;; t4 = bucket-ptr
+    vadd.xyz vf18, vf18, vf13   ;; flat-normal + real-origin
     sll r0, r0, 0
-    vmulax.xyzw acc, vf28, vf13
-    lw t4, 24(t4)
+    vmulax.xyzw acc, vf28, vf13 ;; 
+    lw t4, 24(t4)               ;; geom3
     vmadday.xyzw acc, vf29, vf13
     sll r0, r0, 0
     vmaxx.xyzw vf9, vf9, vf0
     sll r0, r0, 0
     vmaddaz.xyzw acc, vf30, vf13
     sll r0, r0, 0
-    vmaddw.xyzw vf5, vf31, vf0
+    vmaddw.xyzw vf5, vf31, vf0 ;; vf.w is inverse distance from camera, I think
     sll r0, r0, 0
-    vitof12.xyzw vf11, vf11
+    vitof12.xyzw vf11, vf11    ;; vf11 = row 1 floats
     sll r0, r0, 0
-    vftoi0.xyzw vf19, vf9
+    vftoi0.xyzw vf19, vf9      ;; distance stuff
     sll r0, r0, 0
-    vmini.xyzw vf25, vf8, vf25
+    vmini.xyzw vf25, vf8, vf25 ;; apply min dist
     sll r0, r0, 0
-    vsubz.xyzw vf4, vf8, vf4
-    addiu t5, r0, 128
-    vitof12.xyzw vf12, vf12
-    addiu t6, r0, 255
-    vmulw.y vf9, vf9, vf15
+    vsubz.xyzw vf4, vf8, vf4   ;; apply hmge
+    addiu t5, r0, 128          ;; ?? t5 = 128
+    vitof12.xyzw vf12, vf12    ;; vf12 = row 2 float
+    addiu t6, r0, 255          ;; ?? t6 = 255
+    vmulw.y vf9, vf9, vf15     ;; multiply by lengths
     sll r0, r0, 0
     sll r0, r0, 0
-    qmfc2.i t7, vf19
-    vdiv Q, vf3.w, vf5.w
+    qmfc2.i t7, vf19           ;; integer dist compare
+    vdiv Q, vf3.w, vf5.w       ;; compute Q here, I guess
     sll r0, r0, 0
     and t6, t7, t6
     sll r0, r0, 0
     dsubu t7, t5, t6
-    sw t6, 6156(t0)
-    beq t5, t6, L80
+    sw t6, 6156(t0)           ;; adjusted color for fade out.
+    beq t5, t6, L80           ;; branch if don't try billboard, I think?
     sqc2 vf25, 6176(t0)
 
 B36:
-    beq t4, r0, L75
+    beq t4, r0, L75           ;; don't do billboard if we don't have it
     sw t7, 6172(t0)
 
 B37:
+;;;;;;;;;;;;;;;
+;; BILLBOARD
+;;;;;;;;;;;;;;;
     vmulax.xyzw acc, vf28, vf18
     lq t4, 5104(t0)
     vmadday.xyzw acc, vf29, vf18
@@ -948,22 +951,24 @@ L79:
     beq r0, r0, L92
     daddiu t3, t3, 16
 
+
+;; I think the end of billboard.
 B47:
 L80:
     sll r0, r0, 0
-    lw t4, 1324(t2)
+    lw t4, 1324(t2) ;; t4 = wind time (from global wind work)
     sll r0, r0, 0
-    lhu t5, 62(a2)
+    lhu t5, 62(a2)  ;; t5 = wind-index of the instance
     sll r0, r0, 0
-    lw a2, 6384(t0)
-    dsll t6, t5, 4
-    lqc2 vf19, 6048(t0)
-    daddu a2, a2, t6
-    daddu t4, t5, t4
-    andi t5, t4, 63
-    ld t4, 8(a2)
-    sll t6, t5, 4
-    ld t5, 0(a2)
+    lw a2, 6384(t0)     ;; a2 = wind-vectors
+    dsll t6, t5, 4      ;; t6 = t5 * 16
+    lqc2 vf19, 6048(t0) ;; vf19 = wind-const
+    daddu a2, a2, t6    ;; a2 = wind-vector + (wind-index * 16)
+    daddu t4, t5, t4    ;; t4 = wind-time + wind-index
+    andi t5, t4, 63     ;; t5 = (wind-time + wind-index) & 63
+    ld t4, 8(a2)        ;; t4 = winds
+    sll t6, t5, 4       ;; t6 = ((wind-time + wind-index) & 63) * 16
+    ld t5, 0(a2)        ;; t5 = winds
     addu t7, t6, t2
     qmfc2.i t6, vf4
     pextlw t4, r0, t4

@@ -1,5 +1,5 @@
 #include <utility>
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*
 template<typename T, typename... Args>
@@ -90,9 +90,9 @@ class CopyOnWrite {
     }
 
     if (!m_data->unique()) {
-      assert(!m_data->dead());
+      ASSERT(!m_data->dead());
       m_data->remove_ref();  // don't need to check for dead here, there's another ref somewhere.
-      assert(!m_data->dead());
+      ASSERT(!m_data->dead());
       m_data = new ObjectAndCount(m_data->object);
       m_data->add_ref();
     }
@@ -111,7 +111,7 @@ class CopyOnWrite {
   }
 
   void acquire_object(ObjectAndCount* obj) {
-    assert(!m_data);
+    ASSERT(!m_data);
     m_data = obj;
     if (obj) {
       m_data->add_ref();

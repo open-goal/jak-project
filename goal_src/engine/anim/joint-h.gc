@@ -16,6 +16,8 @@
 ;; These types are specific to joint control.
 ;; See mspace-h.gc for the actual joint types
 
+;; A single joint control channel. It can control some number of joints through a single animation.
+;; Multiple channels are blended together to create smooth transitions between animations.
 (deftype joint-control-channel (structure)
   ((parent           joint-control                                        :offset-assert   0)
    (command          symbol                                               :offset-assert   4)
@@ -38,9 +40,23 @@
     )
   )
 
+(defenum janim-status
+  :type uint16
+  :bitfield #t
+  (inited 0)
+  (drawn 1)
+  (done 2)
+  (blerc 3)
+  (skelf04 4)
+  (spool 5)
+  (blerc-done 6)
+  (eye-done 7)
+  (eye 8)
+  )
 
+;; A collection of joint-control-channels.
 (deftype joint-control (basic)
-  ((status                  uint16           :offset-assert 4)
+  ((status                  janim-status     :offset-assert 4)
    (allocated-length        int16            :offset-assert 6)
    (root-channel            (inline-array joint-control-channel) :offset 16)
    (blend-index             int32            :offset-assert 20)
@@ -70,6 +86,11 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; joint anim decompress
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; these types are used to decompress joint animations.
 
 (deftype matrix-stack (structure)
   ((top  matrix            :offset-assert   0)

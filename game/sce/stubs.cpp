@@ -1,23 +1,23 @@
 #include <stdexcept>
 #include "stubs.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace ee {
 
 void sceGsResetGraph() {
-  assert(false);
+  ASSERT(false);
 }
 
 void sceGsPutIMR() {
-  assert(false);
+  ASSERT(false);
 }
 
 void sceGsGetIMR() {
-  assert(false);
+  ASSERT(false);
 }
 
 void sceGsExecStoreImage() {
-  assert(false);
+  ASSERT(false);
 }
 
 void FlushCache() {}
@@ -28,17 +28,17 @@ namespace iop {
 u32 snd_BankLoadByLoc(u32 sector, u32 unk) {
   (void)sector;
   (void)unk;
-  assert(false);
+  ASSERT(false);
   return 0;
 }
 
 u32 snd_GetLastLoadError() {
-  assert(false);
+  ASSERT(false);
   return 0;
 }
 
 void snd_ResolveBankXREFS() {
-  assert(false);
+  ASSERT(false);
 }
 
 }  // namespace iop

@@ -47,12 +47,12 @@ LabelDB::LabelDB(const std::unordered_map<std::string, LabelConfigInfo>& config,
     m_labels_by_offset_into_seg.at(existing_info.target_segment)[existing_info.offset] = (int)i;
   }
 
-  assert(m_labels_by_name.size() == labels.size());
+  ASSERT(m_labels_by_name.size() == labels.size());
   size_t total_from_offsets = 0;
   for (int i = 0; i < N_SEG; i++) {
     total_from_offsets += m_labels_by_offset_into_seg[i].size();
   }
-  assert(total_from_offsets == labels.size());
+  ASSERT(total_from_offsets == labels.size());
 
   // now config
   for (const auto& config_it : config) {

@@ -7,6 +7,7 @@
 #include "decompiler/IR2/bitfields.h"
 #include "common/type_system/state.h"
 #include "common/util/BitUtils.h"
+#include "decompiler/util/goal_constants.h"
 
 namespace decompiler {
 
@@ -30,7 +31,7 @@ RegClass get_reg_kind(const Register& r) {
     case Reg::FPR:
       return RegClass::FLOAT;
     default:
-      assert(false);
+      ASSERT(false);
       return RegClass::INVALID;
   }
 }
@@ -167,7 +168,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
     }
     case Kind::INVALID:
     default:
-      assert(false);
+      ASSERT(false);
   }
   return {};
 }
@@ -337,8 +338,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     case Kind::LEFT_SHIFT:
       // multiplication by constant power of two, optimized to a shift.
       if (m_args[1].is_int() && is_int_or_uint(dts, arg0_type)) {
-        assert(m_args[1].get_int() >= 0);
-        assert(m_args[1].get_int() < 64);
+        ASSERT(m_args[1].get_int() >= 0);
+        ASSERT(m_args[1].get_int() < 64);
         // this could be a bitfield access or a multiply.
         // we pick bitfield access if the parent is a bitfield.
         if (dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()))) {
@@ -364,7 +365,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
       if (m_args[1].is_int()) {
         auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()));
-        if (bf) {
+        if (bf && arg0_type.typespec() != TypeSpec("time-frame")) {
           int shift_size = 64;
           int size = shift_size - m_args[1].get_int();
           int start_bit = shift_size - size;
@@ -388,7 +389,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
         auto type = dts.ts.lookup_type(arg0_type.get_bitfield_type());
         auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-        assert(as_bitfield);
+        ASSERT(as_bitfield);
         auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
         return TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
       }
@@ -640,7 +641,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg1_type.typespec() == TypeSpec("symbol") &&
-        arg0_type.is_integer_constant(SYM_INFO_OFFSET + POINTER_SIZE)) {
+        arg0_type.is_integer_constant(DECOMP_SYM_INFO_OFFSET + POINTER_SIZE)) {
       // symbol -> GOAL String
       // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
       // so we expect the arg to be a variable, and the type propagation will figure out the
@@ -794,18 +795,18 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   TypeState result = input;
 
   if (m_instr.kind == InstructionKind::QMFC2) {
-    assert(m_dst);
+    ASSERT(m_dst);
     result.get(m_dst->reg()) = TP_Type::make_from_ts("float");
     return result;
   }
 
   if (m_instr.kind == InstructionKind::PCPYUD) {
     if (m_src[1] && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
-      assert(m_src[0]);
+      ASSERT(m_src[0]);
       auto& in_type = result.get(m_src[0]->reg());
       auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(in_type.typespec()));
       if (bf) {
-        assert(m_dst);
+        ASSERT(m_dst);
         result.get(m_dst->reg()) = TP_Type::make_from_pcpyud_bitfield(in_type.typespec());
         return result;
       }
@@ -815,12 +816,12 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   // pextuw t0, r0, gp
   if (m_instr.kind == InstructionKind::PEXTUW) {
     if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
-      assert(m_src[1]);
+      ASSERT(m_src[1]);
       auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
       auto as_bitfield = dynamic_cast<BitFieldType*>(type);
       if (as_bitfield) {
         auto field = find_field(dts.ts, as_bitfield, 64, 32, true);
-        assert(m_dst);
+        ASSERT(m_dst);
         result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
         return result;
       }
@@ -1007,7 +1008,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         case Kind::FLOAT:
           return TP_Type::make_from_ts(TypeSpec("float"));
         default:
-          assert(false);
+          ASSERT(false);
       }
     }
 
@@ -1117,7 +1118,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         case Kind::FLOAT:
           return TP_Type::make_from_ts(TypeSpec("float"));
         default:
-          assert(false);
+          ASSERT(false);
       }
     }
 
@@ -1183,7 +1184,7 @@ TypeState SpecialOp::propagate_types_internal(const TypeState& input,
     case Kind::SUSPEND:
       return input;
     default:
-      assert(false);
+      ASSERT(false);
       return input;
   }
 }

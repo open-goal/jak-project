@@ -1,7 +1,7 @@
 #include <cstring>
 #include "iop.h"
 #include "game/system/iop_thread.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace iop {
 /*!
@@ -24,7 +24,7 @@ void sceSifInit() {
  * Initialize RPC
  */
 void sceSifInitRpc(int mode) {
-  assert(mode == 0);
+  ASSERT(mode == 0);
 }
 
 /*!
@@ -74,8 +74,8 @@ int QueryTotalFreeMemSize() {
  * Allocate memory.
  */
 void* AllocSysMemory(int type, unsigned long size, void* addr) {
-  assert(type == SMEM_Low);
-  assert(addr == nullptr);
+  ASSERT(type == SMEM_Low);
+  ASSERT(addr == nullptr);
   return iop->iop_alloc(size);
 }
 
@@ -95,7 +95,7 @@ s32 CreateMbx(MbxParam* param) {
 }
 
 s32 StartThread(s32 thid, u32 arg) {
-  assert(!arg);
+  ASSERT(!arg);
   iop->kernel.StartThread(thid);
   return 0;
 }
@@ -121,8 +121,8 @@ void sceSifRegisterRpc(sceSifServeData* serve,
   serve->buff = buff;
   (void)cfunc;
   (void)cbuff;
-  assert(!cfunc);
-  assert(!cbuff);
+  ASSERT(!cfunc);
+  ASSERT(!cbuff);
   qd->serve_data = serve;
 }
 
@@ -169,8 +169,8 @@ int sceCdDiskReady(int mode) {
 }
 
 u32 sceSifSetDma(sceSifDmaData* sdd, int len) {
-  assert(len == 1);
-  assert(len <= 0xc000);
+  ASSERT(len == 1);
+  ASSERT(len <= 0xc000);
   // todo - sanity check the destination address.
   memcpy(iop->ee_main_mem + (u64)(sdd->addr), sdd->data, sdd->size);
   return 1;
@@ -203,13 +203,13 @@ s32 CreateSema(SemaParam* param) {
 
 s32 WaitSema(s32 sema) {
   (void)sema;
-  assert(false);  // nyi
+  ASSERT(false);  // nyi
   return 0;
 }
 
 s32 SignalSema(s32 sema) {
   (void)sema;
-  assert(false);  // nyi
+  ASSERT(false);  // nyi
   return 0;
 }
 

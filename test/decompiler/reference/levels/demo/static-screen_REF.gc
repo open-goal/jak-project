@@ -4,14 +4,14 @@
 ;; definition of type static-screen
 (deftype static-screen (process)
   ((part       sparticle-launch-control 1 :offset-assert 112)
-   (state-time uint64                     :offset-assert 120)
+   (state-time time-frame                 :offset-assert 120)
    )
   :heap-base #x10
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00100080
   (:methods
-    (idle (int int symbol) _type_ :state 14)
+    (idle (int time-frame symbol) _type_ :state 14)
     )
   )
 
@@ -119,7 +119,7 @@
 (defstate idle (static-screen)
   :virtual #t
   :enter
-  (behavior ((arg0 int) (arg1 int) (arg2 symbol))
+  (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (set! (-> *setting-control* current bg-a) 1.0)
     (set! (-> *setting-control* default bg-a) 0.0)
     (push-setting! *setting-control* self 'common-page 'set 0.0 (ash 1 (+ arg0 1)))
@@ -133,18 +133,17 @@
     (none)
     )
   :code
-  (behavior ((arg0 int) (arg1 int) (arg2 symbol))
+  (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (local-vars (v1-6 symbol))
-    (set! (-> self state-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (until v1-6
       (suspend)
-      (set! v1-6
-            (or (and (> arg1 0) (>= (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) arg1))
-                (and arg2
-                     (>= (- (-> *display* base-frame-counter) (the-as int (-> self state-time))) 300)
-                     (cpad-pressed? 0 select start triangle circle x square)
+      (set! v1-6 (or (and (> arg1 0) (>= (- (-> *display* base-frame-counter) (-> self state-time)) arg1))
+                     (and arg2
+                          (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+                          (cpad-pressed? 0 select start triangle circle x square)
+                          )
                      )
-                )
             )
       )
     (set! (-> *setting-control* default bg-a) 1.0)
@@ -160,7 +159,7 @@
 
 ;; definition for function static-screen-init-by-other
 ;; INFO: Return type mismatch int vs none.
-(defbehavior static-screen-init-by-other static-screen ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 symbol))
+(defbehavior static-screen-init-by-other static-screen ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 time-frame) (arg5 symbol))
   (let ((s3-0 (lookup-part-group-by-name "group-part-screen1")))
     (when (and s3-0 (nonzero? s3-0) (type-type? (-> s3-0 type) sparticle-launch-group))
       (set! (-> *part-id-table* 2966 init-specs 0 initial-valuef) (the-as float arg1))
@@ -187,7 +186,3 @@
     (-> sv-16 ppointer)
     )
   )
-
-
-
-

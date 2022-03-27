@@ -81,7 +81,7 @@ std::string Assignment::to_string() const {
       result += "unassigned";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return result;
@@ -134,7 +134,7 @@ void find_basic_blocks(ControlFlowAnalysisCache* cache, const AllocationInput& i
     for (uint32_t i = 0; i < cache->basic_blocks.size(); i++) {
       if (!cache->basic_blocks[i].instr_idx.empty() &&
           cache->basic_blocks[i].instr_idx.front() == instr) {
-        assert(!found);
+        ASSERT(!found);
         found = true;
         result = i;
       }
@@ -143,13 +143,13 @@ void find_basic_blocks(ControlFlowAnalysisCache* cache, const AllocationInput& i
       printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %d\n", instr,
              int(in.instructions.size()));
     }
-    assert(found);
+    ASSERT(found);
     return result;
   };
 
   // link blocks
   for (auto& block : cache->basic_blocks) {
-    assert(!block.instr_idx.empty());
+    ASSERT(!block.instr_idx.empty());
     auto& last_instr = in.instructions.at(block.instr_idx.back());
     if (last_instr.fallthrough) {
       // try to link to next block:

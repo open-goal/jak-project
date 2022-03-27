@@ -194,7 +194,7 @@ void mem_print(T* data, int count, u32 start_addr, PrintMode mode) {
       format_string = "{:8.4f} ";  // todo, is this what we want?
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   // loop over elts
@@ -314,7 +314,7 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return get_none();

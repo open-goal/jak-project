@@ -4,7 +4,7 @@
  */
 
 #include "OpcodeInfo.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];
@@ -462,12 +462,12 @@ void init_opcode_info() {
 
   // for the UNKNOWN op which shouldn't be valid.
   total_count--;
-  assert(total_count == valid_count);
+  ASSERT(total_count == valid_count);
   opcodes_initialized = true;
 }
 
 void OpcodeInfo::step(DecodeStep& s) {
-  assert(step_count < MAX_DECODE_STEPS);
+  ASSERT(step_count < MAX_DECODE_STEPS);
   steps[step_count] = s;
   step_count++;
   defined = true;

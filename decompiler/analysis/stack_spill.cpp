@@ -47,7 +47,7 @@ void StackSpillMap::finalize() {
     max_offset = std::max(max_offset, slot.second.offset + slot.second.size);
   }
 
-  assert(max_offset < 4096);  // just a sanity check here
+  ASSERT(max_offset < 4096);  // just a sanity check here
   std::vector<int> var_count(max_offset, 0);
 
   for (auto& slot : m_slot_map) {

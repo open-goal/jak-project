@@ -8,7 +8,7 @@
 
 #include "game/kernel/Ptr.h"
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace Mips2C {
 

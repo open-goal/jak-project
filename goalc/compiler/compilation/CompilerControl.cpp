@@ -16,6 +16,7 @@
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text.h"
+#include "goalc/data_compiler/game_subtitle.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -66,6 +67,7 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
   auto kind = symbol_string(args.unnamed.at(0));
   if (kind == "game-text") {
+    // TODO version
     compile_game_text(as_string(args.unnamed.at(1)));
   } else if (kind == "game-count") {
     compile_game_count(as_string(args.unnamed.at(1)));
@@ -73,6 +75,31 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
     compile_dir_tpages(as_string(args.unnamed.at(1)));
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
+  }
+  return get_none();
+}
+
+/*!
+ * Compile a "text data file"
+ */
+Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::INTEGER},
+           {{"files", {true, goos::ObjectType::PAIR}}});
+  auto kind = symbol_string(args.unnamed.at(0));
+  if (kind == "subtitle") {
+    std::vector<std::string> files;
+    for_each_in_list(args.named.at("files"), [this, &files, &form](const goos::Object& o) {
+      if (o.is_string()) {
+        files.push_back(o.as_string()->data);
+      } else {
+        throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
+      }
+    });
+    compile_game_subtitle(files, (GameTextVersion)args.unnamed.at(1).as_int(), m_subtitle_db);
+  } else {
+    throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
   return get_none();
 }
@@ -185,9 +212,9 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // save file
     if (write) {
-      file_util::create_dir_if_needed(file_util::get_file_path({"out", "obj"}));
-      file_util::write_binary_file(file_util::get_file_path({"out", "obj", obj_file_name + ".o"}),
-                                   (void*)data.data(), data.size());
+      auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
+      file_util::create_dir_if_needed_for_file(path);
+      file_util::write_binary_file(path, (void*)data.data(), data.size());
     }
   } else {
     if (load) {
@@ -407,7 +434,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
       return fmt::format("[Forward-Declared] Name: {} Defined: {}", info.name(),
                          m_goos.reader.db.get_info_for(info.src_form()));
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }

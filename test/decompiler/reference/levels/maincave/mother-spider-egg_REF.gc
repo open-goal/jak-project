@@ -7,7 +7,7 @@
    (root-override      collide-shape-moving             :offset        112)
    (anim-speed         float                            :offset-assert 176)
    (part2              sparticle-launch-control         :offset-assert 180)
-   (falling-start-time uint64                           :offset-assert 184)
+   (falling-start-time time-frame                       :offset-assert 184)
    (fall-dest          vector                   :inline :offset-assert 192)
    (fall-dest-normal   vector                   :inline :offset-assert 208)
    (broken-look        lod-set                  :inline :offset-assert 224)
@@ -188,7 +188,10 @@
 ;; Used lq/sq
 (defmethod draw-egg-shadow mother-spider-egg ((obj mother-spider-egg) (arg0 vector) (arg1 symbol))
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-1 (new 'stack-no-clear 'vector))
            (a2-1 (new 'stack-no-clear 'vector))
@@ -245,16 +248,14 @@
     )
   :enter
   (behavior ()
-    (set! (-> self falling-start-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self falling-start-time) (-> *display* base-frame-counter))
     (none)
     )
   :trans
   (behavior ()
-    (let ((f30-0 (fmin
-                   (the float (- (-> *display* base-frame-counter) (the-as int (-> self falling-start-time))))
-                   (-> self traj time)
-                   )
-                 )
+    (let ((f30-0
+            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
+            )
           )
       (let ((f28-0 (/ f30-0 (-> self traj time))))
         (eval-position! (-> self traj) f30-0 (-> self root-override trans))
@@ -331,7 +332,7 @@
     )
   :trans
   (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
         (go mother-spider-egg-hatch)
         )
     (draw-egg-shadow self (-> self shadow-pos) #f)
@@ -409,7 +410,7 @@
 (defstate mother-spider-egg-hatch (mother-spider-egg)
   :trans
   (behavior ()
-    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status drwf03)))
+    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status was-drawn)))
       (let ((a1-0 (new 'stack-no-clear 'vector)))
         (set! (-> a1-0 quad) (-> self fall-dest quad))
         (compute-and-draw-shadow
@@ -534,11 +535,9 @@
 (defstate mother-spider-egg-die-while-falling (mother-spider-egg)
   :trans
   (behavior ()
-    (let ((f0-2 (fmin
-                  (the float (- (-> *display* base-frame-counter) (the-as int (-> self falling-start-time))))
-                  (-> self traj time)
-                  )
-                )
+    (let ((f0-2
+            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
+            )
           )
       (eval-position! (-> self traj) f0-2 (-> self root-override trans))
       )
@@ -601,7 +600,7 @@
   :code
   (behavior ()
     (send-event (ppointer->process (-> self parent-override)) 'untrigger)
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (let ((v1-8 (-> self draw shadow-ctrl)))
       (logior! (-> v1-8 settings flags) 32)
       )
@@ -622,7 +621,7 @@
 (defbehavior mother-spider-egg-init-by-other mother-spider-egg ((arg0 entity) (arg1 vector) (arg2 vector) (arg3 vector))
   (set! (-> self entity) arg0)
   (set! (-> self anim-speed) (rand-vu-float-range 0.8 1.2))
-  (set! (-> self falling-start-time) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> self falling-start-time) (-> *display* base-frame-counter))
   (set! (-> self fall-dest quad) (-> arg2 quad))
   (set! (-> self fall-dest-normal quad) (-> arg3 quad))
   (let ((s4-1 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
@@ -650,7 +649,7 @@
   (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
   (set! (-> self mask) (logior (process-mask attackable) (-> self mask)))
   (initialize-skeleton self *mother-spider-egg-unbroken-sg* '())
-  (dummy-9 (-> self broken-look) *mother-spider-egg-broken-sg* (-> self draw art-group) (-> self entity))
+  (setup-lods! (-> self broken-look) *mother-spider-egg-broken-sg* (-> self draw art-group) (-> self entity))
   (set! (-> self draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
   (set! (-> self nav) (new 'process 'nav-control (-> self root-override) 16 40960.0))
   (logior! (-> self nav flags) (nav-control-flags display-marks bit3 bit5 bit6 bit7))

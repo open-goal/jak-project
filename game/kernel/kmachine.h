@@ -49,6 +49,11 @@ extern u32 modsrc;
 // Reboot IOP on start?
 extern u32 reboot;
 
+// Discord RPC
+struct DiscordRichPresence;
+extern int gDiscordRpcEnabled;
+extern int64_t gStartTime;
+
 /*!
  * Initialize globals for kmachine.
  * This should be called before running main.
@@ -127,6 +132,15 @@ struct FileStream {
   u32 mode;  // basic
   u32 name;  // basic
   s32 file;  // int32
+};
+
+struct DiscordInfo {
+  u32 fuel;
+  u32 money_total;
+  u32 buzzer_total;
+  u32 status;
+  u32 level;
+  u32 cutscene;  // check if cutscene is playing
 };
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");

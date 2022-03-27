@@ -8,7 +8,7 @@
 namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {
   if (destination.has_value()) {
-    assert(source && !elt);
+    ASSERT(source && !elt);
     if (active) {
       return fmt::format("d: {} s: {} | {} <- {} f: {} w: {}", active, sequence_point,
                          destination.value().reg().to_charp(), source->to_string(env),
@@ -20,7 +20,7 @@ std::string FormStack::StackEntry::print(const Env& env) const {
     }
 
   } else {
-    assert(elt && !source);
+    ASSERT(elt && !source);
     if (active) {
       return fmt::format("d: {} s: {} | {} f: {}", active, sequence_point, elt->to_string(env),
                          non_seq_source.has_value());
@@ -45,7 +45,7 @@ void FormStack::push_value_to_reg(RegisterAccess var,
                                   bool sequence_point,
                                   TypeSpec type,
                                   const SetVarInfo& info) {
-  assert(value);
+  ASSERT(value);
   StackEntry entry;
   entry.active = true;  // by default, we should display everything!
   entry.sequence_point = sequence_point;
@@ -61,7 +61,7 @@ void FormStack::push_value_to_reg_dead(RegisterAccess var,
                                        bool sequence_point,
                                        TypeSpec type,
                                        const SetVarInfo& info) {
-  assert(value);
+  ASSERT(value);
   StackEntry entry;
   entry.active = false;
   entry.sequence_point = sequence_point;
@@ -77,7 +77,7 @@ void FormStack::push_non_seq_reg_to_reg(const RegisterAccess& dst,
                                         Form* src_as_form,
                                         TypeSpec type,
                                         const SetVarInfo& info) {
-  assert(src_as_form);
+  ASSERT(src_as_form);
   StackEntry entry;
   entry.active = true;
   entry.sequence_point = false;
@@ -137,7 +137,7 @@ Form* FormStack::pop_reg(Register reg,
   if (found_orig_out) {
     *found_orig_out = false;
   }
-  assert(allow_side_effects);
+  ASSERT(allow_side_effects);
   (void)env;  // keep this for easy debugging.
   RegSet modified;
   size_t begin = m_stack.size();
@@ -158,9 +158,9 @@ Form* FormStack::pop_reg(Register reg,
           return nullptr;
         }
         entry.active = false;
-        assert(entry.source);
+        ASSERT(entry.source);
         if (entry.non_seq_source.has_value()) {
-          assert(entry.sequence_point == false);
+          ASSERT(entry.sequence_point == false);
           auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects, i);
           if (result) {
             if (found_orig_out) {
@@ -184,14 +184,14 @@ Form* FormStack::pop_reg(Register reg,
         }
         // no match, and not a sequence:
         if (entry.source) {
-          assert(!entry.elt);
+          ASSERT(!entry.elt);
           entry.source->get_modified_regs(modified);
           if (!allow_side_effects) {
             // shouldn't allow skipping past a set! (may be too conservative?)
             return nullptr;
           }
         } else {
-          assert(entry.elt);
+          ASSERT(entry.elt);
           entry.elt->get_modified_regs(modified);
           if (!allow_side_effects && entry.elt->has_side_effects()) {
             // shouldn't allow skipping past something with a set! (also may be too conservative?)
@@ -211,12 +211,12 @@ Form* FormStack::pop_reg(Register reg,
 
 FormElement* FormStack::pop_back(FormPool& pool) {
   auto& back = m_stack.back();
-  assert(back.active);
+  ASSERT(back.active);
   back.active = false;
   if (back.elt) {
     return back.elt;
   } else {
-    assert(back.destination.has_value());
+    ASSERT(back.destination.has_value());
     auto elt = pool.alloc_element<SetVarElement>(*back.destination, back.source,
                                                  back.sequence_point, back.set_type, back.set_info);
     back.source->parent_element = elt;
@@ -234,7 +234,7 @@ bool is_op_in_place(SetVarElement* elt,
   auto result = match(matcher, elt->src());
   if (result.matched) {
     auto first = result.maps.regs.at(0);
-    assert(first.has_value());
+    ASSERT(first.has_value());
 
     if (first->reg() != elt->dst().reg()) {
       return false;

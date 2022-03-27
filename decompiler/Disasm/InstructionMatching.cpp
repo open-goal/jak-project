@@ -4,7 +4,7 @@
  */
 
 #include "InstructionMatching.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -44,7 +44,7 @@ bool is_no_link_gpr_store(const Instruction& instr,
         }
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   } else {
     // just make sure it's a gpr store
@@ -53,7 +53,7 @@ bool is_no_link_gpr_store(const Instruction& instr,
     }
   }
 
-  assert(instr.n_src == 3);
+  ASSERT(instr.n_src == 3);
 
   // match other arguments
   return src == instr.src[0].get_reg() && offset == instr.src[1].get_imm() &&
@@ -103,7 +103,7 @@ bool is_no_ll_gpr_load(const Instruction& instr,
           }
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
     } else {
       if (is_signed.value) {
@@ -134,7 +134,7 @@ bool is_no_ll_gpr_load(const Instruction& instr,
             }
             break;
           default:
-            assert(false);
+            ASSERT(false);
         }
       } else {
         switch (size.value) {
@@ -164,7 +164,7 @@ bool is_no_ll_gpr_load(const Instruction& instr,
             }
             break;
           default:
-            assert(false);
+            ASSERT(false);
         }
       }
     }
@@ -261,8 +261,8 @@ bool is_gpr_load(const Instruction& instr, MatchParam<bool> is_signed) {
  * Given a store, get the offset as an integer.
  */
 int32_t get_gpr_store_offset_as_int(const Instruction& instr) {
-  assert(is_gpr_store(instr));
-  assert(instr.n_src == 3);
+  ASSERT(is_gpr_store(instr));
+  ASSERT(instr.n_src == 3);
   return instr.src[1].get_imm();
 }
 
@@ -344,7 +344,7 @@ bool is_always_branch(const Instruction& instr) {
 
   if (instr.kind == InstructionKind::BEQL && instr.get_src(0).get_reg() == r0 &&
       instr.get_src(1).get_reg() == r0) {
-    assert(false);
+    ASSERT(false);
     return true;
   }
 

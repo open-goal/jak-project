@@ -11,7 +11,7 @@
 #include <condition_variable>
 #include <atomic>
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 class IOP_Kernel;
 namespace iop {
@@ -99,7 +99,7 @@ class IOP_Kernel {
    * Resume the kernel.
    */
   void returnToKernel() {
-    assert(_currentThread >= 0);  // must be in a thread
+    ASSERT(_currentThread >= 0);  // must be in a thread
     threads[_currentThread].returnToKernel();
   }
 
@@ -127,7 +127,7 @@ class IOP_Kernel {
       return -0x1a9;
     }
 
-    assert(mbx < (s32)mbxs.size());
+    ASSERT(mbx < (s32)mbxs.size());
     s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
     if (gotSomething) {
       void* thing = mbxs[mbx].front();
@@ -146,7 +146,7 @@ class IOP_Kernel {
    * Push something into a mbx
    */
   s32 SendMbx(s32 mbx, void* value) {
-    assert(mbx < (s32)mbxs.size());
+    ASSERT(mbx < (s32)mbxs.size());
     mbxs[mbx].push(value);
     return 0;
   }

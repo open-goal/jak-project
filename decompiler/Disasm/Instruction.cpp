@@ -7,7 +7,7 @@
 #include "Instruction.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -28,7 +28,7 @@ std::string InstructionAtom::to_string(const std::vector<DecompilerLabel>& label
     case IMM_SYM:
       return sym;
     case VF_FIELD:
-      assert(imm >= 0 && imm < 4);
+      ASSERT(imm >= 0 && imm < 4);
       return fmt::format(".{}", "xyzw"[imm]);
     default:
       throw std::runtime_error("Unsupported InstructionAtom");
@@ -87,14 +87,14 @@ void InstructionAtom::set_sym(std::string _sym) {
 void InstructionAtom::set_vf_field(uint32_t value) {
   kind = VF_FIELD;
   imm = value;
-  assert(value < 4);
+  ASSERT(value < 4);
 }
 
 /*!
  * Get as register, or error if not a register.
  */
 Register InstructionAtom::get_reg() const {
-  assert(kind == REGISTER);
+  ASSERT(kind == REGISTER);
   return reg;
 }
 
@@ -102,7 +102,7 @@ Register InstructionAtom::get_reg() const {
  * Get as integer immediate, or error if not an integer immediate.
  */
 int32_t InstructionAtom::get_imm() const {
-  assert(kind == IMM);
+  ASSERT(kind == IMM);
   return imm;
 }
 
@@ -110,7 +110,7 @@ int32_t InstructionAtom::get_imm() const {
  * Get the VF_FIELD as an integer immediate, or error if not applicable.
  */
 int32_t InstructionAtom::get_vf_field() const {
-  assert(kind == VF_FIELD);
+  ASSERT(kind == VF_FIELD);
   return imm;
 }
 
@@ -118,7 +118,7 @@ int32_t InstructionAtom::get_vf_field() const {
  * Get as label index, or error if not a label.
  */
 int InstructionAtom::get_label() const {
-  assert(kind == LABEL);
+  ASSERT(kind == LABEL);
   return label_id;
 }
 
@@ -126,7 +126,7 @@ int InstructionAtom::get_label() const {
  * Get as symbol, or error if not a symbol.
  */
 std::string InstructionAtom::get_sym() const {
-  assert(kind == IMM_SYM);
+  ASSERT(kind == IMM_SYM);
   return sym;
 }
 
@@ -152,7 +152,7 @@ bool InstructionAtom::operator==(const InstructionAtom& other) const {
     case VU_Q:
       return true;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -231,8 +231,8 @@ std::string Instruction::to_string(const std::vector<DecompilerLabel>& labels) c
 
   // relative store and load instructions have a special syntax in MIPS
   if (info.is_store) {
-    assert(n_dst == 0);
-    assert(n_src == 3);
+    ASSERT(n_dst == 0);
+    ASSERT(n_src == 3);
     result += " ";
     result += src[0].to_string(labels);
     result += ", ";
@@ -241,8 +241,8 @@ std::string Instruction::to_string(const std::vector<DecompilerLabel>& labels) c
     result += src[2].to_string(labels);
     result += ")";
   } else if (info.is_load) {
-    assert(n_dst == 1);
-    assert(n_src == 2);
+    ASSERT(n_dst == 1);
+    ASSERT(n_src == 2);
     result += " ";
     result += dst[0].to_string(labels);
     result += ", ";
@@ -290,7 +290,7 @@ bool Instruction::is_valid() const {
  * Add a destination atom to this Instruction
  */
 void Instruction::add_dst(InstructionAtom& a) {
-  assert(n_dst < MAX_INTRUCTION_DEST);
+  ASSERT(n_dst < MAX_INTRUCTION_DEST);
   dst[n_dst++] = a;
 }
 
@@ -298,7 +298,7 @@ void Instruction::add_dst(InstructionAtom& a) {
  * Add a source atom to this Instruction
  */
 void Instruction::add_src(InstructionAtom& a) {
-  assert(n_src < MAX_INSTRUCTION_SOURCE);
+  ASSERT(n_src < MAX_INSTRUCTION_SOURCE);
   src[n_src++] = a;
 }
 
@@ -311,7 +311,7 @@ InstructionAtom& Instruction::get_imm_src() {
       return src[i];
     }
   }
-  assert(false);
+  ASSERT(false);
   return src[0];
 }
 
@@ -326,7 +326,7 @@ int32_t Instruction::get_imm_src_int() {
  * Safe get dst atom
  */
 InstructionAtom& Instruction::get_dst(size_t idx) {
-  assert(idx < n_dst);
+  ASSERT(idx < n_dst);
   return dst[idx];
 }
 
@@ -334,7 +334,7 @@ InstructionAtom& Instruction::get_dst(size_t idx) {
  * Safe get src atom
  */
 InstructionAtom& Instruction::get_src(size_t idx) {
-  assert(idx < n_src);
+  ASSERT(idx < n_src);
   return src[idx];
 }
 
@@ -342,7 +342,7 @@ InstructionAtom& Instruction::get_src(size_t idx) {
  * Safe get dst atom
  */
 const InstructionAtom& Instruction::get_dst(size_t idx) const {
-  assert(idx < n_dst);
+  ASSERT(idx < n_dst);
   return dst[idx];
 }
 
@@ -350,7 +350,7 @@ const InstructionAtom& Instruction::get_dst(size_t idx) const {
  * Safe get src atom
  */
 const InstructionAtom& Instruction::get_src(size_t idx) const {
-  assert(idx < n_src);
+  ASSERT(idx < n_src);
   return src[idx];
 }
 
@@ -369,7 +369,7 @@ int Instruction::get_label_target() const {
   int result = -1;
   for (int i = 0; i < n_src; i++) {
     if (src[i].kind == InstructionAtom::AtomKind::LABEL) {
-      assert(result == -1);
+      ASSERT(result == -1);
       result = src[i].get_label();
     }
   }

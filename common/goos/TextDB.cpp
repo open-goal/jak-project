@@ -104,7 +104,7 @@ void TextDb::insert(const std::shared_ptr<SourceText>& frag) {
 void TextDb::link(const Object& o, std::shared_ptr<SourceText> frag, int offset) {
   if (o.is_empty_list())
     return;
-  assert(o.is_pair());
+  ASSERT(o.is_pair());
   TextRef ref;
   ref.offset = offset;
   ref.frag = std::move(frag);

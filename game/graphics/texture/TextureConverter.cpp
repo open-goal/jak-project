@@ -2,7 +2,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
 #include "common/texture/texture_conversion.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 TextureConverter::TextureConverter() {
   m_vram.resize(4 * 1024 * 1024);
@@ -192,10 +192,10 @@ void TextureConverter::download_rgba8888(u8* result,
   }
 
   else {
-    assert(false);
+    ASSERT(false);
   }
 
-  assert(out_offset == expected_size_bytes);
+  ASSERT(out_offset == expected_size_bytes);
 }
 
 void TextureConverter::serialize(Serializer& ser) {

@@ -4,10 +4,10 @@
 #include "third-party/fmt/core.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "third-party/imgui/imgui.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
-DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode)
-    : BucketRenderer(name, my_id), m_prim_buffer(batch_size), m_mode(mode) {
+DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
+    : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -17,12 +17,12 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glBufferData(GL_ARRAY_BUFFER, m_ogl.vertex_buffer_bytes, nullptr,
                GL_STREAM_DRAW);  // todo stream?
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,                            // location 0 in the shader
-                        4,                            // 4 floats per vert (w unused)
-                        GL_FLOAT,                     // floats
-                        GL_TRUE,                      // normalized, ignored,
-                        sizeof(Vertex),               //
-                        (void*)offsetof(Vertex, xyz)  // offset in array (why is this a pointer...)
+  glVertexAttribPointer(0,                             // location 0 in the shader
+                        4,                             // 4 floats per vert (w unused)
+                        GL_FLOAT,                      // floats
+                        GL_TRUE,                       // normalized, ignored,
+                        sizeof(Vertex),                //
+                        (void*)offsetof(Vertex, xyzf)  // offset in array (why is this a pointer...)
   );
 
   glEnableVertexAttribArray(1);
@@ -44,11 +44,12 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   );
 
   glEnableVertexAttribArray(3);
-  glVertexAttribIPointer(3,                            // location 0 in the shader
-                         4,                            // 3 floats per vert
-                         GL_UNSIGNED_BYTE,             // floats
-                         sizeof(Vertex),               //
-                         (void*)offsetof(Vertex, tex)  // offset in array (why is this a pointer...)
+  glVertexAttribIPointer(
+      3,                                 // location 0 in the shader
+      4,                                 // 3 floats per vert
+      GL_UNSIGNED_BYTE,                  // floats
+      sizeof(Vertex),                    //
+      (void*)offsetof(Vertex, tex_unit)  // offset in array (why is this a pointer...)
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
@@ -79,7 +80,7 @@ void DirectRenderer::render(DmaFollower& dma,
     if (dma.current_tag_offset() == render_state->default_regs_buffer) {
       //      reset_state();
       dma.read_and_advance();  // cnt
-      assert(dma.current_tag().kind == DmaTag::Kind::RET);
+      ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
       dma.read_and_advance();  // ret
     }
   }
@@ -87,6 +88,28 @@ void DirectRenderer::render(DmaFollower& dma,
   if (m_enabled) {
     flush_pending(render_state, prof);
   }
+}
+
+void DirectRenderer::reset_state() {
+  m_test_state_needs_gl_update = true;
+  m_test_state = TestState();
+
+  m_blend_state_needs_gl_update = true;
+  m_blend_state = BlendState();
+
+  m_prim_gl_state_needs_gl_update = true;
+  m_prim_gl_state = PrimGlState();
+
+  for (int i = 0; i < TEXTURE_STATE_COUNT; ++i) {
+    m_buffered_tex_state[i] = TextureState();
+  }
+  m_tex_state_from_reg = {};
+  m_next_free_tex_state = 0;
+  m_current_tex_state_idx = -1;
+
+  m_prim_building = PrimBuildState();
+
+  m_stats = {};
 }
 
 void DirectRenderer::draw_debug_window() {
@@ -99,10 +122,6 @@ void DirectRenderer::draw_debug_window() {
   ImGui::Checkbox("always", &m_debug_state.always_draw);
   ImGui::SameLine();
   ImGui::Checkbox("no mip", &m_debug_state.disable_mipmap);
-
-  if (m_mode == Mode::SPRITE_CPU) {
-    ImGui::Checkbox("draw1", &m_sprite_mode.do_first_draw);
-  }
 
   ImGui::Text("Triangles: %d", m_stats.triangles);
   ImGui::SameLine();
@@ -136,14 +155,14 @@ float u32_to_sc(u32 in) {
 
 void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // update opengl state
-  if (m_prim_gl_state_needs_gl_update) {
-    update_gl_prim(render_state);
-    m_prim_gl_state_needs_gl_update = false;
-  }
-
   if (m_blend_state_needs_gl_update) {
     update_gl_blend();
     m_blend_state_needs_gl_update = false;
+  }
+
+  if (m_prim_gl_state_needs_gl_update) {
+    update_gl_prim(render_state);
+    m_prim_gl_state_needs_gl_update = false;
   }
 
   if (m_test_state_needs_gl_update) {
@@ -151,15 +170,15 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     m_test_state_needs_gl_update = false;
   }
 
-  // I think it's important that this comes last.
-  if (m_global_texture_state.needs_gl_update) {
-    // fmt::print("flushing with {} states\n", m_current_texture_state + 1);
-    for (int i = 0; i <= m_current_texture_state; ++i) {
+  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
+    auto& tex_state = m_buffered_tex_state[i];
+    if (tex_state.used) {
       update_gl_texture(render_state, i);
+      tex_state.used = false;
     }
-    m_global_texture_state.needs_gl_update = false;
-    // fmt::print("tex state flush\n");
   }
+  m_next_free_tex_state = 0;
+  m_current_tex_state_idx = -1;
 
   // NOTE: sometimes we want to update the GL state without actually rendering anything, such as sky
   // textures, so we only return after we've updated the full state
@@ -170,6 +189,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   if (m_debug_state.disable_texture) {
     // a bit of a hack, this forces the non-textured shader always.
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    m_blend_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
   }
 
   if (m_debug_state.red) {
@@ -186,57 +207,34 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   }
 
   glBindVertexArray(m_ogl.vao);
-
   // render!
   // update buffers:
-  u32 vertex_offset = m_ogl.last_vertex_offset;
-  if (vertex_offset + m_prim_buffer.vert_count >= m_ogl.vertex_buffer_max_verts) {
-    lg::warn("Buffer wrapped in {} ({}/{} (+ {}) verts, {} bytes)", m_name,
-             vertex_offset + m_prim_buffer.vert_count, m_ogl.vertex_buffer_max_verts,
-             m_prim_buffer.vert_count, m_prim_buffer.vert_count * sizeof(Vertex));
-    vertex_offset = 0;
-  }
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, vertex_offset * sizeof(Vertex),
-                  m_prim_buffer.vert_count * sizeof(Vertex), m_prim_buffer.vertices.data());
-  glActiveTexture(GL_TEXTURE0);
+  glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex),
+               m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
 
   int draw_count = 0;
-  if (m_mode == Mode::SPRITE_CPU) {
-    if (!m_prim_gl_state.texture_enable) {
-      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
-    } else {
-      // assert(m_global_texture_state.tcc);
-      assert(m_prim_gl_state.texture_enable);
-      render_state->shaders[ShaderId::SPRITE_CPU].activate();
-    }
-
-    if (m_sprite_mode.do_first_draw) {
-      glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
-      draw_count++;
-    }
-  } else {
-    glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
-    draw_count++;
-  }
+  glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+  draw_count++;
 
   if (m_debug_state.wireframe) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawArrays(GL_TRIANGLES, vertex_offset, m_prim_buffer.vert_count);
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    m_blend_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
     draw_count++;
   }
 
+  glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(0);
   int n_tris = draw_count * (m_prim_buffer.vert_count / 3);
   prof.add_tri(n_tris);
   prof.add_draw_call(draw_count);
   m_stats.triangles += n_tris;
   m_stats.draw_calls += draw_count;
-  m_ogl.last_vertex_offset = vertex_offset + m_prim_buffer.vert_count;
-  m_ogl.last_vertex_offset = (m_ogl.last_vertex_offset + 3) & ~3;
   m_prim_buffer.vert_count = 0;
 }
 
@@ -250,54 +248,54 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
-          alpha_reject = m_test_state.aref / 127.f;
+          alpha_reject = m_test_state.aref / 128.f;
           break;
         case GsTest::AlphaTest::NEVER:
           break;
         default:
           fmt::print("unknown alpha test: {}\n", (int)m_test_state.alpha_test);
-          assert(false);
+          ASSERT(false);
       }
     }
-    if (m_mode == Mode::SPRITE_CPU) {
-      render_state->shaders[ShaderId::SPRITE_CPU].activate();
-    } else if (m_mode == Mode::SKY) {
-      assert(false);
-    } else {
-      render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
-      glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
-                                       "alpha_reject"),
-                  alpha_reject);
-    }
-    // update_gl_texture(render_state);
-    m_global_texture_state.needs_gl_update = true;
+
+    render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "alpha_reject"),
+                alpha_reject);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "color_mult"),
+                m_ogl.color_mult);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "alpha_mult"),
+                m_ogl.alpha_mult);
+    glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "fog_color"),
+                render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
+                render_state->fog_intensity);
+
   } else {
-    if (m_mode == Mode::SKY) {
-      render_state->shaders[ShaderId::SKY].activate();
-    } else {
-      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
-    }
+    render_state->shaders[ShaderId::DIRECT_BASIC].activate();
   }
   if (state.fogging_enable) {
-    //    assert(false);
+    //    ASSERT(false);
   }
   if (state.aa_enable) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.use_uv) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.ctxt) {
-    assert(false);
+    ASSERT(false);
   }
   if (state.fix) {
-    assert(false);
+    ASSERT(false);
   }
 }
 
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
-  TextureRecord* tex = nullptr;
-  auto& state = m_texture_state[unit];
+  std::optional<u64> tex;
+  auto& state = m_buffered_tex_state[unit];
   if (!state.used) {
     // nothing used this state, don't bother binding the texture.
     return;
@@ -311,21 +309,18 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   if (!tex) {
     // TODO Add back
     if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
-      tex = render_state->texture_pool->get_random_texture();
+      fmt::print("Failed to find texture at {}, using random (eye zone)\n", state.texture_base_ptr);
+
+      tex = render_state->texture_pool->get_placeholder_texture();
     } else {
       fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
-  assert(tex);
-
-  // first: do we need to load the texture?
-  if (!tex->on_gpu) {
-    render_state->texture_pool->upload_to_gpu(tex);
-  }
+  ASSERT(tex);
 
   glActiveTexture(GL_TEXTURE20 + unit);
-  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glBindTexture(GL_TEXTURE_2D, *tex);
   // Note: CLAMP and CLAMP_TO_EDGE are different...
   if (state.m_clamp_state.clamp_s) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -351,16 +346,22 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
 
 void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
+  m_ogl.color_mult = 1.f;
+  m_ogl.alpha_mult = 1.f;
+  m_prim_gl_state_needs_gl_update = true;
   if (!state.alpha_blend_enable) {
     glDisable(GL_BLEND);
   } else {
     glEnable(GL_BLEND);
+    glBlendColor(1, 1, 1, 1);
+
     if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
         state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
@@ -368,8 +369,8 @@ void DirectRenderer::update_gl_blend() {
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
-      assert(state.fix == 0);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      ASSERT(state.fix == 0);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.b == GsAlpha::BlendMode::SOURCE && state.c == GsAlpha::BlendMode::SOURCE &&
@@ -377,21 +378,33 @@ void DirectRenderer::update_gl_blend() {
       // (0 - Cs) * As + Cd
       // Cd - Cs * As
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
                state.c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.d == GsAlpha::BlendMode::DEST) {
       // (Cs - Cd) * fix + Cd
       // Cs * fix + (1 - fx) * Cd
-      glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO);
       glBlendColor(0, 0, 0, state.fix / 127.f);
       glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::SOURCE &&
+               state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::SOURCE) {
+      // this is very weird...
+      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
+      glBlendEquation(GL_FUNC_ADD);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE &&
+               state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.c == GsAlpha::BlendMode::DEST && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - 0) * Ad + Cd
+      glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+      glBlendEquation(GL_FUNC_ADD);
+      m_ogl.color_mult = 0.5;
     } else {
       // unsupported blend: a 0 b 2 c 2 d 1
       lg::error("unsupported blend: a {} b {} c {} d {}", (int)state.a, (int)state.b, (int)state.c,
                 (int)state.d);
-      //      assert(false);
+      //      ASSERT(false);
     }
   }
 }
@@ -415,18 +428,21 @@ void DirectRenderer::update_gl_test() {
         glDepthFunc(GL_GREATER);
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   } else {
     // you aren't supposed to turn off z test enable, the GS had some bugs
-    assert(false);
+    ASSERT(false);
   }
 
   if (state.date) {
-    assert(false);
+    ASSERT(false);
   }
 
-  if (state.depth_writes) {
+  bool alpha_trick_to_disable = m_test_state.alpha_test_enable &&
+                                m_test_state.alpha_test == GsTest::AlphaTest::NEVER &&
+                                m_test_state.afail == GsTest::AlphaFail::FB_ONLY;
+  if (state.depth_writes && !alpha_trick_to_disable) {
     glDepthMask(GL_TRUE);
   } else {
     glDepthMask(GL_FALSE);
@@ -455,7 +471,7 @@ u32 get_direct_qwc_or_nop(const VifCode& code) {
         return code.immediate;
       }
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 }  // namespace
@@ -476,7 +492,7 @@ void DirectRenderer::render_vif(u32 vif0,
   u32 gif_qwc = get_direct_qwc_or_nop(VifCode(vif0));
   if (gif_qwc) {
     // we got a direct. expect the second thing to be a nop/similar.
-    assert(get_direct_qwc_or_nop(VifCode(vif1)) == 0);
+    ASSERT(get_direct_qwc_or_nop(VifCode(vif1)) == 0);
   } else {
     gif_qwc = get_direct_qwc_or_nop(VifCode(vif1));
   }
@@ -489,7 +505,7 @@ void DirectRenderer::render_vif(u32 vif0,
         u32 vif;
         memcpy(&vif, data + offset_into_data, 4);
         offset_into_data += 4;
-        assert(get_direct_qwc_or_nop(VifCode(vif)) == 0);
+        ASSERT(get_direct_qwc_or_nop(VifCode(vif)) == 0);
       } else {
         // aligned! do a gif transfer!
         render_gif(data + offset_into_data, gif_qwc * 16, render_state, prof);
@@ -513,7 +529,7 @@ void DirectRenderer::render_gif(const u8* data,
                                 SharedRenderState* render_state,
                                 ScopedProfilerNode& prof) {
   if (size != UINT32_MAX) {
-    assert(size >= 16);
+    ASSERT(size >= 16);
   }
 
   bool eop = false;
@@ -521,7 +537,7 @@ void DirectRenderer::render_gif(const u8* data,
   u32 offset = 0;
   while (!eop) {
     if (size != UINT32_MAX) {
-      assert(offset < size);
+      ASSERT(offset < size);
     }
     GifTag tag(data + offset);
     offset += 16;
@@ -559,12 +575,12 @@ void DirectRenderer::render_gif(const u8* data,
               handle_prim_packed(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::TEX0_1:
-              handle_tex0_1_packed(data + offset, render_state, prof);
+              handle_tex0_1_packed(data + offset);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
                          reg_descriptor_name(reg_desc[reg]));
-              assert(false);
+              ASSERT(false);
           }
           offset += 16;  // PACKED = quadwords
         }
@@ -588,20 +604,24 @@ void DirectRenderer::render_gif(const u8* data,
             default:
               fmt::print("Register {} is not supported in reglist mode yet\n",
                          reg_descriptor_name(reg_desc[reg]));
-              assert(false);
+              ASSERT(false);
           }
           offset += 8;  // PACKED = quadwords
         }
       }
     } else {
-      assert(false);  // format not packed or reglist.
+      ASSERT(false);  // format not packed or reglist.
     }
 
     eop = tag.eop();
   }
 
   if (size != UINT32_MAX) {
-    assert((offset + 15) / 16 == size / 16);
+    if (!(offset + 15) / 16 == size / 16) {
+      fmt::print("DirectRenderer size failed in {}\n", name_and_id());
+      fmt::print("expected: {}, got: {}\n", size, offset);
+      ASSERT(false);
+    }
   }
 
   //  fmt::print("{}\n", GifTag(data).print());
@@ -630,14 +650,14 @@ void DirectRenderer::handle_ad(const u8* data,
       handle_pabe(value);
       break;
     case GsRegisterAddress::CLAMP_1:
-      handle_clamp1(value, render_state, prof);
+      handle_clamp1(value);
       break;
     case GsRegisterAddress::PRIM:
       handle_prim(value, render_state, prof);
       break;
 
     case GsRegisterAddress::TEX1_1:
-      handle_tex1_1(value, render_state, prof);
+      handle_tex1_1(value);
       break;
     case GsRegisterAddress::TEXA:
       handle_texa(value);
@@ -652,7 +672,7 @@ void DirectRenderer::handle_ad(const u8* data,
       // TODO
       break;
     case GsRegisterAddress::TEX0_1:
-      handle_tex0_1(value, render_state, prof);
+      handle_tex0_1(value);
       break;
     case GsRegisterAddress::MIPTBP1_1:
     case GsRegisterAddress::MIPTBP2_1:
@@ -660,75 +680,64 @@ void DirectRenderer::handle_ad(const u8* data,
       break;
     case GsRegisterAddress::TEXFLUSH:
       break;
+    case GsRegisterAddress::FRAME_1:
+      break;
+    case GsRegisterAddress::RGBAQ:
+      // shadow scissor does this?
+      {
+        m_prim_building.rgba_reg[0] = data[0];
+        m_prim_building.rgba_reg[1] = data[1];
+        m_prim_building.rgba_reg[2] = data[2];
+        m_prim_building.rgba_reg[3] = data[3];
+        memcpy(&m_prim_building.Q, data + 4, 4);
+      }
+      break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
-      assert(false);
+      ASSERT(false);
   }
 }
 
-void DirectRenderer::handle_tex1_1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex1_1(u64 val) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
-  //   assert(reg.mxl() == 0);
+  //   ASSERT(reg.mxl() == 0);
   // if that's true, we can ignore LCM, MTBA, L, K
 
   bool want_tex_filt = reg.mmag();
-  if (want_tex_filt != current_texture_state()->enable_tex_filt) {
-    if (current_texture_state()->used) {
-      if (needs_state_flush()) {
-        flush_pending(render_state, prof);
-        m_texture_state[0] = *current_texture_state();
-        reset_texture_states();
-        m_stats.flush_from_state_exhaust++;
-      } else {
-        push_texture_state();
-      }
-    }
-    m_global_texture_state.needs_gl_update = true;
-
-    current_texture_state()->enable_tex_filt = want_tex_filt;
+  if (want_tex_filt != m_tex_state_from_reg.enable_tex_filt) {
+    m_tex_state_from_reg.enable_tex_filt = want_tex_filt;
+    // we changed the state_from_reg, we no longer know if it points to a texture state.
+    m_current_tex_state_idx = -1;
   }
 
   // MMAG/MMIN specify texture filtering. For now, assume always linear
-  //  assert(reg.mmag() == true);
+  //  ASSERT(reg.mmag() == true);
   //  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
   //                                                //    lg::error("unsupported mmin");
   //  }
 }
 
-void DirectRenderer::handle_tex0_1_packed(const u8* data,
-                                          SharedRenderState* render_state,
-                                          ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex0_1_packed(const u8* data) {
   u64 val;
   memcpy(&val, data, sizeof(u64));
-  handle_tex0_1(val, render_state, prof);
+  handle_tex0_1(val);
 }
 
-void DirectRenderer::handle_tex0_1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_tex0_1(u64 val) {
   GsTex0 reg(val);
   // update tbp
-  if (current_texture_state()->current_register != reg) {
-    if (current_texture_state()->used) {
-      if (needs_state_flush()) {
-        flush_pending(render_state, prof);
-        m_texture_state[0] = *current_texture_state();
-        reset_texture_states();
-        m_stats.flush_from_state_exhaust++;
-      } else {
-        push_texture_state();
-      }
-    }
-    m_global_texture_state.needs_gl_update = true;
+  if (m_tex_state_from_reg.current_register != reg) {
+    m_tex_state_from_reg.texture_base_ptr = reg.tbp0();
+    m_tex_state_from_reg.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
+    m_tex_state_from_reg.current_register = reg;
+    m_tex_state_from_reg.tcc = reg.tcc();
+    m_tex_state_from_reg.decal = reg.tfx() == GsTex0::TextureFunction::DECAL;
+    ASSERT(reg.tfx() == GsTex0::TextureFunction::DECAL ||
+           reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
-    current_texture_state()->texture_base_ptr = reg.tbp0();
-    current_texture_state()->using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
-    current_texture_state()->current_register = reg;
-
-    current_texture_state()->tcc = reg.tcc();
+    // we changed the state_from_reg, we no longer know if it points to a texture state.
+    m_current_tex_state_idx = -1;
   }
 
   // tbw: assume they got it right
@@ -737,7 +746,7 @@ void DirectRenderer::handle_tex0_1(u64 val,
   // th: assume they got it right
 
   // MERC hack
-  // assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+  // ASSERT(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
   // cpsm: assume they got it right
@@ -749,10 +758,10 @@ void DirectRenderer::handle_texa(u64 val) {
 
   // rgba16 isn't used so this doesn't matter?
   // but they use sane defaults anyway
-  assert(reg.ta0() == 0);
-  assert(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
+  ASSERT(reg.ta0() == 0);
+  ASSERT(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
 
-  assert(reg.aem() == false);
+  ASSERT(reg.aem() == false);
 }
 
 void DirectRenderer::handle_st_packed(const u8* data) {
@@ -782,7 +791,7 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  handle_xyzf2_common(x, y, z, f, render_state, prof, !adc);
+  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
 }
 
 void DirectRenderer::handle_zbuf1(u64 val,
@@ -791,12 +800,11 @@ void DirectRenderer::handle_zbuf1(u64 val,
   // note: we can basically ignore this. There's a single z buffer that's always configured the same
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
-  assert(x.psm() == TextureFormat::PSMZ24);
-  assert(x.zbp() == 448);
+  ASSERT(x.psm() == TextureFormat::PSMZ24);
+  ASSERT(x.zbp() == 448);
 
   bool write = !x.zmsk();
-  //  assert(write);
-
+  //  ASSERT(write);
   if (write != m_test_state.depth_writes) {
     m_stats.flush_from_zbuf++;
     flush_pending(render_state, prof);
@@ -811,9 +819,9 @@ void DirectRenderer::handle_test1(u64 val,
                                   ScopedProfilerNode& prof) {
   GsTest reg(val);
   if (reg.alpha_test_enable()) {
-    // assert(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
+    // ASSERT(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
   }
-  assert(!reg.date());
+  ASSERT(!reg.date());
   if (m_test_state.current_register != reg) {
     m_stats.flush_from_test++;
     flush_pending(render_state, prof);
@@ -836,35 +844,20 @@ void DirectRenderer::handle_alpha1(u64 val,
 }
 
 void DirectRenderer::handle_pabe(u64 val) {
-  assert(val == 0);  // not really sure how to handle this yet.
+  ASSERT(val == 0);  // not really sure how to handle this yet.
 }
 
-void DirectRenderer::handle_clamp1(u64 val,
-                                   SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+void DirectRenderer::handle_clamp1(u64 val) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     //    fmt::print("clamp: 0x{:x}\n", val);
-    //    assert(false);
+    //    ASSERT(false);
   }
 
-  if (current_texture_state()->m_clamp_state.current_register != val) {
-    if (current_texture_state()->used) {
-      if (needs_state_flush()) {
-        flush_pending(render_state, prof);
-        m_texture_state[0] = *current_texture_state();
-        reset_texture_states();
-        //        m_texture_state[0].used = false;
-        //        m_current_texture_state = 0;
-        m_stats.flush_from_state_exhaust++;
-      } else {
-        push_texture_state();
-      }
-    }
-    m_global_texture_state.needs_gl_update = true;
-
-    current_texture_state()->m_clamp_state.current_register = val;
-    current_texture_state()->m_clamp_state.clamp_s = val & 0b001;
-    current_texture_state()->m_clamp_state.clamp_t = val & 0b100;
+  if (m_tex_state_from_reg.m_clamp_state.current_register != val) {
+    m_current_tex_state_idx = -1;
+    m_tex_state_from_reg.m_clamp_state.current_register = val;
+    m_tex_state_from_reg.m_clamp_state.clamp_s = val & 0b001;
+    m_tex_state_from_reg.m_clamp_state.clamp_t = val & 0b100;
   }
 }
 
@@ -884,7 +877,7 @@ void DirectRenderer::handle_prim(u64 val,
     m_prim_building.building_idx = 0;
   } else {
     if (m_prim_building.building_idx > 0) {
-      assert(false);  // shouldn't leave any half-finished prims
+      ASSERT(false);  // shouldn't leave any half-finished prims
     }
   }
   // need to flush any in progress prims to the buffer.
@@ -903,8 +896,27 @@ void DirectRenderer::handle_prim(u64 val,
 }
 
 void DirectRenderer::handle_rgbaq(u64 val) {
-  assert((val >> 32) == 0);  // q = 0
+  ASSERT((val >> 32) == 0);  // q = 0
   memcpy(m_prim_building.rgba_reg.data(), &val, 4);
+}
+
+int DirectRenderer::get_texture_unit_for_current_reg(SharedRenderState* render_state,
+                                                     ScopedProfilerNode& prof) {
+  if (m_current_tex_state_idx != -1) {
+    return m_current_tex_state_idx;
+  }
+
+  if (m_next_free_tex_state >= TEXTURE_STATE_COUNT) {
+    m_stats.flush_from_state_exhaust++;
+    flush_pending(render_state, prof);
+    return get_texture_unit_for_current_reg(render_state, prof);
+  } else {
+    ASSERT(!m_buffered_tex_state[m_next_free_tex_state].used);
+    m_buffered_tex_state[m_next_free_tex_state] = m_tex_state_from_reg;
+    m_buffered_tex_state[m_next_free_tex_state].used = true;
+    m_current_tex_state_idx = m_next_free_tex_state++;
+    return m_current_tex_state_idx;
+  }
 }
 
 void DirectRenderer::handle_xyzf2_common(u32 x,
@@ -914,20 +926,26 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          SharedRenderState* render_state,
                                          ScopedProfilerNode& prof,
                                          bool advance) {
-  assert(z < (1 << 24));
-  (void)f;  // TODO: do something with this.
+  if (m_my_id == BucketId::MERC_TFRAG_TEX_LEVEL0) {
+    // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
+  }
   if (m_prim_buffer.is_full()) {
-    // fmt::print("flush due to fill {} {}\n", m_prim_buffer.vert_count, m_prim_buffer.max_verts);
+    lg::warn("Buffer wrapped in {} ({} verts, {} bytes)", m_name, m_ogl.vertex_buffer_max_verts,
+             m_prim_buffer.vert_count * sizeof(Vertex));
     flush_pending(render_state, prof);
   }
 
   m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
       m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
-  m_prim_building.building_vert.at(m_prim_building.building_idx) =
-      math::Vector<u32, 3>{x << 16, y << 16, z << 8};
+  m_prim_building.building_vert.at(m_prim_building.building_idx) = math::Vector<u32, 4>{x, y, z, f};
 
   m_prim_building.building_idx++;
+
+  int tex_unit = get_texture_unit_for_current_reg(render_state, prof);
+  bool tcc = m_buffered_tex_state[tex_unit].tcc;
+  bool decal = m_buffered_tex_state[tex_unit].decal;
+  bool fge = m_prim_gl_state.fogging_enable;
 
   switch (m_prim_building.kind) {
     case GsPrim::Kind::SPRITE: {
@@ -938,22 +956,22 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner2_vert = m_prim_building.building_vert[1];
         auto& corner2_rgba = m_prim_building.building_rgba[1];
         // should use most recent vertex z.
-        math::Vector<u32, 3> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
-        math::Vector<u32, 3> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
+        math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
+        math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
 
         if (m_prim_gl_state.gouraud_enable) {
           // I'm not really sure what the GS does here.
-          assert(false);
+          ASSERT(false);
         }
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
 
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, false);
-        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, false);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, false);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, false);
-        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, false);
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, false);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal, fge);
         m_prim_building.building_idx = 0;
       }
     } break;
@@ -969,8 +987,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], m_current_texture_state,
-                               current_texture_state()->tcc);
+                               m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
           }
         }
       }
@@ -982,8 +999,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], m_current_texture_state,
-                             current_texture_state()->tcc);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
         }
       }
       break;
@@ -999,16 +1015,15 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], m_current_texture_state,
-                             current_texture_state()->tcc);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
         }
       }
     } break;
 
     case GsPrim::Kind::LINE: {
       if (m_prim_building.building_idx == 2) {
-        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
-        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].cast<double>();
+        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].xyz().cast<double>();
+        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].xyz().cast<double>();
         auto normal = (pt1 - pt0).normalized().cross(math::Vector<double, 3>{0, 0, 1});
 
         double line_width = (1 << 19);
@@ -1019,26 +1034,28 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         math::Vector<double, 3> b = pt1 + normal * line_width;
         math::Vector<double, 3> c = pt0 - normal * line_width;
         math::Vector<double, 3> d = pt1 - normal * line_width;
+        math::Vector<u32, 4> ai{a.x(), a.y(), a.z(), 0};
+        math::Vector<u32, 4> bi{b.x(), b.y(), b.z(), 0};
+        math::Vector<u32, 4> ci{c.x(), c.y(), c.z(), 0};
+        math::Vector<u32, 4> di{d.x(), d.y(), d.z(), 0};
 
         // ACB:
-        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false);
         // b c d
-        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {}, 0, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {}, 0, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false);
         //
 
         m_prim_building.building_idx = 0;
       }
     } break;
     default:
-      fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
-      assert(false);
+      fmt::print("prim type {} is unsupported in {}.\n", (int)m_prim_building.kind, name_and_id());
+      ASSERT(false);
   }
-
-  current_texture_state()->used = true;
 }
 
 void DirectRenderer::handle_xyzf2(u64 val,
@@ -1049,30 +1066,7 @@ void DirectRenderer::handle_xyzf2(u64 val,
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x, y, z, f, render_state, prof, true);
-}
-
-void DirectRenderer::reset_state() {
-  m_test_state_needs_gl_update = true;
-  m_test_state = TestState();
-
-  m_blend_state_needs_gl_update = true;
-  m_blend_state = BlendState();
-
-  m_prim_gl_state_needs_gl_update = true;
-  m_prim_gl_state = PrimGlState();
-
-  for (int i = 0; i < TEXTURE_STATE_COUNT; ++i) {
-    m_texture_state[i] = TextureState();
-  }
-  m_global_texture_state = TextureGlobalState();
-  m_current_texture_state = 0;
-
-  m_prim_building = PrimBuildState();
-
-  m_ogl.last_vertex_offset = 0;
-
-  m_stats = {};
+  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, true);
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {
@@ -1119,17 +1113,22 @@ DirectRenderer::PrimitiveBuffer::PrimitiveBuffer(int max_triangles) {
 }
 
 void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
-                                           const math::Vector<u32, 3>& vert,
+                                           const math::Vector<u32, 4>& vert,
                                            const math::Vector<float, 3>& st,
                                            int unit,
-                                           bool tcc) {
+                                           bool tcc,
+                                           bool decal,
+                                           bool fog_enable) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
-  v.xyz[0] = (float)vert[0] / (float)UINT32_MAX;
-  v.xyz[1] = (float)vert[1] / (float)UINT32_MAX;
-  v.xyz[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[0] = (float)vert[0] / (float)UINT32_MAX;
+  v.xyzf[1] = (float)vert[1] / (float)UINT32_MAX;
+  v.xyzf[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[3] = (float)vert[3];
   v.stq = st;
-  v.tex[0] = unit;
-  v.tex[1] = tcc;
+  v.tex_unit = unit;
+  v.tcc = tcc;
+  v.decal = decal;
+  v.fog_enable = fog_enable;
   vert_count++;
 }

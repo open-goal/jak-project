@@ -15,7 +15,7 @@
    (pos-u             float                            :offset-assert 232)
    (water-entity      entity-actor                     :offset-assert 236)
    (splash-counter    int32                            :offset-assert 240)
-   (start-splash-time uint64                           :offset-assert 248)
+   (start-splash-time time-frame                       :offset-assert 248)
    (part2             sparticle-launch-control         :offset-assert 256)
    (part3             sparticle-launch-control         :offset-assert 260)
    (part4             sparticle-launch-control         :offset-assert 264)
@@ -56,15 +56,15 @@
 
 
 (deftype square-platform-master (process-drawable)
-  ((button-id                int32          :offset-assert 176)
-   (plat-id                  int32          :offset-assert 180)
-   (plat-mask                uint32         :offset-assert 184)
-   (plat-id-dir              int32          :offset-assert 188)
-   (wiggled?                 symbol         :offset-assert 192)
-   (timeout                  int64          :offset-assert 200)
-   (last-plat-activated-time int64          :offset-assert 208)
-   (delay-til-wiggle         int64          :offset-assert 216)
-   (ticker                   ticky  :inline :offset-assert 224)
+  ((button-id                int32              :offset-assert 176)
+   (plat-id                  int32              :offset-assert 180)
+   (plat-mask                uint32             :offset-assert 184)
+   (plat-id-dir              int32              :offset-assert 188)
+   (wiggled?                 symbol             :offset-assert 192)
+   (timeout                  time-frame         :offset-assert 200)
+   (last-plat-activated-time time-frame         :offset-assert 208)
+   (delay-til-wiggle         time-frame         :offset-assert 216)
+   (ticker                   ticky      :inline :offset-assert 224)
    )
   :heap-base #x90
   :method-count-assert 20
@@ -215,13 +215,13 @@
               (set! v0-3 (cond
                            (arg0
                              (if (>= (-> s4-0 y) f0-2)
-                                 (set! (-> obj start-splash-time) (the-as uint (-> *display* base-frame-counter)))
+                                 (set! (-> obj start-splash-time) (-> *display* base-frame-counter))
                                  )
                              v0-3
                              )
                            (else
                              (when (>= f0-2 (-> s4-0 y))
-                               (set! (-> obj start-splash-time) (the-as uint (-> *display* base-frame-counter)))
+                               (set! (-> obj start-splash-time) (-> *display* base-frame-counter))
                                (let ((s2-0 sound-play-by-name)
                                      (s1-0 (make-u128 #x6873616c (the-as uint #x70732d656772616c)))
                                      (s0-0 (new-sound-id))
@@ -311,7 +311,7 @@
     )
   :enter
   (behavior ()
-    (set! (-> self start-splash-time) (the-as uint 0))
+    (set! (-> self start-splash-time) 0)
     (set! (-> self splash-counter) 0)
     0
     (none)
@@ -393,7 +393,7 @@
     )
   :enter
   (behavior ()
-    (set! (-> self start-splash-time) (the-as uint 0))
+    (set! (-> self start-splash-time) 0)
     (set! (-> self splash-counter) 0)
     0
     (none)
@@ -681,7 +681,7 @@
         (send-to-all (-> self link) 'bounce)
         )
       )
-    (when (>= (- (-> *display* base-frame-counter) (-> self last-plat-activated-time)) 90)
+    (when (>= (- (-> *display* base-frame-counter) (-> self last-plat-activated-time)) (seconds 0.3))
       (set! (-> self last-plat-activated-time) (-> *display* base-frame-counter))
       (let ((v1-20 (-> self plat-id))
             (a0-5 (-> self plat-id-dir))
@@ -725,8 +725,10 @@
   (set! (-> obj plat-id) -1)
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
-  (set! (-> obj timeout) (the int (* 300.0 (res-lump-float (-> obj entity) 'timeout :default 10.0))))
-  (set! (-> obj delay-til-wiggle) (+ (-> obj timeout) -120))
+  (set! (-> obj timeout)
+        (the-as time-frame (the int (* 300.0 (res-lump-float (-> obj entity) 'timeout :default 10.0))))
+        )
+  (set! (-> obj delay-til-wiggle) (+ (-> obj timeout) (seconds -0.4)))
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj plat-mask) (the-as uint (get-matching-actor-type-mask (-> obj link) square-platform)))
   (go square-platform-master-idle)

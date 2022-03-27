@@ -10,7 +10,7 @@
 #include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
 #include "AtomicOp.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 

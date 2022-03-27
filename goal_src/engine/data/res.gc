@@ -5,8 +5,6 @@
 ;; name in dgo: res
 ;; dgos: GAME, ENGINE
 
-;; TODO! Needs a lot of 128-bit type support for res-tag
-
 #|
 res is a generic storage system for not very large data, used mostly for the game entities.
 These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
@@ -756,7 +754,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
              (curve-data (get-property-data obj points-name 'exact time (the pointer #f) (& points-tag) *res-static-buf*)))
 
           (when curve-data
-            (set! (-> curve-target cverts) curve-data)
+            (set! (-> curve-target cverts) (the-as (inline-array vector) curve-data))
             (set! (-> curve-target num-cverts) (the int (-> points-tag elt-count)))
 
             (when (< MAX_CURVE_CONTROL_POINTS (-> curve-target num-cverts))
@@ -771,7 +769,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
                 (set! curve-data (get-property-data obj knots-name 'exact time (the pointer #f) (& knots-tag) *res-static-buf*))
 
                 (when curve-data
-                  (set! (-> curve-target knots) (the (inline-array vector) curve-data))
+                  (set! (-> curve-target knots) (the (pointer float) curve-data))
                   (set! (-> curve-target num-knots) (the int (-> knots-tag elt-count)))
                   (set! result #t)
                   )

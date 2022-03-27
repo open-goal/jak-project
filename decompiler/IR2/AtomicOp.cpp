@@ -7,7 +7,7 @@
 #include "AtomicOp.h"
 #include "OpenGoalMapping.h"
 #include "Form.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /////////////////////////////
@@ -48,7 +48,7 @@ goos::Object RegisterAccess::to_form(const Env& env, Print mode) const {
         return pretty_print::to_symbol(m_reg.to_string());
       }
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -163,7 +163,7 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
     case Kind::STATIC_ADDRESS:
       return pretty_print::to_symbol(labels.at(m_int).name);
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -200,7 +200,7 @@ bool SimpleAtom::operator==(const SimpleAtom& other) const {
     case Kind::STATIC_ADDRESS:
       return m_int == other.m_int;
     default:
-      assert(false);
+      ASSERT(false);
       return false;
   }
 }
@@ -310,7 +310,7 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return "set-on-less-than";
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -374,7 +374,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return 2;
     default:
-      assert(false);
+      ASSERT(false);
       return -1;
   }
 }
@@ -382,7 +382,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
 SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0) : n_args(1) {
   m_args[0] = arg0;
   m_kind = kind;
-  assert(get_simple_expression_arg_count(kind) == 1);
+  ASSERT(get_simple_expression_arg_count(kind) == 1);
 }
 
 SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1)
@@ -390,7 +390,7 @@ SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0, const Simp
   m_args[0] = arg0;
   m_args[1] = arg1;
   m_kind = kind;
-  assert(get_simple_expression_arg_count(kind) == 2);
+  ASSERT(get_simple_expression_arg_count(kind) == 2);
 }
 
 SimpleExpression::SimpleExpression(Kind kind,
@@ -402,7 +402,7 @@ SimpleExpression::SimpleExpression(Kind kind,
   m_args[1] = arg1;
   m_args[2] = arg2;
   m_kind = kind;
-  assert(get_simple_expression_arg_count(kind) == 3);
+  ASSERT(get_simple_expression_arg_count(kind) == 3);
 }
 
 goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& labels,
@@ -410,7 +410,7 @@ goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& label
   std::vector<goos::Object> forms;
   if (m_kind == Kind::IDENTITY) {
     // we are "identity" so just pass through the atom
-    assert(args() == 1);
+    ASSERT(args() == 1);
     return get_arg(0).to_form(labels, env);
   } else {
     forms.push_back(pretty_print::to_symbol(get_simple_expression_op_name(m_kind)));
@@ -429,7 +429,7 @@ bool SimpleExpression::operator==(const SimpleExpression& other) const {
   if (m_kind != other.m_kind) {
     return false;
   }
-  assert(args() == other.args());
+  ASSERT(args() == other.args());
   for (int i = 0; i < args(); i++) {
     if (other.get_arg(i) != get_arg(i)) {
       return false;
@@ -464,7 +464,7 @@ bool SetVarOp::operator==(const AtomicOp& other) const {
     return false;
   }
   auto po = dynamic_cast<const SetVarOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_dst == po->m_dst && m_src == po->m_src;
 }
 
@@ -501,7 +501,7 @@ void SetVarOp::collect_vars(RegAccessSet& vars) const {
 /////////////////////////////
 
 AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::move(instr)) {
-  assert(m_instr.n_dst <= 1);
+  ASSERT(m_instr.n_dst <= 1);
   if (m_instr.n_dst == 1) {
     auto& dst = m_instr.get_dst(0);
     if (dst.is_reg()) {
@@ -512,7 +512,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     }
   }
 
-  assert(m_instr.n_src <= 4);
+  ASSERT(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     auto& src = m_instr.get_src(i);
     if (src.is_reg()) {
@@ -530,7 +530,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
 goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("." + m_instr.op_name_to_string()));
-  assert(m_instr.n_dst <= 1);
+  ASSERT(m_instr.n_dst <= 1);
 
   if (m_instr.n_dst == 1) {
     if (m_dst.has_value()) {
@@ -542,7 +542,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
-  assert(m_instr.n_src <= 4);
+  ASSERT(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     if (m_src[i].has_value()) {
       forms.push_back(m_src[i].value().to_form(env));
@@ -574,7 +574,7 @@ goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels
   OpenGOALAsm goalOp = OpenGOALAsm(m_instr, m_dst, src);
   forms.push_back(pretty_print::to_symbol(goalOp.full_function_name()));
 
-  assert(m_instr.n_dst <= 1);
+  ASSERT(m_instr.n_dst <= 1);
   if (m_instr.n_dst == 1) {
     if (m_dst.has_value()) {
       // then print it as a variable
@@ -585,7 +585,7 @@ goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels
     }
   }
 
-  assert(m_instr.n_src <= 4);
+  ASSERT(m_instr.n_src <= 4);
   std::vector<goos::Object> args = goalOp.get_args(labels, env);
   forms.insert(forms.end(), args.begin(), args.end());
 
@@ -598,7 +598,7 @@ bool AsmOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const AsmOp*>(&other);
-  assert(po);
+  ASSERT(po);
 
   return (m_instr == po->m_instr) && (m_dst == po->m_dst) && (m_src[0] == po->m_src[0]) &&
          (m_src[1] == po->m_src[1]) && (m_src[2] == po->m_src[2]);
@@ -719,7 +719,7 @@ void AsmOp::update_register_info() {
         break;
 
       default:
-        assert(false);
+        ASSERT(false);
         break;
     }
   }
@@ -814,7 +814,7 @@ std::string get_condition_kind_name(IR2_Condition::Kind kind) {
     case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
       return ">=0.ui";
     default:
-      assert(false);
+      ASSERT(false);
       return "";
   }
 }
@@ -857,7 +857,7 @@ int get_condition_num_args(IR2_Condition::Kind kind) {
     case IR2_Condition::Kind::NEVER:
       return 0;
     default:
-      assert(false);
+      ASSERT(false);
       return -1;
   }
 }
@@ -929,7 +929,7 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
     case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
       return IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED;
     default:
-      assert(false);
+      ASSERT(false);
       return IR2_Condition::Kind::INVALID;
   }
 }
@@ -949,19 +949,19 @@ bool condition_uses_float(IR2_Condition::Kind kind) {
 }
 
 IR2_Condition::IR2_Condition(Kind kind) : m_kind(kind) {
-  assert(get_condition_num_args(m_kind) == 0);
+  ASSERT(get_condition_num_args(m_kind) == 0);
 }
 
 IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0) : m_kind(kind) {
   m_src[0] = src0;
-  assert(get_condition_num_args(m_kind) == 1);
+  ASSERT(get_condition_num_args(m_kind) == 1);
 }
 
 IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1)
     : m_kind(kind) {
   m_src[0] = src0;
   m_src[1] = src1;
-  assert(get_condition_num_args(m_kind) == 2);
+  ASSERT(get_condition_num_args(m_kind) == 2);
 }
 
 void IR2_Condition::invert() {
@@ -1027,7 +1027,7 @@ bool SetVarConditionOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const SetVarConditionOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_dst == po->m_dst && m_condition == po->m_condition;
 }
 
@@ -1081,19 +1081,19 @@ goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const 
           store_name = "s.q!";
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     case Kind::FLOAT:
-      assert(m_size == 4);
+      ASSERT(m_size == 4);
       store_name = "s.f!";
       break;
     case Kind::VECTOR_FLOAT:
-      assert(m_size == 16);
+      ASSERT(m_size == 16);
       store_name = "s.vf!";
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 
   return pretty_print::build_list(pretty_print::to_symbol(store_name), m_addr.to_form(labels, env),
@@ -1106,7 +1106,7 @@ bool StoreOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const StoreOp*>(&other);
-  assert(po);
+  ASSERT(po);
 
   return m_addr == po->m_addr && m_value == po->m_value;
 }
@@ -1144,7 +1144,7 @@ std::string load_kind_to_string(LoadVarOp::Kind kind) {
     case LoadVarOp::Kind::UNSIGNED:
       return "unsigned";
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1156,7 +1156,7 @@ goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, cons
 
   switch (m_kind) {
     case Kind::FLOAT:
-      assert(m_size == 4);
+      ASSERT(m_size == 4);
       forms.push_back(pretty_print::build_list("l.f", m_src.to_form(labels, env)));
       break;
     case Kind::UNSIGNED:
@@ -1177,7 +1177,7 @@ goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, cons
           forms.push_back(pretty_print::build_list("l.q", m_src.to_form(labels, env)));
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     case Kind::SIGNED:
@@ -1192,16 +1192,16 @@ goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, cons
           forms.push_back(pretty_print::build_list("l.w", m_src.to_form(labels, env)));
           break;
         default:
-          assert(false);
+          ASSERT(false);
       }
       break;
     case Kind::VECTOR_FLOAT:
-      assert(m_size == 16);
+      ASSERT(m_size == 16);
       forms.push_back(pretty_print::build_list("l.vf", m_src.to_form(labels, env)));
       break;
 
     default:
-      assert(false);
+      ASSERT(false);
   }
   return pretty_print::build_list(forms);
 }
@@ -1212,7 +1212,7 @@ bool LoadVarOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const LoadVarOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_dst == po->m_dst && m_src == po->m_src;
 }
 
@@ -1239,21 +1239,21 @@ void LoadVarOp::collect_vars(RegAccessSet& vars) const {
 /////////////////////////////
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind) : m_kind(kind) {
-  assert(m_kind == Kind::NOP || m_kind == Kind::NO_DELAY || m_kind == Kind::UNKNOWN);
+  ASSERT(m_kind == Kind::NOP || m_kind == Kind::NO_DELAY || m_kind == Kind::UNKNOWN);
 }
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, RegisterAccess var0) : m_kind(kind) {
-  assert(m_kind == Kind::SET_REG_FALSE || m_kind == Kind::SET_REG_TRUE ||
+  ASSERT(m_kind == Kind::SET_REG_FALSE || m_kind == Kind::SET_REG_TRUE ||
          m_kind == Kind::SET_BINTEGER || m_kind == Kind::SET_PAIR);
-  assert(var0.mode() == AccessMode::WRITE);
+  ASSERT(var0.mode() == AccessMode::WRITE);
   m_var[0] = var0;
 }
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, RegisterAccess var0, RegisterAccess var1)
     : m_kind(kind) {
-  assert(m_kind == Kind::NEGATE || m_kind == Kind::SET_REG_REG);
-  assert(var0.mode() == AccessMode::WRITE);
-  assert(var1.mode() == AccessMode::READ);
+  ASSERT(m_kind == Kind::NEGATE || m_kind == Kind::SET_REG_REG);
+  ASSERT(var0.mode() == AccessMode::WRITE);
+  ASSERT(var1.mode() == AccessMode::READ);
   m_var[0] = var0;
   m_var[1] = var1;
 }
@@ -1263,10 +1263,10 @@ IR2_BranchDelay::IR2_BranchDelay(Kind kind,
                                  RegisterAccess var1,
                                  RegisterAccess var2)
     : m_kind(kind) {
-  assert(m_kind == Kind::DSLLV);
-  assert(var0.mode() == AccessMode::WRITE);
-  assert(var1.mode() == AccessMode::READ);
-  assert(var2.mode() == AccessMode::READ);
+  ASSERT(m_kind == Kind::DSLLV);
+  ASSERT(var0.mode() == AccessMode::WRITE);
+  ASSERT(var1.mode() == AccessMode::READ);
+  ASSERT(var2.mode() == AccessMode::READ);
   m_var[0] = var0;
   m_var[1] = var1;
   m_var[2] = var2;
@@ -1281,37 +1281,37 @@ goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels
     case Kind::NO_DELAY:
       return pretty_print::build_list("no-delay!");
     case Kind::SET_REG_FALSE:
-      assert(m_var[0].has_value());
+      ASSERT(m_var[0].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env), "#f");
     case Kind::SET_REG_TRUE:
-      assert(m_var[0].has_value());
+      ASSERT(m_var[0].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env), "#t");
     case Kind::SET_REG_REG:
-      assert(m_var[0].has_value());
-      assert(m_var[1].has_value());
+      ASSERT(m_var[0].has_value());
+      ASSERT(m_var[1].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env), m_var[1]->to_form(env));
     case Kind::SET_BINTEGER:
-      assert(m_var[0].has_value());
+      ASSERT(m_var[0].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env), "binteger");
     case Kind::SET_PAIR:
-      assert(m_var[0].has_value());
+      ASSERT(m_var[0].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env), "pair");
     case Kind::DSLLV:
-      assert(m_var[0].has_value());
-      assert(m_var[1].has_value());
-      assert(m_var[2].has_value());
+      ASSERT(m_var[0].has_value());
+      ASSERT(m_var[1].has_value());
+      ASSERT(m_var[2].has_value());
       return pretty_print::build_list(
           "set!", m_var[0]->to_form(env),
           pretty_print::build_list("sll", m_var[1]->to_form(env), m_var[2]->to_form(env)));
     case Kind::NEGATE:
-      assert(m_var[0].has_value());
-      assert(m_var[1].has_value());
+      ASSERT(m_var[0].has_value());
+      ASSERT(m_var[1].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env),
                                       pretty_print::build_list("-", m_var[1]->to_form(env)));
     case Kind::UNKNOWN:
       return pretty_print::build_list("unknown-branch-delay!");
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -1347,7 +1347,7 @@ void IR2_BranchDelay::get_regs(std::vector<Register>* write, std::vector<Registe
       read->push_back(m_var[2]->reg());
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1396,7 +1396,7 @@ bool BranchOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const BranchOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_likely == po->m_likely && m_condition == po->m_condition && m_label == po->m_label &&
          m_branch_delay == po->m_branch_delay;
 }
@@ -1473,7 +1473,7 @@ bool AsmBranchOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const AsmBranchOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_likely == po->m_likely && m_condition == po->m_condition && m_label == po->m_label &&
          m_branch_delay == po->m_branch_delay;
 }
@@ -1531,7 +1531,7 @@ goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, cons
     case Kind::SUSPEND:
       return pretty_print::build_list("suspend");
     default:
-      assert(false);
+      ASSERT(false);
       return {};
   }
 }
@@ -1542,7 +1542,7 @@ bool SpecialOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const SpecialOp*>(&other);
-  assert(po);
+  ASSERT(po);
 
   return m_kind == po->m_kind;
 }
@@ -1569,7 +1569,7 @@ void SpecialOp::update_register_info() {
       clobber_temps();
       return;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -1601,7 +1601,7 @@ bool CallOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const CallOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return true;
 }
 
@@ -1658,7 +1658,7 @@ bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const ConditionalMoveFalseOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_dst == po->m_dst && m_src == po->m_src && m_on_zero == po->m_on_zero &&
          m_old_value == po->m_old_value;
 }
@@ -1722,7 +1722,7 @@ bool FunctionEndOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const FunctionEndOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_function_has_return_value == po->m_function_has_return_value;
 }
 
@@ -1751,7 +1751,7 @@ void FunctionEndOp::collect_vars(RegAccessSet& vars) const {
 StackSpillStoreOp::StackSpillStoreOp(const SimpleAtom& value, int size, int offset, int my_idx)
     : AtomicOp(my_idx), m_value(value), m_size(size), m_offset(offset) {
   if (m_value.is_var()) {
-    assert(m_value.var().mode() == AccessMode::READ);
+    ASSERT(m_value.var().mode() == AccessMode::READ);
   }
 }
 
@@ -1766,7 +1766,7 @@ bool StackSpillStoreOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const StackSpillStoreOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_size == po->m_size && m_value == po->m_value && m_offset == po->m_offset;
 }
 
@@ -1799,7 +1799,7 @@ StackSpillLoadOp::StackSpillLoadOp(RegisterAccess dst,
                                    bool is_signed,
                                    int my_idx)
     : AtomicOp(my_idx), m_dst(dst), m_size(size), m_offset(offset), m_is_signed(is_signed) {
-  assert(m_dst.mode() == AccessMode::WRITE);
+  ASSERT(m_dst.mode() == AccessMode::WRITE);
 }
 
 goos::Object StackSpillLoadOp::to_form(const std::vector<DecompilerLabel>&, const Env& env) const {
@@ -1814,7 +1814,7 @@ bool StackSpillLoadOp::operator==(const AtomicOp& other) const {
   }
 
   auto po = dynamic_cast<const StackSpillLoadOp*>(&other);
-  assert(po);
+  ASSERT(po);
   return m_size == po->m_size && m_dst == po->m_dst && m_offset == po->m_offset &&
          m_is_signed == po->m_is_signed;
 }

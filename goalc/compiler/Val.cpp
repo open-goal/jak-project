@@ -149,7 +149,7 @@ RegVal* StaticVal::to_reg(const goos::Object& form, Env* fe) {
 
 RegVal* LambdaVal::to_reg(const goos::Object& form, Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
-  assert(func);
+  ASSERT(func);
   fe->emit(form, std::make_unique<IR_FunctionAddr>(re, func));
   return re;
 }
@@ -292,7 +292,7 @@ RegVal* BitFieldVal::to_reg(const goos::Object& form, Env* env) {
   } else {
     // we need to get the value as a 128-bit integer
     auto xmm = m_parent->to_reg(form, env);
-    assert(xmm->ireg().reg_class == RegClass::INT_128);
+    ASSERT(xmm->ireg().reg_class == RegClass::INT_128);
     auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
     env->emit_ir<IR_Int128Math3Asm>(form, true, xmm_temp, xmm, xmm,
                                     IR_Int128Math3Asm::Kind::PCPYUD);
@@ -302,9 +302,9 @@ RegVal* BitFieldVal::to_reg(const goos::Object& form, Env* env) {
 
   // this second step does up to 2 shifts to extract the bitfield and sign extend as needed.
   int end_bit = start_bit + m_size;
-  assert(end_bit <= 64);  // should be checked by the type system.
+  ASSERT(end_bit <= 64);  // should be checked by the type system.
   int epad = 64 - end_bit;
-  assert(epad >= 0);
+  ASSERT(epad >= 0);
   int spad = start_bit;
 
   // shift left as much as possible to kill upper bits
@@ -313,8 +313,8 @@ RegVal* BitFieldVal::to_reg(const goos::Object& form, Env* env) {
   }
 
   int next_shift = epad + spad;
-  assert(next_shift + m_size == 64);
-  assert(next_shift >= 0);
+  ASSERT(next_shift + m_size == 64);
+  ASSERT(next_shift >= 0);
 
   if (next_shift > 0) {
     if (m_sign_extend) {

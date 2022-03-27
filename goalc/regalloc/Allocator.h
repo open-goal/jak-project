@@ -46,7 +46,7 @@ struct LiveInfo {
    * Add an instruction id where this variable is live.
    */
   void add_live_instruction(int value) {
-    assert(value >= 0);
+    ASSERT(value >= 0);
     if (value > max)
       max = value;
     if (value < min)
@@ -79,7 +79,7 @@ struct LiveInfo {
         return true;
       if (idx < min || idx > max)
         return false;
-      assert(idx > min);
+      ASSERT(idx > min);
       return is_alive.at(idx - min) && !is_alive.at(idx - min - 1);
     } else {
       return idx == min;
@@ -95,7 +95,7 @@ struct LiveInfo {
         return true;
       if (idx < min || idx > max)
         return false;
-      assert(idx < max);
+      ASSERT(idx < max);
       return is_alive.at(idx - min) && !is_alive.at(idx - min + 1);
     } else {
       return idx == max;
@@ -109,7 +109,7 @@ struct LiveInfo {
     var = id;
     if (!seen)
       return;  // don't do any prep for a variable which isn't used.
-    assert(max - min >= 0);
+    ASSERT(max - min >= 0);
     assignment.resize(max - min + 1);
     is_alive.resize(max - min + 1);
     for (auto& x : indices_of_alive) {
@@ -123,7 +123,7 @@ struct LiveInfo {
    * Will set best_hint to this assignment.
    */
   void constrain_at_one(int id, emitter::Register reg) {
-    assert(id >= min && id <= max);
+    ASSERT(id >= min && id <= max);
     Assignment ass;
     ass.reg = reg;
     ass.kind = Assignment::Kind::REGISTER;
@@ -150,7 +150,7 @@ struct LiveInfo {
    * At the given instruction, does the given assignment conflict with this one?
    */
   bool conflicts_at(int id, Assignment ass) {
-    assert(id >= min && id <= max);
+    ASSERT(id >= min && id <= max);
     return assignment.at(id - min).occupies_same_reg(ass);
   }
 
@@ -158,7 +158,7 @@ struct LiveInfo {
    * At the given instruction, does the given assignment conflict with this one?
    */
   bool conflicts_at(int id, emitter::Register reg) {
-    assert(id >= min && id <= max);
+    ASSERT(id >= min && id <= max);
     Assignment ass;
     ass.reg = reg;
     ass.kind = Assignment::Kind::REGISTER;
@@ -170,8 +170,8 @@ struct LiveInfo {
    * Throws if this would require modifying a currently set assignment.
    */
   void assign_no_overwrite(Assignment ass) {
-    assert(seen);
-    assert(ass.is_assigned());
+    ASSERT(seen);
+    ASSERT(ass.is_assigned());
     for (int i = min; i <= max; i++) {
       auto& a = assignment.at(i - min);
       if (a.is_assigned() && !(a.occupies_same_reg(ass))) {
@@ -186,7 +186,7 @@ struct LiveInfo {
    * Get the assignment at the given instruction.
    */
   const Assignment& get(int id) const {
-    assert(id >= min && id <= max);
+    ASSERT(id >= min && id <= max);
     return assignment.at(id - min);
   }
 

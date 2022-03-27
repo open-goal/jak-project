@@ -85,17 +85,18 @@
   (set! (-> self string-max target z) (-> self stringMaxLength))
   (set! (-> self string-push-z) (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z)))
   (cond
-    ((>= (- (-> *display* base-frame-counter) (if *target*
-                                                  (-> *target* neck notice-time)
-                                                  0
-                                                  )
+    ((>= (- (-> *display* base-frame-counter) (the-as time-frame (if *target*
+                                                                     (the-as int (-> *target* neck notice-time))
+                                                                     0
+                                                                     )
+                                                      )
             )
-         (the-as int (-> *CAMERA-bank* attack-timeout))
+         (-> *CAMERA-bank* attack-timeout)
          )
      (set! (-> self being-attacked) #f)
      )
     (else
-      (set! (-> self attack-start) (the-as uint (-> *display* base-frame-counter)))
+      (set! (-> self attack-start) (-> *display* base-frame-counter))
       (set! (-> self being-attacked) #t)
       (when (and (zero? (logand (-> self master-options) 64))
                  (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
@@ -313,18 +314,19 @@
            (return (the-as symbol #f))
            )
        (cond
-         ((>= (- (-> *display* base-frame-counter) (if *target*
-                                                       (-> *target* neck notice-time)
-                                                       0
-                                                       )
+         ((>= (- (-> *display* base-frame-counter) (the-as time-frame (if *target*
+                                                                          (the-as int (-> *target* neck notice-time))
+                                                                          0
+                                                                          )
+                                                           )
                  )
-              (the-as int (-> *CAMERA-bank* attack-timeout))
+              (-> *CAMERA-bank* attack-timeout)
               )
           (set! (-> self being-attacked) #f)
           )
          (else
            (if (not (-> self being-attacked))
-               (set! (-> self attack-start) (the-as uint (-> *display* base-frame-counter)))
+               (set! (-> self attack-start) (-> *display* base-frame-counter))
                )
            (set! (-> self being-attacked) #t)
            (when (and (zero? (logand (-> self master-options) 64))
@@ -1055,7 +1057,7 @@
       )
     )
   (set! (-> self water-drip) (create-launch-control group-rain-screend-drop self))
-  (set! (-> self water-drip-time) (the-as uint -18000))
+  (set! (-> self water-drip-time) (seconds -60))
   (go cam-master-active)
   0
   (none)

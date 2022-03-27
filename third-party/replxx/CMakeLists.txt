@@ -50,7 +50,7 @@ set(REPLXX_CONTACT "amok@codestation.org")
 set(is-clang $<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>)
 set(is-msvc $<CXX_COMPILER_ID:MSVC>)
 set(is-gnu $<CXX_COMPILER_ID:GNU>)
-set(compiler-id-clang-or-gnu $<OR:${is-clang},${is-gnu}>)
+set(compiler-id-clang-or-gnu $<AND:$<OR:${is-clang},${is-gnu}>,$<NOT:${is-msvc}>>)
 
 set(coverage-config $<AND:$<CONFIG:Coverage>,$<OR:${is-gnu},${is-clang}>>)
 

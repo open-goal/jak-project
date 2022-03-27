@@ -672,7 +672,7 @@
    (water-height  float                            :offset-assert 212)
    (sfx           uint32                           :offset-assert 216)
    (part2         sparticle-launch-control         :offset-assert 220)
-   (ground-time   uint64                           :offset-assert 224)
+   (ground-time   time-frame                       :offset-assert 224)
    )
   :heap-base #x80
   :method-count-assert 21
@@ -841,7 +841,7 @@
       (set! (-> self sfx) (the-as uint 0))
       0
       )
-    (set! (-> self ground-time) (the-as uint (-> *display* base-frame-counter)))
+    (set! (-> self ground-time) (-> *display* base-frame-counter))
     (sound-play-by-name
       (static-sound-name "sack-land")
       (new-sound-id)
@@ -902,7 +902,7 @@
       )
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
     (spawn-part self)
-    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status drwf03)))
+    (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status was-drawn)))
       (if (logtest? (-> self root-override status) 1)
           (draw-shadow
             (-> self root-override shadow-pos)
@@ -1085,7 +1085,7 @@
     (suspend)
     (clear-collide-with-as (-> self root-override))
     (let ((gp-2 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-2) 900)
+      (until (>= (- (-> *display* base-frame-counter) gp-2) (seconds 3))
         (spawn (-> self part2) (-> self root-override trans))
         (suspend)
         )
@@ -1099,8 +1099,8 @@
   )
 
 ;; definition for function mistycannon-collision-reaction
-;; INFO: Return type mismatch int vs none.
-(defun mistycannon-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect))
+;; INFO: Return type mismatch int vs uint.
+(defun mistycannon-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
   (let ((s5-0 0))
     (let ((a1-1 (new 'stack-no-clear 'vector)))
       (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
@@ -1115,9 +1115,9 @@
     (vector-float*! (-> arg0 transv) (-> arg0 transv) 0.15)
     (let ((v0-1 (logior s5-0 7)))
       (logior! (-> arg0 status) v0-1)
+      (the-as uint v0-1)
       )
     )
-  (none)
   )
 
 ;; definition of type mistycannon-init-data
@@ -1155,12 +1155,7 @@
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction)
-          (the-as
-            (function collide-shape-moving collide-shape-intersect vector vector none)
-            mistycannon-collision-reaction
-            )
-          )
+    (set! (-> s5-0 reaction) mistycannon-collision-reaction)
     (set! (-> s5-0 no-reaction)
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
           )
@@ -1237,7 +1232,7 @@
    (front-wheel            float                        :offset-assert 208)
    (rear-wheel             float                        :offset-assert 212)
    (last-known-rotation    float                        :offset-assert 216)
-   (part-timer             uint64                       :offset-assert 224)
+   (part-timer             time-frame                   :offset-assert 224)
    (hellmouth              vector               :inline :offset-assert 240)
    (postbindinfo-ok        symbol                       :offset-assert 256)
    (launch-origin          vector               :inline :offset-assert 272)
@@ -1354,7 +1349,7 @@
     )
   (sound-play-by-name (static-sound-name "cannon-shot") (new-sound-id) 1024 0 0 1 #t)
   (set! (-> obj part local-clock) 0)
-  (set! (-> obj part-timer) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> obj part-timer) (-> *display* base-frame-counter))
   (mistycannon-pick-random-target-point)
   0
   (none)
@@ -1363,7 +1358,7 @@
 ;; definition for method 23 of type mistycannon
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-23 mistycannon ((obj mistycannon))
-  (when (< (- (-> *display* base-frame-counter) (the-as int (-> obj part-timer))) 900)
+  (when (< (- (-> *display* base-frame-counter) (-> obj part-timer)) (seconds 3))
     (let ((v1-4 (-> obj rotate)))
       (set! (-> *part-id-table* 529 init-specs 24 initial-valuef)
             (the float (sar (shl (the int (+ (-> v1-4 min) (-> v1-4 value))) 48) 48))
@@ -1684,14 +1679,14 @@
       )
     (mistycannon-find-trajectory gp-0)
     (when (= (-> gp-0 time) 0.0)
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
         (dummy-22 self 409600.0 2.0 20480.0)
         (set! (-> self state-time) (-> *display* base-frame-counter))
         )
       (return #f)
       )
     (when (angle-tracker-seek! (-> self tilt) (-> gp-0 theta))
-      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 900)
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
         (dummy-22 self (fmax 163840.0 (fmin 409600.0 (-> gp-0 speed))) (-> gp-0 time) 20480.0)
         (set! (-> self state-time) (-> *display* base-frame-counter))
         )
@@ -1916,10 +1911,12 @@
             (suspend)
             )
           )
-        (let ((v1-45 (and (cpad-hold? 0 x) (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300))))
+        (let ((v1-45 (and (cpad-hold? 0 x) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1)))))
           (when (zero? s5-0)
             (when v1-45
-              (set! gp-0 (seekl gp-0 300 (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
+              (set! gp-0
+                    (seekl gp-0 300 (the-as int (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
+                    )
               (sound-play-by-name
                 (static-sound-name "cannon-charge")
                 (-> self sound-id)
@@ -1998,7 +1995,7 @@
     (while #t
       (suspend)
       (dummy-23 self)
-      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
           (go mistycannon-waiting-for-player)
           )
       )
@@ -2053,7 +2050,7 @@
   (process-drawable-from-entity! obj arg0)
   (quaternion-identity! (-> obj root-override quat))
   (initialize-skeleton obj *mistycannon-sg* '())
-  (logior! (-> obj skel status) 1)
+  (logior! (-> obj skel status) (janim-status inited))
   (update-transforms! (-> obj root-override))
   (set! (-> obj skel prebind-function)
         (the-as (function pointer int process-drawable none) mistycannon-prebind-function)
@@ -2112,7 +2109,7 @@
   (set! (-> obj accuracy-range) 16384.0)
   (mistycannon-pick-random-target-point)
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 119) obj))
-  (set! (-> obj part-timer) (the-as uint (+ (-> *display* base-frame-counter) -3000)))
+  (set! (-> obj part-timer) (+ (-> *display* base-frame-counter) (seconds -10)))
   (set! (-> obj postbindinfo-ok) #f)
   (let ((v1-79 (-> obj rotate)))
     (set! (-> obj last-known-rotation)

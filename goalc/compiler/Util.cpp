@@ -284,7 +284,7 @@ void Compiler::compile_constant_product(const goos::Object& form,
                                         int stride,
                                         Env* env) {
   // todo - support imul with an imm.
-  assert(stride);
+  ASSERT(stride);
 
   bool is_power_of_two = (stride & (stride - 1)) == 0;
   if (stride == 1) {
@@ -297,7 +297,7 @@ void Compiler::compile_constant_product(const goos::Object& form,
         return;
       }
     }
-    assert(false);
+    ASSERT(false);
   } else {
     // get the multiplier
     env->emit_ir<IR_LoadConstant64>(form, dest, stride);

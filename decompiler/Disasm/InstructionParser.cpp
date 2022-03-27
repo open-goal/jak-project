@@ -3,7 +3,7 @@
 #include <optional>
 #include "common/common_types.h"
 #include "InstructionParser.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 InstructionParser::InstructionParser() {
@@ -64,12 +64,12 @@ InstructionParser::InstructionParser() {
       added++;
     }
   }
-  assert(added == int(m_opcode_name_lookup.size()) + int(m_opcode_name_broadcast_lookup.size()));
+  ASSERT(added == int(m_opcode_name_lookup.size()) + int(m_opcode_name_broadcast_lookup.size()));
 }
 
 namespace {
 std::string get_until_space(std::string& instr) {
-  assert(!instr.empty());
+  ASSERT(!instr.empty());
   size_t i;
   for (i = 0; i < instr.length(); i++) {
     if (instr[i] == ' ') {
@@ -86,7 +86,7 @@ std::string get_until_space(std::string& instr) {
 }
 
 std::string get_instr_name(std::string& instr) {
-  assert(!instr.empty());
+  ASSERT(!instr.empty());
   size_t i;
   for (i = 0; i < instr.length(); i++) {
     if (instr[i] == ' ') {
@@ -121,12 +121,12 @@ std::string get_instr_name(std::string& instr) {
 }
 
 std::string get_comma_separated(std::string& instr) {
-  assert(!instr.empty());
+  ASSERT(!instr.empty());
   auto arg = get_until_space(instr);
   if (instr.empty()) {
-    assert(arg.back() != ',');
+    ASSERT(arg.back() != ',');
   } else {
-    assert(arg.back() == ',');
+    ASSERT(arg.back() == ',');
     arg.pop_back();
   }
   return arg;
@@ -141,13 +141,13 @@ std::string get_before_paren(std::string& instr) {
       return result;
     }
   }
-  assert(false);
+  ASSERT(false);
   return {};
 }
 
 std::string get_in_paren(std::string& instr) {
-  assert(instr.length() > 2);
-  assert(instr.front() == '(');
+  ASSERT(instr.length() > 2);
+  ASSERT(instr.front() == '(');
   size_t i;
   for (i = 0; i < instr.length(); i++) {
     if (instr[i] == ')') {
@@ -160,22 +160,22 @@ std::string get_in_paren(std::string& instr) {
       return result;
     }
   }
-  assert(false);
+  ASSERT(false);
   return {};
 }
 
 bool is_integer(const std::string& str) {
-  assert(!str.empty());
+  ASSERT(!str.empty());
   char* end;
   std::strtol(str.c_str(), &end, 10);
   return end == str.c_str() + str.length();
 }
 
 int parse_integer(const std::string& str) {
-  assert(!str.empty());
+  ASSERT(!str.empty());
   char* end;
   int result = std::strtol(str.c_str(), &end, 10);
-  assert(end == str.c_str() + str.length());
+  ASSERT(end == str.c_str() + str.length());
   return result;
 }
 
@@ -233,7 +233,7 @@ u8 cop2_dst(const std::string& str) {
   }
 
   if (*ptr) {
-    assert(false);
+    ASSERT(false);
   }
   return result;
 }
@@ -283,7 +283,7 @@ Instruction InstructionParser::parse_single_instruction(
         }
 
         Register reg(gpr_name);
-        assert(reg.get_kind() == Reg::GPR);
+        ASSERT(reg.get_kind() == Reg::GPR);
         InstructionAtom atom;
         atom.set_reg(reg);
         if (step.is_src) {
@@ -296,7 +296,7 @@ Instruction InstructionParser::parse_single_instruction(
       case DecodeType::FPR: {
         auto reg_name = get_comma_separated(str);
         Register reg(reg_name);
-        assert(reg.get_kind() == Reg::FPR);
+        ASSERT(reg.get_kind() == Reg::FPR);
         InstructionAtom atom;
         atom.set_reg(reg);
         if (step.is_src) {
@@ -309,7 +309,7 @@ Instruction InstructionParser::parse_single_instruction(
       case DecodeType::VF: {
         auto reg_name = get_comma_separated(str);
         Register reg(reg_name);
-        assert(reg.get_kind() == Reg::VF);
+        ASSERT(reg.get_kind() == Reg::VF);
         InstructionAtom atom;
         atom.set_reg(reg);
         if (step.is_src) {
@@ -359,7 +359,7 @@ Instruction InstructionParser::parse_single_instruction(
         auto label = get_comma_separated(str);
         auto f = std::find_if(labels.begin(), labels.end(),
                               [&](const DecompilerLabel& l) { return l.name == label; });
-        assert(f != labels.end());
+        ASSERT(f != labels.end());
         auto idx = f - labels.begin();
         InstructionAtom atom;
         atom.set_label(idx);
@@ -384,7 +384,7 @@ Instruction InstructionParser::parse_single_instruction(
           instr.il = 0;
         } else {
           printf("Bad interlock specification. Got %s\n", thing.c_str());
-          assert(false);
+          ASSERT(false);
         }
       } break;
 
@@ -400,17 +400,17 @@ Instruction InstructionParser::parse_single_instruction(
           instr.cop2_bc = 3;
         } else {
           printf("Bad broadcast. Got %s\n", thing.c_str());
-          assert(false);
+          ASSERT(false);
         }
       } break;
 
       default:
         printf("missing DecodeType: %d\n", (int)step.decode);
-        assert(false);
+        ASSERT(false);
     }
   }
 
-  assert(str.empty());
+  ASSERT(str.empty());
   return instr;
 }
 
@@ -446,7 +446,7 @@ ParsedProgram InstructionParser::parse_program(const std::string& str,
       if (line.back() == ':') {
         line.pop_back();
       } else {
-        assert(false);
+        ASSERT(false);
       }
       DecompilerLabel label;
       label.target_segment = 0;

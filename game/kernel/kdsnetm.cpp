@@ -10,7 +10,7 @@
 #include "game/system/deci_common.h"  // todo, reorganize to avoid this include
 #include "kdsnetm.h"
 #include "kprint.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace ee;
 
@@ -115,7 +115,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
     case DECI2_WRITE: {
       // note that we should not attempt to send more than 0xffff bytes at a time, or this will be
       // wrong.  This is correctly checked for prints, but not for outputs.
-      assert(pb->send_remaining < 0xffff);
+      ASSERT(pb->send_remaining < 0xffff);
       // why and it with 0xffff?  Seems like saturation would be better.  Either way some data
       // will be lost, so I guess it doesn't matter.
       s32 sent = sceDeci2ExSend(pb->socket, (void*)pb->send_ptr, pb->send_remaining & 0xffff);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ssound.h"
 #include "common/common_types.h"
 
 void srpc_init_globals();
@@ -11,7 +12,7 @@ struct MusicTweaks {
 
   struct {
     char MusicName[12];
-    u32 VolumeAdjust;
+    s32 VolumeAdjust;
   } MusicTweak[MUSIC_TWEAK_COUNT];
 };
 
@@ -56,6 +57,68 @@ struct SoundRpcSetLanguageCommand {
   u32 langauge_id;  // game_common_types.h, Language
 };
 
+struct SoundRpcPlayCommand {
+  u32 sound_id;
+  u32 pad[2];
+  char name[16];
+  SoundParams parms;
+};
+
+struct SoundRpcSetParamCommand {
+  u32 sound_id;
+  SoundParams parms;
+  s32 auto_time;
+  s32 auto_from;
+};
+
+struct SoundRpcSoundIdCommand {
+  u32 sound_id;
+};
+
+struct SoundRpcSetFlavaCommand {
+  u8 flava;
+};
+
+struct SoundRpcSetReverb {
+  u8 core;
+  s32 reverb;
+  u32 left;
+  u32 right;
+};
+
+struct SoundRpcSetEarTrans {
+  Vec3w ear_trans;
+  Vec3w cam_trans;
+  s32 cam_angle;
+};
+
+struct SoundRpcSetFPSCommand {
+  u8 fps;
+};
+
+struct SoundRpcSetFallof {
+  u8 pad[12];
+  char name[16];
+  s32 curve;
+  s32 min;
+  s32 max;
+};
+
+struct SoundRpcSetFallofCurve {
+  s32 curve;
+  s32 falloff;
+  s32 ease;
+};
+
+struct SoundRpcGroupCommand {
+  u8 group;
+};
+
+struct SoundRpcMasterVolCommand {
+  SoundRpcGroupCommand group;
+  s32 volume;
+};
+
 struct SoundRpcCommand {
   u16 rsvd1;
   SoundCommand command;
@@ -63,9 +126,27 @@ struct SoundRpcCommand {
     SoundRpcGetIrxVersion irx_version;
     SoundRpcBankCommand load_bank;
     SoundRpcSetLanguageCommand set_language;
+    SoundRpcPlayCommand play;
+    SoundRpcSoundIdCommand sound_id;
+    SoundRpcSetFPSCommand fps;
+    SoundRpcSetEarTrans ear_trans;
+    SoundRpcSetReverb reverb;
+    SoundRpcSetFallof fallof;
+    SoundRpcSetFallofCurve fallof_curve;
+    SoundRpcGroupCommand group;
+    SoundRpcSetFlavaCommand flava;
+    SoundRpcMasterVolCommand master_volume;
+    SoundRpcSetParamCommand param;
+    u8 max_size[0x4C];  // Temporary
   };
 };
 
+static_assert(sizeof(SoundRpcCommand) == 0x50);
+
 extern MusicTweaks gMusicTweakInfo;
+extern s32 gMusicTweak;
 
 u32 Thread_Loader();
+u32 Thread_Player();
+
+s32 VBlank_Handler();

@@ -29,7 +29,7 @@
 #include "common/versions.h"
 
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 using namespace versions;
 constexpr bool debug_listener = false;
@@ -244,7 +244,7 @@ void Listener::receive_func() {
             ack_recv_prog += got;
           }
           ack_recv_buff[ack_recv_prog] = '\0';
-          assert(ack_recv_prog < 512);
+          ASSERT(ack_recv_prog < 512);
           got_ack = true;
           last_recvd_id = hdr->msg_id;
           if (last_recvd_id > last_sent_id) {
@@ -262,7 +262,7 @@ void Listener::receive_func() {
       case ListenerMessageKind::MSG_PRINT: {
         auto* str_buff = new char[hdr->msg_size + 1];  // plus one for the null terminator
         int msg_prog = 0;
-        assert(hdr->msg_id == 0);
+        ASSERT(hdr->msg_id == 0);
         while (rcvd < hdr->deci2_header.len) {
           if (!m_connected) {
             return;
@@ -495,17 +495,17 @@ void Listener::handle_output_message(const char* msg) {
     auto x = str.find(' ');
     auto kind = str.substr(0, x);
     if (kind == "reset") {
-      assert(x + 1 < str.length());
+      ASSERT(x + 1 < str.length());
       auto next = str.find(' ', x + 1);
       auto s7_str = str.substr(x, next - x);
       x = next;
 
-      assert(x + 1 < str.length());
+      ASSERT(x + 1 < str.length());
       next = str.find(' ', x + 1);
       auto base_str = str.substr(x, next - x);
       x = next;
 
-      assert(x + 1 < str.length());
+      ASSERT(x + 1 < str.length());
       next = str.find(' ', x + 1);
       auto tid_str = str.substr(x, next - x);
 
@@ -516,12 +516,12 @@ void Listener::handle_output_message(const char* msg) {
       }
 
     } else if (kind == "load") {
-      assert(x + 1 < str.length());
+      ASSERT(x + 1 < str.length());
       auto next = str.find(' ', x + 1);
       auto name_str = str.substr(x, next - x);
       x = next;
 
-      assert(x + 1 < str.length());
+      ASSERT(x + 1 < str.length());
       next = str.find(' ', x + 1);
       auto load_kind_str = str.substr(x, next - x);
       x = next;
@@ -529,7 +529,7 @@ void Listener::handle_output_message(const char* msg) {
       std::string seg_strings[6];
 
       for (auto& seg_string : seg_strings) {
-        assert(x + 1 < str.length());
+        ASSERT(x + 1 < str.length());
         next = str.find(' ', x + 1);
         seg_string = str.substr(x, next - x);
         x = next;

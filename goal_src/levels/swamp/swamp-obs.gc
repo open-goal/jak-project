@@ -250,7 +250,7 @@
                   (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
                   )
                 )
-              (when (logtest? (-> self draw status) (draw-status drwf03))
+              (when (logtest? (-> self draw status) (draw-status was-drawn))
                 (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
                   (when s5-3
                     (let ((t9-11 (method-of-type part-tracker activate)))
@@ -297,7 +297,7 @@
               (until (< (get-current-phase (-> self sync)) 0.5)
                 (suspend)
                 )
-              (when (logtest? (-> self draw status) (draw-status drwf03))
+              (when (logtest? (-> self draw status) (draw-status was-drawn))
                 (let ((s5-4 (get-process *default-dead-pool* part-tracker #x4000)))
                   (when s5-4
                     (let ((t9-18 (method-of-type part-tracker activate)))
@@ -417,7 +417,7 @@
   :code
   (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
-    (dummy-18 self)
+    (cleanup-for-death self)
     (none)
     )
   :post
@@ -732,7 +732,7 @@
         (-> gp-1 ppointer)
         )
       )
-    (dummy-18 self)
+    (cleanup-for-death self)
     (deactivate self)
     (none)
     )
@@ -830,25 +830,25 @@
 (define *tar-plat-constants* (new 'static 'rigid-body-platform-constants
                                :drag-factor 2.0
                                :buoyancy-factor 1.5
-                               :max-buoyancy-depth (meters 2.0)
+                               :max-buoyancy-depth (meters 2)
                                :gravity-factor 1.0
-                               :gravity (meters 80.0)
-                               :player-weight (meters 60.0)
+                               :gravity (meters 80)
+                               :player-weight (meters 60)
                                :player-bonk-factor 0.5
                                :player-dive-factor 1.0
-                               :player-force-distance (meters 2.0)
-                               :player-force-clamp (meters 1000000.0)
-                               :player-force-timeout #x1e
-                               :explosion-force (meters 1000.0)
+                               :player-force-distance (meters 2)
+                               :player-force-clamp (meters 1000000)
+                               :player-force-timeout (seconds 0.1)
+                               :explosion-force (meters 1000)
                                :linear-damping 0.9
                                :angular-damping 0.9
                                :control-point-count 4
                                :mass 1.0
-                               :inertial-tensor-x (meters 6.0)
-                               :inertial-tensor-y (meters 2.0)
-                               :inertial-tensor-z (meters 6.0)
-                               :cm-joint-y (meters -2.0)
-                               :idle-distance (meters 50.0)
+                               :inertial-tensor-x (meters 6)
+                               :inertial-tensor-y (meters 2)
+                               :inertial-tensor-z (meters 6)
+                               :cm-joint-y (meters -2)
+                               :idle-distance (meters 50)
                                :platform #t
                                :sound-name "tar-plat"
                                )
@@ -1037,7 +1037,7 @@
   :code
   (behavior ()
     (suspend)
-    (process-drawable-delay-player 300)
+    (process-drawable-delay-player (seconds 1))
     (let* ((gp-0 (get-process *default-dead-pool* pov-camera #x4000))
            (gp-1
              (ppointer->handle

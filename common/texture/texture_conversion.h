@@ -156,8 +156,8 @@ inline u32 psmt4_addr_half_byte(u32 x, u32 y, u32 width) {
   const u32 psm4_table[8][4] = {{0, 2, 8, 10},    {1, 3, 9, 11},    {4, 6, 12, 14},
                                 {5, 7, 13, 15},   {16, 18, 24, 26}, {17, 19, 25, 27},
                                 {20, 22, 28, 30}, {21, 23, 29, 31}};
-  assert(block_row < 8);
-  assert(block_col < 4);
+  ASSERT(block_row < 8);
+  ASSERT(block_col < 4);
   u32 block = psm4_table[block_row][block_col];  // it's the same table!!!
 
   // both columns and pixels within columns.
@@ -196,8 +196,8 @@ inline u32 psmt4_addr_half_byte(u32 x, u32 y, u32 width) {
        405, 413, 437, 445, 469, 477, 501, 509, 407, 415, 439, 447, 471, 479, 503, 511},
   };
 
-  assert(block_y < 16);
-  assert(block_x < 32);
+  ASSERT(block_y < 16);
+  ASSERT(block_x < 32);
   u32 pixel = pix_table[block_y][block_x];
   return (page * 128 * 128) + (block * 32 * 16) + pixel;
 }

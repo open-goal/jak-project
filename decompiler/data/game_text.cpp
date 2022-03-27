@@ -7,21 +7,20 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
-#include "common/util/FontUtils.h"
 
 namespace decompiler {
 namespace {
 template <typename T>
 T get_word(const LinkedWord& word) {
   T result;
-  assert(word.kind() == LinkedWord::PLAIN_DATA);
+  ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
   static_assert(sizeof(T) == 4, "bad get_word size");
   memcpy(&result, &word.data, 4);
   return result;
 }
 
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
-  assert(word.kind() == LinkedWord::PTR);
+  ASSERT(word.kind() == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id());
 }
 
@@ -53,7 +52,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
   // type tag for game-text-info
   if (words.at(offset).kind() != LinkedWord::TYPE_PTR ||
       words.front().symbol_name() != "game-text-info") {
-    assert(false);
+    ASSERT(false);
   }
   read_words.at(offset)++;
   offset++;
@@ -71,7 +70,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
   read_words.at(offset)++;
   auto group_label = get_label(data, words.at(offset++));
   auto group_name = data.linked_data.get_goal_string_by_label(group_label);
-  assert(group_name == "common");
+  ASSERT(group_name == "common");
   // remember that we read these bytes
   auto group_start = (group_label.offset / 4) - 1;
   for (int j = 0; j < align16(8 + 1 + (int)group_name.length()) / 4; j++) {
@@ -95,13 +94,15 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 
     // no duplicate ids
     if (result.text.find(text_id) != result.text.end()) {
-      assert(false);
+      ASSERT(false);
     }
 
     // escape characters
-    result.text[text_id] = version == GameTextVersion::JAK1_V1
-                               ? convert_from_jak1_encoding(text.c_str())
-                               : goos::get_readable_string(text.c_str());  // HACK!
+    if (font_bank_exists(version)) {
+      result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+    } else {
+      result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!
+    }
 
     // remember what we read (-1 for the type tag)
     auto string_start = (text_label.offset / 4) - 1;
@@ -125,7 +126,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
       std::string debug;
       data.linked_data.append_word_to_string(debug, words.at(i));
       printf("[%d] %d 0x%s\n", i, int(read_words[i]), debug.c_str());
-      assert(false);
+      ASSERT(false);
     }
   }
 
@@ -133,30 +134,53 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 }
 
 std::string write_game_text(
+    const Config& cfg,
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
   // first sort languages:
-  std::vector<int> langauges;
+  std::vector<int> languages;
   for (const auto& lang : data) {
-    langauges.push_back(lang.first);
+    languages.push_back(lang.first);
   }
-  std::sort(langauges.begin(), langauges.end());
+  std::sort(languages.begin(), languages.end());
 
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
-  for (auto lang : langauges) {
-    for (auto text : data.at(lang)) {
+  for (auto lang : languages) {
+    for (auto& text : data.at(lang)) {
       text_by_id[text.first].push_back(text.second);
     }
   }
 
   // write!
   std::string result;  // = "\xEF\xBB\xBF";  // UTF-8 encode (don't need this anymore)
-  result += fmt::format("(language-count {})\n", langauges.size());
+  result += fmt::format("(language-count {})\n", languages.size());
   result += "(group-name \"common\")\n";
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {
       result += fmt::format("\"{}\"\n  ", y);
+    }
+    result += ")\n\n";
+  }
+
+  // add our own custom text additions from new_strings.jsonc
+  // - first add the strings that are the same across all languages
+  for (auto const& [key, val] : cfg.new_strings_same_across_langs) {
+    result += fmt::format("(#x{}\n  ", key);
+    for (u32 i = 0; i < languages.size(); i++) {
+      result += fmt::format("\"{}\"\n  ", val);
+    }
+    result += ")\n\n";
+  }
+  // - now add the ones that are different, if they do not have all languages defined, pad with
+  // placeholders
+  for (auto const& [key, val] : cfg.new_strings_different_across_langs) {
+    result += fmt::format("(#x{}\n  ", key);
+    for (auto const& str : val) {
+      result += fmt::format("\"{}\"\n  ", str);
+    }
+    for (u32 i = 0; i < languages.size() - val.size(); i++) {
+      result += fmt::format("\"{}\"\n  ", "TODO");
     }
     result += ")\n\n";
   }

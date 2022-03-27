@@ -123,38 +123,38 @@ class StaticResult {
   bool is_func() const { return m_kind == Kind::FUNCTION_REFERENCE; }
 
   StaticStructure* reference() const {
-    assert(is_reference());
+    ASSERT(is_reference());
     return m_struct;
   }
 
   s32 constant_s32() const {
-    assert(is_constant_data() && m_constant_data && m_constant_data->size() == 8 &&
+    ASSERT(is_constant_data() && m_constant_data && m_constant_data->size() == 8 &&
            integer_fits(m_constant_data->value_64(), 4, true));
     return (s32)m_constant_data->value_64();
   }
 
   const std::string& symbol_name() const {
-    assert(is_symbol() || is_type());
+    ASSERT(is_symbol() || is_type());
     return m_symbol;
   }
 
   const FunctionEnv* function() const {
-    assert(is_func());
+    ASSERT(is_func());
     return m_func;
   }
 
   int method_count() const {
-    assert(is_type());
+    ASSERT(is_type());
     return m_method_count;
   }
 
   u64 constant_u64() const {
-    assert(is_constant_data() && m_constant_data && m_constant_data->size() == 8);
+    ASSERT(is_constant_data() && m_constant_data && m_constant_data->size() == 8);
     return m_constant_data->value_64();
   }
 
   const ConstantValue& constant() const {
-    assert(m_constant_data.has_value());
+    ASSERT(m_constant_data.has_value());
     return *m_constant_data;
   }
 

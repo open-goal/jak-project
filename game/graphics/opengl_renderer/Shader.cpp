@@ -2,7 +2,7 @@
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 Shader::Shader(const std::string& shader_name) {
   // read the shader source
@@ -60,22 +60,26 @@ Shader::Shader(const std::string& shader_name) {
 }
 
 void Shader::activate() {
-  assert(m_is_okay);
+  ASSERT(m_is_okay);
   glUseProgram(m_program);
 }
 
 ShaderLibrary::ShaderLibrary() {
-  at(ShaderId::TEST_SHADER) = {"test_shader"};
+  at(ShaderId::SOLID_COLOR) = {"solid_color"};
   at(ShaderId::DIRECT_BASIC) = {"direct_basic"};
   at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured"};
   at(ShaderId::DEBUG_RED) = {"debug_red"};
   at(ShaderId::SPRITE) = {"sprite_3d"};
   at(ShaderId::SKY) = {"sky"};
   at(ShaderId::SKY_BLEND) = {"sky_blend"};
-  at(ShaderId::DEBUG_BUFFERED) = {"debug_buffered"};
-  at(ShaderId::BUFFERED_TCC0) = {"buffered_tcc0"};
-  at(ShaderId::BUFFERED_TCC1) = {"buffered_tcc1"};
   at(ShaderId::TFRAG3) = {"tfrag3"};
   at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex"};
   at(ShaderId::SPRITE3) = {"sprite3_3d"};
+  at(ShaderId::DIRECT2) = {"direct2"};
+  at(ShaderId::EYE) = {"eye"};
+  at(ShaderId::GENERIC) = {"generic"};
+  at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture"};
+  at(ShaderId::OCEAN_TEXTURE_MIPMAP) = {"ocean_texture_mipmap"};
+  at(ShaderId::OCEAN_COMMON) = {"ocean_common"};
+  at(ShaderId::SHADOW) = {"shadow"};
 }

@@ -125,7 +125,7 @@ void Compiler::set_bits_in_bitfield(const goos::Object& form,
   // to shift us all the way to the left and clear upper bits
   int left_shift_amnt = 64 - size;
   int right_shift_amnt = (64 - size) - offset;
-  assert(right_shift_amnt >= 0);
+  ASSERT(right_shift_amnt >= 0);
 
   if (left_shift_amnt > 0) {
     env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, temp, left_shift_amnt);
@@ -163,7 +163,7 @@ void Compiler::set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegV
   bool get_top = dst->offset() >= 64;
 
   // first, get the value we want to modify:
-  assert(m_ts.lookup_type(dst->parent()->type())->get_preferred_reg_class() == RegClass::INT_128);
+  ASSERT(m_ts.lookup_type(dst->parent()->type())->get_preferred_reg_class() == RegClass::INT_128);
   RegVal* original_original = dst->parent()->to_xmm128(form, env);
 
   // next, get the 64-bit part we want to modify in the lower 64 bits of an XMM

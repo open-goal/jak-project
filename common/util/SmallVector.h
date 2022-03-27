@@ -5,7 +5,7 @@
 #include <new>
 #include <type_traits>
 #include <utility>
-#include "assert.h"
+#include "common/util/Assert.h"
 
 namespace cu {
 // This might seem stupid, but compiling an empty file with #include <algorithm> takes 0.5 seconds.
@@ -346,7 +346,7 @@ class SmallVector {
    * Get the element at the index. Assert the index is valid.
    */
   T& at(std::size_t idx) {
-    assert(idx < m_size);
+    ASSERT(idx < m_size);
     return m_storage_begin[idx];
   }
 
@@ -354,7 +354,7 @@ class SmallVector {
    * Get the element at the index. Assert the index is valid.
    */
   const T& at(std::size_t idx) const {
-    assert(idx < m_size);
+    ASSERT(idx < m_size);
     return m_storage_begin[idx];
   }
 

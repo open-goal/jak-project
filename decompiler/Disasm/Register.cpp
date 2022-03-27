@@ -6,7 +6,7 @@
 #include "Register.h"
 #include <stdexcept>
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 namespace Reg {
@@ -65,32 +65,32 @@ const static char* special_names[Reg::MAX_SPECIAL] = {"pcr0", "pcr1", "Q", "ACC"
 
 namespace {
 const char* gpr_to_charp(Reg::Gpr gpr) {
-  assert(gpr < 32);
+  ASSERT(gpr < 32);
   return gpr_names[gpr];
 }
 
 const char* fpr_to_charp(uint32_t fpr) {
-  assert(fpr < 32);
+  ASSERT(fpr < 32);
   return fpr_names[fpr];
 }
 
 const char* cop0_to_charp(Reg::Cop0 cpr) {
-  assert(cpr < 32);
+  ASSERT(cpr < 32);
   return cop0_names[cpr];
 }
 
 const char* vf_to_charp(uint32_t vf) {
-  assert(vf < 32);
+  ASSERT(vf < 32);
   return vf_names[vf];
 }
 
 const char* vi_to_charp(uint32_t vi) {
-  assert(vi < 32);
+  ASSERT(vi < 32);
   return vi_names[vi];
 }
 
 const char* special_to_charp(uint32_t special) {
-  assert(special < Reg::MAX_SPECIAL);
+  ASSERT(special < Reg::MAX_SPECIAL);
   return special_names[special];
 }
 }  // namespace
@@ -126,17 +126,17 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
     case Reg::VI:
       if (num > 32) {
         fmt::print("RegisterKind: {}, greater than 32: {}\n", kind, num);
-        assert(false);
+        ASSERT(false);
       }
       break;
     case Reg::SPECIAL:
       if (num > 4) {
         fmt::print("Special RegisterKind: {}, greater than 4: {}\n", kind, num);
-        assert(false);
+        ASSERT(false);
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -202,7 +202,7 @@ std::string Register::to_string() const {
  */
 Reg::RegisterKind Register::get_kind() const {
   uint16_t kind = id >> REG_CATEGORY_SHIFT;
-  assert(kind < Reg::MAX_KIND);
+  ASSERT(kind < Reg::MAX_KIND);
   return (Reg::RegisterKind)kind;
 }
 
@@ -210,9 +210,9 @@ Reg::RegisterKind Register::get_kind() const {
  * Get the GPR number. Must be a GPR.
  */
 Reg::Gpr Register::get_gpr() const {
-  assert(get_kind() == Reg::GPR);
+  ASSERT(get_kind() == Reg::GPR);
   uint16_t kind = id & REG_IDX_MASK;
-  assert(kind < Reg::MAX_GPR);
+  ASSERT(kind < Reg::MAX_GPR);
   return (Reg::Gpr)(kind);
 }
 
@@ -220,9 +220,9 @@ Reg::Gpr Register::get_gpr() const {
  * Get the FPR number. Must be an FPR.
  */
 uint32_t Register::get_fpr() const {
-  assert(get_kind() == Reg::FPR);
+  ASSERT(get_kind() == Reg::FPR);
   uint16_t kind = id & REG_IDX_MASK;
-  assert(kind < 32);
+  ASSERT(kind < 32);
   return kind;
 }
 
@@ -230,9 +230,9 @@ uint32_t Register::get_fpr() const {
  * Get the VF number. Must be a VF.
  */
 uint32_t Register::get_vf() const {
-  assert(get_kind() == Reg::VF);
+  ASSERT(get_kind() == Reg::VF);
   uint16_t kind = id & REG_IDX_MASK;
-  assert(kind < 32);
+  ASSERT(kind < 32);
   return kind;
 }
 
@@ -240,9 +240,9 @@ uint32_t Register::get_vf() const {
  * Get the VI number. Must be a VI.
  */
 uint32_t Register::get_vi() const {
-  assert(get_kind() == Reg::VI);
+  ASSERT(get_kind() == Reg::VI);
   uint16_t kind = id & REG_IDX_MASK;
-  assert(kind < 32);
+  ASSERT(kind < 32);
   return kind;
 }
 
@@ -250,9 +250,9 @@ uint32_t Register::get_vi() const {
  * Get the COP0 number. Must be a COP0.
  */
 Reg::Cop0 Register::get_cop0() const {
-  assert(get_kind() == Reg::COP0);
+  ASSERT(get_kind() == Reg::COP0);
   uint16_t kind = id & REG_IDX_MASK;
-  assert(kind < Reg::MAX_COP0);
+  ASSERT(kind < Reg::MAX_COP0);
   return (Reg::Cop0)(kind);
 }
 
@@ -260,9 +260,9 @@ Reg::Cop0 Register::get_cop0() const {
  * Get the PCR number. Must be a PCR.
  */
 uint32_t Register::get_special() const {
-  assert(get_kind() == Reg::SPECIAL);
+  ASSERT(get_kind() == Reg::SPECIAL);
   uint16_t kind = id & REG_IDX_MASK;
-  assert(kind < Reg::MAX_SPECIAL);
+  ASSERT(kind < Reg::MAX_SPECIAL);
   return kind;
 }
 

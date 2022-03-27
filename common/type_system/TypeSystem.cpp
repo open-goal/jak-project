@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace {
 template <typename... Args>
@@ -283,7 +283,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
                           result_type->get_inline_array_stride_alignment());
     } else {
       // can't have an inline array of value types!
-      assert(false);
+      ASSERT(false);
     }
   } else if (ts.base_type() == "pointer") {
     info.can_deref = true;
@@ -300,7 +300,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
       info.sign_extend = result_type->get_load_signed();
       info.reg = result_type->get_preferred_reg_class();
       info.load_size = result_type->get_load_size();
-      assert(result_type->get_size_in_memory() == result_type->get_load_size());
+      ASSERT(result_type->get_size_in_memory() == result_type->get_load_size());
     }
   } else {
     info.can_deref = false;
@@ -474,7 +474,7 @@ int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
     throw_typesystem_error("Cannot perform a load or store from partially defined type {}",
                            ts.print());
   }
-  assert(partial_def->get_load_size() == 4);
+  ASSERT(partial_def->get_load_size() == 4);
   return partial_def->get_load_size();
 }
 
@@ -1212,7 +1212,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
             "Attempted to use `{}` inline, this probably isn't what you wanted.\n",
             field_type->get_name());
       }
-      assert(field_type->is_reference());
+      ASSERT(field_type->is_reference());
       return field.array_size() * align(field_type->get_size_in_memory(),
                                         field_type->get_inline_array_stride_alignment());
     } else {
@@ -1236,7 +1236,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
             "may not be defined fully.\n",
             field_type->get_name());
       }
-      assert(field_type->is_reference());
+      ASSERT(field_type->is_reference());
       // return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
       // looking at dead-pool-heap we tightly pack in this case
       return field_type->get_size_in_memory();
@@ -1309,10 +1309,11 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
                                      const TypeSpec& actual,
                                      const std::string& error_source_name,
                                      bool print_on_error,
-                                     bool throw_on_error) const {
+                                     bool throw_on_error,
+                                     bool allow_type_alias) const {
   bool success = true;
   // first, typecheck the base types:
-  if (!typecheck_base_types(expected.base_type(), actual.base_type())) {
+  if (!typecheck_base_types(expected.base_type(), actual.base_type(), allow_type_alias)) {
     success = false;
   }
 
@@ -1375,8 +1376,10 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
  * Is actual of type expected? For base types.
  */
 bool TypeSystem::typecheck_base_types(const std::string& input_expected,
-                                      const std::string& actual) const {
+                                      const std::string& input_actual,
+                                      bool allow_alias) const {
   std::string expected = input_expected;
+  std::string actual = input_actual;
 
   // the unit types aren't picky.
   if (expected == "meters") {
@@ -1384,14 +1387,26 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
   }
 
   if (expected == "seconds") {
-    if (actual == "seconds") {
-      return true;
-    }
-    expected = "int";
+    expected = "time-frame";
+  }
+
+  if (actual == "seconds") {
+    actual = "time-frame";
   }
 
   if (expected == "degrees") {
     expected = "float";
+  }
+
+  // the decompiler prefers no aliasing so it can detect casts properly
+  if (allow_alias) {
+    if (expected == "time-frame") {
+      expected = "int";
+    }
+
+    if (actual == "time-frame") {
+      actual = "int";
+    }
   }
 
   // just to make sure it exists.
@@ -1475,7 +1490,7 @@ std::string TypeSystem::lca_base(const std::string& a, const std::string& b) con
     bi--;
   }
 
-  assert(result);
+  ASSERT(result);
   return *result;
 }
 
@@ -1508,7 +1523,7 @@ TypeSpec TypeSystem::lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpe
  * Lowest common ancestor of multiple (or at least one) type.
  */
 TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) const {
-  assert(!types.empty());
+  ASSERT(!types.empty());
   if (types.size() == 1) {
     return types.front();
   }

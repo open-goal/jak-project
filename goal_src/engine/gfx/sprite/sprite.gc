@@ -321,7 +321,7 @@
                                                              :wmt (gs-tex-wrap-mode region-clamp)
                                                              :maxu 639 :maxv 239))
   (set! (-> data screen-shader prims 9) (gs-reg64 alpha-1))
-  (set! (-> data screen-shader alpha) (new 'static 'gs-miptbp :tbp1 #x44))
+  (set! (-> data screen-shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
 
   ;; sin/cosine table
   (set! (-> data sincos-01 z) 0.999998)
@@ -555,11 +555,10 @@
              )
          (#when PC_PORT
            (when (and *pc-settings* (not (-> *pc-settings* use-vis?)))
-             ;; these are the values used when the game is in 4x3
-             ;; when the game is in widescreen, HUD sprites are generally enlarged, which looks terrible
-             (set! f1-0 (the-as float #xbeccdcf4))
-             (set! f2-0 (the-as float #xbe6f01c8))
-             (set! f0-1 (the-as float #x3f4cd277))
+             ;; when the game is in widescreen, HUD sprites are generally enlarged, which looks terrible.
+             ;; this reverts that.
+             (*! f1-0 (-> *pc-settings* aspect-ratio-scale))
+             (*! f0-1 (-> *pc-settings* aspect-ratio-scale))
              )
            )
          (set-vector! (-> mtx2 vector 0) f0-1 0.0 0.0 0.0)
@@ -857,8 +856,8 @@
           )
       (adgif-shader<-texture-simple! dma-adgif-data *shadow-middot-texture*)
       (if (logtest? (-> in-adgif-data flags) 1)
-          (set! (-> dma-adgif-data alpha) (new 'static 'gs-miptbp :tbp1 72))
-          (set! (-> dma-adgif-data alpha) (new 'static 'gs-miptbp :tbp1 66))
+          (set! (-> dma-adgif-data alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+          (set! (-> dma-adgif-data alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
           )
       )
     (&+! (-> dma-buff base) 80)

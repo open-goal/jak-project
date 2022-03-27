@@ -6,7 +6,7 @@
 
 #include "InstructionDecode.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 // utility class to extract fields of an opcode.
@@ -83,7 +83,7 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
           return IK::QMFC2;
 
         case 0b00101:
-          assert(((fields.data >> 1) & (0b1111111111)) == 0);
+          ASSERT(((fields.data >> 1) & (0b1111111111)) == 0);
           return IK::QMTC2;
 
         case 0b00010:
@@ -101,139 +101,139 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
     case 0b00010111101:
     case 0b00010111110:
     case 0b00010111111:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VMADDA_BC;
 
     case 0b00000111100:
     case 0b00000111101:
     case 0b00000111110:
     case 0b00000111111:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VADDA_BC;
 
     case 0b00110111100:
     case 0b00110111101:
     case 0b00110111110:
     case 0b00110111111:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VMULA_BC;
 
     case 0b01010111110:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VMULA;
 
     case 0b01010111100:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VADDA;
 
     case 0b01010111101:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VMADDA;
 
     case 0b00011111100:
     case 0b00011111101:
     case 0b00011111110:
     case 0b00011111111:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VMSUBA_BC;
 
     case 0b00101111100:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VFTOI0;
 
     case 0b00101111101:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VFTOI4;
 
     case 0b00101111110:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VFTOI12;
 
     case 0b00100111100:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VITOF0;
 
     case 0b00100111110:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VITOF12;
 
     case 0b00100111111:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VITOF15;
 
     case 0b00111111100:
-      assert(fields.data & (1 << 25));
-      assert(fields.ft() == 0);
+      ASSERT(fields.data & (1 << 25));
+      ASSERT(fields.ft() == 0);
       return IK::VMULAQ;
 
     case 0b00111111101:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VABS;
 
     case 0b00111111111:
-      assert(fields.data & (1 << 25));
-      assert(fields.dest() == 0b1110);
+      ASSERT(fields.data & (1 << 25));
+      ASSERT(fields.dest() == 0b1110);
       return IK::VCLIP;
 
     case 0b01011111111:
-      assert(fields.dest() == 0);
-      assert(fields.ft() == 0);
-      assert(fields.fs() == 0);
+      ASSERT(fields.dest() == 0);
+      ASSERT(fields.ft() == 0);
+      ASSERT(fields.fs() == 0);
       return IK::VNOP;
     case 0b01101111101:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VSQI;
     case 0b01101111100:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VLQI;
     case 0b01110111111:
-      assert(fields.dest() == 0);
-      assert(fields.ft() == 0);
-      assert(fields.fs() == 0);
+      ASSERT(fields.dest() == 0);
+      ASSERT(fields.ft() == 0);
+      ASSERT(fields.fs() == 0);
       return IK::VWAITQ;
 
     case 0b01011111110:
-      assert(fields.dest() == 0b1110);
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.dest() == 0b1110);
+      ASSERT(fields.data & (1 << 25));
       return IK::VOPMULA;
 
     case 0b01100111100:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VMOVE;
 
     case 0b01110111100:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VDIV;
 
     case 0b01110111101:
-      assert(fields.fs() == 0);
-      assert(((fields.data >> 21) & 3) == 0);
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.fs() == 0);
+      ASSERT(((fields.data >> 21) & 3) == 0);
+      ASSERT(fields.data & (1 << 25));
       return IK::VSQRT;
 
     case 0b01111111100:
-      assert(((fields.data >> 23) & 3) == 0);
-      assert(fields.data & (1 << 25));
+      ASSERT(((fields.data >> 23) & 3) == 0);
+      ASSERT(fields.data & (1 << 25));
       return IK::VMTIR;
 
     case 0b01110111110:
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.data & (1 << 25));
       return IK::VRSQRT;
 
     case 0b10000111100:
-      assert(fields.fs() == 0);
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.fs() == 0);
+      ASSERT(fields.data & (1 << 25));
       return IK::VRNEXT;
 
     case 0b10000111101:
-      assert(fields.fs() == 0);
-      assert(fields.data & (1 << 25));
+      ASSERT(fields.fs() == 0);
+      ASSERT(fields.data & (1 << 25));
       return IK::VRGET;
 
     case 0b10000111111:
-      assert(fields.ft() == 0);
-      assert(fields.data & (1 << 25));
-      assert(((fields.data >> 23) & 3) == 0);
+      ASSERT(fields.ft() == 0);
+      ASSERT(fields.data & (1 << 25));
+      ASSERT(((fields.data >> 23) & 3) == 0);
       return IK::VRXOR;
     default:
 
@@ -242,105 +242,105 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
         case 0b000001:
         case 0b000010:
         case 0b000011:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VADD_BC;
 
         case 0b000100:
         case 0b000101:
         case 0b000110:
         case 0b000111:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VSUB_BC;
 
         case 0b001000:
         case 0b001001:
         case 0b001010:
         case 0b001011:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMADD_BC;
 
         case 0b001100:
         case 0b001101:
         case 0b001110:
         case 0b001111:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMSUB_BC;
 
         case 0b010000:
         case 0b010001:
         case 0b010010:
         case 0b010011:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMAX_BC;
 
         case 0b010100:
         case 0b010101:
         case 0b010110:
         case 0b010111:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMINI_BC;
 
         case 0b011000:
         case 0b011001:
         case 0b011010:
         case 0b011011:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMUL_BC;
 
         case 0b011100:
-          assert(fields.ft() == 0);
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.ft() == 0);
+          ASSERT(fields.data & (1 << 25));
           return IK::VMULQ;
 
         case 0b100000:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VADDQ;
 
         case 0b100100:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VSUBQ;
 
         case 0b100101:
-          assert(fields.ft() == 0);
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.ft() == 0);
+          ASSERT(fields.data & (1 << 25));
           return IK::VMSUBQ;
 
         case 0b101000:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VADD;
         case 0b101001:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMADD;
         case 0b101010:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMUL;
         case 0b101011:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMAX;
         case 0b101100:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VSUB;
         case 0b101101:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMSUB;
         case 0b101110:
-          assert(fields.data & (1 << 25));
-          assert(fields.dest() == 0b1110);
+          ASSERT(fields.data & (1 << 25));
+          ASSERT(fields.dest() == 0b1110);
           return IK::VOPMSUB;
         case 0b101111:
-          assert(fields.data & (1 << 25));
+          ASSERT(fields.data & (1 << 25));
           return IK::VMINI;
         case 0b110010:
-          assert(fields.data & (1 << 25));
-          assert(fields.dest() == 0b0);
+          ASSERT(fields.data & (1 << 25));
+          ASSERT(fields.dest() == 0b0);
           return IK::VIADDI;
         case 0b110100:
-          assert(fields.data & (1 << 25));
-          assert(fields.dest() == 0b0);
+          ASSERT(fields.data & (1 << 25));
+          ASSERT(fields.dest() == 0b0);
           return IK::VIAND;
         case 0b111000:
-          assert(fields.data & (1 << 25));
-          assert(fields.dest() == 0b0);
+          ASSERT(fields.data & (1 << 25));
+          ASSERT(fields.dest() == 0b0);
           return IK::VCALLMS;
         default:
           return IK::UNKNOWN;
@@ -352,7 +352,7 @@ static InstructionKind decode_W(OpcodeFields fields) {
   typedef InstructionKind IK;
   switch (fields.function()) {
     case 0b100000:
-      assert(fields.ft() == 0);
+      ASSERT(fields.ft() == 0);
       return IK::CVTSW;
     default:
       return IK::UNKNOWN;
@@ -373,47 +373,47 @@ static InstructionKind decode_S(OpcodeFields fields) {
     case 0b000101:
       return IK::ABSS;
     case 0b000110:
-      assert(fields.ft() == 0);
+      ASSERT(fields.ft() == 0);
       return IK::MOVS;
     case 0b000111:
-      assert(fields.ft() == 0);
+      ASSERT(fields.ft() == 0);
       return IK::NEGS;
     case 0b000100:
-      assert(fields.fs() == 0);
+      ASSERT(fields.fs() == 0);
       return IK::SQRTS;
     case 0b010110:
       return IK::RSQRTS;
     case 0b011000:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::ADDAS;
     case 0b011010:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::MULAS;
     case 0b011100:
       return IK::MADDS;
     case 0b011101:
       return IK::MSUBS;
     case 0b011110:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::MADDAS;
     case 0b011111:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::MSUBAS;
     case 0b100100:
-      assert(fields.ft() == 0);
+      ASSERT(fields.ft() == 0);
       return IK::CVTWS;
     case 0b101000:
       return IK::MAXS;
     case 0b101001:
       return IK::MINS;
     case 0b110010:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::CEQS;
     case 0b110100:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::CLTS;
     case 0b110110:
-      assert(fields.fd() == 0);
+      ASSERT(fields.fd() == 0);
       return IK::CLES;
     default:
       return IK::UNKNOWN;
@@ -440,12 +440,12 @@ static InstructionKind decode_cop1(OpcodeFields fields) {
   typedef InstructionKind IK;
   switch (fields.cop_func()) {
     case 0b00000:
-      assert(fields.sa() == 0);
-      assert(fields.function() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.function() == 0);
       return IK::MFC1;
     case 0b00100:
-      assert(fields.sa() == 0);
-      assert(fields.function() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.function() == 0);
       return IK::MTC1;
     case 0b01000:
       return decode_BC1(fields);
@@ -464,7 +464,7 @@ static InstructionKind decode_c0(OpcodeFields fields) {
     case 0b011000:
       return IK::ERET;
     case 0b111000:
-      assert(fields.sa() == 0 && fields.rd() == 0 && fields.rt() == 0);
+      ASSERT(fields.sa() == 0 && fields.rd() == 0 && fields.rt() == 0);
       return IK::EI;
     default:
       return IK::UNKNOWN;
@@ -477,10 +477,10 @@ static InstructionKind decode_mt0(OpcodeFields fields) {
     case 0b00000000000:
       return IK::MTC0;
     case 0b00000000100:
-      assert(fields.rd() == 0b11000);
+      ASSERT(fields.rd() == 0b11000);
       return IK::MTDAB;
     case 0b00000000101:
-      assert(fields.rd() == 0b11000);
+      ASSERT(fields.rd() == 0b11000);
       return IK::MTDABM;
     default:
       if (fields.rd() == 0b11001 && fields.sa() == 0 && (fields.data & 1) == 1) {
@@ -530,7 +530,7 @@ static InstructionKind decode_mmi3(OpcodeFields fields) {
     case 0b10011:
       return IK::PNOR;
     case 0b11011:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::PCPYH;
     default:
       return IK::UNKNOWN;
@@ -619,16 +619,16 @@ static InstructionKind decode_pmfhl(OpcodeFields fields) {
   typedef InstructionKind IK;
   switch (fields.sa()) {
     case 0b00001:
-      assert(fields.rs() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.rs() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::PMFHL_UW;
     case 0b00000:
-      assert(fields.rs() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.rs() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::PMFHL_LW;
     case 0b00011:
-      assert(fields.rs() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.rs() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::PMFHL_LH;
     default:
       return IK::UNKNOWN;
@@ -639,8 +639,8 @@ static InstructionKind decode_mmi(OpcodeFields fields) {
   typedef InstructionKind IK;
   switch (fields.function()) {
     case 0b000100:
-      assert(fields.sa() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::PLZCW;
     case 0b001000:
       return decode_mmi0(fields);
@@ -648,14 +648,14 @@ static InstructionKind decode_mmi(OpcodeFields fields) {
       return decode_mmi2(fields);
 
     case 0b010011:
-      assert(fields.sa() == 0);
-      assert(fields.rd() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.rd() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::MTLO1;
     case 0b010010:
-      assert(fields.sa() == 0);
-      assert(fields.rs() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.rs() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::MFLO1;
 
     case 0b101000:
@@ -702,9 +702,9 @@ static InstructionKind decode_sync(OpcodeFields fields) {
   // to avoid implementing this, we just split SYNC into two separate instructions.
   typedef InstructionKind IK;
   auto stype = fields.sa();
-  assert(fields.rt() == 0);
-  assert(fields.rs() == 0);
-  assert(fields.rd() == 0);
+  ASSERT(fields.rt() == 0);
+  ASSERT(fields.rs() == 0);
+  ASSERT(fields.rd() == 0);
   if (stype == 0b00000) {
     return IK::SYNCL;
   } else if (stype == 0b10000) {
@@ -718,35 +718,35 @@ static InstructionKind decode_special(OpcodeFields fields) {
   typedef InstructionKind IK;
   switch (fields.function()) {
     case 0b000000:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::SLL;
     // RESERVED
     case 0b000010:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::SRL;
     case 0b000011:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::SRA;
     case 0b000100:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::SLLV;
     // RESERVED
     // SRLV
     // SRAV
     case 0b001000:
-      assert(fields.sa() == 0);
-      assert(fields.rd() == 0);
-      assert(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.rd() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::JR;
     case 0b001001:
-      assert(fields.rt() == 0);
-      assert(fields.sa() == 0);
+      ASSERT(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::JALR;
     case 0b001010:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::MOVZ;
     case 0b001011:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::MOVN;
     case 0b001100:
       return IK::SYSCALL;
@@ -756,69 +756,69 @@ static InstructionKind decode_special(OpcodeFields fields) {
       return decode_sync(fields);
 
     case 0b010000:
-      assert(fields.rs() == 0);
-      assert(fields.rt() == 0);
-      assert(fields.sa() == 0);
+      ASSERT(fields.rs() == 0);
+      ASSERT(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::MFHI;
     // MTHI
     case 0b010010:
-      assert(fields.rs() == 0);
-      assert(fields.rt() == 0);
-      assert(fields.sa() == 0);
+      ASSERT(fields.rs() == 0);
+      ASSERT(fields.rt() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::MFLO;
     // MTLO
     case 0b010100:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::DSLLV;
     // RESERVED
     case 0b010110:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::DSRLV;
     case 0b010111:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::DSRAV;
     case 0b011000:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::MULT3;
     case 0b011001:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::MULTU3;
     case 0b011010:
-      assert(fields.sa() == 0);
-      assert(fields.rd() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.rd() == 0);
       return IK::DIV;
     case 0b011011:
-      assert(fields.sa() == 0);
-      assert(fields.rd() == 0);
+      ASSERT(fields.sa() == 0);
+      ASSERT(fields.rd() == 0);
       return IK::DIVU;
     // 4x UNSUPPORTED
     // ADD
     case 0b100001:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::ADDU;
     // SUB
     case 0b100011:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::SUBU;
     case 0b100100:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::AND;
     case 0b100101:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::OR;
     case 0b100110:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::XOR;
     case 0b100111:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::NOR;
     // MFSA
     // MTSA
     case 0b101010:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::SLT;
     case 0b101011:
-      assert(fields.sa() == 0);
+      ASSERT(fields.sa() == 0);
       return IK::SLTU;
     // DADD
     case 0b101101:
@@ -835,24 +835,24 @@ static InstructionKind decode_special(OpcodeFields fields) {
     // TNE
     // RESERVED
     case 0b111000:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::DSLL;
     // RESERVED
     case 0b111010:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::DSRL;
     case 0b111011:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::DSRA;
     case 0b111100:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::DSLL32;
     // RESERVED
     case 0b111110:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::DSRL32;
     case 0b111111:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::DSRA32;
     default:
       return IK::UNKNOWN;
@@ -906,7 +906,7 @@ static InstructionKind decode_opcode(uint32_t code) {
     case 0b001110:
       return IK::XORI;
     case 0b001111:
-      assert(fields.rs() == 0);
+      ASSERT(fields.rs() == 0);
       return IK::LUI;
     case 0b010000:
       return decode_cop0(fields);
@@ -923,7 +923,7 @@ static InstructionKind decode_opcode(uint32_t code) {
     //     010110
     //  blezl
     case 0b010111:
-      assert(fields.rt() == 0);
+      ASSERT(fields.rt() == 0);
       return IK::BGTZL;
     //   0b011000:
     //  daddi
@@ -1070,7 +1070,7 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         value = fields.fs_f();
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     // use the value, to possibly add an atom
@@ -1125,7 +1125,7 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         continue;
 
       default:
-        assert(false);
+        ASSERT(false);
     }
 
     if (step.is_src) {
@@ -1143,11 +1143,11 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         i.src[j].set_sym(word.symbol_name());
       }
     }
-    assert(fixed);
+    ASSERT(fixed);
   }
 
   if (word.kind() == LinkedWord::HI_PTR) {
-    assert(i.kind == InstructionKind::LUI);
+    ASSERT(i.kind == InstructionKind::LUI);
     bool fixed = false;
     for (int j = 0; j < i.n_src; j++) {
       if (i.src[j].kind == InstructionAtom::IMM) {
@@ -1155,11 +1155,11 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         i.src[j].set_label(word.label_id());
       }
     }
-    assert(fixed);
+    ASSERT(fixed);
   }
 
   if (word.kind() == LinkedWord::LO_PTR) {
-    assert(i.kind == InstructionKind::ORI);
+    ASSERT(i.kind == InstructionKind::ORI);
     bool fixed = false;
     for (int j = 0; j < i.n_src; j++) {
       if (i.src[j].kind == InstructionAtom::IMM) {
@@ -1167,7 +1167,7 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         i.src[j].set_label(word.label_id());
       }
     }
-    assert(fixed);
+    ASSERT(fixed);
   }
 
   return i;

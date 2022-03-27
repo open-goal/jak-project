@@ -9,7 +9,7 @@ GameCountResult process_game_count(ObjectFileData& data) {
   auto& words = data.linked_data.words_by_seg.at(0);
   auto reader = LinkedWordReader(&words);
   auto type = reader.get_type_tag();
-  assert(type == "game-count-info");
+  ASSERT(type == "game-count-info");
   auto length = reader.get_word<s32>();
 
   for (s32 i = 0; i < length; i++) {
@@ -21,7 +21,7 @@ GameCountResult process_game_count(ObjectFileData& data) {
 
   result.mystery_data[0] = reader.get_word<u32>();
   result.mystery_data[1] = reader.get_word<u32>();
-  assert(reader.words_left() == 0);
+  ASSERT(reader.words_left() == 0);
   return result;
 }
 

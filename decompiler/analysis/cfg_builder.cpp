@@ -25,7 +25,7 @@ std::pair<BranchElement*, Form*> get_condition_branch_as_vector(Form* in) {
   //  If this changes, this can be fixed here, rather than refactoring the whole thing.
   if (in->size() > 1) {
     auto irb = dynamic_cast<BranchElement*>(in->back());
-    assert(irb);
+    ASSERT(irb);
     return std::make_pair(irb, in);
   }
   return std::make_pair(nullptr, nullptr);
@@ -64,15 +64,15 @@ std::pair<BranchElement*, FormElement**> get_condition_branch(Form* in) {
  */
 void clean_up_cond_with_else(FormPool& pool, FormElement* ir, const Env& env) {
   auto cwe = dynamic_cast<CondWithElseElement*>(ir);
-  assert(cwe);
+  ASSERT(cwe);
   for (auto& e : cwe->entries) {
     // don't reclean already cleaned things.
     if (e.cleaned) {
       continue;
     }
     auto jump_to_next = get_condition_branch(e.condition);
-    assert(jump_to_next.first);
-    assert(jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+    ASSERT(jump_to_next.first);
+    ASSERT(jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
     // patch the branch to next with a condition.
     auto replacement = jump_to_next.first->op()->get_condition_as_form(pool, env);
     replacement->invert();
@@ -80,9 +80,9 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir, const Env& env) {
 
     // check the jump at the end of a block.
     auto jump_to_end = get_condition_branch(e.body);
-    assert(jump_to_end.first);
-    assert(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-    assert(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
+    ASSERT(jump_to_end.first);
+    ASSERT(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+    ASSERT(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
 
     // if possible, we just want to remove this from the sequence its in.
     // but sometimes there's a case with nothing in it so there is no sequence.
@@ -91,7 +91,7 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir, const Env& env) {
     // this happens rarely, as you would expect.
     auto as_end_of_sequence = get_condition_branch_as_vector(e.body);
     if (as_end_of_sequence.first) {
-      assert(as_end_of_sequence.second->size() > 1);
+      ASSERT(as_end_of_sequence.second->size() > 1);
       as_end_of_sequence.second->pop_back();
     } else {
       // we need to have _something_ as the body, so we just put an (empty).
@@ -106,8 +106,8 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir, const Env& env) {
  */
 void clean_up_until_loop(FormPool& pool, UntilElement* ir, const Env& env) {
   auto condition_branch = get_condition_branch(ir->condition);
-  assert(condition_branch.first);
-  assert(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+  ASSERT(condition_branch.first);
+  ASSERT(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
   auto replacement = condition_branch.first->op()->get_condition_as_form(pool, env);
   replacement->invert();
   *(condition_branch.second) = replacement;
@@ -118,13 +118,13 @@ void clean_up_until_loop(FormPool& pool, UntilElement* ir, const Env& env) {
  */
 void clean_up_infinite_while_loop(FormPool& pool, WhileElement* ir) {
   auto jump = get_condition_branch(ir->body);
-  assert(jump.first);
-  assert(jump.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-  assert(jump.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
+  ASSERT(jump.first);
+  ASSERT(jump.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+  ASSERT(jump.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
   auto as_end_of_sequence = get_condition_branch_as_vector(ir->body);
   if (as_end_of_sequence.first) {
     // there's more in the sequence, just remove the last thing.
-    assert(as_end_of_sequence.second->size() > 1);
+    ASSERT(as_end_of_sequence.second->size() > 1);
     as_end_of_sequence.second->pop_back();
   } else {
     // Nothing else in the sequence, just replace the jump with an (empty)
@@ -138,12 +138,12 @@ void clean_up_infinite_while_loop(FormPool& pool, WhileElement* ir) {
  */
 void clean_up_return(FormPool& pool, ReturnElement* ir) {
   auto jump_to_end = get_condition_branch(ir->return_code);
-  assert(jump_to_end.first);
-  assert(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-  assert(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
+  ASSERT(jump_to_end.first);
+  ASSERT(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+  ASSERT(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
   auto as_end_of_sequence = get_condition_branch_as_vector(ir->return_code);
   if (as_end_of_sequence.first) {
-    assert(as_end_of_sequence.second->size() > 1);
+    ASSERT(as_end_of_sequence.second->size() > 1);
     as_end_of_sequence.second->pop_back();
   } else {
     *(jump_to_end.second) = pool.alloc_element<EmptyElement>();
@@ -166,10 +166,10 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
     throw std::runtime_error(fmt::format("failed to recognize dead code after return, got {}",
                                          ir->dead_code->to_string(f.ir2.env)));
   }
-  assert(dead);
+  ASSERT(dead);
   auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
-  assert(src);
-  assert(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+  ASSERT(src);
+  ASSERT(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
          src->expr().get_arg(0).get_int() == 0);
   ir->dead_code = nullptr;
 }
@@ -179,12 +179,12 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
  */
 void clean_up_break(FormPool& pool, BreakElement* ir, const Env&) {
   auto jump_to_end = get_condition_branch(ir->return_code);
-  assert(jump_to_end.first);
-  assert(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-  assert(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
+  ASSERT(jump_to_end.first);
+  ASSERT(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+  ASSERT(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
   auto as_end_of_sequence = get_condition_branch_as_vector(ir->return_code);
   if (as_end_of_sequence.first) {
-    assert(as_end_of_sequence.second->size() > 1);
+    ASSERT(as_end_of_sequence.second->size() > 1);
     as_end_of_sequence.second->pop_back();
   } else {
     *(jump_to_end.second) = pool.alloc_element<EmptyElement>();
@@ -220,9 +220,9 @@ void clean_up_break_final(const Function& f, BreakElement* ir, const Env& env) {
     throw std::runtime_error(fmt::format("failed to recognize dead code after break, got {}",
                                          ir->dead_code->to_string(f.ir2.env)));
   }
-  assert(dead);
+  ASSERT(dead);
   auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
-  assert(src);
+  ASSERT(src);
   if (src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
       src->expr().get_arg(0).get_int() == 0) {
     ir->dead_code = nullptr;
@@ -235,8 +235,8 @@ void clean_up_break_final(const Function& f, BreakElement* ir, const Env& env) {
  * GOAL does this on comparisons to false.
  */
 bool delay_slot_sets_false(BranchElement* branch, SetVarOp& delay) {
-  assert(branch->op()->likely());
-  assert(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
+  ASSERT(branch->op()->likely());
+  ASSERT(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
 
   if (delay.src().is_identity() && delay.src().get_arg(0).is_sym_val() &&
       delay.src().get_arg(0).get_str() == "#f") {
@@ -276,8 +276,8 @@ bool delay_slot_sets_false(BranchElement* branch, SetVarOp& delay) {
  * then uses that
  */
 bool delay_slot_sets_truthy(BranchElement* branch, SetVarOp& delay) {
-  assert(branch->op()->likely());
-  assert(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
+  ASSERT(branch->op()->likely());
+  ASSERT(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
 
   if (delay.src().is_identity() && delay.src().get_arg(0).is_sym_ptr() &&
       delay.src().get_arg(0).get_str() == "#t") {
@@ -317,8 +317,8 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
   RegisterAccess ir_dest;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
-    assert(branch.first);
-    assert(ir->entries.at(i).branch_delay.has_value());
+    ASSERT(branch.first);
+    ASSERT(ir->entries.at(i).branch_delay.has_value());
     if (!delay_slot_sets_false(branch.first, *ir->entries.at(i).branch_delay)) {
       return false;
     }
@@ -343,7 +343,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
   // now get rid of the branches
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
-    assert(branch.first);
+    ASSERT(branch.first);
 
     if (func.ir2.env.has_reg_use()) {
       auto delay_id = ir->entries.at(i).branch_delay->dst().idx();
@@ -357,7 +357,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
 
       auto delay_op = func.ir2.atomic_ops->ops.at(delay_id).get();
       auto as_set = dynamic_cast<SetVarOp*>(delay_op);
-      assert(as_set);
+      ASSERT(as_set);
       if (as_set->src().is_var()) {
         // must be the case where the src should have truthy in it.
         // lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
@@ -396,7 +396,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
           lg::error("Bad live out result on {}. At 0 was {} now at {} is {}", func.name(),
                     live_out_result, i, this_live_out);
         }
-        assert(live_out_result == this_live_out);
+        ASSERT(live_out_result == this_live_out);
       }
     }
 
@@ -425,8 +425,8 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     // short circuit branch
     auto branch = get_condition_branch(ir->entries.at(i).condition);
-    assert(branch.first);
-    assert(ir->entries.at(i).branch_delay.has_value());
+    ASSERT(branch.first);
+    ASSERT(ir->entries.at(i).branch_delay.has_value());
     // the branch should write true (there's two ways this can happen)
     if (!delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay)) {
       return false;
@@ -460,7 +460,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
 
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
-    assert(branch.first);
+    ASSERT(branch.first);
 
     if (func.ir2.env.has_reg_use()) {
       auto delay_id = ir->entries.at(i).branch_delay->dst().idx();
@@ -480,7 +480,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
       // is inserted by the GOAL compiler, not by putting a var twice in the source code.
       auto delay_op = func.ir2.atomic_ops->ops.at(delay_id).get();
       auto as_set = dynamic_cast<SetVarOp*>(delay_op);
-      assert(as_set);
+      ASSERT(as_set);
       if (as_set->src().is_var()) {
         // must be the case where the src should have truthy in it.
         // lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
@@ -516,7 +516,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
       } else {
         bool this_live_out = (delay_info.written_and_unused.find(ir_dest.reg()) ==
                               delay_info.written_and_unused.end());
-        assert(live_out_result == this_live_out);
+        ASSERT(live_out_result == this_live_out);
       }
     }
 
@@ -544,8 +544,8 @@ void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir);
  */
 bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   auto first_branch = get_condition_branch(ir->entries.front().condition);
-  assert(first_branch.first);
-  assert(ir->entries.front().branch_delay.has_value());
+  ASSERT(first_branch.first);
+  ASSERT(ir->entries.front().branch_delay.has_value());
   bool first_is_and = delay_slot_sets_false(first_branch.first, *ir->entries.front().branch_delay);
   bool first_is_or = delay_slot_sets_truthy(first_branch.first, *ir->entries.front().branch_delay);
 
@@ -555,17 +555,17 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
         "and/or:\n{}",
         ir->to_string(func.ir2.env)));
   }
-  assert(first_is_and != first_is_or);  // one or the other but not both!
+  ASSERT(first_is_and != first_is_or);  // one or the other but not both!
 
   int first_different = -1;  // the index of the first one that's different.
 
   for (int i = 1; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
-    assert(branch.first);
-    assert(ir->entries.at(i).branch_delay.has_value());
+    ASSERT(branch.first);
+    ASSERT(ir->entries.at(i).branch_delay.has_value());
     bool is_and = delay_slot_sets_false(branch.first, *ir->entries.at(i).branch_delay);
     bool is_or = delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay);
-    assert(is_and != is_or);
+    ASSERT(is_and != is_or);
 
     if (first_different == -1) {
       // haven't seen a change yet.
@@ -577,7 +577,7 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
     }
   }
 
-  assert(first_different != -1);
+  ASSERT(first_different != -1);
 
   std::vector<ShortCircuitElement::Entry> nested_ir;
   for (int i = first_different; i < int(ir->entries.size()); i++) {
@@ -609,7 +609,7 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
  * if there is a case like (and a (or b c))
  */
 void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
-  assert(ir->entries.size() > 0);
+  ASSERT(ir->entries.size() > 0);
   if (ir->entries.size() == 1) {
     // need to fake the final entry.
     ShortCircuitElement::Entry empty_final;
@@ -620,7 +620,7 @@ void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   if (!try_clean_up_sc_as_and(pool, func, ir)) {
     if (!try_clean_up_sc_as_or(pool, func, ir)) {
       if (!try_splitting_nested_sc(pool, func, ir)) {
-        assert(false);
+        ASSERT(false);
       }
     }
   }
@@ -650,17 +650,17 @@ void convert_cond_no_else_to_compare(FormPool& pool,
                                      FormElement** ir_loc,
                                      Form* parent_form) {
   CondNoElseElement* cne = dynamic_cast<CondNoElseElement*>(*ir_loc);
-  assert(cne);
+  ASSERT(cne);
   auto condition = get_condition_branch(cne->entries.front().condition);
-  assert(condition.first);
+  ASSERT(condition.first);
   auto body = dynamic_cast<SetVarElement*>(cne->entries.front().body->try_as_single_element());
-  assert(body);
+  ASSERT(body);
   auto dst = body->dst();
   auto src_atom = get_atom_src(body->src());
-  assert(src_atom);
-  assert(src_atom->is_sym_val());
-  assert(src_atom->get_str() == "#f");
-  assert(cne->entries.size() == 1);
+  ASSERT(src_atom);
+  ASSERT(src_atom->is_sym_val());
+  ASSERT(src_atom->get_str() == "#f");
+  ASSERT(cne->entries.size() == 1);
 
   // safe to do this here because we never give up on this.
   f.ir2.env.disable_def(condition.first->op()->branch_delay().var(0), f.warnings);
@@ -686,11 +686,11 @@ void convert_cond_no_else_to_compare(FormPool& pool,
       parent_form->push_back(x);
     }
     //        auto condition_as_seq = dynamic_cast<IR_Begin*>(cne->entries.front().condition.get());
-    //        assert(condition_as_seq);
+    //        ASSERT(condition_as_seq);
     //        if (condition_as_seq) {
     //          auto replacement = std::make_shared<IR_Begin>();
     //          replacement->forms = condition_as_seq->forms;
-    //          assert(condition.second == &condition_as_seq->forms.back());
+    //          ASSERT(condition.second == &condition_as_seq->forms.back());
     //          replacement->forms.pop_back();
     //          replacement->forms.push_back(std::make_shared<IR_Set>(
     //              IR_Set::REG_64, dst,
@@ -705,15 +705,15 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
     auto& entry = cne->entries.at(idx);
     if (entry.false_destination.has_value()) {
       auto fr = entry.false_destination;
-      assert(fr.has_value());
+      ASSERT(fr.has_value());
       cne->final_destination = *fr;
     } else {
-      assert(false);
+      ASSERT(false);
     }
   }
 
   auto last_branch = dynamic_cast<BranchElement*>(cne->entries.back().original_condition_branch);
-  assert(last_branch);
+  ASSERT(last_branch);
 
   if (func.ir2.env.has_reg_use()) {
     auto& last_branch_info = func.ir2.env.reg_use().op.at(last_branch->op()->op_id());
@@ -727,14 +727,14 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       auto branch = dynamic_cast<BranchElement*>(cne->entries.at(i).original_condition_branch);
       auto& branch_info_i = func.ir2.env.reg_use().op.at(branch->op()->op_id());
       auto reg = cne->entries.at(i).false_destination;
-      assert(reg.has_value());
-      assert(branch);
+      ASSERT(reg.has_value());
+      ASSERT(branch);
       if (branch_info_i.written_and_unused.find(reg->reg()) ==
           branch_info_i.written_and_unused.end()) {
         lg::error("Branch delay register used improperly: {}", reg->to_string(func.ir2.env));
         throw std::runtime_error("Bad delay slot in clean_up_cond_no_else_final");
       }
-      // assert(branch_info_i.written_and_unused.find(reg->reg()) !=
+      // ASSERT(branch_info_i.written_and_unused.find(reg->reg()) !=
       //       branch_info_i.written_and_unused.end());
     }
   }
@@ -761,7 +761,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
  */
 void clean_up_cond_no_else(FormPool& pool, Function& f, FormElement** ir_loc, Form* parent_form) {
   auto cne = dynamic_cast<CondNoElseElement*>(*ir_loc);
-  assert(cne);
+  ASSERT(cne);
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
     auto& e = cne->entries.at(idx);
     if (e.cleaned) {
@@ -769,22 +769,22 @@ void clean_up_cond_no_else(FormPool& pool, Function& f, FormElement** ir_loc, Fo
     }
 
     auto jump_to_next = get_condition_branch(e.condition);
-    assert(jump_to_next.first);
+    ASSERT(jump_to_next.first);
 
     if (jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_TRUE &&
         cne->entries.size() == 1) {
       convert_cond_no_else_to_compare(pool, f, ir_loc, parent_form);
       return;
     } else {
-      assert(jump_to_next.first->op()->branch_delay().kind() ==
+      ASSERT(jump_to_next.first->op()->branch_delay().kind() ==
                  IR2_BranchDelay::Kind::SET_REG_FALSE ||
              jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-      assert(jump_to_next.first->op()->condition().kind() != IR2_Condition::Kind::ALWAYS);
+      ASSERT(jump_to_next.first->op()->condition().kind() != IR2_Condition::Kind::ALWAYS);
 
       if (jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_FALSE) {
-        assert(!e.false_destination);
+        ASSERT(!e.false_destination);
         e.false_destination = jump_to_next.first->op()->branch_delay().var(0);
-        assert(e.false_destination);
+        ASSERT(e.false_destination);
       }
 
       e.original_condition_branch = *jump_to_next.second;
@@ -796,12 +796,12 @@ void clean_up_cond_no_else(FormPool& pool, Function& f, FormElement** ir_loc, Fo
 
       if (idx != cne->entries.size() - 1) {
         auto jump_to_end = get_condition_branch(e.body);
-        assert(jump_to_end.first);
-        assert(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-        assert(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
+        ASSERT(jump_to_end.first);
+        ASSERT(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+        ASSERT(jump_to_end.first->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
         auto as_end_of_sequence = get_condition_branch_as_vector(e.body);
         if (as_end_of_sequence.first) {
-          assert(as_end_of_sequence.second->size() > 1);
+          ASSERT(as_end_of_sequence.second->size() > 1);
           as_end_of_sequence.second->pop_back();
         } else {
           *(jump_to_end.second) = pool.alloc_element<EmptyElement>();
@@ -1041,8 +1041,8 @@ Form* try_sc_as_abs(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   auto input = branch->op()->condition().src(0);
   auto output = delay->dst();
 
-  assert(input.is_var());
-  assert(input.var().reg() == delay->src().get_arg(0).var().reg());
+  ASSERT(input.is_var());
+  ASSERT(input.var().reg() == delay->src().get_arg(0).var().reg());
 
   // remove the branch
   b0_ptr->pop_back();
@@ -1113,11 +1113,11 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
    */
 
   auto sa_in = branch->op()->condition().src(0);
-  assert(sa_in.is_var());
+  ASSERT(sa_in.is_var());
   auto result = delay->dst();
   auto value_in = delay->src().get_arg(0).var();
   auto sa_in2 = delay->src().get_arg(1).var();
-  assert(sa_in.var().reg() == sa_in2.reg());
+  ASSERT(sa_in.var().reg() == sa_in2.reg());
 
   auto dsubu_candidate = b1_ptr->at(0);
   auto dsrav_candidate = b1_ptr->at(1);
@@ -1139,7 +1139,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   std::optional<RegisterAccess> clobber_ir;
   auto dsubu_set = dynamic_cast<SetVarElement*>(dsubu_candidate);
   auto dsrav_set = dynamic_cast<SetVarElement*>(dsrav_candidate);
-  assert(dsubu_set && dsrav_set);
+  ASSERT(dsubu_set && dsrav_set);
   if (clobber != result.reg()) {
     clobber_ir = dsubu_set->dst();
   }
@@ -1198,7 +1198,7 @@ SetVarOp get_delay_op(const Function& f, const BlockVtx* vtx) {
   auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(vtx->block_id);
   auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(vtx->block_id);
   if (delay_end - delay_start != 1) {
-    assert(false);
+    ASSERT(false);
   }
   auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
   auto* delay = dynamic_cast<SetVarOp*>(delay_op.get());
@@ -1281,7 +1281,7 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
     return nullptr;
   }
   auto temp_reg = first_branch->op()->condition().src(0).var();
-  assert(temp_reg.reg() == temp_reg0.reg());
+  ASSERT(temp_reg.reg() == temp_reg0.reg());
   auto dst_reg = b0_delay_op.dst();
 
   auto b1_delay_op = get_delay_op(f, b1_d);
@@ -1293,12 +1293,12 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
 
   // check we agree on destination register.
   auto dst_reg2 = b1_delay_op.dst();
-  assert(dst_reg2.reg() == dst_reg.reg());
+  ASSERT(dst_reg2.reg() == dst_reg.reg());
 
   // else case is a lwu to grab the type from a basic
-  assert(else_case);
+  ASSERT(else_case);
   auto dst_reg3 = else_case->dst();
-  assert(dst_reg3.reg() == dst_reg.reg());
+  ASSERT(dst_reg3.reg() == dst_reg.reg());
   auto load_op = dynamic_cast<LoadSourceElement*>(else_case->src()->try_as_single_element());
   if (!load_op || load_op->kind() != LoadVarOp::Kind::UNSIGNED || load_op->size() != 4) {
     return nullptr;
@@ -1314,8 +1314,8 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
     return nullptr;
   }
 
-  assert(src_reg3.var().reg() == src_reg.reg());
-  assert(offset.get_int() == -4);
+  ASSERT(src_reg3.var().reg() == src_reg.reg());
+  ASSERT(offset.get_int() == -4);
 
   std::optional<RegisterAccess> clobber;
   if (temp_reg.reg() != dst_reg.reg()) {
@@ -1438,7 +1438,7 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
         // add = false;
         auto consumed_expr =
             dynamic_cast<SimpleExpressionElement*>(op_as_set->src()->try_as_single_element());
-        assert(consumed_expr);
+        ASSERT(consumed_expr);
         auto& consumed = consumed_expr->expr().get_arg(0).var();
         auto& ri_outer = f.ir2.env.reg_use().op.at(consumed.idx());  // meh
         if (ri_outer.consumes.find(consumed.reg()) != ri_outer.consumes.end()) {
@@ -1628,13 +1628,13 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
       e.condition = cfg_to_ir(pool, f, x.condition);
       if (x.likely_delay) {
         auto delay = dynamic_cast<BlockVtx*>(x.likely_delay);
-        assert(delay);
+        ASSERT(delay);
         auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(delay->block_id);
         auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(delay->block_id);
-        assert(delay_end - delay_start == 1);
+        ASSERT(delay_end - delay_start == 1);
         auto& op = f.ir2.atomic_ops->ops.at(delay_start);
         auto op_as_expr = dynamic_cast<SetVarOp*>(op.get());
-        assert(op_as_expr);
+        ASSERT(op_as_expr);
         e.branch_delay = *op_as_expr;
       }
 
@@ -1665,10 +1665,10 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
     //      lg::error("failed to recognize dead code after return, got {}",
     //      dead_code->to_string(f.ir2.env));
     //    }
-    //    assert(dead);
+    //    ASSERT(dead);
     //    auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
-    //    assert(src);
-    //    assert(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+    //    ASSERT(src);
+    //    ASSERT(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
     //           src->expr().get_arg(0).get_int() == 0);
 
     auto result = pool.alloc_single_element_form<ReturnElement>(
@@ -1716,22 +1716,22 @@ void clean_up_while_loops(FormPool& pool, Form* sequence, const Env& env) {
   for (int i = 0; i < sequence->size(); i++) {
     auto* form_as_while = dynamic_cast<WhileElement*>(sequence->at(i));
     if (form_as_while && !form_as_while->cleaned) {
-      assert(i != 0);
+      ASSERT(i != 0);
       auto prev_as_branch = dynamic_cast<BranchElement*>(sequence->at(i - 1));
-      assert(prev_as_branch);
+      ASSERT(prev_as_branch);
       // printf("got while intro branch %s\n", prev_as_branch->print(file).c_str());
       // this should be an always jump. We'll assume that the CFG builder successfully checked
       // the brach destination, but we will check the condition.
-      assert(prev_as_branch->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
-      assert(prev_as_branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+      ASSERT(prev_as_branch->op()->condition().kind() == IR2_Condition::Kind::ALWAYS);
+      ASSERT(prev_as_branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
       to_remove.push_back(i - 1);
 
       // now we should try to find the condition branch:
 
       auto condition_branch = get_condition_branch(form_as_while->condition);
 
-      assert(condition_branch.first);
-      assert(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
+      ASSERT(condition_branch.first);
+      ASSERT(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
       // printf("got while condition branch %s\n", condition_branch.first->print(file).c_str());
       auto replacement = condition_branch.first->op()->get_condition_as_form(pool, env);
 
@@ -1742,7 +1742,7 @@ void clean_up_while_loops(FormPool& pool, Form* sequence, const Env& env) {
   // remove the implied forward always branches.
   for (int i = int(to_remove.size()); i-- > 0;) {
     auto idx = to_remove.at(i);
-    assert(dynamic_cast<BranchElement*>(sequence->at(idx)));
+    ASSERT(dynamic_cast<BranchElement*>(sequence->at(idx)));
     sequence->elts().erase(sequence->elts().begin() + idx);
   }
 }

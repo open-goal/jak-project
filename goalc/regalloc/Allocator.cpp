@@ -39,7 +39,7 @@ void compute_live_ranges(RegAllocCache* cache, const AllocationInput& in) {
     }
 
     // and liveliness analysis
-    assert(block.live.size() == block.instr_idx.size());
+    ASSERT(block.live.size() == block.instr_idx.size());
     for (uint32_t i = 0; i < block.live.size(); i++) {
       for (int j = 0; j < block.live[i].size(); j++) {
         if (block.live[i][j]) {
@@ -416,7 +416,7 @@ int get_stack_slot_for_var(int var, RegAllocCache* cache) {
       slot_size = 1;
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
   auto kv = cache->var_to_stack_slot.find(var);
   if (kv == cache->var_to_stack_slot.end()) {
@@ -435,7 +435,7 @@ int get_stack_slot_for_var(int var, RegAllocCache* cache) {
 const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int v,
                                                                             RegAllocCache* cache) {
   auto& info = cache->iregs.at(v);
-  assert(info.reg_class != RegClass::INVALID);
+  ASSERT(info.reg_class != RegClass::INVALID);
   auto hw_kind = emitter::reg_class_to_hw(info.reg_class);
   if (hw_kind == emitter::HWRegKind::GPR) {
     return emitter::gRegInfo.get_gpr_spill_alloc_order();
@@ -450,7 +450,7 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v,
                                                                       RegAllocCache* cache,
                                                                       bool get_all) {
   auto& info = cache->iregs.at(v);
-  assert(info.reg_class != RegClass::INVALID);
+  ASSERT(info.reg_class != RegClass::INVALID);
   auto hw_kind = emitter::reg_class_to_hw(info.reg_class);
   if (hw_kind == emitter::HWRegKind::GPR || hw_kind == emitter::HWRegKind::INVALID) {
     if (!get_all && cache->is_asm_func) {
@@ -507,7 +507,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
         // this shouldn't be possible with feasible constraints
         printf("-- SPILL FAILED -- IMPOSSIBLE CONSTRAINT @ %d %s. This is likely a RegAlloc bug!\n",
                instr, current_assignment.to_string().c_str());
-        assert(false);
+        ASSERT(false);
         return false;
       }
 
@@ -570,7 +570,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
 
         if (spill_assignment.reg == -1) {
           printf("SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!\n");
-          assert(false);
+          ASSERT(false);
           return false;
         }
 

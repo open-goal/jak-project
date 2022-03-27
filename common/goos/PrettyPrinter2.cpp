@@ -1,7 +1,7 @@
 #include "PrettyPrinter2.h"
 #include "common/common_types.h"
 #include "third-party/fmt/core.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace pretty_print {
 
@@ -46,13 +46,13 @@ struct Node {
         break;
       case Kind::LIST:
       case Kind::IMPROPER_LIST:
-        assert(!child_nodes.empty());
+        ASSERT(!child_nodes.empty());
         for (auto& child : child_nodes) {
           child.link(this, bfs_order, depth + 1);
         }
         break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -77,7 +77,7 @@ struct Node {
       case Kind::IMPROPER_LIST:
         return "[improper list]";
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -141,7 +141,7 @@ Node to_node(const goos::Object& obj) {
     case goos::ObjectType::ENVIRONMENT:
       throw std::runtime_error("tried to pretty print a goos object kind which is not supported.");
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 
@@ -186,7 +186,7 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
         }
       } break;
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 }
@@ -197,7 +197,7 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
  * If you want to force a form to always be broken up, see insert_required_breaks
  */
 void break_list(Node* node) {
-  assert(!node->break_list);
+  ASSERT(!node->break_list);
   node->break_list = true;
   node->sub_elt_indent = 2;
   node->top_line_count = 1;
@@ -306,7 +306,7 @@ int run_algorithm(const std::vector<Node*>& bfs_order, int line_length) {
 }
 
 int compute_extra_offset(const std::string& str, int s0, int ei) {
-  assert(!str.empty());
+  ASSERT(!str.empty());
   for (size_t i = str.length(); i-- > 0;) {
     if ((int)i == s0) {
       return ei + str.length() - s0;
@@ -381,7 +381,7 @@ void append_node_to_string(const Node* node,
         str.push_back(')');
       } else {
         str.push_back('(');
-        assert(!node->child_nodes.empty());
+        ASSERT(!node->child_nodes.empty());
         int listing_indent = next_indent_level + node->quoted;
         int extra_indent = 1;
         int c0 = 0;
@@ -413,7 +413,7 @@ void append_node_to_string(const Node* node,
       }
       break;
     default:
-      assert(false);
+      ASSERT(false);
   }
 }
 

@@ -3,7 +3,7 @@
 #include <optional>
 #include "common/util/Range.h"
 #include "common/common_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 constexpr int BITS_PER_BYTE = 8;
 template <typename T>
@@ -56,7 +56,7 @@ std::optional<int> get_power_of_two(T in) {
         return i;
       }
     }
-    assert(false);
+    ASSERT(false);
   } else {
     return std::nullopt;
   }

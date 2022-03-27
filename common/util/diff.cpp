@@ -306,3 +306,7 @@ std::string diff_strings(const std::string& lhs, const std::string& rhs) {
   }
   return "";
 }
+
+std::vector<std::string> split_string(const ::std::string& str, char delimiter) {
+  return SplitString(str, delimiter);
+}

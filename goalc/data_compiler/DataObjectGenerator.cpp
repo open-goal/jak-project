@@ -2,7 +2,7 @@
 #include <algorithm>
 #include "DataObjectGenerator.h"
 #include "common/link_types.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace {
 template <typename T>
@@ -56,10 +56,9 @@ void DataObjectGenerator::link_word_to_word(int source, int target, int offset) 
 }
 
 void DataObjectGenerator::link_word_to_byte(int source_word, int target_byte) {
-  PointerLinkRecord rec;
+  auto& rec = m_ptr_links.emplace_back();
   rec.source_word = source_word;
   rec.target_byte = target_byte;
-  m_ptr_links.push_back(rec);
 }
 
 int DataObjectGenerator::add_ref_to_string_in_pool(const std::string& str) {
@@ -171,7 +170,7 @@ std::vector<u8> DataObjectGenerator::generate_link_table() {
     auto& entry = m_ptr_links.at(i);
     int diff = int(entry.source_word) - int(last_word);
     last_word = entry.source_word + 1;
-    assert(diff >= 0);
+    ASSERT(diff >= 0);
     push_variable_length_integer(diff, &link);
     m_words.at(entry.source_word) = entry.target_byte;
 
@@ -205,7 +204,7 @@ std::vector<u8> DataObjectGenerator::generate_link_table() {
 
     for (auto& x : sl.second) {
       int diff = x - prev;
-      assert(diff >= 0);
+      ASSERT(diff >= 0);
       push_better_variable_length_integer(diff * 4, &link);
       m_words.at(x) = 0xffffffff;
       prev = x;
@@ -226,7 +225,7 @@ std::vector<u8> DataObjectGenerator::generate_link_table() {
 
     for (auto& x : tl.second) {
       int diff = x - prev;
-      assert(diff >= 0);
+      ASSERT(diff >= 0);
       push_better_variable_length_integer(diff * 4, &link);
       m_words.at(x) = 0xffffffff;
       prev = x;

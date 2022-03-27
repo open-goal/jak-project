@@ -7,7 +7,7 @@
 #include "decompiler/util/goal_data_reader.h"
 #include "decompiler/level_extractor/BspHeader.h"
 
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 /*!
  * Get the level data from a DGO File.
@@ -21,7 +21,7 @@ decompiler::LinkedObjectFile load_bsp_from_dgo(const std::string& file_name,
 
   auto dgo = DgoReader(short_name, dgo_file_data);
   auto entries = dgo.entries();
-  assert(entries.size() > 0);
+  ASSERT(entries.size() > 0);
 
   const auto& level_file = entries.back();
 

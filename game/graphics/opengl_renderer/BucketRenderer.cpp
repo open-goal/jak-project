@@ -22,7 +22,7 @@ void EmptyBucketRenderer::render(DmaFollower& dma,
   // NEXT
   auto first_tag = dma.current_tag();
   dma.read_and_advance();
-  assert(first_tag.kind == DmaTag::Kind::NEXT && first_tag.qwc == 0);
+  ASSERT(first_tag.kind == DmaTag::Kind::NEXT && first_tag.qwc == 0);
 
   // CALL
   auto call_tag = dma.current_tag();
@@ -30,22 +30,22 @@ void EmptyBucketRenderer::render(DmaFollower& dma,
   if (!(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0)) {
     fmt::print("Bucket renderer {} ({}) was supposed to be empty, but wasn't\n", m_my_id, m_name);
   }
-  assert(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0);
+  ASSERT(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0);
 
   // in the default reg buffer:
-  assert(dma.current_tag_offset() == render_state->default_regs_buffer);
+  ASSERT(dma.current_tag_offset() == render_state->default_regs_buffer);
   dma.read_and_advance();
-  assert(dma.current_tag().kind == DmaTag::Kind::RET);
+  ASSERT(dma.current_tag().kind == DmaTag::Kind::RET);
   dma.read_and_advance();
 
   // NEXT to next buffer
   auto to_next_buffer = dma.current_tag();
-  assert(to_next_buffer.kind == DmaTag::Kind::NEXT);
-  assert(to_next_buffer.qwc == 0);
+  ASSERT(to_next_buffer.kind == DmaTag::Kind::NEXT);
+  ASSERT(to_next_buffer.qwc == 0);
   dma.read_and_advance();
 
   // and we should now be in the next bucket!
-  assert(dma.current_tag_offset() == render_state->next_bucket);
+  ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 }
 
 SkipRenderer::SkipRenderer(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {}
@@ -63,6 +63,7 @@ void SharedRenderState::reset() {
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }
+  load_status_debug.clear();
 }
 
 RenderMux::RenderMux(const std::string& name,
@@ -71,20 +72,17 @@ RenderMux::RenderMux(const std::string& name,
     : BucketRenderer(name, my_id), m_renderers(std::move(renderers)) {
   for (auto& r : m_renderers) {
     m_name_strs.push_back(r->name_and_id());
-    m_name_str_ptrs.push_back(m_name_strs.back().data());
+  }
+  for (auto& n : m_name_strs) {
+    m_name_str_ptrs.push_back(n.data());
   }
 }
 
 void RenderMux::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
+  m_renderers[m_render_idx]->enabled() = m_enabled;
   m_renderers[m_render_idx]->render(dma, render_state, prof);
-}
-
-void RenderMux::serialize(Serializer& ser) {
-  for (auto& r : m_renderers) {
-    r->serialize(ser);
-  }
 }
 
 void RenderMux::draw_debug_window() {

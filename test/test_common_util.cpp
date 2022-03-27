@@ -9,11 +9,16 @@
 #include "gtest/gtest.h"
 #include "test/all_jak1_symbols.h"
 #include "common/util/json_util.h"
+#include "common/util/os.h"
 #include "common/util/Range.h"
 #include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
 #include "common/util/CopyOnWrite.h"
 #include "common/util/SmallVector.h"
+
+TEST(CommonUtil, CpuInfo) {
+  setup_cpu_info();
+}
 
 TEST(CommonUtil, get_file_path) {
   std::vector<std::string> test = {"cabbage", "banana", "apple"};
@@ -385,6 +390,10 @@ TEST(SmallVector, Construction) {
   SmallVector<int, 2> one(1);
   EXPECT_EQ(one.size(), 1);
   EXPECT_FALSE(one.empty());
+}
+
+TEST(Assert, Death) {
+  EXPECT_DEATH(private_assert_failed("foo", "bar", 12, "aaa"), "");
 }
 
 }  // namespace test

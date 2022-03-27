@@ -6,7 +6,7 @@
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 #include "game/graphics/opengl_renderer/sprite_common.h"
-#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
 
 #include <map>
 
@@ -50,6 +50,7 @@ class Sprite3 : public BucketRenderer {
   SpriteFrameData m_frame_data;  // qwa: 980
   Sprite3DMatrixData m_3d_matrix_data;
   SpriteHudMatrixData m_hud_matrix_data;
+  DirectRenderer m_direct;
 
   SpriteVecData2d m_vec_data_2d[SPRITES_PER_CHUNK];
   AdGifData m_adgif[SPRITES_PER_CHUNK];
@@ -90,9 +91,11 @@ class Sprite3 : public BucketRenderer {
   struct Bucket {
     std::vector<u32> ids;
     u32 offset_in_idx_buffer = 0;
+    u64 key = -1;
   };
 
   std::map<u64, Bucket> m_sprite_buckets;
+  std::vector<Bucket*> m_bucket_list;
 
   u64 m_last_bucket_key = UINT64_MAX;
   Bucket* m_last_bucket = nullptr;

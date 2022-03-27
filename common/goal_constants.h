@@ -9,8 +9,32 @@ constexpr int BASIC_OFFSET = 4;
 constexpr int STRUCTURE_ALIGNMENT = 16;
 constexpr int ARRAY_DATA_OFFSET = 12;  // not including type tag
 
-constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
-constexpr s32 SYM_INFO_OFFSET = 0xff34;
+/*!
+ * Here you can change the size of the symbol table!
+ * Make sure to also edit the constant in gcommon.gc
+ */
+constexpr s32 GOAL_MAX_SYMBOLS = 8192;  // this MUST be a multiple of 2!!
+constexpr s32 SYM_INFO_OFFSET = 8167 * 8 - 4;
+// constexpr s32 GOAL_MAX_SYMBOLS = 16384;
+// constexpr s32 SYM_INFO_OFFSET = GOAL_MAX_SYMBOLS * 8 - 4;
+
+constexpr s32 SYM_TABLE_MEM_SIZE = GOAL_MAX_SYMBOLS * 8 * 2;
+
+constexpr int bits_for_sym() {
+  int b = -1;
+  for (int i = 0; i < 32; ++i) {
+    if ((GOAL_MAX_SYMBOLS & (1 << i)) != 0) {
+      if (b != -1) {
+        // already got a set bit... not a multiple of 2!
+        // throw 0;
+        return -1;
+      }
+      b = i;
+    }
+  }
+  return b + 1;
+}
+static_assert(bits_for_sym() != 1, "symbol table invalid length");
 
 enum class RegClass { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
 

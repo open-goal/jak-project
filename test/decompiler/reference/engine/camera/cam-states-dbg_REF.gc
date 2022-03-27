@@ -57,7 +57,7 @@
                 (f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 48.0 110.0 -1.0))
                 )
             (cond
-              ((logtest? (-> *cpad-list* cpads (-> *CAMERA-bank* joypad) button0-abs 0) (pad-buttons r2))
+              ((cpad-hold? (-> *CAMERA-bank* joypad) r2)
                (set! (-> s5-0 y) (- (-> s5-0 y) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
                (set! (-> s5-0 x) (- (-> s5-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
                (+! (-> gp-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
@@ -120,7 +120,7 @@
 (defun cam-free-floating-input ((arg0 vector) (arg1 vector) (arg2 symbol) (arg3 int))
   (when (and (!= *master-mode* 'menu) (not *cam-layout*))
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons x))
+      (if (cpad-hold? arg3 x)
           (set! (-> arg0 x)
                 (- (-> arg0 x) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
                                                                    (the-as int (-> *cpad-list* cpads arg3 abutton 6))
@@ -135,7 +135,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons triangle))
+      (if (cpad-hold? arg3 triangle)
           (+! (-> arg0 x) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
                                                               (the-as int (-> *cpad-list* cpads arg3 abutton 4))
                                                               0.0
@@ -148,7 +148,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons square))
+      (if (cpad-hold? arg3 square)
           (+! (-> arg0 y) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
                                                               (the-as int (-> *cpad-list* cpads arg3 abutton 7))
                                                               0.0
@@ -161,7 +161,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons circle))
+      (if (cpad-hold? arg3 circle)
           (set! (-> arg0 y)
                 (- (-> arg0 y) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
                                                                    (the-as int (-> *cpad-list* cpads arg3 abutton 5))
@@ -178,7 +178,7 @@
     )
   (when arg2
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons l2))
+      (if (cpad-hold? arg3 l2)
           (+! (-> arg0 z) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
                                                               (the-as int (-> *cpad-list* cpads arg3 abutton 10))
                                                               0.0
@@ -191,7 +191,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons r2))
+      (if (cpad-hold? arg3 r2)
           (set! (-> arg0 z)
                 (- (-> arg0 z) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
                                                                    (the-as int (-> *cpad-list* cpads arg3 abutton 11))
@@ -211,9 +211,9 @@
      )
     ((not *camera-read-analog*)
      )
-    ((logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons r2))
+    ((cpad-hold? arg3 r2)
      (when *camera-read-buttons*
-       (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons r1))
+       (if (cpad-hold? arg3 r1)
            (+! (-> arg1 y) (+ (* 0.2 (-> *CAM_FREE-bank* speed)) (analog-input
                                                                    (the-as int (-> *cpad-list* cpads arg3 abutton 9))
                                                                    0.0
@@ -226,7 +226,7 @@
            )
        )
      (when *camera-read-buttons*
-       (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons l1))
+       (if (cpad-hold? arg3 l1)
            (set! (-> arg1 y)
                  (- (-> arg1 y) (+ (* 0.2 (-> *CAM_FREE-bank* speed)) (analog-input
                                                                         (the-as int (-> *cpad-list* cpads arg3 abutton 8))
@@ -243,7 +243,7 @@
      )
     (else
       (when *camera-read-buttons*
-        (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons r1))
+        (if (cpad-hold? arg3 r1)
             (+! (-> arg1 y)
                 (+ (-> *CAM_FREE-bank* speed)
                    (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 9)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
@@ -252,7 +252,7 @@
             )
         )
       (when *camera-read-buttons*
-        (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons l1))
+        (if (cpad-hold? arg3 l1)
             (set! (-> arg1 y)
                   (- (-> arg1 y)
                      (+ (-> *CAM_FREE-bank* speed)
@@ -266,7 +266,7 @@
     )
   (when (and (!= *master-mode* 'menu) (not *cam-layout*))
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons left))
+      (if (cpad-hold? arg3 left)
           (+! (-> arg1 x)
               (+ (-> *CAM_FREE-bank* speed)
                  (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 1)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
@@ -275,7 +275,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons right))
+      (if (cpad-hold? arg3 right)
           (set! (-> arg1 x)
                 (- (-> arg1 x)
                    (+ (-> *CAM_FREE-bank* speed)
@@ -286,7 +286,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons up))
+      (if (cpad-hold? arg3 up)
           (+! (-> arg1 z)
               (+ (-> *CAM_FREE-bank* speed)
                  (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 2)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
@@ -295,7 +295,7 @@
           )
       )
     (when *camera-read-buttons*
-      (if (logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons down))
+      (if (cpad-hold? arg3 down)
           (set! (-> arg1 z)
                 (- (-> arg1 z)
                    (+ (-> *CAM_FREE-bank* speed)
@@ -325,9 +325,9 @@
           )
         )
       (cond
-        ((logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons r2))
+        ((cpad-hold? arg3 r2)
          (cond
-           ((logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons l2))
+           ((cpad-hold? arg3 l2)
             (set! (-> arg0 y) (- (-> arg0 y) (* 0.5 (-> *CAM_FREE-bank* rot-speed) (- f24-0))))
             (set! (-> arg0 x) (- (-> arg0 x) (* 0.5 (-> *CAM_FREE-bank* rot-speed) (- f26-0))))
             )
@@ -339,7 +339,7 @@
          (+! (-> arg1 x) (* 0.2 (-> *CAM_FREE-bank* speed) f28-14))
          (+! (-> arg1 z) (* 0.2 (-> *CAM_FREE-bank* speed) f30-14))
          )
-        ((logtest? (-> *cpad-list* cpads arg3 button0-abs 0) (pad-buttons l2))
+        ((cpad-hold? arg3 l2)
          (+! (-> arg1 x) (* f28-14 (-> *CAM_FREE-bank* speed)))
          (+! (-> arg1 y) (* f26-0 (-> *CAM_FREE-bank* speed)))
          (+! (-> arg1 z) (* f30-14 (-> *CAM_FREE-bank* speed)))

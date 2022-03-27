@@ -5,7 +5,7 @@
 #include "common/type_system/TypeSpec.h"
 #include "common/common_types.h"
 #include "decompiler/Disasm/Register.h"
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -80,7 +80,7 @@ class TP_Type {
         return m_ts.base_type() != "pointer";
       case Kind::INVALID:
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
 
@@ -96,12 +96,12 @@ class TP_Type {
   bool can_be_format_string() const { return is_format_string() || is_constant_string(); }
 
   int get_format_string_arg_count() const {
-    assert(is_format_string());
+    ASSERT(is_format_string());
     return m_int;
   }
 
   const std::string& get_string() const {
-    assert(is_constant_string());
+    ASSERT(is_constant_string());
     return m_str;
   }
 
@@ -286,52 +286,52 @@ class TP_Type {
   }
 
   const TypeSpec& get_objects_typespec() const {
-    assert(kind == Kind::TYPESPEC || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
+    ASSERT(kind == Kind::TYPESPEC || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_ts;
   }
 
   const TypeSpec& get_type_objects_typespec() const {
-    assert(kind == Kind::TYPE_OF_TYPE_OR_CHILD || kind == Kind::TYPE_OF_TYPE_NO_VIRTUAL);
+    ASSERT(kind == Kind::TYPE_OF_TYPE_OR_CHILD || kind == Kind::TYPE_OF_TYPE_NO_VIRTUAL);
     return m_ts;
   }
 
   const TypeSpec& get_method_new_object_typespec() const {
-    assert(kind == Kind::OBJECT_NEW_METHOD);
+    ASSERT(kind == Kind::OBJECT_NEW_METHOD);
     return m_ts;
   }
 
   const TypeSpec& get_obj_plus_const_mult_typespec() const {
-    assert(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
+    ASSERT(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_ts;
   }
 
   uint64_t get_multiplier() const {
-    assert(kind == Kind::PRODUCT_WITH_CONSTANT || kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
+    ASSERT(kind == Kind::PRODUCT_WITH_CONSTANT || kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_int;
   }
 
   uint64_t get_integer_constant() const {
-    assert(kind == Kind::INTEGER_CONSTANT || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
+    ASSERT(kind == Kind::INTEGER_CONSTANT || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_int;
   }
 
   u64 get_add_int_constant() const {
-    assert(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
+    ASSERT(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
     return m_int;
   }
 
   u64 get_mult_int_constant() const {
-    assert(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
+    ASSERT(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
     return m_extra_multiplier;
   }
 
   int get_left_shift() const {
-    assert(kind == Kind::LEFT_SHIFTED_BITFIELD);
+    ASSERT(kind == Kind::LEFT_SHIFTED_BITFIELD);
     return m_int;
   }
 
   const TypeSpec& get_bitfield_type() const {
-    assert(kind == Kind::LEFT_SHIFTED_BITFIELD || kind == Kind::PCPYUD_BITFIELD ||
+    ASSERT(kind == Kind::LEFT_SHIFTED_BITFIELD || kind == Kind::PCPYUD_BITFIELD ||
            kind == Kind::PCPYUD_BITFIELD_AND);
     return m_ts;
   }
@@ -340,27 +340,27 @@ class TP_Type {
     if (kind == Kind::LEFT_SHIFTED_BITFIELD) {
       return m_pcpyud;
     }
-    assert(false);
+    ASSERT(false);
     return false;
   }
 
   const TypeSpec& method_from_type() const {
-    assert(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
+    ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
     return m_method_from_type;
   }
 
   int method_id() const {
-    assert(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
+    ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
     return m_method_id;
   }
 
   bool flipped_add_order() const {
-    assert(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
+    ASSERT(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_flipped_order;
   }
 
   int label_id() const {
-    assert(kind == Kind::LABEL_ADDR);
+    ASSERT(kind == Kind::LABEL_ADDR);
     return m_int;
   }
 
@@ -391,7 +391,7 @@ class TypeState {
       case Reg::FPR:
         return fpr_types[r.get_fpr()];
       default:
-        assert(false);
+        ASSERT(false);
         throw std::runtime_error("TP_Type::get failed");
     }
   }
@@ -403,7 +403,7 @@ class TypeState {
       case Reg::FPR:
         return fpr_types[r.get_fpr()];
       default:
-        assert(false);
+        ASSERT(false);
         throw std::runtime_error("TP_Type::get failed");
     }
   }

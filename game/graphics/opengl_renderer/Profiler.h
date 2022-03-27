@@ -2,9 +2,12 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 #include "common/common_types.h"
 #include "common/util/Timer.h"
+
+#include "game/graphics/opengl_renderer/buckets.h"
 
 enum class ProfilerSort { NONE = 0, TIME = 1, DRAW_CALLS = 2, TRIANGLES = 3 };
 
@@ -34,9 +37,13 @@ class ProfilerNode {
 
   void add_draw_call(int count = 1) { m_stats.draw_calls += count; }
   void add_tri(int count = 1) { m_stats.triangles += count; }
+  float get_elapsed_time() const { return m_timer.getSeconds(); }
+  const ProfilerStats& stats() const { return m_stats; }
 
  private:
   friend class Profiler;
+  void to_string_helper(std::string& str, int depth) const;
+
   std::string m_name;
   ProfilerStats m_stats;
   std::vector<ProfilerNode> m_children;
@@ -57,6 +64,7 @@ class ScopedProfilerNode {
 
   void add_draw_call(int count = 1) { m_node->add_draw_call(count); }
   void add_tri(int count = 1) { m_node->add_tri(count); }
+  float get_elapsed_time() const { return m_node->get_elapsed_time(); }
 
  private:
   ProfilerNode* m_node;
@@ -68,6 +76,10 @@ class Profiler {
   void clear();
   void draw();
   void finish();
+
+  float root_time() const { return m_root.m_stats.duration; }
+
+  std::string to_string();
   ProfilerNode* root() { return &m_root; }
 
  private:
@@ -80,4 +92,28 @@ class Profiler {
 
   int m_mode_selector = 0;
   ProfilerNode m_root;
+};
+
+class FramePlot {
+ public:
+  void push(float val);
+  void draw(float max);
+
+ private:
+  static constexpr int SIZE = 60 * 5;
+  float m_buffer[SIZE] = {};
+  int m_idx = 0;
+};
+
+struct SmallProfilerStats {
+  int triangles, draw_calls;
+  float time_per_category[(int)BucketCategory::MAX_CATEGORIES];
+};
+
+class SmallProfiler {
+ public:
+  void draw(const std::string& load_status, const SmallProfilerStats& stats);
+
+ private:
+  std::array<FramePlot, (int)BucketCategory::MAX_CATEGORIES> m_plots;
 };

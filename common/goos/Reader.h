@@ -21,7 +21,7 @@
 
 #include "ReplUtils.h"
 
-#include "common/util/assert.h"
+#include "common/util/Assert.h"
 
 namespace goos {
 
@@ -36,17 +36,17 @@ struct TextStream {
   int line_count = 0;
 
   char peek() {
-    assert(seek < text->get_size());
+    ASSERT(seek < text->get_size());
     return text->get_text()[seek];
   }
 
   char peek(int i) {
-    assert(seek + i < text->get_size());
+    ASSERT(seek + i < text->get_size());
     return text->get_text()[seek + i];
   }
 
   char read() {
-    assert(seek < text->get_size());
+    ASSERT(seek < text->get_size());
     char c = text->get_text()[seek++];
     if (c == '\n')
       line_count++;

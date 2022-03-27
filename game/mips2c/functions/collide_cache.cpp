@@ -34,8 +34,8 @@ u64 execute(void* ctxt) {
   int qw_to_write = c->sgpr64(a2);
   const u16* data_in = (const u16*)(g_ee_main_mem + c->sgpr64(a0));
   // I don't quite get why this is wrong sometimes.
-  //  assert(qw_to_write * 3 == qw_in_source * 8);
-  assert(qw_to_write <= 128);
+  //  ASSERT(qw_to_write * 3 == qw_in_source * 8);
+  ASSERT(qw_to_write <= 128);
 
   int in_idx = 0;
   int out_idx = 0;
@@ -96,7 +96,7 @@ u64 execute(void* ctxt) {
   c->vfs[vf13].du32[3] =  0;
   c->vmove(DEST::xyzw, vf2, vf0);                   // vmove.xyzw vf2, vf0
   c->lbu(a0, 24, a1);                               // lbu a0, 24(a1)
-  assert(c->sgpr64(a3) == 0);
+  ASSERT(c->sgpr64(a3) == 0);
   vi1 = 0;
   // Unknown instr: ctc2.i vi1, a3
   c->vmove(DEST::xyzw, vf3, vf0);                   // vmove.xyzw vf3, vf0
@@ -409,7 +409,7 @@ u64 execute(void* ctxt) {
   c->vmove(DEST::xyzw, vf2, vf0);                   // vmove.xyzw vf2, vf0
   c->lbu(a0, 24, a1);                               // lbu a0, 24(a1)
   // Unknown instr: ctc2.i vi1, a3
-  assert(c->sgpr64(a3) == 0);
+  ASSERT(c->sgpr64(a3) == 0);
   vi1 = c->sgpr64(a3);
   c->vmove(DEST::xyzw, vf3, vf0);                   // vmove.xyzw vf3, vf0
   c->vitof0(DEST::xyzw, vf14, vf14);                // vitof0.xyzw vf14, vf14
