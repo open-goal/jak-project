@@ -433,8 +433,8 @@ void UpdateVolume(Sound* sound) {
 }
 
 void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
-  s32 tick = 0;  // snd_GetTick();
-  s32 delta = tick - sLastTick;
+  s32 tick = snd_GetTick();
+  u32 delta = tick - sLastTick;
   sLastTick = tick;
 
   gEarTrans = *ear_trans;

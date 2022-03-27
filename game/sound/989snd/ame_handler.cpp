@@ -1,50 +1,112 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "ame_handler.h"
+#include "game/sound/989snd/blocksound_handler.h"
 
 namespace snd {
 
 ame_handler::ame_handler(MultiMIDIBlockHeader* block,
-                         synth& synth,
+                         voice_manager& vm,
+                         MIDISound& sound,
                          s32 vol,
                          s32 pan,
-                         s8 repeats,
-                         u32 group,
                          locator& loc,
                          u32 bank)
-    : m_header(block),
+    : m_sound(sound),
+      m_bank(bank),
+      m_header(block),
       m_locator(loc),
-      m_synth(synth),
-      m_vol(vol),
-      m_pan(pan),
-      m_repeats(repeats),
-      m_group(group),
-      m_bank(bank) {
-  auto firstblock = (MIDIBlockHeader*)(block->BlockPtr[0] + (uintptr_t)block);
+      m_vm(vm),
+      m_repeats(sound.Repeats) {
+  if (vol == VOLUME_DONT_CHANGE) {
+    vol = 1024;
+  }
 
-  m_midis.emplace_front(std::make_unique<midi_handler>(firstblock, synth, vol, pan, repeats,
-                                                       m_group, loc, m_bank, this));
+  m_vol = (vol * m_sound.Vol) >> 10;
+
+  if (m_vol >= 128) {
+    m_vol = 127;
+  }
+
+  if (pan == PAN_DONT_CHANGE || pan == PAN_RESET) {
+    m_pan = m_sound.Pan;
+  } else {
+    m_pan = pan;
+  }
+
+  start_segment(0);
 };
 
 bool ame_handler::tick() {
-  for (auto& m : m_midis) {
-    m->tick();
+  for (auto it = m_midis.begin(); it != m_midis.end();) {
+    bool done = it->second->tick();
+    if (done) {
+      it = m_midis.erase(it);
+    } else {
+      it++;
+    }
   }
-
-  m_midis.remove_if([](std::unique_ptr<midi_handler>& m) { return m->complete(); });
 
   return m_midis.empty();
 };
 
 void ame_handler::start_segment(u32 id) {
   auto midiblock = (MIDIBlockHeader*)(m_header->BlockPtr[id] + (uintptr_t)m_header);
-  // fmt::print("starting segment {}\n", id);
-  m_midis.emplace_front(std::make_unique<midi_handler>(midiblock, m_synth, m_vol, m_pan, m_repeats,
-                                                       m_group, m_locator, m_bank, this));
+  fmt::print("starting segment {}\n", id);
+  m_midis.emplace(id, std::make_unique<midi_handler>(midiblock, m_vm, m_sound, m_vol, m_pan,
+                                                     m_locator, m_bank, this));
+}
+
+void ame_handler::stop() {
+  for (auto it = m_midis.begin(); it != m_midis.end();) {
+    it->second->stop();
+    it = m_midis.erase(it);
+  }
 }
 
 void ame_handler::stop_segment(u32 id) {
-  // fmt::print("stopping segment {}\n", id);
+  auto m = m_midis.find(id);
+  if (m == m_midis.end())
+    return;
+
+  m->second->stop();
+  m_midis.erase(id);
+}
+
+void ame_handler::pause() {
+  for (auto& m : m_midis) {
+    m.second->pause();
+  }
+}
+
+void ame_handler::unpause() {
+  for (auto& m : m_midis) {
+    m.second->unpause();
+  }
+}
+
+void ame_handler::set_vol_pan(s32 vol, s32 pan) {
+  if (vol >= 0) {
+    if (vol != VOLUME_DONT_CHANGE) {
+      m_vol = (m_sound.Vol * vol) >> 10;
+    }
+  } else {
+    m_vol = -vol;
+  }
+
+  if (m_vol >= 128) {
+    m_vol = 127;
+  }
+
+  if (pan == PAN_RESET) {
+    m_pan = m_sound.Pan;
+  } else if (pan != PAN_DONT_CHANGE) {
+    m_pan = pan;
+  }
+
+  for (auto& m : m_midis) {
+    m.second->set_vol_pan(vol, pan);
+  }
 }
 
 #define AME_BEGIN(op) \
@@ -87,6 +149,11 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
         if (m_excite > (stream[0] + 1)) {
           skip = 1;
         }
+        AME_END(1)
+      } break;
+      case 0x3: {
+        AME_BEGIN(op)
+        stop_segment(stream[0]);
         AME_END(1)
       } break;
       case 0x4: {

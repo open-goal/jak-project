@@ -2,52 +2,70 @@
 // SPDX-License-Identifier: ISC
 #pragma once
 #include "ame_handler.h"
+#include "vagvoice.h"
 #include "loader.h"
 #include "sound_handler.h"
-#include "../common/synth.h"
 #include "common/common_types.h"
-#include "../common/voice.h"
 #include <exception>
+#include <memory>
+#include <list>
 #include <optional>
 #include <string>
 #include <utility>
 
 namespace snd {
-class ame_handler;
 
+struct ProgData {
+  /*   0 */ s8 NumTones;
+  /*   1 */ s8 Vol;
+  /*   2 */ s16 Pan;
+  /*   4 */ /*Tone**/ u32 FirstTone;
+};
+
+struct Prog {
+  ProgData d;
+  std::vector<Tone> tones;
+};
+
+class midi_voice : public vag_voice {
+ public:
+  midi_voice(Tone& t) : vag_voice(t) {}
+  u8 note{0};
+  u8 channel{0};
+};
+
+class ame_handler;
 class midi_handler : public sound_handler {
  public:
   midi_handler(MIDIBlockHeader* block,
-               synth& synth,
+               voice_manager& vm,
+               MIDISound& sound,
                s32 vol,
                s32 pan,
-               s8 repeats,
-               u32 group,
+               locator& loc,
+               u32 bank);
+
+  midi_handler(MIDIBlockHeader* block,
+               voice_manager& vm,
+               MIDISound& sound,
+               s32 vol,
+               s32 pan,
                locator& loc,
                u32 bank,
-               std::optional<ame_handler*> parent = std::nullopt)
-      : m_parent(parent),
-        m_locator(loc),
-        m_vol(vol),
-        m_pan(pan),
-        m_repeats(repeats),
-        m_header(block),
-        m_group(group),
-        m_synth(synth),
-        m_bank(bank) {
-    m_seq_data_start = (u8*)((uintptr_t)block + (uintptr_t)block->DataStart);
-    m_seq_ptr = m_seq_data_start;
-    m_tempo = block->Tempo;
-    m_ppq = block->PPQ;
-    m_chanvol.fill(0x7f);
-    m_chanpan.fill(0);
-  };
+               std::optional<ame_handler*> parent);
 
+  void init_midi();
   void start();
   bool tick() override;
   void mute_channel(u8 channel);
   void unmute_channel(u8 channel);
-  u32 bank() { return m_bank; };
+  u32 bank() override { return m_bank; };
+
+  void pause() override;
+  void stop() override;
+  void unpause() override;
+  u8 group() override { return m_sound.VolGroup; }
+  void set_vol_pan(s32 vol, s32 pan) override;
 
   bool complete() { return m_track_complete; };
 
@@ -63,11 +81,16 @@ class midi_handler : public sound_handler {
 
   std::optional<ame_handler*> m_parent;
 
+  std::list<std::weak_ptr<midi_voice>> m_voices;
+
+  MIDISound& m_sound;
   locator& m_locator;
   s32 m_vol{0x7f};
   s32 m_pan{0};
   s8 m_repeats{0};
   u32 m_bank;
+
+  bool m_paused{false};
 
   MIDIBlockHeader* m_header{nullptr};
 
@@ -85,7 +108,6 @@ class midi_handler : public sound_handler {
   s32 m_tickerror{0};
   s32 m_tickdelta{0};
   s32 m_ppt{0};
-  u32 m_group{0};
   u64 m_tick_countdown{0};
   bool m_get_delta{true};
   bool m_track_complete{false};
@@ -93,7 +115,7 @@ class midi_handler : public sound_handler {
 
   std::array<u8, 16> m_programs{};
 
-  synth& m_synth;
+  voice_manager& m_vm;
 
   void step();
   void new_delta();

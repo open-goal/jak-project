@@ -4,8 +4,11 @@ set(SOUND_SOURCES
   989snd/player.cpp
   989snd/midi_handler.cpp
   989snd/ame_handler.cpp
+  989snd/blocksound_handler.cpp
+  989snd/musicbank.cpp
+  989snd/sfxblock.cpp
   989snd/loader.cpp
-  989snd/util.cpp
+  989snd/vagvoice.cpp
   common/synth.cpp
   common/voice.cpp
   common/envelope.cpp

@@ -12,6 +12,7 @@ typedef void (*FreeFun)(void*);
 
 void snd_StartSoundSystem();
 void snd_StopSoundSystem();
+s32 snd_GetTick();
 void snd_RegisterIOPMemAllocator(AllocFun, FreeFun);
 void snd_LockVoiceAllocator(s32);
 void snd_UnlockVoiceAllocator();
