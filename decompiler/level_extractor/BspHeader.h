@@ -485,6 +485,49 @@ struct PrototypeShrubbery : public level_tools::DrawableInlineArray {
 
 struct Billboard {};
 
+struct GenericShrubFragment : public level_tools::Drawable {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "generic-shrub-fragment"; }
+
+  //
+  // (textures (inline-array adgif-shader)         :score 999 :offset 4)
+  std::vector<u8> textures;
+  // (vtx-cnt  uint32         :score 999 :offset 8)
+  u32 vtx_cnt;
+  // (cnt-qwc  uint8          :score 999 :offset 12)
+  u8 cnt_qwc;
+  // (vtx-qwc  uint8          :score 999 :offset 13)
+  u8 vtx_qwc;
+  // (col-qwc  uint8          :score 999 :offset 14)
+  u8 col_qwc;
+  // (stq-qwc  uint8          :score 999 :offset 15)
+  u8 stq_qwc;
+  // (cnt      uint32         :score 999 :offset 16)
+  std::vector<u8> cnt;
+  // (vtx      uint32         :score 999 :offset 20)
+  std::vector<u8> vtx;
+  // (col      uint32         :score 999 :offset 24)
+  std::vector<u8> col;
+  // (stq      uint32         :score 999 :offset 28)
+  std::vector<u8> stq;
+};
+
+// really a drawable-group, but we'll make it drawable here.
+struct PrototypeGenericShrub : public level_tools::Drawable {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "prototype-generic-shrub"; }
+  s16 length;  // 4
+
+  level_tools::Vector bsphere;               // 16
+  std::vector<GenericShrubFragment> shrubs;  // 32
+};
+
 struct PrototypeBucketShrub {
   std::string name;  // 4
   u32 flags;         // 8
@@ -492,8 +535,8 @@ struct PrototypeBucketShrub {
   u16 utextures;     // 14
 
   // PrototypeShrubbery geometry[4];  // 16
-  // skip generic, we think it's the same as shrubbery geom.
-  PrototypeShrubbery shrubbery_geom;  // 1
+  PrototypeGenericShrub generic_geom;  // 0
+  PrototypeShrubbery shrubbery_geom;   // 1
   // todo transparent geom
   // todo billboard geom
 

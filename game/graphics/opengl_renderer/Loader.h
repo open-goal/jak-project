@@ -15,8 +15,8 @@ class Loader {
   static constexpr float SHARED_TEXTURE_LOAD_BUDGET = 3.f;
   Loader();
   ~Loader();
-  void update(std::string& status_out, TexturePool& tex_pool);
-  void update_blocking(std::string& status_out, TexturePool& tex_pool);
+  void update(TexturePool& tex_pool);
+  void update_blocking(TexturePool& tex_pool);
 
   struct LevelData {
     std::unique_ptr<tfrag3::Level> level;

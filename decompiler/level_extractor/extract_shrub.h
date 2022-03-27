@@ -7,8 +7,6 @@
 
 namespace decompiler {
 
-
-
 /// <summary>
 /// Extract shrubs from the level
 /// </summary>

@@ -1194,25 +1194,25 @@ L86:
     vmadday.xyzw acc, vf29, vf12
     sh t8, 6536(t0)
     vmaddz.xyzw vf12, vf30, vf12
-    lw t4, 12(a2)
+    lw t4, 12(a2) ;; load the generic geometry?
     vmulax.xyzw acc, vf28, vf13
     lw t5, 6532(t0)
     vmadday.xyzw acc, vf29, vf13
-    lh t6, 2(t4)
+    lh t6, 2(t4)                    ;; generic frag count.
     vmaddaz.xyzw acc, vf30, vf13
     lw a2, 6528(t0)
     vmaddw.xyzw vf13, vf31, vf0
     lw t7, 6516(t0)
     vitof0.xyz vf24, vf24
     sh t8, 6368(t0)
-B58:
+B58:                           ;; generic loop
 L87:
     daddiu t8, a3, -115
     sll r0, r0, 0
     blez t8, L90
-    lw t8, 28(t4)
+    lw t8, 28(t4)             ;; load the frag
 
-B59:
+B59:                          ;; dma
 L88:
     lw t3, 0(a0)
     sll r0, r0, 0
@@ -1272,7 +1272,7 @@ L91:
     daddiu a3, a3, 12
     sqc2 vf12, 48(t3)
     sll r0, r0, 0
-    lw ra, 4(t8)
+    lw ra, 4(t8)            ;; ra = vtx-cnt
     sll r0, r0, 0
     sqc2 vf13, 64(t3)
     sll r0, r0, 0
@@ -1280,9 +1280,9 @@ L91:
     sll r0, r0, 0
     sw ra, 96(t3)
     sll r0, r0, 0
-    lw ra, 12(t8)
+    lw ra, 12(t8)           ;; ra = cnt
     sll r0, r0, 0
-    lbu gp, 8(t8)
+    lbu gp, 8(t8)           ;; gp = cnt-qwc
     sll r0, r0, 0
     sw ra, 20(t9)
     sll r0, r0, 0
@@ -1290,25 +1290,25 @@ L91:
     sll r0, r0, 0
     sb gp, 30(t9)
     sll r0, r0, 0
-    lw ra, 24(t8)
+    lw ra, 24(t8)          ;; ra = stq
     sll r0, r0, 0
-    lbu gp, 11(t8)
+    lbu gp, 11(t8)         ;; gp = stq-qwc
     sll r0, r0, 0
     sw ra, 36(t9)
     sll r0, r0, 0
     sb gp, 32(t9)
     sll r0, r0, 0
-    lw ra, 20(t8)
+    lw ra, 20(t8)          ;; ra = col
     sll r0, r0, 0
-    lbu gp, 10(t8)
+    lbu gp, 10(t8)         ;; gp = col-qwc
     sll r0, r0, 0
     sw ra, 52(t9)
     sll r0, r0, 0
     sb gp, 48(t9)
     sll r0, r0, 0
-    lw ra, 16(t8)
+    lw ra, 16(t8)          ;; ra = vtx
     sll r0, r0, 0
-    lbu gp, 9(t8)
+    lbu gp, 9(t8)          ;; gp = vtx-qwc
     sll r0, r0, 0
     sw ra, 68(t9)
     sll r0, r0, 0

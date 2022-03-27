@@ -291,11 +291,10 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("loader");
     if (m_last_pmode_alp == 0 && settings.pmode_alp_register != 0 && m_enable_fast_blackout_loads) {
       // blackout, load everything and don't worry about frame rate
-      m_render_state.loader->update_blocking(m_render_state.load_status_debug,
-                                             *m_render_state.texture_pool);
+      m_render_state.loader->update_blocking(*m_render_state.texture_pool);
 
     } else {
-      m_render_state.loader->update(m_render_state.load_status_debug, *m_render_state.texture_pool);
+      m_render_state.loader->update(*m_render_state.texture_pool);
     }
   }
 

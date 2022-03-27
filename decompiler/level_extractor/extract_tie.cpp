@@ -8,7 +8,6 @@
 
 namespace decompiler {
 
-
 /// <summary>
 /// Get the index of the first draw node in an array. Works for node or tfrag.
 /// </summary>

@@ -428,7 +428,7 @@ bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture
   return data.textures.size() == data.level->textures.size();
 }
 
-void Loader::update_blocking(std::string& status_out, TexturePool& tex_pool) {
+void Loader::update_blocking(TexturePool& tex_pool) {
   fmt::print("NOTE: coming out of blackout on next frame, doing all loads now...\n");
 
   bool missing_levels = true;
@@ -457,7 +457,7 @@ void Loader::update_blocking(std::string& status_out, TexturePool& tex_pool) {
       }
 
       if (needs_run) {
-        update(status_out, tex_pool);
+        update(tex_pool);
       }
     }
 
@@ -484,7 +484,7 @@ void Loader::update_blocking(std::string& status_out, TexturePool& tex_pool) {
   }
 }
 
-void Loader::update(std::string& status_out, TexturePool& texture_pool) {
+void Loader::update(TexturePool& texture_pool) {
   Timer loader_timer;
 
   // only main thread can touch this.
