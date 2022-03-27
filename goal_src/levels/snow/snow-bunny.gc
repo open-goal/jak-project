@@ -100,7 +100,7 @@
                                       :use-proximity-notice #f
                                       :use-jump-blocked #f
                                       :use-jump-patrol #f
-                                      :gnd-collide-with #x1
+                                      :gnd-collide-with (collide-kind background)
                                       :debug-draw-neck #f
                                       :debug-draw-jump #f
                                       )
@@ -122,7 +122,7 @@
        (when (send-event-function arg0 a1-5)
          (set! (-> self touch-time) (-> *display* base-frame-counter))
          (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-         (logior! (-> self nav-enemy-flags) 256)
+         (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
          (go-virtual snow-bunny-attack)
          )
        )
@@ -254,8 +254,8 @@
 
 (defbehavior snow-bunny-initialize-jump snow-bunny ((arg0 vector))
   (nav-enemy-initialize-custom-jump arg0 #f (-> self jump-height-min) (-> self jump-height-factor) -307200.0)
-  (set! (-> self nav-enemy-flags) (logand -1025 (-> self nav-enemy-flags)))
-  (logior! (-> self nav-enemy-flags) 512)
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
   0
   (none)
   )
@@ -431,9 +431,9 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (dummy-76 self #f)
-    (set! (-> self nav flags) (logior (nav-control-flags bit19) (-> self nav flags)))
-    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
-    (logior! (-> self nav-enemy-flags) 8)
+    (set! (-> self nav flags) (logior (nav-control-flags navcf19) (-> self nav flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (set! (-> self state-timeout) (seconds 0.1))
     (none)
     )
@@ -533,7 +533,7 @@
                     (collide-kind background)
                     (-> obj collide-info process)
                     s4-0
-                    (the-as uint 1)
+                    (new 'static 'pat-surface :noentity #x1)
                     )
                   )
             )
@@ -664,8 +664,8 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
-    (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
   :trans
@@ -697,12 +697,12 @@
   snow-bunny-default-event-handler
   :enter
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (nav-enemy-neck-control-look-at)
-    (if (logtest? (-> self nav-enemy-flags) 2)
+    (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
         (go-virtual nav-enemy-chase)
         )
-    (logior! (-> self nav-enemy-flags) 2)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (dummy-76 self #t)
     (set-vector! (-> self collide-info transv) 0.0 (nav-enemy-rnd-float-range 102400.0 131072.0) 0.0 1.0)
     (none)
@@ -898,7 +898,7 @@
         (go-virtual snow-bunny-defend)
         )
     (when (not (dummy-52 self))
-      (set! (-> self nav-enemy-flags) (logand -3 (-> self nav-enemy-flags)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
       (go-virtual nav-enemy-notice)
       )
     (set-jump-height-factor! self 1)
@@ -910,8 +910,8 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
-    (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
   :trans
@@ -1193,8 +1193,8 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
-    (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
   :trans

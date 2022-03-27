@@ -127,7 +127,7 @@
                                     :use-proximity-notice #f
                                     :use-jump-blocked #f
                                     :use-jump-patrol #f
-                                    :gnd-collide-with #x1
+                                    :gnd-collide-with (collide-kind background)
                                     :debug-draw-neck #f
                                     :debug-draw-jump #f
                                     )
@@ -180,7 +180,7 @@
                                               :use-proximity-notice #f
                                               :use-jump-blocked #f
                                               :use-jump-patrol #f
-                                              :gnd-collide-with #x1
+                                              :gnd-collide-with (collide-kind background)
                                               :debug-draw-neck #f
                                               :debug-draw-jump #f
                                               )
@@ -490,7 +490,7 @@
         (the-as vector #f)
         f0-9
         (collide-kind background)
-        (the-as process #f)
+        (the-as process-drawable #f)
         0.0
         81920.0
         )
@@ -926,7 +926,7 @@
              v0-4
              )
             ((begin
-               (if (zero? (logand (-> self nav-enemy-flags) 256))
+               (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)))
                    (do-push-aways! (-> self collide-info))
                    )
                (level-hint-spawn
@@ -983,7 +983,7 @@
        )
      )
     (('touch)
-     (if (zero? (logand (-> self nav-enemy-flags) 256))
+     (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)))
          (do-push-aways! (-> self collide-info))
          )
      (cond
@@ -1233,7 +1233,7 @@
         )
       (else
         (ja-post)
-        (logior! (-> self nav-enemy-flags) 2)
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
         (go ram-boss-idle)
         )
       )
@@ -1375,7 +1375,7 @@
     )
   :code
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (while #t
       (clone-anim-once
         (ppointer->handle (-> self parent-override))
@@ -1415,7 +1415,7 @@
   :enter
   (behavior ((arg0 basic))
     (dummy-52 self)
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (-> self node-list data 0 bone transform))
           )
@@ -1497,7 +1497,7 @@
   (-> ram-boss-jump-down event)
   :code
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
     (let ((a0-1 (-> self skel root-channel 0)))
       (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
@@ -1516,7 +1516,7 @@
         (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (logior! (-> self nav-enemy-flags) 2)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (go ram-boss-nav-start)
     (none)
     )
@@ -1527,7 +1527,7 @@
 (defstate ram-boss-already-down (ram-boss)
   :code
   (behavior ((arg0 basic))
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (dummy-52 self)
     (let ((a1-0 (new 'stack-no-clear 'vector))
           (a2-0 (-> self parent-override 0 node-list data 0 bone transform))
@@ -1646,7 +1646,7 @@
         )
       )
     (cond
-      ((logtest? (nav-control-flags bit17) (-> self nav flags))
+      ((logtest? (nav-control-flags navcf17) (-> self nav flags))
        (if (>= (- (-> *display* base-frame-counter) (-> self free-time)) (seconds 1))
            (go-virtual nav-enemy-patrol)
            )
@@ -1705,7 +1705,7 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self facing-y) (quaternion-y-angle (-> self collide-info quat)))
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (none)
     )
   :trans
@@ -1908,7 +1908,7 @@
   :enter
   (behavior ()
     (set! (-> self frustration) 0)
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (none)
     )
   :trans
@@ -1948,7 +1948,7 @@
   :enter
   (behavior ()
     (set! (-> self frustration) 0)
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (none)
     )
   :trans
@@ -2059,7 +2059,7 @@
   ram-boss-on-ground-event-handler
   :enter
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (let ((gp-0 (-> self child)))
       (while gp-0
         (send-event (ppointer->process gp-0) 'launch)
@@ -2128,7 +2128,7 @@
 (defstate ram-boss-lose-shield (ram-boss)
   :enter
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (nav-enemy-neck-control-inactive)
     (dummy-53 self)
     (TODO-RENAME-49 self *ram-boss-nav-enemy-info-no-shield*)

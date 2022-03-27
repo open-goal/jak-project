@@ -120,7 +120,8 @@
                                             :use-proximity-notice #f
                                             :use-jump-blocked #t
                                             :use-jump-patrol #f
-                                            :gnd-collide-with #x805
+                                            :gnd-collide-with
+                                            (collide-kind background cak-2 ground-object)
                                             :debug-draw-neck #f
                                             :debug-draw-jump #f
                                             )
@@ -367,11 +368,12 @@
 
 ;; definition for method 44 of type green-eco-lurker
 (defmethod dummy-44 green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
-  (when (and (logtest? (-> obj nav-enemy-flags) 64) ((method-of-type touching-shapes-entry prims-touching?)
-                                                     (the-as touching-shapes-entry (-> arg1 param 0))
-                                                     (-> obj collide-info)
-                                                     (the-as uint 1)
-                                                     )
+  (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+             ((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> arg1 param 0))
+              (-> obj collide-info)
+              (the-as uint 1)
+              )
              )
     (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
         (send-event (ppointer->process (-> obj parent)) 'blob-hit-jak)
@@ -381,11 +383,12 @@
 
 ;; definition for method 72 of type green-eco-lurker
 (defmethod nav-enemy-touch-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
-  (when (and (logtest? (-> obj nav-enemy-flags) 64) ((method-of-type touching-shapes-entry prims-touching?)
-                                                     (the-as touching-shapes-entry (-> arg1 param 0))
-                                                     (-> obj collide-info)
-                                                     (the-as uint 1)
-                                                     )
+  (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+             ((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> arg1 param 0))
+              (-> obj collide-info)
+              (the-as uint 1)
+              )
              )
     (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
         (send-event (ppointer->process (-> obj parent)) 'blob-hit-jak)
@@ -521,7 +524,7 @@
             (+ (-> (the-as green-eco-lurker-gen (-> self parent 0)) root trans x) (fmax -32768.0 (fmin 32768.0 f0-1)))
             )
       )
-    (logior! (-> self collide-info nav-flags) 2)
+    (logior! (-> self collide-info nav-flags) (nav-flags navf1))
     (set! (-> self nav extra-nav-sphere quad) (-> self appear-dest quad))
     (set! (-> self nav extra-nav-sphere w) 8192.0)
     (setup-from-to-duration! (-> self traj) (-> self collide-info trans) (-> self appear-dest) 225.0 -9.102222)
@@ -551,8 +554,8 @@
     (let ((f30-0 (fmin (the float (- (-> *display* base-frame-counter) (-> self state-time))) (-> self traj time))))
       (eval-position! (-> self traj) f30-0 (-> self collide-info trans))
       (when (= f30-0 (-> self traj time))
-        (logior! (-> self collide-info nav-flags) 1)
-        (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+        (logior! (-> self collide-info nav-flags) (nav-flags navf0))
+        (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
         (go green-eco-lurker-appear-land)
         )
       )
@@ -687,7 +690,7 @@
         (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (logior! (-> self nav-enemy-flags) 2)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -942,7 +945,7 @@
 (defmethod TODO-RENAME-48 green-eco-lurker ((obj green-eco-lurker))
   (initialize-skeleton obj *green-eco-lurker-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (set! (-> obj collide-info nav-flags) (logand -2 (-> obj collide-info nav-flags)))
+  (logclear! (-> obj collide-info nav-flags) (nav-flags navf0))
   (TODO-RENAME-45 obj *green-eco-lurker-nav-enemy-info*)
   (logior! (-> obj draw shadow-ctrl settings flags) 4)
   (set! (-> obj neck up) (the-as uint 0))

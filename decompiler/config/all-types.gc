@@ -704,24 +704,24 @@
   :bitfield #t
   :type uint32
   (display-marks 0)
-  (bit1 1) ;; TODO - nav-control::9
-  (bit2 2) ;; TODO - nav-control::9
-  (bit3 3) ;; TODO - nav-enemy::45 | nav-control::9
-  (bit4 4) ;; TODO - nav-control::9
-  (bit5 5) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
-  (bit6 6) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
-  (bit7 7) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
-  (bit8 8)
-  (bit9 9) ;; TODO - nav-control::14 | 11
-  (bit10 10) ;; TODO - nav-enemy::nav-enemy-patrol-post
-  (bit11 11) ;; TODO - nav-control::28
-  (bit12 12) ;; TODO - rolling-lightning-mole::(enter nav-enemy-chase fleeing-nav-enemy)
-  (bit13 13)
-  (bit17 17) ;; TODO - nav-control::11
-  (bit18 18) ;; TODO - nav-control::11
-  (bit19 19) ;; TODO - nav-control::11 | 17
-  (bit20 20) ;; TODO - nav-mesh::28
-  (bit21 21) ;; TODO - nav-control::19
+  (navcf1 1) ;; TODO - nav-control::9
+  (navcf2 2) ;; TODO - nav-control::9
+  (navcf3 3) ;; TODO - nav-enemy::45 | nav-control::9
+  (navcf4 4) ;; TODO - nav-control::9
+  (navcf5 5) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
+  (navcf6 6) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
+  (navcf7 7) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
+  (navcf8 8)
+  (navcf9 9) ;; TODO - nav-control::14 | 11
+  (navcf10 10) ;; TODO - nav-enemy::nav-enemy-patrol-post
+  (navcf11 11) ;; TODO - nav-control::28
+  (navcf12 12) ;; TODO - rolling-lightning-mole::(enter nav-enemy-chase fleeing-nav-enemy)
+  (navcf13 13)
+  (navcf17 17) ;; TODO - nav-control::11
+  (navcf18 18) ;; TODO - nav-control::11
+  (navcf19 19) ;; TODO - nav-control::11 | 17
+  (navcf20 20) ;; TODO - nav-mesh::28
+  (navcf21 21) ;; TODO - nav-control::19
   )
 
 (defenum task-status
@@ -10102,7 +10102,7 @@
 ;; - Types
 
 (deftype pat-surface (uint32)
-  ((skip          uint8        :offset   0 :size   3)
+  ((skip          uint8        :offset   0 :size   3 :do-not-decompile)
    (mode          pat-mode     :offset   3 :size   3)
    (material      pat-material :offset   6 :size   6)
    (camera        uint8        :offset  12 :size   2)
@@ -11469,13 +11469,26 @@
     )
   )
 
+(defenum nav-flags
+  :bitfield #t
+  :type uint8
+  (navf0 0)
+  (navf1 1)
+  (navf2 2)
+  (navf3 3)
+  (navf4 4)
+  (navf5 5)
+  (navf6 6)
+  (navf7 7)
+  )
+
 (declare-type collide-edge-hold-list structure)
 (declare-type collide-work structure)
 (declare-type touching-shapes-entry structure)
 (deftype collide-shape (trsqv)
-  ((process               process-drawable            :offset-assert 140)
+  ((process               process-drawable   :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
-   (nav-flags             uint8              :offset-assert 145)
+   (nav-flags             nav-flags          :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
    (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
@@ -12713,11 +12726,11 @@
     (debug-draw (_type_) none 9)
     (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
     (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
-    (fill-and-probe-using-y-probe (_type_ vector float collide-kind process collide-tri-result uint) float 12)
+    (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
     (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
     (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
-    (fill-using-y-probe (_type_ vector float collide-kind process-drawable uint) none 16)
+    (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
     (initialize (_type_) none 17)
     (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
     (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
@@ -21688,7 +21701,7 @@
 (define-extern projectile-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector uint))
 (define-extern projectile-update-velocity-space-wars (function projectile none))
 (define-extern find-nearest-attackable (function vector float uint uint vector float projectile)) ;; Whatever te search returns (match from search-info)
-(define-extern find-ground-and-draw-shadow (function vector vector float collide-kind process float float none))
+(define-extern find-ground-and-draw-shadow (function vector vector float collide-kind process-drawable float float none))
 (define-extern spawn-projectile-blue (function target none))
 
 ;; - Unknowns
@@ -22654,13 +22667,50 @@
    (use-proximity-notice      symbol     :offset-assert 204)
    (use-jump-blocked          symbol     :offset-assert 208)
    (use-jump-patrol           symbol     :offset-assert 212)
-   (gnd-collide-with          uint64    :offset-assert 216)
+   (gnd-collide-with          collide-kind    :offset-assert 216)
    (debug-draw-neck           symbol     :offset-assert 224)
    (debug-draw-jump           symbol     :offset-assert 228)
    )
   :method-count-assert 9
   :size-assert         #xe8
   :flag-assert         #x9000000e8
+  )
+
+(defenum nav-enemy-flags
+  :bitfield #t
+  :type uint32
+  (navenmf0 0)
+  (navenmf1 1)
+  (navenmf2 2)
+  (enable-rotate 3)
+  (enable-travel 4)
+  (navenmf5 5)
+  (navenmf6 6)
+  (navenmf7 7)
+  (navenmf8 8)
+  (standing-jump 9)
+  (drop-jump 10)
+  (navenmf11 11)
+  (navenmf12 12)
+  (navenmf13 13)
+  (navenmf14 14)
+  (navenmf15 15)
+  (navenmf16 16)
+  (navenmf17 17)
+  (navenmf18 18)
+  (navenmf19 19)
+  (navenmf20 20)
+  (navenmf21 21)
+  (navenmf22 22)
+  (navenmf23 23)
+  (navenmf24 24)
+  (navenmf25 25)
+  (navenmf26 26)
+  (navenmf27 27)
+  (navenmf28 28)
+  (navenmf29 29)
+  (navenmf30 30)
+  (navenmf31 31)
   )
 
 (deftype nav-enemy (process-drawable)
@@ -22671,22 +22721,22 @@
    (frustration-point   vector     :inline :offset-assert 208)
    (jump-dest           vector     :inline :offset-assert 224)
    (jump-trajectory     trajectory :inline :offset-assert 240)
-   (jump-time           time-frame              :offset-assert 280)
+   (jump-time           time-frame         :offset-assert 280)
    (nav-info            nav-enemy-info     :offset-assert 288)
    (target-speed        float              :offset-assert 292)
    (momentum-speed      float              :offset-assert 296)
    (acceleration        float              :offset-assert 300)
    (rotate-speed        float              :offset-assert 304)
-   (turn-time           time-frame              :offset-assert 312)
-   (frustration-time    time-frame              :offset-assert 320)
+   (turn-time           time-frame         :offset-assert 312)
+   (frustration-time    time-frame         :offset-assert 320)
    (speed-scale         float              :offset-assert 328)
    (neck                joint-mod          :offset-assert 332)
-   (reaction-time       time-frame              :offset-assert 336)
-   (notice-time         time-frame              :offset-assert 344)
-   (state-timeout       time-frame              :offset-assert 352)
-   (free-time           time-frame              :offset-assert 360)
-   (touch-time          time-frame              :offset-assert 368)
-   (nav-enemy-flags     uint32             :offset-assert 376)
+   (reaction-time       time-frame         :offset-assert 336)
+   (notice-time         time-frame         :offset-assert 344)
+   (state-timeout       time-frame         :offset-assert 352)
+   (free-time           time-frame         :offset-assert 360)
+   (touch-time          time-frame         :offset-assert 368)
+   (nav-enemy-flags     nav-enemy-flags    :offset-assert 376)
    (incomming-attack-id handle             :offset-assert 384)
    (jump-return-state   (state process)    :offset-assert 392)
    (rand-gen            random-generator              :offset-assert 396)

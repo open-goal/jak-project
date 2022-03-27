@@ -1475,7 +1475,8 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
   int end_bit = 64 + start_bit;
 
   for (auto& field : type_info->fields()) {
-    if (field.offset() < start_bit || (field.offset() + field.size()) > end_bit) {
+    if (field.skip_in_decomp() || field.offset() < start_bit ||
+        (field.offset() + field.size()) > end_bit) {
       continue;
     }
 

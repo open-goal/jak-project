@@ -524,8 +524,8 @@ FormElement* make_label_load(int label_idx,
   if (as_bitfield && load_kind != LoadVarOp::Kind::FLOAT && load_size == 8) {
     // get the data
     ASSERT((label.offset % 8) == 0);
-    auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+    auto& word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    auto& word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
     ASSERT(word0.kind() == LinkedWord::PLAIN_DATA);
     ASSERT(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;

@@ -327,7 +327,7 @@ swamp-rat-default-event-handler
     (set! (-> self turn-time) (seconds 0.07333333))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (while #t
-        (logior! (-> self nav-enemy-flags) 16)
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
         (ja-channel-push! 1 30)
         (let ((a0-2 (-> self skel root-channel 0)))
           (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
@@ -350,7 +350,7 @@ swamp-rat-default-event-handler
           (set! (-> a0-5 param 0) 1.0)
           (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-loop!)
           )
-        (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
         (let ((gp-0 (rand-vu-int-range 300 600))
               (s5-0 (-> *display* base-frame-counter))
               )
@@ -395,7 +395,7 @@ swamp-rat-default-event-handler
         (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
     (let ((a0-7 (-> self skel root-channel 0)))
       (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
@@ -595,7 +595,7 @@ swamp-rat-default-event-handler
                                      :use-proximity-notice #f
                                      :use-jump-blocked #f
                                      :use-jump-patrol #f
-                                     :gnd-collide-with #x1
+                                     :gnd-collide-with (collide-kind background)
                                      :debug-draw-neck #f
                                      :debug-draw-jump #f
                                      )

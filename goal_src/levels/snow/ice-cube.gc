@@ -114,7 +114,7 @@
                                     :use-proximity-notice #f
                                     :use-jump-blocked #f
                                     :use-jump-patrol #f
-                                    :gnd-collide-with #x1
+                                    :gnd-collide-with (collide-kind background)
                                     :debug-draw-neck #f
                                     :debug-draw-jump #f
                                     )
@@ -427,7 +427,7 @@
                        (= (-> arg0 type) target)
                        )
               (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-              (logior! (-> self nav-enemy-flags) 256)
+              (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
               (level-hint-spawn (game-text-id ice-cube-hint) "sksp0350" (the-as entity #f) *entity-pool* (game-task none))
               )
             )
@@ -462,7 +462,7 @@
                     )
            (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
            ;; NOTE fixed decompiler bug
-           (set! (-> self nav-enemy-flags) (logior (-> self nav-enemy-flags) 256))
+           (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
            )
          )
         ((= v1-0 'touched)
@@ -689,7 +689,7 @@
                     (collide-kind background)
                     (-> obj collide-info process)
                     s4-0
-                    (the-as uint 1)
+                    (new 'static 'pat-surface :noentity #x1)
                     )
                   )
             )
@@ -973,7 +973,7 @@
   :code
   (behavior ()
     (dummy-57 self)
-    (set! (-> self nav-enemy-flags) (logand -3 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (logclear! (-> self mask) (process-mask actor-pause))
     (go ice-cube-face-player)
     (none)
@@ -988,7 +988,7 @@
   :enter
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (dummy-57 self)
     (logclear! (-> self mask) (process-mask actor-pause))
     (if (or (not *target*)
@@ -1163,7 +1163,7 @@
   :enter
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (dummy-58 self)
     (if (or (not *target*)
             (logtest? (-> *target* state-flags) #x80f8)
@@ -1276,7 +1276,7 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (dummy-58 self)
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (set! (-> self next-skid-sound-time) (-> *display* base-frame-counter))
     (if (or (not *target*)
             (logtest? (-> *target* state-flags) #x80f8)
@@ -1288,7 +1288,7 @@
     (set! (-> self acceleration) (-> self nav-info run-acceleration))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
-    (logclear! (-> self nav flags) (nav-control-flags bit8))
+    (logclear! (-> self nav flags) (nav-control-flags navcf8))
     (set-root-prim-collide-with! (-> self collide-info) (collide-kind cak-2 cak-3 target crate enemy))
     (set! (-> self track-target?) #t)
     (set! (-> self slow-down?) #f)
@@ -1302,7 +1302,7 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav flags) (nav-control-flags bit8))
+    (logior! (-> self nav flags) (nav-control-flags navcf8))
     (set-root-prim-collide-with! (-> self collide-info) (collide-kind target))
     (none)
     )

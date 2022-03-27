@@ -476,11 +476,24 @@
 (declare-type collide-work structure)
 (declare-type touching-shapes-entry structure)
 
+(defenum nav-flags
+  :bitfield #t
+  :type uint8
+  (navf0 0)
+  (navf1 1)
+  (navf2 2)
+  (navf3 3)
+  (navf4 4)
+  (navf5 5)
+  (navf6 6)
+  (navf7 7)
+  )
+
 ;; we're a child of trsqv, so we store a full transform + derivative.
 (deftype collide-shape (trsqv)
   ((process               process-drawable            :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
-   (nav-flags             uint8              :offset-assert 145)
+   (nav-flags             nav-flags          :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
    (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
@@ -647,7 +660,7 @@
   (let ((obj (object-new allocation type-to-make (the int (-> type-to-make size)))))
     (set! (-> obj process) proc)
     (set! (-> obj max-iteration-count) 1)
-    (set! (-> obj nav-flags) #x1)
+    (set! (-> obj nav-flags) (nav-flags navf0))
     (set! (-> obj event-self) #f)
     (set! (-> obj event-other) #f)
     (set! (-> obj riders) #f)
