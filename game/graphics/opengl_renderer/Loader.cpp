@@ -505,6 +505,9 @@ void Loader::update(std::string& status_out, TexturePool& texture_pool) {
       auto& lev = it->second;
       // we're the only place that erases, so it's okay to unlock and hold a reference
       lk.unlock();
+      if (!lev.data.tfrag_load_done) {
+        did_gpu_stuff = true;
+      }
       if (upload_textures(loader_timer, lev.data, texture_pool)) {
         if (init_tie(loader_timer, lev.data)) {
           if (init_tfrag(loader_timer, lev.data)) {
@@ -533,6 +536,7 @@ void Loader::update(std::string& status_out, TexturePool& texture_pool) {
               texture_pool.unload_texture(tex.debug_name, lev.second.data.textures.at(i));
             }
           }
+          lk.unlock();
           for (auto tex : lev.second.data.textures) {
             if (EXTRA_TEX_DEBUG) {
               for (auto& slot : texture_pool.all_textures()) {
