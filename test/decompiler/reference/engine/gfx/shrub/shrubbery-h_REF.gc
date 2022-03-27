@@ -21,18 +21,18 @@
 
 ;; definition of type shrub-view-data
 (deftype shrub-view-data (structure)
-  ((data           uint128 3       :offset-assert   0)
-   (texture-giftag qword   :inline :offset          0)
-   (consts         vector  :inline :offset         16)
-   (fog-clamp      vector  :inline :offset         32)
-   (tex-start-ptr  int32           :offset         16)
-   (gifbufsum      float           :offset         16)
-   (mtx-buf-ptr    int32           :offset         20)
-   (exp23          float           :offset         20)
-   (fog-0          float           :offset         24)
-   (fog-1          float           :offset         28)
-   (fog-min        float           :offset         32)
-   (fog-max        float           :offset         36)
+  ((data           uint128    3       :offset-assert   0)
+   (texture-giftag gs-gif-tag :inline :offset          0)
+   (consts         vector     :inline :offset         16)
+   (fog-clamp      vector     :inline :offset         32)
+   (tex-start-ptr  int32              :offset         16)
+   (gifbufsum      float              :offset         16)
+   (mtx-buf-ptr    int32              :offset         20)
+   (exp23          float              :offset         20)
+   (fog-0          float              :offset         24)
+   (fog-1          float              :offset         28)
+   (fog-min        float              :offset         32)
+   (fog-max        float              :offset         36)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -44,16 +44,16 @@
   (format #t "[~8x] ~A~%" obj 'shrub-view-data)
   (format #t "~Tdata[3] @ #x~X~%" (-> obj data))
   (format #t "~Ttexture-giftag: #<qword @ #x~X>~%" (-> obj data))
-  (format #t "~Tconsts: #<vector @ #x~X>~%" (-> obj consts))
-  (format #t "~Tfog-clamp: #<vector @ #x~X>~%" (-> obj fog-clamp))
-  (format #t "~Ttex-start-ptr: ~D~%" (-> obj consts x))
-  (format #t "~Tgifbufsum: ~f~%" (-> obj consts x))
-  (format #t "~Tmtx-buf-ptr: ~D~%" (-> obj consts y))
-  (format #t "~Texp23: ~f~%" (-> obj consts y))
-  (format #t "~Tfog-0: ~f~%" (-> obj consts z))
-  (format #t "~Tfog-1: ~f~%" (-> obj consts w))
-  (format #t "~Tfog-min: ~f~%" (-> obj fog-clamp x))
-  (format #t "~Tfog-max: ~f~%" (-> obj fog-clamp y))
+  (format #t "~Tconsts: #<vector @ #x~X>~%" (&-> obj tex-start-ptr))
+  (format #t "~Tfog-clamp: #<vector @ #x~X>~%" (&-> obj fog-min))
+  (format #t "~Ttex-start-ptr: ~D~%" (-> obj tex-start-ptr))
+  (format #t "~Tgifbufsum: ~f~%" (-> obj gifbufsum))
+  (format #t "~Tmtx-buf-ptr: ~D~%" (-> obj mtx-buf-ptr))
+  (format #t "~Texp23: ~f~%" (-> obj exp23))
+  (format #t "~Tfog-0: ~f~%" (-> obj fog-0))
+  (format #t "~Tfog-1: ~f~%" (-> obj fog-1))
+  (format #t "~Tfog-min: ~f~%" (-> obj fog-min))
+  (format #t "~Tfog-max: ~f~%" (-> obj fog-max))
   obj
   )
 
@@ -95,9 +95,10 @@
 
 ;; definition of type instance-shrubbery
 (deftype instance-shrubbery (instance)
-  ((flat-normal vector :inline :offset-assert  64)
-   (flat-hwidth float          :offset         76)
-   (color       uint32         :offset          8)
+  ((color-indices uint32         :offset          8)
+   (flat-normal   vector :inline :offset-assert  64)
+   (flat-hwidth   float          :offset         76)
+   (color         uint32         :offset          8)
    )
   :method-count-assert 18
   :size-assert         #x50
@@ -131,7 +132,7 @@
 ;; definition of type drawable-tree-instance-shrub
 (deftype drawable-tree-instance-shrub (drawable-tree)
   ((info         prototype-array-shrub-info  :offset   8)
-   (colors-added uint32                      :offset  12)
+   (colors-added time-of-day-palette         :offset  12)
    )
   :method-count-assert 18
   :size-assert         #x24
@@ -292,7 +293,7 @@
    (chainb                    qword             8 :inline  :offset-assert 176)
    (colors                    rgba              1024       :offset-assert 304)
    (matrix-tmpl               qword             20 :inline :offset-assert 4400)
-   (count-tmpl                qword             20 :inline :offset-assert 4720)
+   (count-tmpl                vector4w          20 :inline :offset-assert 4720)
    (mscalf-tmpl               dma-packet        :inline    :offset-assert 5040)
    (mscalf-ret-tmpl           dma-packet        :inline    :offset-assert 5056)
    (adgif-tmpl                dma-gif-packet    :inline    :offset-assert 5072)
