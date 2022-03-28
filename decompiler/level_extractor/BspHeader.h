@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <optional>
 
 #include "decompiler/util/goal_data_reader.h"
 
@@ -13,45 +14,16 @@ class DecompilerTypeSystem;
 }  // namespace decompiler
 
 namespace level_tools {
-
-struct Vector {
-  float data[4];
-
-  void read_from_file(Ref ref);
-
-  std::string print(int indent = 0) const;
-  std::string print_meters(int indent = 0) const;
-};
-
-struct Matrix4h {
-  u16 data[16];
-  void read_from_file(Ref ref);
-};
-
-struct FileInfo {
-  std::string file_type;
-  std::string file_name;
-  u32 major_version;
-  u32 minor_version;
-
-  std::string maya_file_name;
-  std::string tool_debug;
-  std::string mdb_file_name;
-
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
-
-  std::string print(int indent = 0) const;
-};
-
 struct PrintSettings {
-  bool print_tfrag = true;
-  bool expand_draw_node = true;
-  bool expand_drawable_tree_tfrag = true;
-  bool expand_drawable_tree_trans_tfrag = true;
-  bool expand_drawable_tree_tie_proto = true;
+  bool print_tfrag = false;
+  bool expand_draw_node = false;
+  bool expand_drawable_tree_tfrag = false;
+  bool expand_drawable_tree_trans_tfrag = false;
+  bool expand_drawable_tree_tie_proto = false;
   bool expand_drawable_tree_tie_proto_data = false;
   bool expand_drawable_tree_instance_tie = false;
   bool expand_drawable_tree_actor = false;
+  bool expand_shrub = true;
 };
 
 struct DrawStats {
@@ -66,6 +38,45 @@ struct DrawStats {
   std::string print() const;
 };
 
+/////////////////////
+// Common Types
+/////////////////////
+
+// a normal vector of 4 floats.
+struct Vector {
+  float data[4];
+
+  void read_from_file(Ref ref);
+
+  std::string print(int indent = 0) const;
+  std::string print_meters(int indent = 0) const;
+};
+
+// a matrix with 16-bit integers.
+// typically requires some unpacking step to get meaningful values.
+struct Matrix4h {
+  u16 data[16];
+  void read_from_file(Ref ref);
+};
+
+// A time-of-day color palette.
+// this is just the raw data, doesn't have any unpacking/meaning.
+struct TimeOfDayPalette {
+  u32 width;
+  u32 height;
+  u32 pad;
+  std::vector<u32> colors;
+};
+
+/////////////////////
+// Drawable BVH
+/////////////////////
+
+// these types are all generic container types/base classes.
+// note that the unpacker just greedily chases things and doesn't deduplicate, so comparing
+// pointers for equality won't tell you if two things are the same game object or not.
+
+// the base class for everything in the BVH tree system.
 struct Drawable {
   virtual void read_from_file(TypedRef ref,
                               const decompiler::DecompilerTypeSystem& dts,
@@ -75,8 +86,9 @@ struct Drawable {
   virtual ~Drawable() = default;
 };
 
-struct DrawableInlineArray : public Drawable {};
-
+// a node in the BVH tree. It's just used for organizing things within a bsphere.
+// these nodes are always in inline arrays and have between 0 and 8 children.
+// the leaves of these nodes are some other type of drawable - the thing you actually want to draw.
 struct DrawNode : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -91,6 +103,53 @@ struct DrawNode : public Drawable {
   std::vector<std::unique_ptr<Drawable>> children;
   float distance = 0;
 };
+
+// an inline array of drawable. There are more specific types for the actual arrays.
+struct DrawableInlineArray : public Drawable {};
+
+// an inline array of draw nodes. All draw nodes at a level are stored in a drawable inline array.
+struct DrawableInlineArrayNode : public DrawableInlineArray {
+  s16 id;
+  s16 length;
+  Vector bsphere;
+
+  std::vector<DrawNode> draw_nodes;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+};
+
+// the generic base class for a "tree". A tree is a BVH with between 1 and 8 DrawNode roots.
+// there's typically a tree per renderer.
+struct DrawableTree : public Drawable {};
+
+// how we represent drawable trees that we don't support yet - this isn't a real type in the game.
+struct DrawableTreeUnknown : public DrawableTree {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+  std::string type_name;
+};
+
+struct DrawableInlineArrayUnknown : public DrawableInlineArray {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+  std::string type_name;
+};
+
+/////////////////////
+// Actors
+/////////////////////
+
+// there's a tree for actors - but we don't do anything with it yet.
 
 struct EntityActor {};
 
@@ -107,6 +166,25 @@ struct DrawableActor : public Drawable {
   std::string my_type() const override { return "drawable-actor"; }
 };
 
+struct DrawableTreeActor : public DrawableTree {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+
+  s16 id;
+  s16 length;
+  // todo time of day stuff
+  Vector bsphere;
+
+  std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
+};
+
+/////////////////////
+// TFRAG
+/////////////////////
+
 struct TFragmentDebugData {
   u16 num_tris[4];
   u16 num_dverts[4];
@@ -116,6 +194,7 @@ struct TFragmentDebugData {
   void read_from_file(Ref ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
 };
 
+// the "fragment" is just a collection of data that fits into the VU memory.
 struct TFragment : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -150,6 +229,67 @@ struct TFragment : public Drawable {
   //  generic // 60 - 64
 };
 
+// array of tfragments. This is used as part of the BVH tree
+struct DrawableInlineArrayTFrag : public DrawableInlineArray {
+  s16 id;
+  s16 length;
+  Vector bsphere;
+
+  std::vector<TFragment> tfragments;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+};
+
+// a top-level tfragment tree.
+// it has a BVH tree of tfragments as well as a time of day palette.
+struct DrawableTreeTfrag : public DrawableTree {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+
+  s16 id;
+  s16 length;
+  TimeOfDayPalette time_of_day;
+  Vector bsphere;
+
+  std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
+};
+
+// various specializations of tfragment.
+
+struct DrawableTreeTransTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-trans-tfrag"; }
+};
+
+struct DrawableTreeLowresTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-lowres-tfrag"; }
+};
+
+struct DrawableTreeDirtTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-dirt-tfrag"; }
+};
+
+struct DrawableTreeIceTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-ice-tfrag"; }
+};
+
+struct DrawableInlineArrayTransTFrag : public DrawableInlineArrayTFrag {
+  std::string my_type() const override { return "drawable-inline-array-trans-tfrag"; }
+};
+
+/////////////////////
+// TIE
+/////////////////////
+
+// a tie-fragment is a chunk of geometry that can be sent to the VU.
+// it's similar to a tfragment, but a bit simpler.
+// each prototype is made up of fragments.
 struct TieFragment : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -173,6 +313,9 @@ struct TieFragment : public Drawable {
   // todo, lots more
 };
 
+// represents an instance of a prototype.
+// each instance has its own color data, but the rest of the geometry/texture is shared between
+// all instances of the same prototype.
 struct InstanceTie : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -181,9 +324,9 @@ struct InstanceTie : public Drawable {
   std::string my_type() const override { return "instance-tie"; }
 
   // (bucket-index uint16           :offset 6)
-  u16 bucket_index;
+  u16 bucket_index;  // which prototype
   s16 id;
-  Vector bsphere;
+  Vector bsphere;  // where we are located
   Matrix4h origin;
   u16 flags;
   u16 wind_index;
@@ -193,101 +336,7 @@ struct InstanceTie : public Drawable {
   // todo, lots more
 };
 
-struct DrawableInlineArrayNode : public DrawableInlineArray {
-  s16 id;
-  s16 length;
-  Vector bsphere;
-
-  std::vector<DrawNode> draw_nodes;
-
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-};
-
-struct DrawableInlineArrayTFrag : public DrawableInlineArray {
-  s16 id;
-  s16 length;
-  Vector bsphere;
-
-  std::vector<TFragment> tfragments;
-
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-};
-
-struct DrawableInlineArrayInstanceTie : public DrawableInlineArray {
-  s16 id;
-  s16 length;
-  Vector bsphere;
-
-  std::vector<InstanceTie> instances;
-
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-};
-
-struct DrawableInlineArrayTransTFrag : public DrawableInlineArrayTFrag {
-  std::string my_type() const override { return "drawable-inline-array-trans-tfrag"; }
-};
-
-struct DrawableInlineArrayUnknown : public DrawableInlineArray {
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-  std::string type_name;
-};
-
-struct DrawableTree : public Drawable {};
-
-struct TimeOfDayPalette {
-  u32 width;
-  u32 height;
-  u32 pad;
-  std::vector<u32> colors;
-};
-
-struct DrawableTreeTfrag : public DrawableTree {
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-
-  s16 id;
-  s16 length;
-  // todo time of day stuff
-  TimeOfDayPalette time_of_day;
-  Vector bsphere;
-
-  std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
-};
-
-struct DrawableTreeActor : public DrawableTree {
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-
-  s16 id;
-  s16 length;
-  // todo time of day stuff
-  Vector bsphere;
-
-  std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
-};
-
+// a prototype is basically just a collection of fragments
 struct PrototypeTie : public DrawableInlineArray {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -301,6 +350,9 @@ struct PrototypeTie : public DrawableInlineArray {
   std::vector<TieFragment> tie_fragments;
 };
 
+// a prototype bucket is a collection of 4 different prototypes (called geometries), one for each
+// level of detail. All geometries share the same time of day palette.
+// the bucket also refers to the fact that it collect instances during actual rendering.
 struct PrototypeBucketTie {
   std::string name;  // 4 - 8
   u32 flags;         // 8 - 12
@@ -337,6 +389,8 @@ struct PrototypeBucketTie {
   std::string print(const PrintSettings& settings, int indent) const;
 };
 
+// an array of all the prototypes. The prototypes aren't stored in a BVH (it wouldn't make sense -
+// they can be located all over the place)- there is just a plain array.
 struct PrototypeArrayTie {
   u32 length;
   u32 allocated_length;
@@ -347,6 +401,8 @@ struct PrototypeArrayTie {
   std::string print(const PrintSettings& settings, int indent) const;
 };
 
+// the reason for this type is somewhat unknown, but it just contains the prototype array and
+// wind vectors. The wind vector data is all 0's and is updated as the game runs.
 struct ProxyPrototypeArrayTie {
   void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
   std::string print(const PrintSettings& settings, int indent) const;
@@ -355,6 +411,22 @@ struct ProxyPrototypeArrayTie {
   Ref wind_vectors;
 };
 
+// array of instances. These are part of the BVH
+struct DrawableInlineArrayInstanceTie : public DrawableInlineArray {
+  s16 id;
+  s16 length;
+  Vector bsphere;
+
+  std::vector<InstanceTie> instances;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+};
+
+// TIE tree
 struct DrawableTreeInstanceTie : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -370,31 +442,211 @@ struct DrawableTreeInstanceTie : public DrawableTree {
   std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
 };
 
-struct DrawableTreeTransTfrag : public DrawableTreeTfrag {
-  std::string my_type() const override { return "drawable-tree-trans-tfrag"; }
-};
+/////////////////////////////////
+// SHRUB
+/////////////////////////////////
 
-struct DrawableTreeLowresTfrag : public DrawableTreeTfrag {
-  std::string my_type() const override { return "drawable-tree-lowres-tfrag"; }
-};
+namespace shrub_types {
 
-struct DrawableTreeDirtTfrag : public DrawableTreeTfrag {
-  std::string my_type() const override { return "drawable-tree-dirt-tfrag"; }
-};
-
-struct DrawableTreeIceTfrag : public DrawableTreeTfrag {
-  std::string my_type() const override { return "drawable-tree-ice-tfrag"; }
-};
-
-struct DrawableTreeUnknown : public DrawableTree {
+struct Shrubbery : public level_tools::Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats) override;
-  std::string print(const PrintSettings& settings, int indent) const override;
-  std::string my_type() const override;
-  std::string type_name;
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "shrubbery"; }
+
+  // 4 - textures
+  std::vector<u8> textures;
+
+  std::vector<u32> header;
+  u8 obj_qwc;  // 12
+  u8 vtx_qwc;  // 13
+  u8 col_qwc;  // 14
+  u8 stq_qwc;  // 15
+
+  std::vector<u8> obj;  // 16
+  std::vector<u8> vtx;  // 20
+  std::vector<u8> col;  // 24
+  std::vector<u8> stq;  // 28
 };
 
+struct PrototypeShrubbery : public level_tools::DrawableInlineArray {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "prototype-shrubbery"; }
+  s16 id;      // 0
+  s16 length;  // 4
+
+  level_tools::Vector bsphere;    // 16
+  std::vector<Shrubbery> shrubs;  // 32
+};
+
+struct Billboard {};
+
+struct GenericShrubFragment : public level_tools::Drawable {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "generic-shrub-fragment"; }
+
+  //
+  // (textures (inline-array adgif-shader)         :score 999 :offset 4)
+  std::vector<u8> textures;
+  // (vtx-cnt  uint32         :score 999 :offset 8)
+  u32 vtx_cnt;
+  // (cnt-qwc  uint8          :score 999 :offset 12)
+  u8 cnt_qwc;
+  // (vtx-qwc  uint8          :score 999 :offset 13)
+  u8 vtx_qwc;
+  // (col-qwc  uint8          :score 999 :offset 14)
+  u8 col_qwc;
+  // (stq-qwc  uint8          :score 999 :offset 15)
+  u8 stq_qwc;
+  // (cnt      uint32         :score 999 :offset 16)
+  std::vector<u8> cnt;
+  // (vtx      uint32         :score 999 :offset 20)
+  std::vector<u8> vtx;
+  // (col      uint32         :score 999 :offset 24)
+  std::vector<u8> col;
+  // (stq      uint32         :score 999 :offset 28)
+  std::vector<u8> stq;
+};
+
+// really a drawable-group, but we'll make it drawable here.
+struct PrototypeGenericShrub : public level_tools::Drawable {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "prototype-generic-shrub"; }
+  s16 length;  // 4
+
+  level_tools::Vector bsphere;               // 16
+  std::vector<GenericShrubFragment> shrubs;  // 32
+};
+
+struct PrototypeBucketShrub {
+  std::string name;  // 4
+  u32 flags;         // 8
+  u16 in_level;      // 12
+  u16 utextures;     // 14
+
+  // PrototypeShrubbery geometry[4];  // 16
+  PrototypeGenericShrub generic_geom;  // 0
+  PrototypeShrubbery shrubbery_geom;   // 1
+  // todo transparent geom
+  // todo billboard geom
+
+  level_tools::Vector dists;  // 32
+  // - near-plane
+  // - near-stiff
+  // - mid-plane
+  // - far-plane
+  level_tools::Vector rdists;  // 48
+  // - rlength-near
+  // - rlength-stiff
+  // - rlength-mid
+  // - stiffness
+
+  float stiffness;  // - 60
+
+  // the next/last/count/mod stuff is all 0's.
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats);
+  std::string print(const level_tools::PrintSettings& settings, int indent) const;
+};
+
+struct PrototypeInlineArrayShrub {
+  s16 id;                                  // 4
+  s16 length;                              // 6
+  level_tools::Vector bsphere;             // 16
+  std::vector<PrototypeBucketShrub> data;  // 32
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats);
+  std::string print(const level_tools::PrintSettings& settings, int indent) const;
+};
+
+struct PrototypeArrayShrubInfo {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats);
+  std::string print(const level_tools::PrintSettings& settings, int indent) const;
+
+  PrototypeInlineArrayShrub prototype_inline_array_shrub;
+  Ref wind_vectors;
+};
+
+struct InstanceShrubbery : public level_tools::Drawable {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "instance-shrubbery"; }
+
+  s16 id;                        // 4
+  u16 bucket_index;              // 6
+  level_tools::Vector bsphere;   // 16
+  level_tools::Matrix4h origin;  // 32
+  u16 wind_index;                // 62
+
+  // --- instance-shrubbery ---
+  u32 color_indices;                // 8 - unlike tie, I think this is just an integer offset
+  level_tools::Vector flat_normal;  // 64 (w is flat_hwidth)
+};
+
+struct DrawableInlineArrayInstanceShrub : public level_tools::DrawableInlineArray {
+  s16 id;
+  s16 length;
+  level_tools::Vector bsphere;
+
+  std::vector<InstanceShrubbery> instances;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "drawable-inline-array-instance-shrub"; }
+};
+
+struct DrawableTreeInstanceShrub : public level_tools::DrawableTree {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      level_tools::DrawStats* stats) override;
+  std::string print(const level_tools::PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+
+  s16 id;                        // 0
+  s16 length;                    // 4
+  PrototypeArrayShrubInfo info;  // 8
+  TimeOfDayPalette time_of_day;
+  level_tools::Vector bsphere;  // 16
+
+  std::vector<std::unique_ptr<level_tools::DrawableInlineArray>> arrays;
+
+  // annoyingly, the shrub tree only has the top level in the array....
+  // so we can't use the above "arrays" like we did in tfrag/tie.
+  // luckily, it seems to be possible to figure out the location of the remaining arrays.
+  // so we add this field to hold the arrays we found.
+  // note that the tree format is not quite the same as tfrag/tie - the 8 child max is no longer
+  // true, and the arrays are not truly by depth (the leaves aren't all the same depth)
+  // this means there may be multiple arrays of instances, and we'll need to check all of them.
+  std::vector<std::unique_ptr<level_tools::DrawableInlineArray>> discovered_arrays;
+};
+
+}  // namespace shrub_types
+
+////////////////////////////////
+// Main Level Type (bsp-header)
+////////////////////////////////
+
+// all the different trees are stored in a drawable-tree-array.
 struct DrawableTreeArray {
   s16 id;
   s16 length;
@@ -406,9 +658,26 @@ struct DrawableTreeArray {
   std::vector<std::unique_ptr<DrawableTree>> trees;
 };
 
+// levels may remap textures if they provide one that should be shared
 struct TextureRemap {
   u32 original_texid;
   u32 new_texid;
+};
+
+// The "file info"
+struct FileInfo {
+  std::string file_type;
+  std::string file_name;
+  u32 major_version;
+  u32 minor_version;
+
+  std::string maya_file_name;
+  std::string tool_debug;
+  std::string mdb_file_name;
+
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+
+  std::string print(int indent = 0) const;
 };
 
 struct BspHeader {

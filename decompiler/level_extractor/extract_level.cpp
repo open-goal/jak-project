@@ -4,6 +4,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_tfrag.h"
 #include "decompiler/level_extractor/extract_tie.h"
+#include "decompiler/level_extractor/extract_shrub.h"
 #include "common/util/compress.h"
 #include "common/util/FileUtil.h"
 
@@ -182,6 +183,12 @@ void extract_from_level(ObjectFileDB& db,
   bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats);
   ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
 
+  /*
+  level_tools::PrintSettings settings;
+  settings.expand_shrub = true;
+  fmt::print("{}\n", bsp_header.print(settings));
+  */
+
   const std::set<std::string> tfrag_trees = {
       "drawable-tree-tfrag",     "drawable-tree-trans-tfrag",  "drawable-tree-dirt-tfrag",
       "drawable-tree-ice-tfrag", "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
@@ -207,6 +214,12 @@ void extract_from_level(ObjectFileDB& db,
       ASSERT(as_tie_tree);
       extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
                   bsp_header.texture_remap_table, tex_db, tfrag_level, dump_level);
+    } else if (draw_tree->my_type() == "drawable-tree-instance-shrub") {
+      auto as_shrub_tree =
+          dynamic_cast<level_tools::shrub_types::DrawableTreeInstanceShrub*>(draw_tree.get());
+      ASSERT(as_shrub_tree);
+      extract_shrub(as_shrub_tree, fmt::format("{}-{}-shrub", dgo_name, i++),
+                    bsp_header.texture_remap_table, tex_db, {}, tfrag_level, dump_level);
     } else {
       // fmt::print("  unsupported tree {}\n", draw_tree->my_type());
     }

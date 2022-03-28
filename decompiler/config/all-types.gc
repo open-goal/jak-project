@@ -9497,11 +9497,11 @@
 ;; - Types
 
 (deftype prototype-bucket (basic)
-  ((name          basic           :offset-assert 4)
+  ((name          string           :offset-assert 4)
    (flags         uint32          :offset-assert 8)
    (in-level      uint16          :offset-assert 12)
    (utextures     uint16          :offset-assert 14)
-   (geometry      drawable 4        :offset-assert 16)
+   (geometry      drawable 4        :offset-assert 16) ;; 15, 20, 24
    (dists         vector  :inline :offset-assert 32)
    (rdists        vector  :inline :offset-assert 48)
    (next          uint32 4        :offset-assert 64)
@@ -9515,6 +9515,10 @@
    (rlength-mid   float           :offset 56)
    (stiffness     float           :offset 60)
    (next-clear    uint128         :offset 64)
+   (next-clear-1  int32 :offset 64)
+   (next-clear-2  int32 :offset 68)
+   (next-clear-3  int32 :offset 72)
+   (next-clear-4  int32 :offset 76)
    (count-clear   uint64          :offset 80)
    )
   :method-count-assert 9
@@ -9523,8 +9527,14 @@
   )
 
 (deftype prototype-bucket-shrub (prototype-bucket)
-  ((mod-count     uint16  4       :offset-assert 88)
-   (last          uint32  4       :offset-assert 96)
+  (;; Geometry Array
+   ;; - prototype-generic-shrub / shrub-near (drawn with generic)
+   ;; - prototype-shrubbery
+   ;; - prototype-trans-shrubbery
+   ;; - billboard
+   (mod-count     uint16  4       :offset-assert 88)
+   (last          dma-packet 4       :offset-assert 96)
+   (count-clear-qword   uint128         :offset 80)
    (last-clear    uint128         :offset 96)
    )
   :method-count-assert 9
@@ -12791,6 +12801,7 @@
 
 ;; - Types
 
+;; Single rectangle -- only one texture (aka adgif-shader)
 (deftype billboard (drawable)
   ((flat    adgif-shader :inline :offset-assert 32)
    )
@@ -12800,18 +12811,19 @@
   )
 
 (deftype shrub-view-data (structure)
-  ((data           uint128 3       :offset-assert 0)
-   (texture-giftag qword   :inline :offset 0)
+  ((data           uint128 3                   :offset-assert 0)
+   (texture-giftag gs-gif-tag   :inline :offset 0)
    (consts         vector  :inline :offset 16)
    (fog-clamp      vector  :inline :offset 32)
-   (tex-start-ptr  int32           :offset 16)
-   (gifbufsum      float           :offset 16)
-   (mtx-buf-ptr    int32           :offset 20)
-   (exp23          float           :offset 20)
-   (fog-0          float           :offset 24)
-   (fog-1          float           :offset 28)
-   (fog-min        float           :offset 32)
-   (fog-max        float           :offset 36)
+   (tex-start-ptr  int32          :score 999 :offset 16)
+   (gifbufsum      float          :score 999 :offset 16)
+   ;; suspected to be part of hacks to get around VU's lack of integer operations
+   (mtx-buf-ptr    int32          :score 999 :offset 20)
+   (exp23          float          :score 999 :offset 20)
+   (fog-0          float          :score 999 :offset 24)
+   (fog-1          float          :score 999 :offset 28)
+   (fog-min        float          :score 999 :offset 32)
+   (fog-max        float          :score 999 :offset 36)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -12820,11 +12832,19 @@
 
 (deftype shrubbery (drawable)
   ((textures (inline-array adgif-shader) :offset 4)
+   ;; header breakdown:
+   ;; [0] - number of textures / 2
+   ;; [1] - number of vertices
+   ;; [2] - number of triangle strips
+   ;; [3] - ??
+   ;;
+   ;; Number of Triangles in the Shrub = header[2] - 2 * header[1]
    (header   qword          :offset 8)
    (obj-qwc  uint8          :offset 12)
    (vtx-qwc  uint8          :offset 13)
    (col-qwc  uint8          :offset 14)
    (stq-qwc  uint8          :offset 15)
+   ;; start of static dma-chain
    (obj      uint32         :score 999 :offset 16)
    (vtx      uint32         :score 999 :offset 20)
    (col      uint32         :score 999 :offset 24)
@@ -12836,7 +12856,8 @@
   )
 
 (deftype instance-shrubbery (instance)
-  ((flat-normal  vector   :inline :offset-assert 64)
+  ((color-indices        uint32   :offset 8)
+   (flat-normal  vector   :inline :offset-assert 64)
    (flat-hwidth  float            :offset 76)
    (color        uint32           :offset 8)
    )
@@ -12856,7 +12877,7 @@
 
 (deftype drawable-tree-instance-shrub (drawable-tree)
   ((info prototype-array-shrub-info :offset 8)
-   (colors-added uint32 :offset 12) ;; added
+   (colors-added time-of-day-palette :offset 12) ;; added
    )
   :method-count-assert #x12
   :size-assert #x24
@@ -12866,6 +12887,8 @@
 (deftype generic-shrub-fragment (drawable)
   ((textures (inline-array adgif-shader)         :score 999 :offset 4)
    (vtx-cnt  uint32         :score 999 :offset 8)
+   ;; the total size of the textures array
+   ;; - each texture is 5 qwords
    (cnt-qwc  uint8          :score 999 :offset 12)
    (vtx-qwc  uint8          :score 999 :offset 13)
    (col-qwc  uint8          :score 999 :offset 14)
@@ -12933,7 +12956,7 @@
    (chainb                    qword        8       :inline :offset-assert 176)
    (colors                    rgba           1024    :offset-assert 304)
    (matrix-tmpl               qword        20      :inline :offset-assert 4400)
-   (count-tmpl                qword        20      :inline :offset-assert 4720)
+   (count-tmpl                vector4w        20      :inline :offset-assert 4720)
    (mscalf-tmpl               dma-packet     :inline :offset-assert 5040)
    (mscalf-ret-tmpl           dma-packet     :inline :offset-assert 5056)
    (adgif-tmpl                dma-gif-packet :inline :offset-assert 5072)
@@ -17058,19 +17081,19 @@
 ;; - Functions
 
 (define-extern upload-generic-shrub (function dma-buffer generic-shrub-fragment int int dma-buffer))
-(define-extern shrub-num-tris (function shrubbery int))
-(define-extern shrub-init-frame function)
-(define-extern shrub-upload-model function)
-(define-extern shrub-do-init-frame function)
-(define-extern shrub-upload-view-data function)
-(define-extern shrub-init-view-data function)
-(define-extern mem-usage-shrub-walk function)
-(define-extern shrub-make-perspective-matrix (function matrix none))
-(define-extern shrub-time function)
-(define-extern draw-inline-array-instance-shrub function)
-(define-extern draw-prototype-inline-array-shrub function)
+(define-extern shrub-num-tris (function shrubbery uint))
+(define-extern shrub-init-frame (function dma-buffer gs-test none))
+(define-extern shrub-upload-model (function shrubbery dma-buffer int symbol)) ;; third arg is `start-bank` from shrub-work
+(define-extern shrub-do-init-frame (function dma-buffer symbol))
+(define-extern shrub-upload-view-data (function dma-buffer symbol))
+(define-extern shrub-init-view-data (function shrub-view-data symbol))
+(define-extern mem-usage-shrub-walk (function draw-node int memory-usage-block int draw-node))
+(define-extern shrub-make-perspective-matrix (function matrix matrix))
+(define-extern shrub-time (function int int int int int int)) ;; unused
+(define-extern draw-inline-array-instance-shrub (function dma-buffer drawable int (inline-array prototype-bucket-shrub) none))
+(define-extern draw-prototype-inline-array-shrub (function int (inline-array prototype-bucket-shrub) pointer))
 (define-extern shrub-upload-test (function generic-shrub-fragment none))
-(define-extern test-func function)
+(define-extern test-func (function none))
 
 ;; - Unknowns
 

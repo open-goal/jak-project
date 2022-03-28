@@ -135,6 +135,10 @@ std::unique_ptr<Drawable> make_draw_node_child(TypedRef ref,
     auto result = std::make_unique<DrawableActor>();
     result->read_from_file(ref, dts, stats);
     return result;
+  } else if (ref.type->get_name() == "instance-shrubbery") {
+    auto result = std::make_unique<shrub_types::InstanceShrubbery>();
+    result->read_from_file(ref, dts, stats);
+    return result;
   } else {
     throw Error("Unknown child of draw node: {}\n", ref.type->get_name());
   }
@@ -149,6 +153,8 @@ int get_child_stride(const std::string& type) {
     return 64;
   } else if (type == "drawable-actor") {
     return 32;
+  } else if (type == "instance-shrubbery") {
+    return 80;
   } else {
     throw Error("unknown child for stride: {}", type);
   }
@@ -752,6 +758,13 @@ std::unique_ptr<DrawableInlineArray> make_drawable_inline_array(
     result->read_from_file(ref, dts, stats);
     return result;
   }
+
+  if (ref.type->get_name() == "drawable-inline-array-instance-shrub") {
+    auto result = std::make_unique<shrub_types::DrawableInlineArrayInstanceShrub>();
+    result->read_from_file(ref, dts, stats);
+    return result;
+  }
+
   auto result = std::make_unique<DrawableInlineArrayUnknown>();
   result->read_from_file(ref, dts, stats);
   return result;
@@ -872,7 +885,6 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   ASSERT(flags == 0 || flags == 2);
   in_level = read_plain_data_field<u16>(ref, "in-level", dts);
   utextures = read_plain_data_field<u16>(ref, "utextures", dts);
-  // todo drawables
   dists.read_from_file(get_field_ref(ref, "dists", dts));
   rdists.read_from_file(get_field_ref(ref, "rdists", dts));
   stiffness = read_plain_data_field<float>(ref, "stiffness", dts);
@@ -1106,6 +1118,424 @@ std::string DrawableTreeInstanceTie::my_type() const {
   return "drawable-tree-instance-tie";
 }
 
+//////////////////////////
+// shrub
+//////////////////////////
+
+namespace shrub_types {
+
+void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
+                                               const decompiler::DecompilerTypeSystem& dts,
+                                               level_tools::DrawStats* stats) {
+  // the usual drawable stuff
+  id = read_plain_data_field<s16>(ref, "id", dts);
+  length = read_plain_data_field<s16>(ref, "length", dts);
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+
+  // unfortunately, shrub uses the arrays thing differently.
+  // there's just one top level array, and the nodes are a bit scattered in memory below that.
+  // it doesn't have the 8 child rule
+  auto data_ref = get_field_ref(ref, "data", dts);
+  if ((data_ref.byte_offset % 4) != 0) {
+    throw Error("misaligned data array");
+  }
+  for (int idx = 0; idx < length; idx++) {
+    Ref array_slot_ref = data_ref;
+    array_slot_ref.byte_offset += idx * 4;
+
+    Ref object_ref = deref_label(array_slot_ref);
+    object_ref.byte_offset -= 4;
+
+    arrays.push_back(make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+  }
+  // confirm that we have the weird shrub pattern and only found one array.
+  ASSERT(length == 1);
+
+  // now, let's try to discover the remaining arrays (instances).
+  // basically we just look after the top level array in memory.
+  // once we find something else (the time of day palette) we know we're at the end.
+  // the game finds these by traversing the tree, but this is a little easier, and gets us
+  // the familiar arrays that we used in tie/tfrag.
+
+  Ref object_ref = deref_label(data_ref);
+  object_ref.byte_offset -= 4;
+  discovered_arrays.push_back(
+      make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+
+  bool done = false;
+  object_ref.byte_offset += 16;
+  while (!done) {
+    auto& word = object_ref.data->words_by_seg.at(object_ref.seg).at(object_ref.byte_offset / 4);
+    if (word.kind() == decompiler::LinkedWord::TYPE_PTR) {
+      if (word.symbol_name() == "drawable-inline-array-node") {
+        discovered_arrays.push_back(
+            make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+      } else if (word.symbol_name() == "drawable-inline-array-instance-shrub") {
+        discovered_arrays.push_back(
+            make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+      } else if (word.symbol_name() == "time-of-day-palette") {
+        done = true;
+      } else {
+        ASSERT(word.symbol_name() == "draw-node" || word.symbol_name() == "instance-shrubbery");
+      }
+    }
+    object_ref.byte_offset += 16;
+  }
+
+  // this "info" thing holds all the prototypes
+  auto pt = deref_label(get_field_ref(ref, "info", dts));
+  pt.byte_offset -= 4;
+  info.read_from_file(typed_ref_from_basic(pt, dts), dts, stats);
+
+  // time of day palette. we'll want these colors in the FR3 file.
+  auto palette = deref_label(get_field_ref(ref, "colors-added", dts));
+  time_of_day.width = deref_u32(palette, 0);
+  ASSERT(time_of_day.width == 8);
+  time_of_day.height = deref_u32(palette, 1);
+  time_of_day.pad = deref_u32(palette, 2);
+  ASSERT(time_of_day.pad == 0);
+  for (int i = 0; i < int(8 * time_of_day.height); i++) {
+    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
+  }
+}
+
+std::string DrawableTreeInstanceShrub::my_type() const {
+  return "drawable-tree-instance-shrub";
+}
+
+std::string DrawableTreeInstanceShrub::print(const level_tools::PrintSettings& settings,
+                                             int indent) const {
+  if (!settings.expand_shrub) {
+    return "";
+  }
+  std::string is(indent, ' ');
+  std::string result;
+  int next_indent = indent + 4;
+  result += fmt::format("{}id: {}\n", is, id);
+  result += fmt::format("{}length: {}\n", is, length);
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+
+  if (settings.expand_shrub) {
+    for (size_t i = 0; i < discovered_arrays.size(); i++) {
+      result += fmt::format("{}arrays [{}] ({}):\n", is, i, discovered_arrays[i]->my_type());
+      result += discovered_arrays[i]->print(settings, next_indent);
+    }
+
+    result += fmt::format("{}prototypes:\n", is);
+    result += info.print(settings, next_indent);
+  }
+
+  return result;
+}
+
+void InstanceShrubbery::read_from_file(TypedRef ref,
+                                       const decompiler::DecompilerTypeSystem& dts,
+                                       level_tools::DrawStats* /*stats*/) {
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+  bucket_index = read_plain_data_field<u16>(ref, "bucket-index", dts);
+  id = read_plain_data_field<s16>(ref, "id", dts);
+  origin.read_from_file(get_field_ref(ref, "origin", dts));
+  wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
+  color_indices = read_plain_data_field<u32>(ref, "color-indices", dts);
+  flat_normal.read_from_file(get_field_ref(ref, "flat-normal", dts));
+}
+
+std::string InstanceShrubbery::print(const level_tools::PrintSettings& /*settings*/,
+                                     int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+  result += fmt::format("{}bucket-index: {}\n", is, bucket_index);
+  result += fmt::format("{}flat-normal: {}", is, flat_normal.print_meters());
+  result += fmt::format("{}color-indices: {}\n", is, color_indices);
+  result += fmt::format("{}wind-index: {}\n", is, wind_index);
+  return result;
+}
+
+void DrawableInlineArrayInstanceShrub::read_from_file(TypedRef ref,
+                                                      const decompiler::DecompilerTypeSystem& dts,
+                                                      DrawStats* stats) {
+  id = read_plain_data_field<s16>(ref, "id", dts);
+  length = read_plain_data_field<s16>(ref, "length", dts);
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+
+  auto data_ref = get_field_ref(ref, "data", dts);
+  for (int i = 0; i < length; i++) {
+    Ref obj_ref = data_ref;
+    obj_ref.byte_offset += 80 * i;  // todo not a constant here
+    auto type = get_type_of_basic(obj_ref);
+    if (type != "instance-shrubbery") {
+      throw Error("bad draw node type: {}", type);
+    }
+    instances.emplace_back();
+    instances.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+  }
+}
+
+std::string DrawableInlineArrayInstanceShrub::print(const PrintSettings& settings,
+                                                    int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  int next_indent = indent + 4;
+  result += fmt::format("{}id: {}\n", is, id);
+  result += fmt::format("{}length: {}\n", is, length);
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+
+  if (settings.expand_shrub) {
+    for (size_t i = 0; i < instances.size(); i++) {
+      result += fmt::format("{}draw-nodes [{}] ({}):\n", is, i, instances[i].my_type());
+      result += instances[i].print(settings, next_indent);
+    }
+  }
+
+  return result;
+}
+
+void PrototypeArrayShrubInfo::read_from_file(TypedRef ref,
+                                             const decompiler::DecompilerTypeSystem& dts,
+                                             level_tools::DrawStats* stats) {
+  prototype_inline_array_shrub.read_from_file(
+      get_and_check_ref_to_basic(ref, "prototype-inline-array-shrub",
+                                 "prototype-inline-array-shrub", dts),
+      dts, stats);
+  wind_vectors = deref_label(get_field_ref(ref, "wind-vectors", dts));
+}
+
+std::string PrototypeArrayShrubInfo::print(const level_tools::PrintSettings& settings,
+                                           int indent) const {
+  return prototype_inline_array_shrub.print(settings, indent);
+}
+
+void PrototypeInlineArrayShrub::read_from_file(TypedRef ref,
+                                               const decompiler::DecompilerTypeSystem& dts,
+                                               level_tools::DrawStats* stats) {
+  length = read_plain_data_field<s16>(ref, "length", dts);
+  auto data_ref = get_field_ref(ref, "data", dts);
+
+  for (int i = 0; i < length; i++) {
+    Ref thing = data_ref;
+    // note: unlike tie, these are stored in an inline array.
+    thing.byte_offset += 112 * i;  // todo - not a constant here
+    auto type = get_type_of_basic(thing);
+    if (type != "prototype-bucket-shrub") {
+      throw Error("bad type in PrototypeInlineArrayShrub data: {}\n", type);
+    }
+    data.emplace_back();
+    data.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats);
+  }
+}
+
+std::string PrototypeGenericShrub::print(const level_tools::PrintSettings& settings,
+                                         int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  int next_indent = indent + 4;
+  result += fmt::format("{}length: {}\n", is, length);
+
+  for (u32 i = 0; i < shrubs.size(); i++) {
+    result += fmt::format("{}data [{}]:\n", is, i);
+    result += shrubs[i].print(settings, next_indent);
+  }
+  return result;
+}
+
+void PrototypeGenericShrub::read_from_file(TypedRef ref,
+                                           const decompiler::DecompilerTypeSystem& dts,
+                                           level_tools::DrawStats* stats) {
+  length = read_plain_data_field<s16>(ref, "length", dts);
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+  auto data_ref = get_field_ref(ref, "data", dts);
+  for (int i = 0; i < length; i++) {
+    Ref thing = data_ref;
+    // note: unlike tie, these are stored in an inline array.
+    thing.byte_offset += 4 * i;  // 4 byte pointer
+    thing = deref_label(thing);
+    thing.byte_offset -= 4;  // basic offset
+    auto type = get_type_of_basic(thing);
+    if (type != "generic-shrub-fragment") {
+      throw Error("bad type in PrototypeGenericShrub data: {}\n", type);
+    }
+    shrubs.emplace_back();
+    shrubs.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats);
+  }
+}
+
+std::string PrototypeInlineArrayShrub::print(const level_tools::PrintSettings& settings,
+                                             int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  int next_indent = indent + 4;
+  result += fmt::format("{}length: {}\n", is, length);
+
+  for (u32 i = 0; i < data.size(); i++) {
+    result += fmt::format("{}data [{}]:\n", is, i);
+    result += data[i].print(settings, next_indent);
+  }
+  return result;
+}
+
+void PrototypeBucketShrub::read_from_file(TypedRef ref,
+                                          const decompiler::DecompilerTypeSystem& dts,
+                                          level_tools::DrawStats* stats) {
+  name = read_string_field(ref, "name", dts, true);
+  flags = read_plain_data_field<u32>(ref, "flags", dts);
+  if (flags) {
+    // lid in misty has flag 2, not sure what it means yet.
+    fmt::print("proto: {} flags: {}\n", name, flags);
+  }
+  ASSERT(flags == 0 || flags == 2);
+  in_level = read_plain_data_field<u16>(ref, "in-level", dts);
+  utextures = read_plain_data_field<u16>(ref, "utextures", dts);
+  dists.read_from_file(get_field_ref(ref, "dists", dts));
+  rdists.read_from_file(get_field_ref(ref, "rdists", dts));
+  stiffness = read_plain_data_field<float>(ref, "stiffness", dts);
+  // 64 to 112 should be zeros
+  for (int i = 0; i < 12; i++) {
+    ASSERT(deref_u32(ref.ref, 16 + i) == 0);
+  }
+
+  auto geom_start = get_field_ref(ref, "geometry", dts);
+
+  // first geometry is generic and we should always have it.
+  auto generic_geom_l = deref_label(geom_start);
+  generic_geom_l.byte_offset -= 4;
+  if (get_type_of_basic(generic_geom_l) != "prototype-generic-shrub") {
+    throw Error("bad generic shrub type: {}", get_type_of_basic(generic_geom_l));
+  }
+  geom_start.byte_offset += 4;
+
+  // second is same data, but in prototype-shrubbery form (for normal shrub renderer)
+  auto normal_geom = deref_label(geom_start);
+  normal_geom.byte_offset -= 4;
+  if (get_type_of_basic(normal_geom) != "prototype-shrubbery") {
+    throw Error("bad normal shrub type: {}", get_type_of_basic(normal_geom));
+  }
+  shrubbery_geom.read_from_file(typed_ref_from_basic(normal_geom, dts), dts, stats);
+  geom_start.byte_offset += 4;
+
+  generic_geom.read_from_file(typed_ref_from_basic(generic_geom_l, dts), dts, stats);
+
+  // todo transparent version
+  // todo billboard version.
+}
+
+std::string PrototypeBucketShrub::print(const level_tools::PrintSettings& settings,
+                                        int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  result += fmt::format("{}name: {}\n", is, name);
+  result += fmt::format("{}flags: {}\n", is, flags);
+
+  result += fmt::format("{}generic-geometry [0]:\n", is);
+  result += generic_geom.print(settings, indent + 4);
+
+  result += fmt::format("{}normal-geometry [1]:\n", is);
+  result += shrubbery_geom.print(settings, indent + 4);
+
+  return result;
+}
+
+void PrototypeShrubbery::read_from_file(TypedRef ref,
+                                        const decompiler::DecompilerTypeSystem& dts,
+                                        level_tools::DrawStats* stats) {
+  id = read_plain_data_field<s16>(ref, "id", dts);
+  length = read_plain_data_field<s16>(ref, "length", dts);
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+
+  auto data_ref = get_field_ref(ref, "data", dts);
+  for (int i = 0; i < length; i++) {
+    Ref obj_ref = data_ref;
+    obj_ref.byte_offset += 32 * i;  // todo not a constant here
+    auto type = get_type_of_basic(obj_ref);
+    if (type != "shrubbery") {
+      throw Error("bad draw node type: {}", type);
+    }
+    shrubs.emplace_back();
+    shrubs.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+  }
+}
+
+std::string PrototypeShrubbery::print(const level_tools::PrintSettings& settings,
+                                      int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  int next_indent = indent + 4;
+  result += fmt::format("{}id: {}\n", is, id);
+  result += fmt::format("{}length: {}\n", is, length);
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+
+  for (size_t i = 0; i < shrubs.size(); i++) {
+    result += fmt::format("{}draw-nodes [{}] ({}):\n", is, i, shrubs[i].my_type());
+    result += shrubs[i].print(settings, next_indent);
+  }
+
+  return result;
+}
+
+void copy_dma_to_vector(std::vector<u8>* out, Ref data_start, int qwc) {
+  out->resize(qwc * 16);
+  for (int i = 0; i < qwc * 4; i++) {
+    u32 val = deref_u32(data_start, i);
+    memcpy(out->data() + i * 4, &val, 4);
+  }
+}
+
+void Shrubbery::read_from_file(TypedRef ref,
+                               const decompiler::DecompilerTypeSystem& dts,
+                               level_tools::DrawStats* /*stats*/) {
+  // read the easy ones.
+  obj_qwc = read_plain_data_field<u8>(ref, "obj-qwc", dts);
+  vtx_qwc = read_plain_data_field<u8>(ref, "vtx-qwc", dts);
+  col_qwc = read_plain_data_field<u8>(ref, "col-qwc", dts);
+  stq_qwc = read_plain_data_field<u8>(ref, "stq-qwc", dts);
+
+  auto header_data = deref_label(get_field_ref(ref, "header", dts));
+  // guess that the header is 24 * 4 = 96 bytes here.
+  // not sure what it's used for yet.
+  header.resize(24);
+  for (int i = 0; i < 24; i++) {
+    u32 val = deref_u32(header_data, i);
+    memcpy(header.data() + i, &val, 4);
+  }
+
+  copy_dma_to_vector(&obj, deref_label(get_field_ref(ref, "obj", dts)), obj_qwc);
+  copy_dma_to_vector(&vtx, deref_label(get_field_ref(ref, "vtx", dts)), vtx_qwc);
+  copy_dma_to_vector(&col, deref_label(get_field_ref(ref, "col", dts)), col_qwc);
+  copy_dma_to_vector(&stq, deref_label(get_field_ref(ref, "stq", dts)), stq_qwc);
+  copy_dma_to_vector(&textures, deref_label(get_field_ref(ref, "textures", dts)), header[0] * 10);
+}
+
+std::string Shrubbery::print(const level_tools::PrintSettings& /*settings*/, int indent) const {
+  std::string is(indent, ' ');
+
+  return fmt::format("{} qwcs: {} {} {} {}, tex: {}\n", is, obj_qwc, vtx_qwc, col_qwc, stq_qwc,
+                     header[0] * 2);
+}
+
+std::string GenericShrubFragment::print(const level_tools::PrintSettings& /*settings*/,
+                                        int indent) const {
+  std::string is(indent, ' ');
+  return fmt::format("{} qwcs: {} {} {} {}: 0x{:x}\n", is, cnt_qwc, vtx_qwc, col_qwc, stq_qwc,
+                     vtx_cnt);
+}
+
+void GenericShrubFragment::read_from_file(TypedRef ref,
+                                          const decompiler::DecompilerTypeSystem& dts,
+                                          level_tools::DrawStats* /*stats*/) {
+  cnt_qwc = read_plain_data_field<u8>(ref, "cnt-qwc", dts);
+  vtx_qwc = read_plain_data_field<u8>(ref, "vtx-qwc", dts);
+  col_qwc = read_plain_data_field<u8>(ref, "col-qwc", dts);
+  stq_qwc = read_plain_data_field<u8>(ref, "stq-qwc", dts);
+  vtx_cnt = read_plain_data_field<u32>(ref, "vtx-cnt", dts);
+
+  copy_dma_to_vector(&textures, deref_label(get_field_ref(ref, "textures", dts)), cnt_qwc);
+  copy_dma_to_vector(&vtx, deref_label(get_field_ref(ref, "vtx", dts)), vtx_qwc);
+  copy_dma_to_vector(&col, deref_label(get_field_ref(ref, "col", dts)), col_qwc);
+  copy_dma_to_vector(&stq, deref_label(get_field_ref(ref, "stq", dts)), stq_qwc);
+}
+
+}  // namespace shrub_types
+
 std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
                                                  const decompiler::DecompilerTypeSystem& dts,
                                                  DrawStats* stats) {
@@ -1147,6 +1577,12 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
 
   if (ref.type->get_name() == "drawable-tree-actor") {
     auto tree = std::make_unique<DrawableTreeActor>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-instance-shrub") {
+    auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
     tree->read_from_file(ref, dts, stats);
     return tree;
   }

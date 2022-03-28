@@ -45,6 +45,8 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
                                      asmOp.m_instr.to_string(f.ir2.env.file->labels));
           new_entries.push_back(entry);
           continue;
+        } else if (asmOp.skip) {
+          continue;
         } else if (asmOp.todo) {
           // If its an invalid or unsupported exception, skip it
           /*lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
