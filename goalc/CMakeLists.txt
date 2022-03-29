@@ -1,5 +1,4 @@
 add_library(compiler
-        SHARED
         emitter/CallingConvention.cpp
         emitter/CodeTester.cpp
         emitter/ObjectFileData.cpp

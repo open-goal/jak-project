@@ -1,6 +1,5 @@
 add_library(
         decomp
-        SHARED
 
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
