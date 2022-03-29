@@ -74,7 +74,7 @@ glob(assetDir + `/**/*${process.env.ASSET_EXTENSION}`, {}, async (err, files) =>
     let foundDuplicate = false;
     for (var j = 0; j < releaseAssetsPre.length; j++) {
       let existingAsset = releaseAssetsPre[j];
-      if (existingAsset.name == `${path.basename(files[i])}-${release.tag_name}`) {
+      if (existingAsset.name == `opengoal-${release.tag_name}-${path.basename(files[i])}`) {
         foundDuplicate = true;
         break;
       }
@@ -88,7 +88,7 @@ glob(assetDir + `/**/*${process.env.ASSET_EXTENSION}`, {}, async (err, files) =>
       owner: "open-goal",
       repo: "jak-project",
       release_id: release.id,
-      name: `${path.basename(files[i])}-${release.tag_name}`,
+      name: `opengoal-${release.tag_name}-${path.basename(files[i])}`,
       data: assetBytes,
     });
   }
