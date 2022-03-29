@@ -184,7 +184,7 @@ void Tfrag3::render_tree(int geom,
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
 
-  first_tfrag_draw_setup(settings, render_state);
+  first_tfrag_draw_setup(settings, render_state, ShaderId::TFRAG3);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
@@ -212,7 +212,7 @@ void Tfrag3::render_tree(int geom,
 
     ASSERT(m_textures);
     glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
-    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
     tree.tris_this_frame += draw.num_triangles;
     tree.draws_this_frame++;
     int draw_size = indices.second - indices.first;
