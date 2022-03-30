@@ -23,10 +23,12 @@ struct DoubleDraw {
   float aref_second = 0.;
 };
 
-DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode);
+DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader);
 DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap);
 
-void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderState* render_state);
+void first_tfrag_draw_setup(const TfragRenderSettings& settings,
+                            SharedRenderState* render_state,
+                            ShaderId shader);
 void interp_time_of_day_slow(const float weights[8],
                              const std::vector<tfrag3::TimeOfDayColor>& in,
                              math::Vector<u8, 4>* out);
@@ -65,3 +67,6 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
 u32 make_all_visible_index_list(std::pair<int, int>* group_out,
                                 u32* idx_out,
                                 const std::vector<tfrag3::StripDraw>& draws);
+u32 make_all_visible_index_list(std::pair<int, int>* group_out,
+                                u32* idx_out,
+                                const std::vector<tfrag3::ShrubDraw>& draws);

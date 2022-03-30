@@ -131,6 +131,10 @@ void Loader::loader_thread() {
         }
       }
     }
+
+    for (auto& shrub_tree : result->shrub_trees) {
+      shrub_tree.unpack();
+    }
     fmt::print(
         "------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s unpack {:.3f}s\n",
         disk_load_time, import_time, decomp_time, unpack_timer.getSeconds());
@@ -267,6 +271,78 @@ bool Loader::init_tfrag(Timer& timer, LevelData& data) {
           data.tfrag_next_vert = 0;
           return true;
         }
+      }
+    }
+
+    if (timer.getMs() > Loader::TIE_LOAD_BUDGET || (uploaded_bytes / 1024) > 2048) {
+      return false;
+    }
+  }
+}
+
+bool Loader::init_shrub(Timer& timer, LevelData& data) {
+  if (data.shrub_load_done) {
+    return true;
+  }
+
+  if (data.level->shrub_trees.empty()) {
+    data.shrub_load_done = true;
+    return true;
+  }
+
+  if (!data.shrub_opengl_created) {
+    for (auto& in_tree : data.level->shrub_trees) {
+      GLuint& tree_out = data.shrub_vertex_data.emplace_back();
+      glGenBuffers(1, &tree_out);
+      glBindBuffer(GL_ARRAY_BUFFER, tree_out);
+      glBufferData(GL_ARRAY_BUFFER,
+                   in_tree.unpacked.vertices.size() * sizeof(tfrag3::ShrubGpuVertex), nullptr,
+                   GL_STATIC_DRAW);
+    }
+    data.shrub_opengl_created = true;
+    return false;
+  }
+
+  constexpr u32 CHUNK_SIZE = 32768;
+  u32 uploaded_bytes = 0;
+
+  while (true) {
+    const auto& tree = data.level->shrub_trees[data.shrub_next_tree];
+    u32 end_vert_in_tree = tree.unpacked.vertices.size();
+    // the number of vertices we'd need to finish the tree right now
+    size_t num_verts_left_in_tree = end_vert_in_tree - data.shrub_next_vert;
+    size_t start_vert_for_chunk;
+    size_t end_vert_for_chunk;
+
+    bool complete_tree;
+
+    if (num_verts_left_in_tree > CHUNK_SIZE) {
+      complete_tree = false;
+      // should only do partial
+      start_vert_for_chunk = data.shrub_next_vert;
+      end_vert_for_chunk = start_vert_for_chunk + CHUNK_SIZE;
+      data.shrub_next_vert += CHUNK_SIZE;
+    } else {
+      // should do all!
+      start_vert_for_chunk = data.shrub_next_vert;
+      end_vert_for_chunk = end_vert_in_tree;
+      complete_tree = true;
+    }
+
+    // glBindVertexArray(m_trees[m_load_state.vert_geo][m_load_state.vert_tree].vao);
+    glBindBuffer(GL_ARRAY_BUFFER, data.shrub_vertex_data[data.shrub_next_tree]);
+    u32 upload_size = (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::ShrubGpuVertex);
+    glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::ShrubGpuVertex),
+                    upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
+    uploaded_bytes += upload_size;
+
+    if (complete_tree) {
+      // and move on to next tree
+      data.shrub_next_vert = 0;
+      data.shrub_next_tree++;
+      if (data.shrub_next_tree >= data.level->shrub_trees.size()) {
+        data.shrub_load_done = true;
+        return true;
       }
     }
 
@@ -511,12 +587,14 @@ void Loader::update(TexturePool& texture_pool) {
       if (upload_textures(loader_timer, lev.data, texture_pool)) {
         if (init_tie(loader_timer, lev.data)) {
           if (init_tfrag(loader_timer, lev.data)) {
-            // we're done! lock before removing from loaded.
-            lk.lock();
-            it->second.data.load_id = m_id++;
+            if (init_shrub(loader_timer, lev.data)) {
+              // we're done! lock before removing from loaded.
+              lk.lock();
+              it->second.data.load_id = m_id++;
 
-            m_loaded_tfrag3_levels[name] = std::move(lev);
-            m_initializing_tfrag3_levels.erase(it);
+              m_loaded_tfrag3_levels[name] = std::move(lev);
+              m_initializing_tfrag3_levels.erase(it);
+            }
           }
         }
       }

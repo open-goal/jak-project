@@ -132,30 +132,31 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
   return double_draw;
 }
 
-DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode) {
+DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader) {
   auto draw_settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
+  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_min"),
               draw_settings.aref_first);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-              10.f);
+  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_max"), 10.f);
   return draw_settings;
 }
 
-void first_tfrag_draw_setup(const TfragRenderSettings& settings, SharedRenderState* render_state) {
-  render_state->shaders[ShaderId::TFRAG3].activate();
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "camera"),
-                     1, GL_FALSE, settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "hvdf_offset"),
+void first_tfrag_draw_setup(const TfragRenderSettings& settings,
+                            SharedRenderState* render_state,
+                            ShaderId shader) {
+  render_state->shaders[shader].activate();
+  glUniform1i(glGetUniformLocation(render_state->shaders[shader].id(), "tex_T0"), 0);
+  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[shader].id(), "camera"), 1,
+                     GL_FALSE, settings.math_camera.data());
+  glUniform4f(glGetUniformLocation(render_state->shaders[shader].id(), "hvdf_offset"),
               settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
               settings.hvdf_offset[3]);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_constant"),
+  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_constant"),
               settings.fog.x());
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_min"),
+  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_min"),
               settings.fog.y());
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_max"),
+  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_max"),
               settings.fog.z());
-  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "fog_color"),
+  glUniform4f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_color"),
               render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
               render_state->fog_intensity);
 }
@@ -493,6 +494,23 @@ u32 make_all_visible_index_list(std::pair<int, int>* group_out,
     memcpy(&idx_out[idx_buffer_ptr], draw.unpacked.vertex_index_stream.data(),
            draw.unpacked.vertex_index_stream.size() * sizeof(u32));
     idx_buffer_ptr += draw.unpacked.vertex_index_stream.size();
+    ds.second = idx_buffer_ptr;
+    group_out[i] = ds;
+  }
+  return idx_buffer_ptr;
+}
+
+u32 make_all_visible_index_list(std::pair<int, int>* group_out,
+                                u32* idx_out,
+                                const std::vector<tfrag3::ShrubDraw>& draws) {
+  int idx_buffer_ptr = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    std::pair<int, int> ds;
+    ds.first = idx_buffer_ptr;
+    memcpy(&idx_out[idx_buffer_ptr], draw.vertex_index_stream.data(),
+           draw.vertex_index_stream.size() * sizeof(u32));
+    idx_buffer_ptr += draw.vertex_index_stream.size();
     ds.second = idx_buffer_ptr;
     group_out[i] = ds;
   }

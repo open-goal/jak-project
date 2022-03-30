@@ -360,6 +360,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   if (!m_override_level) {
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }
+
   render_all_trees(lod(), settings, render_state, prof);
 }
 
@@ -441,7 +442,7 @@ void Tie3::render_tree_wind(int idx,
       glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
-    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
 
     int off = 0;
     for (auto& grp : draw.instance_groups) {
@@ -524,7 +525,7 @@ void Tie3::render_tree(int idx,
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
 
-  first_tfrag_draw_setup(settings, render_state);
+  first_tfrag_draw_setup(settings, render_state, ShaderId::TFRAG3);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
@@ -574,7 +575,7 @@ void Tie3::render_tree(int idx,
       last_texture = draw.tree_tex_id;
     }
 
-    auto double_draw = setup_tfrag_shader(render_state, draw.mode);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
     int draw_size = indices.second - indices.first;
     void* offset = (void*)(indices.first * sizeof(u32));
 

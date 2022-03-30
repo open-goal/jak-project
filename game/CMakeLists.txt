@@ -79,6 +79,7 @@ set(RUNTIME_SOURCE
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
         graphics/opengl_renderer/background/background_common.cpp
+        graphics/opengl_renderer/background/Shrub.cpp
         graphics/opengl_renderer/background/Tfrag3.cpp
         graphics/opengl_renderer/background/TFragment.cpp
         graphics/opengl_renderer/background/Tie3.cpp

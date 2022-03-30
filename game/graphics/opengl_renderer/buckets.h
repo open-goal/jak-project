@@ -10,30 +10,30 @@ enum class BucketId {
   OCEAN_MID_AND_FAR = 4,
   TFRAG_TEX_LEVEL0 = 5,
   TFRAG_LEVEL0 = 6,
-  // 7
-  // 8
+  TFRAG_NEAR_LEVEL0 = 7,
+  TIE_NEAR_LEVEL0 = 8,
   TIE_LEVEL0 = 9,
   MERC_TFRAG_TEX_LEVEL0 = 10,
   GMERC_TFRAG_TEX_LEVEL0 = 11,
   TFRAG_TEX_LEVEL1 = 12,
   TFRAG_LEVEL1 = 13,
-  // 14
-  // 15
+  TFRAG_NEAR_LEVEL1 = 14,
+  TIE_NEAR_LEVEL1 = 15,
   TIE_LEVEL1 = 16,
   MERC_TFRAG_TEX_LEVEL1 = 17,
   GMERC_TFRAG_TEX_LEVEL1 = 18,
   SHRUB_TEX_LEVEL0 = 19,
-  // 20
+  SHRUB_NORMAL_LEVEL0 = 20,
   // 21
-  // 22
-  // 23
-  // 24
+  SHRUB_BILLBOARD_LEVEL0 = 22,
+  SHRUB_TRANS_LEVEL0 = 23,
+  SHRUB_GENERIC_LEVEL0 = 24,
   SHRUB_TEX_LEVEL1 = 25,
-  // 26
+  SHRUB_NORMAL_LEVEL1 = 26,
   // 27
-  // 28
-  // 29
-  GENERIC_SHRUB = 30,
+  SHRUB_BILLBOARD_LEVEL1 = 28,
+  SHRUB_TRANS_LEVEL1 = 29,
+  SHRUB_GENERIC_LEVEL1 = 30,
   ALPHA_TEX_LEVEL0 = 31,
   TFRAG_TRANS0_AND_SKY_BLEND_LEVEL0 = 32,
   // 33
@@ -78,15 +78,15 @@ enum class BucketId {
 enum class BucketCategory {
   TFRAG,
   TIE,
+  SHRUB,
   TEX,
   MERC,
   GENERIC_MERC,
   SPRITE,
   OCEAN,
-  DEBUG_DRAW,
   OTHER,
   MAX_CATEGORIES
 };
 
 constexpr const char* BUCKET_CATEGORY_NAMES[(int)BucketCategory::MAX_CATEGORIES] = {
-    "tfrag", "tie", "tex", "merc", "mercneric", "sprite", "ocean", "debug", "other"};
+    "tfrag", "tie", "shrub", "tex", "merc", "mercneric", "sprite", "ocean", "other"};

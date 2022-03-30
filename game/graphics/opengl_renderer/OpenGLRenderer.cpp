@@ -11,6 +11,7 @@
 #include "game/graphics/opengl_renderer/Sprite3.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"
+#include "game/graphics/opengl_renderer/background/Shrub.h"
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/ShadowRenderer.h"
@@ -83,68 +84,82 @@ void OpenGLRenderer::init_bucket_renderers() {
   //-------------
   // PRE TEXTURE
   //-------------
-  // 0
-  // 1
-  // 2
-  init_bucket_renderer<SkyRenderer>("sky", BucketCategory::OTHER, BucketId::SKY_DRAW);  // 3
+  // 0 : ??
+  // 1 : ??
+  // 2 : ??
+  // 3 : SKY_DRAW
+  init_bucket_renderer<SkyRenderer>("sky", BucketCategory::OTHER, BucketId::SKY_DRAW);
+  // 4 : OCEAN_MID_AND_FAR
   init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
-                                       BucketId::OCEAN_MID_AND_FAR);  // 4
+                                       BucketId::OCEAN_MID_AND_FAR);
 
   //-----------------------
   // LEVEL 0 tfrag texture
   //-----------------------
+  // 5 : TFRAG_TEX_LEVEL0
   init_bucket_renderer<TextureUploadHandler>("l0-tfrag-tex", BucketCategory::TEX,
-                                             BucketId::TFRAG_TEX_LEVEL0);  // 5
+                                             BucketId::TFRAG_TEX_LEVEL0);
+  // 6 : TFRAG_LEVEL0
   init_bucket_renderer<TFragment>("l0-tfrag-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_LEVEL0,
-                                  normal_tfrags, false,
-                                  0);  // 6
-  // 7
-  // 8
-  init_bucket_renderer<Tie3>("l0-tfrag-tie", BucketCategory::TIE, BucketId::TIE_LEVEL0, 0);  // 9
+                                  normal_tfrags, false, 0);
+  // 7 : TFRAG_NEAR_LEVEL0
+  // 8 : TIE_NEAR_LEVEL0
+  // 9 : TIE_LEVEL0
+  init_bucket_renderer<Tie3>("l0-tfrag-tie", BucketCategory::TIE, BucketId::TIE_LEVEL0, 0);
+  // 10 : MERC_TFRAG_TEX_LEVEL0
   init_bucket_renderer<MercRenderer>("l0-tfrag-merc", BucketCategory::MERC,
-                                     BucketId::MERC_TFRAG_TEX_LEVEL0);  // 10
+                                     BucketId::MERC_TFRAG_TEX_LEVEL0);
+  // 11 : GMERC_TFRAG_TEX_LEVEL0
   init_bucket_renderer<GenericRenderer>("l0-tfrag-gmerc", BucketCategory::GENERIC_MERC,
-                                        BucketId::GMERC_TFRAG_TEX_LEVEL0);  // 11
+                                        BucketId::GMERC_TFRAG_TEX_LEVEL0);
 
   //-----------------------
   // LEVEL 1 tfrag texture
   //-----------------------
+  // 12 : TFRAG_TEX_LEVEL1
   init_bucket_renderer<TextureUploadHandler>("l1-tfrag-tex", BucketCategory::TEX,
-                                             BucketId::TFRAG_TEX_LEVEL1);  // 12
+                                             BucketId::TFRAG_TEX_LEVEL1);
+  // 13 : TFRAG_LEVEL1
   init_bucket_renderer<TFragment>("l1-tfrag-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_LEVEL1,
                                   normal_tfrags, false, 1);
-  // 14
-  // 15
+  // 14 : TFRAG_NEAR_LEVEL1
+  // 15 : TIE_NEAR_LEVEL1
+  // 16 : TIE_LEVEL1
   init_bucket_renderer<Tie3>("l1-tfrag-tie", BucketCategory::TIE, BucketId::TIE_LEVEL1, 1);
+  // 17 : MERC_TFRAG_TEX_LEVEL1
   init_bucket_renderer<MercRenderer>("l1-tfrag-merc", BucketCategory::MERC,
-                                     BucketId::MERC_TFRAG_TEX_LEVEL1);  // 17
+                                     BucketId::MERC_TFRAG_TEX_LEVEL1);
+  // 18 : GMERC_TFRAG_TEX_LEVEL1
   init_bucket_renderer<GenericRenderer>("l1-tfrag-gmerc", BucketCategory::GENERIC_MERC,
-                                        BucketId::GMERC_TFRAG_TEX_LEVEL1);  // 18
+                                        BucketId::GMERC_TFRAG_TEX_LEVEL1);
 
   //-----------------------
   // LEVEL 0 shrub texture
   //-----------------------
+  // 19 : SHRUB_TEX_LEVEL0
   init_bucket_renderer<TextureUploadHandler>("l0-shrub-tex", BucketCategory::TEX,
-                                             BucketId::SHRUB_TEX_LEVEL0);  // 19
-  // 20
-  // 21
-  // 22
-  // 23
-  // 24
+                                             BucketId::SHRUB_TEX_LEVEL0);
+  // 20 : SHRUB_NORMAL_LEVEL0
+  init_bucket_renderer<Shrub>("l0-shrub", BucketCategory::SHRUB, BucketId::SHRUB_NORMAL_LEVEL0);
+  // 21 : ???
+  // 22 : SHRUB_BILLBOARD_LEVEL0
+  // 23 : SHRUB_TRANS_LEVEL0
+  // 24 : SHRUB_GENERIC_LEVEL0
 
   //-----------------------
   // LEVEL 1 shrub texture
   //-----------------------
+  // 25 : SHRUB_TEX_LEVEL1
   init_bucket_renderer<TextureUploadHandler>("l1-shrub-tex", BucketCategory::TEX,
-                                             BucketId::SHRUB_TEX_LEVEL1);  // 25
-  // 26
-  // 27
-  // 28
-  // 29
-
-  // I don't think this is actually used? or it might be wrong.
-  init_bucket_renderer<GenericRenderer>("common-shrub-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_SHRUB);  // 30
+                                             BucketId::SHRUB_TEX_LEVEL1);
+  // 26 : SHRUB_NORMAL_LEVEL1
+  init_bucket_renderer<Shrub>("l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_NORMAL_LEVEL1);
+  // 27 : ???
+  // 28 : SHRUB_BILLBOARD_LEVEL1
+  // 29 : SHRUB_TRANS_LEVEL1
+  // 30 : SHRUB_GENERIC_LEVEL1
+  init_bucket_renderer<GenericRenderer>("mystery-generic", BucketCategory::GENERIC_MERC,
+                                        BucketId::SHRUB_GENERIC_LEVEL1);
 
   //-----------------------
   // LEVEL 0 alpha texture
@@ -251,9 +266,9 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<RenderMux>("sprite", BucketCategory::SPRITE, BucketId::SPRITE,
                                   std::move(sprite_renderers));  // 66
 
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketCategory::DEBUG_DRAW,
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketCategory::OTHER,
                                        BucketId::DEBUG_DRAW_0, 0x20000);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketCategory::DEBUG_DRAW,
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketCategory::OTHER,
                                        BucketId::DEBUG_DRAW_1, 0x8000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.

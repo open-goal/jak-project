@@ -33,13 +33,17 @@ std::array<math::Vector4f, 4> extract_shrub_matrix(const u16* data) {
 struct ShrubVertex {
   math::Vector<float, 3> xyz;
   math::Vector<float, 2> st;
-  math::Vector<u8, 4> rgba_generic;
+  math::Vector<u8, 3> rgba_generic;
   bool adc = false;
 };
-
+struct DrawSettings {
+  DrawMode mode;
+  u32 combo_tex;
+};
 struct ShrubDraw {
   u32 start_vtx_idx = -1;
   AdGifData adgif;
+  DrawSettings settings;
   std::vector<ShrubVertex> vertices;
 };
 
@@ -116,7 +120,127 @@ std::string debug_dump_proto_to_obj(const ShrubProtoInfo& proto) {
   return result;
 }
 
-ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto) {
+namespace {
+/*!
+ * adgif shader texture id's can be "remapped". I think it allows textures to be shared.
+ * So far we haven't seen this feature used, but we do have the texture map and we check it here.
+ */
+u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& map) {
+  auto masked = original & 0xffffff00;
+  for (auto& t : map) {
+    if (t.original_texid == masked) {
+      fmt::print("OKAY! remapped!\n");
+      ASSERT(false);
+      return t.new_texid | 20;
+    }
+  }
+  return original;
+}
+}  // namespace
+
+DrawSettings adgif_to_draw_mode(const AdGifData& ad,
+                                const TextureDB& tdb,
+                                const std::vector<level_tools::TextureRemap>& map,
+                                int count) {
+  // initialize draw mode
+  DrawMode current_mode;
+  current_mode.set_at(true);
+  current_mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+  current_mode.set_aref(0x26);
+  current_mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+  current_mode.set_zt(true);
+  current_mode.set_depth_test(GsTest::ZTest::GEQUAL);
+  current_mode.set_depth_write_enable(true);  // todo, is this actual true
+  current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
+  current_mode.enable_fog();
+
+  // ADGIF 0
+  bool weird = (u8)ad.tex0_addr != (u32)GsRegisterAddress::TEX0_1;
+  if (weird) {
+    fmt::print("----------------  WEIRD: 0x{:x}\n", ad.tex0_addr);
+    fmt::print("i have {} verts\n", count);
+  } else {
+    ASSERT(ad.tex0_data == 0 || ad.tex0_data == 0x800000000);  // note: decal?? todo
+  }
+
+  // tw/th
+
+  // ADGIF 1
+  ASSERT((u8)ad.tex1_addr == (u32)GsRegisterAddress::TEX1_1);
+  u32 original_tex = ad.tex1_addr;
+  u32 new_tex = remap_texture(original_tex, map);
+  // try remapping it
+  if (original_tex != new_tex) {
+    fmt::print("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+  }
+  // texture the texture page/texture index, and convert to a PC port texture ID
+  u32 tpage = new_tex >> 20;
+  u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
+  u32 tex_combo = (((u32)tpage) << 16) | tidx;
+  // look up the texture to make sure it's valid
+  auto tex = tdb.textures.find(tex_combo);
+  ASSERT(tex != tdb.textures.end());
+  if (weird) {
+    fmt::print("tex: {}\n", tex->second.name);
+  }
+
+  // ADGIF 2
+  ASSERT((u8)ad.mip_addr == (u32)GsRegisterAddress::MIPTBP1_1);
+
+  // ADGIF 3
+  ASSERT((u8)ad.clamp_addr == (u32)GsRegisterAddress::CLAMP_1);
+  {
+    bool clamp_s = ad.clamp_data & 0b001;
+    bool clamp_t = ad.clamp_data & 0b100;
+    current_mode.set_clamp_s_enable(clamp_s);
+    current_mode.set_clamp_t_enable(clamp_t);
+  }
+
+  u64 final_alpha;
+
+  // ADGIF 4
+  if ((u8)ad.alpha_addr == (u32)GsRegisterAddress::ALPHA_1) {
+    final_alpha = ad.alpha_data;
+  } else {
+    ASSERT(false);
+    // ASSERT((u8)ad.alpha_addr == (u32)GsRegisterAddress::MIPTBP2_1);
+  }
+
+  GsAlpha reg(final_alpha);
+  auto a = reg.a_mode();
+  auto b = reg.b_mode();
+  auto c = reg.c_mode();
+  auto d = reg.d_mode();
+  if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::DEST &&
+      c == GsAlpha::BlendMode::SOURCE && d == GsAlpha::BlendMode::DEST) {
+    current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+  } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             c == GsAlpha::BlendMode::SOURCE && d == GsAlpha::BlendMode::DEST) {
+    current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_SRC_DST);
+  } else if (a == GsAlpha::BlendMode::ZERO_OR_FIXED && b == GsAlpha::BlendMode::SOURCE &&
+             c == GsAlpha::BlendMode::SOURCE && d == GsAlpha::BlendMode::DEST) {
+    current_mode.set_alpha_blend(DrawMode::AlphaBlend::ZERO_SRC_SRC_DST);
+  } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::DEST &&
+             c == GsAlpha::BlendMode::ZERO_OR_FIXED && d == GsAlpha::BlendMode::DEST) {
+    current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+  } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::SOURCE &&
+             c == GsAlpha::BlendMode::SOURCE && d == GsAlpha::BlendMode::SOURCE) {
+    current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
+  } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             c == GsAlpha::BlendMode::DEST && d == GsAlpha::BlendMode::DEST) {
+    current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  } else {
+    // unsupported blend: a 0 b 2 c 2 d 1
+    // lg::error("unsupported blend: a {} b {} c {} d {}", (int)a, (int)b, (int)c, (int)d);
+    //      ASSERT(false);
+  }
+
+  return {current_mode, tex_combo};
+}
+
+ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
+                             const TextureDB& tdb,
+                             const std::vector<level_tools::TextureRemap>& map) {
   ShrubProtoInfo result;
   for (int frag_idx = 0; frag_idx < proto.generic_geom.length; frag_idx++) {
     auto& frag_out = result.frags.emplace_back();
@@ -125,8 +249,15 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto) {
     std::vector<AdGifData> adgif_data;
     adgif_data.resize(frag.textures.size() / sizeof(AdGifData));
     memcpy(adgif_data.data(), frag.textures.data(), frag.textures.size());
+
+    if (frag_idx == 0 && proto.name == "vil2-cattail.mb") {
+      fmt::print("Skipping broken village2 thing\n");
+      continue;
+    }
+
     for (size_t i = 0; i < adgif_data.size(); i++) {
       auto& draw = frag_out.draws.emplace_back();
+      draw.adgif = adgif_data[i];
 
       const auto& ag = adgif_data[i];
       int count = (ag.tex1_addr >> 32) & 0xfff;  // drop the eop flag
@@ -144,15 +275,18 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto) {
                3 * sizeof(u16));
         vert_out.xyz = math::Vector3f(vert_data[0], vert_data[1], vert_data[2]);
 
-        u16 st_data[2];
+        s16 st_data[2];
         memcpy(st_data, frag.stq.data() + sizeof(u16) * 2 * (vert_idx + draw.start_vtx_idx),
                2 * sizeof(u16));
         vert_out.st = math::Vector2f(st_data[0], st_data[1]);
         vert_out.adc = (st_data[0] & 1) == 0;  // adc in the low bit of texture coordinate
 
-        memcpy(vert_out.rgba_generic.data(), frag.col.data() + 4 * (vert_idx + draw.start_vtx_idx),
-               4);
+        memcpy(vert_out.rgba_generic.data(), frag.col.data() + 3 * (vert_idx + draw.start_vtx_idx),
+               3);
+        ASSERT(3 * (vert_idx + draw.start_vtx_idx) + 3 <= frag.col.size());
       }
+
+      draw.settings = adgif_to_draw_mode(ag, tdb, map, count);
     }
 
     ASSERT(frag.vtx_cnt * 3 * sizeof(u16) <= frag.vtx.size());
@@ -182,6 +316,7 @@ void extract_instance(const shrub_types::InstanceShrubbery& inst,
   // result.wind_index = instance.wind_index;
 
   result.mat[0][3] = 0.f;
+  result.color_idx = inst.color_indices / 4;
 
   protos.at(result.proto_idx).instances.push_back(result);
 }
@@ -261,17 +396,200 @@ std::string dump_full_to_obj(const std::vector<ShrubProtoInfo>& protos) {
   return result;
 }
 
+u32 clean_up_vertex_indices(std::vector<u32>& idx) {
+  std::vector<u32> fixed;
+  u32 num_tris = 0;
+
+  bool looking_for_start = true;
+  size_t i_of_start;
+  for (size_t i = 0; i < idx.size(); i++) {
+    if (looking_for_start) {
+      if (idx[i] != UINT32_MAX) {
+        looking_for_start = false;
+        i_of_start = i;
+      }
+    } else {
+      if (idx[i] == UINT32_MAX) {
+        looking_for_start = true;
+        size_t num_verts = i - i_of_start;
+        if (num_verts >= 3) {
+          if (!fixed.empty()) {
+            fixed.push_back(UINT32_MAX);
+          }
+          fixed.insert(fixed.end(), idx.begin() + i_of_start, idx.begin() + i);
+          num_tris += (num_verts - 2);
+        }
+      }
+    }
+  }
+
+  if (!looking_for_start) {
+    size_t num_verts = idx.size() - i_of_start;
+    if (num_verts >= 3) {
+      if (!fixed.empty()) {
+        fixed.push_back(UINT32_MAX);
+      }
+      fixed.insert(fixed.end(), idx.begin() + i_of_start, idx.begin() + idx.size());
+      num_tris += (num_verts - 2);
+    }
+  }
+
+  idx = std::move(fixed);
+
+  return num_tris;
+}
+
+void make_draws(tfrag3::Level& lev,
+                tfrag3::ShrubTree& tree_out,
+                const std::vector<ShrubProtoInfo>& protos,
+                const TextureDB& tdb) {
+  std::unordered_map<u32, std::vector<u32>> static_draws_by_tex;
+  size_t global_vert_counter = 0;
+  for (auto& proto : protos) {
+    // packed_vert_indices[frag][draw] = {start, end}
+    std::vector<std::vector<std::pair<int, int>>> packed_vert_indices;
+
+    for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
+      auto& frag_inds = packed_vert_indices.emplace_back();
+      auto& frag = proto.frags[frag_idx];
+
+      for (auto& draw : frag.draws) {
+        int start = tree_out.packed_vertices.vertices.size();
+        for (auto& vert : draw.vertices) {
+          tree_out.packed_vertices.vertices.push_back(
+              {vert.xyz.x(),
+               vert.xyz.y(),
+               vert.xyz.z(),
+               vert.st.x(),
+               vert.st.y(),
+               {vert.rgba_generic[0], vert.rgba_generic[1], vert.rgba_generic[2]}});
+        }
+        int end = tree_out.packed_vertices.vertices.size();
+        frag_inds.emplace_back(start, end);
+      }
+    }
+
+    for (auto& inst : proto.instances) {
+      u32 matrix_idx = tree_out.packed_vertices.matrices.size();
+      tree_out.packed_vertices.matrices.push_back(inst.mat);
+
+      for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
+        auto& frag = proto.frags[frag_idx];  // shared info for all instances of this frag
+
+        for (size_t draw_idx = 0; draw_idx < frag.draws.size(); draw_idx++) {
+          auto& draw = frag.draws[draw_idx];
+
+          // what texture are we using?
+          u32 combo_tex = draw.settings.combo_tex;
+
+          // try looking it up in the existing textures that we have in the C++ renderer data.
+          // (this is shared with tfrag)
+          u32 idx_in_lev_data = UINT32_MAX;
+          for (u32 i = 0; i < lev.textures.size(); i++) {
+            if (lev.textures[i].combo_id == combo_tex) {
+              idx_in_lev_data = i;
+              break;
+            }
+          }
+
+          if (idx_in_lev_data == UINT32_MAX) {
+            // didn't find it, have to add a new one texture.
+            auto tex_it = tdb.textures.find(combo_tex);
+            if (tex_it == tdb.textures.end()) {
+              bool ok_to_miss = false;  // for TIE, there's no missing textures.
+              if (ok_to_miss) {
+                // we're missing a texture, just use the first one.
+                tex_it = tdb.textures.begin();
+              } else {
+                fmt::print(
+                    "texture {} wasn't found. make sure it is loaded somehow. You may need to "
+                    "include "
+                    "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
+                    combo_tex);
+                fmt::print("tpage is {}\n", combo_tex >> 16);
+                fmt::print("id is {} (0x{:x})\n", combo_tex & 0xffff, combo_tex & 0xffff);
+                ASSERT(false);
+              }
+            }
+            // add a new texture to the level data
+            idx_in_lev_data = lev.textures.size();
+            lev.textures.emplace_back();
+            auto& new_tex = lev.textures.back();
+            new_tex.combo_id = combo_tex;
+            new_tex.w = tex_it->second.w;
+            new_tex.h = tex_it->second.h;
+            new_tex.debug_name = tex_it->second.name;
+            new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
+            new_tex.data = tex_it->second.rgba_bytes;
+          }
+
+          DrawMode mode = draw.settings.mode;
+
+          // okay, we now have a texture and draw mode, let's see if we can add to an existing...
+          auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
+          tfrag3::ShrubDraw* draw_to_add_to = nullptr;
+          if (existing_draws_in_tex != static_draws_by_tex.end()) {
+            for (auto idx : existing_draws_in_tex->second) {
+              if (tree_out.static_draws.at(idx).mode == mode) {
+                draw_to_add_to = &tree_out.static_draws[idx];
+              }
+            }
+          }
+
+          if (!draw_to_add_to) {
+            // nope, need to create a new draw
+            tree_out.static_draws.emplace_back();
+            static_draws_by_tex[idx_in_lev_data].push_back(tree_out.static_draws.size() - 1);
+            draw_to_add_to = &tree_out.static_draws.back();
+            draw_to_add_to->mode = mode;
+            draw_to_add_to->tree_tex_id = idx_in_lev_data;
+          }
+
+          // now we have a draw, time to add vertices
+          // draw_to_add_to->num_triangles += draw.vertices.size() - 2;
+          tfrag3::PackedShrubVertices::InstanceGroup grp;
+          grp.matrix_idx = matrix_idx;
+          grp.color_index = inst.color_idx;
+          grp.start_vert = packed_vert_indices.at(frag_idx).at(draw_idx).first;
+          grp.end_vert = packed_vert_indices.at(frag_idx).at(draw_idx).second;
+          tree_out.packed_vertices.instance_groups.push_back(grp);
+
+          for (size_t vidx = 0; vidx < draw.vertices.size(); vidx++) {
+            if (draw.vertices[vidx].adc) {
+              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter);
+              draw_to_add_to->num_triangles++;
+            } else {
+              draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter - 1);
+              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter);
+            }
+          }
+          draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+
+          global_vert_counter += draw.vertices.size();
+        }
+      }
+    }
+  }
+
+  for (auto& draw : tree_out.static_draws) {
+    draw.num_triangles = clean_up_vertex_indices(draw.vertex_index_stream);
+  }
+  tree_out.packed_vertices.total_vertex_count = global_vert_counter;
+}
+
 void extract_shrub(const shrub_types::DrawableTreeInstanceShrub* tree,
                    const std::string& debug_name,
-                   const std::vector<level_tools::TextureRemap>& /*map*/,
-                   const TextureDB& /*tex_db*/,
+                   const std::vector<level_tools::TextureRemap>& map,
+                   const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& /*expected_missing_textures*/,
-                   tfrag3::Level& /*out*/,
+                   tfrag3::Level& out,
                    bool dump_level) {
+  auto& tree_out = out.shrub_trees.emplace_back();
   auto& protos = tree->info.prototype_inline_array_shrub;
   std::vector<ShrubProtoInfo> proto_info;
   for (auto& proto : protos.data) {
-    proto_info.push_back(extract_proto(proto));
+    proto_info.push_back(extract_proto(proto, tex_db, map));
   }
 
   for (auto& arr : tree->discovered_arrays) {
@@ -282,6 +600,17 @@ void extract_shrub(const shrub_types::DrawableTreeInstanceShrub* tree,
       }
     }
   }
+
+  // time of day colors
+  tree_out.time_of_day_colors.resize(tree->time_of_day.height);
+  for (int k = 0; k < (int)tree->time_of_day.height; k++) {
+    for (int j = 0; j < 8; j++) {
+      memcpy(tree_out.time_of_day_colors[k].rgba[j].data(), &tree->time_of_day.colors[k * 8 + j],
+             4);
+    }
+  }
+
+  make_draws(out, tree_out, proto_info, tex_db);
 
   if (dump_level) {
     auto path = file_util::get_file_path({fmt::format("debug_out/shrub_all/{}.obj", debug_name)});
