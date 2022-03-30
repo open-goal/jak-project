@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
-layout (location = 2) in vec4 rgba_base;
+layout (location = 2) in vec3 rgba_base;
 layout (location = 3) in int time_of_day_index;
 
 uniform vec4 hvdf_offset;
@@ -75,16 +75,12 @@ void main() {
     gl_Position.y *= 512.0/448.0;
 
     // time of day lookup
-    fragment_color =  rgba_base;
+    // start with the vertex color (only rgb, VIF filled in the 255.)
+    fragment_color =  vec4(rgba_base, 1);
+    // get the time of day multiplier
     vec4 tod_color = texelFetch(tex_T1, time_of_day_index, 0);
-    fragment_color = tod_color;
-//    fragment_color.xyz *= tod_color.xyz;
-//    fragment_color.w  = 2;
-
-    // fog hack
-//    if (fragment_color.r < 0.0075 && fragment_color.g < 0.0075 && fragment_color.b < 0.0075) {
-//        fogginess = 0;
-//    }
+    // combine
+    fragment_color *= tod_color * 2;
 
     tex_coord = tex_coord_in;
 }

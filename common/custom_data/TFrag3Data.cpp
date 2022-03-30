@@ -127,7 +127,7 @@ void ShrubTree::unpack() {
       vtx.z = temp.z();
       vtx.s = proto_vtx.s;
       vtx.t = proto_vtx.t;
-      memcpy(vtx.rgba_base, proto_vtx.rgba, 4);
+      memcpy(vtx.rgba_base, proto_vtx.rgba, 3);
       i++;
     }
   }

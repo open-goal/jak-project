@@ -12,10 +12,8 @@ uniform float alpha_max;
 uniform vec4 fog_color;
 
 void main() {
-    //vec4 T0 = texture(tex_T0, tex_coord);
     vec4 T0 = texture(tex_T0, tex_coord.xy / 4096.f);
     color = fragment_color * T0 * 2.0;
-    // color = fragment_color;
     color.w *= 2;
 
     if (color.a < alpha_min * 2) {

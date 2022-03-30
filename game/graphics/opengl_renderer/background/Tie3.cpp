@@ -359,17 +359,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   }
   if (!m_override_level) {
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
-    // HACK
-    m_hack_shrub.setup_for_level(m_pc_port_data.level_name, render_state);
   }
 
   render_all_trees(lod(), settings, render_state, prof);
-
-  {
-
-    auto pc = prof.make_scoped_child("shrub");
-    m_hack_shrub.render_all_trees(settings, render_state, pc);
-  }
 }
 
 void Tie3::render_all_trees(int geom,

@@ -1,11 +1,64 @@
 #include "Shrub.h"
 
-Shrub::Shrub() {
+Shrub::Shrub(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
 }
 
 Shrub::~Shrub() {
   discard_tree_cache();
+}
+
+void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  if (!m_enabled) {
+    while (dma.current_tag_offset() != render_state->next_bucket) {
+      dma.read_and_advance();
+    }
+    return;
+  }
+
+  auto data0 = dma.read_and_advance();
+  ASSERT(data0.vif1() == 0);
+  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.size_bytes == 0);
+
+  if (dma.current_tag().kind == DmaTag::Kind::CALL) {
+    // renderer didn't run, let's just get out of here.
+    for (int i = 0; i < 4; i++) {
+      dma.read_and_advance();
+    }
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+
+  auto pc_port_data = dma.read_and_advance();
+  ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
+  m_pc_port_data.level_name[11] = '\0';
+
+  while (dma.current_tag_offset() != render_state->next_bucket) {
+    dma.read_and_advance();
+  }
+
+  TfragRenderSettings settings;
+  settings.hvdf_offset = m_pc_port_data.hvdf_off;
+  settings.fog = m_pc_port_data.fog;
+
+  memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
+  settings.tree_idx = 0;
+
+  for (int i = 0; i < 8; i++) {
+    settings.time_of_day_weights[i] =
+        2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    settings.planes[i] = m_pc_port_data.planes[i];
+    render_state->camera_planes[i] = m_pc_port_data.planes[i];
+  }
+  render_state->has_camera_planes = true;
+
+  m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
+  render_all_trees(settings, render_state, prof);
 }
 
 void Shrub::update_load(const Loader::LevelData* loader_data) {
@@ -38,12 +91,11 @@ void Shrub::update_load(const Loader::LevelData* loader_data) {
     glEnableVertexAttribArray(2);
     glEnableVertexAttribArray(3);
 
-
     glVertexAttribPointer(0,                                          // location 0 in the shader
                           3,                                          // 3 values per vert
                           GL_FLOAT,                                   // floats
                           GL_FALSE,                                   // normalized
-                          sizeof(tfrag3::ShrubGpuVertex),            // stride
+                          sizeof(tfrag3::ShrubGpuVertex),             // stride
                           (void*)offsetof(tfrag3::ShrubGpuVertex, x)  // offset (0)
     );
 
@@ -51,26 +103,24 @@ void Shrub::update_load(const Loader::LevelData* loader_data) {
                           2,                                          // 3 values per vert
                           GL_FLOAT,                                   // floats
                           GL_FALSE,                                   // normalized
-                          sizeof(tfrag3::ShrubGpuVertex),            // stride
+                          sizeof(tfrag3::ShrubGpuVertex),             // stride
                           (void*)offsetof(tfrag3::ShrubGpuVertex, s)  // offset (0)
     );
 
-
-    glVertexAttribPointer(2,                             // location 1 in the shader
-                          4,                             // 4 color components
-                          GL_UNSIGNED_BYTE,              // u8
-                          GL_TRUE,                       // normalized (255 becomes 1)
-                          sizeof(tfrag3::ShrubGpuVertex),                //
+    glVertexAttribPointer(2,                               // location 1 in the shader
+                          3,                               // 4 color components
+                          GL_UNSIGNED_BYTE,                // u8
+                          GL_TRUE,                         // normalized (255 becomes 1)
+                          sizeof(tfrag3::ShrubGpuVertex),  //
                           (void*)offsetof(tfrag3::ShrubGpuVertex, rgba_base)  //
     );
 
-    glVertexAttribIPointer(3,                                // location 2 in the shader
-                           1,                                // 1 values per vert
-                           GL_UNSIGNED_SHORT,                // u16
+    glVertexAttribIPointer(3,                               // location 2 in the shader
+                           1,                               // 1 values per vert
+                           GL_UNSIGNED_SHORT,               // u16
                            sizeof(tfrag3::ShrubGpuVertex),  // stride
                            (void*)offsetof(tfrag3::ShrubGpuVertex, color_index)  // offset (0)
     );
-
 
     glGenBuffers(1, &m_trees[l_tree].index_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_trees[l_tree].index_buffer);
@@ -153,7 +203,6 @@ void Shrub::render_tree(int idx,
   if (!m_has_level) {
     return;
   }
-
 
   if (m_color_result.size() < tree.colors->size()) {
     m_color_result.resize(tree.colors->size());
@@ -250,3 +299,5 @@ void Shrub::render_tree(int idx,
   tree.perf.draw_time.add(draw_timer.getSeconds());
   tree.perf.tree_time.add(tree_timer.getSeconds());
 }
+
+void Shrub::draw_debug_window() {}

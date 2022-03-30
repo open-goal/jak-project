@@ -1515,8 +1515,7 @@ std::string Shrubbery::print(const level_tools::PrintSettings& /*settings*/, int
 std::string GenericShrubFragment::print(const level_tools::PrintSettings& /*settings*/,
                                         int indent) const {
   std::string is(indent, ' ');
-  return fmt::format("{} qwcs: {} {} {} {}: 0x{:x}\n", is, cnt_qwc, vtx_qwc, col_qwc, stq_qwc,
-                     vtx_cnt);
+  return fmt::format("{} qwcs: {} {} {} {}: {}\n", is, cnt_qwc, vtx_qwc, col_qwc, stq_qwc, vtx_cnt);
 }
 
 void GenericShrubFragment::read_from_file(TypedRef ref,

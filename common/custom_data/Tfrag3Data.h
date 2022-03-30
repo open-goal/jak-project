@@ -47,7 +47,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 12;
+constexpr int TFRAG3_VERSION = 13;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -86,7 +86,6 @@ struct PackedTfragVertices {
     u16 cluster_idx;
     u16 s, t;
     u16 color_index;
-
   };
 
   std::vector<Vertex> vertices;
@@ -99,7 +98,8 @@ struct ShrubGpuVertex {
   u32 pad0;
   u16 color_index;
   u16 pad1;
-  u8 rgba_base[4];
+  u8 rgba_base[3];
+  u8 pad2;
 };
 static_assert(sizeof(ShrubGpuVertex) == 32, "ShrubGpuVertex size");
 
@@ -107,7 +107,7 @@ struct PackedShrubVertices {
   struct Vertex {
     float x, y, z;
     float s, t;
-    u8 rgba[4];
+    u8 rgba[3];
   };
 
   struct InstanceGroup {

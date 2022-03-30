@@ -8,8 +8,6 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "common/util/FilteredValue.h"
 
-#include "game/graphics/opengl_renderer/background/Shrub.h"
-
 class Tie3 : public BucketRenderer {
  public:
   Tie3(const std::string& name, BucketId my_id, int level_id);
@@ -116,8 +114,6 @@ class Tie3 : public BucketRenderer {
   float m_wind_multiplier = 1.f;
 
   int m_level_id;
-
-  Shrub m_hack_shrub;
 
   static_assert(sizeof(WindWork) == 84 * 16);
 };

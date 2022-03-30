@@ -8,9 +8,9 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "common/util/FilteredValue.h"
 
-class Shrub {
+class Shrub : public BucketRenderer {
  public:
-  Shrub();
+  Shrub(const std::string& name, BucketId my_id);
   ~Shrub();
   bool setup_for_level(const std::string& level, SharedRenderState* render_state);
   void render_all_trees(const TfragRenderSettings& settings,
@@ -20,6 +20,8 @@ class Shrub {
                    const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void draw_debug_window() override;
 
  private:
   void update_load(const Loader::LevelData* loader_data);
@@ -71,4 +73,5 @@ class Shrub {
   struct Cache {
     std::vector<std::pair<int, int>> draw_idx_temp;
   } m_cache;
+  TfragPcPortData m_pc_port_data;
 };

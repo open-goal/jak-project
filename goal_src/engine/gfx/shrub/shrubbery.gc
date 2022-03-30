@@ -475,6 +475,37 @@
             ;   (-> (the-as drawable-group (-> arg0 data 0)) length)
             ;   s3-0
             ;   )
+            
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            ;; NOTE: this part is completely rewritten for PC
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            
+            (when (logtest? *vu1-enable-user* (vu1-renderer-mask shrubbery))
+              (let* ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                     (s3-1 (-> s2-1 base))
+                     )
+              	(add-pc-tfrag3-data s2-1 (-> *level* data (-> (scratchpad-object terrain-context) bsp lev-index)))
+                (let ((a3-22 (-> s2-1 base)))
+                  (let ((v1-57 (the-as object (-> s2-1 base))))
+                    (set! (-> (the-as dma-packet v1-57) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                    (set! (-> (the-as dma-packet v1-57) vif0) (new 'static 'vif-tag))
+                    (set! (-> (the-as dma-packet v1-57) vif1) (new 'static 'vif-tag))
+                    (set! (-> s2-1 base) (&+ (the-as pointer v1-57) 16))
+                    )
+                  (dma-bucket-insert-tag
+                    (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                    (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
+                                          (bucket-id shrub0)
+                                          (bucket-id shrub1)
+                                          )
+                            )
+                    s3-1
+                    (the-as (pointer dma-tag) a3-22)
+                    )
+                  )
+                )
+              )
+            
             (read! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
             (reset! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
             ; (draw-prototype-inline-array-shrub s4-0 s3-0)

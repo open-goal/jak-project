@@ -33,7 +33,7 @@ std::array<math::Vector4f, 4> extract_shrub_matrix(const u16* data) {
 struct ShrubVertex {
   math::Vector<float, 3> xyz;
   math::Vector<float, 2> st;
-  math::Vector<u8, 4> rgba_generic;
+  math::Vector<u8, 3> rgba_generic;
   bool adc = false;
 };
 struct DrawSettings {
@@ -140,13 +140,14 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 
 DrawSettings adgif_to_draw_mode(const AdGifData& ad,
                                 const TextureDB& tdb,
-                                const std::vector<level_tools::TextureRemap>& map, int count) {
+                                const std::vector<level_tools::TextureRemap>& map,
+                                int count) {
   // initialize draw mode
   DrawMode current_mode;
   current_mode.set_at(true);
   current_mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   current_mode.set_aref(0x26);
-  current_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+  current_mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
   current_mode.set_zt(true);
   current_mode.set_depth_test(GsTest::ZTest::GEQUAL);
   current_mode.set_depth_write_enable(true);  // todo, is this actual true
@@ -160,7 +161,6 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
     fmt::print("i have {} verts\n", count);
   } else {
     ASSERT(ad.tex0_data == 0 || ad.tex0_data == 0x800000000);  // note: decal?? todo
-
   }
 
   // tw/th
@@ -249,6 +249,12 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
     std::vector<AdGifData> adgif_data;
     adgif_data.resize(frag.textures.size() / sizeof(AdGifData));
     memcpy(adgif_data.data(), frag.textures.data(), frag.textures.size());
+
+    if (frag_idx == 0 && proto.name == "vil2-cattail.mb") {
+      fmt::print("Skipping broken village2 thing\n");
+      continue;
+    }
+
     for (size_t i = 0; i < adgif_data.size(); i++) {
       auto& draw = frag_out.draws.emplace_back();
       draw.adgif = adgif_data[i];
@@ -275,8 +281,9 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
         vert_out.st = math::Vector2f(st_data[0], st_data[1]);
         vert_out.adc = (st_data[0] & 1) == 0;  // adc in the low bit of texture coordinate
 
-        memcpy(vert_out.rgba_generic.data(), frag.col.data() + 4 * (vert_idx + draw.start_vtx_idx),
-               4);
+        memcpy(vert_out.rgba_generic.data(), frag.col.data() + 3 * (vert_idx + draw.start_vtx_idx),
+               3);
+        ASSERT(3 * (vert_idx + draw.start_vtx_idx) + 3 <= frag.col.size());
       }
 
       draw.settings = adgif_to_draw_mode(ag, tdb, map, count);
@@ -389,6 +396,49 @@ std::string dump_full_to_obj(const std::vector<ShrubProtoInfo>& protos) {
   return result;
 }
 
+u32 clean_up_vertex_indices(std::vector<u32>& idx) {
+  std::vector<u32> fixed;
+  u32 num_tris = 0;
+
+  bool looking_for_start = true;
+  size_t i_of_start;
+  for (size_t i = 0; i < idx.size(); i++) {
+    if (looking_for_start) {
+      if (idx[i] != UINT32_MAX) {
+        looking_for_start = false;
+        i_of_start = i;
+      }
+    } else {
+      if (idx[i] == UINT32_MAX) {
+        looking_for_start = true;
+        size_t num_verts = i - i_of_start;
+        if (num_verts >= 3) {
+          if (!fixed.empty()) {
+            fixed.push_back(UINT32_MAX);
+          }
+          fixed.insert(fixed.end(), idx.begin() + i_of_start, idx.begin() + i);
+          num_tris += (num_verts - 2);
+        }
+      }
+    }
+  }
+
+  if (!looking_for_start) {
+    size_t num_verts = idx.size() - i_of_start;
+    if (num_verts >= 3) {
+      if (!fixed.empty()) {
+        fixed.push_back(UINT32_MAX);
+      }
+      fixed.insert(fixed.end(), idx.begin() + i_of_start, idx.begin() + idx.size());
+      num_tris += (num_verts - 2);
+    }
+  }
+
+  idx = std::move(fixed);
+
+  return num_tris;
+}
+
 void make_draws(tfrag3::Level& lev,
                 tfrag3::ShrubTree& tree_out,
                 const std::vector<ShrubProtoInfo>& protos,
@@ -412,8 +462,7 @@ void make_draws(tfrag3::Level& lev,
                vert.xyz.z(),
                vert.st.x(),
                vert.st.y(),
-               {vert.rgba_generic[0], vert.rgba_generic[1], vert.rgba_generic[2],
-                vert.rgba_generic[3]}});
+               {vert.rgba_generic[0], vert.rgba_generic[1], vert.rgba_generic[2]}});
         }
         int end = tree_out.packed_vertices.vertices.size();
         frag_inds.emplace_back(start, end);
@@ -497,7 +546,7 @@ void make_draws(tfrag3::Level& lev,
           }
 
           // now we have a draw, time to add vertices
-          draw_to_add_to->num_triangles += draw.vertices.size() - 2;
+          // draw_to_add_to->num_triangles += draw.vertices.size() - 2;
           tfrag3::PackedShrubVertices::InstanceGroup grp;
           grp.matrix_idx = matrix_idx;
           grp.color_index = inst.color_idx;
@@ -521,6 +570,10 @@ void make_draws(tfrag3::Level& lev,
         }
       }
     }
+  }
+
+  for (auto& draw : tree_out.static_draws) {
+    draw.num_triangles = clean_up_vertex_indices(draw.vertex_index_stream);
   }
   tree_out.packed_vertices.total_vertex_count = global_vert_counter;
 }
