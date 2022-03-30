@@ -153,7 +153,11 @@ add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
 # NOTE: Once under CMake 3.13's policy CMP0077, override with `set()` instead
 option(ZYDIS_BUILD_TOOLS "Zydis: Build tools" OFF)
 option(ZYDIS_BUILD_EXAMPLES "Zydis: Build examples" OFF)
-option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS)
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
+else()
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" OFF)
+endif()
 add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
 
 # windows memory management lib
