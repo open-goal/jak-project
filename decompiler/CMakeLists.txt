@@ -60,6 +60,7 @@ add_library(
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
         level_extractor/BspHeader.cpp
+        level_extractor/extract_shrub.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp

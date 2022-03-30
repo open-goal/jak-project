@@ -8,9 +8,11 @@
 
 namespace decompiler {
 
-/*!
- * Get the index of the first draw node in an array. Works for node or tfrag.
- */
+/// <summary>
+/// Get the index of the first draw node in an array. Works for node or tfrag.
+/// </summary>
+/// <param name="array"></param>
+/// <returns></returns>
 u16 get_first_idx(const level_tools::DrawableInlineArray* array) {
   auto as_tie_instances = dynamic_cast<const level_tools::DrawableInlineArrayInstanceTie*>(array);
   auto as_nodes = dynamic_cast<const level_tools::DrawableInlineArrayNode*>(array);
@@ -23,10 +25,14 @@ u16 get_first_idx(const level_tools::DrawableInlineArray* array) {
   }
 }
 
-/*!
- * Verify node indices follow the patterns we expect. Takes start as the expected first,
- * writes the end.
- */
+/// <summary>
+/// Verify node indices follow the patterns we expect. Takes start as the expected first, writes the
+/// end.
+/// </summary>
+/// <param name="array"></param>
+/// <param name="start"></param>
+/// <param name="end"></param>
+/// <returns></returns>
 bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* array,
                                     u16 start,
                                     u16* end) {

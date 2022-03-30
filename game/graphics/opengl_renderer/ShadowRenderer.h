@@ -109,8 +109,8 @@ class ShadowRenderer : public BucketRenderer {
   };
   static_assert(sizeof(Vertex) == 16);
 
-  static constexpr int MAX_VERTICES = 8192;
-  static constexpr int MAX_INDICES = 8192;
+  static constexpr int MAX_VERTICES = 8192 * 3;
+  static constexpr int MAX_INDICES = 8192 * 3;
 
   Vertex m_vertices[MAX_VERTICES];
   u32 m_front_indices[MAX_INDICES];

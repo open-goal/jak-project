@@ -10,6 +10,13 @@ void PackedTieVertices::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
 
+void PackedShrubVertices::serialize(Serializer& ser) {
+  ser.from_pod_vector(&matrices);
+  ser.from_pod_vector(&instance_groups);
+  ser.from_pod_vector(&vertices);
+  ser.from_ptr(&total_vertex_count);
+}
+
 void StripDraw::serialize(Serializer& ser) {
   ser.from_ptr(&mode);
   ser.from_ptr(&tree_tex_id);
@@ -26,6 +33,13 @@ void StripDraw::unpack() {
     }
     unpacked.vertex_index_stream.push_back(UINT32_MAX);
   }
+}
+
+void ShrubDraw::serialize(Serializer& ser) {
+  ser.from_ptr(&mode);
+  ser.from_ptr(&tree_tex_id);
+  ser.from_pod_vector(&vertex_index_stream);
+  ser.from_ptr(&num_triangles);
 }
 
 void InstancedStripDraw::serialize(Serializer& ser) {
@@ -97,6 +111,29 @@ void TieTree::unpack() {
   }
 }
 
+void ShrubTree::unpack() {
+  unpacked.vertices.resize(packed_vertices.total_vertex_count);
+  size_t i = 0;
+
+  for (const auto& grp : packed_vertices.instance_groups) {
+    const auto& mat = packed_vertices.matrices[grp.matrix_idx];
+    for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
+      auto& vtx = unpacked.vertices[i];
+      vtx.color_index = grp.color_index;
+      const auto& proto_vtx = packed_vertices.vertices[src_idx];
+      auto temp = mat[0] * proto_vtx.x + mat[1] * proto_vtx.y + mat[2] * proto_vtx.z + mat[3];
+      vtx.x = temp.x();
+      vtx.y = temp.y();
+      vtx.z = temp.z();
+      vtx.s = proto_vtx.s;
+      vtx.t = proto_vtx.t;
+      memcpy(vtx.rgba_base, proto_vtx.rgba, 3);
+      i++;
+    }
+  }
+  ASSERT(i == unpacked.vertices.size());
+}
+
 void TfragTree::unpack() {
   unpacked.vertices.resize(packed_vertices.vertices.size());
   for (size_t i = 0; i < unpacked.vertices.size(); i++) {
@@ -150,6 +187,19 @@ void TieTree::serialize(Serializer& ser) {
   packed_vertices.serialize(ser);
   ser.from_pod_vector(&colors);
   bvh.serialize(ser);
+}
+
+void ShrubTree::serialize(Serializer& ser) {
+  ser.from_pod_vector(&time_of_day_colors);
+  packed_vertices.serialize(ser);
+  if (ser.is_saving()) {
+    ser.save<size_t>(static_draws.size());
+  } else {
+    static_draws.resize(ser.load<size_t>());
+  }
+  for (auto& draw : static_draws) {
+    draw.serialize(ser);
+  }
 }
 
 void BVH::serialize(Serializer& ser) {
@@ -212,6 +262,15 @@ void Level::serialize(Serializer& ser) {
     }
   }
 
+  if (ser.is_saving()) {
+    ser.save<size_t>(shrub_trees.size());
+  } else {
+    shrub_trees.resize(ser.load<size_t>());
+  }
+  for (auto& tree : shrub_trees) {
+    tree.serialize(ser);
+  }
+
   ser.from_ptr(&version2);
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
     fmt::print("version mismatch when loading tfrag3 data (at end). Got {}, expected {}\n",
@@ -268,6 +327,20 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
       }
       result[TIE_WIND_INSTANCE_INFO] +=
           tie_tree.wind_instance_info.size() * sizeof(TieWindInstance);
+    }
+  }
+
+  // shrub
+  for (const auto& shrub_tree : shrub_trees) {
+    result[SHRUB_TIME_OF_DAY] += shrub_tree.time_of_day_colors.size() * sizeof(TimeOfDayColor);
+    result[SHRUB_VERT] += shrub_tree.packed_vertices.matrices.size() * 4 * 4 * 4;
+    result[SHRUB_VERT] +=
+        shrub_tree.packed_vertices.vertices.size() * sizeof(PackedShrubVertices::Vertex);
+    result[SHRUB_VERT] += shrub_tree.packed_vertices.instance_groups.size() *
+                          sizeof(PackedShrubVertices::InstanceGroup);
+
+    for (const auto& draw : shrub_tree.static_draws) {
+      result[SHRUB_IND] += sizeof(u32) * draw.vertex_index_stream.size();
     }
   }
 

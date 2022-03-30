@@ -81,5 +81,6 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture"};
   at(ShaderId::OCEAN_TEXTURE_MIPMAP) = {"ocean_texture_mipmap"};
   at(ShaderId::OCEAN_COMMON) = {"ocean_common"};
+  at(ShaderId::SHRUB) = {"shrub"};
   at(ShaderId::SHADOW) = {"shadow"};
 }
