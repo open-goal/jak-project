@@ -686,6 +686,231 @@
 ;; This implements the default collision reaction function.
 ;; This is a target-specific reaction.
 
+(defun find-jak-land-point ((arg0 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (let ((t1-0 (new 'stack-no-clear 'collide-tri-result))
+          (f30-0 (* 3.0 61440.0))
+          )
+      (set! (-> s5-0 quad) (-> arg0 quad))
+      (set! (-> s5-0 y) (+ 20480.0 (-> s5-0 y)))
+      (let ((f0-2
+              (fill-and-probe-using-y-probe *collide-cache* s5-0 f30-0 (collide-kind background) (the process-drawable #f) t1-0 (the-as uint 1))
+              )
+            )
+        (if (< f0-2 0.0)
+            (return (the-as object #f))
+            )
+        (set! (-> s5-0 y) (- (-> s5-0 y) (* f0-2 f30-0)))
+        )
+      )
+    (set! (-> arg0 quad) (-> s5-0 quad))
+    )
+  0
+  )
+
+(defun debug-draw-find-ground-point ((target-pos vector) (target-transv vector) (start-len float) (max-len float) (y-angle-of-target-control float) (ck collide-kind))
+  "Draws find-ground-point."
+  (local-vars (direction-idx int) (sv-192 int))
+  
+  (format *stdcon* "vel: ~f m/s~%" (/ (vector-xz-length target-transv) 4096.0))
+  (if (< 819.2 (vector-xz-length target-transv))
+      (format *stdcon* "  using velocity~%")
+      (format *stdcon* "  using facing~%")
+      )
+
+  
+  ;; first, let's find our heading
+  (let ((current-heading (if (< 819.2 (vector-xz-length target-transv)) ;; if we're moving in the xz plane
+                             (vector-y-angle target-transv)             ;; use the direction we're moving
+                             y-angle-of-target-control                            ;; otherwise, use the direction we're facing.
+                             )
+                         )
+        ;; the current position of jak
+        (current-pos (new 'stack-no-clear 'vector)) ;; target-pos)
+        (probe-dir (new 'stack-no-clear 'vector))
+        (result-tri (new 'stack-no-clear 'collide-tri-result))
+        (ground-result (new 'stack 'vector))
+        )
+    (set! (-> current-pos quad) (-> target-pos quad))
+    
+    (when (not (find-jak-land-point current-pos))
+      (format *stdcon* "jak not above ground...~%")
+      )
+  
+    ;; draw sphere for jak's expected landing position.
+    (add-debug-sphere #t (bucket-id debug-draw0) current-pos (meters 1.0) *color-orange*)
+    
+  
+    
+    ;; create a bounding box, centered around our current location.
+    (let ((bbox (new 'stack-no-clear 'bounding-box)))
+      (set! (-> ground-result w) 0.0)
+      ;; look at most max-len away from where we are..
+      (dotimes (v1-1 3)
+        (set! (-> bbox min data v1-1) (- (-> current-pos data v1-1) max-len))
+        (set! (-> bbox max data v1-1) (+ (-> current-pos data v1-1) max-len))
+        )
+      ;; except for in y (height). Look 10m down, and 5m up.
+      (set! (-> bbox min y) (+ -40960.0 (-> current-pos y)))
+      (set! (-> bbox max y) (+ 20480.0 (-> current-pos y)))
+      
+      ;; fill the collide cache will all the triangles in bounding box.
+      (fill-using-bounding-box
+        *collide-cache*
+        bbox
+        ck
+        (the process-drawable #f)
+        (new 'static 'pat-surface :skip #x1 :noentity #x1)
+        )
+      
+      (add-debug-box #t (bucket-id debug-draw0) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x80 :a #x80))
+      )
+    
+    ;; loop over 8 directions to check.
+    (set! direction-idx 0)
+    (while (< direction-idx 8)
+      ;; this picks starts with the current direction, then a little to the left, then a little to the right,
+      ;; then a little more to the left.... so ideally we go in the direction the player is facing, if that's possible.
+      (let ((probe-heading (+ current-heading (if (zero? (logand direction-idx 1))
+                                                  (* 8192.0 (the float (/ direction-idx 2)))
+                                                  (* -8192.0 (the float (/ direction-idx 2)))
+                                                  )
+                              )
+                           )
+            )
+        
+        ;; this will count the number of hits we have in this direction.
+        (set! sv-192 0)
+        
+        ;; we don't know anything, so assume we can go the maximum length in this direction
+        (let ((max-len-this-dir max-len))
+          ;; but, if we did max-len bounce in this direction, we might hit some wall mid-bounce.
+          
+          ;; start with a probe of max len, pointing straight forward.
+          (set-vector! probe-dir 0.0 0.0 max-len 1.0)
+          ;; rotate to point along our heading
+          (vector-rotate-y! probe-dir probe-dir probe-heading)
+          
+          (let ((probe-start (vector+! (new 'stack-no-clear 'vector) current-pos (new 'static 'vector :y 20480.0 :w 1.0))))
+            (add-debug-line 
+              #t
+              (bucket-id debug-draw0)
+              probe-start
+              (vector+! (new 'stack-no-clear 'vector) probe-start probe-dir)
+              *color-blue*
+              #f
+              (the rgba -1)
+              )
+            )
+          
+          ;; see how far we can go, 10m above the current target.
+          ;; this is likely checking to see if we'll hit a wall mid-bounce
+          (when (>= (probe-using-line-sphere
+                    *collide-cache*
+                    (vector+! (new 'stack-no-clear 'vector) current-pos (new 'static 'vector :y 20480.0 :w 1.0))
+                    probe-dir
+                    2048.0
+                    ck
+                    result-tri
+                    1
+                    )
+                  0.0
+                  )
+              (set! max-len-this-dir (+ -6144.0 (vector-vector-xz-distance current-pos (-> result-tri intersect))))
+              (add-debug-sphere
+                #t
+                (bucket-id debug-draw0)
+                (-> result-tri intersect)
+                (meters 0.5)
+                *color-light-cyan*
+                )
+              )
+          
+
+          
+          ;; now, let's search between start-len and max-len-this-dir to see if there's somewhere safe to bounce.
+          (let ((current-len start-len))
+            (while (>= max-len-this-dir current-len)
+              ;; probe heading
+              (set-vector! probe-dir 0.0 0.0 current-len 1.0)
+              (vector-rotate-y! probe-dir probe-dir probe-heading)
+              
+              ;; put probe dir at the end of the probe
+              (vector+! probe-dir current-pos probe-dir)
+              ;; start 10m above the curren pos.
+              (set! (-> probe-dir y) (+ 20480.0 (-> current-pos y)))
+              ;; and probe straight down, to find the first ground after a 10m jump.
+              (add-debug-line
+                #t
+                (bucket-id debug-draw0)
+                probe-dir
+                (vector+! (new-stack-vector0) probe-dir (new 'static 'vector :y (meters -10.0)))
+                *color-light-cyan*
+                #f
+                (the rgba -1)
+                )
+              (when (>= (probe-using-line-sphere
+                          *collide-cache*
+                          probe-dir
+                          (new 'static 'vector :y -251658240.0 :w 1.0)
+                          10240.0
+                          ck
+                          result-tri
+                          1
+                          )
+                        0.0
+                        )
+                (cond
+                  ((and (= (-> result-tri pat mode) (pat-mode ground)) ;; we found ground
+                        (= (-> result-tri pat event) (pat-event none)) ;; and it's not more dangerous ground
+                        (< 0.7 (-> result-tri normal y))               ;; and it's pretty flat
+                        )
+                   (set! (-> ground-result quad) (-> result-tri intersect quad)) ;; remember it
+                   ;; count this as a success
+                   (set! sv-192 (+ sv-192 1))
+                   ;; if we get 2 or more hits, it seems like a good place to land, let's do it!
+                   (when (>= sv-192 2)
+                     (format *stdcon* "found ground~%")
+                     (add-debug-sphere
+                       #t
+                       (bucket-id debug-draw0)
+                       (-> result-tri intersect)
+                       (meters 0.5)
+                       *color-magenta*
+                       )
+                     (return ground-result)
+                     )
+                   )
+                  ((and (= (-> result-tri pat mode) (pat-mode wall)) (< (+ 4096.0 (-> current-pos y)) (-> result-tri intersect y)))
+                   ;; give up on this direction. There's a wall in the way (missed by the earlier fast wall check)
+                   (goto cfg-35)
+                   )
+                  (else
+                    (when (>= (+ 4096.0 current-len) max-len-this-dir)
+                      (add-debug-sphere
+                        #t
+                        (bucket-id debug-draw0)
+                        (-> result-tri intersect)
+                        10240.0
+                        *color-gray*
+                        )
+                    )
+                    )
+                  )
+                )
+              ;; move 1m out more.
+              (set! current-len (+ 4096.0 current-len))
+              )
+            )
+          )
+        )
+      (label cfg-35)
+      (set! direction-idx (+ direction-idx 1))
+      )
+    )
+  (the-as vector #f)
+  )
+
 
 (defun find-ground-point ((target-ctrl control-info) (ground-result vector) (start-len float) (max-len float))
   "Find somewhere safe to land. This is used to find where to bounce back the player if you jump on fire canyon.
