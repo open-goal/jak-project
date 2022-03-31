@@ -40,6 +40,9 @@
 #include "game/sce/libscf.h"
 #include "common/util/Assert.h"
 #include "game/discord.h"
+
+#include "svnrev.h"
+
 using namespace ee;
 
 /*!
@@ -884,6 +887,7 @@ void InitMachine_PCPort() {
   // TODO - we will eventually need a better way to know what game we are playing
   auto settings_path = file_util::get_user_settings_dir();
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
+  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_SHORT_SHA);
 }
 
 void vif_interrupt_callback() {
