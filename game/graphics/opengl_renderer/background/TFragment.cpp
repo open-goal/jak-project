@@ -38,8 +38,6 @@ constexpr const char* level_names[] = {"bea", "cit", "dar", "fin", "int", "jub",
 void TFragment::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
-  m_debug_string.clear();
-
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
       dma.read_and_advance();
@@ -148,13 +146,9 @@ void TFragment::render(DmaFollower& dma,
     m_tfrag3.render_matching_trees(m_tfrag3.lod(), m_tree_kinds, settings, render_state, t3prof);
   }
 
-  m_debug_string += fmt::format("fail: {}\n", dma.current_tag().print());
-
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto tag = dma.current_tag().print();
-    auto data = dma.read_and_advance();
-    m_debug_string +=
-        fmt::format("DMA {} {} bytes, {}\n", tag, data.size_bytes, data.vifcode0().print());
+    dma.read_and_advance();
   }
 
   if (m_hack_test_many_levels) {
@@ -211,8 +205,6 @@ void TFragment::draw_debug_window() {
   }
 
   m_tfrag3.draw_debug_window();
-
-  ImGui::TextUnformatted(m_debug_string.data());
 }
 
 void TFragment::handle_initialization(DmaFollower& dma) {
@@ -238,7 +230,6 @@ void TFragment::handle_initialization(DmaFollower& dma) {
   auto data_upload = dma.read_and_advance();
   unpack_to_stcycl(&m_tfrag_data, data_upload, VifCode::Kind::UNPACK_V4_32, 4, 4, sizeof(TFragData),
                    TFragDataMem::TFragFrameData, false, false);
-  m_debug_string += fmt::format("Frame Data:\n {}\n", m_tfrag_data.print());
 
   // call the setup program
   auto mscal_setup = dma.read_and_advance();
@@ -248,19 +239,6 @@ void TFragment::handle_initialization(DmaFollower& dma) {
   ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
-
-  for (int i = 0; i < 4; i++) {
-    m_debug_string += fmt::format("p[{}]: {}\n", i, m_pc_port_data.planes[i].to_string_aligned());
-  }
-
-  for (int i = 0; i < 4; i++) {
-    m_debug_string += fmt::format("t[{}]: {:x} {:x} {:x} {:x}\n", i, m_pc_port_data.itimes[i].x(),
-                                  m_pc_port_data.itimes[i].y(), m_pc_port_data.itimes[i].z(),
-                                  m_pc_port_data.itimes[i].w());
-  }
-
-  m_debug_string +=
-      fmt::format("level: {}, tree: {}\n", m_pc_port_data.level_name, m_pc_port_data.tree_idx);
 
   // setup double buffering.
   auto db_setup = dma.read_and_advance();

@@ -443,6 +443,7 @@ void make_draws(tfrag3::Level& lev,
                 tfrag3::ShrubTree& tree_out,
                 const std::vector<ShrubProtoInfo>& protos,
                 const TextureDB& tdb) {
+  std::vector<std::vector<u32>> indices_regrouped_by_draw;
   std::unordered_map<u32, std::vector<u32>> static_draws_by_tex;
   size_t global_vert_counter = 0;
   for (auto& proto : protos) {
@@ -528,10 +529,12 @@ void make_draws(tfrag3::Level& lev,
           // okay, we now have a texture and draw mode, let's see if we can add to an existing...
           auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
           tfrag3::ShrubDraw* draw_to_add_to = nullptr;
+          std::vector<u32>* verts_to_add_to = nullptr;
           if (existing_draws_in_tex != static_draws_by_tex.end()) {
             for (auto idx : existing_draws_in_tex->second) {
               if (tree_out.static_draws.at(idx).mode == mode) {
                 draw_to_add_to = &tree_out.static_draws[idx];
+                verts_to_add_to = &indices_regrouped_by_draw[idx];
               }
             }
           }
@@ -543,6 +546,7 @@ void make_draws(tfrag3::Level& lev,
             draw_to_add_to = &tree_out.static_draws.back();
             draw_to_add_to->mode = mode;
             draw_to_add_to->tree_tex_id = idx_in_lev_data;
+            verts_to_add_to = &indices_regrouped_by_draw.emplace_back();
           }
 
           // now we have a draw, time to add vertices
@@ -556,25 +560,30 @@ void make_draws(tfrag3::Level& lev,
 
           for (size_t vidx = 0; vidx < draw.vertices.size(); vidx++) {
             if (draw.vertices[vidx].adc) {
-              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter);
+              verts_to_add_to->push_back(vidx + global_vert_counter);
               draw_to_add_to->num_triangles++;
             } else {
-              draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter - 1);
-              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter);
+              verts_to_add_to->push_back(UINT32_MAX);
+              verts_to_add_to->push_back(vidx + global_vert_counter - 1);
+              verts_to_add_to->push_back(vidx + global_vert_counter);
             }
           }
-          draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-
+          verts_to_add_to->push_back(UINT32_MAX);
           global_vert_counter += draw.vertices.size();
         }
       }
     }
   }
 
-  for (auto& draw : tree_out.static_draws) {
-    draw.num_triangles = clean_up_vertex_indices(draw.vertex_index_stream);
+  for (size_t didx = 0; didx < tree_out.static_draws.size(); didx++) {
+    auto& draw = tree_out.static_draws[didx];
+    auto& inds = indices_regrouped_by_draw[didx];
+    draw.num_triangles = clean_up_vertex_indices(inds);
+    draw.num_indices = inds.size();
+    draw.first_index_index = tree_out.indices.size();
+    tree_out.indices.insert(tree_out.indices.end(), inds.begin(), inds.end());
   }
+
   tree_out.packed_vertices.total_vertex_count = global_vert_counter;
 }
 

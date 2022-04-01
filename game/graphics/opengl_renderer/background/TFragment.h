@@ -46,7 +46,6 @@ class TFragment : public BucketRenderer {
  private:
   void handle_initialization(DmaFollower& dma);
 
-  std::string m_debug_string;
   bool m_child_mode = false;
   bool m_hack_test_many_levels = false;
   bool m_override_time_of_day = false;

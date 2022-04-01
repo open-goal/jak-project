@@ -2211,8 +2211,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
             // now we have a draw, time to add vertices
             tfrag3::StripDraw::VisGroup vgroup;
-            vgroup.vis_idx_in_pc_bvh = inst.vis_id;  // associate with the instance for culling
-            vgroup.num = strip.verts.size() + 1;     // one for the primitive restart!
+            vgroup.vis_idx_in_pc_bvh = inst.vis_id;    // associate with the instance for culling
+            vgroup.num_inds = strip.verts.size() + 1;  // one for the primitive restart!
+            vgroup.num_tris = strip.verts.size() - 2;
             draw_to_add_to->num_triangles += strip.verts.size() - 2;
             tfrag3::PackedTieVertices::MatrixGroup grp;
             grp.matrix_idx = matrix_idx;
@@ -2275,7 +2276,8 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
   result.push_back(grps.at(0));
   for (size_t i = 1; i < grps.size(); i++) {
     if (grps[i].vis_idx_in_pc_bvh == result.back().vis_idx_in_pc_bvh) {
-      result.back().num += grps[i].num;
+      result.back().num_tris += grps[i].num_tris;
+      result.back().num_inds += grps[i].num_inds;
     } else {
       result.push_back(grps[i]);
     }

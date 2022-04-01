@@ -60,7 +60,6 @@ class Tfrag3 {
     tfrag3::TFragmentTreeKind kind;
     GLuint vertex_buffer = -1;
     GLuint index_buffer = -1;
-    std::vector<u32> index_list;
     GLuint time_of_day_texture;
     GLuint vao;
     u32 vert_count = 0;
@@ -84,7 +83,9 @@ class Tfrag3 {
 
   struct Cache {
     std::vector<u8> vis_temp;
-    std::vector<std::pair<int, int>> draw_idx_temp;
+    std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
+    std::vector<GLsizei> multidraw_count_buffer;
+    std::vector<void*> multidraw_index_offset_buffer;
   } m_cache;
 
   std::string m_level_name;
