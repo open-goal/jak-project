@@ -303,7 +303,7 @@ s32 CalculateAngle(Vec3w* trans) {
   s32 lookupZ = diffZ;
 
   if (diffX < 0) {
-    lookupZ = trans->x - gCamTrans.x;
+    lookupX = trans->x - gCamTrans.x;
   }
 
   if (diffZ < 0) {
