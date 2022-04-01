@@ -118,17 +118,11 @@ void Loader::loader_thread() {
     for (auto& tie_tree : result->tie_trees) {
       for (auto& tree : tie_tree) {
         tree.unpack();
-        for (auto& d : tree.static_draws) {
-          d.unpack();
-        }
       }
     }
     for (auto& t_tree : result->tfrag_trees) {
       for (auto& tree : t_tree) {
         tree.unpack();
-        for (auto& d : tree.draws) {
-          d.unpack();
-        }
       }
     }
 

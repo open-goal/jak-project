@@ -60,13 +60,18 @@ struct TfragPcPortData {
   u32 tree_idx;
 };
 
-u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
-                                    u32* idx_out,
+void make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                 GLsizei* counts_out,
+                                 void** index_offsets_out,
+                                 const std::vector<tfrag3::ShrubDraw>& draws);
+
+u32 make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                GLsizei* counts_out,
+                                void** index_offsets_out,
+                                const std::vector<tfrag3::StripDraw>& draws);
+
+u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
+                                    GLsizei* counts_out,
+                                    void** index_offsets_out,
                                     const std::vector<tfrag3::StripDraw>& draws,
                                     const std::vector<u8>& vis_data);
-u32 make_all_visible_index_list(std::pair<int, int>* group_out,
-                                u32* idx_out,
-                                const std::vector<tfrag3::StripDraw>& draws);
-u32 make_all_visible_index_list(std::pair<int, int>* group_out,
-                                u32* idx_out,
-                                const std::vector<tfrag3::ShrubDraw>& draws);

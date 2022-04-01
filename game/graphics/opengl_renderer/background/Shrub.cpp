@@ -69,13 +69,20 @@ void Shrub::update_load(const Loader::LevelData* loader_data) {
 
   size_t max_draws = 0;
   size_t time_of_day_count = 0;
+  size_t max_num_grps = 0;
+
   for (u32 l_tree = 0; l_tree < lev_data->shrub_trees.size(); l_tree++) {
-    size_t idx_buffer_len = 0;
+    size_t num_grps = 0;
+
     const auto& tree = lev_data->shrub_trees[l_tree];
     max_draws = std::max(tree.static_draws.size(), max_draws);
     for (auto& draw : tree.static_draws) {
-      idx_buffer_len += draw.vertex_index_stream.size();
+      (void)draw;
+      // num_grps += draw.vis_groups.size(); TODO
+      max_num_grps += 1;
     }
+    max_num_grps = std::max(max_num_grps, num_grps);
+
     time_of_day_count = std::max(tree.time_of_day_colors.size(), time_of_day_count);
     u32 verts = tree.unpacked.vertices.size();
     glGenVertexArrays(1, &m_trees[l_tree].vao);
@@ -124,8 +131,8 @@ void Shrub::update_load(const Loader::LevelData* loader_data) {
 
     glGenBuffers(1, &m_trees[l_tree].index_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_trees[l_tree].index_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_STREAM_DRAW);
-    m_trees[l_tree].index_list.resize(idx_buffer_len);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, tree.indices.size() * sizeof(u32), tree.indices.data(),
+                 GL_STATIC_DRAW);
 
     glActiveTexture(GL_TEXTURE10);
     glGenTextures(1, &m_trees[l_tree].time_of_day_texture);
@@ -138,7 +145,9 @@ void Shrub::update_load(const Loader::LevelData* loader_data) {
     glBindVertexArray(0);
   }
 
-  m_cache.draw_idx_temp.resize(max_draws);
+  m_cache.multidraw_offset_per_stripdraw.resize(max_draws);
+  m_cache.multidraw_count_buffer.resize(max_num_grps);
+  m_cache.multidraw_index_offset_buffer.resize(max_num_grps);
   ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
 }
 
@@ -198,7 +207,6 @@ void Shrub::render_tree(int idx,
   auto& tree = m_trees.at(idx);
   tree.perf.draws = 0;
   tree.perf.verts = 0;
-  tree.perf.full_draws = 0;
   tree.perf.wind_draws = 0;
   if (!m_has_level) {
     return;
@@ -229,24 +237,22 @@ void Shrub::render_tree(int idx,
   tree.perf.tod_time.add(setup_timer.getSeconds());
 
   int last_texture = -1;
-  u32 idx_buffer_ptr = 0;
 
   tree.perf.cull_time.add(0);
   Timer index_timer;
-  idx_buffer_ptr = make_all_visible_index_list(m_cache.draw_idx_temp.data(), tree.index_list.data(),
-                                               *tree.draws);
+  make_all_visible_multidraws(m_cache.multidraw_offset_per_stripdraw.data(),
+                              m_cache.multidraw_count_buffer.data(),
+                              m_cache.multidraw_index_offset_buffer.data(), *tree.draws);
+
   tree.perf.index_time.add(index_timer.getSeconds());
-  tree.perf.index_upload = sizeof(u32) * idx_buffer_ptr;
 
   Timer draw_timer;
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_ptr * sizeof(u32), tree.index_list.data(),
-               GL_STREAM_DRAW);
 
   for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
     const auto& draw = tree.draws->operator[](draw_idx);
-    const auto& indices = m_cache.draw_idx_temp[draw_idx];
+    const auto& indices = m_cache.multidraw_offset_per_stripdraw[draw_idx];
 
-    if (indices.second <= indices.first) {
+    if (indices.second == 0) {
       continue;
     }
 
@@ -257,20 +263,16 @@ void Shrub::render_tree(int idx,
 
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::SHRUB);
     int draw_size = indices.second - indices.first;
-    void* offset = (void*)(indices.first * sizeof(u32));
 
     prof.add_draw_call();
-    prof.add_tri(draw.num_triangles * (float)draw_size / draw.vertex_index_stream.size());
-
-    bool is_full = draw_size == (int)draw.vertex_index_stream.size();
+    prof.add_tri(draw.num_triangles);
 
     tree.perf.draws++;
-    if (is_full) {
-      tree.perf.full_draws++;
-    }
     tree.perf.verts += draw_size;
 
-    glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
+    glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
+                        GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
+                        indices.second);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -278,9 +280,6 @@ void Shrub::render_tree(int idx,
       case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
         tree.perf.draws++;
         tree.perf.verts += draw_size;
-        if (is_full) {
-          tree.perf.full_draws++;
-        }
         prof.add_draw_call();
         prof.add_tri(draw_size);
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SHRUB].id(), "alpha_min"),
@@ -288,7 +287,9 @@ void Shrub::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SHRUB].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        glDrawElements(GL_TRIANGLE_STRIP, draw_size, GL_UNSIGNED_INT, (void*)offset);
+        glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
+                            GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
+                            indices.second);
         break;
       default:
         ASSERT(false);
