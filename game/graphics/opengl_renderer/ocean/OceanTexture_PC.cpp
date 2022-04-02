@@ -1,5 +1,5 @@
 #include "OceanTexture.h"
-
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 void OceanTexture::run_L1_PC() {
   //  L1:
   //  lq.xyzw vf14_startx, 988(vi00)    |  maxw.xyzw vf01_ones, vf00, vf00
@@ -428,7 +428,7 @@ void OceanTexture::flush(SharedRenderState* render_state, ScopedProfilerNode& pr
   // glDrawArrays(GL_TRIANGLE_STRIP, 0, NUM_VERTS);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
-  glDrawElements(GL_TRIANGLE_STRIP, m_pc.index_buffer.size(), GL_UNSIGNED_INT, (void*)0);
+  DrawCall::draw_elements(GL_TRIANGLE_STRIP, m_pc.index_buffer.size(), GL_UNSIGNED_INT, 0);
   prof.add_draw_call();
   prof.add_tri(NUM_STRIPS * NUM_STRIPS * 2);
 

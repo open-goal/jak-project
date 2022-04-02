@@ -1,5 +1,6 @@
 #include "ShadowRenderer.h"
 #include "third-party/imgui/imgui.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 #include <cfloat>
 
@@ -368,14 +369,14 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   }
   glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
   glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);  // increment on depth fail.
-  glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
+  DrawCall::draw_elements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, 0);
 
   if (m_debug_draw_volume) {
     glDisable(GL_BLEND);
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
                 0., 0.0, 0., 0.5);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
+    DrawCall::draw_elements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glEnable(GL_BLEND);
   }
@@ -390,13 +391,13 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   // Second pass.
   // same settings, but decrement.
   glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);  // decrement on depth fail.
-  glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
+  DrawCall::draw_elements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, 0);
   if (m_debug_draw_volume) {
     glDisable(GL_BLEND);
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
                 0., 0.0, 0., 0.5);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
+    DrawCall::draw_elements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glEnable(GL_BLEND);
   }
@@ -416,7 +417,7 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   glEnable(GL_BLEND);
   glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
   glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(sizeof(u32) * (m_next_front_index - 6)));
+  DrawCall::draw_elements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, sizeof(u32) * (m_next_front_index - 6));
   prof.add_draw_call();
   prof.add_tri(2);
   glBlendEquation(GL_FUNC_ADD);

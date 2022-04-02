@@ -3,6 +3,7 @@
 #include "SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 namespace {
 
@@ -458,7 +459,7 @@ void SpriteRenderer::flush_sprites(SharedRenderState* render_state, ScopedProfil
   glBufferData(GL_ARRAY_BUFFER, m_sprite_offset * sizeof(SpriteVertex3D) * 6, m_vertices_3d.data(),
                GL_STREAM_DRAW);
 
-  glDrawArrays(GL_TRIANGLES, 0, m_sprite_offset * 6);
+  DrawCall::draw_arrays(GL_TRIANGLES, 0, m_sprite_offset * 6);
 
   glBindVertexArray(0);
   int n_tris = m_sprite_offset * 6 / 3;

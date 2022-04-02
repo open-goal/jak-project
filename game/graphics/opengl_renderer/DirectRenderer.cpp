@@ -5,6 +5,7 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "third-party/imgui/imgui.h"
 #include "common/util/Assert.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
@@ -214,14 +215,14 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
                m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
 
   int draw_count = 0;
-  glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+  DrawCall::draw_arrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
   draw_count++;
 
   if (m_debug_state.wireframe) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    DrawCall::draw_arrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     m_blend_state_needs_gl_update = true;
     m_prim_gl_state_needs_gl_update = true;

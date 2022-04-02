@@ -56,3 +56,13 @@ class FullScreenDraw {
   GLuint m_vao;
   GLuint m_vertex_buffer;
 };
+
+namespace DrawCall {
+void draw_arrays(u32 kind, u32 offset, u32 count);
+void draw_elements(u32 kind, u32 count, u32 index_kind, u32 offset);
+void multi_draw_elements(u32 kind,
+                         GLsizei* counts,
+                         u32 index_kind,
+                         void** index_offsets,
+                         u32 draw_count);
+}  // namespace DrawCall

@@ -1,4 +1,5 @@
 #include "Shrub.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 Shrub::Shrub(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
@@ -270,9 +271,9 @@ void Shrub::render_tree(int idx,
     tree.perf.draws++;
     tree.perf.verts += draw_size;
 
-    glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                        GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                        indices.second);
+    DrawCall::multi_draw_elements(
+        GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -287,9 +288,9 @@ void Shrub::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SHRUB].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                            GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                            indices.second);
+        DrawCall::multi_draw_elements(
+            GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
         break;
       default:
         ASSERT(false);
@@ -297,6 +298,8 @@ void Shrub::render_tree(int idx,
   }
 
   glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   tree.perf.draw_time.add(draw_timer.getSeconds());
   tree.perf.tree_time.add(tree_timer.getSeconds());
 }

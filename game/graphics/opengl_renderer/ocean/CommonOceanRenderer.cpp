@@ -1,4 +1,5 @@
 #include "CommonOceanRenderer.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 CommonOceanRenderer::CommonOceanRenderer() {
   m_vertices.resize(4096 * 10);  // todo decrease
@@ -284,6 +285,9 @@ void CommonOceanRenderer::flush_near(SharedRenderState* render_state, ScopedProf
   glDepthFunc(GL_GEQUAL);
 
   for (int bucket = 0; bucket < 3; bucket++) {
+    if (m_next_free_index[bucket] == 0) {
+      continue;
+    }
     switch (bucket) {
       case 0: {
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
@@ -330,7 +334,7 @@ void CommonOceanRenderer::flush_near(SharedRenderState* render_state, ScopedProf
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[bucket]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_free_index[bucket] * sizeof(u32),
                  m_indices[bucket].data(), GL_STREAM_DRAW);
-    glDrawElements(GL_TRIANGLE_STRIP, m_next_free_index[bucket], GL_UNSIGNED_INT, nullptr);
+    DrawCall::draw_elements(GL_TRIANGLE_STRIP, m_next_free_index[bucket], GL_UNSIGNED_INT, 0);
     prof.add_draw_call();
     prof.add_tri(m_next_free_index[bucket]);
   }
@@ -517,7 +521,7 @@ void CommonOceanRenderer::flush_mid(SharedRenderState* render_state, ScopedProfi
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[bucket]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_free_index[bucket] * sizeof(u32),
                  m_indices[bucket].data(), GL_STREAM_DRAW);
-    glDrawElements(GL_TRIANGLE_STRIP, m_next_free_index[bucket], GL_UNSIGNED_INT, nullptr);
+    DrawCall::draw_elements(GL_TRIANGLE_STRIP, m_next_free_index[bucket], GL_UNSIGNED_INT, 0);
     prof.add_draw_call();
     prof.add_tri(m_next_free_index[bucket]);
   }

@@ -1,5 +1,6 @@
 #include "OceanTexture.h"
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "third-party/imgui/imgui.h"
 
 constexpr int OCEAN_TEX_TBP = 8160;  // todo
@@ -255,7 +256,7 @@ void OceanTexture::make_texture_with_mipmaps(SharedRenderState* render_state,
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_TEXTURE_MIPMAP].id(), "scale"),
         1.f / (1 << i));
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    DrawCall::draw_arrays(GL_TRIANGLE_STRIP, 0, 4);
     prof.add_draw_call();
     prof.add_tri(2);
   }

@@ -1,11 +1,10 @@
-
-
 #include "Sprite3.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 namespace {
 
@@ -498,8 +497,8 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
     prof.add_draw_call();
     prof.add_tri(2 * (bucket->ids.size() / 5));
 
-    glDrawElements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
-                   (void*)(bucket->offset_in_idx_buffer * sizeof(u32)));
+    DrawCall::draw_elements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
+                            bucket->offset_in_idx_buffer * sizeof(u32));
 
     if (double_draw) {
       switch (settings.kind) {
@@ -515,8 +514,8 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
               glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "alpha_max"),
               settings.aref_second);
           glDepthMask(GL_FALSE);
-          glDrawElements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
-                         (void*)(bucket->offset_in_idx_buffer * sizeof(u32)));
+          DrawCall::draw_elements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
+                                  bucket->offset_in_idx_buffer * sizeof(u32));
           break;
         default:
           ASSERT(false);

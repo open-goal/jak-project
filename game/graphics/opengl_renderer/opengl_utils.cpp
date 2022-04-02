@@ -143,5 +143,30 @@ void FullScreenDraw::draw(const math::Vector4f& color,
               color[3]);
   prof.add_tri(2);
   prof.add_draw_call();
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  DrawCall::draw_arrays(GL_TRIANGLE_STRIP, 0, 4);
 }
+
+namespace DrawCall {
+void draw_arrays(u32 kind, u32 offset, u32 count) {
+  ASSERT(count > 0);
+  glDrawArrays(kind, offset, count);
+}
+
+void draw_elements(u32 kind, u32 count, u32 index_kind, u32 offset) {
+  ASSERT(count > 0);
+  glDrawElements(kind, count, index_kind, (void*)offset);
+}
+
+void multi_draw_elements(u32 kind,
+                         GLsizei* counts,
+                         u32 index_kind,
+                         void** index_offsets,
+                         u32 draw_count) {
+  ASSERT(draw_count > 0);
+  for (u32 i = 0; i < draw_count; i++) {
+    ASSERT(counts[i] > 0);
+  }
+  glMultiDrawElements(kind, counts, index_kind, index_offsets, draw_count);
+}
+
+}  // namespace DrawCall

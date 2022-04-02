@@ -1,6 +1,7 @@
 #include "DirectRenderer2.h"
 #include "third-party/imgui/imgui.h"
 #include "common/log/log.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 #include <immintrin.h>
 
 DirectRenderer2::DirectRenderer2(u32 max_verts,
@@ -160,14 +161,14 @@ void DirectRenderer2::draw_call_loop_simple(SharedRenderState* render_state,
     setup_opengl_for_draw_mode(draw, render_state);
     setup_opengl_tex(0, draw.tbp, draw.mode.get_filt_enable(), draw.mode.get_clamp_s_enable(),
                      draw.mode.get_clamp_t_enable(), render_state);
-    void* offset = (void*)(draw.start_index * sizeof(u32));
+    u32 offset = draw.start_index * sizeof(u32);
     int end_idx;
     if (draw_idx == m_next_free_draw - 1) {
       end_idx = m_vertices.next_index;
     } else {
       end_idx = m_draw_buffer[draw_idx + 1].start_index;
     }
-    glDrawElements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    DrawCall::draw_elements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, offset);
     prof.add_draw_call();
     prof.add_tri((end_idx - draw.start_index) - 2);
   }
@@ -210,11 +211,11 @@ void DirectRenderer2::draw_call_loop_grouped(SharedRenderState* render_state,
     } else {
       end_idx = m_draw_buffer[end_of_draw_group + 1].start_index;
     }
-    void* offset = (void*)(draw.start_index * sizeof(u32));
+    u32 offset = (draw.start_index * sizeof(u32));
     // fmt::print("drawing {:4d} with abe {} tex {} {}", end_idx - draw.start_index,
     // (int)draw.mode.get_ab_enable(), end_of_draw_group - draw_idx, draw.to_single_line_string() );
     // fmt::print("{}\n", draw.mode.to_string());
-    glDrawElements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, (void*)offset);
+    DrawCall::draw_elements(GL_TRIANGLE_STRIP, end_idx - draw.start_index, GL_UNSIGNED_INT, offset);
     prof.add_draw_call();
     prof.add_tri((end_idx - draw.start_index) / 3);
     draw_idx = end_of_draw_group + 1;

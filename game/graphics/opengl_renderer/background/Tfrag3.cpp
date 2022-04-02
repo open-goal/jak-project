@@ -1,5 +1,5 @@
 #include "Tfrag3.h"
-
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "third-party/imgui/imgui.h"
 
 Tfrag3::Tfrag3() {
@@ -225,9 +225,9 @@ void Tfrag3::render_tree(int geom,
 
     prof.add_draw_call();
 
-    glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                        GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                        indices.second);
+    DrawCall::multi_draw_elements(
+        GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -240,15 +240,17 @@ void Tfrag3::render_tree(int geom,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                            GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                            indices.second);
+        DrawCall::multi_draw_elements(
+            GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
         break;
       default:
         ASSERT(false);
     }
   }
   glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 /*!
@@ -471,7 +473,7 @@ void Tfrag3::render_tree_cull_debug(const TfragRenderSettings& settings,
 
     glBufferSubData(GL_ARRAY_BUFFER, 0, to_do * sizeof(DebugVertex),
                     m_debug_vert_data.data() + start);
-    glDrawArrays(GL_TRIANGLES, 0, to_do);
+    DrawCall::draw_arrays(GL_TRIANGLES, 0, to_do);
     prof.add_draw_call();
     prof.add_tri(to_do / 3);
 

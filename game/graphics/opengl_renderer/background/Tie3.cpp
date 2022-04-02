@@ -1,5 +1,5 @@
 #include "Tie3.h"
-
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "third-party/imgui/imgui.h"
 
 Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
@@ -467,8 +467,8 @@ void Tie3::render_tree_wind(int idx,
       tree.perf.wind_draws++;
       tree.perf.verts += grp.num;
 
-      glDrawElements(GL_TRIANGLE_STRIP, grp.num, GL_UNSIGNED_INT,
-                     (void*)((off + tree.wind_vertex_index_offsets.at(draw_idx)) * sizeof(u32)));
+      DrawCall::draw_elements(GL_TRIANGLE_STRIP, grp.num, GL_UNSIGNED_INT,
+                              (off + tree.wind_vertex_index_offsets.at(draw_idx)) * sizeof(u32));
       off += grp.num;
 
       switch (double_draw.kind) {
@@ -487,8 +487,8 @@ void Tie3::render_tree_wind(int idx,
               glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
               double_draw.aref_second);
           glDepthMask(GL_FALSE);
-          glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
-                         (void*)0);
+          DrawCall::draw_elements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(),
+                                  GL_UNSIGNED_INT, 0);
           break;
         default:
           ASSERT(false);
@@ -589,9 +589,9 @@ void Tie3::render_tree(int idx,
     tree.perf.draws++;
     tree.perf.verts += draw_size;
 
-    glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                        GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                        indices.second);
+    DrawCall::multi_draw_elements(
+        GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -606,9 +606,9 @@ void Tie3::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                            GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                            indices.second);
+        DrawCall::multi_draw_elements(
+            GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
         break;
       default:
         ASSERT(false);
@@ -628,9 +628,9 @@ void Tie3::render_tree(int idx,
           settings.fog.x());
       glDisable(GL_BLEND);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      glMultiDrawElements(GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first],
-                          GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[indices.first],
-                          indices.second);
+      DrawCall::multi_draw_elements(
+          GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+          &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       prof.add_draw_call();
       prof.add_tri(draw_size);
@@ -644,6 +644,8 @@ void Tie3::render_tree(int idx,
   }
 
   glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   tree.perf.draw_time.add(draw_timer.getSeconds());
   tree.perf.tree_time.add(tree_timer.getSeconds());
 }
