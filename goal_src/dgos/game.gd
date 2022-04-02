@@ -46,6 +46,7 @@
   ("display.o" "display")
   ("connect.o" "connect")
   ("text-h.o" "text-h")
+  ("text-pc.o" "text-pc") ;; added
   ("settings-h.o" "settings-h")
   ("capture.o" "capture")
   ("memory-usage-h.o" "memory-usage-h")
@@ -275,6 +276,7 @@
   ("progress-part.o" "progress-part")
   ("progress-draw.o" "progress-draw")
   ("progress.o" "progress")
+  ("progress-pc.o" "progress-pc") ;; added
   ("credits.o" "credits")
   ("projectiles.o" "projectiles")
   ("ocean.o" "ocean")

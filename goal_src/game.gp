@@ -1625,6 +1625,7 @@
  "gfx/decomp-h.gc"
  "gfx/hw/display.gc"
  "engine/connect.gc"
+ "ui/text-h.gc"
  "game/settings-h.gc"
  "gfx/capture.gc"
  "debug/memory-usage-h.gc"
@@ -1714,6 +1715,7 @@
  "camera/cam-update-h.gc"
  "debug/assert-h.gc"
  "ui/hud-h.gc"
+ "ui/progress-h.gc"
  "ps2/rpc-h.gc"
  "nav/path-h.gc"
  "nav/navigate-h.gc"
@@ -1847,7 +1849,10 @@
  "game/crates.gc"
  "ui/hud.gc"
  "ui/hud-classes.gc"
+ "ui/progress/progress-static.gc"
  "ui/progress/progress-part.gc"
+ "ui/progress/progress-draw.gc"
+ "ui/progress/progress.gc"
  "ui/credits.gc"
  "game/projectiles.gc"
  "gfx/ocean/ocean.gc"
@@ -1924,10 +1929,7 @@
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text")
+(goal-src "pc/text-pc.gc" "text-h")
+(goal-src "pc/progress-pc.gc" "progress")
 
-(goal-src "engine/ui/text-h.gc" "connect")
-(goal-src "engine/ui/progress-h.gc" "hud-h")
-(goal-src "engine/ui/progress/progress-static.gc" "hud-classes")
-(goal-src "engine/ui/progress/progress-draw.gc" "progress-part")
-(goal-src "engine/ui/progress/progress.gc" "progress-draw")
 
