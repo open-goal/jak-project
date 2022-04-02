@@ -1,5 +1,5 @@
 
-add_library(imgui SHARED
+add_library(imgui
         imgui.cpp
         imgui_draw.cpp
         imgui_tables.cpp

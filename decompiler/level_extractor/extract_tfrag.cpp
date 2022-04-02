@@ -2043,7 +2043,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
       for (auto& strip : draw.strips) {
         tfrag3::StripDraw::VisGroup vgroup;
         vgroup.vis_idx_in_pc_bvh = strip.tfrag_id;  // associate with the tfrag for culling
-        vgroup.num = strip.verts.size() + 1;        // one for the primitive restart!
+        vgroup.num_inds = strip.verts.size() + 1;   // one for the primitive restart!
+        vgroup.num_tris = strip.verts.size() - 2;
 
         tdraw.num_triangles += strip.verts.size() - 2;
         tfrag3::StripDraw::VertexRun run;
@@ -2127,7 +2128,8 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
   result.push_back(grps.at(0));
   for (size_t i = 1; i < grps.size(); i++) {
     if (grps[i].vis_idx_in_pc_bvh == result.back().vis_idx_in_pc_bvh) {
-      result.back().num += grps[i].num;
+      result.back().num_inds += grps[i].num_inds;
+      result.back().num_tris += grps[i].num_tris;
     } else {
       result.push_back(grps[i]);
     }

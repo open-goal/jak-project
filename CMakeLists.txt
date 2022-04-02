@@ -9,6 +9,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+option(BUILD_FOR_RELEASE "Build for release purposes (static everything)" OFF)
+if(BUILD_FOR_RELEASE)
+    set(BUILD_SHARED_LIBS OFF)
+else()
+    set(BUILD_SHARED_LIBS ON)
+endif()
+
 # Set default compile flags
 # optimization level can be set here. You can overwrite these in a per-project basis if you want.
 if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
@@ -97,7 +104,6 @@ include_directories(./)
 include_directories(SYSTEM third-party/inja)
 
 # build repl library
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 
 # build common library
@@ -147,7 +153,11 @@ add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
 # NOTE: Once under CMake 3.13's policy CMP0077, override with `set()` instead
 option(ZYDIS_BUILD_TOOLS "Zydis: Build tools" OFF)
 option(ZYDIS_BUILD_EXAMPLES "Zydis: Build examples" OFF)
-option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
+if(BUILD_SHARED_LIBS)
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
+else()
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" OFF)
+endif()
 add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
 
 # windows memory management lib

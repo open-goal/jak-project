@@ -25,21 +25,12 @@ void StripDraw::serialize(Serializer& ser) {
   ser.from_ptr(&num_triangles);
 }
 
-void StripDraw::unpack() {
-  ASSERT(unpacked.vertex_index_stream.empty());
-  for (auto& r : runs) {
-    for (int i = 0; i < r.length; i++) {
-      unpacked.vertex_index_stream.push_back(r.vertex0 + i);
-    }
-    unpacked.vertex_index_stream.push_back(UINT32_MAX);
-  }
-}
-
 void ShrubDraw::serialize(Serializer& ser) {
   ser.from_ptr(&mode);
   ser.from_ptr(&tree_tex_id);
-  ser.from_pod_vector(&vertex_index_stream);
   ser.from_ptr(&num_triangles);
+  ser.from_ptr(&first_index_index);
+  ser.from_ptr(&num_indices);
 }
 
 void InstancedStripDraw::serialize(Serializer& ser) {
@@ -109,6 +100,16 @@ void TieTree::unpack() {
       }
     }
   }
+
+  for (auto& draw : static_draws) {
+    draw.unpacked.idx_of_first_idx_in_full_buffer = unpacked.indices.size();
+    for (auto& run : draw.runs) {
+      for (u32 ri = 0; ri < run.length; ri++) {
+        unpacked.indices.push_back(run.vertex0 + ri);
+      }
+      unpacked.indices.push_back(UINT32_MAX);
+    }
+  }
 }
 
 void ShrubTree::unpack() {
@@ -154,6 +155,16 @@ void TfragTree::unpack() {
     o.q = 1.f;
     o.color_index = in.color_index;
   }
+
+  for (auto& draw : draws) {
+    draw.unpacked.idx_of_first_idx_in_full_buffer = unpacked.indices.size();
+    for (auto& run : draw.runs) {
+      for (u32 ri = 0; ri < run.length; ri++) {
+        unpacked.indices.push_back(run.vertex0 + ri);
+      }
+      unpacked.indices.push_back(UINT32_MAX);
+    }
+  }
 }
 
 void TieTree::serialize(Serializer& ser) {
@@ -191,6 +202,7 @@ void TieTree::serialize(Serializer& ser) {
 
 void ShrubTree::serialize(Serializer& ser) {
   ser.from_pod_vector(&time_of_day_colors);
+  ser.from_pod_vector(&indices);
   packed_vertices.serialize(ser);
   if (ser.is_saving()) {
     ser.save<size_t>(static_draws.size());
@@ -338,10 +350,7 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
         shrub_tree.packed_vertices.vertices.size() * sizeof(PackedShrubVertices::Vertex);
     result[SHRUB_VERT] += shrub_tree.packed_vertices.instance_groups.size() *
                           sizeof(PackedShrubVertices::InstanceGroup);
-
-    for (const auto& draw : shrub_tree.static_draws) {
-      result[SHRUB_IND] += sizeof(u32) * draw.vertex_index_stream.size();
-    }
+    result[SHRUB_IND] += sizeof(u32) * shrub_tree.indices.size();
   }
 
   return result;

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 include(CMakePackageConfigHelpers)
 
 project(lzokay VERSION 0.1 LANGUAGES CXX)
-add_library(lzokay SHARED lzokay.hpp lzokay.cpp)
+add_library(lzokay lzokay.hpp lzokay.cpp)
 add_executable(lzokaytest test.cpp)
 target_include_directories(lzokay PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 target_link_libraries(lzokaytest lzokay)

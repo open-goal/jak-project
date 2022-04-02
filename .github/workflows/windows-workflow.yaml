@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - v*
   pull_request:
     branches:
       - master
@@ -17,11 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2022]
-        config: [Release]
         compiler: [msvc, clang]
         experimental: [false]
 
-    name: ${{ matrix.config }}-${{ matrix.compiler }}
+    name: ${{ matrix.compiler }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
@@ -35,13 +36,6 @@ jobs:
       BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
     steps:
-      # NOTE - useful for debugging
-      # - name: Dump GitHub context
-      #   env:
-      #     GITHUB_CONTEXT: ${{ toJson(github) }}
-      #   run: |
-      #     echo "$GITHUB_CONTEXT"
-
       - name: Checkout Repository
         uses: actions/checkout@v2
 
@@ -54,14 +48,15 @@ jobs:
       - name: Setup Buildcache
         uses: mikehardy/buildcache-action@v1.2.2
         with:
-          cache_key: ${{ matrix.os }}-${{ matrix.config }}-${{ matrix.compiler }}
+          cache_key: ${{ matrix.os }}-${{ matrix.compiler }}
 
+      # TODO - eventually fight with this to get it to use Ninja and such
       - name: CMake Generation
         shell: cmd # ideally id like everything to be powershell but running this bat file is finicky
         run: |
           if "${{ matrix.compiler }}" == "clang" (
             call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-            cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" -DCMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" .
+            cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_FOR_RELEASE=ON -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" -DCMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" .
           ) else (
             call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
             cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe .
@@ -82,3 +77,25 @@ jobs:
         env:
           NEXT_DIR: ${{ github.workspace }}
         run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_filter="-*MANUAL_TEST*"
+
+      # ---- Release / Tagging related steps ----
+      - name: Prepare Build Artifacts
+        if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
+        run: |
+          mkdir -p ./ci-artifacts/
+          cp ./build/bin/decompiler.exe ./ci-artifacts/windows-decompiler.exe
+          cp ./build/bin/gk.exe ./ci-artifacts/windows-gk.exe
+          cp ./build/bin/goalc.exe ./ci-artifacts/windows-goalc.exe
+          ls ./ci-artifacts/
+
+      - name: Upload Assets and Potential Publish Release
+        if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
+          ASSET_DIR: ${{ github.WORKSPACE }}/ci-artifacts
+          ASSET_EXTENSION: exe
+          TAG_TO_SEARCH_FOR: ${{ github.REF }}
+        run: |
+          cd ./.github/scripts/releases/upload-release-artifacts
+          npm ci
+          node index.js
