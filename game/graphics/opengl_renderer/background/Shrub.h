@@ -33,10 +33,12 @@ class Shrub : public BucketRenderer {
     GLuint time_of_day_texture;
     GLuint vao;
     u32 vert_count;
+    u32 index_count;
     const std::vector<tfrag3::ShrubDraw>* draws = nullptr;
     const std::vector<tfrag3::TieWindInstance>* instance_info = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     SwizzledTimeOfDay tod_cache;
+    const u32* indices_debug = nullptr;
 
     struct {
       u32 verts = 0;

@@ -54,6 +54,8 @@ class Tie3 : public BucketRenderer {
     GLuint time_of_day_texture;
     GLuint vao;
     u32 vert_count;
+    u32 index_count;
+    const u32* index_debug;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::InstancedStripDraw>* wind_draws = nullptr;
     const std::vector<tfrag3::TieWindInstance>* instance_info = nullptr;

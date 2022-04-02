@@ -93,6 +93,8 @@ void Shrub::update_load(const Loader::LevelData* loader_data) {
     m_trees[l_tree].draws = &tree.static_draws;
     m_trees[l_tree].colors = &tree.time_of_day_colors;
     m_trees[l_tree].tod_cache = swizzle_time_of_day(tree.time_of_day_colors);
+    m_trees[l_tree].indices_debug = tree.indices.data();
+    m_trees[l_tree].index_count = tree.indices.size();
     glBindBuffer(GL_ARRAY_BUFFER, m_trees[l_tree].vertex_buffer);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -271,9 +273,13 @@ void Shrub::render_tree(int idx,
     tree.perf.draws++;
     tree.perf.verts += draw_size;
 
-    DrawCall::multi_draw_elements(
+    //    DrawCall::multi_draw_elements(
+    //        GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
+    //        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+    DrawCall::multi_draw_elements_verify(
         GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+        tree.vert_count, tree.indices_debug);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -288,9 +294,10 @@ void Shrub::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SHRUB].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        DrawCall::multi_draw_elements(
+        DrawCall::multi_draw_elements_verify(
             GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+            tree.vert_count, tree.indices_debug);
         break;
       default:
         ASSERT(false);

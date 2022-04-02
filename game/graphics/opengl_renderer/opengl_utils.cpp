@@ -166,7 +166,48 @@ void multi_draw_elements(u32 kind,
   for (u32 i = 0; i < draw_count; i++) {
     ASSERT(counts[i] > 0);
   }
-  glMultiDrawElements(kind, counts, index_kind, index_offsets, draw_count);
+  // glMultiDrawElements(kind, counts, index_kind, index_offsets, draw_count);
+  for (u32 i = 0; i < draw_count; i++) {
+    glDrawElements(kind, counts[i], index_kind, index_offsets[i]);
+  }
+}
+
+void multi_draw_elements_verify(u32 kind,
+                                GLsizei* counts,
+                                u32 index_kind,
+                                void** index_offsets,
+                                u32 draw_count,
+                                u32 idx_buffer_len,
+                                u32 vert_buffer_len,
+                                const u32* idx_buffer_data) {
+  ASSERT(draw_count > 0); // should have at least 1 draw
+
+  for (u32 draw_idx = 0; draw_idx < draw_count; draw_idx++) {
+    u64 offset = (u64)(index_offsets[draw_idx]);
+    s64 count = counts[draw_idx];
+    ASSERT(count >= 0);
+    ASSERT((offset % 4) == 0); // should be aligned
+    offset /= 4;
+    ASSERT(offset < idx_buffer_len);
+    ASSERT(offset + count <= idx_buffer_len);
+
+    for (int idx = 0; idx < count; idx++) {
+      u32 val = idx_buffer_data[offset + idx];
+      if (val == UINT32_MAX) {
+
+      } else if (val >= vert_buffer_len) {
+        fmt::print("Verify index failed in multi_draw_elements_verify\n");
+        fmt::print("  draw {} / {}\n", draw_idx, draw_count);
+        fmt::print("  indices: {} to {}\n", offset, offset + count);
+        fmt::print("  index {} of draw ({} in buffer)\n", idx, offset + idx);
+        fmt::print("  index value: {}\n", idx_buffer_data[offset + idx]);
+        fmt::print("  vertex buffer length: {}\n", vert_buffer_len);
+        ASSERT(false);
+      }
+    }
+  }
+
+  multi_draw_elements(kind, counts, index_kind, index_offsets, draw_count);
 }
 
 }  // namespace DrawCall

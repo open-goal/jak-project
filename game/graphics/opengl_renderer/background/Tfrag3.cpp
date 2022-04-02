@@ -77,6 +77,8 @@ void Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
         tree_cache.colors = &tree.colors;
         tree_cache.vis = &tree.bvh;
         tree_cache.tod_cache = swizzle_time_of_day(tree.colors);
+        tree_cache.index_count = tree.unpacked.indices.size();
+        tree_cache.indices_debug = tree.unpacked.indices.data();
         vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
         glBindBuffer(GL_ARRAY_BUFFER, tree_cache.vertex_buffer);
         //            glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex),
@@ -225,9 +227,10 @@ void Tfrag3::render_tree(int geom,
 
     prof.add_draw_call();
 
-    DrawCall::multi_draw_elements(
+    DrawCall::multi_draw_elements_verify(
         GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+        tree.vert_count, tree.indices_debug);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -240,9 +243,10 @@ void Tfrag3::render_tree(int geom,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        DrawCall::multi_draw_elements(
+        DrawCall::multi_draw_elements_verify(
             GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+            tree.vert_count, tree.indices_debug);
         break;
       default:
         ASSERT(false);

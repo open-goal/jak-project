@@ -56,6 +56,8 @@ void Tie3::update_load(const Loader::LevelData* loader_data) {
       lod_tree[l_tree].vis = &tree.bvh;
       lod_tree[l_tree].instance_info = &tree.wind_instance_info;
       lod_tree[l_tree].wind_draws = &tree.instanced_wind_draws;
+      lod_tree[l_tree].index_count = tree.unpacked.indices.size();
+      lod_tree[l_tree].index_debug = tree.unpacked.indices.data();
       vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
       lod_tree[l_tree].tod_cache = swizzle_time_of_day(tree.colors);
       glBindBuffer(GL_ARRAY_BUFFER, lod_tree[l_tree].vertex_buffer);
@@ -589,9 +591,10 @@ void Tie3::render_tree(int idx,
     tree.perf.draws++;
     tree.perf.verts += draw_size;
 
-    DrawCall::multi_draw_elements(
+    DrawCall::multi_draw_elements_verify(
         GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+        &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+        tree.vert_count, tree.index_debug);
 
     switch (double_draw.kind) {
       case DoubleDrawKind::NONE:
@@ -606,9 +609,10 @@ void Tie3::render_tree(int idx,
         glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
-        DrawCall::multi_draw_elements(
+        DrawCall::multi_draw_elements_verify(
             GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+            &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+            tree.vert_count, tree.index_debug);
         break;
       default:
         ASSERT(false);
@@ -628,9 +632,10 @@ void Tie3::render_tree(int idx,
           settings.fog.x());
       glDisable(GL_BLEND);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      DrawCall::multi_draw_elements(
+      DrawCall::multi_draw_elements_verify(
           GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[indices.first], GL_UNSIGNED_INT,
-          &m_cache.multidraw_index_offset_buffer[indices.first], indices.second);
+          &m_cache.multidraw_index_offset_buffer[indices.first], indices.second, tree.index_count,
+          tree.vert_count, tree.index_debug);
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       prof.add_draw_call();
       prof.add_tri(draw_size);

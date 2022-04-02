@@ -63,6 +63,8 @@ class Tfrag3 {
     GLuint time_of_day_texture;
     GLuint vao;
     u32 vert_count = 0;
+    u32 index_count = 0;
+    const u32* indices_debug;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;

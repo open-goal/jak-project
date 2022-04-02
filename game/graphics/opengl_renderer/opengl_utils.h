@@ -65,4 +65,12 @@ void multi_draw_elements(u32 kind,
                          u32 index_kind,
                          void** index_offsets,
                          u32 draw_count);
+void multi_draw_elements_verify(u32 kind,
+                                GLsizei* counts,
+                                u32 index_kind,
+                                void** index_offsets,
+                                u32 draw_count,
+                                u32 idx_buffer_len,
+                                u32 vert_buffer_len,
+                                const u32* idx_buffer_data);
 }  // namespace DrawCall
