@@ -87,6 +87,8 @@ extern GfxSettings g_settings;
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
 const GfxRendererModule* GetCurrentRenderer();
 
+enum DisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
+
 u32 Init();
 void Loop(std::function<bool()> f);
 u32 Exit();
@@ -102,8 +104,9 @@ u64 get_window_width();
 u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
+int get_fullscreen();
 void set_letterbox(int w, int h);
-void set_fullscreen(int mode, int screen);
+void set_fullscreen(DisplayMode mode, int screen);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

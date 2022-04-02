@@ -726,7 +726,10 @@ void PutDisplayEnv(u32 ptr) {
 }
 
 /*!
- * PC Port function to get a 300MHz timer value.
+ * PC PORT FUNCTIONS BEGIN
+ */
+/*!
+ * Get a 300MHz timer value.
  */
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
@@ -734,14 +737,14 @@ u64 read_ee_timer() {
 }
 
 /*!
- * PC Port function to do a fast memory copy.
+ * Do a fast memory copy.
  */
 void c_memmove(u32 dst, u32 src, u32 size) {
   memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
 }
 
 /*!
- * PC Port function to return the current OS as a symbol.
+ * Return the current OS as a symbol. Actuall returns what it was compiled for!
  */
 u64 get_os() {
 #ifdef _WIN32
@@ -754,7 +757,7 @@ u64 get_os() {
 }
 
 /*!
- * PC Port function
+ * Returns size of window.
  */
 void get_window_size(u32 w_ptr, u32 h_ptr) {
   if (w_ptr) {
@@ -768,7 +771,7 @@ void get_window_size(u32 w_ptr, u32 h_ptr) {
 }
 
 /*!
- * PC Port function
+ * Returns scale of window. This is for DPI stuff.
  */
 void get_window_scale(u32 x_ptr, u32 y_ptr) {
   float* x = x_ptr ? Ptr<float>(x_ptr).c() : NULL;
@@ -835,6 +838,28 @@ void mkdir_path(u32 filepath) {
   file_util::create_dir_if_needed_for_file(filepath_str);
 }
 
+u32 get_fullscreen() {
+  switch (Gfx::get_fullscreen()) {
+    default:
+    case Gfx::DisplayMode::Windowed:
+      return intern_from_c("windowed").offset;
+    case Gfx::DisplayMode::Borderless:
+      return intern_from_c("borderless").offset;
+    case Gfx::DisplayMode::Fullscreen:
+      return intern_from_c("fullscreen").offset;
+  }
+}
+
+void set_fullscreen(u32 symptr, s64 screen) {
+  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
+    Gfx::set_fullscreen(Gfx::DisplayMode::Windowed, screen);
+  } else if (symptr == intern_from_c("borderless").offset) {
+    Gfx::set_fullscreen(Gfx::DisplayMode::Borderless, screen);
+  } else if (symptr == intern_from_c("fullscreen").offset) {
+    Gfx::set_fullscreen(Gfx::DisplayMode::Fullscreen, screen);
+  }
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
@@ -858,9 +883,10 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
   make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
+  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
+  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
   make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
 
   // file related functions
@@ -885,6 +911,9 @@ void InitMachine_PCPort() {
   auto settings_path = file_util::get_user_settings_dir();
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
 }
+/*!
+ * PC PORT FUNCTIONS END
+ */
 
 void vif_interrupt_callback() {
   // added for the PC port for faking VIF interrupts from the graphics system.

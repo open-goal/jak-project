@@ -284,7 +284,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
   auto window = display->window_glfw;
   switch (mode) {
-    case 0: {
+    case Gfx::DisplayMode::Windowed: {
       // windowed
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(window, NULL);
@@ -292,18 +292,18 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
                            display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
     } break;
-    case 1: {
+    case Gfx::DisplayMode::Fullscreen: {
       // fullscreen
-      if (display->fullscreen_mode() == 0) {
+      if (display->windowed()) {
         display->backup_params();
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, 60);
       glfwSetWindowFocusCallback(window, FocusCallback);
     } break;
-    case 2: {
+    case Gfx::DisplayMode::Borderless: {
       // borderless fullscreen
-      if (display->fullscreen_mode() == 0) {
+      if (display->windowed()) {
         display->backup_params();
       }
       int x, y;

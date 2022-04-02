@@ -3,7 +3,7 @@
 
 #|
 
-  This file contains code that we need for the PC port of the game specifically.
+  This file contains new code that we need for the PC port of the game specifically.
   It should be included as part of the game engine package (engine.cgo).
 
   This file contains various types and functions to store PC-specific information
@@ -22,7 +22,7 @@
 
  |#
 
-
+;; is this necessary?
 (#when PC_PORT
 
 
@@ -36,19 +36,13 @@
   "sets the game's display mode"
 
   ;; changing to same mode, no-op
-  (if (= (-> obj display-mode) mode)
+  (if (= (pc-get-fullscreen) mode)
     (return 0))
 
   ;; else change it and update it
   (set! (-> obj display-mode) mode)
-  (cond
-    ((= mode 'borderless)
-      (pc-set-fullscreen 2 0))
-    ((= mode 'fullscreen)
-      (pc-set-fullscreen 1 0))
-    (else ;; default to windowed
-      (pc-set-fullscreen 0 0)))
-  (none))
+  (pc-set-fullscreen mode 0)
+  0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
@@ -347,6 +341,7 @@
 
   (when *target*
 
+      ;; TODO green eco hack here as well
       (when (and (pc-cheats? obj eco-blue)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
