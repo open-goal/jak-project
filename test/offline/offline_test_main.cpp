@@ -66,7 +66,8 @@ struct OfflineTestConfig {
  */
 OfflineTestConfig parse_config() {
   auto json_file_path = file_util::get_jak_project_dir() / "test" / "offline" / "config.jsonc";
-  auto json = parse_commented_json(file_util::read_text_file(json_file_path), json_file_path);
+  auto json =
+      parse_commented_json(file_util::read_text_file(json_file_path.string()), json_file_path);
   OfflineTestConfig result;
   result.dgos = json["dgos"].get<std::vector<std::string>>();
   result.skip_compile_files = json["skip_compile_files"].get<std::unordered_set<std::string>>();

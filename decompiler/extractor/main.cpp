@@ -121,7 +121,8 @@ int main(int argc, char** argv) {
   compiler.make_system().set_constant("*iso-data*", jak1_input_files.string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
-  compiler.make_system().load_project_file(file_util::get_jak_project_dir() / "goal_src" / "game.gp");
+  compiler.make_system().load_project_file(file_util::get_jak_project_dir() / "goal_src" /
+                                           "game.gp");
   compiler.run_front_end_on_string("(mi)");
 
   system((file_util::get_jak_project_dir() / "../gk").string().c_str());

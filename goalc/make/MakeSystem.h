@@ -38,7 +38,6 @@ class MakeSystem {
   void set_constant(const std::string& name, const std::string& value);
   void set_constant(const std::string& name, bool value);
 
-
   template <typename T>
   void add_tool() {
     add_tool(std::make_shared<T>());
