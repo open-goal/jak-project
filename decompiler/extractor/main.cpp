@@ -52,11 +52,11 @@ int main(int argc, char** argv) {
     std::string common_name = "GAME.CGO";
     if (dgo_name.length() > 3 && dgo_name.substr(dgo_name.length() - 3) == "DGO") {
       // ends in DGO, it's a level
-      dgos.push_back(jak1_input_files / dgo_name);
+      dgos.push_back((jak1_input_files / dgo_name).string());
     } else if (dgo_name.length() >= common_name.length() &&
                dgo_name.substr(dgo_name.length() - common_name.length()) == common_name) {
       // it's COMMON.CGO, we need that too.
-      dgos.push_back(jak1_input_files / dgo_name);
+      dgos.push_back((jak1_input_files / dgo_name).string());
     }
   }
 
