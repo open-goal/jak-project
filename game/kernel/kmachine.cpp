@@ -82,10 +82,12 @@ void kmachine_init_globals() {
  */
 void InitParms(int argc, const char* const* argv) {
   // Modified default settings:
-  DiskBoot = 1;
-  isodrv = fakeiso;
-  modsrc = 0;
-  reboot = 0;
+  if (argc == 1) {
+    DiskBoot = 1;
+    isodrv = fakeiso;
+    modsrc = 0;
+    reboot = 0;
+  }
 
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
