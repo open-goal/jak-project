@@ -124,6 +124,27 @@ set(RUNTIME_SOURCE
         system/vm/dmac.cpp
         system/vm/vm.cpp)
 
+find_package(Git)
+
+function(write_svnrev_h)
+	set(GIT_SHORT_SHA "")
+	if (GIT_FOUND AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
+		EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+			OUTPUT_VARIABLE GIT_SHORT_SHA
+			OUTPUT_STRIP_TRAILING_WHITESPACE)
+    else()
+      set(GIT_SHORT_SHA "unk. rev.")
+	endif()
+	if(NOT GIT_SHORT_SHA)
+		set(GIT_SHORT_SHA "unk. rev.")
+    else()
+        string(SUBSTRING ${GIT_SHORT_SHA} 0 6 GIT_SHORT_SHA)
+	endif()
+
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/kernel/svnrev.h "#define GIT_SHORT_SHA \"rev. ${GIT_SHORT_SHA}\"\n")
+endfunction()
+
+write_svnrev_h()
 
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")

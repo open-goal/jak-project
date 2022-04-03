@@ -61,7 +61,7 @@ s32 LookupSoundIndex(const char* name, SoundBank** bank_out) {
     }
 
     for (int i = 0; i < bank->sound_count; i++) {
-      if (memcmp(bank->name, name, 16) == 0) {
+      if (memcmp(bank->sound[i].name, name, 16) == 0) {
         *bank_out = bank;
         return i;
       }

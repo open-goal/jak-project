@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - v*
   pull_request:
     branches:
       - master
@@ -17,13 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04]
-        config: [Debug] # TODO - Eventually we need to make a Release Config
         compiler: [clang, gcc]
-        experimental: [false]
 
-    name: ${{ matrix.config }}-${{ matrix.compiler }}
+    name: ${{ matrix.compiler }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
     timeout-minutes: 45
 
@@ -41,47 +40,84 @@ jobs:
       - name: Checkout Submodules
         run: git submodule update --init --recursive -j 2
 
-      - name: Get Package Dependencies
+      - name: Get Common Package Dependencies
         run: sudo apt install build-essential cmake clang gcc g++ lcov make nasm libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+
+      - name: Get Clang
+        if: matrix.compiler == 'clang'
+        run: sudo apt install clang
 
       - name: Setup Buildcache
         uses: mikehardy/buildcache-action@v1.2.2
         with:
-          cache_key: ${{ matrix.os }}-${{ matrix.config }}-${{ matrix.compiler }}
+          cache_key: ${{ matrix.os }}-${{ matrix.compiler }}
 
-      - name: CMake Generation
+      - name: CMake Generation - Clang
+        if: matrix.compiler == 'clang'
         run: |
-          if [ "${{ matrix.compiler }}" == 'clang' ]; then
-            export CC=clang
-            export CXX=clang++
-            cmake -B build -DCODE_COVERAGE=ON -DASAN_BUILD=ON
-          else
-            export CC=gcc
-            export CXX=g++
-            cmake -B build \
-              -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-              -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-              -DCODE_COVERAGE=ON
-          fi
+          export CC=clang
+          export CXX=clang++
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_FOR_RELEASE=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+            -DCODE_COVERAGE=ON -DASAN_BUILD=ON
+
+      - name: CMake Generation - GCC
+        if: matrix.compiler == 'gcc'
+        run: |
+          export CC=gcc
+          export CXX=g++
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+            -DCODE_COVERAGE=ON
 
       - name: Build Project
         working-directory: ./build
-        run: |
-          make -j4
+        run: make -j4
 
       - name: Run Tests
-        run: |
-          if [ "${{ matrix.compiler }}" == 'clang' ]; then
-            ./test.sh
-          else
-            ./test_code_coverage.sh
-          fi
+        if: matrix.compiler == 'clang'
+        run: ./test.sh
+
+      - name: Run Tests - With Coverage
+        if: matrix.compiler == 'gcc'
+        run: ./test_code_coverage.sh
 
       - name: Submit Coverage Report to Codacy
-        if: ${{ matrix.compiler }} != 'clang'
+        if: ${{ matrix.compiler }} == 'gcc'
         uses: codacy/codacy-coverage-reporter-action@v1
         continue-on-error: true
         with:
           project-token: ${{ secrets.CODACY_PROJECT_KEY }}
           # lcov report
           coverage-reports: ./build/goalc-test_coverage.info
+
+      # ---- Release / Tagging related steps ----
+      - name: Prepare Build Artifacts
+        if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
+        run: |
+          mkdir -p ./ci-artifacts/
+          cp ./build/decompiler/decompiler ./ci-artifacts/linux-decompiler.bin
+          cp ./build/game/gk ./ci-artifacts/linux-gk.bin
+          cp ./build/goalc/goalc ./ci-artifacts/linux-goalc.bin
+          chmod +x ./ci-artifacts/*.bin
+          strip --strip-debug ./ci-artifacts/linux-decompiler.bin
+          strip --strip-debug ./ci-artifacts/linux-gk.bin
+          strip --strip-debug ./ci-artifacts/linux-goalc.bin
+          ls -l ./ci-artifacts/
+
+      - name: Upload Assets and Potential Publish Release
+        if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
+          ASSET_DIR: ${{ github.WORKSPACE }}/ci-artifacts
+          ASSET_EXTENSION: bin
+          TAG_TO_SEARCH_FOR: ${{ github.REF }}
+        run: |
+          cd ./.github/scripts/releases/upload-release-artifacts
+          npm ci
+          node index.js

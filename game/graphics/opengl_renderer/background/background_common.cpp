@@ -483,82 +483,77 @@ void cull_check_all_slow(const math::Vector4f* planes,
   }
 }
 
-u32 make_all_visible_index_list(std::pair<int, int>* group_out,
-                                u32* idx_out,
-                                const std::vector<tfrag3::StripDraw>& draws) {
-  int idx_buffer_ptr = 0;
+void make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                 GLsizei* counts_out,
+                                 void** index_offsets_out,
+                                 const std::vector<tfrag3::ShrubDraw>& draws) {
+  u64 md_idx = 0;
   for (size_t i = 0; i < draws.size(); i++) {
     const auto& draw = draws[i];
+    u64 iidx = draw.first_index_index;
     std::pair<int, int> ds;
-    ds.first = idx_buffer_ptr;
-    memcpy(&idx_out[idx_buffer_ptr], draw.unpacked.vertex_index_stream.data(),
-           draw.unpacked.vertex_index_stream.size() * sizeof(u32));
-    idx_buffer_ptr += draw.unpacked.vertex_index_stream.size();
-    ds.second = idx_buffer_ptr;
-    group_out[i] = ds;
+    ds.first = md_idx;
+    ds.second = 1;
+    counts_out[md_idx] = draw.num_indices;
+    index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
+    md_idx++;
+    draw_ptrs_out[i] = ds;
   }
-  return idx_buffer_ptr;
 }
 
-u32 make_all_visible_index_list(std::pair<int, int>* group_out,
-                                u32* idx_out,
-                                const std::vector<tfrag3::ShrubDraw>& draws) {
-  int idx_buffer_ptr = 0;
-  for (size_t i = 0; i < draws.size(); i++) {
-    const auto& draw = draws[i];
-    std::pair<int, int> ds;
-    ds.first = idx_buffer_ptr;
-    memcpy(&idx_out[idx_buffer_ptr], draw.vertex_index_stream.data(),
-           draw.vertex_index_stream.size() * sizeof(u32));
-    idx_buffer_ptr += draw.vertex_index_stream.size();
-    ds.second = idx_buffer_ptr;
-    group_out[i] = ds;
-  }
-  return idx_buffer_ptr;
-}
-
-u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
-                                    u32* idx_out,
+u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
+                                    GLsizei* counts_out,
+                                    void** index_offsets_out,
                                     const std::vector<tfrag3::StripDraw>& draws,
                                     const std::vector<u8>& vis_data) {
-  int idx_buffer_ptr = 0;
+  u64 md_idx = 0;
+  u32 num_tris = 0;
   for (size_t i = 0; i < draws.size(); i++) {
     const auto& draw = draws[i];
-    int vtx_idx = 0;
+    u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
     std::pair<int, int> ds;
-    ds.first = idx_buffer_ptr;
-    bool building_run = false;
-    int run_start_out = 0;
-    int run_start_in = 0;
+    ds.first = md_idx;
+    ds.second = 0;
     for (auto& grp : draw.vis_groups) {
-      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
-      if (building_run) {
-        if (vis) {
-          idx_buffer_ptr += grp.num;
-        } else {
-          building_run = false;
-          idx_buffer_ptr += grp.num;
-          memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
-                 (idx_buffer_ptr - run_start_out) * sizeof(u32));
-        }
-      } else {
-        if (vis) {
-          building_run = true;
-          run_start_out = idx_buffer_ptr;
-          run_start_in = vtx_idx;
-          idx_buffer_ptr += grp.num;
-        } else {
-        }
+      if (grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh]) {
+        // visible!
+        // let's use a multidraw
+        counts_out[md_idx] = grp.num_inds;
+        index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
+        ds.second++;
+        md_idx++;
+        num_tris += grp.num_tris;
       }
-      vtx_idx += grp.num;
+      iidx += grp.num_inds;
     }
-    if (building_run) {
-      memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
-             (idx_buffer_ptr - run_start_out) * sizeof(u32));
-    }
-
-    ds.second = idx_buffer_ptr;
-    group_out[i] = ds;
+    draw_ptrs_out[i] = ds;
   }
-  return idx_buffer_ptr;
+  return num_tris;
+}
+
+u32 make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                GLsizei* counts_out,
+                                void** index_offsets_out,
+                                const std::vector<tfrag3::StripDraw>& draws) {
+  u64 md_idx = 0;
+  u32 num_tris = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
+    std::pair<int, int> ds;
+    ds.first = md_idx;
+    ds.second = 0;
+    for (auto& grp : draw.vis_groups) {
+      // visible!
+      // let's use a multidraw
+      counts_out[md_idx] = grp.num_inds;
+      index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
+      ds.second++;
+      md_idx++;
+      num_tris += grp.num_tris;
+      iidx += grp.num_inds;
+    }
+    draw_ptrs_out[i] = ds;
+  }
+  return num_tris;
 }

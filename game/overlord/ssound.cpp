@@ -252,7 +252,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   s32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
   if (distance != 0) {
     s32 steps = 0;
-    while ((steps & 0xc0000000) == 0) {
+    while ((distance & 0xc0000000) == 0) {
       distance <<= 2;
       steps++;
     }
@@ -292,7 +292,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     factor = 0x10000;
   }
 
-  return factor;  // TODO
+  return (factor * volume) >> 16;
 }
 
 s32 CalculateAngle(Vec3w* trans) {
@@ -303,7 +303,7 @@ s32 CalculateAngle(Vec3w* trans) {
   s32 lookupZ = diffZ;
 
   if (diffX < 0) {
-    lookupZ = trans->x - gCamTrans.x;
+    lookupX = trans->x - gCamTrans.x;
   }
 
   if (diffZ < 0) {

@@ -47,7 +47,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 13;
+constexpr int TFRAG3_VERSION = 14;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -135,12 +135,8 @@ struct StripDraw {
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
   struct {
-    // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
-    // will use to start a new strip.
-    std::vector<u32> vertex_index_stream;
+    u32 idx_of_first_idx_in_full_buffer = 0;
   } unpacked;
-
-  void unpack();
 
   struct VertexRun {
     u32 vertex0;
@@ -152,7 +148,8 @@ struct StripDraw {
   // to do culling, the above vertex stream is grouped.
   // by following the visgroups and checking the visibility, you can leave out invisible vertices.
   struct VisGroup {
-    u32 num = 0;                // number of vertex indices in this group
+    u32 num_inds = 0;           // number of vertex indices in this group
+    u32 num_tris = 0;           // number of triangles
     u32 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
   };
   std::vector<VisGroup> vis_groups;
@@ -166,9 +163,8 @@ struct ShrubDraw {
   DrawMode mode;        // the OpenGL draw settings.
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
-  // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
-  // will use to start a new strip.
-  std::vector<u32> vertex_index_stream;
+  u32 first_index_index;
+  u32 num_indices;
 
   // for debug counting.
   u32 num_triangles = 0;
@@ -261,6 +257,7 @@ struct TfragTree {
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
+    std::vector<u32> indices;
   } unpacked;
   void unpack();
   void serialize(Serializer& ser);
@@ -286,6 +283,7 @@ struct TieTree {
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
+    std::vector<u32> indices;
   } unpacked;
 
   void serialize(Serializer& ser);
@@ -298,6 +296,7 @@ struct ShrubTree {
 
   PackedShrubVertices packed_vertices;
   std::vector<ShrubDraw> static_draws;  // the actual topology and settings
+  std::vector<u32> indices;
 
   struct {
     std::vector<ShrubGpuVertex> vertices;  // mesh vertices
