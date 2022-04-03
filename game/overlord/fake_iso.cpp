@@ -147,7 +147,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
 static const char* get_file_path(FileRecord* fr) {
   ASSERT(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
-  strcpy(path_buffer, file_util::get_project_path().c_str());
+  strcpy(path_buffer, file_util::get_jak_project_dir().string().c_str());
   strcat(path_buffer, "/");
   strcat(path_buffer, fake_iso_entries[fr->location].file_path);
   return path_buffer;

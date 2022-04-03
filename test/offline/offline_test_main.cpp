@@ -65,7 +65,7 @@ struct OfflineTestConfig {
  * Read and parse the json config file, config.json, located in test/offline
  */
 OfflineTestConfig parse_config() {
-  auto json_file_path = file_util::get_file_path({"test", "offline", "config.jsonc"});
+  auto json_file_path = file_util::get_jak_project_dir() / "test" / "offline" / "config.jsonc";
   auto json = parse_commented_json(file_util::read_text_file(json_file_path), json_file_path);
   OfflineTestConfig result;
   result.dgos = json["dgos"].get<std::vector<std::string>>();
@@ -98,8 +98,8 @@ std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
   std::vector<DecompilerFile> result;
 
   std::unordered_map<std::string, fs::path> files_with_ref;
-  for (auto& p : fs::recursive_directory_iterator(
-           file_util::get_file_path({"test", "decompiler", "reference"}))) {
+  for (auto& p : fs::recursive_directory_iterator(file_util::get_jak_project_dir() / "test" /
+                                                  "decompiler" / "reference")) {
     if (p.is_regular_file()) {
       std::string file_name = fs::path(p.path()).replace_extension().filename().string();
       if (file_name.find("_REF") == std::string::npos) {
@@ -113,9 +113,9 @@ std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
   fmt::print("  Found {} reference files\n", files_with_ref.size());
 
   // use the all_objs.json file to place them in the correct build order
-  auto j = parse_commented_json(
-      file_util::read_text_file(file_util::get_file_path({"goal_src", "build", "all_objs.json"})),
-      "all_objs.json");
+  auto j = parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
+                                                          "goal_src" / "build" / "all_objs.json"),
+                                "all_objs.json");
 
   std::unordered_set<std::string> matched_files;
   for (auto& x : j) {
@@ -180,7 +180,8 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   file_util::init_crc();
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
-      file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}), {}));
+      file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc",
+      {}));
 
   // modify the config
   std::unordered_set<std::string> object_files;
@@ -195,7 +196,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   std::vector<std::string> dgo_paths;
   if (args.iso_data_path.empty()) {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(file_util::get_file_path({"iso_data/jak1", x}));
+      dgo_paths.push_back(file_util::get_jak_project_dir() / "iso_data" / "jak1");
     }
   } else {
     for (auto& x : offline_config.dgos) {
@@ -343,6 +344,9 @@ bool compile(Decompiler& dc,
 int main(int argc, char* argv[]) {
   fmt::print("Offline Decompiler Test 2\n");
   lg::initialize();
+  if (!file_util::setup_project_path()) {
+    return 1;
+  }
 
   fmt::print("Reading config...\n");
   auto args = parse_args(argc, argv);

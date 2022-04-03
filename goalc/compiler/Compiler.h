@@ -66,6 +66,7 @@ class Compiler {
                      Replxx::colors_t& colors,
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
+  MakeSystem& make_system() { return m_make; }
 
  private:
   TypeSystem m_ts;

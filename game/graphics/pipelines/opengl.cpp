@@ -156,7 +156,8 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
     return NULL;
   }
 
-  std::string image_path = fmt::format("{}/game/assets/appicon.png", file_util::get_project_path());
+  std::string image_path =
+      (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
 
   GLFWimage images[1];
   images[0].pixels =

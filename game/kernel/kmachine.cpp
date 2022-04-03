@@ -81,6 +81,12 @@ void kmachine_init_globals() {
  * Modified to use std::string, and removed call to fflush.
  */
 void InitParms(int argc, const char* const* argv) {
+  // Modified default settings:
+  DiskBoot = 1;
+  isodrv = fakeiso;
+  modsrc = 0;
+  reboot = 0;
+
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     // DVD Settings
