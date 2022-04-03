@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
   for (const auto& obj_name : config.object_file_names) {
     if (obj_name.length() > 3 && obj_name.substr(obj_name.length() - 3) == "TXT") {
       // ends in DGO, it's a level
-      objs.push_back(jak1_input_files / obj_name);
+      objs.push_back((jak1_input_files / obj_name).string());
     }
   }
 
