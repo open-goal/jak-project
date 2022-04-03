@@ -182,7 +182,8 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   file_util::init_crc();
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
-      file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc",
+      (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
+          .string(),
       {}));
 
   // modify the config
