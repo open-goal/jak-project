@@ -50,6 +50,10 @@ int main(int argc, char** argv) {
     }
   }
 
+  if (!file_util::setup_project_path()) {
+    return 1;
+  }
+
   gStartTime = time(0);
   init_discord_rpc();
 

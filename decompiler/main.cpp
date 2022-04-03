@@ -13,9 +13,11 @@
 #include "common/util/diff.h"
 
 int main(int argc, char** argv) {
-  fmt::print("[Mem] Size of linked word: {}\n", sizeof(decompiler::LinkedWord));
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
+  if (!file_util::setup_project_path()) {
+    return 1;
+  }
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);

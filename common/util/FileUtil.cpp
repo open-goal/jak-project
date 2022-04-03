@@ -56,14 +56,19 @@ std::filesystem::path get_user_memcard_dir() {
   return get_user_game_dir() / "jak1" / "saves";
 }
 
-std::string get_project_path() {
+struct {
+  bool initialized = false;
+  std::filesystem::path path_to_data;
+} gFilePathInfo;
+
+/*!
+ * Get the path to the current executable.
+ */
+std::string get_current_executable_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
   GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  std::string::size_type pos =
-      std::string(buffer).rfind("jak-project");  // Strip file path down to \jak-project\ directory
-  return std::string(buffer).substr(
-      0, pos + 11);  // + 12 to include "\jak-project" in the returned filepath
+  return std::string(buffer);
 #else
   // do Linux stuff
   char buffer[FILENAME_MAX + 1];
@@ -71,11 +76,64 @@ std::string get_project_path() {
                       FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing
   // information about the current process
   buffer[len] = '\0';
-  std::string::size_type pos =
-      std::string(buffer).rfind("jak-project");  // Strip file path down to /jak-project/ directory
-  return std::string(buffer).substr(
-      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+  return std::string(buffer);
 #endif
+}
+
+/*!
+ * See if the current executable is somewhere in jak-project/. If so, return the path to jak-project
+ */
+std::optional<std::string> try_get_jak_project_path() {
+  std::string my_path = get_current_executable_path();
+
+  std::string::size_type pos =
+      std::string(my_path).rfind("jak-project");  // Strip file path down to /jak-project/ directory
+  if (pos == std::string::npos) {
+    return {};
+  }
+
+  return std::string(my_path).substr(
+      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+}
+
+std::optional<std::filesystem::path> try_get_data_dir() {
+  std::filesystem::path my_path = get_current_executable_path();
+  auto data_dir = my_path.parent_path() / "data";
+  if (std::filesystem::exists(data_dir) && std::filesystem::is_directory(data_dir)) {
+    return data_dir;
+  } else {
+    return {};
+  }
+}
+
+bool setup_project_path() {
+  if (gFilePathInfo.initialized) {
+    return true;
+  }
+
+  auto data_path = try_get_data_dir();
+  if (data_path) {
+    gFilePathInfo.path_to_data = *data_path;
+    gFilePathInfo.initialized = true;
+    fmt::print("Using data path: {}\n", data_path->string());
+    return true;
+  }
+
+  auto development_repo_path = try_get_jak_project_path();
+  if (development_repo_path) {
+    gFilePathInfo.path_to_data = *development_repo_path;
+    gFilePathInfo.initialized = true;
+    fmt::print("Using development repo path: {}\n", *development_repo_path);
+    return true;
+  }
+
+  fmt::print("Failed to initialize project path.\n");
+  return false;
+}
+
+std::filesystem::path get_jak_project_dir() {
+  ASSERT(gFilePathInfo.initialized);
+  return gFilePathInfo.path_to_data;
 }
 
 std::string get_file_path(const std::vector<std::string>& input) {
@@ -87,21 +145,12 @@ std::string get_file_path(const std::vector<std::string>& input) {
     return input.at(0);
   }
 
-  std::string currentPath = file_util::get_project_path();
-  char dirSeparator;
-
-#ifdef _WIN32
-  dirSeparator = '\\';
-#else
-  dirSeparator = '/';
-#endif
-
-  std::string filePath = currentPath;
-  for (int i = 0; i < int(input.size()); i++) {
-    filePath = filePath + dirSeparator + input[i];
+  auto current_path = file_util::get_jak_project_dir();
+  for (auto& str : input) {
+    current_path /= str;
   }
 
-  return filePath;
+  return current_path.string();
 }
 
 bool create_dir_if_needed(const std::string& path) {

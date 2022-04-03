@@ -836,13 +836,6 @@ void Reader::throw_reader_error(TextStream& here, const std::string& err, int se
 }
 
 /*!
- * Get the source directory of the current project.
- */
-std::string Reader::get_source_dir() {
-  return file_util::get_project_path();
-}
-
-/*!
  * Convert any string into one that can be read.
  * Unprintable characters become escape sequences, including tab and newline.
  */
