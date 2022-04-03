@@ -38,9 +38,7 @@ ThreadID::ThreadID(pid_t _id) : id(_id) {}
 /*!
  * In Linux, the string representation of a ThreadID is just the number printed in base 10
  */
-ThreadID::ThreadID(const std::string& str) {
-  id = std::stoi(str);
-}
+ThreadID::ThreadID(const std::string& str) : id(std::stoi(str)) {}
 
 std::string ThreadID::to_string() const {
   return std::to_string(id);
