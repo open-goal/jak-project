@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
   ObjectFileDB db(dgos, config.obj_file_name_map_file, objs, {}, config);
 
   // save object files
-  auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / "jak1";
+  auto out_folder = (file_util::get_jak_project_dir() / "decompiler_out" / "jak1").string();
   auto raw_obj_folder = file_util::combine_path(out_folder, "raw_obj");
   file_util::create_dir_if_needed(raw_obj_folder);
   db.dump_raw_objects(raw_obj_folder);
@@ -121,8 +121,8 @@ int main(int argc, char** argv) {
   compiler.make_system().set_constant("*iso-data*", jak1_input_files.string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
-  compiler.make_system().load_project_file(file_util::get_jak_project_dir() / "goal_src" /
-                                           "game.gp");
+  compiler.make_system().load_project_file(
+      (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
   compiler.run_front_end_on_string("(mi)");
 
   system((file_util::get_jak_project_dir() / "../gk").string().c_str());
