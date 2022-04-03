@@ -114,9 +114,7 @@ let expectedAssets = {
   "windows-decompiler": false,
   "windows-gk": false,
   "windows-goalc": false,
-  "linux-decompiler": false,
-  "linux-gk": false,
-  "linux-goalc": false,
+  "linux" : false,
 }
 
 for (var i = 0; i < releaseAssetsPost.length; i++) {
