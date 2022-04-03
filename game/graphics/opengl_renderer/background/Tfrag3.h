@@ -60,12 +60,14 @@ class Tfrag3 {
     tfrag3::TFragmentTreeKind kind;
     GLuint vertex_buffer = -1;
     GLuint index_buffer = -1;
-    GLuint time_of_day_texture;
-    GLuint vao;
+    GLuint single_draw_index_buffer = -1;
+    GLuint time_of_day_texture = -1;
+    GLuint vao = -1;
     u32 vert_count = 0;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
+    const u32* index_data = nullptr;
     SwizzledTimeOfDay tod_cache;
 
     void reset_stats() {
@@ -83,6 +85,8 @@ class Tfrag3 {
 
   struct Cache {
     std::vector<u8> vis_temp;
+    std::vector<std::pair<int, int>> draw_idx_temp;
+    std::vector<u32> index_temp;
     std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
     std::vector<GLsizei> multidraw_count_buffer;
     std::vector<void*> multidraw_index_offset_buffer;

@@ -42,6 +42,7 @@ struct SharedRenderState {
   bool use_generic2 = true;
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
+  bool no_multidraw = false;
 
   void reset();
   bool has_camera_planes = false;

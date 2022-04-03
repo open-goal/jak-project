@@ -30,16 +30,17 @@ class Shrub : public BucketRenderer {
   struct Tree {
     GLuint vertex_buffer;
     GLuint index_buffer;
+    GLuint single_draw_index_buffer;
     GLuint time_of_day_texture;
     GLuint vao;
     u32 vert_count;
     const std::vector<tfrag3::ShrubDraw>* draws = nullptr;
     const std::vector<tfrag3::TieWindInstance>* instance_info = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
+    const u32* index_data = nullptr;
     SwizzledTimeOfDay tod_cache;
 
     struct {
-      u32 verts = 0;
       u32 draws = 0;
       u32 wind_draws = 0;
       Filtered<float> cull_time;
@@ -62,6 +63,8 @@ class Shrub : public BucketRenderer {
   bool m_has_level = false;
 
   struct Cache {
+    std::vector<std::pair<int, int>> draw_idx_temp;
+    std::vector<u32> index_temp;
     std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
     std::vector<GLsizei> multidraw_count_buffer;
     std::vector<void*> multidraw_index_offset_buffer;
