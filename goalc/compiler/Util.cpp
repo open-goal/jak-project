@@ -184,19 +184,21 @@ bool Compiler::is_pair(const TypeSpec& ts) {
 
 bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
   (void)env;
-  if (in.is_int()) {
-    *out = in.as_int();
+
+  auto form = expand_macro_completely(in, env);
+  if (form.is_int()) {
+    *out = form.as_int();
     return true;
   }
 
-  if (in.is_pair()) {
-    auto head = in.as_pair()->car;
+  if (form.is_pair()) {
+    auto head = form.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
       auto enum_type = m_ts.try_enum_lookup(head_sym->name);
       if (enum_type) {
         bool success;
-        u64 as_enum = enum_lookup(in, enum_type, in.as_pair()->cdr, false, &success);
+        u64 as_enum = enum_lookup(form, enum_type, form.as_pair()->cdr, false, &success);
         if (success) {
           *out = as_enum;
           return true;
@@ -204,14 +206,14 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
       }
 
       if (head_sym->name == "size-of") {
-        *out = get_size_for_size_of(in, in.as_pair()->cdr);
+        *out = get_size_for_size_of(form, form.as_pair()->cdr);
         return true;
       }
     }
   }
 
-  if (in.is_symbol()) {
-    auto global_constant = m_global_constants.find(in.as_symbol());
+  if (form.is_symbol()) {
+    auto global_constant = m_global_constants.find(form.as_symbol());
     if (global_constant != m_global_constants.end()) {
       // recursively get constant integer, so we can have constants set to constants, etc.
       if (try_getting_constant_integer(global_constant->second, out, env)) {
