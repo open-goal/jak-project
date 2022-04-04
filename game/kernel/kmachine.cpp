@@ -747,7 +747,7 @@ void c_memmove(u32 dst, u32 src, u32 size) {
 }
 
 /*!
- * Return the current OS as a symbol. Actuall returns what it was compiled for!
+ * Return the current OS as a symbol. Actually returns what it was compiled for!
  */
 u64 get_os() {
 #ifdef _WIN32

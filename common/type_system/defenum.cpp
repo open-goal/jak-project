@@ -58,7 +58,7 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
 
   auto current = car(iter);
   while (current.is_symbol() && symbol_string(current).at(0) == ':') {
-    auto option_name = symbol_string(car(iter));
+    auto option_name = symbol_string(current);
     iter = cdr(iter);
     auto& option_value = car(iter);
     iter = cdr(iter);
