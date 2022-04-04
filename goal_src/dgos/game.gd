@@ -46,7 +46,6 @@
   ("display.o" "display")
   ("connect.o" "connect")
   ("text-h.o" "text-h")
-  ("text-pc.o" "text-pc") ;; added
   ("settings-h.o" "settings-h")
   ("capture.o" "capture")
   ("memory-usage-h.o" "memory-usage-h")

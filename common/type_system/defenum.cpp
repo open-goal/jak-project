@@ -56,9 +56,6 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
   }
   std::string name = enum_name_obj.as_symbol()->name;
 
-  bool cant_append = false;
-  EnumType* append_type = nullptr;
-
   auto current = car(iter);
   while (current.is_symbol() && symbol_string(current).at(0) == ':') {
     auto option_name = symbol_string(car(iter));
@@ -89,28 +86,10 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
         }
         entries[e.first] = e.second;
       }
-    } else if (option_name == ":append-entries") {
-      if (cant_append) {
-        throw std::runtime_error(fmt::format("Cannot append to enum {} while redefining it", name));
-      }
-
-      if (symbol_string(option_value) != "#t") {
-        fmt::print("Invalid option {} to :append-entries option.\n", option_value.print());
-        throw std::runtime_error("invalid append-entries option");
-      }
-
-      append_type = ts->try_enum_lookup(name);
-      if (!append_type) {
-        throw std::runtime_error(fmt::format("Cannot append to non-existant enum {}", name));
-      }
-
-      // isn't it dumb how you can break "const" like this?
-      entries = append_type->entries();
     } else {
       fmt::print("Unknown option {} for defenum.\n", option_name);
       throw std::runtime_error("unknown option for defenum");
     }
-    cant_append = true;
 
     if (iter->is_pair()) {
       current = car(iter);
@@ -159,9 +138,7 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
     iter = cdr(iter);
   }
 
-  if (append_type) {
-    return append_type;
-  } else if (is_type("integer", base_type, ts)) {
+  if (is_type("integer", base_type, ts)) {
     auto parent = ts->get_type_of_type<ValueType>(base_type.base_type());
     auto new_type = std::make_unique<EnumType>(parent, name, is_bitfield, entries);
     new_type->set_runtime_type(parent->get_runtime_name());
