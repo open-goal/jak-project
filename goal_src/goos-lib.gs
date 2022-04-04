@@ -377,7 +377,7 @@
 (desfun enum-max (enum)
   "get the highest value in an enum"
   
-  (let ((max-val -999999999))
+  (let ((max-val -999999999999))
     (doenum (name val enum)
       (when (> val max-val)
         (set! max-val val))

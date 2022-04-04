@@ -1930,6 +1930,6 @@
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text")
 (goal-src "pc/text-pc.gc" "text-h")
-(goal-src "pc/progress-pc.gc" "progress")
+(goal-src "pc/progress-pc.gc" "progress" "pckernel")
 
 
