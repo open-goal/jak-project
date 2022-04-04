@@ -189,7 +189,8 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
   }
 
   // it's fine if the size is -1, that means it'll just use the type's size.
-  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override, skip_in_decomp);
+  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override,
+                            skip_in_decomp);
 }
 
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
