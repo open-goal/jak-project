@@ -486,39 +486,40 @@
   "common logic for drawing options menus."
   (let ((s3-0 (-> *options-remap* (-> obj display-state))))
     (when s3-0
+      ;; this menu has options to draw omg
       (let ((s2-1 (- arg0 (/ (* arg1 (length s3-0)) 2)))
             (s1-0 0)
             (unkx 27)
             (unk2 0)
             (font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
             )
+        ;; set the common params for the text drawing
         (set-width! font 370)
         (set-height! font 25)
         (set! (-> font flags) (font-flags shadow kerning middle left large))
         (dotimes (s0-0 (length s3-0))
-        (let ((option-str (the string #f))
+        (let ((option-str (the string #f)) ;; the option text
               (x-off 17)
               (y-off s2-1)
               )
           (let ((v1-18 (-> s3-0 s0-0 option-type)))
             (cond
               ((= v1-18 (game-option-type yes-no))
+               ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
                (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
                    (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
-                   (set! option-str (string-format "~0L~S ~30L~S~1L" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
+                   (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
                    )
                )
               ((or (= v1-18 (game-option-type menu)) (= v1-18 (game-option-type button)))
-               (cond
-                 ((nonzero? (-> s3-0 s0-0 name))
-                  (set! option-str (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
-                  )
-                 (else
+               ;; menu option or simple button. just draw its text!
+               (if (nonzero? (-> s3-0 s0-0 name))
+                   (set! option-str (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
                    (set! option-str (the-as string #f))
                    )
-                 )
                )
               ((and (-> obj selected-option) (= (-> obj option-index) s0-0))
+               ;; this option is SELECTED!
                (set-color! font (font-color default))
                (set! (-> font origin x) (the float (- x-off (-> obj left-x-offset))))
                (set! (-> font origin y) (the float (+ s2-1 -8)))
@@ -527,6 +528,8 @@
                (set! y-off (+ s2-1 7))
                (case (-> s3-0 s0-0 option-type)
                  (((game-option-type slider))
+                  ;; draw a slider and its text.
+                  ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
                   (let* ((v1-82 (the-as uint #x8000ffff))
                          (f0-12 (* 0.01 (-> (the-as (pointer float) (-> s3-0 s0-0 value-to-modify)))))
                          (a0-34 (logior (logand v1-82 -256) (shr (shl (the int (+ 64.0 (* 191.0 f0-12))) 56) 56)))
@@ -539,25 +542,28 @@
                   x-off
                   )
                  (((game-option-type on-off))
-                  (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
-                      (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
-                      (set! option-str (string-format "~0L~S ~30L~S~1L" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
-                      )
-                  )
-                 (((game-option-type normal-inverted))
-                  (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
-                      (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id normal) #f) (lookup-text! *common-text* (game-text-id inverted) #f)))
-                      (set! option-str (string-format "~0L~S ~30L~S~1L" (lookup-text! *common-text* (game-text-id normal) #f) (lookup-text! *common-text* (game-text-id inverted) #f)))
-                      )
+                  ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
+                  (let (
+                        (on-str (case (-> s3-0 s0-0 option-type)
+                                  (((game-option-type on-off))          (lookup-text! *common-text* (game-text-id on) #f))
+                                  (((game-option-type normal-inverted)) (lookup-text! *common-text* (game-text-id normal) #f))
+                                  ))
+                       (off-str (case (-> s3-0 s0-0 option-type)
+                                  (((game-option-type on-off))          (lookup-text! *common-text* (game-text-id off) #f))
+                                  (((game-option-type normal-inverted)) (lookup-text! *common-text* (game-text-id inverted) #f))
+                                  ))
+                        )
+                    (if (-> (the-as (pointer symbol) (-> s3-0 s0-0 value-to-modify)))
+                        (set! option-str (string-format "~30L~S~0L ~S" on-str off-str))
+                        (set! option-str (string-format "~0L~S ~30L~S" on-str off-str))
+                        )
+                    )
                   )
                  (((game-option-type language))
+                  ;; language carousell. who know this could be so complicated.
                   (let ((old-lang (-> obj language-selection))
                         (new-lang (-> (the-as (pointer language-enum) (-> s3-0 s0-0 value-to-modify))))
-                        (max-lang (if (and (= (scf-get-territory) GAME_TERRITORY_SCEA)
-                                           (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2))))
-                                      5
-                                      6
-                                      ))
+                        (max-lang 6)
                         )
                   (if (-> obj language-transition)
                       (set! (-> obj language-x-offset)
@@ -569,17 +575,18 @@
                     (set! (-> obj language-x-offset) 0)
                     )
                   (set! (-> font origin y) (the float (+ s2-1 3)))
-                  (set-color! font (font-color lighter-lighter-blue))
+                  ;(set-color! font (font-color lighter-lighter-blue))
                   0
                   (let ((next-lang (mod (+ old-lang 1) max-lang))
-                        (a0-66 (mod (+ max-lang -1 old-lang) max-lang))
-                        (v1-153 (mod (+ old-lang 2) max-lang))
-                        (prev-lang (mod (+ max-lang -2 old-lang) max-lang))
+                        (prev-lang (mod (+ max-lang -1 old-lang) max-lang))
+                        ;; these are used during the transition since it technically allows you to see 4 langs at once.
+                        (next2-lang (mod (+ old-lang 2) max-lang))
+                        (prev2-lang (mod (+ max-lang -2 old-lang) max-lang))
                         )
                     (cond
                       ((-> obj language-direction)
                        (let ((a2-22 (- 200 (+ (-> obj language-x-offset) 100))))
-                         (print-language-name a0-66 font a2-22 #f)
+                         (print-language-name prev-lang font a2-22 #f)
                          )
                        (let ((a2-23 (+ (-> obj language-x-offset) 100)))
                          (cond
@@ -588,7 +595,7 @@
                             )
                            (else
                              (let ((a2-24 (- 200 (-> obj language-x-offset))))
-                               (print-language-name prev-lang font a2-24 #f)
+                               (print-language-name prev2-lang font a2-24 #f)
                                )
                              )
                            )
@@ -598,11 +605,11 @@
                         (let ((a2-25 (+ (-> obj language-x-offset) 100)))
                           (cond
                             ((< a2-25 150)
-                             (print-language-name a0-66 font a2-25 #f)
+                             (print-language-name prev-lang font a2-25 #f)
                              )
                             (else
                               (let ((a2-26 (- 200 (-> obj language-x-offset))))
-                                (print-language-name (the int v1-153) font a2-26 #t)
+                                (print-language-name (the int next2-lang) font a2-26 #t)
                                 )
                               )
                             )
@@ -618,21 +625,25 @@
                   (print-language-name (the-as int old-lang) font (-> obj language-x-offset) (-> obj language-direction))
                   ))
                  (((game-option-type aspect-ratio))
-                  (if (= (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify))) 'aspect4x3)
+                  ;; same as on-off but checks a different symbol
+                  (if (= (-> (the-as (pointer symbol) (-> s3-0 s0-0 value-to-modify))) 'aspect4x3)
                       (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id 4x3) #f) (lookup-text! *common-text* (game-text-id 16x9) #f)))
-                      (set! option-str (string-format "~0L~S ~30L~S~1L" (lookup-text! *common-text* (game-text-id 4x3) #f) (lookup-text! *common-text* (game-text-id 16x9) #f)))
+                      (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id 4x3) #f) (lookup-text! *common-text* (game-text-id 16x9) #f)))
                       )
                   )
                  )
                )
               (else
+                ;; this option is not selected :-(
                 (case (-> s3-0 s0-0 option-type)
                   (((game-option-type slider)
                     (game-option-type aspect-ratio)
                     )
+                   ;; slider and aspect ratio options just show their text
                    (set! option-str (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
                    )
                   (((game-option-type on-off))
+                   ;; on-off options show their text + on or off
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> s3-0 s0-0 name) #f)
                                                         (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
                                                             (lookup-text! *common-text* (game-text-id on) #f)
@@ -640,6 +651,7 @@
                                                             )))
                    )
                   (((game-option-type normal-inverted))
+                   ;; etc
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> s3-0 s0-0 name) #f)
                                                         (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
                                                             (lookup-text! *common-text* (game-text-id normal) #f)
@@ -647,6 +659,7 @@
                                                             )))
                    )
                   (((game-option-type language))
+                   ;; language options show their text + language name
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> s3-0 s0-0 name) #f)
                                                         (lookup-text! *common-text* (-> *language-name-remap* (-> (the-as (pointer uint64) (-> s3-0 s0-0 value-to-modify)))) #f)))
                    )
@@ -655,6 +668,7 @@
               )
             )
           (when option-str
+            ;; draw the actual text!
             (let ((f0-23 (-> obj transition-percentage-invert)))
               (set-color! font (if (and (= s0-0 (-> obj option-index)) (not (-> obj in-transition)))
                                    (font-color yellow-green-2)
@@ -663,9 +677,9 @@
                       )
               (set! (-> font origin x) (the float (- x-off (-> obj left-x-offset))))
               (set! (-> font origin y) (the float (the int (* (the float y-off) (if (-> s3-0 s0-0 scale)
-                                                                                       f0-23
-                                                                                       1.0
-                                                                                       )))))
+                                                                                    f0-23
+                                                                                    1.0
+                                                                                    )))))
               (set-scale! font (* arg2 f0-23))
               (print-game-text option-str font #f (the int (* 128.0 f0-23)) 22)
               )
