@@ -11,8 +11,52 @@
 (#when PC_PORT
 
 
-;;-------------------
+;;---------------------------
+;;---------------------------
+;; pc menu extra stuff
+
+(defconstant PROGRESS_PC_PAGE_HEIGHT 7)
+(defconstant PROGRESS_SCROLL_DIR_UP -1)
+(defconstant PROGRESS_SCROLL_DIR_DOWN 1)
+
+
+(deftype progress-scroll (structure)
+  ((transition float)
+   (direction int8)
+   (start-index int16)
+   (last-screen progress-screen)
+   )
+  )
+
+(define *progress-scroll* (new 'static 'progress-scroll))
+
+(defmacro progress-scrolling? () `(< (-> *progress-scroll* transition) 1.0))
+(defmacro progress-scrolling-up? () `(and (progress-scrolling?) (= (-> *progress-scroll* direction) PROGRESS_SCROLL_DIR_UP)))
+(defmacro progress-scrolling-down? () `(and (progress-scrolling?) (= (-> *progress-scroll* direction) PROGRESS_SCROLL_DIR_DOWN)))
+(defconstant *progress-scroll-start* (-> *progress-scroll* start-index))
+(defconstant *progress-scroll-end* (+ PROGRESS_PC_PAGE_HEIGHT (-> *progress-scroll* start-index)))
+(defmacro progress-scroll-reset ()
+  "resets scroll. nothing will be scrolling, as if it had finished."
+  `(begin
+    (set! (-> *progress-scroll* transition) 1.0)
+    (set! (-> *progress-scroll* direction) 0)
+    (set! (-> *progress-scroll* start-index) 0)))
+(defmacro progress-scroll-up! ()
+  `(begin
+    (set! (-> *progress-scroll* transition) 0.0)
+    (set! (-> *progress-scroll* direction) PROGRESS_SCROLL_DIR_UP)
+    (1-! (-> *progress-scroll* start-index))))
+(defmacro progress-scroll-down! ()
+  `(begin
+    (set! (-> *progress-scroll* transition) 0.0)
+    (set! (-> *progress-scroll* direction) PROGRESS_SCROLL_DIR_DOWN)
+    (1+! (-> *progress-scroll* start-index))))
+
+
+;;---------------------------
+;;---------------------------
 ;; pc menu defines
+
 
 (define *game-options-pc*
   (new 'static 'boxed-array :type game-option :length 6 :allocated-length 6
@@ -26,9 +70,10 @@
   )
 
 (define *graphic-options-pc*
-  (new 'static 'boxed-array :type game-option :length 8 :allocated-length 8
-    (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
+  (new 'static 'boxed-array :type game-option :length 9 :allocated-length 9
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
+    (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id ps2-aspect-ratio) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-ratio) :name (game-text-id aspect-ratio-ps2) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
@@ -68,7 +113,9 @@
   )
 
 
-;;-------------------
+
+;;---------------------------
+;;---------------------------
 ;; function overrides
 
 (defun init-game-options ((obj progress))
@@ -139,13 +186,21 @@
   ;; our options!
   (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
+  (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-state* aspect-ratio-choice)) ;; ohhh sneaky
+  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* use-vis?))
+  (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* camera-hflip?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* camera-vflip?))
   (set! (-> *accessibility-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *gfx-ps2-options* 0 value-to-modify) (&-> *pc-settings* ps2-parts?))
+  
+  ;; scroll stuff!
+  (progress-scroll-reset)
   (none)
   )
+
+
 
 (defmethod respond-common progress ((obj progress))
   "common logic for navigating the progress menu.
@@ -154,7 +209,7 @@
   (mc-get-slot-info 0 *progress-save-info*)
   (set! (-> obj card-info) *progress-save-info*)
   (let ((options (-> *options-remap* (-> obj display-state))))
-    (when (and options (not (-> obj in-transition)))
+    (when (and options (not (or (progress-scrolling?) (-> obj in-transition))))
       ;; only respond to inputs when transition is done (and also there's options at all)
       (cond
         ((cpad-pressed? 0 up)
@@ -165,10 +220,18 @@
                 (sound-play-by-name (static-sound-name "cursor-up-down") (new-sound-id) 1024 0 0 1 #t)
                 )
             (set! (-> obj last-option-index-change) (-> *display* real-frame-counter))
-            (if (> (-> obj option-index) 0)
-                (+! (-> obj option-index) -1)
-                (set! (-> obj option-index) (+ (length options) -1))
+            (cond
+              ((> (-> obj option-index) 0)
+               (1-! (-> obj option-index))
+               (when (< (-> obj option-index) *progress-scroll-start*)
+                 (progress-scroll-up!)
+                 )
+               )
+              (else
+                (set! (-> obj option-index) (1- (length options)))
+                (set! (-> *progress-scroll* start-index) (max 0 (- (length options) PROGRESS_PC_PAGE_HEIGHT)))
                 )
+              )
             )
          )
         ((cpad-pressed? 0 down)
@@ -178,10 +241,18 @@
                 (sound-play-by-name (static-sound-name "cursor-up-down") (new-sound-id) 1024 0 0 1 #t)
                 )
             (set! (-> obj last-option-index-change) (-> *display* real-frame-counter))
-            (if (< (-> obj option-index) (1- (length options)))
-                (1+! (-> obj option-index))
+            (cond
+              ((< (-> obj option-index) (1- (length options)))
+               (1+! (-> obj option-index))
+               (when (>= (-> obj option-index) *progress-scroll-end*)
+                 (progress-scroll-down!)
+                 )
+               )
+              (else
                 (set! (-> obj option-index) 0)
+                (set! (-> *progress-scroll* start-index) 0)
                 )
+              )
             )
          )
         ((cpad-hold? 0 left)
@@ -219,6 +290,15 @@
                    (set! (-> obj language-transition) #t)
                    (set! (-> obj language-direction) #t)
                    (set! sound? #t)
+                   )
+                  (((game-option-type display-mode))
+                   ;; display mode.
+                   (set! sound? #t)
+                   (case (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
+                     (('windowed) (set! sound? #f))
+                     (('fullscreen) (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) 'windowed))
+                     (('borderless) (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) 'fullscreen))
+                     )
                    )
                   )
                 (if sound?
@@ -299,6 +379,15 @@
                    (set! (-> obj language-transition) #t)
                    (set! (-> obj language-direction) #f)
                    (set! sound? #t)
+                   )
+                  (((game-option-type display-mode))
+                   ;; display mode.
+                   (set! sound? #t)
+                   (case (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
+                     (('windowed) (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) 'fullscreen))
+                     (('fullscreen) (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) 'borderless))
+                     (('borderless) (set! sound? #f))
+                     )
                    )
                   )
                 ;; play sound if desired
@@ -389,7 +478,7 @@
            )
          )
         ((or (cpad-pressed? 0 x) (cpad-pressed? 0 circle))
-         ;; pressed x or circle. select option!
+         ;; pressed x or circle. advance!
          (cond
            ((not (-> obj selected-option))
             ;; no option already selected.
@@ -443,6 +532,14 @@
                   (set! (-> *progress-state* on-off-backup)
                         (the-as symbol (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify)))))
                   )
+                 (((game-option-type aspect-ratio))
+                  ;; added (because sneaky)
+                  (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
+                  )
+                 (((game-option-type display-mode))
+                  ;; added
+                  (set! (-> *progress-state* aspect-ratio-choice) (pc-get-fullscreen))
+                  )
                  )
                (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
                (cpad-clear! 0 x)
@@ -464,8 +561,11 @@
              (case (-> options (-> obj option-index) option-type)
                (((game-option-type aspect-ratio))
                 ;; aspect ratio is first written to the backup. so this is for applying the change if we went through with it.
-                (set! (-> *setting-control* default aspect-ratio)
-                      (the-as symbol (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify)))))
+                (set! (-> *setting-control* default aspect-ratio) (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
+                )
+               (((game-option-type display-mode))
+                ;; same thing for display mode.
+                (set-display-mode! *pc-settings* (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                 )
                (((game-option-type language))
                 (if (not (-> obj language-transition))
@@ -484,11 +584,11 @@
 
 (defmethod draw-options progress ((obj progress) (arg0 int) (arg1 int) (arg2 float))
   "common logic for drawing options menus."
-  (let ((s3-0 (-> *options-remap* (-> obj display-state))))
-    (when s3-0
+  (let ((options (-> *options-remap* (-> obj display-state))))
+    (when options
       ;; this menu has options to draw omg
-      (let ((s2-1 (- arg0 (/ (* arg1 (length s3-0)) 2)))
-            (s1-0 0)
+      (let ((y-off (- arg0 (/ (* arg1 (min PROGRESS_PC_PAGE_HEIGHT (length options))) 2)))
+            (option-count 0)
             (unkx 27)
             (unk2 0)
             (font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
@@ -497,72 +597,102 @@
         (set-width! font 370)
         (set-height! font 25)
         (set! (-> font flags) (font-flags shadow kerning middle left large))
-        (dotimes (s0-0 (length s3-0))
+        ;; when scrolling we draw an extra line
+        (cond
+          ((progress-scrolling-down?) (set! y-off (+ (- y-off arg1) (* (the float arg1) (- 1.0 (-> *progress-scroll* transition))))))
+          ((progress-scrolling-up?) (set! y-off (+ (- y-off arg1) (* (the float arg1) (-> *progress-scroll* transition)))))
+          )
+        (let* ((draw-arrows (and (not (-> obj in-transition)) (< (mod (-> *display* real-frame-counter) (seconds 0.2)) (seconds 0.1))))
+               (draw-prev (< 0 *progress-scroll-start*))
+               (draw-next (> (length options) *progress-scroll-end*)))
+            (set! (-> obj particles 32 init-pos x) (the float (if (and draw-arrows draw-prev)
+                                                                  (- 195 (-> *progress-process* 0 left-x-offset))
+                                                                  -320
+                                                                  )))
+            (set! (-> obj particles 33 init-pos x) (the float (if (and draw-arrows draw-next)
+                                                                  (- 195 (-> *progress-process* 0 left-x-offset))
+                                                                  -320
+                                                                  )))
+            )
+        (dotimes (index (length options))
         (let ((option-str (the string #f)) ;; the option text
-              (x-off 17)
-              (y-off s2-1)
+              (option-x 17)
+              (option-y y-off)
               )
-          (let ((v1-18 (-> s3-0 s0-0 option-type)))
+          (let ((v1-18 (-> options index option-type)))
             (cond
               ((= v1-18 (game-option-type yes-no))
                ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
-               (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
+               (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
                    (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
                    (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
                    )
                )
               ((or (= v1-18 (game-option-type menu)) (= v1-18 (game-option-type button)))
                ;; menu option or simple button. just draw its text!
-               (if (nonzero? (-> s3-0 s0-0 name))
-                   (set! option-str (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
+               (if (nonzero? (-> options index name))
+                   (set! option-str (lookup-text! *common-text* (-> options index name) #f))
                    (set! option-str (the-as string #f))
                    )
                )
-              ((and (-> obj selected-option) (= (-> obj option-index) s0-0))
+              ((and (-> obj selected-option) (= (-> obj option-index) index))
                ;; this option is SELECTED!
                (set-color! font (font-color default))
-               (set! (-> font origin x) (the float (- x-off (-> obj left-x-offset))))
-               (set! (-> font origin y) (the float (+ s2-1 -8)))
+               (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
+               (set! (-> font origin y) (the float (+ y-off -8)))
                (set-scale! font 0.6)
-               (print-game-text (lookup-text! *common-text* (-> s3-0 s0-0 name) #f) font #f 128 22)
-               (set! y-off (+ s2-1 7))
-               (case (-> s3-0 s0-0 option-type)
+               (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22)
+               (set! option-y (+ y-off 7))
+               (case (-> options index option-type)
                  (((game-option-type slider))
                   ;; draw a slider and its text.
                   ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
                   (let* ((v1-82 (the-as uint #x8000ffff))
-                         (f0-12 (* 0.01 (-> (the-as (pointer float) (-> s3-0 s0-0 value-to-modify)))))
+                         (f0-12 (* 0.01 (-> (the-as (pointer float) (-> options index value-to-modify)))))
                          (a0-34 (logior (logand v1-82 -256) (shr (shl (the int (+ 64.0 (* 191.0 f0-12))) 56) 56)))
                          (a3-5 (logior (logand a0-34 -65281) (shr (shl (shr (shl a0-34 56) 56) 56) 48)))
                          )
-                    (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ s2-1 8) f0-12 (the-as int a3-5))
+                    (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ y-off 8) f0-12 (the-as int a3-5))
                     )
-                  (set! option-str (string-format "~D" (the int (-> (the-as (pointer float) (-> s3-0 s0-0 value-to-modify))))))
-                  (set! x-off (+ (the int (* 2.5 (-> (the-as (pointer float) (-> s3-0 s0-0 value-to-modify))))) -100))
-                  x-off
+                  (set! option-str (string-format "~D" (the int (-> (the-as (pointer float) (-> options index value-to-modify))))))
+                  (set! option-x (+ (the int (* 2.5 (-> (the-as (pointer float) (-> options index value-to-modify))))) -100))
                   )
                  (((game-option-type on-off) (game-option-type normal-inverted))
                   ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
                   (let (
-                        (on-str (case (-> s3-0 s0-0 option-type)
+                        (on-str (case (-> options index option-type)
                                   (((game-option-type on-off))          (lookup-text! *common-text* (game-text-id on) #f))
                                   (((game-option-type normal-inverted)) (lookup-text! *common-text* (game-text-id normal) #f))
                                   ))
-                       (off-str (case (-> s3-0 s0-0 option-type)
+                       (off-str (case (-> options index option-type)
                                   (((game-option-type on-off))          (lookup-text! *common-text* (game-text-id off) #f))
                                   (((game-option-type normal-inverted)) (lookup-text! *common-text* (game-text-id inverted) #f))
                                   ))
                         )
-                    (if (-> (the-as (pointer symbol) (-> s3-0 s0-0 value-to-modify)))
+                    (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
                         (set! option-str (string-format "~30L~S~0L ~S" on-str off-str))
                         (set! option-str (string-format "~0L~S ~30L~S" on-str off-str))
                         )
                     )
                   )
+                 (((game-option-type display-mode))
+                  ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
+                  (let (
+                        (str-wind (lookup-text! *common-text* (game-text-id windowed) #f))
+                        (str-full (lookup-text! *common-text* (game-text-id fullscreen) #f))
+                        (str-bord (lookup-text! *common-text* (game-text-id borderless) #f))
+                        )
+                    (case (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                      (('windowed #f)   (set! option-str (string-format "~0L~30L~S~0L ~S ~S" str-wind str-full str-bord)))
+                      (('fullscreen #t) (set! option-str (string-format "~0L~S ~30L~S~0L ~S" str-wind str-full str-bord)))
+                      (('borderless)    (set! option-str (string-format "~0L~S ~S ~30L~S~0L" str-wind str-full str-bord)))
+                      )
+                    )
+                  )
                  (((game-option-type language))
                   ;; language carousell. who know this could be so complicated.
                   (let ((old-lang (-> obj language-selection))
-                        (new-lang (-> (the-as (pointer language-enum) (-> s3-0 s0-0 value-to-modify))))
+                        (new-lang (-> (the-as (pointer language-enum) (-> options index value-to-modify))))
                         (max-lang 6)
                         )
                   (if (-> obj language-transition)
@@ -574,7 +704,7 @@
                     (set! (-> obj language-transition) #f)
                     (set! (-> obj language-x-offset) 0)
                     )
-                  (set! (-> font origin y) (the float (+ s2-1 3)))
+                  (set! (-> font origin y) (the float (+ y-off 3)))
                   ;(set-color! font (font-color lighter-lighter-blue))
                   0
                   (let ((next-lang (mod (+ old-lang 1) max-lang))
@@ -626,7 +756,7 @@
                   ))
                  (((game-option-type aspect-ratio))
                   ;; same as on-off but checks a different symbol
-                  (if (= (-> (the-as (pointer symbol) (-> s3-0 s0-0 value-to-modify))) 'aspect4x3)
+                  (if (= (-> (the-as (pointer symbol) (-> options index value-to-modify))) 'aspect4x3)
                       (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id 4x3) #f) (lookup-text! *common-text* (game-text-id 16x9) #f)))
                       (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id 4x3) #f) (lookup-text! *common-text* (game-text-id 16x9) #f)))
                       )
@@ -635,57 +765,81 @@
                )
               (else
                 ;; this option is not selected :-(
-                (case (-> s3-0 s0-0 option-type)
+                (case (-> options index option-type)
                   (((game-option-type slider)
                     (game-option-type aspect-ratio)
+                    (game-option-type display-mode)
                     )
                    ;; slider and aspect ratio options just show their text
-                   (set! option-str (lookup-text! *common-text* (-> s3-0 s0-0 name) #f))
+                   (set! option-str (lookup-text! *common-text* (-> options index name) #f))
                    )
                   (((game-option-type on-off))
                    ;; on-off options show their text + on or off
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> s3-0 s0-0 name) #f)
-                                                        (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
+                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                        (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
                                                             (lookup-text! *common-text* (game-text-id on) #f)
                                                             (lookup-text! *common-text* (game-text-id off) #f)
                                                             )))
                    )
                   (((game-option-type normal-inverted))
                    ;; etc
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> s3-0 s0-0 name) #f)
-                                                        (if (-> (the-as (pointer uint32) (-> s3-0 s0-0 value-to-modify)))
+                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                        (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
                                                             (lookup-text! *common-text* (game-text-id normal) #f)
                                                             (lookup-text! *common-text* (game-text-id inverted) #f)
                                                             )))
                    )
                   (((game-option-type language))
                    ;; language options show their text + language name
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> s3-0 s0-0 name) #f)
-                                                        (lookup-text! *common-text* (-> *language-name-remap* (-> (the-as (pointer uint64) (-> s3-0 s0-0 value-to-modify)))) #f)))
+                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                        (lookup-text! *common-text* (-> *language-name-remap* (-> (the-as (pointer uint64) (-> options index value-to-modify)))) #f)))
                    )
                   )
                 )
               )
             )
+          (when (or (and (not (progress-scrolling?))
+                         (>= index *progress-scroll-start*)
+                         (< index *progress-scroll-end*))
+                    (and (progress-scrolling-down?)
+                         (>= index (1- *progress-scroll-start*))
+                         (< index *progress-scroll-end*))
+                    (and (progress-scrolling-up?)
+                         (>= index *progress-scroll-start*)
+                         (< index (1+ *progress-scroll-end*)))
+                    )
           (when option-str
             ;; draw the actual text!
-            (let ((f0-23 (-> obj transition-percentage-invert)))
-              (set-color! font (if (and (= s0-0 (-> obj option-index)) (not (-> obj in-transition)))
+            (let ((f0-23 (-> obj transition-percentage-invert))
+                  (scroll-amt (-> *progress-scroll* transition)))
+              (cond
+                ((or (and (progress-scrolling-up?) (= index *progress-scroll-start*))
+                     (and (progress-scrolling-down?) (= index (1- *progress-scroll-end*))))
+                 )
+                ((or (and (progress-scrolling-down?) (= index (1- *progress-scroll-start*)))
+                     (and (progress-scrolling-up?) (= index *progress-scroll-end*)))
+                 (set! scroll-amt (- 1.0 scroll-amt))
+                 )
+                (else
+                 (set! scroll-amt 1.0)
+                 )
+                )
+              (set-color! font (if (and (= index (-> obj option-index)) (not (or (progress-scrolling?) (-> obj in-transition))))
                                    (font-color yellow-green-2)
                                    (font-color default)
-                                   )
-                      )
-              (set! (-> font origin x) (the float (- x-off (-> obj left-x-offset))))
-              (set! (-> font origin y) (the float (the int (* (the float y-off) (if (-> s3-0 s0-0 scale)
-                                                                                    f0-23
-                                                                                    1.0
-                                                                                    )))))
-              (set-scale! font (* arg2 f0-23))
-              (print-game-text option-str font #f (the int (* 128.0 f0-23)) 22)
+                                   ))
+              (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
+              (set! (-> font origin y) (the float (the int (* (the float option-y) (if (-> options index scale)
+                                                                                        f0-23
+                                                                                        1.0
+                                                                                        )))))
+              (set-scale! font (* arg2 f0-23 scroll-amt))
+              (print-game-text option-str font #f (the int (* 128.0 f0-23 scroll-amt)) 22)
               )
             )
-          (+! s2-1 arg1)
-          (+! s1-0 1)
+          (+! y-off arg1)
+          (+! option-count 1)
+            )
           ))
         )
       )
@@ -698,6 +852,14 @@
 ;; override the post handler for progress-normal
 (set! (-> progress-normal post) 
   (lambda :behavior progress ()
+    ;; scroll stuff TODO time ratio
+    (when (progress-scrolling?)
+      (seek! (-> *progress-scroll* transition) 1.0 (* 1.75 (1/ 512) (-> self transition-speed) (-> *display* time-adjust-ratio)))
+      )
+    (when (!= (-> self display-state) (-> *progress-scroll* last-screen))
+      (progress-scroll-reset)
+      (set! (-> *progress-scroll* last-screen) (-> self display-state))
+      )
     ;; draw the menus!!
     (let* ((a1-0 (-> self display-level-index))
            (gp-0 (-> *level-task-data* a1-0))
