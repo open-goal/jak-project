@@ -81,19 +81,18 @@ jobs:
       # ---- Release / Tagging related steps ----
       - name: Prepare Build Artifacts
         if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
+        shell: bash
         run: |
-          mkdir -p ./ci-artifacts/
-          cp ./build/bin/decompiler.exe ./ci-artifacts/windows-decompiler.exe
-          cp ./build/bin/gk.exe ./ci-artifacts/windows-gk.exe
-          cp ./build/bin/goalc.exe ./ci-artifacts/windows-goalc.exe
-          ls ./ci-artifacts/
+          mkdir -p ./ci-artifacts/out
+          ./.github/scripts/releases/extract_build_windows.sh ./ci-artifacts/out ./
+          zip -r ./ci-artifacts/windows.zip ./ci-artfacts/out
 
       - name: Upload Assets and Potential Publish Release
         if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
           ASSET_DIR: ${{ github.WORKSPACE }}/ci-artifacts
-          ASSET_EXTENSION: exe
+          ASSET_EXTENSION: zip
           TAG_TO_SEARCH_FOR: ${{ github.REF }}
         run: |
           cd ./.github/scripts/releases/upload-release-artifacts
