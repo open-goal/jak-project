@@ -7,9 +7,9 @@ SOURCE=${2}
 
 mkdir -p $DEST
 
-cp $SOURCE/out/build/Release/bin/gk.exe $DEST
-cp $SOURCE/out/build/Release/bin/goalc.exe $DEST
-cp $SOURCE/out/build/Release/bin/extractor.exe $DEST
+cp $SOURCE/build/bin/gk.exe $DEST
+cp $SOURCE/build/bin/goalc.exe $DEST
+cp $SOURCE/build/bin/extractor.exe $DEST
 
 mkdir -p $DEST/data
 mkdir -p $DEST/data/decompiler/
