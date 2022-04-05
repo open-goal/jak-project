@@ -12,8 +12,6 @@
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {
   // Interpreter startup:
-  goal_to_goos.reset();
-
   // create the GOOS global environment
   global_environment = EnvironmentObject::make_new("global");
 
@@ -73,7 +71,6 @@ Interpreter::Interpreter(const std::string& username) {
                    {">=", &Interpreter::eval_geq},
                    {"null?", &Interpreter::eval_null},
                    {"type?", &Interpreter::eval_type},
-                   {"current-method-type", &Interpreter::eval_current_method_type},
                    {"fmt", &Interpreter::eval_format},
                    {"error", &Interpreter::eval_error},
                    {"string-ref", &Interpreter::eval_string_ref},
@@ -1548,14 +1545,6 @@ Object Interpreter::eval_type(const Object& form,
   } else {
     return SymbolObject::make_new(reader.symbolTable, "#f");
   }
-}
-
-Object Interpreter::eval_current_method_type(const Object& form,
-                                             Arguments& args,
-                                             const std::shared_ptr<EnvironmentObject>& env) {
-  (void)env;
-  vararg_check(form, args, {}, {});
-  return SymbolObject::make_new(reader.symbolTable, goal_to_goos.enclosing_method_type);
 }
 
 Object Interpreter::eval_format(const Object& form,

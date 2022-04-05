@@ -124,7 +124,11 @@ void Compiler::expect_empty_list(const goos::Object& o) {
   }
 }
 
-TypeSpec Compiler::parse_typespec(const goos::Object& src) {
+TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
+  if (src.is_pair() && src.as_pair()->car.is_symbol("current-method-type") &&
+      src.as_pair()->cdr.is_empty_list()) {
+    return env->function_env()->method_of_type_name;
+  }
   return ::parse_typespec(&m_ts, src);
 }
 

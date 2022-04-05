@@ -84,7 +84,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
             "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
       }
 
-      auto array_content_type = parse_typespec(new_form.at(3));
+      auto array_content_type = parse_typespec(new_form.at(3), env);
 
       if (is_inline) {
         if (field_info.field.type() != array_content_type) {
@@ -171,7 +171,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                "Inline field must be defined with (new 'static 'type-name ...)");
         }
 
-        auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+        auto inlined_type = parse_typespec(unquote(new_form.at(2)), env);
         if (inlined_type != field_info.type) {
           throw_compiler_error(field_value, "Cannot store a {} in an inline {}",
                                inlined_type.print(), field_info.type.print());
@@ -735,7 +735,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
         return fill_static_inline_array(form, rest, env, segment);
       } else {
-        auto ts = parse_typespec(unquote(args.at(1)));
+        auto ts = parse_typespec(unquote(args.at(1)), env);
         if (ts == TypeSpec("string")) {
           // (new 'static 'string)
           if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list() &&
@@ -762,7 +762,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
     } else if (first.is_symbol() && first.as_symbol()->name == "the-as") {
       auto args = get_va(form, rest);
       va_check(form, args, {{}, {}}, {});
-      auto type = parse_typespec(args.unnamed.at(0));
+      auto type = parse_typespec(args.unnamed.at(0), env);
       if (type == TypeSpec("float")) {
         s64 value;
         if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
@@ -774,7 +774,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
     } else if (first.is_symbol() && first.as_symbol()->name == "the") {
       auto args = get_va(form, rest);
       va_check(form, args, {{}, {}}, {});
-      auto type = parse_typespec(args.unnamed.at(0));
+      auto type = parse_typespec(args.unnamed.at(0), env);
       if (type == TypeSpec("binteger")) {
         s64 value;
         if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
@@ -884,7 +884,7 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   if (args.size() < 4) {
     throw_compiler_error(form, "new static array must have type and min-size arguments");
   }
-  auto content_type = parse_typespec(args.at(2));
+  auto content_type = parse_typespec(args.at(2), env);
   s64 min_size;
   if (!try_getting_constant_integer(args.at(3), &min_size, env)) {
     throw_compiler_error(form, "The length {} is not valid.", args.at(3).print());
@@ -929,7 +929,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   if (!args.has_named("type")) {
     throw_compiler_error(form, "boxed array must have type");
   }
-  auto content_type = parse_typespec(args.get_named("type"));
+  auto content_type = parse_typespec(args.get_named("type"), env);
 
   if (!args.has_named("length")) {
     throw_compiler_error(form, "boxed array must have length");
@@ -1032,7 +1032,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
           elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
     }
 
-    auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+    auto inlined_type = parse_typespec(unquote(new_form.at(2)), env);
     if (inlined_type != content_type) {
       throw_compiler_error(elt_def, "Cannot store a {} in an inline array of {}",
                            inlined_type.print(), content_type.print());
@@ -1056,7 +1056,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   if (args.size() < 4) {
     throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
   }
-  auto content_type = parse_typespec(args.at(2));
+  auto content_type = parse_typespec(args.at(2), env);
   s64 min_size;
   if (!try_getting_constant_integer(args.at(3), &min_size, env)) {
     throw_compiler_error(form, "The length {} is not valid.", args.at(3).print());

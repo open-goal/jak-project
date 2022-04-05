@@ -262,10 +262,7 @@ const std::unordered_map<
         {"define-virtual-state-hook", &Compiler::compile_define_virtual_state_hook},
 };
 
-/*!
- * Highest level compile function
- */
-Val* Compiler::compile(const goos::Object& code, Env* env) {
+Val* Compiler::compile_no_const_prop(const goos::Object& code, Env* env) {
   switch (code.type) {
     case goos::ObjectType::PAIR:
       return compile_pair(code, env);
@@ -283,6 +280,14 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
       throw_compiler_error(code, "Cannot compile {}.", code.print());
   }
   return get_none();
+}
+
+/*!
+ * Highest level compile function
+ */
+Val* Compiler::compile(const goos::Object& code, Env* env) {
+  auto propagated = try_constant_propagation(code, env);
+  return compile_no_const_prop(propagated.value, env);
 }
 
 /*!
