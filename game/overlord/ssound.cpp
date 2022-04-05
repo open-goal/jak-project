@@ -249,7 +249,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     zdiff >>= 1;
   }
 
-  s32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
+  u32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
   if (distance != 0) {
     s32 steps = 0;
     while ((distance & 0xc0000000) == 0) {
