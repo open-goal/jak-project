@@ -44,6 +44,7 @@ Compiler::ConstPropResult Compiler::try_constant_propagation(const goos::Object&
   switch (expanded.type) {
     case goos::ObjectType::INTEGER:
     case goos::ObjectType::STRING:
+    case goos::ObjectType::FLOAT:
       return {expanded, false};
     case goos::ObjectType::SYMBOL: {
       const auto& global_constant = m_global_constants.find(expanded.as_symbol());
@@ -77,14 +78,74 @@ Compiler::ConstPropResult Compiler::try_constant_propagation(const goos::Object&
 
 s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
   auto prop = try_constant_propagation(in, env);
+  if (prop.value.is_pair()) {
+    auto head = prop.value.as_pair()->car;
+    if (head.is_symbol()) {
+      auto head_sym = head.as_symbol();
+      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+      if (enum_type) {
+        bool success;
+        u64 as_enum =
+            enum_lookup(prop.value, enum_type, prop.value.as_pair()->cdr, false, &success);
+        if (success) {
+          return as_enum;
+        }
+      }
+    }
+  }
+
   if (prop.has_side_effects) {
-    throw_compiler_error(in, "Value cannot be used as a constant - it has side effects.");
+    throw_compiler_error(in, "Value {} cannot be used as a constant - it has side effects.",
+                         in.print());
   } else {
     if (prop.value.is_int()) {
       return prop.value.as_int();
     } else {
-      throw_compiler_error(in,
-                           "Value cannot be used as a constant integer - it has the wrong type.");
+      throw_compiler_error(
+          in, "Value {} cannot be used as a constant integer - it has the wrong type.", in.print());
+    }
+  }
+}
+
+ValOrConstInt Compiler::get_constant_integer_or_variable(const goos::Object& in, Env* env) {
+  auto prop = try_constant_propagation(in, env);
+
+  if (prop.value.is_pair()) {
+    auto head = prop.value.as_pair()->car;
+    if (head.is_symbol()) {
+      auto head_sym = head.as_symbol();
+      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+      if (enum_type) {
+        bool success;
+        u64 as_enum =
+            enum_lookup(prop.value, enum_type, prop.value.as_pair()->cdr, false, &success);
+        if (success) {
+          return ValOrConstInt(as_enum);
+        }
+      }
+    }
+  }
+
+  if (prop.has_side_effects) {
+    return ValOrConstInt(compile_no_const_prop(prop.value, env));
+  } else {
+    if (prop.value.is_int()) {
+      return ValOrConstInt(prop.value.as_int());
+    } else {
+      return ValOrConstInt(compile_no_const_prop(prop.value, env));
+    }
+  }
+}
+
+ValOrConstFloat Compiler::get_constant_float_or_variable(const goos::Object& in, Env* env) {
+  auto prop = try_constant_propagation(in, env);
+  if (prop.has_side_effects) {
+    return ValOrConstFloat(compile_no_const_prop(prop.value, env));
+  } else {
+    if (prop.value.is_float()) {
+      return ValOrConstFloat(prop.value.as_float());
+    } else {
+      return ValOrConstFloat(compile_no_const_prop(prop.value, env));
     }
   }
 }

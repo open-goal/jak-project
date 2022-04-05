@@ -754,10 +754,14 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
 
     int64_t constant_index_value;
     RegVal* index_value = nullptr;
+    auto idx_val = get_constant_integer_or_variable(field_obj, env);
+    bool has_constant_idx = idx_val.is_constant();
+    if (has_constant_idx) {
+      constant_index_value = idx_val.constant;
+    }
 
-    bool has_constant_idx = try_getting_constant_integer(field_obj, &constant_index_value, env);
     if (!has_constant_idx) {
-      index_value = compile_error_guard(field_obj, env)->to_gpr(form, env);
+      index_value = idx_val.val->to_gpr(form, env);
       if (!is_integer(index_value->type())) {
         throw_compiler_error(form, "Cannot use -> with field {}.", field_obj.print());
       }
@@ -971,8 +975,8 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     auto count_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     // try to get the size as a compile time constant.
-    int64_t constant_count = 0;
-    bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
+    auto cv = get_constant_integer_or_variable(count_obj, env);
+    bool is_constant_size = cv.is_constant();
 
     if (!rest->is_empty_list()) {
       // got extra arguments
@@ -991,12 +995,12 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     args.push_back(compile_get_sym_obj(allocation, env)->to_reg(form, env));
 
     if (is_constant_size) {
-      auto array_size = constant_count * info.stride;
+      auto array_size = cv.constant * info.stride;
       args.push_back(compile_integer(array_size, env)->to_reg(form, env));
     } else {
       auto array_size = compile_integer(info.stride, env)->to_reg(form, env);
       env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::IMUL_32, array_size,
-                                   compile_error_guard(count_obj, env)->to_gpr(form, env));
+                                   cv.val->to_gpr(form, env));
       args.push_back(array_size);
     }
 
@@ -1103,11 +1107,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     auto count_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     // try to get the size as a compile time constant.
-    int64_t constant_count = 0;
-    bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
-    if (!is_constant_size) {
-      throw_compiler_error(form, "Cannot create a dynamically sized stack array");
-    }
+    int64_t constant_count = get_constant_integer_or_error(count_obj, env);
 
     if (constant_count <= 0) {
       throw_compiler_error(form, "Cannot create a stack array with size {}", constant_count);

@@ -223,9 +223,10 @@ class Compiler {
                                   Env* env,
                                   const std::string& method_type_name = "");
 
-  bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
   s64 get_constant_integer_or_error(const goos::Object& in, Env* env);
-  bool try_getting_constant_float(const goos::Object& in, float* out, Env* env);
+  ValOrConstInt get_constant_integer_or_variable(const goos::Object& in, Env* env);
+  ValOrConstFloat get_constant_float_or_variable(const goos::Object& in, Env* env);
+
   Val* compile_heap_new(const goos::Object& form,
                         const std::string& allocation,
                         const goos::Object& type,
