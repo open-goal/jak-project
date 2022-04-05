@@ -56,24 +56,10 @@
 ;; CAROUSELL STUFF
 ;; ############################
 
-(deftype progress-carousell-selection (structure)
-  ((name game-text-id)
-   
-   ; (ptr pointer)
-   ; (ptr-sym (pointer symbol)  :overlay-at ptr)
-   ; (ptr-int (pointer int)     :overlay-at ptr)
-   ; (ptr-flt (pointer float)   :overlay-at ptr)
-   
-   ; (val-int int       )
-   ; (val-sym symbol    :overlay-at val-int)
-   ; (val-flt float     :overlay-at val-int)
-   )
-  )
-
 (deftype progress-carousell-state (structure)
   ((int-backup int)
    (symbol-backup symbol)
-   (current-carousell (array progress-carousell-selection))
+   (current-carousell (array game-text-id))
    
    (selection int)
    (direction symbol)
@@ -85,10 +71,18 @@
 (define *progress-carousell* (new 'static 'progress-carousell-state))
 
 
-(define *carousell-display-mode* (new 'static 'boxed-array :type progress-carousell-selection :length 3 :allocated-length 3
-    (new 'static 'progress-carousell-selection :name (game-text-id windowed))
-    (new 'static 'progress-carousell-selection :name (game-text-id fullscreen))
-    (new 'static 'progress-carousell-selection :name (game-text-id borderless))
+(define *carousell-display-mode* (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
+    (game-text-id windowed)
+    (game-text-id fullscreen)
+    (game-text-id borderless)
+    ))
+
+(define *carousell-msaa* (new 'static 'boxed-array :type game-text-id :length 5 :allocated-length 5
+    (game-text-id off)
+    (game-text-id 2-times)
+    (game-text-id 4-times)
+    (game-text-id 8-times)
+    (game-text-id 16-times)
     ))
 
 
@@ -153,15 +147,6 @@
   )
 
 
-(defun display-mode->string ((mode symbol))
-  "return the text string for the display mode"
-  (case mode
-    (('windowed #f) (lookup-text! *common-text* (game-text-id windowed) #f))
-    (('fullscreen #t) (lookup-text! *common-text* (game-text-id fullscreen) #f))
-    (('borderless) (lookup-text! *common-text* (game-text-id borderless) #f))
-    )
-  )
-
 (defun print-string-in-carousell ((arg0 game-text-id) (arg1 font-context) (arg2 int) (arg3 symbol))
   (let ((s5-0 (if arg3
                   arg2
@@ -179,7 +164,7 @@
   arg1
   )
 
-(defun progress-draw-carousell-from-string-list ((options (array progress-carousell-selection)) (font font-context) (y-off int) (new-val int))
+(defun progress-draw-carousell-from-string-list ((options (array game-text-id)) (font font-context) (y-off int) (new-val int))
   "yep."
   
   (let ((old-lang (-> *progress-carousell* selection))
@@ -206,16 +191,16 @@
       (cond
         ((-> *progress-carousell* direction)
          (let ((a2-22 (- 200 (+ (-> *progress-carousell* x-offset) 100))))
-           (print-string-in-carousell (-> options prev-lang name) font a2-22 #f)
+           (print-string-in-carousell (-> options prev-lang) font a2-22 #f)
            )
          (let ((a2-23 (+ (-> *progress-carousell* x-offset) 100)))
            (cond
              ((< a2-23 150)
-              (print-string-in-carousell (-> options next-lang name) font a2-23 #t)
+              (print-string-in-carousell (-> options next-lang) font a2-23 #t)
               )
              (else
                (let ((a2-24 (- 200 (-> *progress-carousell* x-offset))))
-                 (print-string-in-carousell (-> options prev2-lang name) font a2-24 #f)
+                 (print-string-in-carousell (-> options prev2-lang) font a2-24 #f)
                  )
                )
              )
@@ -225,24 +210,24 @@
           (let ((a2-25 (+ (-> *progress-carousell* x-offset) 100)))
             (cond
               ((< a2-25 150)
-               (print-string-in-carousell (-> options prev-lang name) font a2-25 #f)
+               (print-string-in-carousell (-> options prev-lang) font a2-25 #f)
                )
               (else
                 (let ((a2-26 (- 200 (-> *progress-carousell* x-offset))))
-                  (print-string-in-carousell (-> options next2-lang name) font a2-26 #t)
+                  (print-string-in-carousell (-> options next2-lang) font a2-26 #t)
                   )
                 )
               )
             )
           (let ((a2-27 (- 200 (+ (-> *progress-carousell* x-offset) 100))))
-            (print-string-in-carousell (-> options next-lang name) font a2-27 #t)
+            (print-string-in-carousell (-> options next-lang) font a2-27 #t)
             )
           )
         )
       )
     (if (not (-> *progress-carousell* transition))
         (set-color! font (font-color yellow-green-2)))
-    (print-string-in-carousell (-> options old-lang name) font (-> *progress-carousell* x-offset) (-> *progress-carousell* direction))
+    (print-string-in-carousell (-> options old-lang) font (-> *progress-carousell* x-offset) (-> *progress-carousell* direction))
     )
   )
 
@@ -423,7 +408,7 @@
                    (set! (-> obj language-direction) #t)
                    (set! sound? #t)
                    )
-                  (((game-option-type display-mode))
+                  (((game-option-type display-mode) (game-option-type msaa))
                    ;; a carousell like language
                    (if (> (the-as int (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify)))) 0)
                        (+! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) -1)
@@ -514,7 +499,7 @@
                    (set! (-> obj language-direction) #f)
                    (set! sound? #t)
                    )
-                  (((game-option-type display-mode))
+                  (((game-option-type display-mode) (game-option-type msaa))
                    ;; same thing as before. if at last, go to first. otherwise, keep going forward.
                    (if (< (the-as int (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify)))) (1- (length (-> *progress-carousell* current-carousell))))
                        (1+! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))))
@@ -675,6 +660,15 @@
                     (('borderless) (set! (-> *progress-carousell* int-backup) 2))
                     )
                   )
+                 (((game-option-type msaa))
+                  (case 4
+                    ((2) (set! (-> *progress-carousell* int-backup) 1))
+                    ((4) (set! (-> *progress-carousell* int-backup) 2))
+                    ((8) (set! (-> *progress-carousell* int-backup) 3))
+                    ((16) (set! (-> *progress-carousell* int-backup) 4))
+                    (else (set! (-> *progress-carousell* int-backup) 0))
+                    )
+                  )
                  )
                (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
                (cpad-clear! 0 x)
@@ -687,8 +681,11 @@
                    (set! (-> obj language-transition) #f)
                    (set! (-> obj language-x-offset) 0)
                    )
-                 (((game-option-type display-mode))
-                   (set! (-> *progress-carousell* current-carousell) *carousell-display-mode*)
+                 (else
+                   (case (-> options (-> obj option-index) option-type)
+                     (((game-option-type display-mode)) (set! (-> *progress-carousell* current-carousell) *carousell-display-mode*))
+                     (((game-option-type msaa)) (set! (-> *progress-carousell* current-carousell) *carousell-msaa*))
+                     )
                    (set! (-> *progress-carousell* selection) (-> *progress-carousell* int-backup))
                    (set! (-> *progress-carousell* direction) #t)
                    (set! (-> *progress-carousell* transition) #f)
@@ -713,6 +710,15 @@
                   ((0) (set-display-mode! *pc-settings* 'windowed))
                   ((1) (set-display-mode! *pc-settings* 'fullscreen))
                   ((2) (set-display-mode! *pc-settings* 'borderless))
+                  )
+                )
+               (((game-option-type msaa))
+                (case (-> *progress-carousell* int-backup)
+                  ((0) (set! (-> *pc-settings* gfx-msaa) 1))
+                  ((1) (set! (-> *pc-settings* gfx-msaa) 2))
+                  ((2) (set! (-> *pc-settings* gfx-msaa) 4))
+                  ((3) (set! (-> *pc-settings* gfx-msaa) 8))
+                  ((4) (set! (-> *pc-settings* gfx-msaa) 16))
                   )
                 )
                (((game-option-type language))
@@ -827,9 +833,9 @@
                         )
                     )
                   )
-                 (((game-option-type display-mode))
+                 (((game-option-type display-mode) (game-option-type msaa))
                   ;; crunched down to one generic function.
-                  (progress-draw-carousell-from-string-list *carousell-display-mode* font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
+                  (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
                   )
                  (((game-option-type language))
                   ;; language carousell. who knew this could be so complicated.
