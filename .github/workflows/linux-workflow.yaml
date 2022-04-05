@@ -53,7 +53,7 @@ jobs:
           cache_key: ${{ matrix.os }}-${{ matrix.compiler }}
 
       - name: CMake Generation - Clang
-        if: matrix.compiler == 'clang'
+        if: matrix.compiler == 'clang' && !startsWith(github.ref, 'refs/tags/')
         run: |
           export CC=clang
           export CXX=clang++
@@ -63,6 +63,18 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
             -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
             -DCODE_COVERAGE=ON -DASAN_BUILD=ON
+
+      - name: CMake Generation - Clang - No ASAN
+        if: matrix.compiler == 'clang' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          export CC=clang
+          export CXX=clang++
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_FOR_RELEASE=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+            -DCODE_COVERAGE=ON -DASAN_BUILD=OFF
 
       - name: CMake Generation - GCC
         if: matrix.compiler == 'gcc'
@@ -88,7 +100,7 @@ jobs:
         run: ./test_code_coverage.sh
 
       - name: Submit Coverage Report to Codacy
-        if: ${{ matrix.compiler }} == 'gcc'
+        if: matrix.compiler == 'gcc'
         uses: codacy/codacy-coverage-reporter-action@v1
         continue-on-error: true
         with:
@@ -101,7 +113,7 @@ jobs:
         if: github.repository == 'open-goal/jak-project' && startsWith(github.ref, 'refs/tags/') && matrix.compiler == 'clang'
         run: |
           mkdir -p ./ci-artifacts/out
-          ./scripts/shell/extract_build.sh ./ci-artifacts/out ./
+          ./.github/scripts/releases/extract_build_linux.sh ./ci-artifacts/out ./
           tar czf ./ci-artifacts/linux.tar.gz ./ci-artifacts/out
 
       - name: Upload Assets and Potential Publish Release
