@@ -26,7 +26,9 @@ void setup_logging(bool verbose) {
 int main(int argc, char** argv) {
   (void)argc;
   (void)argv;
-
+  if (!file_util::setup_project_path()) {
+    return 1;
+  }
   std::string argument;
   std::string username = "#f";
   bool verbose = false;

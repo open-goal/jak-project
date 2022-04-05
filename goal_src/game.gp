@@ -131,8 +131,15 @@
     )
   )
 
+(defun get-iso-data-path ()
+  (if *use-iso-data-path*
+    (string-append *iso-data* "/")
+    (string-append "iso_data/" *game-directory* "/")
+    )
+  )
+
 (defun copy-iso-file (name subdir ext)
-  (let* ((path (string-append "iso_data/" *game-directory* subdir name ext))
+  (let* ((path (string-append (get-iso-data-path) subdir name ext))
          (out-name (string-append "out/iso/" name ext)))
     (defstep :in path
              :tool 'copy
@@ -222,22 +229,22 @@
   )
 
 ;; the TWEAKVAL file
-(defstep :in (string-append "iso_data/" *game-directory* "MUS/TWEAKVAL.MUS")
+(defstep :in (string-append (get-iso-data-path) "MUS/TWEAKVAL.MUS")
   :tool 'copy
   :out '("out/iso/TWEAKVAL.MUS"))
 
 ;; the VAGDIR file
-(defstep :in (string-append "iso_data/" *game-directory* "VAG/VAGDIR.AYB")
+(defstep :in (string-append (get-iso-data-path) "VAG/VAGDIR.AYB")
   :tool 'copy
   :out '("out/iso/VAGDIR.AYB"))
 
 ;; the save icon file
-(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SAVEGAME.ICO")
+(defstep :in (string-append (get-iso-data-path) "DRIVERS/SAVEGAME.ICO")
   :tool 'copy
   :out '("out/iso/SAVEGAME.ICO"))
 
 ;; the loading screen file
-(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SCREEN1.USA")
+(defstep :in (string-append (get-iso-data-path) "DRIVERS/SCREEN1.USA")
   :tool 'copy
   :out '("out/iso/SCREEN1.USA"))
 

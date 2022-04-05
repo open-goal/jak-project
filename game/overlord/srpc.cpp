@@ -16,7 +16,7 @@ using namespace iop;
 MusicTweaks gMusicTweakInfo;
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
 static uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
-static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 127];
+static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 128];
 int32_t gSoundEnable = 1;
 static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;

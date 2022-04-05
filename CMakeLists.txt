@@ -70,7 +70,7 @@ elseif(MSVC)
     endif()
     # c++ flags for all build types
     set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
-    
+
     # linker flags
     set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
 endif()

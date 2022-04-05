@@ -366,6 +366,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
+  ImGui::Checkbox("Use old single-draw", &m_render_state.no_multidraw);
   ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);

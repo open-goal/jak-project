@@ -93,3 +93,14 @@ target_link_libraries(decompiler
         common
         lzokay
         fmt)
+
+
+add_executable(extractor
+        extractor/main.cpp)
+
+target_link_libraries(extractor
+        decomp
+        common
+        lzokay
+        fmt
+        compiler)

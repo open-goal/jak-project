@@ -111,12 +111,8 @@ const { data: releaseAssetsPost } = await octokit.rest.repos.listReleaseAssets({
 
 // Expected Assets, if we have all of them, we will publish it
 let expectedAssets = {
-  "windows-decompiler": false,
-  "windows-gk": false,
-  "windows-goalc": false,
-  "linux-decompiler": false,
-  "linux-gk": false,
-  "linux-goalc": false,
+  "windows": false,
+  "linux" : false,
 }
 
 for (var i = 0; i < releaseAssetsPost.length; i++) {
