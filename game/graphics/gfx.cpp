@@ -223,6 +223,12 @@ int get_fullscreen() {
   }
 }
 
+void get_screen_size(s32* w, s32* h) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_screen_size(w, h);
+  }
+}
+
 void set_letterbox(int w, int h) {
   g_global_settings.lbox_w = w;
   g_global_settings.lbox_h = h;

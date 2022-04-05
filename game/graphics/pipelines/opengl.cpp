@@ -126,7 +126,7 @@ static int gl_init(GfxSettings& settings) {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
   }
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-  glfwWindowHint(GLFW_SAMPLES, 4);
+  glfwWindowHint(GLFW_SAMPLES, 1);
 
   return 0;
 }
@@ -321,6 +321,17 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   }
 }
 
+static void gl_screen_size(GfxDisplay* display, int /*screen*/, s32* w_out, s32* h_out)
+{
+  auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  if (w_out) {
+    *w_out = vmode->width;
+  }
+  if (h_out) {
+    *h_out = vmode->height;
+  }
+}
+
 static void gl_render_display(GfxDisplay* display) {
   GLFWwindow* window = display->window_glfw;
 
@@ -503,6 +514,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_display_set_size,    // display_set_size
     gl_display_scale,       // display_scale
     gl_set_fullscreen,      // set_fullscreen
+    gl_screen_size,         // screen_size
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path

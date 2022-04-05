@@ -782,6 +782,20 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
   Gfx::get_window_scale(x, y);
 }
 
+/*!
+ * Returns resolution of the monitor.
+ */
+void get_screen_size(u32 w_ptr, u32 h_ptr) {
+  s32 *w_out = 0, *h_out = 0;
+  if (w_ptr) {
+    w_out = Ptr<s32>(w_ptr).c();
+  }
+  if (h_ptr) {
+    h_out = Ptr<s32>(h_ptr).c();
+  }
+  Gfx::get_screen_size(w_out, h_out);
+}
+
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
@@ -887,6 +901,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
   make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
+  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
