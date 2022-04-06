@@ -190,7 +190,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
                                                sound->params.pitch_mod, sound->params.bend);
           sound->sound_handle = handle;
           if (sound->sound_handle) {
-            sound->id = index;
+            sound->id = cmd->play.sound_id;
           }
         } break;
         case SoundCommand::PAUSE_SOUND: {
