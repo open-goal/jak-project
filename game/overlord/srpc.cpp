@@ -103,7 +103,9 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     while (n_messages > 0) {
       switch (cmd->command) {
         case SoundCommand::PLAY: {
-          // spool- soundsn are vag sounds?
+          if (cmd->play.sound_id == 0) {
+            break;
+          }
           if (!memcmp(cmd->play.name, "spool-", 6)) {
             char namebuf[8];
             char langbuf[8];
