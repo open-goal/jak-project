@@ -1133,8 +1133,9 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
       return addr;
     }
 
-    int stride =
-        align(type_info->get_size_in_memory(), type_info->get_inline_array_stride_alignment());
+    int stride = is_inline ? align(type_info->get_size_in_memory(),
+                                   type_info->get_inline_array_stride_alignment())
+                           : 4;
     ASSERT(stride == info.stride);
 
     int size_in_bytes = info.stride * constant_count;

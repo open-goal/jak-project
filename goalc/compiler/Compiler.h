@@ -452,8 +452,6 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_movn(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_slt(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Vector Float Operations
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -616,6 +614,7 @@ class Compiler {
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
+  ConstPropResult const_prop_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env);

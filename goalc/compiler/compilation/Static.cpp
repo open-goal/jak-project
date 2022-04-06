@@ -349,9 +349,6 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       // first, try as a constant
       auto compiled_field_val = get_constant_integer_or_variable(field_value, env);
       bool got_constant = compiled_field_val.is_constant();
-      //      s64 value = 0;
-      //      bool got_constant = false;
-      //      got_constant = try_getting_constant_integer(field_value, &value, env);
       if (!got_constant && is_bitfield(field_info.result_type) && !allow_dynamic_construction) {
         auto static_result = compile_static(field_value, env);
         if (static_result.is_constant_data()) {
@@ -360,10 +357,9 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
             typecheck(field_value, field_info.result_type, static_result.typespec(),
                       "Type of static constant");
             got_constant = true;
-            // value = constant_data.value_64();
             compiled_field_val.val = nullptr;
             compiled_field_val.constant = constant_data.value_64();
-            // TODO: handle this in the constant
+            // TODO: handle this in the constant propagation stuff
           }
         }
       }
