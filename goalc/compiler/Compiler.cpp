@@ -8,6 +8,7 @@
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
 #include "third-party/fmt/core.h"
+#include "common/goos/PrettyPrinter.h"
 
 using namespace goos;
 
@@ -184,11 +185,6 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     return compile(code, env);
   } catch (CompilerException& ce) {
     if (ce.print_err_stack) {
-      auto obj_print = code.print();
-      if (obj_print.length() > 80) {
-        obj_print = obj_print.substr(0, 80);
-        obj_print += "...";
-      }
       bool term;
       auto loc_info = m_goos.reader.db.get_info_for(code, &term);
       if (term) {
@@ -197,7 +193,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       }
 
       fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-      fmt::print("{}\n", obj_print);
+      fmt::print("{}\n", pretty_print::to_string(code, 120));
 
       if (term) {
         ce.print_err_stack = false;
@@ -212,12 +208,6 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   catch (std::runtime_error& e) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     fmt::print(fmt::emphasis::bold, "{}\n", e.what());
-
-    auto obj_print = code.print();
-    if (obj_print.length() > 80) {
-      obj_print = obj_print.substr(0, 80);
-      obj_print += "...";
-    }
     bool term;
     auto loc_info = m_goos.reader.db.get_info_for(code, &term);
     if (term) {
@@ -226,7 +216,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     }
 
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-    fmt::print("{}\n", obj_print);
+    fmt::print("{}\n", pretty_print::to_string(code, 120));
 
     CompilerException ce("Compiler Exception");
     if (term) {
