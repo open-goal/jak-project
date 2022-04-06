@@ -442,6 +442,8 @@ class Compiler {
     bool has_side_effects = true;
   };
   ConstPropResult try_constant_propagation(const goos::Object& form, Env* env);
+  ConstPropResult constant_propagation_dispatch(const goos::Object& form, Env* env);
+
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);

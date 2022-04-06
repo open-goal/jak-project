@@ -317,7 +317,8 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
   // dynamic_defs list below. The second pass will combine the constant and dynamic defs to build
   // the final value.
   struct DynamicDef {
-    goos::Object definition;
+    // goos::Object definition;
+    RegVal* value = nullptr;
     int field_offset, field_size;
     std::string field_name;  // for error message
     TypeSpec expected_type;
@@ -367,7 +368,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         // failed to get as constant, add to dynamic or error.
         if (allow_dynamic_construction) {
           DynamicDef dyn;
-          dyn.definition = field_value;
+          dyn.value = compiled_field_val.val->to_gpr(field_value, env);
           dyn.field_offset = field_offset;
           dyn.field_size = field_size;
           dyn.field_name = field_name_def;
@@ -418,7 +419,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         // failed to get as constant, add to dynamic or error.
         if (allow_dynamic_construction) {
           DynamicDef dyn;
-          dyn.definition = field_value;
+          dyn.value = float_value_or_const.val->to_gpr(field_value, env);
           dyn.field_offset = field_offset;
           dyn.field_size = field_size;
           dyn.field_name = field_name_def;
@@ -444,7 +445,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else if (field_info.result_type == TypeSpec("symbol")) {
       if (allow_dynamic_construction) {
         DynamicDef dyn;
-        dyn.definition = field_value;
+        dyn.value = compile_error_guard(field_value, env)->to_gpr(field_value, env);
         dyn.field_offset = field_offset;
         dyn.field_size = field_size;
         dyn.field_name = field_name_def;
@@ -458,7 +459,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else if (m_ts.tc(TypeSpec("structure"), field_info.result_type)) {
       if (allow_dynamic_construction) {
         DynamicDef dyn;
-        dyn.definition = field_value;
+        dyn.value = compile_error_guard(field_value, env)->to_gpr(field_value, env);
         dyn.field_offset = field_offset;
         dyn.field_size = field_size;
         dyn.field_name = field_name_def;
@@ -498,7 +499,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
-        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = def.value;
         auto field_val = env->make_gpr(field_val_in->type());
         env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
@@ -540,7 +541,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else {
       RegVal* integer_reg = integer->to_gpr(form, env);
       for (auto& def : dynamic_defs) {
-        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = def.value;
         auto field_val = env->make_gpr(field_val_in->type());
         env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {

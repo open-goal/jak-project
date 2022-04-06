@@ -118,12 +118,36 @@ Compiler::ConstPropResult Compiler::const_prop_gscond(const goos::Object& form,
   }
 }
 
+namespace {
+size_t code_size(Env* e) {
+  auto fe = e->function_env();
+  if (fe) {
+    return fe->code().size();
+  } else {
+    return 0;
+  }
+}
+}  // namespace
+
+Compiler::ConstPropResult Compiler::try_constant_propagation(const goos::Object& form, Env* env) {
+  size_t start_size = code_size(env);
+  auto ret = constant_propagation_dispatch(form, env);
+  size_t end_size = code_size(env);
+  if (start_size != end_size) {
+    fmt::print("Compiler bug in constant propagation. Code was generated: {} vs {}\n", start_size,
+               end_size);
+    ASSERT(false);
+  }
+  return ret;
+}
+
 /*!
  * Main constant propagation dispatch.
  * Note that there are some tricky orders to get right here - we don't want to use a global constant
  * when the normal compiler would use a lexical variable.
  */
-Compiler::ConstPropResult Compiler::try_constant_propagation(const goos::Object& code, Env* env) {
+Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Object& code,
+                                                                  Env* env) {
   // first, expand macros.
   // this only does something if code is a pair, and for pairs macros are the first check.
   auto expanded = expand_macro_completely(code, env);
