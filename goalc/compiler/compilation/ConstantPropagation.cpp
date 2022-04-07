@@ -183,7 +183,7 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
         // if so, that's what we should use, not a constant with the same name.
         // give up on constant propagation, we never do it for lexicals (can't really in a single
         // pass).
-        return {expanded, false};
+        return {expanded, true};
       }
 
       // it can either be a global or symbol
@@ -204,7 +204,7 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
         return try_constant_propagation(global_constant->second, env);
       } else {
         // return to the compiler, we can't figure it out.
-        return {expanded, false};
+        return {expanded, true};
       }
     } break;
 
