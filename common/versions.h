@@ -10,7 +10,7 @@
 namespace versions {
 // language version (OpenGOAL)
 constexpr s32 GOAL_VERSION_MAJOR = 0;
-constexpr s32 GOAL_VERSION_MINOR = 8;
+constexpr s32 GOAL_VERSION_MINOR = 9;
 
 constexpr int DECOMPILER_VERSION = 4;
 

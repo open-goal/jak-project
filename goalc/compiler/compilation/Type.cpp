@@ -463,7 +463,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
-      parm.type = parse_typespec(param_args.unnamed.at(1));
+      parm.type = parse_typespec(param_args.unnamed.at(1), env);
       // before substituting _type_
       lambda_ts.add_arg(parm.type);
 
@@ -754,10 +754,14 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
 
     int64_t constant_index_value;
     RegVal* index_value = nullptr;
+    auto idx_val = get_constant_integer_or_variable(field_obj, env);
+    bool has_constant_idx = idx_val.is_constant();
+    if (has_constant_idx) {
+      constant_index_value = idx_val.constant;
+    }
 
-    bool has_constant_idx = try_getting_constant_integer(field_obj, &constant_index_value, env);
     if (!has_constant_idx) {
-      index_value = compile_error_guard(field_obj, env)->to_gpr(form, env);
+      index_value = idx_val.val->to_gpr(form, env);
       if (!is_integer(index_value->type())) {
         throw_compiler_error(form, "Cannot use -> with field {}.", field_obj.print());
       }
@@ -890,7 +894,7 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
 Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});
-  auto desired_ts = parse_typespec(args.unnamed.at(0));
+  auto desired_ts = parse_typespec(args.unnamed.at(0), env);
   auto base = compile_error_guard(args.unnamed.at(1), env);
   auto result = env->function_env()->alloc_val<AliasVal>(desired_ts, base);
   if (base->settable()) {
@@ -907,7 +911,7 @@ Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest
 Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});
-  auto desired_ts = parse_typespec(args.unnamed.at(0));
+  auto desired_ts = parse_typespec(args.unnamed.at(0), env);
   auto base = compile_error_guard(args.unnamed.at(1), env);
 
   if (is_number(base->type())) {
@@ -960,7 +964,7 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
   bool making_boxed_array = unquote(type).as_symbol()->name == "boxed-array";
   TypeSpec main_type;
   if (!making_boxed_array) {
-    main_type = parse_typespec(unquote(type));
+    main_type = parse_typespec(unquote(type), env);
   }
 
   if (main_type == TypeSpec("inline-array") || main_type == TypeSpec("array")) {
@@ -971,8 +975,8 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     auto count_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     // try to get the size as a compile time constant.
-    int64_t constant_count = 0;
-    bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
+    auto cv = get_constant_integer_or_variable(count_obj, env);
+    bool is_constant_size = cv.is_constant();
 
     if (!rest->is_empty_list()) {
       // got extra arguments
@@ -991,12 +995,12 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     args.push_back(compile_get_sym_obj(allocation, env)->to_reg(form, env));
 
     if (is_constant_size) {
-      auto array_size = constant_count * info.stride;
+      auto array_size = cv.constant * info.stride;
       args.push_back(compile_integer(array_size, env)->to_reg(form, env));
     } else {
       auto array_size = compile_integer(info.stride, env)->to_reg(form, env);
       env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::IMUL_32, array_size,
-                                   compile_error_guard(count_obj, env)->to_gpr(form, env));
+                                   cv.val->to_gpr(form, env));
       args.push_back(array_size);
     }
 
@@ -1058,7 +1062,7 @@ Val* Compiler::compile_static_new(const goos::Object& form,
     auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
     return result;
   } else {
-    auto type_of_object = parse_typespec(unquote(type));
+    auto type_of_object = parse_typespec(unquote(type), env);
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env,
                                                    env->function_env()->segment_for_static_data());
@@ -1079,7 +1083,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                                  Env* env,
                                  bool call_constructor,
                                  bool use_singleton) {
-  auto type_of_object = parse_typespec(unquote(type));
+  auto type_of_object = parse_typespec(unquote(type), env);
   auto fe = env->function_env();
   auto st_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type_of_object));
   if (st_type_info && st_type_info->is_always_stack_singleton()) {
@@ -1103,11 +1107,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     auto count_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     // try to get the size as a compile time constant.
-    int64_t constant_count = 0;
-    bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
-    if (!is_constant_size) {
-      throw_compiler_error(form, "Cannot create a dynamically sized stack array");
-    }
+    int64_t constant_count = get_constant_integer_or_error(count_obj, env);
 
     if (constant_count <= 0) {
       throw_compiler_error(form, "Cannot create a stack array with size {}", constant_count);
@@ -1133,8 +1133,9 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
       return addr;
     }
 
-    int stride =
-        align(type_info->get_size_in_memory(), type_info->get_inline_array_stride_alignment());
+    int stride = is_inline ? align(type_info->get_size_in_memory(),
+                                   type_info->get_inline_array_stride_alignment())
+                           : 4;
     ASSERT(stride == info.stride);
 
     int size_in_bytes = info.stride * constant_count;
@@ -1431,6 +1432,12 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
 
 Val* Compiler::compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_integer(get_size_for_size_of(form, rest), env);
+}
+
+Compiler::ConstPropResult Compiler::const_prop_size_of(const goos::Object& form,
+                                                       const goos::Object& rest,
+                                                       Env* /*env*/) {
+  return {goos::Object::make_integer(get_size_for_size_of(form, rest)), false};
 }
 
 Val* Compiler::compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env) {

@@ -262,10 +262,7 @@ const std::unordered_map<
         {"define-virtual-state-hook", &Compiler::compile_define_virtual_state_hook},
 };
 
-/*!
- * Highest level compile function
- */
-Val* Compiler::compile(const goos::Object& code, Env* env) {
+Val* Compiler::compile_no_const_prop(const goos::Object& code, Env* env) {
   switch (code.type) {
     case goos::ObjectType::PAIR:
       return compile_pair(code, env);
@@ -286,6 +283,14 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
 }
 
 /*!
+ * Highest level compile function
+ */
+Val* Compiler::compile(const goos::Object& code, Env* env) {
+  auto propagated = try_constant_propagation(code, env);
+  return compile_no_const_prop(propagated.value, env);
+}
+
+/*!
  * Compile a pair/list.
  * Can be a compiler form, function call (possibly inlined), method call, immediate application of a
  * lambda, or a goos macro.
@@ -297,16 +302,16 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
 
   if (head.is_symbol()) {
     auto head_sym = head.as_symbol();
-    // first try as a goal compiler form
-    auto kv_gfs = g_goal_forms.find(head_sym->name);
-    if (kv_gfs != g_goal_forms.end()) {
-      return ((*this).*(kv_gfs->second))(code, rest, env);
-    }
-
-    // next try as a macro
+    // first try as a macro
     goos::Object macro_obj;
     if (try_getting_macro_from_goos(head, &macro_obj)) {
       return compile_goos_macro(code, macro_obj, rest, head, env);
+    }
+
+    // next try as a goal compiler form
+    auto kv_gfs = g_goal_forms.find(head_sym->name);
+    if (kv_gfs != g_goal_forms.end()) {
+      return ((*this).*(kv_gfs->second))(code, rest, env);
     }
 
     // next try as an enum
@@ -384,6 +389,7 @@ Val* Compiler::compile_get_symbol_value(const goos::Object& form,
 
 /*!
  * Compile a symbol. Can get mlet macro symbols, local variables, constants, or symbols.
+ * Note: order of checks here should match try_constant_propagation
  */
 Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   auto name = symbol_string(form);

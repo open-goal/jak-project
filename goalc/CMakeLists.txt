@@ -15,6 +15,7 @@ add_library(compiler
         compiler/compilation/Asm.cpp
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
+        compiler/compilation/ConstantPropagation.cpp
         compiler/compilation/Block.cpp
         compiler/compilation/Macro.cpp
         compiler/compilation/Math.cpp
