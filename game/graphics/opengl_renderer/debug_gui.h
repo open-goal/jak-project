@@ -59,7 +59,7 @@ class OpenGlDebugGui {
 
   bool get_vsync_flag() { return m_vsync; }
 
-  bool framelimiter = false;
+  bool framelimiter = true;
   float target_fps = 60.f;
   bool experimental_accurate_lag = false;
   bool sleep_in_frame_limiter = true;
