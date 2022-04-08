@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cstring>
 #include <numeric>
-#include "decompiler/IR/IR.h"
 #include "third-party/fmt/core.h"
 #include "LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionDecode.h"
@@ -583,23 +582,6 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
       result += " ;;";
       auto& word = words_by_seg[seg].at(func.start_word + i);
       append_word_to_string(result, word);
-    } else {
-      // print basic op stuff
-      if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
-        if (line.length() < 30) {
-          line.append(30 - line.length(), ' ');
-        }
-        line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
-        for (int iidx = 0; iidx < instr.n_src; iidx++) {
-          if (instr.get_src(iidx).is_label()) {
-            auto lab = labels.at(instr.get_src(iidx).get_label());
-            if (is_string(lab.target_segment, lab.offset)) {
-              line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
-            }
-          }
-        }
-      }
-      result += line + "\n";
     }
 
     if (in_delay_slot) {
@@ -657,11 +639,6 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
       }
     }
      */
-  }
-
-  if (func.ir) {
-    result += ";; ir\n";
-    result += func.ir->print(*this);
   }
 
   result += "\n\n\n";

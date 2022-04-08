@@ -37,10 +37,6 @@ add_library(
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
         Function/Function.cpp
-        Function/TypeInspector.cpp
-
-        IR/BasicOpBuilder.cpp
-        IR/IR.cpp
 
         IR2/AtomicOp.cpp
         IR2/AtomicOpForm.cpp

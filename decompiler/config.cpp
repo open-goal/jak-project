@@ -54,7 +54,6 @@ Config read_config_file(const std::string& path_to_config_file,
   }
   config.disassemble_code = cfg.at("disassemble_code").get<bool>();
   config.decompile_code = cfg.at("decompile_code").get<bool>();
-  config.regenerate_all_types = cfg.at("regenerate_all_types").get<bool>();
   config.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
   config.write_scripts = cfg.at("write_scripts").get<bool>();
   config.disassemble_data = cfg.at("disassemble_data").get<bool>();

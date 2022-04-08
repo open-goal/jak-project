@@ -103,7 +103,6 @@ class ObjectFileDB {
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
-  std::string all_type_defs;
 
   bool lookup_function_type(const FunctionName& name,
                             const std::string& obj_name,

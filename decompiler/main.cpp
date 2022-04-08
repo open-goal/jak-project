@@ -155,13 +155,6 @@ int main(int argc, char** argv) {
                          config.write_hex_near_instructions);
   }
 
-  // regenerate all-types if needed
-  if (config.regenerate_all_types) {
-    db.analyze_functions_ir1(config);
-    file_util::write_text_file(file_util::combine_path(out_folder, "type_defs.gc"),
-                               db.all_type_defs);
-  }
-
   // main decompile.
   if (config.decompile_code) {
     db.analyze_functions_ir2(out_folder, config, {});
