@@ -322,9 +322,27 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   }
 }
 
-static void gl_screen_size(GfxDisplay* display, int /*screen*/, s32* w_out, s32* h_out)
-{
+static void gl_screen_size(GfxDisplay* display,
+                           int vmode_idx,
+                           int /*screen*/,
+                           s32* w_out,
+                           s32* h_out,
+                           s32* count_out) {
+  int count = 0;
   auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  if (vmode_idx >= 0) {
+    vmode = &vmodes[vmode_idx];
+  } else {
+    for (int i = 0; i < count; ++i) {
+      if (!vmode || vmode->height < vmodes[i].height) {
+        vmode = &vmodes[i];
+      }
+    }
+  }
+  if (count_out) {
+    *count_out = count;
+  }
   if (w_out) {
     *w_out = vmode->width;
   }

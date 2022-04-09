@@ -223,9 +223,9 @@ int get_fullscreen() {
   }
 }
 
-void get_screen_size(s32* w, s32* h) {
+void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_screen_size(w, h);
+    Display::GetMainDisplay()->get_screen_size(vmode_idx, w, h, c);
   }
 }
 

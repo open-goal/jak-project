@@ -793,15 +793,18 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
 /*!
  * Returns resolution of the monitor.
  */
-void get_screen_size(u32 w_ptr, u32 h_ptr) {
-  s32 *w_out = 0, *h_out = 0;
+void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr, u32 c_ptr) {
+  s32 *w_out = 0, *h_out = 0, *c_out = 0;
   if (w_ptr) {
     w_out = Ptr<s32>(w_ptr).c();
   }
   if (h_ptr) {
     h_out = Ptr<s32>(h_ptr).c();
   }
-  Gfx::get_screen_size(w_out, h_out);
+  if (c_ptr) {
+    c_out = Ptr<s32>(c_ptr).c();
+  }
+  Gfx::get_screen_size(vmode_idx, w_out, h_out, c_out);
 }
 
 void update_discord_rpc(u32 discord_info) {

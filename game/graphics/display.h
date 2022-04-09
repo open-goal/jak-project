@@ -47,7 +47,9 @@ class GfxDisplay {
   void set_title(const char* title);
   void set_size(int w, int h) { m_renderer->display_set_size(this, w, h); }
   void get_scale(float* x, float* y) { m_renderer->display_scale(this, x, y); }
-  void get_screen_size(s32* w, s32* h) { m_renderer->screen_size(this, 0, w, h); }
+  void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c) {
+    m_renderer->screen_size(this, vmode_idx, 0, w, h, c);
+  }
   const char* title() const { return m_title; }
 
   bool fullscreen_pending() const { return m_fullscreen_mode != m_fullscreen_target_mode; }
