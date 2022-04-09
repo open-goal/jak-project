@@ -88,6 +88,26 @@
     (game-text-id 16-times)
     ))
 
+(define *carousell-lod-bg* (new 'static 'boxed-array :type game-text-id :length 2 :allocated-length 2
+    (game-text-id lod-high)
+    (game-text-id lod-low)
+    ))
+
+(define *carousell-lod-fg* (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
+    (game-text-id lod-high)
+    (game-text-id lod-low)
+    (game-text-id lod-ps2)
+    ))
+
+(define *carousell-subtitle-language* (new 'static 'boxed-array :type game-text-id :length 6 :allocated-length 6
+    (game-text-id english)
+    (game-text-id french)
+    (game-text-id german)
+    (game-text-id spanish)
+    (game-text-id italian)
+    (game-text-id japanese)
+    ))
+
 
 
 ;;---------------------------
@@ -107,14 +127,14 @@
   )
 
 (define *graphic-options-pc*
-  (new 'static 'boxed-array :type game-option :length 9 :allocated-length 9
+  (new 'static 'boxed-array :type game-option :length 8 :allocated-length 9
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id ps2-aspect-ratio) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-ratio) :name (game-text-id aspect-ratio-ps2) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -143,8 +163,21 @@
   )
 
 (define *gfx-ps2-options*
-  (new 'static 'boxed-array :type game-option :length 2 :allocated-length 2
+  (new 'static 'boxed-array :type game-option :length 4 :allocated-length 4
+    (new 'static 'game-option :option-type (game-option-type lod-bg) :name (game-text-id lod-bg) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type lod-fg) :name (game-text-id lod-fg) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id ps2-parts) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
+
+(define *aspect-ratio-options*
+  (new 'static 'boxed-array :type game-option :length 6 :allocated-length 6
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id fit-to-screen) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 4.0 :param2 3.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 16.0 :param2 9.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 21.0 :param2 9.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 64.0 :param2 27.0 :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -420,6 +453,7 @@
   (set! (-> *options-remap* (progress-screen accessibility-options)) *accessibility-options*)
   (set! (-> *options-remap* (progress-screen gfx-ps2-options)) *gfx-ps2-options*)
   (set! (-> *options-remap* (progress-screen resolution)) *temp-options*)
+  (set! (-> *options-remap* (progress-screen aspect-ratio)) *aspect-ratio-options*)
   
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -452,7 +486,9 @@
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* camera-hflip?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* camera-vflip?))
   (set! (-> *accessibility-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
-  (set! (-> *gfx-ps2-options* 0 value-to-modify) (&-> *pc-settings* ps2-parts?))
+  (set! (-> *gfx-ps2-options* 0 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *gfx-ps2-options* 1 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *gfx-ps2-options* 2 value-to-modify) (&-> *pc-settings* ps2-parts?))
   
   ;; scroll stuff!
   (progress-scroll-reset)
@@ -804,6 +840,20 @@
                (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
                (set! (-> obj next-display-state) (progress-screen invalid))
                )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type aspect-new))
+               ;; resolution button. change resolution!
+               (let ((newx (the int (-> options (-> obj option-index) param1)))
+                     (newy (the int (-> options (-> obj option-index) param2))))
+                   (if (= (-> options (-> obj option-index) name) (game-text-id fit-to-screen))
+                       (true! (-> *pc-settings* aspect-ratio-auto?))
+                       (set-aspect! *pc-settings* newx newy)))
+               (cpad-clear! 0 x)
+               (cpad-clear! 0 circle)
+               (cpad-clear! 0 square)
+               (cpad-clear! 0 triangle)
+               (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+               (set! (-> obj next-display-state) (progress-screen invalid))
+               )
               ((!= (-> options (-> obj option-index) option-type) (game-option-type yes-no))
                ;; not yes-no
                ;; set backups! we're entering some toggle or whatever
@@ -837,6 +887,19 @@
                     (else (set! (-> *progress-carousell* int-backup) 0))
                     )
                   )
+                 (((game-option-type lod-bg))
+                  (case (-> *pc-settings* lod-force-tfrag)
+                    ((0) (set! (-> *progress-carousell* int-backup) 0))
+                    ((1 2) (set! (-> *progress-carousell* int-backup) 1))
+                    (else (set! (-> *progress-carousell* int-backup) 2))
+                    )
+                  )
+                 (((game-option-type lod-fg))
+                  (cond
+                    ((-> *pc-settings* ps2-lod-dist?) (set! (-> *progress-carousell* int-backup) 1))
+                    (else (set! (-> *progress-carousell* int-backup) 0))
+                    )
+                  )
                  )
                (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
                (cpad-clear! 0 x)
@@ -853,6 +916,8 @@
                    (case (-> options (-> obj option-index) option-type)
                      (((game-option-type display-mode)) (set! (-> *progress-carousell* current-carousell) *carousell-display-mode*))
                      (((game-option-type msaa)) (set! (-> *progress-carousell* current-carousell) *carousell-msaa*))
+                     (((game-option-type lod-bg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
+                     (((game-option-type lod-fg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      )
                    (set! (-> *progress-carousell* selection) (-> *progress-carousell* int-backup))
                    (set! (-> *progress-carousell* direction) #t)
@@ -887,6 +952,19 @@
                   ((2) (set! (-> *pc-settings* gfx-msaa) 4))
                   ((3) (set! (-> *pc-settings* gfx-msaa) 8))
                   ((4) (set! (-> *pc-settings* gfx-msaa) 16))
+                  )
+                )
+               (((game-option-type lod-bg))
+                (case (-> *progress-carousell* int-backup)
+                  ((0) (set! (-> *pc-settings* lod-force-tfrag) 0) (set! (-> *pc-settings* lod-force-tie) 0))
+                  ((1) (set! (-> *pc-settings* lod-force-tfrag) 2) (set! (-> *pc-settings* lod-force-tie) 2))
+                  ((2) (set! (-> *pc-settings* lod-force-tfrag) 2) (set! (-> *pc-settings* lod-force-tie) 3))
+                  )
+                )
+               (((game-option-type lod-fg))
+                (case (-> *progress-carousell* int-backup)
+                  ((0) (set! (-> *pc-settings* lod-force-actor) 0) (set! (-> *pc-settings* ps2-lod-dist?) #f))
+                  ((1) (set! (-> *pc-settings* lod-force-actor) 0) (set! (-> *pc-settings* ps2-lod-dist?) #t))
                   )
                 )
                (((game-option-type language))
@@ -960,7 +1038,7 @@
                  (set! option-str (the-as string #f))
                  )
              )
-            (((game-option-type resolution))
+            (((game-option-type resolution) (game-option-type aspect-new))
              ;; resolution settings
              (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
                                       (the int (-> options index param1)) (the int (-> options index param2))))
@@ -1091,6 +1169,8 @@
                     (game-option-type aspect-ratio)
                     (game-option-type display-mode)
                     (game-option-type msaa)
+                    (game-option-type lod-bg)
+                    (game-option-type lod-fg)
                     )
                    ;; slider and aspect ratio options just show their text
                    (set! option-str (lookup-text! *common-text* (-> options index name) #f))
@@ -1212,6 +1292,7 @@
           (progress-screen accessibility-options)
           (progress-screen game-ps2-options)
           (progress-screen resolution)
+          (progress-screen aspect-ratio)
           )
          (hide-progress-icons)
          (draw-options self 115 25 0.82)
@@ -1220,6 +1301,10 @@
          ;; camera options lines are a bit too big
          (hide-progress-icons)
          (draw-options self 115 36 0.77)
+         )
+        (((progress-screen gfx-ps2-options))
+         (hide-progress-icons)
+         (draw-options self 115 25 0.72)
          )
         (((progress-screen memcard-removed) (progress-screen memcard-auto-save-error))
          (draw-notice-screen self)
