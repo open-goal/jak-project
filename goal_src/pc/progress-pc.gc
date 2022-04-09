@@ -196,6 +196,18 @@
   
   )
 
+(defmacro add-resolution-option (x y)
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type resolution))
+      (set! (-> option name) (game-text-id resolution-fmt))
+      (set! (-> option param1) (the float ,x))
+      (set! (-> option param2) (the float ,y))
+      (set! (-> option scale) #t)
+      
+      (1+! (-> *temp-options* length))
+      )
+  )
+
 (defun build-resolution-options ((skip int) (amount int))
   
   (set! (-> *temp-options* length) 0)
@@ -203,9 +215,18 @@
   (let ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0) (flip? #f) (aspect 0.0)
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
         (windowed? (= 'windowed (pc-get-fullscreen)))
+        ;; shortcut
         (max-options (1- (-> *temp-options* allocated-length))))
+    ;; get screen size (for capping)
     (pc-get-screen-size (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
+    ;; extra button when fullscreen
+    (when (not windowed?)
+        (add-resolution-option sx sy)
+        (set! (-> *temp-options* (1- (length *temp-options*)) name) (game-text-id fit-to-screen))
+        )
+    ;; portrait mode. unused
     (set! flip? (> sy sx))
+    ;; game aspect ratio
     (set! aspect (-> *pc-settings* aspect-ratio))
     
     (until (or done? (= (length *temp-options*) max-options))
@@ -213,15 +234,7 @@
         (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
           
           (when (and (< (length *temp-options*) max-options) (<= thisr sy) (not windowed?))
-            (let ((option (-> *temp-options* (-> *temp-options* length))))
-              (set! (-> option option-type) (game-option-type resolution))
-              (set! (-> option name) (game-text-id back))
-              (set! (-> option param1) (* aspect (the float thisr)))
-              (set! (-> option param2) (the float thisr))
-              (set! (-> option scale) #t)
-              
-              (1+! (-> *temp-options* length))
-              )
+            (add-resolution-option (* aspect (the float thisr)) thisr)
             ))
         (false! windowed?)
         )
@@ -230,7 +243,7 @@
           (*! mult 0.5)
           (true! done?))
       )
-    (set! (-> *temp-options* (-> *temp-options* length)) *back-button*)
+    (set! (-> *temp-options* (length *temp-options*)) *back-button*)
     (1+! (-> *temp-options* length))
     )
   
@@ -913,7 +926,8 @@
                  )
              )
             (((game-option-type resolution))
-             (set! option-str (string-format (lookup-text! *common-text* (game-text-id resolution-fmt) #f)
+             ;; resolution settings
+             (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
                                       (the int (-> options index param1)) (the int (-> options index param2))))
              )
             (else
