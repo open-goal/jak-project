@@ -429,6 +429,11 @@
     )
   ;; run nav code
   (let ((options (-> *options-remap* (-> obj display-state))))
+    ;; snap scroll if oob
+    (when (> (length options) PROGRESS_PC_PAGE_HEIGHT)
+      (set! (-> *progress-scroll* start-index) (max (-> *progress-scroll* start-index)
+                                                    (- (-> obj option-index) (+ PROGRESS_PC_PAGE_HEIGHT -2))))
+      )
     (when (and options (not (or (progress-scrolling?) (-> obj in-transition))))
       ;; only respond to inputs when transition is done (and also there's options at all)
       (cond
@@ -443,7 +448,7 @@
             (cond
               ((> (-> obj option-index) 0)
                (1-! (-> obj option-index))
-               (when (< (-> obj option-index) *progress-scroll-start*)
+               (when (and (> (length options) PROGRESS_PC_PAGE_HEIGHT) (< (-> obj option-index) *progress-scroll-start*))
                  (progress-scroll-up!)
                  )
                )
@@ -464,7 +469,7 @@
             (cond
               ((< (-> obj option-index) (1- (length options)))
                (1+! (-> obj option-index))
-               (when (>= (-> obj option-index) *progress-scroll-end*)
+               (when (and (> (length options) PROGRESS_PC_PAGE_HEIGHT) (>= (-> obj option-index) *progress-scroll-end*))
                  (progress-scroll-down!)
                  )
                )
