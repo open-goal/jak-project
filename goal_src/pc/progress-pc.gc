@@ -19,11 +19,14 @@
 (defconstant PROGRESS_SCROLL_DIR_UP -1)
 (defconstant PROGRESS_SCROLL_DIR_DOWN 1)
 
+(defconstant GAME_MIN_RES_MULT 0.5)
+
 
 (deftype progress-scroll (structure)
   ((transition float)
-   (direction int8)
    (start-index int16)
+   (real-index int16)
+   (direction int8)
    (last-screen progress-screen)
    )
   )
@@ -144,6 +147,95 @@
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id ps2-parts) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
+  )
+
+(define *back-button* (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t))
+(define-perm *temp-options-alloced* symbol #f)
+
+(define *resolutions* (new 'static 'array int32 5
+    640 720 768 960 1080))
+
+;; this is to avoid changing the value of *temp-options* or reallocating the options when reloading file
+(unless *temp-options-alloced*
+(define *temp-options* (new 'static 'boxed-array :type game-option :length 199 :allocated-length 200))
+(dotimes (i (-> *temp-options* length))
+  (set! (-> *temp-options* i) (new 'global 'game-option)))
+(true! *temp-options-alloced*))
+
+
+(defun find-highest-resolution ()
+  
+  (let ((sx 0) (sy 0) (found #f) (mult GAME_MIN_RES_MULT) (lastr 0) (hir 0) (lor 0))
+    (pc-get-screen-size (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
+    (if (> sy sx)
+        (set! sy sx))
+      
+    (until found
+      
+      (dotimes (i 5)
+        (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
+        (cond
+          ((< sy thisr)
+           (if (zero? i)
+               (*! mult 0.25)
+               (*! mult 0.5))
+           (set! i 5)
+           (true! found)
+           )
+          (else
+           (set! lastr thisr))
+          )
+        ))
+      
+      (*! mult 2)
+      
+      )
+    (set! hir lastr)
+    mult
+    )
+  
+  )
+
+(defun build-resolution-options ((skip int) (amount int))
+  
+  (set! (-> *temp-options* length) 0)
+  
+  (let ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0) (flip? #f) (aspect 0.0)
+        ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
+        (windowed? (= 'windowed (pc-get-fullscreen)))
+        (max-options (1- (-> *temp-options* allocated-length))))
+    (pc-get-screen-size (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
+    (set! flip? (> sy sx))
+    (set! aspect (-> *pc-settings* aspect-ratio))
+    
+    (until (or done? (= (length *temp-options*) max-options))
+      (countdown (i 5)
+        (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
+          
+          (when (and (< (length *temp-options*) max-options) (<= thisr sy) (not windowed?))
+            (let ((option (-> *temp-options* (-> *temp-options* length))))
+              (set! (-> option option-type) (game-option-type resolution))
+              (set! (-> option name) (game-text-id back))
+              (set! (-> option param1) (* aspect (the float thisr)))
+              (set! (-> option param2) (the float thisr))
+              (set! (-> option scale) #t)
+              
+              (1+! (-> *temp-options* length))
+              )
+            ))
+        (false! windowed?)
+        )
+      
+      (if (> mult GAME_MIN_RES_MULT)
+          (*! mult 0.5)
+          (true! done?))
+      )
+    (set! (-> *temp-options* (-> *temp-options* length)) *back-button*)
+    (1+! (-> *temp-options* length))
+    )
+  
+  
+  *temp-options*
   )
 
 
@@ -279,6 +371,7 @@
   (set! (-> *options-remap* (progress-screen misc-options)) *misc-options*)
   (set! (-> *options-remap* (progress-screen accessibility-options)) *accessibility-options*)
   (set! (-> *options-remap* (progress-screen gfx-ps2-options)) *gfx-ps2-options*)
+  (set! (-> *options-remap* (progress-screen resolution)) *temp-options*)
   
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -324,8 +417,17 @@
   "common logic for navigating the progress menu.
    this is the overriden version, purged of no longer necessary code and with additional new code."
 
+  ;; read memcard
   (mc-get-slot-info 0 *progress-save-info*)
   (set! (-> obj card-info) *progress-save-info*)
+  ;; build custom dynamic menus
+  (case (-> obj display-state)
+    (((progress-screen resolution))
+      ;; TODO infinite scrolling
+      (build-resolution-options 0 0)
+      )
+    )
+  ;; run nav code
   (let ((options (-> *options-remap* (-> obj display-state))))
     (when (and options (not (or (progress-scrolling?) (-> obj in-transition))))
       ;; only respond to inputs when transition is done (and also there's options at all)
@@ -637,6 +739,12 @@
                  )
                ;; other behaviors are hardcoded elsewhere because screw you.
                )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type resolution))
+               ;; resolution button. change resolution!
+               (let ((newx (the int (-> options (-> obj option-index) param1)))
+                     (newy (the int (-> options (-> obj option-index) param2))))
+                   (set-size! *pc-settings* newx newy))
+               )
               ((!= (-> options (-> obj option-index) option-type) (game-option-type yes-no))
                ;; not yes-no
                ;; set backups! we're entering some toggle or whatever
@@ -778,22 +886,27 @@
               (option-x 17)
               (option-y y-off)
               )
-          (let ((v1-18 (-> options index option-type)))
-            (cond
-              ((= v1-18 (game-option-type yes-no))
-               ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
-               (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
-                   (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
-                   (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
-                   )
-               )
-              ((or (= v1-18 (game-option-type menu)) (= v1-18 (game-option-type button)))
-               ;; menu option or simple button. just draw its text!
-               (if (nonzero? (-> options index name))
-                   (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                   (set! option-str (the-as string #f))
-                   )
-               )
+          (case (-> options index option-type)
+            (((game-option-type yes-no))
+             ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
+             (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
+                 (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
+                 (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id yes) #f) (lookup-text! *common-text* (game-text-id no) #f)))
+                 )
+             )
+            (((game-option-type menu) (game-option-type button))
+             ;; menu option or simple button. just draw its text!
+             (if (nonzero? (-> options index name))
+                 (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                 (set! option-str (the-as string #f))
+                 )
+             )
+            (((game-option-type resolution))
+             (set! option-str (string-format (lookup-text! *common-text* (game-text-id resolution-fmt) #f)
+                                      (the int (-> options index param1)) (the int (-> options index param2))))
+             )
+            (else
+             (cond
               ((and (-> obj selected-option) (= (-> obj option-index) index))
                ;; this option is SELECTED!
                (set-color! font (font-color default))
@@ -945,7 +1058,7 @@
                    )
                   )
                 )
-              )
+              ))
             )
           (when (or (<= (length options) PROGRESS_PC_PAGE_HEIGHT)
                     (and (not (progress-scrolling?))
@@ -1038,6 +1151,7 @@
           (progress-screen misc-options)
           (progress-screen accessibility-options)
           (progress-screen game-ps2-options)
+          (progress-screen resolution)
           )
          (hide-progress-icons)
          (draw-options self 115 25 0.82)
