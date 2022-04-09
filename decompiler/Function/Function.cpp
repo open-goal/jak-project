@@ -4,8 +4,6 @@
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "TypeInspector.h"
-#include "decompiler/IR/IR.h"
 #include "decompiler/IR2/Form.h"
 #include "common/util/BitUtils.h"
 #include "common/util/Assert.h"
@@ -673,17 +671,6 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
   }
 }
 
-void Function::add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr) {
-  op->is_basic_op = true;
-  ASSERT(end_instr > start_instr);
-
-  for (int i = start_instr; i < end_instr; i++) {
-    instruction_to_basic_op[i] = basic_ops.size();
-  }
-  basic_op_to_instruction[basic_ops.size()] = start_instr;
-  basic_ops.push_back(op);
-}
-
 bool Function::instr_starts_basic_op(int idx) {
   auto op = instruction_to_basic_op.find(idx);
   if (op != instruction_to_basic_op.end()) {
@@ -691,10 +678,6 @@ bool Function::instr_starts_basic_op(int idx) {
     return start_instr == idx;
   }
   return false;
-}
-
-std::shared_ptr<IR_Atomic> Function::get_basic_op_at_instr(int idx) {
-  return basic_ops.at(instruction_to_basic_op.at(idx));
 }
 
 bool Function::instr_starts_atomic_op(int idx) {
@@ -708,20 +691,6 @@ bool Function::instr_starts_atomic_op(int idx) {
 
 const AtomicOp& Function::get_atomic_op_at_instr(int idx) {
   return *ir2.atomic_ops->ops.at(ir2.atomic_ops->instruction_to_atomic_op.at(idx));
-}
-
-int Function::get_basic_op_count() {
-  return basic_ops.size();
-}
-
-int Function::get_failed_basic_op_count() {
-  int count = 0;
-  for (auto& x : basic_ops) {
-    if (dynamic_cast<IR_Failed*>(x.get())) {
-      count++;
-    }
-  }
-  return count;
 }
 
 /*!
