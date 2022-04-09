@@ -71,7 +71,6 @@
    (x-offset int32)
    )
   )
-
 (define *progress-carousell* (new 'static 'progress-carousell-state))
 
 
@@ -107,6 +106,12 @@
     (game-text-id spanish)
     (game-text-id italian)
     (game-text-id japanese)
+    ))
+
+(define *carousell-speaker* (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
+    (game-text-id speaker-always)
+    (game-text-id speaker-never)
+    (game-text-id speaker-auto)
     ))
 
 
@@ -184,7 +189,7 @@
   )
 
 (define *sound-options-pc*
-  (new 'static 'boxed-array :type game-option :length 8 :allocated-length 8
+  (new 'static 'boxed-array :type game-option :length 9 :allocated-length 9
     (new 'static 'game-option :name (game-text-id sfx-volume) :scale #t :param2 100.0)
     (new 'static 'game-option :name (game-text-id music-volume) :scale #t :param2 100.0)
     (new 'static 'game-option :name (game-text-id speech-volume) :scale #t :param2 100.0)
@@ -192,6 +197,7 @@
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id subtitles) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id hinttitles) :scale #t)
     (new 'static 'game-option :option-type (game-option-type language-subtitles) :name (game-text-id subtitles-language) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type speaker) :name (game-text-id subtitles-speaker) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -510,6 +516,7 @@
   (set! (-> *sound-options-pc* 4 value-to-modify) (&-> *pc-settings* subtitles?))
   (set! (-> *sound-options-pc* 5 value-to-modify) (&-> *pc-settings* hinttitles?))
   (set! (-> *sound-options-pc* 6 value-to-modify) (&-> *progress-carousell* subtitle-backup))
+  (set! (-> *sound-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
   
   ;; scroll stuff!
   (progress-scroll-reset)
@@ -621,7 +628,12 @@
                    (set! (-> obj language-direction) #t)
                    (set! sound? #t)
                    )
-                  (((game-option-type display-mode) (game-option-type msaa) (game-option-type lod-bg) (game-option-type lod-fg))
+                  (((game-option-type display-mode)
+                    (game-option-type msaa)
+                    (game-option-type lod-bg)
+                    (game-option-type lod-fg)
+                    (game-option-type speaker)
+                    )
                    ;; a carousell like language
                    (if (> (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) 0)
                        (+! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) -1)
@@ -723,7 +735,12 @@
                    (set! (-> obj language-direction) #f)
                    (set! sound? #t)
                    )
-                  (((game-option-type display-mode) (game-option-type msaa) (game-option-type lod-bg) (game-option-type lod-fg))
+                  (((game-option-type display-mode)
+                    (game-option-type msaa)
+                    (game-option-type lod-bg)
+                    (game-option-type lod-fg)
+                    (game-option-type speaker)
+                    )
                    ;; same thing as before. if at last, go to first. otherwise, keep going forward.
                    (if (< (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) (1- (length (-> *progress-carousell* current-carousell))))
                        (1+! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))))
@@ -945,6 +962,13 @@
                     (else (set! (-> *progress-carousell* int-backup) 0))
                     )
                   )
+                 (((game-option-type speaker))
+                  (case (-> *pc-settings* subtitle-speaker?)
+                    ((#t) (set! (-> *progress-carousell* int-backup) 0))
+                    ((#f) (set! (-> *progress-carousell* int-backup) 1))
+                    (('auto) (set! (-> *progress-carousell* int-backup) 2))
+                    )
+                  )
                  )
                (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
                (cpad-clear! 0 x)
@@ -967,6 +991,7 @@
                      (((game-option-type msaa)) (set! (-> *progress-carousell* current-carousell) *carousell-msaa*))
                      (((game-option-type lod-bg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      (((game-option-type lod-fg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
+                     (((game-option-type speaker)) (set! (-> *progress-carousell* current-carousell) *carousell-speaker*))
                      (((game-option-type language-subtitles))
                           (set! (-> *progress-carousell* current-carousell) *carousell-subtitle-language*)
                           (set! (-> *progress-carousell* selection) (the int (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify)))))
@@ -1023,6 +1048,14 @@
                (((game-option-type language-subtitles))
                 (set! (-> *pc-settings* subtitle-language) (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))))
                 )
+               (((game-option-type speaker))
+                ;; same thing.
+                (case (-> *progress-carousell* int-backup)
+                  ((0) (set! (-> *pc-settings* subtitle-speaker?) #t))
+                  ((1) (set! (-> *pc-settings* subtitle-speaker?) #f))
+                  ((2) (set! (-> *pc-settings* subtitle-speaker?) 'auto))
+                  )
+                )
                )
              )
            )
@@ -1036,6 +1069,7 @@
 
 (defmethod draw-options progress ((obj progress) (arg0 int) (arg1 int) (arg2 float))
   "common logic for drawing options menus."
+
   (let ((options (-> *options-remap* (-> obj display-state))))
     (when options
       ;; this menu has options to draw omg
@@ -1137,7 +1171,12 @@
                         )
                     )
                   )
-                 (((game-option-type display-mode) (game-option-type msaa) (game-option-type lod-bg) (game-option-type lod-fg))
+                 (((game-option-type display-mode)
+                   (game-option-type msaa)
+                   (game-option-type lod-bg)
+                   (game-option-type lod-fg)
+                   (game-option-type speaker)
+                   )
                   ;; crunched down to one generic function.
                   (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
                   )
@@ -1227,6 +1266,7 @@
                     (game-option-type msaa)
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
+                    (game-option-type speaker)
                     )
                    ;; slider and aspect ratio options just show their text
                    (set! option-str (lookup-text! *common-text* (-> options index name) #f))
@@ -1345,7 +1385,6 @@
          (draw-buzzer-screen self a1-0)
          )
         (((progress-screen graphic-settings)
-          (progress-screen sound-settings)
           (progress-screen settings-title)
           (progress-screen title)
           (progress-screen game-settings)
@@ -1367,6 +1406,10 @@
         (((progress-screen gfx-ps2-options))
          (hide-progress-icons)
          (draw-options self 115 25 0.72)
+         )
+        (((progress-screen sound-settings))
+         (hide-progress-icons)
+         (draw-options self 115 25 0.76)
          )
         (((progress-screen memcard-removed) (progress-screen memcard-auto-save-error))
          (draw-notice-screen self)
