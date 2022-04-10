@@ -80,7 +80,7 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
           auto lang = get_int(obj);
           if (!db.bank_exists(lang)) {
             // database has no lang yet
-            banks[lang] = db.new_bank(lang);
+            banks[lang] = db.add_bank(new GameSubtitleBank(lang));
           } else {
             banks[lang] = db.bank_by_id(lang);
           }

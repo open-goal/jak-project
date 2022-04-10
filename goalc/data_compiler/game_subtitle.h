@@ -67,14 +67,10 @@ class GameSubtitleDB {
 
   bool bank_exists(int id) const { return m_banks.find(id) != m_banks.end(); }
 
-  GameSubtitleBank* new_bank(int id) {
-    ASSERT(!bank_exists(id));
-    m_banks[id] = new GameSubtitleBank(id);
-    return m_banks.at(id);
-  }
-  void add_bank(GameSubtitleBank* bank) {
+  GameSubtitleBank* add_bank(GameSubtitleBank* bank) {
     ASSERT(!bank_exists(bank->lang()));
     m_banks[bank->lang()] = bank;
+    return bank;
   }
   GameSubtitleBank* bank_by_id(int id) {
     if (!bank_exists(id)) {

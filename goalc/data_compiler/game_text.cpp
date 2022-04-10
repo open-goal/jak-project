@@ -93,7 +93,7 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db) {
           auto lang = get_int(obj);
           if (!db.bank_exists(possible_group_name, lang)) {
             // database has no lang in this group yet
-            banks.push_back(db.new_bank(possible_group_name, lang));
+            banks.push_back(db.add_bank(possible_group_name, new GameTextBank(lang)));
           } else {
             banks.push_back(db.bank_by_id(possible_group_name, lang));
           }

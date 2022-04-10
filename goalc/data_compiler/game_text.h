@@ -39,14 +39,10 @@ class GameTextDB {
     return m_banks.at(group).find(id) != m_banks.at(group).end();
   }
 
-  GameTextBank* new_bank(std::string group, int id) {
-    ASSERT(!bank_exists(group, id));
-    m_banks[group][id] = new GameTextBank(id);
-    return m_banks.at(group).at(id);
-  }
-  void add_bank(std::string group, GameTextBank* bank) {
+  GameTextBank* add_bank(std::string group, GameTextBank* bank) {
     ASSERT(!bank_exists(group, bank->lang()));
     m_banks[group][bank->lang()] = bank;
+    return bank;
   }
   GameTextBank* bank_by_id(std::string group, int id) {
     if (!bank_exists(group, id)) {
