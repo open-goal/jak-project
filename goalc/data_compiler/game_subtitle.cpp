@@ -62,7 +62,7 @@ std::string uppercase(const std::string& in) {
  */
 void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db) {
   auto font = get_font_bank(text_ver);
-  std::map<int, GameSubtitleBank*> banks;
+  std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
     if (obj.is_pair()) {
@@ -80,7 +80,7 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
           auto lang = get_int(obj);
           if (!db.bank_exists(lang)) {
             // database has no lang yet
-            banks[lang] = db.add_bank(new GameSubtitleBank(lang));
+            banks[lang] = db.add_bank(std::make_shared<GameSubtitleBank>(lang));
           } else {
             banks[lang] = db.bank_by_id(lang);
           }

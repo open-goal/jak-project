@@ -5,6 +5,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 
 class GameTextBank {
  public:
@@ -28,10 +29,13 @@ class GameTextBank {
  */
 class GameTextDB {
  public:
-  const std::unordered_map<std::string, std::map<int, GameTextBank*>>& groups() const {
+  const std::unordered_map<std::string, std::map<int, std::shared_ptr<GameTextBank>>>& groups()
+      const {
     return m_banks;
   }
-  const std::map<int, GameTextBank*>& banks(std::string group) const { return m_banks.at(group); }
+  const std::map<int, std::shared_ptr<GameTextBank>>& banks(std::string group) const {
+    return m_banks.at(group);
+  }
 
   bool bank_exists(std::string group, int id) const {
     if (m_banks.find(group) == m_banks.end())
@@ -39,12 +43,12 @@ class GameTextDB {
     return m_banks.at(group).find(id) != m_banks.at(group).end();
   }
 
-  GameTextBank* add_bank(std::string group, GameTextBank* bank) {
+  std::shared_ptr<GameTextBank> add_bank(std::string group, std::shared_ptr<GameTextBank> bank) {
     ASSERT(!bank_exists(group, bank->lang()));
     m_banks[group][bank->lang()] = bank;
     return bank;
   }
-  GameTextBank* bank_by_id(std::string group, int id) {
+  std::shared_ptr<GameTextBank> bank_by_id(std::string group, int id) {
     if (!bank_exists(group, id)) {
       return nullptr;
     }
@@ -52,7 +56,7 @@ class GameTextDB {
   }
 
  private:
-  std::unordered_map<std::string, std::map<int, GameTextBank*>> m_banks;
+  std::unordered_map<std::string, std::map<int, std::shared_ptr<GameTextBank>>> m_banks;
 };
 
 void compile_game_text(const std::vector<std::string>& filenames,

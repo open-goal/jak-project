@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <unordered_set>
+#include <memory>
 
 class GameSubtitleSceneInfo {
  public:
@@ -63,16 +64,16 @@ class GameSubtitleBank {
  */
 class GameSubtitleDB {
  public:
-  const std::map<int, GameSubtitleBank*>& banks() const { return m_banks; }
+  const std::map<int, std::shared_ptr<GameSubtitleBank>>& banks() const { return m_banks; }
 
   bool bank_exists(int id) const { return m_banks.find(id) != m_banks.end(); }
 
-  GameSubtitleBank* add_bank(GameSubtitleBank* bank) {
+  std::shared_ptr<GameSubtitleBank> add_bank(std::shared_ptr<GameSubtitleBank> bank) {
     ASSERT(!bank_exists(bank->lang()));
     m_banks[bank->lang()] = bank;
     return bank;
   }
-  GameSubtitleBank* bank_by_id(int id) {
+  std::shared_ptr<GameSubtitleBank> bank_by_id(int id) {
     if (!bank_exists(id)) {
       return nullptr;
     }
@@ -80,7 +81,7 @@ class GameSubtitleDB {
   }
 
  private:
-  std::map<int, GameSubtitleBank*> m_banks;
+  std::map<int, std::shared_ptr<GameSubtitleBank>> m_banks;
 };
 
 void compile_game_subtitle(const std::vector<std::string>& filenames,

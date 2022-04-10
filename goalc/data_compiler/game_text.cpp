@@ -69,7 +69,7 @@ std::string uppercase(const std::string& in) {
  */
 void parse(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db) {
   auto font = get_font_bank(text_ver);
-  std::vector<GameTextBank*> banks;
+  std::vector<std::shared_ptr<GameTextBank>> banks;
   bool group_name_set = false;
   std::string possible_group_name;
 
@@ -93,7 +93,7 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db) {
           auto lang = get_int(obj);
           if (!db.bank_exists(possible_group_name, lang)) {
             // database has no lang in this group yet
-            banks.push_back(db.add_bank(possible_group_name, new GameTextBank(lang)));
+            banks.push_back(db.add_bank(possible_group_name, std::make_shared<GameTextBank>(lang)));
           } else {
             banks.push_back(db.bank_by_id(possible_group_name, lang));
           }
