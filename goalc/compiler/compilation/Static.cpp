@@ -84,7 +84,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
             "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
       }
 
-      auto array_content_type = parse_typespec(new_form.at(3));
+      auto array_content_type = parse_typespec(new_form.at(3), env);
 
       if (is_inline) {
         if (field_info.field.type() != array_content_type) {
@@ -96,11 +96,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         m_ts.typecheck_and_throw(field_info.field.type(), array_content_type, "Array content type");
       }
 
-      s64 elt_array_len;
-      if (!try_getting_constant_integer(new_form.at(4), &elt_array_len, env)) {
-        throw_compiler_error(field_value, "Array field size is invalid, got {}",
-                             new_form.at(4).print());
-      }
+      s64 elt_array_len = get_constant_integer_or_error(new_form.at(4), env);
 
       if (elt_array_len != field_info.field.array_size()) {
         throw_compiler_error(field_value, "Array field had an expected size of {} but got {}",
@@ -171,7 +167,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                "Inline field must be defined with (new 'static 'type-name ...)");
         }
 
-        auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+        auto inlined_type = parse_typespec(unquote(new_form.at(2)), env);
         if (inlined_type != field_info.type) {
           throw_compiler_error(field_value, "Cannot store a {} in an inline {}",
                                inlined_type.print(), field_info.type.print());
@@ -321,7 +317,8 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
   // dynamic_defs list below. The second pass will combine the constant and dynamic defs to build
   // the final value.
   struct DynamicDef {
-    goos::Object definition;
+    // goos::Object definition;
+    RegVal* value = nullptr;
     int field_offset, field_size;
     std::string field_name;  // for error message
     TypeSpec expected_type;
@@ -351,9 +348,8 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
     if (is_integer(field_info.result_type) || field_info.result_type.base_type() == "pointer") {
       // first, try as a constant
-      s64 value = 0;
-      bool got_constant = false;
-      got_constant = try_getting_constant_integer(field_value, &value, env);
+      auto compiled_field_val = get_constant_integer_or_variable(field_value, env);
+      bool got_constant = compiled_field_val.is_constant();
       if (!got_constant && is_bitfield(field_info.result_type) && !allow_dynamic_construction) {
         auto static_result = compile_static(field_value, env);
         if (static_result.is_constant_data()) {
@@ -362,7 +358,9 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
             typecheck(field_value, field_info.result_type, static_result.typespec(),
                       "Type of static constant");
             got_constant = true;
-            value = constant_data.value_64();
+            compiled_field_val.val = nullptr;
+            compiled_field_val.constant = constant_data.value_64();
+            // TODO: handle this in the constant propagation stuff
           }
         }
       }
@@ -370,7 +368,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         // failed to get as constant, add to dynamic or error.
         if (allow_dynamic_construction) {
           DynamicDef dyn;
-          dyn.definition = field_value;
+          dyn.value = compiled_field_val.val->to_gpr(field_value, env);
           dyn.field_offset = field_offset;
           dyn.field_size = field_size;
           dyn.field_name = field_name_def;
@@ -383,11 +381,11 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         } else {
           throw_compiler_error(form,
                                "Field {} is an integer, but the value given couldn't be "
-                               "converted to an integer at compile time.",
-                               field_name_def);
+                               "converted to an integer at compile time: {}",
+                               field_name_def, field_value.print());
         }
       } else {
-        u64 unsigned_value = value;
+        u64 unsigned_value = compiled_field_val.constant;
         u64 or_value = unsigned_value;
         ASSERT(field_size <= 64);
         // shift us all the way left to clear upper bits.
@@ -415,12 +413,13 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
                              "bytes. This is probably not what you wanted to do.");
       }
 
-      float value = 0.f;
-      if (!try_getting_constant_float(field_value, &value, env)) {
+      // float value = 0.f;
+      auto float_value_or_const = get_constant_float_or_variable(field_value, env);
+      if (float_value_or_const.is_variable()) {
         // failed to get as constant, add to dynamic or error.
         if (allow_dynamic_construction) {
           DynamicDef dyn;
-          dyn.definition = field_value;
+          dyn.value = float_value_or_const.val->to_gpr(field_value, env);
           dyn.field_offset = field_offset;
           dyn.field_size = field_size;
           dyn.field_name = field_name_def;
@@ -432,20 +431,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
                                "be converted to a float at compile time.",
                                field_name_def);
         }
-      }
-      u64 float_value = float_as_u32(value);
-      bool start_lo = field_offset < 64;
-      bool end_lo = (field_offset + field_size) <= 64;
-      ASSERT(start_lo == end_lo);
-      if (end_lo) {
-        constant_integer_part.lo |= (float_value << field_offset);
       } else {
-        constant_integer_part.hi |= (float_value << (field_offset - 64));
+        u64 float_value = float_as_u32(float_value_or_const.constant);
+        bool start_lo = field_offset < 64;
+        bool end_lo = (field_offset + field_size) <= 64;
+        ASSERT(start_lo == end_lo);
+        if (end_lo) {
+          constant_integer_part.lo |= (float_value << field_offset);
+        } else {
+          constant_integer_part.hi |= (float_value << (field_offset - 64));
+        }
       }
     } else if (field_info.result_type == TypeSpec("symbol")) {
       if (allow_dynamic_construction) {
         DynamicDef dyn;
-        dyn.definition = field_value;
+        dyn.value = compile_error_guard(field_value, env)->to_gpr(field_value, env);
         dyn.field_offset = field_offset;
         dyn.field_size = field_size;
         dyn.field_name = field_name_def;
@@ -459,7 +459,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else if (m_ts.tc(TypeSpec("structure"), field_info.result_type)) {
       if (allow_dynamic_construction) {
         DynamicDef dyn;
-        dyn.definition = field_value;
+        dyn.value = compile_error_guard(field_value, env)->to_gpr(field_value, env);
         dyn.field_offset = field_offset;
         dyn.field_size = field_size;
         dyn.field_name = field_name_def;
@@ -499,7 +499,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
-        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = def.value;
         auto field_val = env->make_gpr(field_val_in->type());
         env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
@@ -541,7 +541,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else {
       RegVal* integer_reg = integer->to_gpr(form, env);
       for (auto& def : dynamic_defs) {
-        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = def.value;
         auto field_val = env->make_gpr(field_val_in->type());
         env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
@@ -735,7 +735,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
         return fill_static_inline_array(form, rest, env, segment);
       } else {
-        auto ts = parse_typespec(unquote(args.at(1)));
+        auto ts = parse_typespec(unquote(args.at(1)), env);
         if (ts == TypeSpec("string")) {
           // (new 'static 'string)
           if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list() &&
@@ -762,25 +762,21 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
     } else if (first.is_symbol() && first.as_symbol()->name == "the-as") {
       auto args = get_va(form, rest);
       va_check(form, args, {{}, {}}, {});
-      auto type = parse_typespec(args.unnamed.at(0));
+      auto type = parse_typespec(args.unnamed.at(0), env);
       if (type == TypeSpec("float")) {
-        s64 value;
-        if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
-          if (integer_fits(value, 4, false)) {
-            return StaticResult::make_constant_data(value, TypeSpec("float"));
-          }
+        s64 value = get_constant_integer_or_error(args.unnamed.at(1), env);
+        if (integer_fits(value, 4, false)) {
+          return StaticResult::make_constant_data(value, TypeSpec("float"));
         }
       }
     } else if (first.is_symbol() && first.as_symbol()->name == "the") {
       auto args = get_va(form, rest);
       va_check(form, args, {{}, {}}, {});
-      auto type = parse_typespec(args.unnamed.at(0));
+      auto type = parse_typespec(args.unnamed.at(0), env);
       if (type == TypeSpec("binteger")) {
-        s64 value;
-        if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
-          if (integer_fits(value, 4, true)) {
-            return StaticResult::make_constant_data(value << 3, TypeSpec("binteger"));
-          }
+        s64 value = get_constant_integer_or_error(args.unnamed.at(1), env);
+        if (integer_fits(value, 4, true)) {
+          return StaticResult::make_constant_data(value << 3, TypeSpec("binteger"));
         }
       }
     } else if (first.is_symbol("type-ref")) {
@@ -823,10 +819,8 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       return StaticResult::make_func_ref(lambda->func, lambda->type());
     } else {
       // maybe an enum
-      s64 int_out;
-      if (try_getting_constant_integer(form, &int_out, env)) {
-        return StaticResult::make_constant_data(int_out, TypeSpec("int"));
-      }
+      s64 int_out = get_constant_integer_or_error(form, env);
+      return StaticResult::make_constant_data(int_out, TypeSpec("int"));
     }
   }
 
@@ -884,11 +878,8 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   if (args.size() < 4) {
     throw_compiler_error(form, "new static array must have type and min-size arguments");
   }
-  auto content_type = parse_typespec(args.at(2));
-  s64 min_size;
-  if (!try_getting_constant_integer(args.at(3), &min_size, env)) {
-    throw_compiler_error(form, "The length {} is not valid.", args.at(3).print());
-  }
+  auto content_type = parse_typespec(args.at(2), env);
+  s64 min_size = get_constant_integer_or_error(args.at(3), env);
   s32 length = std::max(min_size, s64(args.size() - 4));
   // todo - generalize this array stuff if we ever need other types of static arrays.
   auto pointer_type = m_ts.make_pointer_typespec(content_type);
@@ -929,21 +920,16 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   if (!args.has_named("type")) {
     throw_compiler_error(form, "boxed array must have type");
   }
-  auto content_type = parse_typespec(args.get_named("type"));
+  auto content_type = parse_typespec(args.get_named("type"), env);
 
   if (!args.has_named("length")) {
     throw_compiler_error(form, "boxed array must have length");
   }
-  s64 length;
-  if (!try_getting_constant_integer(args.get_named("length"), &length, env)) {
-    throw_compiler_error(form, "boxed array has invalid length");
-  }
+  s64 length = get_constant_integer_or_error(args.get_named("length"), env);
 
   s64 allocated_length;
   if (args.has_named("allocated-length")) {
-    if (!try_getting_constant_integer(args.get_named("allocated-length"), &allocated_length, env)) {
-      throw_compiler_error(form, "boxed array has invalid allocated-length");
-    }
+    allocated_length = get_constant_integer_or_error(args.get_named("allocated-length"), env);
   } else {
     allocated_length = length;
   }
@@ -1032,7 +1018,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
           elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
     }
 
-    auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+    auto inlined_type = parse_typespec(unquote(new_form.at(2)), env);
     if (inlined_type != content_type) {
       throw_compiler_error(elt_def, "Cannot store a {} in an inline array of {}",
                            inlined_type.print(), content_type.print());
@@ -1056,11 +1042,8 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   if (args.size() < 4) {
     throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
   }
-  auto content_type = parse_typespec(args.at(2));
-  s64 min_size;
-  if (!try_getting_constant_integer(args.at(3), &min_size, env)) {
-    throw_compiler_error(form, "The length {} is not valid.", args.at(3).print());
-  }
+  auto content_type = parse_typespec(args.at(2), env);
+  s64 min_size = get_constant_integer_or_error(args.at(3), env);
   s32 length = std::max(min_size, s64(args.size() - 4));
 
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);

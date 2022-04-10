@@ -6,9 +6,8 @@
 
 #include "newpad.h"
 #include "common/log/log.h"
-
+#include "common/util/Assert.h"
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
-#include "game/kernel/kscheme.h"
 
 namespace Pad {
 
@@ -18,8 +17,11 @@ namespace Pad {
 ********************************
 */
 
-std::unordered_map<int, int> g_key_status;
-std::unordered_map<int, int> g_buffered_key_status;
+constexpr int NUM_KEYS = GLFW_KEY_LAST + 1;
+// key-down status of any detected key.
+bool g_key_status[NUM_KEYS] = {0};
+// key-down status of any detected key. this is buffered for the remainder of a frame.
+bool g_buffered_key_status[NUM_KEYS] = {0};
 
 bool g_gamepad_buttons[(int)Button::Max] = {0};
 float g_gamepad_analogs[(int)Analog::Max] = {0};
@@ -37,14 +39,17 @@ u64 input_mode_index = 0;
 MappingInfo g_input_mode_mapping;
 
 void ForceClearKeys() {
-  g_key_status.clear();
-  g_buffered_key_status.clear();
+  for (auto& key : g_key_status) {
+    key = false;
+  }
+  for (auto& key : g_buffered_key_status) {
+    key = false;
+  }
 }
 
 void ClearKeys() {
-  g_buffered_key_status.clear();
-  for (auto& key : g_key_status) {
-    g_buffered_key_status.insert(std::make_pair(key.first, key.second));
+  for (int key = 0; key < NUM_KEYS; key++) {
+    g_buffered_key_status[key] = g_key_status[key];
   }
 }
 
@@ -62,31 +67,18 @@ void OnKeyPress(int key) {
     return;
   }
   // set absolute key status
-  if (g_key_status.find(key) == g_key_status.end()) {
-    g_key_status.insert(std::make_pair(key, 1));
-  } else {
-    g_key_status.at(key) = 1;
-  }
-
+  ASSERT(key < NUM_KEYS);
+  g_key_status[key] = true;
   // set buffered key status
-  if (g_buffered_key_status.find(key) == g_buffered_key_status.end()) {
-    g_buffered_key_status.insert(std::make_pair(key, 1));
-  } else {
-    g_buffered_key_status.at(key) = 1;
-  }
+  g_buffered_key_status[key] = true;
 }
 
 void OnKeyRelease(int key) {
   if (input_mode == InputModeStatus::Enabled) {
     return;
   }
-
-  // if we come out of input mode, the key wont be found.
-  if (g_key_status.find(key) == g_key_status.end()) {
-    return;
-  }
-  // set absolute key status
-  g_key_status.at(key) = 0;
+  ASSERT(key < NUM_KEYS);
+  g_key_status[key] = false;
 }
 
 /*
@@ -116,9 +108,8 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (key == -1)
     return 0;
   auto& keymap = mapping.buffer_mode ? g_buffered_key_status : g_key_status;
-  if (keymap.find(key) == keymap.end())
-    return 0;
-  return keymap.at(key);
+  ASSERT(key < NUM_KEYS);
+  return keymap[key];
 }
 
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)

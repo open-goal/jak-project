@@ -8,7 +8,6 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
-#include "decompiler/Function/TypeInspector.h"
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/insert_lets.h"

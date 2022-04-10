@@ -71,7 +71,7 @@ Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& 
       auto param_args = get_va(o, o);
       va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
       auto name = symbol_string(param_args.unnamed.at(0));
-      auto type = parse_typespec(param_args.unnamed.at(1));
+      auto type = parse_typespec(param_args.unnamed.at(1), env);
 
       if (fe->params.find(name) != fe->params.end()) {
         throw_compiler_error(form, "Cannot declare a local named {}, this already exists.", name);
@@ -129,7 +129,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
-      parm.type = parse_typespec(param_args.unnamed.at(1));
+      parm.type = parse_typespec(param_args.unnamed.at(1), env);
 
       lambda.params.push_back(parm);
       lambda_ts.add_arg(parm.type);
@@ -687,7 +687,7 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
         throw_compiler_error(
             form, "Declare asm-func must provide the function's return type as an argument.");
       }
-      fe->asm_func_return_type = parse_typespec(rrest->as_pair()->car);
+      fe->asm_func_return_type = parse_typespec(rrest->as_pair()->car, env);
       if (!rrest->as_pair()->cdr.is_empty_list()) {
         throw_compiler_error(first, "Invalid asm-func declare");
       }

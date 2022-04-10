@@ -24,8 +24,6 @@
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
-#include "decompiler/IR/BasicOpBuilder.h"
-#include "decompiler/Function/TypeInspector.h"
 #include "common/log/log.h"
 #include "common/util/json_util.h"
 
@@ -134,7 +132,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
     try {
       get_objs_from_dgo(dgo, config);
     } catch (std::runtime_error& e) {
-      lg::warn("Error when reading DGOs: {}", e.what());
+      lg::warn("Error when reading DGOs: {} on {}", e.what(), dgo);
     }
   }
 
@@ -735,8 +733,6 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 
   int total_trivial_cfg_functions = 0;
   int total_named_functions = 0;
-  int total_basic_ops = 0;
-  int total_failed_basic_ops = 0;
 
   int asm_funcs = 0;
 
@@ -774,23 +770,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
           if (label_id != -1) {
             block.label_name = data.linked_data.get_label_name(label_id);
           }
-
-          block.start_basic_op = func.basic_ops.size();
-          add_basic_ops_to_block(&func, block, &data.linked_data);
-          block.end_basic_op = func.basic_ops.size();
         }
-      }
-      total_basic_ops += func.get_basic_op_count();
-      total_failed_basic_ops += func.get_failed_basic_op_count();
-
-      // if we got an inspect method, inspect it.
-      if (func.is_inspect_method) {
-        auto result = inspect_inspect_method(
-            func, func.method_of_type, dts, data.linked_data,
-            config.hacks.types_with_bad_inspect_methods.find(func.method_of_type) !=
-                config.hacks.types_with_bad_inspect_methods.end());
-        all_type_defs += ";; " + data.to_unique_name() + "\n";
-        all_type_defs += result.print_as_deftype() + "\n";
       }
     } else {
       asm_funcs++;
@@ -802,10 +782,6 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
   lg::info("Named {}/{} functions ({:.3f}%)", total_named_functions, total_functions,
            100.f * float(total_named_functions) / float(total_functions));
   lg::info("Excluding {} asm functions", asm_funcs);
-  lg::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
-  int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
-  lg::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
-           total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
