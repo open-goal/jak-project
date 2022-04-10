@@ -284,7 +284,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   }
 
   s32 factor = ((gCurve[fo_curve].unk4 << 16) + gCurve[fo_curve].unk3 * v13 +
-                gCurve[fo_curve].unk2 * ((v13 * 13) >> 16) +
+                gCurve[fo_curve].unk2 * ((v13 * v13) >> 16) +
                 gCurve[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
                12;
 
@@ -310,7 +310,7 @@ s32 CalculateAngle(Vec3w* trans) {
     lookupZ = trans->z - gCamTrans.z;
   }
 
-  if (diffX == 0 && diffZ == 0) {
+  if (lookupX == 0 && lookupZ == 0) {
     return 0;
   }
 
