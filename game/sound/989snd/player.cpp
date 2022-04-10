@@ -134,8 +134,8 @@ void player::stop_sound(u32 sound_id) {
 
   handler->second->stop();
 
-  m_handle_allocator.free_id(sound_id);
-  m_handlers.erase(sound_id);
+  // m_handle_allocator.free_id(sound_id);
+  // m_handlers.erase(sound_id);
 }
 
 void player::set_midi_reg(u32 sound_id, u8 reg, u8 value) {
