@@ -17,7 +17,7 @@ namespace v2 {
 struct Node {
   Node() = default;
 
-  Node(const std::string& str) : atom_str(str), kind(Kind::ATOM) {}
+  Node(const std::string& str) : kind(Kind::ATOM), atom_str(str) {}
 
   Node(std::vector<Node>&& list, bool is_list)
       : kind(is_list ? Kind::LIST : Kind::IMPROPER_LIST), child_nodes(std::move(list)) {}
