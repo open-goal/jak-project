@@ -56,10 +56,9 @@ void Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
     for (size_t tree_idx = 0; tree_idx < lev_data->tfrag_trees[geom].size(); tree_idx++) {
       const auto& tree = lev_data->tfrag_trees[geom][tree_idx];
 
-      auto& tree_cache = m_cached_trees[geom].emplace_back();
-
-      tree_cache.kind = tree.kind;
       if (std::find(tree_kinds.begin(), tree_kinds.end(), tree.kind) != tree_kinds.end()) {
+        auto& tree_cache = m_cached_trees[geom].emplace_back();
+        tree_cache.kind = tree.kind;
         max_draws = std::max(tree.draws.size(), max_draws);
         size_t num_grps = 0;
         for (auto& draw : tree.draws) {

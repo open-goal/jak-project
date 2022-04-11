@@ -463,6 +463,7 @@ bool Loader::init_tie(Timer& timer, LevelData& data) {
           abort = true;
         }
       }
+      data.tie_next_tree = 0;
     }
 
     data.tie_wind_indices_done = true;
