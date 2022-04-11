@@ -49,8 +49,7 @@ void modify_input_types_for_casts(
         state->get(cast.reg) = type_from_cast;
       }
     } catch (std::exception& e) {
-      printf("failed to parse hint: %s\n", e.what());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("failed to parse hint: {}", e.what()));
     }
   }
 }

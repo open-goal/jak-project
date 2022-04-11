@@ -763,8 +763,8 @@ void Debugger::watcher() {
           break;
 #endif
         default:
-          printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("[Debugger] unhandled signal in watcher: {}",
+                                        int(signal_info.kind)));
       }
 
       {

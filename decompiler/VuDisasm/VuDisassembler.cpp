@@ -297,15 +297,13 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
       case 0b11110'1111'11:
         return VuInstrK::WAITP;
     }
-    fmt::print("Unknown lower special: 0b{:b}\n", in);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("Unknown lower special: 0b{:b}", in));
   } else {
     ASSERT((op & 0b1000000) == 0);
     ASSERT(op < 64);
     auto elt = m_lower_op6_table[(int)op];
     if (!elt.known) {
-      fmt::print("Invalid lower op6: 0b{:b} 0b{:b} 0x{:x}\n", op, in, in);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Invalid lower op6: 0b{:b} 0b{:b} 0x{:x}", op, in, in));
     }
     return elt.kind;
   }
@@ -370,13 +368,11 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
         break;
 
       default:
-        fmt::print("Invalid op11: 0b{:b}\n", upper_op11(in));
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("Invalid op11: 0b{:b}", upper_op11(in)));
     }
   }
   if (!upper_info.known) {
-    fmt::print("Invalid upper op6: 0b{:b}\n", upper_op6(in));
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("Invalid upper op6: 0b{:b}", upper_op6(in)));
   }
   return upper_info.kind;
 }
@@ -434,8 +430,7 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
   instr.kind = kind;
   auto& inst = info(kind);
   if (!inst.known) {
-    fmt::print("instr idx {} is unknown\n", (int)kind);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("instr idx {} is unknown", (int)kind));
   }
   for (auto& step : inst.decode) {
     s64 value = -1;

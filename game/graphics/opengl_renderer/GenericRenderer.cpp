@@ -51,8 +51,7 @@ void GenericRenderer::render(DmaFollower& dma,
         case VifCode::Kind::NOP:
           break;
         default:
-          fmt::print("unknown vifcode0 empty tag: {}\n", v0.print());
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("unknown vifcode0 empty tag: {}", v0.print()));
       }
       switch (v1.kind) {
         case VifCode::Kind::STCYCL:
@@ -64,8 +63,7 @@ void GenericRenderer::render(DmaFollower& dma,
           mscal(v1.immediate, render_state, prof);
           break;
         default:
-          fmt::print("unknown vifcode1 empty tag: {}\n", v1.print());
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("unknown vifcode1 empty tag: {}", v1.print()));
       }
     } else if (v0.kind == VifCode::Kind::FLUSHA && v1.kind == VifCode::Kind::DIRECT) {
       if (render_state->use_direct2) {
@@ -129,11 +127,9 @@ void GenericRenderer::render(DmaFollower& dma,
         ASSERT(false);
       }
     } else {
-      fmt::print("Generic encountered unknown DMA.\n");
-      fmt::print("Size bytes: {}\n", data.size_bytes);
-      fmt::print("VIF0: {}\n", data.vifcode0().print());
-      fmt::print("VIF1: {}\n", data.vifcode1().print());
-      ASSERT(false);
+      ASSERT_MSG(false,
+                 fmt::format("Generic encountered unknown DMA. Size bytes: {}. VIF0: {}. VIF1: {}",
+                             data.size_bytes, data.vifcode0().print(), data.vifcode1().print()));
     }
     m_skipped_tags++;
   }
@@ -182,10 +178,9 @@ void GenericRenderer::handle_dma_stream(const u8* data,
         mscal(vc.immediate, render_state, prof);
         break;
       default:
-        fmt::print("Generic encountered unknown DMA in handle_dma_stream.\n");
-        fmt::print("Bytes remaining: {}\n", bytes);
-        fmt::print("VIF: {}\n", vc.print());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("Generic encountered unknown DMA in handle_dma_stream. Bytes "
+                                      "remaining: {}. VIF: {}",
+                                      bytes, vc.print()));
     }
   }
 }

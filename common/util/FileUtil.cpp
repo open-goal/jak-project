@@ -425,8 +425,7 @@ void MakeISOName(char* dst, const char* src) {
 
 void assert_file_exists(const char* path, const char* error_message) {
   if (!std::filesystem::exists(path)) {
-    fprintf(stderr, "File %s was not found: %s\n", path, error_message);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("File {} was not found: {}", path, error_message));
   }
 }
 

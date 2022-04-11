@@ -96,8 +96,8 @@ void ShadowRenderer::xgkick(u16 imm) {
                   // fmt::print("rgba: {} {} {} {}: {}\n", rgba[0], rgba[1], rgba[2], rgba[3], Q);
                 } break;
                 default:
-                  fmt::print("Address {} is not supported\n", register_address_name(addr));
-                  ASSERT(false);
+                  ASSERT_MSG(false, fmt::format("Address {} is not supported",
+                                                register_address_name(addr)));
               }
             } break;
             case GifTag::RegisterDescriptor::ST: {
@@ -308,8 +308,7 @@ void ShadowRenderer::render(DmaFollower& dma,
       dma.read_and_advance();
 
     } else {
-      fmt::print("{} {}\n", next.vifcode0().print(), next.vifcode1().print());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("{} {}", next.vifcode0().print(), next.vifcode1().print()));
     }
   }
 

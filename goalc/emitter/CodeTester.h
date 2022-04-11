@@ -91,13 +91,19 @@ class CodeTester {
   /*!
    * Get the name of the given register, for debugging.
    */
-  std::string reg_name(Register x) { return m_info.get_info(x).name; }
+  std::string reg_name(Register x) {
+    return m_info.get_info(x).name;
+  }
 
   /*!
    * Get number of bytes currently in use (offset of the next thing to be added)
    */
-  int size() const { return code_buffer_size; }
-  const u8* data() const { return code_buffer; }
+  int size() const {
+    return code_buffer_size;
+  }
+  const u8* data() const {
+    return code_buffer;
+  }
 
   /*!
    * Write over existing data at the given offset.

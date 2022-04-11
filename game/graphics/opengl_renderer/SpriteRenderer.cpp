@@ -526,8 +526,7 @@ void SpriteRenderer::handle_clamp(u64 val,
                                   SharedRenderState* /*render_state*/,
                                   ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
   }
 
   m_adgif_state.reg_clamp = val;

@@ -358,8 +358,7 @@ void GenericRenderer::mscal_dispatch(int imm, SharedRenderState* render_state, S
       mscal_noclip_nopipe(render_state, prof);
       return;
     default:
-      fmt::print("Generic dispatch mscal: {}\n", imm);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Generic dispatch mscal: {}", imm));
   }
 
   L33: // R

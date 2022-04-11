@@ -247,8 +247,7 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
       }
       break;
     default:
-      fmt::print("unknown mscal: {}\n", mscal_addr);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unknown mscal: {}", mscal_addr));
   }
 
   //  while (true) {

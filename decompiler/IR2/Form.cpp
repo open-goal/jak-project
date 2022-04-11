@@ -626,8 +626,8 @@ goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
 
   if (m_branch_delay) {
     if (m_branch_delay->parent_element != this) {
-      fmt::print("bad ptr. Parent is {}\n", m_branch_delay->parent_element->to_string(env));
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("bad ptr. Parent is {}",
+                                    m_branch_delay->parent_element->to_string(env)));
     }
 
     ASSERT(m_branch_delay->parent_element->parent_form);
@@ -667,8 +667,8 @@ void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const
     m_branch_condition->collect_vars(vars, recursive);
     if (m_branch_delay) {
       if (m_branch_delay->parent_element != this) {
-        fmt::print("bad ptr. Parent is {}\n", (void*)m_branch_delay->parent_element);
-        ASSERT(false);
+        ASSERT_MSG(false,
+                   fmt::format("bad ptr. Parent is {}", (void*)m_branch_delay->parent_element));
       }
 
       for (auto& elt : m_branch_delay->elts()) {

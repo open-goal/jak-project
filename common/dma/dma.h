@@ -91,8 +91,7 @@ inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 
         // does this transfer anything in TTE???
         return;
       default:
-        printf("bad tag: %d\n", (int)tag.kind);
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("bad tag: {}", (int)tag.kind));
     }
   }
 }

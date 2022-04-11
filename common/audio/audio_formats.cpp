@@ -289,8 +289,7 @@ void test_encode_adpcm(const std::vector<s16>& samples,
       for (int i = 0; i < 5; i++) {
         fmt::print(" [{}] {} {}\n", i, filter_errors[i], filter_shifts[i]);
       }
-      fmt::print("prev: {} {}\n", prev_block_samples[0], prev_block_samples[1]);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("prev: {} {}", prev_block_samples[0], prev_block_samples[1]));
     }
 
     prev_block_samples[0] = samples.at(block_idx * 28 + 27);

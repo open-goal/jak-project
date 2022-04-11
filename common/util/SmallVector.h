@@ -61,8 +61,12 @@ class SmallVector {
   typename std::aligned_storage<sizeof(T), alignof(T)>::type m_inline[inline_elt_count];
 
   // get a T* at the beginning of our inline storage.
-  constexpr const T* inline_begin() const { return launder(reinterpret_cast<const T*>(m_inline)); }
-  constexpr T* inline_begin() { return launder(reinterpret_cast<T*>(m_inline)); }
+  constexpr const T* inline_begin() const {
+    return launder(reinterpret_cast<const T*>(m_inline));
+  }
+  constexpr T* inline_begin() {
+    return launder(reinterpret_cast<T*>(m_inline));
+  }
 
   // regardless of our storage mode, these hold the beginning and end of the storage.
   // by default, they are initialized to the inline storage.
@@ -86,7 +90,9 @@ class SmallVector {
   /*!
    * Free heap storage, without calling destructors of objects.
    */
-  void free_heap_storage(T* ptr) { delete[] launder(reinterpret_cast<uint8_t*>(ptr)); }
+  void free_heap_storage(T* ptr) {
+    delete[] launder(reinterpret_cast<uint8_t*>(ptr));
+  }
 
   /*!
    * Set the current storage to the inline memory.
@@ -98,7 +104,9 @@ class SmallVector {
     m_storage_end = inline_begin() + inline_elt_count;
   }
 
-  bool using_heap_storage() const { return m_storage_begin != inline_begin(); }
+  bool using_heap_storage() const {
+    return m_storage_begin != inline_begin();
+  }
 
   /*!
    * Allocate (if needed) storage to hold size objects.
@@ -200,7 +208,9 @@ class SmallVector {
   /*!
    * Constructor a SmallVector. By default the size is 0 and no elements are constructed.
    */
-  SmallVector() { initialize_storage_and_size(0); }
+  SmallVector() {
+    initialize_storage_and_size(0);
+  }
 
   /*!
    * Initialize vector with count elements that are default initialized
@@ -340,7 +350,9 @@ class SmallVector {
   /*!
    * See note on other assign.
    */
-  void assign(std::initializer_list<T> lst) { *this = SmallVector<T, inline_elt_count>(lst); }
+  void assign(std::initializer_list<T> lst) {
+    *this = SmallVector<T, inline_elt_count>(lst);
+  }
 
   /*!
    * Get the element at the index. Assert the index is valid.
@@ -361,59 +373,103 @@ class SmallVector {
   /*!
    * Get the element at the index. No range checking.
    */
-  T& operator[](std::size_t idx) { return m_storage_begin[idx]; }
+  T& operator[](std::size_t idx) {
+    return m_storage_begin[idx];
+  }
 
   /*!
    * Get the element at the index. No range checking.
    */
-  const T& operator[](std::size_t idx) const { return m_storage_begin[idx]; }
+  const T& operator[](std::size_t idx) const {
+    return m_storage_begin[idx];
+  }
 
   /*!
    * Get the first element. Not valid if size == 0
    */
-  T& front() { return m_storage_begin[0]; }
+  T& front() {
+    return m_storage_begin[0];
+  }
 
   /*!
    * Get the first element. Not valid if size == 0
    */
-  const T& front() const { return m_storage_begin[0]; }
+  const T& front() const {
+    return m_storage_begin[0];
+  }
 
   /*!
    * Get the last element. Not valid if size == 0
    */
-  T& back() { return m_storage_begin[m_size - 1]; }
+  T& back() {
+    return m_storage_begin[m_size - 1];
+  }
 
   /*!
    * Get the last element. Not valid if size == 0
    */
-  const T& back() const { return m_storage_begin[m_size - 1]; }
+  const T& back() const {
+    return m_storage_begin[m_size - 1];
+  }
 
   /*!
    * Get a pointer to data. This may become invalid after any resize, just like a std::vector.
    */
-  T* data() { return m_storage_begin; }
+  T* data() {
+    return m_storage_begin;
+  }
 
   /*!
    * Get a pointer to data. This may become invalid after any resize, just like a std::vector.
    */
-  const T* data() const { return m_storage_begin; }
+  const T* data() const {
+    return m_storage_begin;
+  }
 
-  iterator begin() { return m_storage_begin; }
-  const_iterator begin() const { return m_storage_begin; }
-  const_iterator cbegin() const { return m_storage_begin; }
-  iterator end() { return m_storage_begin + m_size; }
-  const_iterator end() const { return m_storage_begin + m_size; }
-  const_iterator cend() const { return m_storage_begin + m_size; }
+  iterator begin() {
+    return m_storage_begin;
+  }
+  const_iterator begin() const {
+    return m_storage_begin;
+  }
+  const_iterator cbegin() const {
+    return m_storage_begin;
+  }
+  iterator end() {
+    return m_storage_begin + m_size;
+  }
+  const_iterator end() const {
+    return m_storage_begin + m_size;
+  }
+  const_iterator cend() const {
+    return m_storage_begin + m_size;
+  }
 
-  reverse_iterator rbegin() { return m_storage_begin + m_size; }
-  const_reverse_iterator rbegin() const { return m_storage_begin + m_size; }
-  const_reverse_iterator crbegin() const { return m_storage_begin + m_size; }
-  reverse_iterator rend() { return m_storage_begin; }
-  const_reverse_iterator rend() const { return m_storage_begin; }
-  const_reverse_iterator crend() const { return m_storage_begin; }
+  reverse_iterator rbegin() {
+    return m_storage_begin + m_size;
+  }
+  const_reverse_iterator rbegin() const {
+    return m_storage_begin + m_size;
+  }
+  const_reverse_iterator crbegin() const {
+    return m_storage_begin + m_size;
+  }
+  reverse_iterator rend() {
+    return m_storage_begin;
+  }
+  const_reverse_iterator rend() const {
+    return m_storage_begin;
+  }
+  const_reverse_iterator crend() const {
+    return m_storage_begin;
+  }
 
-  bool empty() const { return m_size == 0; }
-  std::size_t size() const { return m_size; }
+  bool empty() const {
+    return m_size == 0;
+  }
+  std::size_t size() const {
+    return m_size;
+  }
 
   /*!
    * Make sure we have enough storage to hold desired_count without allocating.
@@ -439,7 +495,9 @@ class SmallVector {
   /*!
    * The number of elements we can hold without allocating more memory.
    */
-  std::size_t capacity() const { return m_storage_end - m_storage_begin; }
+  std::size_t capacity() const {
+    return m_storage_end - m_storage_begin;
+  }
 
   /*!
    * Shrink our heap allocation to the smallest possible size that can possibly hold the
@@ -544,7 +602,9 @@ class SmallVector {
     m_size++;
   }
 
-  void pop_back() { m_size--; }
+  void pop_back() {
+    m_size--;
+  }
 
   void relocate_some_and_destroy_rest(T* dst,
                                       T* src,

@@ -322,8 +322,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           // TODO ShutdownFilingSystem();
         } break;
         default: {
-          printf("Unhandled RPC Player command %d\n", (int)cmd->command);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}", (int)cmd->command));
         } break;
       }
       n_messages--;
@@ -410,8 +409,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           // SignalSema(gSema);
         } break;
         default:
-          printf("Unhandled RPC Loader command %d\n", (int)cmd->command);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", (int)cmd->command));
       }
       n_messages--;
       cmd++;

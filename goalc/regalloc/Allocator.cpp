@@ -569,8 +569,8 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
         }
 
         if (spill_assignment.reg == -1) {
-          printf("SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!\n");
-          ASSERT(false);
+          ASSERT_MSG(false,
+                     fmt::format("SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!"));
           return false;
         }
 

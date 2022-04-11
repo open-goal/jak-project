@@ -253,8 +253,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         case GsTest::AlphaTest::NEVER:
           break;
         default:
-          fmt::print("unknown alpha test: {}\n", (int)m_test_state.alpha_test);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("unknown alpha test: {}", (int)m_test_state.alpha_test));
       }
     }
 
@@ -618,9 +617,8 @@ void DirectRenderer::render_gif(const u8* data,
 
   if (size != UINT32_MAX) {
     if ((offset + 15) / 16 != size / 16) {
-      fmt::print("DirectRenderer size failed in {}\n", name_and_id());
-      fmt::print("expected: {}, got: {}\n", size, offset);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("DirectRenderer size failed in {}. expected: {}, got: {}",
+                                    name_and_id(), size, offset));
     }
   }
 
@@ -693,8 +691,7 @@ void DirectRenderer::handle_ad(const u8* data,
       }
       break;
     default:
-      fmt::print("Address {} is not supported\n", register_address_name(addr));
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));
   }
 }
 
@@ -1053,8 +1050,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       }
     } break;
     default:
-      fmt::print("prim type {} is unsupported in {}.\n", (int)m_prim_building.kind, name_and_id());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("prim type {} is unsupported in {}.", (int)m_prim_building.kind,
+                                    name_and_id()));
   }
 }
 

@@ -886,9 +886,13 @@ struct ExecutionContext {
     Q = vf_src(src0).f[(int)bc0] / std::sqrt(std::abs(vf_src(src1).f[(int)bc1]));
   }
 
-  void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
+  void vsqrt(int src, BC bc) {
+    Q = std::sqrt(std::abs(vf_src(src).f[(int)bc]));
+  }
 
-  void sqrts(int src, int dst) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
+  void sqrts(int src, int dst) {
+    fprs[dst] = std::sqrt(std::abs(fprs[src]));
+  }
 
   void vmulq(DEST mask, int dst, int src) {
     auto s0 = vf_src(src);
@@ -908,7 +912,9 @@ struct ExecutionContext {
     }
   }
 
-  void vrxor(int src, BC bc) { gRng.rxor(vf_src(src).du32[(int)bc]); }
+  void vrxor(int src, BC bc) {
+    gRng.rxor(vf_src(src).du32[(int)bc]);
+  }
 
   void vaddq(DEST mask, int dst, int src) {
     auto s = vf_src(src);
@@ -938,7 +944,9 @@ struct ExecutionContext {
     }
   }
 
-  void mov64(int dest, int src) { gprs[dest].ds64[0] = gpr_src(src).du64[0]; }
+  void mov64(int dest, int src) {
+    gprs[dest].ds64[0] = gpr_src(src).du64[0];
+  }
 
   void vmove(DEST mask, int dest, int src) {
     auto s = vf_src(src);
@@ -973,22 +981,40 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = value_signed;
   }
 
-  void dsra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> sa; }
-  void dsrl(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> sa; }
+  void dsra(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> sa;
+  }
+  void dsrl(int dst, int src, int sa) {
+    gprs[dst].du64[0] = gpr_src(src).du64[0] >> sa;
+  }
   void dsrav(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> gpr_src(sa).du32[0];
   }
   void dsllv(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] << (gpr_src(sa).du32[0] & 0b111111);
   }
-  void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
-  void dsrl32(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> (32 + sa); }
-  void sra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds32[0] >> sa; }
-  void dsll(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << sa; }
-  void dsll32(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << (32 + sa); }
+  void dsra32(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa);
+  }
+  void dsrl32(int dst, int src, int sa) {
+    gprs[dst].du64[0] = gpr_src(src).du64[0] >> (32 + sa);
+  }
+  void sra(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds32[0] >> sa;
+  }
+  void dsll(int dst, int src0, int sa) {
+    gprs[dst].du64[0] = gpr_src(src0).du64[0] << sa;
+  }
+  void dsll32(int dst, int src0, int sa) {
+    gprs[dst].du64[0] = gpr_src(src0).du64[0] << (32 + sa);
+  }
 
-  void daddu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) + sgpr64(src1); }
-  void daddiu(int dst, int src0, s64 imm) { gprs[dst].du64[0] = sgpr64(src0) + imm; }
+  void daddu(int dst, int src0, int src1) {
+    gprs[dst].du64[0] = sgpr64(src0) + sgpr64(src1);
+  }
+  void daddiu(int dst, int src0, s64 imm) {
+    gprs[dst].du64[0] = sgpr64(src0) + imm;
+  }
   void addiu(int dst, int src0, s64 imm) {
     s32 temp = sgpr64(src0) + imm;
     gprs[dst].ds64[0] = temp;
@@ -1004,12 +1030,18 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = temp;
   }
 
-  void dsubu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) - sgpr64(src1); }
+  void dsubu(int dst, int src0, int src1) {
+    gprs[dst].du64[0] = sgpr64(src0) - sgpr64(src1);
+  }
   void subu(int dst, int src0, int src1) {
     gprs[dst].ds64[0] = gpr_src(src0).ds32[0] - gpr_src(src1).ds32[0];
   }
-  void xor_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1); }
-  void or_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) | sgpr64(src1); }
+  void xor_(int dst, int src0, int src1) {
+    gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1);
+  }
+  void or_(int dst, int src0, int src1) {
+    gprs[dst].du64[0] = sgpr64(src0) | sgpr64(src1);
+  }
 
   void movz(int dst, int src0, int src1) {
     if (sgpr64(src1) == 0) {
@@ -1035,9 +1067,15 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = sresult;
   }
 
-  void xori(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] ^ imm; }
-  void andi(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] & imm; }
-  void ori(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] | imm; }
+  void xori(int dest, int src, u64 imm) {
+    gprs[dest].du64[0] = gpr_src(src).du64[0] ^ imm;
+  }
+  void andi(int dest, int src, u64 imm) {
+    gprs[dest].du64[0] = gpr_src(src).du64[0] & imm;
+  }
+  void ori(int dest, int src, u64 imm) {
+    gprs[dest].du64[0] = gpr_src(src).du64[0] | imm;
+  }
   void and_(int dest, int src0, int src1) {
     gprs[dest].du64[0] = gpr_src(src0).du64[0] & gpr_src(src1).du64[0];
   }
@@ -1141,9 +1179,15 @@ struct ExecutionContext {
     }
   }
 
-  void mov128_vf_gpr(int dst, int src) { memcpy(vfs[dst].f, gpr_src(src).f, 16); }
-  void mov128_gpr_vf(int dst, int src) { memcpy(gprs[dst].f, vf_src(src).f, 16); }
-  void mov128_gpr_gpr(int dst, int src) { gprs[dst] = gpr_src(src); }
+  void mov128_vf_gpr(int dst, int src) {
+    memcpy(vfs[dst].f, gpr_src(src).f, 16);
+  }
+  void mov128_gpr_vf(int dst, int src) {
+    memcpy(gprs[dst].f, vf_src(src).f, 16);
+  }
+  void mov128_gpr_gpr(int dst, int src) {
+    gprs[dst] = gpr_src(src);
+  }
 
   void vitof0(DEST mask, int dst, int src) {
     auto s = vf_src(src);
@@ -1210,9 +1254,15 @@ struct ExecutionContext {
     memcpy(&fprs[dst], &val, 4);
   }
 
-  void muls(int dst, int src0, int src1) { fprs[dst] = fprs[src0] * fprs[src1]; }
-  void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
-  void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
+  void muls(int dst, int src0, int src1) {
+    fprs[dst] = fprs[src0] * fprs[src1];
+  }
+  void adds(int dst, int src0, int src1) {
+    fprs[dst] = fprs[src0] + fprs[src1];
+  }
+  void subs(int dst, int src0, int src1) {
+    fprs[dst] = fprs[src0] - fprs[src1];
+  }
   void divs_accurate(int dst, int src0, int src1) {
     if (fprs[src1] == 0) {
       if (fprs[src0] < 0) {
@@ -1235,8 +1285,12 @@ struct ExecutionContext {
     memcpy(&fprs[dst], &v, 4);
   }
 
-  void movs(int dst, int src) { fprs[dst] = fprs[src]; }
-  void abss(int dst, int src) { fprs[dst] = std::abs(fprs[src]); }
+  void movs(int dst, int src) {
+    fprs[dst] = fprs[src];
+  }
+  void abss(int dst, int src) {
+    fprs[dst] = std::abs(fprs[src]);
+  }
 
   void cvtws(int dst, int src) {
     // float to int

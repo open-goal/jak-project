@@ -120,9 +120,8 @@ void confirm_textures_identical(TextureDB& tex_db) {
     } else {
       bool ok = it->second == tex.second.rgba_bytes;
       if (!ok) {
-        fmt::print("BAD duplicate: {} {} vs {}\n", name, tex.second.rgba_bytes.size(),
-                   it->second.size());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("BAD duplicate: {} {} vs {}", name,
+                                      tex.second.rgba_bytes.size(), it->second.size()));
       }
     }
   }

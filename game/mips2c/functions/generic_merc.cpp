@@ -1921,8 +1921,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
       vcallms_311_case_427(c, vis);
       break;
     default:
-      fmt::print("BAD JUMP {}\n", vis[vi01]);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("BAD JUMP {}", vis[vi01]));
   }
 }
 
@@ -1955,8 +1954,7 @@ void vcallms_311_reference(ExecutionContext* c, u16* vis) {
     case 427:
       goto JUMP_427;
     default:
-      fmt::print("BAD JUMP {}\n", vis[vi01]);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("BAD JUMP {}", vis[vi01]));
   }
 
   JUMP_314:

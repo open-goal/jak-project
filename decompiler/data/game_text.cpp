@@ -125,8 +125,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     if (read_words[i] < 1) {
       std::string debug;
       data.linked_data.append_word_to_string(debug, words.at(i));
-      printf("[%d] %d 0x%s\n", i, int(read_words[i]), debug.c_str());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("[{}] {} 0x{}", i, int(read_words[i]), debug.c_str()));
     }
   }
 
