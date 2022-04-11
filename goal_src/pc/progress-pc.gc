@@ -63,6 +63,7 @@
   ((int-backup int)
    (symbol-backup symbol)
    (subtitle-backup pc-subtitle-lang)
+   (aspect-native-choice symbol)
    (current-carousell (array game-text-id))
    
    (selection int)
@@ -136,7 +137,7 @@
   (new 'static 'boxed-array :type game-option :length 8 :allocated-length 9
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id ps2-aspect-ratio) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-native) :name (game-text-id ps2-aspect-ratio) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-ratio) :name (game-text-id aspect-ratio-ps2) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
@@ -499,7 +500,7 @@
   (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
-  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* use-vis?))
+  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *progress-carousell* aspect-native-choice))
   (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
@@ -517,6 +518,7 @@
   (set! (-> *sound-options-pc* 5 value-to-modify) (&-> *pc-settings* hinttitles?))
   (set! (-> *sound-options-pc* 6 value-to-modify) (&-> *progress-carousell* subtitle-backup))
   (set! (-> *sound-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
   
   ;; scroll stuff!
   (progress-scroll-reset)
@@ -600,7 +602,10 @@
             (when (or (-> obj selected-option) (= (-> options (-> obj option-index) option-type) (game-option-type yes-no)))
               (let ((sound? #f))
                 (case (-> options (-> obj option-index) option-type)
-                  (((game-option-type on-off) (game-option-type yes-no) (game-option-type normal-inverted))
+                  (((game-option-type on-off)
+                    (game-option-type yes-no)
+                    (game-option-type normal-inverted)
+                    (game-option-type aspect-native))
                    ;; pressed left on an on/off yes/no option
                    (when (not (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify))))
                      ;; it was on 'off' or 'no'
@@ -714,7 +719,11 @@
             (when (or (-> obj selected-option) (= (-> options (-> obj option-index) option-type) (game-option-type yes-no)))
               (let ((sound? #f))
                 (case (-> options (-> obj option-index) option-type)
-                  (((game-option-type on-off) (game-option-type yes-no) (game-option-type normal-inverted))
+                  (((game-option-type on-off)
+                    (game-option-type yes-no)
+                    (game-option-type normal-inverted)
+                    (game-option-type aspect-native)
+                    )
                    ;; play sound if it was on 'yes' because we're going to 'no' now
                    (set! sound? (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                    ;; set to no
@@ -930,7 +939,7 @@
                   )
                  (((game-option-type on-off) (game-option-type normal-inverted))
                   (set! (-> *progress-state* on-off-backup)
-                        (the-as symbol (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify)))))
+                        (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                   )
                  (((game-option-type display-mode))
                   ;; display-mode just reuses language stuff
@@ -1010,6 +1019,12 @@
                (((game-option-type aspect-ratio))
                 ;; aspect ratio is first written to the backup. so this is for applying the change if we went through with it.
                 (set! (-> *setting-control* default aspect-ratio) (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
+                )
+               (((game-option-type aspect-native))
+                (set! (-> *pc-settings* use-vis?) (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
+                (if (-> *pc-settings* use-vis?)
+                    (set! (-> *setting-control* current aspect-ratio) #f)
+                    (set-aspect! *pc-settings* (-> *pc-settings* aspect-custom-x) (-> *pc-settings* aspect-custom-y)))
                 )
                (((game-option-type display-mode))
                 ;; same thing.
@@ -1153,16 +1168,20 @@
                   (set! option-str (string-format "~D" (the int (-> (the-as (pointer float) (-> options index value-to-modify))))))
                   (set! option-x (+ (the int (* 2.5 (-> (the-as (pointer float) (-> options index value-to-modify))))) -100))
                   )
-                 (((game-option-type on-off) (game-option-type normal-inverted))
+                 (((game-option-type on-off) (game-option-type normal-inverted) (game-option-type aspect-native))
                   ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
                   (let (
                         (on-str (case (-> options index option-type)
-                                  (((game-option-type on-off))          (lookup-text! *common-text* (game-text-id on) #f))
-                                  (((game-option-type normal-inverted)) (lookup-text! *common-text* (game-text-id normal) #f))
+                                  (((game-option-type on-off) (game-option-type aspect-native))
+                                    (lookup-text! *common-text* (game-text-id on) #f))
+                                  (((game-option-type normal-inverted))
+                                    (lookup-text! *common-text* (game-text-id normal) #f))
                                   ))
                        (off-str (case (-> options index option-type)
-                                  (((game-option-type on-off))          (lookup-text! *common-text* (game-text-id off) #f))
-                                  (((game-option-type normal-inverted)) (lookup-text! *common-text* (game-text-id inverted) #f))
+                                  (((game-option-type on-off) (game-option-type aspect-native))
+                                    (lookup-text! *common-text* (game-text-id off) #f))
+                                  (((game-option-type normal-inverted))
+                                    (lookup-text! *common-text* (game-text-id inverted) #f))
                                   ))
                         )
                     (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
@@ -1271,7 +1290,7 @@
                    ;; slider and aspect ratio options just show their text
                    (set! option-str (lookup-text! *common-text* (-> options index name) #f))
                    )
-                  (((game-option-type on-off))
+                  (((game-option-type on-off) (game-option-type aspect-native))
                    ;; on-off options show their text + on or off
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
                                                         (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
