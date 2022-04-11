@@ -370,13 +370,6 @@ class EnumType : public ValueType {
   const std::unordered_map<std::string, s64>& entries() const { return m_entries; }
   bool is_bitfield() const { return m_is_bitfield; }
   std::string diff_impl(const Type& other) const override;
-  s64 max() const {
-    s64 m = INT64_MIN;
-    for (auto& [name, val] : m_entries) {
-      m = std::max(val, m);
-    }
-    return m;
-  }
 
  private:
   friend class TypeSystem;
