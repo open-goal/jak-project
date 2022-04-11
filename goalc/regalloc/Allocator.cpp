@@ -570,7 +570,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
 
         if (spill_assignment.reg == -1) {
           ASSERT_MSG(false,
-                     fmt::format("SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!"));
+                     "SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!");
           return false;
         }
 

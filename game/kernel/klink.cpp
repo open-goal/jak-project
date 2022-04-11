@@ -18,6 +18,7 @@
 #include "common/goal_constants.h"
 #include "game/mips2c/mips2c_table.h"
 #include "common/util/Assert.h"
+#include "third-party/fmt/core.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -143,7 +144,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
         }
       }
     } else {
-      ASSERT_MSG(false, fmt::format("UNHANDLED OBJECT FILE VERSION"));
+      ASSERT_MSG(false, "UNHANDLED OBJECT FILE VERSION");
     }
 
     if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {

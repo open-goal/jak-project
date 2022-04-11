@@ -1213,7 +1213,7 @@ u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32
               (*type_tag).offset);
     }
   }
-  ASSERT_MSG(false, fmt::format("[ERROR] call_method_of_type_arg2 failed!"));
+  ASSERT_MSG(false, "[ERROR] call_method_of_type_arg2 failed!");
   return arg;
 }
 

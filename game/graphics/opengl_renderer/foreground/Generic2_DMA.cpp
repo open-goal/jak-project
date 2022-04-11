@@ -180,7 +180,7 @@ u32 Generic2::handle_fragments_after_unpack_v4_32(const u8* data,
   // continue in this transfer
   off += first_unpack_bytes;
   if (off == end_of_vif) {
-    ASSERT_MSG(false, fmt::format("nothing after header upload"));
+    ASSERT_MSG(false, "nothing after header upload");
   }
 
   // the next thing is the vertex positions.

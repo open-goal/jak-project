@@ -276,7 +276,7 @@ Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words,
 
   auto kv = psms.find(tex.psm);
   if (kv == psms.end()) {
-    ASSERT_MSG(false, fmt::format("Got unsupported texture 0x{0:x}!", tex.psm));
+    ASSERT_MSG(false, fmt::format("Got unsupported texture 0x{:x}!", tex.psm));
   }
 
   return tex;

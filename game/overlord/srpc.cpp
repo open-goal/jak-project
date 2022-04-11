@@ -10,6 +10,7 @@
 #include "sbank.h"
 #include "iso_api.h"
 #include "common/util/Assert.h"
+#include "third-party/fmt/core.h"
 
 using namespace iop;
 

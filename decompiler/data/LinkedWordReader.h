@@ -17,7 +17,7 @@ class LinkedWordReader {
       m_offset++;
       return result;
     } else {
-      ASSERT_MSG(false, fmt::format("LinkedWordReader::get_type_tag failed"));
+      ASSERT_MSG(false, "LinkedWordReader::get_type_tag failed");
     }
   }
 
