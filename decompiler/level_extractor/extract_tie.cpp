@@ -2011,7 +2011,7 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   // the clamp matters
   if (!(info.clamp_val == 0b101 || info.clamp_val == 0 || info.clamp_val == 1 ||
         info.clamp_val == 0b100)) {
-    ASSERT(false, fmt::format("clamp: 0x{:x}", info.clamp_val));
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", info.clamp_val));
   }
 
   mode.set_clamp_s_enable(info.clamp_val & 0b1);

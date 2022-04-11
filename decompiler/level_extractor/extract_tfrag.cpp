@@ -2237,7 +2237,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
     } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
       this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
     } else {
-      ASSERT(false, fmt::format("unknown tfrag tree kind: {}", tree->my_type()));
+      ASSERT_MSG(false, fmt::format("unknown tfrag tree kind: {}", tree->my_type()));
     }
 
     ASSERT(tree->length == (int)tree->arrays.size());
