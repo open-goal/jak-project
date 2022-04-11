@@ -324,7 +324,7 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defstep :in "game/assets/game_text.txt"
+(defstep :in "game/assets/game_text.gp"
   :tool 'text
   :out '("out/iso/0COMMON.TXT"
          "out/iso/1COMMON.TXT"
@@ -335,7 +335,7 @@
          "out/iso/6COMMON.TXT")
   )
 
-(defstep :in "game/assets/game_subtitle.txt"
+(defstep :in "game/assets/game_subtitle.gp"
   :tool 'subtitle
   :out '("out/iso/0SUBTIT.TXT"
          "out/iso/3SUBTIT.TXT"
