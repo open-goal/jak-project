@@ -17,15 +17,10 @@ namespace v2 {
 struct Node {
   Node() = default;
 
-  Node(const std::string& str) {
-    kind = Kind::ATOM;
-    atom_str = str;
-  }
+  Node(const std::string& str) : kind(Kind::ATOM), atom_str(str) {}
 
-  Node(std::vector<Node>&& list, bool is_list) {
-    kind = is_list ? Kind::LIST : Kind::IMPROPER_LIST;
-    child_nodes = std::move(list);
-  }
+  Node(std::vector<Node>&& list, bool is_list)
+      : kind(is_list ? Kind::LIST : Kind::IMPROPER_LIST), child_nodes(std::move(list)) {}
   enum class Kind : u8 { ATOM, LIST, IMPROPER_LIST, INVALID } kind = Kind::INVALID;
 
   std::vector<Node> child_nodes;

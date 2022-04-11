@@ -224,18 +224,6 @@ Config read_config_file(const std::string& path_to_config_file,
   config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
   config.levels_extract = cfg.at("levels_extract").get<bool>();
 
-  // get new strings
-  if (!cfg.contains("new_strings_file")) {
-    return config;
-  }
-
-  auto new_strings_json = read_json_file_from_config(cfg, "new_strings_file");
-  config.new_strings_same_across_langs = new_strings_json.at("same_across_languages")
-                                             .get<std::unordered_map<std::string, std::string>>();
-  config.new_strings_different_across_langs =
-      new_strings_json.at("different_across_languages")
-          .get<std::unordered_map<std::string, std::vector<std::string>>>();
-
   return config;
 }
 

@@ -275,6 +275,7 @@
   ("progress-part.o" "progress-part")
   ("progress-draw.o" "progress-draw")
   ("progress.o" "progress")
+  ("progress-pc.o" "progress-pc") ;; added
   ("credits.o" "credits")
   ("projectiles.o" "projectiles")
   ("ocean.o" "ocean")

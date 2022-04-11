@@ -57,9 +57,16 @@ nav-enemy-default-event-handler
           )
       (set! (-> s5-0 quad) (-> arg0 quad))
       (set! (-> s5-0 y) (+ 20480.0 (-> s5-0 y)))
-      (let ((f0-2
-              (fill-and-probe-using-y-probe *collide-cache* s5-0 f30-0 (collide-kind background) self t1-0 (the-as uint 1))
-              )
+      (let ((f0-2 (fill-and-probe-using-y-probe
+                    *collide-cache*
+                    s5-0
+                    f30-0
+                    (collide-kind background)
+                    self
+                    t1-0
+                    (new 'static 'pat-surface :noentity #x1)
+                    )
+                  )
             )
         (if (< f0-2 0.0)
             (return (the-as object #f))
@@ -88,18 +95,18 @@ nav-enemy-default-event-handler
     (-> self nav-info jump-height-factor)
     -409600.0
     )
-  (set! (-> self nav-enemy-flags) (logand -513 (-> self nav-enemy-flags)))
-  (set! (-> self nav-enemy-flags) (logand -1025 (-> self nav-enemy-flags)))
-  (logior! (-> self nav-enemy-flags) 16)
-  (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
   (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
     (ja-channel-push! 1 60)
     (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
     )
-  (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
   (nav-enemy-execute-jump)
   (set! (-> self shadow-min-y) (+ (-> self collide-info trans y) (-> self nav-info shadow-min-y)))
-  (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
   (nav-enemy-jump-land-anim)
   0
   (none)
@@ -181,7 +188,7 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
-    (if (zero? (logand (-> self nav-enemy-flags) 8))
+    (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
         ((-> (method-of-type nav-enemy nav-enemy-patrol) trans))
         )
     (none)
@@ -190,7 +197,7 @@ nav-enemy-default-event-handler
   (behavior ()
     (vector-reset! (-> self collide-info transv))
     (set! (-> self jump-length) 16384.0)
-    (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (while #t
       (cond
         ((= (if (> (-> self skel active-channels) 0)
@@ -263,9 +270,9 @@ nav-enemy-default-event-handler
           (joint-control-channel-group-eval! a0-21 (the-as art-joint-anim #f) num-func-loop!)
           )
         )
-      (when (or (logtest? (nav-control-flags bit19) (-> self nav flags)) (< 2.0 (-> self nav block-count)))
+      (when (or (logtest? (nav-control-flags navcf19) (-> self nav flags)) (< 2.0 (-> self nav block-count)))
         (set! (-> self nav block-count) 0.0)
-        (logior! (-> self nav flags) (nav-control-flags bit10))
+        (logior! (-> self nav flags) (nav-control-flags navcf10))
         (nav-enemy-get-new-patrol-point)
         (set! (-> self nav target-pos quad) (-> self nav destination-pos quad))
         )
@@ -302,7 +309,7 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
-    (if (zero? (logand (-> self nav-enemy-flags) 8))
+    (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
         ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
         )
     (none)
@@ -311,7 +318,7 @@ nav-enemy-default-event-handler
   (behavior ()
     (vector-reset! (-> self collide-info transv))
     (set! (-> self jump-length) 32768.0)
-    (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (while #t
       (cond
         ((= (if (> (-> self skel active-channels) 0)
@@ -457,7 +464,7 @@ nav-enemy-default-event-handler
                                   :use-proximity-notice #f
                                   :use-jump-blocked #f
                                   :use-jump-patrol #f
-                                  :gnd-collide-with #x1
+                                  :gnd-collide-with (collide-kind background)
                                   :debug-draw-neck #f
                                   :debug-draw-jump #t
                                   )

@@ -44,20 +44,19 @@
   )
 
 (defmethod dummy-44 bonelurker ((obj bonelurker) (arg0 process) (arg1 event-message-block))
-  (the-as
-    object
-    (when (and (logtest? (-> obj nav-enemy-flags) 64) ((method-of-type touching-shapes-entry prims-touching?)
-                                                       (the-as touching-shapes-entry (-> arg1 param 0))
-                                                       (-> obj collide-info)
-                                                       (the-as uint 1)
-                                                       )
-               )
-      (when (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
-        (set! (-> obj speed-scale) 0.5)
-        #t
-        )
-      )
-    )
+  (the-as object (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+                            ((method-of-type touching-shapes-entry prims-touching?)
+                             (the-as touching-shapes-entry (-> arg1 param 0))
+                             (-> obj collide-info)
+                             (the-as uint 1)
+                             )
+                            )
+                   (when (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
+                     (set! (-> obj speed-scale) 0.5)
+                     #t
+                     )
+                   )
+          )
   )
 
 (defmethod dummy-43 bonelurker ((obj bonelurker) (arg0 process) (arg1 event-message-block))
@@ -124,7 +123,7 @@
                  (send-event-function arg0 a1-6)
                  )
                (set! (-> obj bump-player-time) (-> *display* base-frame-counter))
-               (set! (-> obj nav-enemy-flags) (logand -65 (-> obj nav-enemy-flags)))
+               (logclear! (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
                'push
                )
               )
@@ -237,10 +236,10 @@ nav-enemy-default-event-handler
   :trans
   (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
-    (if (and (zero? (logand (-> self nav-enemy-flags) 64))
+    (if (and (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf6)))
              (>= (- (-> *display* base-frame-counter) (-> self bump-player-time)) (seconds 0.5))
              )
-        (logior! (-> self nav-enemy-flags) 64)
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
         )
     (none)
     )
@@ -344,7 +343,7 @@ nav-enemy-default-event-handler
                 (joint-control-channel-group-eval! a0-23 (the-as art-joint-anim #f) num-func-seek!)
                 )
               )
-            (if (logtest? (-> self nav-enemy-flags) 256)
+            (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
                 (go-virtual nav-enemy-victory)
                 )
             (let ((a0-25 (-> self skel root-channel 0)))
@@ -364,7 +363,7 @@ nav-enemy-default-event-handler
                 (joint-control-channel-group-eval! a0-26 (the-as art-joint-anim #f) num-func-seek!)
                 )
               )
-            (if (logtest? (-> self nav-enemy-flags) 256)
+            (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
                 (go-virtual nav-enemy-victory)
                 )
             (let ((a0-28 (-> self skel root-channel 0)))
@@ -435,7 +434,7 @@ nav-enemy-default-event-handler
         )
       (while #t
         (when (not (nav-enemy-facing-player? 2730.6667))
-          (logior! (-> self nav-enemy-flags) 16)
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (ja-channel-push! 1 60)
           (let ((v1-20 (-> self skel root-channel 0)))
             (set! (-> v1-20 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
@@ -452,7 +451,7 @@ nav-enemy-default-event-handler
               (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-loop!)
               )
             )
-          (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           )
         (ja-channel-push! 1 75)
         (let ((a0-18 (-> self skel root-channel 0)))
@@ -573,7 +572,7 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
     (let ((a0-18 (-> self skel root-channel 0)))
       (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
@@ -707,7 +706,7 @@ nav-enemy-default-event-handler
                                       :use-proximity-notice #f
                                       :use-jump-blocked #t
                                       :use-jump-patrol #f
-                                      :gnd-collide-with #x1
+                                      :gnd-collide-with (collide-kind background)
                                       :debug-draw-neck #f
                                       :debug-draw-jump #f
                                       )

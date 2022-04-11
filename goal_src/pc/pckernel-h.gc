@@ -32,9 +32,9 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0002)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0003)
 
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x0000)
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0001)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
 (defglobalconstant PC_KERNEL_VERSION (logior
                                         (ash PC_KERNEL_VERSION_MAJOR 48)
@@ -54,33 +54,6 @@
 
 
 (defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
-
-(define *pc-subtitle-speaker-valid-options*
-     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 #t #f 'auto))
-
-(define *pc-graphics-display-mode-symbol-options*
-     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 'borderless 'fullscreen 'windowed))
-
-(define *pc-graphics-original-aspect-ratio-options*
-     (new 'static 'boxed-array :type symbol :length 2 :allocated-length 2 'orig-aspect-4x3 'orig-aspect-16x9))
-
-(define *pc-graphics-aspect-ratio-options*
-     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 'pc-aspect-4x3 'pc-aspect-5x4 'pc-aspect-16x9 'pc-aspect-21x9 'pc-aspect-32x9))
-
-(define *pc-graphics-4x3-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 5 :allocated-length 5 '640x480 '800x600 '1024x768 '1280x960 '1600x1200))
-
-(define *pc-graphics-5x4-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 3 :allocated-length 3 '960x768 '1280x1024 '1500x1200))
-
-(define *pc-graphics-16x9-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 7 :allocated-length 7 '854x480 '1280x720 '1920x1080 '2560x1440 '2880x1620 '3840x2160 '5120x2880))
-
-(define *pc-graphics-21x9-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 6 :allocated-length 6 '2560x1080 '3120x1440 '3200x1440 '3440x1440 '3840x1600 '5120x2160))
-
-(define *pc-graphics-32x9-valid-resolutions*
-     (new 'static 'boxed-array :type symbol :length 1 :allocated-length 1 '5120x1440))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -227,14 +200,11 @@
    (win-height int32)
    (dpi-x float) ;; DPI width scale
    (dpi-y float) ;; DPI height scale
-   (use-original-aspect-ratio? symbol)
-   (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically.
+   (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically based on game display size.
    (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
    (aspect-ratio-scale float) ;; aspect ratio compared to 4x3
-   (aspect-ratio-reciprocal float) ;; aspect ratio compared to 3x4
-   (resolution symbol) ;; selected resolution
+   (aspect-ratio-reciprocal float) ;; reciprocal of that
    (display-mode symbol) ;; display mode. can be windowed, fullscreen or borderless
-   (aspect-ratio-mode symbol) ;; explicit vetted aspect ratios - 4:3 | 5:4 | 16:9 | 21:9 | 32:9
    (letterbox? symbol) ;; letterbox. #f = stretched
    (vsync? symbol) ;; vsync.
    (font-scale float) ;; font scaling.
@@ -252,6 +222,8 @@
    (display-bug-report symbol)
    (display-heap-status symbol)
    (display-actor-counts symbol)
+   (display-text-box symbol)
+   (display-sha symbol)
    (mood-override? symbol)
    (mood-overrides float 8)
    (movie? symbol)
@@ -274,6 +246,7 @@
    (gfx-renderer pc-gfx-renderer) ;; the renderer to use
    (gfx-resolution float) ;; for supersampling
    (gfx-anisotropy float) ;; for anisotropy
+   (gfx-msaa int) ;; for MSAA
 
    ;; ps2 settings
    (ps2-read-speed? symbol) ;; emulate DVD loads
@@ -333,10 +306,7 @@
     (reset-fixes (_type_) none)
     (reset-extra (_type_) none)
     (draw (_type_ dma-buffer) none)
-    (use-orig-aspect-ratio! (_type_ symbol) none)
-    (set-display-mode! (_type_ symbol) none)
-    (set-aspect-ratio-mode! (_type_ symbol) none)
-    (set-resolution! (_type_ symbol) none)
+    (set-display-mode! (_type_ symbol) int)
     (set-size! (_type_ int int) none)
     (set-aspect! (_type_ int int) none)
     (set-aspect-ratio! (_type_ float) none)
@@ -345,6 +315,7 @@
     (actor-force-visible? (_type_) symbol)
     (update-cheats (_type_) int)
     (commit-to-file (_type_) none)
+    (load-settings (_type_) int)
     )
   )
 
@@ -397,6 +368,8 @@
   (set! (-> obj display-bug-report) #f)
   (set! (-> obj display-heap-status) #f)
   (set! (-> obj display-actor-counts) #f)
+  (set! (-> obj display-text-box) #f)
+  (set! (-> obj display-sha) *debug-segment*)
   (set! (-> obj mood-override?) #f)
   (set! (-> obj movie?) #f)
   (set! (-> obj font-scale) 1.0)
@@ -422,14 +395,15 @@
   (set! (-> obj width) PC_BASE_WIDTH)
   (set! (-> obj height) PC_BASE_HEIGHT)
   (set! (-> obj use-vis?) #f)
-  (set! (-> obj use-original-aspect-ratio?) #f)
   (set! (-> obj aspect-ratio-auto?) #f)
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
 
-  (set-aspect-ratio-mode! obj 'pc-aspect-4x3)
-  (set-resolution! obj '640x480)
+  (set-size! obj 640 480)
+  (set-aspect! obj 4 3)
   (set-display-mode! obj 'windowed)
+  
+  (set! (-> obj gfx-msaa) 4) ;; 4x msaa
 
   (none))
 

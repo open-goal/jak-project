@@ -139,7 +139,7 @@
   (behavior ()
     (set! (-> self turn-time) (seconds 0.2))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-      (when (or (logtest? (-> self nav-enemy-flags) 256)
+      (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
                 (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
                 )
         (ja-channel-push! 1 30)
@@ -161,7 +161,7 @@
         )
       (while #t
         (when (not (nav-enemy-facing-player? 2730.6667))
-          (logior! (-> self nav-enemy-flags) 16)
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (let ((a0-9 (-> self skel root-channel 0)))
             (set! (-> a0-9 param 0) 1.0)
             (joint-control-channel-group! a0-9 (the-as art-joint-anim #f) num-func-loop!)
@@ -182,7 +182,7 @@
               (joint-control-channel-group-eval! a0-15 (the-as art-joint-anim #f) num-func-loop!)
               )
             )
-          (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           )
         (if (not (= (if (> (-> self skel active-channels) 0)
                         (-> self skel root-channel 0 frame-group)
@@ -267,7 +267,7 @@
           )
         )
       )
-    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
     (let ((a0-12 (-> self skel root-channel 0)))
       (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
@@ -383,7 +383,7 @@
                                  :use-proximity-notice #t
                                  :use-jump-blocked #t
                                  :use-jump-patrol #f
-                                 :gnd-collide-with #x1
+                                 :gnd-collide-with (collide-kind background)
                                  :debug-draw-neck #f
                                  :debug-draw-jump #f
                                  )

@@ -185,7 +185,7 @@ void FramePlot::draw(float max) {
         auto* me = (FramePlot*)data;
         return me->m_buffer[(me->m_idx + idx) % SIZE];
       },
-      (void*)this, SIZE, 0, nullptr, 0, max, ImVec2(300, 40));
+      (void*)this, SIZE, 0, nullptr, 0, max, ImVec2(300, 20));
 }
 
 void SmallProfiler::draw(const std::string& status, const SmallProfilerStats& stats) {

@@ -25,9 +25,9 @@
 #include "Deci2Server.h"
 #include "common/util/Assert.h"
 
-Deci2Server::Deci2Server(std::function<bool()> shutdown_callback) {
+Deci2Server::Deci2Server(std::function<bool()> shutdown_callback)
+    : want_exit(std::move(shutdown_callback)) {
   buffer = new char[BUFFER_SIZE];
-  want_exit = std::move(shutdown_callback);
 }
 
 Deci2Server::~Deci2Server() {

@@ -229,7 +229,7 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (set! (-> self nav-enemy-flags) (logand -2 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
     (none)
     )
   :exit
@@ -251,8 +251,8 @@ nav-enemy-default-event-handler
            )
        )
       ((sharkey-notice-player?)
-       (when (zero? (logand (-> self nav-enemy-flags) 1))
-         (logior! (-> self nav-enemy-flags) 1)
+       (when (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf0)))
+         (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
          (set! (-> self notice-time) (-> *display* base-frame-counter))
          )
        (let ((a0-4 (dummy-16 (-> self nav) (-> *target* control trans))))
@@ -269,7 +269,7 @@ nav-enemy-default-event-handler
        )
       (else
         (if (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (seconds 10))
-            (set! (-> self nav-enemy-flags) (logand -2 (-> self nav-enemy-flags)))
+            (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
             )
         )
       )
@@ -810,7 +810,7 @@ nav-enemy-default-event-handler
                                    :use-proximity-notice #f
                                    :use-jump-blocked #f
                                    :use-jump-patrol #f
-                                   :gnd-collide-with #x1
+                                   :gnd-collide-with (collide-kind background)
                                    :debug-draw-neck #f
                                    :debug-draw-jump #f
                                    )

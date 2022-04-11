@@ -126,7 +126,7 @@ static int gl_init(GfxSettings& settings) {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
   }
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-  glfwWindowHint(GLFW_SAMPLES, 4);
+  glfwWindowHint(GLFW_SAMPLES, 1);
 
   return 0;
 }
@@ -285,7 +285,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
   auto window = display->window_glfw;
   switch (mode) {
-    case 0: {
+    case Gfx::DisplayMode::Windowed: {
       // windowed
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(window, NULL);
@@ -293,18 +293,18 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
                            display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
     } break;
-    case 1: {
+    case Gfx::DisplayMode::Fullscreen: {
       // fullscreen
-      if (display->fullscreen_mode() == 0) {
+      if (display->windowed()) {
         display->backup_params();
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, 60);
       glfwSetWindowFocusCallback(window, FocusCallback);
     } break;
-    case 2: {
+    case Gfx::DisplayMode::Borderless: {
       // borderless fullscreen
-      if (display->fullscreen_mode() == 0) {
+      if (display->windowed()) {
         display->backup_params();
       }
       int x, y;
@@ -319,6 +319,35 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
     } break;
+  }
+}
+
+static void gl_screen_size(GfxDisplay* display,
+                           int vmode_idx,
+                           int /*screen*/,
+                           s32* w_out,
+                           s32* h_out,
+                           s32* count_out) {
+  int count = 0;
+  auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  if (vmode_idx >= 0) {
+    vmode = &vmodes[vmode_idx];
+  } else {
+    for (int i = 0; i < count; ++i) {
+      if (!vmode || vmode->height < vmodes[i].height) {
+        vmode = &vmodes[i];
+      }
+    }
+  }
+  if (count_out) {
+    *count_out = count;
+  }
+  if (w_out) {
+    *w_out = vmode->width;
+  }
+  if (h_out) {
+    *h_out = vmode->height;
   }
 }
 
@@ -504,6 +533,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_display_set_size,    // display_set_size
     gl_display_scale,       // display_scale
     gl_set_fullscreen,      // set_fullscreen
+    gl_screen_size,         // screen_size
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path

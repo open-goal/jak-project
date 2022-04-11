@@ -32,14 +32,14 @@
 
 ;; definition for function aphid-invulnerable
 (defbehavior aphid-invulnerable aphid ()
-  (set! (-> self nav-enemy-flags) (logand -33 (-> self nav-enemy-flags)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
   (set-collide-offense (-> self collide-info) 2 (collide-offense indestructible))
   (none)
   )
 
 ;; definition for function aphid-vulnerable
 (defbehavior aphid-vulnerable aphid ()
-  (logior! (-> self nav-enemy-flags) 32)
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
   (set-collide-offense (-> self collide-info) 2 (collide-offense touch))
   (none)
   )
@@ -47,7 +47,9 @@
 ;; definition for method 43 of type aphid
 (defmethod dummy-43 aphid ((obj aphid) (arg0 process) (arg1 event-message-block))
   (cond
-    ((or (logtest? (-> obj nav-enemy-flags) 32) (= arg0 (ppointer->process (-> obj parent))))
+    ((or (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
+         (= arg0 (ppointer->process (-> obj parent)))
+         )
      (send-event arg0 'get-attack-count 1)
      (logclear! (-> obj mask) (process-mask actor-pause attackable))
      (go (method-of-object obj nav-enemy-die))
@@ -177,7 +179,7 @@
   (behavior ()
     (set! (-> self turn-time) (seconds 0.2))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-      (when (or (logtest? (-> self nav-enemy-flags) 256)
+      (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
                 (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
                 )
         (ja-channel-push! 1 30)
@@ -201,7 +203,7 @@
         )
       (while #t
         (when (not (nav-enemy-facing-player? 2730.6667))
-          (logior! (-> self nav-enemy-flags) 16)
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (let ((a0-7 (-> self skel root-channel 0)))
             (set! (-> a0-7 param 0) 1.0)
             (joint-control-channel-group! a0-7 (the-as art-joint-anim #f) num-func-loop!)
@@ -222,7 +224,7 @@
               (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-loop!)
               )
             )
-          (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           )
         (when (nav-enemy-rnd-percent? 0.3)
           (if (not (= (if (> (-> self skel active-channels) 0)
@@ -292,7 +294,7 @@
           )
         )
       )
-    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
     (let ((a0-12 (-> self skel root-channel 0)))
       (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
@@ -371,7 +373,7 @@
                                  :use-proximity-notice #f
                                  :use-jump-blocked #f
                                  :use-jump-patrol #f
-                                 :gnd-collide-with #x1
+                                 :gnd-collide-with (collide-kind background)
                                  :debug-draw-neck #f
                                  :debug-draw-jump #f
                                  )
@@ -431,7 +433,7 @@
   (vector-identity! (-> self collide-info scale))
   (set! (-> self entity) (-> arg0 entity))
   (TODO-RENAME-48 self)
-  (set! (-> self nav-enemy-flags) (logand -4097 (-> self nav-enemy-flags)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf12))
   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-3 from) self)
     (set! (-> a1-3 num-params) 0)

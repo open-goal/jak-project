@@ -163,6 +163,7 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 
   int offset_override = -1;
   int size_override = -1;
+  bool skip_in_decomp = false;
 
   if (!rest->is_empty_list()) {
     while (!rest->is_empty_list()) {
@@ -175,6 +176,8 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
       } else if (opt_name == ":size") {
         size_override = get_int(car(rest));
         rest = cdr(rest);
+      } else if (opt_name == ":do-not-decompile") {
+        skip_in_decomp = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -186,7 +189,8 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
   }
 
   // it's fine if the size is -1, that means it'll just use the type's size.
-  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override);
+  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override,
+                            skip_in_decomp);
 }
 
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {

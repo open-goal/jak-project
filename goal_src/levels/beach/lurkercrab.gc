@@ -80,7 +80,7 @@
   )
 
 (defmethod dummy-44 lurkercrab ((obj lurkercrab) (arg0 process) (arg1 event-message-block))
-  (if (and (logtest? (-> obj nav-enemy-flags) 64)
+  (if (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
            ((method-of-type touching-shapes-entry prims-touching?)
             (the-as touching-shapes-entry (-> arg1 param 0))
             (-> obj collide-info)
@@ -97,7 +97,7 @@
     6144.0
     16384.0
     )
-  (the-as object (if (zero? (logand (-> obj nav-enemy-flags) 256))
+  (the-as object (if (zero? (logand (-> obj nav-enemy-flags) (nav-enemy-flags navenmf8)))
                      (do-push-aways! (-> obj collide-info))
                      )
           )
@@ -114,7 +114,7 @@
          )
         ((= v1-1 'punch)
          (cond
-           ((logtest? (-> obj nav-enemy-flags) 32)
+           ((logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
             (logclear! (-> obj mask) (process-mask actor-pause))
             (go (method-of-object obj nav-enemy-die))
             )
@@ -136,7 +136,7 @@
              )
            )
          )
-        ((logtest? (-> obj nav-enemy-flags) 32)
+        ((logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
          (logclear! (-> obj mask) (process-mask actor-pause))
          (go (method-of-object obj nav-enemy-die))
          )
@@ -164,7 +164,7 @@ nav-enemy-default-event-handler
 
 (defmethod TODO-RENAME-37 lurkercrab ((obj lurkercrab))
   (when (-> obj orient)
-    (if (logtest? (nav-control-flags bit19) (-> obj nav flags))
+    (if (logtest? (nav-control-flags navcf19) (-> obj nav flags))
         (seek-to-point-toward-point!
           (-> obj collide-info)
           (-> obj nav target-pos)
@@ -275,7 +275,7 @@ nav-enemy-default-event-handler
   )
 
 (defbehavior lurkercrab-invulnerable lurkercrab ()
-  (set! (-> self nav-enemy-flags) (logand -33 (-> self nav-enemy-flags)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
   (let ((v1-3 (find-prim-by-id (-> self collide-info) (the-as uint 2))))
     (when v1-3
       (let ((v0-1 4))
@@ -287,7 +287,7 @@ nav-enemy-default-event-handler
   )
 
 (defbehavior lurkercrab-vulnerable lurkercrab ()
-  (logior! (-> self nav-enemy-flags) 32)
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
   (let ((v1-3 (find-prim-by-id (-> self collide-info) (the-as uint 2))))
     (when v1-3
       (let ((v0-1 1))
@@ -308,8 +308,8 @@ nav-enemy-default-event-handler
   :exit
   (behavior ()
     (lurkercrab-invulnerable)
-    (set! (-> self nav-enemy-flags) (logand -65 (-> self nav-enemy-flags)))
-    (logior! (-> self nav-enemy-flags) 8)
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (none)
     )
   :code
@@ -364,7 +364,7 @@ nav-enemy-default-event-handler
           (joint-control-channel-group! a0-12 (the-as art-joint-anim #f) num-func-loop!)
           )
         (ja-channel-push! 1 180)
-        (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
         (nav-enemy-rnd-int-range 2 6)
         (until (not (nav-enemy-rnd-go-idle? 0.2))
           (let ((gp-1 (-> self skel root-channel 0)))
@@ -381,7 +381,7 @@ nav-enemy-default-event-handler
               )
             )
           )
-        (logior! (-> self nav-enemy-flags) 8)
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
         (let ((a0-19 (-> self skel root-channel 0)))
           (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
           (set! (-> a0-19 param 0)
@@ -416,7 +416,7 @@ nav-enemy-default-event-handler
           )
         )
       (lurkercrab-vulnerable)
-      (logior! (-> self nav-enemy-flags) 64)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
       (dotimes (gp-5 2)
         (let ((s5-0 (-> self skel root-channel 0)))
           (set! (-> s5-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
@@ -435,7 +435,7 @@ nav-enemy-default-event-handler
           )
         )
       (lurkercrab-invulnerable)
-      (set! (-> self nav-enemy-flags) (logand -65 (-> self nav-enemy-flags)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
       (let ((gp-6 (-> self skel root-channel 0)))
         (set! (-> gp-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
         (set! (-> gp-6 param 0) (ja-aframe 90.0 0))
@@ -480,7 +480,7 @@ nav-enemy-default-event-handler
   :exit
   (behavior ()
     (lurkercrab-invulnerable)
-    (set! (-> self nav-enemy-flags) (logand -65 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
     (none)
     )
   :trans
@@ -495,7 +495,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 8)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (ja-channel-push! 1 22)
     (while #t
       (let ((a0-1 (-> self skel root-channel 0)))
@@ -516,7 +516,7 @@ nav-enemy-default-event-handler
           )
         )
       (lurkercrab-vulnerable)
-      (logior! (-> self nav-enemy-flags) 64)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
       (let ((gp-0 (-> self skel root-channel 0)))
         (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
         (set! (-> gp-0 param 0) (ja-aframe 30.0 0))
@@ -578,7 +578,7 @@ nav-enemy-default-event-handler
           )
         )
       (lurkercrab-invulnerable)
-      (set! (-> self nav-enemy-flags) (logand -65 (-> self nav-enemy-flags)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
       (let ((gp-8 (-> self skel root-channel 0)))
         (set! (-> gp-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
         (set! (-> gp-8 param 0) (ja-aframe 90.0 0))
@@ -792,7 +792,7 @@ nav-enemy-default-event-handler
                                       :use-proximity-notice #f
                                       :use-jump-blocked #f
                                       :use-jump-patrol #f
-                                      :gnd-collide-with #x1
+                                      :gnd-collide-with (collide-kind background)
                                       :debug-draw-neck #f
                                       :debug-draw-jump #f
                                       )
@@ -845,7 +845,7 @@ nav-enemy-default-event-handler
   (TODO-RENAME-45 obj *lurkercrab-nav-enemy-info*)
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 159) obj))
   (set! (-> obj orient) #t)
-  (set! (-> obj nav-enemy-flags) (logand -97 (-> obj nav-enemy-flags)))
+  (logclear! (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5 navenmf6))
   (set! (-> obj target-speed) 0.0)
   (set! (-> obj momentum-speed) 0.0)
   (set! (-> obj draw force-lod) 2)

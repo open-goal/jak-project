@@ -325,11 +325,12 @@ class BasicType : public StructureType {
 class BitField {
  public:
   BitField() = default;
-  BitField(TypeSpec type, std::string name, int offset, int size);
+  BitField(TypeSpec type, std::string name, int offset, int size, bool skip_in_decomp);
   const std::string name() const { return m_name; }
   int offset() const { return m_offset; }
   int size() const { return m_size; }
   const TypeSpec& type() const { return m_type; }
+  bool skip_in_decomp() const { return m_skip_in_static_decomp; }
   bool operator==(const BitField& other) const;
   bool operator!=(const BitField& other) const { return !((*this) == other); }
   std::string diff(const BitField& other) const;
@@ -340,6 +341,7 @@ class BitField {
   std::string m_name;
   int m_offset = -1;  // in bits
   int m_size = -1;    // in bits.
+  bool m_skip_in_static_decomp = false;
 };
 
 class BitFieldType : public ValueType {

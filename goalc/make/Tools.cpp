@@ -71,19 +71,20 @@ DgoDescription parse_desc_file(const std::string& filename, goos::Reader& reader
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
     {"jak1-v1", GameTextVersion::JAK1_V1}};
 
-std::unordered_map<GameTextVersion, std::vector<std::string>> open_subtitle_project(
+std::unordered_map<GameTextVersion, std::vector<std::string>> open_text_project(
+    const std::string& kind,
     const std::string& filename) {
   goos::Reader reader;
   auto& proj = reader.read_from_file({filename}).as_pair()->cdr.as_pair()->car;
   if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
-      proj.as_pair()->car.as_symbol()->name != "subtitle") {
-    throw std::runtime_error("invalid subtitle project");
+      proj.as_pair()->car.as_symbol()->name != kind) {
+    throw std::runtime_error(fmt::format("invalid {} project", kind));
   }
 
   std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
   goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
     if (!o.is_pair()) {
-      throw std::runtime_error("invalid entry in subtitle project");
+      throw std::runtime_error(fmt::format("invalid entry in {} project", kind));
     }
 
     auto& ver = o.as_pair()->car.as_symbol()->name;
@@ -152,11 +153,24 @@ bool GameCntTool::run(const ToolInput& task) {
 
 TextTool::TextTool() : Tool("text") {}
 
-bool TextTool::run(const ToolInput& task) {
+bool TextTool::needs_run(const ToolInput& task) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  compile_game_text(task.input.at(0));
+
+  std::vector<std::string> deps;
+  for (auto& [ver, inputs] : open_text_project("text", task.input.at(0))) {
+    for (auto& in : inputs) {
+      deps.push_back(in);
+    }
+  }
+  return Tool::needs_run({task.input, deps, task.output, task.arg});
+}
+
+bool TextTool::run(const ToolInput& task) {
+  for (auto& [ver, in] : open_text_project("text", task.input.at(0))) {
+    compile_game_text(in, ver);
+  }
   return true;
 }
 
@@ -166,7 +180,7 @@ bool GroupTool::run(const ToolInput&) {
   return true;
 }
 
-SubtitleTool::SubtitleTool(Compiler* compiler) : Tool("subtitle"), m_compiler(compiler) {}
+SubtitleTool::SubtitleTool() : Tool("subtitle") {}
 
 bool SubtitleTool::needs_run(const ToolInput& task) {
   if (task.input.size() != 1) {
@@ -174,7 +188,7 @@ bool SubtitleTool::needs_run(const ToolInput& task) {
   }
 
   std::vector<std::string> deps;
-  for (auto& [ver, inputs] : open_subtitle_project(task.input.at(0))) {
+  for (auto& [ver, inputs] : open_text_project("subtitle", task.input.at(0))) {
     for (auto& in : inputs) {
       deps.push_back(in);
     }
@@ -183,8 +197,8 @@ bool SubtitleTool::needs_run(const ToolInput& task) {
 }
 
 bool SubtitleTool::run(const ToolInput& task) {
-  for (auto& [ver, in] : open_subtitle_project(task.input.at(0))) {
-    compile_game_subtitle(in, ver, m_compiler->subtitle_db());
+  for (auto& [ver, in] : open_text_project("subtitle", task.input.at(0))) {
+    compile_game_subtitle(in, ver);
   }
   return true;
 }

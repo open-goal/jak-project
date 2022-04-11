@@ -324,7 +324,7 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defstep :in "assets/game_text.txt"
+(defstep :in "game/assets/game_text.gp"
   :tool 'text
   :out '("out/iso/0COMMON.TXT"
          "out/iso/1COMMON.TXT"
@@ -335,7 +335,7 @@
          "out/iso/6COMMON.TXT")
   )
 
-(defstep :in "game/assets/game_subtitle.txt"
+(defstep :in "game/assets/game_subtitle.gp"
   :tool 'subtitle
   :out '("out/iso/0SUBTIT.TXT"
          "out/iso/3SUBTIT.TXT"
@@ -1632,6 +1632,7 @@
  "gfx/decomp-h.gc"
  "gfx/hw/display.gc"
  "engine/connect.gc"
+ "ui/text-h.gc"
  "game/settings-h.gc"
  "gfx/capture.gc"
  "debug/memory-usage-h.gc"
@@ -1721,6 +1722,7 @@
  "camera/cam-update-h.gc"
  "debug/assert-h.gc"
  "ui/hud-h.gc"
+ "ui/progress-h.gc"
  "ps2/rpc-h.gc"
  "nav/path-h.gc"
  "nav/navigate-h.gc"
@@ -1854,7 +1856,10 @@
  "game/crates.gc"
  "ui/hud.gc"
  "ui/hud-classes.gc"
+ "ui/progress/progress-static.gc"
  "ui/progress/progress-part.gc"
+ "ui/progress/progress-draw.gc"
+ "ui/progress/progress.gc"
  "ui/credits.gc"
  "game/projectiles.gc"
  "gfx/ocean/ocean.gc"
@@ -1931,10 +1936,6 @@
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text")
+(goal-src "pc/progress-pc.gc" "progress" "pckernel")
 
-(goal-src "pc/engine/ui/text-h.gc" "connect")
-(goal-src "pc/engine/ui/progress-h.gc" "hud-h")
-(goal-src "pc/engine/ui/progress/progress-static.gc" "hud-classes")
-(goal-src "pc/engine/ui/progress/progress-draw.gc" "progress-part")
-(goal-src "pc/engine/ui/progress/progress.gc" "progress-draw")
 

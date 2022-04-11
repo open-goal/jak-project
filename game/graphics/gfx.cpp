@@ -215,12 +215,26 @@ void get_window_scale(float* x, float* y) {
   }
 }
 
+int get_fullscreen() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->fullscreen_mode();
+  } else {
+    return DisplayMode::Windowed;
+  }
+}
+
+void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_screen_size(vmode_idx, w, h, c);
+  }
+}
+
 void set_letterbox(int w, int h) {
   g_global_settings.lbox_w = w;
   g_global_settings.lbox_h = h;
 }
 
-void set_fullscreen(int mode, int screen) {
+void set_fullscreen(DisplayMode mode, int screen) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->set_fullscreen(mode, screen);
   }

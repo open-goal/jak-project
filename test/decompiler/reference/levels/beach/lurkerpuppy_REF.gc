@@ -123,7 +123,7 @@ nav-enemy-default-event-handler
           (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
           )
         (until (ja-done? 0)
-          (if (logtest? (-> self nav-enemy-flags) 256)
+          (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
               (go-virtual nav-enemy-attack)
               )
           (suspend)
@@ -151,10 +151,10 @@ nav-enemy-default-event-handler
   (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
     (set! (-> self turn-time) (seconds 0.1))
-    (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (while #t
-        (logior! (-> self nav-enemy-flags) 16)
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
         (ja-channel-push! 1 30)
         (let ((gp-0 (-> self skel root-channel 0)))
           (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
@@ -165,9 +165,9 @@ nav-enemy-default-event-handler
           )
         (until (ja-done? 0)
           (let ((f0-3 (ja-aframe-num 0)))
-            (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+            (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
             (if (and (>= f0-3 2.5) (>= 7.5 f0-3))
-                (logior! (-> self nav-enemy-flags) 16)
+                (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
                 )
             )
           (suspend)
@@ -177,7 +177,7 @@ nav-enemy-default-event-handler
             (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
             )
           )
-        (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
         (let ((a0-11 (-> self skel root-channel 0)))
           (set! (-> a0-11 param 0) 1.0)
           (joint-control-channel-group! a0-11 (the-as art-joint-anim #f) num-func-loop!)
@@ -238,7 +238,7 @@ nav-enemy-default-event-handler
         (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
     (let ((a0-7 (-> self skel root-channel 0)))
       (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
@@ -294,12 +294,12 @@ nav-enemy-default-event-handler
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 16)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (none)
     )
   :code
   (behavior ()
-    (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (ja-channel-push! 1 22)
     (dotimes (gp-0 4)
       (let ((a0-2 (-> self skel root-channel 0)))
@@ -313,9 +313,9 @@ nav-enemy-default-event-handler
         )
       (until (ja-done? 0)
         (let ((f0-4 (ja-aframe-num 0)))
-          (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (if (and (>= f0-4 2.5) (>= 7.5 f0-4))
-              (logior! (-> self nav-enemy-flags) 16)
+              (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
               )
           )
         (suspend)
@@ -382,7 +382,7 @@ nav-enemy-default-event-handler
                                        :use-proximity-notice #f
                                        :use-jump-blocked #f
                                        :use-jump-patrol #f
-                                       :gnd-collide-with #x1
+                                       :gnd-collide-with (collide-kind background)
                                        :debug-draw-neck #f
                                        :debug-draw-jump #f
                                        )

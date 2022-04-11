@@ -25,9 +25,9 @@ class GfxDisplay {
   int m_xpos;
   int m_ypos;
 
-  int m_fullscreen_mode = 0;
+  Gfx::DisplayMode m_fullscreen_mode = Gfx::DisplayMode::Windowed;
+  Gfx::DisplayMode m_fullscreen_target_mode = Gfx::DisplayMode::Windowed;
   int m_fullscreen_screen;
-  int m_fullscreen_target_mode = 0;
   int m_fullscreen_target_screen;
 
  public:
@@ -45,22 +45,26 @@ class GfxDisplay {
   void set_renderer(GfxPipeline pipeline);
   void set_window(GLFWwindow* window);
   void set_title(const char* title);
-  void set_size(int w, int h);
-  void get_scale(float* w, float* h);
+  void set_size(int w, int h) { m_renderer->display_set_size(this, w, h); }
+  void get_scale(float* x, float* y) { m_renderer->display_scale(this, x, y); }
+  void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c) {
+    m_renderer->screen_size(this, vmode_idx, 0, w, h, c);
+  }
   const char* title() const { return m_title; }
 
-  bool fullscreen_pending() { return m_fullscreen_mode != m_fullscreen_target_mode; }
+  bool fullscreen_pending() const { return m_fullscreen_mode != m_fullscreen_target_mode; }
   void fullscreen_flush() {
     m_renderer->set_fullscreen(this, m_fullscreen_target_mode, m_fullscreen_target_screen);
     m_fullscreen_mode = m_fullscreen_target_mode;
     m_fullscreen_screen = m_fullscreen_target_screen;
   }
-  void set_fullscreen(int mode, int screen) {
+  void set_fullscreen(Gfx::DisplayMode mode, int screen) {
     m_fullscreen_target_mode = mode;
     m_fullscreen_target_screen = screen;
   }
-  int fullscreen_mode() { return m_fullscreen_mode; }
-  int fullscreen_screen() { return m_fullscreen_screen; }
+  int fullscreen_mode() const { return m_fullscreen_mode; }
+  int fullscreen_screen() const { return m_fullscreen_screen; }
+  bool windowed() const { return m_fullscreen_mode == Gfx::DisplayMode::Windowed; }
   void backup_params();
   int width_backup() { return m_width; }
   int height_backup() { return m_height; }

@@ -62,14 +62,13 @@ std::string uppercase(const std::string& in) {
  */
 void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db) {
   auto font = get_font_bank(text_ver);
-  std::map<int, GameSubtitleBank*> banks;
-  bool languages_set = false;
+  std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
     if (obj.is_pair()) {
       auto& head = car(obj);
       if (head.is_symbol() && head.as_symbol()->name == "language-id") {
-        if (languages_set) {
+        if (banks.size() != 0) {
           throw std::runtime_error("Languages have been set multiple times.");
         }
 
@@ -81,17 +80,15 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
           auto lang = get_int(obj);
           if (!db.bank_exists(lang)) {
             // database has no lang yet
-            banks[lang] = db.new_bank(lang);
+            banks[lang] = db.add_bank(std::make_shared<GameSubtitleBank>(lang));
           } else {
             banks[lang] = db.bank_by_id(lang);
           }
         });
-
-        languages_set = true;
       }
 
       else if (head.is_string()) {
-        if (!languages_set) {
+        if (banks.size() == 0) {
           throw std::runtime_error("At least one language must be set before defining entries.");
         }
         GameSubtitleSceneInfo scene(head.as_string()->data);
@@ -127,7 +124,7 @@ void parse(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& d
       throw std::runtime_error("Invalid game subtitles file");
     }
   });
-  if (!languages_set) {
+  if (banks.size() == 0) {
     throw std::runtime_error("At least one language must be set.");
   }
 }
@@ -183,9 +180,8 @@ void compile(GameSubtitleDB& db) {
 }
 }  // namespace
 
-void compile_game_subtitle(const std::vector<std::string>& filenames,
-                           GameTextVersion text_ver,
-                           GameSubtitleDB& db) {
+void compile_game_subtitle(const std::vector<std::string>& filenames, GameTextVersion text_ver) {
+  GameSubtitleDB db;
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Subtitle] {}\n", filename.c_str());

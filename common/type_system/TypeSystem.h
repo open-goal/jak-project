@@ -222,7 +222,8 @@ class TypeSystem {
                              const std::string& field_name,
                              const TypeSpec& field_type,
                              int offset,
-                             int field_size);
+                             int field_size,
+                             bool skip_in_decomp);
 
   bool should_use_virtual_methods(const Type* type, int method_id) const;
   bool should_use_virtual_methods(const TypeSpec& type, int method_id) const;

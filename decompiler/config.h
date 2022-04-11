@@ -130,9 +130,6 @@ struct Config {
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
 
-  std::unordered_map<std::string, std::string> new_strings_same_across_langs;
-  std::unordered_map<std::string, std::vector<std::string>> new_strings_different_across_langs;
-
   std::unordered_map<std::string, int> bad_format_strings;
 
   std::vector<std::string> levels_to_extract;

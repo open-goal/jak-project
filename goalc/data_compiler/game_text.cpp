@@ -60,34 +60,44 @@ std::string uppercase(const std::string& in) {
 }
 
 /*!
- * Parse a game text file for all languages.
- * The result is a vector<map<text_id, string>>
- *  so result[lang_id][text_id] gets you the text in the given language.
+ * Parse a game text file.
+ * Information is added to the game text database.
  *
- * The file should begin with (language-count x) with the given number of languages.
- * Each entry should be (text-id "text-in-lang-0" "text-in-lang-1" ... )
- * The text id's can be out of order or missing entries.
+ * The file should begin with (language-id x y z...) with the given language IDs.
+ * Each entry should be (id "line for 1st language" "line for 2nd language" ...)
+ * This adds the text line to each of the specified languages.
  */
-std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data,
-                                                        std::string* group_name) {
-  std::vector<std::unordered_map<int, std::string>> text;
-  bool languages_set = false;
+void parse(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db) {
+  auto font = get_font_bank(text_ver);
+  std::vector<std::shared_ptr<GameTextBank>> banks;
   bool group_name_set = false;
   std::string possible_group_name;
 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
     if (obj.is_pair()) {
-      auto& head = obj.as_pair()->car;
-      if (head.is_symbol() && head.as_symbol()->name == "language-count") {
-        if (languages_set) {
-          throw std::runtime_error("Languages has been set multiple times.");
+      auto& head = car(obj);
+      if (head.is_symbol() && head.as_symbol()->name == "language-id") {
+        if (banks.size() != 0) {
+          throw std::runtime_error("Languages have been set multiple times.");
         }
-        languages_set = true;
 
-        text.resize(get_int(car(cdr(obj))));
-        if (!cdr(cdr(obj)).is_empty_list()) {
-          throw std::runtime_error("language-count has too many arguments");
+        if (cdr(obj).is_empty_list()) {
+          throw std::runtime_error("At least one language must be set.");
         }
+
+        if (!group_name_set) {
+          throw std::runtime_error("Text group must be set before languages.");
+        }
+
+        for_each_in_list(cdr(obj), [&](const goos::Object& obj) {
+          auto lang = get_int(obj);
+          if (!db.bank_exists(possible_group_name, lang)) {
+            // database has no lang in this group yet
+            banks.push_back(db.add_bank(possible_group_name, std::make_shared<GameTextBank>(lang)));
+          } else {
+            banks.push_back(db.bank_by_id(possible_group_name, lang));
+          }
+        });
       } else if (head.is_symbol() && head.as_symbol()->name == "group-name") {
         if (group_name_set) {
           throw std::runtime_error("group-name has been set multiple times.");
@@ -101,31 +111,26 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
       }
 
       else if (head.is_int()) {
+        if (banks.size() == 0) {
+          throw std::runtime_error("At least one language must be set before defining entries.");
+        }
         int i = 0;
         int id = head.as_int();
         for_each_in_list(cdr(obj), [&](const goos::Object& entry) {
-          if (i >= int(text.size())) {
-            throw std::runtime_error(
-                "String has too many entries. There should be one per language");
-          }
-
           if (entry.is_string()) {
-            auto& map = text.at(i);
-            if (map.find(id) != map.end()) {
-              throw std::runtime_error("Entry appears more than once");
+            if (i >= int(banks.size())) {
+              throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
             }
 
-            // TODO
-            auto font = get_font_bank(GameTextVersion::JAK1_V1);
-            map[id] = font->convert_utf8_to_game(entry.as_string()->data);
+            auto line = font->convert_utf8_to_game(entry.as_string()->data);
+            banks[i++]->set_line(id, line);
           } else {
-            throw std::runtime_error("Each entry must be a string");
+            throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
           }
-
-          i++;
         });
-        if (i != int(text.size())) {
-          throw std::runtime_error("String did not have an entry for each language");
+        if (i != int(banks.size())) {
+          throw std::runtime_error(
+              fmt::format("Not enough strings specified in text id #x{:x}", id));
         }
       } else {
         throw std::runtime_error("Invalid game text file entry: " + head.print());
@@ -134,12 +139,9 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
       throw std::runtime_error("Invalid game text file");
     }
   });
-
-  if (!group_name_set) {
-    throw std::runtime_error("group-name not set.");
+  if (banks.size() == 0) {
+    throw std::runtime_error("At least one language must be set.");
   }
-  *group_name = possible_group_name;
-  return text;
 }
 
 /*
@@ -162,43 +164,33 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
  * Write game text data to a file. Uses the V2 object format which is identical between GOAL and
  * OpenGOAL, so this should produce exactly identical files to what is found in the game.
  */
-void compile(const std::vector<std::unordered_map<int, std::string>>& text,
-             const std::string& group_name) {
-  if (text.empty()) {
-    return;
-  }
-  // get all text ID's we know
-  std::vector<int> add_order;
-  add_order.reserve(text.front().size());
-  for (auto& x : text.front()) {
-    add_order.push_back(x.first);
-  }
-  // and sort them to be added in order. This matches the game.
-  std::sort(add_order.begin(), add_order.end());
+void compile(GameTextDB& db) {
+  for (const auto& [group_name, banks] : db.groups()) {
+    for (const auto& [lang, bank] : banks) {
+      DataObjectGenerator gen;
+      gen.add_type_tag("game-text-info");  // type
+      gen.add_word(bank->lines().size());  // length
+      gen.add_word(lang);                  // language-id
+      // this string is found in the string pool.
+      gen.add_ref_to_string_in_pool(group_name);  // group-name
 
-  for (int lang = 0; lang < int(text.size()); lang++) {
-    DataObjectGenerator gen;
-    gen.add_type_tag("game-text-info");  // type
-    gen.add_word(text.front().size());   // length
-    gen.add_word(lang);                  // language-id
-    // this string is found in the string pool.
-    gen.add_ref_to_string_in_pool(group_name);  // group-name
+      // now add all the datas: (the lines are already sorted by id)
+      for (auto& [id, line] : bank->lines()) {
+        gen.add_word(id);  // id
+        // these strings must be in the string pool, as sometimes there are duplicate
+        // strings in a single language, and these strings should be stored once and have multiple
+        // references to them.
+        gen.add_ref_to_string_in_pool(line);  // text
+      }
 
-    // now add all the datas:
-    for (auto id : add_order) {
-      gen.add_word(id);  // id
-      // these strings must be in the string pool, as sometimes there are duplicate
-      // strings in a single language, and these strings should be stored once and have multiple
-      // references to them.
-      gen.add_ref_to_string_in_pool(text.at(lang).at(id));  // text
+      auto data = gen.generate_v2();
+
+      file_util::create_dir_if_needed(file_util::get_file_path({"out", "iso"}));
+      file_util::write_binary_file(
+          file_util::get_file_path(
+              {"out", "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
+          data.data(), data.size());
     }
-    auto data = gen.generate_v2();
-
-    file_util::create_dir_if_needed(file_util::get_file_path({"out", "iso"}));
-    file_util::write_binary_file(
-        file_util::get_file_path(
-            {"out", "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
-        data.data(), data.size());
   }
 }
 }  // namespace
@@ -206,11 +198,13 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text,
 /*!
  * Read a game text description file and generate GOAL objects.
  */
-void compile_game_text(const std::string& filename) {
+void compile_game_text(const std::vector<std::string>& filenames, GameTextVersion text_ver) {
+  GameTextDB db;
   goos::Reader reader;
-  auto code = reader.read_from_file({filename});
-  printf("[Build Game Text] %s\n", filename.c_str());
-  std::string group_name;
-  auto text_map = parse(code, &group_name);
-  compile(text_map, group_name);
+  for (auto& filename : filenames) {
+    fmt::print("[Build Game Text] {}\n", filename.c_str());
+    auto code = reader.read_from_file({filename});
+    parse(code, text_ver, db);
+  }
+  compile(db);
 }

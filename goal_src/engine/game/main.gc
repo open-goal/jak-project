@@ -356,7 +356,7 @@
     ;; cheat mode
     (check-cheat-code (-> *cheat-temp* 0) 0
         (up up down down left right left right x x square circle square circle)
-          (cpad-clear-buttons! 0 r1)
+          (cpad-clear! 0 r1)
           ;; toggle!
           (not! *cheat-mode*)
           (cheats-sound-play *cheat-mode*)
@@ -366,7 +366,7 @@
     (when *cheat-mode*
       (check-cheat-code (-> *cheat-temp* 1) 0
           (circle square circle square x x right left right left down down up up)
-            (cpad-clear-buttons! 0 r1)
+            (cpad-clear! 0 r1)
             ;; toggle between #t and debug.
             (set! *cheat-mode* (if (= *cheat-mode* 'debug)
                                         #t
@@ -382,7 +382,7 @@
       ((GAME_TERRITORY_SCEI)
         (check-cheat-code (-> *cheat-temp* 2) 0
             (l1 r1 l1 r1 triangle circle x square)
-              (cpad-clear-buttons! 0 r1)
+              (cpad-clear! 0 r1)
               (set! *progress-cheat* (if *progress-cheat*
                                            #f
                                            'language
@@ -397,7 +397,7 @@
     (when *debug-segment*
       (check-cheat-code (-> *cheat-temp* 3) 0
           (x square triangle circle x square triangle circle)
-            (cpad-clear-buttons! 0 r1)
+            (cpad-clear! 0 r1)
             (set! *progress-cheat* (if *progress-cheat*
                                          #f
                                          'pal
@@ -408,7 +408,7 @@
       ;; added in PAL
       (check-cheat-code (-> *cheat-temp* 4) 0 ;; they erroneously used (-> *cheat-temp* 5) here!
           (triangle x circle square triangle x circle square)
-            (cpad-clear-buttons! 0 r1)
+            (cpad-clear! 0 r1)
             (set! *cheat-mode* (if (= *cheat-mode* 'camera)
                                         #f
                                         'camera
@@ -665,8 +665,9 @@
       (*draw-hook*)
       (add-ee-profile-frame 'draw :g #x80)
 
-      (#when PC_PORT
-        (draw-build-revision))
+      (with-pc
+        (if (-> *pc-settings* display-sha)
+            (draw-build-revision)))
 
       (*menu-hook*)
       (add-ee-profile-frame 'draw :g #x40)

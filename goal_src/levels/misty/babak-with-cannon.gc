@@ -139,7 +139,7 @@ nav-enemy-default-event-handler
     (if (nav-enemy-notice-player?)
         (go-virtual nav-enemy-chase)
         )
-    (if (logtest? (nav-control-flags bit19) (-> self nav flags))
+    (if (logtest? (nav-control-flags navcf19) (-> self nav flags))
         (go babak-with-cannon-jump-onto-cannon)
         )
     (none)
@@ -230,7 +230,7 @@ nav-enemy-default-event-handler
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
   :code
@@ -238,7 +238,7 @@ nav-enemy-default-event-handler
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
-    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (nav-enemy-neck-control-inactive)
     (let* ((v1-7 (-> self cannon-ent))
            (gp-0 (if v1-7
@@ -264,9 +264,9 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 60)
       (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
-    (logior! (-> self nav-enemy-flags) 16)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (nav-enemy-execute-jump)
-    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (let* ((v1-20 (-> self cannon-ent))
            (gp-1 (if v1-20
                      (-> v1-20 extra process)
@@ -320,7 +320,7 @@ nav-enemy-default-event-handler
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
   :code
@@ -328,7 +328,7 @@ nav-enemy-default-event-handler
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (nav-enemy-initialize-jump (-> self entity extra trans))
     (nav-enemy-neck-control-look-at)
-    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (let ((a0-2 (-> self skel root-channel 0)))
       (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
       (set! (-> a0-2 param 0) 0.0)
@@ -350,7 +350,7 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 60)
       (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
-    (logior! (-> self nav-enemy-flags) 16)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (nav-enemy-execute-jump)
     (let ((a1-6 (dummy-16 (-> self nav) (-> self jump-dest))))
       (set-current-poly! (-> self nav) a1-6)

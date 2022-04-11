@@ -936,12 +936,16 @@ std::string BasicType::diff_impl(const Type& other_) const {
 // Bitfield
 /////////////////
 
-BitField::BitField(TypeSpec type, std::string name, int offset, int size)
-    : m_type(std::move(type)), m_name(std::move(name)), m_offset(offset), m_size(size) {}
+BitField::BitField(TypeSpec type, std::string name, int offset, int size, bool skip_in_decomp)
+    : m_type(std::move(type)),
+      m_name(std::move(name)),
+      m_offset(offset),
+      m_size(size),
+      m_skip_in_static_decomp(skip_in_decomp) {}
 
 bool BitField::operator==(const BitField& other) const {
   return m_type == other.m_type && m_name == other.m_name && m_offset == other.m_offset &&
-         other.m_size == m_size;
+         m_size == other.m_size;
 }
 
 std::string BitField::diff(const BitField& other) const {
@@ -961,6 +965,11 @@ std::string BitField::diff(const BitField& other) const {
 
   if (m_size != other.m_size) {
     result += fmt::format("size: {} vs. {}\n", m_size, other.m_size);
+  }
+
+  if (m_skip_in_static_decomp != other.m_skip_in_static_decomp) {
+    result += fmt::format("skip_in_static_decomp: {} vs. {}\n", m_skip_in_static_decomp,
+                          other.m_skip_in_static_decomp);
   }
 
   return result;
