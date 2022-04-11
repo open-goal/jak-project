@@ -151,7 +151,7 @@ bool GameCntTool::run(const ToolInput& task) {
   return true;
 }
 
-TextTool::TextTool(Compiler* compiler) : Tool("text"), m_compiler(compiler) {}
+TextTool::TextTool() : Tool("text") {}
 
 bool TextTool::needs_run(const ToolInput& task) {
   if (task.input.size() != 1) {
@@ -169,7 +169,7 @@ bool TextTool::needs_run(const ToolInput& task) {
 
 bool TextTool::run(const ToolInput& task) {
   for (auto& [ver, in] : open_text_project("text", task.input.at(0))) {
-    compile_game_text(in, ver, m_compiler->text_db());
+    compile_game_text(in, ver);
   }
   return true;
 }
@@ -180,7 +180,7 @@ bool GroupTool::run(const ToolInput&) {
   return true;
 }
 
-SubtitleTool::SubtitleTool(Compiler* compiler) : Tool("subtitle"), m_compiler(compiler) {}
+SubtitleTool::SubtitleTool() : Tool("subtitle") {}
 
 bool SubtitleTool::needs_run(const ToolInput& task) {
   if (task.input.size() != 1) {
@@ -198,7 +198,7 @@ bool SubtitleTool::needs_run(const ToolInput& task) {
 
 bool SubtitleTool::run(const ToolInput& task) {
   for (auto& [ver, in] : open_text_project("subtitle", task.input.at(0))) {
-    compile_game_subtitle(in, ver, m_compiler->subtitle_db());
+    compile_game_subtitle(in, ver);
   }
   return true;
 }

@@ -180,9 +180,8 @@ void compile(GameSubtitleDB& db) {
 }
 }  // namespace
 
-void compile_game_subtitle(const std::vector<std::string>& filenames,
-                           GameTextVersion text_ver,
-                           GameSubtitleDB& db) {
+void compile_game_subtitle(const std::vector<std::string>& filenames, GameTextVersion text_ver) {
+  GameSubtitleDB db;
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Subtitle] {}\n", filename.c_str());

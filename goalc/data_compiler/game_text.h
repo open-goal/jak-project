@@ -59,6 +59,4 @@ class GameTextDB {
   std::unordered_map<std::string, std::map<int, std::shared_ptr<GameTextBank>>> m_banks;
 };
 
-void compile_game_text(const std::vector<std::string>& filenames,
-                       GameTextVersion text_ver,
-                       GameTextDB& db);
+void compile_game_text(const std::vector<std::string>& filenames, GameTextVersion text_ver);

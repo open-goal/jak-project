@@ -57,8 +57,6 @@ class Compiler {
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
-  GameTextDB& text_db() { return m_text_db; }
-  GameSubtitleDB& subtitle_db() { return m_subtitle_db; }
   Replxx::completions_t find_symbols_by_prefix(std::string const& context,
                                                int& contextLen,
                                                std::vector<std::string> const& user_data);
@@ -90,8 +88,6 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
-  GameTextDB m_text_db;
-  GameSubtitleDB m_subtitle_db;
 
   struct DebugStats {
     int num_spills = 0;

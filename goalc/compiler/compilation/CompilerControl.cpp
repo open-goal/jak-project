@@ -94,7 +94,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
         throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
       }
     });
-    compile_game_subtitle(files, (GameTextVersion)args.unnamed.at(1).as_int(), m_subtitle_db);
+    compile_game_subtitle(files, (GameTextVersion)args.unnamed.at(1).as_int());
   } else if (kind == "text") {
     std::vector<std::string> files;
     for_each_in_list(args.named.at("files"), [this, &files, &form](const goos::Object& o) {
@@ -104,7 +104,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
         throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
       }
     });
-    compile_game_text(files, (GameTextVersion)args.unnamed.at(1).as_int(), m_text_db);
+    compile_game_text(files, (GameTextVersion)args.unnamed.at(1).as_int());
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }

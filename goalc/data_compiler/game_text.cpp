@@ -198,9 +198,8 @@ void compile(GameTextDB& db) {
 /*!
  * Read a game text description file and generate GOAL objects.
  */
-void compile_game_text(const std::vector<std::string>& filenames,
-                       GameTextVersion text_ver,
-                       GameTextDB& db) {
+void compile_game_text(const std::vector<std::string>& filenames, GameTextVersion text_ver) {
+  GameTextDB db;
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Text] {}\n", filename.c_str());

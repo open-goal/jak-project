@@ -84,6 +84,4 @@ class GameSubtitleDB {
   std::map<int, std::shared_ptr<GameSubtitleBank>> m_banks;
 };
 
-void compile_game_subtitle(const std::vector<std::string>& filenames,
-                           GameTextVersion text_ver,
-                           GameSubtitleDB& db);
+void compile_game_subtitle(const std::vector<std::string>& filenames, GameTextVersion text_ver);
