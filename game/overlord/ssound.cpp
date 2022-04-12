@@ -339,7 +339,7 @@ s32 CalculateAngle(Vec3w* trans) {
     } else if (diffZ >= 0) {
       angle = angle + 270;
     } else {
-      angle = 270 - 90;
+      angle = 270 - angle;
     }
   }
 
