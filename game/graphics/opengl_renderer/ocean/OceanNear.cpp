@@ -102,8 +102,7 @@ void OceanNear::render(DmaFollower& dma,
           run_call39_vu2c();
           break;
         default:
-          fmt::print("unknown ocean near call: {}\n", v0.immediate);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("unknown ocean near call: {}", v0.immediate));
       }
     }
   }

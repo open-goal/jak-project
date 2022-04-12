@@ -4,6 +4,7 @@
 #include "common/common_types.h"
 #include "InstructionParser.h"
 #include "common/util/Assert.h"
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 InstructionParser::InstructionParser() {
@@ -383,8 +384,7 @@ Instruction InstructionParser::parse_single_instruction(
         } else if (thing == "ni") {
           instr.il = 0;
         } else {
-          printf("Bad interlock specification. Got %s\n", thing.c_str());
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("Bad interlock specification. Got {}", thing.c_str()));
         }
       } break;
 
@@ -399,14 +399,12 @@ Instruction InstructionParser::parse_single_instruction(
         } else if (thing == "w") {
           instr.cop2_bc = 3;
         } else {
-          printf("Bad broadcast. Got %s\n", thing.c_str());
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("Bad broadcast. Got {}", thing.c_str()));
         }
       } break;
 
       default:
-        printf("missing DecodeType: %d\n", (int)step.decode);
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("missing DecodeType: {}", (int)step.decode));
     }
   }
 

@@ -236,9 +236,8 @@ void Texture::serialize(Serializer& ser) {
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
   if (ser.is_loading() && version != TFRAG3_VERSION) {
-    fmt::print("version mismatch when loading tfrag3 data. Got {}, expected {}\n", version,
-               TFRAG3_VERSION);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("version mismatch when loading tfrag3 data. Got {}, expected {}",
+                                  version, TFRAG3_VERSION));
   }
 
   ser.from_str(&level_name);
@@ -285,9 +284,9 @@ void Level::serialize(Serializer& ser) {
 
   ser.from_ptr(&version2);
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
-    fmt::print("version mismatch when loading tfrag3 data (at end). Got {}, expected {}\n",
-               version2, TFRAG3_VERSION);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format(
+                          "version mismatch when loading tfrag3 data (at end). Got {}, expected {}",
+                          version2, TFRAG3_VERSION));
   }
 }
 

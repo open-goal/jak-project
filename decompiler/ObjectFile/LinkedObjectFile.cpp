@@ -530,8 +530,8 @@ void LinkedObjectFile::process_fp_relative_links() {
               } break;
 
               default:
-                printf("unknown fp using op: %s\n", instr.to_string(labels).c_str());
-                ASSERT(false);
+                ASSERT_MSG(false,
+                           fmt::format("unknown fp using op: {}", instr.to_string(labels).c_str()));
             }
           }
         }
@@ -912,16 +912,14 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
       } else {
         std::string debug;
         append_word_to_string(debug, word);
-        printf("don't know how to print %s\n", debug.c_str());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("don't know how to print {}", debug.c_str()));
       }
     } break;
 
     case 2:  // bad, a pair snuck through.
     default:
       // pointers should be aligned!
-      printf("align %d\n", byte_idx & 7);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("align {}", byte_idx & 7));
   }
 
   return result;

@@ -464,8 +464,7 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   auto masked = original & 0xffffff00;
   for (auto& t : map) {
     if (t.original_texid == masked) {
-      fmt::print("OKAY! remapped!\n");
-      ASSERT(false);
+      ASSERT_MSG(false, "OKAY! remapped!");
       return t.new_texid | 20;
     }
   }
@@ -2012,8 +2011,7 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   // the clamp matters
   if (!(info.clamp_val == 0b101 || info.clamp_val == 0 || info.clamp_val == 1 ||
         info.clamp_val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", info.clamp_val);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", info.clamp_val));
   }
 
   mode.set_clamp_s_enable(info.clamp_val & 0b1);
@@ -2104,14 +2102,13 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                 // we're missing a texture, just use the first one.
                 tex_it = tdb.textures.begin();
               } else {
-                fmt::print(
-                    "texture {} wasn't found. make sure it is loaded somehow. You may need to "
-                    "include "
-                    "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
-                    combo_tex);
-                fmt::print("tpage is {}\n", combo_tex >> 16);
-                fmt::print("id is {} (0x{:x})\n", combo_tex & 0xffff, combo_tex & 0xffff);
-                ASSERT(false);
+                ASSERT_MSG(
+                    false,
+                    fmt::format(
+                        "texture {} wasn't found. make sure it is loaded somehow. You may need to "
+                        "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                        "textures. tpage is {}. id is {} (0x{:x})",
+                        combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
               }
             }
             // add a new texture to the level data

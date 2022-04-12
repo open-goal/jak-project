@@ -18,6 +18,7 @@
 #include "common/goal_constants.h"
 #include "game/mips2c/mips2c_table.h"
 #include "common/util/Assert.h"
+#include "third-party/fmt/core.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -143,8 +144,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
         }
       }
     } else {
-      printf("UNHANDLED OBJECT FILE VERSION\n");
-      ASSERT(false);
+      ASSERT_MSG(false, "UNHANDLED OBJECT FILE VERSION");
     }
 
     if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {
@@ -254,8 +254,7 @@ uint32_t link_control::work() {
     ASSERT(!m_opengoal);
     rv = work_v2();
   } else {
-    printf("UNHANDLED OBJECT FILE VERSION %d IN WORK!\n", m_version);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("UNHANDLED OBJECT FILE VERSION {} IN WORK!", m_version));
     return 0;
   }
 
@@ -502,8 +501,7 @@ uint32_t link_control::work_v3() {
               lp = lp + ptr_link_v3(lp, ofh, m_segment_process);
               break;
             default:
-              printf("unknown link table thing %d\n", *lp);
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("unknown link table thing {}", *lp));
               break;
           }
         }

@@ -298,8 +298,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
       case VifCode::Kind::NOP:
         break;
       default:
-        fmt::print("unknown: {}\n", next.print());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("unknown: {}", next.print()));
     }
   }
   fmt::print("-------------------------------------------\n");

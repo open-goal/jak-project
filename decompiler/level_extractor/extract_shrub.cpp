@@ -129,8 +129,7 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   auto masked = original & 0xffffff00;
   for (auto& t : map) {
     if (t.original_texid == masked) {
-      fmt::print("OKAY! remapped!\n");
-      ASSERT(false);
+      ASSERT_MSG(false, "OKAY! remapped!");
       return t.new_texid | 20;
     }
   }
@@ -502,14 +501,13 @@ void make_draws(tfrag3::Level& lev,
                 // we're missing a texture, just use the first one.
                 tex_it = tdb.textures.begin();
               } else {
-                fmt::print(
-                    "texture {} wasn't found. make sure it is loaded somehow. You may need to "
-                    "include "
-                    "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
-                    combo_tex);
-                fmt::print("tpage is {}\n", combo_tex >> 16);
-                fmt::print("id is {} (0x{:x})\n", combo_tex & 0xffff, combo_tex & 0xffff);
-                ASSERT(false);
+                ASSERT_MSG(
+                    false,
+                    fmt::format(
+                        "texture {} wasn't found. make sure it is loaded somehow. You may need to "
+                        "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                        "textures. tpage is {} id is {} (0x{:x})",
+                        combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
               }
             }
             // add a new texture to the level data

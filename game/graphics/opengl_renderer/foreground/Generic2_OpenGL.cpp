@@ -106,8 +106,7 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       case DrawMode::AlphaTest::NEVER:
         break;
       default:
-        fmt::print("unknown alpha test: {}\n", (int)draw_mode.get_alpha_test());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("unknown alpha test: {}", (int)draw_mode.get_alpha_test()));
     }
   }
 

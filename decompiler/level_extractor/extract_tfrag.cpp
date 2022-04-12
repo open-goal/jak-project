@@ -1760,10 +1760,9 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
     // src plus dest
   } else {
-    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
-               (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(),
+                                  (int)reg.b_mode(), (int)reg.c_mode(), (int)reg.d_mode()));
   }
 }
 
@@ -1786,9 +1785,8 @@ void update_mode_from_test1(u64 val, DrawMode& mode) {
       mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
       break;
     default:
-      fmt::print("Alpha test: {} not supported\n", (int)test.alpha_test());
       mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Alpha test: {} not supported", (int)test.alpha_test()));
   }
 
   // AREF
@@ -1909,8 +1907,7 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           break;
         case GsRegisterAddress::CLAMP_1:
           if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-            fmt::print("clamp: 0x{:x}\n", val);
-            ASSERT(false);
+            ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
           }
 
           // this isn't quite right, but I'm hoping it's enough!
@@ -2014,13 +2011,14 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           // we're missing a texture, just use the first one.
           tex_it = tdb.textures.begin();
         } else {
-          fmt::print(
-              "texture {} wasn't found. make sure it is loaded somehow. You may need to include "
-              "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
-              combo_tex_id);
-          fmt::print("tpage is {}\n", combo_tex_id >> 16);
-          fmt::print("id is {} (0x{:x})\n", combo_tex_id & 0xffff, combo_tex_id & 0xffff);
-          ASSERT(false);
+          ASSERT_MSG(
+              false,
+              fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
+                          "to include "
+                          "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
+                          "tpage is {}. id is {} (0x{:x})",
+                          combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
+                          combo_tex_id & 0xffff));
         }
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2239,8 +2237,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
     } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
       this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
     } else {
-      fmt::print("unknown tfrag tree kind: {}\n", tree->my_type());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unknown tfrag tree kind: {}", tree->my_type()));
     }
 
     ASSERT(tree->length == (int)tree->arrays.size());
