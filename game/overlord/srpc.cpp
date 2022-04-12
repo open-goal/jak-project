@@ -107,17 +107,17 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             break;
           }
           if (!memcmp(cmd->play.name, "spool-", 6)) {
-            char namebuf[8];
-            char langbuf[8];
-            auto name = cmd->play.name;
+            char namebuf[16];
+            const char* name = &cmd->play.name[6];
             size_t len = strlen(name);
             if (len < 9) {
-              memset(namebuf, 32, sizeof(namebuf));
+              memset(namebuf, ' ', 8);
               memcpy(namebuf, name, len);
             } else {
-              memcpy(namebuf, name, sizeof(namebuf));
+              memcpy(namebuf, name, 8);
             }
 
+            // ASCII toupper
             for (int i = 0; i < 8; i++) {
               if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
                 namebuf[i] -= 0x20;
@@ -127,8 +127,8 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             // TODO vagfile = FindVAGFile(namebuf);
             void* vagfile = nullptr;
 
-            memcpy(namebuf, "VAGWAD ", sizeof(namebuf));
-            strcpy(langbuf, gLanguage);
+            memcpy(namebuf, "VAGWAD  ", 8);
+            strcpy(&namebuf[8], gLanguage);
 
             FileRecord* rec = isofs->find_in(namebuf);
             if (vagfile != nullptr) {
