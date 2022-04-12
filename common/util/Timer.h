@@ -26,13 +26,9 @@ class Timer {
   /*!
    * Get milliseconds elapsed
    */
-  double getMs() const {
-    return (double)getNs() / 1.e6;
-  }
+  double getMs() const { return (double)getNs() / 1.e6; }
 
-  double getUs() const {
-    return (double)getNs() / 1.e3;
-  }
+  double getUs() const { return (double)getNs() / 1.e3; }
 
   /*!
    * Get nanoseconds elapsed
@@ -42,9 +38,7 @@ class Timer {
   /*!
    * Get seconds elapsed
    */
-  double getSeconds() const {
-    return (double)getNs() / 1.e9;
-  }
+  double getSeconds() const { return (double)getNs() / 1.e9; }
 
   struct timespec _startTime = {};
 };
