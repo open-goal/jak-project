@@ -235,7 +235,7 @@ void Texture::serialize(Serializer& ser) {
 
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
-  if (true) {
+  if (ser.is_loading() && version != TFRAG3_VERSION) {
     ASSERT_MSG(false, fmt::format("version mismatch when loading tfrag3 data. Got {}, expected {}",
                                   version, TFRAG3_VERSION));
   }
