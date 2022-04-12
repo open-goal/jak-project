@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 
   // Compile!
   Compiler compiler;
-  compiler.make_system().set_constant("*iso-data*", jak1_input_files.string());
+  compiler.make_system().set_constant("*iso-data*", absolute(jak1_input_files).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
   compiler.make_system().load_project_file(
