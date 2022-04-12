@@ -34,6 +34,7 @@ add_library(common
         util/diff.cpp
         util/FileUtil.cpp
         util/json_util.cpp
+        util/read_iso_file.cpp
         util/Timer.cpp
         util/os.cpp
         util/print_float.cpp
