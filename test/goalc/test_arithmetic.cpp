@@ -289,3 +289,12 @@ TEST_F(ArithmeticTests, LogicalOperators) {
 TEST_F(ArithmeticTests, Comparison) {
   runner->run_static_test(env, testCategory, "signed-int-compare.static.gc", {"12\n"});
 }
+
+TEST_F(ArithmeticTests, DivideSigns) {
+  runner->run_static_test(env, testCategory, "divide-signs.static.gc",
+                          {"fffffffffffffffb 7ffffffffffffffb fffffffffffffffd 55555552\n0\n"});
+}
+
+TEST_F(ArithmeticTests, ModUnsigned) {
+  runner->run_static_test(env, testCategory, "mod-unsigned.static.gc", {"ffffffffffffffff 5\n0\n"});
+}

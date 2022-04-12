@@ -553,6 +553,8 @@ std::string IR_IntegerMath::print() {
       return fmt::format("udiv {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::IMOD_32:
       return fmt::format("imod {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::UMOD_32:
+      return fmt::format("umod {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::SARV_64:
       return fmt::format("sarv {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::SHLV_64:
@@ -589,7 +591,7 @@ RegAllocInstr IR_IntegerMath::to_rai() {
   }
 
   if (m_kind == IntegerMathKind::IDIV_32 || m_kind == IntegerMathKind::IMOD_32 ||
-      m_kind == IntegerMathKind::UDIV_32) {
+      m_kind == IntegerMathKind::UDIV_32 || m_kind == IntegerMathKind::UMOD_32) {
     rai.exclude.emplace_back(emitter::RDX);
   }
   return rai;
@@ -645,8 +647,10 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::sar_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
       break;
     case IntegerMathKind::IMUL_32: {
+      // just a 32-bit multiply, signed/unsigned doesn't affect lower 32 bits of result.
       auto dr = get_reg(m_dest, allocs, irec);
       gen->add_instr(IGen::imul_gpr32_gpr32(dr, get_reg(m_arg, allocs, irec)), irec);
+      // the PS2 sign extends the result even if we used multu. We replicate this here.
       gen->add_instr(IGen::movsx_r64_r32(dr, dr), irec);
     } break;
     case IntegerMathKind::IMUL_64: {
@@ -662,6 +666,9 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       // zero extend, not sign extend to avoid overflow
       gen->add_instr(IGen::xor_gpr64_gpr64(Register(RDX), Register(RDX)), irec);
       gen->add_instr(IGen::unsigned_div_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      // note: this probably needs hardware testing to know for sure if the PS2 actually sign
+      // extends here or not. Nothing seems to break either way, and PCSX2/Dobie interpreters both
+      // sign extend, so that seems like the safest option.
       gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
     } break;
     case IntegerMathKind::IMOD_32: {
@@ -669,7 +676,13 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
       gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RDX), irec);
     } break;
-
+    case IntegerMathKind::UMOD_32: {
+      // zero extend, not sign extend to avoid overflow
+      gen->add_instr(IGen::xor_gpr64_gpr64(Register(RDX), Register(RDX)), irec);
+      gen->add_instr(IGen::unsigned_div_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      // see note on udiv, same applies here.
+      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RDX), irec);
+    } break;
     default:
       ASSERT(false);
   }

@@ -621,7 +621,11 @@ Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, E
   con.desired_register = emitter::RAX;
 
   fenv->constrain(con);
-  env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::IMOD_32, result, second);
+  env->emit_ir<IR_IntegerMath>(form,
+                               is_singed_integer_or_binteger(first->type())
+                                   ? IntegerMathKind::IMOD_32
+                                   : IntegerMathKind::UMOD_32,
+                               result, second);
 
   auto result_moved = env->make_gpr(first->type());
   env->emit_ir<IR_RegSet>(form, result_moved, result);
