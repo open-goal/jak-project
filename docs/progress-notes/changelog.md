@@ -220,3 +220,4 @@
 The compiler is now much more aggressive in where and how it expands macros and handles expressions at compiler time.
 - Several places where macros could be incorrectly executed more than once (possibly causing unwanted side effects) have been fixed.
 - Fixed bug in size calculation of non-inline stack arrays. Previous behavior was a compiler assert.
+- Correctly handle `mod` for unsigned numbers. Previous behavior was to treat all inputs as 32-bit signed integers.
