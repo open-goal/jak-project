@@ -280,23 +280,27 @@ u32 ISOThread() {
 
     // receive a message
     IsoMessage* msg_from_mbx;
-    IsoCommandLoadSingle* load_single_cmd;
     s32 mbx_status = PollMbx((MsgPacket**)(&msg_from_mbx), iso_mbx);
-    load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
 
-    if (mbx_status == 0) {
+    if (mbx_status == KE_OK) {
       // we got a new message!
-
       // initialize fields of the message
       msg_from_mbx->callback_buffer = nullptr;
       msg_from_mbx->ready_for_data = 1;
       msg_from_mbx->callback_function = NullCallback;
       msg_from_mbx->fd = nullptr;
 
-      if (msg_from_mbx->cmd_id == LOAD_TO_EE_CMD_ID || msg_from_mbx->cmd_id == LOAD_TO_IOP_CMD_ID ||
-          msg_from_mbx->cmd_id == LOAD_TO_EE_OFFSET_CMD_ID) {
-        // A Simple File Load, add it to the queue
-        if (QueueMessage(msg_from_mbx, 2, "LoadSingle")) {
+      switch (msg_from_mbx->cmd_id) {
+        case LOAD_TO_EE_CMD_ID:
+        case LOAD_TO_IOP_CMD_ID:
+        case LOAD_TO_EE_OFFSET_CMD_ID: {
+          // A Simple File Load, add it to the queue
+          if (!QueueMessage(msg_from_mbx, 2, "LoadSingle")) {
+            break;
+          }
+
+          auto* load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
+
           // if queued successfully, start by opening the file:
           if (load_single_cmd->cmd_id == LOAD_TO_EE_OFFSET_CMD_ID) {
             load_single_cmd->fd =
@@ -314,39 +318,41 @@ u32 ISOThread() {
             UnqueueMessage(load_single_cmd);
             // and wake up whoever requested this.
             ReturnMessage(load_single_cmd);
-          } else {
-            // yep, opened correctly. Set up the pointers/sizes
-            load_single_cmd->dst_ptr = load_single_cmd->dest_addr;
-            load_single_cmd->bytes_done = 0;
-            // by default, copy size is the full file.
-            load_single_cmd->length_to_copy = isofs->get_length(load_single_cmd->file_record);
-
-            if (load_single_cmd->length_to_copy == 0) {
-              // if we get zero for some reason, use the commanded length.
-              ASSERT(false);
-              load_single_cmd->length_to_copy = load_single_cmd->length;
-            } else if (load_single_cmd->length < load_single_cmd->length_to_copy) {
-              // if we ask for less than the full length, use the smaller value.
-              load_single_cmd->length_to_copy = load_single_cmd->length;
-            }
-
-            // set status and callback function.
-            load_single_cmd->status = CMD_STATUS_IN_PROGRESS;
-            switch (msg_from_mbx->cmd_id) {
-              case LOAD_TO_EE_CMD_ID:
-              case LOAD_TO_EE_OFFSET_CMD_ID:
-                msg_from_mbx->callback_function = CopyDataToEE;
-                break;
-              case LOAD_TO_IOP_CMD_ID:
-                msg_from_mbx->callback_function = CopyDataToIOP;
-                break;
-            }
+            break;
           }
-        }
-      } else if (msg_from_mbx->cmd_id == LOAD_DGO_CMD_ID) {
-        // Got a DGO command. There is one LoadDGO command for the entire DGO.
-        if (QueueMessage(msg_from_mbx, 0, "LoadDGO")) {
+
+          // yep, opened correctly. Set up the pointers/sizes
+          load_single_cmd->dst_ptr = load_single_cmd->dest_addr;
+          load_single_cmd->bytes_done = 0;
+          // by default, copy size is the full file.
+          load_single_cmd->length_to_copy = isofs->get_length(load_single_cmd->file_record);
+
+          if (load_single_cmd->length_to_copy == 0) {
+            // if we get zero for some reason, use the commanded length.
+            ASSERT(false);
+            load_single_cmd->length_to_copy = load_single_cmd->length;
+          } else if (load_single_cmd->length < load_single_cmd->length_to_copy) {
+            // if we ask for less than the full length, use the smaller value.
+            load_single_cmd->length_to_copy = load_single_cmd->length;
+          }
+
+          // set status and callback function.
+          load_single_cmd->status = CMD_STATUS_IN_PROGRESS;
+          u32 cmd_id = msg_from_mbx->cmd_id;
+          if (cmd_id == LOAD_TO_EE_CMD_ID || cmd_id == LOAD_TO_EE_OFFSET_CMD_ID) {
+            msg_from_mbx->callback_function = CopyDataToEE;
+          } else if (cmd_id == LOAD_TO_IOP_CMD_ID) {
+            msg_from_mbx->callback_function = CopyDataToIOP;
+          }
+
+        } break;
+        case LOAD_DGO_CMD_ID: {
+          if (!QueueMessage(msg_from_mbx, 0, "LoadDGO")) {
+            break;
+          }
+          // Got a DGO command. There is one LoadDGO command for the entire DGO.
           // queued successfully, open the file.
+          auto* load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
           load_single_cmd->fd = isofs->open(load_single_cmd->file_record, -1);
           if (!load_single_cmd->fd) {
             // failed to open, return error
@@ -359,49 +365,52 @@ u32 ISOThread() {
             ((DgoCommand*)load_single_cmd)->dgo_state = DgoState::Init;
             load_single_cmd->callback_function = RunDGOStateMachine;
           }
-        }
-      } else if (msg_from_mbx->cmd_id == LOAD_SOUND_BANK) {
-        // if there's an in progress vag command, try again.
-        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+
+        } break;
+        case LOAD_SOUND_BANK: {
+          // if there's an in progress vag command, try again.
+          if (in_progress_vag_command && !in_progress_vag_command->field_0x3c) {
+            SendMbx(iso_mbx, msg_from_mbx);
+          }
+
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
             // no buffers, try again.
             SendMbx(iso_mbx, msg_from_mbx);
-          } else {
-            auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
-            isofs->load_sound_bank(cmd->bank_name, cmd->bank);
-            FreeBuffer(buff);
-            ReturnMessage(msg_from_mbx);
+            break;
           }
-        } else {
-          // just try again...
-          SendMbx(iso_mbx, msg_from_mbx);
-        }
-      } else if (msg_from_mbx->cmd_id == LOAD_MUSIC) {
-        // if there's an in progress vag command, try again.
-        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+
+          auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
+          isofs->load_sound_bank(cmd->bank_name, cmd->bank);
+          FreeBuffer(buff);
+          ReturnMessage(msg_from_mbx);
+        } break;
+        case LOAD_MUSIC: {
+          // if there's an in progress vag command, try again.
+          if (in_progress_vag_command && !in_progress_vag_command->field_0x3c) {
+            SendMbx(iso_mbx, msg_from_mbx);
+            break;
+          }
+
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
             // no buffers, try again.
             SendMbx(iso_mbx, msg_from_mbx);
-          } else {
-            auto* cmd = (MusicLoadCommand*)msg_from_mbx;
-            isofs->load_music(cmd->music_name, cmd->music_handle);
-            FreeBuffer(buff);
-            ReturnMessage(msg_from_mbx);
+            break;
           }
-        } else {
-          // just try again...
-          SendMbx(iso_mbx, msg_from_mbx);
-        }
-      }
 
-      else {
-        printf("[OVERLORD] Unknown ISOThread message id 0x%x\n", msg_from_mbx->cmd_id);
-      }
+          auto* cmd = (MusicLoadCommand*)msg_from_mbx;
+          isofs->load_music(cmd->music_name, cmd->music_handle);
+          FreeBuffer(buff);
+          ReturnMessage(msg_from_mbx);
 
-      // TODO magic number
-    } else if (mbx_status == -0x1a9) {
+        } break;
+        case QUEUE_VAG_STREAM: {
+        } break;
+        default:
+          printf("[OVERLORD] Unknown ISOThread message id 0x%x\n", msg_from_mbx->cmd_id);
+      }
+    } else if (mbx_status == KE_WAIT_DELETE) {
       return 0;
     }
 
