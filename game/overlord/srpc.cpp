@@ -224,7 +224,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           u32 mask = cmd->param.parms.mask;
           if (sound != nullptr) {
             if (mask & 1) {
-              if (mask & 0x20) {
+              if (mask & 0x10) {
                 sound->auto_time = cmd->param.auto_time;
                 sound->new_volume = cmd->param.parms.volume;
               } else {
@@ -241,7 +241,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               sound->params.pitch_mod = cmd->param.parms.pitch_mod;
               if (mask & 0x10) {
                 snd_AutoPitch(sound->sound_handle, sound->params.pitch_mod, cmd->param.auto_time,
-                              cmd->param.auto_time);
+                              cmd->param.auto_from);
               } else {
                 snd_SetSoundPitchModifier(sound->sound_handle, cmd->param.parms.pitch_mod);
               }
@@ -250,7 +250,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               sound->params.bend = cmd->param.parms.bend;
               if (mask & 0x10) {
                 snd_AutoPitchBend(sound->sound_handle, sound->params.bend, cmd->param.auto_time,
-                                  cmd->param.auto_time);
+                                  cmd->param.auto_from);
               } else {
                 snd_SetSoundPitchBend(sound->sound_handle, cmd->param.parms.bend);
               }
