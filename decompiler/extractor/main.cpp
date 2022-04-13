@@ -5,6 +5,7 @@
 #include "decompiler/level_extractor/extract_level.h"
 #include "decompiler/config.h"
 #include "goalc/compiler/Compiler.h"
+#include "common/util/read_iso_file.h"
 
 void setup_global_decompiler_stuff() {
   file_util::init_crc();
@@ -31,8 +32,15 @@ int main(int argc, char** argv) {
   }
 
   if (!std::filesystem::is_directory(jak1_input_files)) {
-    fmt::print("Error: input folder {} is not a folder.\n", jak1_input_files.string());
-    return 1;
+    fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
+    auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
+    std::filesystem::create_directories(path_to_iso_files);
+
+    auto fp = fopen(jak1_input_files.string().c_str(), "rb");
+    ASSERT_MSG(fp, "failed to open input ISO file\n");
+    unpack_iso_files(fp, path_to_iso_files);
+    fclose(fp);
+    jak1_input_files = path_to_iso_files;
   }
 
   if (!std::filesystem::exists(jak1_input_files / "DGO")) {
