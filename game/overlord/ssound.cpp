@@ -413,10 +413,10 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
   if (sound->new_volume == -4) {
     snd_StopSound(sound->sound_handle);
     sound->id = 0;
-    return;
+  } else {
+    sound->params.volume = sound->new_volume;
   }
 
-  sound->params.volume = sound->new_volume;
   sound->auto_time = 0;
 }
 
