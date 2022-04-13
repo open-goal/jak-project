@@ -104,19 +104,21 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     while (n_messages > 0) {
       switch (cmd->command) {
         case SoundCommand::PLAY: {
-          // spool- soundsn are vag sounds?
+          if (cmd->play.sound_id == 0) {
+            break;
+          }
           if (!memcmp(cmd->play.name, "spool-", 6)) {
-            char namebuf[8];
-            char langbuf[8];
-            auto name = cmd->play.name;
+            char namebuf[16];
+            const char* name = &cmd->play.name[6];
             size_t len = strlen(name);
             if (len < 9) {
-              memset(namebuf, 32, sizeof(namebuf));
+              memset(namebuf, ' ', 8);
               memcpy(namebuf, name, len);
             } else {
-              memcpy(namebuf, name, sizeof(namebuf));
+              memcpy(namebuf, name, 8);
             }
 
+            // ASCII toupper
             for (int i = 0; i < 8; i++) {
               if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
                 namebuf[i] -= 0x20;
@@ -126,8 +128,8 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             // TODO vagfile = FindVAGFile(namebuf);
             void* vagfile = nullptr;
 
-            memcpy(namebuf, "VAGWAD ", sizeof(namebuf));
-            strcpy(langbuf, gLanguage);
+            memcpy(namebuf, "VAGWAD  ", 8);
+            strcpy(&namebuf[8], gLanguage);
 
             FileRecord* rec = isofs->find_in(namebuf);
             if (vagfile != nullptr) {
@@ -191,7 +193,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
                                                sound->params.pitch_mod, sound->params.bend);
           sound->sound_handle = handle;
           if (sound->sound_handle) {
-            sound->id = index;
+            sound->id = cmd->play.sound_id;
           }
         } break;
         case SoundCommand::PAUSE_SOUND: {
@@ -223,7 +225,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           u32 mask = cmd->param.parms.mask;
           if (sound != nullptr) {
             if (mask & 1) {
-              if (mask & 0x20) {
+              if (mask & 0x10) {
                 sound->auto_time = cmd->param.auto_time;
                 sound->new_volume = cmd->param.parms.volume;
               } else {
@@ -240,7 +242,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               sound->params.pitch_mod = cmd->param.parms.pitch_mod;
               if (mask & 0x10) {
                 snd_AutoPitch(sound->sound_handle, sound->params.pitch_mod, cmd->param.auto_time,
-                              cmd->param.auto_time);
+                              cmd->param.auto_from);
               } else {
                 snd_SetSoundPitchModifier(sound->sound_handle, cmd->param.parms.pitch_mod);
               }
@@ -249,7 +251,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               sound->params.bend = cmd->param.parms.bend;
               if (mask & 0x10) {
                 snd_AutoPitchBend(sound->sound_handle, sound->params.bend, cmd->param.auto_time,
-                                  cmd->param.auto_time);
+                                  cmd->param.auto_from);
               } else {
                 snd_SetSoundPitchBend(sound->sound_handle, cmd->param.parms.bend);
               }
@@ -420,5 +422,22 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
 }
 
 s32 VBlank_Handler() {
+  if (!gSoundEnable)
+    return 1;
+
+  if (gMusicFadeDir > 0) {
+    gMusicFade += 1024;
+    if (gMusicFade > 0x10000) {
+      gMusicFade = 0x10000;
+      gMusicFadeDir = 0;
+    }
+  } else if (gMusicFadeDir < 0) {
+    gMusicFade -= 512;
+    if (gMusicFade < 0) {
+      gMusicFade = 0;
+      gMusicFadeDir = 0;
+    }
+  }
+
   return 1;
 }

@@ -249,7 +249,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     zdiff >>= 1;
   }
 
-  s32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
+  u32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
   if (distance != 0) {
     s32 steps = 0;
     while ((distance & 0xc0000000) == 0) {
@@ -284,7 +284,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   }
 
   s32 factor = ((gCurve[fo_curve].unk4 << 16) + gCurve[fo_curve].unk3 * v13 +
-                gCurve[fo_curve].unk2 * ((v13 * 13) >> 16) +
+                gCurve[fo_curve].unk2 * ((v13 * v13) >> 16) +
                 gCurve[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
                12;
 
@@ -310,7 +310,7 @@ s32 CalculateAngle(Vec3w* trans) {
     lookupZ = trans->z - gCamTrans.z;
   }
 
-  if (diffX == 0 && diffZ == 0) {
+  if (lookupX == 0 && lookupZ == 0) {
     return 0;
   }
 
@@ -339,7 +339,7 @@ s32 CalculateAngle(Vec3w* trans) {
     } else if (diffZ >= 0) {
       angle = angle + 270;
     } else {
-      angle = 270 - 90;
+      angle = 270 - angle;
     }
   }
 
@@ -413,10 +413,10 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
   if (sound->new_volume == -4) {
     snd_StopSound(sound->sound_handle);
     sound->id = 0;
-    return;
+  } else {
+    sound->params.volume = sound->new_volume;
   }
 
-  sound->params.volume = sound->new_volume;
   sound->auto_time = 0;
 }
 
