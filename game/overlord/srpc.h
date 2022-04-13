@@ -5,6 +5,9 @@
 
 void srpc_init_globals();
 
+extern const char* gLanguage;
+extern s32 gVAG_Id;
+
 constexpr int MUSIC_TWEAK_COUNT = 32;
 
 struct MusicTweaks {
@@ -142,6 +145,23 @@ struct SoundRpcCommand {
 };
 
 static_assert(sizeof(SoundRpcCommand) == 0x50);
+
+struct SoundIopInfo {
+  u32 frame;
+  s32 strpos;
+  u32 std_id;
+  u32 freemem;
+  u8 chinfo[48];
+  u32 freemem2;
+  u32 nocd;
+  u32 dirtycd;
+  u32 diskspeed[2];
+  u32 lastspeed;
+  s32 dupseg;
+  u32 times[41];
+  u32 times_seq;
+  u8 pad[10];  // pad up to transfer size
+};
 
 extern MusicTweaks gMusicTweakInfo;
 extern s32 gMusicTweak;

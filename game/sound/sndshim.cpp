@@ -1,16 +1,28 @@
 #include "sndshim.h"
 #include "989snd/player.h"
+#include "sdshim.h"
 #include <cstdio>
 
 std::unique_ptr<snd::player> player;
 
 void snd_StartSoundSystem() {
   player = std::make_unique<snd::player>();
+
+  voice = std::make_shared<snd::voice>(snd::voice::AllocationType::permanent);
+  voice->set_sample((u16*)spu_memory);
+  player->submit_voice(voice);
 }
 
 void snd_StopSoundSystem() {
   player.reset();
 }
+
+// dma is always instant, allocation not required
+s32 snd_GetFreeSPUDMA() {
+  return 0;
+}
+
+void snd_FreeSPUDMA([[maybe_unused]] s32 channel) {}
 
 s32 snd_GetTick() {
   return player->get_tick();
@@ -34,25 +46,17 @@ s32 snd_ExternVoiceVoiceAlloc(s32, s32) {
 }
 
 u32 snd_SRAMMalloc(u32) {
-  // printf("snd_SRAMMalloc\n");
+  // spu memory currently hardcoded
   return 0;
 }
 
-void snd_SetMixerMode(s32, s32) {
-  printf("snd_SetMixerMode\n");
-}
+void snd_SetMixerMode(s32, s32) {}
 
-void snd_SetGroupVoiceRange(s32, s32, s32) {
-  printf("snd_SetGroupVoiceRange\n");
-}
+void snd_SetGroupVoiceRange(s32, s32, s32) {}
 
-void snd_SetReverbDepth(s32, s32, s32) {
-  printf("snd_SetReverbDepth\n");
-}
+void snd_SetReverbDepth(s32, s32, s32) {}
 
-void snd_SetReverbType(s32, s32) {
-  printf("snd_SetReverbType\n");
-}
+void snd_SetReverbType(s32, s32) {}
 
 void snd_SetPanTable(s16* table) {
   player->set_pan_table((snd::vol_pair*)table);
@@ -123,9 +127,11 @@ void snd_ContinueSound(s32 sound_handle) {
 }
 
 void snd_AutoPitch(s32, s32, s32, s32) {
+  // TODO
   printf("snd_AutoPitch\n");
 }
 void snd_AutoPitchBend(s32, s32, s32, s32) {
+  // TODO
   printf("snd_AutoPitchBend\n");
 }
 
@@ -133,4 +139,21 @@ s32 snd_BankLoadEx(const char* filename, s32 offset, s32, s32) {
   // printf("snd_BankLoadEx\n");
   std::filesystem::path path = filename;
   return player->load_bank(path, offset);
+}
+
+s32 snd_GetVoiceStatus(s32 voice) {
+  // hacky thincg to say that voice 0 is uses allocated
+  if (voice == 0) {
+    return 2;
+  }
+
+  return 0;
+}
+
+void snd_keyOnVoiceRaw(u32 core, u32 voice_id) {
+  voice->key_on();
+}
+
+void snd_keyOffVoiceRaw(u32 core, u32 voice_id) {
+  voice->key_off();
 }

@@ -19,8 +19,9 @@ s32 gMusicVol = 0x400;
 s32 gMusicFade = 0;
 s32 gMusicFadeDir = 0;
 
-u32 gVoice;
-u32 gStreamSRAM;
+u32 gStreamSRAM = 0;
+u32 gTrapSRAM = 0;
+
 s32 gSema;
 
 static u32 sLastTick;
@@ -87,10 +88,12 @@ void InitSound_Overlord() {
   // The voice allocator returns a number in the range 0-47 where voices
   // 0-23 are on SPU Core 0 and 24-47 are on core 2.
   // For some reason we convert it to this format where 0-47 alternate core every step.
-  gVoice = voice / 24 + ((voice % 24) * 2);
+  voice = voice / 24 + ((voice % 24) * 2);
 
   // Allocate SPU RAM for our streams.
+  // (Which we don't need on PC)
   gStreamSRAM = snd_SRAMMalloc(0xc030);
+  gTrapSRAM = gStreamSRAM + 0xC000;
 
   snd_SetMixerMode(0, 0);
 

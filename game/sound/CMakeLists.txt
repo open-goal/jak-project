@@ -13,6 +13,7 @@ set(SOUND_SOURCES
   common/voice.cpp
   common/envelope.cpp
   sndshim.cpp
+  sdshim.cpp
   )
 
 add_library(sound STATIC ${SOUND_SOURCES})

@@ -44,6 +44,7 @@ class player {
   void pause_all_sounds_in_group(u8 group);
   void continue_all_sounds_in_group(u8 group);
   void set_sound_vol_pan(s32 sound_handle, s32 vol, s32 pan);
+  void submit_voice(std::shared_ptr<voice>& voice) { m_synth.add_voice(voice); };
   s32 get_tick() { return m_tick; };
 
  private:

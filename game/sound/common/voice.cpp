@@ -82,7 +82,7 @@ static s16 ApplyVolume(s16 sample, s32 volume) {
 }
 
 void voice::key_on() {
-  m_NAX = 0;
+  m_NAX = m_SSA;
   m_NAX++;
 
   UpdateBlockHeader();

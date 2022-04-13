@@ -41,5 +41,10 @@ void snd_ContinueSound(s32);
 void snd_AutoPitch(s32, s32, s32, s32);
 void snd_AutoPitchBend(s32, s32, s32, s32);
 s32 snd_BankLoadEx(const char* filepath, s32 data_offset, s32 unk1, s32 unk2);
+s32 snd_GetVoiceStatus(s32 voice);
+s32 snd_GetFreeSPUDMA();
+void snd_FreeSPUDMA(s32 channel);
+void snd_keyOnVoiceRaw(u32, u32);
+void snd_keyOffVoiceRaw(u32, u32);
 
 #endif  // SNDSHIM_H_
