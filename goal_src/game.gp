@@ -160,12 +160,12 @@
 (defmacro copy-sbk-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-sbk* (cons (copy-iso-file ,x "SBK/" ".SBK") *all-sbk*))) files)))
 
-;; Files not yet added in here:
-;; - DANGER.MUS
-;; - TWEAKVAL.MUS
 (define *all-mus* '())
 (defmacro copy-mus-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-mus* (cons (copy-iso-file ,x "MUS/" ".MUS") *all-mus*))) files)))
+(define *all-vag* '())
+(defmacro copy-vag-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-vag* (cons (copy-iso-file "VAGWAD" "VAG/" (string-append "." ,x)) *all-vag*))) files)))
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""
@@ -355,7 +355,6 @@
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        )
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; hub1 Group
@@ -1902,6 +1901,9 @@
  "ticky.gc"
  )
 
+(copy-mus-files "DANGER")
+
+(copy-vag-files "ENG" "FRE" "GER" "ITA" "SPA" "JAP")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
@@ -1912,11 +1914,13 @@
  `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
    "out/iso/TWEAKVAL.MUS"
-   ,@(reverse *all-cgos*)
+   "out/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
-   ,@(reverse *all-mus*))
+   ,@(reverse *all-mus*)
+   ,@(reverse *all-vag*)
+   ,@(reverse *all-cgos*))
  )
 
 
