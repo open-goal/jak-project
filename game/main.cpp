@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
       disable_avx2 = true;
     }
 
-    if (std::string("-proj-path") == argv[i] && i+1 < argc) {
+    if (std::string("-proj-path") == argv[i] && i + 1 < argc) {
       project_path_override = std::make_optional(std::filesystem::path(argv[i + 1]));
     }
   }

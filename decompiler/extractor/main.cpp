@@ -15,7 +15,7 @@ void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_
 
 void extract_files(std::filesystem::path data_dir_path, std::filesystem::path extracted_iso_path) {
   fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
-  
+
   std::filesystem::create_directories(extracted_iso_path);
 
   auto fp = fopen(data_dir_path.string().c_str(), "rb");
@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
 
   std::filesystem::path data_dir_path(argv[1]);
   auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
-  
+
   // make sure the input looks right
   if (!std::filesystem::exists(data_dir_path)) {
     fmt::print("Error: input folder {} does not exist\n", data_dir_path.string());
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
       return 0;
     }
   }
-  
+
   if (split_process && step_to_run == "-v") {
     auto ok = validate(path_to_iso_files);
     return ok;
