@@ -22,7 +22,7 @@ std::filesystem::path get_jak_project_dir();
 
 bool create_dir_if_needed(const std::string& path);
 bool create_dir_if_needed_for_file(const std::string& path);
-bool setup_project_path();
+bool setup_project_path(std::optional<std::filesystem::path> project_path_override);
 std::string get_file_path(const std::vector<std::string>& path);
 void write_binary_file(const std::string& name, const void* data, size_t size);
 void write_rgba_png(const std::string& name, void* data, int w, int h);

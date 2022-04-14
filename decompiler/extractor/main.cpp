@@ -7,47 +7,33 @@
 #include "goalc/compiler/Compiler.h"
 #include "common/util/read_iso_file.h"
 
-void setup_global_decompiler_stuff() {
+void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   file_util::init_crc();
   decompiler::init_opcode_info();
-  file_util::setup_project_path();
+  file_util::setup_project_path(project_path_override);
 }
 
-int main(int argc, char** argv) {
-  using namespace decompiler;
-  fmt::print("OpenGOAL Level Extraction Tool\n");
-  if (argc != 2) {
-    fmt::print(" usage: extractor <path-to-jak1-files>\n");
-    return 1;
-  }
+void extract_files(std::filesystem::path data_dir_path, std::filesystem::path extracted_iso_path) {
+  fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
+  
+  std::filesystem::create_directories(extracted_iso_path);
 
-  // todo: print revision here.
-  setup_global_decompiler_stuff();
+  auto fp = fopen(data_dir_path.string().c_str(), "rb");
+  ASSERT_MSG(fp, "failed to open input ISO file\n");
+  unpack_iso_files(fp, extracted_iso_path);
+  fclose(fp);
+}
 
-  std::filesystem::path jak1_input_files(argv[1]);
-  // make sure the input looks right
-  if (!std::filesystem::exists(jak1_input_files)) {
-    fmt::print("Error: input folder {} does not exist\n", jak1_input_files.string());
-    return 1;
-  }
-
-  if (!std::filesystem::is_directory(jak1_input_files)) {
-    fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
-    auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
-    std::filesystem::create_directories(path_to_iso_files);
-
-    auto fp = fopen(jak1_input_files.string().c_str(), "rb");
-    ASSERT_MSG(fp, "failed to open input ISO file\n");
-    unpack_iso_files(fp, path_to_iso_files);
-    fclose(fp);
-    jak1_input_files = path_to_iso_files;
-  }
-
-  if (!std::filesystem::exists(jak1_input_files / "DGO")) {
+int validate(std::filesystem::path path_to_iso_files) {
+  if (!std::filesystem::exists(path_to_iso_files / "DGO")) {
     fmt::print("Error: input folder doesn't have a DGO folder. Is this the right input?\n");
     return 1;
   }
+  return 0;
+}
 
+void decompile(std::filesystem::path jak1_input_files) {
+  using namespace decompiler;
   Config config = read_config_file(
       (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
           .string(),
@@ -123,15 +109,101 @@ int main(int argc, char** argv) {
       extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
     }
   }
+}
 
-  // Compile!
+void compile(std::filesystem::path extracted_iso_path) {
   Compiler compiler;
-  compiler.make_system().set_constant("*iso-data*", absolute(jak1_input_files).string());
+  compiler.make_system().set_constant("*iso-data*", absolute(extracted_iso_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
   compiler.make_system().load_project_file(
       (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
   compiler.run_front_end_on_string("(mi)");
+}
 
+void launch_game() {
   system((file_util::get_jak_project_dir() / "../gk").string().c_str());
+}
+
+void print_help() {
+  fmt::print("\tusage: extractor <path-to-jak1-files> [-evdcp] [<path to data directory>]\n");
+  fmt::print("\t\t-e: extract the ISO file\n");
+  fmt::print("\t\t-v: validate the ISO file\n");
+  fmt::print("\t\t-d: decompile\n");
+  fmt::print("\t\t-c: compile\n");
+  fmt::print("\t\t-p: play\n");
+}
+
+int main(int argc, char** argv) {
+  fmt::print("OpenGOAL Level Extraction Tool\n");
+  fmt::print("Working Directory - {}\n", std::filesystem::current_path().string());
+  if (argc < 2 || argc > 4) {
+    print_help();
+    return 1;
+  }
+  // TODO - properly parse these args eventually, right now you can technically only pass 1 option
+  // '-ec' for example
+
+  bool split_process = argc == 4;
+  std::string step_to_run;
+  if (split_process) {
+    step_to_run = argv[2];
+  }
+
+  if (split_process && step_to_run == "-h") {
+    print_help();
+    return 0;
+  }
+
+  // todo: print revision here.
+  if (argc == 4 || argc == 4) {
+    std::filesystem::path project_path_override(argv[3]);
+    setup_global_decompiler_stuff(std::make_optional(project_path_override));
+  } else {
+    setup_global_decompiler_stuff(std::nullopt);
+  }
+
+  std::filesystem::path data_dir_path(argv[1]);
+  auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
+  
+  // make sure the input looks right
+  if (!std::filesystem::exists(data_dir_path)) {
+    fmt::print("Error: input folder {} does not exist\n", data_dir_path.string());
+    return 1;
+  }
+
+  if (!std::filesystem::is_directory(path_to_iso_files)) {
+    extract_files(data_dir_path, path_to_iso_files);
+    if (split_process && step_to_run == "-e") {
+      return 0;
+    }
+  }
+  
+  if (split_process && step_to_run == "-v") {
+    auto ok = validate(path_to_iso_files);
+    return ok;
+  } else {
+    auto ok = validate(path_to_iso_files);
+    if (ok != 0) {
+      return ok;
+    }
+  }
+
+  decompile(path_to_iso_files);
+  if (split_process && step_to_run == "-d") {
+    return 0;
+  }
+
+  compile(path_to_iso_files);
+  if (split_process && step_to_run == "-c") {
+    return 0;
+  }
+
+  if (split_process) {
+    if (step_to_run == "-p") {
+      launch_game();
+    }
+  } else {
+    launch_game();
+  }
 }

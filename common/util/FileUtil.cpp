@@ -106,7 +106,14 @@ std::optional<std::filesystem::path> try_get_data_dir() {
   }
 }
 
-bool setup_project_path() {
+bool setup_project_path(std::optional<std::filesystem::path> project_path_override) {
+  if (project_path_override) {
+    gFilePathInfo.path_to_data = *project_path_override;
+    gFilePathInfo.initialized = true;
+    fmt::print("Using explicitly set project path: {}\n", project_path_override->string());
+    return true;
+  }
+
   if (gFilePathInfo.initialized) {
     return true;
   }
