@@ -438,14 +438,21 @@
      )
   )
 
-(defmacro swhen (condition &rest body)
-  "Same as when, but saves the branch condition onto a variable named bc"
+(defmacro aif (condition true false)
+  "Anaphoric if, similar to Common Lisp"
 
-  `(let ((bc ,condition))
-      (if bc
-          (begin ,@body)
+  `(let ((it ,condition))
+      (if it
+          ,true
+          ,false
           )
       )
+  )
+
+(defmacro awhen (condition &rest body)
+  "Anaphoric when"
+
+  `(aif ,condition (begin ,@body) #f)
   )
 
 (defmacro return (val)
@@ -460,7 +467,8 @@
 
 (defmacro case (switch &key (comp =) &rest cases)
   "A switch-case construct. switch is saved onto a local variable and compared against each case, sequentially.
-   else can be used like the 'default' case, but it must be the last one."
+   else can be used like the 'default' case, but it must be the last one.
+   comp is the function to use when evaluating the clauses. It can be any valid head of a form (operator or call)."
 
   (with-gensyms (sw)
     ;; save the switch to a variable (only evaluated once)

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include "common/common_types.h"
 #include "common/util/Assert.h"
 
 /*!
@@ -35,7 +36,7 @@ class Serializer {
    * later be accessed with get_save_result.
    */
   Serializer() : m_writing(true) {
-    const size_t initial_size = 32;
+    constexpr size_t initial_size = 32 * 1024 * 1024;
     m_data = (u8*)malloc(initial_size);
     m_size = initial_size;
   }

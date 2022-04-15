@@ -393,10 +393,13 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
       result += "[\"" + pad_string(name + "\", ", 50) + "\"" +
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
-      unique_count++;
       if (all_unique_names.find(name) != all_unique_names.end() &&
           merged_objs.find(name) == merged_objs.end()) {
         lg::error("Object file {} appears multiple times with the same name.", name);
+      }
+      if (merged_objs.find(name) == merged_objs.end() ||
+          all_unique_names.find(name) == all_unique_names.end()) {
+        unique_count++;
       }
       all_unique_names.insert(name);
     }

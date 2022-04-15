@@ -21,20 +21,24 @@ endif()
 if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     message(STATUS "Clang on MSVC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
-        "-Xclang -fcxx-exceptions \
+        "${CMAKE_CXX_FLAGS} \
+        -Xclang -fcxx-exceptions \
         -Xclang -fexceptions \
         -Xclang -std=c++17 \
         -Xclang -D_CRT_SECURE_NO_WARNINGS \
         -mavx \
         -Wno-c++11-narrowing -Wno-c++98-compat -W3")
 
-    # additional c++ flags for release mode for our projects
+    # linker flags
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
+
+    # additional c++ and linker flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+    elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
     endif()
-
-    # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
 
 elseif(UNIX)
     message(STATUS "GCC detected! Adding compile flags")
@@ -69,10 +73,18 @@ elseif(MSVC)
       # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
     endif()
     # c++ flags for all build types
-    set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /utf-8 /arch:AVX")
 
     # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
+    
+    # additional c++ and linker flags for specific build types
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+    elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    endif()
 endif()
 
 if(WIN32)
@@ -80,6 +92,9 @@ if(WIN32)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    
+    set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION 7.1.7600.0.30514) # win7.1, supports xp
+    message("Windows SDK version: ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 endif()
 
 if(ASAN_BUILD)
