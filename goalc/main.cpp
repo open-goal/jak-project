@@ -26,7 +26,7 @@ void setup_logging(bool verbose) {
 int main(int argc, char** argv) {
   (void)argc;
   (void)argv;
-  if (!file_util::setup_project_path()) {
+  if (!file_util::setup_project_path(std::nullopt)) {
     return 1;
   }
   std::string argument;

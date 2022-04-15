@@ -15,7 +15,7 @@
 int main(int argc, char** argv) {
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
-  if (!file_util::setup_project_path()) {
+  if (!file_util::setup_project_path(std::nullopt)) {
     return 1;
   }
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));

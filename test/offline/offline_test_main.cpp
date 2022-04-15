@@ -347,7 +347,7 @@ bool compile(Decompiler& dc,
 int main(int argc, char* argv[]) {
   fmt::print("Offline Decompiler Test 2\n");
   lg::initialize();
-  if (!file_util::setup_project_path()) {
+  if (!file_util::setup_project_path(std::nullopt)) {
     return 1;
   }
 
