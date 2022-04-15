@@ -29,16 +29,16 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         -mavx \
         -Wno-c++11-narrowing -Wno-c++98-compat -W3")
 
-    # additional c++ flags for release mode for our projects
+    # linker flags
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
+
+    # additional c++ and linker flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
     elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
     endif()
-
-    # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
 
 elseif(UNIX)
     message(STATUS "GCC detected! Adding compile flags")
@@ -77,6 +77,14 @@ elseif(MSVC)
 
     # linker flags
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
+    
+    # additional c++ and linker flags for specific build types
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+    elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    endif()
 endif()
 
 if(WIN32)
