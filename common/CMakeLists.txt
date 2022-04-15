@@ -28,6 +28,7 @@ add_library(common
         util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
+        util/crc32.cpp
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp

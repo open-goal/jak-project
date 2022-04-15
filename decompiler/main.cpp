@@ -25,7 +25,6 @@ int main(int argc, char** argv) {
   lg::initialize();
   lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
-  file_util::init_crc();
   init_opcode_info();
 
   if (argc < 4) {
