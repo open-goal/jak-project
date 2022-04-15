@@ -21,7 +21,8 @@ endif()
 if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     message(STATUS "Clang on MSVC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
-        "-Xclang -fcxx-exceptions \
+        "${CMAKE_CXX_FLAGS} \
+        -Xclang -fcxx-exceptions \
         -Xclang -fexceptions \
         -Xclang -std=c++17 \
         -Xclang -D_CRT_SECURE_NO_WARNINGS \
@@ -34,7 +35,7 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     endif()
 
     # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
 
 elseif(UNIX)
     message(STATUS "GCC detected! Adding compile flags")
@@ -69,10 +70,10 @@ elseif(MSVC)
       # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
     endif()
     # c++ flags for all build types
-    set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /utf-8 /arch:AVX")
 
     # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
 endif()
 
 if(WIN32)
