@@ -1,3 +1,4 @@
+#include "third-party/CLI11.hpp"
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Disasm/OpcodeInfo.h"
@@ -7,47 +8,33 @@
 #include "goalc/compiler/Compiler.h"
 #include "common/util/read_iso_file.h"
 
-void setup_global_decompiler_stuff() {
+void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   file_util::init_crc();
   decompiler::init_opcode_info();
-  file_util::setup_project_path();
+  file_util::setup_project_path(project_path_override);
 }
 
-int main(int argc, char** argv) {
-  using namespace decompiler;
-  fmt::print("OpenGOAL Level Extraction Tool\n");
-  if (argc != 2) {
-    fmt::print(" usage: extractor <path-to-jak1-files>\n");
-    return 1;
-  }
+void extract_files(std::filesystem::path data_dir_path, std::filesystem::path extracted_iso_path) {
+  fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
 
-  // todo: print revision here.
-  setup_global_decompiler_stuff();
+  std::filesystem::create_directories(extracted_iso_path);
 
-  std::filesystem::path jak1_input_files(argv[1]);
-  // make sure the input looks right
-  if (!std::filesystem::exists(jak1_input_files)) {
-    fmt::print("Error: input folder {} does not exist\n", jak1_input_files.string());
-    return 1;
-  }
+  auto fp = fopen(data_dir_path.string().c_str(), "rb");
+  ASSERT_MSG(fp, "failed to open input ISO file\n");
+  unpack_iso_files(fp, extracted_iso_path);
+  fclose(fp);
+}
 
-  if (!std::filesystem::is_directory(jak1_input_files)) {
-    fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
-    auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
-    std::filesystem::create_directories(path_to_iso_files);
-
-    auto fp = fopen(jak1_input_files.string().c_str(), "rb");
-    ASSERT_MSG(fp, "failed to open input ISO file\n");
-    unpack_iso_files(fp, path_to_iso_files);
-    fclose(fp);
-    jak1_input_files = path_to_iso_files;
-  }
-
-  if (!std::filesystem::exists(jak1_input_files / "DGO")) {
+int validate(std::filesystem::path path_to_iso_files) {
+  if (!std::filesystem::exists(path_to_iso_files / "DGO")) {
     fmt::print("Error: input folder doesn't have a DGO folder. Is this the right input?\n");
     return 1;
   }
+  return 0;
+}
 
+void decompile(std::filesystem::path jak1_input_files) {
+  using namespace decompiler;
   Config config = read_config_file(
       (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
           .string(),
@@ -123,15 +110,97 @@ int main(int argc, char** argv) {
       extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
     }
   }
+}
 
-  // Compile!
+void compile(std::filesystem::path extracted_iso_path) {
   Compiler compiler;
-  compiler.make_system().set_constant("*iso-data*", absolute(jak1_input_files).string());
+  compiler.make_system().set_constant("*iso-data*", absolute(extracted_iso_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
   compiler.make_system().load_project_file(
       (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
   compiler.run_front_end_on_string("(mi)");
+}
 
+void launch_game() {
   system((file_util::get_jak_project_dir() / "../gk").string().c_str());
+}
+
+int main(int argc, char** argv) {
+  std::filesystem::path data_dir_path;
+  std::filesystem::path project_path_override;
+  bool flag_runall = false;
+  bool flag_extract = false;
+  bool flag_validate = false;
+  bool flag_decompile = false;
+  bool flag_compile = false;
+  bool flag_play = false;
+
+  CLI::App app{"OpenGOAL Level Extraction Tool"};
+  app.add_option("game-files-path", data_dir_path,
+                 "The path to the folder with the ISO extracted or the ISO itself")
+      ->check(CLI::ExistingPath)
+      ->required();
+  app.add_option("--proj-path", project_path_override,
+                 "Explicitly set the location of the 'data/' folder")
+      ->check(CLI::ExistingPath);
+  app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
+  app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
+  app.add_flag("-v,--validate", flag_validate, "Validate the ISO / game files");
+  app.add_flag("-d,--decompile", flag_decompile, "Decompile the game data");
+  app.add_flag("-c,--compile", flag_compile, "Compile the game");
+  app.add_flag("-p,--play", flag_play, "Play the game");
+  app.validate_positionals();
+
+  CLI11_PARSE(app, argc, argv);
+
+  fmt::print("Working Directory - {}\n", std::filesystem::current_path().string());
+
+  // If no flag is set, we default to running everything
+  if (!flag_extract && !flag_validate && !flag_decompile && !flag_compile && !flag_play) {
+    fmt::print("Running all steps, no flags provided!\n");
+    flag_runall = true;
+  }
+
+  // todo: print revision here.
+  if (!project_path_override.empty()) {
+    setup_global_decompiler_stuff(std::make_optional(project_path_override));
+  } else {
+    setup_global_decompiler_stuff(std::nullopt);
+  }
+
+  auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
+
+  // make sure the input looks right
+  if (!std::filesystem::exists(data_dir_path)) {
+    fmt::print("Error: input folder {} does not exist\n", data_dir_path.string());
+    return 1;
+  }
+
+  if (flag_runall || flag_extract) {
+    if (!std::filesystem::is_directory(path_to_iso_files)) {
+      extract_files(data_dir_path, path_to_iso_files);
+    }
+  }
+
+  if (flag_runall || flag_validate) {
+    auto ok = validate(path_to_iso_files);
+    if (ok != 0) {
+      return ok;
+    }
+  }
+
+  if (flag_runall || flag_decompile) {
+    decompile(path_to_iso_files);
+  }
+
+  if (flag_runall || flag_compile) {
+    compile(path_to_iso_files);
+  }
+
+  if (flag_runall || flag_play) {
+    launch_game();
+  }
+
+  return 0;
 }

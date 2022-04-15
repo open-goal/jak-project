@@ -742,8 +742,8 @@ void SimpleExpressionElement::update_from_stack_fpr_to_gpr(const Env& env,
     m_popped = false;
     update_from_stack(env, pool, stack, result, allow_side_effects);
   } else {
-    throw std::runtime_error(
-        fmt::format("FPR -> GPR applied to a {} in {}", src_type.print(), to_string(env)));
+    throw std::runtime_error(fmt::format("FPR -> GPR applied to a {} in {} at {}", src_type.print(),
+                                         to_string(env), m_my_idx));
   }
 }
 

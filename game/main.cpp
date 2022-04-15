@@ -39,6 +39,7 @@ int main(int argc, char** argv) {
 
   bool verbose = false;
   bool disable_avx2 = false;
+  std::optional<std::filesystem::path> project_path_override = std::nullopt;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
@@ -48,9 +49,13 @@ int main(int argc, char** argv) {
     if (std::string("-no-avx2") == argv[i]) {
       disable_avx2 = true;
     }
+
+    if (std::string("-proj-path") == argv[i] && i + 1 < argc) {
+      project_path_override = std::make_optional(std::filesystem::path(argv[i + 1]));
+    }
   }
 
-  if (!file_util::setup_project_path()) {
+  if (!file_util::setup_project_path(project_path_override)) {
     return 1;
   }
 
