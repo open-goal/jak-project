@@ -1,3 +1,4 @@
+#include "third-party/CLI11.hpp"
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Disasm/OpcodeInfo.h"
@@ -125,45 +126,49 @@ void launch_game() {
   system((file_util::get_jak_project_dir() / "../gk").string().c_str());
 }
 
-void print_help() {
-  fmt::print("\tusage: extractor <path-to-jak1-files> [-evdcp] [<path to data directory>]\n");
-  fmt::print("\t\t-e: extract the ISO file\n");
-  fmt::print("\t\t-v: validate the ISO file\n");
-  fmt::print("\t\t-d: decompile\n");
-  fmt::print("\t\t-c: compile\n");
-  fmt::print("\t\t-p: play\n");
-}
-
 int main(int argc, char** argv) {
-  fmt::print("OpenGOAL Level Extraction Tool\n");
+  std::filesystem::path data_dir_path;
+  std::filesystem::path project_path_override;
+  bool flag_runall = false;
+  bool flag_extract = false;
+  bool flag_validate = false;
+  bool flag_decompile = false;
+  bool flag_compile = false;
+  bool flag_play = false;
+
+  CLI::App app{"OpenGOAL Level Extraction Tool"};
+  app.add_option("game-files-path", data_dir_path,
+                 "The path to the folder with the ISO extracted or the ISO itself")
+      ->check(CLI::ExistingPath)
+      ->required();
+  app.add_option("--proj-path", project_path_override,
+                 "Explicitly set the location of the 'data/' folder")
+      ->check(CLI::ExistingPath);
+  app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
+  app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
+  app.add_flag("-v,--validate", flag_validate, "Validate the ISO / game files");
+  app.add_flag("-d,--decompile", flag_decompile, "Decompile the game data");
+  app.add_flag("-c,--compile", flag_compile, "Compile the game");
+  app.add_flag("-p,--play", flag_play, "Play the game");
+  app.validate_positionals();
+
+  CLI11_PARSE(app, argc, argv);
+
   fmt::print("Working Directory - {}\n", std::filesystem::current_path().string());
-  if (argc < 2 || argc > 4) {
-    print_help();
-    return 1;
-  }
-  // TODO - properly parse these args eventually, right now you can technically only pass 1 option
-  // '-ec' for example
 
-  bool split_process = argc == 4;
-  std::string step_to_run;
-  if (split_process) {
-    step_to_run = argv[2];
-  }
-
-  if (split_process && step_to_run == "-h") {
-    print_help();
-    return 0;
+  // If no flag is set, we default to running everything
+  if (!flag_extract && !flag_validate && !flag_decompile && !flag_compile && !flag_play) {
+    fmt::print("Running all steps, no flags provided!\n");
+    flag_runall = true;
   }
 
   // todo: print revision here.
-  if (argc == 4 || argc == 4) {
-    std::filesystem::path project_path_override(argv[3]);
+  if (!project_path_override.empty()) {
     setup_global_decompiler_stuff(std::make_optional(project_path_override));
   } else {
     setup_global_decompiler_stuff(std::nullopt);
   }
 
-  std::filesystem::path data_dir_path(argv[1]);
   auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
 
   // make sure the input looks right
@@ -172,38 +177,30 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (!std::filesystem::is_directory(path_to_iso_files)) {
-    extract_files(data_dir_path, path_to_iso_files);
-    if (split_process && step_to_run == "-e") {
-      return 0;
+  if (flag_runall || flag_extract) {
+    if (!std::filesystem::is_directory(path_to_iso_files)) {
+      extract_files(data_dir_path, path_to_iso_files);
     }
   }
 
-  if (split_process && step_to_run == "-v") {
-    auto ok = validate(path_to_iso_files);
-    return ok;
-  } else {
+  if (flag_runall || flag_validate) {
     auto ok = validate(path_to_iso_files);
     if (ok != 0) {
       return ok;
     }
   }
 
-  decompile(path_to_iso_files);
-  if (split_process && step_to_run == "-d") {
-    return 0;
+  if (flag_runall || flag_decompile) {
+    decompile(path_to_iso_files);
   }
 
-  compile(path_to_iso_files);
-  if (split_process && step_to_run == "-c") {
-    return 0;
+  if (flag_runall || flag_compile) {
+    compile(path_to_iso_files);
   }
 
-  if (split_process) {
-    if (step_to_run == "-p") {
-      launch_game();
-    }
-  } else {
+  if (flag_runall || flag_play) {
     launch_game();
   }
+
+  return 0;
 }
