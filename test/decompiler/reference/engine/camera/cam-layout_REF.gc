@@ -362,9 +362,9 @@
                     (when (!= s1-0 sv-272)
                       (vector-float*! sv-192 (-> s3-0 sv-272) (-> s3-0 sv-272 w))
                       (vector-cross! sv-208 (-> s3-0 sv-272) (-> s3-0 s1-0))
-                      (vector-normalize! sv-208 (-> (new 'static 'array float 1 1.0) 0))
+                      (vector-normalize! sv-208 (the-as float 1.0))
                       (vector-cross! sv-224 sv-208 (-> s3-0 sv-272))
-                      (vector-normalize! sv-224 (-> (new 'static 'array float 1 1.0) 0))
+                      (vector-normalize! sv-224 (the-as float 1.0))
                       (let ((f0-6 (cam-layout-intersect-dist (-> s3-0 s1-0) sv-192 sv-224)))
                         (when (!= f0-6 409600000.0)
                           (vector+float*! sv-240 sv-192 sv-224 f0-6)
@@ -416,7 +416,7 @@
                             (else
                               (dotimes (v1-87 (the-as int (-> sv-16 elt-count)))
                                 (when (and (!= v1-87 s1-0) (!= v1-87 sv-272))
-                                  (if (< (-> (new 'static 'array float 1 4096.0) 0) (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w)))
+                                  (if (< 4096.0 (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w)))
                                       (goto cfg-47)
                                       )
                                   )
@@ -446,7 +446,7 @@
                     (set! sv-272 (+ sv-272 1))
                     )
                   (when (nonzero? sv-256)
-                    (vector-float*! s0-0 s0-0 (/ (-> (new 'static 'array float 1 1.0) 0) (the float sv-256)))
+                    (vector-float*! s0-0 s0-0 (/ 1.0 (the float sv-256)))
                     (cond
                       ((>= *volume-normal-current* 599)
                        (format 0 "ERROR <GMJ>: camera editing out of volume normals~%")
@@ -535,20 +535,20 @@
     0.0
     0.0
     (cond
-      ((< (-> (new 'static 'array float 1 1.0) 0) arg3)
-       (set! arg3 (-> (the-as (pointer float) (new 'static 'array float 1 1.0)) 0))
+      ((< 1.0 arg3)
+       (set! arg3 (the-as float 1.0))
        )
       ((< arg3 0.0)
-       (set! arg3 (-> (the-as (pointer float) (new 'static 'array float 1 0.0)) 0))
+       (set! arg3 (the-as float 0.0))
        )
       )
-    (vector-normalize-copy! s2-0 arg1 (-> (new 'static 'array float 1 1.0) 0))
-    (vector-normalize-copy! s1-0 arg2 (-> (new 'static 'array float 1 1.0) 0))
+    (vector-normalize-copy! s2-0 arg1 (the-as float 1.0))
+    (vector-normalize-copy! s1-0 arg2 (the-as float 1.0))
     (vector-cross! s0-0 s2-0 s1-0)
     (let* ((f30-0 (vector-length s0-0))
            (f28-0 (asin f30-0))
            )
-      (vector-float*! arg0 arg1 (/ (sin (* (- (-> (new 'static 'array float 1 1.0) 0) arg3) f28-0)) f30-0))
+      (vector-float*! arg0 arg1 (/ (sin (* (- 1.0 arg3) f28-0)) f30-0))
       (vector+float*! arg0 arg0 arg2 (/ (sin (* arg3 f28-0)) f30-0))
       )
     )
@@ -586,36 +586,15 @@
   (let ((s3-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         )
-    (arg0
-      s3-0
-      (-> arg1 from)
-      (-> arg1 to)
-      (-> (new 'static 'array float 1 0.0) 0)
-      (-> arg1 axis)
-      (-> (new 'static 'array float 1 65536.0) 0)
-      )
+    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (the-as float 0.0) (-> arg1 axis) (the-as float 65536.0))
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (dotimes (s2-0 10)
       (set! (-> gp-0 quad) (-> s3-0 quad))
-      (arg0
-        s3-0
-        (-> arg1 from)
-        (-> arg1 to)
-        (* 0.1 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0)))
-        (-> arg1 axis)
-        (-> (new 'static 'array float 1 65536.0) 0)
-        )
+      (arg0 s3-0 (-> arg1 from) (-> arg1 to) (* 0.1 (+ 1.0 (the float s2-0))) (-> arg1 axis) (the-as float 65536.0))
       (vector+! s3-0 s3-0 (-> arg1 origin))
       (camera-line s3-0 gp-0 (-> arg1 color))
       )
-    (arg0
-      gp-0
-      (-> arg1 from)
-      (-> arg1 to)
-      (-> *CAM_LAYOUT-bank* debug-t)
-      (-> arg1 axis)
-      (-> (new 'static 'array float 1 65536.0) 0)
-      )
+    (arg0 gp-0 (-> arg1 from) (-> arg1 to) (-> *CAM_LAYOUT-bank* debug-t) (-> arg1 axis) (the-as float 65536.0))
     (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
     (vector+! gp-0 gp-0 (-> arg1 origin))
     (camera-line (-> arg1 origin) gp-0 (-> arg1 color))
@@ -624,7 +603,7 @@
       (new 'static 'vector :z 1024.0)
       gp-0
       (-> arg1 color)
-      (-> (new 'static 'array float 1 4096.0) 0)
+      (meters 1.0)
       )
     )
   )
@@ -635,17 +614,11 @@
   (let ((s3-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         )
-    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (-> (new 'static 'array float 1 0.0) 0))
+    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (the-as float 0.0))
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (dotimes (s2-0 10)
       (set! (-> gp-0 quad) (-> s3-0 quad))
-      (arg0
-        s3-0
-        (-> arg1 from)
-        (-> arg1 to)
-        (-> arg1 axis)
-        (* 182.04445 (* 18.0 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0))))
-        )
+      (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (* 182.04445 (* 18.0 (+ 1.0 (the float s2-0)))))
       (vector+! s3-0 s3-0 (-> arg1 origin))
       (camera-line s3-0 gp-0 (-> arg1 color))
       )
@@ -658,7 +631,7 @@
       (new 'static 'vector :z 1024.0)
       gp-0
       (-> arg1 color)
-      (-> (new 'static 'array float 1 4096.0) 0)
+      (meters 1.0)
       )
     )
   )
@@ -680,8 +653,8 @@
         s5-0
         s4-0
         (* 0.5 (cam-slave-get-fov arg0))
-        (-> (new 'static 'array float 1 0.75) 0)
-        (-> (new 'static 'array float 1 1.0) 0)
+        (the-as float 0.75)
+        (the-as float 1.0)
         (new 'static 'vector4w :z #xff :w #x80)
         )
       )
@@ -695,7 +668,7 @@
           (new 'static 'vector :z 1024.0)
           s5-1
           (new 'static 'vector4w :x #x80 :w #x80)
-          (-> (new 'static 'array float 1 4096.0) 0)
+          (meters 1.0)
           )
         )
     )
@@ -708,7 +681,7 @@
           (new 'static 'vector :z 1024.0)
           s5-2
           (new 'static 'vector4w :y #x80 :w #x80)
-          (-> (new 'static 'array float 1 4096.0) 0)
+          (meters 1.0)
           )
         )
     )
@@ -721,7 +694,7 @@
           (new 'static 'vector :z 1024.0)
           s5-3
           (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
-          (-> (new 'static 'array float 1 4096.0) 0)
+          (meters 1.0)
           )
         )
     )
@@ -735,7 +708,7 @@
                )
       (cond
         ((cam-slave-get-vector-with-offset arg0 s4-1 'pivot)
-         (curve-get-pos! s5-4 (-> (new 'static 'array float 1 0.0) 0) s3-1)
+         (curve-get-pos! s5-4 (the-as float 0.0) s3-1)
          (vector-! s4-1 s4-1 s5-4)
          )
         (else
@@ -757,11 +730,11 @@
                 )
           )
         )
-      (curve-get-pos! s5-4 (-> (new 'static 'array float 1 0.0) 0) s3-1)
+      (curve-get-pos! s5-4 (the-as float 0.0) s3-1)
       (vector+! s5-4 s5-4 s4-1)
       (dotimes (s1-1 8)
         (set! (-> s2-0 quad) (-> s5-4 quad))
-        (curve-get-pos! s5-4 (* (-> (new 'static 'array float 1 0.125) 0) (the float (+ s1-1 1))) s3-1)
+        (curve-get-pos! s5-4 (* 0.125 (the float (+ s1-1 1))) s3-1)
         (vector+! s5-4 s5-4 s4-1)
         (camera-line s2-0 s5-4 (new 'static 'vector4w :x #xff :y #xff :w #x80))
         )
@@ -772,7 +745,7 @@
         (new 'static 'vector :z 1024.0)
         s5-4
         (new 'static 'vector4w :x #xff :y #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
@@ -787,24 +760,24 @@
                )
       (cond
         ((cam-slave-get-vector-with-offset arg0 s4-2 'pivot)
-         (curve-get-pos! s5-5 (-> (new 'static 'array float 1 1.0) 0) s3-2)
+         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
          (vector-! s4-2 s4-2 s5-5)
          )
         ((get-curve-data! arg0 s1-2 'campath 'campath-k (the-as float -1000000000.0))
-         (curve-get-pos! s4-2 (-> (new 'static 'array float 1 0.0) 0) s1-2)
-         (curve-get-pos! s5-5 (-> (new 'static 'array float 1 1.0) 0) s3-2)
+         (curve-get-pos! s4-2 (the-as float 0.0) s1-2)
+         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
          (vector-! s4-2 s4-2 s5-5)
          )
         ((cam-slave-get-vector-with-offset arg0 s4-2 'trans)
-         (curve-get-pos! s5-5 (-> (new 'static 'array float 1 1.0) 0) s3-2)
+         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
          (vector-! s4-2 s4-2 s5-5)
          )
         )
-      (curve-get-pos! s5-5 (-> (new 'static 'array float 1 0.0) 0) s3-2)
+      (curve-get-pos! s5-5 (the-as float 0.0) s3-2)
       (vector+! s5-5 s5-5 s4-2)
       (dotimes (s1-3 8)
         (set! (-> s2-1 quad) (-> s5-5 quad))
-        (curve-get-pos! s5-5 (* (-> (new 'static 'array float 1 0.125) 0) (the float (+ s1-3 1))) s3-2)
+        (curve-get-pos! s5-5 (* 0.125 (the float (+ s1-3 1))) s3-2)
         (vector+! s5-5 s5-5 s4-2)
         (camera-line s2-1 s5-5 (new 'static 'vector4w :z #xff :w #x80))
         )
@@ -815,20 +788,20 @@
         (new 'static 'vector :z 1024.0)
         s5-5
         (new 'static 'vector4w :z #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
-      (curve-get-pos! s5-5 (cam-slave-get-float arg0 'intro-exitValue (-> (new 'static 'array float 1 0.0) 0)) s3-2)
+      (curve-get-pos! s5-5 (cam-slave-get-float arg0 'intro-exitValue (the-as float 0.0)) s3-2)
       (vector+! s5-5 s5-5 s4-2)
       (camera-cross
         (new 'static 'vector :y 1024.0)
         (new 'static 'vector :z 1024.0)
         s5-5
         (new 'static 'vector4w :z #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
-  (let ((s2-3 (res-lump-data arg0 'campoints pointer :time (-> (new 'static 'array float 1 1.0) 0)))
+  (let ((s2-3 (res-lump-data arg0 'campoints pointer :time (the-as float 1.0)))
         (v1-95 (res-lump-struct arg0 'campoints-offset structure :time (the-as float -1000000000.0)))
         (s4-3 (new 'stack-no-clear 'vector))
         (s3-3 (new 'stack-no-clear 'vector))
@@ -852,11 +825,11 @@
         (new 'static 'vector :z 1024.0)
         s5-6
         (new 'static 'vector4w :x #xff :y #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
-  (let ((s4-4 (res-lump-data arg0 'focalpull pointer :time (-> (new 'static 'array float 1 1.0) 0)))
+  (let ((s4-4 (res-lump-data arg0 'focalpull pointer :time (the-as float 1.0)))
         (s5-7 (new 'static 'vector))
         )
     (when (and s4-4 (or (!= *camera-layout-blink* 'focalpull) (logtest? (-> *display* real-actual-frame-counter) 8)))
@@ -876,7 +849,7 @@
         (new 'static 'vector :z 1024.0)
         s5-7
         (new 'static 'vector4w :y #xff :z #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
@@ -892,12 +865,12 @@
       (vector-! (-> s5-8 from) (-> s5-8 from) (-> s5-8 origin))
       (vector-! (-> s5-8 to) (-> s5-8 to) (-> s5-8 origin))
       (vector-cross! s4-5 (-> s5-8 from) (-> s5-8 to))
-      (vector-normalize! s4-5 (-> (new 'static 'array float 1 8192.0) 0))
+      (vector-normalize! s4-5 (the-as float 8192.0))
       (vector+! s4-5 s4-5 (-> s5-8 origin))
       (camera-line (-> s5-8 origin) s4-5 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
       (when (not (paused?))
         (+! (-> *CAM_LAYOUT-bank* debug-t) (-> *CAM_LAYOUT-bank* debug-step))
-        (if (< (-> (new 'static 'array float 1 1.0) 0) (-> *CAM_LAYOUT-bank* debug-t))
+        (if (< 1.0 (-> *CAM_LAYOUT-bank* debug-t))
             (set! (-> *CAM_LAYOUT-bank* debug-t) 0.0)
             )
         )
@@ -958,10 +931,10 @@
     ((cpad-hold? arg2 l3)
      (set! (-> arg0 z) (- (-> arg0 z) (analog-input
                                         (the-as int (-> *cpad-list* cpads arg2 rightx))
-                                        (-> (new 'static 'array float 1 128.0) 0)
-                                        (-> (new 'static 'array float 1 48.0) 0)
-                                        (-> (new 'static 'array float 1 110.0) 0)
-                                        (-> (new 'static 'array float 1 1.0) 0)
+                                        (the-as float 128.0)
+                                        (the-as float 48.0)
+                                        (the-as float 110.0)
+                                        (the-as float 1.0)
                                         )
                           )
            )
@@ -969,27 +942,27 @@
     (else
       (set! (-> arg0 y) (- (-> arg0 y) (analog-input
                                          (the-as int (-> *cpad-list* cpads arg2 rightx))
-                                         (-> (new 'static 'array float 1 128.0) 0)
-                                         (-> (new 'static 'array float 1 48.0) 0)
-                                         (-> (new 'static 'array float 1 110.0) 0)
-                                         (-> (new 'static 'array float 1 1.0) 0)
+                                         (the-as float 128.0)
+                                         (the-as float 48.0)
+                                         (the-as float 110.0)
+                                         (the-as float 1.0)
                                          )
                            )
             )
       (+! (-> arg0 x) (analog-input
                         (the-as int (-> *cpad-list* cpads arg2 righty))
-                        (-> (new 'static 'array float 1 128.0) 0)
-                        (-> (new 'static 'array float 1 48.0) 0)
-                        (-> (new 'static 'array float 1 110.0) 0)
-                        (-> (new 'static 'array float 1 1.0) 0)
+                        (the-as float 128.0)
+                        (the-as float 48.0)
+                        (the-as float 110.0)
+                        (the-as float 1.0)
                         )
           )
       (set! (-> arg1 x) (- (-> arg1 x) (analog-input
                                          (the-as int (-> *cpad-list* cpads arg2 leftx))
-                                         (-> (new 'static 'array float 1 128.0) 0)
-                                         (-> (new 'static 'array float 1 48.0) 0)
-                                         (-> (new 'static 'array float 1 110.0) 0)
-                                         (-> (new 'static 'array float 1 1.0) 0)
+                                         (the-as float 128.0)
+                                         (the-as float 48.0)
+                                         (the-as float 110.0)
+                                         (the-as float 1.0)
                                          )
                            )
             )
@@ -998,9 +971,9 @@
             (set! (-> arg1 y) (+ 0.5
                                  (analog-input
                                    (the-as int (-> *cpad-list* cpads arg2 abutton 9))
-                                   (-> (new 'static 'array float 1 0.0) 0)
-                                   (-> (new 'static 'array float 1 32.0) 0)
-                                   (-> (new 'static 'array float 1 230.0) 0)
+                                   (the-as float 0.0)
+                                   (the-as float 32.0)
+                                   (the-as float 230.0)
                                    (the-as float 0.5)
                                    )
                                  (-> arg1 y)
@@ -1012,9 +985,9 @@
         (if (cpad-hold? arg2 l1)
             (set! (-> arg1 y) (- (-> arg1 y) (+ 0.5 (analog-input
                                                       (the-as int (-> *cpad-list* cpads arg2 abutton 8))
-                                                      (-> (new 'static 'array float 1 0.0) 0)
-                                                      (-> (new 'static 'array float 1 32.0) 0)
-                                                      (-> (new 'static 'array float 1 230.0) 0)
+                                                      (the-as float 0.0)
+                                                      (the-as float 32.0)
+                                                      (the-as float 230.0)
                                                       (the-as float 0.5)
                                                       )
                                                 )
@@ -1024,10 +997,10 @@
         )
       (set! (-> arg1 z) (- (-> arg1 z) (analog-input
                                          (the-as int (-> *cpad-list* cpads arg2 lefty))
-                                         (-> (new 'static 'array float 1 128.0) 0)
-                                         (-> (new 'static 'array float 1 48.0) 0)
-                                         (-> (new 'static 'array float 1 110.0) 0)
-                                         (-> (new 'static 'array float 1 1.0) 0)
+                                         (the-as float 128.0)
+                                         (the-as float 48.0)
+                                         (the-as float 110.0)
+                                         (the-as float 1.0)
                                          )
                            )
             )
@@ -1303,11 +1276,13 @@
   )
 
 ;; definition for function fov->maya
+;; INFO: Return type mismatch number vs float.
 (defun fov->maya ((arg0 float))
-  (if (= arg0 0.0)
-      (-> (new 'static 'array float 1 0.0) 0)
-      (/ 12.700255 (tan (* 0.5 arg0)))
-      )
+  (the-as float (if (= arg0 0.0)
+                    0.0
+                    (/ 12.700255 (tan (* 0.5 arg0)))
+                    )
+          )
   )
 
 ;; definition for function cam-layout-save-cam-rot
@@ -1548,7 +1523,7 @@
                 'fov
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1562,7 +1537,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1601,7 +1576,7 @@
                 'focalPull
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1615,7 +1590,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1819,7 +1794,7 @@
                 'intro-time
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1833,7 +1808,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1844,7 +1819,7 @@
          (if arg0
              (format #t "setup intro-time 0.0 (defaults to 1 sec)~%")
              )
-         (set! f30-0 (-> (new 'static 'array float 1 1.0) 0))
+         (set! f30-0 1.0)
          )
         (arg0
           (format #t "setup intro-time ~f~%" f30-0)
@@ -1872,7 +1847,7 @@
                 'intro-exitValue
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1886,7 +1861,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1920,7 +1895,7 @@
                 'interpTime
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1934,7 +1909,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2002,7 +1977,7 @@
                                  'spline-follow-dist-offset
                                  'interp
                                  (the-as float -1000000000.0)
-                                 (-> (new 'static 'array float 1 0.0) 0)
+                                 (the-as float 0.0)
                                  (the-as (pointer res-tag) #f)
                                  *res-static-buf*
                                  )
@@ -2047,7 +2022,7 @@
                 'tiltAdjust
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2061,7 +2036,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2092,7 +2067,7 @@
                 'stringMinLength
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2106,7 +2081,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2137,7 +2112,7 @@
                 'stringMaxLength
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2151,7 +2126,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2182,7 +2157,7 @@
                 'stringMinHeight
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2196,7 +2171,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2227,7 +2202,7 @@
                 'stringMaxHeight
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2241,7 +2216,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2272,7 +2247,7 @@
                 'stringCliffHeight
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2286,7 +2261,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2317,7 +2292,7 @@
                 'maxAngle
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2330,7 +2305,7 @@
                    (string->symbol *res-key-string*)
                    'interp
                    (the-as float -1000000000.0)
-                   (-> (new 'static 'array float 1 0.0) 0)
+                   (the-as float 0.0)
                    (the-as (pointer res-tag) #f)
                    *res-static-buf*
                    )
@@ -2681,7 +2656,7 @@
                 arg0
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2689,15 +2664,15 @@
         (f0-0 (-> arg1 0))
         )
     (if (= f0-0 0.0)
-        (set! f0-0 (-> (new 'static 'array float 1 1.0) 0))
+        (set! f0-0 1.0)
         )
     (let ((f0-2
             (+ f30-0
                (analog-input
                  (the-as int (-> *cpad-list* cpads 0 leftx))
-                 (-> (new 'static 'array float 1 128.0) 0)
-                 (-> (new 'static 'array float 1 48.0) 0)
-                 (-> (new 'static 'array float 1 110.0) 0)
+                 (the-as float 128.0)
+                 (the-as float 48.0)
+                 (the-as float 110.0)
                  f0-0
                  )
                )
@@ -2716,7 +2691,7 @@
 
 ;; definition for function clmf-cam-meters
 (defbehavior clmf-cam-meters cam-layout ((arg0 meters) (arg1 symbol))
-  (let ((f0-0 (cam-slave-get-float (-> self cam-entity) arg1 (-> (new 'static 'array float 1 0.0) 0))))
+  (let ((f0-0 (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0))))
     (format arg0 ": ~M" f0-0)
     )
   #t
@@ -2730,7 +2705,7 @@
 
 ;; definition for function clmf-cam-deg
 (defbehavior clmf-cam-deg cam-layout ((arg0 degrees) (arg1 symbol))
-  (format arg0 ": ~R" (cam-slave-get-float (-> self cam-entity) arg1 (-> (new 'static 'array float 1 0.0) 0)))
+  (format arg0 ": ~R" (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))
   #t
   )
 
@@ -2751,7 +2726,7 @@
 
 ;; definition for function clmf-cam-float
 (defbehavior clmf-cam-float cam-layout ((arg0 float) (arg1 symbol))
-  (format arg0 ": ~f" (cam-slave-get-float (-> self cam-entity) arg1 (-> (new 'static 'array float 1 0.0) 0)))
+  (format arg0 ": ~f" (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))
   #t
   )
 
