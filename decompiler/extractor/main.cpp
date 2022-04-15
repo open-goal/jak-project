@@ -9,7 +9,6 @@
 #include "common/util/read_iso_file.h"
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
-  file_util::init_crc();
   decompiler::init_opcode_info();
   file_util::setup_project_path(project_path_override);
 }
