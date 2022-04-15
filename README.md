@@ -63,8 +63,8 @@ We have a Discord server where we discuss development. https://discord.gg/VZbXMH
 So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
 
 Here are some screenshots of the renderer:
-![](./docs/img/screenshot_hut_new_small.png)
-![](./docs/img/screenshot_junglenew_custommood_small.png)
+![](./docs/img/promosmall1.png)
+![](./docs/img/promosmall2.png)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
