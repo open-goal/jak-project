@@ -10,7 +10,7 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts, const Env& env) {
   ASSERT(f_ts.arg_count() <= 8 + 1);  // 8 args + 1 return.
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
-    auto reg_type = f_ts.get_arg(i);
+    auto& reg_type = f_ts.get_arg(i);
     result.get(Register(Reg::GPR, reg_id)) = TP_Type::make_from_ts(reg_type);
   }
 
@@ -19,7 +19,7 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts, const Env& env) {
       TP_Type::make_from_ts(TypeSpec(f_ts.try_get_tag("behavior").value_or("process")));
 
   // initialize stack slots as uninitialized
-  for (auto slot_info : env.stack_spills().map()) {
+  for (auto& slot_info : env.stack_spills().map()) {
     result.spill_slots.insert({slot_info.first, {}});
   }
   return result;
@@ -36,7 +36,7 @@ void modify_input_types_for_casts(
   for (auto& cast : casts) {
     try {
       auto type_from_cast = TP_Type::make_from_ts(dts.parse_type_spec(cast.type_name));
-      auto original_type = state->get(cast.reg);
+      auto& original_type = state->get(cast.reg);
       // fmt::print("Cast reg {} : {} -> {}\n", cast.reg.to_string(), original_type.print(),
       // type_from_cast.print());
       if (original_type != type_from_cast) {
@@ -90,10 +90,9 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
     as_end->mark_function_as_no_return_value();
   }
 
-  std::vector<TypeState> block_init_types, op_types;
   std::vector<bool> block_needs_update(func.basic_blocks.size(), true);
-  block_init_types.resize(func.basic_blocks.size());
-  op_types.resize(func.ir2.atomic_ops->ops.size());
+  std::vector<TypeState> block_init_types(func.basic_blocks.size());
+  std::vector<TypeState> op_types(func.ir2.atomic_ops->ops.size());
   auto& aop = func.ir2.atomic_ops;
 
   // STEP 1 - topological sort the blocks. This gives us an order where we:
