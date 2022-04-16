@@ -90,10 +90,10 @@ std::string ObjectFileData::to_unique_name() const {
   }
 }
 
-ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
-  ObjectFileData* result = nullptr;
+const ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) const {
+  const ObjectFileData* result = nullptr;
 
-  for (auto& x : obj_files_by_name[rec.name]) {
+  for (auto& x : obj_files_by_name.at(rec.name)) {
     if (x.record.version == rec.version) {
       ASSERT(x.record.hash == rec.hash);
       ASSERT(!result);
