@@ -2993,7 +2993,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto& type_1 = match_result.maps.strings.at(type_for_method);
+      auto type_1 = match_result.maps.strings.at(type_for_method);
       auto& name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
@@ -3042,7 +3042,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
               alloc != "loading-level") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
-          auto& type_2 = match_result.maps.strings.at(type_for_arg);
+          auto type_2 = match_result.maps.strings.at(type_for_arg);
           if (type_1 != type_2) {
             throw std::runtime_error(
                 fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
@@ -3096,7 +3096,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto& name = match_result.maps.strings.at(method_name);
+      auto name = match_result.maps.strings.at(method_name);
       if (name != "new") {
         // only do these checks on non-new methods.  New methods are treated as functions because
         // they are never virtual and are never called like a method.

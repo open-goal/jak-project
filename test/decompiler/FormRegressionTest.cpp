@@ -260,10 +260,10 @@ void FormRegressionTest::test(const std::string& code,
   auto ts = dts->parse_type_spec(type);
   auto test = make_function(code, ts, settings);
   ASSERT_TRUE(test);
-  auto expected_form =
+  auto& expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
   ASSERT_TRUE(test->func.ir2.top_form);
-  auto actual_form =
+  auto& actual_form =
       pretty_print::get_pretty_printer_reader()
           .read_from_string(test->func.ir2.top_form->to_form(test->func.ir2.env).print(), false)
           .as_pair()
