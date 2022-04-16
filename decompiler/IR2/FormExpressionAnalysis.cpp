@@ -660,7 +660,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(x);
     }
   } else if (arg.is_static_addr()) {
-    auto lab = env.file->labels.at(arg.label());
+    auto& lab = env.file->labels.at(arg.label());
     if (env.file->is_string(lab.target_segment, lab.offset)) {
       auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
       result->push_back(pool.alloc_element<StringConstantElement>(str));
@@ -698,8 +698,8 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
-  auto src = m_expr.get_arg(0);
-  auto src_type = env.get_types_before_op(src.var().idx()).get(src.var().reg());
+  auto& src = m_expr.get_arg(0);
+  auto& src_type = env.get_types_before_op(src.var().idx()).get(src.var().reg());
   std::vector<FormElement*> src_fes;
   if (src.is_var()) {
     auto forms = pop_to_forms({src.var()}, env, pool, stack, allow_side_effects);
@@ -731,8 +731,8 @@ void SimpleExpressionElement::update_from_stack_fpr_to_gpr(const Env& env,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
-  auto src = m_expr.get_arg(0);
-  auto src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
+  auto& src = m_expr.get_arg(0);
+  auto& src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
   if (env.dts->ts.tc(TypeSpec("float"), src_type.typespec()) ||
       src_type.typespec() == TypeSpec("int")) {
     // set ourself to identity.
@@ -784,8 +784,8 @@ void SimpleExpressionElement::update_from_stack_float_2(const Env& env,
                                                        args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
-    auto type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
-    auto type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
+    auto& type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    auto& type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
     throw std::runtime_error(fmt::format(
         "[OP: {}] - Floating point math attempted on invalid types: {} and {} in op {}.", m_my_idx,
         type0.print(), type1.print(), to_string(env)));
@@ -875,8 +875,8 @@ void SimpleExpressionElement::update_from_stack_float_2_nestable(const Env& env,
         make_and_compact_math_op(args.at(0), args.at(1), {}, {}, pool, env, kind, true, false);
     result->push_back(new_form);
   } else {
-    auto type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
-    auto type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
+    auto& type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    auto& type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
     throw std::runtime_error(fmt::format(
         "[OP: {}] - Floating point math attempted on invalid types: {} and {} in op {}.", m_my_idx,
         type0.print(), type1.print(), to_string(env)));
@@ -1431,7 +1431,7 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus_cross(
                    pool, stack, allow_side_effects);
 
   for (int i = 0; i < 3; i++) {
-    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    auto& arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
       popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
     }
@@ -1454,7 +1454,7 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
                    pool, stack, allow_side_effects);
 
   for (int i = 0; i < 3; i++) {
-    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    auto& arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     TypeSpec desired_type(i == 2 ? "float" : "vector");
     if (arg_type.typespec() != desired_type) {
       popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
@@ -1477,7 +1477,7 @@ void SimpleExpressionElement::update_from_stack_vector_dot(FixedOperatorKind kin
                                                 env, pool, stack, allow_side_effects);
 
   for (int i = 0; i < 2; i++) {
-    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    auto& arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
       popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
     }
@@ -1820,8 +1820,8 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
 
   auto handle_mr = match(make_handle_matcher, &hack_form);
   if (handle_mr.matched) {
-    auto var_a = handle_mr.maps.regs.at(0).value();
-    auto var_b = handle_mr.maps.regs.at(1).value();
+    auto& var_a = handle_mr.maps.regs.at(0).value();
+    auto& var_b = handle_mr.maps.regs.at(1).value();
     if (env.get_variable_name(var_a) == env.get_variable_name(var_b) &&
         env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
                        env.get_variable_type(var_a, true))) {
@@ -2073,7 +2073,7 @@ void SimpleExpressionElement::update_from_stack_int_to_float(const Env& env,
                                                              FormStack& stack,
                                                              std::vector<FormElement*>* result,
                                                              bool allow_side_effects) {
-  auto var = m_expr.get_arg(0).var();
+  auto& var = m_expr.get_arg(0).var();
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   // if we convert from a GPR to FPR, then immediately to int to float, we can strip away the
   // the gpr->fpr operation beacuse it doesn't matter.
@@ -2099,7 +2099,7 @@ void SimpleExpressionElement::update_from_stack_float_to_int(const Env& env,
                                                              FormStack& stack,
                                                              std::vector<FormElement*>* result,
                                                              bool allow_side_effects) {
-  auto var = m_expr.get_arg(0).var();
+  auto& var = m_expr.get_arg(0).var();
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
   if (type == TypeSpec("float")) {
@@ -2121,7 +2121,7 @@ void SimpleExpressionElement::update_from_stack_subu_l32_s7(const Env& env,
                                                             FormStack& stack,
                                                             std::vector<FormElement*>* result,
                                                             bool allow_side_effects) {
-  auto var = m_expr.get_arg(0).var();
+  auto& var = m_expr.get_arg(0).var();
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
   if (type != TypeSpec("handle")) {
@@ -2324,7 +2324,7 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
           m_var_info.is_eliminated_coloring_move = true;
         }
 
-        auto var = src_as_se->expr().get_arg(0).var();
+        auto& var = src_as_se->expr().get_arg(0).var();
         auto& info = env.reg_use().op.at(var.idx());
         if (var.reg() == Register(Reg::GPR, Reg::S6) ||
             info.consumes.find(var.reg()) != info.consumes.end()) {
@@ -2891,7 +2891,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         first_arg_type = actual_arg_type;
       }
 
-      auto desired_arg_type = function_type.get_arg(arg_id);
+      auto& desired_arg_type = function_type.get_arg(arg_id);
       if (env.dts->should_attempt_cast_simplify(desired_arg_type, actual_arg_type)) {
         arg_forms.push_back(cast_form(val, desired_arg_type, pool, env,
                                       env.dts->ts.tc(desired_arg_type, actual_arg_type)));
@@ -2937,7 +2937,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                                {Matcher::any_reg(0), Matcher::any(1)});
     auto mr = match(matcher, unstacked.at(0));
     if (mr.matched && nargs >= 1) {
-      auto vtable_reg = mr.maps.regs.at(0);
+      auto& vtable_reg = mr.maps.regs.at(0);
       ASSERT(vtable_reg);
       auto vtable_var_name = env.get_variable_name(*vtable_reg);
       auto arg0_mr = match(Matcher::any_reg(0), unstacked.at(1));
@@ -2993,7 +2993,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto type_1 = match_result.maps.strings.at(type_for_method);
+      auto& type_1 = match_result.maps.strings.at(type_for_method);
       auto& name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
@@ -3042,7 +3042,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
               alloc != "loading-level") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
-          auto type_2 = match_result.maps.strings.at(type_for_arg);
+          auto& type_2 = match_result.maps.strings.at(type_for_arg);
           if (type_1 != type_2) {
             throw std::runtime_error(
                 fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
@@ -3096,7 +3096,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto name = match_result.maps.strings.at(method_name);
+      auto& name = match_result.maps.strings.at(method_name);
       if (name != "new") {
         // only do these checks on non-new methods.  New methods are treated as functions because
         // they are never virtual and are never called like a method.
@@ -3352,8 +3352,8 @@ Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
     return nullptr;
   }
 
-  auto body_var = *body_mr.maps.regs.at(0);
-  auto condition_var = *condition_mr.maps.regs.at(0);
+  auto& body_var = *body_mr.maps.regs.at(0);
+  auto& condition_var = *condition_mr.maps.regs.at(0);
 
   if (env.get_variable_name(body_var) != env.get_variable_name(condition_var)) {
     return nullptr;
@@ -3406,8 +3406,8 @@ Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
     return nullptr;
   }
 
-  auto body_var = *body_mr.maps.regs.at(0);
-  auto condition_var = *condition_mr.maps.regs.at(0);
+  auto& body_var = *body_mr.maps.regs.at(0);
+  auto& condition_var = *condition_mr.maps.regs.at(0);
 
   if (env.get_variable_name(body_var) != env.get_variable_name(condition_var)) {
     return nullptr;
@@ -3630,7 +3630,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     // ASSERT(dest_sets.size() == write_output_forms.size());
     if (!dest_sets.empty()) {
       for (size_t i = 0; i < dest_sets.size() - 1; i++) {
-        auto var = dest_sets.at(i)->dst();
+        auto& var = dest_sets.at(i)->dst();
         auto* env2 = const_cast<Env*>(&env);
         env2->disable_def(var, env2->func->warnings);
       }
@@ -4471,7 +4471,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
   auto dst = op->dst();
   ASSERT(dst.has_value());
 
-  auto integer_atom = op->instruction().get_src(1);
+  auto& integer_atom = op->instruction().get_src(1);
   ASSERT(integer_atom.is_imm());
   auto integer = integer_atom.get_imm();
 
@@ -4780,8 +4780,8 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
       branch_delay = nullptr;
     } break;
     case IR2_BranchDelay::Kind::SET_REG_REG: {
-      auto src = m_op->branch_delay().var(1);
-      auto dst = m_op->branch_delay().var(0);
+      auto& src = m_op->branch_delay().var(1);
+      auto& dst = m_op->branch_delay().var(0);
 
       auto src_form =
           pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(src));
@@ -4790,7 +4790,7 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
           nullptr, dst, src_form, true, env.get_variable_type(src, true));
     } break;
     case IR2_BranchDelay::Kind::SET_REG_FALSE: {
-      auto dst = m_op->branch_delay().var(0);
+      auto& dst = m_op->branch_delay().var(0);
       auto src_form = pool.alloc_single_element_form<SimpleAtomElement>(
           nullptr, SimpleAtom::make_sym_val("#f"));
 
@@ -4798,7 +4798,7 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
                                                                    TypeSpec("symbol"));
     } break;
     case IR2_BranchDelay::Kind::SET_REG_TRUE: {
-      auto dst = m_op->branch_delay().var(0);
+      auto& dst = m_op->branch_delay().var(0);
       auto src_form = pool.alloc_single_element_form<SimpleAtomElement>(
           nullptr, SimpleAtom::make_sym_val("#t"));
 
@@ -4851,8 +4851,8 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
                              new_val->to_string(env));
   }
 
-  auto idx = match_result.maps.regs.at(0);
-  auto base = match_result.maps.regs.at(1);
+  auto& idx = match_result.maps.regs.at(0);
+  auto& base = match_result.maps.regs.at(1);
   ASSERT(idx.has_value() && base.has_value());
 
   auto deref = pool.alloc_element<DerefElement>(

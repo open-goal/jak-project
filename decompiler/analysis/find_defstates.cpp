@@ -93,8 +93,8 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
           temp.to_string(env));
     }
 
-    auto var = mr.maps.regs.at(0);
-    auto name = mr.maps.strings.at(1);
+    auto& var = mr.maps.regs.at(0);
+    auto& name = mr.maps.strings.at(1);
     auto val = mr.maps.forms.at(2);
 
     auto handler_kind = handler_name_to_kind(name);
@@ -229,12 +229,12 @@ std::string verify_empty_state_and_get_name(DecompiledDataElement* state, const 
   int start_word_idx = (lab.offset / 4) - 1;
   auto& words = env.file->words_by_seg.at(lab.target_segment);
 
-  auto first_word = words.at(start_word_idx);
+  auto& first_word = words.at(start_word_idx);
   if (first_word.kind() != LinkedWord::TYPE_PTR || first_word.symbol_name() != "state") {
     env.func->warnings.warn_and_throw("Reference to state bad: invalid type pointer");
   }
 
-  auto name_word = words.at(start_word_idx + 1);
+  auto& name_word = words.at(start_word_idx + 1);
   if (name_word.kind() != LinkedWord::SYM_PTR) {
     env.func->warnings.warn_and_throw("Reference to state bad: invalid name");
   }
@@ -286,7 +286,7 @@ FormElement* rewrite_virtual_defstate(
     body_idx++;
 
     // expect this to match the variable in the top let
-    auto state_var = *inherit_mr.maps.regs.at(0);
+    auto& state_var = *inherit_mr.maps.regs.at(0);
     // this expression should be the thing we inherit from.
     auto parent_state = inherit_mr.maps.forms.at(1);
 
@@ -339,7 +339,7 @@ FormElement* rewrite_virtual_defstate(
   }
 
   // the actual type that gets this as a state
-  auto type_name = mset_mr.maps.strings.at(0);
+  auto& type_name = mset_mr.maps.strings.at(0);
   auto method_id = mset_mr.maps.ints.at(1);
 
   // should be the state again.

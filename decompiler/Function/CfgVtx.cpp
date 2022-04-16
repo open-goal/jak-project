@@ -2775,7 +2775,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
 
     if (is_branch(likely_branch_candidate, true)) {
       // likely branch!
-      auto following = func.instructions.at(likely_branch_idx + 1);
+      auto& following = func.instructions.at(likely_branch_idx + 1);
       if (branch_delay_asm(following)) {
         b->end_branch.asm_branch = true;
         if (debug_asm_branch) {
