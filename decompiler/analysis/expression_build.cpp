@@ -27,7 +27,7 @@ bool convert_to_expressions(
       f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
     f.ir2.env.set_remap_for_function(f.type);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-    auto& method_type =
+    auto method_type =
         dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
     if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
       f.ir2.env.set_remap_for_new_method(method_type);
@@ -70,7 +70,7 @@ bool convert_to_expressions(
     // rewrite the stack to get the correct final value
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
-      auto return_var = f.ir2.atomic_ops->end_op().return_var();
+      auto& return_var = f.ir2.atomic_ops->end_op().return_var();
       new_entries = rewrite_to_get_var(stack, pool, return_var, f.ir2.env);
       TypeSpec return_type = f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1)
                                  .get(return_var.reg())
