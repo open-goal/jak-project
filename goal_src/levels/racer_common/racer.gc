@@ -8,12 +8,12 @@
 (define-extern blocking-plane-destroy (function none))
 (define-extern blocking-plane-spawn (function curve-control none))
 
-;; failed to figure out what this is:
+;; DECOMP BEGINS
+
 (if (not (nmember "racerp" *kernel-packages*))
     (set! *kernel-packages* (cons "racerp" *kernel-packages*))
     )
 
-;; definition of type racer
 (deftype racer (process-drawable)
   ((parent-override (pointer target)             :offset         12)
    (root-override   collide-shape-moving         :offset        112)
@@ -38,24 +38,7 @@
     )
   )
 
-;; definition for method 3 of type racer
-(defmethod inspect racer ((obj racer))
-  (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
-    )
-  (format #t "~T~Textra-trans: ~`vector`P~%" (-> obj extra-trans))
-  (format #t "~T~Tcondition: ~D~%" (-> obj condition))
-  (format #t "~T~Tcell: ~D~%" (-> obj cell))
-  (format #t "~T~Tpath-data[2] @ #x~X~%" (-> obj path-data))
-  (format #t "~T~Tpath-target: ~A~%" (-> obj path-target))
-  (format #t "~T~Tpath-racer: ~A~%" (-> obj path-racer))
-  (format #t "~T~Tauto-get-off: ~A~%" (-> obj auto-get-off))
-  (format #t "~T~Tshadow-backup: ~A~%" (-> obj shadow-backup))
-  obj
-  )
 
-;; definition for method 7 of type racer
-;; INFO: Return type mismatch process-drawable vs racer.
 (defmethod relocate racer ((obj racer) (arg0 int))
   (countdown (v1-0 2)
     (if (-> obj path-data v1-0)
@@ -65,7 +48,6 @@
   (the-as racer ((method-of-type process-drawable relocate) obj arg0))
   )
 
-;; failed to figure out what this is:
 (defskelgroup *racer-sg* racer
   0
   3
@@ -76,7 +58,6 @@
   :sort 1
   )
 
-;; failed to figure out what this is:
 (defskelgroup *racer-explode-sg* racer
   22
   24
@@ -85,9 +66,7 @@
   :longest-edge (meters 0)
   )
 
-;; definition for symbol *racer-shadow-control*, type shadow-control
-(define
-  *racer-shadow-control*
+(define *racer-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
                                            :center
                                            (new 'static 'vector :w (the-as float #xa))
@@ -99,8 +78,6 @@
                                )
   )
 
-;; definition for function racer-effect
-;; INFO: Return type mismatch int vs none.
 (defbehavior racer-effect racer ()
   (when (!= (-> self condition) 4)
     (spawn (-> self part) (-> self root-override trans))
@@ -110,7 +87,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate wait-for-start (racer)
   :virtual #t
   :event
@@ -243,7 +219,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate idle (racer)
   :virtual #t
   :event
@@ -281,7 +256,7 @@
           (hide-hud)
           (level-hint-surpress!)
           (kill-current-level-hint '() '(sidekick voicebox) 'exit)
-          (when (and (hud-hidden?) (can-grab-display? (the-as process-taskable self)))
+          (when (and (hud-hidden?) (can-grab-display? self))
             (let ((gp-0
                     (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))
                     )
@@ -310,7 +285,6 @@
   (the-as (function none :behavior racer) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate pickup (racer)
   :virtual #t
   :event
@@ -384,7 +358,7 @@
       (suspend)
       )
     (let ((s5-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) s5-0) 300)
+      (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 1))
         (racer-effect)
         (suspend)
         )
@@ -394,7 +368,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate wait-for-return (racer)
   :virtual #t
   :event
@@ -446,8 +419,6 @@
     )
   )
 
-;; definition for method 11 of type racer
-;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! racer ((obj racer) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
