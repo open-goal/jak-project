@@ -562,11 +562,13 @@ static void link_v5(LinkedObjectFile& f,
         } else if ((reloc & 0x3f) == 0x3f) {
           ASSERT(false);  // todo, does this ever get hit?
         } else {
+          /*
           int n_methods_base = reloc & 0x3f;
           int n_methods = n_methods_base * 4;
           if (n_methods_base) {
             n_methods += 3;
           }
+          */
           link_ptr += 2;  // ghidra misses some aliasing here and would have you think this is +1!
           const char* sname = (const char*)(&data.at(link_ptr));
           link_ptr += strlen(sname) + 1;

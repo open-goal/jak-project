@@ -521,7 +521,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
         out->kind = SignalInfo::DISAPPEARED;
         break;
       default:
-        printf("[Debugger] unhandled debug event %d\n", debugEvent.dwDebugEventCode);
+        printf("[Debugger] unhandled debug event %lu\n", debugEvent.dwDebugEventCode);
         out->kind = SignalInfo::UNKNOWN;
         break;
     }
