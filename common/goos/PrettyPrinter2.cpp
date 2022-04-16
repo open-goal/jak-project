@@ -214,7 +214,8 @@ void break_list(Node* node) {
       // things with 4 things in the top line: (defmethod <method> <type> <args>
       node->top_line_count = 4;
     } else if (name == "until" || name == "while" || name == "dotimes" || name == "countdown" ||
-               name == "when" || name == "behavior" || name == "lambda" || name == "defpart") {
+               name == "when" || name == "behavior" || name == "lambda" || name == "defpart" ||
+               name == "define") {
       node->top_line_count = 2;
     } else if (name == "let" || name == "let*" || name == "rlet") {
       // special case for things like let.
