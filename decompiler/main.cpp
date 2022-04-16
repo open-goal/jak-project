@@ -11,8 +11,11 @@
 #include "decompiler/data/TextureDB.h"
 #include "common/util/os.h"
 #include "common/util/diff.h"
+#include "common/util/Timer.h"
 
 int main(int argc, char** argv) {
+  Timer decomp_timer;
+
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
   if (!file_util::setup_project_path(std::nullopt)) {
@@ -216,6 +219,6 @@ int main(int argc, char** argv) {
     process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
   }
 
-  lg::info("Disassembly has completed successfully.");
+  lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
   return 0;
 }
