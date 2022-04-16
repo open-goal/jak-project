@@ -28,6 +28,7 @@ add_library(common
         util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
+        util/crc32.cpp
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
@@ -35,6 +36,7 @@ add_library(common
         util/FileUtil.cpp
         util/json_util.cpp
         util/read_iso_file.cpp
+        util/SimpleThreadGroup.cpp
         util/Timer.cpp
         util/os.cpp
         util/print_float.cpp

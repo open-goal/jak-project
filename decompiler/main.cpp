@@ -25,7 +25,6 @@ int main(int argc, char** argv) {
   lg::initialize();
   lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
-  file_util::init_crc();
   init_opcode_info();
 
   if (argc < 4) {
@@ -207,10 +206,8 @@ int main(int argc, char** argv) {
   }
 
   if (config.levels_extract) {
-    extract_common(db, tex_db, "GAME.CGO");
-    for (auto& lev : config.levels_to_extract) {
-      extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
-    }
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
+                       config.rip_levels);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));

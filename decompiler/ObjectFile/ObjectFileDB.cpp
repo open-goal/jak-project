@@ -26,6 +26,7 @@
 #include "decompiler/Function/BasicBlocks.h"
 #include "common/log/log.h"
 #include "common/util/json_util.h"
+#include "common/util/crc32.h"
 
 namespace decompiler {
 namespace {
@@ -89,10 +90,10 @@ std::string ObjectFileData::to_unique_name() const {
   }
 }
 
-ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
-  ObjectFileData* result = nullptr;
+const ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) const {
+  const ObjectFileData* result = nullptr;
 
-  for (auto& x : obj_files_by_name[rec.name]) {
+  for (auto& x : obj_files_by_name.at(rec.name)) {
     if (x.record.version == rec.version) {
       ASSERT(x.record.hash == rec.hash);
       ASSERT(!result);
@@ -270,7 +271,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   stats.total_obj_files++;
   ASSERT(obj_size > 128);
   uint16_t version = *(const uint16_t*)(obj_data + 8);
-  auto hash = file_util::crc32(obj_data, obj_size);
+  auto hash = crc32(obj_data, obj_size);
 
   bool duplicated = false;
   // first, check to see if we already got it...

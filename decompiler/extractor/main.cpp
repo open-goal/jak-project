@@ -9,7 +9,6 @@
 #include "common/util/read_iso_file.h"
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
-  file_util::init_crc();
   decompiler::init_opcode_info();
   file_util::setup_project_path(project_path_override);
 }
@@ -105,10 +104,8 @@ void decompile(std::filesystem::path jak1_input_files) {
 
   // levels
   {
-    extract_common(db, tex_db, "GAME.CGO");
-    for (auto& lev : config.levels_to_extract) {
-      extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
-    }
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
+                       config.rip_levels);
   }
 }
 

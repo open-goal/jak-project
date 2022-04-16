@@ -101,7 +101,7 @@ class ObjectFileDB {
   std::string process_game_count_file();
   std::string process_game_text_files(const Config& cfg);
 
-  ObjectFileData& lookup_record(const ObjectFileRecord& rec);
+  const ObjectFileData& lookup_record(const ObjectFileRecord& rec) const;
   DecompilerTypeSystem dts;
 
   bool lookup_function_type(const FunctionName& name,
