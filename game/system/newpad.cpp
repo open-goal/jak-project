@@ -274,13 +274,14 @@ void check_gamepad() {
   } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[0])) {
     lg::info("Gamepad has been disconnected");
     g_gamepads.gamepad_idx[0] = -1;
-    g_gamepads.gamepad_idx[1] = -1; // if there's no pad 0 there's surely no pad 1 either
+    g_gamepads.gamepad_idx[1] = -1; // if there's no cpad0 there's no sense in having a cpad1
   } else if (g_gamepads.gamepad_idx[1] == -1) {
-    int i = g_gamepads.gamepad_idx[0] + 1;
-    // if (!glfwJoystickIsGamepad(i)) lg::info("Not gamepad {}: GUID {}", i, glfwGetJoystickGUID(i));
-    if (i <= GLFW_JOYSTICK_LAST && glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
-      g_gamepads.gamepad_idx[1] = i;
-      lg::info("Second joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+    for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
+      if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+        if (i == g_gamepads.gamepad_idx[0]) continue;
+        g_gamepads.gamepad_idx[1] = i;
+        lg::info("Second joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+      }
     }
   } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[1])) {
     lg::info("Second pad has been disconnected");
@@ -295,21 +296,12 @@ void initialize() {
   }
 }
 
-void clear_gamepads() {
+void clear_pad(int pad) {
   for (int i = 0; i < (int)Button::Max; ++i) {
-    g_gamepad_buttons[0][i] = false;
+    g_gamepad_buttons[pad][i] = false;
   }
   for (int i = 0; i < 4; ++i) {
-    g_gamepad_analogs[0][i] = 0;
-  }
-}
-
-void clear_pad2() {
-  for (int i = 0; i < (int)Button::Max; ++i) {
-    g_gamepad_buttons[1][i] = false;
-  }
-  for (int i = 0; i < 4; ++i) {
-    g_gamepad_analogs[1][i] = 0;
+    g_gamepad_analogs[pad][i] = 0;
   }
 }
 
@@ -317,13 +309,10 @@ void update_gamepads() {
   check_gamepad();
 
   if (g_gamepads.gamepad_idx[0] == -1) {
-    clear_gamepads();
-    clear_pad2();
+    clear_pad(0);
+    clear_pad(1);
     return;
   }
-
-  GLFWgamepadstate state;
-  glfwGetGamepadState(g_gamepads.gamepad_idx[0], &state);
 
   constexpr std::pair<Button, int> gamepad_map[] = {
       {Button::Select, GLFW_GAMEPAD_BUTTON_BACK},
@@ -346,33 +335,29 @@ void update_gamepads() {
       {Analog::Left_Y, GLFW_GAMEPAD_AXIS_LEFT_Y},
       {Analog::Right_X, GLFW_GAMEPAD_AXIS_RIGHT_X},
       {Analog::Right_Y, GLFW_GAMEPAD_AXIS_RIGHT_Y}};
+  
+  // read_pad_state(0,gamepad_map,gamepad_analog_map);
 
-  for (const auto& [button, idx] : gamepad_map) {
-    g_gamepad_buttons[0][(int)button] = state.buttons[idx];
-  }
-
-  g_gamepad_buttons[0][(int)Button::L2] = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
-  g_gamepad_buttons[0][(int)Button::R2] = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0;
-
-  for (const auto& [analog_vector, idx] : gamepad_analog_map) {
-    g_gamepad_analogs[0][(int)analog_vector] = state.axes[idx];
-  }
-
-  if (g_gamepads.gamepad_idx[1] != -1) {
-    GLFWgamepadstate state2;
-    glfwGetGamepadState(g_gamepads.gamepad_idx[1], &state2);
+  auto read_pad_state = [gamepad_map,gamepad_analog_map](int pad) {
+    GLFWgamepadstate state;
+    glfwGetGamepadState(g_gamepads.gamepad_idx[pad], &state);
 
     for (const auto& [button, idx] : gamepad_map) {
-      g_gamepad_buttons[1][(int)button] = state2.buttons[idx];
+      g_gamepad_buttons[pad][(int)button] = state.buttons[idx];
     }
 
-    g_gamepad_buttons[1][(int)Button::L2] = state2.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
-    g_gamepad_buttons[1][(int)Button::R2] = state2.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0;
+    g_gamepad_buttons[pad][(int)Button::L2] = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
+    g_gamepad_buttons[pad][(int)Button::R2] = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0;
 
     for (const auto& [analog_vector, idx] : gamepad_analog_map) {
-      g_gamepad_analogs[1][(int)analog_vector] = state2.axes[idx];
+      g_gamepad_analogs[pad][(int)analog_vector] = state.axes[idx];
     }
-  } else clear_pad2();
+  };
+
+  read_pad_state(0);
+
+  if (g_gamepads.gamepad_idx[1] != -1) read_pad_state(1);
+  else clear_pad(1);
 }
 
 };  // namespace Pad
