@@ -13,6 +13,7 @@ u32 get_current_tid() {
   return (u32)pthread_self();
 }
 #else
+#define NOMINMAX
 #include <windows.h>
 #include "Processthreadsapi.h"
 u32 get_current_tid() {
