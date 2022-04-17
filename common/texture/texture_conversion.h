@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/common_types.h"
+
 /*!
  * Convert from a pixel location in a texture (x, y, texture buffer width) to VRAM address (byte).
  * Uses the PSMCT32 format.

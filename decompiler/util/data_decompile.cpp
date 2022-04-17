@@ -1388,8 +1388,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
       // invalid.
       lg::error(
           "There is an improper list. This is probably okay, but should be checked manually "
-          "because we "
-          "could not find a test case yet.");
+          "because we could not find a test case yet.");
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
       if (add_quote) {
