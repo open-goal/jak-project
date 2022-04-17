@@ -24,6 +24,9 @@
 ;; are monitored in the runtime for debugging.
 (defglobalconstant USE_VM #t)
 
+(defglobalconstant PC_PROFILER_ENABLE #t)
+
+
 (defmacro get-vm-ptr (ptr)
   "Turn an EE register address into a valid PS2 VM address"
   `(#cond
@@ -119,7 +122,7 @@
   )
 
 (defun ash ((value int) (shift-amount int))
-  "Arithmetic shift value by shift-amount.  
+  "Arithmetic shift value by shift-amount.
   A positive shift-amount will shift to the left and a negative will shift to the right.
   "
   ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
@@ -133,7 +136,7 @@
 (defun mod ((a int) (b int))
   "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
   This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
-  
+
   ;; The original implementation is div, mfhi
   ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
@@ -142,7 +145,7 @@
 
 (defun rem ((a int) (b int))
   "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
-  
+
   ;; The original implementation is div, mfhi
   ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
@@ -150,9 +153,9 @@
 
 (defun abs ((a int))
   "Take the absolute value of an integer"
-  
+
   (declare (inline))
-  
+
   ;; OpenGOAL doesn't support abs, so we implement it here.
   (if (> a 0) ;; condition is "a > 0"
       a       ;; true case, return a
@@ -162,7 +165,7 @@
 
 (defun min ((a int) (b int))
   "Compute minimum."
-  
+
   ;; The original implementation was inline assembly, to take advantage of branch delay slots:
   ;;  (or v0 a0 r0)    ;; move first arg to output (case of second arg being min)
   ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
@@ -307,7 +310,7 @@
 
 (defmethod asize-of type ((obj type))
   "Get the size in memory of a type"
-  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always, 
+  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always,
   ;; but this matches what the runtime does as well. There's no reason that I can see for this,
   ;; as other basics don't require 16-byte aligned sizes.
   ;; - maybe the 16-byte aligned size was a requirement if types were stored in the symbol table?
@@ -486,7 +489,7 @@
   )
 
 (defun nassoc ((item-name string) (alist object))
-  "Is there an entry named item-name in the association list alist? 
+  "Is there an entry named item-name in the association list alist?
    Checks name with nmember or name= so you can have multiple keys.
    Returns the ([key|(key..)] . value) pair."
   (while (not (or (null? alist)
@@ -670,9 +673,9 @@
    ;; children of inline-array-class should define their own data which overlays this one.
    (_data            uint8  :dynamic :offset 16)
    )
-  
+
   (:methods (new (symbol type int) _type_ 0))
-  
+
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -760,7 +763,7 @@
   (format #t "#(")
   (cond
    ((type-type? (-> obj content-type) integer)
-    (case (-> obj content-type symbol) 
+    (case (-> obj content-type symbol)
      (('int32)
        (dotimes (s5-0 (-> obj length))
         (format #t (if (zero? s5-0)
@@ -894,7 +897,7 @@
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   (cond
    ((type-type? (-> obj content-type) integer)
-    (case (-> obj content-type symbol) 
+    (case (-> obj content-type symbol)
      (('int32)
        (dotimes (s5-0 (-> obj length))
         (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
@@ -1424,4 +1427,36 @@
 
 (defmacro empty-form ()
   `(none)
+  )
+
+(defmacro profiler-instant-event (name)
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event instant))
+     )
+  )
+
+(defmacro profiler-start-event (name)
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event begin))
+     )
+  )
+
+(defmacro profiler-end-event ()
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof "" (pc-prof-event end))
+     )
+  )
+
+(defmacro with-profiler (name &rest body)
+  `(#if PC_PROFILER_ENABLE
+        (begin
+          (pc-prof ,name (pc-prof-event begin))
+          ,@body
+          (pc-prof ,name (pc-prof-event end))
+          )
+
+        (begin
+          ,@body
+          )
+        )
   )

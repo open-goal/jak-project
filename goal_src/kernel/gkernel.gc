@@ -32,7 +32,7 @@
 
 ;; Can be 'boot, 'listener, or 'debug-boot
 ;; set to 'boot when DiskBooting.
-(define *kernel-boot-mode* 'listener) 
+(define *kernel-boot-mode* 'listener)
 
 ;; DebugBootLevel in C Kernel
 (define *kernel-boot-level* (the symbol #f))
@@ -117,21 +117,21 @@
 ;; without executing anything, to find a process for instance.
 (define *null-kernel-context* (new 'static 'kernel-context))
 
-(#cond 
+(#cond
   (PC_PORT
-  
+
   ;; make sure the scratchpad is 16kb aligned, and make it 32 kB so we can big stacks on it.
   (let* ((mem (new 'global 'array 'uint8 (* (+ 16 32) 1024)))
          )
       (define *fake-scratchpad-data* (the pointer (align-n mem (* 16 1024))))
     )
-  
+
   ;; We will move stacks on the scratchpad to here.
   ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
   ;; not overlapping. We can spare the 16k of memory.
   (define *fake-scratchpad-stack* *fake-scratchpad-data*)
   ;;(define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
-  
+
 
   (defmacro scratchpad-start()
     '*fake-scratchpad-data*
@@ -149,12 +149,12 @@
   )
 
 (defmacro in-scratchpad? (x)
-  `(and 
+  `(and
      (>= (the-as int ,x) (scratchpad-start))
      (< (the-as int ,x) (scratchpad-end))
      )
   )
-  
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -178,13 +178,13 @@
 ;; Perhaps the thread was the public interface and cpu-thread is internal to the kernel?
 
 (defmethod delete thread ((obj thread))
-  "Clean up a temporary thread after it is done being used. 
+  "Clean up a temporary thread after it is done being used.
   This assumes it's the top-thread of the process and restores the previous top thread."
   (when (eq? obj (-> obj process main-thread))
     ;; We have attempted to delete the main thread, which is bad.
     (break)
     )
-  
+
   ;; restore the old top-thread.
   (set! (-> obj process top-thread) (-> obj previous))
   (none)
@@ -198,7 +198,7 @@
 (defmethod stack-size-set! thread ((this thread) (stack-size int))
   "Set the backup stack size of a thread. This should only be done on the main-thread.
   This should be done immediately after allocating the main-thread."
-  
+
   (let ((proc (-> this process)))
     (cond
       ((neq? this (-> proc main-thread))
@@ -206,11 +206,11 @@
        (msg-err "illegal attempt change stack size of ~A when the main-thread is not the top-thread.~%" proc)
        (break) ;; ADDED
        )
-      
+
       ((= (-> this stack-size) stack-size)
        ;; we already have this size. Don't do anything.
        )
-      
+
       ((eq? (-> proc heap-cur) (&+ this (-> this type size) (- *gtype-basic-offset*) (-> this stack-size)))
        ;; our heap cur point to right after us. So we can safely bump it forward to give us more space.
        (set! (-> proc heap-cur) (the pointer (&+ this (-> this type size) (- *gtype-basic-offset*) stack-size)))
@@ -232,7 +232,7 @@
   This is a special new method which ignores the allocation symbol.
   The stack-top is for the execution stack.
   The stack-size is for the backup stack (applicable for main thread only)"
-  
+
   ;; first, let's see if we're doing the main or temp thread
   (let* ((obj (cond
                 ((-> parent-process top-thread)
@@ -245,7 +245,7 @@
                                      ))
                  )
                 (else
-                 ;; the main thread. We need the main thread's cpu-thread to stick around, so we put it in the 
+                 ;; the main thread. We need the main thread's cpu-thread to stick around, so we put it in the
                  ;; process heap.
                  (let ((alloc (align16 (-> parent-process heap-cur)))) ;; start at heap cur, aligned
                    ;; bump heap to include our thread + its stack
@@ -254,10 +254,10 @@
                    )
                  )
                 )))
-    
+
     ;; set up the type manually, as we allocated the memory manually
     (set! (-> obj type) type-to-make)
-    
+
     ;; set up thread
     (set! (-> obj name) name)
     (set! (-> obj process) parent-process)
@@ -268,12 +268,12 @@
     (set! (-> obj previous) (-> parent-process top-thread))
     ;; and make us the top!
     (set! (-> parent-process top-thread) obj)
-    
+
     ;; set up our suspend/resume hooks. By default just use the thread's methods.
     ;; but something else could install a different hook if needed.
     (set! (-> obj suspend-hook) (method-of-object obj thread-suspend))
     (set! (-> obj resume-hook) (method-of-object obj thread-resume))
-    
+
     ;; remember how much space we have for the backup stack.
     (set! (-> obj stack-size) stack-size)
     obj
@@ -325,7 +325,7 @@
     (set! (-> obj parent) #f)
     (set! (-> obj brother) #f)
     (set! (-> obj child) #f)
-    
+
     (set! (-> obj self) obj)
     (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     obj
@@ -350,7 +350,7 @@
   (let ((obj (if (eq? (-> allocation type) symbol)
                  (object-new allocation type-to-make (the int (+ (-> process size) stack-size))) ;; symbol, allocate on heap
                  (the process (&+ allocation *gtype-basic-offset*)))))   ;; treat as address.
-    
+
     ;; initialize
     (set! (-> obj name) name)
     (set! (-> obj status) 'dead)
@@ -359,11 +359,11 @@
     (set! (-> obj allocated-length) stack-size)
     (set! (-> obj top-thread) #f)
     (set! (-> obj main-thread) #f)
-    
+
     ;; set up the heap to start at the stack
     (set! (-> obj heap-cur) (-> obj stack))
     (set! (-> obj heap-base) (-> obj stack))
-    
+
     ;; and end at the end of the stack.
     (set! (-> obj heap-top) (&-> (-> obj stack) (-> obj allocated-length)))
     ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -373,13 +373,13 @@
     ;; but this overlaps with the stack-frame-top and did nothing.
     ;; this is likely because they added the concept of heap "top" to kheaps in
     ;; general, but not to process heaps.
-    
+
     ;; setup state stuff
     (set! (-> obj stack-frame-top) #f)
     (set! (-> obj state) #f)
     (set! (-> obj next-state) #f)
     (set! (-> obj entity) #f)
-    
+
     ;; setup handlers
     (set! (-> obj trans-hook) #f)
     (set! (-> obj post-hook) #f)
@@ -389,12 +389,12 @@
     (set! (-> obj parent) #f)
     (set! (-> obj brother) #f)
     (set! (-> obj child) #f)
-    
+
     ;; setup reference stuff.
     (set! (-> obj self) obj)
     (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     obj
-    )            
+    )
   )
 
 (defun inspect-process-heap ((obj process))
@@ -450,12 +450,12 @@
   )
 
 (defmethod print process ((obj process))
-  (format #t "#<~A ~S ~A :state ~S " 
-          (-> obj type) 
-          (-> obj name) 
-          (-> obj status) 
+  (format #t "#<~A ~S ~A :state ~S "
+          (-> obj type)
+          (-> obj name)
+          (-> obj status)
           (when (-> obj state) (-> obj state name)))
-  
+
   (format #t ":stack ~D/~D :heap ~D/~D @ #x~X>"
           (process-stack-used obj)
           (process-stack-size obj)
@@ -501,7 +501,7 @@
     (.load-sym :sext #f sp *kernel-sp*)
     ;; convert it back to a real pointer
     (.add sp off)
-    
+
     ;; restore saved registers...
     ;; without coloring system because this is "cheating" and modifying saved registers without backing up.
     (.pop :color #f s4)
@@ -530,14 +530,14 @@
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
          )
-    
+
     ;; first call the deactivate method. (todo - is the stack properly aligned for this?)
     (deactivate pp)
     ;; get the kernel stack pointer as a GOAL pointer
     (.load-sym :sext #f sp *kernel-sp*)
     ;; convert it back to a real pointer
     (.add sp off)
-    
+
     ;; restore saved registers...
     ;; without coloring system because this is "cheating".
     (.pop :color #f s4)
@@ -559,7 +559,7 @@
   (declare (asm-func object)
                                         ;(print-asm)
            )
-  
+
   (rlet ((pp :reg r13 :type process)
          (sp :reg rsp :type uint)
          (off :reg r15 :type uint)
@@ -570,29 +570,29 @@
          (s4 :reg r12 :type uint)
          (temp :reg rax :type uint)
          )
-    
+
     ;; set up the process pointer
     (set! pp (-> obj process))
     ;; mark the process as running and set its top thread
     (set! (-> pp status) 'running)
     (set! (-> pp top-thread) obj)
-    
+
     ;; save the current kernel regs
     (.push :color #f s0)
     (.push :color #f s1)
     (.push :color #f s2)
     (.push :color #f s3)
     (.push :color #f s4)
-    
+
     ;; make rsp a GOAL pointer
     (.sub sp off)
     ;; and store it
     (set! *kernel-sp* (the pointer sp)) ;; todo, asm form here?
-    
+
     ;; setup the rsp for the new thread
     (set! sp (the uint (-> obj stack-top)))
     (.add sp off)
-    
+
     ;; push the return trampoline to the stack for the user code to return to
     (set! temp (the uint return-from-thread))
     (.add temp off)
@@ -612,9 +612,9 @@
 
 (defmethod thread-suspend cpu-thread ((unused cpu-thread))
   "Suspend the thread and return to the kernel."
-  
+
   (declare (asm-func none))
-  
+
   ;; we begin this function with the thread object in pp.
   ;; not sure why we do this, maybe at one point suspending didn't clobber
   ;; temp registers?
@@ -627,7 +627,7 @@
          (s2 :reg r10 :type uint)
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
-         
+
          (xmm8 :reg xmm8 :class fpr)
          (xmm9 :reg xmm9 :class fpr)
          (xmm10 :reg xmm10 :class fpr)
@@ -637,19 +637,19 @@
          (xmm14 :reg xmm14 :class fpr)
          (xmm15 :reg xmm15 :class fpr)
          )
-    
+
     ;; get the return address pushed by "call" in the suspend.
     (.pop temp)
     ;; convert to a GOAL address
     (.sub temp off)
     ;; store return address in thread
     (set! (-> obj pc) (the pointer temp))
-    
+
     ;; convert our stack pointer to a GOAL address
     (.sub sp off)
     ;; store in thread.
     (set! (-> obj sp) (the pointer sp))
-    
+
     ;; back up registers
     (.mov :color #f temp s0)
     (set! (-> obj rreg 0) temp)
@@ -661,7 +661,7 @@
     (set! (-> obj rreg 3) temp)
     (.mov :color #f temp s4)
     (set! (-> obj rreg 4) temp)
-    
+
     ;; back up fprs
     (.mov :color #f temp xmm8)
     (set! (-> obj freg 0) (the-as float temp))
@@ -680,8 +680,8 @@
     (.mov :color #f temp xmm15)
     (set! (-> obj freg 7) (the-as float temp))
 
-    
-    
+
+
     ;; get our process
     (let ((proc (-> obj process)))
       (when (> (process-stack-used proc) (-> obj stack-size))
@@ -689,7 +689,7 @@
         ;; if you hit this, try with DEBUG_PRINT_SUSPEND_FAIL set to #t (see gkernel-h.gc)
         ;; it will print more info before reaching here.
         )
-      
+
       ;; mark the process as suspended and copy the stack
       (set! (-> proc status) 'suspended)
       (let ((cur (the (pointer uint64) (-> obj stack-top)))
@@ -702,15 +702,15 @@
           )
         )
       )
-    
+
     ;; actually setting pp to 0
     (set! obj (the cpu-thread 0))
-    
+
     ;; get the kernel stack pointer as a GOAL pointer
     (.load-sym :sext #f sp *kernel-sp*)
     ;; convert it back to a real pointer
     (.add sp off)
-    
+
     ;; restore saved registers...
     ;; without coloring system because this is "cheating".
     (.pop :color #f s4)
@@ -732,7 +732,7 @@
   (declare (asm-func none)
            ;;(print-asm)
            )
-  
+
   (rlet ((obj :reg r13 :type cpu-thread)
          (temp :reg rax :type uint)
          (off :reg r15 :type uint)
@@ -754,26 +754,26 @@
          (xmm13 :reg xmm13 :class fpr)
          (xmm14 :reg xmm14 :class fpr)
          (xmm15 :reg xmm15 :class fpr)
-         ) 
-    
+         )
+
     ;; save the current kernel regs
     (.push :color #f s0)
     (.push :color #f s1)
     (.push :color #f s2)
     (.push :color #f s3)
     (.push :color #f s4)
-    
+
     ;; make rsp a GOAL pointer
     (.sub sp off)
     ;; and store it
     (set! *kernel-sp* (the pointer sp)) ;; todo, asm form here?
-    
+
     ;; temp, stash thread in process-pointer
     (set! obj thread-to-resume)
-    
+
     ;; set stack pointer for the thread. leave it as a GOAL pointer for now..
     (set! sp (the uint (-> obj sp)))
-    
+
     ;; restore the stack (sp is a GOAL pointer)
     (let ((cur (the (pointer uint64) (-> obj stack-top)))
           (restore (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
@@ -784,14 +784,14 @@
         (set! (-> cur) (-> restore))
         )
       )
-    
+
     ;; offset sp after we're done using it as a GOAL pointer.
     (.add sp off)
-    
+
     ;; setup process
     (set! (-> (-> obj process) top-thread) obj)
     (set! (-> (-> obj process) status) 'running)
-    
+
     ;; restore reg
     (set! temp (-> obj rreg 0))
     (.mov :color #f s0 temp)
@@ -819,26 +819,26 @@
     (.mov :color #f xmm14 temp-float)
     (set! temp-float (-> obj freg 7))
     (.mov :color #f xmm15 temp-float)
-    
+
     ;; hack for set-to-run-bootstrap. The set-to-run-bootstrap in MIPS
     ;; expects to receive 7 values from the cpu thread's rregs.
     ;; usually rreg holds saved registers, but on the first resume after
     ;; a set-to-run, they hold arguments, and set-to-run-bootstrap copies them.
-    
+
     ;; We only have 5 saved regs, so we need to cheat and directly pass
     ;; two values in other registers
     ;; so we load the a4/a5 argument registers with rreg 5 and rreg 6
-    ;; In the case where we are doing a normal resume, the 
+    ;; In the case where we are doing a normal resume, the
     ;; compiler should assume that these registers are overwritten anyway.
     (set! temp (-> obj rreg 5))
     (.mov a4 temp)
     (set! temp (-> obj rreg 6))
     (.mov a5 temp)
-    
+
     ;; get the resume address
     (set! temp (the uint (-> obj pc)))
     (.add temp off)
-    
+
     ;; setup the process
     (set! obj (the cpu-thread (-> obj process)))
     ;; resume!
@@ -871,7 +871,7 @@
     ;; setup ref
     (set! (-> obj self) obj)
     (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
-    
+
     (dotimes (i count)
       ;; create each process
       (let ((old-bro (-> obj child))
@@ -887,9 +887,9 @@
   )
 
 (defmethod get-process dead-pool ((obj dead-pool) (type-to-make type) (stack-size int))
-  "Get a process from this dead pool of the given type." 
+  "Get a process from this dead pool of the given type."
   (let ((proc (-> obj child)))
-    
+
     (when (and (not proc) *debug-segment* (neq? obj *debug-dead-pool*))
       ;; we failed, but we're in debug mode and not looking at the debug pool
       ;; try again from the debug pool and warn if this works
@@ -901,9 +901,9 @@
       ;; there's a bug here. proc is a process here, but will be used as a process pointer.
       ;; let's just kill the program here.
       ;; this is likely a copy-paste bug from get-process dead-pool-heap.
-      (break) 
+      (break)
       )
-    
+
     (cond
       (proc
        ;; success! set our type and return.
@@ -952,10 +952,10 @@
     (set! (-> obj parent) #f)
     (set! (-> obj brother) #f)
     (set! (-> obj child) #f)
-    
+
     (set! (-> obj self) obj)
     (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
-    
+
     ;; initialize each process handle
     ;; build them into a linked list of null-process
     (countdown (i allocated-length)
@@ -964,19 +964,19 @@
         (set! (-> rec next) (-> obj process-list (+ i 1)))
         )
       )
-    
+
     ;; set up the dead-list
     (set! (-> obj dead-list next) (-> obj process-list 0))
     (set! (-> obj alive-list process) #f) ;; likely typo here, should be dead-list
     (set! (-> obj process-list (- allocated-length 1) next) #f)
-    
-    ;; nothing is alive 
+
+    ;; nothing is alive
     (set! (-> obj last) (-> obj alive-list))
     (set! (-> obj alive-list next) #f)
     (set! (-> obj alive-list process) #f)
     (set! (-> obj first-gap) (-> obj alive-list))
     (set! (-> obj first-shrink) #f)
-    
+
     ;; setup the heap. It just begins after the process records.
     (set! (-> obj heap base) (the pointer (align16 (-> obj process-list allocated-length))))
     (set! (-> obj heap current) (-> obj heap base))
@@ -987,7 +987,7 @@
   )
 
 (defmethod gap-location dead-pool-heap ((obj dead-pool-heap) (rec dead-pool-heap-rec))
-  "Get the gap after the given process. 
+  "Get the gap after the given process.
   If root of the alive list is given, will give the first gap between the heap and the first process.
   If there is no gap, may point to the next process. Not 16-byte aligned."
   (cond
@@ -1054,7 +1054,7 @@
   (format #t "~Talive-list: #<dead-pool-heap-rec @ #x~X>~%" (-> obj alive-list))
   (format #t "~Tlast: #<dead-pool-heap-rec @ #x~X>~%" (-> obj last))
   (format #t "~Tdead-list: #<dead-pool-heap-rec @ #x~X>~%" (-> obj dead-list))
-  
+
   ;; here we consider the free memory to be all of the stuff after the last process.
   ;; we don't consider random gaps to be "free".
   ;; this means you can do a single allocation of free bytes and it will always succeed.
@@ -1065,7 +1065,7 @@
          )
     (format #t "~Tprocess-list[0] @ #x~X     ~D/~D bytes used~%" (-> obj process-list) (- total free) total)
     )
-  
+
   (let ((rec (-> obj alive-list))
         (i 0)
         )
@@ -1081,7 +1081,7 @@
       (+! i 1)
       )
     )
-  
+
   obj)
 
 (defmethod asize-of dead-pool-heap ((obj dead-pool-heap))
@@ -1138,7 +1138,7 @@
 
 (defmethod get-process dead-pool-heap ((obj dead-pool-heap) (type-to-make type) (stack-size int))
   "Allocate a process"
-  
+
   ;; get a record for the new process
   (let ((rec (-> obj dead-list next))
         ;; will eventually hold our new process
@@ -1146,48 +1146,48 @@
         ;; find the rec which has a big enough gap
         (insert (find-gap-by-size obj (+ (the int (-> process size)) stack-size)))
         )
-    
+
     (cond
       ;; check we got both a record and a gap
       ((and rec insert)
-       
+
        ;; pop the record off of the list
        (set! (-> obj dead-list next) (-> rec next))
-       
+
        ;; splice it into the alive list in the right spot
        (let ((next (-> insert next)))
          ;; after the gap rec
          (set! (-> insert next) rec)
          ;; us to the process after the gap
          (set! (-> rec next) next)
-         
+
          ;; link the proc after us back
          (when next
            (set! (-> next prev) rec)
            )
          ;; and us back to the proc before the gap
          (set! (-> rec prev) insert)
-         
+
          ;; if we are inserting after the last process, we should update the last.
          (when (eq? insert (-> obj last))
            (set! (-> obj last) rec)
            )
-         
+
          ;; get the gap
          (set! proc (the process (gap-location obj insert)))
          ;; and allocate! The method new does the offset for us.
          (set! proc ((method-of-type process new) (the symbol proc) process 'process stack-size))
-         
+
          ;; update our rec to contain this process.
          (set! (-> rec process) proc)
          ;; and the ppointer should point to the rec, not the processs, so we can track the process if it moves.
          (set! (-> proc ppointer) (&-> rec process))
-         
+
          ;; if we used the first gap, update first gap
          (when (eq? (-> obj first-gap) insert)
            (set! (-> obj first-gap) (find-gap obj rec))
            )
-         
+
          ;; we haven't shrunk yet. If we don't have a first-shrink, or we are before it,
          ;; mark us as first shrink.
          (when (or (not (-> obj first-shrink))
@@ -1195,13 +1195,13 @@
                    )
            (set! (-> obj first-shrink) rec)
            )
-         
+
          ;; update tree stuff.
          (set! (-> proc parent) (-> obj ppointer))
          (set! (-> proc pool) obj)
          (set! (-> obj child) (&-> rec process))
          )
-       
+
        )
       (else
        ;; allocation failed! try again on the debug heap if we're debugging.
@@ -1210,10 +1210,10 @@
          (when (and proc *vis-boot*)
            (format 0 "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%" type-to-make proc (-> obj name)))
          )
-       
+
        )
       )
-    
+
     (cond
       (proc
        ;; success! set type and return.
@@ -1224,44 +1224,44 @@
        (format 0 "WARNING: ~A ~A could not be allocated, because ~A was empty.~%" type-to-make proc (-> obj name))
        )
       )
-    
+
     proc)
   )
 
 (defmethod return-process dead-pool-heap ((obj dead-pool-heap) (proc process))
   "Return a process to a dead pool heap"
-  
+
   ;; check we are returning to the correct pool
   (unless (eq? obj (-> proc pool))
     (format 0 "ERROR: process ~A does not belong to dead-pool-heap ~A.~%" proc obj)
     )
-  
+
   ;; reclaim us.
   (change-parent proc obj)
-  
+
   ;; we don't maintain a real tree for a dead-pool-heap, so undo any change to child
   ;; done by change-parent
   (set! (-> obj child) #f)
-  
+
   ;; we know our ppointer is really a rec for a dead-pool-heap process, so we can use
   ;; this trick to quickly find our rec.
   (let ((rec (the dead-pool-heap-rec (-> proc ppointer))))
-    
+
     ;; if we are at or below the first gap, update first gap.
     (when (or (eq? (-> obj first-gap) rec)
               (< (the int (gap-location obj rec)) (the int (gap-location obj (-> obj first-gap))))
               )
       (set! (-> obj first-gap) (-> rec prev))
       )
-    
-    
+
+
     ;; update the first-shrink. We aren't smart about this and just move it backward.
     (when (eq? (-> obj first-shrink) rec)
       (set! (-> obj first-shrink) (-> rec prev))
       (when (not (-> obj first-shrink process))
         (set! (-> obj first-shrink) #f))
       )
-    
+
     ;; remove us from list
     (set! (-> rec prev next) (-> rec next))
     (cond
@@ -1274,18 +1274,18 @@
        (set! (-> obj last) (-> rec prev))
        )
       )
-    
+
     ;; insert at the front of the dead list.
     (set! (-> rec next) (-> obj dead-list next))
     (set! (-> obj dead-list next) rec)
     (set! (-> rec process) *null-process*)
-    
+
     (none)
     )
   )
 
 (defmethod shrink-heap dead-pool-heap ((obj dead-pool-heap) (proc process))
-  "Shrink the heap of a process. 
+  "Shrink the heap of a process.
   This resizes the process heap to be the exact size it is currently using."
   (when proc
     ;; get our rec.
@@ -1298,16 +1298,16 @@
         ;; shrink!
         (set! (-> proc allocated-length) (the int (&- (-> proc heap-cur) (-> proc stack))))
         (set! (-> proc heap-top) (&-> (-> proc stack) (-> proc allocated-length)))
-        
+
         ;; update first gap
         (when (< (the int proc) (the int (gap-location obj (-> obj first-gap))))
           (set! (-> obj first-gap) (find-gap obj rec))
           )
-        
+
         ;; mark us as shrunk
         (process-mask-set! (-> proc mask) heap-shrunk)
         )
-      
+
       ;; update first shrink
       (when (eq? (-> obj first-shrink) rec)
         (set! (-> obj first-shrink) (-> rec next))
@@ -1320,7 +1320,7 @@
 (defmethod compact dead-pool-heap ((obj dead-pool-heap) (count int))
   "Do heap compaction.  The count argument tells us how much work to do.
   If the heap is very full we will automatically do more work than requested."
-  
+
   ;; first we see how much memory is in use.
   (let ((free (memory-free obj))
         (total (memory-total obj))
@@ -1345,14 +1345,14 @@
         )
       )
     )
-  
+
   ;; update stats
   (set! (-> obj compact-count-targ) count)
   (set! (-> obj compact-count) 0)
-  
+
   ;; and do compaction!
   (countdown (ii count)
-             
+
     ;; first try to shrink a heap.
     (let ((shrink (-> obj first-shrink)))
       (when (not shrink)
@@ -1364,7 +1364,7 @@
         (shrink-heap obj (-> shrink process))
         )
       )
-             
+
     ;; now find the first gap
     (let ((gap (-> obj first-gap)))
       ;; and the thing after it
@@ -1377,7 +1377,7 @@
               ;; bug!
               (break)
               )
-                     
+
             ;; try shrinking before relocating.
             (shrink-heap obj proc)
             ;; relocate!
@@ -1391,13 +1391,13 @@
         )
       )
     )
-  
+
   (none)
   )
 
 (defmethod churn dead-pool-heap ((obj dead-pool-heap) (count int))
   "Mess with the heap"
-  
+
   (countdown (ii count)
     (let ((rec (-> obj alive-list next)))
       (when rec
@@ -1405,14 +1405,14 @@
                   (< (the int (gap-location obj rec)) (the int (gap-location obj (-> obj first-gap))))
                   )
           (set! (-> obj first-gap) (-> rec prev)))
-                 
+
 
         (when (eq? (-> obj first-shrink) rec)
           (set! (-> obj first-shrink) (-> rec prev))
           (when (not (-> obj first-shrink process))
             (set! (-> obj first-shrink) #f))
           )
-                 
+
         (set! (-> rec prev next) (-> rec next))
         (cond
           ((-> rec next)
@@ -1422,25 +1422,25 @@
            (set! (-> obj last) (-> rec prev))
            )
           )
-                 
+
         (let* ((insert (-> obj last))
                (next (-> insert next))
                )
-                   
+
           (set! (-> insert next) rec)
           (set! (-> rec next) next)
           (when next
             (set! (-> next prev) rec))
           (set! (-> rec prev) insert)
-                   
+
           (set! (-> obj last) rec)
-          (set! (-> rec process) (relocate (-> rec process) (the int (&- (gap-location obj insert) 
+          (set! (-> rec process) (relocate (-> rec process) (the int (&- (gap-location obj insert)
                                                                          (the int (&- (-> rec process) *gtype-basic-offset*))))))
           )
         )
       )
     )
-  
+
   (none)
   )
 
@@ -1473,7 +1473,7 @@
 (defun process-count ((this process-tree))
   "Count number of processes in the given tree using iterate-process-tree"
   (set! *global-search-count* 0)
-  (iterate-process-tree this 
+  (iterate-process-tree this
                         (lambda ((obj process))
                           (+! *global-search-count* 1)
                           #t)
@@ -1561,14 +1561,14 @@
 (defun execute-process-tree ((obj process-tree) (func (function object object)) (context kernel-context))
   "Like iterate, but also requires that prevent-from-run's mask doesn't block, and that run-logic?
   is true in order to call the function."
-  
+
   ;; check mask for tree, mask for prevent, run-logic?, then run!
   (let ((ret (or (process-mask? (-> obj mask) process-tree)
                  (not (and (or (zero? (logand (-> context prevent-from-run) (-> obj mask))))
                            (run-logic? obj)))
                  (func obj)
                  )))
-    
+
     ;; run on our children
     (cond
       ((eq? ret 'dead)
@@ -1588,7 +1588,7 @@
 
 (defun search-process-tree ((obj process-tree) (func (function process-tree object)))
   "Find the first process which func return true on. Won't find process-tree's (by mask)"
-  
+
   ;; reject process-tree
   (unless (process-mask? (-> obj mask) process-tree)
     ;; is this a match?
@@ -1596,7 +1596,7 @@
       (return-from #f obj)
       )
     )
-  
+
   ;; not a match, check out children
   (let ((brother (-> obj child)))
     (while brother
@@ -1617,12 +1617,28 @@
 ;; Kernel Dispatcher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro process-name-as-string (proc)
+  `(let ((proc-type (-> ,proc name type)))
+     (cond
+       ((= proc-type string)
+        (the string (-> ,proc name))
+        )
+       ((= proc-type symbol)
+        (symbol->string (-> ,proc name))
+        )
+       (else
+         "??"
+         )
+       )
+     )
+  )
+
 (define-extern *listener-process* process)
 (define-extern *active-pool* process-tree)
 
 (defun kernel-dispatcher ()
   "Run the kernel!"
-  
+  (profiler-instant-event "ROOT")
   (when *listener-function*
     (let ((result (reset-and-call (-> *listener-process* main-thread) *listener-function*)))
       (if *use-old-listener-print*
@@ -1633,21 +1649,22 @@
     (set! *listener-function* #f)
     (+! *enable-method-set* -1)
     )
-  
-  
-  (execute-process-tree 
-   *active-pool* 
+
+
+  (execute-process-tree
+   *active-pool*
    (lambda ((obj process))
                                         ;(format 0 "Call to dispatcher lambda!~%")
      (let ((context *kernel-context*))
        (cond
          ((or (eq? (-> obj status) 'waiting-to-run)
               (eq? (-> obj status) 'suspended))
-          
+          (profiler-start-event (process-name-as-string obj))
+
           ;; we should run!
           ;; set current process to us
           (set! (-> context current-process) obj)
-          
+
           ;; update pause junk for this run
           (cond
             ((process-mask? (-> obj mask) pause)
@@ -1660,7 +1677,7 @@
              (set! *debug-draw-pauseable* #f)
              )
             )
-          
+
           ;; TRANS
           (cond
             ((-> obj trans-hook)
@@ -1669,7 +1686,7 @@
              (let ((trans (new 'process 'cpu-thread obj 'trans PROCESS_STACK_SAVE_SIZE (-> obj main-thread stack-top))))
                ;; call the function in the thread.
                (reset-and-call trans (-> obj trans-hook))
-               
+
                (#when KERNEL_DEBUG
                  (when (!= (-> trans type) cpu-thread)
                    (format 0 "corrupted stack after trans for ~A~%" obj)
@@ -1680,12 +1697,13 @@
                ;; check for deadness
                (when (eq? (-> obj status) 'dead)
                  (set! (-> context current-process) #f)
+                 (profiler-end-event)
                  (return 'dead)
                  )
                )
              )
             )
-          
+
           ;; MAIN CODE
           (if (process-mask? (-> obj mask) sleep-code)
               ;; we're sleeping. Move us to suspended, in case we were in waiting to run.
@@ -1693,13 +1711,14 @@
 
               ;; not sleeping. call resume hook
               ((-> obj main-thread resume-hook) (-> obj main-thread))
-              
+
               )
           ;; check for deadness
           (cond
             ((eq? (-> obj status) 'dead)
              ;; oops we died. return 'dead
              (set! (-> context current-process) #f)
+             (profiler-end-event)
              'dead
              )
             (else
@@ -1713,6 +1732,7 @@
                   (when (eq? (-> obj status) 'dead)
                     ;; oops we died.
                     (set! (-> context current-process) #f)
+                    (profiler-end-event)
                     (return 'dead)
                     )
                   (set! (-> obj status) 'suspended)
@@ -1720,11 +1740,13 @@
                 )
                )
              (set! (-> context current-process) #f)
+             (profiler-end-event)
              #f
              )
             )
+
           )
-         
+
          ((eq? (-> obj status) 'dead)
           'dead)
          )
@@ -1738,7 +1760,7 @@
 (defun inspect-process-tree ((obj process-tree) (level int) (mask int) (detail symbol))
   "Debug print a pocess-tree"
   (print-tree-bitmask mask (+ 0 level))
-  
+
   ;; print us
   (cond
     (detail
@@ -1754,7 +1776,7 @@
      (format #t "~S~A~%" (if (zero? level) "" "+---") obj)
      )
     )
-  
+
   ;; print our children
   (let ((child (-> obj child)))
     (while child
@@ -1795,7 +1817,7 @@
   (declare (asm-func object)
            (allow-saved-regs) ;; very dangerous!
            )
-  
+
   (rlet ((pp :reg r13 :type process)
          (temp :reg rax :type uint)
          (off :reg r15 :type uint)
@@ -1814,8 +1836,8 @@
          (xmm13 :reg xmm13 :class fpr)
          (xmm14 :reg xmm14 :class fpr)
          (xmm15 :reg xmm15 :class fpr)
-         ) 
-    
+         )
+
     ;; we treat the allocation as an address.
     (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
       ;; setup catch frame
@@ -1828,13 +1850,13 @@
       (.sub temp off)
       ;; store it
       (set! (-> obj ra) (the int temp))
-      
+
       ;; todo, do we need a stack offset here?
       ;; remember the stack pointer
       (set! temp sp)
       (.sub temp off)
       (set! (-> obj sp) (the int temp))
-      
+
       ;; back up registers we care about
       (.mov :color #f temp s0)
       (set-u128-as-u64! (-> obj rreg 0) temp)
@@ -1863,18 +1885,18 @@
       (set! (-> obj freg 6) (the-as float temp))
       (.mov :color #f temp xmm15)
       (set! (-> obj freg 7) (the-as float temp))
-      
+
       ;; push this stack frame
       (set! (-> obj next) (-> pp stack-frame-top))
       (set! (-> pp stack-frame-top) obj)
-      
+
       ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
       (.push :color #f s3)
       (.push :color #f s2)
       (.push :color #f s2)
       (set! s3 (the uint func))
       (set! s2 param-block)
-      
+
       ;; todo - are we aligned correctly here?
       (let ((ret ((the-super-u64-fucntion s3)
                   (-> s2 0)
@@ -1901,7 +1923,7 @@
   "Throw the given value to the catch frame.
   Only can throw a 64-bit value. The original could throw 128 bits."
   (declare (asm-func none))
-  
+
   (rlet ((pp :reg r13 :type process)
          (temp :reg rax :type uint)
          (off :reg r15 :type uint)
@@ -1922,10 +1944,10 @@
          (xmm14 :reg xmm14 :class fpr)
          (xmm15 :reg xmm15 :class fpr)
          )
-    
+
     ;; pop everything we threw past
     (set! (-> pp stack-frame-top) (-> obj next))
-    
+
     ;; restore regs we care about.
     (set-u64-from-u128! temp (-> obj rreg 0))
     (.mov :color #f s0 temp)
@@ -1954,17 +1976,17 @@
     (.mov :color #f xmm14 temp-float)
     (set! temp-float (-> obj freg 7))
     (.mov :color #f xmm15 temp-float)
-    
+
     ;; set stack pointer
     (set! sp (the uint (-> obj sp)))
     (.add sp off)
-    
+
     ;; overwrite our return address
     (.pop temp)
     (set! temp (the uint (-> obj ra)))
     (.add temp off)
     (.push temp)
-    
+
     ;; load the return register
     (.mov temp value)
     (.ret)
@@ -1978,10 +2000,10 @@
       (while cur
         (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
           ;; match!
-          
+
           (throw-dispatch (the catch-frame cur) value)
           )
-        
+
         (if (eq? (-> cur type) protect-frame)
             ;; call the cleanup function
             ((-> (the protect-frame cur) exit))
@@ -1999,7 +2021,7 @@
     (set! (-> obj type) type-to-make)
     (set! (-> obj name) 'protect-frame)
     (set! (-> obj exit) func)
-    
+
     (rlet ((pp :reg r13 :type process))
       (set! (-> obj next) (-> pp stack-frame-top))
       (set! (-> pp stack-frame-top) obj)
@@ -2040,7 +2062,7 @@
   "Make obj a child of new-parent"
   (let ((parent (-> obj parent)))
     ;; parent is a ppointer.
-    
+
     ;; need to remove obj from its current parent
     (when parent
       (let ((proc (-> (-> parent) child)))
@@ -2058,7 +2080,7 @@
             )
         )
       )
-    
+
     ;; add to new parent
     (set! (-> obj parent) (-> new-parent ppointer))
     (set! (-> obj brother) (-> new-parent child))
@@ -2187,7 +2209,7 @@
       (set! stack-top (&+ *fake-scratchpad-stack* (* 32 1024)))
       )
     )
-  
+
   (set! (-> obj mask) (logand (-> dest mask) PROCESS_CLEAR_MASK))
   (set! (-> obj status) 'ready)
   (let ((pid (-> *kernel-context* next-pid)))
@@ -2199,7 +2221,7 @@
   (set! (-> obj heap-base) (set! (-> obj heap-cur) (&+ (-> obj stack) (-> obj type heap-base))))
   (set! (-> obj stack-frame-top) #f)
   (mem-set32! (-> obj stack) (the int (/ (-> obj type heap-base) 4)) 0)
-  
+
   (set! (-> obj trans-hook) #f)
   (set! (-> obj post-hook) #f)
   (set! (-> obj event-hook) #f)
@@ -2209,10 +2231,10 @@
       (set! (-> obj entity) #f)
       (set! (-> obj entity) (-> (the process dest) entity))
       )
-  
+
   (set! (-> obj connection-list next1) #f)
   (set! (-> obj connection-list prev1) #f)
-  
+
   (let ((thread (new 'process 'cpu-thread obj 'code PROCESS_STACK_SAVE_SIZE stack-top)))
     (set! (-> obj main-thread) thread)
     )
@@ -2226,18 +2248,18 @@
   this function will return.  The idea is that you use this when you want to initialize a process NOW.
   This will then return the value of the function you called!"
   (rlet ((pp :reg r13 :type process))
-    
+
     (let ((param-array (new 'stack-no-clear 'array 'uint64 6))
           )
       ;; copy params to the stack.
-      
+
       (set! (-> param-array 0) (the uint64 a0))
       (set! (-> param-array 1) (the uint64 a1))
       (set! (-> param-array 2) (the uint64 a2))
       (set! (-> param-array 3) (the uint64 a3))
       (set! (-> param-array 4) (the uint64 a4))
       (set! (-> param-array 5) (the uint64 a5))
-      
+
       (let* ((old-pp pp)
              (func-val (begin
                         ;; set the process
@@ -2286,14 +2308,14 @@
   (declare (asm-func none)
            ;;(print-asm)
            )
-  
+
   (rlet ((s0 :reg rbx :type uint)
          (s1 :reg rbp :type uint)
          (s2 :reg r10 :type uint)
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
          (a0 :reg rdi :type uint)       ; ok
-         (a1 :reg rsi :type uint)       ; ok 
+         (a1 :reg rsi :type uint)       ; ok
          (a2 :reg rdx :type uint)       ; ok
          (a3 :reg rcx :type uint)       ; ok
          (off :reg r15 :type uint)
@@ -2302,25 +2324,25 @@
          (temp :reg rax)
          )
 
-    
+
     (.mov temp return-from-thread-dead)
     (.add temp off)
     (.push temp)
-    
+
     ;; stack is 16 + 8 aligned now
-    
+
     (.mov :color #f a0 s1)
     (.mov :color #f a1 s2)
     (.mov :color #f a2 s3)
     (.mov :color #f a3 s4)
-    
+
     (.add :color #f s0 off)
     (.jr :color #f s0)
 
     (.add a4 a4)
     (.add a5 a5)
     )
-  
+
   )
 
 
@@ -2330,7 +2352,7 @@
   Once the function returns, the process deactivates."
   (let ((proc (-> thread process)))
     (set! (-> proc status) 'waiting-to-run)
-    
+
     ;; we store arguments and the function to call in saved registers
     (set! (-> thread rreg 0) (the uint func))
     (set! (-> thread rreg 1) (the uint a0))
@@ -2339,9 +2361,9 @@
     (set! (-> thread rreg 4) (the uint a3))
     (set! (-> thread rreg 5) (the uint a4))
     (set! (-> thread rreg 6) (the uint a5))
-    
+
     ;; and have the thread first call set-to-run-bootstrap, which will properly call
-    ;; the function with the arguments and install a return trampoline for 
+    ;; the function with the arguments and install a return trampoline for
     ;; deactivating and returning to the kernel on return.
     (set! (-> thread pc) (the pointer set-to-run-bootstrap))
     ;; reset sp.
@@ -2358,7 +2380,7 @@
   )
 
 ;; The defstate macro isn't defined yet, so we do it manually.
-(define dead-state 
+(define dead-state
         (the (state process) (new 'static 'state
                                   :name #f
                                   :next #f
@@ -2387,16 +2409,16 @@
   All protects/states will be cleaned up, with pp set correctly for the process.
   But you might not have the stack of your main thread, so don't reference stack
   vars from within your exit handlers."
-  
+
   ;; don't do anything if we already died.
   (unless (eq? (-> obj status) 'dead)
     (set! (-> obj next-state) dead-state)
-    
+
     ;; call entity handler
     (when (-> obj entity)
       (entity-deactivate-handler obj (-> obj entity))
       )
-    
+
     ;; clean up stack frames the process is in.
     ;; first, set pp so the cleanup code thinks its running in the right process.
     (rlet ((pp :reg r13 :type process))
@@ -2404,7 +2426,7 @@
         (set! pp obj)
         (let ((cur (-> pp stack-frame-top)))
           (while cur
-            (case (-> cur type) 
+            (case (-> cur type)
               ((protect-frame state)
                ;; we're a state or protect-frame, we can exit.
                ((-> (the-as protect-frame cur) exit))
@@ -2416,12 +2438,12 @@
         (set! pp old-pp)
         )
       )
-    
+
     ;; hack - if this isn't defined yet, don't try it.
     (if (!= 0 (the uint process-disconnect))
         (process-disconnect obj)
         )
-    
+
     ;; kill our child and their brothers
     (let ((bro (-> obj child)))
       (while bro
@@ -2431,14 +2453,14 @@
           )
         )
       )
-    
+
     ;; return ourself to the pool
     (return-process (-> obj pool) obj)
     (set! (-> obj state) #f)
     (set! (-> obj next-state) #f)
     (set! (-> obj entity) #f)
     (set! (-> obj pid) 0)
-    
+
     ;; deal with getting out of here.
     (cond
       ;; first case - we deactivated the running process
@@ -2459,7 +2481,7 @@
       ;; second case - we deactivated while initializing.
       ((eq? (-> obj status) 'initialize)
        ;; added this
-       
+
                                         ; (if (!= pp obj)
                                         ;     (format 0 "ERROR: deactivated a non-current initializing process!")
                                         ;     (break)

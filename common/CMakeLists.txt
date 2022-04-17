@@ -6,7 +6,7 @@ add_library(common
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
-
+        global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
