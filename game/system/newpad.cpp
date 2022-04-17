@@ -26,8 +26,12 @@ bool g_buffered_key_status[NUM_KEYS] = {0};
 bool g_gamepad_buttons[(int)Button::Max] = {0};
 float g_gamepad_analogs[(int)Analog::Max] = {0};
 
+bool g_gamepad_2_buttons[(int)Button::Max] = {0};
+float g_gamepad_2_analogs[(int)Analog::Max] = {0};
+
 struct GamepadState {
   int gamepad_idx = -1;
+  int second_pad_idx = -1;
 } g_gamepads;
 
 // input mode for controller mapping
@@ -104,6 +108,9 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (pad == 0 && g_gamepad_buttons[(int)button]) {
     return 1;
   }
+  if (pad == 1 && g_gamepad_2_buttons[(int)button]) {
+    return 1;
+  }
   auto key = mapping.pad_mapping[pad][(int)button];
   if (key == -1)
     return 0;
@@ -122,7 +129,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     return 127;
   }
 
-  if (g_gamepads.gamepad_idx == -1) {  // Gamepad not present - use keyboard
+  if (pad == 0 && g_gamepads.gamepad_idx == -1) {  // Gamepad not present - use keyboard
 
     // Movement controls mapped to WASD keys
     if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
@@ -144,8 +151,30 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
 
+  } else if (pad == 1 && g_gamepads.second_pad_idx == -1) {  // try to hack in reading of second controller's analog
+  
+    // these bindings are not sane
+    if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_KP_2] && analog == Analog::Left_Y)
+      input += 1.0f;
+    if (g_buffered_key_status[GLFW_KEY_KP_1] && analog == Analog::Left_X)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_KP_3] && analog == Analog::Left_X)
+      input += 1.0f;
+
+    // these bindings are not sane
+    if (g_buffered_key_status[GLFW_KEY_KP_DIVIDE] && analog == Analog::Right_Y)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_KP_8] && analog == Analog::Right_Y)
+      input += 1.0f;
+    if (g_buffered_key_status[GLFW_KEY_KP_7] && analog == Analog::Right_X)
+      input += -1.0f;
+    if (g_buffered_key_status[GLFW_KEY_KP_9] && analog == Analog::Right_X)
+      input += 1.0f;
   } else {  // Gamepad present
     input = g_gamepad_analogs[(int)analog];
+    if (pad == 1) input = g_gamepad_2_analogs[(int)analog];
   }
 
   // GLFW provides float in range -1 to 1, caller expects 0-255
@@ -250,6 +279,17 @@ void check_gamepad() {
   } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx)) {
     lg::info("Gamepad has been disconnected");
     g_gamepads.gamepad_idx = -1;
+    g_gamepads.second_pad_idx = -1; // if there's no pad 0 there's surely no pad 1 either
+  } else if (g_gamepads.second_pad_idx == -1) {
+    int i = g_gamepads.gamepad_idx + 1;
+    // if (!glfwJoystickIsGamepad(i)) lg::info("Not gamepad {}: GUID {}", i, glfwGetJoystickGUID(i));
+    if (i <= GLFW_JOYSTICK_LAST && glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+      g_gamepads.second_pad_idx = i;
+      lg::info("Second joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+    }
+  } else if (!glfwJoystickPresent(g_gamepads.second_pad_idx)) {
+    lg::info("Second pad has been disconnected");
+    g_gamepads.second_pad_idx = -1;
   }
 }
 
@@ -269,11 +309,21 @@ void clear_gamepads() {
   }
 }
 
+void clear_pad2() {
+  for (int i = 0; i < (int)Button::Max; ++i) {
+    g_gamepad_2_buttons[i] = false;
+  }
+  for (int i = 0; i < 4; ++i) {
+    g_gamepad_2_analogs[i] = 0;
+  }
+}
+
 void update_gamepads() {
   check_gamepad();
 
   if (g_gamepads.gamepad_idx == -1) {
     clear_gamepads();
+    clear_pad2();
     return;
   }
 
@@ -312,6 +362,22 @@ void update_gamepads() {
   for (const auto& [analog_vector, idx] : gamepad_analog_map) {
     g_gamepad_analogs[(int)analog_vector] = state.axes[idx];
   }
+
+  if (g_gamepads.second_pad_idx != -1) {
+    GLFWgamepadstate state2;
+    glfwGetGamepadState(g_gamepads.second_pad_idx, &state2);
+
+    for (const auto& [button, idx] : gamepad_map) {
+      g_gamepad_2_buttons[(int)button] = state2.buttons[idx];
+    }
+
+    g_gamepad_2_buttons[(int)Button::L2] = state2.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
+    g_gamepad_2_buttons[(int)Button::R2] = state2.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0;
+
+    for (const auto& [analog_vector, idx] : gamepad_analog_map) {
+      g_gamepad_2_analogs[(int)analog_vector] = state2.axes[idx];
+    }
+  } else clear_pad2();
 }
 
 };  // namespace Pad
