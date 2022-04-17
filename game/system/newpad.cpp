@@ -104,9 +104,6 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (g_gamepad_buttons[pad][(int)button]) {
     return 1;
   }
-  // if (pad == 1 && g_gamepad_2_buttons[(int)button]) {
-  //   return 1;
-  // }
   auto key = mapping.pad_mapping[pad][(int)button];
   if (key == -1)
     return 0;
@@ -147,7 +144,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
 
-  } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {  // try to hack in reading of second controller's analog
+  } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {
   
     // these bindings are not sane
     if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
@@ -262,35 +259,30 @@ void input_mode_pad_set(s64 idx) {
 ********************************
 */
 
-void check_gamepad() {
-  if (g_gamepads.gamepad_idx[0] == -1) {
-    for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-      if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
-        g_gamepads.gamepad_idx[0] = i;
-        lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
-        break;
+void check_gamepads() {
+  auto check_pad = [](int pad) { // -> bool
+    if (g_gamepads.gamepad_idx[pad] == -1) {
+      for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
+        if (pad == 1 && i == g_gamepads.gamepad_idx[0]) continue;
+        if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+          g_gamepads.gamepad_idx[pad] = i;
+          lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+          break;
+        }
       }
+    } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[pad])) {
+      lg::info("Pad {} has been disconnected", pad);
+      g_gamepads.gamepad_idx[pad] = -1;
+      return false;
     }
-  } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[0])) {
-    lg::info("Gamepad has been disconnected");
-    g_gamepads.gamepad_idx[0] = -1;
-    g_gamepads.gamepad_idx[1] = -1; // if there's no cpad0 there's no sense in having a cpad1
-  } else if (g_gamepads.gamepad_idx[1] == -1) {
-    for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-      if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
-        if (i == g_gamepads.gamepad_idx[0]) continue;
-        g_gamepads.gamepad_idx[1] = i;
-        lg::info("Second joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
-      }
-    }
-  } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[1])) {
-    lg::info("Second pad has been disconnected");
-    g_gamepads.gamepad_idx[1] = -1;
-  }
+    return true; // pad already exists or was created
+  };
+  if (check_pad(0)) check_pad(1);
+  else g_gamepads.gamepad_idx[1] = -1;
 }
 
 void initialize() {
-  check_gamepad();
+  check_gamepads();
   if (g_gamepads.gamepad_idx[0] == -1) {
     lg::info("No joysticks found.");
   }
@@ -306,7 +298,7 @@ void clear_pad(int pad) {
 }
 
 void update_gamepads() {
-  check_gamepad();
+  check_gamepads();
 
   if (g_gamepads.gamepad_idx[0] == -1) {
     clear_pad(0);
@@ -335,8 +327,6 @@ void update_gamepads() {
       {Analog::Left_Y, GLFW_GAMEPAD_AXIS_LEFT_Y},
       {Analog::Right_X, GLFW_GAMEPAD_AXIS_RIGHT_X},
       {Analog::Right_Y, GLFW_GAMEPAD_AXIS_RIGHT_Y}};
-  
-  // read_pad_state(0,gamepad_map,gamepad_analog_map);
 
   auto read_pad_state = [gamepad_map,gamepad_analog_map](int pad) {
     GLFWgamepadstate state;
