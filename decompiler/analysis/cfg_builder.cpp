@@ -1177,11 +1177,10 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
 
   // fix up the other ones:
   f.ir2.env.disable_use(branch->op()->condition().src(0).var());  // bgezl X, L
-  auto& dsubu_var =
-      dynamic_cast<SimpleExpressionElement*>(dsubu_set->src()->try_as_single_element())
-          ->expr()
-          .get_arg(0)
-          .var();
+  auto& dsubu_var = dynamic_cast<SimpleExpressionElement*>(dsubu_set->src()->try_as_single_element())
+                       ->expr()
+                       .get_arg(0)
+                       .var();
   f.ir2.env.disable_use(dsubu_var);
 
   // and the def too
