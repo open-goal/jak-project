@@ -27,7 +27,7 @@ bool g_gamepad_buttons[CONTROLLER_COUNT][(int)Button::Max] = {{0}};
 float g_gamepad_analogs[CONTROLLER_COUNT][(int)Analog::Max] = {{0}};
 
 struct GamepadState {
-  int gamepad_idx[CONTROLLER_COUNT] = { -1, -1 };
+  int gamepad_idx[CONTROLLER_COUNT] = {-1, -1};
 } g_gamepads;
 
 // input mode for controller mapping
@@ -143,9 +143,8 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
       input += -1.0f;
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
-
   } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {
-  
+    
     // these bindings are not sane
     if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
       input += -1.0f;
@@ -260,10 +259,11 @@ void input_mode_pad_set(s64 idx) {
 */
 
 void check_gamepads() {
-  auto check_pad = [](int pad) { // -> bool
+  auto check_pad = [](int pad) {  // -> bool
     if (g_gamepads.gamepad_idx[pad] == -1) {
       for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-        if (pad == 1 && i == g_gamepads.gamepad_idx[0]) continue;
+        if (pad == 1 && i == g_gamepads.gamepad_idx[0])
+          continue;
         if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
           g_gamepads.gamepad_idx[pad] = i;
           lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
@@ -275,10 +275,12 @@ void check_gamepads() {
       g_gamepads.gamepad_idx[pad] = -1;
       return false;
     }
-    return true; // pad already exists or was created
+    return true;  // pad already exists or was created
   };
-  if (check_pad(0)) check_pad(1);
-  else g_gamepads.gamepad_idx[1] = -1;
+  if (check_pad(0))
+    check_pad(1);
+  else
+    g_gamepads.gamepad_idx[1] = -1;
 }
 
 void initialize() {
@@ -328,7 +330,7 @@ void update_gamepads() {
       {Analog::Right_X, GLFW_GAMEPAD_AXIS_RIGHT_X},
       {Analog::Right_Y, GLFW_GAMEPAD_AXIS_RIGHT_Y}};
 
-  auto read_pad_state = [gamepad_map,gamepad_analog_map](int pad) {
+  auto read_pad_state = [gamepad_map, gamepad_analog_map](int pad) {
     GLFWgamepadstate state;
     glfwGetGamepadState(g_gamepads.gamepad_idx[pad], &state);
 
@@ -346,8 +348,10 @@ void update_gamepads() {
 
   read_pad_state(0);
 
-  if (g_gamepads.gamepad_idx[1] != -1) read_pad_state(1);
-  else clear_pad(1);
+  if (g_gamepads.gamepad_idx[1] != -1)
+    read_pad_state(1);
+  else
+    clear_pad(1);
 }
 
 };  // namespace Pad
