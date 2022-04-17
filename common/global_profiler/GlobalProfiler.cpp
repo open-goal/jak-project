@@ -13,7 +13,7 @@ u32 get_current_tid() {
   return (u32)pthread_self();
 }
 #else
-#included "Processthreadsapi.h"
+#include "Processthreadsapi.h"
 u32 get_current_tid() {
   return (u32)GetCurrentThreadId();
 }
