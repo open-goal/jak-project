@@ -660,7 +660,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(x);
     }
   } else if (arg.is_static_addr()) {
-    auto& lab = env.file->labels.at(arg.label());
+    const auto& lab = env.file->labels.at(arg.label());
     if (env.file->is_string(lab.target_segment, lab.offset)) {
       auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
       result->push_back(pool.alloc_element<StringConstantElement>(str));

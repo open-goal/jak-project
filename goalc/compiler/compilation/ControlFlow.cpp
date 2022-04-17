@@ -41,15 +41,15 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
 
   // possibly a form with an optimizable condition?
   if (condition.is_pair()) {
-    auto first = pair_car(condition);
-    auto rest = pair_cdr(condition);
+    auto& first = pair_car(condition);
+    auto& rest = pair_cdr(condition);
 
     if (first.is_symbol()) {
       auto fas = first.as_symbol();
 
       // if there's a not, we can just try again to get an optimization with the invert flipped.
       if (fas->name == "not") {
-        auto arg = pair_car(rest);
+        auto& arg = pair_car(rest);
         if (!pair_cdr(rest).is_empty_list()) {
           throw_compiler_error(condition, "A condition with \"not\" can have only one argument");
         }
@@ -153,7 +153,7 @@ Val* Compiler::compile_condition_as_bool(const goos::Object& form,
 Val* Compiler::compile_when_goto(const goos::Object& form, const goos::Object& _rest, Env* env) {
   (void)form;
   auto* rest = &_rest;
-  auto condition_code = pair_car(*rest);
+  auto& condition_code = pair_car(*rest);
   rest = &pair_cdr(*rest);
 
   auto label = symbol_string(pair_car(*rest));
@@ -186,8 +186,8 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
   std::vector<TypeSpec> case_result_types;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
-    auto test = pair_car(o);
-    auto clauses = pair_cdr(o);
+    auto& test = pair_car(o);
+    auto& clauses = pair_cdr(o);
 
     if (got_else) {
       throw_compiler_error(form, "Cond from cannot have any cases after else.");

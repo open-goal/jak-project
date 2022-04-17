@@ -31,7 +31,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     throw_compiler_error(form, "Must have an rlet body.");
   }
 
-  auto defs = args.unnamed.front();
+  const auto& defs = args.unnamed.front();
 
   auto fenv = env->function_env();
   auto lenv = fenv->alloc_env<LexicalEnv>(env);
@@ -49,7 +49,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
               {"class", {false, goos::ObjectType::SYMBOL}}});
 
     // get the name of the new place
-    auto new_place_name = def_args.unnamed.at(0);
+    const auto& new_place_name = def_args.unnamed.at(0);
 
     // get the type of the new place
     TypeSpec ts = m_ts.make_typespec("object");
@@ -126,7 +126,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     lenv->emit_ir<IR_ValueReset>(form, reset_regs);
   }
 
-  for (auto c : constraints) {
+  for (const auto& c : constraints) {
     fenv->constrain(c);
   }
 
@@ -223,7 +223,7 @@ Val* Compiler::compile_asm_load_sym(const goos::Object& form, const goos::Object
   if (sym_kv == m_symbol_types.end()) {
     throw_compiler_error(form, "Cannot find a symbol named {}.", sym_name);
   }
-  auto ts = sym_kv->second;
+  const auto& ts = sym_kv->second;
   bool sext = m_ts.lookup_type(ts)->get_load_signed();
   if (args.has_named("sext")) {
     sext = get_true_or_false(form, args.named.at("sext"));

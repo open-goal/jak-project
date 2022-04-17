@@ -293,11 +293,11 @@ void FormRegressionTest::test_final_function(
   settings.do_expressions = true;
   auto test = make_function(code, ts, settings);
   ASSERT_TRUE(test);
-  auto expected_form =
+  auto& expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
   ASSERT_TRUE(test->func.ir2.top_form);
   auto final = final_defun_out(test->func, test->func.ir2.env, *dts);
-  auto actual_form =
+  auto& actual_form =
       pretty_print::get_pretty_printer_reader().read_from_string(final, false).as_pair()->car;
   if (expected_form != actual_form) {
     printf("Got:\n%s\n\nExpected\n%s\n", pretty_print::to_string(actual_form).c_str(),

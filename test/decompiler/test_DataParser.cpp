@@ -21,9 +21,9 @@ class DataDecompTest : public ::testing::Test {
   static void TearDownTestCase() { dts.reset(); }
 
   void check_forms_equal(const std::string& actual, const std::string& expected) {
-    auto expected_form =
+    auto& expected_form =
         pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
-    auto actual_form =
+    auto& actual_form =
         pretty_print::get_pretty_printer_reader().read_from_string(actual, false).as_pair()->car;
     if (expected_form != actual_form) {
       printf("Got:\n%s\n\nExpected\n%s\n", pretty_print::to_string(actual_form).c_str(),

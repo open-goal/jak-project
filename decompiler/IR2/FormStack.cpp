@@ -118,7 +118,7 @@ Form* FormStack::pop_reg(const RegisterAccess& var,
 
 namespace {
 bool nonempty_intersection(const RegSet& a, const RegSet& b) {
-  for (auto x : a) {
+  for (auto& x : a) {
     if (b.find(x) != b.end()) {
       return true;
     }
@@ -233,7 +233,7 @@ bool is_op_in_place(SetVarElement* elt,
   auto matcher = Matcher::op(GenericOpMatcher::fixed(op), {Matcher::any_reg(0), Matcher::any(1)});
   auto result = match(matcher, elt->src());
   if (result.matched) {
-    auto first = result.maps.regs.at(0);
+    const auto& first = result.maps.regs.at(0);
     ASSERT(first.has_value());
 
     if (first->reg() != elt->dst().reg()) {

@@ -9,8 +9,8 @@ u32 Compiler::parse_address_spec(const goos::Object& form) {
   }
 
   if (form.is_pair()) {
-    auto first = form.as_pair()->car;
-    auto rest = form.as_pair()->cdr;
+    const auto& first = form.as_pair()->car;
+    const auto& rest = form.as_pair()->cdr;
     if (first.is_symbol() && symbol_string(first) == "sym") {
       if (rest.is_pair() && rest.as_pair()->car.is_symbol()) {
         u32 addr = m_debugger.get_symbol_address(symbol_string(rest.as_pair()->car));
@@ -156,7 +156,7 @@ Val* Compiler::compile_dump_all(const goos::Object& form, const goos::Object& re
 
   auto args = get_va(form, rest);
   va_check(form, args, {{goos::ObjectType::STRING}}, {});
-  auto dest_file = args.unnamed.at(0).as_string()->data;
+  const auto& dest_file = args.unnamed.at(0).as_string()->data;
   auto buffer = new u8[EE_MAIN_MEM_SIZE];
   memset(buffer, 0, EE_MAIN_MEM_SIZE);
 

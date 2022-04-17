@@ -134,7 +134,7 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
 Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
-  auto thing = args.unnamed.at(0);
+  const auto& thing = args.unnamed.at(0);
   switch (thing.type) {
     case goos::ObjectType::SYMBOL:
       return compile_get_sym_obj(thing.as_symbol()->name, env);
@@ -164,7 +164,7 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   auto sym = pair_car(*rest).as_symbol();
   rest = &pair_cdr(*rest);
-  auto value = pair_car(*rest);
+  const auto& value = pair_car(*rest);
 
   rest = &rest->as_pair()->cdr;
   if (!rest->is_empty_list()) {
@@ -218,8 +218,8 @@ Val* Compiler::compile_defconstant(const goos::Object& form, const goos::Object&
  * Compile an "mlet" scoped constant/symbol macro form
  */
 Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto defs = pair_car(rest);
-  auto body = pair_cdr(rest);
+  const auto& defs = pair_car(rest);
+  const auto& body = pair_cdr(rest);
 
   auto fenv = env->function_env();
   auto menv = fenv->alloc_env<SymbolMacroEnv>(env);
@@ -245,8 +245,8 @@ bool Compiler::expand_macro_once(const goos::Object& src, goos::Object* out, Env
     return false;
   }
 
-  auto first = src.as_pair()->car;
-  auto rest = src.as_pair()->cdr;
+  const auto& first = src.as_pair()->car;
+  const auto& rest = src.as_pair()->cdr;
   if (!first.is_symbol()) {
     return false;
   }

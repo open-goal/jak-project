@@ -64,7 +64,7 @@ goos::Object build_list(const std::vector<goos::Object>& objects) {
 // build a list out of an array of forms
 goos::Object build_list(const goos::Object* objects, int count) {
   ASSERT(count);
-  auto car = objects[0];
+  auto& car = objects[0];
   goos::Object cdr;
   if (count - 1) {
     cdr = build_list(objects + 1, count - 1);

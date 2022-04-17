@@ -309,7 +309,7 @@ std::string Env::print_local_var_types(const Form* top_level_form) const {
   ASSERT(has_local_vars());
   auto var_info = extract_visible_variables(top_level_form);
   std::vector<std::string> entries;
-  for (auto x : var_info) {
+  for (const auto& x : var_info) {
     entries.push_back(fmt::format("{}: {}", x.name(), x.type.typespec().print()));
   }
 

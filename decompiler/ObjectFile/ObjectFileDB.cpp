@@ -79,9 +79,8 @@ std::string ObjectFileData::to_unique_name() const {
     std::string result = record.name + "-";
     auto dgo_names_sorted = dgo_names;
     std::sort(dgo_names_sorted.begin(), dgo_names_sorted.end());
-    for (auto x : dgo_names_sorted) {
-      x = strip_dgo_extension(x);
-      result += x + "-";
+    for (const auto& x : dgo_names_sorted) {
+      result += strip_dgo_extension(x) + "-";
     }
     result.pop_back();
     return result;

@@ -7,7 +7,7 @@ bool get_va(const goos::Object& rest, std::string* err_string, goos::Arguments* 
   // loop over forms in list
   goos::Object current = rest;
   while (!current.is_empty_list()) {
-    auto arg = current.as_pair()->car;
+    const auto& arg = current.as_pair()->car;
 
     // did we get a ":keyword"
     if (arg.is_symbol() && arg.as_symbol()->name.at(0) == ':') {

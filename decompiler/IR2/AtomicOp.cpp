@@ -1491,15 +1491,15 @@ void AsmBranchOp::update_register_info() {
   if (m_branch_delay) {
     m_branch_delay->update_register_info();
 
-    for (auto x : m_branch_delay->read_regs()) {
+    for (auto& x : m_branch_delay->read_regs()) {
       m_read_regs.push_back(x);
     }
 
-    for (auto x : m_branch_delay->write_regs()) {
+    for (auto& x : m_branch_delay->write_regs()) {
       m_write_regs.push_back(x);
     }
 
-    for (auto x : m_branch_delay->clobber_regs()) {
+    for (auto& x : m_branch_delay->clobber_regs()) {
       m_clobber_regs.push_back(x);
     }
   }

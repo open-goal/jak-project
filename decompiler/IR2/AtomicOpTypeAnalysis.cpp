@@ -119,7 +119,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       if (hint.result_type.base_type() == "string") {
         // we special case strings because the type pass will constant propagate them as needed to
         // figure out the argument count for calls for format.
-        auto label = env.file->labels.at(m_int);
+        const auto& label = env.file->labels.at(m_int);
         return TP_Type::make_from_string(env.file->get_goal_string_by_label(label));
       }
       if (hint.is_value) {
@@ -715,8 +715,8 @@ TypeState IR2_BranchDelay::propagate_types(const TypeState& input,
       // at the input value. If it's a uint/int based type, we just return uint/int (not the type)
       // this will kill any weird stuff like product, etc.
       // if it's not an integer type, it's currently an error.
-      auto dst = m_var[0]->reg();
-      auto src = m_var[1]->reg();
+      const auto& dst = m_var[0]->reg();
+      const auto& src = m_var[1]->reg();
       if (tc(dts, TypeSpec("uint"), output.get(src))) {
         output.get(dst) = TP_Type::make_from_ts("uint");
       } else if (tc(dts, TypeSpec("int"), output.get(src))) {
@@ -764,7 +764,7 @@ TypeState AtomicOp::propagate_types(const TypeState& input,
   // do op-specific type propagation
   TypeState result = propagate_types_internal(input, env, dts);
   // clobber
-  for (auto reg : m_clobber_regs) {
+  for (const auto& reg : m_clobber_regs) {
     result.get(reg) = TP_Type::make_uninitialized();
   }
   return result;
@@ -913,7 +913,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       }
 
       // todo labeldb
-      auto label_name = env.file->labels.at(src.label()).name;
+      const auto& label_name = env.file->labels.at(src.label()).name;
       const auto& hint = env.file->label_db->lookup(label_name);
       if (!hint.known) {
         throw std::runtime_error(
@@ -1198,7 +1198,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3};
   TypeState end_types = input;
 
-  auto in_tp = input.get(Register(Reg::GPR, Reg::T9));
+  auto& in_tp = input.get(Register(Reg::GPR, Reg::T9));
   if (in_tp.kind == TP_Type::Kind::OBJECT_NEW_METHOD &&
       !dts.type_prop_settings.current_method_type.empty()) {
     // calling object new method. Set the result to a new object of our type
@@ -1248,8 +1248,8 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
   if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||
       in_tp.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
-    auto func_to_run_type = input.get(Register(Reg::GPR, arg_regs[1]));
-    auto func_to_run_ts = func_to_run_type.typespec();
+    auto& func_to_run_type = input.get(Register(Reg::GPR, arg_regs[1]));
+    const auto& func_to_run_ts = func_to_run_type.typespec();
     if (func_to_run_ts.base_type() != "function" || func_to_run_ts.arg_count() == 0 ||
         func_to_run_ts.arg_count() > 7) {
       throw std::runtime_error(
@@ -1280,7 +1280,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
     // we're calling a varags function, which is format. We can determine the argument count
     // by looking at the format string, if we can get it.
-    auto arg_type = input.get(Register(Reg::GPR, Reg::A1));
+    auto& arg_type = input.get(Register(Reg::GPR, Reg::A1));
     auto can_determine_argc = arg_type.can_be_format_string();
     auto dynamic_string = false;
     if (!can_determine_argc && arg_type.typespec() == TypeSpec("string")) {
@@ -1396,7 +1396,7 @@ TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
   }
   // for now, just make everything uint
   TypeState output = input;
-  for (auto x : m_write_regs) {
+  for (const auto& x : m_write_regs) {
     if (x.allowed_local_gpr()) {
       output.get(x) = TP_Type::make_from_ts("uint");
     }

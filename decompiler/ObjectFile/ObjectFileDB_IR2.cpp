@@ -446,9 +446,9 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
 
-      auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
+      const auto& block_0_start = func.ir2.env.reg_use().block.at(0).input;
       std::vector<Register> dep_regs;
-      for (auto x : block_0_start) {
+      for (const auto& x : block_0_start) {
         dep_regs.push_back(x);
       }
 
@@ -873,7 +873,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
       // print linked strings
       for (int iidx = 0; iidx < instr.n_src; iidx++) {
         if (instr.get_src(iidx).is_label()) {
-          auto lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
+          const auto& lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
           if (data.linked_data.is_string(lab.target_segment, lab.offset)) {
             append_commented(
                 line, printed_comment,
@@ -997,7 +997,7 @@ std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
     result += ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";
     ASSERT(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
-    auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
+    const auto& top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
     result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
     result += "\n\n";
     return result;

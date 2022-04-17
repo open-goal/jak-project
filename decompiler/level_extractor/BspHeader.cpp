@@ -955,7 +955,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     auto data_array = get_field_ref(ref, "color-index-qwc", dts);
     for (u32 i = 0; i < num_color_qwcs; i++) {
       int byte_offset = data_array.byte_offset + i;
-      auto word = data_array.data->words_by_seg.at(data_array.seg).at(byte_offset / 4);
+      auto& word = data_array.data->words_by_seg.at(data_array.seg).at(byte_offset / 4);
       color_index_qwc.push_back(word.get_byte(byte_offset % 4));
     }
   }

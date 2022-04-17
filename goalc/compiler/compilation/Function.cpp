@@ -15,7 +15,7 @@ namespace {
 const goos::Object& get_lambda_body(const goos::Object& def) {
   auto* iter = &def;
   while (true) {
-    auto car = iter->as_pair()->car;
+    const auto& car = iter->as_pair()->car;
     if (car.is_symbol() && car.as_symbol()->name.at(0) == ':') {
       iter = &iter->as_pair()->cdr;
       iter = &iter->as_pair()->cdr;
@@ -319,7 +319,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   auto fe = env->function_env();
 
   auto args = get_va(form, form);
-  auto uneval_head = args.unnamed.at(0);
+  const auto& uneval_head = args.unnamed.at(0);
   Val* head = get_none();
 
   // determine if this call should be automatically inlined.
@@ -451,7 +451,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     for (uint32_t i = 0; i < eval_args.size(); i++) {
       // note, inlined functions will get a more specific type if possible
       // todo, is this right?
-      auto type = eval_args.at(i)->type();
+      const auto& type = eval_args.at(i)->type();
       auto copy = env->make_ireg(type, m_ts.lookup_type(type)->get_preferred_reg_class());
       env->emit_ir<IR_RegSet>(form, copy, eval_args.at(i));
       copy->mark_as_settable();
@@ -618,7 +618,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   std::vector<RegVal*> arg_outs;
   for (int i = 0; i < (int)args.size(); i++) {
     const auto& arg = args.at(i);
-    auto reg = cc.arg_regs.at(i);
+    const auto& reg = cc.arg_regs.at(i);
     arg_outs.push_back(
         env->make_ireg(arg->type(), reg.is_xmm() ? RegClass::INT_128 : RegClass::GPR_64));
     arg_outs.back()->mark_as_settable();
@@ -657,7 +657,7 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       throw_compiler_error(o, "Invalid declare specification.");
     }
 
-    auto first = o.as_pair()->car;
+    const auto& first = o.as_pair()->car;
     auto rrest = &o.as_pair()->cdr;
 
     if (!first.is_symbol()) {
@@ -719,7 +719,7 @@ Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
       throw_compiler_error(o, "Invalid declare-file specification.");
     }
 
-    auto first = o.as_pair()->car;
+    const auto& first = o.as_pair()->car;
     auto rrest = &o.as_pair()->cdr;
 
     if (!first.is_symbol()) {

@@ -9,7 +9,7 @@ using namespace goos;
 
 namespace {
 Object read(const std::string& str) {
-  auto body = pretty_print::get_pretty_printer_reader().read_from_string(str).as_pair()->cdr;
+  auto& body = pretty_print::get_pretty_printer_reader().read_from_string(str).as_pair()->cdr;
   EXPECT_TRUE(body.as_pair()->cdr.is_empty_list());
   return body.as_pair()->car;
 }
@@ -38,11 +38,11 @@ TEST(PrettyPrinter, ReadAgain) {
       {"goal_src", "kernel", "gcommon.gc"});
   // pretty print it
   auto printed_gcommon = pretty_print::to_string(gcommon_code);
-  auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
-                           .read_from_string(printed_gcommon)
-                           .as_pair()
-                           ->cdr.as_pair()
-                           ->car;
+  auto& gcommon_code2 = pretty_print::get_pretty_printer_reader()
+                            .read_from_string(printed_gcommon)
+                            .as_pair()
+                            ->cdr.as_pair()
+                            ->car;
   auto printed_gcommon2 = pretty_print::to_string_v1(gcommon_code);
   EXPECT_TRUE(gcommon_code == gcommon_code2);
 }
@@ -54,11 +54,11 @@ TEST(PrettyPrinter, ReadAgainVeryShortLines) {
   // pretty print it but with a very short line length. This looks terrible but will hopefully
   // hit many of the cases for line breaking.
   auto printed_gcommon = pretty_print::to_string(gcommon_code, 80);
-  auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
-                           .read_from_string(printed_gcommon)
-                           .as_pair()
-                           ->cdr.as_pair()
-                           ->car;
+  auto& gcommon_code2 = pretty_print::get_pretty_printer_reader()
+                            .read_from_string(printed_gcommon)
+                            .as_pair()
+                            ->cdr.as_pair()
+                            ->car;
   auto printed_gcommon2 = pretty_print::to_string_v1(gcommon_code);
   EXPECT_TRUE(gcommon_code == gcommon_code2);
 }
@@ -71,11 +71,11 @@ TEST(PrettyPrinter, DefunNoArgs) {
       "  (the-as symbol #f)\n"
       "  )";
 
-  auto obj = pretty_print::get_pretty_printer_reader()
-                 .read_from_string(code)
-                 .as_pair()
-                 ->cdr.as_pair()
-                 ->car;
+  auto& obj = pretty_print::get_pretty_printer_reader()
+                  .read_from_string(code)
+                  .as_pair()
+                  ->cdr.as_pair()
+                  ->car;
   auto printed = pretty_print::to_string_v1(obj, 80);
 
   EXPECT_EQ(printed,
@@ -93,17 +93,17 @@ TEST(PrettyPrinter2, Debugging) {
       {"goal_src", "kernel", "gcommon.gc"});
   // pretty print it
   auto printed_gcommon = pretty_print::to_string(gcommon_code);
-  auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
-                           .read_from_string(printed_gcommon)
-                           .as_pair()
-                           ->cdr.as_pair()
-                           ->car;
+  auto& gcommon_code2 = pretty_print::get_pretty_printer_reader()
+                            .read_from_string(printed_gcommon)
+                            .as_pair()
+                            ->cdr.as_pair()
+                            ->car;
   EXPECT_TRUE(gcommon_code == gcommon_code2);
 }
 
 namespace {
 std::string pretty_print_v2(const std::string& str, int line_length = 110) {
-  auto obj =
+  auto& obj =
       pretty_print::get_pretty_printer_reader().read_from_string(str).as_pair()->cdr.as_pair()->car;
   return pretty_print::to_string(obj, line_length);
 }

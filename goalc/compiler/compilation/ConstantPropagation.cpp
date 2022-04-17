@@ -210,8 +210,8 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
 
     case goos::ObjectType::PAIR: {
       auto pair = expanded.as_pair();
-      auto head = pair->car;
-      auto rest = pair->cdr;
+      const auto& head = pair->car;
+      const auto& rest = pair->cdr;
 
       // in theory you could write code like:
       // ((#if PC_PORT foo bar) ...)
@@ -247,7 +247,7 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
 s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
   auto prop = try_constant_propagation(in, env);
   if (prop.value.is_pair()) {
-    auto head = prop.value.as_pair()->car;
+    const auto& head = prop.value.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
       auto enum_type = m_ts.try_enum_lookup(head_sym->name);
@@ -279,7 +279,7 @@ ValOrConstInt Compiler::get_constant_integer_or_variable(const goos::Object& in,
   auto prop = try_constant_propagation(in, env);
 
   if (prop.value.is_pair()) {
-    auto head = prop.value.as_pair()->car;
+    const auto& head = prop.value.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
       auto enum_type = m_ts.try_enum_lookup(head_sym->name);

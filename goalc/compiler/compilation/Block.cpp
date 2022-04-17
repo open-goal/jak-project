@@ -40,7 +40,7 @@ Val* Compiler::compile_begin(const goos::Object& form, const goos::Object& rest,
  */
 Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest, Env* env) {
   auto rest = &_rest;
-  auto name = pair_car(*rest);
+  auto& name = pair_car(*rest);
   rest = &pair_cdr(*rest);
 
   if (!rest->is_pair()) {
@@ -112,7 +112,7 @@ Val* Compiler::compile_return_from(const goos::Object& form, const goos::Object&
   const Object* rest = &_rest;
   auto block_name = symbol_string(pair_car(*rest));
   rest = &pair_cdr(*rest);
-  auto value_expression = pair_car(*rest);
+  auto& value_expression = pair_car(*rest);
   expect_empty_list(pair_cdr(*rest));
 
   // evaluate expression to return

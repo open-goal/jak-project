@@ -37,8 +37,8 @@ std::string deftype_parent_list(const goos::Object& list) {
     throw std::runtime_error("invalid parent list in deftype: " + list.print());
   }
 
-  auto parent = list.as_pair()->car;
-  auto rest = list.as_pair()->cdr;
+  const auto& parent = list.as_pair()->car;
+  const auto& rest = list.as_pair()->cdr;
   if (!rest.is_empty_list()) {
     throw std::runtime_error("invalid parent list in deftype - can only have one parent");
   }

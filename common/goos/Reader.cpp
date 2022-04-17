@@ -577,7 +577,7 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     if (objects.size() < 2) {
       throw_reader_error(ts, "A list with a dot must have at least one thing before the dot", -1);
     }
-    auto back = objects.back();
+    auto& back = objects.back();
     objects.pop_back();
     auto rv = build_list(objects);
 

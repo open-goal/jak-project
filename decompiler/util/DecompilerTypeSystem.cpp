@@ -14,7 +14,7 @@ DecompilerTypeSystem::DecompilerTypeSystem() {
 namespace {
 // some utilities for parsing the type def file
 
-goos::Object& car(goos::Object& pair) {
+goos::Object& car(const goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->car;
   } else {
@@ -22,7 +22,7 @@ goos::Object& car(goos::Object& pair) {
   }
 }
 
-goos::Object& cdr(goos::Object& pair) {
+goos::Object& cdr(const goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->cdr;
   } else {
@@ -52,9 +52,9 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
     try {
       if (car(o).as_symbol()->name == "define-extern") {
         auto* rest = &cdr(o);
-        auto sym_name = car(*rest);
+        const auto& sym_name = car(*rest);
         rest = &cdr(*rest);
-        auto sym_type = car(*rest);
+        const auto& sym_type = car(*rest);
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed define-extern");
         }
@@ -72,9 +72,9 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
 
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);
-        auto type_name = car(*rest);
+        const auto& type_name = car(*rest);
         rest = &cdr(*rest);
-        auto type_kind = car(*rest);
+        const auto& type_kind = car(*rest);
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed declare-type");
         }
@@ -95,7 +95,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
 
 TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
   auto read = m_reader.read_from_string(str);
-  auto data = cdr(read);
+  const auto& data = cdr(read);
   return parse_typespec(&ts, car(data));
 }
 

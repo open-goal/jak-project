@@ -18,8 +18,8 @@ void phase1(const FunctionAtomicOps& ops, int block_id, RegUsageInfo* out) {
 
   for (int i = end_op; i-- > start_op;) {
     const auto& instr = ops.ops.at(i);
-    auto read = instr->read_regs();
-    auto write = instr->write_regs();
+    auto& read = instr->read_regs();
+    auto& write = instr->write_regs();
 
     auto& lv = out->op.at(i).live;
     auto& dd = out->op.at(i).dead;
@@ -77,13 +77,13 @@ bool phase2(const std::vector<BasicBlock>& blocks, int block_id, RegUsageInfo* i
     if (s == -1) {
       continue;
     }
-    for (auto in : info->block.at(s).input) {
+    for (const auto& in : info->block.at(s).input) {
       out.insert(in);
     }
   }
 
   RegSet in = block_info.use;
-  for (auto x : out) {
+  for (const auto& x : out) {
     if (!in_set(block_info.defs, x)) {
       in.insert(x);
     }
@@ -108,7 +108,7 @@ void phase3(const FunctionAtomicOps& ops,
     if (s == -1) {
       continue;
     }
-    for (auto i : info->block.at(s).input) {
+    for (const auto& i : info->block.at(s).input) {
       live_local.insert(i);
     }
   }
@@ -121,7 +121,7 @@ void phase3(const FunctionAtomicOps& ops,
     auto& dd = info->op.at(i).dead;
 
     RegSet new_live = lv;
-    for (auto x : live_local) {
+    for (const auto& x : live_local) {
       if (!in_set(dd, x)) {
         new_live.insert(x);
       }
@@ -179,7 +179,7 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
   auto& first_op_live_out = result.op.at(0).live;
   RegSet first_op_live_in;
   first_op_live_in.insert(first_op_live_out.begin(), first_op_live_out.end());
-  for (auto reg : ops->ops.at(0)->write_regs()) {
+  for (auto& reg : ops->ops.at(0)->write_regs()) {
     first_op_live_in.erase(reg);
   }
   first_op_live_in.insert(ops->ops.at(0)->read_regs().begin(), ops->ops.at(0)->read_regs().end());
@@ -195,13 +195,13 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
     auto& op_info = result.op.at(i);
 
     // look at each register we read from:
-    for (auto reg : op->read_regs()) {
+    for (auto& reg : op->read_regs()) {
       if (op_info.live.find(reg) == op_info.live.end()) {
         // not live out, this means we must consume it.
         op_info.consumes.insert(reg);
       } else {
         // the register has a live value, but is it a new value?
-        for (auto wr : op->write_regs()) {
+        for (const auto& wr : op->write_regs()) {
           if (wr == reg) {
             op_info.consumes.insert(reg);
           }
@@ -210,7 +210,7 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
     }
 
     // also useful to know, written and unused.
-    for (auto reg : op->write_regs()) {
+    for (auto& reg : op->write_regs()) {
       if (op_info.live.find(reg) == op_info.live.end()) {
         // fmt::print("op {} wau {}\n", op->to_string(function.ir2.env), reg.to_string());
         op_info.written_and_unused.insert(reg);
