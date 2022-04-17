@@ -22,7 +22,7 @@ bool try_convert_lambda(const Function& parent_function,
                         bool defstate_behavior) {
   auto atom = form_as_atom(f);
   if (atom && atom->is_static_addr()) {
-    const auto& lab = parent_function.ir2.env.file->labels.at(atom->label());
+    auto lab = parent_function.ir2.env.file->labels.at(atom->label());
     auto& env = parent_function.ir2.env;
     const auto& info = parent_function.ir2.env.file->label_db->lookup(lab.name);
 

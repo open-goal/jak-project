@@ -6,7 +6,6 @@
  */
 
 #include <vector>
-#include <string>
 
 struct DgoDescription {
   std::string dgo_name;

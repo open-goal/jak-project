@@ -65,7 +65,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
     } else {
       // access a field
-      auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
+      auto arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
       if (arg0_type.kind == TP_Type::Kind::TYPESPEC) {
         FieldReverseLookupInput rd_in;
         rd_in.deref = std::nullopt;
@@ -451,7 +451,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         }
 
         if (m_value.is_var()) {
-          auto& input_var_type = env.get_types_before_op(m_my_idx).get(m_value.var().reg());
+          auto input_var_type = env.get_types_before_op(m_my_idx).get(m_value.var().reg());
           if (env.dts->ts.tc(TypeSpec("uinteger"), input_var_type.typespec())) {
             cast_type.insert(cast_type.begin(), 'u');
           }
@@ -481,10 +481,10 @@ FormElement* make_label_load(int label_idx,
                              FormPool& pool,
                              int load_size,
                              LoadVarOp::Kind load_kind) {
-  const auto& label = env.file->labels.at(label_idx);
-  const auto& label_name = label.name;
+  auto label = env.file->labels.at(label_idx);
+  auto label_name = label.name;
   // auto hint = env.label_types().find(label_name);
-  auto& hint = env.file->label_db->lookup(label_idx);
+  auto hint = env.file->label_db->lookup(label_idx);
 
   if (!hint.known) {
     throw std::runtime_error(fmt::format("Label {} was unknown in AtomicOpForm.", hint.name));
@@ -498,7 +498,7 @@ FormElement* make_label_load(int label_idx,
   if ((load_kind == LoadVarOp::Kind::FLOAT || load_kind == LoadVarOp::Kind::SIGNED) &&
       load_size == 4 && hint.result_type == TypeSpec("float")) {
     ASSERT((label.offset % 4) == 0);
-    const auto& word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
     ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
     float value;
     memcpy(&value, &word.data, 4);
@@ -506,8 +506,8 @@ FormElement* make_label_load(int label_idx,
   } else if (hint.result_type == TypeSpec("uint64") && load_kind != LoadVarOp::Kind::FLOAT &&
              load_size == 8) {
     ASSERT((label.offset % 8) == 0);
-    const auto& word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-    const auto& word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+    auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
     ASSERT(word0.kind() == LinkedWord::PLAIN_DATA);
     ASSERT(word1.kind() == LinkedWord::PLAIN_DATA);
     u64 value;

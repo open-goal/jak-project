@@ -14,7 +14,7 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
     if (rv->ireg().id < int(range.size())) {
       auto& lr = range.at(rv->ireg().id);
       if (lr.has_info_at(irec.ir_id)) {
-        auto& ass_reg = range.at(rv->ireg().id).get(irec.ir_id);
+        auto ass_reg = range.at(rv->ireg().id).get(irec.ir_id);
         if (ass_reg.kind == Assignment::Kind::REGISTER) {
           ASSERT(ass_reg.reg == reg);
         } else {
@@ -412,7 +412,7 @@ RegAllocInstr IR_FunctionCall::to_rai() {
   }
 
   for (int i = 0; i < emitter::RegisterInfo::N_REGS; i++) {
-    auto& info = emitter::gRegInfo.get_info(i);
+    auto info = emitter::gRegInfo.get_info(i);
     if (info.temp()) {
       rai.clobber.emplace_back(i);
     }

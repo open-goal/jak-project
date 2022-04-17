@@ -132,7 +132,7 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
   }
 
   // check the lt operation:
-  const auto& lt_var = mr.maps.regs.at(0);
+  auto lt_var = mr.maps.regs.at(0);
   ASSERT(lt_var);
   if (env.get_variable_name(*lt_var) != var) {
     return nullptr;  // wrong variable checked
@@ -154,7 +154,7 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
     return nullptr;
   }
 
-  const auto& inc_var = int_mr.maps.regs.at(0);
+  auto inc_var = int_mr.maps.regs.at(0);
   ASSERT(inc_var);
   if (env.get_variable_name(*inc_var) != var) {
     return nullptr;  // wrong variable incremented
@@ -216,7 +216,7 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
     return nullptr;
   }
 
-  const auto& from_var = *from_mr.maps.regs.at(1);
+  auto from_var = *from_mr.maps.regs.at(1);
   if (from_var.reg() != Register(Reg::GPR, Reg::S6)) {
     // fmt::print(" fail: from3\n");
     return nullptr;
@@ -359,7 +359,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
   }
 
   // check the zero operation:
-  const auto& lt_var = mr.maps.regs.at(0);
+  auto lt_var = mr.maps.regs.at(0);
   ASSERT(lt_var);
   if (env.get_variable_name(*lt_var) != idx_var) {
     return nullptr;  // wrong variable checked
@@ -381,7 +381,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
     return nullptr;
   }
 
-  const auto& inc_var = int_mr.maps.regs.at(0);
+  auto inc_var = int_mr.maps.regs.at(0);
   ASSERT(inc_var);
   if (env.get_variable_name(*inc_var) != idx_var) {
     return nullptr;  // wrong variable incremented
@@ -502,7 +502,7 @@ FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
     return nullptr;
   }
 
-  const auto& reg = in->entries().at(0).dest.reg();
+  auto reg = in->entries().at(0).dest.reg();
   if (reg.get_kind() == Reg::GPR && !reg.allowed_local_gpr()) {
     return nullptr;
   }
@@ -870,7 +870,7 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
       if (!mr.matched) {
         return nullptr;
       }
-      const auto& this_var = mr.maps.regs.at(0);
+      auto this_var = mr.maps.regs.at(0);
       ASSERT(this_var.has_value());
       if (in_vars[in_var].has_value()) {
         // seen it before
@@ -1089,7 +1089,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
 
       RegAccessSet ras;
       first_form_as_set->src()->collect_vars(ras, true);
-      for (const auto& ra : ras) {
+      for (auto ra : ras) {
         if (ra.reg() == first_form_as_set->dst().reg()) {
           if (env.get_variable_name(ra) == env.get_variable_name(first_form_as_set->dst())) {
             allowed = false;
@@ -1243,7 +1243,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
             RegAccessSet used;
             e.src->collect_vars(used, true);
             std::unordered_set<std::string> used_by_name;
-            for (const auto& used_var : used) {
+            for (auto used_var : used) {
               used_by_name.insert(env.get_variable_name(used_var));
             }
             for (auto& old_entry : as_let->entries()) {

@@ -245,9 +245,9 @@ bool delay_slot_sets_false(BranchElement* branch, SetVarOp& delay) {
 
   if (branch->op()->condition().kind() == IR2_Condition::Kind::FALSE) {
     if (delay.src().is_identity() && delay.src().get_arg(0).is_var()) {
-      auto& src_var = delay.src().get_arg(0).var();
+      auto src_var = delay.src().get_arg(0).var();
       auto& cond = branch->op()->condition();
-      auto& cond_reg = cond.src(0).var().reg();
+      auto cond_reg = cond.src(0).var().reg();
       return cond_reg == src_var.reg();
     }
   }
@@ -286,9 +286,9 @@ bool delay_slot_sets_truthy(BranchElement* branch, SetVarOp& delay) {
 
   if (branch->op()->condition().kind() == IR2_Condition::Kind::TRUTHY) {
     if (delay.src().is_identity() && delay.src().get_arg(0).is_var()) {
-      auto& src_var = delay.src().get_arg(0).var();
+      auto src_var = delay.src().get_arg(0).var();
       auto& cond = branch->op()->condition();
-      auto& cond_reg = cond.src(0).var().reg();
+      auto cond_reg = cond.src(0).var().reg();
       return cond_reg == src_var.reg();
     }
   }
@@ -351,7 +351,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
 
       auto branch_id = branch.first->op()->op_id();
       auto& branch_info = func.ir2.env.reg_use().op.at(branch_id);
-      for (const auto& x : delay_info.consumes) {
+      for (auto x : delay_info.consumes) {
         branch_info.consumes.insert(x);
       }
 
@@ -469,7 +469,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
       // cheat for the old method
       auto branch_id = branch.first->op()->op_id();
       auto& branch_info = func.ir2.env.reg_use().op.at(branch_id);
-      for (const auto& x : delay_info.consumes) {
+      for (auto x : delay_info.consumes) {
         branch_info.consumes.insert(x);
       }
 
@@ -655,7 +655,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
   ASSERT(condition.first);
   auto body = dynamic_cast<SetVarElement*>(cne->entries.front().body->try_as_single_element());
   ASSERT(body);
-  auto& dst = body->dst();
+  auto dst = body->dst();
   auto src_atom = get_atom_src(body->src());
   ASSERT(src_atom);
   ASSERT(src_atom->is_sym_val());
@@ -829,7 +829,7 @@ bool is_op_3(FormElement* ir,
   }
 
   // destination should be a register
-  auto& dest = set->dst();
+  auto dest = set->dst();
   if (dst != dest.reg()) {
     return false;
   }
@@ -843,8 +843,8 @@ bool is_op_3(FormElement* ir,
     return false;
   }
 
-  auto& arg0 = math->expr().get_arg(0);
-  auto& arg1 = math->expr().get_arg(1);
+  auto arg0 = math->expr().get_arg(0);
+  auto arg1 = math->expr().get_arg(1);
 
   if (!arg0.is_var() || src0 != arg0.var().reg() || !arg1.is_var() || src1 != arg1.var().reg()) {
     return false;
@@ -880,12 +880,12 @@ bool is_op_3(AtomicOp* op,
   }
 
   // destination should be a register
-  auto& dest = set->dst();
+  auto dest = set->dst();
   if (dst != dest.reg()) {
     return false;
   }
 
-  auto& math = set->src();
+  auto math = set->src();
   if (kind != math.kind()) {
     return false;
   }
@@ -894,8 +894,8 @@ bool is_op_3(AtomicOp* op,
     return false;
   }
 
-  auto& arg0 = math.get_arg(0);
-  auto& arg1 = math.get_arg(1);
+  auto arg0 = math.get_arg(0);
+  auto arg1 = math.get_arg(1);
 
   if (!arg0.is_var() || src0 != arg0.var().reg() || !arg1.is_var() || src1 != arg1.var().reg()) {
     return false;
@@ -929,17 +929,17 @@ bool is_op_2(AtomicOp* op,
   }
 
   // destination should be a register
-  auto& dest = set->dst();
+  auto dest = set->dst();
   if (dst != dest.reg()) {
     return false;
   }
 
-  auto& math = set->src();
+  auto math = set->src();
   if (kind != math.kind()) {
     return false;
   }
 
-  auto& arg = math.get_arg(0);
+  auto arg = math.get_arg(0);
 
   if (!arg.is_var() || src0 != arg.var().reg()) {
     return false;
@@ -970,7 +970,7 @@ bool is_op_2(FormElement* ir,
   }
 
   // destination should be a register
-  auto& dest = set->dst();
+  auto dest = set->dst();
   if (dst != dest.reg()) {
     return false;
   }
@@ -980,7 +980,7 @@ bool is_op_2(FormElement* ir,
     return false;
   }
 
-  auto& arg = math->expr().get_arg(0);
+  auto arg = math->expr().get_arg(0);
 
   if (!arg.is_var() || src0 != arg.var().reg()) {
     return false;
@@ -1038,8 +1038,8 @@ Form* try_sc_as_abs(FormPool& pool, Function& f, const ShortCircuit* vtx) {
     return nullptr;
   }
 
-  auto& input = branch->op()->condition().src(0);
-  auto& output = delay->dst();
+  auto input = branch->op()->condition().src(0);
+  auto output = delay->dst();
 
   ASSERT(input.is_var());
   ASSERT(input.var().reg() == delay->src().get_arg(0).var().reg());
@@ -1112,11 +1112,11 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
       dsrav a0, a0, a1  ; a0 is both input and output here
    */
 
-  auto& sa_in = branch->op()->condition().src(0);
+  auto sa_in = branch->op()->condition().src(0);
   ASSERT(sa_in.is_var());
-  auto& result = delay->dst();
-  auto& value_in = delay->src().get_arg(0).var();
-  auto& sa_in2 = delay->src().get_arg(1).var();
+  auto result = delay->dst();
+  auto value_in = delay->src().get_arg(0).var();
+  auto sa_in2 = delay->src().get_arg(1).var();
   ASSERT(sa_in.var().reg() == sa_in2.reg());
 
   auto dsubu_candidate = b1_ptr->at(0);
@@ -1146,7 +1146,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
 
   RegisterAccess dest_ir = result;
   SimpleAtom shift_ir = branch->op()->condition().src(0);
-  auto& value_ir =
+  auto value_ir =
       dynamic_cast<const SimpleExpressionElement*>(dsrav_set->src()->try_as_single_element())
           ->expr()
           .get_arg(0);
@@ -1177,7 +1177,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
 
   // fix up the other ones:
   f.ir2.env.disable_use(branch->op()->condition().src(0).var());  // bgezl X, L
-  auto& dsubu_var = dynamic_cast<SimpleExpressionElement*>(dsubu_set->src()->try_as_single_element())
+  auto dsubu_var = dynamic_cast<SimpleExpressionElement*>(dsubu_set->src()->try_as_single_element())
                        ->expr()
                        .get_arg(0)
                        .var();
@@ -1258,14 +1258,14 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
     return nullptr;
   }
 
-  auto& temp_reg0 = set_shift->dst();
+  auto temp_reg0 = set_shift->dst();
 
   auto shift = dynamic_cast<SimpleExpressionElement*>(set_shift->src()->try_as_single_element());
   if (!shift || shift->expr().kind() != SimpleExpression::Kind::LEFT_SHIFT) {
     return nullptr;
   }
-  auto& src_reg = shift->expr().get_arg(0).var();
-  auto& sa = shift->expr().get_arg(1);
+  auto src_reg = shift->expr().get_arg(0).var();
+  auto sa = shift->expr().get_arg(1);
   if (!sa.is_int() || sa.get_int() != 61) {
     return nullptr;
   }
@@ -1280,9 +1280,9 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
       !first_branch->op()->likely()) {
     return nullptr;
   }
-  auto& temp_reg = first_branch->op()->condition().src(0).var();
+  auto temp_reg = first_branch->op()->condition().src(0).var();
   ASSERT(temp_reg.reg() == temp_reg0.reg());
-  auto& dst_reg = b0_delay_op.dst();
+  auto dst_reg = b0_delay_op.dst();
 
   auto b1_delay_op = get_delay_op(f, b1_d);
   if (!second_branch || !is_set_symbol_value(b1_delay_op, "pair") ||
@@ -1292,12 +1292,12 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   }
 
   // check we agree on destination register.
-  auto& dst_reg2 = b1_delay_op.dst();
+  auto dst_reg2 = b1_delay_op.dst();
   ASSERT(dst_reg2.reg() == dst_reg.reg());
 
   // else case is a lwu to grab the type from a basic
   ASSERT(else_case);
-  auto& dst_reg3 = else_case->dst();
+  auto dst_reg3 = else_case->dst();
   ASSERT(dst_reg3.reg() == dst_reg.reg());
   auto load_op = dynamic_cast<LoadSourceElement*>(else_case->src()->try_as_single_element());
   if (!load_op || load_op->kind() != LoadVarOp::Kind::UNSIGNED || load_op->size() != 4) {
@@ -1308,8 +1308,8 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   if (!load_loc || load_loc->expr().kind() != SimpleExpression::Kind::ADD) {
     return nullptr;
   }
-  auto& src_reg3 = load_loc->expr().get_arg(0);
-  auto& offset = load_loc->expr().get_arg(1);
+  auto src_reg3 = load_loc->expr().get_arg(0);
+  auto offset = load_loc->expr().get_arg(1);
   if (!src_reg3.is_var() || !offset.is_int()) {
     return nullptr;
   }

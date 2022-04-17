@@ -210,7 +210,7 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
 
   bool got_fsf = false;
   for (int i = 0; i < m_instr.n_src; i++) {
-    const auto& v = m_src.at(i);
+    auto v = m_src.at(i);
     InstructionAtom atom = m_instr.get_src(i);
 
     if (v.has_value()) {

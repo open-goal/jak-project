@@ -53,8 +53,8 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
 ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   // init repl
   m_repl->print_welcome_message();
-  const auto& examples = m_repl->examples;
-  const auto& regex_colors = m_repl->regex_colors;
+  auto examples = m_repl->examples;
+  auto regex_colors = m_repl->regex_colors;
   m_repl->init_default_settings();
   using namespace std::placeholders;
   m_repl->get_repl().set_completion_callback(

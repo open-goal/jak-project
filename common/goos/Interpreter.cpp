@@ -248,7 +248,7 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
   // loop over forms in list
   Object current = rest;
   while (!current.is_empty_list()) {
-    const auto& arg = current.as_pair()->car;
+    auto arg = current.as_pair()->car;
 
     // did we get a ":keyword"
     if (arg.is_symbol() && arg.as_symbol()->name.at(0) == ':') {
@@ -344,7 +344,7 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
 
   Object current = rest;
   while (!current.is_empty_list()) {
-    const auto& arg = current.as_pair()->car;
+    auto arg = current.as_pair()->car;
     if (!arg.is_symbol()) {
       throw_eval_error(form, "args must be symbols");
     }
@@ -355,7 +355,7 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
       if (!current.is_pair()) {
         throw_eval_error(form, "rest arg must have a name");
       }
-      const auto& rest_name = current.as_pair()->car;
+      auto rest_name = current.as_pair()->car;
       if (!rest_name.is_symbol()) {
         throw_eval_error(form, "rest name must be a symbol");
       }
@@ -368,22 +368,23 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
     } else if (arg.as_symbol()->name == "&key") {
       // special case for &key
       current = current.as_pair()->cdr;
-      const auto& key_arg = current.as_pair()->car;
+      auto key_arg = current.as_pair()->car;
       if (key_arg.is_symbol()) {
         // form is &key name
-        const auto& key_arg_name = key_arg.as_symbol()->name;
+        auto key_arg_name = key_arg.as_symbol()->name;
         if (spec.named.find(key_arg_name) != spec.named.end()) {
           throw_eval_error(form, "key argument " + key_arg_name + " multiply defined");
         }
         spec.named[key_arg_name] = NamedArg();
       } else if (key_arg.is_pair()) {
         // form is &key (name default-value)
-        const auto& kn = key_arg.as_pair()->car;
-        const auto& key_iter = key_arg.as_pair()->cdr;
+        auto key_iter = key_arg;
+        auto kn = key_iter.as_pair()->car;
+        key_iter = key_iter.as_pair()->cdr;
         if (!kn.is_symbol()) {
           throw_eval_error(form, "key argument must have a symbol as a name");
         }
-        const auto& key_arg_name = kn.as_symbol()->name;
+        auto key_arg_name = kn.as_symbol()->name;
         if (spec.named.find(key_arg_name) != spec.named.end()) {
           throw_eval_error(form, "key argument " + key_arg_name + " multiply defined");
         }
@@ -666,7 +667,7 @@ Object Interpreter::eval_set(const Object& form,
                              const std::shared_ptr<EnvironmentObject>& env) {
   auto args = get_args(form, rest, make_varargs());
   vararg_check(form, args, {ObjectType::SYMBOL, {}}, {});
-  const auto& to_define = args.unnamed.at(0);
+  auto to_define = args.unnamed.at(0);
   Object to_set = eval_with_rewind(args.unnamed.at(1), env);
 
   std::shared_ptr<EnvironmentObject> search_env = env;
@@ -1554,8 +1555,8 @@ Object Interpreter::eval_format(const Object& form,
     throw_eval_error(form, "format must get at least two arguments");
   }
 
-  const auto& dest = args.unnamed.at(0);
-  const auto& format_str = args.unnamed.at(1);
+  auto dest = args.unnamed.at(0);
+  auto format_str = args.unnamed.at(1);
   if (!format_str.is_string()) {
     throw_eval_error(form, "format string must be a string");
   }

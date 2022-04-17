@@ -348,14 +348,14 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
   // we should have gkernel main segment
   listener::MemoryMapEntry gk_main;
   EXPECT_TRUE(mem_map.lookup("gkernel", MAIN_SEGMENT, &gk_main));
-  auto& lookup_2 = mem_map.lookup(gk_main.start_addr + 12);
+  auto lookup_2 = mem_map.lookup(gk_main.start_addr + 12);
   EXPECT_TRUE(lookup_2.obj_name == "gkernel");
   EXPECT_FALSE(lookup_2.empty);
   EXPECT_EQ(lookup_2.seg_id, MAIN_SEGMENT);
 }
 
 TEST_F(WithGameTests, DebuggerDisassemble) {
-  auto& di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
+  auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
   bool fail = false;
   auto result = di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader);
   // printf("Got\n%s\n", result.c_str());

@@ -94,11 +94,11 @@ goos::Object Compiler::unquote(const goos::Object& o) {
  */
 bool Compiler::is_quoted_sym(const goos::Object& o) {
   if (o.is_pair()) {
-    auto& car = pair_car(o);
-    auto& cdr = pair_cdr(o);
+    auto car = pair_car(o);
+    auto cdr = pair_cdr(o);
     if (car.is_symbol() && car.as_symbol()->name == "quote") {
       if (cdr.is_pair()) {
-        auto& thing = pair_car(cdr);
+        auto thing = pair_car(cdr);
         if (thing.is_symbol()) {
           if (pair_cdr(cdr).is_empty_list()) {
             return true;

@@ -32,7 +32,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     auto field_name_def = symbol_string(pair_car(*field_defs));
     field_defs = &pair_cdr(*field_defs);
 
-    auto field_value = expand_macro_completely(pair_car(*field_defs), env);
+    auto field_value = pair_car(*field_defs);
+    field_value = expand_macro_completely(field_value, env);
     field_defs = &pair_cdr(*field_defs);
 
     if (field_name_def.at(0) != ':') {
@@ -330,7 +331,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     auto field_name_def = symbol_string(pair_car(*field_defs));
     field_defs = &pair_cdr(*field_defs);
 
-    const auto& field_value = pair_car(*field_defs);
+    auto field_value = pair_car(*field_defs);
     field_defs = &pair_cdr(*field_defs);
 
     if (field_name_def.at(0) != ':') {
@@ -352,7 +353,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       if (!got_constant && is_bitfield(field_info.result_type) && !allow_dynamic_construction) {
         auto static_result = compile_static(field_value, env);
         if (static_result.is_constant_data()) {
-          const auto& constant_data = static_result.constant();
+          auto constant_data = static_result.constant();
           if (constant_data.size() == 8) {
             typecheck(field_value, field_info.result_type, static_result.typespec(),
                       "Type of static constant");
@@ -694,11 +695,11 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
     fie->add_static(std::move(obj));
     return result;
   } else if (form.is_pair()) {
-    const auto& first = form.as_pair()->car;
-    const auto& rest = form.as_pair()->cdr;
+    auto first = form.as_pair()->car;
+    auto rest = form.as_pair()->cdr;
     if (first.is_symbol() && first.as_symbol()->name == "quote") {
       if (rest.is_pair()) {
-        const auto& second = rest.as_pair()->car;
+        auto second = rest.as_pair()->car;
         if (!rest.as_pair()->cdr.is_empty_list()) {
           throw_compiler_error(form, "The form {} is an invalid quoted form.", form.print());
         }
@@ -783,7 +784,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       va_check(form, args, {goos::ObjectType::SYMBOL},
                {{{"method-count", {false, goos::ObjectType::INTEGER}}}});
 
-      const auto& type_name = args.unnamed.at(0).as_symbol()->name;
+      auto type_name = args.unnamed.at(0).as_symbol()->name;
 
       std::optional<int> expected_method_count = m_ts.try_get_type_method_count(type_name);
       int method_count = -1;

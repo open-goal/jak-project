@@ -529,11 +529,11 @@ void AtomicOpElement::collect_vars(RegAccessSet& vars, bool) const {
 }
 
 void AtomicOpElement::get_modified_regs(RegSet& regs) const {
-  for (auto& r : m_op->write_regs()) {
+  for (auto r : m_op->write_regs()) {
     regs.insert(r);
   }
 
-  for (auto& r : m_op->clobber_regs()) {
+  for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
   }
 }
@@ -573,11 +573,11 @@ void AsmBranchElement::collect_vars(RegAccessSet& vars, bool recursive) const {
 
 void AsmBranchElement::get_modified_regs(RegSet& regs) const {
   m_branch_delay->get_modified_regs(regs);
-  for (auto& r : m_branch_op->write_regs()) {
+  for (auto r : m_branch_op->write_regs()) {
     regs.insert(r);
   }
 
-  for (auto& r : m_branch_op->clobber_regs()) {
+  for (auto r : m_branch_op->clobber_regs()) {
     regs.insert(r);
   }
 }
@@ -708,11 +708,11 @@ void AsmOpElement::collect_vars(RegAccessSet& vars, bool) const {
 }
 
 void AsmOpElement::get_modified_regs(RegSet& regs) const {
-  for (auto& r : m_op->write_regs()) {
+  for (auto r : m_op->write_regs()) {
     regs.insert(r);
   }
 
-  for (auto& r : m_op->clobber_regs()) {
+  for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
   }
 }
@@ -738,19 +738,19 @@ void OpenGoalAsmOpElement::collect_vars(RegAccessSet& vars, bool) const {
 }
 
 void OpenGoalAsmOpElement::collect_vf_regs(RegSet& regs) const {
-  for (auto& r : m_op->read_regs()) {
+  for (auto r : m_op->read_regs()) {
     if (r.is_vu_float()) {
       regs.insert(r);
     }
   }
 
-  for (auto& r : m_op->write_regs()) {
+  for (auto r : m_op->write_regs()) {
     if (r.is_vu_float()) {
       regs.insert(r);
     }
   }
 
-  for (auto& r : m_op->clobber_regs()) {
+  for (auto r : m_op->clobber_regs()) {
     if (r.is_vu_float()) {
       regs.insert(r);
     }
@@ -758,11 +758,11 @@ void OpenGoalAsmOpElement::collect_vf_regs(RegSet& regs) const {
 }
 
 void OpenGoalAsmOpElement::get_modified_regs(RegSet& regs) const {
-  for (auto& r : m_op->write_regs()) {
+  for (auto r : m_op->write_regs()) {
     regs.insert(r);
   }
 
-  for (auto& r : m_op->clobber_regs()) {
+  for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
   }
 }
@@ -813,7 +813,7 @@ void ConditionElement::invert() {
 }
 
 void ConditionElement::collect_vars(RegAccessSet& vars, bool) const {
-  for (auto& src : m_src) {
+  for (auto src : m_src) {
     if (src.has_value() && src->is_var()) {
       vars.insert(src->var());
     }
@@ -845,11 +845,11 @@ void FunctionCallElement::collect_vars(RegAccessSet& vars, bool) const {
 }
 
 void FunctionCallElement::get_modified_regs(RegSet& regs) const {
-  for (auto& r : m_op->write_regs()) {
+  for (auto r : m_op->write_regs()) {
     regs.insert(r);
   }
 
-  for (auto& r : m_op->clobber_regs()) {
+  for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
   }
 }
@@ -875,11 +875,11 @@ void BranchElement::collect_vars(RegAccessSet& vars, bool) const {
 }
 
 void BranchElement::get_modified_regs(RegSet& regs) const {
-  for (auto& r : m_op->write_regs()) {
+  for (auto r : m_op->write_regs()) {
     regs.insert(r);
   }
 
-  for (auto& r : m_op->clobber_regs()) {
+  for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
   }
 }

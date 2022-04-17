@@ -639,8 +639,10 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
     result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
     result->mark_as_settable();
   } else {
-    const auto& type_for_offset =
-        field.type.base_type() == "inline-array" ? field.type.get_single_arg() : field.type;
+    auto type_for_offset = field.type;
+    if (field.type.base_type() == "inline-array") {
+      type_for_offset = field.type.get_single_arg();
+    }
     auto field_type_info = m_ts.lookup_type(type_for_offset);
     result = fe->alloc_val<MemoryOffsetConstantVal>(
         field.type, object, field.field.offset() + offset + field_type_info->get_offset());
@@ -706,7 +708,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
 
   // compound, is field access/nested access
   while (!rest->is_empty_list()) {
-    auto& field_obj = pair_car(*rest);
+    auto field_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     auto type_info = m_ts.lookup_type_allow_partial_def(result->type());
 
@@ -771,6 +773,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
                              result->type().print());
       }
       auto di = m_ts.get_deref_info(result->type());
+      auto base_type = di.result_type;
       ASSERT(di.can_deref);
       if (has_constant_idx) {
         result = fe->alloc_val<MemoryOffsetConstantVal>(di.result_type, result,
@@ -787,6 +790,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
                              result->type().print());
       }
       auto di = m_ts.get_deref_info(result->type());
+      auto base_type = di.result_type;
       ASSERT(di.mem_deref);
       ASSERT(di.can_deref);
       Val* loc = nullptr;
@@ -811,7 +815,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       // figure out how to access this...
       auto di = m_ts.get_deref_info(loc_type);
       // and the result
-      const auto& base_type = di.result_type;
+      auto base_type = di.result_type;
       ASSERT(base_type == result->type().get_single_arg());
       ASSERT(di.mem_deref);
       ASSERT(di.can_deref);
@@ -968,7 +972,7 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
     rest = &pair_cdr(*rest);
 
-    auto& count_obj = pair_car(*rest);
+    auto count_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     // try to get the size as a compile time constant.
     auto cv = get_constant_integer_or_variable(count_obj, env);
@@ -1100,7 +1104,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
     rest = &pair_cdr(*rest);
 
-    auto& count_obj = pair_car(*rest);
+    auto count_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
     // try to get the size as a compile time constant.
     int64_t constant_count = get_constant_integer_or_error(count_obj, env);
@@ -1197,7 +1201,7 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   auto allocation = quoted_sym_as_string(pair_car(_rest));
   auto rest = &pair_cdr(_rest);
 
-  auto& type = pair_car(*rest);
+  auto type = pair_car(*rest);
   rest = &pair_cdr(*rest);
 
   if (allocation == "global" || allocation == "debug" || allocation == "process" ||
@@ -1251,7 +1255,7 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {goos::ObjectType::SYMBOL}}, {});
 
-  const auto& arg = args.unnamed.at(0);
+  auto arg = args.unnamed.at(0);
   auto method_name = symbol_string(args.unnamed.at(1));
 
   // in order to do proper method lookup, we peek at the symbol that the user provided and see if
@@ -1285,7 +1289,7 @@ Val* Compiler::compile_method_of_object(const goos::Object& form,
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {goos::ObjectType::SYMBOL}}, {});
 
-  const auto& arg = args.unnamed.at(0);
+  auto arg = args.unnamed.at(0);
   auto method_name = symbol_string(args.unnamed.at(1));
 
   auto obj = compile_error_guard(arg, env)->to_gpr(form, env);
@@ -1402,7 +1406,7 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  const auto& type_to_look_for = args.unnamed.at(0).as_symbol()->name;
+  auto type_to_look_for = args.unnamed.at(0).as_symbol()->name;
 
   if (!m_ts.fully_defined_type_exists(type_to_look_for)) {
     throw_compiler_error(

@@ -40,7 +40,7 @@ bool Compiler::is_singed_integer_or_binteger(const TypeSpec& ts) {
 
 Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {
   (void)env;
-  const auto& ts = in->type();
+  auto ts = in->type();
   if (is_binteger(ts)) {
     throw_compiler_error(form, "Cannot convert {} (a binteger) to an integer yet.", in->print());
   } else if (is_float(ts)) {
@@ -57,7 +57,7 @@ Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {
 
 Val* Compiler::number_to_binteger(const goos::Object& form, Val* in, Env* env) {
   (void)env;
-  const auto& ts = in->type();
+  auto ts = in->type();
   if (is_binteger(ts)) {
     return in;
   } else if (is_float(ts)) {
@@ -77,7 +77,7 @@ Val* Compiler::number_to_binteger(const goos::Object& form, Val* in, Env* env) {
 
 Val* Compiler::number_to_float(const goos::Object& form, Val* in, Env* env) {
   (void)env;
-  const auto& ts = in->type();
+  auto ts = in->type();
   if (is_binteger(ts)) {
     throw_compiler_error(form, "Cannot convert {} (a binteger) to an float yet.", in->print());
   } else if (is_float(ts)) {
@@ -114,7 +114,7 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
 
   // look at the first value to determine the math mode
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
-  const auto& first_type = first_val->type();
+  auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT:
@@ -161,7 +161,7 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
 
   // look at the first value to determine the math mode
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
-  const auto& first_type = first_val->type();
+  auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT: {
@@ -277,7 +277,7 @@ Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest
 
   // look at the first value to determine the math mode
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
-  const auto& first_type = first_val->type();
+  auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT: {
@@ -311,7 +311,7 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
   }
 
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
-  const auto& first_type = first_val->type();
+  auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT:
@@ -434,7 +434,7 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
   }
 
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
-  const auto& first_type = first_val->type();
+  auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT: {

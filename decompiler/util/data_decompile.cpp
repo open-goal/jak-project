@@ -348,7 +348,7 @@ goos::Object decomp_ref_to_integer_array_guess_size(
   // the input is the location of the data field.
   // we expect that to be a label:
   ASSERT((field_location % 4) == 0);
-  auto& pointer_to_data = words.at(field_location / 4);
+  auto pointer_to_data = words.at(field_location / 4);
   ASSERT(pointer_to_data.kind() == LinkedWord::PTR);
 
   // the data shouldn't have any labels in the middle of it, so we can find the end of the array
@@ -426,7 +426,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   // the input is the location of the data field.
   // we expect that to be a label:
   ASSERT((field_location % 4) == 0);
-  auto& pointer_to_data = words.at(field_location / 4);
+  auto pointer_to_data = words.at(field_location / 4);
   ASSERT(pointer_to_data.kind() == LinkedWord::PTR);
 
   // the data shouldn't have any labels in the middle of it, so we can find the end of the array
@@ -1368,10 +1368,10 @@ goos::Object decompile_pair(const DecompilerLabel& label,
 
     if ((to_print.offset % 8) == 2) {
       // continue
-      auto& car_word = words.at(to_print.target_segment).at((to_print.offset - 2) / 4);
+      auto car_word = words.at(to_print.target_segment).at((to_print.offset - 2) / 4);
       list_tokens.push_back(decompile_pair_elt(car_word, labels, words, ts, file));
 
-      auto& cdr_word = words.at(to_print.target_segment).at((to_print.offset + 2) / 4);
+      auto cdr_word = words.at(to_print.target_segment).at((to_print.offset + 2) / 4);
       // if empty
       if (cdr_word.kind() == LinkedWord::EMPTY_PTR) {
         if (add_quote) {
@@ -1388,7 +1388,8 @@ goos::Object decompile_pair(const DecompilerLabel& label,
       // invalid.
       lg::error(
           "There is an improper list. This is probably okay, but should be checked manually "
-          "because we could not find a test case yet.");
+          "because we "
+          "could not find a test case yet.");
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
       if (add_quote) {

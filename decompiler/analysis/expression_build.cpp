@@ -27,7 +27,7 @@ bool convert_to_expressions(
       f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
     f.ir2.env.set_remap_for_function(f.type);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-    const auto& method_type =
+    auto method_type =
         dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
     if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
       f.ir2.env.set_remap_for_new_method(method_type);

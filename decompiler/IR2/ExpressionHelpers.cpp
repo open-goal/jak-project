@@ -286,9 +286,9 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     return nullptr;
   }
 
-  const auto& in1 = *first_result.maps.regs.at(reg_input_1);
-  const auto& in2 = *second_result.maps.regs.at(reg_input_2);
-  const auto& in3 = *second_result.maps.regs.at(reg_input_3);
+  auto in1 = *first_result.maps.regs.at(reg_input_1);
+  auto in2 = *second_result.maps.regs.at(reg_input_2);
+  auto in3 = *second_result.maps.regs.at(reg_input_3);
 
   auto in_name = in1.to_string(env);
   if (in_name != in2.to_string(env)) {

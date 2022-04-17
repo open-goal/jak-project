@@ -263,7 +263,7 @@ bool can_var_be_assigned(int var,
 
   // can clobber on the last one or first one - check that we don't interfere with a clobber
   for (int instr = lr.min + 1; instr <= lr.max - 1; instr++) {
-    for (auto& clobber : in.instructions.at(instr).clobber) {
+    for (auto clobber : in.instructions.at(instr).clobber) {
       if (ass.occupies_reg(clobber)) {
         if (debug_trace >= 1) {
           printf("at idx %d clobber\n", instr);
@@ -275,7 +275,7 @@ bool can_var_be_assigned(int var,
   }
 
   for (int instr = lr.min; instr <= lr.max; instr++) {
-    for (auto& exclusive : in.instructions.at(instr).exclude) {
+    for (auto exclusive : in.instructions.at(instr).exclude) {
       if (ass.occupies_reg(exclusive)) {
         if (debug_trace >= 1) {
           printf("at idx %d exclusive conflict\n", instr);
@@ -352,7 +352,7 @@ bool assignment_ok_at(int var,
 
   // check we aren't violating a clobber
   if (idx != lr.min && idx != lr.max) {
-    for (auto& clobber : in.instructions.at(idx).clobber) {
+    for (auto clobber : in.instructions.at(idx).clobber) {
       if (ass.occupies_reg(clobber)) {
         if (debug_trace >= 2) {
           printf("at idx %d clobber\n", idx);
@@ -363,7 +363,7 @@ bool assignment_ok_at(int var,
     }
   }
 
-  for (auto& exclusive : in.instructions.at(idx).exclude) {
+  for (auto exclusive : in.instructions.at(idx).exclude) {
     if (ass.occupies_reg(exclusive)) {
       if (debug_trace >= 2) {
         printf("at idx %d exclusive conflict\n", idx);
@@ -548,9 +548,9 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
 
         // hint didn't work
         // auto reg_order = get_default_reg_alloc_order();
-        auto& reg_order = get_default_alloc_order_for_var_spill(var, cache);
+        auto reg_order = get_default_alloc_order_for_var_spill(var, cache);
         if (spill_assignment.reg == -1) {
-          for (auto& reg : reg_order) {
+          for (auto reg : reg_order) {
             Assignment ass;
             ass.kind = Assignment::Kind::REGISTER;
             ass.reg = reg;
@@ -625,7 +625,7 @@ bool do_allocation_for_var(int var,
       }
     }
 
-    auto& reg_order = get_default_alloc_order_for_var(var, cache, false);
+    auto reg_order = get_default_alloc_order_for_var(var, cache, false);
     auto& all_reg_order = get_default_alloc_order_for_var(var, cache, true);
 
     // todo, try other regs..
@@ -650,7 +650,7 @@ bool do_allocation_for_var(int var,
 
     // auto reg_order = get_default_reg_alloc_order();
 
-    for (auto& reg : reg_order) {
+    for (auto reg : reg_order) {
       if (colored)
         break;
       Assignment ass;
@@ -812,7 +812,7 @@ AllocationResult allocate_registers(const AllocationInput& input) {
   result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
 
   // check for use of saved registers
-  for (auto& sr : emitter::gRegInfo.get_all_saved()) {
+  for (auto sr : emitter::gRegInfo.get_all_saved()) {
     bool uses_sr = false;
     for (auto& lr : cache.live_ranges) {
       for (int instr_idx = lr.min; instr_idx <= lr.max; instr_idx++) {

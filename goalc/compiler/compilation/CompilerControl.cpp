@@ -374,13 +374,13 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::STRING}, {});
-  auto& dgo_desc = pair_cdr(m_goos.reader.read_from_file({args.unnamed.at(0).as_string()->data}));
+  auto dgo_desc = pair_cdr(m_goos.reader.read_from_file({args.unnamed.at(0).as_string()->data}));
 
   for_each_in_list(dgo_desc, [&](const goos::Object& dgo) {
     DgoDescription desc;
-    auto& first = pair_car(dgo);
+    auto first = pair_car(dgo);
     desc.dgo_name = as_string(first);
-    auto& dgo_rest = pair_cdr(dgo);
+    auto dgo_rest = pair_cdr(dgo);
 
     for_each_in_list(dgo_rest, [&](const goos::Object& entry) {
       auto e_arg = get_va(dgo, entry);

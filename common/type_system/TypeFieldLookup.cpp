@@ -133,7 +133,7 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
   bool is_integer = ts.tc(TypeSpec("integer"), input.base_type.get_single_arg());
   bool is_basic = ts.tc(TypeSpec("basic"), input.base_type.get_single_arg());
   ASSERT(di.mem_deref);  // it's accessing a pointer.
-  const auto& elt_type = di.result_type;
+  auto elt_type = di.result_type;
 
   if (input.stride) {
     // variable access to the array.

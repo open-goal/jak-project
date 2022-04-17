@@ -390,7 +390,7 @@ std::vector<VarAssignment> initialize_unassigned(const std::vector<Range<s32>>& 
   result.reserve(input.max_vars);
   ASSERT(input.max_vars == (int)live_ranges.size());
   int var_idx = 0;
-  for (auto& lr : live_ranges) {
+  for (auto lr : live_ranges) {
     result.emplace_back(lr.first(), lr.last(), var_idx++);
   }
 
@@ -890,7 +890,7 @@ loop_top:
       }
     }
 
-    for (auto& reg : order) {
+    for (auto reg : order) {
       if (check_register_assign_at(input, *cache, var_idx, instr_idx, reg)) {
         var.set_stack_slot_reg(reg, instr_idx);
         bonus.reg = reg;
@@ -1165,7 +1165,7 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
   result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
 
   // check for use of saved registers
-  for (auto& sr : emitter::gRegInfo.get_all_saved()) {
+  for (auto sr : emitter::gRegInfo.get_all_saved()) {
     bool uses_sr = false;
     for (auto& lr : cache.vars) {
       for (int instr_idx = lr.first_live(); instr_idx <= lr.last_live(); instr_idx++) {
