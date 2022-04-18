@@ -840,20 +840,16 @@
        )
    )
 
-(defmacro send-event (proc msg &rest params)
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
   "Send an event to a process. This should be used over send-event-function"
 
-  `(with-pp
-    (let ((event-data (new 'stack-singleton-no-clear 'event-message-block)))
-        (set! (-> event-data from) pp)
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) ,from)
         (set! (-> event-data num-params) ,(length params))
         (set! (-> event-data message) ,msg)
-        ,@(let ((ep 0))
-          (apply (lambda (x) `(set! (-> event-data param ep) (the-as uint ,x)) (inc! ep)) params)
-          )
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
         (send-event-function ,proc event-data)
         )
-    )
   )
 
 ;; vector-h
