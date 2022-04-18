@@ -47,6 +47,9 @@ You can contact the author at :
  */
 #include <immintrin.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+
 namespace xxh {
 /* *************************************
  *  Versioning
@@ -1936,3 +1939,4 @@ using canonical32_t = canonical_t<32>;
 using canonical64_t = canonical_t<64>;
 using canonical128_t = canonical_t<128>;
 }  // namespace xxh
+#pragma clang diagnostic pop
