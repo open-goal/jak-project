@@ -2436,20 +2436,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
-    for (auto& op_pair : in_place_ops) {
-      if (src_as_generic->op().is_fixed(op_pair.first)) {
-        auto dst_form = m_dst->to_form(env);
-        auto add_form_0 = src_as_generic->elts().at(0)->to_form(env);
-
-        if (dst_form == add_form_0) {
-          src_as_generic->op() = GenericOperator::make_fixed(op_pair.second);
-          stack.push_form_element(src_as_generic, true);
-          return;
-        }
-      }
-    }
-    for (const auto& call_info : in_place_calls) {
-      if (src_as_generic->op().is_func()) {
+    if (src_as_generic->op().is_func()) {
+      for (const auto& call_info : in_place_calls) {
         auto funchelt = dynamic_cast<SimpleExpressionElement*>(src_as_generic->op().func()->at(0));
         if (funchelt && funchelt->expr().get_arg(0).is_sym_val()) {
           const auto& funcname = funchelt->expr().get_arg(0).get_str();
@@ -2477,6 +2465,19 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
                 return;
               }
             }
+          }
+        }
+      }
+    } else {
+      for (auto& op_pair : in_place_ops) {
+        if (src_as_generic->op().is_fixed(op_pair.first)) {
+          auto dst_form = m_dst->to_form(env);
+          auto add_form_0 = src_as_generic->elts().at(0)->to_form(env);
+
+          if (dst_form == add_form_0) {
+            src_as_generic->op() = GenericOperator::make_fixed(op_pair.second);
+            stack.push_form_element(src_as_generic, true);
+            return;
           }
         }
       }
