@@ -379,9 +379,7 @@
   :code
   (behavior ()
     (while #t
-      (set! (-> self in-out-position)
-            (seekl (-> self in-out-position) 0 (the int (* 350.0 (-> *display* time-adjust-ratio))))
-            )
+      (seekl! (-> self in-out-position) 0 (the int (* 350.0 (-> *display* time-adjust-ratio))))
       (if (zero? (-> self in-out-position))
           (go hud-normal)
           )
@@ -406,12 +404,8 @@
               (= (-> *progress-process* 0 next-state name) 'progress-going-out)
               (= (-> *progress-process* 0 next-state name) 'progress-gone)
               )
-          (set! (-> self in-out-position)
-                (seekl (-> self in-out-position) 0 (the int (* 150.0 (-> *display* time-adjust-ratio))))
-                )
-          (set! (-> self in-out-position)
-                (seekl (-> self in-out-position) 4096 (the int (* 200.0 (-> *display* time-adjust-ratio))))
-                )
+          (seekl! (-> self in-out-position) 0 (the int (* 150.0 (-> *display* time-adjust-ratio))))
+          (seekl! (-> self in-out-position) 4096 (the int (* 200.0 (-> *display* time-adjust-ratio))))
           )
       (suspend)
       )
@@ -423,9 +417,7 @@
   :code
   (behavior ()
     (while #t
-      (set! (-> self in-out-position)
-            (seekl (-> self in-out-position) 4096 (the int (* 350.0 (-> *display* time-adjust-ratio))))
-            )
+      (seekl! (-> self in-out-position) 4096 (the int (* 350.0 (-> *display* time-adjust-ratio))))
       (if (= (-> self in-out-position) 4096)
           (deactivate self)
           )
@@ -2522,13 +2514,11 @@
             (fmin 1.0 (* arg0 (/ (-> self control unknown-float01) (-> self control unknown-surface01 target-speed))))
             )
           )
-      (set! (-> self control unknown-float130)
-            (seek
-              (-> self control unknown-float130)
-              (fmax (fmin (* (+ f0-1 arg2) (fmax 0.5 (+ 0.5 (vector-dot gp-0 v1-2)))) arg3) (- arg3))
-              (* arg1 (-> *display* seconds-per-frame))
-              )
-            )
+      (seek!
+        (-> self control unknown-float130)
+        (fmax (fmin (* (+ f0-1 arg2) (fmax 0.5 (+ 0.5 (vector-dot gp-0 v1-2)))) arg3) (- arg3))
+        (* arg1 (-> *display* seconds-per-frame))
+        )
       )
     (let ((a2-2 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00))))
       (forward-up-nopitch->quaternion (-> self control unknown-quaternion01) gp-0 a2-2)
@@ -2545,15 +2535,12 @@
     )
   (set! (-> self control unknown-float00) (fabs (-> self control unknown-float130)))
   (if (= (-> self next-state name) 'target-swim-down)
-      (set! (-> self control unknown-float131)
-            (seek (-> self control unknown-float131) (the-as float -6144.0) (* 4096.0 (-> *display* seconds-per-frame)))
-            )
-      (set! (-> self control unknown-float131) (seek
-                                                 (-> self control unknown-float131)
-                                                 (the-as float (-> (new 'static 'array int32 1 0) 0))
-                                                 (* 2048.0 (-> *display* seconds-per-frame))
-                                                 )
-            )
+      (seek! (-> self control unknown-float131) (the-as float -6144.0) (* 4096.0 (-> *display* seconds-per-frame)))
+      (seek!
+        (-> self control unknown-float131)
+        (the-as float (-> (new 'static 'array int32 1 0) 0))
+        (* 2048.0 (-> *display* seconds-per-frame))
+        )
       )
   (let ((f0-20 (-> self control unknown-float131)))
     (set! (-> self control unknown-vector11 y) f0-20)
@@ -3518,7 +3505,7 @@
               )
             arg2
             arg3
-            (-> (new 'static 'array float 1 143360.0) 0)
+            143360.0
             )
           (-> s3-1 ppointer)
           )
