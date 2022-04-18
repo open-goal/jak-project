@@ -2419,12 +2419,15 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     }
   }
 
-  const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
+  const static std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
       {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE},
       {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE},
       {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE}};
+
+  const static std::pair<std::string, std::pair<int, std::string>> in_place_calls[] = {
+      {"seek", {0, "seek!"}}, {"seekl", {0, "seekl!"}}};
 
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
@@ -2437,6 +2440,40 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
           src_as_generic->op() = GenericOperator::make_fixed(op_pair.second);
           stack.push_form_element(src_as_generic, true);
           return;
+        }
+      }
+    }
+    for (auto& call_triple : in_place_calls) {
+      if (src_as_generic->op().is_func()) {
+        auto funchelt = dynamic_cast<SimpleExpressionElement*>(src_as_generic->op().func()->at(0));
+        if (funchelt) {
+          const auto& funcname = funchelt->expr().get_arg(0).get_str();
+
+          if (funcname == call_triple.first) {
+            auto dst_form = m_dst->to_form(env);
+            auto src_form_in_func =
+                src_as_generic->elts().at(call_triple.second.first)->to_form(env);
+
+            if (dst_form == src_form_in_func) {
+              auto inplace_name = call_triple.second.second;
+              GenericElement* inplace_call = nullptr;
+
+              if (funcname == "seek" || funcname == "seekl") {
+                inplace_call = pool.alloc_single_element_form<GenericElement>(
+                                       m_dst->parent_element,
+                                       GenericOperator::make_function(
+                                           pool.alloc_single_element_form<ConstantTokenElement>(
+                                               nullptr, inplace_name)),
+                                       std::vector<Form*>{m_dst, src_as_generic->elts().at(1),
+                                                          src_as_generic->elts().at(2)})
+                                   ->try_as_element<GenericElement>();
+              }
+              if (inplace_call) {
+                stack.push_form_element(inplace_call, true);
+                return;
+              }
+            }
+          }
         }
       }
     }
