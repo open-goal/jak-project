@@ -2451,7 +2451,7 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     for (const auto& call_info : in_place_calls) {
       if (src_as_generic->op().is_func()) {
         auto funchelt = dynamic_cast<SimpleExpressionElement*>(src_as_generic->op().func()->at(0));
-        if (funchelt) {
+        if (funchelt && funchelt->expr().get_arg(0).is_sym_val()) {
           const auto& funcname = funchelt->expr().get_arg(0).get_str();
 
           if (funcname == call_info.orig_name) {
@@ -2459,7 +2459,7 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
             auto src_form_in_func = src_as_generic->elts().at(call_info.inplace_arg)->to_form(env);
 
             if (dst_form == src_form_in_func) {
-              auto inplace_name = call_info.inplace_name;
+              const auto& inplace_name = call_info.inplace_name;
               GenericElement* inplace_call = nullptr;
 
               if (funcname == "seek" || funcname == "seekl") {
