@@ -325,7 +325,7 @@ struct TieFrag {
     u16 tgt_ip1_ptr = 0;
     u16 tgt_ip2_ptr = 0;
     u16 kick_addr = 0;
-    u16 clr_ptr = 0;
+    // u16 clr_ptr = 0;
     u16 point_ptr = 0;
     u16 misc_x = 0;  // at 971's x.
     math::Vector4f gifbufs;
@@ -1250,7 +1250,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       //    iaddi vi15, vi00, 0x0      |  nop
       frag.prog_info.kick_addr = 0;
       //    mtir vi03, vf_clrbuf.x          |  nop
-      frag.prog_info.clr_ptr = 198;  // just forcing it to one buffer for now
+      // frag.prog_info.clr_ptr = 198;  // just forcing it to one buffer for now
       //    iaddiu vi_point_ptr, vi00, 0x32    |  nop
       frag.prog_info.point_ptr = 0x32;
 
@@ -1315,7 +1315,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // we omit the pipeline startup here.
 
       // this was set by the previous program that sets up this prototype frag
-      u16 clr_ptr = frag.prog_info.clr_ptr;
+      // u16 clr_ptr = frag.prog_info.clr_ptr;
       u16 tgt_bp1_ptr = frag.prog_info.tgt_bp1_ptr;
       u16 tgt_bp2_ptr = frag.prog_info.tgt_bp2_ptr;
       u16 tgt_ip1_ptr = frag.prog_info.tgt_ip1_ptr;
@@ -1358,7 +1358,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
       // iaddi vi_clr_ptr, vi_clr_ptr, 0x7   |  nop
       // u16 clr_ptr_base = clr_ptr;
-      clr_ptr += 6;  // it says 7, but we want to point to the first index data.
+      // clr_ptr += 6;  // it says 7, but we want to point to the first index data.
 
       // mtir vi_ind, vf_inds.y              |  addx.w vf_res13, vf_res02, vf00 <- flags crap
       // div Q, vf00.w, vf_pos02.w           |  mulaw.xyzw ACC, vf_clr2, vf00

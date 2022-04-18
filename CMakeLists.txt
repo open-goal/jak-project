@@ -26,8 +26,8 @@ if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         -Xclang -fexceptions \
         -Xclang -std=c++17 \
         -Xclang -D_CRT_SECURE_NO_WARNINGS \
-        -mavx \
-        -Wno-c++11-narrowing -Wno-c++98-compat -W3")
+        /arch:AVX \
+        -Wno-c++11-narrowing -Wno-c++98-compat -Wno-c++20-compat -W3")
 
     # linker flags
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")

@@ -90,10 +90,9 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
     as_end->mark_function_as_no_return_value();
   }
 
-  std::vector<TypeState> block_init_types, op_types;
   std::vector<bool> block_needs_update(func.basic_blocks.size(), true);
-  block_init_types.resize(func.basic_blocks.size());
-  op_types.resize(func.ir2.atomic_ops->ops.size());
+  std::vector<TypeState> block_init_types(func.basic_blocks.size());
+  std::vector<TypeState> op_types(func.ir2.atomic_ops->ops.size());
   auto& aop = func.ir2.atomic_ops;
 
   // STEP 1 - topological sort the blocks. This gives us an order where we:

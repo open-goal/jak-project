@@ -12,8 +12,9 @@ void Compiler::compile_state_handler_set(StructureType* state_type_info,
                                          Env* env,
                                          Val*& code_val,
                                          Val*& enter_val) {
-  // do not set state handler field if handler is #f, that's already the value in the static data
-  // but what if it's ACTUALLY setting it to #f??? see crate-buzzer wait
+  // do not set state handler field if handler is *no-state*
+  // we don't use #f here because you might want to actually set the state to #f
+  // (see crate-buzzer wait)
   auto& arg = args.named.at(name);
   if (!(arg.is_symbol() && arg.as_symbol()->name == "*no-state*")) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);

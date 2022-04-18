@@ -32,8 +32,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     auto field_name_def = symbol_string(pair_car(*field_defs));
     field_defs = &pair_cdr(*field_defs);
 
-    auto field_value = pair_car(*field_defs);
-    field_value = expand_macro_completely(field_value, env);
+    auto field_value = expand_macro_completely(pair_car(*field_defs), env);
     field_defs = &pair_cdr(*field_defs);
 
     if (field_name_def.at(0) != ':') {

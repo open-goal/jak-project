@@ -639,10 +639,8 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
     result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
     result->mark_as_settable();
   } else {
-    auto type_for_offset = field.type;
-    if (field.type.base_type() == "inline-array") {
-      type_for_offset = field.type.get_single_arg();
-    }
+    const auto& type_for_offset =
+        field.type.base_type() == "inline-array" ? field.type.get_single_arg() : field.type;
     auto field_type_info = m_ts.lookup_type(type_for_offset);
     result = fe->alloc_val<MemoryOffsetConstantVal>(
         field.type, object, field.field.offset() + offset + field_type_info->get_offset());
@@ -773,7 +771,6 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
                              result->type().print());
       }
       auto di = m_ts.get_deref_info(result->type());
-      auto base_type = di.result_type;
       ASSERT(di.can_deref);
       if (has_constant_idx) {
         result = fe->alloc_val<MemoryOffsetConstantVal>(di.result_type, result,
@@ -790,7 +787,6 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
                              result->type().print());
       }
       auto di = m_ts.get_deref_info(result->type());
-      auto base_type = di.result_type;
       ASSERT(di.mem_deref);
       ASSERT(di.can_deref);
       Val* loc = nullptr;
