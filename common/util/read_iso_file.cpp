@@ -76,7 +76,10 @@ void add_from_dir(FILE* fp, u32 sector, u32 size, IsoFile::Entry* parent) {
   }
 }
 
-void unpack_entry(FILE* fp, IsoFile& iso, const IsoFile::Entry& entry, const std::filesystem::path& dest) {
+void unpack_entry(FILE* fp,
+                  IsoFile& iso,
+                  const IsoFile::Entry& entry,
+                  const std::filesystem::path& dest) {
   std::filesystem::path path_to_entry = dest / entry.name;
   if (entry.is_dir) {
     std::filesystem::create_directory(path_to_entry);
@@ -91,8 +94,7 @@ void unpack_entry(FILE* fp, IsoFile& iso, const IsoFile::Entry& entry, const std
     if (fread(buffer.data(), buffer.size(), 1, fp) != 1) {
       ASSERT_MSG(false, "Failed to fread iso when unpacking");
     }
-    std::string path_as_string = path_to_entry.string();
-    file_util::write_binary_file(path_as_string, buffer.data(), buffer.size());
+    file_util::write_binary_file(path_to_entry.string(), buffer.data(), buffer.size());
     iso.files_extracted++;
     if (iso.shouldHash) {
       xxh::hash_t<64> hash = xxh::xxhash<64>(buffer);

@@ -25,7 +25,8 @@ struct IsoFile {
 
   int files_extracted = 0;
   bool shouldHash = false;
-  // There is no reason to map to the files, as we don't retain mappings of each file's expected hash
+  // There is no reason to map to the files, as we don't retain mappings of each file's expected
+  // hash
   std::vector<xxh::hash64_t> hashes = {};
 
   IsoFile();
