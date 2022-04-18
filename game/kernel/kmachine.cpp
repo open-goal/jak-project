@@ -40,6 +40,7 @@
 #include "game/sce/libscf.h"
 #include "common/util/Assert.h"
 #include "game/discord.h"
+#include "common/global_profiler/GlobalProfiler.h"
 
 #include "svnrev.h"
 
@@ -866,6 +867,10 @@ void mkdir_path(u32 filepath) {
   file_util::create_dir_if_needed_for_file(filepath_str);
 }
 
+void prof_event(u32 name, u32 kind) {
+  prof().event(Ptr<String>(name).c()->data(), (ProfNode::Kind)kind);
+}
+
 u32 get_fullscreen() {
   switch (Gfx::get_fullscreen()) {
     default:
@@ -925,6 +930,9 @@ void InitMachine_PCPort() {
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+
+  // profiler
+  make_function_symbol_from_c("pc-prof", (void*)prof_event);
 
   // init ps2 VM
   if (VM::use) {

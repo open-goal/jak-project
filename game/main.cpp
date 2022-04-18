@@ -14,6 +14,10 @@
 // Discord RPC
 extern int64_t gStartTime;
 
+/*!
+ * Set up logging system to log to file.
+ * @param verbose : should we print debug-level messages to stdout?
+ */
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/game.txt"}));
   if (verbose) {
@@ -21,22 +25,26 @@ void setup_logging(bool verbose) {
     lg::set_stdout_level(lg::level::debug);
     lg::set_flush_level(lg::level::debug);
   } else {
-    lg::set_file_level(lg::level::warn);
+    lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::warn);
     lg::set_flush_level(lg::level::warn);
   }
   lg::initialize();
 }
 
+/*!
+ * Entry point for the game.
+ */
 int main(int argc, char** argv) {
-  // do this as soon as possible - stuff like memcpy might use AVX instructions and we want to
-  // warn the user instead of just crashing.
+  // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
+  // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
     printf("Your CPU does not support AVX, which is required for OpenGOAL.\n");
     return -1;
   }
 
+  // parse arguments
   bool verbose = false;
   bool disable_avx2 = false;
   std::optional<std::filesystem::path> project_path_override = std::nullopt;
@@ -55,11 +63,14 @@ int main(int argc, char** argv) {
     }
   }
 
+  // set up file paths for resources. This is the full repository when developing, and the data
+  // directory (a subset of the full repo) in release versions
   if (!file_util::setup_project_path(project_path_override)) {
     return 1;
   }
 
-  gStartTime = time(0);
+  // set up discord stuff
+  gStartTime = time(nullptr);
   init_discord_rpc();
 
   if (disable_avx2) {

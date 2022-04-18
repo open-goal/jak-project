@@ -324,7 +324,6 @@ u32 exec_runtime(int argc, char** argv) {
 
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
-  // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
     Gfx::Loop([]() { return !MasterExit; });
     Gfx::Exit();
