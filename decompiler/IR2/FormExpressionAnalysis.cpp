@@ -2419,24 +2419,65 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     }
   }
 
-  const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
+  const static std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
       {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE},
       {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE},
       {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE}};
 
+  typedef struct {
+    std::string orig_name;
+    int inplace_arg;
+    std::string inplace_name;
+  } InplaceCallInfo;
+
+  const static InplaceCallInfo in_place_calls[] = {{"seek", 0, "seek!"}, {"seekl", 0, "seekl!"}};
+
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
-    for (auto& op_pair : in_place_ops) {
-      if (src_as_generic->op().is_fixed(op_pair.first)) {
-        auto dst_form = m_dst->to_form(env);
-        auto add_form_0 = src_as_generic->elts().at(0)->to_form(env);
+    if (src_as_generic->op().is_func()) {
+      auto funchelt = dynamic_cast<SimpleExpressionElement*>(src_as_generic->op().func()->at(0));
+      if (funchelt && funchelt->expr().get_arg(0).is_sym_val()) {
+        const auto& funcname = funchelt->expr().get_arg(0).get_str();
+        for (const auto& call_info : in_place_calls) {
+          if (funcname == call_info.orig_name) {
+            auto dst_form = m_dst->to_form(env);
+            auto src_form_in_func = src_as_generic->elts().at(call_info.inplace_arg)->to_form(env);
 
-        if (dst_form == add_form_0) {
-          src_as_generic->op() = GenericOperator::make_fixed(op_pair.second);
-          stack.push_form_element(src_as_generic, true);
-          return;
+            if (dst_form == src_form_in_func) {
+              const auto& inplace_name = call_info.inplace_name;
+              GenericElement* inplace_call = nullptr;
+
+              if (funcname == "seek" || funcname == "seekl") {
+                inplace_call = pool.alloc_single_element_form<GenericElement>(
+                                       nullptr,
+                                       GenericOperator::make_function(
+                                           pool.alloc_single_element_form<ConstantTokenElement>(
+                                               nullptr, inplace_name)),
+                                       std::vector<Form*>{m_dst, src_as_generic->elts().at(1),
+                                                          src_as_generic->elts().at(2)})
+                                   ->try_as_element<GenericElement>();
+              }
+              if (inplace_call) {
+                stack.push_form_element(inplace_call, true);
+                return;
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for (auto& op_pair : in_place_ops) {
+        if (src_as_generic->op().is_fixed(op_pair.first)) {
+          auto dst_form = m_dst->to_form(env);
+          auto add_form_0 = src_as_generic->elts().at(0)->to_form(env);
+
+          if (dst_form == add_form_0) {
+            src_as_generic->op() = GenericOperator::make_fixed(op_pair.second);
+            stack.push_form_element(src_as_generic, true);
+            return;
+          }
         }
       }
     }

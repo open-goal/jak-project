@@ -333,13 +333,11 @@ yakow-default-event-handler
           )
         )
       )
-    (set! (-> self walk-turn-blend)
-          (seek
-            (-> self walk-turn-blend)
-            f30-0
-            (* (-> *YAKOW-bank* walk-turn-blend-rate) (-> *display* seconds-per-frame))
-            )
-          )
+    (seek!
+      (-> self walk-turn-blend)
+      f30-0
+      (* (-> *YAKOW-bank* walk-turn-blend-rate) (-> *display* seconds-per-frame))
+      )
     )
   (set! (-> self final-speed)
         (fmin (-> self travel-speed) (* (vector-length (-> self nav travel)) (-> *display* frames-per-second)))
@@ -507,12 +505,16 @@ yakow-default-event-handler
            )
           )
         (if (-> self run-mode)
-            (set! (-> self walk-run-blend)
-                  (seek (-> self walk-run-blend) 1.0 (* (-> *YAKOW-bank* walk-run-blend-rate) (-> *display* seconds-per-frame)))
-                  )
-            (set! (-> self walk-run-blend)
-                  (seek (-> self walk-run-blend) 0.0 (* (-> *YAKOW-bank* walk-run-blend-rate) (-> *display* seconds-per-frame)))
-                  )
+            (seek!
+              (-> self walk-run-blend)
+              1.0
+              (* (-> *YAKOW-bank* walk-run-blend-rate) (-> *display* seconds-per-frame))
+              )
+            (seek!
+              (-> self walk-run-blend)
+              0.0
+              (* (-> *YAKOW-bank* walk-run-blend-rate) (-> *display* seconds-per-frame))
+              )
             )
         (let ((v1-68 (-> self skel root-channel 1)))
           (set! (-> v1-68 frame-interp) (fabs (-> self walk-turn-blend)))
@@ -701,9 +703,10 @@ yakow-default-event-handler
   (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
              (not (-> self in-pen))
-             (and *target* (>= (-> self fact-override idle-distance)
-                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                               )
+             (and *target*
+                  (>= (-> self fact-override idle-distance)
+                      (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                      )
                   )
              (not (yakow-facing-player? 21845.334))
              )
@@ -719,12 +722,11 @@ yakow-default-event-handler
             )
         )
       )
-    (set! (-> self travel-speed) (seek
-                                   (-> self travel-speed)
-                                   (-> *YAKOW-bank* walk-speed)
-                                   (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
-                                   )
-          )
+    (seek!
+      (-> self travel-speed)
+      (-> *YAKOW-bank* walk-speed)
+      (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
+      )
     (none)
     )
   :code
@@ -895,23 +897,20 @@ yakow-default-event-handler
                     (vector-vector-distance (-> self root-override trans) (target-pos 0))
                     )
                  )
-           (f30-2
-             (lerp-scale
-               (-> *YAKOW-bank* run-speed)
-               (-> *YAKOW-bank* walk-speed)
-               f0-2
-               (-> *YAKOW-bank* run-away-dist)
-               (-> *YAKOW-bank* walk-away-dist)
-               )
-             )
+           (f30-2 (lerp-scale
+                    (-> *YAKOW-bank* run-speed)
+                    (-> *YAKOW-bank* walk-speed)
+                    f0-2
+                    (-> *YAKOW-bank* run-away-dist)
+                    (-> *YAKOW-bank* walk-away-dist)
+                    )
+                  )
            )
       (if (yakow-facing-player? 21845.334)
           (set! f30-2 0.0)
           )
       (set! (-> self enable-turn-around) (< (-> *YAKOW-bank* run-speed) f30-2))
-      (set! (-> self travel-speed)
-            (seek (-> self travel-speed) f30-2 (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame)))
-            )
+      (seek! (-> self travel-speed) f30-2 (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame)))
       )
     (none)
     )
@@ -947,12 +946,11 @@ yakow-default-event-handler
   :trans
   (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
-        (set! (-> self travel-speed) (seek
-                                       (-> self travel-speed)
-                                       (-> *YAKOW-bank* run-speed)
-                                       (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
-                                       )
-              )
+        (seek!
+          (-> self travel-speed)
+          (-> *YAKOW-bank* run-speed)
+          (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
+          )
         )
     0
     (none)

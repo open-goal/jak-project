@@ -155,15 +155,14 @@
 (define *TUBE-bank* (new 'static 'tube-bank))
 
 (defbehavior tube-sounds target ()
-  (set! (-> self tube tube-sound-vol) (seek
-                                        (-> self tube tube-sound-vol)
-                                        (if (logtest? (-> self control status) 1)
-                                            100.0
-                                            0.0
-                                            )
-                                        (* 200.0 (-> *display* seconds-per-frame))
-                                        )
+  (seek!
+    (-> self tube tube-sound-vol)
+    (if (logtest? (-> self control status) 1)
+        100.0
+        0.0
         )
+    (* 200.0 (-> *display* seconds-per-frame))
+    )
   (let ((f30-0 (-> self tube tube-sound-vol))
         (f0-5 (lerp-scale -0.3 0.3 (-> self control unknown-float01) 0.0 122880.0))
         )
@@ -692,13 +691,11 @@
         (go target-tube)
         )
     (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
-    (set! (-> self control unknown-float122)
-          (seek
-            (-> self control unknown-float122)
-            (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control unknown-float01)))))
-            (-> *display* seconds-per-frame)
-            )
-          )
+    (seek!
+      (-> self control unknown-float122)
+      (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control unknown-float01)))))
+      (-> *display* seconds-per-frame)
+      )
     (none)
     )
   :code

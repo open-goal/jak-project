@@ -605,10 +605,9 @@
   :trans
   (behavior ()
     (cond
-      ((and (and *target*
-                 (>= (-> self info idle-distance)
-                     (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
-                     )
+      ((and (and *target* (>= (-> self info idle-distance)
+                              (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
+                              )
                  )
             (send-event *target* 'query 'powerup 3)
             )
@@ -617,17 +616,13 @@
              (spawn-projectile-blue *target*)
              )
          )
-       (set! (-> self float-height-offset)
-             (seek (-> self float-height-offset) (-> self float-offset) (* 8192.0 (-> *display* seconds-per-frame)))
-             )
+       (seek! (-> self float-height-offset) (-> self float-offset) (* 8192.0 (-> *display* seconds-per-frame)))
        (draw-eco-beam (-> self root-overlay trans) (-> self beam-end))
        (update-trans! (-> self sound) (-> self root-overlay trans))
        (update! (-> self sound))
        )
       (else
-        (set! (-> self float-height-offset)
-              (seek (-> self float-height-offset) (-> self idle-offset) (* 16384.0 (-> *display* seconds-per-frame)))
-              )
+        (seek! (-> self float-height-offset) (-> self idle-offset) (* 16384.0 (-> *display* seconds-per-frame)))
         (stop! (-> self sound))
         (if (= (-> self float-height-offset) (-> self idle-offset))
             (go citb-chain-plat-settle)

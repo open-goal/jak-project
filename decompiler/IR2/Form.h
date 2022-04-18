@@ -1025,6 +1025,8 @@ class GenericOperator {
     return m_condition_kind;
   }
 
+  bool is_func() const { return m_kind == Kind::FUNCTION_EXPR; }
+
   const Form* func() const {
     ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;

@@ -724,12 +724,8 @@
 
 (defbehavior fishermans-boat-play-sounds fishermans-boat ()
   (if (-> self ignition)
-      (set! (-> self engine-sound-envelope)
-            (seek (-> self engine-sound-envelope) 1.0 (* 2.0 (-> *display* seconds-per-frame)))
-            )
-      (set! (-> self engine-sound-envelope)
-            (seek (-> self engine-sound-envelope) 0.0 (-> *display* seconds-per-frame))
-            )
+      (seek! (-> self engine-sound-envelope) 1.0 (* 2.0 (-> *display* seconds-per-frame)))
+      (seek! (-> self engine-sound-envelope) 0.0 (-> *display* seconds-per-frame))
       )
   (cond
     ((< 0.0 (-> self engine-sound-envelope))
@@ -789,15 +785,11 @@
       (else
         (when (not (-> self measure-parameters))
           (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0)))
-            (set! (-> self controller steering)
-                  (seek (-> self controller steering) (fmax -1.0 (fmin 1.0 f0-0)) (-> *display* seconds-per-frame))
-                  )
+            (seek! (-> self controller steering) (fmax -1.0 (fmin 1.0 f0-0)) (-> *display* seconds-per-frame))
             )
           (if (cpad-hold? 0 x)
-              (set! (-> self controller throttle) (seek (-> self controller throttle) 0.8 (-> *display* seconds-per-frame)))
-              (set! (-> self controller throttle)
-                    (seek (-> self controller throttle) 0.0 (* 0.25 (-> *display* seconds-per-frame)))
-                    )
+              (seek! (-> self controller throttle) 0.8 (-> *display* seconds-per-frame))
+              (seek! (-> self controller throttle) 0.0 (* 0.25 (-> *display* seconds-per-frame)))
               )
           0
           )
@@ -818,9 +810,7 @@
       )
     )
   (if (-> self ignition)
-      (set! (-> self engine-thrust)
-            (seek (-> self engine-thrust) (* 1228800.0 (-> self controller throttle)) 6144.0)
-            )
+      (seek! (-> self engine-thrust) (* 1228800.0 (-> self controller throttle)) 6144.0)
       (set! (-> self engine-thrust) 0.0)
       )
   (cond
@@ -834,7 +824,7 @@
        )
      )
     (else
-      (set! (-> self propeller spin-rate) (seek (-> self propeller spin-rate) 0.0 218.45334))
+      (seek! (-> self propeller spin-rate) 0.0 218.45334)
       )
     )
   (TODO-RENAME-28 self)
