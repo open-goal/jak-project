@@ -14,12 +14,12 @@ enum class ExtractorErrorCode {
   VALIDATION_CANT_LOCATE_ELF = 4000,
   VALIDATION_SERIAL_MISSING_FROM_DB = 4001,
   VALIDATION_ELF_MISSING_FROM_DB = 4002,
-  VALIDATION_BAD_ISO_CONTENTS = 4011,
-  VALIDATION_INCORRECT_EXTRACTION_COUNT = 4012,
+  VALIDATION_BAD_ISO_CONTENTS = 4010,
+  VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
   VALIDATION_BAD_EXTRACTION = 4020
 };
 
-struct ISOMetadataDatabase {
+struct ISOMetadata {
   std::string canonical_name;
   std::string region;
   int num_files;
@@ -27,8 +27,11 @@ struct ISOMetadataDatabase {
   std::string decomp_config;
 };
 
+// TODO - when we support jak2 and beyond, add which game it's for as well
+// this will let the installer reject (or gracefully handle) jak2 isos on the jak1 page, etc.
+
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
-static std::map<std::string, std::map<xxh::hash64_t, ISOMetadataDatabase>> isoDatabase{
+static std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
     {"SCUS-97124",
      {{7280758013604870207U,
        {"Jak and Daxter: The Precursor Legacy - Black Label", "NTSC-U", 337, 11363853835861842434U,
@@ -52,16 +55,10 @@ IsoFile extract_files(std::filesystem::path data_dir_path,
   return iso;
 }
 
-ExtractorErrorCode validate(const IsoFile& iso_file,
-                            const std::filesystem::path& extracted_iso_path) {
-  if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
-    fmt::print(stderr, "ERROR: input folder doesn't have a DGO folder. Is this the right input?\n");
-    return ExtractorErrorCode::VALIDATION_BAD_EXTRACTION;
-  }
-
-  std::optional<ExtractorErrorCode> error_code;
-  std::optional<std::string> serial;
-  std::optional<xxh::hash64_t> elf_hash;
+std::pair<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
+    const std::filesystem::path& extracted_iso_path) {
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
   for (const auto& entry : fs::directory_iterator(extracted_iso_path)) {
     auto as_str = entry.path().filename().string();
     if (std::regex_match(as_str, std::regex(".{4}_.{3}\\..{2}"))) {
@@ -78,6 +75,20 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
       break;
     }
   }
+  return {serial, elf_hash};
+}
+
+ExtractorErrorCode validate(const IsoFile& iso_file,
+                            const std::filesystem::path& extracted_iso_path) {
+  if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
+    fmt::print(stderr, "ERROR: input folder doesn't have a DGO folder. Is this the right input?\n");
+    return ExtractorErrorCode::VALIDATION_BAD_EXTRACTION;
+  }
+
+  std::optional<ExtractorErrorCode> error_code;
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::tie(serial, elf_hash) = findElfFile(extracted_iso_path);
 
   // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
   // files) irrelevant
@@ -173,12 +184,45 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
   return ExtractorErrorCode::SUCCESS;
 }
 
+std::optional<ISOMetadata> determineRelease(const std::filesystem::path& jak1_input_files) {
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::tie(serial, elf_hash) = findElfFile(jak1_input_files);
+
+  if (!serial || !elf_hash) {
+    return std::nullopt;
+  }
+
+  // Find the game in our tracking database
+  auto dbEntry = isoDatabase.find(serial.value());
+  if (dbEntry == isoDatabase.end()) {
+    return std::nullopt;
+  } else {
+    auto& metaMap = dbEntry->second;
+    auto meta_entry = metaMap.find(elf_hash.value());
+    if (meta_entry == metaMap.end()) {
+      return std::nullopt;
+    } else {
+      return std::make_optional(meta_entry->second);
+    }
+  }
+}
+
 void decompile(std::filesystem::path jak1_input_files) {
   using namespace decompiler;
-  Config config = read_config_file(
-      (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
-          .string(),
-      {});
+
+  // Determine which config to use from the database
+  auto meta = determineRelease(jak1_input_files);
+  std::string decomp_config = "jak1_ntsc_black_label";
+  if (meta.has_value()) {
+    decomp_config = meta.value().decomp_config;
+    fmt::print("INFO: Automatically detected decompiler config, using - {}\n", decomp_config);
+  }
+
+  Config config = read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
+                                    fmt::format("{}.jsonc", decomp_config))
+                                       .string(),
+                                   {});
 
   std::vector<std::string> dgos, objs;
 
