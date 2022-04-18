@@ -11,7 +11,7 @@ using namespace iop;
  * Load a File to IOP memory (blocking)
  */
 s32 LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
-  lg::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, file->size);
+  lg::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, (s32)file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_IOP_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -33,7 +33,7 @@ s32 LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
  * Load a File to IOP memory (blocking)
  */
 s32 LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
-  lg::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, file->size);
+  lg::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, (s32)file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_CMD_ID;
   cmd.messagebox_to_reply = 0;
