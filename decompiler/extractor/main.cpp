@@ -7,37 +7,222 @@
 #include "decompiler/config.h"
 #include "goalc/compiler/Compiler.h"
 #include "common/util/read_iso_file.h"
+#include <regex>
+
+enum class ExtractorErrorCode {
+  SUCCESS = 0,
+  VALIDATION_CANT_LOCATE_ELF = 4000,
+  VALIDATION_SERIAL_MISSING_FROM_DB = 4001,
+  VALIDATION_ELF_MISSING_FROM_DB = 4002,
+  VALIDATION_BAD_ISO_CONTENTS = 4010,
+  VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
+  VALIDATION_BAD_EXTRACTION = 4020
+};
+
+struct ISOMetadata {
+  std::string canonical_name;
+  std::string region;
+  int num_files;
+  xxh::hash64_t contents_hash;
+  std::string decomp_config;
+};
+
+// TODO - when we support jak2 and beyond, add which game it's for as well
+// this will let the installer reject (or gracefully handle) jak2 isos on the jak1 page, etc.
+
+// { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
+static std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
+    {"SCUS-97124",
+     {{7280758013604870207U,
+       {"Jak and Daxter: The Precursor Legacy - Black Label", "NTSC-U", 337, 11363853835861842434U,
+        "jak1_ntsc_black_label"}}}}};
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   decompiler::init_opcode_info();
   file_util::setup_project_path(project_path_override);
 }
 
-void extract_files(std::filesystem::path data_dir_path, std::filesystem::path extracted_iso_path) {
+IsoFile extract_files(std::filesystem::path data_dir_path,
+                      std::filesystem::path extracted_iso_path) {
   fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
 
   std::filesystem::create_directories(extracted_iso_path);
 
   auto fp = fopen(data_dir_path.string().c_str(), "rb");
   ASSERT_MSG(fp, "failed to open input ISO file\n");
-  unpack_iso_files(fp, extracted_iso_path);
+  IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true);
   fclose(fp);
+  return iso;
 }
 
-int validate(std::filesystem::path path_to_iso_files) {
-  if (!std::filesystem::exists(path_to_iso_files / "DGO")) {
-    fmt::print("Error: input folder doesn't have a DGO folder. Is this the right input?\n");
-    return 1;
+std::pair<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
+    const std::filesystem::path& extracted_iso_path) {
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  for (const auto& entry : fs::directory_iterator(extracted_iso_path)) {
+    auto as_str = entry.path().filename().string();
+    if (std::regex_match(as_str, std::regex(".{4}_.{3}\\..{2}"))) {
+      serial = std::make_optional(
+          fmt::format("{}-{}", as_str.substr(0, 4), as_str.substr(5, 3) + as_str.substr(9, 2)));
+      // We already found the path, so hash it while we're here
+      auto fp = fopen(entry.path().string().c_str(), "rb");
+      fseek(fp, 0, SEEK_END);
+      size_t size = ftell(fp);
+      std::vector<u8> buffer(size);
+      rewind(fp);
+      fread(&buffer[0], sizeof(std::vector<u8>::value_type), buffer.size(), fp);
+      elf_hash = std::make_optional(xxh::xxhash<64>(buffer));
+      break;
+    }
   }
-  return 0;
+  return {serial, elf_hash};
+}
+
+ExtractorErrorCode validate(const IsoFile& iso_file,
+                            const std::filesystem::path& extracted_iso_path) {
+  if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
+    fmt::print(stderr, "ERROR: input folder doesn't have a DGO folder. Is this the right input?\n");
+    return ExtractorErrorCode::VALIDATION_BAD_EXTRACTION;
+  }
+
+  std::optional<ExtractorErrorCode> error_code;
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::tie(serial, elf_hash) = findElfFile(extracted_iso_path);
+
+  // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
+  // files) irrelevant
+  xxh::hash64_t combined_hash = 0;
+  for (const auto& hash : iso_file.hashes) {
+    combined_hash ^= hash;
+  }
+  xxh::hash64_t contents_hash = xxh::xxhash<64>({combined_hash});
+
+  if (!serial || !elf_hash) {
+    fmt::print(stderr, "ERROR: Unable to locate a Serial/ELF file!\n");
+    if (!error_code.has_value()) {
+      error_code = std::make_optional(ExtractorErrorCode::VALIDATION_CANT_LOCATE_ELF);
+    }
+    // No point in continuing here
+    return error_code.value();
+  }
+
+  // Find the game in our tracking database
+  auto dbEntry = isoDatabase.find(serial.value());
+  if (dbEntry == isoDatabase.end()) {
+    fmt::print(stderr, "ERROR: Serial '{}' not found in the validation database\n", serial.value());
+    if (!error_code.has_value()) {
+      error_code = std::make_optional(ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB);
+    }
+  } else {
+    auto& metaMap = dbEntry->second;
+    auto meta_entry = metaMap.find(elf_hash.value());
+    if (meta_entry == metaMap.end()) {
+      fmt::print(stderr,
+                 "ERROR: ELF Hash '{}' not found in the validation database, is this a new or "
+                 "modified version of the same game?\n",
+                 elf_hash.value());
+      if (!error_code.has_value()) {
+        error_code = std::make_optional(ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB);
+      }
+    } else {
+      auto meta = meta_entry->second;
+      // Print out some information
+      fmt::print("Detected Game Metadata:\n");
+      fmt::print("\tDetected - {}\n", meta.canonical_name);
+      fmt::print("\tRegion - {}\n", meta.region);
+      fmt::print("\tSerial - {}\n", dbEntry->first);
+      fmt::print("\tUses Decompiler Config - {}\n", meta.decomp_config);
+
+      // - Number of Files
+      if (meta.num_files != iso_file.files_extracted) {
+        fmt::print(stderr,
+                   "ERROR: Extracted an unexpected number of files. Expected '{}', Actual '{}'\n",
+                   meta.num_files, iso_file.files_extracted);
+        if (!error_code.has_value()) {
+          error_code =
+              std::make_optional(ExtractorErrorCode::VALIDATION_INCORRECT_EXTRACTION_COUNT);
+        }
+      }
+      // Check the ISO Hash
+      if (meta.contents_hash != contents_hash) {
+        fmt::print(stderr,
+                   "ERROR: Overall ISO content's hash does not match. Expected '{}', Actual '{}'\n",
+                   meta.contents_hash, contents_hash);
+      }
+    }
+  }
+
+  // Finally, return the result
+  if (error_code.has_value()) {
+    // Generate the map entry to make things simple, just convienance
+    if (error_code.value() == ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB) {
+      fmt::print(
+          "If this is a new release or version that should be supported, consider adding the "
+          "following serial entry to the database:\n");
+      fmt::print(
+          "\t'{{\"{}\", {{{{{}U, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
+          "\"DECOMP_CONFIF_FILENAME_NO_EXTENSION\"}}}}}}}}'\n",
+          serial.value(), elf_hash.value(), iso_file.files_extracted, contents_hash);
+    } else if (error_code.value() == ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB) {
+      fmt::print(
+          "If this is a new release or version that should be supported, consider adding the "
+          "following ELF entry to the database under the '{}' serial:\n",
+          serial.value());
+      fmt::print(
+          "\t'{{{}, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
+          "\"DECOMP_CONFIF_FILENAME_NO_EXTENSION\"}}}}'\n",
+          elf_hash.value(), iso_file.files_extracted, contents_hash);
+    } else {
+      fmt::print(stderr,
+                 "Validation has failed to match with expected values, see the above errors for "
+                 "specific.  This may be an error in the validation database!\n");
+    }
+    return error_code.value();
+  }
+
+  return ExtractorErrorCode::SUCCESS;
+}
+
+std::optional<ISOMetadata> determineRelease(const std::filesystem::path& jak1_input_files) {
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::tie(serial, elf_hash) = findElfFile(jak1_input_files);
+
+  if (!serial || !elf_hash) {
+    return std::nullopt;
+  }
+
+  // Find the game in our tracking database
+  auto dbEntry = isoDatabase.find(serial.value());
+  if (dbEntry == isoDatabase.end()) {
+    return std::nullopt;
+  } else {
+    auto& metaMap = dbEntry->second;
+    auto meta_entry = metaMap.find(elf_hash.value());
+    if (meta_entry == metaMap.end()) {
+      return std::nullopt;
+    } else {
+      return std::make_optional(meta_entry->second);
+    }
+  }
 }
 
 void decompile(std::filesystem::path jak1_input_files) {
   using namespace decompiler;
-  Config config = read_config_file(
-      (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
-          .string(),
-      {});
+
+  // Determine which config to use from the database
+  auto meta = determineRelease(jak1_input_files);
+  std::string decomp_config = "jak1_ntsc_black_label";
+  if (meta.has_value()) {
+    decomp_config = meta.value().decomp_config;
+    fmt::print("INFO: Automatically detected decompiler config, using - {}\n", decomp_config);
+  }
+
+  Config config = read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
+                                    fmt::format("{}.jsonc", decomp_config))
+                                       .string(),
+                                   {});
 
   std::vector<std::string> dgos, objs;
 
@@ -128,7 +313,7 @@ int main(int argc, char** argv) {
   std::filesystem::path project_path_override;
   bool flag_runall = false;
   bool flag_extract = false;
-  bool flag_validate = false;
+  bool flag_fail_on_validation = false;
   bool flag_decompile = false;
   bool flag_compile = false;
   bool flag_play = false;
@@ -145,7 +330,7 @@ int main(int argc, char** argv) {
       ->check(CLI::ExistingPath);
   app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
   app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
-  app.add_flag("-v,--validate", flag_validate, "Validate the ISO / game files");
+  app.add_flag("-v,--validate", flag_fail_on_validation, "Fail on Validation Errors");
   app.add_flag("-d,--decompile", flag_decompile, "Decompile the game data");
   app.add_flag("-c,--compile", flag_compile, "Compile the game");
   app.add_flag("-p,--play", flag_play, "Play the game");
@@ -156,7 +341,7 @@ int main(int argc, char** argv) {
   fmt::print("Working Directory - {}\n", std::filesystem::current_path().string());
 
   // If no flag is set, we default to running everything
-  if (!flag_extract && !flag_validate && !flag_decompile && !flag_compile && !flag_play) {
+  if (!flag_extract && !flag_decompile && !flag_compile && !flag_play) {
     fmt::print("Running all steps, no flags provided!\n");
     flag_runall = true;
   }
@@ -177,15 +362,15 @@ int main(int argc, char** argv) {
   }
 
   if (flag_runall || flag_extract) {
-    if (!std::filesystem::is_directory(path_to_iso_files)) {
-      extract_files(data_dir_path, path_to_iso_files);
-    }
-  }
-
-  if (flag_runall || flag_validate) {
-    auto ok = validate(path_to_iso_files);
-    if (ok != 0) {
-      return ok;
+    if (!std::filesystem::is_directory(data_dir_path)) {
+      auto iso_file = extract_files(data_dir_path, path_to_iso_files);
+      auto validation_res = validate(iso_file, path_to_iso_files);
+      if (validation_res == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION) {
+        // We fail here regardless of the flag
+        return static_cast<int>(validation_res);
+      } else if (flag_fail_on_validation && validation_res != ExtractorErrorCode::SUCCESS) {
+        return static_cast<int>(validation_res);
+      }
     }
   }
 

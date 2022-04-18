@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include "third-party/xxhash.hpp"
 
 struct IsoFile {
   struct Entry {
@@ -22,9 +23,15 @@ struct IsoFile {
 
   Entry root;
 
+  int files_extracted = 0;
+  bool shouldHash = false;
+  // There is no reason to map to the files, as we don't retain mappings of each file's expected
+  // hash
+  std::vector<xxh::hash64_t> hashes = {};
+
   IsoFile();
 };
 
 IsoFile find_files_in_iso(FILE* fp);
-void unpack_iso_files(FILE* fp, const IsoFile& layout, const std::filesystem::path& dest);
-void unpack_iso_files(FILE* fp, const std::filesystem::path& dest);
+void unpack_iso_files(FILE* fp, IsoFile& layout, const std::filesystem::path& dest);
+IsoFile unpack_iso_files(FILE* fp, const std::filesystem::path& dest, const bool hashFiles = false);
