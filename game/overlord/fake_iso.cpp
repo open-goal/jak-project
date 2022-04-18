@@ -39,7 +39,7 @@ static LoadStackEntry sLoadStack[MAX_OPEN_FILES];  //! List of all files that ar
 FakeIsoEntry fake_iso_entries[MAX_ISO_FILES];      //! List of all known files
 static FileRecord sFiles[MAX_ISO_FILES];           //! List of "FileRecords" for IsoFs API consumers
 u32 fake_iso_entry_count;                          //! Total count of fake iso files
-static bool read_in_progress;                      //! Does the ISO Thread think we're reading?
+static LoadStackEntry* sReadInfo;                  // LoadStackEntry for currently reading file
 
 static int FS_Init(u8* buffer);
 static FileRecord* FS_Find(const char* name);
@@ -76,7 +76,7 @@ void fake_iso_init_globals() {
   fake_iso.load_music = FS_LoadMusic;
   fake_iso.poll_drive = FS_PollDrive;
 
-  read_in_progress = false;
+  sReadInfo = nullptr;
 }
 
 /*!
@@ -224,7 +224,9 @@ void FS_Close(LoadStackEntry* fd) {
 
   // close the FD
   fd->fr = nullptr;
-  read_in_progress = false;
+  if (fd == sReadInfo) {
+    sReadInfo = nullptr;
+  }
 }
 
 /*!
@@ -276,7 +278,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   }
 
   fd->location += (len / SECTOR_SIZE);
-  read_in_progress = true;
+  sReadInfo = fd;
 
   fclose(fp);
 
@@ -288,8 +290,8 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
  */
 uint32_t FS_SyncRead() {
   // FS_BeginRead is blocking, so this is useless.
-  if (read_in_progress) {
-    read_in_progress = false;
+  if (sReadInfo) {
+    sReadInfo = nullptr;
     return CMD_STATUS_IN_PROGRESS;
   } else {
     return CMD_STATUS_READ_ERR;
