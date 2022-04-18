@@ -123,7 +123,6 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
   }
 
   if (pad == 0 && g_gamepads.gamepad_idx[0] == -1) {  // Gamepad not present - use keyboard
-
     // Movement controls mapped to WASD keys
     if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
       input += -1.0f;
@@ -144,7 +143,6 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
   } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {
-    
     // these bindings are not sane
     if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
       input += -1.0f;
