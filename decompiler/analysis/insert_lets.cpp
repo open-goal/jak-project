@@ -200,6 +200,7 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
 
   ////////////////////////////////////////////////////////
   // (set! (-> block-var from) <something>)
+  bool not_proc = false;
   Matcher set_from_matcher =
       Matcher::set(Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
                    Matcher::any_reg(1));
@@ -207,8 +208,15 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   set_from_hack_body.elts().push_back(body->at(0));
   auto from_mr = match(set_from_matcher, &set_from_hack_body);
   if (!from_mr.matched) {
-    // fmt::print(" fail: from1\n");
-    return nullptr;
+    // initial matcher failed. try more advanced "from" matcher now.
+    Matcher set_from_form_matcher = Matcher::set(
+        Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
+        Matcher::any(1));
+    from_mr = match(set_from_form_matcher, &set_from_hack_body);
+    if (!from_mr.matched) {
+      return nullptr;
+    }
+    not_proc = true;
   }
 
   if (env.get_variable_name(*from_mr.maps.regs.at(0)) != block_var_name) {
@@ -216,10 +224,13 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
     return nullptr;
   }
 
-  auto from_var = *from_mr.maps.regs.at(1);
-  if (from_var.reg() != Register(Reg::GPR, Reg::S6)) {
-    // fmt::print(" fail: from3\n");
-    return nullptr;
+  // if we couldnt match with simple reg matching that means it's a more complex form.
+  if (!not_proc) {
+    auto from_var = *from_mr.maps.regs.at(1);
+    if (from_var.reg() != Register(Reg::GPR, Reg::S6)) {
+      // it's OK to not be the s6 register, just means we have to manually specify it later.
+      not_proc = true;
+    }
   }
 
   ////////////////////////////////////////////////////////
@@ -314,6 +325,18 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
 
   // time to build the macro!
   std::vector<Form*> macro_args = {send_destination, message_name};
+  if (not_proc) {
+    // something was going on with from. build :from key.
+    macro_args.push_back(pool.form<ConstantTokenElement>(":from"));
+    // fill in the value for it
+    if (from_mr.maps.forms.find(1) != from_mr.maps.forms.end()) {
+      // matched some form. we can just copy it.
+      macro_args.push_back(from_mr.maps.forms.at(1));
+    } else {
+      // matched reg but it wasnt s6
+      macro_args.push_back(alloc_var_form(*from_mr.maps.regs.at(1), pool));
+    }
+  }
   for (int i = 0; i < param_count; i++) {
     macro_args.push_back(param_values.at(i));
   }

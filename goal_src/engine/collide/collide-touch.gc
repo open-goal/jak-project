@@ -71,9 +71,8 @@
       (set! (-> arg0 next) v1-1)
       (set! (-> arg0 prev) #f)
       (set! (-> obj head) arg0)
-      (when v1-1
+      (if v1-1
         (set! (-> v1-1 prev) arg0)
-        arg0
         )
       )
     )
@@ -111,7 +110,7 @@
 ;; Touching List
 ;;;;;;;;;;;;;;;;;;;;;;
 
-;; A touching list is a list up to 32 pairs of colliding collide-shapes.
+;; A touching list is a list up to TOUCHING_LIST_LENGTH pairs of colliding collide-shapes.
 
 (defmethod free-all-prim-nodes touching-list ((obj touching-list))
   "Free all prim nodes used by all touching shapes in this touching-list."
@@ -163,7 +162,7 @@
           )
         (else
           ;; need to add a new one
-          (when (>= (-> obj num-touching-shapes) 32)
+          (when (>= (-> obj num-touching-shapes) TOUCHING_LIST_LENGTH)
             ;; but there's no room!
             (format 0 "ERROR: touching-list::get-shapes-entry() failed!~%")
             (return (the-as touching-shapes-entry #f))
@@ -429,71 +428,83 @@
   "Send all events for touching shapes.
    Note that the order of event sending is basically random.
    (this could explain lava walks's unreliable behavior)"
-  (let ((gp-0 (the-as object (-> obj touching-shapes))))
-    (countdown (s5-0 (-> obj num-touching-shapes))
-      (let ((s4-0 (-> (the-as touching-shapes-entry gp-0) cshape1)))
-        (when s4-0
-          (let ((s3-0 (-> (the-as touching-shapes-entry gp-0) cshape2)))
+            
+  ;; PC port note : there is a fatal bug here where the processes are NOT SAFE to use without a handle.
+  ;; this can lead to crashes if for example target hits 2 things at once, and one of those things kills the other.
+  ;; e.g.: target hits eco1 and eco2. eco1 gets processed first and kills eco2 as a result. eco2 is now dead, but
+  ;; the touching list will run its logic on it regardless.
+  ;; this is fixed here by creating a really large list of 2 handles per collide shape and storing all collided
+  ;; process handles there. (process->handle) is then safe to use.
+  
+  ; (* 2 TOUCHING_LIST_LENGTH) -> 64
+  (let ((handles (new 'stack-no-clear 'array 'handle 64)))
+  
+  (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
+    (countdown (i (-> obj num-touching-shapes))
+      (let ((c1 (-> entry cshape1)))
+        (when c1
+          (let ((c2 (-> entry cshape2)))
             
             ;; not quite sure why, but we make it look like cshape1 (s4) is target always.
             ;; I guess this makes it so the target/enemy events are always sent in the same order.
-            (when (= (-> s3-0 process type) target)
-              (let ((v1-2 s4-0))
-                (set! s4-0 s3-0)
-                (set! s3-0 v1-2)
-                )
+            (when (= (-> c2 process type) target)
+              (swap! c1 c2)
+              )
+              
+            (set! (-> handles (+ 0 (* 2 i))) (process->handle (-> c1 process)))
+            (set! (-> handles (+ 1 (* 2 i))) (process->handle (-> c2 process)))
+            )
+          )
+        )
+      (set! entry (-> (the-as (inline-array touching-shapes-entry) entry) 1))
+      )
+    )
+  
+  (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
+    (countdown (i (-> obj num-touching-shapes))
+      (let ((c1 (-> entry cshape1)))
+        (when c1
+          (let ((c2 (-> entry cshape2)))
+            
+            ;; not quite sure why, but we make it look like cshape1 (s4) is target always.
+            ;; I guess this makes it so the target/enemy events are always sent in the same order.
+            (when (= (-> c2 process type) target)
+              (swap! c1 c2)
               )
             
             ;; send events!
-            (let ((v1-4 (-> s4-0 event-self)))
-              (when v1-4
-                (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-0 from) (-> s3-0 process))
-                  (set! (-> a1-0 num-params) 1)
-                  (set! (-> a1-0 message) (the-as symbol v1-4))
-                  (set! (-> a1-0 param 0) (the-as uint gp-0))
-                  (send-event-function (-> s4-0 process) a1-0)
+            (let (
+                  (c1-proc (handle->process (-> handles (+ 0 (* 2 i)))))
+                  (c2-proc (handle->process (-> handles (+ 1 (* 2 i)))))
                   )
+              (let ((v1-4 (-> c1 event-self)))
+                (if v1-4
+                    (send-event c1-proc v1-4 :from c2-proc entry)
+                    )
                 )
-              )
-            (let ((v1-5 (-> s4-0 event-other)))
-              (when v1-5
-                (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-1 from) (-> s4-0 process))
-                  (set! (-> a1-1 num-params) 1)
-                  (set! (-> a1-1 message) (the-as symbol v1-5))
-                  (set! (-> a1-1 param 0) (the-as uint gp-0))
-                  (send-event-function (-> s3-0 process) a1-1)
-                  )
+              (let ((v1-5 (-> c1 event-other)))
+                (if v1-5
+                    (send-event c2-proc v1-5 :from c1-proc entry)
+                    )
                 )
-              )
-            (let ((v1-6 (-> s3-0 event-self)))
-              (when v1-6
-                (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-2 from) (-> s4-0 process))
-                  (set! (-> a1-2 num-params) 1)
-                  (set! (-> a1-2 message) (the-as symbol v1-6))
-                  (set! (-> a1-2 param 0) (the-as uint gp-0))
-                  (send-event-function (-> s3-0 process) a1-2)
-                  )
+              (let ((v1-6 (-> c2 event-self)))
+                (if v1-6
+                    (send-event c2-proc v1-6 :from c1-proc entry)
+                    )
                 )
-              )
-            (let ((v1-7 (-> s3-0 event-other)))
-              (when v1-7
-                (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-3 from) (-> s3-0 process))
-                  (set! (-> a1-3 num-params) 1)
-                  (set! (-> a1-3 message) (the-as symbol v1-7))
-                  (set! (-> a1-3 param 0) (the-as uint gp-0))
-                  (send-event-function (-> s4-0 process) a1-3)
-                  )
+              (let ((v1-7 (-> c2 event-other)))
+                (if v1-7
+                    (send-event c1-proc v1-7 :from c2-proc entry)
+                    )
                 )
               )
             )
           )
         )
-      (set! gp-0 (&+ (the-as touching-shapes-entry gp-0) 16))
+      (set! entry (-> (the-as (inline-array touching-shapes-entry) entry) 1))
       )
+    )
+    
     )
   0
   (none)
