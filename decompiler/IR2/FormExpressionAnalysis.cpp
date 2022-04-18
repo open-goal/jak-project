@@ -2464,7 +2464,7 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 
               if (funcname == "seek" || funcname == "seekl") {
                 inplace_call = pool.alloc_single_element_form<GenericElement>(
-                                       m_dst->parent_element,
+                                       nullptr,
                                        GenericOperator::make_function(
                                            pool.alloc_single_element_form<ConstantTokenElement>(
                                                nullptr, inplace_name)),
