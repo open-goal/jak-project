@@ -1,5 +1,5 @@
 #include "third-party/CLI11.hpp"
-#include "third-party/fmt/core.h"
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
@@ -132,6 +132,8 @@ int main(int argc, char** argv) {
   bool flag_decompile = false;
   bool flag_compile = false;
   bool flag_play = false;
+
+  lg::initialize();
 
   CLI::App app{"OpenGOAL Level Extraction Tool"};
   app.add_option("game-files-path", data_dir_path,
