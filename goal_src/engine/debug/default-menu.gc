@@ -4478,7 +4478,6 @@
                         (float-fixed-var "Palette 7 Amt" 7 dm-mood-palette-float 0 10 #t 0 1000 3)
                         )
                     )
-                 (flag "Force progress" #f ,(dm-lambda-boolean-flag (-> *pc-settings* progress-force?)))
                  )
               ))
          (other-menu (-> (the-as debug-menu-item-submenu other-menu-node) submenu))
@@ -4487,41 +4486,7 @@
       (debug-menu-append-item prog-menu
           (new-dm-func (new 'debug 'string 0 (enum->string progress-screen i)) i
                         (lambda ((val progress-screen))
-                          (cond
-                            ((-> *pc-settings* progress-force?)
-                               (cond
-                                ((not *progress-process*)
-                                  (make-levels-with-tasks-available-to-progress)
-                                  (disable-level-text-file-loading)
-                                  (set! (-> *progress-state* starting-state) val)
-                                  (set! *progress-process* (make-init-process progress progress-init-by-other
-                                                                              :to *dproc*
-                                                                              :stack *progress-stack-top*))
-                                  (let ((s5-1 *progress-process*))
-                                   (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
-                                   (set! *master-mode* 'progress)
-                                   (set! (-> s5-1 0 display-level-index) 0) ;; geyser rock
-                                   (set! (-> s5-1 0 next-level-index) (-> s5-1 0 display-level-index))
-                                   (set! (-> s5-1 0 display-state) (progress-screen invalid))
-                                   (set-transition-progress! (-> s5-1 0) 512)
-                                   (set! (-> s5-1 0 task-index) (get-next-task-up -1 (-> s5-1 0 display-level-index)))
-                                   )
-                                 (when *progress-process*
-                                  (enter! (-> *progress-process* 0) val 0)
-                                  (set! (-> *progress-process* 0 card-info) #f)
-                                  )
-                                 )
-                                (else
-                                 (push! (-> *progress-process* 0))
-                                 (set! (-> *progress-process* 0 next-display-state) val)
-                                 (set! (-> *progress-process* 0 card-info) #f)
-                                 )
-                                )
-                              )
-                            (else
-                              (activate-progress *dproc* val)
-                              )
-                            )
+                          (activate-progress *dproc* val)
                           (set-master-mode 'progress)
                           )
                         ))

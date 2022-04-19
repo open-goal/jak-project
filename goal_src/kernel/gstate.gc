@@ -92,7 +92,7 @@ It type checks the arguments for the entry function.
     )
   )
 
-(defmacro make-function-process (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+(defmacro process-new-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process that runs a function on its main thread.
    Returns a pointer to the new process (or #f? on error)."
 
@@ -107,7 +107,7 @@ It type checks the arguments for the entry function.
     )
   )
 
-(defmacro make-init-process (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+(defmacro process-new (proc-type init &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process and run an init function on it.
    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
 
@@ -115,7 +115,7 @@ It type checks the arguments for the entry function.
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
           ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
-          (run-now-in-process ,new-proc ,func ,@args)
+          (run-now-in-process ,new-proc ,init ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
         )
