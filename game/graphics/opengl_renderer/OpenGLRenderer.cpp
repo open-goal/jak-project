@@ -266,10 +266,11 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<RenderMux>("sprite", BucketCategory::SPRITE, BucketId::SPRITE,
                                   std::move(sprite_renderers));  // 66
 
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketCategory::OTHER,
-                                       BucketId::DEBUG_DRAW_0, 0x20000);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketCategory::OTHER,
-                                       BucketId::DEBUG_DRAW_1, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x20000);
+  init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
+                                       BucketId::DEBUG_NO_ZBUF, 0x8000);
+  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
+                                       0x2000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
