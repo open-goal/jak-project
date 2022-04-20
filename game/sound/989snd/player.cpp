@@ -11,11 +11,21 @@
 namespace snd {
 
 player::player() : m_vmanager(m_synth, m_loader) {
+  init_cubeb();
+}
+
+player::~player() {
+  destroy_cubeb();
+}
+
+void player::init_cubeb() {
 #ifdef _WIN32
   HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   m_coinitialized = SUCCEEDED(hr);
   if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
-    throw std::runtime_error("(Cubeb) Failed to initialize COM");
+    fmt::print("Couldn't initialize COM\n");
+    fmt::print("Cubeb init failed\n");
+    return;
   }
 #endif
 
@@ -32,22 +42,25 @@ player::player() : m_vmanager(m_synth, m_loader) {
   u32 latency = 0;
   err = cubeb_get_min_latency(m_ctx, &outparam, &latency);
   if (err != CUBEB_OK) {
-    throw std::runtime_error("Cubeb failed");
+    fmt::print("Cubeb init failed\n");
+    return;
   }
 
   err = cubeb_stream_init(m_ctx, &m_stream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam,
                           latency, &sound_callback, &state_callback, this);
   if (err != CUBEB_OK) {
-    throw std::runtime_error("Cubeb failed");
+    fmt::print("Cubeb init failed\n");
+    return;
   }
 
   err = cubeb_stream_start(m_stream);
   if (err != CUBEB_OK) {
-    throw std::runtime_error("Cubeb failed");
+    fmt::print("Cubeb init failed\n");
+    return;
   }
 }
 
-player::~player() {
+void player::destroy_cubeb() {
   cubeb_stream_stop(m_stream);
   cubeb_stream_destroy(m_stream);
   cubeb_destroy(m_ctx);
