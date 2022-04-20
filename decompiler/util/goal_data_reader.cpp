@@ -234,7 +234,8 @@ TypedRef typed_ref_from_basic(const Ref& object, const decompiler::DecompilerTyp
   const auto& word = object.data->words_by_seg.at(object.seg).at(byte_in_words / 4);
 
   if (word.kind() != decompiler::LinkedWord::TYPE_PTR) {
-    throw Error("typed_ref_from_basic did not get a type tag (offset {} words)", byte_in_words / 4);
+    throw Error("typed_ref_from_basic did not get a type tag (offset {} words). Got {}",
+                byte_in_words / 4, (int)word.kind());
   }
 
   TypedRef result;
