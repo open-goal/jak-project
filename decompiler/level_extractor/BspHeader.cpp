@@ -64,8 +64,7 @@ std::string Vector::print_decimal(int indent) const {
   memcpy(d, data, 16);
   std::string is(indent, ' ');
   std::string result;
-  result +=
-      fmt::format("{}<vector {:d} {:d} {:d} {:d}>\n", is, d[0], d[1], d[2], d[3]);
+  result += fmt::format("{}<vector {:d} {:d} {:d} {:d}>\n", is, d[0], d[1], d[2], d[3]);
   return result;
 }
 void FileInfo::read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) {
@@ -896,6 +895,15 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   dists.read_from_file(get_field_ref(ref, "dists", dts));
   rdists.read_from_file(get_field_ref(ref, "rdists", dts));
   stiffness = read_plain_data_field<float>(ref, "stiffness", dts);
+  auto fr = get_field_ref(ref, "collide-frag", dts);
+  {
+    const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+    if (word.kind() == decompiler::LinkedWord::PTR) {
+      auto p = deref_label(fr);
+      p.byte_offset -= 4;
+      collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats);
+    }
+  }
 
   auto next_slot = get_field_ref(ref, "next", dts);
   for (int i = 0; i < 4; i++) {
@@ -1163,9 +1171,7 @@ void DrawableInlineArrayCollideFragment::read_from_file(TypedRef ref,
   for (int i = 0; i < length; i++) {
     Ref obj_ref = data_ref;
     obj_ref.byte_offset += 32 * i;  // todo not a constant here
-    fmt::print("check {}\n", i);
     auto type = get_type_of_basic(obj_ref);
-    fmt::print("got {}\n", type);
     if (type != "collide-fragment") {
       throw Error("bad collide fragment type: {}", type);
     }
@@ -1224,6 +1230,9 @@ void CollideFragMesh::read_from_file(TypedRef ref,
   total_qwc = read_plain_data_field<u8>(ref, "total-qwc", dts);
   base_trans.read_from_file(get_field_ref(ref, "base-trans", dts));
   base_trans.data[3] = 0;
+
+  packed_data = deref_label(get_field_ref(ref, "packed-data", dts));
+  pat_array = deref_label(get_field_ref(ref, "pat-array", dts));
 }
 
 std::string CollideFragMesh::print(const PrintSettings& settings, int indent) const {

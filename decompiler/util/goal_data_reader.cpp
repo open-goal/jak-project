@@ -253,7 +253,8 @@ Ref deref_label(const Ref& object) {
   const auto& word = object.data->words_by_seg.at(object.seg).at(byte_in_words / 4);
 
   if (word.kind() != decompiler::LinkedWord::PTR) {
-    throw Error("deref_label did not get a label (offset {} words)", byte_in_words / 4);
+    throw Error("deref_label did not get a label (offset {} words). Got {} {}", byte_in_words / 4,
+                (int)word.kind(), word.data);
   }
 
   const auto& lab = object.data->labels.at(word.label_id());

@@ -14,6 +14,9 @@ class DecompilerTypeSystem;
 }  // namespace decompiler
 
 namespace level_tools {
+
+u32 deref_u32(const Ref& ref, int word_offset);
+
 struct PrintSettings {
   bool print_tfrag = false;
   bool expand_draw_node = false;
@@ -211,6 +214,9 @@ struct CollideFragMesh {
   u8 vertex_count;
   u8 vertex_data_qwc;
   u8 total_qwc;
+
+  Ref packed_data;
+  Ref pat_array;
 };
 
 struct CollideFragment {
@@ -443,6 +449,7 @@ struct PrototypeBucketTie {
 
   // todo envmap shader
   // todo collide-frag
+  DrawableInlineArrayCollideFragment collide_frag;
   // todo tie-colors
   // todo data
 
