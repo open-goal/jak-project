@@ -316,6 +316,7 @@ StructureDefResult parse_structure_def(
   int method_count_assert = -1;
   uint64_t flag_assert = 0;
   bool flag_assert_set = false;
+  bool set_heapbase = false;
   while (!rest->is_empty_list()) {
     if (car(rest).is_pair()) {
       auto opt_list = &car(rest);
@@ -366,6 +367,7 @@ StructureDefResult parse_structure_def(
         }
         rest = cdr(rest);
         flags.heap_base = hb;
+        set_heapbase = true;
       } else if (opt_name == ":allow-misaligned") {
         result.allow_misaligned = true;
       } else if (opt_name == ":final") {
@@ -376,6 +378,13 @@ StructureDefResult parse_structure_def(
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
     }
+  }
+
+  if (ts->fully_defined_type_exists(TypeSpec("process")) && !set_heapbase &&
+      ts->tc(TypeSpec("process"), TypeSpec(type->get_parent()))) {
+    // automatic heap-base if this is a child of process.
+    auto process_type = ts->get_type_of_type<BasicType>("process");
+    flags.heap_base = (flags.size - process_type->size() + 0xf) & ~0xf;
   }
 
   if (size_assert != -1 && flags.size != u16(size_assert)) {
