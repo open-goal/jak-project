@@ -45,7 +45,10 @@ add_library(common
         util/image_loading.cpp
         goos/Printer.cpp
         goos/PrettyPrinter2.cpp
-        )
+        serialization/subtitles/subtitles.h
+        serialization/subtitles/subtitles.cpp
+        serialization/DataObjectGenerator.h
+        serialization/DataObjectGenerator.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

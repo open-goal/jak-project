@@ -29,7 +29,7 @@ add_library(compiler
         compiler/Util.cpp
         data_compiler/game_text.cpp
         data_compiler/dir_tpages.cpp
-        data_compiler/DataObjectGenerator.cpp
+        "../common/serialization/DataObjectGenerator.cpp"
         data_compiler/game_count.cpp
         data_compiler/game_subtitle.cpp
         debugger/Debugger.cpp

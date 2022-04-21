@@ -10,7 +10,7 @@
 #include <algorithm>
 #include "game_text.h"
 #include "common/goos/Reader.h"
-#include "DataObjectGenerator.h"
+#include <common/serialization/DataObjectGenerator.h>
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
 #include "common/goos/ParseHelpers.h"

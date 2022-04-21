@@ -1,5 +1,5 @@
 #include <vector>
-#include "DataObjectGenerator.h"
+#include <common/serialization/DataObjectGenerator.h>
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
