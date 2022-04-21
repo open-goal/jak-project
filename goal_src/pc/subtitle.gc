@@ -115,9 +115,9 @@
 
 (define *SUBTITLE-bank*
     (new 'static 'subtitle-bank
-                  :scale 0.5
-                  :width 0.88
-                  :height 0.75
+                  :scale 0.45
+                  :width 0.85
+                  :height 0.8
                   :lines 3.0
                   ))
 
@@ -635,31 +635,33 @@
             
             )
       
-      (when (cpad-pressed? 0 square)
-          (mem-copy! (the pointer *SUBTITLE-bank*) (the pointer (-> self bank-backup)) (size-of subtitle-bank))
+      (when (= 'pause *master-mode*)
+        (when (cpad-pressed? 0 square)
+            (mem-copy! (the pointer *SUBTITLE-bank*) (the pointer (-> self bank-backup)) (size-of subtitle-bank))
+            )
+            
+        (when (cpad-hold? 0 up) (+! (-> *SUBTITLE-bank* height) -0.01))
+        (when (cpad-hold? 0 down) (+! (-> *SUBTITLE-bank* height) 0.01))
+            
+        (cond
+          ((cpad-hold? 0 triangle)
+            (when (cpad-hold? 0 r1) (-! (-> *SUBTITLE-bank* width) 0.01))
+            (when (cpad-hold? 0 l1) (+! (-> *SUBTITLE-bank* width) 0.01))
+            (when (cpad-hold? 0 r2) (-! (-> *SUBTITLE-bank* lines) 0.05))
+            (when (cpad-hold? 0 l2) (+! (-> *SUBTITLE-bank* lines) 0.05))
+            )
+          ((cpad-hold? 0 circle)
+            (when (cpad-hold? 0 r1) (+! (-> *SUBTITLE-bank* scale) 0.01))
+            (when (cpad-hold? 0 l1) (-! (-> *SUBTITLE-bank* scale) 0.01))
+            )
           )
-          
-      (when (cpad-hold? 0 up) (+! (-> *SUBTITLE-bank* height) -0.01))
-      (when (cpad-hold? 0 down) (+! (-> *SUBTITLE-bank* height) 0.01))
-          
-      (cond
-        ((cpad-hold? 0 triangle)
-          (when (cpad-hold? 0 r1) (-! (-> *SUBTITLE-bank* width) 0.01))
-          (when (cpad-hold? 0 l1) (+! (-> *SUBTITLE-bank* width) 0.01))
-          (when (cpad-hold? 0 r2) (-! (-> *SUBTITLE-bank* lines) 0.01))
-          (when (cpad-hold? 0 l2) (+! (-> *SUBTITLE-bank* lines) 0.01))
-          )
-        ((cpad-hold? 0 circle)
-          (when (cpad-hold? 0 r1) (-! (-> *SUBTITLE-bank* scale) 0.01))
-          (when (cpad-hold? 0 l1) (+! (-> *SUBTITLE-bank* scale) 0.01))
-          )
+        
+        (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
+            (cpad-clear! 0 start)
+            (send-event self 'debug)
+            )
         )
-      
-      (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
-          (cpad-clear! 0 start)
-          (send-event self 'debug)
-          )
-      
+        
       (none))
     
     :code (-> subtitle-process code)
