@@ -34,10 +34,10 @@ class GameSubtitleSceneInfo {
   void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
     m_lines.emplace_back(frame, line, speaker, offscreen);
   }
-
- private:
   std::string m_name;
   std::vector<SubtitleLine> m_lines;
+ private:
+  
 };
 
 class GameSubtitleBank {

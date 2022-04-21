@@ -18,7 +18,7 @@ void SubtitleEditor::draw_window() {
     ImGui::InputText("Filter", str0, 128, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     for (auto& [sceneName, sceneInfo] : m_subtitle_db.m_banks.at(0)->m_scenes) {
       if (ImGui::TreeNode(sceneName.c_str())) {
-        for (auto subtitleLine : sceneInfo.lines()) {
+        for (auto& subtitleLine : sceneInfo.m_lines) {
           if (ImGui::TreeNode(fmt::format("[{}] {} - '{}...'", subtitleLine.frame,
                                           subtitleLine.speaker, subtitleLine.line.substr(0, 20))
                                   .c_str())) {
