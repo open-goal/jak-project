@@ -109,8 +109,8 @@
    (height float)
    (lines float)
    )
-  
-  
+
+
   )
 
 (define *SUBTITLE-bank*
@@ -571,26 +571,26 @@
           )
         )
       )
-      
+
     (#when PC_SUBTITLE_DEBUG
         (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
             (cpad-clear! 0 start)
             (send-event self 'debug)
             )
-        
+
         )
 
     (none))
 
   :post (behavior ()
-  
+
     ;; set font settings.
     (set! (-> self font origin x) (* (- 1.0 (-> *SUBTITLE-bank* width)) 256))
     (set! (-> self font origin y) (* (-> *SUBTITLE-bank* height) 224))
     (set-width! (-> self font) (the int (* (-> *SUBTITLE-bank* width) 512)))
     (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
     (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
-  
+
     (when (-> self want-subtitle)
         ;; we got a valid subtitle! render it.
         (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22)
@@ -605,7 +605,7 @@
 
 
 (defstate subtitle-debug (subtitle)
-    
+
 
     :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
       (case msg
@@ -614,36 +614,37 @@
          )
         )
       )
-    
+
     :enter (behavior ()
         (mem-copy! (the pointer (-> self bank-backup)) (the pointer *SUBTITLE-bank*) (size-of subtitle-bank))
         (set-master-mode 'pause)
         )
     :exit (behavior ()
         (toggle-pause) (none)) ;; todo fuck
-    
+
     :trans (behavior ()
-      
+
       (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
                                    (bucket-id debug))
-            
+
         (draw-string-xy "~3LSUBTITLE DEBUG!~0L"     buf 16 40 (font-color default) (font-flags shadow kerning))
         (draw-string-xy "Square: reset"             buf 16 48 (font-color default) (font-flags shadow kerning))
         (draw-string-xy "Up/down: Move vertically"  buf 16 56 (font-color default) (font-flags shadow kerning))
         (draw-string-xy "Triangle+R1/L1: width"     buf 16 64 (font-color default) (font-flags shadow kerning))
         (draw-string-xy "Triangle+R2/L2: height"    buf 16 72 (font-color default) (font-flags shadow kerning))
         (draw-string-xy "Circle+R1/L1: scale"       buf 16 80 (font-color default) (font-flags shadow kerning))
-            
+        (draw-string-xy "L3+Start: exit"            buf 16 88 (font-color default) (font-flags shadow kerning))
+
             )
-      
+
       (when (= 'pause *master-mode*)
         (when (cpad-pressed? 0 square)
             (mem-copy! (the pointer *SUBTITLE-bank*) (the pointer (-> self bank-backup)) (size-of subtitle-bank))
             )
-            
+
         (when (cpad-hold? 0 up) (+! (-> *SUBTITLE-bank* height) -0.01))
         (when (cpad-hold? 0 down) (+! (-> *SUBTITLE-bank* height) 0.01))
-            
+
         (cond
           ((cpad-hold? 0 triangle)
             (when (cpad-hold? 0 r1) (-! (-> *SUBTITLE-bank* width) 0.01))
@@ -657,17 +658,17 @@
             )
           )
         )
-        
+
       (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
           (cpad-clear! 0 start)
           (send-event self 'debug)
           )
-        
+
       (none))
-    
+
     :code (-> subtitle-process code)
     :post (-> subtitle-process post)
-    
+
     )
 
 
@@ -693,7 +694,7 @@
 
 (defbehavior subtitle-init-by-other subtitle ()
   "external initializer for subtitle process"
-  
+
   (set! (-> self font) (new 'process 'font-context *font-default-matrix*
                             0 0 0.0 (font-color default) (font-flags shadow kerning middle large)))
   (go subtitle-process)
