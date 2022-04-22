@@ -388,11 +388,14 @@ StructureDefResult parse_structure_def(
     if (!set_heapbase) {
       // wasnt set manually so set automatically.
       flags.heap_base = auto_hb;
-    } else if (flags.heap_base != auto_hb) {
-      // was set manually so verify if that's correct. (legacy feature)
+    } else if (flags.heap_base < auto_hb) {
+      // was set manually so verify if that's correct.
       throw std::runtime_error(
-          fmt::format("Type {} has a mismatched heap-base: {} vs. auto-detected {}",
+          fmt::format("Process heap underflow in type {}: heap-base is {} vs. auto-detected {}",
                       type->get_name(), flags.heap_base, auto_hb));
+      //} else if (flags.heap_base != auto_hb) {
+      //  fmt::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
+      //             flags.heap_base, auto_hb);
     }
   }
 
