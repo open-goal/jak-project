@@ -380,11 +380,20 @@ StructureDefResult parse_structure_def(
     }
   }
 
-  if (ts->fully_defined_type_exists(TypeSpec("process")) && !set_heapbase &&
+  if (ts->fully_defined_type_exists(TypeSpec("process")) &&
       ts->tc(TypeSpec("process"), TypeSpec(type->get_parent()))) {
-    // automatic heap-base if this is a child of process.
+    // check heap-base if this is a child of process.
     auto process_type = ts->get_type_of_type<BasicType>("process");
-    flags.heap_base = (flags.size - process_type->size() + 0xf) & ~0xf;
+    auto auto_hb = (flags.size - process_type->size() + 0xf) & ~0xf;
+    if (!set_heapbase) {
+      // wasnt set manually so set automatically.
+      flags.heap_base = auto_hb;
+    } else if (flags.heap_base != auto_hb) {
+      // was set manually so verify if that's correct. (legacy feature)
+      throw std::runtime_error(
+          fmt::format("Type {} has a mismatched heap-base: {} vs. auto-detected {}",
+                      type->get_name(), flags.heap_base, auto_hb));
+    }
   }
 
   if (size_assert != -1 && flags.size != u16(size_assert)) {
