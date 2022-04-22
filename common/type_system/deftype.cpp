@@ -419,15 +419,6 @@ StructureDefResult parse_structure_def(
                     flags.flag, flag_assert));
   }
 
-  if (result.flags.heap_base) {
-    int heap_start_1 = 112 + result.flags.heap_base;
-    int heap_start_2 = (result.flags.size + 15) & (~15);
-    if (heap_start_1 != heap_start_2) {
-      throw std::runtime_error(fmt::format("Heap base bad on {}: {} vs {}\n", type->get_name(),
-                                           heap_start_1, heap_start_2));
-    }
-  }
-
   result.flags = flags;
   return result;
 }
