@@ -98,7 +98,9 @@ bool DMA_SendToSPUAndSync(void* src_addr, u32 size, u32 dst_addr) {
     return false;
   strobe = 0;
   sceSdSetTransIntrHandler(channel, intr, nullptr);
-  u32 size_aligned = (size + 63) & 0xFFFFFFF0;
+  // Skip this, we end up memcpy's from OOB (which trips asan)
+  // u32 size_aligned = (size + 63) & 0xFFFFFFF0;
+  u32 size_aligned = size;
   s32 transferred = sceSdVoiceTrans(channel, 0, src_addr, dst_addr, size_aligned);
   while (!strobe)
     ;
