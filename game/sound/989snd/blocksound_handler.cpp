@@ -1,5 +1,6 @@
 #include "blocksound_handler.h"
 #include <random>
+#include <stdexcept>
 
 namespace snd {
 void blocksound_handler::init() {
@@ -179,7 +180,8 @@ void blocksound_handler::do_grain() {
   if (handler != m_grain_handler.end()) {
     (this->*(handler->second))(grain);
   } else {
-    fmt::print("{}: Ignoring grain {}, type {}\n", (void*)this, m_next_grain, grain.Type);
+    throw std::runtime_error(
+        fmt::format("{}: Ignoring grain {}, type {}\n", (void*)this, m_next_grain, grain.Type));
   }
 
   if (m_skip_grains) {
