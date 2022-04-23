@@ -42,6 +42,11 @@
   (invalid -1) (movie 0) (ambient 1) (hint 2))
 (defconstant SUBTITLE_CHANNEL_COUNT 3)
 
+(defenum pc-subtitle-flags
+  :bitfield #t
+  :type uint32
+  (offscreen) ;; speaker is offscreen.
+  )
 
 ;; information about a single line of subtitles
 (deftype subtitle-keyframe (structure)
@@ -49,7 +54,7 @@
    (frame  int32)      ;; the frame to play the subtitle line on
    (string string)     ;; the text for the subtitle line
    (speaker string)    ;; name of the speaker. leave blank for no speaker.
-   (offscreen symbol)  ;; speaker is offscreen.
+   (flags pc-subtitle-flags)  ;; flags
    )
   :pack-me
   )
@@ -91,6 +96,11 @@
     (get-scene-by-name (_type_ pc-subtitle-channel string) subtitle-text)
     )
   )
+
+
+(defmacro subtitle-flags? (sub &rest flags)
+  `(logtest? (-> ,sub flags) (pc-subtitle-flags ,@flags)))
+
 
 
 ;;;----------------------------------
@@ -480,7 +490,7 @@
      (string-format "~S" (-> keyframe string))
      )
     ((or (= #t (-> *pc-settings* subtitle-speaker?))
-         (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (-> keyframe offscreen)))
+         (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (subtitle-flags? keyframe offscreen)))
      ;; there is a speaker and we do want it.
      (string-format "~3L~S:~0L ~S" (-> keyframe speaker) (-> keyframe string))
      )
@@ -701,7 +711,7 @@
 (defun subtitle-stop ()
   "kill the subtitle process"
 
-  (kill-by-type subtitle *active-pool*)
+  (kill-by-type subtitle *display-pool*)
   (set! *subtitle* (the (pointer subtitle) #f)))
 
 (defun subtitle-start ()
@@ -712,7 +722,7 @@
     )
 
   (set! *subtitle* (process-new subtitle subtitle-init-by-other
-                                :from *pc-dead-pool* :to *active-pool*
+                                :from *pc-dead-pool* :to *display-pool*
                                 :stack-size (* 1 1024)))
   )
 

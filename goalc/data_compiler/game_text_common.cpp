@@ -203,8 +203,8 @@ void compile_text(GameTextDB& db) {
  * Parse a game subtitle file.
  * Information is added to the game subtitles database.
  *
- * The file should begin with (language-id x y z...) with the given language IDs.
- * Each entry should be (name (frame "line-text-0" "line-text-1") ... )
+ * The file should begin with (language-id x y z...) for the given language IDs.
+ * Each scene should be (scene-name <entry 1> <entry 2> ... )
  * This adds the subtitle to each of the specified languages.
  */
 void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db) {
@@ -241,16 +241,41 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
         GameSubtitleSceneInfo scene(head.as_string()->data);
         for_each_in_list(cdr(obj), [&](const goos::Object& entry) {
           if (entry.is_pair()) {
-            if (!car(entry).is_int() || !car(cdr(entry)).is_symbol() ||
-                !car(cdr(cdr(entry))).is_string() || !car(cdr(cdr(cdr(entry)))).is_string()) {
-              throw std::runtime_error(
-                  "Each entry must be of format (number symbol \"string\" \"string\")");
+            // expected formats:
+            // (time <args>)
+            // all arguments have default values. the arguments are:
+            // "speaker" "line" - two strings. one for the speaker's name and one for the actual
+            //                    line. speaker can be empty. default is just empty string.
+            // :offscreen - speaker is offscreen. default is not offscreen.
+
+            if (!car(entry).is_int()) {
+              throw std::runtime_error("Each entry must start with a timestamp (number)");
             }
 
-            auto line = font->convert_utf8_to_game(car(cdr(cdr(cdr(entry)))).as_string()->data);
-            auto speaker = font->convert_utf8_to_game(car(cdr(cdr(entry))).as_string()->data);
-            auto offscreen = car(cdr(entry)).as_symbol()->name != "#f";
-            scene.add_line(car(entry).as_int(), line, speaker, offscreen);
+            auto time = car(entry).as_int();
+            goos::StringObject *speaker = nullptr, *line = nullptr;
+            bool offscreen = false;
+            for_each_in_list(cdr(entry), [&](const goos::Object& arg) {
+              if (arg.is_string()) {
+                if (!speaker) {
+                  speaker = arg.as_string();
+                } else if (!line) {
+                  line = arg.as_string();
+                } else {
+                  throw std::runtime_error("Invalid string in subtitle entry");
+                }
+              } else if (speaker && !line) {
+                throw std::runtime_error(
+                    "Invalid object in subtitle entry, expecting actual line string after speaker");
+              } else if (arg.is_symbol()) {
+                if (arg.as_symbol()->name == ":offscreen") {
+                  offscreen = true;
+                }
+              }
+            });
+            auto line_str = font->convert_utf8_to_game(line ? line->data : "");
+            auto speaker_str = font->convert_utf8_to_game(speaker ? speaker->data : "");
+            scene.add_line(time, line_str, speaker_str, offscreen);
           } else {
             throw std::runtime_error("Each entry must be a list");
           }
