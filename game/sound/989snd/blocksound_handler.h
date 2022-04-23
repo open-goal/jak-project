@@ -1,4 +1,5 @@
 #pragma once
+#include <unordered_map>
 #include "sfxblock.h"
 #include "vagvoice.h"
 #include "sound_handler.h"
@@ -28,7 +29,12 @@ class blocksound_handler : public sound_handler {
     m_orig_volume = m_sfx.d.Vol;
 
     m_group = sfx.d.VolGroup;
+
+    m_grain_handler.insert(std::make_pair(grain_type::null, &blocksound_handler::null));
+    m_grain_handler.insert(std::make_pair(grain_type::tone, &blocksound_handler::play_tone));
+    m_grain_handler.insert(std::make_pair(grain_type::rand_play, &blocksound_handler::rand_play));
   }
+
   bool tick() override;
   u32 bank() override { return m_bank; };
 
@@ -41,7 +47,27 @@ class blocksound_handler : public sound_handler {
   void init();
 
  private:
+  enum class grain_type : u32 {
+    null = 0,
+    tone = 1,
+    xref_id = 2,
+    xref_num = 3,
+    lfo_settings = 4,
+    loop_start = 21,
+    loop_end = 22,
+    loop_continue = 23,
+    rand_play = 25,
+    rand_delay = 26,
+  };
+
   void do_grain();
+
+  s32 null(SFXGrain& grain);
+  s32 play_tone(SFXGrain& grain);
+  s32 rand_play(SFXGrain& grain);
+
+  using grain_fp = int (blocksound_handler::*)(SFXGrain& grain);
+  std::unordered_map<grain_type, grain_fp> m_grain_handler;
 
   bool m_paused{false};
 
