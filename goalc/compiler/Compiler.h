@@ -18,8 +18,7 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
-#include "goalc/data_compiler/game_text.h"
-#include "goalc/data_compiler/game_subtitle.h"
+#include "goalc/data_compiler/game_text_common.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 

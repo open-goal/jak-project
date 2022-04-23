@@ -30,7 +30,7 @@ class WithGameTests : public ::testing::Test {
       shared_compiler->compiler.run_test_no_load(
           "test/goalc/source_templates/with_game/test-build-game.gc");
       shared_compiler->compiler.run_front_end_on_string(
-          "(asm-text-file text 10 :files (\"test/test_data/test_game_text.txt\"))");
+          "(asm-text-file text :files (\"test/test_data/test_game_text.gp\"))");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);

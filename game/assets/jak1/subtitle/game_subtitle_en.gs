@@ -1,6 +1,12 @@
 (language-id 0 6)
 
 ;; -----------------
+;; intro
+
+
+
+
+;; -----------------
 ;; oracle
 
 ("oracle-right-eye-1" (0 #f "ORACLE" "FOR YOUR GIFT, ANOTHER POWER CELL IS YOURS."))
