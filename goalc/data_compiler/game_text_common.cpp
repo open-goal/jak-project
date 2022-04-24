@@ -75,7 +75,6 @@ std::string uppercase(const std::string& in) {
 void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db) {
   auto font = get_font_bank(text_ver);
   std::vector<std::shared_ptr<GameTextBank>> banks;
-  bool group_name_set = false;
   std::string possible_group_name;
 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
@@ -90,7 +89,7 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
           throw std::runtime_error("At least one language must be set.");
         }
 
-        if (!group_name_set) {
+        if (possible_group_name.empty()) {
           throw std::runtime_error("Text group must be set before languages.");
         }
 
@@ -104,12 +103,16 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
           }
         });
       } else if (head.is_symbol() && head.as_symbol()->name == "group-name") {
-        if (group_name_set) {
+        if (!possible_group_name.empty()) {
           throw std::runtime_error("group-name has been set multiple times.");
         }
-        group_name_set = true;
 
         possible_group_name = get_string(car(cdr(obj)));
+
+        if (possible_group_name.empty()) {
+          throw std::runtime_error("invalid group-name.");
+        }
+
         if (!cdr(cdr(obj)).is_empty_list()) {
           throw std::runtime_error("group-name has too many arguments");
         }
