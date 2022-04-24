@@ -27,7 +27,10 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
 class Compiler {
  public:
-  Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
+  Compiler(const int nrepl_port = 8181,
+           const std::string& user_profile = "#f",
+           std::unique_ptr<ReplWrapper> repl = nullptr);
+  void read_eval_print(std::string input = "");
   ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
@@ -70,6 +73,8 @@ class Compiler {
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
 
+  int m_nrepl_port;
+
  private:
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
@@ -88,6 +93,8 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
+
+  std::thread nrepl_thread;
 
   struct DebugStats {
     int num_spills = 0;

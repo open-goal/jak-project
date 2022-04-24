@@ -139,6 +139,9 @@ add_subdirectory(third-party/imgui)
 # build the game code in C++
 add_subdirectory(game)
 
+# build asio library
+include_directories(third-party/asio/asio/include)
+
 # build the compiler
 add_subdirectory(goalc)
 

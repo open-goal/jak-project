@@ -1,3 +1,5 @@
+#include "nrepl/ReplServer.h"  // this import has to come first because WinSock sucks
+
 #include "Compiler.h"
 #include <chrono>
 #include <thread>
@@ -12,7 +14,9 @@
 
 using namespace goos;
 
-Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
+Compiler::Compiler(const int nrepl_port,
+                   const std::string& user_profile,
+                   std::unique_ptr<ReplWrapper> repl)
     : m_goos(user_profile), m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
@@ -48,6 +52,18 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
 
   // add GOOS forms that get info from the compiler
   setup_goos_forms();
+
+  m_nrepl_port = nrepl_port;
+  fmt::print("[nREPL]: Server Will Listen for a Connection on Port {}!\n\r", m_nrepl_port);
+  nrepl_thread = std::thread([&]() {
+    asio::io_context io_context;
+    ReplServer s(io_context, this);
+    try {
+      io_context.run();
+    } catch (std::exception& e) {
+      print_compiler_warning("Could not setup nREPL {}\n", e.what());
+    }
+  });
 }
 
 ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
@@ -64,65 +80,15 @@ ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   m_repl->get_repl().set_highlighter_callback(
       std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
 
-  std::string auto_input;
   if (auto_debug || auto_listen) {
-    auto_input.append("(lt)");
+    read_eval_print("(lt)");
   }
   if (auto_debug) {
-    auto_input.append("(dbg) (:cont)");
+    read_eval_print("(dbg) (:cont)");
   }
 
   while (!m_want_exit && !m_want_reload) {
-    try {
-      std::optional<goos::Object> code;
-
-      if (auto_input.empty()) {
-        // 1). get a line from the user (READ)
-        std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-        if (m_listener.is_connected()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-        }
-        if (m_debugger.is_halted()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-        } else if (m_debugger.is_attached()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
-        }
-
-        code = m_goos.reader.read_from_stdin(prompt, *m_repl);
-      } else {
-        code = m_goos.reader.read_from_string(auto_input);
-        auto_input.clear();
-      }
-
-      if (!code) {
-        continue;
-      }
-
-      // 2). compile
-      auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
-      if (m_settings.debug_print_ir) {
-        obj_file->debug_print_tl();
-      }
-
-      if (!obj_file->is_empty()) {
-        // 3). color
-        color_object_file(obj_file);
-
-        // 4). codegen
-        auto data = codegen_object_file(obj_file);
-
-        // 4). send!
-        if (m_listener.is_connected()) {
-          m_listener.send_code(data);
-          if (!m_listener.most_recent_send_was_acked()) {
-            print_compiler_warning("Runtime is not responding. Did it crash?\n");
-          }
-        }
-      }
-
-    } catch (std::exception& e) {
-      print_compiler_warning("REPL Error: {}\n", e.what());
-    }
+    read_eval_print();
   }
 
   if (m_listener.is_connected()) {
@@ -139,6 +105,59 @@ ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   }
 
   return ReplStatus::OK;
+}
+
+void Compiler::read_eval_print(std::string input) {
+  try {
+    std::optional<goos::Object> code;
+
+    // Explicitly specified input
+    if (!input.empty()) {
+      code = m_goos.reader.read_from_string(input);
+    } else {
+      // if this is pulled out into a function....illegal instruction on checking the debugger? strange
+      std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+      if (m_listener.is_connected()) {
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+      }
+      if (m_debugger.is_halted()) {
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+      } else if (m_debugger.is_attached()) {
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+      }
+      // 1). get a line from the user (READ)
+      code = m_goos.reader.read_from_stdin(prompt, *m_repl);
+    }
+
+    if (!code) {
+      return;
+    }
+
+    // 2). compile
+    auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
+    if (m_settings.debug_print_ir) {
+      obj_file->debug_print_tl();
+    }
+
+    if (!obj_file->is_empty()) {
+      // 3). color
+      color_object_file(obj_file);
+
+      // 4). codegen
+      auto data = codegen_object_file(obj_file);
+
+      // 4). send!
+      if (m_listener.is_connected()) {
+        m_listener.send_code(data);
+        if (!m_listener.most_recent_send_was_acked()) {
+          print_compiler_warning("Runtime is not responding. Did it crash?\n");
+        }
+      }
+    }
+
+  } catch (std::exception& e) {
+    print_compiler_warning("REPL Error: {}\n", e.what());
+  }
 }
 
 FileEnv* Compiler::compile_object_file(const std::string& name,
