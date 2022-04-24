@@ -1920,7 +1920,7 @@
 ;; Custom or Modified Code
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
 (goal-src "pc/pckernel.gc" "settings")
-(goal-src "pc/subtitle.gc" "text")
+(goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 
 
