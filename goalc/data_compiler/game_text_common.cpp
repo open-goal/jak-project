@@ -334,10 +334,10 @@ void compile_subtitle(GameSubtitleDB& db) {
       array_link_sources.pop();
 
       for (auto& subtitle : scene.lines()) {
-        gen.add_word(subtitle.frame);                           // frame
-        gen.add_ref_to_string_in_pool(subtitle.line);           // line
-        gen.add_ref_to_string_in_pool(subtitle.speaker);        // speaker
-        gen.add_symbol_link(subtitle.offscreen ? "#t" : "#f");  // offscreen
+        gen.add_word(subtitle.frame);                     // frame
+        gen.add_ref_to_string_in_pool(subtitle.line);     // line
+        gen.add_ref_to_string_in_pool(subtitle.speaker);  // speaker
+        gen.add_word(subtitle.offscreen);                 // offscreen
       }
     }
 
