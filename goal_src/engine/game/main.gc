@@ -18,7 +18,7 @@
 (defun letterbox ()
   "Draw the letterbox black rectangles"
   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
-                               (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
+                               (bucket-id debug-no-zbuf)) ;; debug-no-zbuf is one of the last buckets
     ;; draw the two sprites
     (#cond
       ((not PC_PORT)
@@ -75,7 +75,7 @@
 (defun blackout ()
   "Draw the blackout rectangle, convering the entire screen in darkness."
   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
-                               (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
+                               (bucket-id debug-no-zbuf)) ;; debug-no-zbuf is one of the last buckets
     (draw-sprite2d-xy dma-buf 0 0 512 224 (new 'static 'rgba :a #x80))
     )
   (none)
@@ -330,7 +330,7 @@
   )
 
 (defmethod draw screen-filter ((obj screen-filter))
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-draw1))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf))
     (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> obj color))
     )
   (none)
@@ -467,7 +467,7 @@
                                                (-> (current-frame) debug-buf)
                                                (-> (current-frame) global-buf)
                                                ))
-                                   (bucket-id debug-draw0))
+                                   (bucket-id debug))
         (show-iop-memory dma-buff)
         )
       )
@@ -749,7 +749,7 @@
 
           ;; debug dma
           (with-dma-buffer-add-bucket ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))
-                                       (bucket-id debug-draw1))
+                                       (bucket-id debug-no-zbuf))
             (when *display-profile*
               (dma-buffer-add-gs-set debug-buf
                       (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
@@ -850,7 +850,7 @@
                                                (-> disp frames (-> disp on-screen) frame debug-buf)
                                                (-> disp frames (-> disp on-screen) frame global-buf)
                                                ))
-                                     (bucket-id debug-draw0))
+                                     (bucket-id debug))
           (if (and (= *master-mode* 'pause) (!= *cheat-mode* 'camera))
               (draw-string-xy (lookup-text! *common-text* (game-text-id pause) #f)
                s3-1 256 160 (font-color orange-red) (font-flags shadow kerning middle large))

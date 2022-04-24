@@ -356,24 +356,6 @@
        "out/iso/GAME.CGO"
        )
 
-;;;;;;;;;;;;;;;;;;;;;
-;; hub1 Group
-;;;;;;;;;;;;;;;;;;;;;
-;; the hub1 group is a group of files required to play the first hub (village1, jungle, beach, misty, training, firecanyon)
-
-(group "hub1"
-       "out/iso/0COMMON.TXT"
-       "out/iso/0SUBTIT.TXT"
-       "out/iso/KERNEL.CGO"
-       "out/iso/GAME.CGO"
-       "out/iso/VI1.DGO"
-       "out/iso/TRA.DGO"
-       "out/iso/FIC.DGO"
-       "out/iso/JUN.DGO"
-       "out/iso/BEA.DGO"
-       "out/iso/MIS.DGO"
-       )
-
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Common Level Objects
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1929,8 +1911,7 @@
  )
 
 (group-list "text"
- `(
-   "out/iso/0COMMON.TXT"
+ `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
    )
  )

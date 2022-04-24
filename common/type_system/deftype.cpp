@@ -316,6 +316,7 @@ StructureDefResult parse_structure_def(
   int method_count_assert = -1;
   uint64_t flag_assert = 0;
   bool flag_assert_set = false;
+  bool set_heapbase = false;
   while (!rest->is_empty_list()) {
     if (car(rest).is_pair()) {
       auto opt_list = &car(rest);
@@ -366,6 +367,7 @@ StructureDefResult parse_structure_def(
         }
         rest = cdr(rest);
         flags.heap_base = hb;
+        set_heapbase = true;
       } else if (opt_name == ":allow-misaligned") {
         result.allow_misaligned = true;
       } else if (opt_name == ":final") {
@@ -375,6 +377,25 @@ StructureDefResult parse_structure_def(
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
+    }
+  }
+
+  if (ts->fully_defined_type_exists(TypeSpec("process")) &&
+      ts->tc(TypeSpec("process"), TypeSpec(type->get_parent()))) {
+    // check heap-base if this is a child of process.
+    auto process_type = ts->get_type_of_type<BasicType>("process");
+    auto auto_hb = (flags.size - process_type->size() + 0xf) & ~0xf;
+    if (!set_heapbase) {
+      // wasnt set manually so set automatically.
+      flags.heap_base = auto_hb;
+    } else if (flags.heap_base < auto_hb) {
+      // was set manually so verify if that's correct.
+      throw std::runtime_error(
+          fmt::format("Process heap underflow in type {}: heap-base is {} vs. auto-detected {}",
+                      type->get_name(), flags.heap_base, auto_hb));
+      //} else if (flags.heap_base != auto_hb) {
+      //  fmt::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
+      //             flags.heap_base, auto_hb);
     }
   }
 
@@ -396,15 +417,6 @@ StructureDefResult parse_structure_def(
     throw std::runtime_error(
         fmt::format("Type {} has flag 0x{:x} but flag-assert was set to 0x{:x}", type->get_name(),
                     flags.flag, flag_assert));
-  }
-
-  if (result.flags.heap_base) {
-    int heap_start_1 = 112 + result.flags.heap_base;
-    int heap_start_2 = (result.flags.size + 15) & (~15);
-    if (heap_start_1 != heap_start_2) {
-      throw std::runtime_error(fmt::format("Heap base bad on {}: {} vs {}\n", type->get_name(),
-                                           heap_start_1, heap_start_2));
-    }
   }
 
   result.flags = flags;

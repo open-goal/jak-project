@@ -134,12 +134,12 @@
       (when (sphere-cull (-> arg0 bsphere))
         (add-debug-sphere
           #t
-          (bucket-id debug-draw0)
+          (bucket-id debug)
           (-> arg0 bsphere)
           (-> arg0 bsphere w)
           (new 'static 'rgba :r #x80 :a #x80)
           )
-        (add-debug-text-3d #t (bucket-id debug-draw1) arg1 (-> arg0 bsphere) (font-color white) (the-as vector2h #f))
+        (add-debug-text-3d #t (bucket-id debug-no-zbuf) arg1 (-> arg0 bsphere) (font-color white) (the-as vector2h #f))
         )
       )
     )
@@ -659,7 +659,7 @@
           (if *display-lights*
               (add-debug-lights
                 #t
-                (bucket-id debug-draw0)
+                (bucket-id debug)
                 (the-as (inline-array light) (-> s3-0 light-group))
                 (-> arg1 origin)
                 )
@@ -899,7 +899,6 @@
   (none)
   )
 
-;; definition for symbol *debug-hook*, type (function none)
 (define *debug-hook* main-debug-hook)
 
 (define *add-sphere* #f)
@@ -908,9 +907,9 @@
 
 (defun real-main-draw-hook ()
   "The main drawing function. This dispatches all renderers and is called directly from the display-loop
-  in main.gc."
+  in main.gc"
   (when *slow-frame-rate*
-    (dotimes (v1-2 40000000) ;; was 50000
+    (dotimes (v1-2 50000000) ;; was 50000
       (nop!)
       (nop!)
       (nop!)
@@ -919,7 +918,7 @@
       (nop!)
       )
     )
-  "Function to be executed to set up for engine dma"
+  "Function to be executed to set up for engine dma" ;; accidental docstring from the original game
 
   ;; update render enables from the debug menu
   (set! *vu1-enable-user* *vu1-enable-user-menu*)
@@ -1333,7 +1332,7 @@
     ;; get the increment in seconds unit.
     (let ((scaled-seconds (* (the int time-ratio) (the int (-> disp time-factor)))))
       ;; tell the sparticle system
-      (set-particle-frame-time (min 12 scaled-seconds))
+      (set-particle-frame-time (min (seconds 0.04) scaled-seconds))
 
       ;; the "not real" frame counters only count when unpaused
       (when (not (paused?))
@@ -1433,15 +1432,14 @@
       )
 
     ;; add the buckets
-    (set! (-> new-frame bucket-group)(dma-buffer-add-buckets (-> new-frame calc-buf) 69))
+    (set! (-> new-frame bucket-group) (dma-buffer-add-buckets (-> new-frame calc-buf) BUCKET_COUNT))
     )
 
   ;; initialize the debug bucket
-  (debug-init-buffer
-   (bucket-id debug-draw1)
-   (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
-   (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
-   )
+  (debug-init-buffer (bucket-id debug-no-zbuf)
+    (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
+    (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
+    )
 
   ;; setup our drawing offset for even/odd offset
   (set-draw-env-offset (-> disp frames new-frame-idx draw) 2048 2048 odd-even)
@@ -1465,7 +1463,7 @@
     (*post-draw-hook* (-> disp frames (-> disp on-screen) frame calc-buf))
 
     ;; iterate through all buckets and append a final GS state reset.
-    (dotimes (bucket-idx 69)
+    (dotimes (bucket-idx BUCKET_COUNT)
       (let* ((this-global-buf (-> this-frame global-buf))
              (a2-0 (-> this-global-buf base))
              )
@@ -1517,7 +1515,7 @@
       (set! (-> v1-14 base) (&+ (the-as pointer a0-10) 16))
       )
     ;; patch the buckets. Now sending the calc buf will send everything!
-    (dma-buffer-patch-buckets (-> this-frame bucket-group) 69)
+    (dma-buffer-patch-buckets (-> this-frame bucket-group) BUCKET_COUNT)
     ;; append the final END.
     (let* ((v1-15 this-calc-buf)
            (a0-13 (the-as object (-> v1-15 base)))
@@ -1574,7 +1572,7 @@
              (>= (the-as int (-> *display* base-frame-counter)) (the-as int (-> *game-info* blackout-time)))
              ;; this is a hack. this is initialized to #x493e0. It prevents controller-loss pause from
              ;; triggering in the first few seconds of gameplay.
-             (< #x49764 (the-as int (-> *display* real-frame-counter)))
+             (< (seconds 1003) (-> *display* real-frame-counter))
              )
             (and (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r2)) ;; debug press
                  (paused?)
