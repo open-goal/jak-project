@@ -115,7 +115,8 @@ void Compiler::read_eval_print(std::string input) {
     if (!input.empty()) {
       code = m_goos.reader.read_from_string(input);
     } else {
-      // if this is pulled out into a function....illegal instruction on checking the debugger? strange
+      // if this is pulled out into a function....illegal instruction on checking the debugger?
+      // strange
       std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
       if (m_listener.is_connected()) {
         prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");

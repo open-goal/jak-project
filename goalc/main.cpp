@@ -92,7 +92,8 @@ int main(int argc, char** argv) {
     } else {
       ReplStatus status = ReplStatus::WANT_RELOAD;
       while (status == ReplStatus::WANT_RELOAD) {
-        compiler = std::make_unique<Compiler>(nrepl_port, username, std::make_unique<ReplWrapper>());
+        compiler =
+            std::make_unique<Compiler>(nrepl_port, username, std::make_unique<ReplWrapper>());
         status = compiler->execute_repl(auto_listen, auto_debug);
         if (status == ReplStatus::WANT_RELOAD) {
           fmt::print("Reloading compiler...\n");
