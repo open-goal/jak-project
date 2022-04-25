@@ -11,11 +11,11 @@ static s16 ApplyVolume(s16 sample, s32 volume) {
 
 s16_output synth::tick() {
   s16_output out{};
+
+  m_voices.remove_if([](std::shared_ptr<voice>& v) { return v->dead(); });
   for (auto& v : m_voices) {
     out += v->run();
   }
-
-  m_voices.remove_if([](std::shared_ptr<voice>& v) { return v->dead(); });
 
   out.left = ApplyVolume(out.left, m_Volume.left.Get());
   out.right = ApplyVolume(out.right, m_Volume.right.Get());

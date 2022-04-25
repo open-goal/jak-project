@@ -54,6 +54,14 @@ class midi_handler : public sound_handler {
                u32 bank,
                std::optional<ame_handler*> parent);
 
+  ~midi_handler() override {
+    for (auto& p : m_voices) {
+      auto v = p.lock();
+      if (v != nullptr) {
+        v->stop();
+      }
+    }
+  }
   void init_midi();
   void start();
   bool tick() override;

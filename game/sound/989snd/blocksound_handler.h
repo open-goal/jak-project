@@ -35,6 +35,15 @@ class blocksound_handler : public sound_handler {
     m_grain_handler.insert(std::make_pair(grain_type::rand_play, &blocksound_handler::rand_play));
   }
 
+  ~blocksound_handler() override {
+    for (auto& p : m_voices) {
+      auto v = p.lock();
+      if (v != nullptr) {
+        v->stop();
+      }
+    }
+  }
+
   bool tick() override;
   u32 bank() override { return m_bank; };
 

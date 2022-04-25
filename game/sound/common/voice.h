@@ -70,6 +70,8 @@ class voice {
     m_CustomLoop = true;
   }
 
+  void stop() { m_ADSR.Stop(); }
+
  private:
   union ADPCMHeader {
     u16 bits;
