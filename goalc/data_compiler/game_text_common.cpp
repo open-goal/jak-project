@@ -295,7 +295,8 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
                 throw std::runtime_error(
                     "Invalid object in subtitle entry, expecting actual line string after speaker");
               } else if (arg.is_symbol()) {
-                if (scene.kind() == SubtitleSceneKind::Movie && arg.as_symbol()->name == ":offscreen") {
+                if (scene.kind() == SubtitleSceneKind::Movie &&
+                    arg.as_symbol()->name == ":offscreen") {
                   offscreen = true;
                 } else {
                   throw std::runtime_error(
