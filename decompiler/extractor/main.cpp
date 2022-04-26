@@ -317,6 +317,7 @@ int main(int argc, char** argv) {
   bool flag_decompile = false;
   bool flag_compile = false;
   bool flag_play = false;
+  bool flag_folder = false;
 
   lg::initialize();
 
@@ -334,6 +335,7 @@ int main(int argc, char** argv) {
   app.add_flag("-d,--decompile", flag_decompile, "Decompile the game data");
   app.add_flag("-c,--compile", flag_compile, "Compile the game");
   app.add_flag("-p,--play", flag_play, "Play the game");
+  app.add_flag("-f,--folder", flag_folder, "Extract from folder");
   app.validate_positionals();
 
   CLI11_PARSE(app, argc, argv);
@@ -353,16 +355,18 @@ int main(int argc, char** argv) {
     setup_global_decompiler_stuff(std::nullopt);
   }
 
-  auto path_to_iso_files = file_util::get_jak_project_dir() / "extracted_iso";
+  std::filesystem::path path_to_iso_files = file_util::get_jak_project_dir() / "iso_data" / "jak1";
+  std::filesystem::create_directories(path_to_iso_files);
 
   // make sure the input looks right
   if (!std::filesystem::exists(data_dir_path)) {
-    fmt::print("Error: input folder {} does not exist\n", data_dir_path.string());
+    fmt::print("Error: input data path {} does not exist\n", data_dir_path.string());
     return 1;
   }
 
   if (flag_runall || flag_extract) {
-    if (!std::filesystem::is_directory(data_dir_path)) {
+    if (std::filesystem::is_regular_file(data_dir_path)) {
+      // it's a file, treat it as an ISO
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
       if (validation_res == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION) {
@@ -371,6 +375,13 @@ int main(int argc, char** argv) {
       } else if (flag_fail_on_validation && validation_res != ExtractorErrorCode::SUCCESS) {
         return static_cast<int>(validation_res);
       }
+    } else if (std::filesystem::is_directory(data_dir_path)) {
+      if (!flag_folder) {
+        // if we didn't request a folder explicitly, but we got one, assume something went wrong.
+        fmt::print("Error: got a folder, but didn't get folder flag\n");
+        return static_cast<int>(ExtractorErrorCode::VALIDATION_BAD_ISO_CONTENTS);
+      }
+      path_to_iso_files = data_dir_path;
     }
   }
 
