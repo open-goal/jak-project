@@ -1286,6 +1286,7 @@
   )
 
 ;; definition for function mistycannon-pick-random-target-point
+;; INFO: Return type mismatch float vs none.
 (defbehavior mistycannon-pick-random-target-point mistycannon ()
   (let ((f30-0 (* (sqrtf (rand-vu)) (-> self center-point w)))
         (f28-1 (* 65536.0 (rand-vu)))
@@ -1295,10 +1296,8 @@
     (set! (-> self at-point z) (+ (-> self center-point z) (* f30-0 (sin f28-1))))
     )
   (set! (-> self at-point w) 1.0)
-  (let ((f0-11 (rand-vu-float-range 2730.6667 12743.111)))
-    (set! (-> self target-theta) f0-11)
-    f0-11
-    )
+  (set! (-> self target-theta) (rand-vu-float-range 2730.6667 12743.111))
+  (none)
   )
 
 ;; definition for method 20 of type mistycannon
@@ -1406,9 +1405,9 @@
 
 ;; definition for function mistycannon-prebind-function
 ;; INFO: Return type mismatch int vs none.
-(defun mistycannon-prebind-function ((arg0 mistycannon) (arg1 int) (arg2 mistycannon))
+(defun mistycannon-prebind-function ((arg0 pointer) (arg1 int) (arg2 mistycannon))
   (let ((t9-0 quaternion-axis-angle!)
-        (a0-1 (&-> arg0 link))
+        (a0-1 (&+ arg0 144))
         (a1-1 0.0)
         (a2-1 1.0)
         (a3-0 0.0)
@@ -1423,7 +1422,7 @@
       )
     )
   (let ((t9-1 quaternion-axis-angle!)
-        (a0-2 (&-> arg0 tilt min))
+        (a0-2 (&+ arg0 192))
         (a1-2 -1.0)
         (a2-2 0.0)
         (a3-1 0.0)
@@ -1450,10 +1449,10 @@
           (the float (sar (shl (the int (+ (-> v1-19 min) (-> v1-19 value))) 48) 48))
           )
     )
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 stack 324)) -1.0 0.0 0.0 (-> arg2 front-wheel))
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 stack 276)) 1.0 0.0 0.0 (-> arg2 front-wheel))
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 goggles y)) -1.0 0.0 0.0 (-> arg2 rear-wheel))
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 at-point y)) 1.0 0.0 0.0 (-> arg2 rear-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 432)) -1.0 0.0 0.0 (-> arg2 front-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 384)) 1.0 0.0 0.0 (-> arg2 front-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 288)) -1.0 0.0 0.0 (-> arg2 rear-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 336)) 1.0 0.0 0.0 (-> arg2 rear-wheel))
   0
   (none)
   )
@@ -2046,9 +2045,7 @@
   (initialize-skeleton obj *mistycannon-sg* '())
   (logior! (-> obj skel status) (janim-status inited))
   (update-transforms! (-> obj root-override))
-  (set! (-> obj skel prebind-function)
-        (the-as (function pointer int process-drawable none) mistycannon-prebind-function)
-        )
+  (set! (-> obj skel prebind-function) mistycannon-prebind-function)
   (set! (-> obj skel postbind-function) mistycannon-postbind-function)
   (set! (-> obj fact-info-override)
         (new 'process 'fact-info-enemy obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
