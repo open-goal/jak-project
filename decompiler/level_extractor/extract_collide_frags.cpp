@@ -179,7 +179,7 @@ void find_faces(CollideListItem& item) {
       result[1 + s5] = ra_run_idx;
       result[1 - s5] = t6_run_idx;
       item.unpacked.faces.emplace_back(result[0], result[1], result[2]);
-      ASSERT(next < item.unpacked.vu0_buffer.size());
+      ASSERT((u32)next < item.unpacked.vu0_buffer.size());
     }
   }
 }
@@ -189,12 +189,11 @@ std::string debug_dump_to_obj(const std::vector<CollideListItem>& list) {
   std::vector<math::Vector<u32, 3>> faces;
 
   for (auto& item : list) {
-    // faces.insert(faces.end(), item.unpacked.faces.begin(), item.unpacked.faces.end());
     u32 f_off = verts.size() + 1;
     for (auto& f : item.unpacked.faces) {
       faces.emplace_back(f[0] + f_off, f[1] + f_off, f[2] + f_off);
     }
-    for (int t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
+    for (u32 t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
       verts.push_back(item.unpacked.vu0_buffer[t] / 65536);
     }
   }
@@ -241,13 +240,28 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
     total_faces += frag.unpacked.faces.size();
   }
 
-  fmt::print("Level {} has {} faces in collision mesh\n", debug_name, total_faces);
-
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_frags);
     file_util::write_text_file(
         file_util::get_file_path({"debug_out", fmt::format("collide-{}.obj", debug_name)}),
         debug_out);
+  }
+
+  for (auto& item : all_frags) {
+    u32 f_off = out.collision.vertices.size();
+    for (auto& f : item.unpacked.faces) {
+      out.collision.indices.push_back(f[0] + f_off);
+      out.collision.indices.push_back(f[1] + f_off);
+      out.collision.indices.push_back(f[2] + f_off);
+    }
+    for (u32 t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
+      auto& vert = out.collision.vertices.emplace_back();
+
+      vert.x = item.unpacked.vu0_buffer[t].x();
+      vert.y = item.unpacked.vu0_buffer[t].y();
+      vert.z = item.unpacked.vu0_buffer[t].z();
+      vert.flags = 0;  // todo
+    }
   }
 }
 

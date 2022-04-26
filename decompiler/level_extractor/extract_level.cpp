@@ -78,7 +78,8 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"tfrag-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_BVH]},
       {"shrub-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_TIME_OF_DAY]},
       {"shrub-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_VERT]},
-      {"shrub-ind", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_IND]}};
+      {"shrub-ind", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_IND]},
+      {"collision", memory_use_by_category[tfrag3::MemoryUsageCategory::COLLISION]}};
   for (auto& known : known_categories) {
     total_accounted += known.second;
   }
@@ -249,6 +250,8 @@ void extract_from_level(const ObjectFileDB& db,
       // fmt::print("  unsupported tree {}\n", draw_tree->my_type());
     }
   }
+
+  tfrag_level.level_name = level_name;
 
   Serializer ser;
   tfrag_level.serialize(ser);

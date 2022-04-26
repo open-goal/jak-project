@@ -45,9 +45,13 @@ struct SharedRenderState {
   bool no_multidraw = false;
 
   void reset();
-  bool has_camera_planes = false;
+  bool has_pc_data = false;
   LevelVis occlusion_vis[2];
+
   math::Vector4f camera_planes[4];
+  math::Vector4f camera_matrix[4];
+  math::Vector4f camera_hvdf_off;
+  math::Vector4f camera_fog;
 
   EyeRenderer* eye_renderer = nullptr;
 

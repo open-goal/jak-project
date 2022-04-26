@@ -55,7 +55,6 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                                std::shared_ptr<Loader> loader)
     : m_render_state(texture_pool, loader) {
   // setup OpenGL errors
-
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // disable specific errors
@@ -294,7 +293,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_render_state.reset();
   m_render_state.ee_main_memory = g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
-  m_render_state.has_camera_planes = false;
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
@@ -318,6 +316,12 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("buckets");
     dispatch_buckets(dma, prof);
   }
+
+  // render debug collision meshes
+  //  {
+  //      auto prof = m_profiler.root()->make_scoped_child("collision-draw");
+  //      m_collide_renderer.render(&m_render_state, prof);
+  //  }
 
   // apply effects done with PCRTC registers
   {
@@ -457,6 +461,11 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     m_render_state.next_bucket += 16;
     vif_interrupt_callback();
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
+
+    if (bucket_id == 30) {
+      auto prof = m_profiler.root()->make_scoped_child("collision-draw");
+      m_collide_renderer.render(&m_render_state, prof);
+    }
   }
   g_current_render = "";
 
