@@ -168,7 +168,8 @@ void extract_from_level(const ObjectFileDB& db,
                         const TextureDB& tex_db,
                         const std::string& dgo_name,
                         const DecompileHacks& hacks,
-                        bool dump_level) {
+                        bool dump_level,
+                        bool extract_collision) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -238,7 +239,7 @@ void extract_from_level(const ObjectFileDB& db,
       ASSERT(as_shrub_tree);
       extract_shrub(as_shrub_tree, fmt::format("{}-{}-shrub", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, {}, tfrag_level, dump_level);
-    } else if (draw_tree->my_type() == "drawable-tree-collide-fragment") {
+    } else if (draw_tree->my_type() == "drawable-tree-collide-fragment" && extract_collision) {
       auto as_collide_frags =
           dynamic_cast<level_tools::DrawableTreeCollideFragment*>(draw_tree.get());
       ASSERT(as_collide_frags);
@@ -270,11 +271,14 @@ void extract_all_levels(const ObjectFileDB& db,
                         const std::vector<std::string>& dgo_names,
                         const std::string& common_name,
                         const DecompileHacks& hacks,
-                        bool debug_dump_level) {
+                        bool debug_dump_level,
+                        bool extract_collision) {
   extract_common(db, tex_db, common_name);
   SimpleThreadGroup threads;
   threads.run(
-      [&](int idx) { extract_from_level(db, tex_db, dgo_names[idx], hacks, debug_dump_level); },
+      [&](int idx) {
+        extract_from_level(db, tex_db, dgo_names[idx], hacks, debug_dump_level, extract_collision);
+      },
       dgo_names.size());
   threads.join();
 }

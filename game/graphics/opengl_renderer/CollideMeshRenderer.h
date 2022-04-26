@@ -6,7 +6,7 @@ class CollideMeshRenderer {
   CollideMeshRenderer();
   void render(SharedRenderState* render_state, ScopedProfilerNode& prof);
   ~CollideMeshRenderer();
+
  private:
   GLuint m_vao;
 };
-

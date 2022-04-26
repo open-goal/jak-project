@@ -318,12 +318,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     dispatch_buckets(dma, prof);
   }
 
-  // render debug collision meshes
-  //  {
-  //      auto prof = m_profiler.root()->make_scoped_child("collision-draw");
-  //      m_collide_renderer.render(&m_render_state, prof);
-  //  }
-
   // apply effects done with PCRTC registers
   {
     auto prof = m_profiler.root()->make_scoped_child("pcrtc");
@@ -464,9 +458,10 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     vif_interrupt_callback();
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
-    if (bucket_id == 30 && m_render_state.render_collision_mesh) {
-      auto prof = m_profiler.root()->make_scoped_child("collision-draw");
-      m_collide_renderer.render(&m_render_state, prof);
+    // hack to draw the collision mesh in the middle the drawing
+    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 && m_render_state.render_collision_mesh) {
+      auto p = prof.make_scoped_child("collision-draw");
+      m_collide_renderer.render(&m_render_state, p);
     }
   }
   g_current_render = "";

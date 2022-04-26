@@ -62,7 +62,6 @@ void cull_check_all_slow(const math::Vector4f* planes,
                          u8* out);
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes);
 
-
 void update_render_state_from_pc_settings(SharedRenderState* state, const TfragPcPortData& data);
 
 void make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,

@@ -4,34 +4,6 @@
 
 CollideMeshRenderer::CollideMeshRenderer() {
   glGenVertexArrays(1, &m_vao);
-  glBindVertexArray(m_vao);
-
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-
-  //  glVertexAttribPointer(0,                                      // location 0 in the shader
-  //                        3,                                      // 3 values per vert
-  //                        GL_FLOAT,                               // floats
-  //                        GL_FALSE,                               // normalized
-  //                        sizeof(tfrag3::CollisionMesh::Vertex),  // stride
-  //                        (void*)offsetof(tfrag3::CollisionMesh::Vertex, x)  // offset
-  //  );
-
-  glVertexAttribPointer(0,                                          // location 0 in the shader
-                        3,                                          // 3 values per vert
-                        GL_FLOAT,                                   // floats
-                        GL_FALSE,                                   // normalized
-                        sizeof(tfrag3::ShrubGpuVertex),             // stride
-                        (void*)offsetof(tfrag3::ShrubGpuVertex, x)  // offset (0)
-  );
-
-  //  glVertexAttribIPointer(1,                                      // location 1 in the shader
-  //                         1,                                      // 3 values per vert
-  //                         GL_UNSIGNED_INT,                        // u32
-  //                         sizeof(tfrag3::CollisionMesh::Vertex),  // stride
-  //                         (void*)offsetof(tfrag3::CollisionMesh::Vertex, flags)  // offset
-  //  );
-  glBindVertexArray(0);
 }
 
 CollideMeshRenderer::~CollideMeshRenderer() {
@@ -50,22 +22,6 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
   render_state->shaders[ShaderId::COLLISION].activate();
 
   glBindVertexArray(m_vao);
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(0,                                      // location 0 in the shader
-                        3,                                      // 3 values per vert
-                        GL_FLOAT,                               // floats
-                        GL_FALSE,                               // normalized
-                        sizeof(tfrag3::CollisionMesh::Vertex),  // stride
-                        (void*)offsetof(tfrag3::CollisionMesh::Vertex, x)  // offset
-  );
-
-  glVertexAttribIPointer(1,                                      // location 1 in the shader
-                         1,                                      // 3 values per vert
-                         GL_UNSIGNED_INT,                        // u32
-                         sizeof(tfrag3::CollisionMesh::Vertex),  // stride
-                         (void*)offsetof(tfrag3::CollisionMesh::Vertex, flags)  // offset
-  );
   TfragRenderSettings settings;
   memcpy(settings.math_camera.data(), render_state->camera_matrix[0].data(), 64);
   settings.hvdf_offset = render_state->camera_hvdf_off;
