@@ -100,6 +100,7 @@ struct Config {
   bool process_game_text = false;
   bool process_game_count = false;
   bool rip_levels = false;
+  bool extract_collision = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;

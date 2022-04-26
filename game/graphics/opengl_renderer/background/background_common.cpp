@@ -659,3 +659,16 @@ u32 make_all_visible_index_list(std::pair<int, int>* group_out,
   *num_tris_out = num_tris;
   return idx_buffer_ptr;
 }
+
+void update_render_state_from_pc_settings(SharedRenderState* state, const TfragPcPortData& data) {
+  if (!state->has_pc_data) {
+    for (int i = 0; i < 4; i++) {
+      state->camera_planes[i] = data.planes[i];
+      state->camera_matrix[i] = data.camera[i];
+    }
+    state->camera_pos = data.cam_trans;
+    state->camera_hvdf_off = data.hvdf_off;
+    state->camera_fog = data.fog;
+    state->has_pc_data = true;
+  }
+}

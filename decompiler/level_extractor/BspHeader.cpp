@@ -59,6 +59,14 @@ std::string Vector::print_meters(int indent) const {
   return result;
 }
 
+std::string Vector::print_decimal(int indent) const {
+  s32 d[4];
+  memcpy(d, data, 16);
+  std::string is(indent, ' ');
+  std::string result;
+  result += fmt::format("{}<vector {:d} {:d} {:d} {:d}>\n", is, d[0], d[1], d[2], d[3]);
+  return result;
+}
 void FileInfo::read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) {
   file_type = read_type_field(ref, "file-type", dts, true);
   file_name = read_string_field(ref, "file-name", dts, true);
@@ -887,6 +895,15 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   dists.read_from_file(get_field_ref(ref, "dists", dts));
   rdists.read_from_file(get_field_ref(ref, "rdists", dts));
   stiffness = read_plain_data_field<float>(ref, "stiffness", dts);
+  auto fr = get_field_ref(ref, "collide-frag", dts);
+  {
+    const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+    if (word.kind() == decompiler::LinkedWord::PTR) {
+      auto p = deref_label(fr);
+      p.byte_offset -= 4;
+      collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats);
+    }
+  }
 
   auto next_slot = get_field_ref(ref, "next", dts);
   for (int i = 0; i < 4; i++) {
@@ -1115,6 +1132,120 @@ std::string DrawableTreeInstanceTie::print(const PrintSettings& settings, int in
 
 std::string DrawableTreeInstanceTie::my_type() const {
   return "drawable-tree-instance-tie";
+}
+
+void DrawableTreeCollideFragment::read_from_file(TypedRef ref,
+                                                 const decompiler::DecompilerTypeSystem& dts,
+                                                 DrawStats* stats) {
+  s16 length = read_plain_data_field<s16>(ref, "length", dts);
+  auto data_ref = get_field_ref(ref, "data", dts);
+  if ((data_ref.byte_offset % 4) != 0) {
+    throw Error("misaligned data array");
+  }
+
+  Ref array_slot_ref = data_ref;
+  array_slot_ref.byte_offset += (length - 1) * 4;
+
+  Ref object_ref = deref_label(array_slot_ref);
+  object_ref.byte_offset -= 4;
+  last_array.read_from_file(typed_ref_from_basic(object_ref, dts), dts, stats);
+}
+
+std::string DrawableTreeCollideFragment::print(const PrintSettings& settings, int indent) const {
+  return last_array.print(settings, indent);
+}
+
+std::string DrawableTreeCollideFragment::my_type() const {
+  return "drawable-tree-collide-fragment";
+}
+
+void DrawableInlineArrayCollideFragment::read_from_file(TypedRef ref,
+                                                        const decompiler::DecompilerTypeSystem& dts,
+                                                        DrawStats* stats) {
+  ASSERT(ref.type->get_name() == "drawable-inline-array-collide-fragment");
+  id = read_plain_data_field<s16>(ref, "id", dts);
+  length = read_plain_data_field<s16>(ref, "length", dts);
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+
+  auto data_ref = get_field_ref(ref, "data", dts);
+  for (int i = 0; i < length; i++) {
+    Ref obj_ref = data_ref;
+    obj_ref.byte_offset += 32 * i;  // todo not a constant here
+    auto type = get_type_of_basic(obj_ref);
+    if (type != "collide-fragment") {
+      throw Error("bad collide fragment type: {}", type);
+    }
+    collide_fragments.emplace_back();
+    collide_fragments.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+  }
+}
+
+std::string DrawableInlineArrayCollideFragment::print(const PrintSettings& settings,
+                                                      int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  int next_indent = indent + 4;
+  result += fmt::format("{}id: {}\n", is, id);
+  result += fmt::format("{}length: {}\n", is, length);
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+
+  if (settings.expand_collide) {
+    for (u32 i = 0; i < collide_fragments.size(); i++) {
+      result += fmt::format("{}data [{}]:\n", is, i);
+      result += collide_fragments[i].print(settings, next_indent);
+    }
+  }
+  return result;
+}
+
+std::string DrawableInlineArrayCollideFragment::my_type() const {
+  return "drawable-inline-array-collide-fragment";
+}
+
+void CollideFragment::read_from_file(TypedRef ref,
+                                     const decompiler::DecompilerTypeSystem& dts,
+                                     DrawStats* stats) {
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+  auto r = deref_label(get_field_ref(ref, "mesh", dts));
+  r.byte_offset -= 4;
+  mesh.read_from_file(typed_ref_from_basic(r, dts), dts, stats);
+}
+
+std::string CollideFragment::print(const PrintSettings& settings, int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+  result += mesh.print(settings, indent);
+
+  return result;
+}
+
+void CollideFragMesh::read_from_file(TypedRef ref,
+                                     const decompiler::DecompilerTypeSystem& dts,
+                                     DrawStats* stats) {
+  strip_data_len = read_plain_data_field<u16>(ref, "strip-data-len", dts);
+  poly_count = read_plain_data_field<u16>(ref, "poly-count", dts);
+  vertex_count = read_plain_data_field<u8>(ref, "vertex-count", dts);
+  vertex_data_qwc = read_plain_data_field<u8>(ref, "vertex-data-qwc", dts);
+  total_qwc = read_plain_data_field<u8>(ref, "total-qwc", dts);
+  base_trans.read_from_file(get_field_ref(ref, "base-trans", dts));
+  base_trans.data[3] = 0;
+
+  packed_data = deref_label(get_field_ref(ref, "packed-data", dts));
+  pat_array = deref_label(get_field_ref(ref, "pat-array", dts));
+}
+
+std::string CollideFragMesh::print(const PrintSettings& settings, int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  result += fmt::format("{}strip-data-len: {}\n", is, strip_data_len);
+  result += fmt::format("{}poly-count: {}\n", is, poly_count);
+  result += fmt::format("{}vertex-count: {}\n", is, vertex_count);
+  result += fmt::format("{}vertex-data-qwc: {}\n", is, vertex_data_qwc);
+  result += fmt::format("{}total-qwc: {}\n", is, total_qwc);
+  result += fmt::format("{}base-trans: {}", is, base_trans.print_decimal());
+
+  return result;
 }
 
 //////////////////////////
@@ -1584,6 +1715,13 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     tree->read_from_file(ref, dts, stats);
     return tree;
   }
+
+  if (ref.type->get_name() == "drawable-tree-collide-fragment") {
+    auto tree = std::make_unique<DrawableTreeCollideFragment>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
   auto tree = std::make_unique<DrawableTreeUnknown>();
   tree->read_from_file(ref, dts, stats);
   return tree;

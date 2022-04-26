@@ -290,7 +290,7 @@ void decompile(std::filesystem::path jak1_input_files) {
   // levels
   {
     extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels);
+                       config.rip_levels, config.extract_collision);
   }
 }
 
