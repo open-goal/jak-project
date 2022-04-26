@@ -237,12 +237,36 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
         });
       }
 
-      else if (head.is_string()) {
+      else if (head.is_string() || head.is_int()) {
         if (banks.size() == 0) {
-          throw std::runtime_error("At least one language must be set before defining entries.");
+          throw std::runtime_error("At least one language must be set before defining scenes.");
         }
-        GameSubtitleSceneInfo scene(head.as_string()->data);
-        for_each_in_list(cdr(obj), [&](const goos::Object& entry) {
+        auto kind = SubtitleSceneKind::Movie;
+        int id = 0;
+        auto entries = cdr(obj);
+        if (head.is_int()) {
+          kind = SubtitleSceneKind::Hint;
+        } else if (car(entries).is_symbol()) {
+          const auto& parm = car(entries).as_symbol()->name;
+          if (parm == ":hint") {
+            entries = cdr(entries);
+            id = car(entries).as_int();
+            kind = SubtitleSceneKind::HintNamed;
+          } else {
+            throw std::runtime_error("Unknown parameter for subtitle scene");
+          }
+          entries = cdr(entries);
+        }
+
+        GameSubtitleSceneInfo scene(kind);
+        if (kind == SubtitleSceneKind::Movie || kind == SubtitleSceneKind::HintNamed) {
+          scene.set_name(head.as_string()->data);
+        } else if (kind == SubtitleSceneKind::Hint) {
+          id = head.as_int();
+        }
+        scene.set_id(id);
+
+        for_each_in_list(entries, [&](const goos::Object& entry) {
           if (entry.is_pair()) {
             // expected formats:
             // (time <args>)
@@ -271,8 +295,12 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
                 throw std::runtime_error(
                     "Invalid object in subtitle entry, expecting actual line string after speaker");
               } else if (arg.is_symbol()) {
-                if (arg.as_symbol()->name == ":offscreen") {
+                if (scene.kind() == SubtitleSceneKind::Movie &&
+                    arg.as_symbol()->name == ":offscreen") {
                   offscreen = true;
+                } else {
+                  throw std::runtime_error(
+                      fmt::format("Unknown parameter {} in subtitle", arg.as_symbol()->name));
                 }
               }
             });
@@ -287,7 +315,6 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
           if (!bank->scene_exists(scene.name())) {
             bank->add_scene(scene);
           } else {
-            // this should copy the data, so it's safe to delete the new one afterwards.
             auto& old_scene = bank->scene_by_name(scene.name());
             old_scene.from_other_scene(scene);
           }
@@ -320,15 +347,19 @@ void compile_subtitle(GameSubtitleDB& db) {
     std::queue<int> array_link_sources;
     // now add all the scene infos
     for (auto& [name, scene] : bank->scenes()) {
-      gen.add_word(0 |
+      gen.add_word((u16)scene.kind() |
                    (scene.lines().size() << 16));  // kind (lower 16 bits), length (upper 16 bits)
 
       array_link_sources.push(gen.words());
       gen.add_word(0);  // keyframes (linked later)
 
-      gen.add_ref_to_string_in_pool(scene.name());  // name
-
-      gen.add_word(0);  // pad (string is 4 bytes but we have 8)
+      if (scene.kind() == SubtitleSceneKind::Movie ||
+          scene.kind() == SubtitleSceneKind::HintNamed) {
+        gen.add_ref_to_string_in_pool(scene.name());  // name
+      } else if (scene.kind() == SubtitleSceneKind::Hint) {
+        gen.add_word(0);  // nothing
+      }
+      gen.add_word(scene.id());
     }
     // now add all the scene *data!* (keyframes)
     for (auto& [name, scene] : bank->scenes()) {

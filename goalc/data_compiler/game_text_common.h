@@ -66,11 +66,9 @@ class GameTextDB {
  * The subtitle scene info (accessed through the scene name) contains all lines and their timestamps
  * and other settings.
  */
+enum class SubtitleSceneKind { Invalid = -1, Movie = 0, Hint = 1, HintNamed = 2 };
 class GameSubtitleSceneInfo {
  public:
-  GameSubtitleSceneInfo() {}
-  GameSubtitleSceneInfo(std::string name) : m_name(name) {}
-
   struct SubtitleLine {
     SubtitleLine(int frame, std::string line, std::string speaker, bool offscreen)
         : frame(frame), line(line), speaker(speaker), offscreen(offscreen) {}
@@ -81,12 +79,22 @@ class GameSubtitleSceneInfo {
     bool offscreen;
   };
 
+  GameSubtitleSceneInfo() {}
+  GameSubtitleSceneInfo(SubtitleSceneKind kind) : m_kind(kind) {}
+
   const std::string& name() const { return m_name; }
   const std::vector<SubtitleLine>& lines() const { return m_lines; }
+  int id() const { return m_id; }
+  SubtitleSceneKind kind() const { return m_kind; }
+
   void clear_lines() { m_lines.clear(); }
+  void set_name(const std::string& new_name) { m_name = new_name; }
+  void set_id(int new_id) { m_id = new_id; }
   void from_other_scene(GameSubtitleSceneInfo& scene) {
     m_name = scene.name();
     m_lines = scene.lines();
+    m_kind = scene.kind();
+    m_id = scene.id();
   }
 
   void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
@@ -95,7 +103,9 @@ class GameSubtitleSceneInfo {
 
  private:
   std::string m_name;
+  int m_id;
   std::vector<SubtitleLine> m_lines;
+  SubtitleSceneKind m_kind;
 };
 
 /*!

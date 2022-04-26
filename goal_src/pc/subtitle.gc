@@ -5,8 +5,8 @@
 
   Code for subtitles for the PC port. A PC actor pool is provided, and the subtitle process lives there.
   It automatically detects the currently playing cutscene and plays the subtitles for it on channel 0.
-  Channel 1 and 2 are reserved for ambient sounds, which cannot be auto-detected, so the ambient-control needs to
-  notify the subtitle process manually (TODO: verify this!)
+  The other two channels are for hints, first checked automatically by name, then by text ID.
+  There is a hack in ambient.gc to store the name of the last ambient hint vag played to aid in this.
 
   Similarly to the generic text file, only one subtitles text file is loaded at once, stored in a specific
   heap.
@@ -23,6 +23,7 @@
 
 (defconstant PC_SUBTITLE_FILE_SIZE (* 64 1024)) ;; 64K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subtit")
+(defconstant PC_SUBTITLE_STR_ADJUST 17)
 (defglobalconstant PC_SUBTITLE_DEBUG #f)
 
 
@@ -39,7 +40,7 @@
 ;; enum for the subtitle channels, no more than 2 bytes!
 (defenum pc-subtitle-channel
   :type int16
-  (invalid -1) (movie 0) (ambient 1) (hint 2))
+  (invalid -1) (movie 0) (hint 1) (hint-named 2))
 (defconstant SUBTITLE_CHANNEL_COUNT 3)
 
 (defenum pc-subtitle-flags
@@ -71,10 +72,10 @@
 
    ;; now we store a way to identify and lookup the subtitles.
 
-   ;; the game-text-id if this is for a hint
-   (id    game-text-id  :offset 8)
    ;; the name of the spool-anim
    (name  string        :offset 8)
+   ;; the game-text-id if this is for a hint
+   (id    game-text-id  :offset 12)
    ;; the 8-character name for an ambient or hint
    (hash  uint64        :offset 8)
 
@@ -94,6 +95,7 @@
 
   (:methods
     (get-scene-by-name (_type_ pc-subtitle-channel string) subtitle-text)
+    (get-scene-by-text-id (_type_ pc-subtitle-channel game-text-id) subtitle-text)
     )
   )
 
@@ -122,9 +124,9 @@
 (define *SUBTITLE-bank*
     (new 'static 'subtitle-bank
                   :scale 0.49
-                  :width 0.85
-                  :height 0.8
-                  :lines 3.0
+                  :width 0.87
+                  :height 0.82
+                  :lines 2.0
                   ))
 
 ;; the subtitle process! it lives on the PC actor pool and awaits for incoming subtitle messages, or a movie
@@ -135,6 +137,7 @@
 
    (    spool-name string)
    (old-spool-name string)
+   (text-id game-text-id)
    (cur-channel pc-subtitle-channel)
 
    (want-subtitle subtitle-keyframe) ;; the subtitle we want to display
@@ -174,9 +177,29 @@
 (defmethod get-scene-by-name subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (name string))
   "get a subtitle scene info with the corresponding name. #f = none found"
 
+  ;; invalid kind so return invalid scene.
+  (if (or (not name) (= kind (pc-subtitle-channel invalid)))
+      (return (the subtitle-text #f)))
+
   (dotimes (i (-> obj length))
     ;; name and kind matches, return that!
     (when (and (= kind (-> obj data i kind)) (string= (-> obj data i name) name))
+      (return (-> obj data i))
+      )
+    )
+
+  (the subtitle-text #f))
+
+(defmethod get-scene-by-text-id subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (id game-text-id))
+  "get a subtitle scene info with the corresponding name. #f = none found"
+
+  ;; invalid kind so return invalid scene.
+  (if (= kind (pc-subtitle-channel invalid))
+      (return (the subtitle-text #f)))
+
+  (dotimes (i (-> obj length))
+    ;; name and kind matches, return that!
+    (when (and (= kind (-> obj data i kind)) (= (-> obj data i id) id))
       (return (-> obj data i))
       )
     )
@@ -505,8 +528,12 @@
   "can a subtitle be displayed right now?"
   (and (-> *pc-settings* subtitles?)  ;; subtitles enabled
        (or *debug-segment* (= *master-mode* 'game))  ;; current mode is game, OR we are just debugging
+       (not *progress-process*) ;; no progress open
        )
   )
+
+(defun subtitle-str-adjust ((pos int))
+  (if (< pos 0) -1 (/ pos PC_SUBTITLE_STR_ADJUST)))
 
 
 (defstate subtitle-process (subtitle)
@@ -535,49 +562,85 @@
     (set! (-> self cur-channel) (pc-subtitle-channel invalid))
 
     ;; check what kind of subtitles are running
-    (when (and (movie?) (-> *art-control* spool-lock) (-> *art-control* active-stream))
-      ;; there's a cutscene happening and an active spool with a valid owner.
-      (set! (-> self spool-name) (-> *art-control* active-stream))
-      (set! (-> self cur-channel) (pc-subtitle-channel movie))
-      (with-proc ((handle->process (-> *art-control* spool-lock)))
-        (format *stdcon* "movie spool detected~%current spool frame is ~D~%" (the int (ja-aframe-num 0)))
-        )
+    (cond
+      ((and (movie?) (-> *art-control* spool-lock) (-> *art-control* active-stream))
+        ;; there's a cutscene happening and an active spool with a valid owner.
+        (set! (-> self spool-name) (-> *art-control* active-stream))
+        (set! (-> self cur-channel) (pc-subtitle-channel movie))
+        (with-proc ((handle->process (-> *art-control* spool-lock)))
+          (format *stdcon* "movie spool detected:~%~3L~A~0L~%current spool frame is ~3L~D~0L~%"
+                  (-> *art-control* active-stream) (the int (ja-aframe-num 0)))
+          )
+       )
+      (*hint-semaphore*
+        ;; there's a hint playing
+        (set! (-> self spool-name) (-> *hint-semaphore* 0 sound-to-play))
+        (unless (-> self spool-name)
+          (set! (-> self spool-name) *level-hint-spool-name*))
+        (set! (-> self text-id) (-> *hint-semaphore* 0 text-id-to-display))
+        (set! (-> self cur-channel) (if (-> self spool-name)
+                                        (pc-subtitle-channel hint-named)
+                                        (pc-subtitle-channel hint)))
+        (format *stdcon* "hint detected!~%~3L~A~0L/~3L#x~X~0L~%current str pos is ~D (~3L~D~0L)~%"
+                (-> self spool-name) (-> self text-id)
+                (current-str-pos (-> *hint-semaphore* 0 sound-id))
+                (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id))))
+       )
       )
 
     ;; do subtitles
-    (case (-> self cur-channel)
-      (((pc-subtitle-channel movie))
-        ;; cutscenes, check if user toggled subtitles
-        (if (and (= 'game *master-mode*) (cpad-pressed? 0 square))
-            (not! (-> *pc-settings* subtitles?)))
-
-        (when (subtitle?)
-          ;; subtitles on! get a subtitle info that matches our current cutscene, and find at what point we're in.
-          (let ((scene (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))))
-            (when scene
-              ;; got a scene! get closest subtitle now.
-              (let ((pos 0)
-                    (keyframe (the subtitle-keyframe #f)))
-                  ;; get frame num
-                  (with-proc ((handle->process (-> *art-control* spool-lock)))
-                    (set! pos (the int (ja-aframe-num 0)))
-                    )
-                  ;; find closest keyframe
-                  (dotimes (i (-> scene length))
-                    (when (>= pos (-> scene keyframes i frame))
-                      (set! keyframe (-> scene keyframes i)))
-                    )
-                  ;; and save it!
-                  (set! (-> self want-subtitle) keyframe)
-                )
+    
+    ;; get a subtitle info that matches our current status
+    (let ((keyframe (the subtitle-keyframe #f)))
+      (case (-> self cur-channel)
+        (((pc-subtitle-channel movie))
+          ;; cutscenes. get our cutscene.
+          (awhen (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
+          
+            ;; find out position in the scene.
+            (let ((pos 0))
+                ;; get frame num
+                (with-proc ((handle->process (-> *art-control* spool-lock)))
+                  (set! pos (the int (ja-aframe-num 0)))
+                  )
+                ;; find closest keyframe
+                (dotimes (i (-> it length))
+                  (when (>= pos (-> it keyframes i frame))
+                    (set! keyframe (-> it keyframes i)))
+                  )
               )
             )
 
           ;; keep this for later
           (set! (-> self old-spool-name) (-> self spool-name))
           )
+        (((pc-subtitle-channel hint) (pc-subtitle-channel hint-named))
+          ;; hint! find it. or else.
+          (awhen (if (= (-> self cur-channel) (pc-subtitle-channel hint-named))
+                     (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
+                     (get-scene-by-text-id *subtitle-text* (-> self cur-channel) (-> self text-id))
+                     )
+          
+            (let ((pos (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id)))))
+                ;; find closest keyframe
+                (dotimes (i (-> it length))
+                  (when (>= pos (-> it keyframes i frame))
+                    (set! keyframe (-> it keyframes i)))
+                  )
+              )
+            )
+          )
         )
-      )
+        
+        ;; save whatever subtitle we got.
+        (set! (-> self want-subtitle) keyframe))
+
+    ;; during a cutscene, check if user toggled subtitles
+    (if (and (= (pc-subtitle-channel movie) (-> self cur-channel))
+             (= 'game *master-mode*)
+             (-> self want-subtitle)
+             (cpad-pressed? 0 square))
+        (not! (-> *pc-settings* subtitles?)))
 
     (when *debug-segment*
         (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
@@ -598,8 +661,9 @@
     (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
     (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
 
-    (when (-> self want-subtitle)
+    (when (and (-> self want-subtitle) (subtitle?))
         ;; we got a valid subtitle! render it.
+        (hide-bottom-hud)
         (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22)
         (#when PC_SUBTITLE_DEBUG
           (draw-debug-text-box (-> self font))
