@@ -366,7 +366,7 @@ int main(int argc, char** argv) {
 
   if (flag_runall || flag_extract) {
     if (std::filesystem::is_regular_file(data_dir_path)) {
-      // assume it's an iso file
+      // it's a file, treat it as an ISO
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
       if (validation_res == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION) {
