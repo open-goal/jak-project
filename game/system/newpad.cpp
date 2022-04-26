@@ -8,6 +8,7 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+#include <common/util/FileUtil.h>
 
 namespace Pad {
 
@@ -282,6 +283,9 @@ void check_gamepads() {
 }
 
 void initialize() {
+  std::string mapping_path =
+      (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
+  glfwUpdateGamepadMappings(file_util::read_text_file(mapping_path).c_str());
   check_gamepads();
   if (g_gamepads.gamepad_idx[0] == -1) {
     lg::info("No joysticks found.");

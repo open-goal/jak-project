@@ -5,7 +5,7 @@
 
 (text
   (jak1-v1 "assets/game_text.txt")
-  (jak1-v1 "game/assets/jak1/text/game_text_en.txt")
+  (jak1-v1 "game/assets/jak1/text/game_text_en.gs")
   )
 
 

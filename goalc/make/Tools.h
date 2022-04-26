@@ -2,7 +2,6 @@
 
 #include "goalc/make/Tool.h"
 #include "common/goos/Reader.h"
-#include "goalc/data_compiler/game_subtitle.h"
 
 class Compiler;
 

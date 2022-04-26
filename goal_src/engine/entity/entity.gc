@@ -862,7 +862,7 @@
                    (let ((s1-1 (the-as process-drawable (-> s0-0 extra process))))
                      (add-debug-x
                        #t
-                       (bucket-id debug-draw1)
+                       (bucket-id debug-no-zbuf)
                        (-> s1-1 root trans)
                        (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80)
                        )
@@ -878,7 +878,7 @@
                        )
                      (add-debug-text-3d
                        #t
-                       (bucket-id debug-draw1)
+                       (bucket-id debug-no-zbuf)
                        (symbol->string (-> s1-1 state name))
                        (-> s1-1 root trans)
                        (font-color white)
@@ -910,7 +910,7 @@
                        (if (and (the-as structure v0-10) (= (-> v0-10 type) symbol))
                            (add-debug-text-3d
                              #t
-                             (bucket-id debug-draw1)
+                             (bucket-id debug-no-zbuf)
                              (symbol->string v0-10)
                              (-> s1-1 root trans)
                              (font-color white)
@@ -921,7 +921,7 @@
                      )
                    )
                   ((or (= arg0 'full) (-> s0-0 extra process))
-                   (add-debug-x #t (bucket-id debug-draw1) s1-0 (the-as rgba (if (-> s0-0 extra process)
+                   (add-debug-x #t (bucket-id debug-no-zbuf) s1-0 (the-as rgba (if (-> s0-0 extra process)
                                                                                  (the-as uint #x8080ff80)
                                                                                  (the-as uint #x800000ff)
                                                                                  )
@@ -982,13 +982,13 @@
                         (when (and (type-type? (-> s0-3 type) process-drawable) (nonzero? (-> (the-as process-drawable s0-3) draw)))
                           (add-debug-x
                             #t
-                            (bucket-id debug-draw1)
+                            (bucket-id debug-no-zbuf)
                             (-> (the-as process-drawable s0-3) root trans)
                             (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
                             )
                           (add-debug-sphere
                             #t
-                            (bucket-id debug-draw0)
+                            (bucket-id debug)
                             (vector+!
                               (new 'stack-no-clear 'vector)
                               (-> (the-as process-drawable s0-3) draw origin)
@@ -1022,7 +1022,7 @@
               (s4-2 (-> (the-as process-drawable s5-2) root trans))
               )
           (when s3-2
-            (add-debug-x #t (bucket-id debug-draw1) s4-2 (the-as rgba (if (-> s3-2 extra process)
+            (add-debug-x #t (bucket-id debug-no-zbuf) s4-2 (the-as rgba (if (-> s3-2 extra process)
                                                                           (the-as uint #x8080ff80)
                                                                           (the-as uint #x800000ff)
                                                                           )
@@ -1030,7 +1030,7 @@
                          )
             (add-debug-text-3d
               #t
-              (bucket-id debug-draw1)
+              (bucket-id debug-no-zbuf)
               (res-lump-struct s3-2 'name string)
               s4-2
               (the-as font-color (if (logtest? (-> s3-2 extra perm status) (entity-perm-status bit-0 bit-1))
@@ -1042,7 +1042,7 @@
               )
             (add-debug-text-3d
               #t
-              (bucket-id debug-draw1)
+              (bucket-id debug-no-zbuf)
               (symbol->string (-> (the-as process-drawable s5-2) state name))
               s4-2
               (font-color white)
@@ -1071,7 +1071,7 @@
               )
           (add-debug-sphere
             #t
-            (bucket-id debug-draw0)
+            (bucket-id debug)
             (vector+!
               (new 'stack-no-clear 'vector)
               (-> (the-as process-drawable s5-2) draw origin)
@@ -1091,7 +1091,7 @@
             (if v0-35
                 (add-debug-box
                   #t
-                  (bucket-id debug-draw1)
+                  (bucket-id debug-no-zbuf)
                   (the-as vector (&+ v0-35 0))
                   (the-as vector (&+ v0-35 16))
                   (the-as rgba (if (is-object-visible? (-> s5-3 extra level) a1-31)
@@ -1155,7 +1155,7 @@
               (countdown (s2-4 (-> s3-4 length))
                 (add-debug-box
                   #t
-                  (bucket-id debug-draw0)
+                  (bucket-id debug)
                   (the-as vector (-> s3-4 data s2-4))
                   (the-as vector (+ (the-as uint (-> s3-4 data 0 max)) (* s2-4 32)))
                   (the-as rgba (if (zero? (-> s4-4 index))
@@ -1936,14 +1936,14 @@
   (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
   (set! *display-actor-anim* (the string (and (-> inspect-info show-actor-info) name)))
   ;; draw trans
-  (add-debug-x #t (bucket-id debug-draw1) (-> e trans) (static-rgba 255 255 0 128))
+  (add-debug-x #t (bucket-id debug-no-zbuf) (-> e trans) (static-rgba 255 255 0 128))
   (if (or (not (-> inspect-info show-actor-info)) (!= (-> e type) entity-actor) (and (= (-> e type) entity-actor) (not (-> (the entity-actor e) extra process))))
-      (add-debug-text-3d #t (bucket-id debug-draw1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8)))
+      (add-debug-text-3d #t (bucket-id debug-no-zbuf) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8)))
 
   ;; start writing text
   (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 8))) (cur-y begin-y) (y-adv 8))
   (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
-                               (bucket-id debug-draw1))
+                               (bucket-id debug-no-zbuf))
       ;; basic info, actor id, etc
       (draw-string-xy
           (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%R1/L1 scroll L3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))

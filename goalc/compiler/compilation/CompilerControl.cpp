@@ -15,8 +15,7 @@
 #include "goalc/compiler/IR.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
-#include "goalc/data_compiler/game_text.h"
-#include "goalc/data_compiler/game_subtitle.h"
+#include "goalc/data_compiler/game_text_common.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -82,29 +81,34 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
 Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::INTEGER},
-           {{"files", {true, goos::ObjectType::PAIR}}});
-  auto kind = symbol_string(args.unnamed.at(0));
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {{"files", {true, goos::ObjectType::PAIR}}});
+
+  // list of files per text version.
+  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
+
+  // what kind of text file?
+  const auto kind = symbol_string(args.unnamed.at(0));
+
+  // open all project files specified (usually one).
+  for_each_in_list(args.named.at("files"), [this, &inputs, &form, &kind](const goos::Object& o) {
+    if (o.is_string()) {
+      open_text_project(kind, o.as_string()->data, inputs);
+    } else {
+      throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
+    }
+  });
+
+  // compile files.
   if (kind == "subtitle") {
-    std::vector<std::string> files;
-    for_each_in_list(args.named.at("files"), [this, &files, &form](const goos::Object& o) {
-      if (o.is_string()) {
-        files.push_back(o.as_string()->data);
-      } else {
-        throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
-      }
-    });
-    compile_game_subtitle(files, (GameTextVersion)args.unnamed.at(1).as_int());
+    for (auto& [ver, in] : inputs) {
+      GameSubtitleDB db;
+      compile_game_subtitle(in, ver, db);
+    }
   } else if (kind == "text") {
-    std::vector<std::string> files;
-    for_each_in_list(args.named.at("files"), [this, &files, &form](const goos::Object& o) {
-      if (o.is_string()) {
-        files.push_back(o.as_string()->data);
-      } else {
-        throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
-      }
-    });
-    compile_game_text(files, (GameTextVersion)args.unnamed.at(1).as_int());
+    for (auto& [ver, in] : inputs) {
+      GameTextDB db;
+      compile_game_text(in, ver, db);
+    }
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
