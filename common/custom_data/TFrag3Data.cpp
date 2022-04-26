@@ -235,7 +235,6 @@ void Texture::serialize(Serializer& ser) {
 
 void CollisionMesh::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
-  ser.from_pod_vector(&indices);
 }
 
 void Level::serialize(Serializer& ser) {
@@ -361,7 +360,6 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
 
   // collision
   result[COLLISION] += sizeof(CollisionMesh::Vertex) * collision.vertices.size();
-  result[COLLISION] += sizeof(u32) * collision.indices.size();
 
   return result;
 }

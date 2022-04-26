@@ -490,32 +490,11 @@ bool Loader::init_tie(Timer& timer, LevelData& data) {
 }
 
 bool Loader::init_collide(Timer& /*timer*/, LevelData& data) {
-  glGenBuffers(1, &data.collide_indices);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.collide_indices);
-  fmt::print("LOADER {}: {} indices {}\n", data.level->level_name,
-             data.level->collision.indices.size(), data.collide_indices);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.level->collision.indices.size() * sizeof(u32),
-               data.level->collision.indices.data(), GL_STATIC_DRAW);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-  u32 max_idx = 0;
-  for (auto x : data.level->collision.indices) {
-    max_idx = std::max(max_idx, x);
-  }
-  fmt::print("  max: {}\n", max_idx);
-
   glGenBuffers(1, &data.collide_vertices);
-  fmt::print("LOADER {}: {} vertices {}\n", data.level->level_name,
-             data.level->collision.vertices.size(), data.collide_vertices);
-
   glBindBuffer(GL_ARRAY_BUFFER, data.collide_vertices);
   glBufferData(GL_ARRAY_BUFFER,
                data.level->collision.vertices.size() * sizeof(tfrag3::CollisionMesh::Vertex),
                data.level->collision.vertices.data(), GL_STATIC_DRAW);
-  for (int i = 0; i < 10; i++) {
-    auto& v = data.level->collision.vertices[i];
-    fmt::print("{}: {} {} {}\n", i, v.x, v.y, v.z);
-  }
   return true;
 }
 
@@ -687,7 +666,6 @@ void Loader::update(TexturePool& texture_pool) {
             }
           }
 
-          glDeleteBuffers(1, &lev.second.data.collide_indices);
           glDeleteBuffers(1, &lev.second.data.collide_vertices);
 
           m_loaded_tfrag3_levels.erase(lev.first);

@@ -313,9 +313,11 @@ struct CollisionMesh {
   struct Vertex {
     float x, y, z;
     u32 flags;
+    s16 nx, ny, nz;
+    u16 pad;
   };
+  static_assert(sizeof(Vertex) == 24);
   std::vector<Vertex> vertices;
-  std::vector<u32> indices;
   void serialize(Serializer& ser);
 };
 

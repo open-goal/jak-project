@@ -80,6 +80,10 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "hvdf_offset"),
               settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
               settings.hvdf_offset[3]);
+  const auto& trans = render_state->camera_pos;
+  glUniform4f(
+      glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "camera_position"),
+      trans[0], trans[1], trans[2], trans[3]);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "fog_constant"),
               settings.fog.x());
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "fog_min"),
@@ -87,7 +91,6 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "fog_max"),
               settings.fog.z());
   glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "mode"), 0);
-  //  glDisable(GL_DEPTH_TEST);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
   glEnable(GL_BLEND);
@@ -95,29 +98,44 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
   glDepthMask(GL_TRUE);
 
   for (auto lev : levels) {
-    static_assert(16 == sizeof(tfrag3::CollisionMesh::Vertex));
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->collide_indices);
     glBindBuffer(GL_ARRAY_BUFFER, lev->collide_vertices);
-    glVertexAttribPointer(0,         // location 0 in the shader
-                          3,         // 3 values per vert
-                          GL_FLOAT,  // floats
-                          GL_FALSE,  // normalized
-                          16,        // stride
-                          0          // offset (0)
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(0,                                      // location 0 in the shader
+                          3,                                      // 3 values per vert
+                          GL_FLOAT,                               // floats
+                          GL_FALSE,                               // normalized
+                          sizeof(tfrag3::CollisionMesh::Vertex),  // stride
+                          0                                       // offset (0)
     );
-
+    glVertexAttribIPointer(1,                                      // location 1 in the shader
+                           1,                                      // 3 values per vert
+                           GL_UNSIGNED_INT,                        // u32
+                           sizeof(tfrag3::CollisionMesh::Vertex),  // stride
+                           (void*)offsetof(tfrag3::CollisionMesh::Vertex, flags)  // offset
+    );
+    glVertexAttribPointer(2,                                      // location 2 in the shader
+                          3,                                      // 3 values per vert
+                          GL_SHORT,                               // floats
+                          GL_TRUE,                                // normalized
+                          sizeof(tfrag3::CollisionMesh::Vertex),  // stride
+                          (void*)offsetof(tfrag3::CollisionMesh::Vertex, nx)  // offset (0)
+    );
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "mode"), 0);
-    glDrawElements(GL_TRIANGLES, lev->level->collision.indices.size(), GL_UNSIGNED_INT, (void*)0);
+    glDrawArrays(GL_TRIANGLES, 0, lev->level->collision.vertices.size());
 
-    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "mode"), 1);
-    glDisable(GL_BLEND);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, lev->level->collision.indices.size(), GL_UNSIGNED_INT, (void*)0);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glEnable(GL_BLEND);
-
+    bool kDrawWireframe = false;
+    if (kDrawWireframe) {
+      glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::COLLISION].id(), "mode"), 1);
+      glDisable(GL_BLEND);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDrawArrays(GL_TRIANGLES, 0, lev->level->collision.vertices.size());
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      glEnable(GL_BLEND);
+    }
 
     prof.add_draw_call();
-    prof.add_tri(lev->level->collision.indices.size() / 3);
+    prof.add_tri(lev->level->collision.vertices.size() / 3);
   }
 }

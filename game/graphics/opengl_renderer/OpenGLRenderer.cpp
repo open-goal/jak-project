@@ -372,6 +372,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
   ImGui::Checkbox("Use old single-draw", &m_render_state.no_multidraw);
+  ImGui::Checkbox("Render collision mesh", &m_render_state.render_collision_mesh);
   ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
@@ -463,7 +464,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     vif_interrupt_callback();
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
-    if (bucket_id == 30) {
+    if (bucket_id == 30 && m_render_state.render_collision_mesh) {
       auto prof = m_profiler.root()->make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, prof);
     }

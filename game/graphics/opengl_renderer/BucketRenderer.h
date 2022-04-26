@@ -43,6 +43,7 @@ struct SharedRenderState {
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
   bool no_multidraw = false;
+  bool render_collision_mesh = false;
 
   void reset();
   bool has_pc_data = false;
@@ -52,6 +53,7 @@ struct SharedRenderState {
   math::Vector4f camera_matrix[4];
   math::Vector4f camera_hvdf_off;
   math::Vector4f camera_fog;
+  math::Vector4f camera_pos;
 
   EyeRenderer* eye_renderer = nullptr;
 

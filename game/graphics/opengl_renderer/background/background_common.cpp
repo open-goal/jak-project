@@ -666,6 +666,7 @@ void update_render_state_from_pc_settings(SharedRenderState* state, const TfragP
       state->camera_planes[i] = data.planes[i];
       state->camera_matrix[i] = data.camera[i];
     }
+    state->camera_pos = data.cam_trans;
     state->camera_hvdf_off = data.hvdf_off;
     state->camera_fog = data.fog;
     state->has_pc_data = true;

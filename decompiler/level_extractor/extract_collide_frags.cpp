@@ -211,6 +211,23 @@ std::string debug_dump_to_obj(const std::vector<CollideListItem>& list) {
   return result;
 }
 
+void set_vertices_for_tri(tfrag3::CollisionMesh::Vertex* out, const math::Vector4f* in) {
+  math::Vector3f v10 = in[1].xyz() - in[0].xyz();
+  math::Vector3f v20 = in[2].xyz() - in[0].xyz();
+  auto normal = (v10.cross(v20).normalized() * INT16_MAX).cast<s16>();
+
+  for (int i = 0; i < 3; i++) {
+    out[i].x = in[i].x();
+    out[i].y = in[i].y();
+    out[i].z = in[i].z();
+    out[i].nx = normal.x();
+    out[i].ny = normal.y();
+    out[i].nz = normal.z();
+    out[i].flags = 0;
+    out[i].pad = 0;
+  }
+}
+
 void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
                            const std::string& debug_name,
@@ -248,20 +265,27 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
   }
 
   for (auto& item : all_frags) {
-    u32 f_off = out.collision.vertices.size();
     for (auto& f : item.unpacked.faces) {
-      out.collision.indices.push_back(f[0] + f_off);
-      out.collision.indices.push_back(f[1] + f_off);
-      out.collision.indices.push_back(f[2] + f_off);
-    }
-    for (u32 t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
-      auto& vert = out.collision.vertices.emplace_back();
+      math::Vector4f verts[3] = {item.unpacked.vu0_buffer[f[0]], item.unpacked.vu0_buffer[f[1]],
+                                 item.unpacked.vu0_buffer[f[2]]};
+      tfrag3::CollisionMesh::Vertex out_verts[3];
+      set_vertices_for_tri(out_verts, verts);
+      for (int i = 0; i < 3; i++) {
+        out.collision.vertices.push_back(out_verts[i]);
+      }
 
-      vert.x = item.unpacked.vu0_buffer[t].x();
-      vert.y = item.unpacked.vu0_buffer[t].y();
-      vert.z = item.unpacked.vu0_buffer[t].z();
-      vert.flags = 0;  // todo
+      // out.collision.indices.push_back(f[0] + f_off);
+      // out.collision.indices.push_back(f[1] + f_off);
+      // out.collision.indices.push_back(f[2] + f_off);
     }
+    //    for (u32 t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
+    //      auto& vert = out.collision.vertices.emplace_back();
+    //
+    //      vert.x = item.unpacked.vu0_buffer[t].x();
+    //      vert.y = item.unpacked.vu0_buffer[t].y();
+    //      vert.z = item.unpacked.vu0_buffer[t].z();
+    //      vert.flags = 0;  // todo
+    //    }
   }
 }
 

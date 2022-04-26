@@ -11,8 +11,8 @@ struct TfragPcPortData {
   math::Vector4f camera[4];
   math::Vector4f hvdf_off;
   math::Vector4f fog;
-  char level_name[12];
-  u32 tree_idx;
+  math::Vector4f cam_trans;
+  char level_name[16];
 };
 
 // inputs to background renderers.

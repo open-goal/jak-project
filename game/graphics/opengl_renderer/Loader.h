@@ -32,7 +32,6 @@ class Loader {
     std::array<std::vector<GLuint>, tfrag3::TIE_GEOS> tfrag_vertex_data;
     std::vector<GLuint> shrub_vertex_data;
     GLuint collide_vertices;
-    GLuint collide_indices;
 
     // internal load state
     bool tie_opengl_created = false;
