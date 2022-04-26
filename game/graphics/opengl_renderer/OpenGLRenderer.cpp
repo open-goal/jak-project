@@ -55,7 +55,6 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                                std::shared_ptr<Loader> loader)
     : m_render_state(texture_pool, loader) {
   // setup OpenGL errors
-
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // disable specific errors
@@ -295,7 +294,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_render_state.reset();
   m_render_state.ee_main_memory = g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
-  m_render_state.has_camera_planes = false;
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
@@ -368,6 +366,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
   ImGui::Checkbox("Use old single-draw", &m_render_state.no_multidraw);
+  ImGui::Checkbox("Render collision mesh", &m_render_state.render_collision_mesh);
   ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
@@ -458,6 +457,12 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     m_render_state.next_bucket += 16;
     vif_interrupt_callback();
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
+
+    // hack to draw the collision mesh in the middle the drawing
+    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 && m_render_state.render_collision_mesh) {
+      auto p = prof.make_scoped_child("collision-draw");
+      m_collide_renderer.render(&m_render_state, p);
+    }
   }
   g_current_render = "";
 

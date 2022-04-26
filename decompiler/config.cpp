@@ -67,6 +67,7 @@ Config read_config_file(const std::string& path_to_config_file,
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
   config.is_pal = cfg.at("is_pal").get<bool>();
   config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
+  config.extract_collision = cfg.at("extract_collision").get<bool>();
 
   auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {

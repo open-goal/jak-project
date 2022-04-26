@@ -44,10 +44,13 @@ enum MemoryUsageCategory {
   SHRUB_TIME_OF_DAY,
   SHRUB_VERT,
   SHRUB_IND,
+
+  COLLISION,
+
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 14;
+constexpr int TFRAG3_VERSION = 15;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -306,6 +309,18 @@ struct ShrubTree {
   void unpack();
 };
 
+struct CollisionMesh {
+  struct Vertex {
+    float x, y, z;
+    u32 flags;
+    s16 nx, ny, nz;
+    u16 pad;
+  };
+  static_assert(sizeof(Vertex) == 24);
+  std::vector<Vertex> vertices;
+  void serialize(Serializer& ser);
+};
+
 constexpr int TFRAG_GEOS = 3;
 constexpr int TIE_GEOS = 4;
 
@@ -316,6 +331,7 @@ struct Level {
   std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;
+  CollisionMesh collision;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
 

@@ -51,11 +51,11 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
         2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
   }
 
+  update_render_state_from_pc_settings(render_state, m_pc_port_data);
+
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
-    render_state->camera_planes[i] = m_pc_port_data.planes[i];
   }
-  render_state->has_camera_planes = true;
 
   m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   render_all_trees(settings, render_state, prof);
