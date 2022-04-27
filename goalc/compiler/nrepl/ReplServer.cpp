@@ -19,20 +19,20 @@ void ReplServer::write_on_accept() {
 }
 
 void ReplServer::read_data() {
-  int desired_size = 1;
+  int desired_size = (int)sizeof(ReplServerHeader);
   int got = 0;
 
   while (got < desired_size) {
     ASSERT(got + desired_size < buffer_size);
     int sock = accepted_socket;
-    auto x = read_from_socket(sock, buffer + got, desired_size - got);
+    auto x = read_from_socket(sock, header_buffer + got, desired_size - got);
     if (want_exit_callback()) {
       return;
     }
     got += x > 0 ? x : 0;
   }
 
-  auto* header = (ReplServerHeader*)(buffer);
+  auto* header = (ReplServerHeader*)(header_buffer);
 
   lock();
 
@@ -48,14 +48,14 @@ void ReplServer::read_data() {
     got += x > 0 ? x : 0;
   }
 
-  auto* body = (char*)(buffer);
-
   switch (header->type) {
     case ReplServerMessageType::PING:
       ping_response();
       break;
     case ReplServerMessageType::EVAL:
-      compile_msg("(repl-help)");
+      std::string msg;
+      msg.assign(buffer, got);
+      compile_msg(msg);
       break;
   }
 
@@ -83,10 +83,10 @@ void ReplServer::set_compiler(std::shared_ptr<Compiler> _compiler) {
 }
 
 void ReplServer::ping_response() {
-  u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
-  char* ye = "sanity";
+  std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
+                                 versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   lock();
-  write_to_socket(accepted_socket, (char*)&ye, 6);
+  auto bytes_written = write_to_socket(accepted_socket, ping.c_str(), ping.size());
   unlock();
 }
 
@@ -95,6 +95,6 @@ void ReplServer::compile_msg(const std::string_view& msg) {
     return;
   }
   compiler->lock();
-  compiler->read_eval_print(msg.data());
+  compiler->eval_and_print(compiler->read_from_string(msg.data()));
   compiler->unlock();
 }

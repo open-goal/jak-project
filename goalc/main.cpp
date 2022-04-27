@@ -102,6 +102,7 @@ int main(int argc, char** argv) {
     }
     // Otherwise, run the REPL and such
     compiler = std::make_shared<Compiler>(username, std::make_unique<ReplWrapper>());
+    repl_server.set_compiler(compiler);
     // Start nREPL Server
     if (repl_server_ok) {
       nrepl_thread = std::thread([&]() {
@@ -114,9 +115,16 @@ int main(int argc, char** argv) {
         }
       });
     }
+    // Run automatic forms if applicable
+    if (auto_debug || auto_listen) {
+      compiler->eval_and_print(compiler->read_from_string("(lt)"));
+    }
+    if (auto_debug) {
+      compiler->eval_and_print(compiler->read_from_string("(dbg) (:cont)"));
+    }
     // Poll Terminal
     while (status == ReplStatus::WANT_RELOAD) {
-      status = compiler->execute_repl(auto_listen, auto_debug);
+      status = compiler->execute_repl();
       if (status == ReplStatus::WANT_RELOAD) {
         fmt::print("Reloading compiler...\n");
       }

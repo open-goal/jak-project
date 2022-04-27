@@ -23,6 +23,7 @@ class ReplServer : public XSocketServer {
 
  private:
   std::shared_ptr<Compiler> compiler = nullptr;
+  char* header_buffer = new char[(int)sizeof(ReplServerHeader)];
 
   void ping_response();
   void compile_msg(const std::string_view& msg);

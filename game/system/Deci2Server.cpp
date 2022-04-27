@@ -16,7 +16,9 @@
 
 void Deci2Server::write_on_accept() {
   u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
+  lock();
   write_to_socket(accepted_socket, (char*)&versions, 8);
+  unlock();
 }
 
 /*!

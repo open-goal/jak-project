@@ -72,16 +72,35 @@ void Compiler::unlock() {
   compiler_mutex.unlock();
 }
 
-ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
-  if (auto_debug || auto_listen) {
-    read_eval_print("(lt)");
+std::optional<goos::Object> Compiler::read_from_stdin() {
+  std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+  if (m_listener.is_connected()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
   }
-  if (auto_debug) {
-    read_eval_print("(dbg) (:cont)");
+  if (m_debugger.is_halted()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+  } else if (m_debugger.is_attached()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
   }
+  // 1). get a line from the user (READ)
+  std::optional<goos::Object> code = m_goos.reader.read_from_stdin(prompt, *m_repl);
 
+  if (!code) {
+    return std::nullopt;
+  }
+  return code;
+}
+
+goos::Object Compiler::read_from_string(const std::string& input) {
+  return m_goos.reader.read_from_string(input);
+}
+
+ReplStatus Compiler::execute_repl() {
   while (!m_want_exit && !m_want_reload) {
-    read_eval_print();
+    auto code = read_from_stdin();
+    if (code) {
+      eval_and_print(code.value());
+    }
   }
 
   if (m_listener.is_connected()) {
@@ -100,35 +119,10 @@ ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   return ReplStatus::OK;
 }
 
-void Compiler::read_eval_print(std::string input) {
+void Compiler::eval_and_print(goos::Object code) {
   try {
-    std::optional<goos::Object> code;
-
-    // Explicitly specified input
-    if (!input.empty()) {
-      code = m_goos.reader.read_from_string(input);
-    } else {
-      // if this is pulled out into a function....illegal instruction on checking the debugger?
-      // strange
-      std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-      if (m_listener.is_connected()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-      }
-      if (m_debugger.is_halted()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-      } else if (m_debugger.is_attached()) {
-        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
-      }
-      // 1). get a line from the user (READ)
-      code = m_goos.reader.read_from_stdin(prompt, *m_repl);
-    }
-
-    if (!code) {
-      return;
-    }
-
     // 2). compile
-    auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
+    auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
     if (m_settings.debug_print_ir) {
       obj_file->debug_print_tl();
     }
