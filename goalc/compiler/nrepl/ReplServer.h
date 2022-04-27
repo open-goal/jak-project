@@ -1,38 +1,29 @@
 #pragma once
 
-#include <asio/ts/buffer.hpp>
-#include <asio/ts/internet.hpp>
+#include "common/cross_sockets/XSocketServer.h"
 
 #include "goalc/compiler/Compiler.h"
 
-using asio::ip::tcp;
+enum ReplServerMessageType { PING = 0, EVAL = 10, SHUTDOWN = 20 };
 
-class ReplSession : public std::enable_shared_from_this<ReplSession> {
- public:
-  ReplSession(tcp::socket socket, Compiler* repl);
-
-  void start();
-
- private:
-  Compiler* m_repl;
-  tcp::socket socket_;
-  enum { max_length = 1024 * 20 };
-  char data_[max_length];
-
-  void do_read();
-  void do_write(std::size_t length);
+struct ReplServerHeader {
+  u32 length;
+  u32 type;
 };
 
-class ReplServer {
+class ReplServer : public XSocketServer {
  public:
-  ReplServer(asio::io_context& io_context, Compiler* repl);
+  using XSocketServer::XSocketServer;
 
-  int m_port;
+  void write_on_accept() override;
+  void read_data() override;
+  void send_data(void* buf, u16 len) override;
+
+  void set_compiler(std::shared_ptr<Compiler> _compiler);
 
  private:
-  Compiler* m_repl;
-  tcp::acceptor acceptor_;
-  tcp::socket socket_;
+  std::shared_ptr<Compiler> compiler = nullptr;
 
-  void do_accept();
+  void ping_response();
+  void compile_msg(const std::string_view& msg);
 };

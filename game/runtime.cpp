@@ -9,6 +9,8 @@
 #elif _WIN32
 #include <io.h>
 #include "third-party/mman/mman.h"
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 
@@ -74,7 +76,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
-  Deci2Server server(shutdown_callback);
+  Deci2Server server(shutdown_callback, DECI2_PORT);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
@@ -84,20 +86,20 @@ void deci2_runner(SystemThreadInterface& iface) {
   lg::debug("[DECI2] Waiting for EE to register protos");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
-  if (!server.init()) {
+  if (!server.init_server()) {
     ASSERT(false);
   }
 
   lg::debug("[DECI2] Waiting for listener...");
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
-    if (server.check_for_listener()) {
+    if (server.wait_for_connection()) {
       if (!saw_listener) {
         lg::debug("[DECI2] Connected!");
       }
       saw_listener = true;
       // we have a listener, run!
-      server.run();
+      server.read_data();
     } else {
       // no connection yet.  Do a sleep so we don't spam checking the listener.
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
