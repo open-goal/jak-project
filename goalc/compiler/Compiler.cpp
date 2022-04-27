@@ -14,9 +14,7 @@
 
 using namespace goos;
 
-Compiler::Compiler(const int nrepl_port,
-                   const std::string& user_profile,
-                   std::unique_ptr<ReplWrapper> repl)
+Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
     : m_goos(user_profile), m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
@@ -48,38 +46,33 @@ Compiler::Compiler(const int nrepl_port,
   // load auto-complete history, only if we are running in the interactive mode.
   if (m_repl) {
     m_repl->load_history();
+    // init repl
+    m_repl->print_welcome_message();
+    auto examples = m_repl->examples;
+    auto regex_colors = m_repl->regex_colors;
+    m_repl->init_default_settings();
+    using namespace std::placeholders;
+    m_repl->get_repl().set_completion_callback(
+        std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+    m_repl->get_repl().set_hint_callback(
+        std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
+    m_repl->get_repl().set_highlighter_callback(
+        std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
   }
 
   // add GOOS forms that get info from the compiler
   setup_goos_forms();
+}
 
-  m_nrepl_port = nrepl_port;
-  fmt::print("[nREPL]: Server Will Listen for a Connection on Port {}!\n\r", m_nrepl_port);
-  nrepl_thread = std::thread([&]() {
-    asio::io_context io_context;
-    ReplServer s(io_context, this);
-    try {
-      io_context.run();
-    } catch (std::exception& e) {
-      print_compiler_warning("Could not setup nREPL {}\n", e.what());
-    }
-  });
+void Compiler::lock() {
+  compiler_mutex.lock();
+}
+
+void Compiler::unlock() {
+  compiler_mutex.unlock();
 }
 
 ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
-  // init repl
-  m_repl->print_welcome_message();
-  auto examples = m_repl->examples;
-  auto regex_colors = m_repl->regex_colors;
-  m_repl->init_default_settings();
-  using namespace std::placeholders;
-  m_repl->get_repl().set_completion_callback(
-      std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
-  m_repl->get_repl().set_hint_callback(
-      std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
-  m_repl->get_repl().set_highlighter_callback(
-      std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
-
   if (auto_debug || auto_listen) {
     read_eval_print("(lt)");
   }

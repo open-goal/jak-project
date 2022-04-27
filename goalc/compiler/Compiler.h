@@ -20,6 +20,7 @@
 #include "goalc/make/MakeSystem.h"
 #include "goalc/data_compiler/game_text.h"
 #include "goalc/data_compiler/game_subtitle.h"
+#include <mutex>
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -27,9 +28,7 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
 class Compiler {
  public:
-  Compiler(const int nrepl_port = 8181,
-           const std::string& user_profile = "#f",
-           std::unique_ptr<ReplWrapper> repl = nullptr);
+  Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
   void read_eval_print(std::string input = "");
   ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
   goos::Interpreter& get_goos() { return m_goos; }
@@ -72,8 +71,8 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
-
-  int m_nrepl_port;
+  void lock();
+  void unlock();
 
  private:
   TypeSystem m_ts;
@@ -93,8 +92,7 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
-
-  std::thread nrepl_thread;
+  std::mutex compiler_mutex;
 
   struct DebugStats {
     int num_spills = 0;

@@ -10,6 +10,7 @@
 
 #include "common/goos/ReplUtils.h"
 #include <regex>
+#include <goalc/compiler/nrepl/ReplServer.h>
 
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
@@ -64,11 +65,10 @@ int main(int argc, char** argv) {
       std::string found_username;
       while (ts.text_remains()) {
         auto character = std::string(1, ts.read());
-        if (std::regex_match(character, allowed_chars)) {
-          found_username.push_back(ts.read());
-        } else {
+        if (!std::regex_match(character, allowed_chars)) {
           break;
         }
+        found_username.push_back(ts.read());
       }
       if (!found_username.empty()) {
         username = found_username;
@@ -83,26 +83,52 @@ int main(int argc, char** argv) {
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   // Init REPL
+  ReplStatus status = ReplStatus::WANT_RELOAD;
+  std::function<bool()> shutdown_callback = [&]() { return status == ReplStatus::WANT_EXIT; };
+  ReplServer repl_server(shutdown_callback, nrepl_port);
+  bool repl_server_ok = repl_server.init_server();
+  if (repl_server_ok) {
+    fmt::print("[nREPL] Will wait for a connection on port {}\n", nrepl_port);
+  }
+  std::thread nrepl_thread;
   // the compiler may throw an exception if it fails to load its standard library.
   try {
-    std::unique_ptr<Compiler> compiler;
+    std::shared_ptr<Compiler> compiler;
+    // if a command is provided on the command line, no REPL just run the compiler on it
     if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>();
+      compiler = std::make_shared<Compiler>();
       compiler->run_front_end_on_string(cmd);
-    } else {
-      ReplStatus status = ReplStatus::WANT_RELOAD;
-      while (status == ReplStatus::WANT_RELOAD) {
-        compiler =
-            std::make_unique<Compiler>(nrepl_port, username, std::make_unique<ReplWrapper>());
-        status = compiler->execute_repl(auto_listen, auto_debug);
-        if (status == ReplStatus::WANT_RELOAD) {
-          fmt::print("Reloading compiler...\n");
+      return 0;
+    }
+    // Otherwise, run the REPL and such
+    compiler = std::make_shared<Compiler>(username, std::make_unique<ReplWrapper>());
+    // Start nREPL Server
+    if (repl_server_ok) {
+      nrepl_thread = std::thread([&]() {
+        while (!shutdown_callback()) {
+          if (repl_server.wait_for_connection()) {
+            repl_server.read_data();
+          } else {
+            std::this_thread::sleep_for(std::chrono::microseconds(50000));
+          }
         }
+      });
+    }
+    // Poll Terminal
+    while (status == ReplStatus::WANT_RELOAD) {
+      status = compiler->execute_repl(auto_listen, auto_debug);
+      if (status == ReplStatus::WANT_RELOAD) {
+        fmt::print("Reloading compiler...\n");
       }
     }
   } catch (std::exception& e) {
-    fmt::print("Compiler Fatal Error: {}\n", e.what());
+    fmt::print(stderr, "Compiler Fatal Error: {}\n", e.what());
   }
 
+  // Cleanup
+  if (repl_server_ok) {
+    repl_server.shutdown_server();
+    nrepl_thread.join();
+  }
   return 0;
 }
