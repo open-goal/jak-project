@@ -210,7 +210,7 @@ int main(int argc, char** argv) {
 
   if (config.levels_extract) {
     extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels);
+                       config.rip_levels, config.extract_collision);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));

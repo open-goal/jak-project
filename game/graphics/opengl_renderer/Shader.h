@@ -40,6 +40,7 @@ enum class ShaderId {
   OCEAN_COMMON = 15,
   SHADOW = 16,
   SHRUB = 17,
+  COLLISION = 18,
   MAX_SHADERS
 };
 

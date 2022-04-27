@@ -70,9 +70,10 @@ enum class BucketId {
   // 64
   PRE_SPRITE_TEX = 65,  // maybe it's just common textures?
   SPRITE = 66,
-  DEBUG_DRAW_0 = 67,
-  DEBUG_DRAW_1 = 68,
-  MAX_BUCKETS = 69
+  DEBUG = 67,
+  DEBUG_NO_ZBUF = 68,
+  SUBTITLE = 69,
+  MAX_BUCKETS = 70
 };
 
 enum class BucketCategory {

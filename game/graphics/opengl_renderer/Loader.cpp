@@ -76,6 +76,21 @@ void Loader::set_want_levels(const std::vector<std::string>& levels) {
 }
 
 /*!
+ * Get all levels that are in memory and used very recently.
+ */
+std::vector<Loader::LevelData*> Loader::get_in_use_levels() {
+  std::vector<Loader::LevelData*> result;
+  std::unique_lock<std::mutex> lk(m_loader_mutex);
+
+  for (auto& lev : m_loaded_tfrag3_levels) {
+    if (lev.second.frames_since_last_used < 5) {
+      result.push_back(&lev.second.data);
+    }
+  }
+  return result;
+}
+
+/*!
  * Loader function that runs in a completely separate thread.
  * This is used for file I/O and unpacking.
  */
@@ -474,6 +489,15 @@ bool Loader::init_tie(Timer& timer, LevelData& data) {
   return false;
 }
 
+bool Loader::init_collide(Timer& /*timer*/, LevelData& data) {
+  glGenBuffers(1, &data.collide_vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, data.collide_vertices);
+  glBufferData(GL_ARRAY_BUFFER,
+               data.level->collision.vertices.size() * sizeof(tfrag3::CollisionMesh::Vertex),
+               data.level->collision.vertices.data(), GL_STATIC_DRAW);
+  return true;
+}
+
 bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool) {
   // try to move level from initializing to initialized:
 
@@ -583,12 +607,14 @@ void Loader::update(TexturePool& texture_pool) {
         if (init_tie(loader_timer, lev.data)) {
           if (init_tfrag(loader_timer, lev.data)) {
             if (init_shrub(loader_timer, lev.data)) {
-              // we're done! lock before removing from loaded.
-              lk.lock();
-              it->second.data.load_id = m_id++;
+              if (init_collide(loader_timer, lev.data)) {
+                // we're done! lock before removing from loaded.
+                lk.lock();
+                it->second.data.load_id = m_id++;
 
-              m_loaded_tfrag3_levels[name] = std::move(lev);
-              m_initializing_tfrag3_levels.erase(it);
+                m_loaded_tfrag3_levels[name] = std::move(lev);
+                m_initializing_tfrag3_levels.erase(it);
+              }
             }
           }
         }
@@ -639,6 +665,8 @@ void Loader::update(TexturePool& texture_pool) {
               glDeleteBuffers(1, &tfrag_buff);
             }
           }
+
+          glDeleteBuffers(1, &lev.second.data.collide_vertices);
 
           m_loaded_tfrag3_levels.erase(lev.first);
           break;

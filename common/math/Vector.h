@@ -96,6 +96,13 @@ class Vector {
     return *this;
   }
 
+  Vector<T, Size>& operator-=(const Vector<T, Size>& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] -= other[i];
+    }
+    return *this;
+  }
+
   Vector<T, Size> elementwise_multiply(const Vector<T, Size>& other) const {
     Vector<T, Size> result;
     for (int i = 0; i < Size; i++) {

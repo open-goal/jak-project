@@ -4,8 +4,8 @@
 ;; you can find the game-text-version parsing in .cpp and an enum in goal-lib.gc
 
 (subtitle
-  (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_en.txt")
-  (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_es.txt")
+  (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_en.gs")
+  (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_es.gs")
   )
 
 

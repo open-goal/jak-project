@@ -353,11 +353,11 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
   }
 
+  update_render_state_from_pc_settings(render_state, m_pc_port_data);
+
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
-    render_state->camera_planes[i] = m_pc_port_data.planes[i];
   }
-  render_state->has_camera_planes = true;
 
   if (false) {
     //    for (int i = 0; i < 8; i++) {

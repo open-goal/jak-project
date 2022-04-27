@@ -282,6 +282,7 @@ class StructureType : public ReferenceType {
   bool is_always_stack_singleton() const { return m_always_stack_singleton; }
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
   void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
+  int size() const { return m_size_in_mem; }
 
  protected:
   friend class TypeSystem;

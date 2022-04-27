@@ -31,6 +31,7 @@ class Loader {
     std::array<std::vector<TieOpenGL>, tfrag3::TIE_GEOS> tie_data;
     std::array<std::vector<GLuint>, tfrag3::TIE_GEOS> tfrag_vertex_data;
     std::vector<GLuint> shrub_vertex_data;
+    GLuint collide_vertices;
 
     // internal load state
     bool tie_opengl_created = false;
@@ -56,6 +57,7 @@ class Loader {
   const LevelData* get_tfrag3_level(const std::string& level_name);
   void load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
+  std::vector<LevelData*> get_in_use_levels();
 
  private:
   struct Level {
@@ -70,6 +72,7 @@ class Loader {
   bool init_tie(Timer& timer, LevelData& data);
   bool init_tfrag(Timer& timer, LevelData& data);
   bool init_shrub(Timer& timer, LevelData& data);
+  bool init_collide(Timer& timer, LevelData& data);
 
   // used by game and loader thread
   std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;
