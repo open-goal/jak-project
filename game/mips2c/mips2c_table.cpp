@@ -326,6 +326,10 @@ extern void link();
 namespace draw_inline_array_prototype_tie_generic_asm {
 extern void link();
 }
+
+namespace generic_tie_dma_to_spad_sync {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -381,7 +385,8 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       shadow_scissor_top::link, shadow_scissor_edges::link, shadow_calc_dual_verts::link,
       shadow_xform_verts::link}},
     {"tie-methods",
-     {draw_inline_array_instance_tie::link, draw_inline_array_prototype_tie_generic_asm::link}}};
+     {draw_inline_array_instance_tie::link, draw_inline_array_prototype_tie_generic_asm::link}},
+    {"generic-tie", {generic_tie_dma_to_spad_sync::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

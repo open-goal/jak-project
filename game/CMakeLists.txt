@@ -47,6 +47,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/draw_string.cpp
         mips2c/functions/generic_effect.cpp
         mips2c/functions/generic_merc.cpp
+        mips2c/functions/generic_tie.cpp
         mips2c/functions/joint.cpp
         mips2c/functions/merc_blend_shape.cpp
         mips2c/functions/ocean.cpp

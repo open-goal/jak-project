@@ -1570,7 +1570,7 @@ u64 execute(void* ctxt) {
   sadr = c->sgpr64(t2);
   c->xori(t2, t2, 4096);                            // xori t2, t2, 4096
   // c->sw(v1, 16, t1);                                // sw v1, 16(t1)
-  madr = c->sgpr64(t2);
+  madr = c->sgpr64(v1);
   c->sll(a1, a0, 4);                                // sll a1, a0, 4
   c->addu(v1, v1, a1);                              // addu v1, v1, a1
   c->mov64(a1, t2);                                 // or a1, t2, r0
