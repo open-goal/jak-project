@@ -34,8 +34,14 @@ int open_socket(int af, int type, int protocol) {
 #endif
 }
 
-int accept_socket(int socket, sockaddr* addr, int* addrLen) {
+#ifdef __linux
+int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
+  return accept(socket, addr, addrLen);
+}
+#endif
+
 #ifdef _WIN32
+int accept_socket(int socket, sockaddr* addr, int* addrLen) {
   WSADATA wsaData = {0};
   int iResult = 0;
   // Initialize Winsock
@@ -44,9 +50,9 @@ int accept_socket(int socket, sockaddr* addr, int* addrLen) {
     printf("WSAStartup failed: %d\n", iResult);
     return 1;
   }
-#endif
   return accept(socket, addr, addrLen);
 }
+#endif
 
 void close_socket(int sock) {
   if (sock < 0) {
@@ -93,7 +99,7 @@ int set_socket_timeout(int socket, long microSeconds) {
 }
 
 int write_to_socket(int socket, const char* buf, int len) {
-  int bytes_wrote;
+  int bytes_wrote = 0;
 #ifdef __linux
   bytes_wrote = write(socket, buf, len);
 #elif _WIN32
@@ -106,13 +112,11 @@ int write_to_socket(int socket, const char* buf, int len) {
 }
 
 int read_from_socket(int socket, char* buf, int len) {
-  int bytes_read;
 #ifdef __linux
-  bytes_read = read(socket, buf, len);
+  return read(socket, buf, len);
 #elif _WIN32
-  bytes_read = recv(socket, buf, len, 0);
+  return recv(socket, buf, len, 0);
 #endif
-  return bytes_read;
 }
 
 bool socket_timed_out() {

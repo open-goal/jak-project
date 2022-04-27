@@ -1,7 +1,7 @@
 #pragma once
 
 /*!
- * @file xsocket.h
+ * @file XSocket.h
  * Cross platform socket library used for the listener.
  */
 
@@ -24,7 +24,11 @@ const int TCP_SOCKET_LEVEL = IPPROTO_TCP;
 #endif
 
 int open_socket(int af, int type, int protocol);
+#ifdef __linux
+int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen);
+#elif _WIN32
 int accept_socket(int socket, sockaddr* addr, int* addrLen);
+#endif
 void close_socket(int sock);
 int set_socket_option(int socket, int level, int optname, const void* optval, int optlen);
 int set_socket_timeout(int socket, long microSeconds);
