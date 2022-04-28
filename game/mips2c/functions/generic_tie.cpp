@@ -580,7 +580,6 @@ void vcallms_264(ExecutionContext* c) {
   c->acc.vf.madda(Mask::xyzw, c->vfs[vf02].vf, c->vfs[vf08].vf.y());   lq_buffer(Mask::xyzw, c->vfs[vf05].vf, vis[vi03] + 1);
   // iaddi vi03, vi03, 0x2      |  maddz.xyz vf23, vf03, vf08     291
   c->acc.vf.madd(Mask::xyz, c->vfs[vf23].vf, c->vf_src(vf03).vf, c->vf_src(vf08).vf.z());   vis[vi03] = vis[vi03] + 2;
-  return;
 }
 
 void vcallms_292(ExecutionContext* c) {
@@ -595,6 +594,7 @@ void vcallms_292(ExecutionContext* c) {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
+  get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
   u32 call_addr = 0;
   u32 madr, sadr, qwc;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
@@ -909,7 +909,6 @@ u64 execute(void* ctxt) {
     // spr to
     u32 sadr = c->sgpr64(a1);
     u32 tadr = c->sgpr64(v1);
-    fmt::print("sadr is 0x{:x}\n", sadr);
     spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr & 0x3fff, tadr);
   }
 //  c->sw(a1, 128, a0);                               // sw a1, 128(a0)
@@ -2156,7 +2155,6 @@ u64 execute(void* ctxt) {
   qwc = c->sgpr64(a0);
   c->daddu(a0, a1, t0);                             // daddu a0, a1, t0
   // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
-  fmt::print("sadr: 0x{:x}\n", sadr);
   spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 76, at);                                // sw a0, 76(at)
