@@ -3,6 +3,7 @@
 #include "common/cross_sockets/XSocketServer.h"
 
 #include "deci_common.h"
+#include <condition_variable>
 
 /// @brief Basic implementation of a DECI2 server.
 /// Works with deci2.cpp(sceDeci2) to implement the networking on target

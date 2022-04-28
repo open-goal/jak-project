@@ -86,7 +86,7 @@ void ReplServer::ping_response() {
   std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   lock();
-  auto bytes_written = write_to_socket(accepted_socket, ping.c_str(), ping.size());
+  write_to_socket(accepted_socket, ping.c_str(), ping.size());
   unlock();
 }
 
