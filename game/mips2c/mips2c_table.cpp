@@ -330,6 +330,19 @@ extern void link();
 namespace generic_tie_dma_to_spad_sync {
 extern void link();
 }
+namespace generic_envmap_dproc {
+extern void link();
+}
+namespace generic_interp_dproc {
+extern void link();
+}
+namespace generic_no_light_dproc {
+extern void link();
+}
+
+namespace generic_tie_convert {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -371,7 +384,8 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       high_speed_reject::link}},
     {"generic-effect",
      {generic_prepare_dma_double::link, generic_light_proc::link, generic_envmap_proc::link,
-      generic_prepare_dma_single::link}},
+      generic_prepare_dma_single::link, generic_envmap_dproc::link, generic_interp_dproc::link,
+      generic_no_light_dproc::link}},
     {"ripple",
      {ripple_execute_init::link, ripple_create_wave_table::link, ripple_apply_wave_table::link,
       ripple_matrix_scale::link}},
@@ -386,7 +400,7 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
       shadow_xform_verts::link}},
     {"tie-methods",
      {draw_inline_array_instance_tie::link, draw_inline_array_prototype_tie_generic_asm::link}},
-    {"generic-tie", {generic_tie_dma_to_spad_sync::link}}};
+    {"generic-tie", {generic_tie_dma_to_spad_sync::link, generic_tie_convert::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

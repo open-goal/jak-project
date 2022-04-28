@@ -722,6 +722,20 @@ struct ExecutionContext {
     gprs[dest].du16[7] = hi.du16[6];
   }
 
+  void pmfhl_uw(int dest) {
+    gprs[dest].du32[0] = lo.du32[1];
+    gprs[dest].du32[1] = hi.du32[1];
+    gprs[dest].du32[2] = lo.du32[3];
+    gprs[dest].du32[3] = hi.du32[3];
+  }
+
+  void pmfhl_lw(int dest) {
+    gprs[dest].du32[0] = lo.du32[0];
+    gprs[dest].du32[1] = hi.du32[0];
+    gprs[dest].du32[2] = lo.du32[2];
+    gprs[dest].du32[3] = hi.du32[2];
+  }
+
   void vsub_bc(DEST mask, BC bc, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
