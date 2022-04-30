@@ -74,19 +74,60 @@ int main(int argc, char** argv) {
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
+  std::string auto_input;
+  if (auto_debug || auto_listen) {
+    auto_input.append("(lt)");
+  }
+  if (auto_debug) {
+    auto_input.append("(dbg) (:cont)");
+  }
+
   // Init REPL
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     std::unique_ptr<Compiler> compiler;
+    std::mutex compiler_mutex;
     if (argument.empty()) {
+
+      // for example, start a separate thread
+      // std::thread server_thread([&](){
+      //   while (!want_exit) {
+      //     std::string msg = server.get_msg();
+      //     {
+      //       // only locked inside this scope
+      //       std::lock_guard<std::mutex> lock(compiler_mutex);
+      //       status = compiler->handle_repl_string(msg);
+      //     }
+      //   }
+      // });
+
       ReplStatus status = ReplStatus::WANT_RELOAD;
-      while (status == ReplStatus::WANT_RELOAD) {
-        compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
-        status = compiler->execute_repl(auto_listen, auto_debug);
+      // loop, until the user requests an exit
+      while (status != ReplStatus::WANT_EXIT) {
+        // if we want to reload the compiler, reconstruct it
         if (status == ReplStatus::WANT_RELOAD) {
-          fmt::print("Reloading compiler...\n");
+          // lock, in case something else is using it
+          std::lock_guard<std::mutex> lock(compiler_mutex);
+          compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
+          status = ReplStatus::OK;
+        }
+
+        std::string input_from_stdin = compiler->get_repl_input();
+        if (!input_from_stdin.empty()) {
+          // lock, while we compile
+          std::lock_guard<std::mutex> lock(compiler_mutex);
+          status = compiler->handle_repl_string(input_from_stdin);
+        }
+
+        if (!auto_input.empty()) {
+          // lock, while we compile
+          std::lock_guard<std::mutex> lock(compiler_mutex);
+          status = compiler->handle_repl_string(auto_input);
+          auto_input.clear();
         }
       }
+
+      // server_thread.join();
     } else {
       compiler = std::make_unique<Compiler>();
       compiler->run_front_end_on_string(argument);

@@ -27,7 +27,7 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
-  ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
+  ~Compiler();
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
@@ -68,6 +68,9 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
+
+  std::string get_repl_input();
+  ReplStatus handle_repl_string(const std::string& str);
 
  private:
   TypeSystem m_ts;

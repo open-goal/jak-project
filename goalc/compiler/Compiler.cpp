@@ -44,90 +44,75 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   // load auto-complete history, only if we are running in the interactive mode.
   if (m_repl) {
     m_repl->load_history();
+    // init repl
+    m_repl->print_welcome_message();
+    auto examples = m_repl->examples;
+    auto regex_colors = m_repl->regex_colors;
+    m_repl->init_default_settings();
+    using namespace std::placeholders;
+    m_repl->get_repl().set_completion_callback(
+        std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+    m_repl->get_repl().set_hint_callback(
+        std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
+    m_repl->get_repl().set_highlighter_callback(
+        std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
   }
 
   // add GOOS forms that get info from the compiler
   setup_goos_forms();
 }
 
-ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
-  // init repl
-  m_repl->print_welcome_message();
-  auto examples = m_repl->examples;
-  auto regex_colors = m_repl->regex_colors;
-  m_repl->init_default_settings();
-  using namespace std::placeholders;
-  m_repl->get_repl().set_completion_callback(
-      std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
-  m_repl->get_repl().set_hint_callback(
-      std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
-  m_repl->get_repl().set_highlighter_callback(
-      std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
-
-  std::string auto_input;
-  if (auto_debug || auto_listen) {
-    auto_input.append("(lt)");
-  }
-  if (auto_debug) {
-    auto_input.append("(dbg) (:cont)");
-  }
-
-  while (!m_want_exit && !m_want_reload) {
-    try {
-      std::optional<goos::Object> code;
-
-      if (auto_input.empty()) {
-        // 1). get a line from the user (READ)
-        std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-        if (m_listener.is_connected()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-        }
-        if (m_debugger.is_halted()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-        } else if (m_debugger.is_attached()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
-        }
-
-        code = m_goos.reader.read_from_stdin(prompt, *m_repl);
-      } else {
-        code = m_goos.reader.read_from_string(auto_input);
-        auto_input.clear();
-      }
-
-      if (!code) {
-        continue;
-      }
-
-      // 2). compile
-      auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
-      if (m_settings.debug_print_ir) {
-        obj_file->debug_print_tl();
-      }
-
-      if (!obj_file->is_empty()) {
-        // 3). color
-        color_object_file(obj_file);
-
-        // 4). codegen
-        auto data = codegen_object_file(obj_file);
-
-        // 4). send!
-        if (m_listener.is_connected()) {
-          m_listener.send_code(data);
-          if (!m_listener.most_recent_send_was_acked()) {
-            print_compiler_warning("Runtime is not responding. Did it crash?\n");
-          }
-        }
-      }
-
-    } catch (std::exception& e) {
-      print_compiler_warning("REPL Error: {}\n", e.what());
-    }
-  }
-
+std::string Compiler::get_repl_input() {
+  std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
   if (m_listener.is_connected()) {
-    m_listener.send_reset(false);  // reset the target
-    m_listener.disconnect();
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+  }
+  if (m_debugger.is_halted()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+  } else if (m_debugger.is_attached()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+  }
+
+  std::string prompt_full = "\033[0m" + prompt;
+  auto str = m_repl->readline(prompt_full);
+  if (str) {
+    return str;
+  } else {
+    return "";
+  }
+}
+
+ReplStatus Compiler::handle_repl_string(const std::string& str) {
+  if (str.empty()) {
+    return ReplStatus::OK;
+  }
+
+  try {
+    // 1). read
+    goos::Object code = m_goos.reader.read_from_string(str, true, "REPL");
+    // 2). compile
+    auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
+    if (m_settings.debug_print_ir) {
+      obj_file->debug_print_tl();
+    }
+
+    if (!obj_file->is_empty()) {
+      // 3). color
+      color_object_file(obj_file);
+
+      // 4). codegen
+      auto data = codegen_object_file(obj_file);
+
+      // 4). send!
+      if (m_listener.is_connected()) {
+        m_listener.send_code(data);
+        if (!m_listener.most_recent_send_was_acked()) {
+          print_compiler_warning("Runtime is not responding. Did it crash?\n");
+        }
+      }
+    }
+  } catch (std::exception& e) {
+    print_compiler_warning("REPL Error: {}\n", e.what());
   }
 
   if (m_want_exit) {
@@ -139,6 +124,13 @@ ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
   }
 
   return ReplStatus::OK;
+}
+
+Compiler::~Compiler() {
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(false);  // reset the target
+    m_listener.disconnect();
+  }
 }
 
 FileEnv* Compiler::compile_object_file(const std::string& name,
