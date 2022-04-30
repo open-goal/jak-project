@@ -7,9 +7,9 @@
 
 #include <functional>
 #include <memory>
+#include <array>
 
 #include "common/common_types.h"
-#include "common/math/Vector.h"
 #include "game/kernel/kboot.h"
 #include "game/system/newpad.h"
 
@@ -88,9 +88,9 @@ struct GfxGlobalSettings {
 
   // matching enum in kernel-defs.gc !!
   enum CollisionRendererMode { None, Mode, Event, Material } collision_mode = Mode;
-  math::Vector<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask{UINT32_MAX};
-  math::Vector<u32, (PAT_EVT_COUNT + 31) / 32> collision_event_mask{UINT32_MAX};
-  math::Vector<u32, (PAT_MAT_COUNT + 31) / 32> collision_material_mask{UINT32_MAX};
+  std::array<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask = {UINT32_MAX};
+  std::array<u32, (PAT_EVT_COUNT + 31) / 32> collision_event_mask = {UINT32_MAX};
+  std::array<u32, (PAT_MAT_COUNT + 31) / 32> collision_material_mask = {UINT32_MAX};
 };
 
 namespace Gfx {
