@@ -772,6 +772,10 @@
   `(car (cdr (cdr (cdr ,arg))))
   )
 
+(defmacro caddddr (arg)
+  `(car (cdr (cdr (cdr (cdr ,arg)))))
+  )
+
 (defmacro dcons (a b)
   `(new 'debug 'pair ,a ,b)
   )
@@ -942,6 +946,22 @@
 
         )
     )
+  )
+
+(defmacro doenum (bindings &rest body)
+  "run body while iterating through an enum.
+   WARNING: enums are NOT A RUNTIME TYPE! There is an UNWOUND loop with body in it!! Use with caution."
+  ;; (doenum (name-var val-var enum &rest result) &rest body)
+  
+  `(begin ,@(apply (lambda (x)
+                      ;; (fmt #t "{}\n" x)
+                      `(let (
+                            (,(first bindings) ,(symbol->string (car x))) ;; name
+                            (,(second bindings) ,(cdr x)) ;; value
+                            )
+                        ,@body
+                        )) (get-enum-vals (third bindings))))
+  
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

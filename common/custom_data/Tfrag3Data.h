@@ -315,8 +315,10 @@ struct CollisionMesh {
     u32 flags;
     s16 nx, ny, nz;
     u16 pad;
+    u32 pat;
+    u32 pad2;
   };
-  static_assert(sizeof(Vertex) == 24);
+  static_assert(sizeof(Vertex) == 32);
   std::vector<Vertex> vertices;
   void serialize(Serializer& ser);
 };
