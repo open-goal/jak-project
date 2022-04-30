@@ -77,8 +77,8 @@ void main() {
         float cam_dot = abs(dot(to_cam_n, normal_in));
 
         // base colors
-        fragment_color = vec4(0.4, 0.5, 0.5, 1);
-        fragment_color.xyz *= (pow(cam_dot, 2.5) * 0.85 + 0.4);
+        fragment_color = vec4(0.5, 0.6, 0.6, 1);
+        fragment_color.xyz *= (pow(cam_dot, 3) + 0.3);
         
         // pat checks
         uint pMode = pat_get_mode(pat);
@@ -121,7 +121,7 @@ void main() {
               case 10: fragment_color.rgb *= vec3(1.5, 0.2, 1.0); break; // deepsnow
               case 11: fragment_color.rgb *= vec3(1.2, 0.5, 0.3); break; // hotcoals
               case 12: fragment_color.rgb *= vec3(1.4, 0.1, 0.1); break; // lava
-              case 13: fragment_color.rgb *= vec3(1.1, 0.75, 0.25); break; // crwood
+              case 13: fragment_color.rgb *= vec3(0.8, 0.3, 0.1); break; // crwood
               case 14: fragment_color.rgb *= vec3(1.0, 0.4, 1.0); break; // gravel
               case 15: fragment_color.rgb *= vec3(1.5, 0.5, 0.15); break; // dirt
               case 16: fragment_color.rgb *= vec3(0.7, 0.7, 1.0); break; // metal
@@ -129,7 +129,7 @@ void main() {
               case 18: fragment_color.rgb *= vec3(0.75, 1.75, 0.75); break; // tube
               case 19: fragment_color.rgb *= vec3(0.4, 0.1, 0.8); break; // swamp
               case 20: fragment_color.rgb *= vec3(0.1, 0.4, 0.8); break; // stopproj
-              case 21: fragment_color.rgb *= vec3(1.8, 0.1, 1.8); break; // rotate
+              case 21: fragment_color.rgb *= vec3(1.9, 0.1, 1.9); break; // rotate
               case 22: fragment_color.rgb *= vec3(1.0); break; // neutral
               default: fragment_color.rgb = vec3(1, 0, 1); break;
             }

@@ -904,8 +904,7 @@ void set_collision_wireframe(u32 symptr) {
 void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
   if (symptr != s7.offset) {
     Gfx::CollisionRendererSetMask(mode, mask);
-  }
-  else {
+  } else {
     Gfx::CollisionRendererClearMask(mode, mask);
   }
 }
