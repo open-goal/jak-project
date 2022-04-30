@@ -273,7 +273,7 @@ void dmac_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * GOAL kernel arguments are currently ignored.
  */
-u32 exec_runtime(int argc, char** argv) {
+RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
@@ -315,17 +315,17 @@ u32 exec_runtime(int argc, char** argv) {
   // step 3: start the EE!
   iop_thread.start(iop_runner);
   ee_thread.start(ee_runner);
+
   deci_thread.start(deci2_runner);
+
   if (VM::use) {
     vm_dmac_thread.start(dmac_runner);
-  } else {
-    vm_dmac_thread.start(null_runner);
   }
 
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
   if (enable_display) {
-    Gfx::Loop([]() { return !MasterExit; });
+    Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     Gfx::Exit();
   }
 

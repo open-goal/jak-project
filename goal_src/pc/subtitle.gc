@@ -568,9 +568,11 @@
         (set! (-> self spool-name) (-> *art-control* active-stream))
         (set! (-> self cur-channel) (pc-subtitle-channel movie))
         (with-proc ((handle->process (-> *art-control* spool-lock)))
-          (format *stdcon* "movie spool detected:~%~3L~A~0L~%current spool frame is ~3L~D~0L~%"
-                  (-> *art-control* active-stream) (the int (ja-aframe-num 0)))
-          )
+           (if *debug-segment*
+               (format *stdcon* "movie spool detected:~%~3L~A~0L~%current spool frame is ~3L~D~0L~%"
+                       (-> *art-control* active-stream) (the int (ja-aframe-num 0)))
+               )
+           )
        )
       (*hint-semaphore*
         ;; there's a hint playing
@@ -581,11 +583,13 @@
         (set! (-> self cur-channel) (if (-> self spool-name)
                                         (pc-subtitle-channel hint-named)
                                         (pc-subtitle-channel hint)))
-        (format *stdcon* "hint detected!~%~3L~A~0L/~3L#x~X~0L~%current str pos is ~D (~3L~D~0L)~%"
-                (-> self spool-name) (-> self text-id)
-                (current-str-pos (-> *hint-semaphore* 0 sound-id))
-                (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id))))
-       )
+        (if *debug-segment*
+            (format *stdcon* "hint detected!~%~3L~A~0L/~3L#x~X~0L~%current str pos is ~D (~3L~D~0L)~%"
+                    (-> self spool-name) (-> self text-id)
+                    (current-str-pos (-> *hint-semaphore* 0 sound-id))
+                    (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id))))
+            )
+        )
       )
 
     ;; do subtitles

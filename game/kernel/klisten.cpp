@@ -66,6 +66,7 @@ void ClearPending() {
       if (size > 0) {
         printf("%s", PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       }
+      clear_print();
     }
   } else {
     if (ListenerStatus) {
@@ -134,10 +135,10 @@ void ProcessListenerMessage(Ptr<char> msg) {
       printf("[ERROR] unsupported message kind LTT_MSG_PRINT_SYMBOLS (NYI)\n");
       break;
     case LTT_MSG_RESET:
-      MasterExit = 1;
+      MasterExit = RuntimeExitStatus::RESTART_RUNTIME;
       break;
     case LTT_MSG_SHUTDOWN:
-      MasterExit = 2;
+      MasterExit = RuntimeExitStatus::EXIT;
       break;
     case LTT_MSG_CODE: {
       auto buffer = kmalloc(kdebugheap, MessCount, 0, "listener-link-block");
