@@ -374,7 +374,6 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
   ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
   ImGui::Checkbox("Direct 2", &m_render_state.use_direct2);
-  ImGui::Checkbox("Generic 2", &m_render_state.use_generic2);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
