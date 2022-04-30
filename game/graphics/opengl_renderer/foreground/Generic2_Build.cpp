@@ -118,7 +118,7 @@ void Generic2::determine_draw_modes() {
     } else {
       // ADGIF 5
       ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::TEST_1));
-      final_test= bonus_adgif_data[0];
+      final_test = bonus_adgif_data[0];
 
       // ADGIF 6
       if ((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::ALPHA_1)) {
@@ -128,7 +128,6 @@ void Generic2::determine_draw_modes() {
         final_test = bonus_adgif_data[2];
       }
     }
-
 
     if (final_alpha) {
       GsAlpha reg(*final_alpha);
