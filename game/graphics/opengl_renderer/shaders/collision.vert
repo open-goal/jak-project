@@ -93,7 +93,7 @@ void main() {
               case 0: fragment_color.rgb *= vec3(1.25, 0.1, 0.1); break; // ground
               case 1: fragment_color.rgb *= vec3(0.1, 0.1, 1.0); break; // wall
               case 2: fragment_color.rgb *= vec3(1.0, 0.1, 1.0); break; // obstacle
-              default: fragment_color.rgb *= vec3(0.06); break;
+              default: fragment_color.rgb = vec3(1, 0, 1); break;
             }
           } else if (mode == MODE_EVENT) {
             switch ( pEvent ) {
@@ -104,7 +104,7 @@ void main() {
               case 4: fragment_color.rgb *= vec3(0.1, 0.1, 1.0); break; // deadlyup
               case 5: fragment_color.rgb *= vec3(1.0, 0.1, 0.5); break; // burnup
               case 6: fragment_color.rgb *= vec3(1.0, 0.1, 0.1); break; // melt
-              default: fragment_color.rgb *= vec3(0.06); break;
+              default: fragment_color.rgb = vec3(1, 0, 1); break;
             }
           } else if (mode == MODE_MATERIAL) {
             switch ( pMat ) {
@@ -131,7 +131,7 @@ void main() {
               case 20: fragment_color.rgb *= vec3(0.1, 0.4, 0.8); break; // stopproj
               case 21: fragment_color.rgb *= vec3(1.8, 0.1, 1.8); break; // rotate
               case 22: fragment_color.rgb *= vec3(1.0); break; // neutral
-              default: fragment_color.rgb *= vec3(0.06); break;
+              default: fragment_color.rgb = vec3(1, 0, 1); break;
             }
           } else {
           }
