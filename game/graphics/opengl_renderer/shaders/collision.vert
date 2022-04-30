@@ -134,6 +134,8 @@ void main() {
               default: fragment_color.rgb = vec3(1, 0, 1); break;
             }
           } else {
+            fragment_color = vec4((normal_in + 1)*.5, 1);
+            fragment_color.xyz *= (pow(cam_dot, 3) + 0.3);
           }
         } else {
           // filtered out. goodbye!
