@@ -40,7 +40,7 @@ char DebugBootMessage[64];
 MasterConfig masterConfig;
 
 // Set to 1 to kill GOAL kernel
-u32 MasterExit;
+RuntimeExitStatus MasterExit;
 
 // Set to 1 to enable debug heap
 u32 MasterDebug;
@@ -57,7 +57,7 @@ void kboot_init_globals() {
   strcpy(DebugBootLevel, "#f");      // no specified level
   strcpy(DebugBootMessage, "play");  // play mode, the default retail mode
 
-  MasterExit = 0;
+  MasterExit = RuntimeExitStatus::RUNNING;
   MasterDebug = 1;
   MasterUseKernel = 1;
   DebugSegment = 1;
@@ -144,7 +144,7 @@ s32 goal_main(int argc, const char* const* argv) {
 void KernelCheckAndDispatch() {
   u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
 
-  while (!MasterExit) {
+  while (MasterExit == RuntimeExitStatus::RUNNING) {
     // try to get a message from the listener, and process it if needed
     Ptr<char> new_message = WaitForMessageAndAck();
     if (new_message.offset) {
@@ -198,5 +198,5 @@ void KernelCheckAndDispatch() {
  * DONE, EXACT
  */
 void KernelShutdown() {
-  MasterExit = 2;  // GOAL Kernel Dispatch loop will stop now.
+  MasterExit = RuntimeExitStatus::EXIT;  // GOAL Kernel Dispatch loop will stop now.
 }

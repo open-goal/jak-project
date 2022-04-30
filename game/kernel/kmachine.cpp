@@ -67,7 +67,7 @@ Timer ee_clock_timer;
 u32 vif1_interrupt_handler = 0;
 
 void kmachine_init_globals() {
-  isodrv = iso_cd;
+  isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
@@ -88,6 +88,8 @@ void InitParms(int argc, const char* const* argv) {
     isodrv = fakeiso;
     modsrc = 0;
     reboot = 0;
+    DebugSegment = 0;
+    MasterDebug = 0;
   }
 
   for (int i = 1; i < argc; i++) {
@@ -367,9 +369,10 @@ int InitMachine() {
   //    MsgErr("dkernel: !init pad\n");
   //  }
 
-  if (MasterDebug) {  // connect to GOAL compiler
-    InitGoalProto();
-  }
+  // do this always
+  // if (MasterDebug) {  // connect to GOAL compiler
+  InitGoalProto();
+  //}
 
   lg::info("InitSound");
   InitSound();  // do nothing!
@@ -983,7 +986,7 @@ void InitMachine_PCPort() {
 
 void vif_interrupt_callback() {
   // added for the PC port for faking VIF interrupts from the graphics system.
-  if (vif1_interrupt_handler && MasterExit == 0) {
+  if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
     call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
   }
 }

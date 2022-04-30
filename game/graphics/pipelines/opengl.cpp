@@ -463,10 +463,16 @@ static void gl_render_display(GfxDisplay* display) {
     g_gfx_data->sync_cv.notify_all();
   }
 
+  // reboot whole game, if requested
+  if (g_gfx_data->debug_gui.want_reboot_in_debug) {
+    g_gfx_data->debug_gui.want_reboot_in_debug = false;
+    MasterExit = RuntimeExitStatus::RESTART_IN_DEBUG;
+  }
+
   // exit if display window was closed
   if (glfwWindowShouldClose(window)) {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
-    MasterExit = 2;
+    MasterExit = RuntimeExitStatus::EXIT;
     g_gfx_data->sync_cv.notify_all();
   }
 }
@@ -481,7 +487,9 @@ u32 gl_vsync() {
   }
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
   auto init_frame = g_gfx_data->frame_idx_of_input_data;
-  g_gfx_data->sync_cv.wait(lock, [=] { return MasterExit || g_gfx_data->frame_idx > init_frame; });
+  g_gfx_data->sync_cv.wait(lock, [=] {
+    return (MasterExit != RuntimeExitStatus::RUNNING) || g_gfx_data->frame_idx > init_frame;
+  });
   return g_gfx_data->frame_idx & 1;
 }
 
