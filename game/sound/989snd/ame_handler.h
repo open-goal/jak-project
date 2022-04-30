@@ -32,6 +32,7 @@ class ame_handler : public sound_handler {
   void set_vol_pan(s32 vol, s32 pan) override;
 
   void set_register(u8 reg, u8 value) { m_register[reg] = value; }
+  void set_pmod(s32 mod) override;
 
  private:
   struct ame_error : public std::exception {

@@ -8,7 +8,7 @@
 namespace snd {
 class blocksound_handler : public sound_handler {
  public:
-  blocksound_handler(SFX& sfx, voice_manager& vm, s32 vol, s32 pan, u32 bank_id)
+  blocksound_handler(SFX& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
       : m_sfx(sfx), m_vm(vm), m_bank(bank_id) {
     vol = (vol * m_sfx.d.Vol) >> 10;
     if (vol >= 128) {
@@ -21,9 +21,13 @@ class blocksound_handler : public sound_handler {
 
     m_cur_volume = vol;
     m_cur_pan = pan;
+    m_cur_pm = pm;
+    m_cur_pb = pb;
 
     m_app_volume = vol;
     m_app_pan = pan;
+    m_app_pm = 0;  // why only this one?
+    m_app_pb = pb;
 
     m_orig_pan = m_sfx.d.Pan;
     m_orig_volume = m_sfx.d.Vol;
@@ -52,6 +56,8 @@ class blocksound_handler : public sound_handler {
   void stop() override;
   u8 group() override { return m_group; };
   void set_vol_pan(s32 vol, s32 pan) override;
+  void set_pmod(s32 mod) override;
+  void set_pbend(s32 bend);  // TODO override;
 
   void init();
 
@@ -74,6 +80,7 @@ class blocksound_handler : public sound_handler {
   s32 null(SFXGrain& grain);
   s32 play_tone(SFXGrain& grain);
   s32 rand_play(SFXGrain& grain);
+  void update_pitch();
 
   using grain_fp = int (blocksound_handler::*)(SFXGrain& grain);
   std::unordered_map<grain_type, grain_fp> m_grain_handler;
@@ -99,11 +106,16 @@ class blocksound_handler : public sound_handler {
   s32 m_orig_pan{0};
   s32 m_cur_volume{0};
   s32 m_cur_pan{0};
+  s32 m_cur_pm{0};
+  s32 m_cur_pb{0};
   s32 m_app_volume{0};
   s32 m_app_pan{0};
+  s32 m_app_pm{0};
+  s32 m_app_pb{0};
 
   s32 m_lfo_volume{0};
   s32 m_lfo_pan{0};
+  s32 m_lfo_pm{0};
 
   u32 m_bank{0};
 

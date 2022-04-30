@@ -16,7 +16,7 @@ std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
     return nullptr;
   }
 
-  handler = std::make_unique<blocksound_handler>(sounds[sound_id], vm, vol, pan, bank_id);
+  handler = std::make_unique<blocksound_handler>(sounds[sound_id], vm, vol, pan, pm, pb, bank_id);
   handler->init();
   return handler;
 }

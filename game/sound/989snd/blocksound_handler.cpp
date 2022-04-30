@@ -1,4 +1,5 @@
 #include "blocksound_handler.h"
+#include "util.h"
 #include <random>
 #include <stdexcept>
 
@@ -129,6 +130,33 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
       voice->set_volume(left >> 1, right >> 1);
     }
   }
+}
+
+void blocksound_handler::update_pitch() {
+  m_cur_pm = m_app_pm;
+  m_cur_pb = m_app_pb;
+
+  for (auto& p : m_voices) {
+    auto voice = p.lock();
+    if (voice == nullptr) {
+      continue;
+    }
+
+    auto note = pitchbend(voice->tone, m_cur_pb, m_cur_pm, m_note, m_fine);
+    auto pitch =
+        PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
+    voice->set_pitch(pitch);
+  }
+}
+
+void blocksound_handler::set_pmod(s32 mod) {
+  m_app_pm = mod;
+  update_pitch();
+}
+
+void blocksound_handler::set_pbend(s32 bend) {
+  m_app_pb = bend;
+  update_pitch();
 }
 
 s32 blocksound_handler::null(SFXGrain& grain) {

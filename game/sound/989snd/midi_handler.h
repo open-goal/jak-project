@@ -76,6 +76,7 @@ class midi_handler : public sound_handler {
   void set_vol_pan(s32 vol, s32 pan) override;
 
   bool complete() { return m_track_complete; };
+  void set_pmod(s32 mod) override;
 
  private:
   static constexpr int tickrate = 240;

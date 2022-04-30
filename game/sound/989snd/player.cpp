@@ -274,4 +274,12 @@ void player::set_sound_vol_pan(s32 sound_id, s32 vol, s32 pan) {
 
   handler->second->set_vol_pan(vol, pan);
 }
+
+void player::set_sound_pmod(s32 sound_handle, s32 mod) {
+  auto handler = m_handlers.find(sound_handle);
+  if (handler == m_handlers.end())
+    return;
+
+  handler->second->set_pmod(mod);
+}
 }  // namespace snd

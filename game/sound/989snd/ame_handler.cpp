@@ -109,6 +109,10 @@ void ame_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 }
 
+void ame_handler::set_pmod(s32 mod) {
+  // TODO
+}
+
 #define AME_BEGIN(op) \
   if (skip) {         \
     if (skip == 1) {  \
