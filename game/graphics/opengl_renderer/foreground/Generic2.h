@@ -6,10 +6,10 @@ class Generic2 : public BucketRenderer {
  public:
   Generic2(const std::string& name,
            BucketId my_id,
-           u32 num_verts,
-           u32 num_frags,
-           u32 num_adgif,
-           u32 num_buckets);
+           u32 num_verts = 1500000,
+           u32 num_frags = 10000,
+           u32 num_adgif = 3000,
+           u32 num_buckets = 800);
   ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;

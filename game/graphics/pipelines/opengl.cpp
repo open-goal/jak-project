@@ -325,7 +325,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   }
 }
 
-static void gl_screen_size(GfxDisplay* display,
+static void gl_screen_size(GfxDisplay* /*display*/,
                            int vmode_idx,
                            int /*screen*/,
                            s32* w_out,

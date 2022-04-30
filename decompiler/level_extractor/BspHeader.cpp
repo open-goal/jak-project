@@ -1222,7 +1222,7 @@ std::string CollideFragment::print(const PrintSettings& settings, int indent) co
 
 void CollideFragMesh::read_from_file(TypedRef ref,
                                      const decompiler::DecompilerTypeSystem& dts,
-                                     DrawStats* stats) {
+                                     DrawStats* /*stats*/) {
   strip_data_len = read_plain_data_field<u16>(ref, "strip-data-len", dts);
   poly_count = read_plain_data_field<u16>(ref, "poly-count", dts);
   vertex_count = read_plain_data_field<u8>(ref, "vertex-count", dts);
@@ -1235,7 +1235,7 @@ void CollideFragMesh::read_from_file(TypedRef ref,
   pat_array = deref_label(get_field_ref(ref, "pat-array", dts));
 }
 
-std::string CollideFragMesh::print(const PrintSettings& settings, int indent) const {
+std::string CollideFragMesh::print(const PrintSettings& /*settings*/, int indent) const {
   std::string is(indent, ' ');
   std::string result;
   result += fmt::format("{}strip-data-len: {}\n", is, strip_data_len);
