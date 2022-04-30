@@ -4264,7 +4264,7 @@
       (else
        (true! (-> arg value))
        (logclear! *vu1-enable-user-menu* (vu1-renderer-mask tfrag trans-tfrag tie tie-near))
-       (false! *generic-tie*)
+       (true! *generic-tie*)
        )
       )
     )
@@ -4299,6 +4299,13 @@
   (pc-get-collision-mask (pc-collision-mode material) arg)
   )
 
+(defun dm-collision-filter-skip-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode skip) arg (not (pc-get-collision-mask (pc-collision-mode skip) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode skip) arg)
+  )
+
 (defun debug-menu-make-collision-renderer-menu ((ctx debug-menu-context))
   (let ((menu (new 'debug 'debug-menu ctx "Collision renderer menu")))
       ;; master toggle
@@ -4326,6 +4333,12 @@
           (let ((filter-menu (new 'debug 'debug-menu ctx "Collision renderer filter material menu")))
               (doenum (name val pat-material)
                   (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-material-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Filter skip"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "Collision renderer filter skip menu")))
+              (doenum (name val pc-pat-skip-hack)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skip-pick-func))
                   )
               filter-menu)))
 

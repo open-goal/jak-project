@@ -301,6 +301,9 @@ bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int
       return (g_global_settings.collision_event_mask[arr_idx] >> arr_ofs) & 1;
     case GfxGlobalSettings::CollisionRendererMode::Material:
       return (g_global_settings.collision_material_mask[arr_idx] >> arr_ofs) & 1;
+    case GfxGlobalSettings::CollisionRendererMode::Skip:
+      ASSERT(arr_idx == 0);
+      return (g_global_settings.collision_skip_mask >> arr_ofs) & 1;
     default:
       lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, mode, mask_id);
       return false;
@@ -321,6 +324,10 @@ void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int
     case GfxGlobalSettings::CollisionRendererMode::Material:
       g_global_settings.collision_material_mask[arr_idx] |= 1 << arr_ofs;
       break;
+    case GfxGlobalSettings::CollisionRendererMode::Skip:
+      ASSERT(arr_idx == 0);
+      g_global_settings.collision_skip_mask |= 1 << arr_ofs;
+      break;
     default:
       lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, mode, mask_id);
       break;
@@ -340,6 +347,10 @@ void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, i
       break;
     case GfxGlobalSettings::CollisionRendererMode::Material:
       g_global_settings.collision_material_mask[arr_idx] &= ~(1 << arr_ofs);
+      break;
+    case GfxGlobalSettings::CollisionRendererMode::Skip:
+      ASSERT(arr_idx == 0);
+      g_global_settings.collision_skip_mask &= ~(1 << arr_ofs);
       break;
     default:
       lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, mode, mask_id);

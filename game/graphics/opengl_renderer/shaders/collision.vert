@@ -22,6 +22,7 @@ const int PAT_MAT_COUNT = 23;
 uniform uint collision_mode_mask[(PAT_MOD_COUNT + 31) / 32];
 uniform uint collision_event_mask[(PAT_EVT_COUNT + 31) / 32];
 uniform uint collision_material_mask[(PAT_MAT_COUNT + 31) / 32];
+uniform uint collision_skip_mask;
 
 const int MODE_NONE = 0;
 const int MODE_MODE = 1;
@@ -33,6 +34,7 @@ uint pat_get_material(uint p) { return (p >> 6) & 0x3f; }
 uint pat_get_event(uint p) { return (p >> 14) & 0x3f; }
 
 bool logtest(uint a, uint b) { return (a & b) != 0; }
+bool logtesta(uint a, uint b) { return (a & b) == b; }
 
 void main() {
     // Step 3, the camera transform
@@ -86,7 +88,8 @@ void main() {
         uint pEvent = pat_get_event(pat);
         if (logtest(collision_mode_mask[pMode/32], 1 << (pMode & 0x1f)) &&
             logtest(collision_material_mask[pMat/32], 1 << (pMat & 0x1f)) &&
-            logtest(collision_event_mask[pEvent/32], 1 << (pEvent & 0x1f))) {
+            logtest(collision_event_mask[pEvent/32], 1 << (pEvent & 0x1f)) &&
+            logtesta(collision_skip_mask, pat)) {
           // fancy colors
           if (mode == MODE_MODE) {
             switch ( pMode ) {

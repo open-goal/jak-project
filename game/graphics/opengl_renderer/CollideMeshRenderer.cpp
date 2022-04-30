@@ -89,6 +89,8 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
     glUniform1uiv(glGetUniformLocation(shader, "collision_material_mask"),
                   Gfx::g_global_settings.collision_material_mask.size(),
                   Gfx::g_global_settings.collision_material_mask.data());
+    glUniform1ui(glGetUniformLocation(shader, "collision_skip_mask"),
+                 Gfx::g_global_settings.collision_skip_mask);
     glUniform1i(glGetUniformLocation(shader, "mode"), Gfx::g_global_settings.collision_mode);
     glDrawArrays(GL_TRIANGLES, 0, lev->level->collision.vertices.size());
 

@@ -87,10 +87,11 @@ struct GfxGlobalSettings {
   bool collision_wireframe = true;
 
   // matching enum in kernel-defs.gc !!
-  enum CollisionRendererMode { None, Mode, Event, Material } collision_mode = Mode;
+  enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
   std::array<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask = {UINT32_MAX};
   std::array<u32, (PAT_EVT_COUNT + 31) / 32> collision_event_mask = {UINT32_MAX};
   std::array<u32, (PAT_MAT_COUNT + 31) / 32> collision_material_mask = {UINT32_MAX};
+  u32 collision_skip_mask = UINT32_MAX;
 };
 
 namespace Gfx {
