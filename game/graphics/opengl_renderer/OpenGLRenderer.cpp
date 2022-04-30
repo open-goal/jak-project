@@ -458,7 +458,8 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
     // hack to draw the collision mesh in the middle the drawing
-    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 && m_render_state.render_collision_mesh) {
+    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 && m_render_state.render_collision_mesh &&
+        Gfx::g_global_settings.collision_enable) {
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }

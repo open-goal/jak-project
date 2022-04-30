@@ -50,7 +50,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 16;
+constexpr int TFRAG3_VERSION = 17;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -315,8 +315,10 @@ struct CollisionMesh {
     u32 flags;
     s16 nx, ny, nz;
     u16 pad;
+    u32 pat;
+    u32 pad2;
   };
-  static_assert(sizeof(Vertex) == 24);
+  static_assert(sizeof(Vertex) == 32);
   std::vector<Vertex> vertices;
   void serialize(Serializer& ser);
 };

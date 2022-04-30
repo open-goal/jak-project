@@ -47,7 +47,7 @@
              (if (!= (pickup-collectable!
                        (-> self fact-info-target)
                        (the-as pickup-type s4-0)
-                       (-> (new 'static 'array float 1 0.0) 0)
+                       (the-as float 0.0)
                        (the-as handle #f)
                        )
                      (pickup-collectable! (-> self fact-info-target) (the-as pickup-type s4-0) f28-0 (process->handle arg0))
@@ -120,7 +120,7 @@
             (pickup-collectable!
               (-> self fact-info-target)
               (the-as pickup-type (-> arg3 param 1))
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as handle #f)
               )
             )
@@ -298,7 +298,13 @@
              )
          )
         ((= v1-0 'change-state)
-         (go (the-as (state object object object object target) (-> arg3 param 0)) (-> arg3 param 1) (-> arg3 param 2) (-> arg3 param 3) (-> arg3 param 4))
+         (go
+           (the-as (state object object object object target) (-> arg3 param 0))
+           (-> arg3 param 1)
+           (-> arg3 param 2)
+           (-> arg3 param 3)
+           (-> arg3 param 4)
+           )
          )
         )
       )
@@ -331,7 +337,7 @@
   arg0
   )
 
-(defbehavior target-attacked target ((arg0 symbol) (arg1 attack-info) (arg2 process) (arg3 process) (arg4 (state handle attack-info target)))
+(defbehavior target-attacked target ((arg0 symbol) (arg1 attack-info) (arg2 process) (arg3 process) (arg4 (state symbol attack-info target)))
   (when (zero? (logand (-> self state-flags) 8))
     (cond
       ((or (logtest? (-> self state-flags) 112)
@@ -433,7 +439,7 @@
         (if (and (= (-> self game mode) 'play) (and (>= 1.0 (-> self fact-info-target health)) (= arg0 'attack)))
             (logior! (-> self state-flags) #x8000)
             )
-        (go arg4 (the-as handle arg0) (-> self attack-info-rec))
+        (go arg4 arg0 (-> self attack-info-rec))
         )
       )
     )
@@ -797,7 +803,7 @@
        (the-as attack-info (-> arg3 param 1))
        arg0
        (the-as process (-> arg3 param 0))
-       (the-as (state handle attack-info target) target-hit)
+       target-hit
        )
      )
     (('shove)
@@ -947,7 +953,7 @@
        (the-as attack-info (-> arg3 param 1))
        arg0
        (the-as process (-> arg3 param 0))
-       (the-as (state handle attack-info target) target-hit)
+       target-hit
        )
      )
     (else

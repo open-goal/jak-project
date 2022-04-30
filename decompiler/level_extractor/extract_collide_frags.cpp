@@ -9,8 +9,15 @@ struct CollideListItem {
   const level_tools::InstanceTie* inst = nullptr;
 
   struct {
+    struct UnpackedFace {
+      UnpackedFace(u8 a, u8 b, u8 c) : verts(a, b, c) {}
+
+      math::Vector<u8, 3> verts;
+      u32 pat;
+    };
+
     std::vector<math::Vector4f> vu0_buffer;
-    std::vector<math::Vector<u8, 3>> faces;
+    std::vector<UnpackedFace> faces;
   } unpacked;
 };
 
@@ -64,6 +71,14 @@ s8 deref_s8(const Ref& ref, int byte) {
   u32 u32_offset = byte / 4;
   u32 u32_val = level_tools::deref_u32(ref, u32_offset);
   s8 vals[4];
+  memcpy(vals, &u32_val, 4);
+  return vals[byte & 3];
+}
+
+u8 deref_u8(const Ref& ref, int byte) {
+  u32 u32_offset = byte / 4;
+  u32 u32_val = level_tools::deref_u32(ref, u32_offset);
+  u8 vals[4];
   memcpy(vals, &u32_val, 4);
   return vals[byte & 3];
 }
@@ -184,6 +199,17 @@ void find_faces(CollideListItem& item) {
   }
 }
 
+void extract_pats(CollideListItem& item) {
+  u32 byte_offset = 16 * item.mesh->vertex_data_qwc + item.mesh->strip_data_len;
+  for (auto& f : item.unpacked.faces) {
+    auto pat_idx = deref_u8(item.mesh->packed_data, byte_offset++);
+
+    u32 pat = level_tools::deref_u32(item.mesh->pat_array, pat_idx);
+    // fmt::print("pat @ {} is 0x{:x}\n", pat_idx, pat);
+    f.pat = pat;
+  }
+}
+
 std::string debug_dump_to_obj(const std::vector<CollideListItem>& list) {
   std::vector<math::Vector4f> verts;
   std::vector<math::Vector<u32, 3>> faces;
@@ -191,7 +217,7 @@ std::string debug_dump_to_obj(const std::vector<CollideListItem>& list) {
   for (auto& item : list) {
     u32 f_off = verts.size() + 1;
     for (auto& f : item.unpacked.faces) {
-      faces.emplace_back(f[0] + f_off, f[1] + f_off, f[2] + f_off);
+      faces.emplace_back(f.verts[0] + f_off, f.verts[1] + f_off, f.verts[2] + f_off);
     }
     for (u32 t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
       verts.push_back(item.unpacked.vu0_buffer[t] / 65536);
@@ -254,6 +280,7 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
     unpack_part1_collide_list_item(frag);
     unpack_part2_collide_list_item(frag);
     find_faces(frag);
+    extract_pats(frag);
     total_faces += frag.unpacked.faces.size();
   }
 
@@ -266,11 +293,13 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
 
   for (auto& item : all_frags) {
     for (auto& f : item.unpacked.faces) {
-      math::Vector4f verts[3] = {item.unpacked.vu0_buffer[f[0]], item.unpacked.vu0_buffer[f[1]],
-                                 item.unpacked.vu0_buffer[f[2]]};
+      math::Vector4f verts[3] = {item.unpacked.vu0_buffer[f.verts[0]],
+                                 item.unpacked.vu0_buffer[f.verts[1]],
+                                 item.unpacked.vu0_buffer[f.verts[2]]};
       tfrag3::CollisionMesh::Vertex out_verts[3];
       set_vertices_for_tri(out_verts, verts);
       for (int i = 0; i < 3; i++) {
+        out_verts[i].pat = f.pat;
         out.collision.vertices.push_back(out_verts[i]);
       }
     }

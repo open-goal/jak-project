@@ -854,7 +854,7 @@ u32 MC_check_result() {
  * The slot includes the four save slots (8 banks), and a few other files.
  */
 void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
-  ASSERT(slot == 0);  // no memory cards so only allow "slot 0"!!!
+  // slot is ignored, so you'll get the same thing regardless of what slot you pick
 
   info->handle = 0;
   info->known = 0;
