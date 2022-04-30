@@ -46,7 +46,9 @@ set(RUNTIME_SOURCE
         mips2c/functions/collide_probe.cpp
         mips2c/functions/draw_string.cpp
         mips2c/functions/generic_effect.cpp
+        mips2c/functions/generic_effect2.cpp
         mips2c/functions/generic_merc.cpp
+        mips2c/functions/generic_tie.cpp
         mips2c/functions/joint.cpp
         mips2c/functions/merc_blend_shape.cpp
         mips2c/functions/ocean.cpp
@@ -59,6 +61,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/test_func.cpp
         mips2c/functions/texture.cpp
         mips2c/functions/tfrag.cpp
+        mips2c/functions/tie_methods.cpp
         mips2c/functions/time_of_day.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
@@ -128,19 +131,19 @@ set(RUNTIME_SOURCE
 find_package(Git)
 
 function(write_svnrev_h)
-	set(GIT_SHORT_SHA "")
-	if (GIT_FOUND AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
-		EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-			OUTPUT_VARIABLE GIT_SHORT_SHA
-			OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(GIT_SHORT_SHA "")
+    if (GIT_FOUND AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
+        EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                OUTPUT_VARIABLE GIT_SHORT_SHA
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
     else()
-      set(GIT_SHORT_SHA "unk. rev.")
-	endif()
-	if(NOT GIT_SHORT_SHA)
-		set(GIT_SHORT_SHA "unk. rev.")
+        set(GIT_SHORT_SHA "unk. rev.")
+    endif()
+    if(NOT GIT_SHORT_SHA)
+        set(GIT_SHORT_SHA "unk. rev.")
     else()
         string(SUBSTRING ${GIT_SHORT_SHA} 0 6 GIT_SHORT_SHA)
-	endif()
+    endif()
 
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/kernel/svnrev.h "#define GIT_SHORT_SHA \"rev. ${GIT_SHORT_SHA}\"\n")
 endfunction()
