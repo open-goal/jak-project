@@ -128,7 +128,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
   c->lui(v1, 16256);                                // lui v1, 16256
@@ -667,7 +666,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
   // nop                                            // sll r0, r0, 0
   c->lw(v1, 80, at);                                // lw v1, 80(at)
@@ -847,7 +845,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 12432, at);                             // sd ra, 12432(at)
   c->sq(s0, 12448, at);                             // sq s0, 12448(at)

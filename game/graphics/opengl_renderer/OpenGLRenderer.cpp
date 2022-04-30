@@ -15,7 +15,7 @@
 #include "game/graphics/opengl_renderer/MercRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/ShadowRenderer.h"
-#include "game/graphics/opengl_renderer/GenericRenderer.h"
+#include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
 
@@ -109,8 +109,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<MercRenderer>("l0-tfrag-merc", BucketCategory::MERC,
                                      BucketId::MERC_TFRAG_TEX_LEVEL0);
   // 11 : GMERC_TFRAG_TEX_LEVEL0
-  init_bucket_renderer<GenericRenderer>("l0-tfrag-gmerc", BucketCategory::GENERIC_MERC,
-                                        BucketId::GMERC_TFRAG_TEX_LEVEL0);
+  init_bucket_renderer<Generic2>("l0-tfrag-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_TFRAG_TEX_LEVEL0);
 
   //-----------------------
   // LEVEL 1 tfrag texture
@@ -129,8 +129,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<MercRenderer>("l1-tfrag-merc", BucketCategory::MERC,
                                      BucketId::MERC_TFRAG_TEX_LEVEL1);
   // 18 : GMERC_TFRAG_TEX_LEVEL1
-  init_bucket_renderer<GenericRenderer>("l1-tfrag-gmerc", BucketCategory::GENERIC_MERC,
-                                        BucketId::GMERC_TFRAG_TEX_LEVEL1);
+  init_bucket_renderer<Generic2>("l1-tfrag-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_TFRAG_TEX_LEVEL1);
 
   //-----------------------
   // LEVEL 0 shrub texture
@@ -157,8 +157,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   // 28 : SHRUB_BILLBOARD_LEVEL1
   // 29 : SHRUB_TRANS_LEVEL1
   // 30 : SHRUB_GENERIC_LEVEL1
-  init_bucket_renderer<GenericRenderer>("mystery-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::SHRUB_GENERIC_LEVEL1);
+  init_bucket_renderer<Generic2>("mystery-generic", BucketCategory::GENERIC,
+                                 BucketId::SHRUB_GENERIC_LEVEL1);
 
   //-----------------------
   // LEVEL 0 alpha texture
@@ -197,8 +197,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<MercRenderer>("common-alpha-merc", BucketCategory::MERC,
                                      BucketId::MERC_AFTER_ALPHA);
 
-  init_bucket_renderer<GenericRenderer>("common-alpha-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_ALPHA);                           // 46
+  init_bucket_renderer<Generic2>("common-alpha-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_ALPHA);                                  // 46
   init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW);  // 47
 
   //-----------------------
@@ -208,8 +208,8 @@ void OpenGLRenderer::init_bucket_renderers() {
                                              BucketId::PRIS_TEX_LEVEL0);  // 48
   init_bucket_renderer<MercRenderer>("l0-pris-merc", BucketCategory::MERC,
                                      BucketId::MERC_PRIS_LEVEL0);  // 49
-  init_bucket_renderer<GenericRenderer>("l0-pris-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_PRIS_LEVEL0);  // 50
+  init_bucket_renderer<Generic2>("l0-pris-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_PRIS_LEVEL0);  // 50
 
   //-----------------------
   // LEVEL 1 pris texture
@@ -218,16 +218,16 @@ void OpenGLRenderer::init_bucket_renderers() {
                                              BucketId::PRIS_TEX_LEVEL1);  // 51
   init_bucket_renderer<MercRenderer>("l1-pris-merc", BucketCategory::MERC,
                                      BucketId::MERC_PRIS_LEVEL1);  // 52
-  init_bucket_renderer<GenericRenderer>("l1-pris-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_PRIS_LEVEL1);  // 53
+  init_bucket_renderer<Generic2>("l1-pris-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_PRIS_LEVEL1);  // 53
 
   // other renderers may output to the eye renderer
   m_render_state.eye_renderer = init_bucket_renderer<EyeRenderer>(
       "common-pris-eyes", BucketCategory::OTHER, BucketId::MERC_EYES_AFTER_PRIS);  // 54
   init_bucket_renderer<MercRenderer>("common-pris-merc", BucketCategory::MERC,
                                      BucketId::MERC_AFTER_PRIS);  // 55
-  init_bucket_renderer<GenericRenderer>("common-pris-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_PRIS);  // 56
+  init_bucket_renderer<Generic2>("common-pris-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_PRIS);  // 56
 
   //-----------------------
   // LEVEL 0 water texture
@@ -236,8 +236,8 @@ void OpenGLRenderer::init_bucket_renderers() {
                                              BucketId::WATER_TEX_LEVEL0);  // 57
   init_bucket_renderer<MercRenderer>("l0-water-merc", BucketCategory::MERC,
                                      BucketId::MERC_WATER_LEVEL0);  // 58
-  init_bucket_renderer<GenericRenderer>("l0-water-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_WATER_LEVEL0);  // 59
+  init_bucket_renderer<Generic2>("l0-water-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_WATER_LEVEL0);  // 59
 
   //-----------------------
   // LEVEL 1 water texture
@@ -246,8 +246,8 @@ void OpenGLRenderer::init_bucket_renderers() {
                                              BucketId::WATER_TEX_LEVEL1);  // 60
   init_bucket_renderer<MercRenderer>("l1-water-merc", BucketCategory::MERC,
                                      BucketId::MERC_WATER_LEVEL1);  // 61
-  init_bucket_renderer<GenericRenderer>("l1-water-generic", BucketCategory::GENERIC_MERC,
-                                        BucketId::GENERIC_WATER_LEVEL1);  // 62
+  init_bucket_renderer<Generic2>("l1-water-generic", BucketCategory::GENERIC,
+                                 BucketId::GENERIC_WATER_LEVEL1);  // 62
 
   init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);  // 63
   // 64?
@@ -374,7 +374,6 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
   ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
   ImGui::Checkbox("Direct 2", &m_render_state.use_direct2);
-  ImGui::Checkbox("Generic 2", &m_render_state.use_generic2);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();

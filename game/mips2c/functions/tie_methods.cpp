@@ -171,7 +171,6 @@ u64 execute(void* ctxt) {
   u16 vi01 = 0;
 
   u32 madr, sadr, qwc;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s0, 16, sp);                                // sq s0, 16(sp)
@@ -313,7 +312,7 @@ u64 execute(void* ctxt) {
    */
 
 
-  block_14:
+  // block_14:
   // c->sw(t3, 16, t1);                                // sw t3, 16(t1)
   madr = c->sgpr64(t3);
   c->xori(t6, t2, 2048);                            // xori t6, t2, 2048
@@ -409,7 +408,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_23:
+  // block_23:
   // c->sw(a1, 128, a3);                               // sw a1, 128(a3)
   sadr = c->sgpr64(a1);
   c->xori(a1, a1, 12288);                           // xori a1, a1, 12288
@@ -921,7 +920,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_46:
+  // block_46:
   // c->sw(a1, 128, a3);                               // sw a1, 128(a3)
   sadr = c->sgpr64(a1);
   c->xori(a1, a1, 12288);                           // xori a1, a1, 12288
@@ -1174,7 +1173,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_59:
+  // block_59:
   // c->sw(a1, 128, a3);                               // sw a1, 128(a3)
   sadr = c->sgpr64(a1);
   c->xori(a1, a1, 12288);                           // xori a1, a1, 12288
@@ -1267,7 +1266,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_67:
+  // block_67:
   // c->sw(a1, 128, a3);                               // sw a1, 128(a3)
   sadr = c->sgpr64(a1);
   c->xori(a0, a1, 12288);                           // xori a0, a1, 12288
@@ -1359,7 +1358,7 @@ struct Cache {
 void block29_call(ExecutionContext* c) {
   bool bc;
   u32 sadr, madr, qwc;
-  block_29:
+  // block_29:
   c->addiu(t6, t6, 32);                             // addiu t6, t6, 32
   c->sw(t5, 232, t0);                               // sw t5, 232(t0)
 
@@ -1398,7 +1397,7 @@ void block29_call(ExecutionContext* c) {
   */
 
 
-  block_33:
+  // block_33:
   // c->sw(t2, 128, t1);                               // sw t2, 128(t1)
   sadr = c->sgpr64(t2);
   c->xori(t2, t2, 4096);                            // xori t2, t2, 4096
@@ -1468,7 +1467,6 @@ void block29_call(ExecutionContext* c) {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   u32 madr, sadr, qwc;
   c->daddiu(sp, sp, -112);                          // daddiu sp, sp, -112
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
@@ -1565,7 +1563,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_5:
+  // block_5:
   // c->sw(t2, 128, t1);                               // sw t2, 128(t1)
   sadr = c->sgpr64(t2);
   c->xori(t2, t2, 4096);                            // xori t2, t2, 4096
@@ -1627,7 +1625,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_9:
+  // block_9:
   // c->sw(ra, 16, t4);                                // sw ra, 16(t4)
   madr = c->sgpr64(ra);
   c->daddiu(t9, t9, -32);                           // daddiu t9, t9, -32
@@ -1674,7 +1672,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_13:
+  // block_13:
   // c->sw(ra, 16, t4);                                // sw ra, 16(t4)
   madr = c->sgpr64(ra);
   // nop                                            // sll r0, r0, 0
@@ -1888,7 +1886,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_39:
+  // block_39:
   // c->sw(t2, 128, t1);                               // sw t2, 128(t1)
   sadr = c->sgpr64(t2);
   // nop                                            // sll r0, r0, 0
@@ -1930,7 +1928,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_42:
+  // block_42:
   c->lw(a0, 10260, a3);                             // lw a0, 10260(a3)
   // nop                                            // sll r0, r0, 0
   c->sw(v1, 4, a0);                                 // sw v1, 4(a0)

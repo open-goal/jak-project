@@ -104,8 +104,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/DirectRenderer2.cpp
         graphics/opengl_renderer/EyeRenderer.cpp
-        graphics/opengl_renderer/GenericProgram.cpp
-        graphics/opengl_renderer/GenericRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
         graphics/opengl_renderer/Loader.cpp
         graphics/opengl_renderer/MercProgram.cpp

@@ -10,8 +10,6 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
   c->ori(a2, r0, 65535);                            // ori a2, r0, 65535
@@ -47,7 +45,6 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_3:
   c->addiu(a3, r0, 324);                            // addiu a3, r0, 324
   // c->sw(a2, 128, v1);                               // sw a2, 128(v1)
   u32 sadr = c->sgpr64(a2);
@@ -87,7 +84,6 @@ u64 execute(void* ctxt) {
    */
 
 
-  block_6:
   c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
   //jr ra                                           // jr ra
   c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
@@ -155,7 +151,7 @@ void lq_buffer(Mask mask, Vf& data, u32 qw) {
 }
 
 
-void vcallms_104(ExecutionContext* c) {
+void vcallms_104() {
   // iaddi vi02, vi00, 0x0      |  nop                            104
   vis[vi02] = 0;
   // iadd vi03, vi02, vi08      |  nop                            105
@@ -508,7 +504,6 @@ void vcallms_257(ExecutionContext* c) {
 
 void vcallms_264(ExecutionContext* c);
 void vcallms_259(ExecutionContext* c) {
-  PROG_259:
   // ior vi01, vi13, vi00       |  nop                            259
   vis[vi01] = vis[vi13];
   // lqi.xyzw vf09, vi01        |  nop                            260
@@ -523,7 +518,6 @@ void vcallms_259(ExecutionContext* c) {
 }
 
 void vcallms_264(ExecutionContext* c) {
-  PROG_264:
   // move.xyzw vf15, vf21       |  mulax.xyzw ACC, vf01, vf09     264
   c->acc.vf.mula(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf09).vf.x());   c->vfs[vf15].vf.move(Mask::xyzw, c->vf_src(vf21).vf);
   // move.xyzw vf20, vf22       |  madday.xyzw ACC, vf02, vf09    265
@@ -641,7 +635,6 @@ u64 execute(void* ctxt) {
    */
 
 
-  block_4:
   // nop                                            // sll r0, r0, 0
   c->lw(v1, 724, at);                               // lw v1, 724(at)
   // nop                                            // sll r0, r0, 0
@@ -907,7 +900,7 @@ u64 execute(void* ctxt) {
   c->addiu(a2, r0, 324);                            // addiu a2, r0, 324
   {
     // spr to
-    u32 sadr = c->sgpr64(a1);
+    sadr = c->sgpr64(a1);
     u32 tadr = c->sgpr64(v1);
     spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr & 0x3fff, tadr);
   }
@@ -1076,7 +1069,7 @@ u64 execute(void* ctxt) {
   vis[vi09] = c->gpr_src(a2).du16[0];                     // ctc2.i vi9, a2
   c->daddu(t4, t2, t5);                             // daddu t4, t2, t5
   // Unknown instr: vcallms 104
-  vcallms_104(c);
+  vcallms_104();
 
   block_33:
   c->pextuh(t5, t7, r0);                            // pextuh t5, t7, r0

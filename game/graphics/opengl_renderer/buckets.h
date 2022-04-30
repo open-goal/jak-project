@@ -14,14 +14,14 @@ enum class BucketId {
   TIE_NEAR_LEVEL0 = 8,
   TIE_LEVEL0 = 9,
   MERC_TFRAG_TEX_LEVEL0 = 10,
-  GMERC_TFRAG_TEX_LEVEL0 = 11,
+  GENERIC_TFRAG_TEX_LEVEL0 = 11,
   TFRAG_TEX_LEVEL1 = 12,
   TFRAG_LEVEL1 = 13,
   TFRAG_NEAR_LEVEL1 = 14,
   TIE_NEAR_LEVEL1 = 15,
   TIE_LEVEL1 = 16,
   MERC_TFRAG_TEX_LEVEL1 = 17,
-  GMERC_TFRAG_TEX_LEVEL1 = 18,
+  GENERIC_TFRAG_TEX_LEVEL1 = 18,
   SHRUB_TEX_LEVEL0 = 19,
   SHRUB_NORMAL_LEVEL0 = 20,
   // 21
@@ -82,7 +82,7 @@ enum class BucketCategory {
   SHRUB,
   TEX,
   MERC,
-  GENERIC_MERC,
+  GENERIC,
   SPRITE,
   OCEAN,
   OTHER,
@@ -90,4 +90,4 @@ enum class BucketCategory {
 };
 
 constexpr const char* BUCKET_CATEGORY_NAMES[(int)BucketCategory::MAX_CATEGORIES] = {
-    "tfrag", "tie", "shrub", "tex", "merc", "mercneric", "sprite", "ocean", "other"};
+    "tfrag", "tie", "shrub", "tex", "merc", "generic", "sprite", "ocean", "other"};
