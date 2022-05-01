@@ -10,6 +10,7 @@
 #include <netinet/tcp.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #elif _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
