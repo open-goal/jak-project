@@ -64,15 +64,14 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   setup_goos_forms();
 }
 
-void Compiler::lock() {
-  compiler_mutex.lock();
+Compiler::~Compiler() {
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(false);  // reset the target
+    m_listener.disconnect();
+  }
 }
 
-void Compiler::unlock() {
-  compiler_mutex.unlock();
-}
-
-std::optional<goos::Object> Compiler::read_from_stdin() {
+std::string Compiler::get_repl_input() {
   std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
   if (m_listener.is_connected()) {
     prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
@@ -82,45 +81,24 @@ std::optional<goos::Object> Compiler::read_from_stdin() {
   } else if (m_debugger.is_attached()) {
     prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
   }
-  // 1). get a line from the user (READ)
-  std::optional<goos::Object> code = m_goos.reader.read_from_stdin(prompt, *m_repl);
-
-  if (!code) {
-    return std::nullopt;
+  std::string prompt_full = "\033[0m" + prompt;
+  auto str = m_repl->readline(prompt_full);
+  if (str) {
+    m_repl->add_to_history(str);
+    return str;
+  } else {
+    return "";
   }
-  return code;
 }
 
-goos::Object Compiler::read_from_string(const std::string& input) {
-  return m_goos.reader.read_from_string(input);
-}
-
-ReplStatus Compiler::execute_repl() {
-  while (!m_want_exit && !m_want_reload) {
-    auto code = read_from_stdin();
-    if (code) {
-      eval_and_print(code.value());
-    }
+ReplStatus Compiler::handle_repl_string(const std::string& input) {
+  if (input.empty()) {
+    return ReplStatus::OK;
   }
 
-  if (m_listener.is_connected()) {
-    m_listener.send_reset(false);  // reset the target
-    m_listener.disconnect();
-  }
-
-  if (m_want_exit) {
-    return ReplStatus::WANT_EXIT;
-  }
-
-  if (m_want_reload) {
-    return ReplStatus::WANT_RELOAD;
-  }
-
-  return ReplStatus::OK;
-}
-
-void Compiler::eval_and_print(goos::Object code) {
   try {
+    // 1). read
+    goos::Object code = m_goos.reader.read_from_string(input, true);
     // 2). compile
     auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
     if (m_settings.debug_print_ir) {
@@ -142,10 +120,19 @@ void Compiler::eval_and_print(goos::Object code) {
         }
       }
     }
-
   } catch (std::exception& e) {
     print_compiler_warning("REPL Error: {}\n", e.what());
   }
+
+  if (m_want_exit) {
+    return ReplStatus::WANT_EXIT;
+  }
+
+  if (m_want_reload) {
+    return ReplStatus::WANT_RELOAD;
+  }
+
+  return ReplStatus::OK;
 }
 
 FileEnv* Compiler::compile_object_file(const std::string& name,

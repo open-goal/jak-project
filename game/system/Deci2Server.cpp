@@ -52,15 +52,15 @@ void Deci2Server::read_data() {
   int got = 0;
 
   while (got < desired_size) {
-    ASSERT(got + desired_size < buffer_size);
-    auto x = read_from_socket(accepted_socket, buffer + got, desired_size - got);
+    ASSERT(got + desired_size < buffer.size());
+    auto x = read_from_socket(accepted_socket, buffer.data() + got, desired_size - got);
     if (want_exit_callback()) {
       return;
     }
     got += x > 0 ? x : 0;
   }
 
-  auto* hdr = (Deci2Header*)(buffer);
+  auto* hdr = (Deci2Header*)(buffer.data());
   fprintf(stderr, "[DECI2] Got message: %d %d 0x%x %c -> %c\n", hdr->len, hdr->rsvd, hdr->proto,
           hdr->src, hdr->dst);
 
@@ -94,7 +94,7 @@ void Deci2Server::read_data() {
     if (sent_to_program < hdr->rsvd) {
       //      driver.next_recv_size = 0;
       //      driver.next_recv = nullptr;
-      driver.recv_buffer = buffer + sent_to_program;
+      driver.recv_buffer = buffer.data() + sent_to_program;
       driver.available_to_receive = hdr->rsvd - sent_to_program;
       (driver.handler)(DECI2_READ, driver.available_to_receive, driver.opt);
       //      memcpy(driver.next_recv, buffer + sent_to_program, driver.next_recv_size);
@@ -103,7 +103,7 @@ void Deci2Server::read_data() {
 
     // receive from network
     if (hdr->rsvd < hdr->len) {
-      auto x = read_from_socket(accepted_socket, buffer + hdr->rsvd, hdr->len - hdr->rsvd);
+      auto x = read_from_socket(accepted_socket, buffer.data() + hdr->rsvd, hdr->len - hdr->rsvd);
       if (want_exit_callback()) {
         return;
       }

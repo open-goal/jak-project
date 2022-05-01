@@ -16,15 +16,10 @@ class ReplServer : public XSocketServer {
   using XSocketServer::XSocketServer;
 
   void write_on_accept() override;
-  void read_data() override;
-  void send_data(void* buf, u16 len) override;
-
-  void set_compiler(std::shared_ptr<Compiler> _compiler);
+  std::optional<std::string> read_data();
 
  private:
-  std::shared_ptr<Compiler> compiler = nullptr;
-  char* header_buffer = new char[(int)sizeof(ReplServerHeader)];
+  std::vector<char> header_buffer = std::vector<char>((int)sizeof(ReplServerHeader));
 
   void ping_response();
-  void compile_msg(const std::string_view& msg);
 };

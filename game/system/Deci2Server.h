@@ -12,8 +12,8 @@ class Deci2Server : public XSocketServer {
   using XSocketServer::XSocketServer;
 
   void write_on_accept() override;
-  void read_data() override;
-  void send_data(void* buf, u16 len) override;
+  void read_data();
+  void send_data(void* buf, u16 len);
 
   void wait_for_protos_ready();
   void send_proto_ready(Deci2Driver* drivers, int* driver_count);

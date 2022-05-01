@@ -29,10 +29,9 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
-  goos::Object read_from_string(const std::string& input);
-  void eval_and_print(goos::Object code);
-
-  ReplStatus execute_repl();
+  ~Compiler();
+  std::string get_repl_input();
+  ReplStatus handle_repl_string(const std::string& input);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
@@ -73,8 +72,6 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
-  void lock();
-  void unlock();
 
  private:
   TypeSystem m_ts;
@@ -94,7 +91,6 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
-  std::mutex compiler_mutex;
 
   struct DebugStats {
     int num_spills = 0;
@@ -105,7 +101,6 @@ class Compiler {
   } m_debug_stats;
 
   void setup_goos_forms();
-  std::optional<goos::Object> read_from_stdin();
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);

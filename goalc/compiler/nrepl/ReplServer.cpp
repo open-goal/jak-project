@@ -11,39 +11,61 @@
 //
 // TODO - The server also needs to eventually return the result of the evaluation
 
-// Known Issues:
-// - doesn't handle disconnects/reconnects
-
 void ReplServer::write_on_accept() {
   ping_response();
 }
 
-void ReplServer::read_data() {
-  int desired_size = (int)sizeof(ReplServerHeader);
+std::optional<std::string> ReplServer::read_data() {
+  if (accepted_socket == -1) {
+    return std::nullopt;
+  }
   int got = 0;
 
-  while (got < desired_size) {
-    ASSERT(got + desired_size < buffer_size);
-    int sock = accepted_socket;
-    auto x = read_from_socket(sock, header_buffer + got, desired_size - got);
+  lock();
+
+  while (got < header_buffer.size()) {
+    if (got > header_buffer.size()) {
+      fmt::print(stderr, "[nREPL]: Bad header, aborting the read.  Got :{}, Expected Size: {}", got,
+                 header_buffer.size());
+      unlock();
+      return std::nullopt;
+    }
+    auto x =
+        read_from_socket(accepted_socket, header_buffer.data() + got, header_buffer.size() - got);
     if (want_exit_callback()) {
-      return;
+      unlock();
+      return std::nullopt;
+    }
+    if (x == 0 || x == -1) {
+      accepted_socket = -1;
+      unlock();
+      return std::nullopt;
     }
     got += x > 0 ? x : 0;
   }
 
-  auto* header = (ReplServerHeader*)(header_buffer);
-
-  lock();
+  auto* header = (ReplServerHeader*)(header_buffer.data());
 
   // get the body of the message
-  desired_size = header->length;
+  int expected_size = header->length;
   got = 0;
-  while (got < desired_size) {
-    ASSERT(got + desired_size < buffer_size);
-    auto x = read_from_socket(accepted_socket, buffer + got, desired_size - got);
+  while (got < expected_size) {
+    if (got + expected_size > buffer.size()) {
+      fmt::print(stderr,
+                 "[nREPL]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer Size: {}",
+                 got, expected_size, buffer.size());
+      unlock();
+      return std::nullopt;
+    }
+    auto x = read_from_socket(accepted_socket, buffer.data() + got, expected_size - got);
     if (want_exit_callback()) {
-      return;
+      unlock();
+      return std::nullopt;
+    }
+    if (x == 0 || x == -1) {
+      accepted_socket = -1;
+      unlock();
+      return std::nullopt;
     }
     got += x > 0 ? x : 0;
   }
@@ -51,50 +73,23 @@ void ReplServer::read_data() {
   switch (header->type) {
     case ReplServerMessageType::PING:
       ping_response();
-      break;
+      unlock();
+      return std::nullopt;
     case ReplServerMessageType::EVAL:
-      std::string msg;
-      msg.assign(buffer, got);
-      compile_msg(msg);
-      break;
+      std::string msg(buffer.data(), header->length);
+      unlock();
+      return std::make_optional(msg);
   }
 
   unlock();
-}
-
-void ReplServer::send_data(void* buf, u16 len) {
-  lock();
-  if (client_connected) {
-    int bytes_sent = 0;
-    while (bytes_sent < len) {
-      int wrote = write_to_socket(accepted_socket, (char*)(buf) + bytes_sent, len - bytes_sent);
-      bytes_sent += wrote;
-      if (!client_connected || want_exit_callback()) {
-        unlock();
-        return;
-      }
-    }
-  }
-  unlock();
-}
-
-void ReplServer::set_compiler(std::shared_ptr<Compiler> _compiler) {
-  compiler = std::move(_compiler);
+  return std::nullopt;
 }
 
 void ReplServer::ping_response() {
   std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   lock();
-  write_to_socket(accepted_socket, ping.c_str(), ping.size());
+  fmt::print("Accept Socket in ReplServer: {}\n", this->accepted_socket);
+  write_to_socket(this->accepted_socket, ping.c_str(), ping.size());
   unlock();
-}
-
-void ReplServer::compile_msg(const std::string_view& msg) {
-  if (compiler == nullptr) {
-    return;
-  }
-  compiler->lock();
-  compiler->eval_and_print(compiler->read_from_string(msg.data()));
-  compiler->unlock();
 }

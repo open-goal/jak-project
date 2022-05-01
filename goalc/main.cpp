@@ -93,22 +93,25 @@ int main(int argc, char** argv) {
   std::thread nrepl_thread;
   // the compiler may throw an exception if it fails to load its standard library.
   try {
-    std::shared_ptr<Compiler> compiler;
+    std::unique_ptr<Compiler> compiler;
+    std::mutex compiler_mutex;
     // if a command is provided on the command line, no REPL just run the compiler on it
     if (!cmd.empty()) {
-      compiler = std::make_shared<Compiler>();
+      compiler = std::make_unique<Compiler>();
       compiler->run_front_end_on_string(cmd);
       return 0;
     }
-    // Otherwise, run the REPL and such
-    compiler = std::make_shared<Compiler>(username, std::make_unique<ReplWrapper>());
-    repl_server.set_compiler(compiler);
     // Start nREPL Server
     if (repl_server_ok) {
       nrepl_thread = std::thread([&]() {
         while (!shutdown_callback()) {
           if (repl_server.wait_for_connection()) {
-            repl_server.read_data();
+            auto resp = repl_server.read_data();
+            if (resp) {
+              std::lock_guard<std::mutex> lock(compiler_mutex);
+              std::string copy = resp.value();
+              status = compiler->handle_repl_string(copy);
+            }
           } else {
             std::this_thread::sleep_for(std::chrono::microseconds(50000));
           }
@@ -117,16 +120,26 @@ int main(int argc, char** argv) {
     }
     // Run automatic forms if applicable
     if (auto_debug || auto_listen) {
-      compiler->eval_and_print(compiler->read_from_string("(lt)"));
+      std::lock_guard<std::mutex> lock(compiler_mutex);
+      status = compiler->handle_repl_string("(lt)");
     }
     if (auto_debug) {
-      compiler->eval_and_print(compiler->read_from_string("(dbg) (:cont)"));
+      std::lock_guard<std::mutex> lock(compiler_mutex);
+      status = compiler->handle_repl_string("(dbg) (:cont)");
     }
     // Poll Terminal
-    while (status == ReplStatus::WANT_RELOAD) {
-      status = compiler->execute_repl();
+    while (status != ReplStatus::WANT_EXIT) {
       if (status == ReplStatus::WANT_RELOAD) {
         fmt::print("Reloading compiler...\n");
+        std::lock_guard<std::mutex> lock(compiler_mutex);
+        compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
+        status = ReplStatus::OK;
+      }
+      std::string input_from_stdin = compiler->get_repl_input();
+      if (!input_from_stdin.empty()) {
+        // lock, while we compile
+        std::lock_guard<std::mutex> lock(compiler_mutex);
+        status = compiler->handle_repl_string(input_from_stdin);
       }
     }
   } catch (std::exception& e) {
