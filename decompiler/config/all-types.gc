@@ -11772,6 +11772,78 @@
     )
   )
 
+(defenum cshape-moving-flags
+  :bitfield #t
+  :type uint64
+  (onsurf)
+  (onground)
+  (tsurf)
+  (twall)
+  (t-ciel)
+  (t-act)
+  (csmf06)
+  (csmf07)
+  (csmf08)
+  (csmf09)
+  (on-water)
+  (csmf11)
+  (csmf12)
+  (csmf13)
+  (csmf14)
+  (csmf15)
+  (csmf16)
+  (csmf17)
+  (csmf18)
+  (csmf19)
+  (csmf20)
+  (csmf21)
+  (csmf22)
+  (csmf23)
+  (csmf24)
+  (csmf25)
+  (csmf26)
+  (csmf27)
+  (csmf28)
+  (csmf29)
+  )
+
+(defenum cshape-reaction-flags
+  :bitfield #t
+  :type uint32
+  (csrf00)
+  (csrf01)
+  (csrf02)
+  (csrf03)
+  (csrf04)
+  (csrf05)
+  (csrf06)
+  (csrf07)
+  (csrf08)
+  (csrf09)
+  (csrf10)
+  (csrf11)
+  (csrf12)
+  (csrf13)
+  (csrf14)
+  (csrf15)
+  (csrf16)
+  (csrf17)
+  (csrf18)
+  (csrf19)
+  (csrf20)
+  (csrf21)
+  (csrf22)
+  (csrf23)
+  (csrf24)
+  (csrf25)
+  (csrf26)
+  (csrf27)
+  (csrf28)
+  (csrf29)
+  (csrf30)
+  (csrf31)
+  )
+
 (deftype collide-shape-moving (collide-shape)
   ((rider-time            time-frame             :offset-assert 184)
    (rider-last-move       vector     :inline :offset-assert 192)
@@ -11779,11 +11851,11 @@
    (poly-pat              pat-surface        :offset-assert 256)
    (cur-pat               pat-surface        :offset-assert 260)
    (ground-pat            pat-surface        :offset-assert 264)
-   (status                uint64             :offset-assert 272) ;; 1: onsurf 2: onground 4: tsurf 8: twall 16: t-ciel 32: t-act ?? 1024: on-water
-   (old-status            uint64             :offset-assert 280)
-   (prev-status           uint64             :offset-assert 288)
-   (reaction-flag         uint32             :offset-assert 296)
-   (reaction              (function collide-shape-moving collide-shape-intersect vector vector uint)              :offset-assert 300)
+   (status                cshape-moving-flags :offset-assert 272)
+   (old-status            cshape-moving-flags :offset-assert 280)
+   (prev-status           cshape-moving-flags :offset-assert 288)
+   (reaction-flag         cshape-reaction-flags :offset-assert 296)
+   (reaction              (function collide-shape-moving collide-shape-intersect vector vector none)              :offset-assert 300)
    (no-reaction           (function collide-shape-moving collide-shape-intersect vector vector none)              :offset-assert 304)
    (local-normal          vector     :inline :offset-assert 320)
    (surface-normal        vector     :inline :offset-assert 336)
@@ -11841,9 +11913,9 @@
    (local-normal   vector :inline :offset-assert 64)
    (surface-normal vector :inline :offset-assert 80)
    (time           time-frame          :offset-assert 96)
-   (status         uint64         :offset-assert 104)
+   (status         cshape-moving-flags :offset-assert 104)
    (pat            pat-surface    :offset-assert 112)
-   (reaction-flag  uint32         :offset-assert 116)
+   (reaction-flag  cshape-reaction-flags :offset-assert 116)
    )
   :method-count-assert 10
   :size-assert         #x78
@@ -19087,8 +19159,8 @@
 
 (define-extern target-attack-up (function target symbol symbol none))
 (define-extern find-ground-point (function control-info vector float float vector))
-(define-extern default-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector uint)) ;; TODO - not completely confirmed
-(define-extern simple-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector uint))
+(define-extern default-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
+(define-extern simple-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
 (define-extern collide-shape-draw-debug-marks (function none))
 (define-extern debug-report-col-stats (function int))
 
@@ -19283,7 +19355,7 @@
     (TODO-RENAME-26 (_type_) none 26)
     (dummy-27 (_type_) none 27)
     (get-ripple-height (_type_ vector) float 28)
-    (TODO-RENAME-29 (_type_) uint 29)
+    (TODO-RENAME-29 (_type_) none 29)
     )
   )
 
@@ -20506,7 +20578,7 @@
 (define-extern collide-shape-moving-angle-set! (function collide-shape-moving vector vector none))
 (define-extern target-collision-low-coverage (function control-info collide-shape-intersect vector (pointer uint32) (pointer uint64) (pointer symbol) uint)) ;; i think the pointers are lies - TODO
 (define-extern poly-find-nearest-edge (function vector (inline-array vector) vector vector vector))
-(define-extern target-collision-reaction (function control-info collide-shape-intersect vector vector uint))
+(define-extern target-collision-reaction (function control-info collide-shape-intersect vector vector none))
 (define-extern target-collision-no-reaction (function control-info collide-shape-intersect vector vector none))
 
 
@@ -20537,7 +20609,7 @@
 (define-extern add-thrust (function symbol :behavior target))
 (define-extern add-gravity (function vector :behavior target))
 (define-extern do-rotations2 (function int :behavior target))
-(define-extern reverse-conversions (function vector uint :behavior target))
+(define-extern reverse-conversions (function vector none :behavior target))
 (define-extern bend-gravity (function symbol :behavior target))
 (define-extern post-flag-setup (function none :behavior target))
 (define-extern joint-points (function none :behavior target))
@@ -22073,7 +22145,7 @@
 
 ;; - Functions
 
-(define-extern projectile-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector uint))
+(define-extern projectile-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
 (define-extern projectile-update-velocity-space-wars (function projectile none))
 (define-extern find-nearest-attackable (function vector float uint uint vector float projectile)) ;; Whatever te search returns (match from search-info)
 (define-extern find-ground-and-draw-shadow (function vector vector float collide-kind process-drawable float float none))
@@ -23278,8 +23350,8 @@
   :type int32
   (ecdf00)
   (ecdf01)
-  (ecdf02)
-  (ecdf03)
+  (auto-close)
+  (one-way)
   (ecdf04)
   (ecdf05)
   (ecdf06)
@@ -24054,7 +24126,7 @@
 (define-extern spawn-mistycannon-missile (function process-tree vector vector float float float float entity none))
 (define-extern angle-tracker-apply-move! (function angle-tracker float float))
 (define-extern mistycannon-missile-init-by-other (function mistycannon-init-data entity none :behavior mistycannon-missile))
-(define-extern mistycannon-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector uint))
+(define-extern mistycannon-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
 (define-extern angle-tracker-get-value (function angle-tracker float))
 (define-extern angle-tracker-set-value (function angle-tracker float float))
 (define-extern solve-missile-tilt (function quadratic-solution float float float float symbol))
@@ -24760,7 +24832,7 @@
 ;; - Functions
 
 (define-extern seagull-init-by-other (function vector int seagullflock none :behavior seagull))
-(define-extern seagull-reaction (function collide-shape-moving collide-shape-intersect vector vector uint))
+(define-extern seagull-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
 (define-extern seagull-post (function none :behavior seagull))
 (define-extern beach-rock-trigger (function int))
 
@@ -31801,7 +31873,7 @@
   :heap-base           #x60
   :flag-assert         #x15006000cc
   (:methods
-    (dummy-20 (_type_ float) uint 20)
+    (dummy-20 (_type_ float) cshape-moving-flags 20)
     )
   (:states
     (whirlpool-idle))

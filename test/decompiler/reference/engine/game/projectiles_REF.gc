@@ -117,7 +117,7 @@
   )
 
 ;; definition for function projectile-collision-reaction
-;; INFO: Return type mismatch int vs uint.
+;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defun projectile-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
   (local-vars (sv-64 vector) (sv-68 vector) (sv-72 matrix) (sv-80 int) (sv-224 symbol))
@@ -159,7 +159,7 @@
       (set! sv-80 (logior sv-80 16))
       )
   (set! sv-224 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)))
-  (if (zero? (logand (-> arg0 prev-status) 1))
+  (if (zero? (logand (-> arg0 prev-status) (cshape-moving-flags onsurf)))
       (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
       )
   (set! sv-80 (logior sv-80 4))
@@ -187,7 +187,8 @@
       )
     )
   (logior! (-> arg0 status) sv-80)
-  (the-as uint sv-80)
+  sv-80
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -767,7 +768,9 @@
               (countdown (v1-35 16)
                 (+! f0-16 (-> self old-dist v1-35))
                 )
-              (if (or (and (logtest? (-> self root-override status) 8) (< f0-16 2048.0)) (< f0-16 204.8))
+              (if (or (and (logtest? (-> self root-override status) (cshape-moving-flags twall)) (< f0-16 2048.0))
+                      (< f0-16 204.8)
+                      )
                   (set! gp-0 #t)
                   )
               )
@@ -792,7 +795,7 @@
           (s3-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root-override transv) 1.0))
           (f30-0 (vector-length (-> arg0 root-override transv)))
           )
-      (if (logtest? (-> arg0 root-override status) 4)
+      (if (logtest? (-> arg0 root-override status) (cshape-moving-flags tsurf))
           (vector-flatten! s5-1 s5-1 (-> arg0 root-override local-normal))
           )
       (vector-normalize-copy! s4-0 s5-1 1.0)

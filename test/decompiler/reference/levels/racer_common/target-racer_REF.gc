@@ -89,7 +89,7 @@
 
 ;; definition for function racer-on-ground?
 (defbehavior racer-on-ground? racer ()
-  (logtest? (-> self root-override status) 1)
+  (logtest? (-> self root-override status) (cshape-moving-flags onsurf))
   )
 
 ;; definition for function racer-calc-gravity
@@ -129,16 +129,14 @@
   (let ((v1-1 (-> self racer slide-mode)))
     (cond
       ((zero? v1-1)
-       (if (zero?
-             (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-             )
+       (if (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
+                  )
            (set! (-> self racer slide-mode) -1)
            )
        )
       ((= v1-1 1)
-       (if (zero?
-             (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-             )
+       (if (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
+                  )
            (set! (-> self racer slide-mode) -1)
            )
        )
@@ -306,11 +304,10 @@
          )
     (set! f0-13
           (cond
-            ((and (not
-                    (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                         (>= (-> self fact-info-target eco-level) 1.0)
-                         )
-                    )
+            ((and (not (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
+                            (>= (-> self fact-info-target eco-level) 1.0)
+                            )
+                       )
                   (cpad-hold? (-> self control unknown-cpad-info00 number) square)
                   )
              (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) x)
@@ -464,7 +461,7 @@
       )
     (deg-diff (vector-y-angle gp-0) (vector-y-angle (-> self control transv)))
     (let ((f30-2 (vector-xz-length gp-0)))
-      (when (and (logtest? (-> self control status) 8)
+      (when (and (logtest? (-> self control status) (cshape-moving-flags twall))
                  (< 20480.0 f30-2)
                  (and (< (fabs (-> self racer mod-x)) 0.5) (!= (-> self next-state name) 'target-racing-smack))
                  )
@@ -548,7 +545,9 @@
                                               )
         )
   (let ((f0-2
-          (if (or (and (logtest? (-> self control status) 8) (zero? (logand (-> self control status) 1)))
+          (if (or (and (logtest? (-> self control status) (cshape-moving-flags twall))
+                       (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                       )
                   (logtest? (-> self state-flags) (state-flags sf15))
                   )
               0.0
@@ -619,7 +618,9 @@
     ((and (!= (-> self current-level name) 'ogre) (!= (-> self current-level name) 'lavatube))
      #f
      )
-    ((or (logtest? (-> self control status) 2) (< 12288.0 (vector-length (-> self control transv))))
+    ((or (logtest? (-> self control status) (cshape-moving-flags onground))
+         (< 12288.0 (vector-length (-> self control transv)))
+         )
      (let ((v0-5 (the-as object (-> *display* base-frame-counter))))
        (set! (-> self racer unstuck-time) (the-as time-frame v0-5))
        v0-5
@@ -940,9 +941,8 @@
         (set! (-> self racer boost-curve) 0.0)
         )
     )
-  (when (or (zero?
-              (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-              )
+  (when (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+                   )
             (< (-> self control unknown-float01) 4096.0)
             (= (-> self racer boost-level) 0.0)
             )
@@ -978,7 +978,7 @@
       )
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 (seconds 0.1))
     )
-  (when (logtest? (-> self control status) 8)
+  (when (logtest? (-> self control status) (cshape-moving-flags twall))
     (let* ((gp-8 (racer-find-prop-point (new 'stack-no-clear 'vector) (-> self control unknown-vector70)))
            (v1-274 (-> self control wall-pat material))
            (a1-54
@@ -1354,7 +1354,9 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defbehavior target-racing-post target ()
-  (set! (-> self control reaction) racer-collision-reaction)
+  (set! (-> self control reaction)
+        (the-as (function collide-shape-moving collide-shape-intersect vector vector none) racer-collision-reaction)
+        )
   (set! (-> self control surf) *race-track-surface*)
   (set! (-> self racer transv-max)
         (+ (-> self control unknown-surface01 transv-max) (-> self racer boost-output) (-> self racer hill-boost))
@@ -1573,7 +1575,7 @@
                     )
                   )
             (cond
-              ((and (logtest? (-> self control status) 8)
+              ((and (logtest? (-> self control status) (cshape-moving-flags twall))
                     (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.1))
                          (or (-> self racer stick-lock) (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0))
                          (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
