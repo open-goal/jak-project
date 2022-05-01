@@ -127,6 +127,9 @@ int main(int argc, char** argv) {
       if (status == ReplStatus::WANT_RELOAD) {
         fmt::print("Reloading compiler...\n");
         std::lock_guard<std::mutex> lock(compiler_mutex);
+        if (compiler) {
+          compiler->save_repl_history();
+        }
         compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
         status = ReplStatus::OK;
       }

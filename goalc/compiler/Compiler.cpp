@@ -71,6 +71,10 @@ Compiler::~Compiler() {
   }
 }
 
+void Compiler::save_repl_history() {
+  m_repl->save_history();
+}
+
 void Compiler::print_to_repl(const std::string_view& str) {
   m_repl->print_to_repl(str);
 }
