@@ -87,9 +87,6 @@ int main(int argc, char** argv) {
   std::function<bool()> shutdown_callback = [&]() { return status == ReplStatus::WANT_EXIT; };
   ReplServer repl_server(shutdown_callback, nrepl_port);
   bool repl_server_ok = repl_server.init_server();
-  if (repl_server_ok) {
-    fmt::print("[nREPL] Will wait for a connection on port {}\n", nrepl_port);
-  }
   std::thread nrepl_thread;
   // the compiler may throw an exception if it fails to load its standard library.
   try {
@@ -105,16 +102,15 @@ int main(int argc, char** argv) {
     if (repl_server_ok) {
       nrepl_thread = std::thread([&]() {
         while (!shutdown_callback()) {
-          if (repl_server.wait_for_connection()) {
-            auto resp = repl_server.read_data();
-            if (resp) {
-              std::lock_guard<std::mutex> lock(compiler_mutex);
-              std::string copy = resp.value();
-              status = compiler->handle_repl_string(copy);
-            }
-          } else {
-            std::this_thread::sleep_for(std::chrono::microseconds(50000));
+          auto resp = repl_server.get_msg();
+          if (resp) {
+            std::lock_guard<std::mutex> lock(compiler_mutex);
+            std::string copy = resp.value();
+            status = compiler->handle_repl_string(copy);
+            // Print out the prompt, just for better UX
+            compiler->print_to_repl(compiler->get_prompt());
           }
+          std::this_thread::sleep_for(std::chrono::microseconds(50000));
         }
       });
     }

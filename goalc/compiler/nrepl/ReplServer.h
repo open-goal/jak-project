@@ -14,12 +14,17 @@ struct ReplServerHeader {
 class ReplServer : public XSocketServer {
  public:
   using XSocketServer::XSocketServer;
+  virtual ~ReplServer();
 
-  void write_on_accept() override;
-  std::optional<std::string> read_data();
+  void post_init() override;
+
+  std::optional<std::string> get_msg();
 
  private:
+  int max_clients = 50;
   std::vector<char> header_buffer = std::vector<char>((int)sizeof(ReplServerHeader));
+  fd_set read_sockets;
+  std::set<int> client_sockets = {};
 
-  void ping_response();
+  void ping_response(int socket);
 };

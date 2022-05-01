@@ -30,6 +30,8 @@ class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
   ~Compiler();
+  void print_to_repl(const std::string_view& str);
+  std::string get_prompt();
   std::string get_repl_input();
   ReplStatus handle_repl_string(const std::string& input);
   goos::Interpreter& get_goos() { return m_goos; }

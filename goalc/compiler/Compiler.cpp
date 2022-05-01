@@ -71,7 +71,11 @@ Compiler::~Compiler() {
   }
 }
 
-std::string Compiler::get_repl_input() {
+void Compiler::print_to_repl(const std::string_view& str) {
+  m_repl->print_to_repl(str);
+}
+
+std::string Compiler::get_prompt() {
   std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
   if (m_listener.is_connected()) {
     prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
@@ -81,8 +85,11 @@ std::string Compiler::get_repl_input() {
   } else if (m_debugger.is_attached()) {
     prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
   }
-  std::string prompt_full = "\033[0m" + prompt;
-  auto str = m_repl->readline(prompt_full);
+  return "\033[0m" + prompt;
+}
+
+std::string Compiler::get_repl_input() {
+  auto str = m_repl->readline(get_prompt());
   if (str) {
     m_repl->add_to_history(str);
     return str;
