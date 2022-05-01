@@ -2914,6 +2914,20 @@
   :flag-assert #x900000010
   )
 
+(defenum sound-mask
+  :bitfield #t
+  :type uint16
+  (volume)
+  (pitch)
+  (bend)
+  (unused)
+  (time)
+  (trans)
+  (fo-min)
+  (fo-max)
+  (fo-curve)
+  )
+
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
    (command sound-command  :offset-assert 2)
@@ -2924,7 +2938,7 @@
   )
 
 (deftype sound-play-parms (structure)
-  ((mask      uint16    :offset-assert 0)
+  ((mask      sound-mask :offset-assert 0)
    (pitch-mod int16     :offset-assert 2)
    (bend      int16     :offset-assert 4)
    (fo-min    int16     :offset-assert 6)
@@ -3191,12 +3205,12 @@
   )
 
 (deftype sound-spec (basic)
-  ((mask            uint16     :offset-assert 4)
+  ((mask            sound-mask :offset-assert 4)
    (num             float      :offset-assert 8)
    (group           uint8      :offset-assert 12)
-   (sound-name      sound-name    :score 20 :offset 16)
-   (sound-name-char uint8 16 :offset 16) ;; moved to after sound-name
-   (trans           float 4  :offset-assert 32) ;; guess
+   (sound-name      sound-name :score 20 :offset 16)
+   (sound-name-char uint8 16   :offset 16) ;; moved to after sound-name
+   (trans           float 4    :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)
    (bend            int32      :offset-assert 56)
@@ -3219,15 +3233,15 @@
    (playing-id   sound-id         :offset-assert 8)
    (trans        vector   :inline :offset-assert 16)
    (name         sound-name       :offset-assert 32)
-   (play-time    time-frame            :offset-assert 48)
-   (time-base    time-frame            :offset-assert 56)
-   (time-random  time-frame            :offset-assert 64)
+   (play-time    time-frame       :offset-assert 48)
+   (time-base    time-frame       :offset-assert 56)
+   (time-random  time-frame       :offset-assert 64)
    (volume       int32            :offset-assert 72)
    (pitch        int32            :offset-assert 76)
    (falloff-near int32            :offset-assert 80)
    (falloff-far  int32            :offset-assert 84)
    (falloff-mode int32            :offset-assert 88)
-   (params       (pointer float)          :offset-assert 92)
+   (params       (pointer float)  :offset-assert 92)
    (param-count  int32            :offset-assert 96)
    (entity       entity           :offset-assert 100)
    (sound-count  int32            :offset-assert 104)

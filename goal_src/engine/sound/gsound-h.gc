@@ -137,6 +137,20 @@
   (default 49)
   )
 
+(defenum sound-mask
+  :bitfield #t
+  :type uint16
+  (volume)
+  (pitch)
+  (bend)
+  (unused)
+  (time)
+  (trans)
+  (fo-min)
+  (fo-max)
+  (fo-curve)
+  )
+
 ;; like should match the sound type in OVERLORD
 ;; This is shared between all sound RPCs and acts like the header for the sound messages
 (deftype sound-rpc-cmd (structure)
@@ -149,7 +163,7 @@
   )
 
 (deftype sound-play-parms (structure)
-  ((mask      uint16    :offset-assert 0)
+  ((mask      sound-mask :offset-assert 0)
    (pitch-mod int16     :offset-assert 2)
    (bend      int16     :offset-assert 4)
    (fo-min    int16     :offset-assert 6)
@@ -417,12 +431,12 @@
   )
 
 (deftype sound-spec (basic)
-  ((mask            uint16     :offset-assert 4)
+  ((mask            sound-mask :offset-assert 4)
    (num             float      :offset-assert 8)
    (group           uint8      :offset-assert 12)
-   (sound-name      sound-name    :score 20 :offset 16)
-   (sound-name-char uint8 16 :offset 16) ;; moved to after sound-name
-   (trans           float 4  :offset-assert 32) ;; guess
+   (sound-name      sound-name :score 20 :offset 16)
+   (sound-name-char uint8 16   :offset 16) ;; moved to after sound-name
+   (trans           float 4    :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)
    (bend            int32      :offset-assert 56)
@@ -436,6 +450,37 @@
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
+  )
+
+(defmacro sound-vol (vol)
+  "convert to sound volume units"
+  (if (number? vol)
+      (* 1 (/ (* vol 1024) 100))
+      `(the int (/ (* ,vol 1024) 100))
+      )
+  )
+
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
+                                  &key (volume #f)
+                                  &key (pitch-mod 0)
+                                  &key (fo-min 0) &key (fo-max 0)
+                                  &key (mask ()))
+  (let ((snd-mask mask)
+        (snd-volume 100.0))
+    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
+    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
+    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
+    `(new 'static 'sound-spec
+          :sound-name (static-sound-name ,name)
+          :num ,num
+          :group ,group
+          :volume (sound-vol ,snd-volume)
+          :pitch-mod ,pitch-mod
+          :fo-min ,fo-min
+          :fo-max ,fo-max
+          :mask (sound-mask ,@snd-mask)
+          ))
   )
 
 ;; each sound command gets a unique ID.
@@ -455,7 +500,7 @@
    (falloff-near int32            :offset-assert 80)
    (falloff-far  int32            :offset-assert 84)
    (falloff-mode int32            :offset-assert 88)
-   (params       (pointer float)          :offset-assert 92)
+   (params       (pointer float)  :offset-assert 92)
    (param-count  int32            :offset-assert 96)
    (entity       entity           :offset-assert 100)
    (sound-count  int32            :offset-assert 104)
