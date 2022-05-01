@@ -655,7 +655,7 @@ nav-enemy-default-event-handler
         (set! (-> v1-14 frame-num) 0.0)
         )
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (set! (-> self collide-info status) (logand -8 (-> self collide-info status)))
+      (logclear! (-> self collide-info status) (cshape-moving-flags onsurf onground tsurf))
       (until (ja-done? 0)
         (cond
           ((nonzero? (-> self align))
@@ -1401,16 +1401,15 @@ nav-enemy-default-event-handler
           (set! (-> self notice-time) (-> *display* base-frame-counter))
           )
         )
-      (when (not
-              (or (and *target* (>= 40960.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
-                  (and (-> self nav-info use-proximity-notice)
-                       *target*
-                       (>= (-> self nav-info proximity-notice-distance)
-                           (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                           )
-                       )
-                  )
-              )
+      (when (not (or (and *target* (>= 40960.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
+                     (and (-> self nav-info use-proximity-notice)
+                          *target*
+                          (>= (-> self nav-info proximity-notice-distance)
+                              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                              )
+                          )
+                     )
+                 )
         (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
         (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
             (go-virtual nav-enemy-give-up)
@@ -1704,7 +1703,7 @@ nav-enemy-default-event-handler
         )
       )
     )
-  (set! (-> self collide-info status) (logand -8 (-> self collide-info status)))
+  (logclear! (-> self collide-info status) (cshape-moving-flags onsurf onground tsurf))
   (set! (-> self jump-time) (-> *display* base-frame-counter))
   (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
   (cond

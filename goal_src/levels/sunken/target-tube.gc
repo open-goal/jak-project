@@ -157,7 +157,7 @@
 (defbehavior tube-sounds target ()
   (seek!
     (-> self tube tube-sound-vol)
-    (if (logtest? (-> self control status) 1)
+    (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         100.0
         0.0
         )
@@ -196,7 +196,7 @@
         (vector-normalize! s4-1 (-> self control unknown-surface01 target-speed))
         )
     (vector-v++! (-> self control unknown-vector00) s4-1)
-    (when (logtest? (-> self control status) 8)
+    (when (logtest? (-> self control status) (cshape-moving-flags twall))
       (let ((s3-0 (-> self tube old-transv)))
         (-> self control unknown-vector00 y)
         (vector-reflect! s4-1 s3-0 (-> self control unknown-vector71))
@@ -679,7 +679,7 @@
   (behavior ((arg0 float) (arg1 float))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #f) (-> self control transv))
-    (set! (-> self control status) (logand -8 (-> self control status)))
+    (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *tube-jump-mods*)
     (none)
     )
@@ -687,7 +687,7 @@
   (-> target-tube-start exit)
   :trans
   (behavior ()
-    (if (logtest? (-> self control status) 1)
+    (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         (go target-tube)
         )
     (mod-var-jump #t #t (cpad-hold? (-> self control unknown-cpad-info00 number) x) (-> self control transv))
