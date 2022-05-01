@@ -25,16 +25,8 @@ XSocketServer::~XSocketServer() {
 }
 
 void XSocketServer::shutdown_server() {
-  // Cleanup the accept thread
-  if (accept_thread_running) {
-    kill_accept_thread = true;
-    accept_thread.join();
-    accept_thread_running = false;
-  }
-
   // Close the listening and accepted socket socket
   close_server_socket();
-  close_socket(accepted_socket);
 }
 
 bool XSocketServer::init_server() {
@@ -83,38 +75,12 @@ bool XSocketServer::init_server() {
   }
 
   server_initialized = true;
-  accept_thread = std::thread(&XSocketServer::accept_thread_func, this);
-  fmt::print("[XSocketServer:{}] awaiting connections\n", tcp_port);
+  fmt::print("[XSocketServer:{}] initialized\n", tcp_port);
+  post_init();
   return true;
 }
 
 void XSocketServer::close_server_socket() {
   close_socket(listening_socket);
   listening_socket = -1;
-}
-
-void XSocketServer::accept_thread_func() {
-  socklen_t l = sizeof(addr);
-  while (!kill_accept_thread) {
-    if (accepted_socket == -1) {
-      this->accepted_socket = accept_socket(listening_socket, (sockaddr*)&addr, &l);
-      fmt::print("Accept Socket in XSocketServer: {}\n", this->accepted_socket);
-      set_socket_timeout(this->accepted_socket, 100000);
-      write_on_accept();
-      client_connected = true;
-    }
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
-  }
-}
-
-bool XSocketServer::wait_for_connection() {
-  return client_connected;
-}
-
-void XSocketServer::lock() {
-  server_mutex.lock();
-}
-
-void XSocketServer::unlock() {
-  server_mutex.unlock();
 }

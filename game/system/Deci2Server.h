@@ -10,17 +10,31 @@
 class Deci2Server : public XSocketServer {
  public:
   using XSocketServer::XSocketServer;
+  virtual ~Deci2Server();
 
-  void write_on_accept() override;
+  void post_init() override;
+  void pre_shutdown() override;
+
   void read_data();
   void send_data(void* buf, u16 len);
 
+  bool is_client_connected();
   void wait_for_protos_ready();
   void send_proto_ready(Deci2Driver* drivers, int* driver_count);
+
+  void lock();
+  void unlock();
 
  private:
   bool protocols_ready = false;
   std::condition_variable cv;
   Deci2Driver* d2_drivers = nullptr;
   int* d2_driver_count = nullptr;
+
+  int accepted_socket = -1;
+
+  std::thread accept_thread;
+  std::mutex server_mutex;
+
+  void accept_thread_func();
 };

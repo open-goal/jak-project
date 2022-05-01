@@ -14,11 +14,46 @@
 
 #include "third-party/fmt/core.h"
 
-void Deci2Server::write_on_accept() {
-  u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
-  lock();
-  write_to_socket(accepted_socket, (char*)&versions, 8);
-  unlock();
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+Deci2Server::~Deci2Server() {
+  // Cleanup the accept thread
+  if (accept_thread_running) {
+    kill_accept_thread = true;
+    accept_thread.join();
+    accept_thread_running = false;
+  }
+  close_socket(accepted_socket);
+}
+
+void Deci2Server::post_init() {
+  fmt::print("[Deci2Server:{}] awaiting connections\n", tcp_port);
+  accept_thread = std::thread(&Deci2Server::accept_thread_func, this);
+}
+
+void Deci2Server::accept_thread_func() {
+  socklen_t addr_len = sizeof(addr);
+  while (!kill_accept_thread) {
+    if (accepted_socket == -1) {
+      accepted_socket = accept_socket(listening_socket, (sockaddr*)&addr, &addr_len);
+      set_socket_timeout(accepted_socket, 100000);
+      u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
+      write_to_socket(accepted_socket, (char*)&versions, 8);
+      client_connected = true;
+      return;  // stop accepting connections
+    }
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+  }
+}
+
+bool Deci2Server::is_client_connected() {
+  return client_connected;
 }
 
 /*!
@@ -48,6 +83,10 @@ void Deci2Server::send_proto_ready(Deci2Driver* drivers, int* driver_count) {
 }
 
 void Deci2Server::read_data() {
+  if (!is_client_connected()) {
+    return;
+  }
+
   int desired_size = (int)sizeof(Deci2Header);
   int got = 0;
 
@@ -132,4 +171,12 @@ void Deci2Server::send_data(void* buf, u16 len) {
     }
   }
   unlock();
+}
+
+void Deci2Server::lock() {
+  server_mutex.lock();
+}
+
+void Deci2Server::unlock() {
+  server_mutex.unlock();
 }

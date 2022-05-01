@@ -93,7 +93,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   lg::debug("[DECI2] Waiting for listener...");
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
-    if (server.wait_for_connection()) {
+    if (server.is_client_connected()) {
       if (!saw_listener) {
         lg::debug("[DECI2] Connected!");
       }
