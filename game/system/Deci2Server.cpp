@@ -34,6 +34,8 @@ Deci2Server::~Deci2Server() {
 
 void Deci2Server::post_init() {
   fmt::print("[Deci2Server:{}] awaiting connections\n", tcp_port);
+  accept_thread_running = true;
+  kill_accept_thread = false;
   accept_thread = std::thread(&Deci2Server::accept_thread_func, this);
 }
 

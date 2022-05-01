@@ -58,7 +58,6 @@ std::optional<std::string> ReplServer::get_msg() {
   auto activity = select(max_sd + 1, &read_sockets, NULL, NULL, NULL);
 
   if (activity < 0) {  // TODO - || error!
-    printf("Error at select(): %ld\n", WSAGetLastError());
     return std::nullopt;
   }
 

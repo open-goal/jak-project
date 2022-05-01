@@ -105,8 +105,7 @@ int main(int argc, char** argv) {
           auto resp = repl_server.get_msg();
           if (resp) {
             std::lock_guard<std::mutex> lock(compiler_mutex);
-            std::string copy = resp.value();
-            status = compiler->handle_repl_string(copy);
+            status = compiler->handle_repl_string(resp.value());
             // Print out the prompt, just for better UX
             compiler->print_to_repl(compiler->get_prompt());
           }

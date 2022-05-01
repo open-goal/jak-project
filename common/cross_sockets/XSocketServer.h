@@ -32,9 +32,7 @@ class XSocketServer {
   int listening_socket = -1;
   std::vector<char> buffer;
 
-  bool kill_accept_thread = false;
   bool server_initialized = false;
-  bool accept_thread_running = false;
   bool client_connected = false;
 
   std::function<bool()> want_exit_callback;

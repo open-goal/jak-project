@@ -13,7 +13,6 @@ class Deci2Server : public XSocketServer {
   virtual ~Deci2Server();
 
   void post_init() override;
-  void pre_shutdown() override;
 
   void read_data();
   void send_data(void* buf, u16 len);
@@ -32,6 +31,8 @@ class Deci2Server : public XSocketServer {
   int* d2_driver_count = nullptr;
 
   int accepted_socket = -1;
+  bool kill_accept_thread = false;
+  bool accept_thread_running = false;
 
   std::thread accept_thread;
   std::mutex server_mutex;
