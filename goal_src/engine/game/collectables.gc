@@ -131,7 +131,7 @@
 
 
 (defmethod initialize eco-collectable ((obj eco-collectable))
-  (stack-size-set! (-> obj main-thread) 128)
+  (stack-size-set! (-> obj main-thread) 192) ;; hack increased from 128
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj actor-pause) #t)
   (set! (-> obj notify-parent) #f)
@@ -1117,7 +1117,7 @@
 
 (defmethod initialize eco-pill ((obj eco-pill))
   (set! *eco-pill-count* (+ *eco-pill-count* 1))
-  (stack-size-set! (-> obj main-thread) 128)
+  (stack-size-set! (-> obj main-thread) 192) ;; hack increased from 192
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj actor-pause) #t)
   (set! (-> obj notify-parent) #f)
@@ -1211,7 +1211,7 @@
                    (* f30-0
                       (sin
                         (* 109.22667
-                           (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) 600))
+                           (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) (seconds 2)))
                            )
                         )
                       )
@@ -1221,6 +1221,10 @@
           )
         )
       (ja-post)
+      ;; added! particle
+      (with-pc
+        (if (-> *pc-settings* money-starburst?)
+      (spawn (-> self part) (-> self root-override root-prim world-sphere))))
       (suspend)
       )
     (none)
@@ -1247,7 +1251,7 @@
                      (* f30-0
                         (sin
                           (* 109.22667
-                             (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) 600))
+                             (the float (mod (+ (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self bob-offset)) (seconds 2)))
                              )
                           )
                         )
@@ -1256,6 +1260,10 @@
             )
         )
       (transform-post)
+      ;; added! particle
+      (with-pc
+        (if (-> *pc-settings* money-starburst?)
+      (spawn (-> self part) (-> self root-override root-prim world-sphere))))
       (suspend)
       )
     (none)
@@ -1266,6 +1274,9 @@
   :virtual #t
   :code
   (behavior ((arg0 object) (arg1 handle))
+    (if (nonzero? (-> self part))
+        (kill-and-free-particles (-> self part))
+        )
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -1275,7 +1286,7 @@
   )
 
 (defmethod initialize money ((obj money))
-  (stack-size-set! (-> obj main-thread) 128)
+  (stack-size-set! (-> obj main-thread) 192) ;; hack increased from 128
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1313,6 +1324,8 @@
       )
   (set-vector! (-> obj draw color-mult) 0.8 0.8 0.8 1.0)
   (set-vector! (-> obj draw color-emissive) 0.2 0.2 0.2 1.0)
+  ;; added! money starburst
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 64) obj))
   obj
   )
 
