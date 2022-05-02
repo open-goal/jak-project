@@ -153,10 +153,16 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
       }
     }
     // name = code/event/etc
-    if (skip_states.count(state_name) > 0) {
-      if (skip_states.at(state_name).find(name) != skip_states.at(state_name).end()) {
+    std::string name_to_check_for_skip = state_name;
+    if (skip_states.count(name_to_check_for_skip) == 0) {
+      name_to_check_for_skip =
+          fmt::format("({} {})", state_name, state_type.last_arg().base_type());
+    }
+    if (skip_states.count(name_to_check_for_skip) > 0) {
+      if (skip_states.at(name_to_check_for_skip).find(name) !=
+          skip_states.at(name_to_check_for_skip).end()) {
         env.func->warnings.general_warning("SKIP: skipping '{}' handler for state '{}'", name,
-                                           state_name);
+                                           name_to_check_for_skip);
         continue;
       }
     }
