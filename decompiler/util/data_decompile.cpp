@@ -690,8 +690,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
         volf = 80;
         break;
     }
-    the_macro.push_back(
-        pretty_print::to_symbol(fmt::format(":volume {}", float_to_string(volf))));
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":volume {}", float_to_string(volf))));
   }
   if (pitch != 0) {
     implicit_mask |= 1 << 1;
@@ -741,7 +740,7 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const TypeSystem& ts,
                                  const LinkedObjectFile* file,
                                  bool use_fancy_macros) {
-  // some structures we want to decompile to fancy macros instead of a raw static structure definiton
+  // some structures we want to decompile to fancy macros instead of a raw static definiton
   if (use_fancy_macros) {
     if (type == TypeSpec("sp-field-init-spec")) {
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
